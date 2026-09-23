@@ -28,6 +28,7 @@
 import { r2SqlQuery } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
+import { loadIndexedRuntimeHistory } from "./indexed-runtime-history.ts";
 
 // One row per distinct spec_version: the earliest block that carried that
 // reading, sorted into a single ascending timeline. Identical in shape to the
@@ -67,6 +68,8 @@ export async function loadRuntimeVersionHistoryColdTier(
   env: Parameters<R2SqlReader>[0],
   { query = r2SqlQuery }: { query?: R2SqlReader } = {},
 ): Promise<ReturnType<typeof buildRuntimeVersionHistory> | null> {
+  const indexed = await loadIndexedRuntimeHistory(env);
+  if (indexed !== undefined) return indexed;
   const [rows, latestRows] = await Promise.all([
     query(env, TRANSITIONS_SQL),
     query(env, LATEST_SQL),

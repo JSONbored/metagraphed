@@ -32,6 +32,16 @@ registerModuleStateReset("src/indexed-history-store.ts", () => {
 });
 const TTL_MS = 60_000;
 
+/** Share the validated immutable selection with small generation summaries. */
+export async function readSelectedHistorySegments(
+  env: unknown,
+  table: ChainFirehoseTopic,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): Promise<Segment[] | undefined> {
+  const bucket = (env as HistoryEnv | null)?.METAGRAPH_ARCHIVE;
+  return bucket ? selection(bucket, table, network) : undefined;
+}
+
 async function selection(
   bucket: Bucket,
   table: ChainFirehoseTopic,
