@@ -126,6 +126,63 @@ async function fixture(table: "extrinsics" | "blocks" = "extrinsics") {
   };
   return { generation, file, indexes, descriptor, records };
 }
+test("packed generations prove contiguous prefix coverage before exact native row reads", async () => {
+  const { generation, records } = await fixture();
+  const key = `${root}/hash/packed.bin`;
+  const object = await bucket.put(key, records);
+  assert.ok(object);
+  let offset = 0;
+  for (const shard of generation.shards) {
+    Object.assign(shard, { key, etag: object.etag, offset });
+    offset += shard.bytes;
+  }
+  const selected = validateHistoryGeneration(generation, scope);
+  for (const n of [0, 10, 19]) {
+    const row = await readHistoryHash(
+      r2ParquetSource(bucket),
+      selected,
+      scope,
+      hash(n),
+      parquetReadBudget(),
+    );
+    assert.equal(row?.wide, 9007199254740992n + BigInt(n));
+  }
+  assert.equal(
+    await readHistoryHash(
+      r2ParquetSource(bucket),
+      selected,
+      scope,
+      "0xfff" + "0".repeat(61),
+      parquetReadBudget(),
+    ),
+    null,
+  );
+  const changes: ((input: HistoryGeneration) => void)[] = [
+    (g) => {
+      g.shards[0].offset = 40;
+    },
+    (g) => {
+      g.shards[1].etag = "other-object";
+    },
+    (g) => {
+      delete g.shards[4095].offset;
+    },
+  ];
+  for (const change of changes) {
+    const invalid = structuredClone(generation);
+    change(invalid);
+    assert.throws(
+      () => validateHistoryGeneration(invalid, scope),
+      /hash shard mismatch/,
+    );
+  }
+  const legacy = await fixture();
+  legacy.generation.shards[1].offset = 0;
+  assert.throws(
+    () => validateHistoryGeneration(legacy.generation, scope),
+    /hash shard mismatch/,
+  );
+});
 test("real conditional R2 lookups cross repacked parts and preserve exact values", async () => {
   const { generation } = await fixture();
   const descriptor = await put(`${root}/manifest.json`, generation);

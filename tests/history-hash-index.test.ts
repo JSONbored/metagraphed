@@ -163,6 +163,61 @@ test("logical scope and physical pointer mismatches cannot answer a lookup", asy
     /outside its generation/,
   );
 });
+test("packed prefixes translate conditional ranges without reading adjacent prefixes", async () => {
+  const { shard, bytes } = await fixture(2050);
+  const prefixBytes = 80;
+  const packed = new Uint8Array(prefixBytes + bytes.length);
+  packed.set(bytes, prefixBytes);
+  const key = shard.key.replace("abc.bin", "packed.bin");
+  const object = await bucket.put(key, packed);
+  assert.ok(object);
+  const selected = { ...shard, key, etag: object.etag, offset: prefixBytes };
+  for (const row of [0, 1024, 2049]) {
+    const budget = parquetReadBudget();
+    assert.deepEqual(
+      await findHistoryHash(
+        r2ParquetSource(bucket),
+        selected,
+        hash(row * 2),
+        scope,
+        budget,
+      ),
+      { fileId: row % 2, row },
+    );
+    assert.ok(budget.bytes <= 3 * 40960);
+  }
+  assert.equal(
+    await findHistoryHash(
+      r2ParquetSource(bucket),
+      selected,
+      hash(1),
+      scope,
+      parquetReadBudget(),
+    ),
+    null,
+  );
+  for (const offset of [1, Math.floor(Number.MAX_SAFE_INTEGER / 40) * 40])
+    await assert.rejects(
+      findHistoryHash(
+        r2ParquetSource(bucket),
+        { ...selected, offset },
+        hash(0),
+        scope,
+        parquetReadBudget(),
+      ),
+      /scope mismatch/,
+    );
+  await assert.rejects(
+    findHistoryHash(
+      r2ParquetSource(bucket),
+      { ...selected, etag: "replaced" },
+      hash(0),
+      scope,
+      parquetReadBudget(),
+    ),
+    /Parquet source/,
+  );
+});
 test("missing, replaced, truncated, foreign-prefix and budget-exceeding shards throw rather than report absence", async () => {
   const { shard, bytes } = await fixture(2050);
   const source = r2ParquetSource(bucket);
