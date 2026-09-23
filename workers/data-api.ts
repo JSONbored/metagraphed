@@ -19,7 +19,10 @@
 // for why that matters to the forward gate.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
-import { readNeuronDirectoryRows } from "../src/neuron-snapshot-read.ts";
+import {
+  readNeuronDirectoryRows,
+  readDirectoryNominatorCounts,
+} from "../src/neuron-snapshot-read.ts";
 import { COMPUTE_DECLARATIONS_TABLES } from "../src/read-store-tables.ts";
 import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
 import { handleD1StateExport } from "../src/d1-state-export.ts";
@@ -6852,24 +6855,13 @@ async function loadStoreAlphaPricesByNetuid(
 async function loadNominatorCountsFromStore(
   sql: PgSql,
   env: DataApiEnv,
+  hotkeys: readonly string[],
 ): Promise<Map<string, number>> {
   try {
     // LEFT JOIN from the permitted set, not an inner read of the counts table:
     // the rows with no match are precisely the ones the zero-fill is about, so
     // they have to survive the query to be seen at all.
-    const rows = await sql<{
-      hotkey: Neurons["hotkey"];
-      nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
-      scan_at: ValidatorNominatorCounts["captured_at"] | null;
-    }>`
-      SELECT n.hotkey AS hotkey,
-             c.nominator_count AS nominator_count,
-             (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at
-      FROM (
-        SELECT DISTINCT hotkey FROM neurons
-        WHERE validator_permit = TRUE AND hotkey IS NOT NULL
-      ) n
-      LEFT JOIN validator_nominator_counts c ON c.hotkey = n.hotkey`;
+    const rows = await readDirectoryNominatorCounts(sql, env, hotkeys);
     return fillConfirmedZeros(
       rows,
       nominatorCountsByHotkey(rows),
@@ -7078,11 +7070,18 @@ async function loadGlobalValidatorsFromStore(
   limit: number,
   includeAll = false,
 ) {
+  const memberships = readNeuronDirectoryRows(sql, env, true);
   const [rows, priceByNetuid, nominatorCounts, tempos, identityByColdkey] =
     await Promise.all([
-      readNeuronDirectoryRows(sql, env, true),
+      memberships,
       loadStoreAlphaPricesByNetuid(sql, env),
-      loadNominatorCountsFromStore(sql, env),
+      memberships.then((rows) =>
+        loadNominatorCountsFromStore(
+          sql,
+          env,
+          rows.map((row) => row.hotkey),
+        ),
+      ),
       loadSubnetTemposFromStore(sql, env),
       loadIdentityByColdkeyMap((statement, parameters) =>
         sql.unsafe<AccountIdentityStoreRow>(statement, parameters),

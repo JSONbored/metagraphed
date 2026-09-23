@@ -190,8 +190,13 @@ export function neuronDocumentStatements(
       throw new TypeError("Invalid neuron prune cutoff");
     const value = JSON.stringify(Object.fromEntries(cutoffs));
     statements.push({
-      text: `DELETE FROM neurons_members WHERE netuid IN (SELECT CAST(key AS INTEGER) FROM json_each(?)) AND uid IN
-      (SELECT CAST(i.key AS INTEGER) FROM neurons_documents d,json_each(d.payload) i WHERE d.netuid=neurons_members.netuid AND d.shard=neurons_members.shard AND json_extract(i.value,'$.captured_at') < json_extract(?,'$."'||d.netuid||'"'))`,
+      // Materialize stale keys once. A correlated per-member subquery expands
+      // its entire shard for every UID even when nothing needs pruning.
+      text: `DELETE FROM neurons_members WHERE (netuid,uid,shard) IN
+      (SELECT d.netuid,CAST(i.key AS INTEGER),d.shard
+       FROM neurons_documents d CROSS JOIN json_each(d.payload) i
+       WHERE d.day='' AND d.netuid IN (SELECT CAST(key AS INTEGER) FROM json_each(?))
+         AND json_extract(i.value,'$.captured_at') < json_extract(?,'$."'||d.netuid||'"'))`,
       values: [value, value],
     });
     statements.push({
