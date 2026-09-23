@@ -46,6 +46,7 @@ import {
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import { readCompleteNeuronRows } from "./neuron-snapshot-read.ts";
+import { lifecycleValidityPredicate } from "./subnet-lifecycle-read.ts";
 
 export const SUBNET_LIFECYCLE_LANE = "subnet-lifecycle";
 
@@ -212,7 +213,8 @@ export async function runSubnetLifecycleLane(
     // registration. DISTINCT ON is the same shape loadLatestLaneHealth uses.
     const knownRows = await db.query(
       "SELECT netuid,event FROM (SELECT netuid,event,ROW_NUMBER() OVER " +
-        "(PARTITION BY netuid ORDER BY observed_at DESC,id DESC) AS rank FROM subnet_lifecycle) " +
+        "(PARTITION BY netuid ORDER BY observed_at DESC,id DESC) AS rank FROM subnet_lifecycle " +
+        `WHERE ${lifecycleValidityPredicate(env)}) ` +
         "WHERE rank=1 ORDER BY netuid",
     );
     const known = new Set<number>();

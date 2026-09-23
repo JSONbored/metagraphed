@@ -11,6 +11,10 @@ import {
 import { runSubnetLifecycleLane } from "../src/subnet-lifecycle.ts";
 import { writeNeuronDocuments } from "../src/neuron-documents.ts";
 import { captureSubnetBurnHistory } from "../src/subnet-burn-history.ts";
+import {
+  loadChainSubnetLifecycle,
+  loadSubnetLifecycle,
+} from "../src/subnet-lifecycle-read.ts";
 import worker from "../workers/data-api.ts";
 import { apiEnv, dataApiEnv } from "./helpers/worker-env.ts";
 
@@ -66,6 +70,14 @@ beforeAll(async () => {
     if (statement.trim()) await db.prepare(statement).run();
   for (const statement of readFileSync(
     new URL("../migrations/d1/0007_neuron_documents.sql", import.meta.url),
+    "utf8",
+  ).split("-- statement-breakpoint"))
+    if (statement.trim()) await db.prepare(statement).run();
+  for (const statement of readFileSync(
+    new URL(
+      "../migrations/d1/0018_lifecycle_invalidations.sql",
+      import.meta.url,
+    ),
     "utf8",
   ).split("-- statement-breakpoint"))
     if (statement.trim()) await db.prepare(statement).run();
@@ -226,6 +238,81 @@ test("payload bounds split valid rows and reject oversized rows, invalid scalars
   assert.equal(bad.account_identity.ok, false);
   assert.match(bad.account_identity.reason!, /atomic statement budget/);
   assert.equal(await count("account_identity"), 2);
+});
+test("invalidated lifecycle events remain auditable but never drive reads, pagination or new events", async () => {
+  const selected = {
+    D1_STATE: db,
+    D1_STATE_TABLES: "neurons,neurons_passes,subnet_lifecycle",
+  };
+  await db.batch([
+    db
+      .prepare(
+        "INSERT INTO subnet_lifecycle(netuid,event,observed_at) VALUES(1,'registered',?)",
+      )
+      .bind(stamp),
+    db
+      .prepare(
+        "INSERT INTO subnet_lifecycle(netuid,event,observed_at,_invalidated_at,_invalidation_reason) VALUES(1,'deregistered',?,?,?)",
+      )
+      .bind(
+        stamp + 1,
+        stamp + 2,
+        "incomplete capture; immutable audit receipt",
+      ),
+    db
+      .prepare(
+        "INSERT INTO subnet_lifecycle(netuid,event,observed_at) VALUES(2,'registered',?)",
+      )
+      .bind(stamp + 3),
+  ]);
+  const page = { limit: 1, offset: 1 };
+  assert.deepEqual(
+    (await loadChainSubnetLifecycle(selected, page))?.map((r) => r.netuid),
+    [1],
+  );
+  assert.deepEqual(
+    (
+      await loadChainSubnetLifecycle(selected, { ...page, sinceMs: stamp })
+    )?.map((r) => r.netuid),
+    [1],
+  );
+  assert.deepEqual(
+    (await loadSubnetLifecycle(selected, 1, { limit: 10, offset: 0 }))?.map(
+      (r) => r.event,
+    ),
+    ["registered"],
+  );
+  await writeNeuronDocuments(store(), {
+    rows: [1, 2].map((netuid) => ({
+      netuid,
+      uid: 0,
+      captured_at: stamp + 4,
+      block_number: 9000000,
+    })),
+    dailyRows: [],
+    positionRows: [],
+  });
+  await db
+    .prepare("INSERT INTO neurons_passes VALUES(?,?,?,?)")
+    .bind(stamp + 4, 2, 2, stamp + 5)
+    .run();
+  const result = await runSubnetLifecycleLane(selected, {
+    laneHealthDb,
+    coverageFloor: 1,
+    now: () => stamp + 6,
+  });
+  assert.equal(result.events, 0);
+  assert.equal(await count("subnet_lifecycle"), 3);
+  const original = await db
+    .prepare(
+      "SELECT event,observed_at,_invalidation_reason FROM subnet_lifecycle WHERE _invalidated_at IS NOT NULL",
+    )
+    .first();
+  assert.deepEqual(original, {
+    event: "deregistered",
+    observed_at: stamp + 1,
+    _invalidation_reason: "incomplete capture; immutable audit receipt",
+  });
 });
 test("native lifecycle window queries and writes preserve seed and deregistration semantics", async () => {
   const options = { laneHealthDb, coverageFloor: 1, now: () => stamp };
