@@ -43,6 +43,36 @@ interface ExportRow {
 }
 function logicalType(table: string, name: string, type: string): string {
   if (BOOLEANS.has(name)) return "bool";
+  // SQLite cannot infer column types for JSON-extract views. Retained rows
+  // can contain either numeric JSON strings or numbers, so Arrow needs the
+  // same explicit logical types as the original neuron row contract.
+  if (["neurons", "neuron_daily", "account_position_daily"].includes(table)) {
+    if (
+      [
+        "netuid",
+        "uid",
+        "captured_at",
+        "updated_at",
+        "block_number",
+        "registered_at_block",
+      ].includes(name)
+    )
+      return "int8";
+    if (
+      [
+        "rank",
+        "trust",
+        "validator_trust",
+        "consensus",
+        "incentive",
+        "dividends",
+        "emission_tao",
+        "stake_tao",
+        "take",
+      ].includes(name)
+    )
+      return "float8";
+  }
   if (
     table === "compute_declarations" &&
     ["miner", "validator", "unscoped"].includes(name)

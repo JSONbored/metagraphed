@@ -141,6 +141,60 @@ test("lifecycle export excludes invalidated derived events without disclosing co
   }
 });
 
+test("document-backed exports declare numeric contracts even when JSON rows mix strings and numbers", async () => {
+  for (const table of ["neurons", "neuron_daily", "account_position_daily"]) {
+    const { columns } = await get({ table, kind: "schema" });
+    const type = (name: string) => columns.find((c) => c.name === name)?.type;
+    for (const name of ["uid", "netuid", "captured_at"])
+      assert.equal(type(name), "int8");
+    for (const name of [
+      "rank",
+      "trust",
+      "incentive",
+      "dividends",
+      "stake_tao",
+      "emission_tao",
+    ])
+      assert.equal(type(name), "float8");
+    assert.equal(type("coldkey"), "text");
+    assert.equal(type("active"), "bool");
+  }
+  await writeNeuronDocuments(createD1Store(db), {
+    rows: [],
+    dailyRows: [],
+    positionRows: ["mixed-a", "mixed-b"].map((account, index) => ({
+      account,
+      netuid: 1,
+      uid: index,
+      snapshot_date: "2026-09-21",
+      captured_at: 1790090000000,
+      stake_tao: index ? 0 : "12.5",
+      emission_tao: index ? "0.25" : 0,
+    })),
+  });
+  try {
+    const result = await get({
+      table: "account_position_daily",
+      kind: "rows",
+      day: "2026-09-21",
+      columns: ["account", "uid", "stake_tao", "emission_tao"],
+    });
+    assert.deepEqual(result.rows, [
+      ["mixed-a", 0, "12.5", 0],
+      ["mixed-b", 1, 0, "0.25"],
+    ]);
+  } finally {
+    await db.batch([
+      db.prepare(
+        "DELETE FROM account_position_daily_members WHERE account IN ('mixed-a','mixed-b')",
+      ),
+      db.prepare(
+        "DELETE FROM account_position_daily_documents WHERE netuid=1 AND day='2026-09-21'",
+      ),
+    ]);
+  }
+});
+
 test("a later storage migration cannot authorize an unapproved archive column", async () => {
   await db
     .prepare("ALTER TABLE account_balances ADD COLUMN internal_credential TEXT")
