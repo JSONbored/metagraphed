@@ -26,20 +26,31 @@ export async function findHistoryHash(
   if (!/^0x[0-9a-fA-F]{64}$/.test(hash))
     throw new Error("Invalid history hash");
   const hex = hash.slice(2).toLowerCase();
-  const expectedKey = `metagraph/indexed-history/v1/${scope.network}/${scope.table}/generations/${scope.generation}/hash/${shard.prefix}.bin`;
+  const offset = shard.offset ?? 0;
+  const name = shard.offset === undefined ? shard.prefix : "packed";
+  const expectedKey = `metagraph/indexed-history/v1/${scope.network}/${scope.table}/generations/${scope.generation}/hash/${name}.bin`;
   if (
     shard.generation !== scope.generation ||
     shard.network !== scope.network ||
     shard.table !== scope.table ||
     shard.prefix !== hex.slice(0, 3) ||
     shard.key !== expectedKey ||
-    shard.bytes !== shard.rows * RECORD_BYTES
+    shard.bytes !== shard.rows * RECORD_BYTES ||
+    offset % RECORD_BYTES !== 0 ||
+    !Number.isSafeInteger(offset + shard.bytes)
   )
     throw new Error("History hash index scope mismatch");
   const target = Uint8Array.from(hex.match(/../g)!, (value) =>
     parseInt(value, 16),
   );
-  const file = boundedParquetBuffer(source, shard, budget);
+  const file = boundedParquetBuffer(
+    {
+      read: (key, etag, start, length) =>
+        source.read(key, etag, offset + start, length),
+    },
+    shard,
+    budget,
+  );
   const pages = new Map<number, Promise<ArrayBuffer>>();
   const record = async (row: number) => {
     const page = Math.floor(row / PAGE_ROWS);

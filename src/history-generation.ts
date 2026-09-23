@@ -50,15 +50,21 @@ export function validateHistoryGeneration(
   const generation = HistoryGenerationSchema.parse(input);
   validateGenerationFiles(generation, scope);
   let hashRows = 0;
+  const packed = generation.shards[0].offset !== undefined;
   for (const [ordinal, shard] of generation.shards.entries()) {
     const prefix = ordinal.toString(16).padStart(3, "0");
+    const name = packed ? "packed" : prefix;
     if (
       shard.generation !== scope.generation ||
       shard.network !== scope.network ||
       shard.table !== scope.table ||
       shard.prefix !== prefix ||
-      shard.key !== `${generationRoot(scope)}/hash/${prefix}.bin` ||
-      shard.bytes !== shard.rows * 40
+      shard.key !== `${generationRoot(scope)}/hash/${name}.bin` ||
+      shard.bytes !== shard.rows * 40 ||
+      (packed
+        ? shard.offset !== hashRows * 40 ||
+          shard.etag !== generation.shards[0].etag
+        : shard.offset !== undefined)
     )
       throw new Error("History generation hash shard mismatch");
     hashRows += shard.rows;

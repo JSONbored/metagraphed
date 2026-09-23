@@ -12,5 +12,12 @@ export const HistoryHashShardSchema = z.strictObject({
   etag: z.string().min(1),
   rows: z.number().int().min(0).max(0xffffffff),
   bytes: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  /** Byte range of this logical prefix in one immutable packed hash object. */
+  offset: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(Number.MAX_SAFE_INTEGER)
+    .optional(),
 });
 export type HistoryHashShard = z.infer<typeof HistoryHashShardSchema>;
