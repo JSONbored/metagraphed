@@ -171,8 +171,12 @@ describe("loadAccountEventsColdTier -- the projection floor", () => {
     let asked = 0;
     const bucket = {
       METAGRAPH_ARCHIVE: {
-        get: async () => {
-          asked += 1;
+        get: async (key: string) => {
+          if (
+            key !==
+            "metagraph/indexed-history/v1/testnet/account_events/current.json"
+          )
+            asked += 1;
           return null;
         },
       },
@@ -1002,8 +1006,12 @@ describe("loadAccountEventsColdTier -- the projection's recent map", () => {
     let asked = 0;
     const bucket = {
       METAGRAPH_ARCHIVE: {
-        get: async () => {
-          asked += 1;
+        get: async (key: string) => {
+          if (
+            key !==
+            "metagraph/indexed-history/v1/testnet/account_events/current.json"
+          )
+            asked += 1;
           return null;
         },
       },

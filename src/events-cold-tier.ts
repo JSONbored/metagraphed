@@ -67,6 +67,8 @@ import { windowedRowRead } from "./account-events-window.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { loadIndexedAccountFeedPage } from "./indexed-account-feeds.ts";
+import type { AccountFeedSelector } from "./history-account-feed.ts";
 import {
   readSelectedHistoryBlock,
   readSelectedHistoryHash,
@@ -104,6 +106,23 @@ export interface AccountEventsQuery {
   netuid?: unknown;
   blockStart?: unknown;
   blockEnd?: unknown;
+}
+
+/** Called after the route's existing literal validation and cursor decoder. */
+function indexedEventFilters(
+  query: AccountEventsQuery,
+  cursor: number[] | null,
+): Pick<
+  AccountFeedSelector,
+  "kind" | "netuid" | "blockStart" | "blockEnd" | "cursor"
+> {
+  return {
+    kind: query.kind == null ? null : String(query.kind),
+    netuid: query.netuid == null ? null : Number(query.netuid),
+    blockStart: query.blockStart == null ? undefined : Number(query.blockStart),
+    blockEnd: query.blockEnd == null ? undefined : Number(query.blockEnd),
+    cursor: cursor ? [cursor[0], cursor[1], cursor[2]] : null,
+  };
 }
 
 /**
@@ -297,6 +316,21 @@ export async function loadAccountEventsColdTier(
     );
   }
 
+  const paged = cursor ? 0 : offset;
+  const filters = indexedEventFilters(query, cursor);
+  const indexed = await loadIndexedAccountFeedPage(
+    env,
+    [
+      { ...filters, side: "hotkey", account: ss58 },
+      { ...filters, side: "coldkey", account: ss58 },
+    ],
+    limit,
+    paged,
+    network,
+  );
+  if (indexed !== undefined)
+    return indexed === null ? null : pageOf(indexed, ss58, limit, offset, 0);
+
   // THE SAME FLOOR THE SUMMARY CARD USES (#11410/#11411), on the route the
   // summary's own 503 told callers to fall back to -- which made the documented
   // fallback the slowest read of the three. Measured 2026-08-16 on
@@ -321,9 +355,6 @@ export async function loadAccountEventsColdTier(
   // networks keep the unbounded walk -- correct, just not faster.
   const floorMs = await accountHistoryFloorMs(env, ss58, network);
   if (floorMs !== null) where.push(`observed_at >= ${Math.trunc(floorMs)}`);
-
-  // Cursor pages never carry an offset, mirroring data-api.
-  const paged = cursor ? 0 : offset;
 
   // THE HOT TIER FIRST, when the request is one the projection can answer
   // exactly -- see `recentEventsLeg` for every reason it declines. Placed after
@@ -467,15 +498,32 @@ export async function loadSubnetEventsColdTier(
 
   // Cursor pages never carry an offset, mirroring the account feed.
   const paged = cursor ? 0 : offset;
-  const rows = await r2SqlQuery<AccountEventsRow>(
+  const indexed = await loadIndexedAccountFeedPage(
     env,
-    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} WHERE ${where.join(" AND ")}` +
-      ` ORDER BY observed_at DESC, block_number DESC, event_index DESC` +
-      ` LIMIT ${limit + paged}`,
+    [
+      {
+        ...indexedEventFilters(query, cursor),
+        netuid: subnet,
+        side: "all",
+        account: "*",
+      },
+    ],
+    limit,
+    paged,
+    network,
   );
+  const rows =
+    indexed !== undefined
+      ? indexed
+      : await r2SqlQuery<AccountEventsRow>(
+          env,
+          `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} WHERE ${where.join(" AND ")}` +
+            ` ORDER BY observed_at DESC, block_number DESC, event_index DESC` +
+            ` LIMIT ${limit + paged}`,
+        );
   if (rows === null) return null;
 
-  const page = paged > 0 ? rows.slice(paged) : rows;
+  const page = indexed === undefined && paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
   const nextCursor = last
     ? encodeCursor([
