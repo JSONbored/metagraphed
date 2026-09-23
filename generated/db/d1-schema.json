@@ -481,6 +481,12 @@
   },
   {
     "type": "index",
+    "name": "neuron_daily_axon_pending_idx",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE INDEX neuron_daily_axon_pending_idx ON neuron_daily_members(netuid,uid,snapshot_date) WHERE axon_indexed=0"
+  },
+  {
+    "type": "index",
     "name": "neuron_daily_members_coldkey_idx",
     "tbl_name": "neuron_daily_members",
     "sql": "CREATE INDEX neuron_daily_members_coldkey_idx ON neuron_daily_members(coldkey)"
@@ -861,7 +867,7 @@
     "type": "table",
     "name": "neuron_daily_members",
     "tbl_name": "neuron_daily_members",
-    "sql": "CREATE TABLE neuron_daily_members (netuid INTEGER NOT NULL,uid INTEGER NOT NULL,snapshot_date TEXT NOT NULL,hotkey TEXT,coldkey TEXT,shard INTEGER NOT NULL,PRIMARY KEY(netuid,uid,snapshot_date)) WITHOUT ROWID"
+    "sql": "CREATE TABLE neuron_daily_members (netuid INTEGER NOT NULL,uid INTEGER NOT NULL,snapshot_date TEXT NOT NULL,hotkey TEXT,coldkey TEXT,shard INTEGER NOT NULL, axon_index BLOB, axon_indexed INTEGER NOT NULL DEFAULT 0 CHECK(axon_indexed IN (0,1)),PRIMARY KEY(netuid,uid,snapshot_date)) WITHOUT ROWID"
   },
   {
     "type": "table",
@@ -1168,6 +1174,30 @@
     "name": "lane_health_verdict_update",
     "tbl_name": "lane_health",
     "sql": "CREATE TRIGGER lane_health_verdict_update AFTER UPDATE OF lane, verdict, checked_at ON lane_health\nWHEN OLD.lane IS NOT NEW.lane OR OLD.verdict IS NOT NEW.verdict OR OLD.checked_at IS NOT NEW.checked_at BEGIN\n    DELETE FROM lane_health_verdict_latest WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at;\n    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at)\n    SELECT lane, verdict, MAX(checked_at) FROM lane_health WHERE lane = OLD.lane AND verdict = OLD.verdict GROUP BY lane, verdict\n    ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at\n    WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;\n\n    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at) VALUES (NEW.lane, NEW.verdict, NEW.checked_at)\n    ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at\n    WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_axon_document_insert",
+    "tbl_name": "neuron_daily_documents",
+    "sql": "CREATE TRIGGER neuron_daily_axon_document_insert AFTER INSERT ON neuron_daily_documents\nBEGIN\n UPDATE neuron_daily_members SET axon_index=json_extract(NEW.payload,'$.\"'||uid||'\".axon'),axon_indexed=1\n WHERE netuid=NEW.netuid AND snapshot_date=NEW.day AND shard=NEW.shard;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_axon_document_update",
+    "tbl_name": "neuron_daily_documents",
+    "sql": "CREATE TRIGGER neuron_daily_axon_document_update AFTER UPDATE OF payload ON neuron_daily_documents\nBEGIN\n UPDATE neuron_daily_members SET axon_index=json_extract(NEW.payload,'$.\"'||uid||'\".axon'),axon_indexed=1\n WHERE netuid=NEW.netuid AND snapshot_date=NEW.day AND shard=NEW.shard\n AND (axon_indexed=0 OR axon_index IS NOT json_extract(NEW.payload,'$.\"'||uid||'\".axon'));\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_axon_member_insert",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE TRIGGER neuron_daily_axon_member_insert AFTER INSERT ON neuron_daily_members\nBEGIN\n UPDATE neuron_daily_members SET\n axon_index=(SELECT json_extract(d.payload,'$.\"'||NEW.uid||'\".axon') FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard),\n axon_indexed=1\n WHERE netuid=NEW.netuid AND uid=NEW.uid AND snapshot_date=NEW.snapshot_date\n AND EXISTS(SELECT 1 FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard);\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_axon_member_move",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE TRIGGER neuron_daily_axon_member_move AFTER UPDATE OF netuid,uid,snapshot_date,shard ON neuron_daily_members\nBEGIN\n UPDATE neuron_daily_members SET\n axon_index=(SELECT json_extract(d.payload,'$.\"'||NEW.uid||'\".axon') FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard),\n axon_indexed=CASE WHEN EXISTS(SELECT 1 FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard) THEN 1 ELSE 0 END\n WHERE netuid=NEW.netuid AND uid=NEW.uid AND snapshot_date=NEW.snapshot_date;\nEND"
   },
   {
     "type": "trigger",

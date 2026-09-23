@@ -5441,7 +5441,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // Nothing asks the binding, and the answer carries none of its marker.
     assert.deepEqual(tier.paths, []);
     assert.equal(body.data.marker, undefined);
-    assert.deepEqual(captures.sql, []);
+    assert.equal(captures.sql.length, 1);
+    assert.match(captures.sql[0]!, /FROM neuron_daily/);
+    assert.doesNotMatch(captures.sql[0]!, /FROM account_events/);
   });
 
   test("handleAccountDeregistrations: serves the derived footprint from the per-hotkey index (#9307)", async () => {

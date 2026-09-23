@@ -547,6 +547,7 @@ import type {
 } from "../../src/validator-economics.ts";
 import {
   loadAxonRemovals,
+  accountAxonRemovalRows,
   subnetAxonRemovalRow,
 } from "../../src/axon-removals-loader.ts";
 
@@ -3387,7 +3388,7 @@ export async function handleSubnetAxonRemovals(
     DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
   );
   // DERIVED FROM STATE (#10805), the same rollup MCP and GraphQL read.
-  const removalsRollup = await loadAxonRemovals(env);
+  const removalsRollup = await loadAxonRemovals(env, { netuid });
   const data = buildSubnetAxonRemovals(
     subnetAxonRemovalRow(removalsRollup, netuid),
     netuid,
@@ -4776,15 +4777,23 @@ export const handleAccountServing = makeAccountEventHandler({
     loadAccountServingColdTier(env, ss58, { window }),
 });
 
-// GET /api/v1/accounts/{ss58}/axon-removals: the account's per-subnet AxonInfoRemoved footprint over
-// a 7d/30d/90d window — removal count + first/last timestamps per subnet, an HHI concentration of
-// where its teardown activity is focused, and the dominant subnet. account_events-derived (source
-// "chain-events"). Cold/absent store → schema-stable zeros (never 404).
+// Use the same state-derived, UID-reuse-safe removals as GraphQL and MCP.
 export const handleAccountAxonRemovals = makeAccountEventHandler({
   windows: AXON_REMOVAL_WINDOWS,
   defaultWindow: DEFAULT_AXON_REMOVAL_WINDOW,
   build: buildAccountAxonRemovals,
   urlSuffix: "axon-removals",
+  coldTier: async (env, ss58, window) => {
+    const rollup = await loadAxonRemovals(env);
+    return {
+      data: buildAccountAxonRemovals(
+        accountAxonRemovalRows(rollup, ss58) ?? [],
+        ss58,
+        { window },
+      ),
+      generatedAt: rollup?.network.newest_observed ?? null,
+    };
+  },
 });
 
 // GET /api/v1/accounts/{ss58}/prometheus: the account's per-subnet PrometheusServed footprint over a

@@ -2827,7 +2827,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     // DERIVED FROM STATE (#10805), the same rollup REST and MCP read.
-    const removalsRollup = await loadAxonRemovals(context.env);
+    const removalsRollup = await loadAxonRemovals(context.env, { netuid });
     const data = buildSubnetAxonRemovals(
       subnetAxonRemovalRow(removalsRollup, netuid),
       netuid,

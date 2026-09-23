@@ -8745,7 +8745,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       // DERIVED FROM STATE (#10805): the same rollup the chain scope reads,
       // so all three scopes agree. Null means no store, never no removals.
-      const rollup = await loadAxonRemovals(ctx.env);
+      const rollup = await loadAxonRemovals(ctx.env, { netuid });
       return buildSubnetAxonRemovals(
         subnetAxonRemovalRow(rollup, netuid),
         netuid,

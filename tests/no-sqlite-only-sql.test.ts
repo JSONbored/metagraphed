@@ -152,6 +152,7 @@ describe("store-neutral SQL", () => {
           // The native branch has an explicit neurons owner check; the
           // portable branch is exercised by the PostgreSQL route suite.
           "src/neuron-snapshot-read.ts",
+          "src/axon-transition-d1.ts",
           "src/observations-d1.ts",
           "src/capture-family-d1.ts",
           "src/ledger-d1.ts",

@@ -347,6 +347,18 @@ interface SubtleCryptoDeriveKeyAlgorithm {
   public?: CryptoKey;
 }
 
+/** Optional capabilities used by retained PostgreSQL and buffer fixtures.
+ * Production configs bind neither capability; retirement tests enforce their
+ * absence. Keep this concern on the three state Workers only, so compatibility
+ * fixtures do not make these bindings appear required or available on wss-lb. */
+interface LegacyStoreFixtureEnv {
+  HYPERDRIVE?: Hyperdrive;
+  NEON_WRITE_BUFFER_LANES?: string;
+}
+interface LegacyBufferFixtureEnv {
+  NEON_WRITE_BUFFER?: DurableObjectNamespace;
+}
+
 // --- Which Worker carries which concern -------------------------------------
 //
 // Declaration merge, not redeclaration: each generated file already declares
@@ -360,6 +372,8 @@ interface SubtleCryptoDeriveKeyAlgorithm {
 interface Env
   extends
     RuntimeSecretEnv,
+    LegacyStoreFixtureEnv,
+    LegacyBufferFixtureEnv,
     ChainHeadPollEnv,
     RawCaptureLaneEnv,
     RpcUsageAnalyticsEnv {}
@@ -371,9 +385,8 @@ interface Env
 // `npm run types:workers` and would lose it every time.
 
 /** data-api serves the authenticated surfaces, so it holds the secrets. */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface DataApiEnv extends RuntimeSecretEnv {}
+interface DataApiEnv
+  extends RuntimeSecretEnv, LegacyStoreFixtureEnv, LegacyBufferFixtureEnv {}
 
 /** The registry sync Worker authenticates its own callers. */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface RegistrySyncApiEnv extends RuntimeSecretEnv {}
+interface RegistrySyncApiEnv extends RuntimeSecretEnv, LegacyStoreFixtureEnv {}

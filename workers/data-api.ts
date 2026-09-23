@@ -3823,7 +3823,7 @@ function captureFamilyRunner(
 ): PgSql {
   const plan = FAMILY_MIRROR_PLANS[lane];
   const d1 = selectedD1Store(env, [plan.latest.table, plan.history.table]);
-  return d1 ? createD1Sql(d1) : createPgSql(env.HYPERDRIVE, ctx);
+  return d1 ? createD1Sql(d1) : createPgSql(env.HYPERDRIVE!, ctx);
 }
 
 export const ALERT_TRIGGER_TABLES = [
