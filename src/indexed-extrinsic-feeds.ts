@@ -3,7 +3,7 @@ import type { HistoryBlockGeneration } from "../schemas-src/artifacts/history-ge
 import { ExtrinsicsRowSchema } from "../schemas-src/lakehouse.ts";
 import type { ExtrinsicsRow } from "../generated/lakehouse/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
-import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-sync.ts";
+import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
 import {
   catalogRow,
   readSelectedHistorySegments,

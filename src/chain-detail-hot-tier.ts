@@ -576,6 +576,8 @@ export async function loadChainEventsHeadHotTier(
     limit: number;
     /** Read at or below this block; null starts at the head. */
     ceiling: number | null;
+    floor?: number;
+    cursorEventIndex?: number | null;
     pallet?: string | null;
     method?: string | null;
   },
@@ -589,6 +591,18 @@ export async function loadChainEventsHeadHotTier(
     if (ceiling === null) return null;
     where.push("block_number <= ?");
     params.push(ceiling);
+  }
+  if (options.floor !== undefined) {
+    const floor = safeBlockNumber(options.floor);
+    if (floor === null) return null;
+    where.push("block_number >= ?");
+    params.push(floor);
+  }
+  if (options.cursorEventIndex != null) {
+    const index = safeBlockNumber(options.cursorEventIndex);
+    if (index === null || options.ceiling === null) return null;
+    where.push("(block_number < ? OR event_index < ?)");
+    params.push(options.ceiling, index);
   }
   for (const [value, column] of [
     [options.pallet, "pallet"],

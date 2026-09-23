@@ -42,6 +42,14 @@ import {
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
 import { recordLaneVerdict } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
+import {
+  RAW_CAPTURE_GENESIS_FLOOR,
+  TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
+} from "./raw-capture-floors.ts";
+export {
+  RAW_CAPTURE_GENESIS_FLOOR,
+  TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
+} from "./raw-capture-floors.ts";
 
 /** Kill switch, matching CHAIN_HEAD_POLL_ENABLED's convention on the head
  * poller: absent or anything but "true" means this lane does not run. */
@@ -56,7 +64,7 @@ const DEFAULT_RPC_URL = "https://archive.chain.opentensor.ai";
  * the exodus, so starting here neither re-captures settled history nor leaves
  * a hole between the two.
  */
-export const RAW_CAPTURE_GENESIS_FLOOR = 8756635;
+// RAW_CAPTURE_GENESIS_FLOOR is declared in raw-capture-floors.ts.
 
 /**
  * Testnet's floor, and why it is not genesis.
@@ -98,7 +106,7 @@ export const RAW_CAPTURE_GENESIS_FLOOR = 8756635;
  * than a gap: `/api/v1/testnet/blocks` reports its own floor, so a caller can
  * tell "before we started" from "we lost it".
  */
-export const TESTNET_RAW_CAPTURE_GENESIS_FLOOR = 7_700_000;
+// TESTNET_RAW_CAPTURE_GENESIS_FLOOR is declared in raw-capture-floors.ts.
 
 /**
  * The per-lane tick budget, DERIVED from the endpoint's own limit.

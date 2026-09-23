@@ -757,6 +757,12 @@ describe("loadChainEventsColdTier -- the Neon head", () => {
       ["negative limit", { limit: -1, ceiling: null }],
       ["NaN limit", { limit: Number.NaN, ceiling: null }],
       ["unusable ceiling", { limit: 5, ceiling: Number.NaN }],
+      ["invalid floor", { limit: 5, ceiling: null, floor: -1 }],
+      ["invalid cursor", { limit: 5, ceiling: 8, cursorEventIndex: -1 }],
+      [
+        "cursor without ceiling",
+        { limit: 5, ceiling: null, cursorEventIndex: 1 },
+      ],
       ["empty pallet", { limit: 5, ceiling: null, pallet: "" }],
       ["non-string method", { limit: 5, ceiling: null, method: 7 as never }],
     ] as [string, Parameters<typeof loadChainEventsHeadHotTier>[1]][]) {

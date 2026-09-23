@@ -76,9 +76,25 @@ export function validateHistoryBlockIndex(
   return index;
 }
 
-/** Locate all physical runs for one logical block, retaining repeated captures.
- * The caller must verify decoded block numbers and apply its existing logical
- * deduplication rules. A bounded failure never becomes a partial success. */
+export interface HistoryBlockRangeRun extends HistoryBlockRun {
+  block: number;
+}
+
+/** Locate every physical run for a bounded inclusive block window. */
+export function findHistoryBlockRangeRuns(
+  source: ParquetRangeSource,
+  input: unknown,
+  scope: Scope,
+  first: number,
+  last: number,
+  budget: ParquetReadBudget,
+): Promise<HistoryBlockRangeRun[]> {
+  if (last - first > 5000)
+    throw new Error("History block window exceeds its budget");
+  return findRuns(source, input, scope, first, last, budget, 65536, 2_000_000);
+}
+
+/** Point reads keep their existing result envelope and physical capture order. */
 export async function findHistoryBlockRuns(
   source: ParquetRangeSource,
   input: unknown,
@@ -86,68 +102,109 @@ export async function findHistoryBlockRuns(
   block: number,
   budget: ParquetReadBudget,
 ): Promise<HistoryBlockRun[]> {
+  const runs = await findRuns(
+    source,
+    input,
+    scope,
+    block,
+    block,
+    budget,
+    4096,
+    65536,
+  );
+  return runs.map(({ fileId, rowStart, rows, observedAt }) => ({
+    fileId,
+    rowStart,
+    rows,
+    observedAt,
+  }));
+}
+
+async function findRuns(
+  source: ParquetRangeSource,
+  input: unknown,
+  scope: Scope,
+  first: number,
+  last: number,
+  budget: ParquetReadBudget,
+  maxRuns: number,
+  maxRows: number,
+): Promise<HistoryBlockRangeRun[]> {
   const index = validateHistoryBlockIndex(input, scope);
-  if (!Number.isInteger(block) || block < 0 || block > 0xffffffff)
+  if (
+    !Number.isInteger(first) ||
+    first < 0 ||
+    first > 0xffffffff ||
+    !Number.isInteger(last) ||
+    last < first ||
+    last > 0xffffffff
+  )
     throw new Error("Invalid history block number");
-  const prefix = (block >>> 16).toString(16).padStart(4, "0");
-  const shard = index.shards.find((item) => item.prefix === prefix);
-  if (!shard || block < shard.firstBlock || block > shard.lastBlock) return [];
-  const file = boundedParquetBuffer(source, shard, budget);
-  const pages = new Map<number, Promise<ArrayBuffer>>();
-  const record = async (run: number) => {
-    const page = Math.floor(run / PAGE_RUNS);
-    let bytes = pages.get(page);
-    if (!bytes) {
-      const start = page * PAGE_RUNS * RECORD_BYTES;
-      bytes = Promise.resolve(
-        file.slice(
-          start,
-          Math.min(start + PAGE_RUNS * RECORD_BYTES, shard.bytes),
-        ),
-      );
-      pages.set(page, bytes);
-    }
-    const view = new DataView(
-      await bytes,
-      (run % PAGE_RUNS) * RECORD_BYTES,
-      RECORD_BYTES,
-    );
-    const key = view.getUint32(0, true);
-    if (
-      key >>> 16 !== parseInt(prefix, 16) ||
-      key < shard.firstBlock ||
-      key > shard.lastBlock
-    )
-      throw new Error("History block shard contains a foreign block");
-    return { key, view };
-  };
-  let low = 0,
-    high = shard.runs;
-  while (low < high) {
-    const mid = Math.floor((low + high) / 2);
-    if ((await record(mid)).key < block) low = mid + 1;
-    else high = mid;
-  }
-  const found: HistoryBlockRun[] = [];
+  const found: HistoryBlockRangeRun[] = [];
   let rows = 0;
-  for (let run = low; run < shard.runs; run++) {
-    const { key, view } = await record(run);
-    if (key !== block) break;
-    const fileId = view.getUint32(4, true),
-      rowStart = view.getUint32(8, true),
-      count = view.getUint32(12, true);
-    const observed = view.getBigUint64(16, true);
-    if (
-      fileId >= scope.fileRows.length ||
-      count === 0 ||
-      rowStart + count > scope.fileRows[fileId] ||
-      observed > BigInt(Number.MAX_SAFE_INTEGER)
-    )
-      throw new Error("History block pointer is outside its generation");
-    rows += count;
-    if (found.length >= 4096 || rows > 65536)
-      throw new Error("History block exceeds its result budget");
-    found.push({ fileId, rowStart, rows: count, observedAt: Number(observed) });
+  for (const shard of index.shards) {
+    if (last < shard.firstBlock || first > shard.lastBlock) continue;
+    const file = boundedParquetBuffer(source, shard, budget);
+    const pages = new Map<number, Promise<ArrayBuffer>>();
+    const record = async (run: number) => {
+      const page = Math.floor(run / PAGE_RUNS);
+      let bytes = pages.get(page);
+      if (!bytes) {
+        const start = page * PAGE_RUNS * RECORD_BYTES;
+        bytes = Promise.resolve(
+          file.slice(
+            start,
+            Math.min(start + PAGE_RUNS * RECORD_BYTES, shard.bytes),
+          ),
+        );
+        pages.set(page, bytes);
+      }
+      const view = new DataView(
+        await bytes,
+        (run % PAGE_RUNS) * RECORD_BYTES,
+        RECORD_BYTES,
+      );
+      const key = view.getUint32(0, true);
+      if (
+        key >>> 16 !== parseInt(shard.prefix, 16) ||
+        key < shard.firstBlock ||
+        key > shard.lastBlock
+      )
+        throw new Error("History block shard contains a foreign block");
+      return { key, view };
+    };
+    let low = 0,
+      high = shard.runs;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if ((await record(mid)).key < first) low = mid + 1;
+      else high = mid;
+    }
+    for (let run = low; run < shard.runs; run++) {
+      const { key, view } = await record(run);
+      if (key > last) break;
+      const fileId = view.getUint32(4, true),
+        rowStart = view.getUint32(8, true),
+        count = view.getUint32(12, true);
+      const observed = view.getBigUint64(16, true);
+      if (
+        fileId >= scope.fileRows.length ||
+        count === 0 ||
+        rowStart + count > scope.fileRows[fileId] ||
+        observed > BigInt(Number.MAX_SAFE_INTEGER)
+      )
+        throw new Error("History block pointer is outside its generation");
+      rows += count;
+      if (found.length >= maxRuns || rows > maxRows)
+        throw new Error("History block exceeds its result budget");
+      found.push({
+        block: key,
+        fileId,
+        rowStart,
+        rows: count,
+        observedAt: Number(observed),
+      });
+    }
   }
   return found;
 }
