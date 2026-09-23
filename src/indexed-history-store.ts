@@ -90,7 +90,9 @@ async function selection(
 
 /** Match the existing catalog row boundary without rounding wide integers.
  * Declared numeric columns are checked by the caller's catalog schema. */
-function catalogRow(row: Record<string, unknown>): Record<string, unknown> {
+export function catalogRow(
+  row: Record<string, unknown>,
+): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(row).map(([key, value]) => [
       key,

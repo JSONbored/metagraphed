@@ -154,6 +154,66 @@ export async function readHistoryRow(
   return rows[0];
 }
 
+export interface HistoryPhysicalPointer {
+  fileId: number;
+  sourceIdentity: string;
+  row: number;
+}
+
+/** Hydrate a page of verified physical pointers with one manifest per file.
+ * Sort/coalesce adjacent rows, then restore the requested feed ordering. */
+export async function readHistoryPointers(
+  source: ParquetRangeSource,
+  input: unknown,
+  scope: Scope,
+  pointers: readonly HistoryPhysicalPointer[],
+  budget: ParquetReadBudget,
+): Promise<Record<string, unknown>[]> {
+  const generation = validateHistoryBlockGeneration(input, scope);
+  if (pointers.length > 5001)
+    throw new Error("History pointer page exceeds its budget");
+  const grouped = new Map<number, { identity: string; rows: Set<number> }>();
+  for (const pointer of pointers) {
+    const group = grouped.get(pointer.fileId);
+    if (
+      !/^[0-9a-f]{64}$/.test(pointer.sourceIdentity) ||
+      (group && group.identity !== pointer.sourceIdentity)
+    )
+      throw new Error("History pointer source identity mismatch");
+    if (group) group.rows.add(pointer.row);
+    else
+      grouped.set(pointer.fileId, {
+        identity: pointer.sourceIdentity,
+        rows: new Set([pointer.row]),
+      });
+  }
+  const hydrated = new Map<string, Record<string, unknown>>();
+  for (const [fileId, group] of grouped) {
+    const ordinals = [...group.rows].sort((a, b) => a - b);
+    const ranges: { start: number; end: number }[] = [];
+    for (const row of ordinals) {
+      const last = ranges.at(-1);
+      if (last && last.end === row) last.end++;
+      else ranges.push({ start: row, end: row + 1 });
+    }
+    const rows = await readFileRanges(
+      source,
+      generation,
+      scope,
+      fileId,
+      ranges,
+      budget,
+      group.identity,
+    );
+    rows.forEach((row, index) =>
+      hydrated.set(`${fileId}:${ordinals[index]}`, row),
+    );
+  }
+  return pointers.map((pointer) =>
+    hydrated.get(`${pointer.fileId}:${pointer.row}`)!,
+  );
+}
+
 /** Read every physical run with one file-manifest read and shared page indexes.
  * No partial result escapes if any run fails identity or budget checks. */
 async function readFileRanges(
@@ -163,6 +223,7 @@ async function readFileRanges(
   fileId: number,
   ranges: { start: number; end: number }[],
   budget: ParquetReadBudget,
+  sourceIdentity?: string,
 ): Promise<Record<string, unknown>[]> {
   if (
     !Number.isSafeInteger(fileId) ||
@@ -187,7 +248,8 @@ async function readFileRanges(
     file.network !== scope.network ||
     file.table !== scope.table ||
     file.fileId !== fileId ||
-    file.rows !== descriptor.rows
+    file.rows !== descriptor.rows ||
+    (sourceIdentity !== undefined && file.sourceIdentity !== sourceIdentity)
   )
     throw new Error("History source file scope mismatch");
   let next = 0;
