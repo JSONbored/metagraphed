@@ -27,8 +27,8 @@ const Manifest = z.strictObject({
     sources: z
       .array(
         z.strictObject({
-          bucket: z.string(),
-          key: z.string(),
+          bucket: z.string().min(1),
+          key: z.string().min(1),
           bytes: z.number().int().positive(),
           etag: z.string().min(1),
           rows: z.number().int().nonnegative(),
@@ -39,7 +39,7 @@ const Manifest = z.strictObject({
       .max(10_000),
   }),
   object: z.strictObject({
-    key: z.string(),
+    key: z.string().min(1),
     etag: z.string().min(1),
     bytes: z.number().int().positive().max(MAX_BYTES),
   }),
@@ -50,6 +50,34 @@ const Payload = z.strictObject({
   generation: z.string(),
   rows: z.array(z.record(z.string(), z.unknown())).max(100_000),
 });
+
+/** Match the publisher's canonical source proof, including non-ASCII keys. */
+async function sourceGeneration(source: z.infer<typeof Manifest>["source"]) {
+  const canonical = JSON.stringify({
+    sequence: source.sequence,
+    snapshot: source.snapshot,
+    sources: source.sources.map((item) => ({
+      bucket: item.bucket,
+      bytes: item.bytes,
+      etag: item.etag,
+      key: item.key,
+      network: item.network,
+      rows: item.rows,
+      table: item.table,
+    })),
+    tableUuid: source.tableUuid,
+  }).replace(
+    /[\u007f-\uffff]/g,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(canonical),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
 
 /** Undefined means unpublished; a broken selected archive never falls back to SQL. */
 export async function readStateArchiveRows(
@@ -74,11 +102,31 @@ export async function readStateArchiveRows(
     if (
       manifest.table !== table ||
       manifest.object.key !== `${root}/${manifest.generation}/rows.json` ||
-      manifest.source.sources.some((source) => source.table !== table) ||
+      manifest.source.sources.some(
+        (source, index, sources) =>
+          source.table !== table ||
+          (index > 0 && source.key <= sources[index - 1].key),
+      ) ||
       manifest.source.sources.reduce(
         (count, source) => count + source.rows,
         0,
       ) !== manifest.rowCount
+    )
+      return null;
+    if ((await sourceGeneration(manifest.source)) !== manifest.generation)
+      return null;
+    // The mutable pointer must match the immutable manifest emitted after the
+    // publisher verified the entire pinned snapshot and every source identity.
+    // The archive bucket's writer is the authority; readers do not trust a
+    // separately altered pointer as proof of a different or incomplete census.
+    const proof = await bucket.get(
+      `${root}/${manifest.generation}/manifest.json`,
+    );
+    if (!proof || proof.size !== pointer.size) return null;
+    const immutable = Manifest.safeParse(await proof.json());
+    if (
+      !immutable.success ||
+      JSON.stringify(immutable.data) !== JSON.stringify(manifest)
     )
       return null;
     const object = await bucket.get(manifest.object.key);

@@ -406,8 +406,21 @@ test("archive selection requires complete source census, immutable identity and 
       version: number;
       table: string;
       rowCount: number;
+      generation: string;
       object: { key: string };
-      source: { sources: { table: string }[] };
+      source: {
+        tableUuid: string;
+        snapshot: string;
+        sequence: number;
+        sources: {
+          bucket: string;
+          key: string;
+          bytes: number;
+          etag: string;
+          rows: number;
+          table: string;
+        }[];
+      };
     },
     body: {
       version: number;
@@ -439,6 +452,57 @@ test("archive selection requires complete source census, immutable identity and 
     },
     (_r, m) => {
       m.rowCount++;
+    },
+    (_r, m) => {
+      m.source.tableUuid += "changed";
+    },
+    (_r, m) => {
+      m.source.snapshot += "0";
+    },
+    (_r, m) => {
+      m.source.sequence++;
+    },
+    (_r, m) => {
+      m.source.sources[0].bucket += "changed";
+    },
+    (_r, m) => {
+      m.source.sources[0].key += "changed";
+    },
+    (_r, m) => {
+      m.source.sources[0].bytes++;
+    },
+    (_r, m) => {
+      m.source.sources[0].etag += "changed";
+    },
+    (_r, m) => {
+      m.source.sources.reverse();
+    },
+    (_r, m) => {
+      m.source.sources[1].key = m.source.sources[0].key;
+    },
+    (_r, m) => {
+      m.source.sources.splice(0, 1);
+      m.rowCount = m.source.sources[0].rows;
+    },
+    (r, m) => {
+      delete r[
+        `metagraph/state-archive/v1/${table}/${m.generation}/manifest.json`
+      ];
+    },
+    (r, m) => {
+      r[`metagraph/state-archive/v1/${table}/${m.generation}/manifest.json`]
+        .size++;
+    },
+    (r, m) => {
+      r[
+        `metagraph/state-archive/v1/${table}/${m.generation}/manifest.json`
+      ].raw = "{}";
+    },
+    (r, m) => {
+      const key = `metagraph/state-archive/v1/${table}/${m.generation}/manifest.json`;
+      const proof = JSON.parse(r[key].raw);
+      proof.object.etag = "different";
+      r[key].raw = JSON.stringify(proof);
     },
     (r, m) => {
       delete r[m.object.key];
