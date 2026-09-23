@@ -34,6 +34,7 @@
 // them duplicated as a repository secret, plus a third-party trigger hop, to
 // ask a question the Worker can ask itself.
 import { r2SqlQuery } from "./r2-sql.ts";
+import { loadIndexedBlockCensus } from "./indexed-block-census.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import {
@@ -372,10 +373,16 @@ export async function runLakehouseSeamWatchdog(
       ...verdict,
       checked_at: (deps.now ?? Date.now)(),
     });
-  const rows = await query(
-    env,
-    "SELECT min(block_number) AS lo, max(block_number) AS hi, count(*) AS n FROM chain.blocks",
-  );
+  const census = await loadIndexedBlockCensus(env);
+  const rows =
+    census === undefined
+      ? await query(
+          env,
+          "SELECT min(block_number) AS lo, max(block_number) AS hi, count(*) AS n FROM chain.blocks",
+        )
+      : census === null
+        ? null
+        : [census];
   // r2SqlQuery returns null when the lakehouse is UNCONFIGURED as well as when
   // a query fails. Unconfigured is not a fault -- self-hosters and CI have no
   // lakehouse -- so it is reported as skipped rather than as drift.

@@ -12,6 +12,7 @@ import { findHistoryHash } from "./history-hash-index.ts";
 import {
   findHistoryBlockRuns,
   findHistoryBlockRangeRuns,
+  validateHistoryBlockIndex,
 } from "./history-block-index.ts";
 import {
   boundedParquetBuffer,
@@ -133,6 +134,30 @@ export async function loadHistoryBlockGeneration(
     await readJson(source, descriptor, budget, 8 * 1024 * 1024),
     scope,
   );
+}
+
+/** Physical counts and actual bounds, independent of declared coverage floors. */
+export async function readHistoryBlockCensus(
+  source: ParquetRangeSource,
+  descriptor: HistoryObject,
+  scope: Scope,
+  budget: ParquetReadBudget,
+): Promise<{ lo: number | null; hi: number | null; n: number }> {
+  const generation = await loadHistoryBlockGeneration(
+    source,
+    descriptor,
+    scope,
+    budget,
+  );
+  const index = validateHistoryBlockIndex(
+    await readJson(source, generation.blockIndex, budget, 32 * 1024 * 1024),
+    { ...scope, fileRows: generation.files.map((file) => file.rows) },
+  );
+  return {
+    lo: index.shards[0]?.firstBlock ?? null,
+    hi: index.shards.at(-1)?.lastBlock ?? null,
+    n: index.rows,
+  };
 }
 
 /** Translate a physical source row through its verified repacking manifest.
