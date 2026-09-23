@@ -45,6 +45,7 @@ import {
 } from "./neurons-staleness-watchdog.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import { readCompleteNeuronRows } from "./neuron-snapshot-read.ts";
 
 export const SUBNET_LIFECYCLE_LANE = "subnet-lifecycle";
 
@@ -168,15 +169,17 @@ export async function runSubnetLifecycleLane(
   };
 
   try {
-    // The netuid set at the newest stamp, plus that pass's block for
-    // attribution. One statement: the window is the same 5 minutes
-    // neurons-staleness uses to mean "the newest pass".
-    const observedRows = await db.query(
-      "SELECT DISTINCT netuid, MAX(block_number) AS block_number FROM neurons " +
-        "WHERE captured_at >= (SELECT MAX(captured_at) FROM neurons) - ? " +
-        "GROUP BY netuid",
-      [NEURONS_PASS_WINDOW_MS],
-    );
+    // D1 requires receipt-backed distinct-row completeness. A recent partial
+    // pass above the coverage floor is not evidence that missing subnets left.
+    // The portable legacy store retains its existing pass-window read.
+    const observedRows =
+      (await readCompleteNeuronRows(env)) ??
+      (await db.query(
+        "SELECT DISTINCT netuid, MAX(block_number) AS block_number FROM neurons " +
+          "WHERE captured_at >= (SELECT MAX(captured_at) FROM neurons) - ? " +
+          "GROUP BY netuid",
+        [NEURONS_PASS_WINDOW_MS],
+      ));
 
     const observed = new Set<number>();
     let blockNumber: number | null = null;

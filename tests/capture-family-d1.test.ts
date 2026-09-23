@@ -9,6 +9,7 @@ import {
   mirrorFamilyToNeon,
 } from "../src/hyperparams-identity-neon-write.ts";
 import { runSubnetLifecycleLane } from "../src/subnet-lifecycle.ts";
+import { writeNeuronDocuments } from "../src/neuron-documents.ts";
 import { captureSubnetBurnHistory } from "../src/subnet-burn-history.ts";
 import worker from "../workers/data-api.ts";
 import { apiEnv, dataApiEnv } from "./helpers/worker-env.ts";
@@ -63,11 +64,11 @@ beforeAll(async () => {
     "utf8",
   ).split("-- statement-breakpoint"))
     if (statement.trim()) await db.prepare(statement).run();
-  await db
-    .prepare(
-      "CREATE TABLE neurons(netuid INTEGER,block_number INTEGER,captured_at INTEGER)",
-    )
-    .run();
+  for (const statement of readFileSync(
+    new URL("../migrations/d1/0007_neuron_documents.sql", import.meta.url),
+    "utf8",
+  ).split("-- statement-breakpoint"))
+    if (statement.trim()) await db.prepare(statement).run();
 });
 afterAll(async () => runtime.dispose());
 beforeEach(async () => {
@@ -75,7 +76,9 @@ beforeEach(async () => {
     ...tables,
     "subnet_burn_history",
     "subnet_lifecycle",
-    "neurons",
+    "neurons_members",
+    "neurons_documents",
+    "neurons_passes",
   ])
     await db.prepare(`DELETE FROM ${table}`).run();
 });
@@ -228,12 +231,25 @@ test("native lifecycle window queries and writes preserve seed and deregistratio
   const options = { laneHealthDb, coverageFloor: 1, now: () => stamp };
   const selected = {
     D1_STATE: db,
-    D1_STATE_TABLES: "neurons,subnet_lifecycle",
+    D1_STATE_TABLES: "neurons,neurons_passes,subnet_lifecycle",
   };
-  await db
-    .prepare("INSERT INTO neurons VALUES(1,9000000,?),(2,9000000,?)")
-    .bind(stamp, stamp)
-    .run();
+  const capture = async (netuids: number[], at: number) => {
+    await writeNeuronDocuments(store(), {
+      rows: netuids.map((netuid) => ({
+        netuid,
+        uid: 0,
+        block_number: 9000000,
+        captured_at: at,
+      })),
+      dailyRows: [],
+      positionRows: [],
+    });
+    await db
+      .prepare("INSERT INTO neurons_passes VALUES(?,?,?,?)")
+      .bind(at, netuids.length, netuids.length, at + 1)
+      .run();
+  };
+  await capture([1, 2], stamp);
   assert.equal((await runSubnetLifecycleLane(selected, options)).seeded, true);
   assert.equal(
     await db
@@ -241,7 +257,8 @@ test("native lifecycle window queries and writes preserve seed and deregistratio
       .first("n"),
     2,
   );
-  await db.prepare("DELETE FROM neurons WHERE netuid=2").run();
+  await db.prepare("DELETE FROM neurons_members WHERE netuid=2").run();
+  await capture([1], stamp + 1);
   const result = await runSubnetLifecycleLane(selected, {
     ...options,
     now: () => stamp + 1,
@@ -253,6 +270,112 @@ test("native lifecycle window queries and writes preserve seed and deregistratio
       .first("event"),
     "deregistered",
   );
+});
+test("a missing chunk above the netuid floor never invents lifecycle removals", async () => {
+  const selected = {
+    D1_STATE: db,
+    D1_STATE_TABLES: "neurons,neurons_passes,subnet_lifecycle",
+  };
+  const options = { laneHealthDb, now: () => stamp + 600000 };
+  const all = Array.from({ length: 129 }, (_, netuid) => ({
+    netuid,
+    uid: 0,
+    block_number: 9000000,
+    captured_at: stamp,
+  }));
+  await writeNeuronDocuments(store(), {
+    rows: all,
+    dailyRows: [],
+    positionRows: [],
+  });
+  await db
+    .prepare("INSERT INTO neurons_passes VALUES(?,?,?,?)")
+    .bind(stamp, 129, 129, stamp + 1)
+    .run();
+  assert.equal((await runSubnetLifecycleLane(selected, options)).events, 129);
+  await writeNeuronDocuments(store(), {
+    rows: all
+      .slice(0, 108)
+      .map((row) => ({ ...row, captured_at: stamp + 600000 })),
+    dailyRows: [],
+    positionRows: [],
+  });
+  const before = await count("subnet_lifecycle");
+  // An absent receipt and an incomplete one both decline, despite 108 > 103.
+  assert.equal(
+    (await runSubnetLifecycleLane(selected, options)).reason,
+    "partial",
+  );
+  await db
+    .prepare("INSERT INTO neurons_passes VALUES(?,?,?,NULL)")
+    .bind(stamp + 600000, 129, 108)
+    .run();
+  assert.equal(
+    (await runSubnetLifecycleLane(selected, options)).reason,
+    "partial",
+  );
+  // At-least-once delivery can inflate the tally: the missing rows still matter.
+  await db
+    .prepare(
+      "UPDATE neurons_passes SET received_rows=258,completed_at=? WHERE captured_at=?",
+    )
+    .bind(stamp + 600001, stamp + 600000)
+    .run();
+  assert.equal(
+    (await runSubnetLifecycleLane(selected, options)).reason,
+    "partial",
+  );
+  assert.equal(await count("subnet_lifecycle"), before);
+  await writeNeuronDocuments(store(), {
+    rows: all
+      .slice(108)
+      .map((row) => ({ ...row, captured_at: stamp + 600000 })),
+    dailyRows: [],
+    positionRows: [],
+  });
+  assert.equal((await runSubnetLifecycleLane(selected, options)).events, 0);
+  // A complete document cannot compensate for a missing/mis-sharded member.
+  await db.prepare("UPDATE neurons_members SET shard=9 WHERE netuid=0").run();
+  assert.equal(
+    (await runSubnetLifecycleLane(selected, options)).reason,
+    "partial",
+  );
+  assert.equal(await count("subnet_lifecycle"), before);
+});
+test("a complete-looking membership set needs a completed, adequate receipt", async () => {
+  const selected = {
+    D1_STATE: db,
+    D1_STATE_TABLES: "neurons,neurons_passes,subnet_lifecycle",
+  };
+  const options = { laneHealthDb, coverageFloor: 1, now: () => stamp };
+  await writeNeuronDocuments(store(), {
+    rows: [{ netuid: 0, uid: 0, block_number: 9, captured_at: stamp }],
+    dailyRows: [],
+    positionRows: [],
+  });
+  await db
+    .prepare("INSERT INTO neurons_passes VALUES(?,?,?,NULL)")
+    .bind(stamp, 1, 1)
+    .run();
+  assert.equal(
+    (await runSubnetLifecycleLane(selected, options)).reason,
+    "partial",
+  );
+  await db
+    .prepare("UPDATE neurons_passes SET received_rows=0,completed_at=?")
+    .bind(stamp + 1)
+    .run();
+  assert.equal(
+    (await runSubnetLifecycleLane(selected, options)).reason,
+    "partial",
+  );
+  assert.equal(await count("subnet_lifecycle"), 0);
+  const failed = await runSubnetLifecycleLane(
+    { ...selected, D1_STATE_TABLES: "neurons,subnet_lifecycle" },
+    options,
+  );
+  assert.equal(failed.reason, "query_failed");
+  assert.match(String(failed.detail), /spans D1 and Neon/);
 });
 test("burn capture records every subnet and retries without duplicates", async () => {
   const result = await captureSubnetBurnHistory(apiEnv({}), {
