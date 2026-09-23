@@ -129,21 +129,32 @@ export async function loadAxonRemovals(
     const native = selectedD1Store(env, ["neuron_daily"]);
     const db = native ?? readStore(env, ["neuron_daily"]);
     if (!db) return null;
-    const scoped = native !== null && deps.netuid !== undefined;
-    rows = await db.query(
-      native
-        ? candidateSlotsSql(
-            axonSequenceD1Sql(
-              scoped ? "AND d.netuid=?" : "",
-              await axonProjectionReady(native.query),
-            ),
-          )
-        : CANDIDATE_SLOTS_SQL,
-      [
-        isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS),
-        ...(scoped ? [deps.netuid] : []),
-      ],
-    );
+    const cutoff = isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS);
+    if (native) {
+      const indexed = await axonProjectionReady(native.query);
+      const subnets =
+        deps.netuid === undefined
+          ? await native.query<{ netuid: number }>(
+              "SELECT DISTINCT netuid FROM neuron_daily_documents WHERE day>=? ORDER BY netuid",
+              [cutoff],
+            )
+          : [{ netuid: deps.netuid }];
+      const collected: NeuronAxonDayRow[] = [];
+      // Windows partition by (netuid, uid), so subnet reads are equivalent.
+      // Yield D1 between subnets instead of holding its single writer behind
+      // one network-wide window sort for tens of seconds.
+      const statement = candidateSlotsSql(
+        axonSequenceD1Sql("AND d.netuid=?", indexed),
+      );
+      for (const { netuid } of subnets)
+        collected.push(
+          ...(await native.query<NeuronAxonDayRow>(statement, [
+            cutoff,
+            netuid,
+          ])),
+        );
+      rows = collected;
+    } else rows = await db.query(CANDIDATE_SLOTS_SQL, [cutoff]);
   }
 
   const derived = deriveAxonRemovals(rows as NeuronAxonDayRow[] | null, {

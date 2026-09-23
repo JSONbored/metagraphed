@@ -20,6 +20,7 @@
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import {
+  readNeuronDailyValidators,
   readNeuronDirectoryRows,
   readDirectoryNominatorCounts,
 } from "../src/neuron-snapshot-read.ts";
@@ -8472,7 +8473,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // newest row the table HAS, not on the clock -- see neuronDailyWindowBounds,
   // which also explains why the shift no longer happens in SQL.
   if (url.pathname === "/api/v1/chain/turnover") {
-    return async (sql) => {
+    return async (sql, env) => {
       const windowParam =
         url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
       const windowLabel = Object.hasOwn(CHAIN_TURNOVER_WINDOWS, windowParam)
@@ -8487,15 +8488,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       const { startDate, endDate } = await neuronDailyWindowBounds(sql, days);
       let rows: Row[] = [];
       if (startDate != null && endDate != null && startDate !== endDate) {
-        rows = await sql<{
-          snapshot_date: NeuronDaily["snapshot_date"];
-          netuid: NeuronDaily["netuid"];
-          hotkey: NeuronDaily["hotkey"];
-          validator_permit: NeuronDaily["validator_permit"];
-        }>`
-          SELECT snapshot_date, netuid, hotkey, validator_permit
-          FROM neuron_daily
-          WHERE validator_permit = TRUE AND snapshot_date IN (${startDate}, ${endDate})`;
+        rows = await readNeuronDailyValidators(sql, env, startDate, endDate);
       }
       return json(
         buildChainTurnover(rows, {
