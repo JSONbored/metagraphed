@@ -17,6 +17,7 @@ import {
   readSelectedHistoryHash,
 } from "../src/indexed-history-store.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
+import { parquetReadBudget } from "../src/indexed-parquet.ts";
 import { loadBlockChainEventsColdTier } from "../src/events-cold-tier.ts";
 beforeEach(() => {
   resetModuleState();
@@ -52,6 +53,175 @@ function fixture(table = "chain_events", network = "mainnet") {
     env: { METAGRAPH_ARCHIVE: { get }, R2_SQL_TOKEN: "test" },
   };
 }
+function segmentedFixture(table = "blocks", network = "mainnet") {
+  const { selected: base, get, env } = fixture(table, network);
+  const { version: _version, ...first } = base;
+  const nextGeneration = "b".repeat(64);
+  const root = `metagraph/indexed-history/v1/${network}/${table}/generations/${nextGeneration}`;
+  const second = {
+    ...first,
+    generation: nextGeneration,
+    firstBlock: 11,
+    lastBlock: 20,
+    blockManifest: object(root + "/block-manifest.json"),
+    hashManifest: object(root + "/manifest.json"),
+  };
+  const selected = { version: 2, network, table, segments: [first, second] };
+  get.mockResolvedValue({ size: 1000, json: async () => selected });
+  return { selected, get, env };
+}
+test("segmented block reads select exactly one contiguous range and share the pointer cache", async () => {
+  const { selected, env, get } = segmentedFixture("chain_events", "testnet");
+  const budget = parquetReadBudget();
+  for (const block of [1, 10, 11, 20]) {
+    readers.block.mockResolvedValue([{ block_number: BigInt(block) }]);
+    assert.deepEqual(
+      await readSelectedHistoryBlock(
+        env,
+        "chain_events",
+        block,
+        "testnet",
+        budget,
+      ),
+      [{ block_number: block }],
+    );
+    const segment = selected.segments[block > 10 ? 1 : 0];
+    assert.deepEqual(
+      readers.loadBlock.mock.lastCall?.[1],
+      segment.blockManifest,
+    );
+    assert.equal(readers.loadBlock.mock.lastCall?.[3], budget);
+    assert.equal(readers.block.mock.lastCall?.[4], budget);
+  }
+  for (const block of [0, 21])
+    assert.equal(
+      await readSelectedHistoryBlock(
+        env,
+        "chain_events",
+        block,
+        "testnet",
+        budget,
+      ),
+      undefined,
+    );
+  assert.equal(readers.block.mock.calls.length, 4);
+  assert.equal(get.mock.calls.length, 1);
+});
+test("segmented selections reject gaps, overlaps, duplicate generations and foreign scopes", async () => {
+  const mutations = [
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments = [];
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments = Array(5).fill(s.segments[0]);
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.network = "testnet";
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.table = "extrinsics";
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments[1].network = "testnet";
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments[1].table = "extrinsics";
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments[1].firstBlock = 12;
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments[1].firstBlock = 10;
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments.reverse();
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments[1].lastBlock = 9;
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments[1].generation = s.segments[0].generation;
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments[1].blockManifest = object("foreign");
+    },
+    (s: ReturnType<typeof segmentedFixture>["selected"]) => {
+      s.segments[1].hashManifest = object("foreign");
+    },
+  ];
+  for (const mutate of mutations) {
+    const { env, selected } = segmentedFixture();
+    mutate(selected);
+    assert.equal(await readSelectedHistoryBlock(env, "blocks", 7), null);
+    assert.equal(await readSelectedHistoryHash(env, "blocks", "hash"), null);
+  }
+  assert.equal(readers.loadBlock.mock.calls.length, 0);
+  assert.equal(readers.loadHash.mock.calls.length, 0);
+});
+test("segmented hash lookup searches newest first with one operation budget", async () => {
+  const { env, selected } = segmentedFixture();
+  const budget = parquetReadBudget();
+  readers.hash.mockResolvedValueOnce({ block_number: 12n });
+  assert.deepEqual(
+    await readSelectedHistoryHash(env, "blocks", "hash", "mainnet", budget),
+    { block_number: 12 },
+  );
+  assert.equal(readers.hash.mock.calls.length, 1);
+  assert.deepEqual(
+    readers.loadHash.mock.lastCall?.[1],
+    selected.segments[1].hashManifest,
+  );
+  for (const miss of [null, { block_number: 10n }, { block_number: 21n }]) {
+    readers.hash
+      .mockClear()
+      .mockResolvedValueOnce(miss)
+      .mockResolvedValueOnce({ block_number: 3n });
+    readers.loadHash.mockClear();
+    assert.deepEqual(
+      await readSelectedHistoryHash(env, "blocks", "hash", "mainnet", budget),
+      { block_number: 3 },
+    );
+    assert.deepEqual(
+      readers.loadHash.mock.calls.map((call) => call[1]),
+      selected.segments.toReversed().map((s) => s.hashManifest),
+    );
+    for (const call of readers.loadHash.mock.calls)
+      assert.equal(call[3], budget);
+    for (const call of readers.hash.mock.calls) assert.equal(call[4], budget);
+    assert.equal(readers.hash.mock.calls[0][0], readers.hash.mock.calls[1][0]);
+  }
+  readers.hash.mockClear().mockResolvedValue(null);
+  assert.equal(await readSelectedHistoryHash(env, "blocks", "hash"), undefined);
+  assert.equal(readers.hash.mock.calls.length, 2);
+  delete (selected.segments[1] as { hashManifest?: unknown }).hashManifest;
+  // Parsed pointer caches are immutable snapshots of the JSON payload.
+  resetModuleState();
+  readers.hash.mockClear().mockResolvedValue({ block_number: 3n });
+  assert.deepEqual(await readSelectedHistoryHash(env, "blocks", "hash"), {
+    block_number: 3,
+  });
+  assert.equal(readers.hash.mock.calls.length, 1);
+  readers.hash.mockClear().mockRejectedValue(new Error("R2 failed"));
+  assert.equal(await readSelectedHistoryHash(env, "blocks", "hash"), null);
+  assert.equal(readers.hash.mock.calls.length, 1);
+});
+test("hash rows with invalid block identities fail rather than coercing into a covered range", async () => {
+  const { env } = segmentedFixture();
+  for (const block_number of [
+    null,
+    undefined,
+    "12",
+    12.5,
+    NaN,
+    Infinity,
+    9007199254740992,
+    9007199254740993n,
+  ]) {
+    readers.hash.mockClear().mockResolvedValue({ block_number });
+    assert.equal(await readSelectedHistoryHash(env, "blocks", "hash"), null);
+    assert.equal(readers.hash.mock.calls.length, 1);
+  }
+});
 test("selected block reads cache the pointer, enforce coverage, and preserve numeric values", async () => {
   vi.useFakeTimers();
   vi.setSystemTime(1000);
