@@ -173,6 +173,8 @@ CREATE INDEX idx_validator_nominator_counts_passes_completed ON validator_nomina
 CREATE INDEX idx_wps_address
   ON watch_push_subscriptions (address, created_at DESC);
 
+CREATE INDEX neuron_daily_axon_pending_idx ON neuron_daily_members(netuid,uid,snapshot_date) WHERE axon_indexed=0;
+
 CREATE INDEX neuron_daily_members_coldkey_idx ON neuron_daily_members(coldkey);
 
 CREATE INDEX neuron_daily_members_hotkey_idx ON neuron_daily_members(hotkey);
@@ -597,7 +599,7 @@ CREATE TABLE neuron_daily_documents (
  PRIMARY KEY(netuid,day,shard)
 ) WITHOUT ROWID;
 
-CREATE TABLE neuron_daily_members (netuid INTEGER NOT NULL,uid INTEGER NOT NULL,snapshot_date TEXT NOT NULL,hotkey TEXT,coldkey TEXT,shard INTEGER NOT NULL,PRIMARY KEY(netuid,uid,snapshot_date)) WITHOUT ROWID;
+CREATE TABLE neuron_daily_members (netuid INTEGER NOT NULL,uid INTEGER NOT NULL,snapshot_date TEXT NOT NULL,hotkey TEXT,coldkey TEXT,shard INTEGER NOT NULL, axon_index BLOB, axon_indexed INTEGER NOT NULL DEFAULT 0 CHECK(axon_indexed IN (0,1)),PRIMARY KEY(netuid,uid,snapshot_date)) WITHOUT ROWID;
 
 CREATE TABLE neurons_documents (
  netuid INTEGER NOT NULL, day TEXT NOT NULL, shard INTEGER NOT NULL,
@@ -1263,6 +1265,36 @@ WHEN OLD.lane IS NOT NEW.lane OR OLD.verdict IS NOT NEW.verdict OR OLD.checked_a
     INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at) VALUES (NEW.lane, NEW.verdict, NEW.checked_at)
     ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at
     WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;
+END;
+
+CREATE TRIGGER neuron_daily_axon_document_insert AFTER INSERT ON neuron_daily_documents
+BEGIN
+ UPDATE neuron_daily_members SET axon_index=json_extract(NEW.payload,'$."'||uid||'".axon'),axon_indexed=1
+ WHERE netuid=NEW.netuid AND snapshot_date=NEW.day AND shard=NEW.shard;
+END;
+
+CREATE TRIGGER neuron_daily_axon_document_update AFTER UPDATE OF payload ON neuron_daily_documents
+BEGIN
+ UPDATE neuron_daily_members SET axon_index=json_extract(NEW.payload,'$."'||uid||'".axon'),axon_indexed=1
+ WHERE netuid=NEW.netuid AND snapshot_date=NEW.day AND shard=NEW.shard
+ AND (axon_indexed=0 OR axon_index IS NOT json_extract(NEW.payload,'$."'||uid||'".axon'));
+END;
+
+CREATE TRIGGER neuron_daily_axon_member_insert AFTER INSERT ON neuron_daily_members
+BEGIN
+ UPDATE neuron_daily_members SET
+ axon_index=(SELECT json_extract(d.payload,'$."'||NEW.uid||'".axon') FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard),
+ axon_indexed=1
+ WHERE netuid=NEW.netuid AND uid=NEW.uid AND snapshot_date=NEW.snapshot_date
+ AND EXISTS(SELECT 1 FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard);
+END;
+
+CREATE TRIGGER neuron_daily_axon_member_move AFTER UPDATE OF netuid,uid,snapshot_date,shard ON neuron_daily_members
+BEGIN
+ UPDATE neuron_daily_members SET
+ axon_index=(SELECT json_extract(d.payload,'$."'||NEW.uid||'".axon') FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard),
+ axon_indexed=CASE WHEN EXISTS(SELECT 1 FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard) THEN 1 ELSE 0 END
+ WHERE netuid=NEW.netuid AND uid=NEW.uid AND snapshot_date=NEW.snapshot_date;
 END;
 
 CREATE TRIGGER root_basket_capture_pages_immutable_delete BEFORE DELETE ON root_basket_capture_pages

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { beforeAll, beforeEach, afterAll, test } from "vitest";
+import { beforeAll, beforeEach, afterAll, test, vi } from "vitest";
 import { Miniflare } from "miniflare";
 import { PGlite } from "@electric-sql/pglite";
 import { createD1Store } from "../src/d1-store.ts";
 import {
   axonSequenceD1Sql,
-  AXON_DAY_COUNTS_D1_SQL,
+  axonDayCountsD1Sql,
+  axonProjectionReady,
 } from "../src/axon-transition-d1.ts";
 import { isRoutableAxon, splitAxon } from "../src/axon-routable.ts";
 import { loadAxonRemovals } from "../src/axon-removals-loader.ts";
@@ -20,6 +21,9 @@ import {
 } from "../src/axon-announcement-watchdog.ts";
 import { toPositionalPlaceholders } from "../src/pg-sql.ts";
 import { apiEnv } from "./helpers/worker-env.ts";
+import { handleAccountAxonRemovals } from "../workers/request-handlers/entities.ts";
+import { buildAccountAxonRemovals } from "../src/account-axon-removals.ts";
+import { accountAxonRemovalRows } from "../src/axon-removals-loader.ts";
 
 const runtime = new Miniflare({
   modules: true,
@@ -103,6 +107,7 @@ beforeAll(async () => {
   for (const file of [
     "0007_neuron_documents.sql",
     "0012_neuron_daily_join_index.sql",
+    "0020_neuron_axon_projection.sql",
   ]) {
     for (const sql of readFileSync(
       new URL(`../migrations/d1/${file}`, import.meta.url),
@@ -120,6 +125,41 @@ beforeEach(async () => {
     db.prepare("DELETE FROM neuron_daily_members"),
   ]);
   await pg.exec("TRUNCATE neuron_daily");
+});
+
+test("REST account removals use the same native state derivation as GraphQL and MCP", async () => {
+  await seed(rows);
+  const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+  try {
+    const url = new URL(
+      "https://api.metagraph.sh/api/v1/accounts/hk1/axon-removals?window=30d",
+    );
+    const rollup = await loadAxonRemovals(env());
+    const response = await handleAccountAxonRemovals(
+      new Request(url),
+      env(),
+      "hk1",
+      url,
+    );
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.deepEqual(
+      body.data,
+      buildAccountAxonRemovals(accountAxonRemovalRows(rollup, "hk1"), "hk1", {
+        window: "30d",
+      }),
+    );
+    assert.equal(body.data.total_removals, 1);
+    const unbound = await handleAccountAxonRemovals(
+      new Request(url),
+      apiEnv({ HYPERDRIVE: undefined }),
+      "hk1",
+      url,
+    );
+    assert.equal((await unbound.json()).data.total_removals, 0);
+  } finally {
+    clock.mockRestore();
+  }
 });
 afterAll(async () => {
   await runtime.dispose();
@@ -249,7 +289,7 @@ test("watchdog native counts and mechanism attribution agree with PostgreSQL and
     date: string;
     neurons: number;
     with_axon: number;
-  }>(AXON_DAY_COUNTS_D1_SQL, ["2026-08-01"]);
+  }>(axonDayCountsD1Sql(), ["2026-08-01"]);
   for (const day of days) {
     const members = rows.filter(
       (r) => r.netuid === day.netuid && r.snapshot_date === day.date,
@@ -294,4 +334,175 @@ test("bounded document plan point-looks up each day member and excludes a stale 
     .join("\n");
   assert.match(membership, /snapshot_date=\?/);
   assert.doesNotMatch(membership, /snapshot_date>\?/);
+});
+
+test("partial projection backfills remain on document reads, then switch with identical results and an indexed readiness check", async () => {
+  await seed(rows);
+  const store = createD1Store(db);
+  assert.equal(await axonProjectionReady(store.query), true);
+  const indexed = await loadAxonRemovals(env(), { now: () => now });
+  await db
+    .prepare("UPDATE neuron_daily_members SET axon_indexed=0 WHERE netuid=8")
+    .run();
+  assert.equal(await axonProjectionReady(store.query), false);
+  assert.deepEqual(await loadAxonRemovals(env(), { now: () => now }), indexed);
+  assert.equal(
+    (
+      await runAxonAnnouncementWatchdog(env(), {
+        now: () => now,
+        recordException: async () => true,
+      })
+    ).ok,
+    true,
+  );
+  assert.deepEqual(
+    await loadAxonLossMechanisms(store, [7, 8], "2026-08-01", true),
+    await loadAxonLossMechanisms(
+      { query: (sql, values = []) => query(sql, values) },
+      [7, 8],
+      "2026-08-01",
+    ),
+  );
+  const raw = await store.query(
+    "SELECT hex(payload) AS bytes FROM neuron_daily_documents ORDER BY netuid,day,shard",
+  );
+  await db
+    .prepare("UPDATE neuron_daily_documents SET payload=payload WHERE netuid=8")
+    .run();
+  assert.equal(await axonProjectionReady(store.query), true);
+  assert.deepEqual(
+    await store.query(
+      "SELECT hex(payload) AS bytes FROM neuron_daily_documents ORDER BY netuid,day,shard",
+    ),
+    raw,
+  );
+  assert.deepEqual(await loadAxonRemovals(env(), { now: () => now }), indexed);
+  const readinessPlan = await store.query<{ detail: string }>(
+    "EXPLAIN QUERY PLAN SELECT 1 FROM neuron_daily_members WHERE axon_indexed=0 LIMIT 1",
+  );
+  assert.ok(
+    readinessPlan.some((row) =>
+      row.detail.includes("neuron_daily_axon_pending_idx"),
+    ),
+  );
+  const indexedPlan = await store.query<{ detail: string }>(
+    "EXPLAIN QUERY PLAN " + axonSequenceD1Sql("", true),
+    ["2026-08-01"],
+  );
+  assert.equal(
+    indexedPlan.some((row) => row.detail.includes("VIRTUAL TABLE")),
+    false,
+  );
+});
+
+test("projection triggers cover both insertion orders, sparse membership moves, typed values and atomic rollback", async () => {
+  await seed(rows);
+  const store = createD1Store(db);
+  const unchanged = await db
+    .prepare(
+      "UPDATE neuron_daily_documents SET payload=payload WHERE netuid=8 AND day='2026-08-01'",
+    )
+    .run();
+  assert.equal(unchanged.meta.rows_written, 1);
+  const changed = await db
+    .prepare(
+      "UPDATE neuron_daily_documents SET payload=jsonb_set(payload,'$.8.axon','8.8.8.8:1') WHERE netuid=8 AND day='2026-08-01'",
+    )
+    .run();
+  assert.equal(changed.meta.rows_written, 2);
+  assert.equal(
+    (
+      await store.first<{ axon_index: string }>(
+        "SELECT axon_index FROM neuron_daily_members WHERE netuid=8 AND snapshot_date='2026-08-01'",
+      )
+    )?.axon_index,
+    "8.8.8.8:1",
+  );
+  await db
+    .prepare(
+      "INSERT INTO neuron_daily_members(netuid,uid,snapshot_date,hotkey,shard) VALUES(9,0,'2026-08-01','early',0)",
+    )
+    .run();
+  assert.equal(await axonProjectionReady(store.query), false);
+  await db
+    .prepare(
+      "INSERT INTO neuron_daily_documents VALUES(9,'2026-08-01',0,?,jsonb(?))",
+    )
+    .bind(
+      now,
+      JSON.stringify({
+        "0": { axon: "1.1.1.1:1" },
+        "1": { axon: "8.8.8.8:1" },
+      }),
+    )
+    .run();
+  assert.equal(await axonProjectionReady(store.query), true);
+  await db
+    .prepare("UPDATE neuron_daily_members SET uid=1 WHERE netuid=9")
+    .run();
+  assert.equal(
+    (
+      await store.first<{ axon_index: string }>(
+        "SELECT axon_index FROM neuron_daily_members WHERE netuid=9",
+      )
+    )?.axon_index,
+    "8.8.8.8:1",
+  );
+  await db
+    .prepare("UPDATE neuron_daily_members SET netuid=10 WHERE netuid=9")
+    .run();
+  assert.equal(
+    (
+      await store.first<{ axon_indexed: number }>(
+        "SELECT axon_indexed FROM neuron_daily_members WHERE netuid=10",
+      )
+    )?.axon_indexed,
+    0,
+  );
+  await db
+    .prepare(
+      "INSERT INTO neuron_daily_members(netuid,uid,snapshot_date,hotkey,shard) VALUES(9,0,'2026-08-01','late',0)",
+    )
+    .run();
+  assert.equal(
+    (
+      await store.first<{ axon_index: string }>(
+        "SELECT axon_index FROM neuron_daily_members WHERE netuid=9",
+      )
+    )?.axon_index,
+    "1.1.1.1:1",
+  );
+  await db
+    .prepare(
+      "UPDATE neuron_daily_documents SET payload=jsonb_set(payload,'$.0.axon',42) WHERE netuid=9",
+    )
+    .run();
+  assert.equal(
+    (
+      await store.first<{ axon_index: number }>(
+        "SELECT axon_index FROM neuron_daily_members WHERE netuid=9",
+      )
+    )?.axon_index,
+    42,
+  );
+  await assert.rejects(
+    db.batch([
+      db.prepare(
+        "UPDATE neuron_daily_documents SET payload=jsonb_set(payload,'$.0.axon','rollback') WHERE netuid=9",
+      ),
+      db
+        .prepare(
+          "INSERT INTO neuron_daily_documents VALUES(9,'2026-08-01',0,?,jsonb('{}'))",
+        )
+        .bind(now),
+    ]),
+  );
+  assert.equal(
+    (
+      await store.first<{ axon_index: number }>(
+        "SELECT axon_index FROM neuron_daily_members WHERE netuid=9",
+      )
+    )?.axon_index,
+    42,
+  );
 });

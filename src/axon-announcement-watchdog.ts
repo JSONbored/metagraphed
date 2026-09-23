@@ -59,7 +59,8 @@ import { ROUTABLE_AXON_SQL } from "./axon-routable.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import {
   axonSequenceD1Sql,
-  AXON_DAY_COUNTS_D1_SQL,
+  axonDayCountsD1Sql,
+  axonProjectionReady,
 } from "./axon-transition-d1.ts";
 import {
   AXON_LOSS_SQL,
@@ -415,8 +416,9 @@ export async function loadAxonLossMechanisms(
   if (!db?.query || ids.length === 0) return out;
   try {
     const sameHotkeyLoss = `${AXON_LOSS_SQL} AND ${AXON_SAME_HOTKEY_SQL}`;
+    const indexed = nativeD1 && (await axonProjectionReady(db.query));
     const rows = (await db.query(
-      `WITH seq AS (${nativeD1 ? axonSequenceD1Sql(`AND d.netuid IN (${ids.map(() => "?").join(",")})`) : axonSequenceSql(`netuid IN (${ids.map(() => "?").join(",")})`)}) ` +
+      `WITH seq AS (${nativeD1 ? axonSequenceD1Sql(`AND d.netuid IN (${ids.map(() => "?").join(",")})`, indexed) : axonSequenceSql(`netuid IN (${ids.map(() => "?").join(",")})`)}) ` +
         "SELECT netuid, " +
         `COUNT(*) FILTER (WHERE ${AXON_LOSS_SQL} AND ${AXON_VIA_REUSE_SQL}) AS via_reuse, ` +
         `COUNT(*) FILTER (WHERE ${sameHotkeyLoss}) AS same_hotkey, ` +
@@ -479,7 +481,7 @@ export async function runAxonAnnouncementWatchdog(
     // days, and the answer is two integers per subnet-day.
     const rows = await db.query(
       native
-        ? AXON_DAY_COUNTS_D1_SQL
+        ? axonDayCountsD1Sql(await axonProjectionReady(native.query))
         : "SELECT netuid, snapshot_date AS date, " +
             `COUNT(*) FILTER (WHERE ${ROUTABLE_AXON_SQL}) AS with_axon, ` +
             "COUNT(*) AS neurons FROM neuron_daily " +

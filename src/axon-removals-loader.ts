@@ -41,7 +41,10 @@ import {
 } from "./axon-removal-derivation.ts";
 import { readStore } from "./read-store.ts";
 import { AXON_LOSS_SQL, axonSequenceSql } from "./axon-transition.ts";
-import { axonSequenceD1Sql } from "./axon-transition-d1.ts";
+import {
+  axonSequenceD1Sql,
+  axonProjectionReady,
+} from "./axon-transition-d1.ts";
 import { selectedD1Store } from "./d1-store.ts";
 
 /** Days of `neuron_daily` to pull. The widest window any route offers. */
@@ -129,7 +132,12 @@ export async function loadAxonRemovals(
     const scoped = native !== null && deps.netuid !== undefined;
     rows = await db.query(
       native
-        ? candidateSlotsSql(axonSequenceD1Sql(scoped ? "AND d.netuid=?" : ""))
+        ? candidateSlotsSql(
+            axonSequenceD1Sql(
+              scoped ? "AND d.netuid=?" : "",
+              await axonProjectionReady(native.query),
+            ),
+          )
         : CANDIDATE_SLOTS_SQL,
       [
         isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS),

@@ -17,26 +17,41 @@ const routable = `address IS NOT NULL AND address<>'' AND
  ELSE NOT (${UNROUTABLE_AXON_V4_PREFIXES.map((prefix) => `address GLOB '${prefix}*'`).join(" OR ")}) END`;
 
 /** extraWhere contains only a fixed predicate and bound placeholders. */
-function classified(extraWhere: string): string {
+function classified(extraWhere: string, indexed: boolean): string {
   return `WITH readings AS MATERIALIZED(
- SELECT d.netuid,m.uid,d.day AS snapshot_date,m.hotkey,json_extract(j.value,'$.axon') AS axon
- FROM neuron_daily_documents d CROSS JOIN json_each(d.payload) j
+ SELECT d.netuid,m.uid,d.day AS snapshot_date,m.hotkey,${indexed ? "m.axon_index" : "json_extract(j.value,'$.axon')"} AS axon
+ FROM neuron_daily_documents d ${indexed ? "" : "CROSS JOIN json_each(d.payload) j"}
  CROSS JOIN neuron_daily_members m ON m.netuid=d.netuid AND m.snapshot_date=+d.day
- AND m.shard=d.shard AND m.uid=CAST(j.key AS INTEGER)
+ AND m.shard=d.shard ${indexed ? "" : "AND m.uid=CAST(j.key AS INTEGER)"}
  WHERE d.day>=? ${extraWhere}
  ), addresses AS MATERIALIZED(SELECT axon,${address} AS address FROM (SELECT DISTINCT axon FROM readings)),
  reachability AS MATERIALIZED(SELECT axon,address,(${routable}) AS routable FROM addresses)
  SELECT r.*,a.address,a.routable FROM readings r LEFT JOIN reachability a ON a.axon IS r.axon`;
 }
 
-export function axonSequenceD1Sql(extraWhere = ""): string {
-  return `WITH classified AS MATERIALIZED(${classified(extraWhere)})
+export function axonSequenceD1Sql(extraWhere = "", indexed = false): string {
+  return `WITH classified AS MATERIALIZED(${classified(extraWhere, indexed)})
  SELECT netuid,uid,snapshot_date,hotkey,axon,routable,
  LAG(routable) OVER w AS prev_routable,LAG(hotkey) OVER w AS prev_hotkey,
  LAG(address) OVER w AS prev_address FROM classified
  WINDOW w AS (PARTITION BY netuid,uid ORDER BY snapshot_date)`;
 }
 
-export const AXON_DAY_COUNTS_D1_SQL = `WITH classified AS MATERIALIZED(${classified("")})
+export function axonDayCountsD1Sql(indexed = false): string {
+  return `WITH classified AS MATERIALIZED(${classified("", indexed)})
  SELECT netuid,snapshot_date AS date,COUNT(*) FILTER (WHERE routable) AS with_axon,
  COUNT(*) AS neurons FROM classified GROUP BY netuid,snapshot_date ORDER BY netuid,snapshot_date`;
+}
+
+/** The partial index makes the completed-backfill check an empty index lookup. */
+export async function axonProjectionReady(
+  query: (sql: string) => Promise<unknown[]>,
+): Promise<boolean> {
+  return (
+    (
+      await query(
+        "SELECT 1 FROM neuron_daily_members WHERE axon_indexed=0 LIMIT 1",
+      )
+    ).length === 0
+  );
+}
