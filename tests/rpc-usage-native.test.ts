@@ -37,6 +37,26 @@ function store() {
     });
   };
   const publish = () => {
+    const groups = new Map<
+      number,
+      { rows: number; first: number; last: number }
+    >();
+    for (const c of manifest.chunks) {
+      const day = Math.floor(c.first / DAY),
+        prior = groups.get(day);
+      groups.set(day, {
+        rows: (prior?.rows ?? 0) + c.rows,
+        first: Math.min(prior?.first ?? Infinity, c.first),
+        last: Math.max(prior?.last ?? -Infinity, c.last),
+      });
+    }
+    manifest.days = [...groups]
+      .sort((a, b) => a[0] - b[0])
+      .map(([day, c]) => ({
+        ...manifest.days.find((d: { day: number }) => d.day === day),
+        day,
+        ...c,
+      }));
     put(`${root}/current.json`, manifest);
     put(`${root}/${manifest.generation}/manifest.json`, manifest);
   };
@@ -236,8 +256,14 @@ test("unpublished ownership retains fallback; invalid selected proofs decline wi
 test("chunk identities, compressed lengths, physical counts and data validation are enforced", async () => {
   const mutations: ((
     s: ReturnType<typeof store>,
-    c: any,
-    item: any,
+    c: {
+      object: { key: string; etag: string; bytes: number };
+      rows: number;
+      rawBytes: number;
+      first: number;
+      last: number;
+    },
+    item: { body: string; etag: string; size: number },
   ) => void)[] = [
     (s, c) => s.objects.delete(c.object.key),
     (_s, _c, o) => (o.etag = "changed"),
@@ -358,6 +384,7 @@ test("numeric overflow and excessive latency populations decline the complete an
   assert.equal(
     await loadRpcUsageColdTier(s.env, {
       now,
+      until: now + 1,
       query: async () => {
         throw Error("No SQL");
       },
@@ -411,10 +438,177 @@ test("complete but excessive endpoint and latency cardinalities cannot publish p
     assert.equal(
       await loadRpcUsageColdTier(s.env, {
         now,
+        until: now + 1,
         query: async () => {
           throw Error("No SQL");
         },
       }),
+      null,
+    );
+  }
+});
+
+test("daily aggregates preserve exact results while avoiding full interior-day rows", async () => {
+  const s = store();
+  const answer = await loadRpcUsageColdTier(s.env, { window: "30d", now });
+  assert.ok(answer);
+  const keys = s.get.mock.calls.map(([key]) => key);
+  assert.ok(keys.some((key) => key.includes("/days/")));
+  const bodyKeys = keys.filter((key) => key.endsWith(".gz"));
+  const picked = bodyKeys.reduce((n, key) => n + s.objects.get(key)!.size, 0);
+  const raw = s.manifest.chunks
+    .filter((c: { last: number }) => c.last >= now - 30 * DAY)
+    .reduce(
+      (n: number, c: { object: { bytes: number } }) => n + c.object.bytes,
+      0,
+    );
+  assert.ok(picked < raw, `optimized ${picked} raw ${raw}`);
+});
+
+test("daily payload validation rejects inconsistent totals and time or latency distributions", async () => {
+  const changes: ((value: Record<string, unknown>) => void)[] = [
+    (v) => (v.day = 0),
+    (v) => (v.rows = 0),
+    (v) => (v.first = 0),
+    (v) => (v.last = 0),
+    (v) => ((v.totals as number[])[0] = 0),
+    (v) => ((v.totals as number[])[1] = 1e12),
+    (v) => (v.failover = 1e12),
+    (v) => (v.cacheHits = 1e12),
+    (v) => ((v.totals as number[])[3] = 1e12),
+    (v) => (v.endpoints as number[][])[0][3]++,
+    (v) => (v.hours as number[][])[0][1]++,
+    (v) => (v.hours as number[][])[0][0]++,
+    (v) => ((v.hours as number[][])[0][0] += DAY),
+    (v) => (v.latencies as number[][])[0][1]++,
+    (v) => (v.latencies as number[][])[0][0]++,
+  ];
+  for (const change of changes) {
+    const s = store(),
+      d = s.manifest.days.at(-2),
+      item = s.objects.get(d.object.key)!;
+    const value = JSON.parse(
+      gunzipSync(Buffer.from(item.body, "base64")).toString(),
+    );
+    change(value);
+    const raw = Buffer.from(JSON.stringify(value)),
+      gz = gzipSync(raw);
+    item.body = gz.toString("base64");
+    item.size = d.object.bytes = gz.length;
+    d.rawBytes = raw.length;
+    s.publish();
+    assert.equal(
+      await loadRpcUsageColdTier(s.env, {
+        window: "30d",
+        now,
+        query: async () => {
+          throw Error("No SQL");
+        },
+      }),
+      null,
+    );
+  }
+  const empty = store();
+  empty.manifest.chunks = [];
+  empty.manifest.rowCount = 0;
+  empty.publish();
+  assert.equal(await loadRpcUsageColdTier(empty.env, { now }), null);
+});
+
+test("daily descriptors require complete matching physical censuses", async () => {
+  for (const mode of ["missing", "scope"]) {
+    const s = store();
+    if (mode === "missing") s.manifest.days.pop();
+    else s.manifest.days[0].rows++;
+    s.put(`${root}/current.json`, s.manifest);
+    s.put(`${root}/${s.manifest.generation}/manifest.json`, s.manifest);
+    assert.equal(
+      await readNativeRpcRows(s.env, now - 30 * DAY, null, now, () => {}),
+      false,
+    );
+  }
+});
+
+test("combined daily aggregates enforce numeric and cardinality budgets across days", async () => {
+  for (const mode of ["numeric", "endpoints", "latencies"]) {
+    const s = store(),
+      template = structuredClone(s.manifest.chunks[0]);
+    s.manifest.chunks = [];
+    s.manifest.days = [];
+    for (let i = 0; i < 2; i++) {
+      const day = Math.floor(now / DAY) - 2 + i,
+        ts = day * DAY;
+      const n =
+        i === 1 || mode === "numeric"
+          ? 1
+          : mode === "endpoints"
+            ? 65536
+            : 100000;
+      const val =
+        mode === "numeric" ? (i === 0 ? Number.MAX_SAFE_INTEGER - 1 : 3) : 1;
+      const latencies =
+        mode === "latencies"
+          ? Array.from({ length: n }, (_, j) => [i === 0 ? j : 100000, 1])
+          : [[val, n]];
+      const sum = latencies.reduce((x, [v, w]) => x + v * w, 0),
+        stats = [n, n, sum, n];
+      const endpoints =
+        mode === "endpoints"
+          ? Array.from({ length: n }, (_, j) => [
+              "n",
+              i === 0 ? String(j) : "last",
+              "p",
+              1,
+              1,
+              val,
+              1,
+            ])
+          : [["n", "one", "p", ...stats]];
+      const payload = {
+        day,
+        rows: n,
+        first: ts,
+        last: ts,
+        totals: stats,
+        failover: 0,
+        cacheHits: 0,
+        endpoints,
+        hours: [[ts, ...stats]],
+        latencies,
+      };
+      const raw = Buffer.from(JSON.stringify(payload)),
+        gz = gzipSync(raw),
+        key = `${root}/days/${i.toString(16).padStart(64, "0")}.json.gz`;
+      s.objects.set(key, {
+        body: gz.toString("base64"),
+        etag: "fixture",
+        size: gz.length,
+      });
+      s.manifest.days.push({
+        day,
+        rows: n,
+        first: ts,
+        last: ts,
+        object: { key, etag: "fixture", bytes: gz.length },
+        rawBytes: raw.length,
+      });
+      for (let left = n; left > 0; left -= 8192)
+        s.manifest.chunks.push({
+          ...template,
+          rows: Math.min(left, 8192),
+          first: ts,
+          last: ts,
+        });
+    }
+    s.manifest.rowCount = s.manifest.days.reduce(
+      (n: number, d: { rows: number }) => n + d.rows,
+      0,
+    );
+    s.manifest.sourceRows = s.manifest.rowCount;
+    s.manifest.source.sources[0].rows = s.manifest.rowCount;
+    s.publish();
+    assert.equal(
+      await loadRpcUsageColdTier(s.env, { window: "30d", now }),
       null,
     );
   }

@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { artifactBucket, type ArtifactStoreEnv } from "./projection-store.ts";
+import {
+  validateNativeRpcDay,
+  type NativeRpcDay,
+} from "./rpc-usage-native-day.ts";
 
 const ROOT = "metagraph/rpc-usage-native/v1";
 const DAY = 86_400_000;
@@ -57,6 +61,18 @@ const Manifest = z.strictObject({
       }),
     )
     .max(2048),
+  days: z
+    .array(
+      z.strictObject({
+        day: integer,
+        rows: integer.positive(),
+        first: integer,
+        last: integer,
+        object: ObjectRef,
+        rawBytes: integer.positive().max(8 * 1024 * 1024),
+      }),
+    )
+    .max(34),
 });
 
 async function rowsFromObject(object: R2ObjectBody, bytes: number) {
@@ -79,14 +95,9 @@ async function rowsFromObject(object: R2ObjectBody, bytes: number) {
     reader.releaseLock();
   }
   if (offset !== bytes) throw new Error("Truncated RPC chunk");
-  return z
-    .array(Row)
-    .max(8192)
-    .parse(
-      JSON.parse(
-        new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(raw),
-      ),
-    );
+  return JSON.parse(
+    new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(raw),
+  ) as unknown;
 }
 
 /** Undefined means unpublished; selected corrupt data never enables SQL. */
@@ -96,6 +107,7 @@ export async function readNativeRpcRows(
   until: number | null,
   now: number,
   consume: (row: NativeRpcRow) => void,
+  consumeDay?: (day: NativeRpcDay) => void,
 ): Promise<boolean | undefined> {
   const bucket = artifactBucket(env as ArtifactStoreEnv) as Pick<
     R2Bucket,
@@ -132,7 +144,45 @@ export async function readNativeRpcRows(
         JSON.stringify(manifest)
     )
       return false;
-    const selected: typeof manifest.chunks = [];
+    const byDay = new Map<
+      number,
+      { rows: number; first: number; last: number }
+    >();
+    for (const chunk of manifest.chunks) {
+      const day = Math.floor(chunk.first / DAY),
+        prior = byDay.get(day);
+      byDay.set(day, {
+        rows: (prior?.rows ?? 0) + chunk.rows,
+        first: Math.min(prior?.first ?? Infinity, chunk.first),
+        last: Math.max(prior?.last ?? -Infinity, chunk.last),
+      });
+    }
+    const selected: ((typeof manifest.chunks)[number] & { day?: number })[] =
+      [];
+    const summarized = new Set<number>();
+    if (manifest.days.length !== byDay.size) return false;
+    for (const [i, day] of manifest.days.entries()) {
+      const census = byDay.get(day.day);
+      if (
+        !census ||
+        census.rows !== day.rows ||
+        census.first !== day.first ||
+        census.last !== day.last ||
+        (i > 0 && day.day <= manifest.days[i - 1].day) ||
+        !new RegExp(`^${ROOT}/days/[0-9a-f]{64}\\.json\\.gz$`).test(
+          day.object.key,
+        )
+      )
+        return false;
+      if (
+        consumeDay &&
+        day.day * DAY >= cutoff &&
+        (until === null || (day.day + 1) * DAY <= until)
+      ) {
+        summarized.add(day.day);
+        selected.push(day);
+      }
+    }
     for (const chunk of manifest.chunks) {
       if (
         !new RegExp(`^${ROOT}/chunks/[0-9a-f]{64}\\.json\\.gz$`).test(
@@ -144,7 +194,11 @@ export async function readNativeRpcRows(
         Math.floor(chunk.first / DAY) !== Math.floor(chunk.last / DAY)
       )
         return false;
-      if (chunk.last < cutoff || (until !== null && chunk.first >= until))
+      if (
+        summarized.has(Math.floor(chunk.first / DAY)) ||
+        chunk.last < cutoff ||
+        (until !== null && chunk.first >= until)
+      )
         continue;
       selected.push(chunk);
     }
@@ -165,7 +219,12 @@ export async function readNativeRpcRows(
         object.size !== chunk.object.bytes
       )
         return false;
-      const rows = await rowsFromObject(object, chunk.rawBytes);
+      const value = await rowsFromObject(object, chunk.rawBytes);
+      if (chunk.day !== undefined) {
+        consumeDay!(validateNativeRpcDay(value, { ...chunk, day: chunk.day }));
+        continue;
+      }
+      const rows = z.array(Row).max(8192).parse(value);
       if (
         rows.length !== chunk.rows ||
         Math.min(...rows.map((r) => r[0])) !== chunk.first ||

@@ -3,6 +3,7 @@ import {
   readNativeRpcRows,
   type NativeRpcRow,
 } from "./rpc-usage-native-store.ts";
+import type { NativeRpcStats } from "./rpc-usage-native-day.ts";
 
 type Group = {
   requests: number;
@@ -31,6 +32,28 @@ function add(target: Group, row: NativeRpcRow) {
 }
 function average(target: Group) {
   return target.measured ? target.sum / target.measured : null;
+}
+function merge(target: Group, stats: NativeRpcStats) {
+  target.requests += stats[0];
+  target.ok_count += stats[1];
+  target.sum += stats[2];
+  target.measured += stats[3];
+  if (![target.requests, target.sum].every(Number.isSafeInteger))
+    throw Error("RPC aggregate exceeds numeric range");
+}
+function mergeEntry(
+  map: Map<string, Group>,
+  key: string,
+  identity: Record<string, unknown>,
+  stats: NativeRpcStats,
+) {
+  let target = map.get(key);
+  if (!target) {
+    target = group(identity);
+    map.set(key, target);
+  }
+  if (map.size > 65_536) throw Error("RPC group budget exceeded");
+  merge(target, stats);
 }
 function breakdown(target: Group) {
   return {
@@ -104,27 +127,57 @@ export async function loadRpcUsageNative(
     cacheHits = 0,
     first = Infinity,
     last = -Infinity;
-  const selected = await readNativeRpcRows(env, cutoff, until, now, (row) => {
-    const weight = row[8] ?? 1;
-    add(totals, row);
-    if (row[5] !== null && row[5] > 1) failover += weight;
-    if (row[7] === "hit") cacheHits += weight;
-    first = Math.min(first, row[0]);
-    last = Math.max(last, row[0]);
-    if (row[6] !== null)
-      histogram.set(row[6], (histogram.get(row[6]) ?? 0) + weight);
-    if (histogram.size > 100_000)
-      throw new Error("RPC latency histogram exceeds budget");
-    accumulate(
-      endpoints,
-      JSON.stringify([row[2], row[3], row[1]]),
-      { endpoint_id: row[2], provider: row[3], network: row[1] },
-      row,
-    );
-    accumulate(networks, JSON.stringify(row[1]), { network: row[1] }, row);
-    const ts = row[0] - (row[0] % bucketMs);
-    accumulate(buckets, String(ts), { ts }, row);
-  });
+  const selected = await readNativeRpcRows(
+    env,
+    cutoff,
+    until,
+    now,
+    (row) => {
+      const weight = row[8] ?? 1;
+      add(totals, row);
+      if (row[5] !== null && row[5] > 1) failover += weight;
+      if (row[7] === "hit") cacheHits += weight;
+      first = Math.min(first, row[0]);
+      last = Math.max(last, row[0]);
+      if (row[6] !== null)
+        histogram.set(row[6], (histogram.get(row[6]) ?? 0) + weight);
+      if (histogram.size > 100_000)
+        throw new Error("RPC latency histogram exceeds budget");
+      accumulate(
+        endpoints,
+        JSON.stringify([row[2], row[3], row[1]]),
+        { endpoint_id: row[2], provider: row[3], network: row[1] },
+        row,
+      );
+      accumulate(networks, JSON.stringify(row[1]), { network: row[1] }, row);
+      const ts = row[0] - (row[0] % bucketMs);
+      accumulate(buckets, String(ts), { ts }, row);
+    },
+    (day) => {
+      merge(totals, day.totals);
+      failover += day.failover;
+      cacheHits += day.cacheHits;
+      first = Math.min(first, day.first);
+      last = Math.max(last, day.last);
+      for (const [value, weight] of day.latencies)
+        histogram.set(value, (histogram.get(value) ?? 0) + weight);
+      if (histogram.size > 100_000)
+        throw Error("RPC latency histogram exceeds budget");
+      for (const [network, endpoint_id, provider, ...stats] of day.endpoints) {
+        mergeEntry(
+          endpoints,
+          JSON.stringify([endpoint_id, provider, network]),
+          { endpoint_id, provider, network },
+          stats,
+        );
+        mergeEntry(networks, JSON.stringify(network), { network }, stats);
+      }
+      for (const [hour, ...stats] of day.hours) {
+        const ts = hour - (hour % bucketMs);
+        mergeEntry(buckets, String(ts), { ts }, stats);
+      }
+    },
+  );
   if (selected === undefined) return undefined;
   if (!selected || !totals.requests) return null;
   const ranked = (values: Map<string, Group>) =>
