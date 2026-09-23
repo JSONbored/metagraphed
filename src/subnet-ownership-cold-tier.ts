@@ -34,7 +34,7 @@ import {
   OWNERSHIP_CHANGE_EVENT_METHOD,
 } from "./subnet-ownership-history.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { R2SqlEnv, R2SqlReader } from "./r2-sql.ts";
 import {
   chainTable,
   type ChainNetworkId,
@@ -75,8 +75,9 @@ const OWNERSHIP_EVENT_COLUMNS =
 export async function fetchOwnershipChangeRows(
   env: R2SqlEnv | null | undefined,
   network?: ChainNetworkId,
+  query: R2SqlReader = r2SqlQuery,
 ): Promise<Record<string, unknown>[] | null> {
-  const rows = await r2SqlQuery(
+  const rows = await query(
     env,
     `SELECT ${OWNERSHIP_EVENT_COLUMNS} FROM ${chainTable("chain_events", network)}` +
       ` WHERE pallet = 'SubtensorModule' AND method = '${OWNERSHIP_CHANGE_EVENT_METHOD}'` +

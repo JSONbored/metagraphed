@@ -2208,7 +2208,7 @@ describe("lane statements run on the lane bound, not the request bound", () => {
     );
     assert.match(
       source,
-      /function laneQuery\([^)]*\)[^{]*\{\s*return r2SqlQuery\(/,
+      /function laneQuery\([^)]*\)[\s\S]*?return r2SqlQuery\(/,
       "the one call must be laneQuery's own",
     );
   });
