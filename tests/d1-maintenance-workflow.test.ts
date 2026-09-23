@@ -42,7 +42,7 @@ test("credentialed D1 maintenance installs without secrets, lifecycle scripts or
       assert.ok(index > install);
       assert.equal(
         step.env?.CLOUDFLARE_API_TOKEN,
-        "${{ secrets.CLOUDFLARE_API_TOKEN }}",
+        "${{ secrets.CLOUDFLARE_D1_API_TOKEN }}",
       );
       assert.equal(Object.keys(step.env ?? {}).length, 3);
     } else assert.equal(step.env, undefined);

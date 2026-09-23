@@ -3,7 +3,8 @@
 Operational state is owned by D1. Apply tracked migrations with
 `npm run migrate:d1 -- --remote`. The D1 maintenance workflow applies pending
 migrations on relevant main-branch changes and verifies schema drift weekly.
-It uses the existing Cloudflare account secret and API token with D1 Write
+It uses the existing Cloudflare account secret and a dedicated
+`CLOUDFLARE_D1_API_TOKEN` repository secret with only account-scoped D1 Write
 permission, plus the `CLOUDFLARE_D1_DATABASE_ID` repository variable. It does not
 request a Neon branch, database URL, compute endpoint, or API key.
 
