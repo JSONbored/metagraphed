@@ -1,3 +1,4 @@
+import { readStateArchiveRows } from "./state-archive-read.ts";
 // Subnet-ownership reads served from the lakehouse when the Postgres tier
 // misses.
 //
@@ -73,7 +74,7 @@ const OWNERSHIP_EVENT_COLUMNS =
  * ownership transfers are rare chain-wide events, not a feed.
  */
 export async function fetchOwnershipChangeRows(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   network?: ChainNetworkId,
   query: R2SqlReader = r2SqlQuery,
 ): Promise<Record<string, unknown>[] | null> {
@@ -186,37 +187,27 @@ export async function loadSubnetOwnershipHistoryColdTier(
  * unchanged coldkey is not a change of ownership. */
 const OWNER_OBSERVATION_COLUMNS = "owner_coldkey, captured_at";
 
-/**
- * One subnet's owner observations, oldest first -- or null when the lakehouse
- * cannot answer.
- *
- * THE SECOND SOURCE, and the one that actually has rows. The whole 895M-row
- * event table holds exactly ONE SubnetOwnerChanged event, so the stream above
- * answers an empty history for 127 of the 128 subnets the poller has ever
- * watched. `chain.subnet_ownership_history` is the poller's own record of who
- * it observed owning each subnet, appended only when the observed owner
- * CHANGES -- so a subnet
- * with two rows changed hands between them whether or not the chain emitted an
- * event for it, and three did (measured 2026-08-03).
- *
- * Small enough to read whole for one netuid: 135 rows chain-wide, at most two
- * per subnet. The netuid is forced through `safeBlockNumber` by the caller
- * before it reaches this string-built query, since R2 SQL takes no bound
- * parameters.
- *
- * FROZEN, LIKE EVERYTHING ELSE THE BOX WROTE. The newest capture is
- * 2026-08-01, so `observed_through` in the payload is the honest ceiling on
- * what this source can know -- not a refresh lane, which is separate work, but
- * enough that a caller is never told "no transfers" when the truth is "not
- * watched since".
- */
+/** Owner changes observed by the poller, ordered by their original capture. */
 export async function loadSubnetOwnerObservations(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   netuid: number,
 ): Promise<Record<string, unknown>[] | null> {
+  const n = safeBlockNumber(netuid);
+  if (n === null) return null;
+  const archive = await readStateArchiveRows(env, "subnet_ownership_history");
+  if (archive !== undefined)
+    return archive === null
+      ? null
+      : archive
+          .filter((row) => Number(row.netuid) === n)
+          .sort((a, b) => Number(a.captured_at) - Number(b.captured_at))
+          .map(({ owner_coldkey, captured_at }) => ({
+            owner_coldkey,
+            captured_at,
+          }));
   return await r2SqlQuery(
     env,
     `SELECT ${OWNER_OBSERVATION_COLUMNS} FROM chain.subnet_ownership_history` +
-      ` WHERE netuid = ${netuid} ORDER BY captured_at ASC`,
+      ` WHERE netuid = ${n} ORDER BY captured_at ASC`,
   );
 }

@@ -1,26 +1,10 @@
-// Self-health reads served from the lakehouse when the Postgres tier misses.
-//
-// ONLY THE DAILY ROLLUP SURVIVES THE BOX, and this tier says so honestly.
-// The Postgres route reads two tables: self_health_daily (the never-expired
-// 90-day rollup) and self_health_checks (raw ticks, pruned at ~14d, whose
-// newest row per component is the "current" reading). With the box gone
-// there IS no current reading -- the poller that wrote the ticks died with
-// it -- so this tier serves the preserved daily history with an empty
-// latest list. buildSelfHealth then reports current_ok:null ("unmeasured",
-// deliberately distinct from "down") and the "degraded" verdict floor,
-// which is the truthful claim: we cannot assert we are operational from a
-// frozen table. Synthesizing a current reading from the last frozen tick
-// would violate the probe-derived-only house rule.
-//
-// THE 90-DAY WINDOW IS FILTERED IN JS, equivalence argued not assumed. The
-// Postgres route filters `day >= cutoff` on a native DATE; the lakehouse
-// `day` column's exact type is the exporter's choice, and a mistyped SQL
-// comparison would fail the whole query. For zero-padded ISO dates the
-// filter IS lexicographic string comparison, so applying the identical
-// `>=` on the serialized form after fetching this deliberately small,
-// frozen table yields the identical row set -- same trade as the events
-// tier's single-OR standing in for data-api's two-scan merge.
+// The selected D1 owner supplies both daily history and actual probe ticks.
+// Unselected deployments retain the historical lakehouse rollup with no
+// invented current reading. A selected store failure never revives R2 SQL.
 
+import { createD1Sql, selectedD1Store } from "./d1-store.ts";
+import { SELF_HEALTH_TABLES } from "./self-health-store.ts";
+import { loadSelfHealthNeon } from "./self-health-neon.ts";
 import { r2SqlQuery } from "./r2-sql.ts";
 import { utcWindowCutoffDay } from "./health-serving.ts";
 import { buildSelfHealth, type SelfHealthDailyRow } from "./self-health.ts";
@@ -60,6 +44,12 @@ export async function loadSelfHealthColdTier(
   env: R2SqlEnv | null | undefined,
   nowMs: number = Date.now(),
 ): Promise<ReturnType<typeof buildSelfHealth> | null> {
+  try {
+    const store = selectedD1Store(env, SELF_HEALTH_TABLES);
+    if (store) return await loadSelfHealthNeon(createD1Sql(store), () => nowMs);
+  } catch {
+    return null;
+  }
   const rows = await r2SqlQuery(
     env,
     // No WHERE: the window filter runs below, on the serialized day (see the

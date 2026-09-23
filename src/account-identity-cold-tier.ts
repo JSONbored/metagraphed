@@ -1,13 +1,8 @@
-// Account-identity reads served from the lakehouse when the Postgres tier
-// misses. Same posture as the sibling cold tiers: rows feed the SAME
-// formatters the Postgres tier feeds (src/account-identity.ts and
-// src/account-identity-history.ts), filters decline rather than degrade, and
-// the history timeline pages on data-api's exact cursor token.
-//
-// Latest-only is a frozen snapshot (the refresh workflow wrote through the
-// box), so captured_at tells the caller exactly how current the identity is.
-// That is the honest trade: an identity most accounts set once and never
-// touch again is far better served stale than degraded to "no identity".
+import type { ArtifactStoreEnv } from "./projection-store.ts";
+import { readStateArchiveRows } from "./state-archive-read.ts";
+import { readD1Metadata } from "./d1-metadata-read.ts";
+// Account identity readers prefer the current D1 owner. Unselected deployments
+// retain the archived tier; both use the same canonical formatters and cursor.
 
 import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
@@ -35,7 +30,7 @@ const CURSOR_ARITY = 2;
  * answer, so the caller keeps its schema-stable "no identity" fallback.
  */
 export async function loadAccountIdentityColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountIdentity> | null> {
   // An unusable address is a decline, not an unfiltered scan: it reaches a
@@ -47,10 +42,19 @@ export async function loadAccountIdentityColdTier(
   // `account` + the seven identity fields + `captured_at`, which is every column
   // `AccountIdentityRow` declares -- so naming it here is a restatement of what
   // the catalog already says rather than a guess about it.
-  const rows = await r2SqlQuery<AccountIdentityRow>(
+  const native = await readD1Metadata<AccountIdentityRow>(
     env,
-    `SELECT ${LATEST_COLUMNS} FROM chain.account_identity WHERE account = '${addr}'`,
+    "account_identity",
+    `SELECT ${LATEST_COLUMNS} FROM account_identity WHERE account = ?`,
+    [addr],
   );
+  const rows =
+    native !== undefined
+      ? native
+      : await r2SqlQuery<AccountIdentityRow>(
+          env,
+          `SELECT ${LATEST_COLUMNS} FROM chain.account_identity WHERE account = '${addr}'`,
+        );
   if (rows === null) return null;
   // A confirmed absence is an ANSWER: has_identity:false is the same payload
   // the Postgres tier produces for the (common) never-set-identity case.
@@ -62,7 +66,7 @@ export async function loadAccountIdentityColdTier(
  * order, columns, cursor token, and OFFSET-only-without-cursor rule.
  */
 export async function loadAccountIdentityHistoryColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   ss58: string,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildAccountIdentityHistory> | null> {
@@ -73,7 +77,6 @@ export async function loadAccountIdentityHistoryColdTier(
     return null;
   // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
   // reasonable trade and declining beats serving a page that is quietly wrong.
-  if (offsetBeyondEmulationCap(offset)) return null;
 
   const where = [`account = '${addr}'`];
   const cursor = decodeCursor(query.cursor, CURSOR_ARITY);
@@ -89,15 +92,38 @@ export async function loadAccountIdentityHistoryColdTier(
   // adds the diff hash, which is `AccountIdentityHistoryRow` minus `account` --
   // and the read is already scoped to one account, so that column would be a
   // constant. `Omit` states which one and why, rather than widening the type.
-  const rows = await r2SqlQuery<Omit<AccountIdentityHistoryRow, "account">>(
-    env,
-    `SELECT ${HISTORY_COLUMNS} FROM chain.account_identity_history` +
-      ` WHERE ${where.join(" AND ")}` +
-      ` ORDER BY observed_at DESC, id DESC LIMIT ${limit + paged}`,
-  );
+  const archived = await readStateArchiveRows(env, "account_identity_history");
+  const native =
+    archived == null
+      ? archived
+      : archived
+          .filter(
+            (row) =>
+              row.account === addr &&
+              (!cursor ||
+                Number(row.observed_at) < Number(cursor[0]) ||
+                (row.observed_at === cursor[0] &&
+                  Number(row.id) < Number(cursor[1]))),
+          )
+          .sort(
+            (a, b) =>
+              Number(b.observed_at) - Number(a.observed_at) ||
+              Number(b.id) - Number(a.id),
+          )
+          .slice(paged, paged + limit);
+  if (native === undefined && offsetBeyondEmulationCap(offset)) return null;
+  const rows =
+    native !== undefined
+      ? native
+      : await r2SqlQuery<Omit<AccountIdentityHistoryRow, "account">>(
+          env,
+          `SELECT ${HISTORY_COLUMNS} FROM chain.account_identity_history` +
+            ` WHERE ${where.join(" AND ")}` +
+            ` ORDER BY observed_at DESC, id DESC LIMIT ${limit + paged}`,
+        );
   if (rows === null) return null;
 
-  const page = paged > 0 ? rows.slice(paged) : rows;
+  const page = native === undefined && paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
   // The SAME token the Postgres tier emits for this row, so paging survives a
   // tier transition in either direction.
