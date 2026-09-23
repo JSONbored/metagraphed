@@ -501,6 +501,10 @@ export async function loadExtrinsicsHeadHotTier(
     limit: number;
     /** Read at or below this `observed_at`; null starts at the head. */
     ceilingObservedAt: number | null;
+    floorObservedAt?: number | null;
+    block?: number | null;
+    /** Strictly after this row in the descending feed's total order. */
+    cursor?: readonly [number, number, number] | null;
     signer?: string | null;
     module?: string | null;
     callFunction?: string | null;
@@ -538,6 +542,26 @@ export async function loadExtrinsicsHeadHotTier(
   if (endBlock !== null) {
     where.push("block_number <= ?");
     params.push(endBlock);
+  }
+  for (const [value, predicate] of [
+    [options.block, "block_number = ?"],
+    [options.floorObservedAt, "observed_at >= ?"],
+  ] as const) {
+    if (value == null) continue;
+    const parsed = safeBlockNumber(value);
+    if (parsed === null) return null;
+    where.push(predicate);
+    params.push(parsed);
+  }
+  if (options.cursor != null) {
+    if (
+      !Array.isArray(options.cursor) ||
+      options.cursor.length !== 3 ||
+      options.cursor.some((value) => safeBlockNumber(value) === null)
+    )
+      return null;
+    where.push("(observed_at, block_number, extrinsic_index) < (?, ?, ?)");
+    params.push(...options.cursor);
   }
   if (options.ceilingObservedAt !== null) {
     const ceiling = safeBlockNumber(options.ceilingObservedAt);

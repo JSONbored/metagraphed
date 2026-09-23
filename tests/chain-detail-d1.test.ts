@@ -16,6 +16,7 @@ import {
   loadChainEventsHeadHotTier,
   loadExtrinsicHotTier,
 } from "../src/chain-detail-hot-tier.ts";
+import { loadExtrinsicFeedColdTier } from "../src/extrinsics-cold-tier.ts";
 import { loadChainEventsColdTier } from "../src/chain-events-cold-tier.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import worker, { neonOwnsChainDetail } from "../workers/data-api.ts";
@@ -398,6 +399,95 @@ test("native D1 chain-event cursors cross blocks without repeating the cursor bl
       [102, 0],
       [101, 3],
       [101, 2],
+    ],
+  );
+});
+
+test("D1 extrinsic feeds apply all bounds before LIMIT and cross tuple ties exactly", async () => {
+  const signer = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
+  for (let block = 100; block <= 103; block++)
+    for (let index = 0; index < 4; index++)
+      await db
+        .prepare(
+          "INSERT INTO chain_detail_extrinsics(block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,observed_at) VALUES(?,?,?,?,?,?,?,?)",
+        )
+        .bind(
+          block,
+          index,
+          `0x${(block * 10 + index).toString(16).padStart(64, "0")}`,
+          signer,
+          "SubtensorModule",
+          "set_weights",
+          index % 2 === 0 ? 1 : 0,
+          stamp + (block === 103 ? 1 : 0),
+        )
+        .run();
+  const ids = (page: Awaited<ReturnType<typeof loadExtrinsicFeedColdTier>>) =>
+    page?.extrinsics.map((row) => [row.block_number, row.extrinsic_index]);
+  const first = await loadExtrinsicFeedColdTier(env(), {
+    limit: 3,
+    from: String(stamp),
+    to: String(stamp),
+    blockStart: "100",
+    blockEnd: "103",
+  });
+  assert.deepEqual(ids(first), [
+    [102, 3],
+    [102, 2],
+    [102, 1],
+  ]);
+  const second = await loadExtrinsicFeedColdTier(env(), {
+    limit: 3,
+    from: stamp,
+    to: stamp,
+    blockStart: 100,
+    blockEnd: 103,
+    cursor: first?.next_cursor,
+  });
+  assert.deepEqual(ids(second), [
+    [102, 0],
+    [101, 3],
+    [101, 2],
+  ]);
+  assert.deepEqual(
+    ids(
+      await loadExtrinsicFeedColdTier(env(), {
+        limit: 2,
+        block: "101",
+        from: stamp,
+        to: stamp,
+        blockStart: "100",
+        blockEnd: "102",
+      }),
+    ),
+    [
+      [101, 3],
+      [101, 2],
+    ],
+  );
+  assert.deepEqual(
+    ids(await loadExtrinsicFeedColdTier(env(), { limit: 2, from: stamp + 1 })),
+    [
+      [103, 3],
+      [103, 2],
+    ],
+  );
+  assert.deepEqual(
+    ids(
+      await loadExtrinsicFeedColdTier(env(), {
+        limit: 2,
+        block: 102,
+        from: stamp,
+        to: stamp,
+        signer,
+        module: "SubtensorModule",
+        callFunction: "set_weights",
+        success: true,
+      }),
+    ),
+    [
+      [102, 2],
+      [102, 0],
     ],
   );
 });

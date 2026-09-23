@@ -662,7 +662,7 @@ describe("loadExtrinsicFeedColdTier -- the Neon head", () => {
     assert.ok(q.length > 0);
   });
 
-  test("THE CURSOR SEEKS ON observed_at, the key the token encodes", async () => {
+  test("THE CURSOR SEEKS ON the complete strict tuple the token encodes", async () => {
     // Extrinsics share a block, so no prefix of the composite key is a total
     // order -- and the public token leads with `observed_at`. A hot leg seeking
     // on anything else would mis-page against the lakehouse leg's own tokens.
@@ -677,7 +677,10 @@ describe("loadExtrinsicFeedColdTier -- the Neon head", () => {
       limit: 2,
       cursor: first.next_cursor,
     });
-    assert.match(second.seen[0]!, /observed_at <= \$\d/);
+    assert.match(
+      second.seen[0]!,
+      /\(observed_at, block_number, extrinsic_index\) < \(\$\d, \$\d, \$\d\)/,
+    );
   });
 
   test("EVERY FILTER IS APPLIED IN THE QUERY", async () => {
@@ -725,6 +728,26 @@ describe("loadExtrinsicFeedColdTier -- the Neon head", () => {
       [
         "inverted window",
         { limit: 5, ceilingObservedAt: null, blockStart: 500, blockEnd: 100 },
+      ],
+      [
+        "invalid block",
+        { limit: 5, ceilingObservedAt: null, block: Number.NaN },
+      ],
+      [
+        "invalid time floor",
+        { limit: 5, ceilingObservedAt: null, floorObservedAt: -1 },
+      ],
+      [
+        "non-array cursor",
+        { limit: 5, ceilingObservedAt: null, cursor: "bad" as never },
+      ],
+      [
+        "short cursor",
+        { limit: 5, ceilingObservedAt: null, cursor: [] as never },
+      ],
+      [
+        "invalid cursor cell",
+        { limit: 5, ceilingObservedAt: null, cursor: [1, -1, 0] },
       ],
       ["empty signer", { limit: 5, ceilingObservedAt: null, signer: "" }],
       [
