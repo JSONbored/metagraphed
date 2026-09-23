@@ -1,10 +1,11 @@
-// Every table the repo declares must actually exist in Neon.
+// Every table the repo declares must actually exist in D1.
 //
 // The check itself is four lines of set arithmetic; what needs testing is the
 // PARSING, because a scanner that quietly matches nothing passes on everything.
 // Both halves have that failure mode: a migration scanner fooled by prose, and
 // a constant scanner that misses the array shape these sets are written in.
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -154,4 +155,29 @@ describe("deciding what is missing", () => {
       ["alpha", "zulu"],
     );
   });
+});
+
+test("D1 view declarations are required alongside native tables", () => {
+  const dir = migrationsDir({
+    "0001_documents.sql":
+      "CREATE TABLE documents (id INT); CREATE VIEW readings AS SELECT id FROM documents;",
+  });
+  const declared = tablesInMigrations(dir);
+  assert.deepEqual([...declared.keys()], ["documents", "readings"]);
+  assert.deepEqual(findMissing(new Set(["documents"]), declared, new Map()), [
+    {
+      table: "readings",
+      declaredBy: "0001_documents.sql",
+      source: "migration",
+    },
+  ]);
+});
+
+test("CLI checks the physical D1 snapshot, including root baskets absent from the logical legacy snapshot", () => {
+  const output = execFileSync(
+    process.execPath,
+    ["scripts/validate-declared-tables-exist.ts"],
+    { encoding: "utf8" },
+  );
+  assert.match(output, /every declared table exists/);
 });

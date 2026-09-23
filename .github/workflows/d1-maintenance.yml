@@ -6,6 +6,7 @@ on:
     paths:
       - "migrations/d1/**"
       - "scripts/snapshot-d1-schema.ts"
+      - "scripts/validate-declared-tables-exist.ts"
       - "scripts/lib/d1-admin.ts"
       - "generated/db/d1-schema.json"
       - "db/d1-schema.sql"

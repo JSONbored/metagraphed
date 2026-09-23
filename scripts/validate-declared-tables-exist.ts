@@ -1,35 +1,13 @@
-// Every table the repo DECLARES must actually exist in Neon.
-//
-// THE GAP THIS CLOSES. A table reaches production through four independent
-// steps: a file in `migrations/neon/`, an entry in three wrangler configs, a
-// set in `src/read-store-tables.ts`, and an actual `CREATE TABLE` having run.
-// Only the last one makes the table exist, and nothing checked it. A lane can
-// be fully wired -- migration written, tables declared sole-store, loader
-// reading them -- against a table that was never created, and every read comes
-// back empty. Which is indistinguishable from a table that exists and is empty.
-//
-// That is the same shape as #10566 and #10680: a correct-looking answer
-// standing in for a read that never happened.
-//
-// ## Why this runs where it does
-//
-// Against the LIVE schema, in `.github/workflows/refresh-neon-schema.yml`,
-// immediately after that workflow re-snapshots Neon. Not in `npm run validate`:
-// a PR that adds a migration legitimately has a snapshot without its table yet,
-// so a per-PR gate would fail on correct work. Here the snapshot is seconds old
-// and any absence is real.
-//
-// It also catches #9867's class from the other side: a migration recorded as
-// applied whose DDL never took.
+// Verify every declared D1 table/view against the physical snapshot checked
+// by d1-maintenance. The frozen logical column contract cannot prove that
+// deployed SQLite objects exist. A missing object must fail even if its
+// migration name was recorded as applied.
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
+import type { SchemaObject } from "./snapshot-d1-schema.ts";
 
-export interface ColumnRow {
-  table: string;
-}
-
-/** `CREATE TABLE [IF NOT EXISTS] <name>` across every migration. */
+/** `CREATE TABLE/VIEW [IF NOT EXISTS] <name>` across D1 migrations. */
 export function tablesInMigrations(dir: string): Map<string, string> {
   const byTable = new Map<string, string>();
   for (const file of readdirSync(dir)
@@ -42,7 +20,7 @@ export function tablesInMigrations(dir: string): Map<string, string> {
       .replace(/\/\*[\s\S]*?\*\//g, " ")
       .replace(/^\s*--.*$/gm, " ");
     for (const m of code.matchAll(
-      /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`]?([a-z_][a-z0-9_]*)["`]?/gi,
+      /CREATE\s+(?:TABLE|VIEW)\s+(?:IF\s+NOT\s+EXISTS\s+)?["`]?([a-z_][a-z0-9_]*)["`]?/gi,
     )) {
       const table = m[1]!.toLowerCase();
       if (!byTable.has(table)) byTable.set(table, file);
@@ -95,9 +73,13 @@ export function findMissing(
 
 function main(): void {
   const snapshot = JSON.parse(
-    readFileSync(path.join(repoRoot, "generated/db/schema.json"), "utf8"),
-  ) as ColumnRow[];
-  const live = new Set(snapshot.map((c) => String(c.table).toLowerCase()));
+    readFileSync(path.join(repoRoot, "generated/db/d1-schema.json"), "utf8"),
+  ) as SchemaObject[];
+  const live = new Set(
+    snapshot
+      .filter((object) => object.type === "table" || object.type === "view")
+      .map((object) => object.name.toLowerCase()),
+  );
   if (live.size === 0) {
     console.error(
       "the schema snapshot names no tables -- this check would pass on an " +
@@ -105,7 +87,7 @@ function main(): void {
     );
     process.exit(1);
   }
-  const migrations = tablesInMigrations(path.join(repoRoot, "migrations/neon"));
+  const migrations = tablesInMigrations(path.join(repoRoot, "migrations/d1"));
   const readSets = tablesInReadStoreSets(
     readFileSync(path.join(repoRoot, "src/read-store-tables.ts"), "utf8"),
   );
