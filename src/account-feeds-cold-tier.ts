@@ -119,6 +119,7 @@ import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { readStore } from "./read-store.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 import { loadIndexedValidatorNominators } from "./validator-nominators-indexed.ts";
+import { loadNativeAccountWeightSetters } from "./account-weight-setters-native.ts";
 import {
   loadIndexedAccountFeedPage,
   loadIndexedAccountFeedGroups,
@@ -751,6 +752,20 @@ export async function loadAccountWeightSettersColdTier(
   const slots = await neuronSlots(env, addr);
   if (slots === null) return null;
 
+  const { label, cutoff } = windowCutoff(
+    ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+    DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+    query.window,
+  );
+  const native = await loadNativeAccountWeightSetters(env, addr, slots, cutoff);
+  if (native !== undefined)
+    return native === null
+      ? null
+      : {
+          data: buildAccountWeightSetters(native, ss58, { window: label }),
+          generatedAt: latestObservedIso(native),
+        };
+
   let predicate = `hotkey = '${addr}'`;
   if (slots.length > 0) {
     // A TUPLE IN LIST, NOT A CHAIN OF ORs. One `(netuid = a AND uid = x) OR ...`
@@ -776,11 +791,6 @@ export async function loadAccountWeightSettersColdTier(
       `(${predicate} OR ` +
       `((hotkey IS NULL OR hotkey = '') AND (netuid, uid) IN (${pairs})))`;
   }
-  const { label, cutoff } = windowCutoff(
-    ACCOUNT_WEIGHT_SETTERS_WINDOWS,
-    DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-    query.window,
-  );
   const rows = await r2SqlQuery(
     env,
     `SELECT netuid, COUNT(*) AS weight_sets, MIN(observed_at) AS first_observed, ` +
