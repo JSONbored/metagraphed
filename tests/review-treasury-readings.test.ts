@@ -1,12 +1,8 @@
 // The human gate on treasury readings (#10933), argument rules and printing.
 //
-// The database half is not mocked here: `main` is a thin sequence of two SQL
-// statements whose real behaviour is the CHECK constraints and the UPDATE's
-// own RETURNING, both exercised against real Postgres in
-// tests/data-api-neurons.test.ts. What is worth pinning here is everything a
-// wrong keystroke reaches -- because the failure mode of this tool is
-// promoting the wrong row, and the row it promotes becomes a published claim
-// about somebody's business.
+// Native D1 persistence and atomic revision changes are exercised in
+// tests/review-treasury-readings-d1.test.ts. This file covers argument rules
+// and what a maintainer sees before explicitly publishing a reading.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {

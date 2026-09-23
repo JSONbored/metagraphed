@@ -1,6 +1,6 @@
 // Re-snapshot the four Iceberg tables from the live R2 Data Catalog (#10315).
 //
-// OUT OF BAND, exactly like scripts/snapshot-neon-schema.ts. It needs
+// OUT OF BAND, exactly like scripts/snapshot-d1-schema.ts. It needs
 // R2_CATALOG_TOKEN, so it cannot run from a pull request -- and that boundary
 // is the point rather than a limitation: the committed snapshot is what a PR
 // can be judged against, and whether the LAKEHOUSE has moved is a different

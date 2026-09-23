@@ -1,35 +1,9 @@
-// Types for every Neon table, generated from a committed schema snapshot
-// (#10261).
-//
-// THE DB BOUNDARY WAS THE ONE CONTRACT WITH NO TYPE. `schemas-src/` gives one
-// Zod schema per parameter and per response, shared across REST, MCP and
-// GraphQL -- the OUTBOUND boundary. Inbound, every row arrived as
-// `Record<string, unknown>` (`PgSqlRows` in src/pg-sql.ts, `Row` in
-// src/read-store.ts), with ~150 hand-written coercions and ~40 unchecked casts
-// standing between Postgres and the first typed value.
-//
-// All three bugs found on 2026-08-08 were at that boundary and none was a logic
-// error: #10123 bound `netuid` as text against an integer column and wrote 0
-// rows for days; #9782 wrote `captured_at` in SECONDS where every other row is
-// milliseconds, and `new Date(1785715160)` is a perfectly good 1970 date so
-// nothing threw; #10200 emitted `round(double precision, integer)`, valid in
-// SQLite and nonexistent in Postgres. Each is the code and the column
-// disagreeing about a type.
-//
-// TWO STEPS, DELIBERATELY SPLIT, because CI has no database:
-//
-//   scripts/snapshot-neon-schema.ts  introspects a live Neon branch and writes
-//                                    generated/db/schema.json. Needs
-//                                    credentials, runs out of band.
-//   this script                      reads that snapshot and writes
-//                                    generated/db/types.ts. Pure, so
-//                                    `validate:db-types-drift` can regenerate
-//                                    and diff on any runner.
-//
-// The old kanel pipeline could spin up a scratch Postgres because
-// `deploy/postgres/schema.sql` existed; it left with the Postgres box, and
-// there is no schema file to introspect any more. The snapshot IS that file
-// now -- checked against production on a schedule rather than assumed.
+// Logical row types generated from the retained, reviewed schema contract.
+// generated/db/schema.json preserves the original PostgreSQL type vocabulary
+// because JSON-backed D1 views cannot infer their numeric types via PRAGMA.
+// This script is pure and validate:db-types-drift regenerates it in CI.
+// scripts/snapshot-d1-schema.ts independently verifies the physical D1 schema;
+// see docs/d1-maintenance.md before changing either contract.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
