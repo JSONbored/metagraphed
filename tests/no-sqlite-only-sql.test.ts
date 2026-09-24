@@ -163,6 +163,9 @@ describe("store-neutral SQL", () => {
           "src/root-basket-capture-d1.ts",
           "src/d1-state-export.ts",
           "src/d1-store.ts",
+          // Dedicated D1 binding and credential; never accepts a generic
+          // store runner. Native receiver tests cover atomic source selection.
+          "src/retained-blocks-sync.ts",
         ].includes(file)
       )
         continue;

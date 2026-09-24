@@ -217,6 +217,9 @@ interface RuntimeSecretEnv {
   ROOT_BASKET_CAPTURE_SYNC_SECRET?: string;
   /** Authentication for the fixed-table native D1 archive export. */
   STATE_EXPORT_SECRET?: string;
+  /** Separate credential and database for retained block source ingestion. */
+  RETAINED_BLOCKS_SYNC_SECRET?: string;
+  RETAINED_BLOCKS_NETWORKS?: string;
   POSTHOG_EXCEPTION_STORM_WINDOW_MS?: string;
   POSTHOG_HOST?: string;
   POSTHOG_PROJECT_TOKEN?: string;

@@ -60,6 +60,8 @@ import type { R2SqlMetrics } from "../schemas-src/r2-sql-envelope.ts";
  * trusting the declaration.
  */
 export interface R2SqlEnv extends TelemetryEnv {
+  D1_RETAINED_BLOCKS?: import("./d1-store.ts").D1StoreBinding;
+  RETAINED_BLOCKS_NETWORKS?: string;
   R2_SQL_TOKEN?: string;
   R2_SQL_ACCOUNT_ID?: string;
   R2_SQL_WAREHOUSE?: string;
