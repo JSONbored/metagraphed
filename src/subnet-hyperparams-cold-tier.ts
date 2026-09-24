@@ -5,8 +5,7 @@ import { readD1Metadata } from "./d1-metadata-read.ts";
 // canonical parameter format, nullable values, filters, and timeline cursor.
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
-import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
+import { safeBlockNumber } from "./r2-sql.ts";
 import {
   buildSubnetHyperparams,
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
@@ -14,20 +13,8 @@ import {
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 
-// Both SELECT lists are DERIVED from the same exported column set the write
-// path and data-api's reads are built on, rather than restated: 35 columns is
-// too many to keep aligned by hand, and a drifted list here would hand the
-// shared formatter a different shape than the Postgres tier does.
-//
-// Latest-only mirrors data-api exactly: every insert column except netuid
-// (already known from the WHERE clause). History carries the same parameter
-// fields (no netuid/block_number/captured_at -- history has its own
-// block_number and observed_at up front) plus id and the diff hash.
+// Keep the current-state read aligned with the canonical write columns.
 const LATEST_COLUMNS = SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(1).join(", ");
-const HISTORY_COLUMNS = `id, block_number, observed_at, ${SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(
-  1,
-  -2,
-).join(", ")}, hyperparams_hash`;
 
 /** The (observed_at, id) pair the history feed pages on, mirroring data-api. */
 const CURSOR_ARITY = 2;
@@ -40,24 +27,16 @@ export async function loadSubnetHyperparamsColdTier(
   env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
   netuid: unknown,
 ): Promise<ReturnType<typeof buildSubnetHyperparams> | null> {
-  // netuid reaches a string-built query (R2 SQL has no bound parameters), so
-  // it must pass the integer guard -- refused rather than escaped.
+  // Keep the published integer-input contract before issuing a bound read.
   const n = safeBlockNumber(netuid);
   if (n === null) return null;
-  const native = await readD1Metadata(
+  const rows = await readD1Metadata(
     env,
     "subnet_hyperparams",
     `SELECT ${LATEST_COLUMNS} FROM subnet_hyperparams WHERE netuid = ? LIMIT 1`,
     [n],
   );
-  const rows =
-    native !== undefined
-      ? native
-      : await r2SqlQuery(
-          env,
-          `SELECT ${LATEST_COLUMNS} FROM chain.subnet_hyperparams WHERE netuid = ${n} LIMIT 1`,
-        );
-  if (rows === null) return null;
+  if (rows == null) return null;
   // A confirmed absence is an ANSWER: hyperparameters:null is the same payload
   // the Postgres tier produces for an unknown netuid, not a tier failure.
   return buildSubnetHyperparams(rows[0] ?? null, n);
@@ -77,16 +56,7 @@ export async function loadSubnetHyperparamsHistoryColdTier(
   const offset = safeBlockNumber(query.offset ?? 0);
   if (n === null || limit === null || offset === null || limit <= 0)
     return null;
-  // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
-  // reasonable trade and declining beats serving a page that is quietly wrong.
-
-  const where = [`netuid = ${n}`];
   const cursor = decodeCursor(query.cursor, CURSOR_ARITY);
-  if (cursor) {
-    // The same 2-part tuple seek data-api issues for this token. An invalid
-    // token decodes to null and means page 1 -- data-api's exact behavior.
-    where.push(`(observed_at, id) < (${cursor[0]}, ${cursor[1]})`);
-  }
   // Cursor pages never carry an offset (the cursor already narrows past prior
   // pages), mirroring data-api's `OFFSET only when no cursor`.
   const paged = cursor ? 0 : offset;
@@ -95,39 +65,23 @@ export async function loadSubnetHyperparamsHistoryColdTier(
     env,
     "subnet_hyperparams_history",
   );
-  const native =
-    archived == null
-      ? archived
-      : archived
-          .filter(
-            (row) =>
-              row.netuid === n &&
-              (!cursor ||
-                Number(row.observed_at) < Number(cursor[0]) ||
-                (row.observed_at === cursor[0] &&
-                  Number(row.id) < Number(cursor[1]))),
-          )
-          .sort(
-            (a, b) =>
-              Number(b.observed_at) - Number(a.observed_at) ||
-              Number(b.id) - Number(a.id),
-          )
-          .slice(paged, paged + limit);
-  if (native === undefined && offsetBeyondEmulationCap(offset)) return null;
-  const rows =
-    native !== undefined
-      ? native
-      : await r2SqlQuery(
-          env,
-          `SELECT ${HISTORY_COLUMNS} FROM chain.subnet_hyperparams_history` +
-            ` WHERE ${where.join(" AND ")}` +
-            // EXACTLY data-api's order: the cursor token encodes this composite
-            // key, so a different order would mis-seek its tokens.
-            ` ORDER BY observed_at DESC, id DESC LIMIT ${limit + paged}`,
-        );
-  if (rows === null) return null;
+  if (archived == null) return null;
+  const page = archived
+    .filter(
+      (row) =>
+        row.netuid === n &&
+        (!cursor ||
+          Number(row.observed_at) < Number(cursor[0]) ||
+          (row.observed_at === cursor[0] &&
+            Number(row.id) < Number(cursor[1]))),
+    )
+    .sort(
+      (a, b) =>
+        Number(b.observed_at) - Number(a.observed_at) ||
+        Number(b.id) - Number(a.id),
+    )
+    .slice(paged, paged + limit);
 
-  const page = native === undefined && paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
   // The SAME token the Postgres tier emits for this row, so a client can page
   // seamlessly across a tier transition in either direction.

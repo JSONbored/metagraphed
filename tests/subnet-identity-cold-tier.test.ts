@@ -1,9 +1,5 @@
-// Same properties as the sibling cold tiers: no silent widening, parity via
-// the shared formatters, data-api's exact cursor token and orders — including
-// the network feed's block_number-leading order, which differs from the
-// per-subnet timeline's observed_at-leading one.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 import {
   loadChainIdentityHistoryColdTier,
   loadSubnetIdentityHistoryColdTier,
@@ -12,181 +8,136 @@ import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
 } from "../src/chain-identity-history.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
-
-const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
-
-function identityRow(id: number, netuid = 3) {
-  return {
-    id,
-    netuid,
-    block_number: 8_600_000 + id,
-    observed_at: 1_700_000_000_000 + id,
-    subnet_name: `subnet-${id}`,
-    symbol: "SYM",
-    description: null,
-    github_repo: null,
-    subnet_url: null,
-    discord: null,
-    logo_url: null,
-    identity_hash: `hash-${id}`,
-  };
-}
-
-function sqlFetch(...responses: unknown[][]) {
-  const queries: string[] = [];
-  let call = 0;
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    queries.push(JSON.parse(String(init.body)).query);
-    const rows = responses[Math.min(call, responses.length - 1)] ?? [];
-    call += 1;
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return queries;
-}
-
-describe("loadSubnetIdentityHistoryColdTier", () => {
-  test("reads one subnet's timeline in data-api's exact order", async () => {
-    const q = sqlFetch([identityRow(9), identityRow(8)]);
-    const data = await loadSubnetIdentityHistoryColdTier(TOKEN as never, 3, {
-      limit: 5,
-    });
-    assert.match(q[0]!, /FROM chain\.subnet_identity_history WHERE netuid = 3/);
-    assert.match(q[0]!, /ORDER BY observed_at DESC, id DESC LIMIT 5/);
-    assert.match(q[0]!, /identity_hash/);
-    assert.equal((data!.entries as unknown[]).length, 2);
-    assert.equal(data!.next_cursor, null, "a short page carries no cursor");
-  });
-
-  test("a cursor page seeks data-api's 2-part tuple and ignores offset", async () => {
-    const q = sqlFetch([identityRow(9), identityRow(8)]);
-    const data = await loadSubnetIdentityHistoryColdTier(TOKEN as never, 3, {
-      limit: 2,
-      offset: 7,
-      cursor: "1700000000010.10",
-    });
-    assert.match(q[0]!, /\(observed_at, id\) < \(1700000000010, 10\)/);
-    assert.match(q[0]!, /LIMIT 2/, "no over-fetch on a cursor page");
-    assert.equal(data!.next_cursor, "1700000000008.8");
-  });
-
-  test("a malformed cursor means page 1; offset is emulated and capped", async () => {
-    const q = sqlFetch([identityRow(9), identityRow(8), identityRow(7)]);
-    const data = await loadSubnetIdentityHistoryColdTier(TOKEN as never, 3, {
-      limit: 1,
-      offset: 2,
-      cursor: "junk",
-    });
-    assert.ok(!/junk/.test(q[0]!));
-    assert.match(q[0]!, /LIMIT 3/);
-    assert.equal(
-      (data!.entries as Record<string, unknown>[])[0]!.identity_hash,
-      "hash-7",
-    );
-
-    const q2 = sqlFetch([]);
-    assert.equal(
-      await loadSubnetIdentityHistoryColdTier(TOKEN as never, 3, {
-        limit: 5,
-        offset: 100_000,
-      }),
-      null,
-    );
-    assert.equal(q2.length, 0);
-  });
-
-  test("declines any unusable netuid or paging value rather than dropping it", async () => {
-    for (const [netuid, page] of [
-      ["3 OR 1=1", { limit: 5 }],
-      [3, { limit: "abc" }],
-      [3, { limit: 5, offset: -1 }],
-      [3, { limit: 0 }],
-    ] as [unknown, Record<string, unknown>][]) {
-      const q = sqlFetch([identityRow(1)]);
-      assert.equal(
-        await loadSubnetIdentityHistoryColdTier(
-          TOKEN as never,
-          netuid,
-          page as never,
-        ),
-        null,
-        JSON.stringify({ netuid, page }),
-      );
-      assert.equal(q.length, 0);
-    }
-  });
-
-  test("an unusable last row emits no cursor; a failed query yields null", async () => {
-    sqlFetch([{ ...identityRow(3), observed_at: null }]);
-    const odd = await loadSubnetIdentityHistoryColdTier(TOKEN as never, 3, {
-      limit: 1,
-    });
-    assert.equal(odd!.next_cursor, null);
-
-    globalThis.fetch = (async () => {
-      throw new Error("down");
-    }) as unknown as typeof fetch;
-    assert.equal(
-      await loadSubnetIdentityHistoryColdTier(TOKEN as never, 3, { limit: 5 }),
-      null,
-    );
-  });
+import { readStateArchiveRows } from "../src/state-archive-read.ts";
+vi.mock("../src/state-archive-read.ts", () => ({
+  readStateArchiveRows: vi.fn(),
+}));
+const env = { R2_SQL_TOKEN: "retired-token-must-not-be-used" },
+  archive = vi.mocked(readStateArchiveRows);
+const row = (id: number, netuid = 3) => ({
+  id,
+  netuid,
+  block_number: 8600000 + id,
+  observed_at: 1700000000000 + id,
+  subnet_name: `subnet-${id}`,
+  identity_hash: `hash-${id}`,
 });
-
-describe("loadChainIdentityHistoryColdTier", () => {
-  test("reads the network feed in data-api's block-leading order", async () => {
-    const q = sqlFetch([identityRow(9, 4), identityRow(8, 2)]);
-    const data = await loadChainIdentityHistoryColdTier(TOKEN as never, {
-      limit: 10,
-    });
-    assert.match(q[0]!, /SELECT netuid, id, /);
-    assert.match(q[0]!, /FROM chain\.subnet_identity_history/);
-    assert.match(
-      q[0]!,
-      /ORDER BY block_number DESC, netuid ASC, id DESC LIMIT 10/,
-    );
-    assert.equal(data!.count, 2);
-    assert.equal(data!.subnet_count, 2);
-    assert.equal(data!.changes[0]!.netuid, 4);
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw Error("Warehouse access is retired");
+    }),
+  );
+});
+afterEach(() => {
+  assert.equal(vi.mocked(fetch).mock.calls.length, 0);
+  vi.resetAllMocks();
+  vi.unstubAllGlobals();
+});
+test("subnet timelines filter scope and order timestamp ties by ID", async () => {
+  archive.mockResolvedValue([
+    row(7),
+    { ...row(8), observed_at: 1700000000009 },
+    row(10, 4),
+    row(9),
+  ]);
+  const data = await loadSubnetIdentityHistoryColdTier(env, 3, { limit: 2 });
+  assert.deepEqual(
+    (data!.entries as Record<string, unknown>[]).map((x) => x.identity_hash),
+    ["hash-9", "hash-8"],
+  );
+  assert.equal(data!.next_cursor, "1700000000009.8");
+  const page = await loadSubnetIdentityHistoryColdTier(env, 3, {
+    limit: 2,
+    offset: 7,
+    cursor: "1700000000009.9",
   });
-
-  test("an absent limit takes the route default, exactly like data-api", async () => {
-    const q = sqlFetch([identityRow(1)]);
-    const data = await loadChainIdentityHistoryColdTier(TOKEN as never);
-    assert.match(
-      q[0]!,
-      new RegExp(`LIMIT ${CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT}$`),
-    );
-    assert.equal(data!.count, 1);
+  assert.deepEqual(
+    (page!.entries as Record<string, unknown>[]).map((x) => x.identity_hash),
+    ["hash-8", "hash-7"],
+  );
+  assert.equal(page!.next_cursor, "1700000000007.7");
+});
+test("malformed cursors use offset and deep native pages confirm absence", async () => {
+  archive.mockResolvedValue([row(8), row(7), row(9)]);
+  const data = await loadSubnetIdentityHistoryColdTier(env, 3, {
+    limit: 5,
+    offset: 2,
+    cursor: "junk",
   });
-
-  test("declines an unusable or out-of-range limit rather than clamping it", async () => {
-    for (const limit of [
-      "abc",
-      0,
-      CHAIN_IDENTITY_HISTORY_LIMIT_MAX + 1,
-    ] as unknown[]) {
-      const q = sqlFetch([identityRow(1)]);
-      assert.equal(
-        await loadChainIdentityHistoryColdTier(TOKEN as never, { limit }),
-        null,
-        String(limit),
-      );
-      assert.equal(q.length, 0);
-    }
-  });
-
-  test("a failed query yields null", async () => {
-    globalThis.fetch = (async () => {
-      throw new Error("down");
-    }) as unknown as typeof fetch;
+  assert.deepEqual(
+    (data!.entries as Record<string, unknown>[]).map((x) => x.identity_hash),
+    ["hash-7"],
+  );
+  assert.equal(data!.next_cursor, null);
+  assert.deepEqual(
+    (await loadSubnetIdentityHistoryColdTier(env, 3, {
+      limit: 5,
+      offset: 100000,
+    }))!.entries,
+    [],
+  );
+});
+test("invalid subnet and paging inputs decline before reading the archive", async () => {
+  for (const [netuid, page] of [
+    ["3 OR 1=1", { limit: 5 }],
+    [3, { limit: "abc" }],
+    [3, { limit: 5, offset: -1 }],
+    [3, { limit: 0 }],
+  ] as const)
     assert.equal(
-      await loadChainIdentityHistoryColdTier(TOKEN as never, { limit: 5 }),
+      await loadSubnetIdentityHistoryColdTier(env, netuid, page as never),
       null,
     );
-  });
+  for (const limit of ["abc", 0, CHAIN_IDENTITY_HISTORY_LIMIT_MAX + 1])
+    assert.equal(await loadChainIdentityHistoryColdTier(env, { limit }), null);
+  assert.equal(archive.mock.calls.length, 0);
+});
+test("missing and failed archives never revive warehouse reads", async () => {
+  for (const value of [undefined, null]) {
+    archive.mockResolvedValue(value);
+    assert.equal(
+      await loadSubnetIdentityHistoryColdTier(env, 3, { limit: 5 }),
+      null,
+    );
+    assert.equal(
+      await loadChainIdentityHistoryColdTier(env, { limit: 5 }),
+      null,
+    );
+  }
+});
+test("network feed orders block, netuid and ID independently of observation time", async () => {
+  archive.mockResolvedValue([
+    row(7, 4),
+    { ...row(8, 2), block_number: 8600009 },
+    { ...row(9, 2), observed_at: 1 },
+    row(6, 1),
+  ]);
+  const data = await loadChainIdentityHistoryColdTier(env, { limit: 3 });
+  assert.deepEqual(
+    data!.changes.map((x) => x.identity_hash),
+    ["hash-9", "hash-8", "hash-7"],
+  );
+  assert.equal(data!.count, 3);
+  assert.equal(data!.subnet_count, 2);
+  archive.mockResolvedValue(
+    Array.from({ length: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT + 1 }, (_, i) =>
+      row(i),
+    ),
+  );
+  assert.equal(
+    (await loadChainIdentityHistoryColdTier(env))!.count,
+    CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+  );
+});
+test("empty histories remain measured empty and nullable timestamps have no cursor", async () => {
+  archive.mockResolvedValue([]);
+  assert.equal((await loadChainIdentityHistoryColdTier(env))!.count, 0);
+  archive.mockResolvedValue([{ ...row(3), observed_at: null }]);
+  assert.equal(
+    (await loadSubnetIdentityHistoryColdTier(env, 3, { limit: 1 }))!
+      .next_cursor,
+    null,
+  );
 });

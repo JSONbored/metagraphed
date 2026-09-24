@@ -67,8 +67,6 @@ const PRUNABLE = [
  * reason apply to the read it was actually measured against.
  */
 export const UNBOUNDED_BY_DESIGN: Readonly<Record<string, string>> = {
-  "src/account-identity-cold-tier.ts|chain.account_identity":
-    "chain.account_identity is ~515 rows; a full scan measured 0.08 MB",
   "src/nominator-positions-cold-tier.ts|chain.nominator_positions":
     "chain.nominator_positions is ~123k rows; a full scan measured 1.67 MB",
 };
