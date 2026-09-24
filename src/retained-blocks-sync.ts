@@ -29,7 +29,7 @@ const Input = z.discriminatedUnion("kind", [
     kind: z.literal("chunk"),
     identity: hash,
     start: integer,
-    rows: z.array(row).min(1).max(1000),
+    rows: z.array(row).min(1).max(4000),
   }),
   z.strictObject({
     kind: z.literal("publish"),
