@@ -1,10 +1,10 @@
 // The lakehouse freshness rule, tested without a catalog (#11048).
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import {
   EXPECTED,
   evaluate,
-  typeChangedAcrossSchemas,
+  checkLakehouseFreshness,
 } from "../scripts/check-lakehouse-freshness.ts";
 import { TABLES } from "../scripts/refresh-lakehouse-schema.ts";
 
@@ -83,81 +83,107 @@ describe("lakehouse freshness", () => {
   });
 });
 
-describe("type changes across schema generations (metagraphed-infra#542)", () => {
-  const field = (id: number, name: string, type: string) => ({
-    id,
-    name,
-    type,
-  });
-
-  test("a widened column is a candidate", () => {
-    // float -> double is legal in Iceberg and unreadable in R2 SQL until the
-    // files are rewritten. This is the case that broke chain.neurons.
-    const changed = typeChangedAcrossSchemas({
-      "current-schema-id": 1,
-      schemas: [
-        { "schema-id": 0, fields: [field(22, "take", "float")] },
-        { "schema-id": 1, fields: [field(22, "take", "double")] },
-      ],
-    });
-    assert.deepEqual(changed, ["take"]);
-  });
-
-  test("ADDING a column is not a candidate", () => {
-    // R2 SQL tolerates augmentation, so observed_at appearing in a later
-    // generation must not be reported -- three registry tables gained exactly
-    // that column and none of them broke.
-    const changed = typeChangedAcrossSchemas({
-      "current-schema-id": 1,
-      schemas: [
-        { "schema-id": 0, fields: [field(1, "netuid", "int")] },
-        {
-          "schema-id": 1,
-          fields: [field(1, "netuid", "int"), field(2, "observed_at", "long")],
+test("the scheduled checker uses only catalog metadata, including historical type changes", async () => {
+  const calls: string[] = [];
+  vi.stubEnv("R2_CATALOG_TOKEN", "fixture-catalog-reader");
+  vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "");
+  const output = vi
+    .spyOn(process.stdout, "write")
+    .mockImplementation(() => true);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string | URL | Request) => {
+      const parsed = new URL(String(url));
+      calls.push(parsed.href);
+      assert.equal(parsed.hostname, "catalog.cloudflarestorage.com");
+      assert.equal(parsed.searchParams.has("query"), false);
+      if (parsed.pathname.endsWith("/v1/config"))
+        return Response.json({ overrides: { prefix: "fixture" } });
+      if (parsed.pathname.endsWith("/tables"))
+        return Response.json({ identifiers: [{ name: "blocks" }] });
+      assert.match(
+        parsed.pathname,
+        /\/namespaces\/chain(?:_testnet)?\/tables\/blocks$/,
+      );
+      return Response.json({
+        metadata: {
+          snapshots: [{ "timestamp-ms": Date.now() }],
+          "current-schema-id": 1,
+          schemas: [
+            {
+              "schema-id": 0,
+              fields: [{ id: 1, name: "value", type: "float" }],
+            },
+            {
+              "schema-id": 1,
+              fields: [{ id: 1, name: "value", type: "double" }],
+            },
+          ],
         },
-      ],
-    });
-    assert.deepEqual(changed, []);
-  });
-
-  test("a DROPPED column is not a candidate", () => {
-    const changed = typeChangedAcrossSchemas({
-      "current-schema-id": 1,
-      schemas: [
-        {
-          "schema-id": 0,
-          fields: [field(1, "netuid", "int"), field(2, "gone", "string")],
-        },
-        { "schema-id": 1, fields: [field(1, "netuid", "int")] },
-      ],
-    });
-    assert.deepEqual(changed, []);
-  });
-
-  test("a single generation is never a candidate", () => {
-    assert.deepEqual(
-      typeChangedAcrossSchemas({
-        "current-schema-id": 0,
-        schemas: [{ "schema-id": 0, fields: [field(1, "a", "int")] }],
-      }),
-      [],
+      });
+    }),
+  );
+  try {
+    await checkLakehouseFreshness();
+    assert.equal(calls.length, 5);
+    assert.equal(
+      calls.filter((url) => url.endsWith("/tables/blocks")).length,
+      2,
     );
-  });
+    assert.match(
+      output.mock.calls.map(([text]) => String(text)).join(""),
+      /0 stale of 2/,
+    );
+  } finally {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    output.mockRestore();
+  }
+});
 
-  test("matching is by FIELD ID, not name", () => {
-    // Iceberg identifies a column by id; a rename with the same id is the same
-    // column, and two columns sharing a name across generations need not be.
-    const changed = typeChangedAcrossSchemas({
-      "current-schema-id": 1,
-      schemas: [
-        { "schema-id": 0, fields: [field(7, "old_name", "int")] },
-        { "schema-id": 1, fields: [field(7, "new_name", "long")] },
-      ],
-    });
-    assert.deepEqual(changed, ["new_name"]);
-  });
-
-  test("undefined metadata is not a crash", () => {
-    assert.deepEqual(typeChangedAcrossSchemas(undefined), []);
-  });
+test("catalog failures and incomplete responses cannot report a healthy inventory", async () => {
+  vi.stubEnv("R2_CATALOG_TOKEN", "fixture-catalog-reader");
+  const output = vi
+    .spyOn(process.stdout, "write")
+    .mockImplementation(() => true);
+  try {
+    for (const mode of [
+      "http",
+      "missing-list",
+      "empty-list",
+      "invalid-name",
+      "missing-metadata",
+      "invalid-snapshots",
+    ]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string | URL | Request) => {
+          const path = new URL(String(url)).pathname;
+          if (path.endsWith("/v1/config"))
+            return Response.json({ overrides: { prefix: "fixture" } });
+          if (mode === "http")
+            return new Response("unavailable", { status: 503 });
+          if (path.endsWith("/tables")) {
+            if (mode === "missing-list") return Response.json({});
+            if (mode === "empty-list")
+              return Response.json({ identifiers: [] });
+            if (mode === "invalid-name")
+              return Response.json({ identifiers: [{}] });
+            return Response.json({ identifiers: [{ name: "blocks" }] });
+          }
+          return Response.json(
+            mode === "missing-metadata"
+              ? {}
+              : { metadata: { snapshots: "unavailable" } },
+          );
+        }),
+      );
+      await assert.rejects(checkLakehouseFreshness(), /Catalog/);
+    }
+    assert.equal(output.mock.calls.length, 0);
+  } finally {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    output.mockRestore();
+  }
 });
