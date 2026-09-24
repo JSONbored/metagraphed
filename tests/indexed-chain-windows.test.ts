@@ -206,6 +206,14 @@ it("keeps raw-event pages and full activity counts available across the publicat
         )
         .slice(0, 5),
     );
+    expect(
+      await loadIndexedChainWindow(env, {
+        first: 65530,
+        last: 65552,
+        limit: 2,
+        cursor: [2000, 65552, 3],
+      }),
+    ).toEqual(rows.slice(0, 2));
     const before = await loadIndexedChainWindowStats(env, 65530, 65549);
     const after = await loadIndexedChainWindowStats(env, 65530, 65552);
     const count = (groups: Record<string, unknown>[], method: string) =>

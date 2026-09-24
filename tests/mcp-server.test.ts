@@ -5434,6 +5434,83 @@ describe("MCP get_subnet_ownership_history (native cold tier)", () => {
 // all-events tier as get_subnet_ownership_history above, so its tests mock
 // DATA_API the same way.
 describe("MCP get_subnet_lease_history (DATA_API binding)", () => {
+  test("uses the native retained census, preserves its full contract and refuses an unqualified empty", async () => {
+    const manifest = {
+      version: 1,
+      state: "complete",
+      network: "mainnet",
+      table: "chain_events",
+      generation: "a".repeat(64),
+      generatedAt: Date.now(),
+      sourceFiles: 2,
+      sourceRows: 1000,
+      source: {
+        table_uuid: "lease-fixture",
+        snapshot: "9007199254740993",
+        sequence: 1,
+        coverage: null,
+        identity: "b".repeat(64),
+      },
+      counts: { SubnetLeaseCreated: 0, SubnetLeaseTerminated: 0 },
+    };
+    const root = "metagraph/lease-presence-native/v1/mainnet";
+    let proofAvailable = true;
+    const dataApi = makeDataApi({ status: 503 });
+    const limiterKeys: string[] = [];
+    const env = {
+      DATA_API: dataApi,
+      DATA_RATE_LIMITER: {
+        async limit({ key }: { key: string }) {
+          limiterKeys.push(key);
+          return { success: true };
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          assert.ok(
+            [
+              `${root}/current.json`,
+              `${root}/${manifest.generation}/manifest.json`,
+            ].includes(key),
+          );
+          if (!proofAvailable && !key.endsWith("current.json")) return null;
+          return { size: 1000, json: async () => structuredClone(manifest) };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_lease_history",
+      { netuid: 64 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.degraded, undefined);
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.lease_events, []);
+    assert.equal(out.event_pallet, "SubtensorModule");
+    assert.deepEqual(out.event_kinds, [
+      "SubnetLeaseCreated",
+      "SubnetLeaseTerminated",
+    ]);
+    const validate = new Ajv2020({ strict: false }).compile(
+      outputSchemaFor("get_subnet_lease_history"),
+    );
+    assert.ok(validate(out), JSON.stringify(validate.errors));
+    assert.equal(dataApi.calls.length, 0);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    proofAvailable = false;
+    const declined = await callTool(
+      "get_subnet_lease_history",
+      { netuid: 64 },
+      { env },
+    );
+    assert.deepEqual(declined.body.result.structuredContent.degraded, {
+      reason: "tier_unavailable",
+    });
+    assert.equal(dataApi.calls.length, 1);
+  });
+
   function makeDataApi({ payload, status = 200, throws = false }: Row = {}) {
     const calls: URL[] = [];
     return {
@@ -5477,6 +5554,15 @@ describe("MCP get_subnet_lease_history (DATA_API binding)", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.count, 1);
     assert.equal(out.lease_events[0].event_kind, "SubnetLeaseCreated");
+    assert.equal(out.event_pallet, "SubtensorModule");
+    assert.deepEqual(out.event_kinds, [
+      "SubnetLeaseCreated",
+      "SubnetLeaseTerminated",
+    ]);
+    const validate = new Ajv2020({ strict: false }).compile(
+      outputSchemaFor("get_subnet_lease_history"),
+    );
+    assert.ok(validate(out), JSON.stringify(validate.errors));
     assert.equal(dataApi.calls[0].pathname, "/api/v1/subnets/7/lease/history");
   });
 

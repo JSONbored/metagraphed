@@ -1761,6 +1761,7 @@ import {
   loadSubnetBurnHistory,
 } from "./subnet-burn-history.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
+import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { isCrowdloanId, loadCrowdloan, loadCrowdloans } from "./crowdloans.ts";
 // coldTierChainEventsPayload is still reached for CONVICTION (#9319), which
 // has no composer of its own. The ownership-history branch no longer comes
@@ -3616,11 +3617,15 @@ async function loadSubnetConvictionFromDataApi(ctx: McpCtx, netuid: number) {
   return narrowConviction(asJsonObject(await response.json()), netuid);
 }
 
-// Mirrors loadSubnetOwnershipHistory above (#6719): same DATA_API-direct
-// proxy shape, a different Postgres-tier route (account_events, not
-// chain_events).
+// Use the same native lease census as REST. A missing or invalid census
+// preserves the data-tier fallback and its explicit degraded answer.
 async function loadSubnetLeaseHistory(ctx: McpCtx, netuid: number) {
   await requireDataTierRateLimit(ctx);
+  const native = await coldTierChainEventsPayload(
+    ctx.env,
+    new URL(`https://d/api/v1/subnets/${netuid}/lease/history`),
+  );
+  if (native) return native.data;
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
     const degraded = degradedDataApiRead(
@@ -3661,6 +3666,7 @@ async function loadSubnetLeaseHistory(ctx: McpCtx, netuid: number) {
   }
   const data = asJsonObject(await response.json());
   return {
+    ...buildSubnetLeaseHistory([], netuid),
     schema_version: data?.schema_version ?? 1,
     netuid,
     count: data?.count ?? 0,
