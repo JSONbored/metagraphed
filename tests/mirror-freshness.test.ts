@@ -18,6 +18,8 @@ function fixture(): MirrorFreshnessEvidence {
     ]),
   );
   tables.surface_history = "surface_history: no rows above 10006";
+  tables.subnet_ownership_history =
+    "subnet_ownership_history: no rows above 129";
   tables.treasury_readings =
     "treasury_readings: unchanged (0 rows), no snapshot";
   return {
@@ -26,15 +28,20 @@ function fixture(): MirrorFreshnessEvidence {
       complete: true,
       namespace: "chain",
       checked_at: new Date(now - HOUR).toISOString(),
-      tables_expected: 6,
-      tables_reported: 6,
+      tables_expected: 8,
+      tables_reported: 8,
       tables,
       failures: {},
     },
-    lanes: ["registry-sync", "registry-resync", "compute-declarations"].map(
-      (lane) => ({ lane, verdict: "ok", checked_at: now - HOUR }),
-    ),
+    lanes: [
+      "registry-sync",
+      "registry-resync",
+      "compute-declarations",
+      "subnet-ownership",
+      "neon:subnet-ownership",
+    ].map((lane) => ({ lane, verdict: "ok", checked_at: now - HOUR })),
     computeNewest: now - HOUR,
+    ownershipNewest: now - HOUR,
   };
 }
 afterEach(() => {
@@ -120,6 +127,8 @@ test("source failure or silence still fails when the catalog is recent", () => {
     "registry-sync",
     "registry-resync",
     "compute-declarations",
+    "subnet-ownership",
+    "neon:subnet-ownership",
   ])
     for (const change of [
       "missing",
@@ -141,7 +150,9 @@ test("source failure or silence still fails when the catalog is recent", () => {
       const table =
         source === "compute-declarations"
           ? "compute_declarations"
-          : "providers";
+          : source.endsWith("subnet-ownership")
+            ? "subnet_ownership"
+            : "providers";
       assert.equal(
         evaluateMirrorFreshness(table, true, true, evidence, now).ok,
         false,
@@ -165,6 +176,48 @@ test("source failure or silence still fails when the catalog is recent", () => {
     assert.equal(
       evaluateMirrorFreshness("emission_flow_watch", false, true, evidence, now)
         .ok,
+      true,
+    );
+  }
+});
+
+test("unchanged ownership requires current collection, ingestion and source rows", () => {
+  for (const table of ["subnet_ownership", "subnet_ownership_history"]) {
+    for (const ownershipNewest of [
+      null,
+      NaN,
+      0,
+      now - 2 * HOUR - 1,
+      now + 1,
+      "recent",
+    ])
+      assert.equal(
+        evaluateMirrorFreshness(
+          table,
+          true,
+          true,
+          { ...fixture(), ownershipNewest },
+          now,
+        ).ok,
+        false,
+      );
+    for (const source of ["subnet-ownership", "neon:subnet-ownership"]) {
+      const evidence = fixture();
+      evidence.lanes.find((row) => row.lane === source)!.checked_at =
+        now - 2 * HOUR - 1;
+      assert.equal(
+        evaluateMirrorFreshness(table, true, true, evidence, now).ok,
+        false,
+      );
+    }
+    const evidence = fixture();
+    evidence.ownershipNewest = now - 2 * HOUR;
+    for (const lane of evidence.lanes.filter((row) =>
+      String(row.lane).endsWith("subnet-ownership"),
+    ))
+      lane.checked_at = now - 2 * HOUR;
+    assert.equal(
+      evaluateMirrorFreshness(table, false, true, evidence, now).ok,
       true,
     );
   }
@@ -211,7 +264,7 @@ function transport(evidence = fixture()) {
     if (url.pathname.includes("/d1/database/")) {
       assert.equal(init?.method, "POST");
       const { batch } = JSON.parse(String(init?.body));
-      assert.equal(batch.length, 2);
+      assert.equal(batch.length, 3);
       assert.ok(
         batch.every((statement: { sql: string }) =>
           statement.sql.startsWith("SELECT "),
@@ -222,6 +275,7 @@ function transport(evidence = fixture()) {
         result: [
           { success: true, results: evidence.lanes },
           { success: true, results: [{ newest: evidence.computeNewest }] },
+          { success: true, results: [{ newest: evidence.ownershipNewest }] },
         ],
       });
     }
@@ -252,7 +306,7 @@ function transport(evidence = fixture()) {
   });
 }
 
-test("the live reader uses one bounded R2 object and a two-SELECT D1 batch", async () => {
+test("the live reader uses one bounded R2 object and a three-SELECT D1 batch", async () => {
   credentials();
   const fetcher = transport();
   assert.deepEqual(await loadMirrorFreshnessEvidence(fetcher), fixture());
