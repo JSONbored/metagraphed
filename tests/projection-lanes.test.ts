@@ -2186,6 +2186,18 @@ describe("the split per-subnet aggregates merge back by netuid", () => {
 // "The operation was aborted" because its pair-grouping CTE had grown past a
 // bound borrowed from a context it does not share (#9423).
 describe("portable projection engine boundary", () => {
+  test("direct lane computation declines without an injected native engine", async () => {
+    const fetch = vi.fn(() => {
+      throw new Error("An unconfigured lane must not request a remote engine");
+    });
+    vi.stubGlobal("fetch", fetch);
+    assert.equal(
+      await laneNamed("chain-transfer-pairs").compute({} as Env, "mainnet"),
+      null,
+    );
+    assert.equal(fetch.mock.calls.length, 0);
+  });
+
   test("request workers cannot fall back to the retired SQL service", () => {
     const source = readFileSync(
       new URL("../src/projection-lanes.ts", import.meta.url),
