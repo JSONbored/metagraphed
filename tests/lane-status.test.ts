@@ -129,14 +129,16 @@ describe("lane status", () => {
     assert.match(v.detail, /RuntimeError: boom/);
   });
 
-  test("ok:null does not read as ok:false", () => {
+  test("a fresh stamp without success is incomplete, not a reported failure", () => {
     // The heartbeat writes `ok: null` mid-scan. A truthiness test would call
     // that a recorded failure and report the wrong fault for every killed run.
     const v = evaluate(
       { lane: SUMMARY, body: { ok: null, checked_at: at(60_000) }, nowMs: NOW },
       EXPECTED_LANES[SUMMARY],
     );
-    assert.equal(v.ok, true);
+    assert.equal(v.ok, false);
+    assert.match(v.detail, /no successful complete receipt/);
+    assert.doesNotMatch(v.detail, /reported ok:false/);
   });
 
   test("the decoder's OWN shape is read, not the python one", () => {
@@ -275,4 +277,59 @@ describe("which objects are swept", () => {
       assert.ok(lane in EXPECTED_LANES, `${lane} is not classified`);
     }
   });
+});
+
+test("hourly curation receipts require success, completeness and freshness on both networks", () => {
+  for (const lane of [
+    "prometheus-curation-status.json",
+    "testnet/prometheus-curation-status.json",
+    "prometheus-derived-status.json",
+  ]) {
+    const rule = EXPECTED_LANES[lane];
+    assert.equal(rule?.maxAgeMs, 6 * HOUR);
+    const completed = {
+      ok: true,
+      complete: true,
+      already_complete: true,
+      checked_at: at(HOUR),
+    };
+    assert.equal(
+      evaluate({ lane, body: completed, nowMs: NOW }, rule).ok,
+      true,
+    );
+    for (const body of [
+      { ...completed, ok: false },
+      { ...completed, ok: null },
+      { ...completed, complete: false },
+      { ...completed, complete: undefined },
+      { ...completed, checked_at: at(7 * HOUR) },
+      { ok: null, started_at: at(5000), phase: "reconciling" },
+      null,
+    ]) {
+      assert.equal(evaluate({ lane, body, nowMs: NOW }, rule).ok, false);
+    }
+  }
+});
+
+test("an ordinary lane cannot turn a fresh timestamp into success without an affirmative verdict", () => {
+  for (const ok of [undefined, null, 0, "true"]) {
+    assert.equal(
+      evaluate(
+        { lane: COMPLETED, body: { ok, checked_at: at(1000) }, nowMs: NOW },
+        EXPECTED_LANES[COMPLETED],
+      ).ok,
+      false,
+    );
+  }
+  assert.equal(
+    evaluate(
+      {
+        lane: COMPLETED,
+        body: { ok: true, complete: false, checked_at: at(1000) },
+        nowMs: NOW,
+      },
+      EXPECTED_LANES[COMPLETED],
+    ).ok,
+    false,
+  );
 });

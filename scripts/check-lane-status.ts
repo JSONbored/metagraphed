@@ -80,6 +80,8 @@ export interface LaneRule {
   /** Why this bound, in the producer's own terms. */
   reason: string;
   shape: LaneShape;
+  /** Producers with a durable completion receipt must explicitly finish it. */
+  requireComplete?: boolean;
 }
 
 /**
@@ -113,6 +115,24 @@ export const EXPECTED_LANES: Readonly<Record<string, LaneRule>> = {
     maxAgeMs: 6 * HOUR,
     shape: "updated_at",
     reason: "the testnet decoder, same hourly tick",
+  },
+  "prometheus-curation-status.json": {
+    maxAgeMs: 6 * HOUR,
+    shape: "checked_at",
+    requireComplete: true,
+    reason: "mainnet event curation, verified on every hourly decode tick",
+  },
+  "testnet/prometheus-curation-status.json": {
+    maxAgeMs: 6 * HOUR,
+    shape: "checked_at",
+    requireComplete: true,
+    reason: "testnet event curation, verified on every hourly decode tick",
+  },
+  "prometheus-derived-status.json": {
+    maxAgeMs: 6 * HOUR,
+    shape: "checked_at",
+    requireComplete: true,
+    reason: "mainnet derived-history reconciliation, every hourly decode tick",
   },
   "state-mirror-status.json": {
     maxAgeMs: 6 * HOUR,
@@ -286,6 +306,16 @@ export function evaluate(
     return {
       ok: false,
       detail: `${lane} records no completed pass at all (${rule.reason})`,
+    };
+  }
+  if (
+    body["ok"] !== true ||
+    body["complete"] === false ||
+    (rule.requireComplete && body["complete"] !== true)
+  ) {
+    return {
+      ok: false,
+      detail: `${lane} has no successful complete receipt (${rule.reason})`,
     };
   }
   if (nowMs - completed > rule.maxAgeMs) {
