@@ -62,6 +62,231 @@ function archiveFixture() {
     },
   };
 }
+
+test("verified archive payloads coalesce, preserve row values and isolate callers and buckets", async () => {
+  const f = archiveFixture();
+  const get = vi.spyOn(f.bucket, "get");
+  const e = { METAGRAPH_ARCHIVE: f.bucket };
+  const table = "account_identity_history";
+  const rows = await Promise.all(
+    Array.from({ length: 6 }, () => readStateArchiveRows(e, table)),
+  );
+  assert.ok(rows[0]);
+  for (const row of rows) assert.deepEqual(row, rows[0]);
+  assert.equal(
+    get.mock.calls.filter(([key]) => key.endsWith("/rows.json")).length,
+    1,
+  );
+  const original = structuredClone(rows[0]);
+  rows[0][0].name = "caller mutation";
+  assert.deepEqual(await readStateArchiveRows(e, table), original);
+  assert.equal(
+    get.mock.calls.filter(([key]) => key.endsWith("/rows.json")).length,
+    1,
+  );
+  const other = archiveFixture();
+  const otherGet = vi.spyOn(other.bucket, "get");
+  assert.deepEqual(
+    await readStateArchiveRows({ METAGRAPH_ARCHIVE: other.bucket }, table),
+    original,
+  );
+  assert.equal(
+    otherGet.mock.calls.filter(([key]) => key.endsWith("/rows.json")).length,
+    1,
+  );
+});
+
+test("cached payloads cannot bypass changed selection or a missing immutable proof", async () => {
+  const f = archiveFixture();
+  const e = { METAGRAPH_ARCHIVE: f.bucket };
+  const table = "account_identity_history";
+  const pointer = `metagraph/state-archive/v1/${table}/current.json`;
+  const manifest = JSON.parse(f.records[pointer].raw);
+  const proof = `metagraph/state-archive/v1/${table}/${manifest.generation}/manifest.json`;
+  const original = await readStateArchiveRows(e, table);
+  const saved = f.records[proof];
+  delete f.records[proof];
+  assert.equal(await readStateArchiveRows(e, table), null);
+  f.records[proof] = saved;
+  manifest.object.etag = "new-identity";
+  const raw = JSON.stringify(manifest);
+  for (const key of [pointer, proof])
+    f.records[key] = { raw, size: Buffer.byteLength(raw), etag: "manifest" };
+  // An altered manifest must force a fresh body check, even with the same generation.
+  assert.equal(await readStateArchiveRows(e, table), null);
+  f.records[manifest.object.key].etag = "new-identity";
+  assert.deepEqual(await readStateArchiveRows(e, table), original);
+  delete f.records[pointer];
+  assert.equal(await readStateArchiveRows(e, table), undefined);
+});
+
+test("cache expiry and failed payload reads always revalidate the selected object", async () => {
+  const f = archiveFixture();
+  const e = { METAGRAPH_ARCHIVE: f.bucket };
+  const table = "account_identity_history";
+  const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+  const get = vi.spyOn(f.bucket, "get");
+  const original = await readStateArchiveRows(e, table);
+  clock.mockReturnValue(now + 30_000);
+  const payloadKey = get.mock.calls.find(([key]) =>
+    key.endsWith("/rows.json"),
+  )![0];
+  const saved = f.records[payloadKey];
+  delete f.records[payloadKey];
+  assert.equal(await readStateArchiveRows(e, table), null);
+  f.records[payloadKey] = saved;
+  assert.deepEqual(await readStateArchiveRows(e, table), original);
+  assert.equal(
+    get.mock.calls.filter(([key]) => key.endsWith("/rows.json")).length,
+    3,
+  );
+});
+
+test("archive payload cache evicts old entries within its serialized byte budget", async () => {
+  const f = archiveFixture();
+  const get = vi.spyOn(f.bucket, "get");
+  const e = { METAGRAPH_ARCHIVE: f.bucket };
+  for (const table of [
+    "account_identity_history",
+    "subnet_identity_history",
+    "subnet_hyperparams_history",
+  ] as const) {
+    const pointer = `metagraph/state-archive/v1/${table}/current.json`;
+    const manifest = JSON.parse(f.records[pointer].raw);
+    manifest.object.bytes =
+      table === "subnet_hyperparams_history"
+        ? 6 * 1024 * 1024
+        : 2 * 1024 * 1024;
+    // Pad the actual source, rather than falsifying the stored object size.
+    const payload = f.records[manifest.object.key];
+    payload.raw += " ".repeat(
+      manifest.object.bytes - Buffer.byteLength(payload.raw),
+    );
+    payload.size = manifest.object.bytes;
+    const raw = JSON.stringify(manifest);
+    for (const key of [
+      pointer,
+      `metagraph/state-archive/v1/${table}/${manifest.generation}/manifest.json`,
+    ])
+      f.records[key] = { raw, size: Buffer.byteLength(raw), etag: "manifest" };
+    assert.ok(await readStateArchiveRows(e, table));
+  }
+  const count = (table: string) =>
+    get.mock.calls.filter(
+      ([key]) => key.includes(`/${table}/`) && key.endsWith("/rows.json"),
+    ).length;
+  assert.ok(await readStateArchiveRows(e, "subnet_identity_history"));
+  assert.equal(count("subnet_identity_history"), 1);
+  assert.ok(await readStateArchiveRows(e, "account_identity_history"));
+  assert.equal(count("account_identity_history"), 2);
+});
+
+test.each([false, true])(
+  "expanded numeric payloads serve without exceeding the cache reservation (superseded=%s)",
+  async (superseded) => {
+    const f = archiveFixture();
+    const e = { METAGRAPH_ARCHIVE: f.bucket };
+    const table = "account_identity_history";
+    const pointer = `metagraph/state-archive/v1/${table}/current.json`;
+    const manifest = JSON.parse(f.records[pointer].raw);
+    const key = manifest.object.key;
+    const original = f.records[key];
+    const body = JSON.parse(original.raw);
+    body.rows[0].extension = Array.from({ length: 2_000 }, () => 0.000001);
+    const expanded = JSON.stringify(body).replaceAll("0.000001", "1e-6");
+    assert.ok(JSON.stringify(body.rows).length > Buffer.byteLength(expanded));
+    const select = (payload: FixtureObject) => {
+      f.records[key] = payload;
+      manifest.object.bytes = payload.size;
+      manifest.object.etag = payload.etag;
+      const raw = JSON.stringify(manifest);
+      for (const name of [
+        pointer,
+        `metagraph/state-archive/v1/${table}/${manifest.generation}/manifest.json`,
+      ])
+        f.records[name] = {
+          raw,
+          size: Buffer.byteLength(raw),
+          etag: "manifest",
+        };
+    };
+    select({ ...original, raw: expanded, size: Buffer.byteLength(expanded) });
+    let entered!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const originalGet = f.bucket.get.bind(f.bucket);
+    let loads = 0;
+    vi.spyOn(f.bucket, "get").mockImplementation(async (name) => {
+      const object = await originalGet(name);
+      if (name === key && ++loads === 1 && superseded) {
+        entered();
+        await pending;
+      }
+      return object;
+    });
+    const old = readStateArchiveRows(e, table);
+    if (superseded) {
+      await started;
+      select({ ...original, etag: "new-identity" });
+      assert.deepEqual(
+        await readStateArchiveRows(e, table),
+        JSON.parse(original.raw).rows,
+      );
+      release();
+    }
+    assert.deepEqual(await old, body.rows);
+    assert.deepEqual(
+      await readStateArchiveRows(e, table),
+      superseded ? JSON.parse(original.raw).rows : body.rows,
+    );
+    assert.equal(loads, 2);
+  },
+);
+
+test("a failed superseded load cannot evict a newer verified payload", async () => {
+  const f = archiveFixture();
+  const e = { METAGRAPH_ARCHIVE: f.bucket };
+  const table = "account_identity_history";
+  const pointer = `metagraph/state-archive/v1/${table}/current.json`;
+  const manifest = JSON.parse(f.records[pointer].raw);
+  let entered!: () => void;
+  let rejectOld!: (reason: Error) => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const originalGet = f.bucket.get.bind(f.bucket);
+  let loads = 0;
+  vi.spyOn(f.bucket, "get").mockImplementation(async (key) => {
+    if (key === manifest.object.key && ++loads === 1) {
+      entered();
+      return new Promise((_resolve, reject) => {
+        rejectOld = reject;
+      });
+    }
+    return originalGet(key);
+  });
+  const old = readStateArchiveRows(e, table);
+  await started;
+  manifest.object.etag = "new-identity";
+  f.records[manifest.object.key].etag = "new-identity";
+  const raw = JSON.stringify(manifest);
+  for (const key of [
+    pointer,
+    `metagraph/state-archive/v1/${table}/${manifest.generation}/manifest.json`,
+  ])
+    f.records[key] = { raw, size: Buffer.byteLength(raw), etag: "manifest" };
+  const fresh = await readStateArchiveRows(e, table);
+  assert.ok(fresh);
+  rejectOld(Error("interrupted old read"));
+  assert.equal(await old, null);
+  assert.deepEqual(await readStateArchiveRows(e, table), fresh);
+  assert.equal(loads, 2);
+});
 const env = () => ({
   METAGRAPH_ARCHIVE: archiveFixture().bucket,
   D1_STATE: db,
