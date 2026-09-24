@@ -79,6 +79,7 @@
   "vars": {
     // Both networks passed complete native artifact and reader qualification.
     "NATIVE_PROJECTIONS": "enabled",
+    "RETAINED_BLOCKS_NETWORKS": "mainnet,testnet",
     "D1_EXPORT_REVISIONS": "enabled",
     // Retained history copied and qualified before this ownership switch.
     // Writers and readers move together; other tables keep their existing owner.
