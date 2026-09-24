@@ -75,7 +75,8 @@ export function nativeRuntimeEnv(
   return {
     keys,
     env: {
-      R2_SQL_TOKEN: "legacy-must-not-be-used",
+      NATIVE_PROJECTIONS: "enabled",
+      NATIVE_HISTORY_FIXTURE: "legacy-must-not-be-used",
       METAGRAPH_ARCHIVE: {
         async get(
           key: string,

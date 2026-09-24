@@ -1,7 +1,7 @@
 // RPC usage over the historical portion not covered by live telemetry.
 // Verified native snapshots preserve complete weighted observations.
 import { ANALYTICS_WINDOW_DAYS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import { loadRpcUsageNative } from "./rpc-usage-native.ts";
 
 /** Canonical supported window and timestamp validation. */
@@ -30,7 +30,7 @@ export function windowCutoffMs(
  * different and wrong claim.
  */
 export async function loadRpcUsageColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   {
     window = "7d",
     now = Date.now(),

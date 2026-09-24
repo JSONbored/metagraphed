@@ -1,8 +1,8 @@
-import type { R2SqlReader } from "./r2-sql.ts";
+import type { HistoricalQueryReader } from "./history-readers.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 
 interface ProjectionComputeContext {
-  query: R2SqlReader;
+  query: HistoricalQueryReader;
   now: number;
   callModule?: string;
 }
@@ -25,7 +25,7 @@ export function projectionComputeEnv(
   return scoped;
 }
 
-export function projectionQuery(env: Env): R2SqlReader | undefined {
+export function projectionQuery(env: Env): HistoricalQueryReader | undefined {
   return contexts.get(env)?.query;
 }
 

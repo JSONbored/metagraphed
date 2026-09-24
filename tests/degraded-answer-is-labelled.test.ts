@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // A tier that declined must not answer `ok: true` with zeros and no header
 // (#10270).
@@ -6,7 +8,7 @@ import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // transfers_scanned: 0` for an account with 114, on roughly one request in
 // five. `transfers_scanned: 0` is the tell: the route reported that it scanned
 // nothing and concluded there was nothing. Its Postgres rung is `"retired"` in
-// wrangler.jsonc, so the lakehouse read IS its tier -- and `src/r2-sql.ts`'s
+// wrangler.jsonc, so the lakehouse read IS its tier -- and `src/history-readers.ts`'s
 // failure counter, declared with "same contract as the Postgres tier's
 // fallback generation: a caller can snapshot this before a read and compare
 // after", had no reader outside its own test file.
@@ -25,7 +27,7 @@ import {
   degradedSnapshot,
   labelDegradedResponse,
 } from "../workers/request-handlers/analytics.ts";
-import { currentR2SqlFailureGeneration } from "../src/r2-sql.ts";
+import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
 import { OFFSET_EMULATION_CAP } from "../src/r2-sql-blocks.ts";
 import { API_ROUTES, FEED_ROUTES } from "../src/contracts.ts";
 import { concretePath } from "./concrete-path.ts";
@@ -43,7 +45,10 @@ const COUNTERPARTY = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
  * would therefore drive the same empty payload while proving nothing about the
  * case that matters -- the configured lakehouse that declined.
  */
-const LAKEHOUSE_ENV = { R2_SQL_TOKEN: "test-token" } as unknown as Env;
+const LAKEHOUSE_ENV = {
+  NATIVE_PROJECTIONS: "enabled",
+  NATIVE_HISTORY_FIXTURE: "test-token",
+} as unknown as Env;
 
 const DEGRADED_HEADER = "x-metagraph-degraded";
 
@@ -257,7 +262,7 @@ describe("no registered route serves an unlabelled decline (#10270)", () => {
    */
   const ANCHORS = [
     "/api/v1/accounts/{ss58}/counterparties",
-    "/api/v1/chain/weights",
+    "/api/v1/chain-events",
   ];
 
   test("every route that saw the lakehouse decline says so", async () => {
@@ -267,7 +272,7 @@ describe("no registered route serves an unlabelled decline (#10270)", () => {
 
     await withFetch(refusingLakehouse, async () => {
       for (const route of EVERY_ROUTE) {
-        const before = currentR2SqlFailureGeneration();
+        const before = currentIndexedHistoryFailureGeneration();
         let res: Response;
         try {
           res = (await handleRequest(
@@ -281,7 +286,7 @@ describe("no registered route serves an unlabelled decline (#10270)", () => {
         }
         // The counter is the whole discriminator: a route that never asked the
         // lakehouse has nothing to declare, and needs no exemption entry here.
-        if (currentR2SqlFailureGeneration() === before) continue;
+        if (currentIndexedHistoryFailureGeneration() === before) continue;
         exercised.push(route.path);
         if (res.status === 200 && !res.headers.get(DEGRADED_HEADER)) {
           unlabelled.push(route.path);
@@ -512,7 +517,7 @@ describe("what the router label refuses to touch", () => {
   // The four early returns, each stated once. Driving them through a route
   // would need a route that happens to be in each state, which is how a
   // condition ends up asserted by coincidence rather than on purpose.
-  const stale = () => ({ ...degradedSnapshot(), r2Sql: -1 });
+  const stale = () => ({ ...degradedSnapshot(), indexedHistory: -1 });
 
   test("a non-200 is left alone", () => {
     const res = new Response("{}", { status: 503 });

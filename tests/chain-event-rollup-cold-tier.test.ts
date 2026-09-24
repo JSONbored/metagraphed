@@ -100,7 +100,10 @@ function fakeEngine(
  * configured, so a suite running against an empty env would drive every decline
  * down the `miss` branch and never exercise the one that marks a payload.
  */
-const CONFIGURED = { R2_SQL_TOKEN: "cfut_test" };
+const CONFIGURED = {
+  NATIVE_PROJECTIONS: "enabled",
+  NATIVE_HISTORY_FIXTURE: "cfut_test",
+};
 
 const load = (
   overrides: Parameters<typeof fakeEngine>[0] = {},

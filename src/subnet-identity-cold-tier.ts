@@ -3,14 +3,14 @@ import { readStateArchiveRows } from "./state-archive-read.ts";
 // Subnet identity timelines retain their original archived row IDs and ordering.
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { safeBlockNumber } from "./r2-sql.ts";
+import { safeBlockNumber } from "./history-readers.ts";
 import { buildSubnetIdentityHistory } from "./subnet-identity-history.ts";
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
 } from "./chain-identity-history.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 
 /** The (observed_at, id) pair the per-subnet timeline pages on. */
 const CURSOR_ARITY = 2;
@@ -20,7 +20,7 @@ const CURSOR_ARITY = 2;
  * lakehouse cannot answer, so the caller keeps its schema-stable empty.
  */
 export async function loadSubnetIdentityHistoryColdTier(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   netuid: unknown,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildSubnetIdentityHistory> | null> {
@@ -70,7 +70,7 @@ export async function loadSubnetIdentityHistoryColdTier(
  * data-api's own single-shot LIMIT query.
  */
 export async function loadChainIdentityHistoryColdTier(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   query: { limit?: unknown } = {},
 ): Promise<ReturnType<typeof buildChainIdentityHistory> | null> {
   // An absent limit takes the route default, exactly as data-api resolves it.

@@ -369,7 +369,13 @@ describe("selected account feed serving", () => {
     ).toHaveLength(5);
     const testnet = archive("testnet");
     expect(
-      await loadIndexedAccountFeedPage(testnet.env, selectors, 5, 0, "testnet"),
+      await loadIndexedAccountFeedPage(
+        { ...testnet.env, NATIVE_PROJECTIONS: "enabled" },
+        selectors,
+        5,
+        0,
+        "testnet",
+      ),
     ).toEqual([]);
     expect(
       testnet.get.mock.calls.every(([key]) => key.includes("/testnet/")),

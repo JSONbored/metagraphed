@@ -1,9 +1,11 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import assert from "node:assert/strict";
 import type { Row } from "./row-type.ts";
 import {
+  archiveEnv,
   forbiddenDataApi,
   lakehouse,
-  LAKEHOUSE_ENV,
 } from "./helpers/cold-tier-env.ts";
 import { afterEach, describe, test } from "vitest";
 import {
@@ -272,14 +274,21 @@ describe("GET /api/v1/chain/weights/setters", () => {
       last_set: 1_750_009_000_000,
     }));
     const total = rows.reduce((n, r) => n + Number(r.weight_sets ?? 0), 0);
-    lake = lakehouse((sql) =>
-      sql.includes("FROM (SELECT")
-        ? [{ distinct_setters: rows.length }]
-        : sql.includes("GROUP BY")
-          ? rows
-          : [{ weight_sets: total, newest_observed: 1_750_009_000_000 }],
-    );
-    return { ...createLocalArtifactEnv(), ...LAKEHOUSE_ENV };
+    const cell = {
+      rows,
+      totals: {
+        weight_sets: total,
+        distinct_setters: rows.length,
+        newest_observed: 1750009000000,
+      },
+    };
+    return {
+      ...createLocalArtifactEnv(),
+      ...archiveEnv({
+        schema_version: 1,
+        windows: { "7d": cell, "30d": cell },
+      }),
+    };
   }
 
   test("returns the leaderboard at the requested window", async () => {

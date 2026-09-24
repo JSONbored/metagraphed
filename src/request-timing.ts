@@ -23,7 +23,7 @@
 // function in front of it:
 //
 //   neon    `pgReadStore`'s runner      src/read-store.ts
-//   r2sql   `r2SqlQuery`                src/r2-sql.ts
+//   r2sql   `r2SqlQuery`                src/history-readers.ts
 //   r2      the projection's `readJson` src/account-summary-projection.ts
 //
 // Instrument those and every route -- including ones written next year -- is

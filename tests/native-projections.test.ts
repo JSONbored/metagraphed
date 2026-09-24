@@ -16,7 +16,7 @@ import {
 } from "../src/projection-compute-context.ts";
 import { PROJECTION_LANES } from "../src/projection-lanes.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
-import type { R2SqlReader } from "../src/r2-sql.ts";
+import type { HistoricalQueryReader } from "../src/history-readers.ts";
 import type { ChainNetworkId } from "../src/chain-network.ts";
 
 const fixture = JSON.parse(
@@ -32,7 +32,7 @@ const fixture = JSON.parse(
 };
 afterEach(() => vi.restoreAllMocks());
 
-const native: R2SqlReader = async (_env, sql) => {
+const native: HistoricalQueryReader = async (_env, sql) => {
   assert.ok(Object.hasOwn(fixture.queries, sql), sql);
   return structuredClone(fixture.queries[sql]);
 };

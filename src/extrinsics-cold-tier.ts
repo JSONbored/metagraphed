@@ -17,7 +17,7 @@ import {
   safeHexLiteral,
   safeNameLiteral,
   safeSs58Literal,
-} from "./r2-sql.ts";
+} from "./history-readers.ts";
 import {
   readSelectedHistoryBlock,
   readSelectedHistoryHash,
@@ -34,7 +34,7 @@ import {
   AccountEventsRowSchema,
   ExtrinsicsRowSchema,
 } from "../schemas-src/lakehouse.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 
 /** Same embedded-event cap as the public detail contract. */
 const MAX_EMBEDDED_EVENTS = 50;
@@ -78,7 +78,7 @@ function validFeedQuery(query: ExtrinsicFeedQuery): boolean {
 
 /** Rows for a feed-shaped query, offset emulated by over-fetch + slice. */
 async function feedRows(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   query: ExtrinsicFeedQuery,
   /** Network identity of the retained history. */
   network?: ChainNetworkId,
@@ -191,7 +191,7 @@ async function feedRows(
 
 /** The recent-extrinsic feed, and the filtered variants built on it. */
 export async function loadExtrinsicFeedColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   query: ExtrinsicFeedQuery,
   /** Network identity of the retained history. */
   network?: ChainNetworkId,
@@ -207,7 +207,7 @@ export async function loadExtrinsicFeedColdTier(
 
 /** Every extrinsic in one block. `ref` is a height or a block hash. */
 export async function loadBlockExtrinsicsColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ref: string,
   page: { limit: number; offset?: number | null },
   /** Network identity of the retained history. */
@@ -253,7 +253,7 @@ export async function loadBlockExtrinsicsColdTier(
 
 /** Signer history uses its own index, never an account-event-derived floor. */
 export async function loadAccountExtrinsicsColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   page: {
     limit: number;
@@ -289,7 +289,7 @@ export async function loadAccountExtrinsicsColdTier(
 
 /** A block hash resolved to its height, or the height itself. */
 async function resolveBlockHeight(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ref: string,
   /** Network identity of the retained history. */
   network?: ChainNetworkId,
@@ -318,7 +318,7 @@ async function resolveBlockHeight(
  * account_events it emitted embedded exactly as the Postgres tier embeds them.
  */
 export async function loadExtrinsicColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ref: string,
   /** Network identity of the retained history. */
   network?: ChainNetworkId,
@@ -389,7 +389,7 @@ export async function loadExtrinsicColdTier(
  * is a shape the caller already handles.
  */
 async function embeddedEvents(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   block: number,
   index: number,
   network: ChainNetworkId | undefined,

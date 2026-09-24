@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 // #8700: the chain-history cold tier, per network.
 //
 // The property under test is which NAMESPACE each read targets, because that is
@@ -69,14 +71,17 @@ import {
 import { loadExtrinsicFeedColdTier } from "../src/extrinsics-cold-tier.ts";
 import { loadChainEventsColdTier } from "../src/chain-events-cold-tier.ts";
 import { loadAccountEventsColdTier } from "../src/events-cold-tier.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import {
   decodeWatermarkKey,
   resetDecodeWatermarkCache,
 } from "../src/decode-watermark.ts";
 import { mockEnv } from "./row-type.ts";
 
-const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
+const TOKEN = {
+  NATIVE_PROJECTIONS: "enabled",
+  [NATIVE_FIXTURE_ENV]: "cfut_test",
+};
 
 /**
  * A lakehouse env that also PUBLISHES a decode watermark for both networks.

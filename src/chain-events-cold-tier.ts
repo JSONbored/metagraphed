@@ -41,13 +41,8 @@ import {
   loadChainEventsHeadHotTier,
 } from "./chain-detail-hot-tier.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  chainTable,
-} from "./chain-network.ts";
-import { r2SqlQuery, safeBlockNumber, safeNameLiteral } from "./r2-sql.ts";
-import { CHAIN_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { safeBlockNumber, safeNameLiteral } from "./history-readers.ts";
 import type { ChainEventsRow } from "../generated/lakehouse/types.ts";
 import { lakehouseHeadBlock } from "./blocks-seam.ts";
 import { readSelectedHistoryBlock } from "./indexed-history-store.ts";
@@ -56,18 +51,9 @@ import {
   loadIndexedChainWindowStats,
 } from "./indexed-chain-windows.ts";
 import { ChainEventsRowSchema } from "../schemas-src/lakehouse.ts";
-import {
-  SUBNET_LEASE_CREATED_KIND,
-  SUBNET_LEASE_TERMINATED_KIND,
-} from "./subnet-lease-history.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import { loadNativeLeasePresence } from "./lease-presence-native.ts";
 import type { ArtifactStoreEnv } from "./projection-store.ts";
-
-/** Kept identical to the deleted handler's SELECT list so both tiers hand the
- * caller the same event shape. */
-// The generated tuple, not a retyped copy -- see src/r2-sql-blocks.ts for why.
-const EVENT_COLUMNS = CHAIN_EVENTS_COLUMNS.join(", ");
 
 /**
  * How many blocks one page may scan. ~16.7 hours of chain at 12s/block, and
@@ -162,7 +148,7 @@ export function chainEventsQueryError(query: ChainEventsQuery): string | null {
  * faithfully so the caller keeps its schema-stable empty.
  */
 export async function loadChainEventsColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   query: ChainEventsQuery,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -170,19 +156,16 @@ export async function loadChainEventsColdTier(
   const limit = safeBlockNumber(query.limit);
   if (limit === null || limit <= 0) return null;
 
-  const where: string[] = [];
-
   // A filter that cannot be expressed safely DECLINES rather than being
   // dropped -- silently widening a filtered feed to everything would be a
   // wrong answer that looks like a working one.
-  for (const [value, column] of [
+  for (const [value] of [
     [query.pallet, "pallet"],
     [query.method, "method"],
   ] as [unknown, string][]) {
     if (value == null) continue;
     const literal = safeNameLiteral(value);
     if (literal === null) return null;
-    where.push(`${column} = '${literal}'`);
   }
 
   const block = query.block == null ? null : safeBlockNumber(query.block);
@@ -201,17 +184,7 @@ export async function loadChainEventsColdTier(
 
   let floor = 0,
     ceiling = block ?? 0;
-  if (block !== null) {
-    // Single-block lookup: exact, no window needed.
-    where.push(`block_number = ${block}`);
-    if (extrinsic !== null) where.push(`extrinsic_index = ${extrinsic}`);
-    // A block can contain more than the feed's page limit. Its event indexes
-    // are unique within that block, so the same opaque cursor that advances
-    // the network-wide feed advances this exact lookup without widening it.
-    // Ignoring the cursor here returned page one repeatedly: detail readers
-    // either saw a hard 50-event ceiling or a duplicate second page.
-    if (cursor) where.push(`event_index < ${cursor[2]}`);
-  } else {
+  if (block === null) {
     // The ceiling this page reads down from. A cursor seeks strictly below its
     // own row, `before` is the legacy block-exclusive form, and page 1 reads
     // down from the TOP OF THE LAKEHOUSE.
@@ -233,12 +206,6 @@ export async function loadChainEventsColdTier(
       return { count: 0, next_before: null, next_cursor: null, events: [] };
     }
     floor = Math.max(0, ceiling - CHAIN_EVENTS_BLOCK_WINDOW);
-    where.push(`block_number >= ${floor}`);
-    where.push(`block_number <= ${ceiling}`);
-    if (cursor) {
-      // Within the ceiling block, resume strictly after the cursor's event.
-      where.push(`(block_number < ${cursor[1]} OR event_index < ${cursor[2]})`);
-    }
   }
 
   // THE HOT STORE FIRST, and it answers this feed's common case entirely.
@@ -338,11 +305,7 @@ export async function loadChainEventsColdTier(
               (safeBlockNumber(a.event_index) ?? -1),
           )
           .slice(0, limit)
-      : await r2SqlQuery<ChainEventsRow>(
-          env,
-          `SELECT ${EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} WHERE ${where.join(" AND ")}` +
-            ` ORDER BY block_number DESC, event_index DESC LIMIT ${limit}`,
-        ));
+      : null);
   if (rows === null) return null;
 
   const last = rows.length === limit ? rows[rows.length - 1] : null;
@@ -382,7 +345,6 @@ export async function loadChainEventsColdTier(
 export const CHAIN_EVENTS_STATS_BLOCKS_DEFAULT = 1_000;
 export const CHAIN_EVENTS_STATS_BLOCKS_MAX = 5_000;
 /** The deleted handler's own output cap. */
-const STATS_GROUP_LIMIT = 100;
 
 export interface ChainEventsStats {
   window_blocks: number;
@@ -390,22 +352,9 @@ export interface ChainEventsStats {
   activity: Record<string, unknown>[];
 }
 
-/**
- * The pallet.method distribution over the most recent N blocks.
- *
- * MUCH cheaper than the feed because it reads only two columns: measured
- * 1.28 MB at the 1,000-block default and 4.23 MB at the 5,000 cap, against a
- * feed page's 18.6 MB. R2 SQL is columnar, so a narrow projection is what
- * makes an aggregate affordable.
- *
- * The deleted Postgres version needed a whole second `observed_at` bound and a
- * separate head lookup purely so TimescaleDB could exclude chunks -- its own
- * comment records the aggregate scanning ~723M rows and taking 181s without
- * it. None of that applies here: `block_number` IS the lakehouse's pruning
- * key, so the block bound alone does the work it was always meant to.
- */
+/** The complete pallet.method distribution over the most recent N indexed blocks. */
 export async function loadChainEventsStatsColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   blocks?: unknown,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -428,51 +377,15 @@ export async function loadChainEventsStatsColdTier(
     head,
     network,
   );
-  if (indexed === null) return null;
-  const rows =
-    indexed ??
-    (await r2SqlQuery(
-      env,
-      `SELECT pallet, method, COUNT(*) AS count FROM ${chainTable("chain_events", network)} ` +
-        `WHERE block_number > ${head - window} ` +
-        // Tie-break on the GROUP BY keys: `count` alone is non-unique, so equal
-        // counts could reshuffle between requests and flip which groups survive
-        // the LIMIT at the boundary.
-        `GROUP BY pallet, method ORDER BY count DESC, pallet ASC, method ASC ` +
-        `LIMIT ${STATS_GROUP_LIMIT}`,
-    ));
-  if (rows === null) return null;
+  if (indexed == null) return null;
+  const rows = indexed;
   return { window_blocks: window, groups: rows.length, activity: rows };
 }
 
-/**
- * Whether the chain has emitted ANY subnet-lease event, chain-wide.
- *
- * `/subnets/{netuid}/lease/history` currently answers with
- * `x-metagraph-degraded: tier_unavailable`, which tells a caller the data is
- * missing. It is not -- no subnet has ever been leased. Verified against
- * `chain.chain_events`, the complete 895M-row stream: `SubnetLeaseCreated` and
- * `SubnetLeaseTerminated` have ZERO rows across all of chain history.
- *
- * A `tier_unavailable` marker on a genuinely empty answer is worse than
- * useless -- it bars the response from the edge cache and tells the caller to
- * retry something that will never change.
- *
- * DELIBERATELY BINARY. `netuid` lives inside the positional `args` JSON for
- * these kinds, and R2 SQL has no JSON extraction (`json_extract`,
- * `get_json_object` and `::json` all return 40004), so a per-subnet filter is
- * not expressible in SQL. Rather than half-decode, this asks only whether ANY
- * lease event exists:
- *
- *   none  -> every subnet's history is legitimately empty, so answer with the
- *            schema-stable empty as a real ANSWER, unmarked and cacheable.
- *   some  -> DECLINE (null). The caller keeps today's marked empty rather than
- *            us guessing which subnet those events belong to. The day leasing
- *            starts, this route needs a real decoder, and declining makes that
- *            visible instead of silently attributing events to netuid 0.
- */
+/** A complete native absence proof permits a truthful empty lease history.
+ * If lease events exist, decline until a per-subnet decoder can attribute them. */
 export async function loadSubnetLeaseHistoryColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   netuid: number,
   /** Which chain's lakehouse namespace to read (#8700). */
   network?: ChainNetworkId,
@@ -483,14 +396,5 @@ export async function loadSubnetLeaseHistoryColdTier(
     env as ArtifactStoreEnv | null | undefined,
     network ?? DEFAULT_CHAIN_NETWORK,
   );
-  if (native !== undefined) return native === false ? { rows: [] } : null;
-  const rows = await r2SqlQuery(
-    env,
-    `SELECT block_number FROM ${chainTable("chain_events", network)} ` +
-      `WHERE method IN ('${SUBNET_LEASE_CREATED_KIND}', ` +
-      `'${SUBNET_LEASE_TERMINATED_KIND}') LIMIT 1`,
-  );
-  if (rows === null) return null;
-  if (rows.length > 0) return null;
-  return { rows: [] };
+  return native === false ? { rows: [] } : null;
 }

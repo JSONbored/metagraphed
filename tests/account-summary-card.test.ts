@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 // The account summary card's composition (#9263).
 //
 // Measured 2026-08-03 against the chain's top extrinsic signer:
@@ -32,7 +34,7 @@ import {
   loadAccountRegistrationsFromStore,
 } from "../src/account-summary-card.ts";
 import { toPositionalPlaceholders } from "../src/pg-sql.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 const SS58 = "5Fv5t8frGG3MKtahp4WafKPmT5xZDbqWf8aFZpXyvjHTgzzx";
@@ -77,7 +79,17 @@ function lakehouse({ fail = false }: { fail?: boolean } = {}) {
     // Ordered so the subnet read is recognised before the cap probe: both
     // select count(*), only one groups by netuid.
     const rows = sql.includes("GROUP BY event_kind")
-      ? [{ kind: "TimelockedWeightsCommitted", count: 100 }]
+      ? [
+          {
+            kind: "TimelockedWeightsCommitted",
+            netuid: 46,
+            count: 100,
+            fb: 8700000,
+            lb: 8763529,
+            fo: 1785000000000,
+            lo: 1785759000000,
+          },
+        ]
       : sql.includes("GROUP BY netuid")
         ? [{ sc: 1 }]
         : sql.includes("min(block_number) AS fb")
@@ -182,7 +194,11 @@ describe("answerAccountSummary", () => {
   test("the card carries BOTH legs — events and current registrations", async () => {
     lakehouse();
     const answer = await answerAccountSummary(
-      { ...runner(), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
+      {
+        NATIVE_PROJECTIONS: "enabled",
+        ...runner(),
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
+      } as never,
       SS58,
     );
     assert.equal(answer.kind, "answer");
@@ -205,7 +221,11 @@ describe("answerAccountSummary", () => {
   test("a configured lakehouse that cannot answer DECLINES, never a zero card", async () => {
     lakehouse({ fail: true });
     const answer = await answerAccountSummary(
-      { ...runner(), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
+      {
+        NATIVE_PROJECTIONS: "enabled",
+        ...runner(),
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
+      } as never,
       SS58,
     );
     assert.equal(answer.kind, "gap");
@@ -216,7 +236,11 @@ describe("answerAccountSummary", () => {
     // payload to say which half is which.
     lakehouse();
     const answer = await answerAccountSummary(
-      { ...runner({ fail: true }), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
+      {
+        NATIVE_PROJECTIONS: "enabled",
+        ...runner({ fail: true }),
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
+      } as never,
       SS58,
     );
     assert.equal(answer.kind, "gap");
@@ -233,7 +257,11 @@ describe("answerAccountSummary", () => {
   test("an unusable address declines rather than scanning every account", async () => {
     lakehouse();
     const answer = await answerAccountSummary(
-      { ...runner(), [R2_SQL_TOKEN_ENV]: "cfut_test" } as never,
+      {
+        NATIVE_PROJECTIONS: "enabled",
+        ...runner(),
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
+      } as never,
       "not-an-address",
     );
     assert.equal(answer.kind, "gap");

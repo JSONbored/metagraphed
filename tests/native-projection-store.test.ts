@@ -152,6 +152,32 @@ test("selection cache is bounded and a fresh ownership check bypasses it", async
   assert.equal(gets.length, 4);
 });
 
+test("native analytics bind runtime correction provenance to the account table and network", () => {
+  for (const network of ["mainnet", "testnet"] as const) {
+    const value = proof(network);
+    const source = value.sources.find(
+      (s: { table: string }) => s.table === "account_events",
+    );
+    source.runtimeCuration = {
+      key: `metagraph/runtime-account-curation/v1/${network}/${"a".repeat(64)}/manifest.json`,
+      etag: "qualified",
+      bytes: 1024,
+    };
+    assert.deepEqual(validateNativeProjectionManifest(value, network), value);
+    source.runtimeCuration.key = source.runtimeCuration.key.replace(
+      `/${network}/`,
+      "/foreign/",
+    );
+    assert.equal(validateNativeProjectionManifest(value, network), null);
+    source.runtimeCuration.key = `metagraph/runtime-account-curation/v1/${network}/${"a".repeat(64)}/manifest.json`;
+    const other = value.sources.find(
+      (s: { table: string }) => s.table === "blocks",
+    );
+    other.runtimeCuration = source.runtimeCuration;
+    assert.equal(validateNativeProjectionManifest(value, network), null);
+  }
+});
+
 test("missing, oversized and unreadable native proofs decline without a legacy read", async () => {
   assert.equal(await loadNativeProjectionManifest(undefined, "mainnet"), null);
   assert.equal(

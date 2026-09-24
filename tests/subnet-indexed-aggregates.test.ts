@@ -1,3 +1,7 @@
+import { loadValidatorNominatorsColdTier as oracleNominators } from "./helpers/validator-nominators-query-oracle.ts";
+import { loadSubnetOhlcColdTier as oracleOhlc } from "./helpers/subnet-ohlc-query-oracle.ts";
+import { loadSubnetEventSummaryColdTier as oracleSummary } from "./helpers/subnet-event-summary-query-oracle.ts";
+import { loadAccountHistoryColdTier as oracleHistory } from "./helpers/account-history-query-oracle.ts";
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
@@ -28,7 +32,7 @@ import {
   loadIndexedAccountHistoryRows,
 } from "../src/account-history-indexed.ts";
 import { encodeCursor } from "../src/cursor.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import {
   loadAccountSummaryColdTier,
   foldSummaryGroups,
@@ -137,8 +141,9 @@ function archive(network: "mainnet" | "testnet" = "mainnet") {
   });
   return {
     env: {
+      NATIVE_PROJECTIONS: "enabled",
       METAGRAPH_ARCHIVE: { get },
-      [R2_SQL_TOKEN_ENV]: "cfut_native_fixture",
+      [NATIVE_FIXTURE_ENV]: "cfut_native_fixture",
     },
     get,
     objects,
@@ -206,10 +211,20 @@ it("validator nominators preserve every window, ordering, page and total without
     for (const sort of ["net_staked", "gross_staked", "last_activity"]) {
       for (const offset of [0, 1, 10]) {
         const query = { window, sort, limit: 2, offset };
-        const expected = await loadValidatorNominatorsColdTier(
-          { [R2_SQL_TOKEN_ENV]: "cfut_sql_fixture" },
+        const expected = await oracleNominators(
+          {
+            NATIVE_PROJECTIONS: "enabled",
+          },
           ACCOUNT,
           query,
+          (env, text) =>
+            sql(
+              env,
+              text.replace(
+                /ORDER BY ([a-z_]+) DESC, coldkey ASC/,
+                "ORDER BY $1 DESC NULLS FIRST, coldkey ASC NULLS LAST",
+              ),
+            ),
         );
         fetch.mockClear();
         expect(
@@ -233,9 +248,9 @@ it("a corrupt selected nominator feed declines without a paid fallback", async (
   a.put(a.manifest, {});
   const fetch = vi.fn();
   vi.stubGlobal("fetch", fetch);
-  expect(
-    await loadValidatorNominatorsColdTier(a.env, ACCOUNT, { limit: 20 }),
-  ).toBeNull();
+  await expect(
+    loadValidatorNominatorsColdTier(a.env, ACCOUNT, { limit: 20 }),
+  ).rejects.toThrow("historical data is unavailable");
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -256,10 +271,13 @@ it("native OHLC candles match SQLite at every supported window boundary", async 
     for (const interval of ["1h", "1d"])
       for (const days of [1, 7, 90, 365]) {
         const query = { interval, days, limit: netuid === 1 ? 2 : 2000 };
-        const expected = await loadSubnetOhlcColdTier(
-          { [R2_SQL_TOKEN_ENV]: "cfut_fixture" },
+        const expected = await oracleOhlc(
+          {
+            NATIVE_PROJECTIONS: "enabled",
+          },
           netuid,
           query,
+          sql,
         );
         const count = fetch.mock.calls.length;
         const native = await loadSubnetOhlcColdTier(
@@ -276,7 +294,7 @@ it("native OHLC candles match SQLite at every supported window boundary", async 
 it("native subnet summaries match SQLite nullable aggregates and participants", async () => {
   for (const netuid of [1, 2, 3])
     for (const window of ["1d", "7d", "30d", "90d"]) {
-      const expected = await loadSubnetEventSummaryColdTier(undefined, netuid, {
+      const expected = await oracleSummary(undefined, netuid, {
         window,
         limit: 4,
         query: sql,
@@ -285,9 +303,6 @@ it("native subnet summaries match SQLite nullable aggregates and participants", 
         await loadSubnetEventSummaryColdTier(archive().env, netuid, {
           window,
           limit: 4,
-          query: async () => {
-            throw new Error("selected native feed queried SQL");
-          },
         }),
       ).toEqual(expected);
     }
@@ -305,21 +320,13 @@ it("native account histories match SQLite filters and cursor boundaries", async 
       { limit: 1, to: "2026-09-21", cursor: encodeCursor([20260920, 2]) },
       { limit: 1, cursor: "bad" },
     ]) {
-      const expected = await loadAccountHistoryColdTier(
-        undefined,
-        account,
-        query,
-        { queryFn: sql },
-      );
+      const expected = await oracleHistory(undefined, account, query, {
+        queryFn: sql,
+      });
       const native = await loadAccountHistoryColdTier(
         archive().env,
         account,
         query,
-        {
-          queryFn: async () => {
-            throw new Error("native account history queried SQL");
-          },
-        },
       );
       expect(native).toEqual(expected);
       expect(native).not.toBeNull();
@@ -346,17 +353,17 @@ it("declines selected corrupt indexes and numeric overflow without querying SQL"
           days: 365,
         }),
       ).toEqual({ kind: "gap" });
-      expect(
-        await loadSubnetEventSummaryColdTier(a.env, netuid, {
+      await expect(
+        loadSubnetEventSummaryColdTier(a.env, netuid, {
           window: "90d",
           limit: 2,
         }),
-      ).toBeNull();
+      ).rejects.toThrow("historical data is unavailable");
     }
     for (const limit of [0, 1.5, 5001])
-      expect(
-        await loadIndexedSubnetEventSummaryRows(archive().env, 1, 0, limit),
-      ).toBeNull();
+      await expect(
+        loadIndexedSubnetEventSummaryRows(archive().env, 1, 0, limit),
+      ).rejects.toThrow("historical data is unavailable");
     expect(fetch).not.toHaveBeenCalled();
   } finally {
     vi.restoreAllMocks();
@@ -397,9 +404,9 @@ it("bounds account day aggregation and skips null subnet and event-kind cells", 
     "group budget",
   );
   for (const need of [0, 1.5, 10001])
-    expect(
-      await loadIndexedAccountHistoryRows(archive().env, ACCOUNT, {}, need),
-    ).toBeNull();
+    await expect(
+      loadIndexedAccountHistoryRows(archive().env, ACCOUNT, {}, need),
+    ).rejects.toThrow("historical data is unavailable");
   async function* nullable() {
     yield { ...fixture.rows[0], netuid: null };
     yield { ...fixture.rows[0], netuid: 1, event_kind: null };
@@ -410,9 +417,9 @@ it("bounds account day aggregation and skips null subnet and event-kind cells", 
   const a = archive();
   a.feed.entries++;
   a.save();
-  expect(
-    await loadAccountHistoryColdTier(a.env, ACCOUNT, { limit: 1 }),
-  ).toBeNull();
+  await expect(
+    loadAccountHistoryColdTier(a.env, ACCOUNT, { limit: 1 }),
+  ).rejects.toThrow("historical data is unavailable");
 });
 
 it("account summaries preserve complete physical history and recent ordering through the real indexed reader", async () => {
@@ -449,4 +456,108 @@ it("account summaries preserve complete physical history and recent ordering thr
     expect(actual.recent).toEqual(recent);
   }
   expect(fetch).not.toHaveBeenCalled();
+});
+
+import {
+  loadChainEventIdentityRollup,
+  CHAIN_WEIGHTS_ROLLUP,
+  CHAIN_SERVING_ROLLUP,
+} from "../src/chain-event-rollup-cold-tier.ts";
+import {
+  foldSubnetIdentities,
+  loadIndexedSubnetIdentities,
+} from "../src/indexed-subnet-identities.ts";
+import { nativeAccountRow } from "./helpers/native-account-row.ts";
+
+it("native subnet participant rows and complete totals match independent SQLite", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw Error("SQL forbidden");
+    }),
+  );
+  const normalize = (
+    value: Awaited<ReturnType<typeof loadChainEventIdentityRollup>>,
+  ) =>
+    value.kind === "answer"
+      ? {
+          ...value,
+          rollup: {
+            ...value.rollup,
+            rows: value.rollup.rows.toSorted((a, b) =>
+              JSON.stringify(a).localeCompare(JSON.stringify(b)),
+            ),
+          },
+        }
+      : value;
+  for (const spec of [
+    CHAIN_WEIGHTS_ROLLUP,
+    CHAIN_SERVING_ROLLUP,
+    { ...CHAIN_WEIGHTS_ROLLUP, eventKind: "StakeAdded" },
+  ])
+    for (const netuid of [1, 7, 65535])
+      for (const windowDays of [7, 30]) {
+        const options = { windowDays, netuid, limit: 1000, now: NOW };
+        const expected = await loadChainEventIdentityRollup({}, spec, {
+          ...options,
+          query: sql,
+        });
+        const actual = await loadChainEventIdentityRollup(
+          archive().env,
+          spec,
+          options,
+        );
+        expect(normalize(actual)).toEqual(normalize(expected));
+      }
+  expect(
+    (
+      await loadIndexedSubnetIdentities(
+        archive("testnet").env,
+        CHAIN_WEIGHTS_ROLLUP,
+        1,
+        0,
+        5,
+        "testnet",
+      )
+    )?.rows,
+  ).toEqual([]);
+  expect(fetch).not.toHaveBeenCalled();
+});
+it("subnet participant totals include null identities and survive pagination, with bounded memory", async () => {
+  const input = [
+    nativeAccountRow({ uid: 4, netuid: 1, observed_at: 200 }),
+    nativeAccountRow({ uid: 4, netuid: 1, observed_at: 100 }),
+    nativeAccountRow({ uid: null, netuid: 1, observed_at: null }),
+    nativeAccountRow({ uid: 5, netuid: 1, observed_at: 300 }),
+  ];
+  async function* rows() {
+    yield* input;
+  }
+  expect(await foldSubnetIdentities(rows(), CHAIN_WEIGHTS_ROLLUP, 1)).toEqual({
+    rows: [
+      { netuid: 1, uid: 4, weight_sets: 2, first_set: 100, last_set: 200 },
+    ],
+    totals: { weight_sets: 4, distinct_setters: 3, newest_observed: 300 },
+  });
+  async function* many() {
+    for (let i = 0; i <= 100000; i++)
+      yield { ...fixture.rows[0], hotkey: `key${i}` };
+  }
+  await expect(
+    foldSubnetIdentities(many(), CHAIN_SERVING_ROLLUP, 1),
+  ).rejects.toThrow("participant budget");
+});
+
+it("native subnet participant misses and coverage failures stay distinct", async () => {
+  const options = { netuid: 1, windowDays: 7, now: NOW };
+  expect(
+    await loadChainEventIdentityRollup({}, CHAIN_WEIGHTS_ROLLUP, options),
+  ).toEqual({ kind: "miss" });
+  expect(
+    await loadChainEventIdentityRollup(
+      { NATIVE_PROJECTIONS: "enabled" },
+      CHAIN_WEIGHTS_ROLLUP,
+      options,
+    ),
+  ).toEqual({ kind: "gap" });
 });

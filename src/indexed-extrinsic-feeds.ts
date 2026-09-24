@@ -14,6 +14,7 @@ import {
 } from "./history-generation.ts";
 import { parquetReadBudget, r2ParquetSource } from "./indexed-parquet.ts";
 import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
+import { requireRetainedHistoryAnswer } from "./retained-history-store.ts";
 import {
   iterateExtrinsicFeed,
   extrinsicFeedPage,
@@ -25,7 +26,20 @@ type Bucket = Pick<R2Bucket, "get">;
 
 /** Only a full, source-fenced selected generation may replace SQL, including
  * empty results. Invalid indexes fail closed instead of starting another scan. */
-export async function loadIndexedExtrinsicFeedPage(
+export function loadIndexedExtrinsicFeedPage(
+  env: unknown,
+  selector: ExtrinsicFeedSelector,
+  limit: number,
+  offset = 0,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): Promise<ExtrinsicsRow[] | null | undefined> {
+  return requireRetainedHistoryAnswer(
+    env,
+    loadSelectedExtrinsicFeedPage(env, selector, limit, offset, network),
+  );
+}
+
+async function loadSelectedExtrinsicFeedPage(
   env: unknown,
   selector: ExtrinsicFeedSelector,
   limit: number,

@@ -543,7 +543,7 @@ describe("native Python account feed tree", () => {
     expect(closed).toBe(1);
     await expect(
       mergeAccountFeedPage(
-        Array.from({ length: 9 }, () => sibling()),
+        Array.from({ length: 11 }, () => sibling()),
         1,
       ),
     ).rejects.toThrow("budget");

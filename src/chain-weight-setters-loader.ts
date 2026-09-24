@@ -24,7 +24,7 @@ import {
   loadChainEventIdentityRollup,
 } from "./chain-event-rollup-cold-tier.ts";
 import { declineChainWeightSetters } from "./chain-weight-setters.ts";
-import type { R2SqlReader } from "./r2-sql.ts";
+import type { HistoricalQueryReader } from "./history-readers.ts";
 
 /**
  * One window of weight-setting activity per setter, already built into the
@@ -35,7 +35,7 @@ import type { R2SqlReader } from "./r2-sql.ts";
  * schema-stable card rather than an error, and that belongs at the call site.
  */
 export async function loadChainWeightSettersColdTier(
-  env: Parameters<R2SqlReader>[0],
+  env: Parameters<HistoricalQueryReader>[0],
   {
     window,
     limit,
@@ -44,7 +44,7 @@ export async function loadChainWeightSettersColdTier(
     window: string;
     limit?: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: R2SqlReader;
+    query?: HistoricalQueryReader;
   },
 ): Promise<ReturnType<typeof buildChainWeightSetters> | null> {
   const rollup = await loadChainEventIdentityRollup(env, CHAIN_WEIGHTS_ROLLUP, {

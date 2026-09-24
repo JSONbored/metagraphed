@@ -44,12 +44,12 @@ import {
   loadBlockWithEconomicsFromR2Sql,
   type BlockFeedQuery,
 } from "./r2-sql-blocks.ts";
-import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
+import { safeBlockNumber, safeHexLiteral } from "./history-readers.ts";
 import type { BlocksHead, ChainDetailBlocks } from "../generated/db/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { readStore, recordOrNull } from "./read-store.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import { blocksSeamFloor, resolveBlocksSeam } from "./blocks-seam.ts";
 export {
   DEFAULT_BLOCKS_SEAM,
@@ -177,7 +177,7 @@ export function storeCanServe(query: BlockFeedQuery): boolean {
 /** Rows above the seam, newest first. Bound parameters throughout — D1 had
  * them, so unlike the R2 SQL leg there is no literal-building here. */
 async function storeHeadRows(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   query: BlockFeedQuery,
   cursor: number[] | null,
   seam: number,
@@ -231,7 +231,7 @@ async function storeHeadRows(
  * can answer, so the caller keeps its schema-stable empty.
  */
 export async function loadBlockFeedColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   query: BlockFeedQuery,
   /** Which chain to read (#8700). Off mainnet there is no hot tier, so the
    * whole feed comes from that network's lakehouse namespace. */
@@ -330,7 +330,7 @@ export async function loadBlockFeedColdTier(
  * either, so D1 is asked first and the lakehouse answers if it misses.
  */
 export async function loadBlockColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ref: string,
   /** Which chain to read (#8700). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,

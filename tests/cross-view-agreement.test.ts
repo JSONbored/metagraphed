@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // Two views of one stream must not be able to disagree (#9260, #9263).
 //
@@ -36,7 +38,7 @@ import { handleGraphQLRequest } from "../src/graphql.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { jsonBody } from "./row-type.ts";
 
@@ -110,7 +112,17 @@ function lakehouse() {
     } else if (sql.includes("FROM chain.chain_events")) {
       rows = CHAIN_EVENTS;
     } else if (sql.includes("GROUP BY event_kind")) {
-      rows = [{ kind: "TimelockedWeightsCommitted", count: 100 }];
+      rows = [
+        {
+          kind: "TimelockedWeightsCommitted",
+          netuid: 46,
+          count: 100,
+          fb: 8700000,
+          lb: 8763529,
+          fo: 1785000000000,
+          lo: 1785759000000,
+        },
+      ];
     } else if (sql.includes("GROUP BY netuid")) {
       // Its own read since #9282 -- R2 SQL refuses an ungrouped
       // count(DISTINCT) over this table (40015, scan budget exceeded).
@@ -175,7 +187,11 @@ function env() {
   ];
   // Everything else the hot tier asks answers empty, as the D1 fake did.
   pg.control.rows = [];
-  return { [R2_SQL_TOKEN_ENV]: "cfut_test", ...pgMockEnv() } as never;
+  return {
+    NATIVE_PROJECTIONS: "enabled",
+    [NATIVE_FIXTURE_ENV]: "cfut_test",
+    ...pgMockEnv(),
+  } as never;
 }
 
 beforeEach(() => {

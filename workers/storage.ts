@@ -169,7 +169,7 @@ export async function withTimeout<T>(
 /**
  * What the artifact readers need from their environment, and nothing else.
  *
- * Named for the same reason `R2SqlEnv` and `TelemetryEnv` are (#11339): a
+ * Named for the same reason `HistoryReadEnv` and `TelemetryEnv` are (#11339): a
  * composer holding a loose bag had to assert past `Env` to read an artifact,
  * and `env as never` was the spelling -- which also made the PATH argument
  * unverifiable at the same call.

@@ -12,7 +12,7 @@ import {
   liveSmokePaymentRoutes,
   timeoutMs,
 } from "../scripts/smoke-live-api.ts";
-import { QUERY_TIMEOUT_MS } from "../src/r2-sql.ts";
+import { HISTORY_READ_TIMEOUT_MS } from "../src/history-readers.ts";
 
 // PR-time guard for the recurring #1682 class: the live smoke substitutes path
 // placeholders ({netuid}/{slug}/{date}/{uid}/{hash}/{ref}/{ss58}) before
@@ -306,20 +306,20 @@ describe("the smoke client outlasts the server it is waiting on (#11131)", () =>
   test("THE CLIENT BUDGET EXCEEDS THE SERVER'S OWN QUERY CEILING", () => {
     // The bug this pins: both were 15000. A request that hit the lakehouse
     // ceiling could never be seen answering -- the server needs its full
-    // QUERY_TIMEOUT_MS plus response overhead to produce the degraded card, and
+    // HISTORY_READ_TIMEOUT_MS plus response overhead to produce the degraded card, and
     // the client aborted at exactly that instant. 4 of the last 11 completed
     // production publishes failed that way, every one on a route already listed
     // in check-operation-latency's DECLARED register.
     assert.ok(
-      timeoutMs > QUERY_TIMEOUT_MS,
-      `smoke client ${timeoutMs}ms must outlast the r2-sql ceiling ${QUERY_TIMEOUT_MS}ms`,
+      timeoutMs > HISTORY_READ_TIMEOUT_MS,
+      `smoke client ${timeoutMs}ms must outlast the r2-sql ceiling ${HISTORY_READ_TIMEOUT_MS}ms`,
     );
   });
 
   test("it is derived from the server constant, not restated", () => {
     // Equal-by-coincidence is what broke; a hand-copied larger number would
     // drift the same way the next time the server bound moves.
-    assert.equal(timeoutMs, QUERY_TIMEOUT_MS * 2);
+    assert.equal(timeoutMs, HISTORY_READ_TIMEOUT_MS * 2);
   });
 
   test("isTimeout matches an abort however the runtime words it", () => {

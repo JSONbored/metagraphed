@@ -10,7 +10,10 @@ vi.mock("../src/d1-store.ts", () => ({
 }));
 vi.mock("../src/self-health-neon.ts", () => ({ loadSelfHealthNeon: vi.fn() }));
 afterEach(() => vi.restoreAllMocks());
-const env = { R2_SQL_TOKEN: "legacy-test" };
+const env = {
+  NATIVE_PROJECTIONS: "enabled",
+  NATIVE_HISTORY_FIXTURE: "legacy-test",
+};
 test("D1 health preserves the canonical payload and explicit clock", async () => {
   const expected = buildSelfHealth([], []),
     store = {} as never;

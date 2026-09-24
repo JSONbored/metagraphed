@@ -7,7 +7,6 @@ import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { ifNoneMatchSatisfied, withCacheStatus } from "./http.ts";
 import { contractVersion } from "./responses.ts";
 import { currentDataApiTierFallbackGeneration } from "./data-api-tier.ts";
-import { currentR2SqlFailureGeneration } from "../src/r2-sql.ts";
 import { currentOffsetCapDeclineGeneration } from "../src/cold-tier-offset.ts";
 import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
 const DATA_API_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
@@ -111,25 +110,9 @@ export function markDataApiTierFallbackResponse(response: Response): Response {
   return marked;
 }
 
-/**
- * Every "this answer was not measured" counter, read as one value (#10270).
- *
- * There are three of them and they lived in three modules, so each place that
- * wanted to know whether an answer was real had to remember the full list.
- * `withEdgeCache` remembered two; the r2-sql one it never knew about at all,
- * even though `src/r2-sql.ts` declares its counter with "same contract as the
- * Postgres tier's fallback generation: a caller can snapshot this before a
- * read and compare after". Nothing outside its own test file ever did --
- * measured repo-wide, `currentR2SqlFailureGeneration` had zero production
- * readers -- which is why `/accounts/{ss58}/counterparties` could answer
- * `counterparty_count: 0, transfers_scanned: 0` with `ok: true` and no header
- * while the lakehouse was rate-limited. That route's Postgres rung is
- * `"retired"` in wrangler.jsonc, so the r2-sql read IS the tier; a signal
- * nobody reads is the same as no signal.
- */
+/** Native dependency failures and deliberate coverage declines. */
 export interface DegradedSnapshot {
   postgresTier: number;
-  r2Sql: number;
   indexedHistory: number;
   unmeasured: number;
   /**
@@ -151,7 +134,6 @@ export interface DegradedSnapshot {
 export function degradedSnapshot(): DegradedSnapshot {
   return {
     postgresTier: currentDataApiTierFallbackGeneration(),
-    r2Sql: currentR2SqlFailureGeneration(),
     indexedHistory: currentIndexedHistoryFailureGeneration(),
     unmeasured: unmeasuredGeneration,
     offsetCapDeclined: currentOffsetCapDeclineGeneration(),
@@ -180,7 +162,6 @@ export function degradedSince(before: DegradedSnapshot): {
   return {
     transient:
       now.postgresTier !== before.postgresTier ||
-      now.r2Sql !== before.r2Sql ||
       now.indexedHistory !== before.indexedHistory,
     // An offset-cap decline is UNMEASURED, not transient: the same offset
     // declines identically for the whole TTL, so the answer stays cacheable and

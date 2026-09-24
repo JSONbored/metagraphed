@@ -10,7 +10,10 @@ vi.mock("../src/d1-metadata-read.ts", () => ({ readD1Metadata: vi.fn() }));
 vi.mock("../src/state-archive-read.ts", () => ({
   readStateArchiveRows: vi.fn(),
 }));
-const env = { R2_SQL_TOKEN: "retired-token-must-not-be-used" };
+const env = {
+  NATIVE_PROJECTIONS: "enabled",
+  NATIVE_HISTORY_FIXTURE: "retired-token-must-not-be-used",
+};
 const latest = vi.mocked(readD1Metadata),
   archive = vi.mocked(readStateArchiveRows);
 const row = (id: number, observed_at = 1700000000000 + id) => ({

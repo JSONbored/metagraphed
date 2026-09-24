@@ -11,7 +11,10 @@ afterEach(() => {
   vi.mocked(loadRpcUsageNative).mockReset();
 });
 const now = Date.UTC(2026, 8, 24),
-  env = { R2_SQL_TOKEN: "legacy-test" };
+  env = {
+    NATIVE_PROJECTIONS: "enabled",
+    NATIVE_HISTORY_FIXTURE: "legacy-test",
+  };
 test("supported windows preserve exact cutoff and bucket configuration", async () => {
   for (const window of ["1h", "24h", "7d", "30d"]) {
     const bounds = windowCutoffMs(window, now);

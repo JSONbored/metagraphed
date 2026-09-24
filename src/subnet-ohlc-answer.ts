@@ -29,7 +29,7 @@
 
 import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
 import type { SubnetOhlcQuery } from "./subnet-ohlc-cold-tier.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import {
   buildSubnetOhlcFromBuckets,
   declineSubnetOhlc,
@@ -50,7 +50,7 @@ export interface SubnetOhlcAnswer {
  * when nothing was read. A timestamp there would date an empty series to now.
  */
 export async function answerSubnetOhlc(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   netuid: number,
   query: SubnetOhlcQuery = {},
 ): Promise<SubnetOhlcAnswer> {

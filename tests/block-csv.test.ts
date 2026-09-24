@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 import assert from "node:assert/strict";
 import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";

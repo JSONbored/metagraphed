@@ -19,7 +19,7 @@ import {
   loadChainEventIdentityRollup,
 } from "./chain-event-rollup-cold-tier.ts";
 import { DEGRADED_UNAVAILABLE } from "./uncurated-event-streams.ts";
-import type { R2SqlReader } from "./r2-sql.ts";
+import type { HistoricalQueryReader } from "./history-readers.ts";
 
 /**
  * One subnet's window of weight-setting activity per setter, already built into
@@ -30,7 +30,7 @@ import type { R2SqlReader } from "./r2-sql.ts";
  * that decision belongs at the call site.
  */
 export async function loadSubnetWeightSettersColdTier(
-  env: Parameters<R2SqlReader>[0],
+  env: Parameters<HistoricalQueryReader>[0],
   netuid: number,
   {
     windowLabel,
@@ -42,7 +42,7 @@ export async function loadSubnetWeightSettersColdTier(
     windowDays: number;
     limit?: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: R2SqlReader;
+    query?: HistoricalQueryReader;
   },
 ): Promise<ReturnType<typeof buildSubnetWeightSetters> | null> {
   const rollup = await loadChainEventIdentityRollup(env, CHAIN_WEIGHTS_ROLLUP, {
@@ -92,7 +92,7 @@ export async function loadSubnetWeightSettersColdTier(
  * because a cadence was unknown would trade a useful answer for no answer.
  */
 async function loadSubnetTempo(
-  env: Parameters<R2SqlReader>[0],
+  env: Parameters<HistoricalQueryReader>[0],
   netuid: number,
 ): Promise<unknown> {
   // readStore, NOT observationsReadDb (#10179). Two reasons, either fatal:

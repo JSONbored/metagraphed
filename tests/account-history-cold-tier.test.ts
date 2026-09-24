@@ -1,28 +1,12 @@
-// One account's per-day activity series, computed from the lakehouse (#9315).
-//
-// `/api/v1/accounts/{ss58}/history` returned `day_count: 0` for every account,
-// including hotkeys whose own `/events` feed is busy, because the Postgres tier
-// that owned `account_events_daily` is gone and nothing replaced it.
-//
-// Two decisions this file pins, both of which a smaller diff would have gotten
-// wrong:
-//
-//  1. The series is COMPUTED from `chain.account_events`, not read from
-//     `chain.account_events_daily` -- that table exists in the lakehouse but is
-//     a frozen export ending 2026-07-15, so reading it would answer "this
-//     account did nothing since July" as though it were measured.
-//  2. The event kinds come from a SECOND query. The retired writer used
-//     `string_agg(DISTINCT event_kind, ',')`, which R2 SQL rejects at this
-//     scale with the same `40015` scan-budget error that kills
-//     `count(DISTINCT)`.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
 import { loadAccountHistoryColdTier } from "../src/account-history-cold-tier.ts";
-import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
-
+import * as indexed from "../src/account-history-indexed.ts";
+import * as projection from "../src/account-summary-projection.ts";
 type Row = Record<string, unknown>;
-
+const reader = vi.spyOn(indexed, "loadIndexedAccountHistoryRows"),
+  floor = vi.spyOn(projection, "accountHistoryFloorMs");
 const SS58 = "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u";
 
 /** The engine returns a full timestamp for a truncated day. */
@@ -58,308 +42,114 @@ const KINDS: Row[] = [
   { day: ts("2026-08-02"), netuid: 64, event_kind: "StakeAdded" },
 ];
 
-/**
- * Answers the two reads by the clause only each carries.
- *
- * `GROUP BY` is not a discriminator -- both queries have one. The kinds read is
- * the one that selects `event_kind`; the page read is the one that counts.
- */
-function fakeEngine(
-  overrides: { days?: Row[] | null; kinds?: Row[] | null } = {},
-) {
-  const seen: string[] = [];
-  const pick = <T>(value: T | undefined, fallback: T) =>
-    value === undefined ? fallback : value;
-  const query = async (_env: unknown, sql: string) => {
-    seen.push(sql);
-    return sql.includes("count(*) AS event_count")
-      ? pick(overrides.days, DAYS)
-      : pick(overrides.kinds, KINDS);
-  };
-  return {
-    query,
-    seen,
-    page: () => seen.find((s) => s.includes("count(*) AS event_count"))!,
-    kinds: () => seen.find((s) => s.includes("event_kind"))!,
-  };
-}
-
-const load = (engine: ReturnType<typeof fakeEngine>, query = {}) =>
-  loadAccountHistoryColdTier(
-    {} as never,
-    SS58,
-    { limit: 100, ...query },
-    { queryFn: engine.query as never },
+const rows = () =>
+  DAYS.map((row) => ({
+    ...row,
+    event_kinds: KINDS.filter(
+      (k) => k.day === row.day && k.netuid === row.netuid,
+    )
+      .map((k) => k.event_kind)
+      .join(","),
+  }));
+beforeEach(() => {
+  reader.mockReset().mockResolvedValue(rows());
+  floor.mockReset().mockResolvedValue(null);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw Error("HTTP forbidden");
+    }),
   );
-
-describe("loadAccountHistoryColdTier", () => {
-  test("builds the day series, newest day first", async () => {
-    const engine = fakeEngine();
-    const data = await load(engine);
-    assert.ok(data);
-    assert.equal(data.day_count, 3);
-    assert.equal(data.days[0].day, "2026-08-03");
-    assert.equal(data.days[0].netuid, 64);
-    assert.equal(data.days[0].event_count, 72);
-    assert.equal(data.days[0].first_block, 8_759_894);
-  });
-
-  test("the day is published as YYYY-MM-DD, not the engine's timestamp", async () => {
-    // The cursor encodes it as 20260803 and ?from/?to compare against it, so
-    // leaking `2026-08-03T00:00:00.000000000Z` would break both.
-    const engine = fakeEngine();
-    const data = await load(engine);
-    for (const d of data!.days) {
-      assert.match(String(d.day), /^\d{4}-\d{2}-\d{2}$/, `bad day ${d.day}`);
-    }
-  });
-
-  test("no query uses string_agg or COUNT(DISTINCT)", async () => {
-    // The retired writer rolled the kinds up with
-    // `string_agg(DISTINCT event_kind, ',')`. R2 SQL rejects that outright:
-    //
-    //   40015: scan budget exceeded: scanning too much data for
-    //   string_agg(DISTINCT) with GROUP BY
-    //
-    // and a rejected query declines the reader, which is the bug this fixes.
-    const engine = fakeEngine();
-    await load(engine);
-    for (const sql of engine.seen) {
-      assert.doesNotMatch(sql, /string_agg/i, sql.slice(0, 120));
-      assert.doesNotMatch(sql, /count\(\s*DISTINCT/i, sql.slice(0, 120));
-    }
-  });
-
-  test("joins the kinds onto the right day and subnet", async () => {
-    // The join key is (day, netuid) across two independent result sets. Getting
-    // it wrong would attribute one subnet's activity to another on the same day.
-    const engine = fakeEngine();
-    const data = await load(engine);
-    const byKey = Object.fromEntries(
-      data!.days.map((d) => [`${d.day}|${d.netuid}`, d.event_kinds]),
+});
+describe("native account history", () => {
+  test("preserves day/subnet ordering, kinds and exact cursor boundary days", async () => {
+    const all = await loadAccountHistoryColdTier({}, SS58, { limit: 100 });
+    assert.equal(all?.day_count, 3);
+    assert.equal(all.days[0].day, "2026-08-03");
+    assert.deepEqual(all.days[0].event_kinds, ["StakeAdded", "WeightsSet"]);
+    assert.equal(all.days[1].netuid, 18);
+    const first = await loadAccountHistoryColdTier({}, SS58, { limit: 1 });
+    assert.equal(first?.next_cursor, "20260803.64");
+    const next = await loadAccountHistoryColdTier({}, SS58, {
+      limit: 2,
+      offset: 99,
+      cursor: first?.next_cursor,
+    });
+    assert.deepEqual(
+      next?.days.map((r) => [r.day, r.netuid]),
+      [
+        ["2026-08-03", 18],
+        ["2026-08-02", 64],
+      ],
     );
-    assert.deepEqual(byKey["2026-08-03|64"], ["StakeAdded", "WeightsSet"]);
-    assert.deepEqual(byKey["2026-08-03|18"], ["StakeRemoved"]);
-    assert.deepEqual(byKey["2026-08-02|64"], ["StakeAdded"]);
+    assert.equal(reader.mock.lastCall?.[3], 514);
   });
-
-  test("a cell with no kinds yields an empty array, never a phantom entry", async () => {
-    const engine = fakeEngine({ kinds: [] });
-    const data = await load(engine);
-    assert.equal(data!.day_count, 3);
-    for (const d of data!.days) assert.deepEqual(d.event_kinds, []);
+  test("applies floor, inclusive date bounds and subnet narrowing without losing a boundary day", async () => {
+    floor.mockResolvedValue(Date.parse("2026-08-02T00:00:00Z"));
+    await loadAccountHistoryColdTier({}, SS58, {
+      limit: 10,
+      netuid: 7,
+      from: "2026-08-01",
+      to: "2026-08-03",
+    });
+    assert.deepEqual(reader.mock.lastCall, [
+      {},
+      SS58,
+      {
+        netuid: 7,
+        observedStart: Date.parse("2026-08-02T00:00:00Z"),
+        observedEnd: Date.parse("2026-08-04T00:00:00Z") - 1,
+      },
+      10,
+    ]);
   });
-
-  test("the kinds read is bounded to the page's own days", async () => {
-    // A busy validator has ~216,000 (day, netuid, kind) groups all-time. Asking
-    // for them unbounded to annotate a 100-row page would scan the entire
-    // history on every request.
-    const engine = fakeEngine();
-    await load(engine);
-    const kinds = engine.kinds();
-    const bounds = [...kinds.matchAll(/observed_at (>=|<) (\d+)/g)];
-    assert.equal(bounds.length, 2, `expected a day-range bound: ${kinds}`);
-    const lo = Number(bounds[0]![2]);
-    const hi = Number(bounds[1]![2]);
-    assert.equal(lo, Date.parse("2026-08-02T00:00:00.000Z"));
+  test("offset and malformed cursors preserve first-page behavior", async () => {
+    const result = await loadAccountHistoryColdTier({}, SS58, {
+      limit: 1,
+      offset: 1,
+      cursor: "bad",
+    });
+    assert.equal(result?.days[0].netuid, 18);
+    assert.equal(reader.mock.lastCall?.[3], 2);
+    reader.mockResolvedValue([]);
+    const empty = await loadAccountHistoryColdTier({}, SS58, { limit: 2 });
+    assert.equal(empty?.day_count, 0);
+    assert.equal(empty.next_cursor, null);
+  });
+  test("declines invalid input and missing native coverage", async () => {
     assert.equal(
-      hi,
-      Date.parse("2026-08-04T00:00:00.000Z"),
-      "?to is inclusive",
+      await loadAccountHistoryColdTier({}, "bad", { limit: 2 }),
+      null,
     );
-  });
-
-  test("an empty page issues no kinds query at all", async () => {
-    // There is nothing to annotate, and the unbounded scan would be the whole
-    // account history.
-    const engine = fakeEngine({ days: [] });
-    const data = await load(engine);
-    assert.ok(data);
-    assert.equal(data.day_count, 0);
-    assert.equal(engine.seen.length, 1, "the kinds read must not be issued");
-  });
-
-  test("is hotkey-attributed, matching the retired rollup and the contract", async () => {
-    // /events matches hotkey OR coldkey; this route documents that it does not.
-    // Widening it would make the route disagree with every historical answer.
-    const engine = fakeEngine();
-    await load(engine);
-    for (const sql of engine.seen) {
-      assert.match(sql, new RegExp(`hotkey = '${SS58}'`));
-      assert.doesNotMatch(sql, /coldkey/);
-      assert.match(sql, /netuid IS NOT NULL/);
-    }
-  });
-
-  test("forwards the netuid and date filters into SQL", async () => {
-    const engine = fakeEngine();
-    await load(engine, { netuid: 7, from: "2026-07-01", to: "2026-07-31" });
-    const page = engine.page();
-    assert.match(page, /netuid = 7/);
-    assert.match(
-      page,
-      new RegExp(`observed_at >= ${Date.parse("2026-07-01T00:00:00.000Z")}`),
-    );
-    assert.match(
-      page,
-      new RegExp(`observed_at < ${Date.parse("2026-08-01T00:00:00.000Z")}`),
-      "?to is INCLUSIVE of its day, so the bound is that day's end",
-    );
-  });
-
-  test("a cursor seeks past the exact (day, netuid) it names", async () => {
-    // SQL can only bound the cursor to whole DAYS -- the tuple's halves sit on
-    // opposite sides of the aggregation -- so the cursor's own day arrives
-    // complete and its already-seen subnets are dropped here. netuid DESC means
-    // "seen" is >= the cursor's.
-    const engine = fakeEngine();
-    const data = await load(engine, { cursor: "20260803.64" });
-    assert.match(
-      engine.page(),
-      new RegExp(`observed_at < ${Date.parse("2026-08-04T00:00:00.000Z")}`),
-    );
-    assert.deepEqual(
-      data!.days.map((d) => `${d.day}|${d.netuid}`),
-      ["2026-08-03|18", "2026-08-02|64"],
-      "netuid 64 on the cursor's own day was already served",
-    );
-  });
-
-  test("a malformed cursor means page 1, it does not throw or decline", async () => {
-    // data-api's never-throw contract: an unusable token falls back rather than
-    // erroring, so a stale client keeps working.
-    for (const cursor of ["garbage", "1.2.3", "", "20261332.5"]) {
-      const engine = fakeEngine();
-      const data = await load(engine, { cursor });
-      assert.ok(data, `cursor ${cursor} must not decline`);
-      assert.equal(data.day_count, 3);
-    }
-  });
-
-  test("next_cursor is emitted only on a FULL page", async () => {
-    // A short page ends the series; emitting a token there would make a client
-    // request a page that is always empty.
-    const short = await load(fakeEngine());
-    assert.equal(short!.next_cursor, null, "3 rows against limit 100");
-
-    const engine = fakeEngine();
-    const full = await load(engine, { limit: 3 });
-    assert.equal(full!.next_cursor, "20260802.64", "the last row's own token");
-  });
-
-  test("drops engine rows whose day is unusable, rather than publishing them", async () => {
-    // The day is the series' primary key and the cursor's first half. A row
-    // whose day is a number, a non-date string, or a well-formed impossible
-    // date cannot be keyed or paged, so it is dropped rather than surfaced.
-    const engine = fakeEngine({
-      days: [
-        { day: 12_345, netuid: 1, event_count: 5 },
-        { day: "not-a-date", netuid: 2, event_count: 5 },
-        ...DAYS,
-      ],
-    });
-    const data = await load(engine);
-    assert.equal(data!.day_count, 3, "only the three usable rows survive");
-    for (const d of data!.days) {
-      assert.match(String(d.day), /^\d{4}-\d{2}-\d{2}$/);
-    }
-  });
-
-  test("declines when a page day passes the shape check but is not a real date", async () => {
-    // `2026-13-45` matches YYYY-MM-DD and is still not a date, so it cannot
-    // bound the kinds read. Declining beats issuing an unbounded scan.
-    const engine = fakeEngine({
-      days: [{ day: ts("2026-13-45"), netuid: 1, event_count: 5 }],
-    });
-    assert.equal(await load(engine), null);
-  });
-
-  test("skips a kinds row with no usable day or kind", async () => {
-    const engine = fakeEngine({
-      kinds: [
-        { day: 999, netuid: 64, event_kind: "Ghost" },
-        { day: ts("2026-08-03"), netuid: 64, event_kind: "" },
-        { day: ts("2026-08-03"), netuid: 64, event_kind: null },
-        { day: ts("2026-08-03"), netuid: 64, event_kind: "StakeAdded" },
-      ],
-    });
-    const data = await load(engine);
-    const first = data!.days.find(
-      (d) => d.netuid === 64 && d.day === "2026-08-03",
-    );
-    assert.deepEqual(
-      first!.event_kinds,
-      ["StakeAdded"],
-      "no empty/ghost kinds",
-    );
-  });
-
-  test("offset skips days without a cursor, and the page still caps at limit", async () => {
-    // ?offset is the deprecated fallback the contract still honours. R2 SQL has
-    // no OFFSET, so the reader over-fetches and slices here.
-    const engine = fakeEngine();
-    const data = await load(engine, { limit: 1, offset: 1 });
-    assert.equal(data!.day_count, 1);
-    assert.equal(data!.days[0].netuid, 18, "the second row, not the first");
-    assert.match(engine.page(), /LIMIT 2/, "limit + offset is fetched");
-  });
-
-  test("a cursor page tolerates a row whose netuid is unusable", async () => {
-    // The tuple's second half comes from engine data. A row that cannot supply
-    // it sorts before every real netuid rather than throwing or being kept.
-    const engine = fakeEngine({
-      days: [{ day: ts("2026-08-03"), netuid: null, event_count: 5 }, ...DAYS],
-    });
-    const data = await load(engine, { cursor: "20260803.64" });
-    assert.ok(data);
-    assert.ok(
-      data.days.every((d) => !(d.day === "2026-08-03" && d.netuid === 64)),
-      "the cursor's own cell is still excluded",
-    );
-  });
-
-  test("declines when either read misses", async () => {
-    for (const miss of [{ days: null }, { kinds: null }]) {
-      const engine = fakeEngine(miss);
-      assert.equal(
-        await load(engine),
-        null,
-        `${JSON.stringify(miss)} must decline so the caller keeps its fallback`,
-      );
-    }
-  });
-
-  test("refuses an unusable address rather than scanning every account", async () => {
-    for (const bad of ["", "not-an-address", "0x1234"]) {
-      const engine = fakeEngine();
-      assert.equal(
-        await loadAccountHistoryColdTier(
-          {} as never,
-          bad,
-          { limit: 10 },
-          { queryFn: engine.query as never },
-        ),
-        null,
-      );
-      assert.equal(engine.seen.length, 0, "must not reach the engine");
-    }
-  });
-
-  test("refuses an unusable limit or filter value", async () => {
     for (const query of [
       { limit: 0 },
-      { limit: -1 },
-      { limit: 10, netuid: "abc" },
-      { limit: 10, from: "not-a-date" },
-      { limit: 10, to: "2026-13-45" },
-    ]) {
-      const engine = fakeEngine();
-      assert.equal(await load(engine, query), null, JSON.stringify(query));
-      assert.equal(engine.seen.length, 0);
+      { limit: 2, offset: -1 },
+      { limit: 2, netuid: -1 },
+      { limit: 2, from: "bad" },
+      { limit: 2, to: "2026-99-99" },
+    ])
+      assert.equal(await loadAccountHistoryColdTier({}, SS58, query), null);
+    assert.equal(reader.mock.calls.length, 0);
+    for (const value of [null, undefined]) {
+      reader.mockResolvedValue(value);
+      assert.equal(
+        await loadAccountHistoryColdTier({}, SS58, { limit: 2 }),
+        null,
+      );
     }
   });
+  test("unusable day cells are not published as historical facts", async () => {
+    reader.mockResolvedValue([
+      { ...rows()[0], day: null },
+      { ...rows()[1], day: "bad" },
+      rows()[2],
+    ]);
+    assert.equal(
+      (await loadAccountHistoryColdTier({}, SS58, { limit: 2 }))?.day_count,
+      1,
+    );
+  });
 });
-
 describe("all three history surfaces reach the lakehouse", () => {
   test("REST calls the reader and MCP/GraphQL go through the shared loader", () => {
     assert.match(
@@ -378,83 +168,5 @@ describe("all three history surfaces reach the lakehouse", () => {
         `${path} must pass env, or the loader cannot reach the lakehouse`,
       );
     }
-  });
-});
-
-/**
- * The projection floor on the one read that had none and could not be seen.
- *
- * This is a LIFETIME `GROUP BY day, netuid` over a scattered `hotkey`, so
- * without `?from` it walked to genesis. `scripts/validate-r2-sql-scan-bounds.ts`
- * was blind to it for a second reason: this loader calls an INJECTED `queryFn`
- * rather than the literal `r2SqlQuery(` the gate greps for, so no amount of
- * tightening that gate's predicate test would have surfaced it. The floor is
- * asserted here instead.
- */
-describe("loadAccountHistoryColdTier -- the projection floor", () => {
-  const FIRST = 1_785_000_000_000;
-
-  const archive = (entry: unknown) =>
-    accountSummaryArchive({ accounts: { [SS58]: entry } });
-
-  test("BOTH reads carry the account's earliest folded event", async () => {
-    // Both, not just the page: the kinds read has the same scattered predicate
-    // over the same table, and a floor on one of two identical scans halves a
-    // problem rather than fixing it.
-    const engine = fakeEngine();
-    await loadAccountHistoryColdTier(
-      archive([
-        {
-          kind: "StakeAdded",
-          netuid: 64,
-          count: 1,
-          fb: 8_750_000,
-          lb: 8_750_000,
-          fo: FIRST,
-          lo: FIRST,
-        },
-      ]) as never,
-      SS58,
-      { limit: 100 },
-      { queryFn: engine.query as never },
-    );
-    assert.equal(engine.seen.length, 2, "premise: both reads were issued");
-    for (const sql of engine.seen) {
-      assert.ok(
-        sql.includes(`observed_at >= ${FIRST}`),
-        `unfloored: ${sql.slice(0, 160)}`,
-      );
-    }
-  });
-
-  test("an ABSENT account floors at the generation's edge", async () => {
-    // The producer writes every shard, so absence PROVES there is nothing at
-    // or before `through` -- the strongest floor available, and the case that
-    // matters most: an account with no folded history is exactly the one whose
-    // unbounded walk reads the whole table to answer "nothing".
-    const engine = fakeEngine();
-    await loadAccountHistoryColdTier(
-      archive(null) as never,
-      SS58,
-      { limit: 100 },
-      { queryFn: engine.query as never },
-    );
-    assert.equal(engine.seen.length, 2, "premise: both reads were issued");
-    const edge = Date.parse("2026-08-15T00:00:00.000Z");
-    assert.ok(
-      engine.page().includes(`observed_at >= ${edge}`),
-      `must floor at the day after \`through\`: ${engine.page().slice(0, 160)}`,
-    );
-  });
-
-  test("NO projection leaves the walk exactly as it was", async () => {
-    // The PAGE read only. The kinds read carries an `observed_at` range of its
-    // own -- derived from the days the page returned, at :238 -- so asserting
-    // "no bound anywhere" would assert against a bound that predates this
-    // change and has nothing to do with the projection.
-    const engine = fakeEngine();
-    await load(engine);
-    assert.equal(engine.seen.length, 2, "premise: both reads were issued");
-    assert.ok(!engine.page().includes("observed_at >="), engine.page());
   });
 });

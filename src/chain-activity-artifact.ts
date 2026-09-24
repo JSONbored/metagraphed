@@ -88,7 +88,7 @@ export function chainActivityCoverageIsCurrent(
 export function epochDayIso(dayIndex: unknown): string | null {
   // Number(null) and Number("") both coerce to 0 — a "valid" epoch day.
   // A missing index must decline, never silently label rows 1970-01-01
-  // (src/r2-sql.ts's safeBlockNumber guards the same trap).
+  // (src/history-readers.ts's safeBlockNumber guards the same trap).
   if (dayIndex == null) return null;
   if (typeof dayIndex === "string" && dayIndex.trim() === "") return null;
   const n = Number(dayIndex);

@@ -319,7 +319,7 @@ describe("self-health-mcp", () => {
   describe("parity with the REST route", () => {
     function coldTierEnv(rows: Record<string, unknown>[]) {
       const env = mockEnv() as unknown as Row;
-      env.R2_SQL_TOKEN = "legacy-test";
+      env.NATIVE_HISTORY_FIXTURE = "legacy-test";
       env.D1_STATE_TABLES = "self_health_daily,self_health_checks";
       env.D1_STATE = {
         async batch() {

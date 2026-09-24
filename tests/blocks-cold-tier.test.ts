@@ -28,7 +28,7 @@ import {
   loadBlockFeedColdTier,
   resolveBlocksSeam,
 } from "../src/blocks-cold-tier.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import {
   DECODE_WATERMARK_KEY,
   resetDecodeWatermarkCache,
@@ -98,7 +98,10 @@ function lakeFetch(rows: Record<string, unknown>[]) {
   return native;
 }
 
-const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
+const TOKEN = {
+  NATIVE_PROJECTIONS: "enabled",
+  [NATIVE_FIXTURE_ENV]: "cfut_test",
+};
 
 /** A bucket stub serving one watermark body (or nothing). */
 function archive(body: unknown, reads?: string[]) {

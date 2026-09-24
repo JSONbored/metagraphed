@@ -111,6 +111,21 @@ export const INGESTED_EVENT_KINDS = [
   // carries no new information the Scheduled event didn't already record.
   "SetChildrenScheduled",
   "ChildKeyTakeSet",
+  // Beta-basket and collateral runtimes. Multi-leg amounts, fund shares,
+  // thresholds and forfeiture estimates remain available in chain-event args.
+  "BasketDeposited",
+  "BasketStakedIn",
+  "BasketClaimed",
+  "BasketHoldingConverted",
+  "BetaBaselineStamped",
+  "BasketAlphaWrittenOff",
+  "SubnetLeaseDividendSkipped",
+  "SharePoolDenominatorReconciled",
+  "BasketSwapped",
+  "BasketClaimDustSkipped",
+  "CollateralLocked",
+  "MinCollateralSet",
+  "LiquidAlphaConsensusModeSet",
 ];
 
 export const SUBNET_EVENT_SUMMARY_WINDOWS: Record<string, number> = {
@@ -171,6 +186,19 @@ const EVENT_KIND_CATEGORIES: Record<string, string> = {
   // movement itself.
   SetChildrenScheduled: "delegation",
   ChildKeyTakeSet: "delegation",
+  BasketDeposited: "stake",
+  BasketStakedIn: "stake",
+  BasketClaimed: "stake",
+  BasketHoldingConverted: "stake",
+  BetaBaselineStamped: "stake",
+  BasketAlphaWrittenOff: "stake",
+  SubnetLeaseDividendSkipped: "governance",
+  SharePoolDenominatorReconciled: "stake",
+  BasketSwapped: "stake",
+  BasketClaimDustSkipped: "stake",
+  CollateralLocked: "stake",
+  MinCollateralSet: "governance",
+  LiquidAlphaConsensusModeSet: "governance",
 };
 
 function toIso(ms: unknown): string | null {

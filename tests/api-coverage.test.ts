@@ -1,3 +1,6 @@
+import { projectionComputeEnv } from "../src/projection-compute-context.ts";
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -3443,7 +3446,23 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
       {
         cron: workerConfig.PROJECTION_LANES_CRON,
       } as unknown as ScheduledController,
-      env as unknown as Env,
+      env && typeof env === "object" && "NATIVE_HISTORY_FIXTURE" in env
+        ? projectionComputeEnv(env as unknown as Env, {
+            now: Date.now(),
+            query: async (_env, query) => {
+              const result = await fetch("https://projection-fixture.invalid", {
+                method: "POST",
+                body: JSON.stringify({ query }),
+              });
+              if (!result.ok) return null;
+              return (
+                (await result.json()) as {
+                  result: { rows: Record<string, unknown>[] };
+                }
+              ).result.rows;
+            },
+          })
+        : (env as Env),
       {} as unknown as ExecutionContext,
     );
   }
@@ -3453,7 +3472,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     assert.deepEqual(result, {
       ok: false,
       skipped: true,
-      reason: "r2 sql not configured",
+      reason: "native projection producer not configured",
       lanes: {},
     });
   });
@@ -3472,7 +3491,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
       } as unknown as Response;
     }) as unknown as typeof fetch;
     const result = await projectionTick({
-      R2_SQL_TOKEN: "cfut_test",
+      NATIVE_HISTORY_FIXTURE: "cfut_test",
       METAGRAPH_ARCHIVE: {
         async put(key: string) {
           puts.push(key);
@@ -3548,7 +3567,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
       } as unknown as Response;
     }) as unknown as typeof fetch;
     const result = await projectionTick({
-      R2_SQL_TOKEN: "cfut_test",
+      NATIVE_HISTORY_FIXTURE: "cfut_test",
       METAGRAPH_ARCHIVE: {
         async put(key: string) {
           puts.push(key);

@@ -11,9 +11,12 @@ import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import { handleExtrinsic } from "../workers/request-handlers/entities.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 
-const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
+const TOKEN = {
+  NATIVE_PROJECTIONS: "enabled",
+  [NATIVE_FIXTURE_ENV]: "cfut_test",
+};
 const HASH = `0x${"ab".repeat(32)}`;
 const originalFetch = globalThis.fetch;
 let native: ReturnType<typeof nativeDetailReaders> | undefined;

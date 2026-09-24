@@ -9,7 +9,6 @@ import { resetModuleState } from "../src/module-state-registry.ts";
 import {
   PROJECTION_LANES,
   PROJECTION_NETWORKS,
-  PROJECTION_QUERY_TIMEOUT_MS,
   projectionKey,
   STAKE_FLOW_PROJECTION_WINDOWS,
   runProjectionLane,
@@ -23,7 +22,6 @@ import {
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
 } from "../src/chain-deregistrations-artifact.ts";
 import { LAKEHOUSE_NAMESPACES } from "../src/chain-network.ts";
-import { QUERY_TIMEOUT_MS } from "../src/r2-sql.ts";
 import { type Row } from "./row-type.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -195,7 +193,39 @@ afterEach(() => {
   resetModuleState();
 });
 
-const LAKE_ENV = { R2_SQL_TOKEN: "cfut_test" };
+import { LAKEHOUSE_ROW_SCHEMAS } from "../schemas-src/lakehouse.ts";
+const LAKE_ENV = { PROJECTION_TEST_ENGINE: true };
+// Query-shape fixtures enter through the native producer's explicit engine.
+// The local response stub below is never a request to a SQL service.
+import * as computeContext from "../src/projection-compute-context.ts";
+vi.spyOn(computeContext, "projectionQuery").mockImplementation((env) => {
+  if (!env || !Reflect.get(env, "PROJECTION_TEST_ENGINE")) return undefined;
+  return async (_env, query) => {
+    try {
+      const response = await fetch("https://projection-fixture.invalid", {
+        method: "POST",
+        body: JSON.stringify({ query }),
+      });
+      if (!response.ok) return null;
+      const body = (await response.json()) as {
+        success?: boolean;
+        result?: { rows?: Record<string, unknown>[] };
+      };
+      const rows = body.success ? (body.result?.rows ?? []) : null;
+      const table = /\b(?:FROM|JOIN)\s+(?:chain|chain_testnet)\.(\w+)/i.exec(
+        query,
+      )?.[1];
+      const schema = table
+        ? LAKEHOUSE_ROW_SCHEMAS[table as keyof typeof LAKEHOUSE_ROW_SCHEMAS]
+        : undefined;
+      if (rows && schema && rows.some((row) => !schema.safeParse(row).success))
+        return null;
+      return rows;
+    } catch {
+      return null;
+    }
+  };
+});
 
 function laneNamed(name: string): ProjectionLane {
   const lane = PROJECTION_LANES.find((entry) => entry.name === name);
@@ -1637,7 +1667,7 @@ describe("runProjectionLanes", () => {
     assert.deepEqual(result, {
       ok: false,
       skipped: true,
-      reason: "r2 sql not configured",
+      reason: "native projection producer not configured",
       lanes: {},
     });
     assert.equal(events.length, 0);
@@ -2155,61 +2185,25 @@ describe("the split per-subnet aggregates merge back by netuid", () => {
 // sitting on a response; chain-transfer-pairs was declining every tick with
 // "The operation was aborted" because its pair-grouping CTE had grown past a
 // bound borrowed from a context it does not share (#9423).
-describe("lane statements run on the lane bound, not the request bound", () => {
-  test("every lane read carries the longer timeout", async () => {
-    const seen: (number | undefined)[] = [];
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async (_u: string, init: RequestInit) => {
-      // The abort signal is what carries the bound; assert the deps instead by
-      // observing that a slow response is still allowed well past 15 s.
-      seen.push(init.signal ? 1 : undefined);
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, result: { rows: [] } }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
-    try {
-      await laneNamed("chain-transfer-pairs").compute(
-        LAKE_ENV as unknown as Env,
-        "mainnet",
-      );
-      assert.ok(seen.length > 0, "the lane never queried");
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+describe("portable projection engine boundary", () => {
+  test("direct lane computation declines without an injected native engine", async () => {
+    const fetch = vi.fn(() => {
+      throw new Error("An unconfigured lane must not request a remote engine");
+    });
+    vi.stubGlobal("fetch", fetch);
+    assert.equal(
+      await laneNamed("chain-transfer-pairs").compute({} as Env, "mainnet"),
+      null,
+    );
+    assert.equal(fetch.mock.calls.length, 0);
   });
 
-  test("the lane bound is a multiple of the request bound, not a fresh number", () => {
-    // Tied to the thing it relaxes, so the reason for the difference stays
-    // legible: same query, no caller waiting.
-    assert.equal(PROJECTION_QUERY_TIMEOUT_MS, 4 * QUERY_TIMEOUT_MS);
-    assert.ok(PROJECTION_QUERY_TIMEOUT_MS > QUERY_TIMEOUT_MS);
-  });
-
-  test("no lane statement calls r2SqlQuery directly, bypassing the bound", () => {
-    // #9459: the test above it passed while EIGHT statements across five lanes
-    // did exactly this — the transfer-pairs lane #9423 fixed went through
-    // laneQuery, and nothing checked its siblings, which were quietly taking
-    // the 15s REQUEST default on account_events aggregates over multi-day
-    // windows. A behavioural test cannot see the difference (the bound is a
-    // number handed to a timer, and a stubbed fetch resolves instantly), so
-    // this reads the source: laneQuery is the single seam, and the only
-    // mention of r2SqlQuery outside it is the import that feeds it.
+  test("request workers cannot fall back to the retired SQL service", () => {
     const source = readFileSync(
       new URL("../src/projection-lanes.ts", import.meta.url),
       "utf8",
     );
-    const calls = source.match(/\br2SqlQuery\(/g) ?? [];
-    assert.equal(
-      calls.length,
-      1,
-      `r2SqlQuery is called ${calls.length} times; only laneQuery may call it`,
-    );
-    assert.match(
-      source,
-      /function laneQuery\([^)]*\)[\s\S]*?return r2SqlQuery\(/,
-      "the one call must be laneQuery's own",
-    );
+    assert.doesNotMatch(source, /\br2SqlQuery\(/);
+    assert.match(source, /projectionQuery\(env\)/);
   });
 });

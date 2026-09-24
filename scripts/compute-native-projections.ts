@@ -8,7 +8,7 @@ import {
 import { projectionComputeEnv } from "../src/projection-compute-context.ts";
 import { chainTable } from "../src/chain-network.ts";
 import type { ChainNetworkId } from "../src/chain-network.ts";
-import type { R2SqlReader } from "../src/r2-sql.ts";
+import type { HistoricalQueryReader } from "../src/history-readers.ts";
 import { topHoldersFlowSql } from "../src/top-holders-flow-tier.ts";
 import { TopHoldersFlowFactsSchema } from "../schemas-src/projection-artifact.ts";
 
@@ -19,7 +19,7 @@ export const MAX_PROTOCOL_BYTES = 32 * 1024 * 1024;
 export async function computeNativeProjections(
   network: ChainNetworkId,
   now: number,
-  query: R2SqlReader,
+  query: HistoricalQueryReader,
 ) {
   if (!PROJECTION_NETWORKS.includes(network))
     throw new Error("Unknown projection network");
@@ -100,7 +100,7 @@ export async function nativeProjectionProtocol(
     now: number;
   };
   let id = 0;
-  const query: R2SqlReader = async (_env, sql) => {
+  const query: HistoricalQueryReader = async (_env, sql) => {
     const request = ++id;
     send({ type: "query", id: request, sql });
     const response = (await receive()) as {

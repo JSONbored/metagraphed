@@ -86,7 +86,7 @@ describe("areaOf", () => {
 
   it("attributes a finding to its configured area", () => {
     expect(areaOf("scripts/lib/worker-env.ts", areas)).toBe("scripts");
-    expect(areaOf("src/r2-sql.ts", areas)).toBe("src");
+    expect(areaOf("src/history-readers.ts", areas)).toBe("src");
   });
 
   it("does not confuse a nested directory with a top-level one", () => {

@@ -1,521 +1,193 @@
-// The properties this two-tier reader has to hold: the lakehouse leg is the
-// share-fraction ledger and nothing else, the stake leg is the live `neurons`
-// table (never the frozen lakehouse copy), the IN-list respects the 100-
-// parameter ceiling it was written against, and every failure DECLINES rather
-// than publishing a total that is quietly too small.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test, vi } from "vitest";
-import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
-import { pgMockEnv } from "./helpers/pg-mock.ts";
-
-// One store since #10179: the stake leg reads `neurons` through
-// src/read-store.ts, which builds `new Client(...)` itself -- this loader takes
-// only `(env, ss58)` and cannot be handed a binding. See
-// tests/helpers/pg-mock.ts for why the seam is a module mock and why the
-// controller is built inside vi.hoisted.
-const { pg } = await vi.hoisted(async () => ({
-  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
-}));
-vi.mock("pg", () => pg.module);
-
+import { Miniflare } from "miniflare";
+import { afterAll, beforeAll, beforeEach, describe, test, vi } from "vitest";
 import {
-  BIND_PARAM_CHUNK,
-  LEDGER_STAMP_MEMO_TTL_MS,
   POSITION_SCAN_CAP,
   latestStakeEventAt,
   ledgerCapturedAt,
   loadAccountPositionsColdTier,
-  resetLedgerStampMemo,
 } from "../src/nominator-positions-cold-tier.ts";
 import { POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY } from "../src/account-nominator-positions.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
-
-const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
-const COLDKEY = "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e";
-const HOTKEY_A = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
-const HOTKEY_B = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-
-/** Stubs the R2 SQL leg and records the SQL it was handed. */
-function sqlFetch(rows: unknown[]) {
-  const queries: string[] = [];
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    queries.push(JSON.parse(String(init.body)).query);
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return queries;
-}
-
-function failingFetch() {
-  globalThis.fetch = (async () => {
-    throw new Error("down");
-  }) as unknown as typeof fetch;
-}
-
-/** A store stub that records every statement + binding it is handed, and
- * answers from a (hotkey, netuid) -> stake_tao table. `mode` forces the two
- * failure shapes the reader has to survive: a throw, and a malformed body.
- *
- * The dispatch runs in the double's `onQuery` subscription, which fires before
- * it consults its canned answers -- and it has to be the subscription rather
- * than a read-back because every caller destructures `calls` and reads it after
- * the loader has run. See tests/helpers/pg-mock.ts. */
-function d1Stub(
-  stakes: { hotkey: string; netuid: number; stake_tao: number }[],
-  mode: "ok" | "throw" | "malformed" = "ok",
-) {
-  const calls: { sql: string; params: unknown[] }[] = [];
-  pg.control.queries.length = 0;
-  pg.control.answers = [];
-  pg.control.rows = null;
-  pg.control.failNext = null;
-  pg.control.onQuery = ({ text, values }) => {
-    calls.push({ sql: text, params: values });
-    if (mode === "throw") {
-      pg.control.failNext = new Error("store down");
-      return;
-    }
-    // readStore cannot manufacture a non-array result, so the malformed shape
-    // is injected: the guard it trips is what stops `results.length` becoming a
-    // TypeError inside a path whose whole job is to decline.
-    pg.control.rows =
-      mode === "malformed"
-        ? ("not-an-array" as never)
-        : (stakes.filter((row) => values.includes(row.hotkey)) as unknown[]);
-  };
-  return { calls, env: { ...TOKEN, ...pgMockEnv() } };
-}
-
-function positionRow(hotkey: string, netuid: number, fraction: number) {
-  return {
-    hotkey,
-    netuid,
-    share_fraction: fraction,
-    captured_at: 1_785_634_702_670,
-  };
-}
-
-/**
- * Routes each query to its own rows, keyed on a fragment of the SQL -- the
- * zero path issues three different reads (the ledger scan, the ledger's
- * MAX(captured_at), and this coldkey's newest stake event) and `sqlFetch`
- * above deliberately answers them all identically.
- */
-function routedFetch(
-  routes: { match: RegExp; rows: unknown[] }[],
-  fallback: unknown[] = [],
-) {
-  const queries: string[] = [];
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    const query = JSON.parse(String(init.body)).query as string;
-    queries.push(query);
-    const rows = routes.find((r) => r.match.test(query))?.rows ?? fallback;
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return queries;
-}
-
-// The ledger stamp is memoized per isolate; each test starts from cold so one
-// test's answer cannot decide another's.
-beforeEach(resetLedgerStampMemo);
-
-describe("loadAccountPositionsColdTier", () => {
-  test("prices the ledger's share fractions off D1's live neurons stake", async () => {
-    const q = sqlFetch([
-      positionRow(HOTKEY_A, 18, 0.5),
-      positionRow(HOTKEY_B, 4, 0.25),
-    ]);
-    const { calls, env } = d1Stub([
-      { hotkey: HOTKEY_A, netuid: 18, stake_tao: 100 },
-      { hotkey: HOTKEY_B, netuid: 4, stake_tao: 40 },
-    ]);
-    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
-
-    const s = q[0]!;
-    assert.match(s, /FROM chain\.nominator_positions/);
-    assert.match(s, new RegExp(`coldkey = '${COLDKEY}'`));
-    assert.match(s, /hotkey, netuid, share_fraction, captured_at/);
-    // The lakehouse holds a frozen `neurons` export too; pricing a live
-    // position off it would quietly age every stake_tao in the payload.
-    assert.doesNotMatch(s, /neurons/);
-    // `$n`, not `?`: the loader writes SQLite's `?` and readStore rewrites it
-    // through toPositionalPlaceholders on the way to Postgres. #9821 is what
-    // happens when it does not -- six routes served zero rows because `?`
-    // reached Postgres unrewritten and matched nothing.
-    assert.match(calls[0]!.sql, /FROM neurons WHERE hotkey IN \(\$\d, \$\d\)/);
-
-    assert.equal(data!.position_count, 2);
-    assert.equal(data!.total_stake_alpha, 60);
-    assert.equal(data!.positions[0]!.stake_tao, 50);
-    assert.equal(
-      data!.captured_at,
-      new Date(1_785_634_702_670).toISOString(),
-      "captured_at comes from the ledger row, not the clock",
-    );
-  });
-
-  test("keeps the alpha-denominated total name #8945 settled on", async () => {
-    // The aggregate sums different subnets' alpha, so it is not a TAO value.
-    // A *_tao name here would re-assert the arithmetic that rename undid.
-    sqlFetch([positionRow(HOTKEY_A, 18, 1)]);
-    const { env } = d1Stub([{ hotkey: HOTKEY_A, netuid: 18, stake_tao: 7 }]);
-    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
-    assert.equal(data!.total_stake_alpha, 7);
-    assert.ok(
-      !Object.hasOwn(data as object, "total_stake_tao"),
-      "the alpha total must not reappear under a TAO name",
-    );
-  });
-
-  test("chunks the D1 IN-list at the platform's 100-parameter ceiling", async () => {
-    // D1 rejected a statement with more than 100 bound parameters even though
-    // `wrangler d1 execute` accepts far more from the CLI -- so one IN-list
-    // per hotkey-set would fail for exactly the coldkeys that matter most.
-    const hotkeys = Array.from(
-      { length: 250 },
-      (_unused, i) => `${HOTKEY_A.slice(0, 44)}${String(i).padStart(4, "0")}`,
-    );
-    sqlFetch(hotkeys.map((hotkey, i) => positionRow(hotkey, i, 1)));
-    const { calls, env } = d1Stub(
-      hotkeys.map((hotkey, i) => ({ hotkey, netuid: i, stake_tao: 2 })),
-    );
-    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
-
-    assert.equal(calls.length, 3, "250 hotkeys is three capped statements");
-    for (const call of calls) {
-      assert.ok(
-        call.params.length <= BIND_PARAM_CHUNK,
-        `no statement may exceed ${BIND_PARAM_CHUNK} bound parameters`,
-      );
-    }
-    assert.equal(
-      data!.position_count,
-      250,
-      "every chunk's rows reach the join map",
-    );
-  });
-
-  test("declines a coldkey past the scan cap rather than under-reporting its total", async () => {
-    // total_stake_alpha sums the whole set: a truncated scan would publish a
-    // confident number that is quietly too small.
-    const rows = Array.from({ length: POSITION_SCAN_CAP + 1 }, (_unused, i) =>
-      positionRow(HOTKEY_A, i, 1),
-    );
-    const q = sqlFetch(rows);
-    const { calls, env } = d1Stub([]);
-    assert.equal(
-      await loadAccountPositionsColdTier(env as never, COLDKEY),
-      null,
-    );
-    assert.match(
-      q[0]!,
-      new RegExp(`LIMIT ${POSITION_SCAN_CAP + 1}`),
-      "reads one row past the cap so the overflow is detectable",
-    );
-    assert.equal(calls.length, 0, "must not fan out to D1 after declining");
-  });
-
-  test("a coldkey with no positions answers an empty card without touching D1", async () => {
-    sqlFetch([]);
-    const { calls, env } = d1Stub([]);
-    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
-    assert.equal(data!.position_count, 0);
-    assert.equal(data!.total_stake_alpha, 0);
-    assert.equal(data!.ss58, COLDKEY);
-    assert.equal(calls.length, 0, "no hotkeys means no statement at all");
-  });
-
-  test("declines an unusable address rather than scanning the whole ledger", async () => {
-    const q = sqlFetch([]);
-    assert.equal(
-      await loadAccountPositionsColdTier(TOKEN as never, "not-an-ss58"),
-      null,
-    );
-    assert.equal(q.length, 0, "must not issue a query at all");
-  });
-
-  test("declines when the lakehouse cannot answer", async () => {
-    failingFetch();
-    const { env } = d1Stub([]);
-    assert.equal(
-      await loadAccountPositionsColdTier(env as never, COLDKEY),
-      null,
-    );
-  });
-
-  test("declines when the stake leg is missing or throws", async () => {
-    // A partial stake map silently DROPS the positions it could not price,
-    // and buildAccountPositions cannot tell that from a deregistered hotkey.
-    sqlFetch([positionRow(HOTKEY_A, 18, 1)]);
-    assert.equal(
-      await loadAccountPositionsColdTier(TOKEN as never, COLDKEY),
-      null,
-      "no store bound is a decline, not an empty join",
-    );
-
-    sqlFetch([positionRow(HOTKEY_A, 18, 1)]);
-    const thrown = d1Stub([], "throw");
-    assert.equal(
-      await loadAccountPositionsColdTier(thrown.env as never, COLDKEY),
-      null,
-    );
-
-    // The "answers malformed" arm retired with the shape doubt (#10909): the
-    // store guarantees an array (src/read-store.ts), so a driver answering a
-    // non-row-set reads as zero rows here rather than as a distinct decline.
-    // The missing-store and throwing-store declines above are what remain, and
-    // they are the two a caller can actually be in.
-  });
-
-  test("a zero contradicted by a newer stake event is DEGRADED, not a confident zero", async () => {
-    // #9273 in one test. The ledger is a frozen export; a coldkey that started
-    // delegating after it has no rows here, and the old payload said
-    // `positions: 0, total_stake_alpha: 0, captured_at: null` -- a confident,
-    // unfalsifiable wrong answer for four of five live delegators sampled.
-    const ledgerAt = 1_785_634_702_670;
-    const stakeAt = ledgerAt + 3_600_000;
-    const queries = routedFetch([
-      { match: /MAX\(captured_at\)/, rows: [{ latest: ledgerAt }] },
-      { match: /MAX\(observed_at\)/, rows: [{ latest: stakeAt }] },
-    ]);
-    const { env } = d1Stub([]);
-    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
-
-    assert.equal(data!.position_count, 0);
-    assert.equal(
-      data!.captured_at,
-      new Date(ledgerAt).toISOString(),
-      "the LEDGER's stamp, so the age of the zero is visible with no rows to derive it from",
-    );
-    assert.equal(
-      data!.degraded!.reason,
-      POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
-    );
-    assert.equal(
-      data!.degraded!.latest_stake_event_at,
-      new Date(stakeAt).toISOString(),
-    );
-
-    const stakeQuery = queries.find((q) => /MAX\(observed_at\)/.test(q))!;
-    assert.match(stakeQuery, /FROM chain\.account_events/);
-    assert.match(stakeQuery, new RegExp(`coldkey = '${COLDKEY}'`));
-    assert.match(stakeQuery, /'StakeAdded', 'StakeRemoved'/);
-  });
-
-  test("a zero with no newer stake activity keeps its measured meaning", async () => {
-    const ledgerAt = 1_785_634_702_670;
-    routedFetch([
-      { match: /MAX\(captured_at\)/, rows: [{ latest: ledgerAt }] },
-      { match: /MAX\(observed_at\)/, rows: [{ latest: ledgerAt - 1_000 }] },
-    ]);
-    const { env } = d1Stub([]);
-    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
-    assert.equal(data!.captured_at, new Date(ledgerAt).toISOString());
-    assert.ok(
-      !("degraded" in data!),
-      "an account that stopped delegating BEFORE the snapshot really does hold nothing",
-    );
-  });
-
-  test("a non-empty result never pays for the two snapshot reads", async () => {
-    // The cross-check exists for zeros; a result with positions already
-    // carries its own stamp, and R2 SQL is a second-scale engine.
-    const queries = routedFetch([], [positionRow(HOTKEY_A, 18, 1)]);
-    const { env } = d1Stub([{ hotkey: HOTKEY_A, netuid: 18, stake_tao: 9 }]);
-    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
-    assert.equal(data!.position_count, 1);
-    assert.equal(
-      queries.length,
-      1,
-      "one query: the ledger scan and nothing else",
-    );
-  });
-
-  test("a failed cross-check never manufactures a degraded label", async () => {
-    // Conservative direction: a lakehouse that cannot answer says nothing
-    // about whether this coldkey's zero is real.
-    const queries = routedFetch([{ match: /nominator_positions/, rows: [] }]);
-    globalThis.fetch = (async (_u: string, init: RequestInit) => {
-      const query = JSON.parse(String(init.body)).query as string;
-      queries.push(query);
-      if (/nominator_positions WHERE coldkey/.test(query)) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ success: true, result: { rows: [] } }),
-        } as unknown as Response;
-      }
-      throw new Error("lakehouse down");
-    }) as unknown as typeof fetch;
-    const { env } = d1Stub([]);
-    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
-    assert.equal(data!.position_count, 0);
-    assert.equal(data!.captured_at, null);
-    assert.ok(!("degraded" in data!));
-  });
-
-  test("excludes a position whose hotkey D1 had no stake row for", async () => {
-    // The retired loader's own contract: a deregistered hotkey (or a snapshot
-    // that has not caught up) is omitted, never reported at a fabricated zero.
-    sqlFetch([positionRow(HOTKEY_A, 18, 1), positionRow(HOTKEY_B, 4, 1)]);
-    const { env } = d1Stub([{ hotkey: HOTKEY_A, netuid: 18, stake_tao: 3 }]);
-    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
-    assert.equal(data!.position_count, 1);
-    assert.equal(data!.positions[0]!.hotkey, HOTKEY_A);
-  });
+import * as feeds from "../src/indexed-account-feeds.ts";
+import * as projection from "../src/account-summary-projection.ts";
+import { nativeAccountRow } from "./helpers/native-account-row.ts";
+const COLDKEY = "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e",
+  HOTKEY_A = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g",
+  HOTKEY_B = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const STAMP = 1785634702670;
+const runtime = new Miniflare({
+  modules: true,
+  script: "export default {fetch(){return new Response('test')}}",
+  compatibilityDate: "2026-06-06",
+  d1Databases: ["DB"],
 });
-
-describe("ledgerCapturedAt", () => {
-  test("memoizes the stamp for its TTL, then re-reads", async () => {
-    // The ledger's MAX(captured_at) is identical for every caller and moves at
-    // most once per lane pass, so a zero-position request should not pay for
-    // it more than once per isolate per TTL.
-    const queries = routedFetch([], [{ latest: 100 }]);
-    const start = 1_000_000;
-    assert.equal(await ledgerCapturedAt(TOKEN as never, start), 100);
-    assert.equal(await ledgerCapturedAt(TOKEN as never, start + 1_000), 100);
-    assert.equal(queries.length, 1, "the second read is served from the memo");
-
+const db = await runtime.getD1Database("DB");
+const env = { D1_STATE: db, D1_STATE_TABLES: "nominator_positions,neurons" };
+const page = vi.spyOn(feeds, "loadIndexedAccountFeedPage"),
+  floor = vi.spyOn(projection, "accountHistoryFloorMs");
+beforeAll(async () => {
+  await db.exec(
+    "CREATE TABLE nominator_positions(coldkey TEXT,hotkey TEXT,netuid INTEGER,share_fraction REAL,captured_at); CREATE TABLE neurons(hotkey TEXT,netuid INTEGER,stake_tao REAL);",
+  );
+});
+afterAll(() => runtime.dispose());
+beforeEach(async () => {
+  await db.exec("DELETE FROM nominator_positions; DELETE FROM neurons;");
+  page.mockReset().mockResolvedValue([]);
+  floor.mockReset().mockResolvedValue(null);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw Error("HTTP forbidden");
+    }),
+  );
+});
+async function position(
+  hotkey = HOTKEY_A,
+  netuid = 18,
+  fraction = 0.5,
+  stamp: unknown = STAMP,
+) {
+  await db
+    .prepare("INSERT INTO nominator_positions VALUES(?,?,?,?,?)")
+    .bind(COLDKEY, hotkey, netuid, fraction, stamp)
+    .run();
+}
+async function stake(hotkey = HOTKEY_A, netuid = 18, value = 100) {
+  await db
+    .prepare("INSERT INTO neurons VALUES(?,?,?)")
+    .bind(hotkey, netuid, value)
+    .run();
+}
+describe("selected native account positions", () => {
+  test("prices exact share fractions with current stakes and preserves alpha units and capture time", async () => {
+    await position();
+    await position(HOTKEY_B, 4, 0.25);
+    await stake();
+    await stake(HOTKEY_B, 4, 40);
+    const result = await loadAccountPositionsColdTier(env, COLDKEY);
+    assert.equal(result?.position_count, 2);
+    assert.equal(result.total_stake_alpha, 60);
+    assert.equal(result.positions[0].stake_tao, 50);
+    assert.equal(result.captured_at, new Date(STAMP).toISOString());
+    assert.ok(!Object.hasOwn(result, "total_stake_tao"));
+    assert.equal(page.mock.calls.length, 0);
+  });
+  test("supports hundreds of hotkeys within D1 binding limits", async () => {
+    const rows = Array.from({ length: 250 }, (_, i) => ({
+      hotkey: `${HOTKEY_A.slice(0, 44)}${String(i).padStart(4, "0")}`,
+      netuid: i,
+    }));
+    for (const row of rows) {
+      await position(row.hotkey, row.netuid, 1);
+      await stake(row.hotkey, row.netuid, 2);
+    }
+    const result = await loadAccountPositionsColdTier(env, COLDKEY);
+    assert.equal(result?.position_count, 250);
+    assert.equal(result.total_stake_alpha, 500);
+  });
+  test("declines beyond the complete-position cap", async () => {
+    await db
+      .prepare(
+        "WITH RECURSIVE n(i) AS(VALUES(0) UNION ALL SELECT i+1 FROM n WHERE i<?) INSERT INTO nominator_positions SELECT ?,?,i,1,? FROM n",
+      )
+      .bind(POSITION_SCAN_CAP, COLDKEY, HOTKEY_A, STAMP)
+      .run();
+    assert.equal(await loadAccountPositionsColdTier(env, COLDKEY), null);
+  });
+  test("empty positions carry the real ledger timestamp and only newer stake activity marks a contradiction", async () => {
+    await db
+      .prepare("INSERT INTO nominator_positions VALUES(?,?,?,?,?)")
+      .bind("different", HOTKEY_A, 1, 1, STAMP)
+      .run();
+    for (const [observed, degraded] of [
+      [STAMP - 1000, false],
+      [STAMP + 3600000, true],
+    ] as const) {
+      page.mockResolvedValue([nativeAccountRow({ observed_at: observed })]);
+      const result = await loadAccountPositionsColdTier(env, COLDKEY);
+      assert.equal(result?.position_count, 0);
+      assert.equal(result.total_stake_alpha, 0);
+      assert.equal(result.captured_at, new Date(STAMP).toISOString());
+      if (degraded)
+        assert.equal(
+          result.degraded?.reason,
+          POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
+        );
+      else assert.equal(result.degraded, undefined);
+    }
+    page.mockResolvedValue(null);
     assert.equal(
-      await ledgerCapturedAt(
-        TOKEN as never,
-        start + LEDGER_STAMP_MEMO_TTL_MS + 1,
+      (await loadAccountPositionsColdTier(env, COLDKEY))?.degraded,
+      undefined,
+    );
+  });
+  test("unusable addresses and missing selected stores decline; unregistered hotkeys cannot invent stake", async () => {
+    assert.equal(await loadAccountPositionsColdTier(env, "bad"), null);
+    assert.equal(await loadAccountPositionsColdTier({}, COLDKEY), null);
+    assert.equal(
+      await loadAccountPositionsColdTier(
+        { D1_STATE_TABLES: "nominator_positions" },
+        COLDKEY,
       ),
-      100,
-    );
-    assert.equal(queries.length, 2, "past the TTL it re-reads");
-  });
-
-  test("a failed read is NOT memoized", async () => {
-    // Pinning a null for five minutes would turn one transient R2 SQL failure
-    // into five minutes of unstamped zeros.
-    failingFetch();
-    assert.equal(await ledgerCapturedAt(TOKEN as never, 1), null);
-    const queries = routedFetch([], [{ latest: 42 }]);
-    assert.equal(await ledgerCapturedAt(TOKEN as never, 2), 42);
-    assert.equal(queries.length, 1);
-  });
-
-  test("an absent, blank, or non-numeric stamp reads as null", async () => {
-    for (const latest of [null, undefined, "", "  ", "not-a-date", -1]) {
-      resetLedgerStampMemo();
-      routedFetch([], [{ latest }]);
-      assert.equal(
-        await ledgerCapturedAt(TOKEN as never, 1),
-        null,
-        `latest=${String(latest)}`,
-      );
-    }
-    resetLedgerStampMemo();
-    routedFetch([], []);
-    assert.equal(
-      await ledgerCapturedAt(TOKEN as never, 1),
       null,
-      "no row at all",
     );
-  });
-
-  test("the default clock engages when no timestamp is passed", async () => {
-    routedFetch([], [{ latest: 7 }]);
-    assert.equal(await ledgerCapturedAt(TOKEN as never), 7);
+    await position();
+    assert.equal(
+      (await loadAccountPositionsColdTier(env, COLDKEY))?.position_count,
+      0,
+    );
+    assert.equal(
+      await loadAccountPositionsColdTier(
+        { ...env, D1_STATE_TABLES: "nominator_positions" },
+        COLDKEY,
+      ),
+      null,
+    );
   });
 });
-
-describe("latestStakeEventAt", () => {
-  test("sanitizes its OWN input rather than trusting the caller", async () => {
-    // R2 SQL has no bound parameters at all, so every predicate in this module
-    // is interpolated and safeSs58Literal is the only thing between a request
-    // path and the warehouse. This function is exported, so "the one caller
-    // already validated it" is a property of today's code, not of the
-    // function.
-    const queries = routedFetch([], [{ latest: 1 }]);
-    for (const bad of ["' OR 1=1 --", "not-an-ss58", ""]) {
-      assert.equal(
-        await latestStakeEventAt(TOKEN as never, bad),
-        null,
-        `${bad} must be refused, not escaped`,
-      );
+describe("native snapshot timestamps", () => {
+  test("reads the selected ledger's current timestamp without stale memoization", async () => {
+    assert.equal(await ledgerCapturedAt(env), null);
+    await position();
+    assert.equal(await ledgerCapturedAt(env), STAMP);
+    await position(HOTKEY_B, 4, 1, STAMP + 1000);
+    assert.equal(await ledgerCapturedAt(env), STAMP + 1000);
+  });
+  test("blank, negative and unreadable stamps never become a false timestamp", async () => {
+    for (const stamp of [null, "", " ", "bad", -1]) {
+      await db.exec("DELETE FROM nominator_positions");
+      await position(HOTKEY_A, 1, 1, stamp);
+      assert.equal(await ledgerCapturedAt(env), null);
     }
-    assert.equal(queries.length, 0, "an unusable address issues no query");
-  });
-
-  test("asks account_events for this coldkey's newest stake event only", async () => {
-    const queries = routedFetch([], [{ latest: 1_785_700_000_000 }]);
     assert.equal(
-      await latestStakeEventAt(TOKEN as never, COLDKEY),
-      1_785_700_000_000,
-    );
-    assert.match(queries[0]!, /MAX\(observed_at\).*FROM chain\.account_events/);
-    assert.match(queries[0]!, new RegExp(`coldkey = '${COLDKEY}'`));
-    assert.match(queries[0]!, /event_kind IN \('StakeAdded', 'StakeRemoved'\)/);
-  });
-
-  test("a failed read is null, never a manufactured contradiction", async () => {
-    failingFetch();
-    assert.equal(await latestStakeEventAt(TOKEN as never, COLDKEY), null);
-  });
-
-  // THE TEST scripts/validate-r2-sql-scan-bounds.ts NAMES in RUNTIME_BOUNDED.
-  //
-  // That gate reads source text, and this floor is applied through a ternary
-  // -- `floorMs === null ? "" : ...` -- which no static reader can evaluate.
-  // The exemption there is therefore a POINTER TO THIS ASSERTION rather than a
-  // judgement that the scan is cheap, and the pointer is only worth anything
-  // while these two tests exist. A stale-key check in the gate fails if the
-  // entry outlives the finding; this is the other half.
-  //
-  // Why it matters: `MAX(observed_at)` over a scattered `coldkey` reads the
-  // account's whole history, and it fires precisely for accounts holding NO
-  // delegated positions -- so before the floor, the cheapest possible answer
-  // paid the most expensive read.
-  test("FLOORS the MAX(observed_at) scan at the projection's own bound", async () => {
-    const FIRST = 1_786_629_372_000;
-    const queries = routedFetch([], [{ latest: 1_785_700_000_000 }]);
-    await latestStakeEventAt(
-      {
-        ...TOKEN,
-        ...accountSummaryArchive({
-          accounts: {
-            [COLDKEY]: [
-              {
-                kind: "StakeAdded",
-                netuid: 18,
-                count: 1,
-                fb: 8_836_052,
-                lb: 8_836_052,
-                fo: FIRST,
-                lo: FIRST,
-              },
-            ],
-          },
-        }),
-      } as never,
-      COLDKEY,
-    );
-    assert.equal(queries.length, 1, "premise: the scan was issued");
-    assert.ok(
-      queries[0]!.includes(`observed_at >= ${FIRST}`),
-      `unfloored: ${queries[0]}`,
+      await ledgerCapturedAt({ D1_STATE_TABLES: "nominator_positions" }),
+      null,
     );
   });
-
-  test("an unfloorable account still gets its answer, unbounded", async () => {
-    // The floor is an optimization over a correct read, never a precondition
-    // for one. With no projection published the query must still be issued --
-    // a reader that declined here would turn a slow answer into no answer.
-    const queries = routedFetch([], [{ latest: 1_785_700_000_000 }]);
-    assert.equal(
-      await latestStakeEventAt(TOKEN as never, COLDKEY),
-      1_785_700_000_000,
-    );
-    assert.equal(queries.length, 1);
-    assert.ok(!queries[0]!.includes("observed_at >="));
+  test("latest stake activity is a bounded exact coldkey seek with the proven floor", async () => {
+    floor.mockResolvedValue(STAMP - 1000);
+    page.mockResolvedValue([nativeAccountRow({ observed_at: STAMP })]);
+    assert.equal(await latestStakeEventAt(env, COLDKEY), STAMP);
+    assert.deepEqual(page.mock.lastCall, [
+      env,
+      ["StakeAdded", "StakeRemoved"].map((kind) => ({
+        side: "coldkey",
+        account: COLDKEY,
+        kind,
+        observedStart: STAMP - 1000,
+      })),
+      1,
+    ]);
+    floor.mockResolvedValue(null);
+    await latestStakeEventAt(env, COLDKEY);
+    assert.equal(page.mock.lastCall?.[1][0].observedStart, undefined);
+    page.mockClear();
+    assert.equal(await latestStakeEventAt(env, "bad"), null);
+    assert.equal(page.mock.calls.length, 0);
+    for (const value of [null, undefined, []]) {
+      page.mockResolvedValue(value);
+      assert.equal(await latestStakeEventAt(env, COLDKEY), null);
+    }
   });
 });

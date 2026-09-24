@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 // The two readers that reach the lakehouse WITHOUT the shared rollup (#11424).
 //
 // #11417/#11428 fixed `chain-event-rollup-cold-tier.ts` and its seven

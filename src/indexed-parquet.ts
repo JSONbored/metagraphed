@@ -1,3 +1,4 @@
+import { timed, TIMING_R2 } from "./request-timing.ts";
 // Ordinary R2 range reads of an immutable Parquet object. There is no SQL
 // engine or scan fallback in this path: an invalid index is an error, never
 // an empty result. Producers publish a complete generation before selecting it.
@@ -64,10 +65,12 @@ export function r2ParquetSource(
 ): ParquetRangeSource {
   return {
     async read(key, etag, offset, length) {
-      const object = await bucket.get(key, {
-        onlyIf: { etagMatches: etag },
-        range: { offset, length },
-      });
+      const object = await timed(TIMING_R2, () =>
+        bucket.get(key, {
+          onlyIf: { etagMatches: etag },
+          range: { offset, length },
+        }),
+      );
       if (
         !object ||
         !("body" in object) ||

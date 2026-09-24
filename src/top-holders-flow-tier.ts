@@ -5,11 +5,9 @@
 import { artifactBucket } from "./projection-store.ts";
 
 import type { ProjectionLane } from "./projection-lanes.ts";
-import { PROJECTION_QUERY_TIMEOUT_MS } from "./projection-lanes.ts";
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./chain-stake-flow.ts";
 import { DEFAULT_CHAIN_NETWORK, chainTable } from "./chain-network.ts";
 import type { ChainNetworkId } from "./chain-network.ts";
-import { r2SqlQuery } from "./r2-sql.ts";
 import { loadNativeTopHoldersFlow } from "./top-holders-native-flow.ts";
 import { buildTopHoldersList } from "./top-holders.ts";
 import {
@@ -80,7 +78,7 @@ export const TOP_HOLDERS_FLOW_ROW_CAP = 1_000;
  * The one statement, all three windows.
  *
  * Every value is a module constant or an integer computed from `nowMs` —
- * never caller input — per src/r2-sql.ts's no-bound-parameters contract.
+ * never caller input — per src/history-readers.ts's no-bound-parameters contract.
  *
  * The outer predicate is the WIDEST window, and the narrower ones are
  * conditional sums over the same scanned rows. Three separate window queries
@@ -211,16 +209,9 @@ export async function computeTopHoldersFlow(
 ): Promise<Record<string, unknown> | null> {
   const now = Date.now();
   const native = await loadNativeTopHoldersFlow(env, network, now);
-  if (native === null) return null;
-  const generatedAt = native?.generatedAt ?? now;
-  const rows =
-    native?.rows ??
-    (await r2SqlQuery(env, topHoldersFlowSql(now, network), {
-      timeoutMs: PROJECTION_QUERY_TIMEOUT_MS,
-    }));
-  // The FLOW leg is required: it is the one this lane was built for, and an
-  // artifact without it would silently un-rank the net_flow_* sorts.
-  if (rows === null) return null;
+  if (native == null) return null;
+  const generatedAt = native.generatedAt;
+  const rows = native.rows;
   // The HOLDINGS leg is optional and store-backed, so it is mainnet-only -- the
   // testnet projection has no balance ledger or pool ledger of its own, and
   // reading the mainnet ones for it would mislabel another chain's accounts.

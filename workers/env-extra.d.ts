@@ -294,19 +294,6 @@ interface ChainHeadPollEnv {
 // capturing before the migration that creates its watermark table.
 interface RawCaptureLaneEnv {
   RAW_CAPTURE_ENABLED?: string;
-  /** R2 SQL read tier over the chain lakehouse (src/r2-sql.ts). Token is a
-   * wrangler secret; account/warehouse fall back to this account's values and
-   * are only set when pointing at a different warehouse. */
-  R2_SQL_TOKEN?: string;
-  R2_SQL_ACCOUNT_ID?: string;
-  R2_SQL_WAREHOUSE?: string;
-  R2_SQL_RATE_LIMIT_COOLDOWN_MS?: string;
-  /** Response-body ceiling for an R2 SQL read, bytes; "0" disables the cap.
-   * Bounds the 128 MB isolate against `chain.extrinsics.call_args`, which is
-   * unbounded regardless of engine. Read via `as keyof Env` until #11067 —
-   * a cast that typechecked precisely because it asserted past the interface
-   * this field was missing from. */
-  R2_SQL_MAX_BODY_BYTES?: string;
 }
 
 // RPC reverse-proxy usage telemetry on Workers Analytics Engine (#9228).

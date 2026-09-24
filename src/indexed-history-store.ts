@@ -19,6 +19,10 @@ import { registerModuleStateReset } from "./module-state-registry.ts";
 import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
 import { historyHashAbsentFromHotBridge } from "./history-hash-hot-bridge.ts";
 import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
+import {
+  loadRuntimeAccountCuration,
+  isRuntimeCorrectedRow,
+} from "./runtime-account-curation.ts";
 
 type Bucket = Pick<R2Bucket, "get">;
 interface HistoryEnv {
@@ -131,9 +135,48 @@ export async function readSelectedHistoryBlock(
       selected,
       budget,
     );
-    return (
+    const rows = (
       await readHistoryBlock(source, generation, selected, block, budget)
     ).map(catalogRow);
+    if (table !== "account_events") return rows;
+    const correction = await loadRuntimeAccountCuration(
+      bucket,
+      source,
+      network,
+      budget,
+    );
+    if (
+      !correction ||
+      block < correction.selection.firstBlock ||
+      block > correction.selection.lastBlock
+    )
+      return rows;
+    const correctedGeneration = await loadHistoryBlockGeneration(
+      source,
+      correction.selection.blockManifest,
+      correction.selection,
+      budget,
+    );
+    if (
+      correctedGeneration.rows !== correction.rows ||
+      correctedGeneration.sourceSnapshot !== correction.sourceSnapshot
+    )
+      throw new Error("Runtime corrected block census differs from its source");
+    const corrected = (
+      await readHistoryBlock(
+        source,
+        correctedGeneration,
+        correction.selection,
+        block,
+        budget,
+      )
+    ).map(catalogRow);
+    if (corrected.some((row) => !isRuntimeCorrectedRow(correction, row)))
+      throw new Error("Runtime corrected block contains an unrelated row");
+    return [
+      ...rows.filter((row) => !isRuntimeCorrectedRow(correction, row)),
+      ...corrected,
+    ];
   } catch {
     recordIndexedHistoryFailure();
     return null;
