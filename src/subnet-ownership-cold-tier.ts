@@ -1,40 +1,13 @@
+// Ownership cards combine the native event projection with verified owner observations.
+// The explicit query reader below is used by the portable projection producer;
+// request paths cannot fall back to the retired R2 SQL service.
 import { readStateArchiveRows } from "./state-archive-read.ts";
-// Subnet-ownership reads served from the lakehouse when the Postgres tier
-// misses.
-//
-// TWO ROUTES, ONE STREAM. /accounts/{coldkey}/entities reads the ownership
-// ties of one ADDRESS; /subnets/{netuid}/ownership-history reads the transfer
-// log of one SUBNET. Both are the same SubnetOwnerChanged events, so both
-// read them once, here, and differ only in which formatter narrows them.
-//
-// THE SOURCE IS chain_events, NOT the subnet_ownership tables, deliberately.
-// The route behind METAGRAPH_SUBNET_OWNERSHIP_SOURCE (/accounts/
-// {coldkey}/entities) is built on the SubnetOwnerChanged event stream:
-// data-api reads raw chain_events rows and buildAccountEntities decodes the
-// hex pubkeys in `args` to SS58 addresses itself. The lakehouse's
-// subnet_ownership_history snapshot could only reproduce those ties by
-// diffing consecutive owner rows locally -- a second, subtly different
-// decoder for the same facts -- so parity means reading the same stream from
-// chain.chain_events and feeding the same formatter.
-//
-// THE SCAN IS NOW BEHIND A LANE (#11421). It is pallet+method filtered over a
-// large table with no index to lean on, and that was called "acceptable ...
-// can be slow on a cold cache" here until it was measured. Against production
-// 2026-08-16, `/accounts/{ss58}/entities` spent a MINIMUM of 10,420ms in r2sql
-// across five distinct subjects, median 13,711ms -- not a cold-cache tail but
-// a floor every caller pays, to return the one row this table holds.
-//
-// `loadOwnershipChangeRows` reads the projection first and falls through to
-// this query when the lane has not run, so the answer is unchanged either way
-// and the edge cache is no longer the only thing standing between a caller and
-// a 13-second read.
-
 import { buildAccountEntities } from "./entity-labels.ts";
 import {
   buildSubnetOwnershipHistory,
   OWNERSHIP_CHANGE_EVENT_METHOD,
 } from "./subnet-ownership-history.ts";
-import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import { safeBlockNumber } from "./r2-sql.ts";
 import type { R2SqlEnv, R2SqlReader } from "./r2-sql.ts";
 import {
   chainTable,
@@ -44,12 +17,7 @@ import {
 import { loadOwnershipRowsFromArtifact } from "./subnet-ownership-artifact.ts";
 import type { ArtifactStoreEnv } from "./projection-store.ts";
 
-/**
- * Both stores these readers touch: the lakehouse they fall back to, and the
- * archive the lane writes. Declared rather than cast into -- `R2SqlEnv` names
- * only the warehouse credentials, and widening it would tell every other
- * `r2SqlQuery` caller it has a bucket.
- */
+/** The ordinary producer and request readers share the same artifact bindings. */
 type OwnershipReadEnv = R2SqlEnv & ArtifactStoreEnv;
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
@@ -75,8 +43,8 @@ const OWNERSHIP_EVENT_COLUMNS =
  */
 export async function fetchOwnershipChangeRows(
   env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
-  network?: ChainNetworkId,
-  query: R2SqlReader = r2SqlQuery,
+  network: ChainNetworkId | undefined,
+  query: R2SqlReader,
 ): Promise<Record<string, unknown>[] | null> {
   const rows = await query(
     env,
@@ -84,6 +52,11 @@ export async function fetchOwnershipChangeRows(
       ` WHERE pallet = 'SubtensorModule' AND method = '${OWNERSHIP_CHANGE_EVENT_METHOD}'` +
       ` ORDER BY block_number ASC`,
   );
+  return restoreOwnershipArgs(rows);
+}
+
+/** Preserve the producer's parsed argument shape for both native readers. */
+function restoreOwnershipArgs(rows: Record<string, unknown>[] | null) {
   if (rows === null) return null;
 
   // postgres.js hands JSONB back parsed; the lakehouse stores `args` as a
@@ -107,28 +80,14 @@ export async function fetchOwnershipChangeRows(
   return restored;
 }
 
-/**
- * The stream, from the LANE if it has run and from the lakehouse if it has not.
- *
- * The artifact is tried first because the read below is the expensive one:
- * measured against production 2026-08-16, `/accounts/{ss58}/entities` spent a
- * median of 13,711ms in r2sql with a MINIMUM of 10,420ms across five distinct
- * subjects -- a floor every caller pays, not a tail some callers draw.
- *
- * Falling through on a miss is what makes this safe to ship before the lane has
- * ever run: the answer is identical either way, because the lane stores exactly
- * what `fetchOwnershipChangeRows` returned.
- */
+/** Only a published native projection can establish an empty event stream. */
 async function loadOwnershipChangeRows(
   env: OwnershipReadEnv | null | undefined,
   network?: ChainNetworkId,
 ): Promise<Record<string, unknown>[] | null> {
-  const projected = await loadOwnershipRowsFromArtifact(
-    env,
-    network ?? DEFAULT_CHAIN_NETWORK,
+  return restoreOwnershipArgs(
+    await loadOwnershipRowsFromArtifact(env, network ?? DEFAULT_CHAIN_NETWORK),
   );
-  if (projected !== null) return projected;
-  return await fetchOwnershipChangeRows(env, network);
 }
 
 /**
@@ -182,11 +141,6 @@ export async function loadSubnetOwnershipHistoryColdTier(
   });
 }
 
-/** The ledger's SELECT list. `owner_hotkey` is read but not published: the
- * contract's records are coldkey-to-coldkey, and a hotkey rotation under an
- * unchanged coldkey is not a change of ownership. */
-const OWNER_OBSERVATION_COLUMNS = "owner_coldkey, captured_at";
-
 /** Owner changes observed by the poller, ordered by their original capture. */
 export async function loadSubnetOwnerObservations(
   env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
@@ -195,19 +149,13 @@ export async function loadSubnetOwnerObservations(
   const n = safeBlockNumber(netuid);
   if (n === null) return null;
   const archive = await readStateArchiveRows(env, "subnet_ownership_history");
-  if (archive !== undefined)
-    return archive === null
-      ? null
-      : archive
-          .filter((row) => Number(row.netuid) === n)
-          .sort((a, b) => Number(a.captured_at) - Number(b.captured_at))
-          .map(({ owner_coldkey, captured_at }) => ({
-            owner_coldkey,
-            captured_at,
-          }));
-  return await r2SqlQuery(
-    env,
-    `SELECT ${OWNER_OBSERVATION_COLUMNS} FROM chain.subnet_ownership_history` +
-      ` WHERE netuid = ${n} ORDER BY captured_at ASC`,
-  );
+  return archive == null
+    ? null
+    : archive
+        .filter((row) => Number(row.netuid) === n)
+        .sort((a, b) => Number(a.captured_at) - Number(b.captured_at))
+        .map(({ owner_coldkey, captured_at }) => ({
+          owner_coldkey,
+          captured_at,
+        }));
 }

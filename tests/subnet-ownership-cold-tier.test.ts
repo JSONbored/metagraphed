@@ -1,21 +1,13 @@
-// The ownership cold tier's specific properties: it reads the SAME
-// SubnetOwnerChanged stream data-api reads (chain_events, not the
-// subnet_ownership snapshot tables), the address never reaches the SQL
-// (buildAccountEntities filters after decoding, both tiers alike), and a
-// lakehouse args cell stored as a JSON string is restored to the parsed
-// shape postgres.js would have delivered — or the read declines.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
+import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import {
+  fetchOwnershipChangeRows,
   loadAccountEntitiesColdTier,
   loadSubnetOwnershipHistoryColdTier,
+  loadSubnetOwnerObservations,
 } from "../src/subnet-ownership-cold-tier.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
-import type { Row } from "./row-type.ts";
 
-const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
-
-// Same real-shaped fixture bytes as tests/entity-labels.test.ts.
 const OLD_COLDKEY_BYTES = [
   [
     230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117, 251,
@@ -50,237 +42,172 @@ function ownershipRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function sqlFetch(...responses: unknown[][]) {
-  const queries: string[] = [];
-  let call = 0;
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    queries.push(JSON.parse(String(init.body)).query);
-    const rows = responses[Math.min(call, responses.length - 1)] ?? [];
-    call += 1;
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return queries;
-}
+beforeEach(() =>
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw Error("SQL HTTP is retired");
+    }),
+  ),
+);
+afterEach(() => {
+  assert.equal(vi.mocked(fetch).mock.calls.length, 0);
+  vi.unstubAllGlobals();
+});
 
-describe("the projection short-circuits the scan (#11421)", () => {
-  /**
-   * A stored row carries args PARSED -- the lane restores Iceberg's JSON string
-   * before writing, so the artifact holds the driver shape `decodeChainEventArgs`
-   * needs. A stored row that still held the string would be one this reader
-   * silently drops.
-   */
-  function storedRow() {
-    return {
-      ...ownershipRow(),
-      args: {
-        netuid: 7,
-        old_coldkey: OLD_COLDKEY_BYTES,
-        new_coldkey: NEW_COLDKEY_BYTES,
-      },
-    };
+test("native ownership cards decode both string and parsed event arguments", async () => {
+  for (const row of [
+    ownershipRow(),
+    ownershipRow({ args: JSON.parse(ownershipRow().args) }),
+  ]) {
+    const f = nativeOwnershipEnv([row]);
+    const data = await loadAccountEntitiesColdTier(f.env, NEW_COLDKEY_SS58);
+    assert.equal(data?.ownership_tie_count, 1);
+    assert.equal(data?.ownership_ties[0].role, "gained_ownership");
+    assert.equal(data?.ownership_ties[0].netuid, 7);
+    assert.equal(data?.labels.length, 0);
+    assert.deepEqual(f.keys, ["metagraph/projections/chain-ownership.json"]);
   }
-
-  /** An archive that answers the ownership key with `body`. */
-  function archive(body: unknown) {
-    return {
-      ...TOKEN,
+});
+test("the lost-owner side uses the same decoder", async () => {
+  const f = nativeOwnershipEnv([
+    ownershipRow({
+      args: JSON.stringify({
+        netuid: 18,
+        old_coldkey: NEW_COLDKEY_BYTES,
+        new_coldkey: OLD_COLDKEY_BYTES,
+      }),
+    }),
+  ]);
+  const data = await loadAccountEntitiesColdTier(f.env, NEW_COLDKEY_SS58);
+  assert.equal(data?.ownership_ties[0].role, "lost_ownership");
+  assert.equal(data?.ownership_ties[0].netuid, 18);
+});
+test("absent, broken and malformed native projections decline even with a legacy token", async () => {
+  for (const env of [
+    undefined,
+    { R2_SQL_TOKEN: "legacy" },
+    nativeOwnershipEnv(null).env,
+    nativeOwnershipEnv([ownershipRow({ args: "{not json" })]).env,
+    {
       METAGRAPH_ARCHIVE: {
-        async get() {
-          return body === null
-            ? null
-            : {
-                async json() {
-                  return body;
-                },
-              };
+        get: async () => {
+          throw Error("unavailable");
         },
       },
-    };
+    },
+  ]) {
+    assert.equal(
+      await loadAccountEntitiesColdTier(env as never, NEW_COLDKEY_SS58),
+      null,
+    );
   }
-
-  test("an artifact HIT issues no lakehouse query at all", async () => {
-    // The whole point. This read is a measured floor -- minimum 10,420ms in
-    // r2sql across five distinct subjects against production 2026-08-16 -- so
-    // "the artifact answered" has to mean the scan did not run, not that it ran
-    // and was discarded.
-    const q = sqlFetch([ownershipRow()]);
-    const data = (await loadAccountEntitiesColdTier(
-      archive({ schema_version: 1, rows: [storedRow()] }) as never,
-      NEW_COLDKEY_SS58,
-    )) as Row;
-    assert.deepEqual(q, [], "no query reached the warehouse");
-    assert.ok(data, "and the route was still answered");
-  });
-
-  test("an artifact MISS falls through to the scan, unchanged", async () => {
-    // What makes this safe to ship before the lane has ever run: the answer is
-    // identical either way, because the lane stores exactly what this returns.
-    const q = sqlFetch([ownershipRow()]);
-    const data = (await loadAccountEntitiesColdTier(
-      archive(null) as never,
-      NEW_COLDKEY_SS58,
-    )) as Row;
-    assert.equal(q.length, 1, "the lakehouse answered instead");
-    assert.match(q[0]!, /FROM chain\.chain_events/);
-    assert.ok(data);
-  });
-
-  test("an EMPTY stored stream is served, not treated as a miss", async () => {
-    // A chain on which nothing has been traded is the honest state for 127 of
-    // 128 subnets. Falling through on it would leave the scan running forever
-    // on exactly the networks whose answer is cheapest to state.
-    const q = sqlFetch([ownershipRow()]);
-    await loadAccountEntitiesColdTier(
-      archive({ schema_version: 1, rows: [] }) as never,
-      NEW_COLDKEY_SS58,
-    );
-    assert.deepEqual(q, [], "an empty artifact still short-circuits");
-  });
 });
-
-describe("loadAccountEntitiesColdTier", () => {
-  test("reads the SubnetOwnerChanged stream with data-api's exact predicate", async () => {
-    const q = sqlFetch([ownershipRow()]);
-    const data = await loadAccountEntitiesColdTier(
-      TOKEN as never,
-      NEW_COLDKEY_SS58,
+test("a complete empty stream is measured absence", async () => {
+  const f = nativeOwnershipEnv([]);
+  assert.equal(
+    (await loadAccountEntitiesColdTier(f.env, NEW_COLDKEY_SS58))
+      ?.ownership_tie_count,
+    0,
+  );
+  assert.equal((await loadSubnetOwnershipHistoryColdTier(f.env, 7))?.count, 0);
+});
+test("subnet history narrows the shared event stream without discarding other-subnet evidence", async () => {
+  const f = nativeOwnershipEnv([
+    ownershipRow(),
+    ownershipRow({
+      block_number: 8600000,
+      args: JSON.stringify({
+        netuid: 18,
+        old_coldkey: OLD_COLDKEY_BYTES,
+        new_coldkey: NEW_COLDKEY_BYTES,
+      }),
+    }),
+  ]);
+  const data = await loadSubnetOwnershipHistoryColdTier(f.env, 7);
+  assert.equal(data?.netuid, 7);
+  assert.equal(data?.count, 1);
+  assert.equal(
+    (data?.ownership_changes as Array<Record<string, unknown>>)[0].netuid,
+    7,
+  );
+  assert.equal(data?.event_method, "SubnetOwnerChanged");
+  assert.equal((await loadSubnetOwnershipHistoryColdTier(f.env, 19))?.count, 0);
+});
+test("either missing source declines the entire ownership history", async () => {
+  for (const f of [
+    nativeOwnershipEnv(null, []),
+    nativeOwnershipEnv([], null),
+  ]) {
+    assert.equal(await loadSubnetOwnershipHistoryColdTier(f.env, 7), null);
+    assert.ok(f.keys.includes("metagraph/projections/chain-ownership.json"));
+    assert.ok(
+      f.keys.includes(
+        "metagraph/state-archive/v1/subnet_ownership_history/current.json",
+      ),
     );
-    assert.match(q[0]!, /FROM chain\.chain_events/);
+  }
+});
+test("owner observations preserve chronological order, subnet filtering and empty slices", async () => {
+  const f = nativeOwnershipEnv(
+    [],
+    [
+      { netuid: 7, owner_coldkey: "second", captured_at: 2 },
+      { netuid: 8, owner_coldkey: "other", captured_at: 0 },
+      { netuid: 7, owner_coldkey: "first", captured_at: 1 },
+    ],
+  );
+  assert.deepEqual(await loadSubnetOwnerObservations(f.env, 7), [
+    { owner_coldkey: "first", captured_at: 1 },
+    { owner_coldkey: "second", captured_at: 2 },
+  ]);
+  assert.deepEqual(await loadSubnetOwnerObservations(f.env, 999), []);
+  const pointer =
+    "metagraph/state-archive/v1/subnet_ownership_history/current.json";
+  f.objects.set(pointer, { raw: "{}", etag: "broken", size: 2 });
+  assert.equal(await loadSubnetOwnerObservations(f.env, 7), null);
+});
+test("invalid subnet identifiers stop before any storage read", async () => {
+  const f = nativeOwnershipEnv([]);
+  for (const value of [null, "seven", -3])
+    assert.equal(await loadSubnetOwnershipHistoryColdTier(f.env, value), null);
+  assert.equal(await loadSubnetOwnerObservations(f.env, -1), null);
+  assert.deepEqual(f.keys, []);
+});
+test("the portable producer retains its explicitly injected native query and argument restoration", async () => {
+  for (const network of [undefined, "testnet"] as const) {
+    const queries: string[] = [];
+    const rows = await fetchOwnershipChangeRows(
+      {},
+      network,
+      async (_env, sql) => {
+        queries.push(sql);
+        return [ownershipRow(), ownershipRow({ args: { netuid: 18 } })];
+      },
+    );
+    assert.equal(queries.length, 1);
     assert.match(
-      q[0]!,
-      /WHERE pallet = 'SubtensorModule' AND method = 'SubnetOwnerChanged'/,
+      queries[0],
+      new RegExp(
+        `FROM ${network === "testnet" ? "chain_testnet" : "chain"}\\.chain_events`,
+      ),
     );
-    assert.match(q[0]!, /ORDER BY block_number ASC/);
-    assert.ok(
-      !q[0]!.includes(NEW_COLDKEY_SS58),
-      "the address is a JS-side filter on both tiers, never a SQL literal",
+    assert.match(
+      queries[0],
+      /pallet = 'SubtensorModule' AND method = 'SubnetOwnerChanged' ORDER BY block_number ASC/,
     );
-    assert.equal(data!.ownership_tie_count, 1);
-    assert.equal(data!.ownership_ties[0]!.role, "gained_ownership");
-    assert.equal(data!.ownership_ties[0]!.netuid, 7);
-    assert.equal(data!.labels.length, 0, "labels join happens in the handler");
-  });
-
-  test("restores a JSON-string args cell to the driver shape before decoding", async () => {
-    sqlFetch([
-      ownershipRow({
-        args: JSON.stringify({
-          netuid: 18,
-          old_coldkey: NEW_COLDKEY_BYTES,
-          new_coldkey: OLD_COLDKEY_BYTES,
-        }),
-      }),
-    ]);
-    const data = await loadAccountEntitiesColdTier(
-      TOKEN as never,
-      NEW_COLDKEY_SS58,
-    );
-    assert.equal(data!.ownership_tie_count, 1);
-    assert.equal(data!.ownership_ties[0]!.role, "lost_ownership");
-    assert.equal(data!.ownership_ties[0]!.netuid, 18);
-  });
-
-  test("declines when an args cell cannot be restored faithfully", async () => {
-    sqlFetch([ownershipRow({ args: "{not json" })]);
-    assert.equal(
-      await loadAccountEntitiesColdTier(TOKEN as never, NEW_COLDKEY_SS58),
-      null,
-    );
-  });
-
-  test("a failed query yields null; no matches is an empty-ties answer", async () => {
-    globalThis.fetch = (async () => {
-      throw new Error("down");
-    }) as unknown as typeof fetch;
-    assert.equal(
-      await loadAccountEntitiesColdTier(TOKEN as never, NEW_COLDKEY_SS58),
-      null,
-    );
-
-    sqlFetch([]);
-    const empty = await loadAccountEntitiesColdTier(
-      TOKEN as never,
-      NEW_COLDKEY_SS58,
-    );
-    assert.equal(empty!.ownership_tie_count, 0);
-  });
-});
-
-describe("loadSubnetOwnershipHistoryColdTier", () => {
-  // The netuid predicate data-api writes in SQL (chain_events.args is JSONB
-  // there) has no lakehouse form -- args is an opaque JSON string in Iceberg.
-  // So the whole stream is read and the SHARED formatter narrows it, which is
-  // also why no netuid literal may appear in the query.
-  test("narrows the shared stream to one subnet, in JS, not in SQL", async () => {
-    const q = sqlFetch([
-      ownershipRow(),
-      ownershipRow({
-        block_number: 8_600_000,
-        args: JSON.stringify({
-          netuid: 18,
-          old_coldkey: OLD_COLDKEY_BYTES,
-          new_coldkey: NEW_COLDKEY_BYTES,
-        }),
-      }),
-    ]);
-    const data = (await loadSubnetOwnershipHistoryColdTier(
-      TOKEN as never,
-      7,
-    )) as Row;
-    // Matched by CONTENT, not by index. The two reads are concurrent, and
-    // since #11421 the stream read awaits the projection artifact before
-    // falling through to SQL -- so which of them reaches the warehouse first is
-    // scheduling, not contract, and pinning `q[0]` asserted the scheduling.
-    const streamQuery = q.find((sql) => /FROM chain\.chain_events/.test(sql));
-    assert.ok(streamQuery, "the stream is still read from chain_events");
-    assert.ok(
-      !/netuid/.test(streamQuery),
-      "the netuid predicate is not expressible against a JSON-string args column",
-    );
-    assert.equal(data.netuid, 7);
-    assert.equal(data.count, 1);
-    assert.equal(data.ownership_changes[0].netuid, 7);
-    assert.equal(data.event_method, "SubnetOwnerChanged");
-  });
-
-  // A subnet that has never changed hands is the common case, so an empty
-  // match set is a real answer -- distinct from a decline.
-  test("a subnet with no transfers is an empty list, not a decline", async () => {
-    sqlFetch([ownershipRow({ args: JSON.stringify({ netuid: 18 }) })]);
-    const data = (await loadSubnetOwnershipHistoryColdTier(
-      TOKEN as never,
-      7,
-    )) as Row;
-    assert.equal(data.count, 0);
-    assert.deepEqual(data.ownership_changes, []);
-  });
-
-  test("declines an unusable netuid rather than echoing it back", async () => {
-    let called = 0;
-    globalThis.fetch = (async () => {
-      called += 1;
-      throw new Error("must not be reached");
-    }) as unknown as typeof fetch;
-    for (const netuid of [null, "seven", -3]) {
-      assert.equal(
-        await loadSubnetOwnershipHistoryColdTier(TOKEN as never, netuid),
-        null,
-      );
-    }
-    assert.equal(called, 0);
-  });
-
-  test("a failed query declines, keeping the caller's schema-stable empty", async () => {
-    globalThis.fetch = (async () => {
-      throw new Error("down");
-    }) as unknown as typeof fetch;
-    assert.equal(
-      await loadSubnetOwnershipHistoryColdTier(TOKEN as never, 7),
-      null,
-    );
-  });
+    assert.ok(!queries[0].includes(NEW_COLDKEY_SS58));
+    assert.deepEqual(rows?.[0].args, JSON.parse(ownershipRow().args));
+    assert.deepEqual(rows?.[1].args, { netuid: 18 });
+  }
+  assert.equal(
+    await fetchOwnershipChangeRows({}, undefined, async () => null),
+    null,
+  );
+  assert.equal(
+    await fetchOwnershipChangeRows({}, undefined, async () => [
+      ownershipRow({ args: "bad" }),
+    ]),
+    null,
+  );
 });

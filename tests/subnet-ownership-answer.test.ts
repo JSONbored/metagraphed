@@ -1,11 +1,8 @@
+import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 // The ownership-history composer and its ledger reader (#9312).
 //
-// The reader half: `chain.subnet_ownership_history` is read per netuid, in
-// SQL, because the ledger DOES carry the netuid as a real column -- unlike the
-// event stream beside it, whose args are an opaque JSON string with no netuid
-// predicate expressible at all. Both reads must succeed or the whole answer
-// declines: half of a two-source history is a wrong answer wearing the shape
-// of a complete one.
+// The reader combines the complete native event projection with the immutable
+// observation archive. Both reads must succeed; a half-history must decline.
 //
 // The composer half: one function REST, MCP and GraphQL all reach, and one
 // node builder that fills the contract's fields without projecting away what
@@ -30,115 +27,82 @@ afterEach(() => {
   globalThis.fetch = realFetch;
 });
 
-/**
- * Answer by WHICH TABLE the query names, not by call order.
- *
- * The two reads are concurrent, so their arrival order is scheduling rather
- * than contract -- and it changed in #11421, when the stream read started
- * awaiting the projection artifact before falling through to SQL. An
- * order-keyed stub silently handed each query the OTHER one's rows, which
- * reads as a wrong answer rather than a reordering.
- */
-function sqlFetch(streamRows: unknown[] = [], ledgerRows: unknown[] = []) {
-  const queries: string[] = [];
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    const sql = String(JSON.parse(String(init.body)).query);
-    queries.push(sql);
-    const rows = /subnet_ownership_history/.test(sql) ? ledgerRows : streamRows;
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return queries;
-}
-
 describe("loadSubnetOwnerObservations", () => {
-  test("reads one subnet's captures oldest first, narrowed in SQL", async () => {
-    const q = sqlFetch(
+  test("reads one subnet's captures oldest first from the complete archive", async () => {
+    const f = nativeOwnershipEnv(
       [],
       [
-        { owner_coldkey: OWNER_A, captured_at: 1 },
-        { owner_coldkey: OWNER_B, captured_at: 2 },
+        { netuid: 18, owner_coldkey: OWNER_B, captured_at: 2 },
+        { netuid: 19, owner_coldkey: "other", captured_at: 0 },
+        { netuid: 18, owner_coldkey: OWNER_A, captured_at: 1 },
       ],
     );
-    const rows = await loadSubnetOwnerObservations(TOKEN, 18);
-    assert.match(q[0]!, /FROM chain\.subnet_ownership_history/);
-    // The ledger carries netuid as a real column, so unlike the event stream
-    // beside it the predicate IS expressible here.
-    assert.match(q[0]!, /WHERE netuid = 18/);
-    assert.match(q[0]!, /ORDER BY captured_at ASC/);
-    assert.equal(rows?.length, 2);
+    assert.deepEqual(await loadSubnetOwnerObservations(f.env, 18), [
+      { owner_coldkey: OWNER_A, captured_at: 1 },
+      { owner_coldkey: OWNER_B, captured_at: 2 },
+    ]);
   });
-
   test("a subnet the poller never watched is an empty slice, not a decline", async () => {
-    sqlFetch([]);
-    assert.deepEqual(await loadSubnetOwnerObservations(TOKEN, 0), []);
+    assert.deepEqual(
+      await loadSubnetOwnerObservations(nativeOwnershipEnv().env, 0),
+      [],
+    );
   });
-
-  test("a failed query declines", async () => {
-    globalThis.fetch = (async () => {
-      throw new Error("down");
-    }) as unknown as typeof fetch;
-    assert.equal(await loadSubnetOwnerObservations(TOKEN, 18), null);
+  test("an unavailable archive declines", async () => {
+    assert.equal(
+      await loadSubnetOwnerObservations(nativeOwnershipEnv([], null).env, 18),
+      null,
+    );
   });
 });
-
 describe("answerSubnetOwnershipHistory", () => {
   test("merges both sources into one labelled history", async () => {
-    // Keyed by table, so this says WHICH source carries what rather than
-    // which query happened to be issued first.
-    sqlFetch(
+    const f = nativeOwnershipEnv(
       [],
       [
-        { owner_coldkey: OWNER_A, captured_at: 1_784_537_200_378 },
-        { owner_coldkey: OWNER_B, captured_at: 1_784_915_720_256 },
+        { netuid: 86, owner_coldkey: OWNER_A, captured_at: 1784537200378 },
+        { netuid: 86, owner_coldkey: OWNER_B, captured_at: 1784915720256 },
       ],
     );
-    const data = (await answerSubnetOwnershipHistory(TOKEN, 86)) as Row;
+    const data = (await answerSubnetOwnershipHistory(
+      mockEnv(f.env),
+      86,
+    )) as Row;
     assert.equal(data.netuid, 86);
     assert.equal(data.count, 1);
     assert.equal(data.ownership_changes[0].source, "owner-observation");
-    assert.equal(
-      data.observed_through,
-      new Date(1_784_915_720_256).toISOString(),
-    );
+    assert.equal(data.observed_through, new Date(1784915720256).toISOString());
   });
-
-  // Half a two-source history is a wrong answer wearing the shape of a
-  // complete one, so either leg failing declines the whole read.
   test("declines when either source cannot be read", async () => {
-    let call = 0;
-    globalThis.fetch = (async (_u: string, init: RequestInit) => {
-      const query = JSON.parse(String(init.body)).query as string;
-      call += 1;
-      if (query.includes("subnet_ownership_history")) throw new Error("down");
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, result: { rows: [] } }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
-    assert.equal(await answerSubnetOwnershipHistory(TOKEN, 86), null);
-    assert.ok(call >= 2, "both legs are issued before the decline");
+    for (const f of [
+      nativeOwnershipEnv([], null),
+      nativeOwnershipEnv(null, []),
+    ]) {
+      assert.equal(
+        await answerSubnetOwnershipHistory(mockEnv(f.env), 86),
+        null,
+      );
+      assert.ok(
+        f.keys.length >= 2,
+        "both source reads are attempted before decline",
+      );
+    }
   });
-
-  test("an unusable netuid declines before any query is issued", async () => {
-    let called = 0;
-    globalThis.fetch = (async () => {
-      called += 1;
-      throw new Error("must not be reached");
-    }) as unknown as typeof fetch;
-    assert.equal(await answerSubnetOwnershipHistory(TOKEN, "eighteen"), null);
-    assert.equal(called, 0);
+  test("an unusable netuid declines before any storage read", async () => {
+    const f = nativeOwnershipEnv();
+    assert.equal(
+      await answerSubnetOwnershipHistory(mockEnv(f.env), "eighteen"),
+      null,
+    );
+    assert.deepEqual(f.keys, []);
   });
-
-  test("the reader is injectable, so a surface test needs no lakehouse", async () => {
-    const data = await answerSubnetOwnershipHistory(TOKEN, 7, {
-      coldTier: async () => ({ count: 3 }) as never,
-    });
-    assert.deepEqual(data, { count: 3 });
+  test("the reader remains injectable for surface composers", async () => {
+    assert.deepEqual(
+      await answerSubnetOwnershipHistory(TOKEN, 7, {
+        coldTier: async () => ({ count: 3 }) as never,
+      }),
+      { count: 3 },
+    );
   });
 });
 
