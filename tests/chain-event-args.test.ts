@@ -4,6 +4,28 @@ import { decodeChainEventArgs } from "../src/chain-event-args.ts";
 import type { Row } from "./row-type.ts";
 
 describe("decodeChainEventArgs", () => {
+  test("lease contributors decode as accounts while owed alpha stays exact", () => {
+    const contributor = [
+      [
+        186, 202, 191, 234, 126, 112, 125, 149, 58, 101, 226, 162, 49, 0, 114,
+        184, 29, 104, 50, 14, 154, 150, 181, 61, 79, 84, 145, 83, 5, 143, 24,
+        115,
+      ],
+    ];
+    assert.deepEqual(
+      decodeChainEventArgs({
+        lease_id: 7,
+        contributor,
+        alpha: ["9007199254740993"],
+      }),
+      {
+        lease_id: 7,
+        contributor: "5GHczYXpzd5xmNwjxWs63hw9DannNBGDp6tG6aPmsqP5WiwM",
+        alpha: ["9007199254740993"],
+      },
+    );
+  });
+
   test("decodes an account-keyed 32-byte field to SS58 (real TransactionFeePaid.who, block 8587754/412)", () => {
     const args = {
       tip: 0,

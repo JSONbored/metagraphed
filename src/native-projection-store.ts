@@ -3,6 +3,7 @@ import { projectionKey, type ChainNetworkId } from "./chain-network.ts";
 import type { ArtifactStoreEnv } from "./projection-store.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { CHAIN_FIREHOSE_TOPICS } from "./chain-firehose-topics.ts";
+import { HistoryObjectSchema } from "../schemas-src/artifacts/history-generation.ts";
 
 export const NATIVE_PROJECTION_FILES = [
   "blocks-summary.json",
@@ -35,6 +36,7 @@ const SourceSchema = z.strictObject({
   sequence: z.number().int().nonnegative(),
   coverage: z.string().nullable(),
   cutoff: z.number().int().nonnegative(),
+  runtimeCuration: HistoryObjectSchema.optional(),
 });
 const ManifestSchema = z.strictObject({
   version: z.literal(1),
@@ -107,7 +109,12 @@ export function validateNativeProjectionManifest(
     manifest.sources.some(
       (source) =>
         source.network !== network ||
-        source.cutoff !== manifest.generatedAt - 90 * 86_400_000,
+        source.cutoff !== manifest.generatedAt - 90 * 86_400_000 ||
+        (source.runtimeCuration !== undefined &&
+          (source.table !== "account_events" ||
+            !new RegExp(
+              `^metagraph/runtime-account-curation/v1/${network}/[0-9a-f]{64}/manifest\\.json$`,
+            ).test(source.runtimeCuration.key))),
     )
   )
     return null;

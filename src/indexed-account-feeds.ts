@@ -1,4 +1,5 @@
 import { HistorySourceCeilingSchema } from "../schemas-src/artifacts/history-source-ceiling.ts";
+import { RUNTIME_CURATED_EVENT_KINDS } from "../schemas-src/artifacts/runtime-account-curation.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
@@ -6,6 +7,12 @@ import { readSelectedHistorySegments } from "./indexed-history-store.ts";
 import { loadHistoryBlockGeneration } from "./history-generation.ts";
 import { parquetReadBudget, r2ParquetSource } from "./indexed-parquet.ts";
 import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
+import {
+  loadRuntimeAccountCuration,
+  readRuntimeCurationObject,
+  excludeRuntimeCorrectedRows,
+  validateRuntimeCorrectedRows,
+} from "./runtime-account-curation.ts";
 import {
   iterateAccountFeed,
   mergeAccountFeedPage,
@@ -111,6 +118,24 @@ async function loadSelectedAccountFeed<T>(
     const readPage = aggregate
       ? accountFeedReadAhead(source, budget)
       : undefined;
+    const correction = await loadRuntimeAccountCuration(
+      bucket,
+      source,
+      network,
+      budget,
+    );
+    if (correction && correction.selection.lastBlock > ceiling.through)
+      return undefined;
+    if (
+      !correction &&
+      selectors.some(
+        (selector) =>
+          (RUNTIME_CURATED_EVENT_KINDS as readonly string[]).includes(
+            selector.kind ?? "",
+          ) && selector.kind !== "RootClaimed",
+      )
+    )
+      return undefined;
     const streams = [];
     for (const segment of segments) {
       if (
@@ -141,14 +166,123 @@ async function loadSelectedAccountFeed<T>(
         throw new Error(
           "Account feed source census differs from its generation",
         );
+      for (const selector of selectors) {
+        const rows = iterateAccountFeed(
+          source,
+          feed,
+          selector,
+          budget,
+          readPage,
+        );
+        streams.push(
+          correction ? excludeRuntimeCorrectedRows(rows, correction) : rows,
+        );
+      }
+    }
+    if (
+      correction &&
+      correction.selection.lastBlock >= requestedStart &&
+      correction.selection.firstBlock <= requestedEnd
+    ) {
+      const feed = validateAccountFeed(
+        await readRuntimeCurationObject(
+          source,
+          correction.accountManifest,
+          budget,
+        ),
+        correction.selection,
+      );
+      const generation = await loadHistoryBlockGeneration(
+        source,
+        correction.selection.blockManifest,
+        correction.selection,
+        budget,
+      );
+      if (
+        feed.rows !== correction.rows ||
+        generation.rows !== correction.rows ||
+        feed.sourceSnapshot !== correction.sourceSnapshot ||
+        generation.sourceSnapshot !== correction.sourceSnapshot
+      )
+        throw new Error(
+          "Runtime correction feed census differs from its source",
+        );
       for (const selector of selectors)
         streams.push(
-          iterateAccountFeed(source, feed, selector, budget, readPage),
+          validateRuntimeCorrectedRows(
+            iterateAccountFeed(source, feed, selector, budget, readPage),
+            correction,
+          ),
         );
     }
     const rows = await consume(streams);
     const after = await bucket.get(ceilingKey);
     return after !== null && after.etag === before.etag ? rows : undefined;
+  } catch {
+    recordIndexedHistoryFailure();
+    return null;
+  }
+}
+
+/** Only newly curated historical kinds augment the legacy lifetime fold.
+ * RootClaimed identities were already counted; their repaired amounts are
+ * handled by ordinary corrected pages and native analytics. */
+export async function loadRuntimeAccountSummaryGroups(
+  env: unknown,
+  account: string,
+  observedEnd: number,
+): Promise<AccountFeedGroup[] | null | undefined> {
+  const bucket = (env as { METAGRAPH_ARCHIVE?: Bucket } | null | undefined)
+    ?.METAGRAPH_ARCHIVE;
+  if (!bucket) return undefined;
+  try {
+    const source = r2ParquetSource(bucket);
+    const budget = parquetReadBudget(128 * 1024 * 1024, 1024);
+    const correction = await loadRuntimeAccountCuration(
+      bucket,
+      source,
+      DEFAULT_CHAIN_NETWORK,
+      budget,
+    );
+    if (!correction) return undefined;
+    const feed = validateAccountFeed(
+      await readRuntimeCurationObject(
+        source,
+        correction.accountManifest,
+        budget,
+      ),
+      correction.selection,
+    );
+    const generation = await loadHistoryBlockGeneration(
+      source,
+      correction.selection.blockManifest,
+      correction.selection,
+      budget,
+    );
+    if (
+      feed.rows !== correction.rows ||
+      generation.rows !== correction.rows ||
+      feed.sourceSnapshot !== correction.sourceSnapshot ||
+      generation.sourceSnapshot !== correction.sourceSnapshot
+    )
+      throw new Error("Runtime summary correction differs from its source");
+    const readPage = accountFeedReadAhead(source, budget);
+    const streams = (["hotkey", "coldkey"] as const).map((side) =>
+      (async function* () {
+        for await (const entry of validateRuntimeCorrectedRows(
+          iterateAccountFeed(
+            source,
+            feed,
+            { side, account, observedEnd },
+            budget,
+            readPage,
+          ),
+          correction,
+        ))
+          if (entry.row.event_kind !== "RootClaimed") yield entry;
+      })(),
+    );
+    return await foldAccountFeedGroups(streams);
   } catch {
     recordIndexedHistoryFailure();
     return null;

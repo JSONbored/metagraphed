@@ -43,6 +43,7 @@ const ACCOUNT_KEYS = new Set([
   "source",
   "delegate",
   "nominator",
+  "contributor",
   "owner",
   "target",
   "validator",

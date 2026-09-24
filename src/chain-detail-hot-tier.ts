@@ -49,6 +49,7 @@
 import { buildBlockExtrinsics, buildExtrinsic } from "./extrinsics.ts";
 import { buildBlockEvents, formatAccountEvent } from "./account-events.ts";
 import { decodeChainEventArgs } from "./chain-event-args.ts";
+import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
 import { resolveBlocksSeam } from "./blocks-seam.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { type ChainFirehoseTopic } from "./chain-firehose-topics.ts";
@@ -387,7 +388,7 @@ export interface ChainEventApi {
  * (decode the args, then summarize from the decoded form, never the raw one),
  * with one addition the tiers do not share: Postgres handed back JSONB already
  * parsed into an object, while D1 and the Iceberg lakehouse both hand back the
- * column as TEXT, so the JSON.parse happens here. Malformed text degrades to
+ * column as TEXT, so exact integer parsing happens here. Malformed text degrades to
  * null args rather than failing the block -- one undecodable event must not
  * empty a block's feed.
  *
@@ -404,7 +405,7 @@ export function formatChainEvent(
   let parsed: unknown = null;
   if (typeof row.args === "string") {
     try {
-      parsed = JSON.parse(row.args);
+      parsed = parseJsonPreservingBigInts(row.args);
     } catch {
       parsed = null;
     }

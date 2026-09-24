@@ -50,6 +50,7 @@
 // is safe by construction.
 
 import { asJsonObject } from "../schemas-src/json-request.ts";
+import { loadRuntimeAccountSummaryGroups } from "./indexed-account-feeds.ts";
 
 import {
   type ArtifactObjectStore,
@@ -334,7 +335,49 @@ async function usablePointer(
   return pointer;
 }
 
+/** Preserve the compact lifetime fold and add only the newly recovered
+ * historical events. An older absence receipt cannot hide a new capture. */
 export async function loadAccountSummaryProjection(
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
+  account: string,
+  options: Parameters<typeof loadLegacyAccountSummaryProjection>[2] = {},
+): Promise<
+  AccountSummaryProjectionRead | AccountSummaryProjectionAbsent | null
+> {
+  const legacy = await loadLegacyAccountSummaryProjection(
+    env,
+    account,
+    options,
+  );
+  if (!legacy) return null;
+  const floor =
+    legacy.absent === true ? legacy.floorMs : legacy.span?.foldFloorMs;
+  if (floor === undefined) return legacy;
+  const extra = await loadRuntimeAccountSummaryGroups(env, account, floor - 1);
+  if (extra === undefined) return legacy;
+  if (extra === null) return null;
+  if (extra.length === 0)
+    return legacy.absent === true ? legacy : { ...legacy, recent: null };
+  const groups = [
+    ...(legacy.absent === true ? [] : legacy.groups),
+    ...extra.map((row) => ({
+      kind: row.event_kind,
+      netuid: row.netuid,
+      count: row.event_count,
+      fb: row.first_block,
+      lb: row.last_block,
+      fo: row.first_observed,
+      lo: row.last_observed,
+    })),
+  ];
+  return {
+    groups,
+    span: groupsSpan(groups, new Date(floor - 1).toISOString().slice(0, 10)),
+    recent: null,
+  };
+}
+
+async function loadLegacyAccountSummaryProjection(
   env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   account: string,
   {

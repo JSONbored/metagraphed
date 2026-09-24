@@ -320,6 +320,20 @@ describe("the hot loaders", () => {
 });
 
 describe("formatChainEvent", () => {
+  test("keeps runtime u64 and u128 arguments exact across the text storage boundary", () => {
+    const event = formatChainEvent({
+      pallet: "SubtensorModule",
+      method: "BasketDeposited",
+      args: '{"tao":[18446744073709551615],"shares":340282366920938463463374607431768211455,"netuid":7,"note":"18446744073709551615"}',
+    });
+    assert.deepEqual(event?.args, {
+      tao: ["18446744073709551615"],
+      shares: "340282366920938463463374607431768211455",
+      netuid: 7,
+      note: "18446744073709551615",
+    });
+  });
+
   test("parses the TEXT args, decodes accounts, and summarizes from the DECODED form", () => {
     // A real captured Balances.Transfer payload (block 8,587,754 index 119).
     const args = JSON.stringify({

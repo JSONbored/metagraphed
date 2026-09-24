@@ -105,6 +105,40 @@ test("INGESTED_EVENT_KINDS accepts child-hotkey delegation kinds (#6722)", () =>
   }
 });
 
+test("basket and collateral kinds support public filters and meaningful summary categories", () => {
+  const categories = {
+    BasketDeposited: "stake",
+    BasketStakedIn: "stake",
+    BasketClaimed: "stake",
+    BasketHoldingConverted: "stake",
+    BetaBaselineStamped: "stake",
+    BasketAlphaWrittenOff: "stake",
+    SubnetLeaseDividendSkipped: "governance",
+    SharePoolDenominatorReconciled: "stake",
+    BasketSwapped: "stake",
+    BasketClaimDustSkipped: "stake",
+    CollateralLocked: "stake",
+    MinCollateralSet: "governance",
+    LiquidAlphaConsensusModeSet: "governance",
+  };
+  for (const kind of Object.keys(categories))
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), kind);
+  const result = buildSubnetEventSummary(
+    Object.keys(categories).map((event_kind) => ({
+      event_kind,
+      event_count: 1,
+    })),
+    [],
+    7,
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      result.event_kinds.map((row) => [row.event_kind, row.category]),
+    ),
+    categories,
+  );
+});
+
 test("buildSubnetEventSummary categorizes subnet leasing + crowdloan kinds as governance, not other (#6718)", () => {
   const out = buildSubnetEventSummary(
     [

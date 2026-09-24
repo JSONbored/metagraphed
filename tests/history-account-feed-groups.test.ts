@@ -147,7 +147,7 @@ it("refuses overflowing aggregates and group or stream budgets without partial t
     expect(large.closed).toHaveBeenCalledOnce();
   }
   const tooMany = mergeAccountFeedEntries(
-    Array.from({ length: 17 }, () => entries(0).stream()),
+    Array.from({ length: 21 }, () => entries(0).stream()),
   );
   await expect(tooMany.next()).rejects.toThrow("budget");
 });

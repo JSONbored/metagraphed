@@ -10,3 +10,11 @@ merges, and multiple directory levels. Production-sized pages are reduced to fou
 rows and directory fanout to four to exercise traversal without a large fixture.
 The wire format and compression are unchanged. Tests compare full results,
 filters, cursor pages, and offsets against independently filtered source rows.
+
+`runtime-correction.json` exercises a separately selected, closed runtime
+correction over an immutable legacy account base. The native producer wrote its
+Parquet, block pages, account tree, and source proofs. It includes a repeated
+transfer capture, two RootClaimed amount repairs, one BasketDeposited event, and
+a later forward capture outside the correction range. Tests check that only the
+selected runtime kinds in that range are replaced, while paging, aggregation,
+identity fences, and physical duplicate semantics remain intact.
