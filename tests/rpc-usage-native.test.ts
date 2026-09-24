@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { gunzipSync, gzipSync } from "node:zlib";
-import { test, vi } from "vitest";
+import { beforeEach, afterEach, test, vi } from "vitest";
 import {
   loadRpcUsageColdTier,
   windowCutoffMs,
@@ -178,15 +178,11 @@ function reference(window: string, until: number | null) {
 test("published real-Parquet chunks match expanded SQLite weights, boundaries and exact percentiles", async () => {
   for (const window of ["7d", "30d"])
     for (const until of [null, now, now - 4 * DAY + 1, now - 30 * DAY]) {
-      const s = store(),
-        query = vi.fn(async () => {
-          throw Error("SQL must not run");
-        });
+      const s = store();
       assert.deepEqual(
-        await loadRpcUsageColdTier(s.env, { window, now, until, query }),
+        await loadRpcUsageColdTier(s.env, { window, now, until }),
         reference(window, until),
       );
-      assert.equal(query.mock.calls.length, 0);
       const selected = s.manifest.chunks.filter(
         (c: { first: number; last: number }) =>
           c.last >= windowCutoffMs(window, now)!.cutoff &&
@@ -196,7 +192,7 @@ test("published real-Parquet chunks match expanded SQLite weights, boundaries an
     }
 }, 30_000);
 
-test("unpublished ownership retains fallback; invalid selected proofs decline without SQL", async () => {
+test("unpublished ownership is absent; invalid selected proofs decline without SQL", async () => {
   assert.equal(
     await readNativeRpcRows(null, 0, null, now, () => {}),
     undefined,
@@ -240,12 +236,10 @@ test("unpublished ownership retains fallback; invalid selected proofs decline wi
     mutate(s);
     if (![cases[0], cases[1], cases[10], cases[11], cases[12]].includes(mutate))
       s.publish();
-    const query = vi.fn(async () => []);
     assert.equal(
-      await loadRpcUsageColdTier(s.env, { window: "30d", now, query }),
+      await loadRpcUsageColdTier(s.env, { window: "30d", now }),
       null,
     );
-    assert.equal(query.mock.calls.length, 0);
   }
   assert.equal(
     await readNativeRpcRows(store().env, 0, null, now, () => {}),
@@ -385,9 +379,6 @@ test("numeric overflow and excessive latency populations decline the complete an
     await loadRpcUsageColdTier(s.env, {
       now,
       until: now + 1,
-      query: async () => {
-        throw Error("No SQL");
-      },
     }),
     null,
   );
@@ -439,9 +430,6 @@ test("complete but excessive endpoint and latency cardinalities cannot publish p
       await loadRpcUsageColdTier(s.env, {
         now,
         until: now + 1,
-        query: async () => {
-          throw Error("No SQL");
-        },
       }),
       null,
     );
@@ -501,9 +489,6 @@ test("daily payload validation rejects inconsistent totals and time or latency d
       await loadRpcUsageColdTier(s.env, {
         window: "30d",
         now,
-        query: async () => {
-          throw Error("No SQL");
-        },
       }),
       null,
     );
@@ -611,5 +596,21 @@ test("combined daily aggregates enforce numeric and cardinality budgets across d
       await loadRpcUsageColdTier(s.env, { window: "30d", now }),
       null,
     );
+  }
+});
+
+// A configured legacy credential must never revive the retired network reader.
+const noWarehouse = vi.fn(async () => {
+  throw Error("Unexpected network SQL");
+});
+beforeEach(() => {
+  noWarehouse.mockClear();
+  vi.stubGlobal("fetch", noWarehouse);
+});
+afterEach(() => {
+  try {
+    assert.equal(noWarehouse.mock.calls.length, 0);
+  } finally {
+    vi.unstubAllGlobals();
   }
 });

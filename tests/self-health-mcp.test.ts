@@ -318,22 +318,28 @@ describe("self-health-mcp", () => {
   // answers, so everything an agent sees comes from the tiers below it.
   describe("parity with the REST route", () => {
     function coldTierEnv(rows: Record<string, unknown>[]) {
-      // r2SqlQuery reaches the lakehouse over fetch; a token makes it "configured".
       const env = mockEnv() as unknown as Row;
-      env.R2_SQL_TOKEN = "test-token";
-      env.METAGRAPH_SELF_HEALTH_SOURCE = "retired";
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async () =>
-        new Response(JSON.stringify({ success: true, result: { rows } }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        })) as typeof fetch;
-      return {
-        env: env as unknown as Env,
-        restore: () => {
-          globalThis.fetch = originalFetch;
+      env.R2_SQL_TOKEN = "legacy-test";
+      env.D1_STATE_TABLES = "self_health_daily,self_health_checks";
+      env.D1_STATE = {
+        async batch() {
+          return [];
+        },
+        prepare(sql: string) {
+          return {
+            bind() {
+              return this;
+            },
+            async all() {
+              return {
+                success: true,
+                results: sql.includes("FROM self_health_daily") ? rows : [],
+              };
+            },
+          };
         },
       };
+      return { env: env as unknown as Env, restore: () => {} };
     }
 
     const NOT_FOUND = (async () => ({
@@ -341,7 +347,7 @@ describe("self-health-mcp", () => {
       code: "artifact_not_found",
     })) as unknown as ReadArtifact;
 
-    test("serves the lakehouse rollup instead of an empty card", async () => {
+    test("serves the D1 rollup instead of an empty card", async () => {
       // The live regression: REST returned seven days per component while this loader
       // returned days: [] and uptime_90d: null for all three, because #9153 gave the
       // cold tier to the route and not to us.
@@ -374,7 +380,7 @@ describe("self-health-mcp", () => {
       }
     });
 
-    test("an unreachable lakehouse still yields the empty card, not an error", async () => {
+    test("an unreachable D1 owner still yields the empty card, not an error", async () => {
       const env = mockEnv() as unknown as Row;
       env.METAGRAPH_SELF_HEALTH_SOURCE = "retired";
       const result = (await loadSelfHealth({

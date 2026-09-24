@@ -1,32 +1,10 @@
 // RPC usage over the historical portion not covered by live telemetry.
-// Selected native snapshots preserve complete weighted observations; legacy
-// deployments retain their SQL reader until a verified snapshot is published.
+// Verified native snapshots preserve complete weighted observations.
 import { ANALYTICS_WINDOW_DAYS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
-import { formatRpcUsage } from "./health-serving.ts";
-import { r2SqlQuery } from "./r2-sql.ts";
-import type { R2SqlReader } from "./r2-sql.ts";
+import type { R2SqlEnv } from "./r2-sql.ts";
 import { loadRpcUsageNative } from "./rpc-usage-native.ts";
 
-type Row = Record<string, unknown>;
-
-/** The `coverage.segments[].source` label for this store. Exported so the
- * composer and its tests name the tier the same way the payload does. */
-export const COLD_TIER_SOURCE = "lakehouse";
-
-/** `ok` is a real boolean in the lakehouse; the Postgres tier counted it with
- * a filtered aggregate. R2 SQL rejects `count_if`, so the portable CASE form
- * is used -- same arithmetic, and measured to work. */
-const OK_COUNT = "sum(CASE WHEN ok THEN 1 ELSE 0 END)";
-
-/**
- * Window cutoff as an epoch-ms integer literal.
- *
- * R2 SQL has NO bound parameters, so every value is interpolated. This one is
- * computed here from a clock and a config constant -- never from caller input
- * -- and is still forced through `Number.isSafeInteger` so a future refactor
- * that lets a caller influence the window cannot turn it into an injection
- * point.
- */
+/** Canonical supported window and timestamp validation. */
 export function windowCutoffMs(
   window: string,
   now: number,
@@ -45,16 +23,14 @@ export function windowCutoffMs(
 }
 
 /**
- * Serve one usage window from the lakehouse, or null to let the caller keep
- * its existing empty payload.
+ * Serve one verified usage window, or null when native coverage cannot answer.
  *
- * Null on ANY miss -- unconfigured lakehouse, a failed query, an unknown
- * window -- rather than a partial answer. A rollup that silently lost its
+ * Missing or failed ownership declines rather than publishing a partial answer. A rollup that silently lost its
  * endpoint breakdown would read as "no endpoints served traffic", which is a
  * different and wrong claim.
  */
 export async function loadRpcUsageColdTier(
-  env: Parameters<R2SqlReader>[0],
+  env: R2SqlEnv | null | undefined,
   {
     window = "7d",
     now = Date.now(),
@@ -65,16 +41,10 @@ export async function loadRpcUsageColdTier(
     // being true the moment the two stores share a second. Undefined keeps
     // the whole window, which is what a lakehouse-only answer wants.
     until,
-    // Injectable so every rollup's SQL and every decline path is testable
-    // without a lakehouse -- the same seam r2-sql.ts's scheduleAbort uses. A
-    // branch that only runs against live infrastructure is a branch nothing
-    // verifies.
-    query = r2SqlQuery,
   }: {
     window?: string;
     now?: number;
     until?: number | null;
-    query?: R2SqlReader;
   } = {},
 ): Promise<Record<string, unknown> | null> {
   const windowLabel = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
@@ -83,18 +53,12 @@ export async function loadRpcUsageColdTier(
   const bounds = windowCutoffMs(windowLabel, now);
   if (!bounds) return null;
   const { cutoff, bucketMs, granularity } = bounds;
-  // Same no-bound-parameters rule the cutoff obeys: the ceiling is a literal,
-  // so it is forced through Number.isSafeInteger rather than trusted. A
-  // non-integer ceiling is dropped (the window's own cutoff still applies)
-  // instead of being interpolated.
+  // Preserve the public ceiling guard: an unusable bound is ignored while
+  // the supported window cutoff still applies.
   const ceiling =
     typeof until === "number" && Number.isSafeInteger(until) && until > 0
       ? until
       : null;
-  const where =
-    `WHERE observed_at >= ${cutoff}` +
-    (ceiling === null ? "" : ` AND observed_at < ${ceiling}`);
-
   const native = await loadRpcUsageNative(env, {
     window: windowLabel,
     cutoff,
@@ -103,100 +67,5 @@ export async function loadRpcUsageColdTier(
     until: ceiling,
     now,
   });
-  if (native !== undefined) return native;
-
-  const [totalsRows, endpointRows, networkRows, bucketRows] = await Promise.all(
-    [
-      query(
-        env,
-        `SELECT count(*) AS total, ${OK_COUNT} AS ok_count,` +
-          ` sum(CASE WHEN attempts > 1 THEN 1 ELSE 0 END) AS failover_count,` +
-          ` sum(CASE WHEN cache = 'hit' THEN 1 ELSE 0 END) AS cache_hits,` +
-          ` avg(latency_ms) AS avg_latency_ms,` +
-          // Free: `latency_ms` is already projected for the average above, so
-          // the engine reads no extra column and the scan is unchanged.
-          ` PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50,` +
-          ` PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95,` +
-          // Both ends of the measured span. The newest reading has always been
-          // published as `observed_at`; the oldest is what `coverage` needs so
-          // a merged answer can say where the lakehouse's half of it stops and
-          // the gap before Analytics Engine begins starts.
-          ` min(observed_at) AS observed_from,` +
-          ` max(observed_at) AS observed_at` +
-          ` FROM chain.rpc_proxy_events ${where}`,
-      ),
-      query(
-        env,
-        `SELECT endpoint_id, provider, network, count(*) AS requests,` +
-          ` ${OK_COUNT} AS ok_count, avg(latency_ms) AS avg_latency_ms` +
-          ` FROM chain.rpc_proxy_events ${where}` +
-          ` GROUP BY endpoint_id, provider, network ORDER BY requests DESC LIMIT 100`,
-      ),
-      query(
-        env,
-        `SELECT network, count(*) AS requests, ${OK_COUNT} AS ok_count,` +
-          ` avg(latency_ms) AS avg_latency_ms` +
-          ` FROM chain.rpc_proxy_events ${where}` +
-          ` GROUP BY network ORDER BY requests DESC LIMIT 100`,
-      ),
-      query(
-        env,
-        `SELECT observed_at - (observed_at % ${bucketMs}) AS ts,` +
-          ` count(*) AS requests, ${OK_COUNT} AS ok_count,` +
-          ` avg(latency_ms) AS avg_latency_ms` +
-          ` FROM chain.rpc_proxy_events ${where}` +
-          ` GROUP BY observed_at - (observed_at % ${bucketMs}) ORDER BY ts ASC LIMIT 1000`,
-      ),
-    ],
-  );
-
-  if (!totalsRows || !endpointRows || !networkRows || !bucketRows) return null;
-
-  const totals = totalsRows[0];
-  // A window the frozen table no longer reaches. Declining lets the caller's
-  // existing empty payload stand rather than publishing a zeroed rollup that
-  // looks like measured silence.
-  if (!totals || Number(totals.total) === 0) return null;
-
-  return formatRpcUsage({
-    window: windowLabel,
-    observedAt: totals.observed_at ?? null,
-    totals,
-    // From the totals row, which now carries them.
-    latency: totals,
-    coverage: {
-      segments: [
-        {
-          source: COLD_TIER_SOURCE,
-          start: totals.observed_from ?? null,
-          end: totals.observed_at ?? null,
-        },
-      ],
-      // The percentiles describe THIS store's span and no other. Scoped
-      // explicitly so a cold-only answer says which sub-range its p50/p95
-      // covers, rather than letting a reader assume it covers the window they
-      // asked for -- the same discipline the hot tier's own scope carries.
-      latency: {
-        start: totals.observed_from ?? null,
-        end: totals.observed_at ?? null,
-      },
-    },
-    // endpoints/networks derive their own error_rate from requests - ok
-    // inside the formatter; only the bucket mapping reads a literal `errors`,
-    // so it is the only one that needs deriving here.
-    endpointRows,
-    networkRows,
-    bucketRows: withErrors(bucketRows),
-    bucketGranularity: granularity,
-  });
-}
-
-/** The bucket mapping reads a literal `errors`; the engine gives requests and
- * ok_count. Clamped at zero so a malformed rollup cannot publish a negative
- * error count. */
-function withErrors(rows: Row[]): Row[] {
-  return rows.map((row) => ({
-    ...row,
-    errors: Math.max(0, Number(row.requests ?? 0) - Number(row.ok_count ?? 0)),
-  }));
+  return native ?? null;
 }

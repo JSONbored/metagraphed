@@ -1,3 +1,4 @@
+import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import assert from "node:assert/strict";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
@@ -23085,26 +23086,18 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.equal(out.coverage_from_block, null);
   });
 
-  test("get_runtime resolves the lakehouse timeline, not the retired tier", async () => {
-    // #10190: METAGRAPH_BLOCKS_SOURCE is retired, so the tier leg of this tool
-    // was always null and `chain.blocks`'s spec_version column is the source.
+  test("get_runtime resolves the indexed timeline, not the retired tier", async () => {
     const tierPaths: string[] = [];
-    const original = globalThis.fetch;
-    globalThis.fetch = (async () => {
-      const rows = [{ spec_version: 300, block_number: 100, observed_at: 1 }];
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, result: { rows } }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
+    const native = nativeRuntimeEnv([
+      { spec_version: 300, block_number: 100, observed_at: 1 },
+    ]);
     try {
       const res = await callTool(
         "get_runtime",
         {},
         {
           env: {
-            R2_SQL_TOKEN: "cfut_test",
+            ...native.env,
             DATA_API: {
               fetch: async (req: Request) => {
                 tierPaths.push(new URL(req.url).pathname);
@@ -23117,7 +23110,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
       assert.deepEqual(tierPaths, []);
       assert.equal(res.body.result.structuredContent.current_spec_version, 300);
     } finally {
-      globalThis.fetch = original;
+      // Native fixture only reads immutable objects.
     }
   });
 

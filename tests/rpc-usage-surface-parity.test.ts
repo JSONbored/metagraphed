@@ -19,7 +19,7 @@
 //      publish the same totals, the same endpoint list, and the same coverage.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import {
   configureRpcProxy,
   handleRpcUsage,
@@ -29,7 +29,17 @@ import { handleGraphQLRequest } from "../src/graphql.ts";
 import { mockEnv } from "./row-type.ts";
 import type { Row } from "./row-type.ts";
 
-const NOW = Date.now();
+import { gunzipSync } from "node:zlib";
+const nativeFixture = JSON.parse(
+  gunzipSync(
+    readFileSync(
+      new URL("./fixtures/native-rpc/telemetry.json.gz", import.meta.url),
+    ),
+  ).toString(),
+);
+const NOW: number = nativeFixture.now;
+beforeEach(() => vi.spyOn(Date, "now").mockReturnValue(NOW));
+afterEach(() => vi.restoreAllMocks());
 const HOUR = 3_600_000;
 
 /** Where each surface's rpc-usage code lives. */
@@ -86,7 +96,20 @@ describe("no surface owns the tier cascade", () => {
 
 const ENV = {
   ANALYTICS_ENGINE_SQL_TOKEN: "test-token",
-  R2_SQL_TOKEN: "test-token",
+  R2_SQL_TOKEN: "legacy-must-not-be-used",
+  METAGRAPH_ARCHIVE: {
+    async get(key: string) {
+      const item = nativeFixture.objects[key];
+      if (!item) return null;
+      const raw = Buffer.from(item.body, "base64");
+      return {
+        etag: item.etag,
+        size: item.size,
+        json: async () => JSON.parse(raw.toString()),
+        body: new Blob([raw]).stream(),
+      };
+    },
+  },
 };
 
 /** Analytics Engine's four rollups, in the order the hot tier issues them. */
@@ -125,79 +148,16 @@ const AE_RESULTS: Row[][] = [
   ],
 ];
 
-/** The lakehouse's four rollups, routed by the SQL each one carries. */
-function lakehouseRows(sql: string): Row[] {
-  if (sql.includes("GROUP BY endpoint_id"))
-    return [
-      {
-        endpoint_id: "alpha",
-        provider: "acme",
-        network: "finney",
-        requests: 700,
-        ok_count: 690,
-        avg_latency_ms: 100,
-      },
-      {
-        endpoint_id: "beta",
-        provider: "acme",
-        network: "finney",
-        requests: 200,
-        ok_count: 195,
-        avg_latency_ms: 120,
-      },
-    ];
-  if (sql.includes("GROUP BY network"))
-    return [
-      {
-        network: "finney",
-        requests: 900,
-        ok_count: 885,
-        avg_latency_ms: 105,
-      },
-    ];
-  if (sql.includes("% "))
-    return [
-      {
-        ts: NOW - 12 * HOUR,
-        requests: 900,
-        ok_count: 885,
-        avg_latency_ms: 105,
-      },
-    ];
-  return [
-    {
-      total: 900,
-      ok_count: 885,
-      failover_count: 9,
-      cache_hits: 300,
-      avg_latency_ms: 105,
-      observed_from: NOW - 6 * 24 * HOUR,
-      observed_at: NOW - 12 * HOUR,
-    },
-  ];
-}
-
-/**
- * One fetch double answering BOTH engines, routed by URL.
- *
- * The two clients post to different hosts and take different body shapes, so
- * this drives the real readers rather than the injectable query seams -- the
- * point of the exercise is that three surfaces reach the same wiring, and a
- * seam injected per surface would prove nothing about the wiring.
- */
+/** HTTP is reserved for Analytics Engine; cold telemetry uses real immutable objects. */
 function bothStores(): typeof fetch {
   let aeIndex = 0;
-  return (async (url: string, init: RequestInit) => {
+  return (async (url: string, _init: RequestInit) => {
     if (String(url).includes("/analytics_engine/sql")) {
       const data = AE_RESULTS[aeIndex] ?? [];
       aeIndex += 1;
       return Response.json({ meta: [], data, rows: data.length });
     }
-    const sql = (JSON.parse(String(init.body)) as { query: string }).query;
-    return Response.json({
-      success: true,
-      result: { rows: lakehouseRows(sql) },
-    });
+    throw Error(`Unexpected network request: ${url}`);
   }) as unknown as typeof fetch;
 }
 
@@ -260,22 +220,38 @@ describe("all three surfaces publish the same card", () => {
     const mcp = await withBothStores(mcpCard);
     const graphql = await withBothStores(graphqlCard);
 
-    // Both stores contributed: 900 lakehouse + 100 Analytics Engine. Neither a
-    // hot-tier-only 100 (#9293) nor a zeroed 0 (#9269) is an acceptable answer
-    // on ANY of the three.
+    // Independently count the physical weighted fixture rows before AE's floor.
+    const rows: unknown[][] = nativeFixture.rows.filter(
+      (r: unknown[]) =>
+        Number(r[0]) >= NOW - 7 * 24 * HOUR &&
+        Number(r[0]) < Math.trunc((NOW - 2 * HOUR) / 1000) * 1000,
+    );
+    const count = (predicate: (r: unknown[]) => boolean) =>
+      rows.reduce((n, r) => n + (predicate(r) ? Number(r[8] ?? 1) : 0), 0);
+    const total = count(() => true),
+      ok = count((r) => r[4] === true),
+      hits = count((r) => r[7] === "hit");
+    assert.ok(total > 0);
     for (const [surface, card] of [
       ["REST", rest],
       ["MCP", mcp],
       ["GraphQL", graphql],
     ] as const) {
       const summary = card.summary as Row;
-      assert.equal(summary.total_requests, 1_000, `${surface} total_requests`);
-      assert.equal(summary.ok_requests, 983, `${surface} ok_requests`);
-      assert.equal(summary.error_requests, 17, `${surface} error_requests`);
-      assert.equal(summary.cache_hits, 320, `${surface} cache_hits`);
       assert.equal(
-        (card.endpoints as Row[]).length,
-        2,
+        summary.total_requests,
+        total + 100,
+        `${surface} total_requests`,
+      );
+      assert.equal(summary.ok_requests, ok + 98, `${surface} ok_requests`);
+      assert.equal(
+        summary.error_requests,
+        total - ok + 2,
+        `${surface} error_requests`,
+      );
+      assert.equal(summary.cache_hits, hits + 20, `${surface} cache_hits`);
+      assert.ok(
+        (card.endpoints as Row[]).length > 1,
         `${surface} endpoint count`,
       );
       // Percentiles are Analytics Engine's, on every surface, scoped to the
