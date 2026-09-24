@@ -145,7 +145,7 @@ test("hot coverage must reach pending rows even before their append finishes", a
   assert.equal(await check(), true);
 });
 
-test("missing qualification and unsupported networks retain the fallback", async () => {
+test("missing qualification retains the fallback", async () => {
   assert.equal(await absent(env(), "blocks", hash, 10, "testnet"), false);
   assert.equal(await absent(null, "blocks", hash, 10, "mainnet"), false);
   assert.equal(
@@ -170,6 +170,69 @@ test("missing qualification and unsupported networks retain the fallback", async
   );
   await bucket.delete(key());
   assert.equal(await check(), false);
+});
+
+test("testnet absence requires complete retained coverage and a stable source fence without D1", async () => {
+  const net = "testnet";
+  for (const table of ["blocks", "extrinsics"] as const) {
+    const k = `metagraph/indexed-history/v1/${net}/${table}/source-ceiling.json`;
+    const value = { ...ceiling(table, 7700012), network: net };
+    await bucket.put(k, JSON.stringify(value));
+    const get = vi.fn((key: string) => bucket.get(key));
+    const isolated = {
+      METAGRAPH_ARCHIVE: { get },
+      D1_STATE: {
+        prepare: () => {
+          throw new Error("Testnet cannot query mainnet D1");
+        },
+      },
+      D1_STATE_TABLES: "chain_detail_blocks,chain_detail_extrinsics",
+    };
+    assert.equal(await absent(isolated, table, hash, 7700012, net), true);
+    assert.deepEqual(
+      get.mock.calls.map(([key]) => key),
+      [k, k],
+    );
+    get.mockClear();
+    assert.equal(await absent(isolated, table, hash, 7700011, net), false);
+    assert.equal(get.mock.calls.length, 1);
+    assert.equal(await absent(isolated, table, hash, 7700013, net), true);
+    for (const removed of [false, true]) {
+      await bucket.put(k, JSON.stringify(value));
+      let reads = 0;
+      const moving = {
+        METAGRAPH_ARCHIVE: {
+          get: async (key: string) => {
+            if (++reads === 2) {
+              if (removed) await bucket.delete(key);
+              else
+                await bucket.put(
+                  key,
+                  JSON.stringify({
+                    ...value,
+                    through: 7700013,
+                    revision: "b".repeat(32),
+                  }),
+                );
+            }
+            return bucket.get(key);
+          },
+        },
+      };
+      assert.equal(await absent(moving, table, hash, 7700012, net), false);
+    }
+    assert.equal(
+      await absent({ METAGRAPH_ARCHIVE: bucket }, table, hash, 7700012, net),
+      false,
+    );
+    await bucket.put(k, JSON.stringify({ ...value, network: "mainnet" }));
+    await assert.rejects(
+      absent({ METAGRAPH_ARCHIVE: bucket }, table, hash, 7700012, net),
+      /scope/,
+    );
+    await bucket.delete(k);
+  }
+  assert.equal(await absent(null, "blocks", hash, 7700012, net), false);
 });
 
 test("a changed or removed fence cannot qualify the earlier D1 snapshot", async () => {

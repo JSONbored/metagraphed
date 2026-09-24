@@ -14,6 +14,8 @@ interface Coverage {
 /** Prove the unindexed tail in one D1 snapshot. The producer publishes a
  * monotone ceiling BEFORE adding catalog rows, including interrupted runs.
  * Two uncached reads bracket D1 so an advancing source cannot hide a hash.
+ * Testnet has no D1 hot tier: its complete retained indexes must themselves
+ * reach the fenced ceiling before absence is an answer.
  * Missing qualification keeps the migration fallback; read failures throw. */
 export async function historyHashAbsentFromHotBridge(
   env: unknown,
@@ -22,13 +24,15 @@ export async function historyHashAbsentFromHotBridge(
   through: number,
   network: ChainNetworkId,
 ): Promise<boolean> {
-  if (network !== "mainnet") return false;
   const hotTable =
     table === "blocks" ? "chain_detail_blocks" : "chain_detail_extrinsics";
-  const store = selectedD1Store(env, ["chain_detail_blocks", hotTable]);
+  const store =
+    network === "mainnet"
+      ? selectedD1Store(env, ["chain_detail_blocks", hotTable])
+      : null;
   const bucket = (env as { METAGRAPH_ARCHIVE?: Bucket } | null)
     ?.METAGRAPH_ARCHIVE;
-  if (!store || !bucket) return false;
+  if (!bucket || (network === "mainnet" && !store)) return false;
   const key = `metagraph/indexed-history/v1/${network}/${table}/source-ceiling.json`;
   const before = await bucket.get(key);
   if (!before) return false;
@@ -37,6 +41,11 @@ export async function historyHashAbsentFromHotBridge(
   const ceiling = HistorySourceCeilingSchema.parse(await before.json());
   if (ceiling.network !== network || ceiling.table !== table || !before.etag)
     throw new Error("History source ceiling scope mismatch");
+  if (!store) {
+    if (through < ceiling.through) return false;
+    const after = await bucket.get(key);
+    return after !== null && after.etag === before.etag;
+  }
   const column =
     table === "blocks" ? "lower(block_hash)" : "lower(extrinsic_hash)";
   const [coverage] = await store.query<Coverage>(

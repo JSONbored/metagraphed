@@ -18,6 +18,7 @@ import {
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
 import { historyHashAbsentFromHotBridge } from "./history-hash-hot-bridge.ts";
+import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
 
 type Bucket = Pick<R2Bucket, "get">;
 interface HistoryEnv {
@@ -179,7 +180,8 @@ export async function readSelectedHistoryHash(
         return normalized;
     }
     if (
-      segments[0].firstBlock === 0 &&
+      segments[0].firstBlock <=
+        (network === "mainnet" ? 0 : TESTNET_RAW_CAPTURE_GENESIS_FLOOR) &&
       segments.every((segment) => segment.hashManifest) &&
       (await historyHashAbsentFromHotBridge(
         env,
