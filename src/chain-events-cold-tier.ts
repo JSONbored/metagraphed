@@ -61,6 +61,8 @@ import {
   SUBNET_LEASE_TERMINATED_KIND,
 } from "./subnet-lease-history.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
+import { loadNativeLeasePresence } from "./lease-presence-native.ts";
+import type { ArtifactStoreEnv } from "./projection-store.ts";
 
 /** Kept identical to the deleted handler's SELECT list so both tiers hand the
  * caller the same event shape. */
@@ -477,6 +479,11 @@ export async function loadSubnetLeaseHistoryColdTier(
 ): Promise<{ rows: Record<string, unknown>[] } | null> {
   const subnet = safeBlockNumber(netuid);
   if (subnet === null) return null;
+  const native = await loadNativeLeasePresence(
+    env as ArtifactStoreEnv | null | undefined,
+    network ?? DEFAULT_CHAIN_NETWORK,
+  );
+  if (native !== undefined) return native === false ? { rows: [] } : null;
   const rows = await r2SqlQuery(
     env,
     `SELECT block_number FROM ${chainTable("chain_events", network)} ` +
