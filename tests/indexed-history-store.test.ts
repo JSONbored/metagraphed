@@ -32,6 +32,7 @@ import {
   loadExtrinsicColdTier,
 } from "../src/extrinsics-cold-tier.ts";
 import { loadBlockFromR2Sql } from "../src/r2-sql-blocks.ts";
+import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "../src/raw-capture-floors.ts";
 beforeEach(() => {
   resetModuleState();
   readers.block.mockReset().mockResolvedValue([]);
@@ -125,6 +126,56 @@ test("qualified absence requires all historical hashes and preserves empty detai
     null,
   );
   assert.equal(currentIndexedHistoryFailureGeneration(), 1);
+});
+test("testnet hash absence uses its retained floor and preserves detail payloads without SQL", async () => {
+  const hash = `0x${"ab".repeat(32)}`;
+  const floor = TESTNET_RAW_CAPTURE_GENESIS_FLOOR;
+  const fetcher = vi.fn().mockRejectedValue(new Error("SQL must not run"));
+  vi.stubGlobal("fetch", fetcher);
+  readers.absent.mockResolvedValue(true);
+  for (const table of ["blocks", "extrinsics"] as const) {
+    const f = segmentedFixture(table, "testnet");
+    for (const segment of f.selected.segments) {
+      segment.firstBlock += floor - 1;
+      segment.lastBlock += floor - 1;
+    }
+    assert.deepEqual(
+      await readSelectedHistoryHash(f.env, table, hash, "testnet"),
+      [],
+    );
+    assert.deepEqual(readers.absent.mock.lastCall, [
+      f.env,
+      table,
+      hash,
+      floor + 19,
+      "testnet",
+    ]);
+    if (table === "blocks")
+      assert.equal(
+        (await loadBlockFromR2Sql(f.env, hash, "testnet"))?.block,
+        null,
+      );
+    else
+      assert.equal(
+        (await loadExtrinsicColdTier(f.env, hash, "testnet"))?.extrinsic,
+        null,
+      );
+    assert.equal(fetcher.mock.calls.length, 0);
+    f.selected.segments[0].firstBlock++;
+    resetModuleState();
+    readers.absent.mockClear();
+    assert.equal(
+      await readSelectedHistoryHash(f.env, table, hash, "testnet"),
+      undefined,
+    );
+    assert.equal(readers.absent.mock.calls.length, 0);
+    f.selected.segments[0].firstBlock -= 2;
+    resetModuleState();
+    assert.deepEqual(
+      await readSelectedHistoryHash(f.env, table, hash, "testnet"),
+      [],
+    );
+  }
 });
 test("segmented block reads select exactly one contiguous range and share the pointer cache", async () => {
   const { selected, env, get } = segmentedFixture("chain_events", "testnet");
