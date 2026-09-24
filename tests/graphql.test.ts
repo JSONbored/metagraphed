@@ -1,3 +1,4 @@
+import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import assert from "node:assert/strict";
 import { resetSurfacesMemo } from "../src/revenue-load.ts";
 import { markedChainEventsPayload } from "../src/chain-events-degraded.ts";
@@ -9060,32 +9061,6 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
     return { fetch: async () => response };
   }
 
-  /**
-   * Stub the lakehouse transport for the two queries the runtime cold tier
-   * issues: the GROUP BY timeline, and the separately-queried head block that
-   * current_spec_version has to come from (a rollback would make the last
-   * transition the wrong answer).
-   */
-  function lakehouse(transitions: Row[]) {
-    const original = globalThis.fetch;
-    const queries: string[] = [];
-    globalThis.fetch = (async (_url: string, init: RequestInit) => {
-      const sql = String(JSON.parse(String(init.body)).query);
-      queries.push(sql);
-      const rows = sql.includes("ORDER BY block_number DESC")
-        ? transitions.slice(-1)
-        : transitions;
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, result: { rows } }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
-    return { queries, restore: () => (globalThis.fetch = original) };
-  }
-
-  const COLD = { R2_SQL_TOKEN: "cfut_test" } as unknown as Env;
-
   test("cold store: no Postgres flag returns a schema-stable empty timeline, never null", async () => {
     const { status, body } = await gql(
       `{ runtime {
@@ -9105,10 +9080,10 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
     });
   });
 
-  test("resolves the lakehouse spec-version transition timeline", async () => {
+  test("resolves the indexed spec-version transition timeline", async () => {
     // observed_at is epoch ms because that is the lakehouse column's type; the
     // ISO strings below are the builder's formatting.
-    const lake = lakehouse([
+    const native = nativeRuntimeEnv([
       {
         spec_version: 200,
         block_number: 100,
@@ -9127,7 +9102,7 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
             coverage_from_block coverage_from_at
             transitions { spec_version block_number observed_at }
           } }`,
-        COLD,
+        native.env,
       );
       assert.equal(status, 200);
       assert.deepEqual(body.data.runtime, {
@@ -9150,27 +9125,26 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
         ],
       });
     } finally {
-      lake.restore();
+      // The fixture owns immutable objects; no network transport was replaced.
     }
   });
 
-  test("asks the lakehouse for the timeline AND the head block, separately", async () => {
-    // Two queries, not one: current_spec_version must not be read off the last
-    // transition, because GROUP BY collapses each version to its EARLIEST
-    // block and a rollback would then report the superseded version.
-    const lake = lakehouse([
-      { spec_version: 200, block_number: 100, observed_at: 1 },
-    ]);
-    try {
-      await gql("{ runtime { transition_count } }", COLD);
-      assert.equal(lake.queries.length, 2);
-      assert.ok(lake.queries.some((q) => q.includes("GROUP BY spec_version")));
-      assert.ok(
-        lake.queries.some((q) => q.includes("ORDER BY block_number DESC")),
-      );
-    } finally {
-      lake.restore();
-    }
+  test("reads the indexed timeline and its independent rollback head", async () => {
+    const native = nativeRuntimeEnv(
+      [
+        { spec_version: 200, block_number: 100, observed_at: 1 },
+        { spec_version: 201, block_number: 200, observed_at: 2 },
+      ],
+      { spec_version: 200, block_number: 300 },
+    );
+    const { body } = await gql(
+      "{ runtime { transition_count current_spec_version } }",
+      native.env,
+    );
+    assert.equal(body.data.runtime.transition_count, 2);
+    assert.equal(body.data.runtime.current_spec_version, 200);
+    assert.ok(native.keys.some((key) => key.endsWith("/runtime.json")));
+    assert.ok(native.keys.some((key) => key.endsWith("/block-manifest.json")));
   });
 
   test("`current` resolves the upgrade radar when it is SELECTED", async () => {
@@ -24415,40 +24389,18 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
   });
 
   test("runtime publishes the coverage completeness marker and its gaps", async () => {
-    // #10190: the tier that used to hand these fields over pre-built is retired,
-    // so they are DERIVED from the lakehouse timeline now. Two transitions five
-    // spec versions apart is the gap -- feeding the gap in ready-made would no
-    // longer exercise anything the resolver does.
-    const original = globalThis.fetch;
-    globalThis.fetch = (async (_url: string, init: RequestInit) => {
-      const sql = String(JSON.parse(String(init.body)).query);
-      // Non-consecutive versions AND a span over
-      // MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN: both are required, because a long
-      // quiet stretch under one runtime is a fact about the chain, not a hole.
-      const rows = [
-        { spec_version: 200, block_number: 100, observed_at: 1 },
-        { spec_version: 205, block_number: 1_000_100, observed_at: 2 },
-      ];
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          result: {
-            rows: sql.includes("ORDER BY block_number DESC")
-              ? rows.slice(-1)
-              : rows,
-          },
-        }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
+    const rows = [
+      { spec_version: 200, block_number: 100, observed_at: 1 },
+      { spec_version: 205, block_number: 1_000_100, observed_at: 2 },
+    ];
+    const native = nativeRuntimeEnv(rows);
     try {
       const { body } = await gql(
         `{ runtime {
             coverage_complete
             coverage_gaps { after_spec_version before_spec_version after_block before_block block_span }
           } }`,
-        { R2_SQL_TOKEN: "cfut_test" } as unknown as Env,
+        native.env,
       );
       assert.equal(body.errors, undefined);
       assert.equal(body.data.runtime.coverage_complete, false);
@@ -24460,7 +24412,7 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
         block_span: 1_000_000,
       });
     } finally {
-      globalThis.fetch = original;
+      // Immutable native fixture needs no transport restoration.
     }
   });
 

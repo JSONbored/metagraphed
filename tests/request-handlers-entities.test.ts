@@ -1,3 +1,4 @@
+import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 // Direct unit tests for workers/request-handlers/entities.ts (#1900).
 // Imports every exported handler and exercises the null-safe D1 read path,
 // query-param guards, and schema-stable cold-store contracts without routing
@@ -5828,16 +5829,15 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     }
   });
 
-  test("handleRuntime: the retired flag is not consulted; the lakehouse answers", async () => {
-    const { env } = dbWith({ blocksFeed: [blockRow()] });
-    env.METAGRAPH_BLOCKS_SOURCE = "data-api";
-    const tier = forbiddenDataApi();
-    env.DATA_API = tier.DATA_API;
-    Object.assign(env, LAKEHOUSE_TOKEN);
-    // #9265: `chain.blocks` carries spec_version, so the timeline is real.
-    const restore = lakehouse(() => [
-      { spec_version: 423, block_number: 8_000_000, observed_at: 1 },
+  test("handleRuntime: the retired flag is not consulted; indexed history answers", async () => {
+    const { env } = nativeRuntimeEnv([
+      { spec_version: 423, block_number: 8000000, observed_at: 1 },
     ]);
+    const tier = forbiddenDataApi();
+    Object.assign(env, {
+      METAGRAPH_BLOCKS_SOURCE: "data-api",
+      DATA_API: tier.DATA_API,
+    });
     try {
       const body = await json(
         await handleRuntime(
@@ -5849,7 +5849,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       assert.deepEqual(tier.paths, []);
       assert.equal(body.data.current_spec_version, 423);
     } finally {
-      restore();
+      // No mutable transport was installed.
     }
   });
 
@@ -5862,22 +5862,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // envelope -- which is closer to what the route actually does than handing
     // it a pre-built envelope ever was.
     function coldTierEnv(transitions: Row[]) {
-      const { env } = dbWith({ blocksFeed: [blockRow()] });
-      Object.assign(env, LAKEHOUSE_TOKEN);
-      restoreFetch = lakehouse((sql) =>
-        // LATEST_SQL asks for the head block; TRANSITIONS_SQL for the timeline.
-        sql.includes("ORDER BY block_number DESC")
-          ? transitions.slice(-1)
-          : transitions,
-      );
-      return env;
+      return nativeRuntimeEnv(transitions).env;
     }
-
-    let restoreFetch: (() => void) | undefined;
-    afterEach(() => {
-      restoreFetch?.();
-      restoreFetch = undefined;
-    });
 
     const ROWS = [
       // observed_at is epoch ms here because that is the lakehouse column's own

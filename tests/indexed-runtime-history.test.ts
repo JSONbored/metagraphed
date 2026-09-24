@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterAll, beforeAll, beforeEach, test } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, test, vi } from "vitest";
 import { Miniflare } from "miniflare";
 import { loadIndexedRuntimeHistory } from "../src/indexed-runtime-history.ts";
 import { readSelectedHistorySegments } from "../src/indexed-history-store.ts";
@@ -120,11 +120,7 @@ test("runtime combines complete selected summaries and preserves rollback and in
     { spec_version: 3, block_number: 12, observed_at: null },
   ];
   await put(f.summaries[1].key, f.summaries[1].value);
-  const value = await loadRuntimeVersionHistoryColdTier(f.env, {
-    query: async () => {
-      throw new Error("SQL must not execute");
-    },
-  });
+  const value = await loadRuntimeVersionHistoryColdTier(f.env);
   assert.ok(value);
   assert.equal(value.current_spec_version, 1);
   assert.equal(value.transitions.length, 3);
@@ -279,14 +275,23 @@ test("oversized summaries and unreadable manifests fail without SQL fallback", a
   resetModuleState();
   const clean = await fixture();
   await bucket.delete(clean.segments[0].blockManifest.key);
-  let calls = 0;
-  const value = await loadRuntimeVersionHistoryColdTier(clean.env, {
-    query: async () => {
-      calls++;
-      return [];
-    },
-  });
+  const value = await loadRuntimeVersionHistoryColdTier(clean.env);
   assert.equal(value, null);
-  assert.equal(calls, 0);
   assert.equal(currentIndexedHistoryFailureGeneration(), 1);
+});
+
+// A configured legacy credential must never revive the retired network reader.
+const noWarehouse = vi.fn(async () => {
+  throw Error("Unexpected network SQL");
+});
+beforeEach(() => {
+  noWarehouse.mockClear();
+  vi.stubGlobal("fetch", noWarehouse);
+});
+afterEach(() => {
+  try {
+    assert.equal(noWarehouse.mock.calls.length, 0);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
