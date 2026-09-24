@@ -33,6 +33,7 @@ import {
 } from "../src/extrinsics-cold-tier.ts";
 import { loadBlockFromR2Sql } from "../src/r2-sql-blocks.ts";
 import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "../src/raw-capture-floors.ts";
+import { buildExtrinsic } from "../src/extrinsics.ts";
 beforeEach(() => {
   resetModuleState();
   readers.block.mockReset().mockResolvedValue([]);
@@ -85,6 +86,34 @@ function segmentedFixture(table = "blocks", network = "mainnet") {
   get.mockResolvedValue({ size: 1000, json: async () => selected });
   return { selected, get, env };
 }
+test("a qualified hash hit formats the single native extrinsic row without SQL", async () => {
+  const hash = `0x${"cd".repeat(32)}`;
+  const { env } = fixture("extrinsics");
+  const row = {
+    block_number: 7,
+    extrinsic_index: 2,
+    extrinsic_hash: hash,
+    signer: null,
+    call_module: "Timestamp",
+    call_function: "set",
+    success: true,
+    fee_tao: null,
+    tip_tao: null,
+    call_args: "{}",
+    observed_at: 1700000000000,
+  };
+  readers.hash.mockResolvedValue(row);
+  const fetcher = vi.fn(() => {
+    throw new Error("SQL must not execute");
+  });
+  vi.stubGlobal("fetch", fetcher);
+  assert.deepEqual(
+    await loadExtrinsicColdTier(env, hash),
+    buildExtrinsic(row, hash, []),
+  );
+  assert.equal(readers.hash.mock.calls.length, 1);
+  assert.equal(fetcher.mock.calls.length, 0);
+});
 test("qualified absence requires all historical hashes and preserves empty detail payloads without SQL", async () => {
   const hash = `0x${"ab".repeat(32)}`;
   const f = segmentedFixture();

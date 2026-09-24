@@ -1,36 +1,6 @@
 import { loadIndexedExtrinsicFeedPage } from "./indexed-extrinsic-feeds.ts";
-// Extrinsic reads served from the lakehouse when the Postgres tier misses.
-//
-// Same posture as src/blocks-cold-tier.ts, and the same reason: with the
-// self-hosted box gone these routes would degrade to schema-stable empties,
-// which is honest but useless when the rows exist and are verified in R2.
-// Every loader here feeds the SAME formatters the Postgres tier feeds
-// (src/extrinsics.ts), so a caller cannot tell which tier answered.
-//
-// ONE HONEST LIMIT, STATED UP FRONT. Verified extrinsics stop wherever the
-// decode lane has reached. Blocks past that are captured as raw SCALE bytes
-// but not yet decoded, so no source can answer for that range -- unlike
-// blocks, there is no D1 leg to stitch on. This tier therefore serves history
-// and returns a confirmed EMPTY above the decoded height rather than inventing
-// a partial row. A caller reading `observed_at` can see exactly how current
-// the answer is; nothing is presented as more recent than it is.
-//
-// AND IT DOES NOT CONSULT THE SEAM TO DECIDE THAT, deliberately. The seam
-// (src/blocks-cold-tier.ts) exists to choose BETWEEN two sources, and here
-// there is only one, so the lakehouse's own emptiness is the answer -- read
-// from the lakehouse rather than predicted from a watermark. That matters
-// because the published watermark is the `min` across four tables: a run that
-// committed chain.extrinsics and not chain.chain_events leaves rows here that
-// a seam gate would refuse to serve, and refusing rows we hold is exactly the
-// failure the seam was introduced to avoid. The cost of asking is one R2 SQL
-// scan that comes back empty, behind an edge cache, on a tier that is
-// second-scale by design.
-//
-// R2 SQL has no bound parameters, so every interpolated value passes a
-// literal guard that REFUSES rather than escapes. A filter this tier cannot
-// express safely makes the whole query decline -- returning rows that ignore
-// a caller's filter would be worse than returning none, because the caller
-// cannot tell it happened.
+// Hot D1 pages and complete retained R2 indexes share the canonical formatters.
+// Missing ownership or incomplete coverage declines; only verified absence is empty.
 
 import {
   buildAccountExtrinsics,
@@ -40,14 +10,9 @@ import {
 } from "./extrinsics.ts";
 import { formatAccountEvent } from "./account-events.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import {
-  type ChainNetworkId,
-  DEFAULT_CHAIN_NETWORK,
-  chainTable,
-} from "./chain-network.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { loadExtrinsicsHeadHotTier } from "./chain-detail-hot-tier.ts";
 import {
-  r2SqlQuery,
   safeBlockNumber,
   safeHexLiteral,
   safeNameLiteral,
@@ -62,43 +27,17 @@ import {
   type ParquetReadBudget,
 } from "./indexed-parquet.ts";
 import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
-import {
-  ACCOUNT_EVENTS_COLUMNS,
-  EXTRINSICS_COLUMNS,
-} from "../generated/lakehouse/types.ts";
-import type {
-  AccountEventsRow,
-  ExtrinsicsRow,
-} from "../generated/lakehouse/types.ts";
+import type { ExtrinsicsRow } from "../generated/lakehouse/types.ts";
 // The RUNTIME half of the same generated pair. types.ts is the compile-time
 // claim; these check it at the boundary.
 import {
   AccountEventsRowSchema,
-  BlocksRowSchema,
   ExtrinsicsRowSchema,
 } from "../schemas-src/lakehouse.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 
-/** Kept identical to the Postgres tier's SELECT list so both tiers hand the
- * formatter the same shape. */
-// The generated tuples, not retyped copies -- see src/r2-sql-blocks.ts for why.
-const EXTRINSIC_COLUMNS = EXTRINSICS_COLUMNS.join(", ");
-
-/** Events emitted by one extrinsic, embedded in the detail payload. The
- * column list and the bound match the Postgres tier's embedded-events query
- * exactly, and rows go through the same formatAccountEvent before embedding
- * -- buildExtrinsic embeds what it is given verbatim, so handing it raw rows
- * would leak an unformatted shape into a payload callers already parse. */
-const EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
+/** Same embedded-event cap as the public detail contract. */
 const MAX_EMBEDDED_EVENTS = 50;
-
-/** EXACTLY the Postgres tier's feed order. The observed_at-leading key is not
- * cosmetic: the public cursor token encodes this composite key, so a tier that
- * ordered differently would emit tokens the other tier mis-seeks on. The two
- * extra columns matter too -- extrinsics share a block, so no prefix of this
- * key is a total order on its own. */
-const FEED_ORDER =
-  "ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC";
 
 export interface ExtrinsicFeedQuery {
   limit: number;
@@ -120,63 +59,28 @@ export interface ExtrinsicFeedQuery {
 /** The cursor tuple every extrinsic feed pages on, mirroring data-api. */
 const CURSOR_ARITY = 3;
 
-/** Build the WHERE terms, or null if any filter cannot be expressed safely. */
-function feedPredicates(query: ExtrinsicFeedQuery): string[] | null {
-  const where: string[] = [];
-
-  if (query.signer != null) {
-    const s = safeSs58Literal(query.signer);
-    if (s === null) return null;
-    where.push(`signer = '${s}'`);
-  }
-  for (const [value, column] of [
-    [query.module, "call_module"],
-    [query.callFunction, "call_function"],
-  ] as [unknown, string][]) {
-    if (value == null) continue;
-    const name = safeNameLiteral(value);
-    if (name === null) return null;
-    where.push(`${column} = '${name}'`);
-  }
-  for (const [value, clause] of [
-    [query.block, "block_number ="],
-    [query.blockStart, "block_number >="],
-    [query.blockEnd, "block_number <="],
-    [query.from, "observed_at >="],
-    [query.to, "observed_at <="],
-  ] as [unknown, string][]) {
-    if (value == null) continue;
-    const n = safeBlockNumber(value);
-    if (n === null) return null;
-    where.push(`${clause} ${n}`);
-  }
-  if (query.success != null) {
-    // Only a real boolean: coercing a string here would turn "false" into TRUE
-    // and silently invert the caller's filter.
-    if (typeof query.success !== "boolean") return null;
-    where.push(`success = ${query.success ? "TRUE" : "FALSE"}`);
-  }
-  const cursor = decodeCursor(query.cursor, CURSOR_ARITY);
-  if (cursor) {
-    // The same 3-part tuple seek the Postgres tier issues (tuple comparison
-    // verified supported on the live engine, 2026-08-02). An invalid token
-    // decodes to null and is treated as NO cursor -- exactly what data-api
-    // does -- so both tiers serve the identical page for the identical
-    // request, malformed tokens included.
-    where.push(
-      `(observed_at, block_number, extrinsic_index) < ` +
-        `(${cursor[0]}, ${cursor[1]}, ${cursor[2]})`,
-    );
-  }
-  return where;
+/** Preserve public input validation before selecting either native owner. */
+function validFeedQuery(query: ExtrinsicFeedQuery): boolean {
+  if (query.signer != null && safeSs58Literal(query.signer) === null)
+    return false;
+  for (const value of [query.module, query.callFunction])
+    if (value != null && safeNameLiteral(value) === null) return false;
+  for (const value of [
+    query.block,
+    query.blockStart,
+    query.blockEnd,
+    query.from,
+    query.to,
+  ])
+    if (value != null && safeBlockNumber(value) === null) return false;
+  return query.success == null || typeof query.success === "boolean";
 }
 
 /** Rows for a feed-shaped query, offset emulated by over-fetch + slice. */
 async function feedRows(
   env: R2SqlEnv | null | undefined,
   query: ExtrinsicFeedQuery,
-  extraWhere: string[] = [],
-  /** Which chain's lakehouse namespace to read (#8700). */
+  /** Network identity of the retained history. */
   network?: ChainNetworkId,
 ): Promise<{
   rows: Record<string, unknown>[];
@@ -187,13 +91,10 @@ async function feedRows(
   const limit = safeBlockNumber(query.limit);
   const offset = safeBlockNumber(query.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
-  // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
-  // reasonable trade and declining beats serving a page that is quietly wrong.
+  // Keep the published offset ceiling and its explicit decline marker.
   if (offsetBeyondEmulationCap(offset)) return null;
 
-  const base = feedPredicates(query);
-  if (base === null) return null;
-  const where = [...base, ...extraWhere];
+  if (!validFeedQuery(query)) return null;
 
   // Cursor pages never carry an offset -- the cursor already narrows past
   // prior pages -- mirroring data-api's `OFFSET only when no cursor`.
@@ -205,7 +106,6 @@ async function feedRows(
   // mainnet-only and must seek the same complete cursor tuple as that reader.
   if (
     paged === 0 &&
-    extraWhere.length === 0 &&
     (network === undefined || network === DEFAULT_CHAIN_NETWORK)
   ) {
     const cursorToken = decodeCursor(query.cursor, CURSOR_ARITY);
@@ -240,7 +140,7 @@ async function feedRows(
     }
   }
 
-  if (extraWhere.length === 0) {
+  {
     const block =
       query.block == null ? undefined : safeBlockNumber(query.block)!;
     const lower =
@@ -286,41 +186,17 @@ async function feedRows(
     }
   }
 
-  const sql =
-    `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)}` +
-    (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
-    ` ${FEED_ORDER} LIMIT ${limit + paged}`;
-
-  // VALIDATED, not cast. This is the read that produced `Memory limit
-  // exceeded before EOF` on 2026-08-12, and it selects the full generated
-  // column tuple -- so the generated schema for the same table applies exactly.
-  const rows = await r2SqlQuery<ExtrinsicsRow>(env, sql, {
-    rowSchema: ExtrinsicsRowSchema,
-  });
-  if (rows === null) return null;
-
-  const page = paged > 0 ? rows.slice(paged) : rows;
-  const last = page.length === limit ? page[page.length - 1] : null;
-  // The SAME token the Postgres tier emits for this row, so a client can page
-  // seamlessly across a tier transition in either direction.
-  const nextCursor = last
-    ? encodeCursor([
-        safeBlockNumber(last.observed_at),
-        safeBlockNumber(last.block_number),
-        safeBlockNumber(last.extrinsic_index),
-      ])
-    : null;
-  return { rows: page, limit, offset, nextCursor };
+  return null;
 }
 
 /** The recent-extrinsic feed, and the filtered variants built on it. */
 export async function loadExtrinsicFeedColdTier(
   env: R2SqlEnv | null | undefined,
   query: ExtrinsicFeedQuery,
-  /** Which chain's lakehouse namespace to read (#8700). */
+  /** Network identity of the retained history. */
   network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildExtrinsicFeed> | null> {
-  const page = await feedRows(env, query, [], network);
+  const page = await feedRows(env, query, network);
   if (page === null) return null;
   return buildExtrinsicFeed(page.rows, {
     limit: page.limit,
@@ -334,7 +210,7 @@ export async function loadBlockExtrinsicsColdTier(
   env: R2SqlEnv | null | undefined,
   ref: string,
   page: { limit: number; offset?: number | null },
-  /** Which chain's lakehouse namespace to read (#8700). */
+  /** Network identity of the retained history. */
   network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildBlockExtrinsics> | null> {
   const limit = safeBlockNumber(page.limit),
@@ -372,51 +248,10 @@ export async function loadBlockExtrinsicsColdTier(
       { limit, offset },
     );
   }
-  const rows = await feedRows(
-    env,
-    { limit: page.limit, offset: page.offset ?? 0 },
-    [`block_number = ${height}`],
-    network,
-  );
-  if (rows === null) return null;
-  // `height`, NOT the cursor: buildBlockExtrinsics' third parameter is the
-  // block number this page belongs to. Passing `rows.nextCursor` there published
-  // a cursor token (or null) as `block_number` on every lakehouse-served page --
-  // the sibling loadBlockEventsColdTier passes `height` here, and REST, GraphQL
-  // and MCP all read this one field from the same builder. Invisible until the
-  // retired tier stopped supplying `block_number` itself (#10190).
-  return buildBlockExtrinsics(rows.rows, ref, height, {
-    limit: rows.limit,
-    offset: rows.offset,
-  });
+  return null;
 }
 
-/** One account's extrinsics, newest first. */
-/**
- * DELIBERATELY NOT FLOORED by the account-summary projection, unlike every
- * other account-scoped read in this family.
- *
- * The floor those use is `min(fo)` over an account's groups in
- * `chain.account_events`. This reads `chain.extrinsics` on `signer`, and the
- * projection makes NO claim about that table. Using it here would assert that
- * an account cannot have signed an extrinsic before its first account_event,
- * and that is not a fact anyone has established: it holds only if every signed
- * extrinsic produces an event naming its signer, which fee-free and root calls
- * do not.
- *
- * The cost of being wrong is silent -- the oldest extrinsics simply vanish from
- * the feed, and a short page looks exactly like a quiet account. That is the
- * failure this whole family has been correcting all week, so it is not one to
- * introduce for a latency win.
- *
- * SO THIS READ IS STILL UNBOUNDED, and knowingly. Bounding it needs either a
- * signer-keyed projection or a measured proof that the event floor covers
- * signers; both are their own change. `validate:r2-sql-scan-bounds` does not
- * flag it today because `signer` is absent from its SCATTERED list -- left
- * alone here rather than added, because adding it without a bound would force a
- * false `UNBOUNDED_BY_DESIGN` exemption, and an exemption that misdescribes why
- * is worse than a gap that is written down.
- */
+/** Signer history uses its own index, never an account-event-derived floor. */
 export async function loadAccountExtrinsicsColdTier(
   env: R2SqlEnv | null | undefined,
   ss58: string,
@@ -427,7 +262,7 @@ export async function loadAccountExtrinsicsColdTier(
     blockStart?: unknown;
     blockEnd?: unknown;
   },
-  /** Which chain's lakehouse namespace to read (#8700). */
+  /** Network identity of the retained history. */
   network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildAccountExtrinsics> | null> {
   // An unusable address is a decline, not an unfiltered scan of every signer.
@@ -442,7 +277,6 @@ export async function loadAccountExtrinsicsColdTier(
       blockStart: page.blockStart,
       blockEnd: page.blockEnd,
     },
-    [],
     network,
   );
   if (rows === null) return null;
@@ -457,7 +291,7 @@ export async function loadAccountExtrinsicsColdTier(
 async function resolveBlockHeight(
   env: R2SqlEnv | null | undefined,
   ref: string,
-  /** Which chain's lakehouse namespace to read (#8700). */
+  /** Network identity of the retained history. */
   network?: ChainNetworkId,
   budget: ParquetReadBudget = parquetReadBudget(),
 ): Promise<number | null> {
@@ -476,15 +310,7 @@ async function resolveBlockHeight(
     return selected === null || Array.isArray(selected)
       ? null
       : safeBlockNumber(selected.block_number);
-  const rows = await r2SqlQuery(
-    env,
-    `SELECT block_number FROM ${chainTable("blocks", network)} WHERE block_hash = '${asHash}' LIMIT 1`,
-    // A one-column projection: the schema is `.partial()`, so it checks the
-    // column that IS there rather than demanding the ones that are not.
-    { rowSchema: BlocksRowSchema },
-  );
-  if (rows === null) return null;
-  return safeBlockNumber(rows[0]?.block_number);
+  return null;
 }
 
 /**
@@ -494,10 +320,9 @@ async function resolveBlockHeight(
 export async function loadExtrinsicColdTier(
   env: R2SqlEnv | null | undefined,
   ref: string,
-  /** Which chain's lakehouse namespace to read (#8700). */
+  /** Network identity of the retained history. */
   network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildExtrinsic> | null> {
-  let predicate: string;
   let hashRef: string | null = null;
   const budget = parquetReadBudget();
   // Hoisted out of the branch because the events read below uses them when the
@@ -510,12 +335,10 @@ export async function loadExtrinsicColdTier(
     compositeBlock = safeBlockNumber(composite[1]);
     compositeIndex = safeBlockNumber(composite[2]);
     if (compositeBlock === null || compositeIndex === null) return null;
-    predicate = `block_number = ${compositeBlock} AND extrinsic_index = ${compositeIndex}`;
   } else {
     const hash = safeHexLiteral(ref);
     if (hash === null) return null;
     hashRef = hash;
-    predicate = `extrinsic_hash = '${hash}'`;
   }
 
   const selected =
@@ -534,59 +357,16 @@ export async function loadExtrinsicColdTier(
           network,
           budget,
         );
-  if (selected === null) return null;
-  const parsed =
-    selected === undefined
-      ? undefined
-      : ExtrinsicsRowSchema.array().safeParse(
-          Array.isArray(selected) ? selected : [selected],
-        );
-  if (parsed && !parsed.success) return null;
-  const selectedRows = parsed?.data?.filter(
+  if (selected == null) return null;
+  const parsed = ExtrinsicsRowSchema.array().safeParse(
+    Array.isArray(selected) ? selected : [selected],
+  );
+  if (!parsed.success) return null;
+  const row = parsed.data.find(
     (row) =>
       compositeIndex === null ||
       safeBlockNumber(row.extrinsic_index) === compositeIndex,
   );
-  const extrinsicQuery =
-    selectedRows === undefined
-      ? r2SqlQuery<ExtrinsicsRow>(
-          env,
-          `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)} WHERE ${predicate} LIMIT 1`,
-          { rowSchema: ExtrinsicsRowSchema },
-        )
-      : selectedRows;
-
-  // A COMPOSITE ref already names the events' key, so the second read does not
-  // depend on the first and the two go together (#11420). Measured against
-  // production 2026-08-16, `/extrinsics/8760000-1` reported
-  // `server-timing: r2sql;dur=10768;desc="2 calls"` -- two serial reads of a
-  // warehouse whose own per-query spread is 16.7x, so the route was paying that
-  // tail twice for keys it held before the first query was sent.
-  //
-  // A HASH ref cannot do this: `block_number`/`extrinsic_index` are what the
-  // first read is FOR, so that form stays serial rather than guessing a key.
-  //
-  // The cost of being wrong is bounded and one-sided: on a ref that matches no
-  // extrinsic the events read was issued for nothing. It is concurrent, so it
-  // costs the caller no wall-clock, and a point ref naming a block-index pair
-  // that does not exist is not a shape real traffic produces.
-  //
-  // NO `.catch` HERE, deliberately. The two paths below return before awaiting
-  // this promise, so a rejection would be unhandled -- but `r2SqlQuery` cannot
-  // reject. Verified 2026-08-16 rather than assumed: a fetch that throws and a
-  // body over `R2_SQL_MAX_BODY_BYTES` both come back as `null`, because the
-  // one `throw` inside it (`R2SqlBodyTooLargeError`) is re-caught before the
-  // function returns. A catch here would be a guard nothing can fire, and the
-  // test written to cover it passed with the catch REMOVED -- which is how it
-  // was caught.
-  const eventsQuery =
-    composite && compositeBlock !== null && compositeIndex !== null
-      ? embeddedEvents(env, compositeBlock, compositeIndex, network, budget)
-      : null;
-
-  const rows = await extrinsicQuery;
-  if (rows === null) return null;
-  const row = rows[0];
   // A confirmed absence is an ANSWER, and the same schema-stable payload the
   // Postgres tier produces -- not null, which would mean "tier unavailable".
   if (!row) return buildExtrinsic(undefined, ref);
@@ -594,11 +374,10 @@ export async function loadExtrinsicColdTier(
   const block = safeBlockNumber(row.block_number);
   const index = safeBlockNumber(row.extrinsic_index);
   const events =
-    eventsQuery ??
-    (block !== null && index !== null
-      ? embeddedEvents(env, block, index, network, budget)
-      : Promise.resolve([]));
-  return buildExtrinsic(row, ref, await events);
+    block !== null && index !== null
+      ? await embeddedEvents(env, block, index, network, budget)
+      : [];
+  return buildExtrinsic(row, ref, events);
 }
 
 /**
@@ -633,12 +412,5 @@ async function embeddedEvents(
       .map(formatAccountEvent)
       .filter(Boolean);
   }
-  const found = await r2SqlQuery<AccountEventsRow>(
-    env,
-    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
-      `WHERE block_number = ${block} AND extrinsic_index = ${index} ` +
-      `ORDER BY event_index LIMIT ${MAX_EMBEDDED_EVENTS}`,
-    { rowSchema: AccountEventsRowSchema },
-  );
-  return (found ?? []).map(formatAccountEvent).filter(Boolean);
+  return [];
 }

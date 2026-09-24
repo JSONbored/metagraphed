@@ -1,3 +1,4 @@
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // #11001 backfill. handleExtrinsic's cache profile is not cosmetic any more:
 // withChainDetailEdgeCache reads `x-metagraph-cache-profile` to decide what may
 // be stored at the edge for an hour, so getting this wrong caches a moving
@@ -15,23 +16,21 @@ import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 const HASH = `0x${"ab".repeat(32)}`;
 const originalFetch = globalThis.fetch;
+let native: ReturnType<typeof nativeDetailReaders> | undefined;
 
 afterEach(() => {
+  native?.restore();
+  native = undefined;
   globalThis.fetch = originalFetch;
 });
 
 /** Stubs the lakehouse so the cold tier answers; mirrors extrinsics-cold-tier.test.ts. */
 function sqlFetch(...responses: unknown[][]) {
-  let call = 0;
-  globalThis.fetch = (async () => {
-    const rows = responses[Math.min(call, responses.length - 1)] ?? [];
-    call += 1;
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
+  native?.restore();
+  native = nativeDetailReaders({
+    extrinsics: (responses[0] ?? []) as Record<string, unknown>[],
+    account_events: (responses[1] ?? []) as Record<string, unknown>[],
+  });
 }
 
 function extrinsicRow() {

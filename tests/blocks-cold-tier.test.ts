@@ -1,3 +1,4 @@
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // The properties that make the two-source block tier trustworthy:
 //   1. THE SEAM IS EXACT — every block comes from exactly one source, so a
 //      stitched page can neither duplicate nor drop a block at the boundary.
@@ -6,7 +7,7 @@
 //   3. ONE FORMATTING PASS — rows from both sources go through the shared
 //      formatter together, never formatted twice.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
@@ -85,26 +86,16 @@ function lakeRow(n: number) {
   };
 }
 
-/** Stub R2 SQL transport; captures the queries the lakehouse leg issued. */
-function lakeFetch(rows: unknown[]) {
-  const queries: string[] = [];
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    const query = JSON.parse(String(init.body)).query as string;
-    queries.push(query);
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({
-        success: true,
-        result: {
-          rows: /FROM (?:chain|chain_testnet)\.blocks\b/.test(query)
-            ? rows
-            : [],
-        },
-      }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return queries;
+let native: ReturnType<typeof nativeDetailReaders> | undefined;
+afterEach(() => {
+  native?.restore();
+  native = undefined;
+});
+/** Capture the real native boundary arguments while the seam logic executes. */
+function lakeFetch(rows: Record<string, unknown>[]) {
+  native?.restore();
+  native = nativeDetailReaders({ blocks: rows });
+  return native;
 }
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
@@ -209,7 +200,7 @@ describe("the resolved seam actually routes the request", () => {
     // The range #11462 widened the point lookup to -- the block and both
     // neighbours in one query. Matched on the lower bound so this keeps
     // asserting WHICH height was asked for, which is what this test is about.
-    assert.match(queries[0]!, new RegExp(`block_number >= ${above - 1}`));
+    assert.equal(queries.block.mock.calls[0]![2], above);
     assert.equal(data!.block!.author, lakeRow(above).author);
   });
 
@@ -279,7 +270,7 @@ describe("loadBlockFeedColdTier", () => {
       "contiguous across the seam, in order, no duplicate",
     );
     assert.match(
-      queries[0]!,
+      queries.blockFeed.mock.calls[0]![1].join(" AND "),
       new RegExp(
         `\\(observed_at, block_number\\) < \\(${1_700_000_000_000 + SEAM + 1}, ${SEAM + 1}\\)`,
       ),
@@ -295,7 +286,10 @@ describe("loadBlockFeedColdTier", () => {
       offset: 0,
     });
     // No store rows -> an exclusive block ceiling at the seam, not a tuple seek.
-    assert.match(queries[0]!, new RegExp(`block_number < ${SEAM + 1}`));
+    assert.match(
+      queries.blockFeed.mock.calls[0]![1].join(" AND "),
+      new RegExp(`block_number < ${SEAM + 1}`),
+    );
   });
 
   test("a filter D1 cannot express skips the D1 leg entirely", async () => {
@@ -312,7 +306,7 @@ describe("loadBlockFeedColdTier", () => {
     assert.equal(sql.length, 0, "D1 was never queried");
     assert.equal(data!.blocks.length, 1);
     assert.match(
-      queries[0]!,
+      queries.blockFeed.mock.calls[0]![1].join(" AND "),
       /author = '5EYC/,
       "the filter reached the lakehouse",
     );
@@ -528,7 +522,7 @@ describe("loadBlockFeedColdTier", () => {
       } as never,
     );
     assert.match(
-      queries[0]!,
+      queries.blockFeed.mock.calls[0]![1].join(" AND "),
       /\(observed_at, block_number\) < \(1700000000501, 501\)/,
       "the caller's own token seeks the lake leg",
     );
@@ -621,7 +615,7 @@ describe("loadBlockColdTier", () => {
     );
     assert.equal(data!.block!.block_number, SEAM);
     assert.equal(sql.length, 0, "D1 cannot own this height, so is not asked");
-    assert.match(queries[0]!, new RegExp(`block_number >= ${SEAM - 1}`));
+    assert.equal(queries.block.mock.calls[0]![2], SEAM);
   });
 
   test("a verified-floor height does not read the moving watermark first", async () => {
@@ -643,8 +637,8 @@ describe("loadBlockColdTier", () => {
     assert.equal(sql.length, 0, "the store still does not own this height");
     assert.equal(
       queries.length,
-      3,
-      "one header read plus the two atomically committed economics companions",
+      5,
+      "header, two navigation points, and both economics companions",
     );
   });
 
@@ -666,13 +660,13 @@ describe("loadBlockColdTier", () => {
 
   test("a hash is asked of D1 first, then the lakehouse", async () => {
     const { db, sql } = runner([]);
-    const queries = lakeFetch([lakeRow(42)]);
+    const queries = lakeFetch([{ ...lakeRow(42), block_hash: "0xabcd" }]);
     const data = await loadBlockColdTier(
       { ...TOKEN, ...db } as never,
       "0xABCD",
     );
     assert.match(sql[0]!, /lower\(b\.block_hash\) = \$\d/);
-    assert.match(queries[0]!, /block_hash = '0xabcd'/);
+    assert.equal(queries.hash.mock.calls[0]![2], "0xabcd");
     assert.equal(data!.block!.block_number, 42);
   });
 
@@ -726,7 +720,7 @@ describe("loadBlockColdTier", () => {
   test("an off-mainnet hash bypasses the mainnet seam and hot store", async () => {
     const { db, sql } = runner([]);
     const watermarks: string[] = [];
-    const queries = lakeFetch([lakeRow(42)]);
+    const queries = lakeFetch([{ ...lakeRow(42), block_hash: "0xabcd" }]);
     const data = await loadBlockColdTier(
       {
         ...TOKEN,

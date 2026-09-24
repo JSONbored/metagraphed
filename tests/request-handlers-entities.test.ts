@@ -1,4 +1,5 @@
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // Direct unit tests for workers/request-handlers/entities.ts (#1900).
 // Imports every exported handler and exercises the null-safe D1 read path,
 // query-param guards, and schema-stable cold-store contracts without routing
@@ -2793,16 +2794,18 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
   };
 
   test("handleSudo serves the Sudo-module feed from the lakehouse", async () => {
-    const q = lakeFetch([SUDO_ROW]);
+    const q = nativeDetailReaders({ extrinsics: [SUDO_ROW] });
     const body = await json(
       await handleSudo(req("/api/v1/sudo"), LAKE_ENV, url("/api/v1/sudo")),
     );
     assert.equal(body.data.extrinsics.length, 1);
-    assert.match(q[0]!, /call_module = 'Sudo'/);
+    assert.equal(q.extrinsicFeed.mock.calls[0]![1].module, "Sudo");
   });
 
   test("handleGovernanceConfigChanges serves the AdminUtils feed", async () => {
-    const q = lakeFetch([{ ...SUDO_ROW, call_module: "AdminUtils" }]);
+    const q = nativeDetailReaders({
+      extrinsics: [{ ...SUDO_ROW, call_module: "AdminUtils" }],
+    });
     const body = await json(
       await handleGovernanceConfigChanges(
         req("/api/v1/governance/config-changes"),
@@ -2811,8 +2814,8 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
       ),
     );
     assert.equal(body.data.extrinsics.length, 1);
-    assert.match(q[0]!, /call_module = 'AdminUtils'/);
-    assert.match(q[0]!, /success = TRUE/);
+    assert.equal(q.extrinsicFeed.mock.calls[0]![1].module, "AdminUtils");
+    assert.equal(q.extrinsicFeed.mock.calls[0]![1].success, true);
   });
 
   test("handleBlockEvents serves one block's events from the lakehouse", async () => {
@@ -4107,13 +4110,15 @@ describe("handleBlocks", () => {
       },
     };
 
-    const cold = lakehouse([
-      blockRow({
-        decode_status: "complete",
-        economic_activity_tao: "2.5",
-        economics_complete: true,
-      }),
-    ]);
+    const cold = nativeDetailReaders({
+      blocks: [
+        blockRow({
+          decode_status: "complete",
+          economic_activity_tao: "2.5",
+          economics_complete: true,
+        }),
+      ],
+    });
     try {
       const body = await json(
         await handleBlocks(
@@ -4247,13 +4252,10 @@ describe("handleBlock", () => {
       }),
     };
 
-    const cold = lakehouse((sql) => {
-      if (/FROM chain\.blocks\b/.test(sql)) return [blockRow()];
-      if (/FROM chain\.extrinsics\b/.test(sql))
-        return [extrinsicRow({ success: true, tip_tao: 0 })];
-      if (/FROM chain\.account_events\b/.test(sql))
-        return [transferEventRow({ amount_tao: 1.25 })];
-      return [];
+    const cold = nativeDetailReaders({
+      blocks: [blockRow()],
+      extrinsics: [extrinsicRow({ success: true, tip_tao: 0 })],
+      account_events: [transferEventRow({ amount_tao: 1.25 })],
     });
     try {
       const response = await handleBlock(
@@ -4288,11 +4290,9 @@ describe("handleBlock", () => {
       }),
     };
 
-    const cold = lakehouse((sql) => {
-      if (/FROM chain\.blocks\b/.test(sql)) return [blockRow()];
-      if (/FROM chain\.account_events\b/.test(sql))
-        throw new Error("companion table unavailable");
-      return [];
+    const cold = nativeDetailReaders({
+      blocks: [blockRow()],
+      account_events: null,
     });
     try {
       const response = await handleBlock(
@@ -4693,25 +4693,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     return { fetch: async () => response };
   }
 
-  /** Stub the lakehouse transport; answers each cold-tier query by SQL prefix. */
-  function lakehouse(answer: (sql: string) => unknown[]) {
-    const original = globalThis.fetch;
-    globalThis.fetch = (async (_url: string, init: RequestInit) => {
-      const sql = String(JSON.parse(String(init.body)).query);
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          result: { rows: visibleInWindow(sql, answer(sql)) },
-        }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
-    return () => {
-      globalThis.fetch = original;
-    };
-  }
-
   const LAKEHOUSE_TOKEN = { R2_SQL_TOKEN: "cfut_test" };
 
   test("handleBlocks: the retired blocks flag is not consulted even when set", async () => {
@@ -4722,7 +4703,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     Object.assign(env, LAKEHOUSE_TOKEN);
-    const restore = lakehouse(() => [blockRow({ author: "cold-tier" })]);
+    const { restore } = nativeDetailReaders({
+      blocks: [blockRow({ author: "cold-tier" })],
+    });
     try {
       const body = await json(
         await handleBlocks(
@@ -4744,7 +4727,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const tier = forbiddenDataApi();
     env.DATA_API = tier.DATA_API;
     Object.assign(env, LAKEHOUSE_TOKEN);
-    const restore = lakehouse(() => [{ ...blockRow(), author: "lakehouse" }]);
+    const { restore } = nativeDetailReaders({
+      blocks: [{ ...blockRow(), author: "lakehouse" }],
+    });
     try {
       const body = await json(
         await handleBlock(

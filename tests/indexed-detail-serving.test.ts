@@ -250,3 +250,30 @@ test("curated block events keep the legacy page and total-count contract", async
     assert.equal(await loadBlockEventsColdTier(env, "7", { limit: 1 }), null);
   }
 });
+
+test("retired detail transport preserves invalid-reference guards and missing-index semantics", async () => {
+  for (const ref of [
+    "bad",
+    "-1",
+    "9999999999999999999-0",
+    "7-9999999999999999999",
+  ])
+    assert.equal(await loadExtrinsicColdTier(env, ref), null);
+  assert.equal(
+    await loadBlockExtrinsicsColdTier(env, "bad", { limit: 1 }),
+    null,
+  );
+  indexed.block.mockResolvedValue(undefined);
+  indexed.hash.mockResolvedValue(undefined);
+  assert.equal(await loadBlockExtrinsicsColdTier(env, "7", { limit: 1 }), null);
+  assert.equal(
+    await loadBlockExtrinsicsColdTier(env, hash, { limit: 1 }),
+    null,
+  );
+  assert.equal(await loadExtrinsicColdTier(env, "7-0"), null);
+  indexed.hash.mockResolvedValue(extrinsic());
+  assert.deepEqual(
+    await loadExtrinsicColdTier(env, hash),
+    buildExtrinsic(extrinsic(), hash, []),
+  );
+});

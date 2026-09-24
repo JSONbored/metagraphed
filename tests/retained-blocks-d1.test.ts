@@ -550,3 +550,24 @@ test("height planning preserves minimum-count selection and rejects malformed or
     null,
   );
 });
+
+test("the public block formatter retains D1 rows and the legacy omitted-offset default", async () => {
+  const { loadBlockFeedFromR2Sql } = await import("../src/r2-sql-blocks.ts");
+  const { buildBlockFeed } = await import("../src/blocks.ts");
+  const raw = await fetchBlockRowsFromR2Sql(env(), {
+    limit: 2,
+    offset: 0,
+    from: 0,
+  });
+  assert.deepEqual(
+    await loadBlockFeedFromR2Sql(env(), {
+      limit: 2,
+      from: 0,
+    } as BlockFeedQuery),
+    buildBlockFeed(raw!.rows as never[], {
+      limit: 2,
+      offset: 0,
+      nextCursor: raw!.nextCursor,
+    }),
+  );
+});

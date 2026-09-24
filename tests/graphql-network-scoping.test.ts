@@ -1,3 +1,4 @@
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // Does `network: test` actually reach testnet? (#10394)
 //
 // Twenty Query fields published the argument and the resolvers forward it to
@@ -28,17 +29,8 @@ import type { Row } from "./row-type.ts";
  * through a request path. Asserting the path a dead tier is asked for would pass
  * on a resolver that dropped the argument from the leg that actually answers.
  */
-function recordingLakehouse(rows: unknown[] = []) {
-  const queries: string[] = [];
-  globalThis.fetch = (async (_url: string, init: RequestInit) => {
-    queries.push(JSON.parse(String(init.body)).query as string);
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return queries;
+function recordingLakehouse() {
+  return nativeDetailReaders({ blocks: [{ block_number: 9 }] });
 }
 
 /** An archive double that records the projection keys it is asked for. */
@@ -112,14 +104,14 @@ describe("the resolvers ask the twin path", () => {
     );
     assert.equal(status, 200);
     assert.equal(queries.length, 1);
-    assert.match(queries[0], new RegExp(chainTable("blocks", "testnet")));
+    assert.equal(queries.blockFeed.mock.calls[0]![3], "testnet");
   });
 
   test("blocks() with no network still reads the mainnet table", async () => {
     const queries = recordingLakehouse();
     await query("{ blocks(limit: 1) { total } }", LAKEHOUSE_ENV);
     assert.equal(queries.length, 1);
-    assert.match(queries[0], new RegExp(chainTable("blocks")));
+    assert.equal(queries.blockFeed.mock.calls[0]![3], "mainnet");
     // Same read, different chain -- the two tables must not be the same string,
     // or the assertion above would hold for a resolver that ignored `network`.
     assert.notEqual(chainTable("blocks"), chainTable("blocks", "testnet"));
@@ -147,10 +139,12 @@ describe("the resolvers ask the twin path", () => {
   test("a per-block read forwards it", async () => {
     const queries = recordingLakehouse();
     await query('{ block(ref: "9", network: test) { ref } }', LAKEHOUSE_ENV);
-    assert.equal(queries.length, 3);
+    assert.equal(queries.length, 5);
     for (const table of ["blocks", "extrinsics", "account_events"] as const) {
       assert.ok(
-        queries.some((sql) => sql.includes(chainTable(table, "testnet"))),
+        queries.block.mock.calls.some(
+          (c) => c[1] === table && c[3] === "testnet",
+        ),
         `${table}: the point read must stay inside the testnet namespace`,
       );
     }
@@ -173,8 +167,8 @@ describe("the resolvers ask the twin path", () => {
       const testnetNs = chainTable("x", "testnet").split(".")[0];
       assert.notEqual(testnetNs, chainTable("x").split(".")[0]);
       assert.ok(
-        queries.every((sql) => sql.includes(`${testnetNs}.`)),
-        `${field}: every read must name the testnet namespace; got ${queries[0]}`,
+        queries.block.mock.calls.every((c) => c[3] === "testnet"),
+        `${field}: every native read must select testnet`,
       );
     }
   });
