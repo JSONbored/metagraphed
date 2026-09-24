@@ -236,6 +236,95 @@ test("compact groups coalesce columns but a wide column span retains page prunin
     decode.mockRestore();
   }
 });
+test("compact history groups share adjacent reads without changing exact selected rows", async () => {
+  const raw = readFileSync(
+    new URL("./fixtures/parquet/history-events-0.parquet", import.meta.url),
+  );
+  const bytes = raw.buffer.slice(
+    raw.byteOffset,
+    raw.byteOffset + raw.byteLength,
+  );
+  const file = {
+    byteLength: bytes.byteLength,
+    slice: (start: number, end?: number) => bytes.slice(start, end),
+  };
+  const object = await bucket.put("compact-history", bytes);
+  assert.ok(object);
+  const index = await buildParquetPageIndex(
+    file,
+    "compact-history",
+    object.etag,
+    await parquetFooter(file),
+  );
+  const columns = ["block_number", "observed_at", "nullable"];
+  const baseline = await parquetReadObjects({
+    file,
+    columns,
+    compressors: { ZSTD: (b) => decompress(b) },
+  });
+  const budget = parquetReadBudget();
+  const rows = await readIndexedParquet(
+    r2ParquetSource(bucket),
+    index,
+    0,
+    10,
+    columns,
+    budget,
+  );
+  assert.deepEqual(rows, baseline);
+  assert.equal(budget.requests, 1);
+  const { metadata } = validateParquetPageIndex(index);
+  const selected = metadata.row_groups
+    .flatMap((group) => group.columns)
+    .filter((column) => columns.includes(column.meta_data!.path_in_schema[0]))
+    .reduce(
+      (sum, column) => sum + Number(column.meta_data!.total_compressed_size),
+      0,
+    );
+  assert.ok(budget.bytes <= selected * 2);
+});
+
+test("compact ranges omit wide payloads and retain narrow-column parity", async () => {
+  const raw = readFileSync(
+    new URL("./fixtures/parquet/compact-ranges.parquet", import.meta.url),
+  );
+  const bytes = raw.buffer.slice(
+    raw.byteOffset,
+    raw.byteOffset + raw.byteLength,
+  );
+  const file = {
+    byteLength: bytes.byteLength,
+    slice: (start: number, end?: number) => bytes.slice(start, end),
+  };
+  const object = await bucket.put("compact-ranges", bytes);
+  assert.ok(object);
+  const index = await buildParquetPageIndex(
+    file,
+    "compact-ranges",
+    object.etag,
+    await parquetFooter(file),
+  );
+  const columns = ["id", "label", "amount"];
+  const baseline = await parquetReadObjects({
+    file,
+    columns,
+    compressors: { ZSTD: (b) => decompress(b) },
+  });
+  const source = r2ParquetSource(bucket);
+  const budget = parquetReadBudget();
+  const rows = await readIndexedParquet(
+    source,
+    index,
+    0,
+    2048,
+    columns,
+    budget,
+  );
+  assert.deepEqual(rows, baseline);
+  assert.ok(budget.requests < index.groups.length * columns.length);
+  assert.ok(budget.bytes < bytes.byteLength / 3);
+});
+
 let bucket: R2Bucket;
 beforeAll(async () => {
   // Miniflare's bridge uses undici Headers in unused metadata methods.
