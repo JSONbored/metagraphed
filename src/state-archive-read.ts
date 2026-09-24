@@ -6,6 +6,7 @@ import {
   SubnetOwnershipHistoryRowSchema,
 } from "../schemas-src/lakehouse.ts";
 import { artifactBucket, type ArtifactStoreEnv } from "./projection-store.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 
 const rowsByTable = {
   account_identity_history: AccountIdentityHistoryRowSchema.required(),
@@ -15,6 +16,18 @@ const rowsByTable = {
 };
 type StateArchiveTable = keyof typeof rowsByTable;
 const MAX_BYTES = 8 * 1024 * 1024;
+const CACHE_MS = 30_000;
+const CACHE_BYTES = 2 * MAX_BYTES;
+type CachedArchive = {
+  manifest: string;
+  until: number;
+  bytes: number;
+  payload: Promise<string | null>;
+};
+let archives = new WeakMap<object, Map<StateArchiveTable, CachedArchive>>();
+registerModuleStateReset("src/state-archive-read.ts", () => {
+  archives = new WeakMap();
+});
 const Manifest = z.strictObject({
   version: z.literal(1),
   table: z.string(),
@@ -129,24 +142,59 @@ export async function readStateArchiveRows(
       JSON.stringify(immutable.data) !== JSON.stringify(manifest)
     )
       return null;
-    const object = await bucket.get(manifest.object.key);
-    if (
-      !object ||
-      object.etag !== manifest.object.etag ||
-      object.size !== manifest.object.bytes
-    )
+    // Recheck the pointer and immutable proof on every call. Only the verified
+    // payload is reused, keyed by the full manifest rather than its generation
+    // alone. Keep serialized rows so callers cannot mutate shared cache data.
+    let cache = archives.get(bucket);
+    if (!cache) archives.set(bucket, (cache = new Map()));
+    const now = Date.now();
+    for (const [key, entry] of cache) if (entry.until <= now) cache.delete(key);
+    const identity = JSON.stringify(manifest);
+    let entry = cache.get(table);
+    if (!entry || entry.manifest !== identity) {
+      cache.delete(table);
+      // Reserve space before starting the read so concurrent loads share the
+      // budget; verify serialized size below because numbers can expand.
+      const bytes = manifest.object.bytes * 2;
+      let retained = [...cache.values()].reduce((sum, e) => sum + e.bytes, 0);
+      for (const [key, old] of cache) {
+        if (retained + bytes <= CACHE_BYTES) break;
+        cache.delete(key);
+        retained -= old.bytes;
+      }
+      const payload = (async () => {
+        const object = await bucket.get(manifest.object.key);
+        if (
+          !object ||
+          object.etag !== manifest.object.etag ||
+          object.size !== manifest.object.bytes
+        )
+          return null;
+        const body = Payload.safeParse(await object.json());
+        if (
+          !body.success ||
+          body.data.table !== table ||
+          body.data.generation !== manifest.generation ||
+          body.data.rows.length !== manifest.rowCount
+        )
+          return null;
+        for (const row of body.data.rows)
+          if (!rowsByTable[table].safeParse(row).success) return null;
+        return JSON.stringify(body.data.rows);
+      })().catch(() => null);
+      entry = { manifest: identity, until: now + CACHE_MS, bytes, payload };
+      cache.set(table, entry);
+    }
+    const payload = await entry.payload;
+    if (payload === null) {
+      if (cache.get(table) === entry) cache.delete(table);
       return null;
-    const body = Payload.safeParse(await object.json());
-    if (
-      !body.success ||
-      body.data.table !== table ||
-      body.data.generation !== manifest.generation ||
-      body.data.rows.length !== manifest.rowCount
-    )
-      return null;
-    for (const row of body.data.rows)
-      if (!rowsByTable[table].safeParse(row).success) return null;
-    return body.data.rows;
+    }
+    // Valid data still serves when reserialization exceeds its reservation,
+    // but must not remain cached. A superseded load cannot evict its successor.
+    if (payload.length * 2 > entry.bytes && cache.get(table) === entry)
+      cache.delete(table);
+    return JSON.parse(payload) as Record<string, unknown>[];
   } catch {
     return null;
   }
