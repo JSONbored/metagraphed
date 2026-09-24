@@ -29,6 +29,11 @@
 // means somebody decided it cannot go stale. The two are different facts and
 // only one of them is safe.
 import { fileURLToPath } from "node:url";
+import {
+  MIRROR_SOURCES,
+  evaluateMirrorFreshness,
+  loadMirrorFreshnessEvidence,
+} from "./lib/mirror-freshness.ts";
 
 const BASE =
   process.env.R2_CATALOG_URI ??
@@ -414,6 +419,23 @@ export async function checkLakehouseFreshness(): Promise<void> {
   tables.sort((a, b) => a.qualified.localeCompare(b.qualified));
 
   const now = Date.now();
+  // A fresh mirror does not rescue a stopped source producer. Read both once,
+  // even when a quiet table's last snapshot happens to be inside its age bound.
+  let mirror:
+    Awaited<ReturnType<typeof loadMirrorFreshnessEvidence>> | undefined;
+  let mirrorError = "";
+  if (
+    tables.some(
+      ({ namespace, table }) => namespace === "chain" && MIRROR_SOURCES[table],
+    )
+  ) {
+    try {
+      mirror = await loadMirrorFreshnessEvidence();
+    } catch (error) {
+      mirrorError =
+        error instanceof Error ? error.message : "unreadable mirror evidence";
+    }
+  }
   const failures: string[] = [];
   const lines: string[] = [];
   for (const { namespace, table, qualified } of tables) {
@@ -430,7 +452,7 @@ export async function checkLakehouseFreshness(): Promise<void> {
     const newestMs = snapshots.length
       ? Math.max(...snapshots.map((s) => s["timestamp-ms"] ?? 0))
       : null;
-    const verdict = evaluate(
+    let verdict = evaluate(
       {
         table: qualified,
         newestMs,
@@ -438,6 +460,19 @@ export async function checkLakehouseFreshness(): Promise<void> {
       },
       EXPECTED[table],
     );
+    if (namespace === "chain" && MIRROR_SOURCES[table])
+      verdict = mirror
+        ? evaluateMirrorFreshness(
+            table,
+            verdict.ok,
+            newestMs !== null,
+            mirror,
+            Date.now(),
+          )
+        : {
+            ok: false,
+            detail: `${qualified}: mirror/source evidence unreadable (${mirrorError})`,
+          };
     lines.push(`${verdict.ok ? "ok  " : "STALE"} ${verdict.detail}`);
     if (!verdict.ok) failures.push(verdict.detail);
   }
