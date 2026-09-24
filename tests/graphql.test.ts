@@ -1,3 +1,4 @@
+import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 import assert from "node:assert/strict";
@@ -6855,9 +6856,11 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     ];
 
     test("a non-OK DATA_API serves real rows instead of the error", async () => {
-      await withLakehouse(OWNERSHIP_ROWS, async () => {
+      await (async () => {
+        const nativeEnv = nativeOwnershipEnv(OWNERSHIP_ROWS).env;
         const env = {
           ...TOKEN_ENV,
+          ...nativeEnv,
           DATA_API: dataApi(new Response("err", { status: 502 })),
         };
         const { status, body } = await gql(
@@ -6870,25 +6873,28 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
         assert.equal(r.netuid, 7);
         assert.equal(r.count, 1);
         assert.equal(r.ownership_changes[0].new_coldkey, NEW_COLDKEY_SS58);
-      });
+      })();
     });
 
-    test("a missing DATA_API binding reaches the lakehouse too", async () => {
-      await withLakehouse(OWNERSHIP_ROWS, async () => {
+    test("a missing DATA_API binding reaches the native archive too", async () => {
+      await (async () => {
+        const nativeEnv = nativeOwnershipEnv(OWNERSHIP_ROWS).env;
         const { status, body } = await gql(
           "{ subnet_ownership_history(netuid: 7) { count } }",
-          TOKEN_ENV as unknown as Env,
+          { ...TOKEN_ENV, ...nativeEnv } as unknown as Env,
         );
         assert.equal(status, 200);
         assert.equal(body.errors, undefined);
         assert.equal(body.data.subnet_ownership_history.count, 1);
-      });
+      })();
     });
 
     test("a subnet the stream never names is an empty list, not an error", async () => {
-      await withLakehouse(OWNERSHIP_ROWS, async () => {
+      await (async () => {
+        const nativeEnv = nativeOwnershipEnv(OWNERSHIP_ROWS).env;
         const env = {
           ...TOKEN_ENV,
+          ...nativeEnv,
           DATA_API: dataApi(new Response("err", { status: 502 })),
         };
         const { body } = await gql(
@@ -6901,7 +6907,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
           body.data.subnet_ownership_history.ownership_changes,
           [],
         );
-      });
+      })();
     });
 
     // The wrapper must not over-apply: lease/history reads a stream with no

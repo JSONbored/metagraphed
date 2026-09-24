@@ -1,3 +1,4 @@
+import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 // The six chain-events family routes have no METAGRAPH_*_SOURCE flag, so they
 // never had the degrade path every flagged tier has. When the Postgres box was
 // decommissioned all six answered 502 in production — the one response shape
@@ -273,8 +274,8 @@ describe("coldTierChainEventsPayload", () => {
     return mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env;
   }
 
-  test("ownership-history is served from the lakehouse", async () => {
-    const env = lakehouse([OWNERSHIP_ROW]);
+  test("ownership-history is served from the native archive", async () => {
+    const env = mockEnv(nativeOwnershipEnv([OWNERSHIP_ROW]).env);
     const answer = (await coldTierChainEventsPayload(
       env,
       new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
@@ -404,29 +405,19 @@ describe("handleChainEventsFamily", () => {
 
   // Real rows, so NOT marked degraded and NOT barred from the edge cache --
   // the marker means "we could not look", which would be a lie here.
-  test("a route with a cold tier serves the lakehouse, unmarked", async () => {
-    globalThis.fetch = (async () =>
-      ({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          result: {
-            rows: [
-              {
-                pallet: "SubtensorModule",
-                method: "SubnetOwnerChanged",
-                block_number: 8_587_754,
-                observed_at: 1_783_600_000_000,
-                args: JSON.stringify({ netuid: 7 }),
-              },
-            ],
-          },
-        }),
-      }) as unknown as Response) as unknown as typeof fetch;
+  test("a route with a cold tier serves the native ownership archive, unmarked", async () => {
+    const native = nativeOwnershipEnv([
+      {
+        pallet: "SubtensorModule",
+        method: "SubnetOwnerChanged",
+        block_number: 8_587_754,
+        observed_at: 1_783_600_000_000,
+        args: JSON.stringify({ netuid: 7 }),
+      },
+    ]);
     const res = await handleChainEventsFamily(
       req("/api/v1/subnets/7/ownership-history"),
-      mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env,
+      mockEnv(native.env) as unknown as Env,
       new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
       {},
     );
@@ -489,7 +480,7 @@ describe("the family degrades instead of erroring", () => {
 // guard that keeps opening one from leaking by default rather than by review.
 describe("branches with no network-aware reader decline off mainnet", () => {
   test("ownership-history declines on testnet instead of reading mainnet", async () => {
-    const env = envWith("ok");
+    const env = mockEnv({ ...envWith("ok"), ...nativeOwnershipEnv().env });
     assert.equal(
       await coldTierChainEventsPayload(
         env,

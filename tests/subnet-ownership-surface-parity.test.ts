@@ -1,3 +1,4 @@
+import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 // REST, MCP and GraphQL must answer /subnets/{netuid}/ownership-history the
 // SAME way (#9312).
 //
@@ -112,15 +113,16 @@ afterEach(() => {
  * this subnet) and the ledger read with the two captures, keyed on the SQL so
  * the two concurrent reads cannot be mixed up. */
 function lakehouse(): void {
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    const query = String(JSON.parse(String(init.body)).query);
-    const rows = query.includes("subnet_ownership_history") ? LEDGER_ROWS : [];
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
+  Object.assign(
+    ENV,
+    nativeOwnershipEnv(
+      [],
+      LEDGER_ROWS.map((row) => ({ ...row, netuid: NETUID })),
+    ).env,
+  );
+  globalThis.fetch = (async () => {
+    throw Error("SQL HTTP is retired");
+  }) as typeof fetch;
 }
 
 /** MCP and GraphQL only consult the lakehouse once DATA_API has degraded, so
@@ -149,7 +151,7 @@ async function mcpOwnership(): Promise<Row> {
     { netuid: NETUID } as never,
     {
       env: mockEnv({
-        [R2_SQL_TOKEN_ENV]: "cfut_test",
+        ...ENV,
         DATA_API: DEGRADED_DATA_API,
       }),
     } as never,
@@ -165,7 +167,7 @@ async function graphqlOwnership(): Promise<Row> {
         query: `{ subnet_ownership_history(netuid: ${NETUID}) { schema_version netuid event_pallet event_method count observed_through ownership_changes { netuid old_coldkey new_coldkey block_number observed_at source } } }`,
       }),
     }),
-    mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test", DATA_API: DEGRADED_DATA_API }),
+    mockEnv({ ...ENV, DATA_API: DEGRADED_DATA_API }),
   );
   return ((await jsonBody(res)).data as Row).subnet_ownership_history as Row;
 }

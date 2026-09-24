@@ -1,3 +1,4 @@
+import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 import assert from "node:assert/strict";
@@ -5369,31 +5370,20 @@ describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
 
 // The MCP half of the ownership-history cold tier: the SAME lakehouse reader
 // REST reaches, consulted only once DATA_API has already degraded.
-describe("MCP get_subnet_ownership_history (lakehouse cold tier)", () => {
+describe("MCP get_subnet_ownership_history (native cold tier)", () => {
   const realFetch = globalThis.fetch;
   afterEach(() => {
     globalThis.fetch = realFetch;
   });
 
-  function lakehouse(rows: unknown[]) {
-    globalThis.fetch = (async () =>
-      ({
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, result: { rows } }),
-      }) as unknown as Response) as unknown as typeof fetch;
-  }
-
-  test("a dead DATA_API is answered from the lakehouse, not with the empty", async () => {
-    lakehouse([
+  test("a dead DATA_API is answered from the complete native ownership archive", async () => {
+    const native = nativeOwnershipEnv([
       {
         pallet: "SubtensorModule",
         method: "SubnetOwnerChanged",
         block_number: 8_587_754,
         observed_at: 1_783_600_000_000,
-        // A JSON STRING: `chain_events.args` is a `string` in the catalog, and
-        // this tier RESTORES it to the driver's object shape. The object form
-        // is a row R2 SQL cannot emit.
+        // Native projections may retain the source JSON argument encoding.
         args: JSON.stringify({ netuid: 7 }),
       },
       {
@@ -5405,7 +5395,7 @@ describe("MCP get_subnet_ownership_history (lakehouse cold tier)", () => {
     const res = await callTool(
       "get_subnet_ownership_history",
       { netuid: 7 },
-      { env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } },
+      { env: native.env },
     );
     const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);

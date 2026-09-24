@@ -4,7 +4,8 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import worker, { handleRequest, recordApiKeyUsage } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
-import { jsonBody, type Row } from "./row-type.ts";
+import { jsonBody, mockEnv, type Row } from "./row-type.ts";
+import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import {
   decodeWatermarkKey,
@@ -516,16 +517,22 @@ describe("Worker runtime", () => {
   });
 
   test("routes /api/v1/subnets/:netuid/ownership-history through the same tier (#6637)", async () => {
-    const { env: testEnv, queries } = lakehouseEnv([]);
+    const native = nativeOwnershipEnv();
+    const testEnv = mockEnv({ ...env, ...native.env });
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets/7/ownership-history"),
       testEnv,
       {},
     );
     assert.equal(response.status, 200);
-    assert.ok(queries.length > 0, "the lakehouse was never queried");
-    // Two tables: the raw event stream and the captured ownership projection.
-    for (const q of queries) assert.match(q, /FROM chain\.\w+/);
+    assert.ok(
+      native.keys.includes("metagraph/projections/chain-ownership.json"),
+    );
+    assert.ok(
+      native.keys.includes(
+        "metagraph/state-archive/v1/subnet_ownership_history/current.json",
+      ),
+    );
     const body = await response.json();
     assert.equal(body.ok, true);
     assert.equal(body.data.netuid, 7);
