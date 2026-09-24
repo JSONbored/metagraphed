@@ -380,3 +380,173 @@ test("minimum counts use complete cardinalities and reject a snapshot change bet
     null,
   );
 });
+
+test("native plans use equality and ordering indexes instead of sorting broad height ranges", async () => {
+  for (const [where, index, expected] of [
+    [[], "order", [12, 9, 8, 8, 10, 11]],
+    [[`author = '${AUTHOR}'`], "author", [12, 9, 8, 8, 10]],
+    [[`author = '${AUTHOR}'`, "spec_version = 241"], "author_spec", [8, 8]],
+    [["spec_version = 241"], "spec", [8, 8]],
+    [["block_number <= 999999"], "order", [12, 9, 8, 8, 10, 11]],
+    [["block_number >= 0"], "order", [12, 9, 8, 8, 10, 11]],
+    [["block_number <= 999999", "block_number <= 8"], "height", [8, 8]],
+    [
+      ["block_number >= 0", "block_number >= 9", "block_number <= 9"],
+      "height",
+      [9],
+    ],
+    [["block_number < 9"], "height", [8, 8]],
+    [["block_number <= 99", "observed_at >= 100"], "order", [9, 8, 8, 10]],
+  ] as [string[], string, number[]][]) {
+    const queries: string[] = [];
+    const binding = {
+      prepare(sql: string) {
+        queries.push(sql);
+        return db.prepare(sql);
+      },
+      batch: db.batch.bind(db),
+    };
+    const actual = await readRetainedBlockRows(
+      { ...env(), D1_RETAINED_BLOCKS: binding },
+      where,
+      100,
+      "mainnet",
+      now,
+    );
+    assert.deepEqual(
+      actual!.map((r) => r.block_number),
+      expected,
+    );
+    const sql = queries.find((q) => q.startsWith("WITH candidates"))!;
+    assert.ok(sql.includes(`INDEXED BY history_blocks_${index}`));
+    const plan = await db
+      .prepare("EXPLAIN QUERY PLAN " + sql)
+      .bind(0, 0, 100)
+      .all<{ detail: string }>();
+    assert.ok(
+      plan.results.some((r) =>
+        r.detail.includes(`INDEX history_blocks_${index}`),
+      ),
+    );
+    if (where.length === 2 && where[1] === "block_number <= 8")
+      assert.ok(!sql.includes("999999"));
+  }
+});
+
+test("empty and contradictory height ranges return proven emptiness without reading a candidate page", async () => {
+  for (const where of [
+    ["block_number >= 99"],
+    ["block_number < 0"],
+    ["block_number >= 12", "block_number <= 9"],
+  ]) {
+    const queries: string[] = [];
+    const binding = {
+      prepare(sql: string) {
+        queries.push(sql);
+        return db.prepare(sql);
+      },
+      batch: db.batch.bind(db),
+    };
+    assert.deepEqual(
+      await readRetainedBlockRows(
+        { ...env(), D1_RETAINED_BLOCKS: binding },
+        where,
+        100,
+        "mainnet",
+        now,
+      ),
+      [],
+    );
+    assert.ok(!queries.some((q) => q.startsWith("WITH candidates")));
+  }
+  await db
+    .prepare("UPDATE history_blocks SET block_number=NULL WHERE source_id=1")
+    .run();
+  try {
+    assert.deepEqual(
+      await readRetainedBlockRows(
+        env(),
+        ["block_number <= 99"],
+        100,
+        "mainnet",
+        now,
+      ),
+      [],
+    );
+  } finally {
+    await db.batch(
+      rows.map((r, ordinal) =>
+        db
+          .prepare(
+            "UPDATE history_blocks SET block_number=? WHERE source_id=1 AND ordinal=?",
+          )
+          .bind(r.block_number, ordinal),
+      ),
+    );
+  }
+});
+
+test("height planning preserves minimum-count selection and rejects malformed or changed metadata", async () => {
+  assert.deepEqual(
+    (await readRetainedBlockRows(
+      env(),
+      ["block_number <= 99", "event_count >= 12"],
+      100,
+      "mainnet",
+      now,
+      { minEvents: 12 },
+    ))!.map((r) => r.block_number),
+    [8, 8],
+  );
+  for (const bounds of [
+    { first_block: null, last_block: 12 },
+    { first_block: 8, last_block: null },
+    { first_block: 12, last_block: 8 },
+    { first_block: "8", last_block: 12 },
+  ]) {
+    const binding = {
+      prepare: db.prepare.bind(db),
+      batch: async () => [
+        { success: true, results: [state] },
+        { success: true, results: [bounds] },
+      ],
+    } as unknown as D1StoreBinding;
+    assert.equal(
+      await readRetainedBlockRows(
+        { ...env(), D1_RETAINED_BLOCKS: binding },
+        ["block_number <= 99"],
+        100,
+        "mainnet",
+        now,
+      ),
+      null,
+    );
+  }
+  let batch = 0;
+  const binding = {
+    prepare: db.prepare.bind(db),
+    batch: async () =>
+      ++batch === 1
+        ? [
+            { success: true, results: [state] },
+            { success: true, results: [{ first_block: 8, last_block: 12 }] },
+          ]
+        : [
+            {
+              success: true,
+              results: [{ ...state, generation: "b".repeat(64) }],
+            },
+            { success: true, results: rows },
+          ],
+  } as unknown as D1StoreBinding;
+  assert.equal(
+    await readRetainedBlockRows(
+      { ...env(), D1_RETAINED_BLOCKS: binding },
+      ["block_number <= 99"],
+      100,
+      "mainnet",
+      now,
+    ),
+    null,
+  );
+});
