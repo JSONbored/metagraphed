@@ -29,7 +29,11 @@ import {
 } from "../src/account-history-indexed.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
-import { loadValidatorNominatorsColdTier } from "../src/account-feeds-cold-tier.ts";
+import {
+  loadAccountSummaryColdTier,
+  foldSummaryGroups,
+  loadValidatorNominatorsColdTier,
+} from "../src/account-feeds-cold-tier.ts";
 const fixture = JSON.parse(
   gunzipSync(
     readFileSync(
@@ -409,4 +413,40 @@ it("bounds account day aggregation and skips null subnet and event-kind cells", 
   expect(
     await loadAccountHistoryColdTier(a.env, ACCOUNT, { limit: 1 }),
   ).toBeNull();
+});
+
+it("account summaries preserve complete physical history and recent ordering through the real indexed reader", async () => {
+  const fetch = vi.fn(() => {
+    throw new Error("SQL must not run");
+  });
+  vi.stubGlobal("fetch", fetch);
+  for (const address of [
+    ACCOUNT,
+    "5Fv5t8frGG3MKtahp4WafKPmT5xZDbqWf8aFZpXyvjHTgzzx",
+  ]) {
+    const groups = db
+      .prepare(
+        "SELECT event_kind AS kind,netuid,COUNT(*) AS count,MIN(block_number) AS fb,MAX(block_number) AS lb,MIN(observed_at) AS fo,MAX(observed_at) AS lo FROM events WHERE hotkey=? OR coldkey=? GROUP BY event_kind,netuid",
+      )
+      .all(address, address);
+    const recent = db
+      .prepare(
+        "SELECT * FROM events WHERE hotkey=? OR coldkey=? ORDER BY observed_at DESC,block_number DESC,event_index DESC LIMIT 20",
+      )
+      .all(address, address);
+    const expected = foldSummaryGroups(groups);
+    const actual = await loadAccountSummaryColdTier(archive().env, address, {
+      recentLimit: 20,
+    });
+    expect(actual.declined).toBeUndefined();
+    if (actual.declined) throw new Error("Qualified account summary declined");
+    expect(actual.agg).toEqual(expected.agg);
+    expect(actual.scanned).toBe(expected.agg.c);
+    expect(actual.complete).toBe(true);
+    const ordered = (rows: Record<string, unknown>[]) =>
+      rows.toSorted((a, b) => String(a.kind).localeCompare(String(b.kind)));
+    expect(ordered(actual.kinds)).toEqual(ordered(expected.kinds));
+    expect(actual.recent).toEqual(recent);
+  }
+  expect(fetch).not.toHaveBeenCalled();
 });

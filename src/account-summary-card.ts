@@ -36,12 +36,12 @@
 // is the failure shape this whole issue is about: it says "this account has no
 // history" in the same words it would use if that were true.
 
+import { hasRetainedHistoryStore } from "./retained-history-store.ts";
 import {
   buildAccountSummary,
   type AccountSummaryResult,
 } from "./account-events.ts";
 import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
-import { isR2SqlConfigured } from "./r2-sql.ts";
 import { readStore } from "./read-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
 
@@ -151,7 +151,7 @@ export async function answerAccountSummary(
       data: buildAccountSummary(ss58, { ...cold, registrations }),
     };
   }
-  if (registrations === null || isR2SqlConfigured(env)) {
+  if (registrations === null || hasRetainedHistoryStore(env)) {
     // #9386: carry WHY. This decline used to be a bare `{ kind: "gap" }`, so a route
     // failing half its requests produced a typed 503 that named no cause and left the
     // mechanism -- timeout, scan budget, HTTP error -- to be guessed at from outside.

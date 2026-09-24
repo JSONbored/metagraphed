@@ -29,6 +29,7 @@
 // not turn a decline into `[]` themselves -- that is the bug this module exists
 // to make unrepresentable.
 
+import { hasRetainedHistoryStore } from "./retained-history-store.ts";
 import { loadAccountEntitiesColdTier } from "./subnet-ownership-cold-tier.ts";
 import {
   buildAccountEntities,
@@ -36,7 +37,6 @@ import {
   type SubnetOwnerSnapshot,
 } from "./entity-labels.ts";
 import { readArtifact } from "../workers/storage.ts";
-import { isR2SqlConfigured } from "./r2-sql.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 import { DEGRADED_UNAVAILABLE } from "./uncurated-event-streams.ts";
 import type { StoreEnv } from "./read-store.ts";
@@ -138,7 +138,7 @@ export async function answerAccountEntities(
   //
   // Unconfigured (a self-hoster, CI) is not a fault: there is no transfer
   // stream to have failed, so the floor stands unmarked.
-  return isR2SqlConfigured(env)
+  return hasRetainedHistoryStore(env)
     ? { ...floor, degraded: { reason: DEGRADED_UNAVAILABLE } }
     : floor;
 }

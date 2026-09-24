@@ -22,6 +22,7 @@
 //   - ~1-2s per query, so every caller must sit behind the existing edge
 //     cache. See src/r2-sql.ts's header for the measurements.
 
+import { hasRetainedHistoryStore } from "./retained-history-store.ts";
 import {
   buildBlock,
   buildBlockFeed,
@@ -47,7 +48,6 @@ import {
   safeBlockNumber,
   safeHexLiteral,
   safeSs58Literal,
-  isR2SqlConfigured,
 } from "./r2-sql.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 import {
@@ -377,7 +377,7 @@ export async function loadBlockFromR2Sql(
     // the null stands: there is nothing to read and the caller's own floor is
     // correct.
     if (rows === null) {
-      return isR2SqlConfigured(env) ? declineBlock(ref) : null;
+      return hasRetainedHistoryStore(env) ? declineBlock(ref) : null;
     }
     // A confirmed absence is an ANSWER: buildBlock(undefined, ref) is the same
     // "no such block" payload the Postgres tier produces, and returning it here
@@ -394,7 +394,7 @@ export async function loadBlockFromR2Sql(
     `SELECT ${BLOCK_COLUMNS} FROM ${table} WHERE block_hash = '${asHash}' LIMIT 1`,
   );
   if (rows === null) {
-    return isR2SqlConfigured(env) ? declineBlock(ref) : null;
+    return hasRetainedHistoryStore(env) ? declineBlock(ref) : null;
   }
   const row = recordOrNull(rows[0]);
   // From the ROW, not from `recordOrNull`'s widened copy: `blockHeight` reads a
