@@ -255,11 +255,11 @@ export const EXPECTED: Readonly<Record<string, FreshnessRule>> = {
   },
   subnet_ownership: {
     maxAgeMs: 2 * DAY,
-    reason: "ownership poller, restore pending",
+    reason: "state mirror, digest-gated: ownership changes are rare",
   },
   subnet_ownership_history: {
     maxAgeMs: 2 * DAY,
-    reason: "ownership poller, restore pending",
+    reason: "state mirror, append-on-change ownership history",
   },
   subnets: {
     maxAgeMs: 7 * DAY,

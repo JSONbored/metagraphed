@@ -5,12 +5,14 @@ const HOUR = 60 * 60 * 1000;
 // These sources intentionally leave unchanged archive snapshots alone. Their
 // mirror must still complete hourly, and scheduled source writers must be live.
 export const MIRROR_SOURCES: Readonly<
-  Record<string, "registry" | "compute" | "manual">
+  Record<string, "registry" | "compute" | "ownership" | "manual">
 > = {
   compute_declarations: "compute",
   providers: "registry",
   surfaces: "registry",
   surface_history: "registry",
+  subnet_ownership: "ownership",
+  subnet_ownership_history: "ownership",
   emission_flow_watch: "manual",
   treasury_readings: "manual",
 };
@@ -19,6 +21,7 @@ export interface MirrorFreshnessEvidence {
   receipt: unknown;
   lanes: Record<string, unknown>[];
   computeNewest: unknown;
+  ownershipNewest: unknown;
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -106,6 +109,15 @@ export function evaluateMirrorFreshness(
       "registry source writer or full resync is missing, failed, or stale",
     );
   if (
+    source === "ownership" &&
+    (!laneHealthy("subnet-ownership", 2 * HOUR) ||
+      !laneHealthy("neon:subnet-ownership", 2 * HOUR) ||
+      !recent(evidence.ownershipNewest, now, 2 * HOUR))
+  )
+    return fail(
+      "ownership collector, ingestion writer, or source rows are missing, failed, or stale",
+    );
+  if (
     source === "compute" &&
     (!laneHealthy("compute-declarations", 4 * HOUR) ||
       !recent(evidence.computeNewest, now, 4 * HOUR))
@@ -119,7 +131,7 @@ export function evaluateMirrorFreshness(
   };
 }
 
-/** One small status object and two indexed/small-table reads for the sweep. */
+/** One small status object and three indexed/small-table reads for the sweep. */
 export async function loadMirrorFreshnessEvidence(
   transport: typeof fetch = fetch,
 ): Promise<MirrorFreshnessEvidence> {
@@ -161,9 +173,10 @@ export async function loadMirrorFreshnessEvidence(
   const results = await d1AdminBatch(
     [
       {
-        sql: "SELECT lane, verdict, checked_at FROM lane_health_current WHERE lane IN ('registry-sync', 'registry-resync', 'compute-declarations')",
+        sql: "SELECT lane, verdict, checked_at FROM lane_health_current WHERE lane IN ('registry-sync', 'registry-resync', 'compute-declarations', 'subnet-ownership', 'neon:subnet-ownership')",
       },
       { sql: "SELECT MAX(observed_at) AS newest FROM compute_declarations" },
+      { sql: "SELECT MAX(captured_at) AS newest FROM subnet_ownership" },
     ],
     d1AdminCredentials({
       ...process.env,
@@ -176,5 +189,6 @@ export async function loadMirrorFreshnessEvidence(
     receipt,
     lanes: results[0].results,
     computeNewest: results[1].results[0]?.newest,
+    ownershipNewest: results[2].results[0]?.newest,
   };
 }
