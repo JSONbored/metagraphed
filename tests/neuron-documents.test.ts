@@ -12,6 +12,13 @@ import {
   neuronSnapshotWrite,
 } from "../src/neurons-neon-write.ts";
 import { NEURON_INSERT_COLUMNS } from "../src/metagraph-neurons.ts";
+import {
+  crossCheckSql,
+  crossCheckStamps,
+  confirmRedirectedStale,
+  TABLE_FRESHNESS,
+  freshnessTables,
+} from "../src/table-freshness-watchdog.ts";
 const runtime = new Miniflare({
   modules: true,
   script: "export default {fetch(){return new Response('test')}}",
@@ -487,4 +494,89 @@ test("mixed timestamps cannot take the whole-document newer fast path", async ()
   assert.equal(actual[1].hotkey, "5Newer");
   assert.equal(actual[2].hotkey, null);
   assert.equal(actual[3].captured_at, stamp);
+});
+
+test("D1 freshness stamps equal actual views across mixed, delayed and pruned captures", async () => {
+  const env = { D1_STATE: db, D1_STATE_TABLES: owners };
+  const families = ["neurons", "neuron_daily", "account_position_daily"];
+  const spec = Object.fromEntries(families.map((t) => [t, TABLE_FRESHNESS[t]]));
+  const compare = async () => {
+    const native = crossCheckSql(spec, env);
+    assert.ok(native.includes("_documents"));
+    assert.ok(!native.includes("json_extract"));
+    assert.deepEqual(
+      (await db.prepare(native).all()).results,
+      (await db.prepare(crossCheckSql(spec)).all()).results,
+    );
+  };
+  await compare();
+  await writeNeuronDocuments(store(), {
+    ...capture([
+      { ...rows()[0], captured_at: stamp + 10 },
+      { ...rows()[1], captured_at: stamp + 20 },
+    ]),
+    netuidMaxCapturedAt: undefined,
+  });
+  await compare();
+  await writeNeuronDocuments(store(), capture(rows(stamp + 5)));
+  await compare();
+  await writeNeuronDocuments(store(), capture(rows(stamp + 30)));
+  await compare();
+  await writeNeuronDocuments(store(), {
+    ...empty(),
+    netuidMaxCapturedAt: new Map([[1, stamp + 31]]),
+  });
+  await compare();
+  // Empty newer documents must not hide the older rows that remain elsewhere.
+  await writeNeuronDocuments(
+    store(),
+    capture([{ ...rows()[0], netuid: 2, captured_at: stamp + 4 }]),
+  );
+  await compare();
+  await db
+    .prepare("INSERT INTO neurons_passes VALUES (?,1,1,?)")
+    .bind(stamp + 30, stamp + 30)
+    .run();
+  const checked = await crossCheckStamps(env, {}, spec);
+  assert.deepEqual(checked, {
+    failed: false,
+    divergences: [
+      {
+        table: "neurons",
+        stampFrom: "neurons_passes",
+        cheap: stamp + 30,
+        actual: stamp + 4,
+      },
+    ],
+  });
+  assert.equal(freshnessTables().includes("schema_migrations"), false);
+});
+
+test("D1 confirms an old pass against fresh documents and fails closed without the selected binding", async () => {
+  const env = { D1_STATE: db, D1_STATE_TABLES: owners };
+  const spec = { neurons: { ...TABLE_FRESHNESS.neurons, maxAgeMs: 500 } };
+  await writeNeuronDocuments(store(), capture(rows(stamp + 900)));
+  const stale = [
+    { table: "neurons", ageMs: 1000, maxAgeMs: 500, reason: "fixture" },
+  ];
+  assert.deepEqual(
+    await confirmRedirectedStale(stale, env, {}, () => stamp + 1000, spec),
+    [],
+  );
+  const unbound = { D1_STATE_TABLES: owners };
+  assert.deepEqual(await crossCheckStamps(unbound, {}, spec), {
+    divergences: [],
+    failed: true,
+  });
+  assert.deepEqual(
+    await confirmRedirectedStale(stale, unbound, {}, () => stamp + 1000, spec),
+    stale,
+  );
+  // Custom stamps and ordinary non-document families keep their own columns.
+  assert.ok(
+    crossCheckSql(
+      { neurons: { ...spec.neurons, column: "updated_at" } },
+      env,
+    ).includes("MAX(updated_at) FROM neurons)"),
+  );
 });

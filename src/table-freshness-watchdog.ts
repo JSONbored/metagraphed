@@ -33,7 +33,7 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
-import { partitionStoreTables } from "./d1-store.ts";
+import { partitionStoreTables, selectedD1Store } from "./d1-store.ts";
 import { missedTicksMs, type ProducerLane } from "./producer-cadence.ts";
 // DERIVED, not quoted. This read "RAW_CAPTURE_CRON every 5 min" until #11402
 // moved the lane to */1 and left the prose behind -- the drift
@@ -776,13 +776,13 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     reason: "capture pointer has no timestamp; no scheduled producer (#12019)",
   },
 
-  // Retained legacy Neon migration history, once per migration. The same "only
-  // when a human acts" class as api_keys above.
+  // Retained migration history describes the former database, not active
+  // serving state. Keep its classification without querying a retired store.
   schema_migrations: {
-    column: "applied_at",
+    column: "",
     kind: "ms",
     maxAgeMs: null,
-    reason: "one row per migration applied",
+    reason: "retained migration ledger; no active serving store or cadence",
   },
 };
 
@@ -824,6 +824,27 @@ export function freshnessSql(
     .join(" UNION ALL ");
 }
 
+/** The atomic document stamp is the maximum captured_at of its retained rows. */
+function actualStampSql(
+  table: string,
+  expectation: FreshnessExpectation,
+  env?: unknown,
+): string {
+  if (
+    expectation.column === "captured_at" &&
+    ["neurons", "neuron_daily", "account_position_daily"].includes(table) &&
+    selectedD1Store(env, [table])
+  ) {
+    // The producer writes JSONB objects and updates each document's maximum in
+    // the same transaction as its members. Pruning removes older rows only, so
+    // the maximum survives unless the entire document becomes empty. Blob
+    // length excludes those empty objects without decoding retained payloads.
+    // Expanding the row views here exceeded D1's CPU limit in production.
+    return `SELECT MAX(stamp) FROM ${table}_documents WHERE length(payload) > length(jsonb('{}'))`;
+  }
+  return `SELECT MAX(${expectation.column}) FROM ${table}`;
+}
+
 /**
  * The other half of `stampFrom`: does the cheap stamp still equal the real one?
  *
@@ -856,6 +877,7 @@ export function freshnessSql(
  */
 export function crossCheckSql(
   spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
+  env?: unknown,
 ): string {
   return Object.entries(spec)
     .filter(([, e]) => e.stampFrom && e.column !== "")
@@ -863,7 +885,7 @@ export function crossCheckSql(
       ([t, e]) =>
         `SELECT '${t}' AS t, ` +
         `(SELECT MAX(${e.column}) FROM ${e.stampFrom}) AS cheap, ` +
-        `(SELECT MAX(${e.column}) FROM ${t}) AS actual`,
+        `(${actualStampSql(t, e, env)}) AS actual`,
     )
     .sort()
     .join(" UNION ALL ");
@@ -1032,9 +1054,9 @@ export async function confirmRedirectedStale(
   const suspect = stale.filter((s) => redirected.has(s.table));
   if (suspect.length === 0) return [...stale];
   const tables = suspect.map((s) => s.table);
-  const db = deps.db ?? (readStore(env, tables) as FreshnessDb | undefined);
   let confirmed: Map<string, number>;
   try {
+    const db = deps.db ?? (readStore(env, tables) as FreshnessDb | undefined);
     // The tables' OWN stamps, which is what `freshnessSql` would have read had
     // these entries never been redirected -- so the confirm asks exactly the
     // question the redirect deferred.
@@ -1043,7 +1065,7 @@ export async function confirmRedirectedStale(
       tables
         .map(
           (table) =>
-            `SELECT '${table}' AS t, MAX(${spec[table].column}) AS mx FROM ${table}`,
+            `SELECT '${table}' AS t, (${actualStampSql(table, spec[table], env)}) AS mx`,
         )
         .join(" UNION ALL "),
     );
@@ -1073,10 +1095,10 @@ export async function crossCheckStamps(
   const redirected = redirectedTables(spec);
   if (redirected.length === 0) return { divergences: [], failed: false };
   const involved = redirected.flatMap(([t, e]) => [t, e.stampFrom as string]);
-  const db = deps.db ?? (readStore(env, involved) as FreshnessDb | undefined);
   try {
+    const db = deps.db ?? (readStore(env, involved) as FreshnessDb | undefined);
     if (!db?.query) throw new Error("no store");
-    const rows = await db.query(crossCheckSql(spec));
+    const rows = await db.query(crossCheckSql(spec, env));
     return {
       divergences: stampDivergences(rows, spec),
       failed: false,
