@@ -447,3 +447,87 @@ describe("selected account feed serving", () => {
     ).toBeNull();
   });
 });
+
+it("opens only feed segments intersecting the requested block range", async () => {
+  const a = archive();
+  a.ceiling.through = a.selected.lastBlock + 5;
+  a.save();
+  const outer = (
+    generation: string,
+    firstBlock: number,
+    lastBlock: number,
+  ) => ({
+    ...a.selected,
+    generation,
+    firstBlock,
+    lastBlock,
+    blockManifest: {
+      key: `metagraph/indexed-history/v1/mainnet/account_events/generations/${generation}/block-manifest.json`,
+      etag: "missing",
+      bytes: 1,
+    },
+  });
+  a.put(a.pointer, {
+    version: 2,
+    network: "mainnet",
+    table: "account_events",
+    segments: [
+      a.selected,
+      outer("8".repeat(64), a.selected.lastBlock + 1, a.ceiling.through),
+    ],
+  });
+  const bounded = [
+    { side: "all" as const, account: "*", blockStart: 2, blockEnd: 4 },
+  ];
+  const expected = fixture.rows
+    .filter((r) => r.block_number! >= 2 && r.block_number! <= 4)
+    .sort(
+      (a, b) =>
+        b.observed_at! - a.observed_at! ||
+        b.block_number! - a.block_number! ||
+        b.event_index! - a.event_index!,
+    );
+  expect(await loadIndexedAccountFeedPage(a.env, bounded, 5001)).toEqual(
+    expected,
+  );
+  expect(a.get.mock.calls.some(([key]) => key.includes("8".repeat(64)))).toBe(
+    false,
+  );
+  expect(
+    (await loadIndexedAccountFeedGroups(a.env, bounded))?.reduce(
+      (sum, group) => sum + group.event_count,
+      0,
+    ),
+  ).toBe(expected.length);
+  expect(
+    await loadIndexedAccountFeedPage(
+      a.env,
+      [
+        {
+          ...bounded[0],
+          blockStart: a.ceiling.through + 1,
+          blockEnd: a.ceiling.through + 2,
+        },
+      ],
+      3,
+    ),
+  ).toEqual([]);
+  expect(
+    await loadIndexedAccountFeedPage(a.env, [{ side: "all", account: "*" }], 3),
+  ).toBeUndefined();
+  expect(
+    await loadIndexedAccountFeedPage(
+      a.env,
+      [
+        {
+          ...bounded[0],
+          blockStart: a.selected.lastBlock + 1,
+          blockEnd: a.ceiling.through,
+        },
+      ],
+      3,
+    ),
+  ).toBeUndefined();
+  a.objects.delete(a.manifest);
+  expect(await loadIndexedAccountFeedPage(a.env, bounded, 3)).toBeUndefined();
+});
