@@ -88,6 +88,47 @@ beforeEach(async () => {
     await db.prepare(`DELETE FROM ${table}`).run();
 });
 afterAll(async () => runtime.dispose());
+test("larger byte-bounded chunks preserve every row and reject excess row counts", async () => {
+  const rows = Array.from({ length: 4000 }, (_, i) => [
+    i,
+    i % 2 ? null : "0xabc",
+    "0xABC",
+    i % 2 ? "author" : null,
+    3,
+    i % 2 ? 7 : 11,
+    240,
+    100,
+  ]);
+  await ok({ kind: "begin", identity, source: { ...source, rows: 4000 } });
+  const input = { kind: "chunk", identity, start: 0, rows };
+  assert.ok(JSON.stringify(input).length < 512 * 1024);
+  assert.equal((await call({ ...input, rows: [...rows, row] })).status, 400);
+  await ok(input);
+  await ok(input);
+  await ok(publication({ source_rows: 4000 }));
+  const actual = await db
+    .prepare(
+      "SELECT block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,observed_at FROM history_block_rows WHERE network=0 ORDER BY block_number",
+    )
+    .all();
+  assert.deepEqual(
+    actual.results.map((r) => Object.values(r)),
+    rows,
+  );
+  assert.deepEqual(
+    (
+      await db
+        .prepare(
+          "SELECT value,rows FROM history_block_counts WHERE kind='events' ORDER BY value",
+        )
+        .all()
+    ).results,
+    [
+      { value: 7, rows: 2000 },
+      { value: 11, rows: 2000 },
+    ],
+  );
+});
 test("resumable chunks preserve physical duplicates and exact null/string data without double counting", async () => {
   assert.deepEqual(await ok({ kind: "begin", identity, source }), {
     received_rows: 0,
