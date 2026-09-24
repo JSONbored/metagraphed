@@ -175,8 +175,8 @@ export async function* mergeAccountFeedEntries(
   streams: AsyncGenerator<IndexedAccountFeedEntry>[],
 ): AsyncGenerator<AccountEventsRow> {
   // Four ordinary generations plus one closed runtime correction, with at
-  // most four selectors, share the existing request and decoded-byte budget.
-  if (streams.length > 20)
+  // most four selectors, and one disjoint hot tail share the existing budget.
+  if (streams.length > 21)
     throw new Error("Account feed page exceeds its budget");
   let previous: string | undefined;
   try {
@@ -218,7 +218,7 @@ export async function mergeAccountFeedPage(
     !Number.isSafeInteger(offset) ||
     offset < 0 ||
     offset > 5000 ||
-    streams.length > 10
+    streams.length > 11
   )
     throw new Error("Account feed page exceeds its budget");
   const rows: AccountEventsRow[] = [];

@@ -1,6 +1,14 @@
 import { HistorySourceCeilingSchema } from "../schemas-src/artifacts/history-source-ceiling.ts";
 import { RUNTIME_CURATED_EVENT_KINDS } from "../schemas-src/artifacts/runtime-account-curation.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
+import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
+import { AccountEventsRowSchema } from "../schemas-src/lakehouse.ts";
+import { feedOrder } from "./history-feed-tree.ts";
+import {
+  hotAccountPredicate,
+  hotHistoryNumbers,
+  readHotHistoryTail,
+} from "./history-feed-hot-bridge.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
 import { readSelectedHistorySegments } from "./indexed-history-store.ts";
@@ -41,8 +49,13 @@ export function loadIndexedAccountFeedPage(
 ): Promise<AccountEventsRow[] | null | undefined> {
   return requireRetainedHistoryAnswer(
     env,
-    loadSelectedAccountFeed(env, selectors, network, false, (streams) =>
-      mergeAccountFeedPage(streams, limit, offset),
+    loadSelectedAccountFeed(
+      env,
+      selectors,
+      network,
+      false,
+      (streams) => mergeAccountFeedPage(streams, limit, offset),
+      limit + offset,
     ),
   );
 }
@@ -85,6 +98,7 @@ async function loadSelectedAccountFeed<T>(
   network: ChainNetworkId,
   aggregate: boolean,
   consume: (streams: AsyncGenerator<IndexedAccountFeedEntry>[]) => Promise<T>,
+  pageSize?: number,
 ): Promise<T | null | undefined> {
   try {
     if (selectors.length < 1 || selectors.length > (aggregate ? 4 : 2))
@@ -119,8 +133,17 @@ async function loadSelectedAccountFeed<T>(
       ceiling.through,
       Math.max(...selectors.map((s) => s.blockEnd ?? ceiling.through)),
     );
-    if (segments[segments.length - 1].lastBlock < requestedEnd)
-      return undefined;
+    const hot = await readHotHistoryTail(
+      env,
+      "account_events",
+      segments.at(-1)!.lastBlock,
+      requestedEnd,
+      network,
+      ACCOUNT_EVENTS_COLUMNS,
+      hotAccountPredicate(selectors),
+      pageSize,
+    );
+    if (!hot) return undefined;
     const source = r2ParquetSource(bucket);
     const budget = aggregate
       ? parquetReadBudget(128 * 1024 * 1024, 1024)
@@ -225,6 +248,27 @@ async function loadSelectedAccountFeed<T>(
           ),
         );
     }
+    if (hot.length)
+      streams.push(
+        (async function* () {
+          for (const record of hot) {
+            const row = AccountEventsRowSchema.required().parse(
+              hotHistoryNumbers(record, ["amount_tao", "alpha_amount"]),
+            );
+            yield {
+              token:
+                "0".repeat(64) +
+                feedOrder(
+                  row.observed_at!,
+                  row.block_number!,
+                  row.event_index!,
+                ) +
+                "0".repeat(72),
+              row,
+            };
+          }
+        })(),
+      );
     const rows = await consume(streams);
     const after = await bucket.get(ceilingKey);
     return after !== null && after.etag === before.etag ? rows : undefined;

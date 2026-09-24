@@ -2,6 +2,14 @@ import { HistorySourceCeilingSchema } from "../schemas-src/artifacts/history-sou
 import type { HistoryBlockGeneration } from "../schemas-src/artifacts/history-generation.ts";
 import { ExtrinsicsRowSchema } from "../schemas-src/lakehouse.ts";
 import type { ExtrinsicsRow } from "../generated/lakehouse/types.ts";
+import { EXTRINSICS_COLUMNS } from "../generated/lakehouse/types.ts";
+import { feedOrder } from "./history-feed-tree.ts";
+import {
+  hotExtrinsicPredicate,
+  hotHistoryNumbers,
+  readHotHistoryTail,
+} from "./history-feed-hot-bridge.ts";
+import { restoreChainDetailPayloads } from "./chain-detail-payloads.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
 import {
@@ -74,7 +82,17 @@ async function loadSelectedExtrinsicFeedPage(
       ceiling.through,
       selector.blockEnd ?? ceiling.through,
     );
-    if (segments.at(-1)!.lastBlock < requestedEnd) return undefined;
+    const hot = await readHotHistoryTail(
+      env,
+      "extrinsics",
+      segments.at(-1)!.lastBlock,
+      requestedEnd,
+      network,
+      EXTRINSICS_COLUMNS,
+      hotExtrinsicPredicate(selector),
+      limit + offset,
+    );
+    if (!hot) return undefined;
     const source = r2ParquetSource(bucket),
       budget = parquetReadBudget(128 * 1024 * 1024, 1024);
     const generations = new Map<string, HistoryBlockGeneration>(),
@@ -111,8 +129,45 @@ async function loadSelectedExtrinsicFeedPage(
       generations.set(segment.generation, generation);
       streams.push(iterateExtrinsicFeed(source, feed, selector, budget));
     }
-    const page = await extrinsicFeedPage(streams, limit, offset);
     const output = new Map<string, ExtrinsicsRow>();
+    if (hot.length)
+      streams.push(
+        (async function* () {
+          for (const record of await restoreChainDetailPayloads(env, hot)) {
+            const numeric = hotHistoryNumbers(record, ["fee_tao", "tip_tao"]);
+            const row = ExtrinsicsRowSchema.required().parse({
+              ...numeric,
+              success: numeric.success === null ? null : numeric.success === 1,
+            });
+            const token =
+              "0".repeat(64) +
+              feedOrder(
+                row.observed_at!,
+                row.block_number!,
+                row.extrinsic_index!,
+              ) +
+              "0".repeat(72);
+            output.set(token.slice(64), row);
+            yield {
+              token,
+              generation: "hot",
+              fileId: 0,
+              sourceIdentity: "0".repeat(64),
+              row: 0,
+              filter: {
+                block_number: row.block_number!,
+                extrinsic_index: row.extrinsic_index!,
+                observed_at: row.observed_at!,
+                signer: row.signer,
+                call_module: row.call_module,
+                call_function: row.call_function,
+                success: row.success,
+              },
+            };
+          }
+        })(),
+      );
+    const page = await extrinsicFeedPage(streams, limit, offset);
     for (const [identity, generation] of generations) {
       const pointers = page.filter(
         (pointer) => pointer.generation === identity,

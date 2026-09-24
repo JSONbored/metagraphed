@@ -11,6 +11,8 @@ export function hasRetainedHistoryStore(
 
 /** A configured history owner cannot turn an unqualified read into absence. */
 export class RetainedHistoryUnavailableError extends Error {
+  readonly toolError = true;
+  readonly code = "history_unavailable";
   constructor() {
     super("Retained historical data is unavailable. Please retry.");
   }

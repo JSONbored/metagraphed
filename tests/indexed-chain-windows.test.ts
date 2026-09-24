@@ -15,6 +15,7 @@ import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-s
 import type { HistorySelection } from "../schemas-src/artifacts/history-selection.ts";
 import type { ChainEventsRow } from "../generated/lakehouse/types.ts";
 import type { ChainNetworkId } from "../src/chain-network.ts";
+import { hotHistoryFixture } from "./hot-history-fixture.ts";
 
 type Segment = Omit<Extract<HistorySelection, { version: 1 }>, "version">;
 const fixture = JSON.parse(
@@ -147,6 +148,101 @@ function expected(
     )
     .map((r) => r.data);
 }
+it("keeps raw-event pages and full activity counts available across the publication seam", async () => {
+  const a = archive();
+  const hot = [0, 1, 2].map((i) => ({
+    block_number: 65550 + i,
+    event_index: i,
+    observed_at: 2000,
+    pallet: "Balances",
+    method: i === 2 ? "NewMethod" : "Transfer",
+    args: '{"wide":9007199254740993}',
+    phase: "ApplyExtrinsic",
+    extrinsic_index: 0,
+  }));
+  const h = await hotHistoryFixture("chain_events", 65549, 65552, hot);
+  try {
+    a.ceiling.through = 65552;
+    a.save();
+    const env = { ...a.env, ...h.env };
+    const rows = [...expected("mainnet", 65530, 65549), ...hot].sort(
+      (a, b) =>
+        b.block_number! - a.block_number! ||
+        (b.event_index ?? -1) - (a.event_index ?? -1),
+    );
+    expect(
+      await loadIndexedChainWindow(env, {
+        first: 65530,
+        last: 65552,
+        limit: 5001,
+      }),
+    ).toEqual(rows);
+    expect(
+      await loadIndexedChainWindow(env, {
+        first: 65530,
+        last: 65552,
+        limit: 2,
+        pallet: "Balances",
+        method: "Transfer",
+      }),
+    ).toEqual(
+      rows
+        .filter((r) => r.pallet === "Balances" && r.method === "Transfer")
+        .slice(0, 2),
+    );
+    expect(
+      await loadIndexedChainWindow(env, {
+        first: 65530,
+        last: 65551,
+        limit: 5,
+        cursor: [2000, 65551, 1],
+      }),
+    ).toEqual(
+      rows
+        .filter(
+          (r) =>
+            r.block_number! < 65551 ||
+            (r.block_number === 65551 && r.event_index! < 1),
+        )
+        .slice(0, 5),
+    );
+    expect(
+      await loadIndexedChainWindow(env, {
+        first: 65530,
+        last: 65552,
+        limit: 2,
+        cursor: [2000, 65552, 3],
+      }),
+    ).toEqual(rows.slice(0, 2));
+    const before = await loadIndexedChainWindowStats(env, 65530, 65549);
+    const after = await loadIndexedChainWindowStats(env, 65530, 65552);
+    const count = (groups: Record<string, unknown>[], method: string) =>
+      groups.find((r) => r.pallet === "Balances" && r.method === method)
+        ?.count ?? 0;
+    expect(count(after!, "Transfer")).toBe(
+      Number(count(before!, "Transfer")) + 2,
+    );
+    expect(
+      count(
+        (await loadIndexedChainWindowStats(env, 65550, 65552))!,
+        "NewMethod",
+      ),
+    ).toBe(1);
+    expect(
+      after!.every(
+        (row) => Object.keys(row).sort().join() === "count,method,pallet",
+      ),
+    ).toBe(true);
+    await h.db
+      .prepare("DELETE FROM chain_detail_blocks WHERE block_number=65551")
+      .run();
+    expect(
+      await loadIndexedChainWindowStats(env, 65530, 65552),
+    ).toBeUndefined();
+  } finally {
+    await h.runtime.dispose();
+  }
+});
 it("native windows preserve full payloads, physical captures, page order and filter/cursor parity on both networks", async () => {
   for (const network of ["mainnet", "testnet"] as const) {
     const first = network === "mainnet" ? 65530 : 7700000,

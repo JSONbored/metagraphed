@@ -85,6 +85,7 @@ test("MCP reports an unavailable account feed as a tool error", async () => {
   const body = (await response.json()) as Row;
   assert.equal(body.result.isError, true);
   assert.ok(body.result.structuredContent.error);
+  assert.equal(body.result.structuredContent.error.code, "history_unavailable");
   assert.equal(body.result.structuredContent.events, undefined);
 });
 
