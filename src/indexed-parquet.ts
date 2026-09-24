@@ -182,7 +182,7 @@ export async function readIndexedParquet(
   // Repacked history uses small row groups. Fetch their selected columns in
   // one range, while retaining page pruning for legacy, large row groups.
   let groupStart = 0;
-  const compactRanges = metadata.row_groups.flatMap((group) => {
+  const groupRanges = metadata.row_groups.flatMap((group) => {
     const startRow = groupStart;
     groupStart += Number(group.num_rows);
     if (
@@ -218,6 +218,28 @@ export async function readIndexedParquet(
     }
     return ranges;
   });
+  // Adjacent groups often separate tiny filter columns by a small omitted
+  // column. Share one bounded read without pulling a wide payload into it.
+  // Extra bytes never exceed the selected bytes in a merged span.
+  const compactRanges: ((typeof groupRanges)[number] & {
+    selectedBytes: number;
+  })[] = [];
+  for (const range of groupRanges.sort((a, b) => a.start - b.start)) {
+    const prior = compactRanges.at(-1);
+    const selectedBytes = range.end - range.start;
+    if (
+      prior &&
+      range.start >= prior.end &&
+      range.start - prior.end <= 1024 &&
+      range.end - prior.start <= 64 * 1024 &&
+      range.end - prior.start <= 2 * (prior.selectedBytes + selectedBytes)
+    ) {
+      prior.end = range.end;
+      prior.selectedBytes += selectedBytes;
+    } else {
+      compactRanges.push({ ...range, selectedBytes });
+    }
+  }
   const file: AsyncBuffer = {
     byteLength: bounded.byteLength,
     async slice(start, end) {
