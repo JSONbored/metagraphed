@@ -11,6 +11,7 @@ import type { AccountFeedGroup } from "../src/history-account-feed-groups.ts";
 import type { HistoryAccountFeed } from "../schemas-src/artifacts/history-account-feed.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
+import { hotHistoryFixture } from "./hot-history-fixture.ts";
 
 const fixture = JSON.parse(
   readFileSync(
@@ -135,6 +136,85 @@ function archive(network: "mainnet" | "testnet" = "mainnet") {
 }
 
 describe("selected account feed serving", () => {
+  it("merges a source-fenced hot tail through pages, cursor boundaries and complete folds", async () => {
+    const a = archive();
+    const hot: AccountEventsRow[] = [85, 86, 87].map((block, i) => ({
+      ...fixture.rows[0],
+      block_number: block,
+      event_index: i,
+      observed_at: 9998 - i,
+      hotkey: "account-0",
+      coldkey: "account-0",
+      amount_tao: i ? null : 1.25,
+    }));
+    const h = await hotHistoryFixture("account_events", 84, 87, hot);
+    try {
+      a.ceiling.through = 87;
+      a.save();
+      const env = { ...a.env, ...h.env };
+      const expected = [
+        ...fixture.rows.filter(
+          (row) => row.hotkey === "account-0" || row.coldkey === "account-0",
+        ),
+        ...hot,
+      ].sort(
+        (a, b) =>
+          b.observed_at! - a.observed_at! ||
+          b.block_number! - a.block_number! ||
+          b.event_index! - a.event_index!,
+      );
+      expect(await loadIndexedAccountFeedPage(env, selectors, 5001)).toEqual(
+        expected,
+      );
+      expect(await loadIndexedAccountFeedPage(env, selectors, 5, 2)).toEqual(
+        expected.slice(2, 7),
+      );
+      const at = hot[0];
+      expect(
+        await loadIndexedAccountFeedPage(
+          env,
+          selectors.map((s) => ({
+            ...s,
+            cursor: [at.observed_at!, at.block_number!, at.event_index!] as [
+              number,
+              number,
+              number,
+            ],
+          })),
+          5001,
+        ),
+      ).toEqual(expected.slice(expected.indexOf(at) + 1));
+      const groups = await loadIndexedAccountFeedGroups(env, selectors);
+      expect(groups!.reduce((n, row) => n + row.event_count, 0)).toBe(
+        expected.length,
+      );
+      expect(
+        groups!.reduce((n, row) => n + (row.total_tao ?? 0), 0),
+      ).toBeCloseTo(
+        expected.reduce((n, row) => n + (row.amount_tao ?? 0), 0),
+        10,
+      );
+      let reads = 0;
+      a.intercept((key) => {
+        if (key === a.ceilingKey && ++reads === 2) {
+          a.ceiling.revision = "b".repeat(32);
+          a.save();
+        }
+      });
+      expect(
+        await loadIndexedAccountFeedPage(env, selectors, 5),
+      ).toBeUndefined();
+      a.intercept(() => {});
+      await h.db
+        .prepare("DELETE FROM chain_detail_blocks WHERE block_number=86")
+        .run();
+      expect(
+        await loadIndexedAccountFeedGroups(env, selectors),
+      ).toBeUndefined();
+    } finally {
+      await h.runtime.dispose();
+    }
+  });
   it("folds complete native windows with SQLite aggregate parity and inclusive time boundaries", async () => {
     const runtime = new Miniflare({
       modules: true,

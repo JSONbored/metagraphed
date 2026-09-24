@@ -16,6 +16,7 @@ import type { ExtrinsicsRow } from "../generated/lakehouse/types.ts";
 import type { HistoryExtrinsicFeed } from "../schemas-src/artifacts/history-extrinsic-feed.ts";
 import { loadExtrinsicFeedColdTier } from "../src/extrinsics-cold-tier.ts";
 import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
+import { hotHistoryFixture } from "./hot-history-fixture.ts";
 
 const fixture = JSON.parse(
   readFileSync(
@@ -154,6 +155,51 @@ async function* stream(rows: ExtrinsicFeedPointer[]) {
 }
 
 describe("qualified native extrinsic feeds", () => {
+  it("merges hot rows with retained physical pointers while preserving filters, offsets and cursor order", async () => {
+    const a = archive();
+    const hot = [true, false, null].map((success, i) => ({
+      ...fixture.rows[0].data,
+      block_number: 101 + i,
+      extrinsic_index: i,
+      observed_at: 1006 - i,
+      call_args: '{"wide":9007199254740993}',
+      success,
+      fee_tao: i ? null : 1.25,
+    }));
+    const h = await hotHistoryFixture("extrinsics", 100, 103, hot);
+    try {
+      a.ceiling.through = 103;
+      a.save();
+      const env = { ...a.env, ...h.env };
+      const all = [...expected({}), ...hot].sort(
+        (a, b) =>
+          b.observed_at! - a.observed_at! ||
+          b.block_number! - a.block_number! ||
+          b.extrinsic_index! - a.extrinsic_index!,
+      );
+      expect(await loadIndexedExtrinsicFeedPage(env, {}, 200)).toEqual(all);
+      expect(await loadIndexedExtrinsicFeedPage(env, {}, 5, 3)).toEqual(
+        all.slice(3, 8),
+      );
+      expect(
+        await loadIndexedExtrinsicFeedPage(env, { success: false }, 200),
+      ).toEqual(all.filter((row) => row.success === false));
+      const at = hot[0];
+      expect(
+        await loadIndexedExtrinsicFeedPage(
+          env,
+          { cursor: [at.observed_at!, at.block_number!, at.extrinsic_index!] },
+          200,
+        ),
+      ).toEqual(all.slice(all.indexOf(at) + 1));
+      await h.db
+        .prepare("DELETE FROM chain_detail_blocks WHERE block_number=102")
+        .run();
+      expect(await loadIndexedExtrinsicFeedPage(env, {}, 5)).toBeUndefined();
+    } finally {
+      await h.runtime.dispose();
+    }
+  });
   it("matches full Parquet rows for every filter, intersection, time window and physical tie", async () => {
     for (const selector of [
       {},
@@ -314,7 +360,7 @@ describe("qualified native extrinsic feeds", () => {
       );
     await expect(
       extrinsicFeedPage(
-        Array.from({ length: 5 }, () => stream([])),
+        Array.from({ length: 6 }, () => stream([])),
         1,
         0,
       ),

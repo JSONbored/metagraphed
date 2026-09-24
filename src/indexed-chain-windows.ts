@@ -1,7 +1,14 @@
 import { HistorySourceCeilingSchema } from "../schemas-src/artifacts/history-source-ceiling.ts";
+import { z } from "zod";
 import type { HistoryBlockGeneration } from "../schemas-src/artifacts/history-generation.ts";
 import { ChainEventsRowSchema } from "../schemas-src/lakehouse.ts";
 import type { ChainEventsRow } from "../generated/lakehouse/types.ts";
+import { CHAIN_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
+import {
+  hotHistoryPredicate,
+  readHotHistoryTail,
+} from "./history-feed-hot-bridge.ts";
+import { restoreChainDetailPayloads } from "./chain-detail-payloads.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
 import {
@@ -82,6 +89,7 @@ async function windowContext(
   first: number,
   last: number,
   network: ChainNetworkId,
+  query?: WindowQuery,
 ) {
   if (
     !Number.isSafeInteger(first) ||
@@ -113,8 +121,30 @@ async function windowContext(
     !before.etag
   )
     throw new Error("Chain window source ceiling scope mismatch");
-  if (segments.at(-1)!.lastBlock < Math.min(last, ceiling.through))
-    return undefined;
+  const predicate = hotHistoryPredicate(
+    { blockStart: first, blockEnd: last },
+    "event_index",
+    {
+      pallet: query?.pallet,
+      method: query?.method,
+    },
+  );
+  if (query?.cursor) {
+    predicate.text += " AND (block_number < ? OR event_index < ?)";
+    predicate.values.push(query.cursor[1], query.cursor[2]);
+  }
+  const hot = await readHotHistoryTail(
+    env,
+    "chain_events",
+    segments.at(-1)!.lastBlock,
+    Math.min(last, ceiling.through),
+    network,
+    query ? CHAIN_EVENTS_COLUMNS : ["pallet", "method", "count"],
+    predicate,
+    query?.limit,
+    query ? undefined : ["pallet", "method"],
+  );
+  if (!hot) return undefined;
   const source = r2ParquetSource(bucket),
     budget = parquetReadBudget(128 * 1024 * 1024, 4096);
   const generations: HistoryBlockGeneration[] = [];
@@ -137,6 +167,7 @@ async function windowContext(
     source,
     budget,
     generations,
+    hot,
     first,
     last: Math.min(last, ceiling.through),
     unchanged: async () => {
@@ -158,7 +189,13 @@ export async function loadIndexedChainWindow(
       query.limit > 5001
     )
       throw new Error("Invalid chain window page size");
-    const context = await windowContext(env, query.first, query.last, network);
+    const context = await windowContext(
+      env,
+      query.first,
+      query.last,
+      network,
+      query,
+    );
     if (!context) return undefined;
     const { source, budget, generations } = context,
       candidates: Candidate[] = [];
@@ -220,9 +257,22 @@ export async function loadIndexedChainWindow(
         output.set(pointer, row);
       });
     }
-    return (await context.unchanged())
-      ? candidates.map((pointer) => output.get(pointer)!)
-      : undefined;
+    const hot = ChainEventsRowSchema.required()
+      .array()
+      .parse(await restoreChainDetailPayloads(env, context.hot))
+      .filter(
+        (row) =>
+          !query.cursor ||
+          row.block_number! < query.cursor[1] ||
+          row.event_index! < query.cursor[2],
+      );
+    const rows = [...candidates.map((pointer) => output.get(pointer)!), ...hot]
+      .sort(
+        (a, b) =>
+          b.block_number! - a.block_number! || b.event_index! - a.event_index!,
+      )
+      .slice(0, query.limit);
+    return (await context.unchanged()) ? rows : undefined;
   } catch {
     recordIndexedHistoryFailure();
     return null;
@@ -233,6 +283,7 @@ const Group = ChainEventsRowSchema.pick({
   pallet: true,
   method: true,
 }).required();
+const HotGroup = Group.extend({ count: z.number().int().positive() });
 function nameOrder(a: string | null, b: string | null): number {
   // SQL ASC puts nulls last. Compare Unicode code points using the same UTF-8
   // order as the catalog, without locale-dependent collation.
@@ -258,6 +309,15 @@ export async function loadIndexedChainWindowStats(
       string,
       { pallet: string | null; method: string | null; count: number }
     >();
+    for (const record of context.hot) {
+      const row = HotGroup.parse(record),
+        key = JSON.stringify([row.pallet, row.method]);
+      groups.set(key, {
+        pallet: row.pallet,
+        method: row.method,
+        count: row.count,
+      });
+    }
     for (const generation of context.generations) {
       await scanHistoryBlockRange(
         context.source,

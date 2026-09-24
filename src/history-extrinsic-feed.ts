@@ -196,7 +196,7 @@ export async function extrinsicFeedPage(
     !Number.isSafeInteger(offset) ||
     offset < 0 ||
     offset > 5000 ||
-    streams.length > 4
+    streams.length > 5
   )
     throw new Error("Extrinsic feed page exceeds its budget");
   const rows: ExtrinsicFeedPointer[] = [];
