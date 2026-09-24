@@ -1,3 +1,4 @@
+import { loadSubnetStatus } from "./subnet-status-read.ts";
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
 import { asJsonObject } from "../schemas-src/json-request.ts";
 
@@ -2364,6 +2365,7 @@ const rootValue = {
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
+      subnet_status: await loadSubnetStatus(context.env, netuid),
       captured_at: data.captured_at ?? null,
       block_number: data.block_number ?? null,
       // The hyperparameter block is passed through whole -- graphql's default

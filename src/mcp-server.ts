@@ -1,3 +1,4 @@
+import { loadSubnetStatus } from "./subnet-status-read.ts";
 // Remote MCP (Model Context Protocol) server for metagraphed.
 //
 // Exposes the operational registry to AI agents (Claude Desktop/Code, Cursor,
@@ -9886,13 +9887,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      return (
+      const data =
         (await tryDataApiTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/hyperparameters`),
           "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
-        )) ?? buildSubnetHyperparams(null, netuid)
-      );
+        )) ?? buildSubnetHyperparams(null, netuid);
+      return {
+        ...data,
+        subnet_status: await loadSubnetStatus(ctx.env, netuid),
+      };
     },
   },
   {
