@@ -1,3 +1,4 @@
+import { declineRetainedHistoryFailure } from "./retained-history-store.ts";
 import { loadIndexedSubnetIdentities } from "./indexed-subnet-identities.ts";
 // Per-subnet event-activity rollups, served from the lakehouse.
 //
@@ -586,13 +587,8 @@ export async function loadChainEventIdentityRollup(
   if (!query) {
     if (netuid === undefined)
       return hasRetainedHistoryStore(env) ? { kind: "gap" } : { kind: "miss" };
-    const native = await loadIndexedSubnetIdentities(
-      env,
-      spec,
-      netuid,
-      cutoff,
-      cap,
-      network,
+    const native = await declineRetainedHistoryFailure(
+      loadIndexedSubnetIdentities(env, spec, netuid, cutoff, cap, network),
     );
     if (native == null)
       return hasRetainedHistoryStore(env) ? { kind: "gap" } : { kind: "miss" };

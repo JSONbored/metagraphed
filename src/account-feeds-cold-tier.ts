@@ -1,3 +1,4 @@
+import { declineRetainedHistoryFailure } from "./retained-history-store.ts";
 // Native account feeds share the canonical formatters and preserve every
 // supported filter, cursor, aggregate and explicit unavailable-history state.
 
@@ -865,11 +866,18 @@ export async function loadAccountSummaryColdTier(
     { side: "coldkey", account: addr },
   ];
   const [indexedGroups, indexedRecent] = await Promise.all([
-    loadIndexedAccountFeedGroups(
-      env,
-      selectors.map((selector) => ({ ...selector, observedStart: foldFloor })),
+    declineRetainedHistoryFailure(
+      loadIndexedAccountFeedGroups(
+        env,
+        selectors.map((selector) => ({
+          ...selector,
+          observedStart: foldFloor,
+        })),
+      ),
     ),
-    loadIndexedAccountFeedPage(env, selectors, limit),
+    declineRetainedHistoryFailure(
+      loadIndexedAccountFeedPage(env, selectors, limit),
+    ),
   ]);
   if (indexedGroups == null || indexedRecent == null)
     return { declined: ["indexed history: account summary read failed"] };

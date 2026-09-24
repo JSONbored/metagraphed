@@ -1,3 +1,4 @@
+import { declineRetainedHistoryFailure } from "./retained-history-store.ts";
 // Account positions use the selected D1 ledger and indexed activity history.
 // Live neuron stakes price every position; selected owner failures decline
 // without replacing a current answer with a stale archive. Complete native
@@ -145,15 +146,17 @@ export async function latestStakeEventAt(
   // Same table the projection describes, so the floor is sound here in a way it
   // is NOT for chain.extrinsics -- see loadAccountExtrinsicsColdTier.
   const floorMs = await accountHistoryFloorMs(env, ss58);
-  const indexed = await loadIndexedAccountFeedPage(
-    env,
-    [STAKE_ADDED_KIND, STAKE_REMOVED_KIND].map((kind) => ({
-      side: "coldkey",
-      account: coldkey,
-      kind,
-      observedStart: floorMs ?? undefined,
-    })),
-    1,
+  const indexed = await declineRetainedHistoryFailure(
+    loadIndexedAccountFeedPage(
+      env,
+      [STAKE_ADDED_KIND, STAKE_REMOVED_KIND].map((kind) => ({
+        side: "coldkey",
+        account: coldkey,
+        kind,
+        observedStart: floorMs ?? undefined,
+      })),
+      1,
+    ),
   );
   return latestStamp(
     indexed == null

@@ -7,6 +7,7 @@ import { readSelectedHistorySegments } from "./indexed-history-store.ts";
 import { loadHistoryBlockGeneration } from "./history-generation.ts";
 import { parquetReadBudget, r2ParquetSource } from "./indexed-parquet.ts";
 import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
+import { requireRetainedHistoryAnswer } from "./retained-history-store.ts";
 import {
   loadRuntimeAccountCuration,
   readRuntimeCurationObject,
@@ -38,8 +39,11 @@ export function loadIndexedAccountFeedPage(
   offset = 0,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<AccountEventsRow[] | null | undefined> {
-  return loadSelectedAccountFeed(env, selectors, network, false, (streams) =>
-    mergeAccountFeedPage(streams, limit, offset),
+  return requireRetainedHistoryAnswer(
+    env,
+    loadSelectedAccountFeed(env, selectors, network, false, (streams) =>
+      mergeAccountFeedPage(streams, limit, offset),
+    ),
   );
 }
 
@@ -48,12 +52,15 @@ export function loadIndexedAccountFeedGroups(
   selectors: readonly AccountFeedSelector[],
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<AccountFeedGroup[] | null | undefined> {
-  return loadSelectedAccountFeed(
+  return requireRetainedHistoryAnswer(
     env,
-    selectors,
-    network,
-    true,
-    foldAccountFeedGroups,
+    loadSelectedAccountFeed(
+      env,
+      selectors,
+      network,
+      true,
+      foldAccountFeedGroups,
+    ),
   );
 }
 
@@ -64,8 +71,11 @@ export function loadIndexedAccountFeedAggregate<T>(
   consume: (rows: AsyncGenerator<AccountEventsRow>) => Promise<T>,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<T | null | undefined> {
-  return loadSelectedAccountFeed(env, selectors, network, true, (streams) =>
-    consume(mergeAccountFeedEntries(streams)),
+  return requireRetainedHistoryAnswer(
+    env,
+    loadSelectedAccountFeed(env, selectors, network, true, (streams) =>
+      consume(mergeAccountFeedEntries(streams)),
+    ),
   );
 }
 

@@ -248,9 +248,9 @@ it("a corrupt selected nominator feed declines without a paid fallback", async (
   a.put(a.manifest, {});
   const fetch = vi.fn();
   vi.stubGlobal("fetch", fetch);
-  expect(
-    await loadValidatorNominatorsColdTier(a.env, ACCOUNT, { limit: 20 }),
-  ).toBeNull();
+  await expect(
+    loadValidatorNominatorsColdTier(a.env, ACCOUNT, { limit: 20 }),
+  ).rejects.toThrow("historical data is unavailable");
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -353,17 +353,17 @@ it("declines selected corrupt indexes and numeric overflow without querying SQL"
           days: 365,
         }),
       ).toEqual({ kind: "gap" });
-      expect(
-        await loadSubnetEventSummaryColdTier(a.env, netuid, {
+      await expect(
+        loadSubnetEventSummaryColdTier(a.env, netuid, {
           window: "90d",
           limit: 2,
         }),
-      ).toBeNull();
+      ).rejects.toThrow("historical data is unavailable");
     }
     for (const limit of [0, 1.5, 5001])
-      expect(
-        await loadIndexedSubnetEventSummaryRows(archive().env, 1, 0, limit),
-      ).toBeNull();
+      await expect(
+        loadIndexedSubnetEventSummaryRows(archive().env, 1, 0, limit),
+      ).rejects.toThrow("historical data is unavailable");
     expect(fetch).not.toHaveBeenCalled();
   } finally {
     vi.restoreAllMocks();
@@ -404,9 +404,9 @@ it("bounds account day aggregation and skips null subnet and event-kind cells", 
     "group budget",
   );
   for (const need of [0, 1.5, 10001])
-    expect(
-      await loadIndexedAccountHistoryRows(archive().env, ACCOUNT, {}, need),
-    ).toBeNull();
+    await expect(
+      loadIndexedAccountHistoryRows(archive().env, ACCOUNT, {}, need),
+    ).rejects.toThrow("historical data is unavailable");
   async function* nullable() {
     yield { ...fixture.rows[0], netuid: null };
     yield { ...fixture.rows[0], netuid: 1, event_kind: null };
@@ -417,9 +417,9 @@ it("bounds account day aggregation and skips null subnet and event-kind cells", 
   const a = archive();
   a.feed.entries++;
   a.save();
-  expect(
-    await loadAccountHistoryColdTier(a.env, ACCOUNT, { limit: 1 }),
-  ).toBeNull();
+  await expect(
+    loadAccountHistoryColdTier(a.env, ACCOUNT, { limit: 1 }),
+  ).rejects.toThrow("historical data is unavailable");
 });
 
 it("account summaries preserve complete physical history and recent ordering through the real indexed reader", async () => {

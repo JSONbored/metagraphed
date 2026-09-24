@@ -1,3 +1,4 @@
+import { declineRetainedHistoryFailure } from "./retained-history-store.ts";
 // OHLC candles use complete qualified native account-event indexes.
 // Missing native coverage declines without manufacturing an empty series.
 // Both paths preserve request-time windows, chain ordering, and candle caps.
@@ -92,11 +93,8 @@ export async function loadSubnetOhlcColdTier(
   }
   const cutoff = Date.now() - days * DAY_MS;
 
-  const indexed = await loadIndexedSubnetOhlcRows(
-    env,
-    subnet,
-    cutoff,
-    intervalMs,
+  const indexed = await declineRetainedHistoryFailure(
+    loadIndexedSubnetOhlcRows(env, subnet, cutoff, intervalMs),
   );
   if (indexed === null) return { kind: "gap" };
   const rows = indexed;

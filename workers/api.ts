@@ -1,3 +1,4 @@
+import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 import { recordMatchedUsageRollup } from "./usage-rollup.ts";
 export { flushUsageRollup, usageRollupBufferSize } from "./usage-rollup.ts";
 import { scheduleExceptionEvent } from "./request-lifecycle.ts";
@@ -5534,7 +5535,14 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
  * unforgettable rather than 40 more places to remember.
  */
 export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
-  return withResponseTiming(() => dispatchCached(request, env, ctx));
+  return withResponseTiming(async () => {
+    try {
+      return await dispatchCached(request, env, ctx);
+    } catch (error) {
+      if (!(error instanceof RetainedHistoryUnavailableError)) throw error;
+      return errorResponse("history_unavailable", error.message, 503);
+    }
+  });
 }
 
 /**
