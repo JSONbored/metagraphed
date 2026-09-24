@@ -42,6 +42,7 @@
 //     IS DISTINCT FROM guards only prevent UNION ALL double-counting, which a
 //     single OR cannot do).
 
+import { hasRetainedHistoryStore } from "./retained-history-store.ts";
 import { buildAccountTransfers } from "./account-events.ts";
 import {
   buildAccountStakeFlow,
@@ -100,12 +101,7 @@ import {
 } from "./validator-nominators.ts";
 import { storeAll } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import {
-  isR2SqlConfigured,
-  r2SqlQuery,
-  safeBlockNumber,
-  safeSs58Literal,
-} from "./r2-sql.ts";
+import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { windowedFloorRead, windowedRowRead } from "./account-events-window.ts";
 import {
   accountHistoryFloorMs,
@@ -470,7 +466,7 @@ export async function loadAccountStakeMovesColdTier(
   // With NO lakehouse bound (a self-hoster, CI) the null stands: there is no
   // chain history to read, so the caller's empty card is correct.
   if (rows === null) {
-    return indexed !== undefined || isR2SqlConfigured(env)
+    return indexed !== undefined || hasRetainedHistoryStore(env)
       ? {
           data: declineAccountStakeMoves(ss58, label),
           // No read, so no reading instant -- never `new Date()`, which would
@@ -1672,6 +1668,44 @@ export async function loadAccountSummaryColdTier(
   /** The projection when it FOUND the account, narrowed once so neither leg has
    * to re-discriminate the union. */
   const found = projected && projected.absent !== true ? projected : null;
+
+  // Keep the compact lifetime fold and read only events after its cutoff. If no
+  // trustworthy fold edge exists, the qualified index supplies the complete
+  // retained aggregate. The recent page uses its own bounded account seek.
+  const foldFloor = absentFloor ?? found?.span?.foldFloorMs;
+  const selectors: AccountFeedSelector[] = [
+    { side: "hotkey", account: addr },
+    { side: "coldkey", account: addr },
+  ];
+  const [indexedGroups, indexedRecent] = await Promise.all([
+    loadIndexedAccountFeedGroups(
+      env,
+      selectors.map((selector) => ({ ...selector, observedStart: foldFloor })),
+    ),
+    loadIndexedAccountFeedPage(env, selectors, limit),
+  ]);
+  if (indexedGroups === null || indexedRecent === null)
+    return { declined: ["indexed history: account summary read failed"] };
+  if (indexedGroups !== undefined && indexedRecent !== undefined) {
+    const folded = foldSummaryGroups([
+      ...(foldFloor !== undefined && found ? found.groups : []),
+      ...indexedGroups.map((row) => ({
+        kind: row.event_kind,
+        netuid: row.netuid,
+        count: row.event_count,
+        fb: row.first_block,
+        lb: row.last_block,
+        fo: row.first_observed,
+        lo: row.last_observed,
+      })),
+    ]);
+    return {
+      ...folded,
+      scanned: Number(folded.agg.c),
+      complete: true,
+      recent: indexedRecent,
+    };
+  }
 
   const [groupRows, recentRows] = await Promise.all([
     absentFloor !== null

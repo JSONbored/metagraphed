@@ -31,7 +31,8 @@
 // unmeasurable one. NeuronDeregistered and AxonInfoRemoved have zero rows in
 // both account_events and chain_events, and PrometheusServed exists only in
 // chain_events with its hotkey inside the args JSON. See the survey on #9146.
-import { isR2SqlConfigured, r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import { hasRetainedHistoryStore } from "./retained-history-store.ts";
+import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
 import {
   type ChainNetworkId,
   chainTable,
@@ -173,7 +174,7 @@ export function safeColumnAlias(value: unknown): string | null {
 function rollupDecline(
   env: Parameters<R2SqlReader>[0],
 ): { kind: "gap" } | { kind: "miss" } {
-  return isR2SqlConfigured(env) ? { kind: "gap" } : { kind: "miss" };
+  return hasRetainedHistoryStore(env) ? { kind: "gap" } : { kind: "miss" };
 }
 
 function toRowCount(value: unknown): number | null {

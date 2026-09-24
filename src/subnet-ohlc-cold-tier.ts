@@ -1,6 +1,7 @@
 // OHLC candles use complete qualified native account-event indexes.
 // Unsupported deployments retain the archived SQL path during migration.
 // Both paths preserve request-time windows, chain ordering, and candle caps.
+import { hasRetainedHistoryStore } from "./retained-history-store.ts";
 import {
   buildSubnetOhlcFromBuckets,
   MAX_CANDLES,
@@ -10,7 +11,7 @@ import {
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
 } from "./subnet-ohlc.ts";
-import { isR2SqlConfigured, r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
 import type { R2SqlEnv } from "./r2-sql.ts";
 import { loadIndexedSubnetOhlcRows } from "./subnet-indexed-aggregates.ts";
 
@@ -153,7 +154,7 @@ export async function loadSubnetOhlcColdTier(
   // is a MISS. Same rows, different deployments, and only one of them makes an
   // empty series the correct answer.
   if (rows === null) {
-    return isR2SqlConfigured(env) ? { kind: "gap" } : { kind: "miss" };
+    return hasRetainedHistoryStore(env) ? { kind: "gap" } : { kind: "miss" };
   }
 
   // Newest-first, so the surplus row is the OLDEST -- slice from the front to
