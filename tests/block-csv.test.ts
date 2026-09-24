@@ -1,3 +1,4 @@
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 import assert from "node:assert/strict";
 import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { test } from "vitest";
@@ -35,21 +36,23 @@ test("GET /blocks/{ref}/extrinsics?format=csv exports the block's extrinsics via
   // absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was never asked.
   // The per-block extrinsics come from the lakehouse, through the same builder --
   // so the CSV below is produced from lakehouse rows exactly as in production.
-  const lake = lakehouse([
-    {
-      block_number: Number(REF),
-      extrinsic_index: 0,
-      extrinsic_hash: `0x${"a".repeat(64)}`,
-      signer: "5Signer",
-      call_module: "SubtensorModule",
-      call_function: "set_weights",
-      success: true,
-      fee_tao: 0,
-      tip_tao: 0,
-      call_args: null,
-      observed_at: 1_750_009_000_000,
-    },
-  ]);
+  const lake = nativeDetailReaders({
+    extrinsics: [
+      {
+        block_number: Number(REF),
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"a".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "SubtensorModule",
+        call_function: "set_weights",
+        success: true,
+        fee_tao: 0,
+        tip_tao: 0,
+        call_args: null,
+        observed_at: 1_750_009_000_000,
+      },
+    ],
+  });
   const env = { ...createLocalArtifactEnv(), ...LAKEHOUSE_ENV };
   const res = await handleRequest(
     req(`/api/v1/blocks/${REF}/extrinsics?format=csv`),

@@ -1,4 +1,5 @@
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 import assert from "node:assert/strict";
 import { resetSurfacesMemo } from "../src/revenue-load.ts";
 import { markedChainEventsPayload } from "../src/chain-events-degraded.ts";
@@ -3030,23 +3031,25 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
     // and slices. Two rows to page past, then the asserted one: with a single row
     // the slice would empty the page, which the retired tier's double could never
     // have shown because it ignored paging entirely.
-    const lake = lakehouse([
-      { block_number: 9, extrinsic_index: 8, observed_at: 1_750_009_000_002 },
-      { block_number: 9, extrinsic_index: 9, observed_at: 1_750_009_000_001 },
-      {
-        block_number: 9,
-        extrinsic_index: 0,
-        extrinsic_hash: null,
-        signer: null,
-        call_module: "Timestamp",
-        call_function: "set",
-        call_args: null,
-        success: true,
-        fee_tao: null,
-        tip_tao: null,
-        observed_at: 1_750_009_000_000,
-      },
-    ]);
+    const lake = nativeDetailReaders({
+      extrinsics: [
+        { block_number: 9, extrinsic_index: 8, observed_at: 1_750_009_000_002 },
+        { block_number: 9, extrinsic_index: 9, observed_at: 1_750_009_000_001 },
+        {
+          block_number: 9,
+          extrinsic_index: 0,
+          extrinsic_hash: null,
+          signer: null,
+          call_module: "Timestamp",
+          call_function: "set",
+          call_args: null,
+          success: true,
+          fee_tao: null,
+          tip_tao: null,
+          observed_at: 1_750_009_000_000,
+        },
+      ],
+    });
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       '{ block_extrinsics(ref: "9", limit: 10, offset: 2) { block_number extrinsic_count extrinsics { block_number extrinsic_index extrinsic_hash signer call_module call_function call_args success fee_tao tip_tao observed_at summary } } }',
@@ -4853,22 +4856,24 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     // #10190: the tier this doubled is retired; the lakehouse cold tier
     // answers, through the SAME builder. Given the lane's own columns, so
     // the envelope below is derived rather than echoed.
-    const lake = lakehouse([
-      {
-        block_number: 9,
-        extrinsic_index: 0,
-        extrinsic_hash: `0x${"b".repeat(64)}`,
-        signer: "5Sudo",
-        call_module: "Sudo",
-        call_function: "sudo",
-        // A JSON STRING -- the lane's own column type (see above).
-        call_args: JSON.stringify([{ name: "call", value: "setWeights" }]),
-        success: true,
-        fee_tao: 0,
-        tip_tao: 0,
-        observed_at: 1_752_451_200_000,
-      },
-    ]);
+    const lake = nativeDetailReaders({
+      extrinsics: [
+        {
+          block_number: 9,
+          extrinsic_index: 0,
+          extrinsic_hash: `0x${"b".repeat(64)}`,
+          signer: "5Sudo",
+          call_module: "Sudo",
+          call_function: "sudo",
+          // A JSON STRING -- the lane's own column type (see above).
+          call_args: JSON.stringify([{ name: "call", value: "setWeights" }]),
+          success: true,
+          fee_tao: 0,
+          tip_tao: 0,
+          observed_at: 1_752_451_200_000,
+        },
+      ],
+    });
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ sudo { items { block_number call_module call_args success } total next_cursor } }",
@@ -5042,23 +5047,25 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     // #10190: the tier this doubled is retired; the lakehouse cold tier
     // answers, through the SAME builder. Given the lane's own columns, so
     // the envelope below is derived rather than echoed.
-    const lake = lakehouse([
-      {
-        block_number: 5,
-        extrinsic_index: 0,
-        extrinsic_hash: `0x${"a".repeat(64)}`,
-        signer: "5Signer",
-        call_module: "SubtensorModule",
-        call_function: "register",
-        // A JSON STRING: the lane stores call_args as text and the formatter runs
-        // parseJsonPreservingBigInts over it, so an array here throws and reads null.
-        call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
-        success: true,
-        fee_tao: 0.001,
-        tip_tao: 0,
-        observed_at: 1_752_451_200_000,
-      },
-    ]);
+    const lake = nativeDetailReaders({
+      extrinsics: [
+        {
+          block_number: 5,
+          extrinsic_index: 0,
+          extrinsic_hash: `0x${"a".repeat(64)}`,
+          signer: "5Signer",
+          call_module: "SubtensorModule",
+          call_function: "register",
+          // A JSON STRING: the lane stores call_args as text and the formatter runs
+          // parseJsonPreservingBigInts over it, so an array here throws and reads null.
+          call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
+          success: true,
+          fee_tao: 0.001,
+          tip_tao: 0,
+          observed_at: 1_752_451_200_000,
+        },
+      ],
+    });
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ extrinsics { items { block_number call_module call_args success } total next_cursor } }",
@@ -5082,34 +5089,36 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     // #10190: the tier this doubled is retired; the lakehouse cold tier
     // answers, through the SAME builder. Given the lane's own columns, so
     // the envelope below is derived rather than echoed.
-    const lake = lakehouse([
-      {
-        block_number: 5,
-        extrinsic_index: 0,
-        extrinsic_hash: `0x${"a".repeat(64)}`,
-        signer: "5Signer",
-        call_module: "Timestamp",
-        call_function: "set",
-        call_args: JSON.stringify([]),
-        success: true,
-        fee_tao: 0.001,
-        tip_tao: 0,
-        observed_at: 1_752_451_200_000,
-      },
-      {
-        block_number: 6,
-        extrinsic_index: 1,
-        extrinsic_hash: `0x${"b".repeat(64)}`,
-        signer: "5Signer",
-        call_module: "NoSuchModule",
-        call_function: "no_such_function",
-        call_args: null,
-        success: true,
-        fee_tao: 0,
-        tip_tao: 0,
-        observed_at: 1_752_451_200_000,
-      },
-    ]);
+    const lake = nativeDetailReaders({
+      extrinsics: [
+        {
+          block_number: 5,
+          extrinsic_index: 0,
+          extrinsic_hash: `0x${"a".repeat(64)}`,
+          signer: "5Signer",
+          call_module: "Timestamp",
+          call_function: "set",
+          call_args: JSON.stringify([]),
+          success: true,
+          fee_tao: 0.001,
+          tip_tao: 0,
+          observed_at: 1_752_451_200_000,
+        },
+        {
+          block_number: 6,
+          extrinsic_index: 1,
+          extrinsic_hash: `0x${"b".repeat(64)}`,
+          signer: "5Signer",
+          call_module: "NoSuchModule",
+          call_function: "no_such_function",
+          call_args: null,
+          success: true,
+          fee_tao: 0,
+          tip_tao: 0,
+          observed_at: 1_752_451_200_000,
+        },
+      ],
+    });
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ extrinsics { items { call_module summary } } }",
@@ -5283,21 +5292,23 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     // #10190: the tier this doubled is retired; the lakehouse cold tier
     // answers, through the SAME builder. Given the lane's own columns, so
     // the envelope below is derived rather than echoed.
-    const lake = lakehouse([
-      {
-        block_number: 5,
-        extrinsic_index: 2,
-        extrinsic_hash: `0x${"c".repeat(64)}`,
-        signer: "5Signer",
-        call_module: "SubtensorModule",
-        call_function: "set_weights",
-        call_args: null,
-        success: true,
-        fee_tao: 0,
-        tip_tao: 0,
-        observed_at: 1_752_451_200_000,
-      },
-    ]);
+    const lake = nativeDetailReaders({
+      extrinsics: [
+        {
+          block_number: 5,
+          extrinsic_index: 2,
+          extrinsic_hash: `0x${"c".repeat(64)}`,
+          signer: "5Signer",
+          call_module: "SubtensorModule",
+          call_function: "set_weights",
+          call_args: null,
+          success: true,
+          fee_tao: 0,
+          tip_tao: 0,
+          observed_at: 1_752_451_200_000,
+        },
+      ],
+    });
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module call_function } } }`,
@@ -5333,22 +5344,24 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     // #10190: the tier this doubled is retired; the lakehouse cold tier
     // answers, through the SAME builder. Given the lane's own columns, so
     // the envelope below is derived rather than echoed.
-    const lake = lakehouse([
-      {
-        block_number: 11,
-        extrinsic_index: 0,
-        extrinsic_hash: `0x${"c".repeat(64)}`,
-        signer: "5Admin",
-        call_module: "AdminUtils",
-        call_function: "sudo_set_weights_set_rate_limit",
-        // A JSON STRING -- the lane's own column type (see above).
-        call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
-        success: true,
-        fee_tao: 0,
-        tip_tao: 0,
-        observed_at: 1_752_451_200_000,
-      },
-    ]);
+    const lake = nativeDetailReaders({
+      extrinsics: [
+        {
+          block_number: 11,
+          extrinsic_index: 0,
+          extrinsic_hash: `0x${"c".repeat(64)}`,
+          signer: "5Admin",
+          call_module: "AdminUtils",
+          call_function: "sudo_set_weights_set_rate_limit",
+          // A JSON STRING -- the lane's own column type (see above).
+          call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
+          success: true,
+          fee_tao: 0,
+          tip_tao: 0,
+          observed_at: 1_752_451_200_000,
+        },
+      ],
+    });
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ governance_config_changes { items { block_number call_module call_function call_args success } total next_cursor } }",
@@ -5510,25 +5523,6 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
 // the lakehouse is what answers, and the filters that used to be asserted as
 // query params on the tier's URL are SQL predicates now.
 describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
-  /** Stub the lakehouse transport; captures every SQL the cold tier issued. */
-  function lakehouse(rows: Row[] = []) {
-    const original = globalThis.fetch;
-    const queries: string[] = [];
-    globalThis.fetch = (async (_url: string, init: RequestInit) => {
-      const sql = String(JSON.parse(String(init.body)).query);
-      queries.push(sql);
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          result: { rows: visibleInWindow(sql, rows) },
-        }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
-    return { queries, restore: () => (globalThis.fetch = original) };
-  }
-
   /** Enough env for the lakehouse leg to be attempted at all. */
   const COLD = { R2_SQL_TOKEN: "cfut_test" } as unknown as Env;
 
@@ -5563,7 +5557,7 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
   });
 
   test("blocks: resolves lakehouse rows into the block feed", async () => {
-    const lake = lakehouse([blockRow()]);
+    const lake = nativeDetailReaders({ blocks: [blockRow()] });
     try {
       const { status, body } = await gql(
         "{ blocks { items { block_number block_hash extrinsic_count event_count } total next_cursor } }",
@@ -5581,20 +5575,20 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
   });
 
   test("blocks: limit/offset reach the lakehouse query", async () => {
-    const lake = lakehouse();
+    const lake = nativeDetailReaders({ blocks: [] });
     try {
       await gql(`{ blocks(limit: 5, offset: 10) { total } }`, COLD);
       // OFFSET is emulated by over-fetching then slicing (see
       // OFFSET_EMULATION_CAP), so limit+offset is the LIMIT that goes out.
-      assert.match(lake.queries[0], /LIMIT 15$/);
-      assert.match(lake.queries[0], /FROM chain\.blocks/);
+      assert.equal(lake.blockFeed.mock.calls[0]![2], 15);
+      assert.equal(lake.blockFeed.mock.calls[0]![3], "mainnet");
     } finally {
       lake.restore();
     }
   });
 
   test("blocks: the REST-parity filters all become lakehouse predicates (#7870)", async () => {
-    const lake = lakehouse();
+    const lake = nativeDetailReaders({ blocks: [] });
     try {
       await gql(
         `{ blocks(
@@ -5609,7 +5603,7 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
           ) { total } }`,
         COLD,
       );
-      const sql = lake.queries[0];
+      const sql = lake.blockFeed.mock.calls[0]![1].join(" AND ");
       assert.match(sql, new RegExp(`author = '${AUTHOR}'`));
       assert.match(sql, /spec_version = 200/);
       assert.match(sql, /block_number >= 100/);
@@ -5624,19 +5618,17 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
   });
 
   test("blocks: a single filter is applied and the unset filters are omitted (#7870)", async () => {
-    const lake = lakehouse();
+    const lake = nativeDetailReaders({ blocks: [] });
     try {
       await gql(`{ blocks(author: "${AUTHOR}") { total } }`, COLD);
       // One predicate and nothing else between WHERE and ORDER BY: the unset
       // filters are omitted rather than sent as a widening default.
-      const sql = lake.queries[0];
+      const sql = lake.blockFeed.mock.calls[0]![1].join(" AND ");
       // The seam ceiling is always present -- it is what keeps this leg from
       // reading a range the head leg owns. Nothing else is.
       assert.match(
         sql,
-        new RegExp(
-          `WHERE author = '${AUTHOR}' AND block_number < \\d+ ORDER BY`,
-        ),
+        new RegExp(`^author = '${AUTHOR}' AND block_number < \\d+$`),
       );
     } finally {
       lake.restore();
@@ -5703,7 +5695,7 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
   test("block: resolves a lakehouse row by numeric height", async () => {
     // Below the seam, so the lakehouse is the source (above it the head leg
     // owns the height and the lakehouse is not consulted at all).
-    const lake = lakehouse([blockRow()]);
+    const lake = nativeDetailReaders({ blocks: [blockRow()] });
     try {
       const { status, body } = await gql(
         `{ block(ref: "123") { ref block { block_number spec_version } } }`,
@@ -5715,7 +5707,10 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
       assert.equal(body.data.block.block.spec_version, 200);
       // #11462 widened this to the block plus its two neighbours, so the
       // chain-walk fields are populated from the same read.
-      assert.match(lake.queries[0], /block_number >= 122/);
+      assert.deepEqual(
+        lake.block.mock.calls.filter((c) => c[1] === "blocks").map((c) => c[2]),
+        [123, 122, 124],
+      );
     } finally {
       lake.restore();
     }
@@ -5723,7 +5718,9 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
 
   test("block: resolves a lakehouse row by 0x block hash", async () => {
     const ref = `0x${"b".repeat(64)}`;
-    const lake = lakehouse([blockRow({ block_hash: ref })]);
+    const lake = nativeDetailReaders({
+      blocks: [blockRow({ block_hash: ref })],
+    });
     try {
       const { status, body } = await gql(
         `{ block(ref: "${ref}") { ref block { block_number block_hash } } }`,
@@ -5731,7 +5728,7 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
       );
       assert.equal(status, 200);
       assert.equal(body.data.block.block.block_hash, ref);
-      assert.match(lake.queries[0], new RegExp(`block_hash = '${ref}'`));
+      assert.equal(lake.hash.mock.calls[0]![2], ref);
     } finally {
       lake.restore();
     }
@@ -8728,21 +8725,23 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
     // #10190: the tier this doubled is retired; the lakehouse cold tier
     // answers, through the SAME builder. Given the lane's own columns, so
     // the envelope below is derived rather than echoed.
-    const lake = lakehouse([
-      {
-        block_number: 5,
-        extrinsic_index: 0,
-        extrinsic_hash: `0x${"a".repeat(64)}`,
-        signer: "5Signer",
-        call_module: "SubtensorModule",
-        call_function: "register",
-        call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
-        success: true,
-        fee_tao: 0.001,
-        tip_tao: 0,
-        observed_at: 1_752_451_200_000,
-      },
-    ]);
+    const lake = nativeDetailReaders({
+      extrinsics: [
+        {
+          block_number: 5,
+          extrinsic_index: 0,
+          extrinsic_hash: `0x${"a".repeat(64)}`,
+          signer: "5Signer",
+          call_module: "SubtensorModule",
+          call_function: "register",
+          call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
+          success: true,
+          fee_tao: 0.001,
+          tip_tao: 0,
+          observed_at: 1_752_451_200_000,
+        },
+      ],
+    });
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);

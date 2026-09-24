@@ -1,4 +1,5 @@
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 import assert from "node:assert/strict";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
@@ -16679,13 +16680,13 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
   });
 
   test("list_blocks serves the lakehouse feed with data-api's cursor token", async () => {
-    const queries = lakeFetch([LAKE_BLOCK]);
+    const queries = nativeDetailReaders({ blocks: [LAKE_BLOCK] });
     const res = await callTool("list_blocks", { limit: 1 }, { env: LAKE_ENV });
     const data = res.body.result.structuredContent;
     assert.equal(data.blocks.length, 1);
     assert.equal(data.blocks[0].block_number, 4200000);
     assert.equal(data.next_cursor, "1750009000000.4200000");
-    assert.match(queries[0]!, /FROM chain\.blocks/);
+    assert.equal(queries.blockFeed.mock.calls.length, 1);
   });
 
   // #9212 wired the account_events cold tier into the REST handler ONLY, so
@@ -16723,7 +16724,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
   });
 
   test("get_block resolves a height from the lakehouse", async () => {
-    lakeFetch([LAKE_BLOCK]);
+    nativeDetailReaders({ blocks: [LAKE_BLOCK] });
     const res = await callTool(
       "get_block",
       { ref: "4200000" },
@@ -16734,7 +16735,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
   });
 
   test("list_block_extrinsics serves one block's extrinsics", async () => {
-    const queries = lakeFetch([LAKE_EXTRINSIC]);
+    const queries = nativeDetailReaders({ extrinsics: [LAKE_EXTRINSIC] });
     const res = await callTool(
       "list_block_extrinsics",
       { ref: "4200000", limit: 5 },
@@ -16743,11 +16744,11 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     const data = res.body.result.structuredContent;
     assert.equal(data.extrinsics.length, 1);
     assert.equal(data.extrinsics[0].extrinsic_index, 3);
-    assert.match(queries[0]!, /block_number = 4200000/);
+    assert.equal(queries.block.mock.calls[0]![2], 4200000);
   });
 
   test("list_extrinsics expresses every filter and skips the tier on call_hash", async () => {
-    const queries = lakeFetch([LAKE_EXTRINSIC]);
+    const queries = nativeDetailReaders({ extrinsics: [LAKE_EXTRINSIC] });
     const res = await callTool(
       "list_extrinsics",
       {
@@ -16761,14 +16762,20 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     );
     const data = res.body.result.structuredContent;
     assert.equal(data.extrinsics.length, 1);
-    assert.match(queries[0]!, /signer = '5G9hfkx/);
-    assert.match(queries[0]!, /call_module = 'SubtensorModule'/);
-    assert.match(queries[0]!, /success = TRUE/);
-    assert.match(queries[0]!, /block_number >= 100/);
+    assert.equal(
+      queries.extrinsicFeed.mock.calls[0]![1].signer,
+      LAKE_EXTRINSIC.signer,
+    );
+    assert.equal(
+      queries.extrinsicFeed.mock.calls[0]![1].module,
+      "SubtensorModule",
+    );
+    assert.equal(queries.extrinsicFeed.mock.calls[0]![1].success, true);
+    assert.equal(queries.extrinsicFeed.mock.calls[0]![1].blockStart, 100);
 
     // call_hash matches inside call_args, which the lakehouse cannot
     // express: the tier is skipped entirely, leaving the schema-stable empty.
-    const queries2 = lakeFetch([LAKE_EXTRINSIC]);
+    const queries2 = nativeDetailReaders({ extrinsics: [LAKE_EXTRINSIC] });
     const gated = await callTool(
       "list_extrinsics",
       {
@@ -16783,9 +16790,9 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
   });
 
   test("get_extrinsic resolves a composite ref and embeds formatted events", async () => {
-    const queries = lakeFetch(
-      [LAKE_EXTRINSIC],
-      [
+    const queries = nativeDetailReaders({
+      extrinsics: [LAKE_EXTRINSIC],
+      account_events: [
         {
           block_number: 4200000,
           event_index: 0,
@@ -16800,7 +16807,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
           observed_at: 1750009000000,
         },
       ],
-    );
+    });
     const res = await callTool(
       "get_extrinsic",
       { ref: "4200000-3" },
@@ -16810,7 +16817,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.equal(data.extrinsic.block_number, 4200000);
     assert.equal(data.events.length, 1);
     assert.equal(data.events[0].event_kind, "WeightsSet");
-    assert.match(queries[1]!, /FROM chain\.account_events/);
+    assert.equal(queries.block.mock.calls[1]![1], "account_events");
   });
 
   test("get_sudo and get_governance_config_changes serve their fixed modules", async () => {
@@ -16819,20 +16826,22 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
       call_module: "Sudo",
       call_function: "sudo",
     };
-    const q1 = lakeFetch([SUDO_ROW]);
+    const q1 = nativeDetailReaders({ extrinsics: [SUDO_ROW] });
     const sudo = await callTool("get_sudo", { limit: 5 }, { env: LAKE_ENV });
     assert.equal(sudo.body.result.structuredContent.extrinsics.length, 1);
-    assert.match(q1[0]!, /call_module = 'Sudo'/);
+    assert.equal(q1.extrinsicFeed.mock.calls[0]![1].module, "Sudo");
 
-    const q2 = lakeFetch([{ ...SUDO_ROW, call_module: "AdminUtils" }]);
+    const q2 = nativeDetailReaders({
+      extrinsics: [{ ...SUDO_ROW, call_module: "AdminUtils" }],
+    });
     const gov = await callTool(
       "get_governance_config_changes",
       { limit: 5, success: true },
       { env: LAKE_ENV },
     );
     assert.equal(gov.body.result.structuredContent.extrinsics.length, 1);
-    assert.match(q2[0]!, /call_module = 'AdminUtils'/);
-    assert.match(q2[0]!, /success = TRUE/);
+    assert.equal(q2.extrinsicFeed.mock.calls[0]![1].module, "AdminUtils");
+    assert.equal(q2.extrinsicFeed.mock.calls[0]![1].success, true);
   });
 
   test("get_block_events serves one block's events in read order", async () => {
@@ -16904,7 +16913,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
   });
 
   test("get_account_extrinsics filters by signer from the lakehouse", async () => {
-    const queries = lakeFetch([LAKE_EXTRINSIC]);
+    const queries = nativeDetailReaders({ extrinsics: [LAKE_EXTRINSIC] });
     const res = await callTool(
       "get_account_extrinsics",
       { ss58: LAKE_EXTRINSIC.signer, limit: 5 },
@@ -16912,7 +16921,10 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     );
     const data = res.body.result.structuredContent;
     assert.equal(data.extrinsics.length, 1);
-    assert.match(queries[0]!, /signer = '5G9hfkx/);
+    assert.equal(
+      queries.extrinsicFeed.mock.calls[0]![1].signer,
+      LAKE_EXTRINSIC.signer,
+    );
   });
 
   test("get_account_transfers serves the Transfer feed from the lakehouse", async () => {
@@ -17826,10 +17838,9 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       // loadExtrinsicFeedColdTier answers now, over chain.extrinsics with the
       // generated EXTRINSICS_COLUMNS. The count is the page length, derived.
       const tier = forbiddenDataApi();
-      const lake = lakehouse([
-        EXTRINSIC_ROW,
-        { ...EXTRINSIC_ROW, extrinsic_index: 4 },
-      ]);
+      const lake = nativeDetailReaders({
+        extrinsics: [EXTRINSIC_ROW, { ...EXTRINSIC_ROW, extrinsic_index: 4 }],
+      });
       try {
         const res = await callTool(
           "list_extrinsics",
@@ -17840,7 +17851,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         assert.deepEqual(tier.paths, [], "the retired tier was consulted");
         assert.equal(out.extrinsic_count, 2);
         assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
-        assert.match(lake.queries[0], /FROM chain\.extrinsics/);
+        assert.equal(lake.extrinsicFeed.mock.calls.length, 1);
       } finally {
         lake.restore();
       }
@@ -17852,15 +17863,17 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       // -- it asserted an echo. These rows carry no summary at all; the one
       // below is composed by the formatter, and the unmatched call gets null
       // because no sentence exists for it.
-      const lake = lakehouse([
-        { ...EXTRINSIC_ROW, call_module: "Timestamp", call_function: "set" },
-        {
-          ...EXTRINSIC_ROW,
-          extrinsic_index: 4,
-          call_module: "NoSuchModule",
-          call_function: "no_such_function",
-        },
-      ]);
+      const lake = nativeDetailReaders({
+        extrinsics: [
+          { ...EXTRINSIC_ROW, call_module: "Timestamp", call_function: "set" },
+          {
+            ...EXTRINSIC_ROW,
+            extrinsic_index: 4,
+            call_module: "NoSuchModule",
+            call_function: "no_such_function",
+          },
+        ],
+      });
       try {
         const res = await callTool(
           "list_extrinsics",
@@ -17920,18 +17933,16 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       // formatter, so a tier double returning its own `summary` string asserted
       // an echo. This row carries none; the sentence below is composed.
       const hash = "0x" + "d".repeat(64);
-      const lake = lakehouse((sql: string) =>
-        sql.includes("FROM chain.account_events")
-          ? []
-          : [
-              {
-                ...EXTRINSIC_ROW,
-                extrinsic_hash: hash,
-                call_module: "Timestamp",
-                call_function: "set",
-              },
-            ],
-      );
+      const lake = nativeDetailReaders({
+        extrinsics: [
+          {
+            ...EXTRINSIC_ROW,
+            extrinsic_hash: hash,
+            call_module: "Timestamp",
+            call_function: "set",
+          },
+        ],
+      });
       try {
         const res = await callTool(
           "get_extrinsic",
@@ -24986,7 +24997,7 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
       observed_at: 1_750_009_000_000,
     };
     const tier = forbiddenDataApi();
-    const lake = lakehouse([ROW]);
+    const lake = nativeDetailReaders({ extrinsics: [ROW] });
     try {
       const res = await callTool(
         "get_account_extrinsics",
@@ -24995,11 +25006,11 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
       );
       assert.deepEqual(tier.paths, []);
       assert.equal(res.body.result.structuredContent.extrinsics.length, 1);
-      const sql = lake.queries[0];
-      assert.match(sql, new RegExp(`signer = '${SS58}'`));
-      assert.match(sql, /block_number >= 100/);
-      assert.match(sql, /block_number <= 200/);
-      assert.match(sql, /LIMIT/);
+      const [, selector, limit] = lake.extrinsicFeed.mock.calls[0]!;
+      assert.equal(selector.signer, SS58);
+      assert.equal(selector.blockStart, 100);
+      assert.equal(selector.blockEnd, 200);
+      assert.equal(limit, 5);
     } finally {
       lake.restore();
     }
@@ -25007,7 +25018,7 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
     // A cursor is a 3-part tuple seek on the feed's own order key, and it
     // REPLACES the offset -- the token already narrows past prior pages, so
     // applying both would skip a page's worth of rows twice.
-    const paged = lakehouse([ROW]);
+    const paged = nativeDetailReaders({ extrinsics: [ROW] });
     try {
       await callTool(
         "get_account_extrinsics",
@@ -25019,11 +25030,11 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
         },
         { env: { ...LAKEHOUSE_ENV } },
       );
-      const sql = paged.queries[0];
-      assert.match(
-        sql,
-        /\(observed_at, block_number, extrinsic_index\) < \(1750009000000, 4200000, 3\)/,
+      assert.deepEqual(
+        paged.extrinsicFeed.mock.calls[0]![1].cursor,
+        [1750009000000, 4200000, 3],
       );
+      assert.equal(paged.extrinsicFeed.mock.calls[0]![3], 0);
     } finally {
       paged.restore();
     }
@@ -25033,7 +25044,7 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
     // data-api's own documented cursor semantics, shared by every paged route
     // here, so the reader that replaced the tier had to keep it or the same
     // token would mean two different things on two surfaces.
-    const bad = lakehouse([ROW]);
+    const bad = nativeDetailReaders({ extrinsics: [ROW] });
     try {
       const res = await callTool(
         "get_account_extrinsics",
@@ -25041,7 +25052,7 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
         { env: { ...LAKEHOUSE_ENV } },
       );
       assert.equal(res.body.result.structuredContent.extrinsics.length, 1);
-      assert.doesNotMatch(bad.queries[0], /observed_at, block_number/);
+      assert.equal(bad.extrinsicFeed.mock.calls[0]![1].cursor, null);
     } finally {
       bad.restore();
     }
@@ -25106,9 +25117,10 @@ describe("MCP list_block_extrinsics — Postgres tier wiring", () => {
       observed_at: 1_750_009_000_000,
     };
     const tier = forbiddenDataApi();
-    const lake = lakehouse((sql: string) =>
-      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [ROW],
-    );
+    const lake = nativeDetailReaders({
+      blocks: [{ block_number: 4200000, block_hash: hash }],
+      extrinsics: [ROW],
+    });
     try {
       const res = await callTool(
         "list_block_extrinsics",
@@ -25120,17 +25132,15 @@ describe("MCP list_block_extrinsics — Postgres tier wiring", () => {
       assert.equal(out.block_number, 4200000, "the hash resolved to a height");
       assert.equal(out.extrinsics.length, 1);
       assert.equal(out.extrinsics[0].extrinsic_index, 3);
-      assert.match(
-        lake.queries[0],
-        /FROM chain\.blocks WHERE block_hash = '0xabab/,
-      );
+      assert.equal(lake.hash.mock.calls[0]![2], hash);
     } finally {
       lake.restore();
     }
 
-    const deep = lakehouse((sql: string) =>
-      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [ROW],
-    );
+    const deep = nativeDetailReaders({
+      blocks: [{ block_number: 4200000, block_hash: hash }],
+      extrinsics: [ROW],
+    });
     try {
       const res = await callTool(
         "list_block_extrinsics",

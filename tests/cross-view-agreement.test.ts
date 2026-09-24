@@ -1,3 +1,4 @@
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // Two views of one stream must not be able to disagree (#9260, #9263).
 //
 // Both defects this file guards were found the same way: one route answered
@@ -211,6 +212,21 @@ describe("a block's header and its chain-event body agree", () => {
     // #9260 exactly: /blocks/1000 advertised event_count 21 while
     // /blocks/1000/chain-events served `count: 0` with `ok: true`.
     lakehouse();
+    nativeDetailReaders({
+      blocks: [
+        {
+          block_number: HISTORIC,
+          block_hash: `0x${"a5".repeat(32)}`,
+          parent_hash: `0x${"e1".repeat(32)}`,
+          author: null,
+          extrinsic_count: 8,
+          event_count: 21,
+          spec_version: 102,
+          observed_at: 1679350140004,
+        },
+      ],
+      chain_events: CHAIN_EVENTS,
+    });
     const header = await jsonBody(
       await handleRequest(
         req(`/api/v1/blocks/${HISTORIC}`),

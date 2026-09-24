@@ -1,3 +1,4 @@
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // A tier that declined must not answer `ok: true` with zeros and no header
 // (#10270).
 //
@@ -49,12 +50,23 @@ const DEGRADED_HEADER = "x-metagraph-degraded";
 async function withFetch<T>(
   stub: typeof fetch,
   run: () => Promise<T>,
+  nativeCalls?: string[],
 ): Promise<T> {
   const real = globalThis.fetch;
   globalThis.fetch = stub;
+  const native = nativeCalls ? nativeDetailReaders({}) : undefined;
+  native?.extrinsicFeed.mockImplementation(async () => {
+    nativeCalls!.push("indexed-extrinsic-feed");
+    return [];
+  });
+  native?.blockFeed.mockImplementation(async () => {
+    nativeCalls!.push("retained-block-feed");
+    return [];
+  });
   try {
     return await run();
   } finally {
+    native?.restore();
     globalThis.fetch = real;
   }
 }
@@ -191,12 +203,15 @@ describe("a page declined BEFORE the query says so too (#11142)", () => {
     // Non-vacuity for the assertion above: if the route short-circuited at
     // every depth, `calls.length === 0` would prove nothing about the cap.
     const calls: string[] = [];
-    await withFetch(countingLakehouse(calls), () =>
-      handleRequest(
-        apiRequest("/api/v1/extrinsics?limit=5&offset=0"),
-        LAKEHOUSE_ENV,
-        {},
-      ),
+    await withFetch(
+      countingLakehouse(calls),
+      () =>
+        handleRequest(
+          apiRequest("/api/v1/extrinsics?limit=5&offset=0"),
+          LAKEHOUSE_ENV,
+          {},
+        ),
+      calls,
     );
     assert.ok(calls.length > 0, "a servable depth must reach the tier");
   });
@@ -328,46 +343,50 @@ describe("no paginated route declines a deep offset in silence (#11142)", () => 
     const paged: string[] = [];
     const unlabelled: string[] = [];
 
-    await withFetch(countingLakehouse, async () => {
-      for (const route of EVERY_ROUTE) {
-        const path = concretePath(route.path);
+    await withFetch(
+      countingLakehouse,
+      async () => {
+        for (const route of EVERY_ROUTE) {
+          const path = concretePath(route.path);
 
-        // Shallow: does this route page the lakehouse at all? A route that
-        // does not (a baked artifact, or one that rejects `offset` outright
-        // with a 400) needs no exemption entry -- it simply never qualifies.
-        calls.length = 0;
-        try {
-          await handleRequest(
-            apiRequest(`${path}?offset=0`),
-            LAKEHOUSE_ENV,
-            {},
-          );
-        } catch {
-          continue;
-        }
-        if (calls.length === 0) continue;
-        paged.push(route.path);
+          // Shallow: does this route page the lakehouse at all? A route that
+          // does not (a baked artifact, or one that rejects `offset` outright
+          // with a 400) needs no exemption entry -- it simply never qualifies.
+          calls.length = 0;
+          try {
+            await handleRequest(
+              apiRequest(`${path}?offset=0`),
+              LAKEHOUSE_ENV,
+              {},
+            );
+          } catch {
+            continue;
+          }
+          if (calls.length === 0) continue;
+          paged.push(route.path);
 
-        // Deep: past the emulated-offset ceiling.
-        calls.length = 0;
-        let deep: Response;
-        try {
-          deep = (await handleRequest(
-            apiRequest(`${path}?offset=${OFFSET_EMULATION_CAP + 10}`),
-            LAKEHOUSE_ENV,
-            {},
-          )) as Response;
-        } catch {
-          continue;
+          // Deep: past the emulated-offset ceiling.
+          calls.length = 0;
+          let deep: Response;
+          try {
+            deep = (await handleRequest(
+              apiRequest(`${path}?offset=${OFFSET_EMULATION_CAP + 10}`),
+              LAKEHOUSE_ENV,
+              {},
+            )) as Response;
+          } catch {
+            continue;
+          }
+          // Still querying: the answer is whatever the tier said, and the
+          // generation-based sweep above already owns that case.
+          if (calls.length > 0) continue;
+          // A non-200 is already an honest refusal.
+          if (deep.status !== 200) continue;
+          if (!deep.headers.get(DEGRADED_HEADER)) unlabelled.push(route.path);
         }
-        // Still querying: the answer is whatever the tier said, and the
-        // generation-based sweep above already owns that case.
-        if (calls.length > 0) continue;
-        // A non-200 is already an honest refusal.
-        if (deep.status !== 200) continue;
-        if (!deep.headers.get(DEGRADED_HEADER)) unlabelled.push(route.path);
-      }
-    });
+      },
+      calls,
+    );
 
     assert.deepEqual(
       unlabelled,
@@ -424,44 +443,48 @@ describe("no route answers an inexpressible filter in silence (#11153)", () => {
     const filtered: string[] = [];
     const unlabelled: string[] = [];
 
-    await withFetch(countingLakehouse, async () => {
-      for (const route of EVERY_ROUTE) {
-        const path = concretePath(route.path);
-        for (const name of freeStringParams(route)) {
-          calls.length = 0;
-          try {
-            await handleRequest(
-              apiRequest(`${path}?${name}=${BENIGN}`),
-              LAKEHOUSE_ENV,
-              {},
-            );
-          } catch {
-            continue;
-          }
-          // This param does not reach the lakehouse (registry artifact, or the
-          // route rejects it outright), so it cannot decline pre-query.
-          if (calls.length === 0) continue;
-          filtered.push(`${route.path}?${name}`);
+    await withFetch(
+      countingLakehouse,
+      async () => {
+        for (const route of EVERY_ROUTE) {
+          const path = concretePath(route.path);
+          for (const name of freeStringParams(route)) {
+            calls.length = 0;
+            try {
+              await handleRequest(
+                apiRequest(`${path}?${name}=${BENIGN}`),
+                LAKEHOUSE_ENV,
+                {},
+              );
+            } catch {
+              continue;
+            }
+            // This param does not reach the lakehouse (registry artifact, or the
+            // route rejects it outright), so it cannot decline pre-query.
+            if (calls.length === 0) continue;
+            filtered.push(`${route.path}?${name}`);
 
-          calls.length = 0;
-          let res: Response;
-          try {
-            res = (await handleRequest(
-              apiRequest(`${path}?${name}=${GUARD_REJECTED}`),
-              LAKEHOUSE_ENV,
-              {},
-            )) as Response;
-          } catch {
-            continue;
-          }
-          if (calls.length > 0) continue;
-          if (res.status !== 200) continue;
-          if (!res.headers.get(DEGRADED_HEADER)) {
-            unlabelled.push(`${route.path}?${name}`);
+            calls.length = 0;
+            let res: Response;
+            try {
+              res = (await handleRequest(
+                apiRequest(`${path}?${name}=${GUARD_REJECTED}`),
+                LAKEHOUSE_ENV,
+                {},
+              )) as Response;
+            } catch {
+              continue;
+            }
+            if (calls.length > 0) continue;
+            if (res.status !== 200) continue;
+            if (!res.headers.get(DEGRADED_HEADER)) {
+              unlabelled.push(`${route.path}?${name}`);
+            }
           }
         }
-      }
-    });
+      },
+      calls,
+    );
 
     assert.deepEqual(
       unlabelled,

@@ -11,8 +11,14 @@
 // The contrast cases carry the weight here, as they did in #11428: an answer
 // and a deployment with no lakehouse must stay UNMARKED, or the marker is noise.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
 
+const native = vi.hoisted(() => ({ block: vi.fn() }));
+vi.mock("../src/indexed-history-store.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/indexed-history-store.ts")>()),
+  readSelectedHistoryBlock: native.block,
+}));
+beforeEach(() => native.block.mockReset().mockResolvedValue(undefined));
 import { loadAccountStakeMovesColdTier } from "../src/account-feeds-cold-tier.ts";
 import { loadBlockFromR2Sql } from "../src/r2-sql-blocks.ts";
 import { answerAccountEntities } from "../src/account-entities-answer.ts";
@@ -126,7 +132,8 @@ describe("/blocks/{ref}", () => {
     // confirmed absence is an ANSWER" -- and which the caller used to discard
     // by rebuilding the same payload from a bare null. Both produce
     // `block: null`; only one of them is a fact.
-    const out = await withFetch(answering([]), () =>
+    native.block.mockResolvedValue([]);
+    const out = await withFetch(refusing, () =>
       loadBlockFromR2Sql(CONFIGURED, "8848204"),
     );
     assert.ok(out);
@@ -146,9 +153,11 @@ describe("/blocks/{ref}", () => {
   });
 
   test("a block that exists comes back untouched", async () => {
-    const out = await withFetch(
-      answering([{ block_number: 8_848_204, block_hash: "0xabc" }]),
-      () => loadBlockFromR2Sql(CONFIGURED, "8848204"),
+    native.block.mockResolvedValue([
+      { block_number: 8848204, block_hash: "0xabc" },
+    ]);
+    const out = await withFetch(refusing, () =>
+      loadBlockFromR2Sql(CONFIGURED, "8848204"),
     );
     assert.ok(out);
     assert.equal("degraded" in out, false);

@@ -1,5 +1,6 @@
+import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 import assert from "node:assert/strict";
-import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
+import { LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
@@ -93,21 +94,23 @@ test("GET /api/v1/governance/config-changes?format=csv exports the filtered rows
   // absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled was never asked.
   // The lakehouse cold tier answers, and it feeds the SAME buildExtrinsicFeed --
   // so the CSV below is produced from lakehouse rows exactly as in production.
-  const lake = lakehouse([
-    {
-      block_number: 300,
-      extrinsic_index: 3,
-      extrinsic_hash: `0x${"c".repeat(64)}`,
-      signer: "5AdminKey",
-      call_module: "AdminUtils",
-      call_function: "sudo_set_tempo",
-      call_args: null,
-      success: true,
-      fee_tao: 0.000123,
-      tip_tao: 0,
-      observed_at: 1750009000000,
-    },
-  ]);
+  const lake = nativeDetailReaders({
+    extrinsics: [
+      {
+        block_number: 300,
+        extrinsic_index: 3,
+        extrinsic_hash: `0x${"c".repeat(64)}`,
+        signer: "5AdminKey",
+        call_module: "AdminUtils",
+        call_function: "sudo_set_tempo",
+        call_args: null,
+        success: true,
+        fee_tao: 0.000123,
+        tip_tao: 0,
+        observed_at: 1750009000000,
+      },
+    ],
+  });
   const env = { ...LAKEHOUSE_ENV };
   const res = await handleRequest(
     req("/api/v1/governance/config-changes?format=csv"),

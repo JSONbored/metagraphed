@@ -14,7 +14,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { describe, test, vi } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The hot tier is Postgres now (#10179), reached through `new Client(...)`
@@ -26,6 +26,28 @@ const { pg } = await vi.hoisted(async () => ({
   pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
 }));
 vi.mock("pg", () => pg.module);
+
+const native = vi.hoisted(() => ({
+  blocks: vi.fn(),
+  block: vi.fn(),
+  extrinsics: vi.fn(),
+}));
+vi.mock("../src/retained-blocks-d1.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/retained-blocks-d1.ts")>()),
+  readRetainedBlockRows: native.blocks,
+}));
+vi.mock("../src/indexed-history-store.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/indexed-history-store.ts")>()),
+  readSelectedHistoryBlock: native.block,
+}));
+vi.mock("../src/indexed-extrinsic-feeds.ts", () => ({
+  loadIndexedExtrinsicFeedPage: native.extrinsics,
+}));
+beforeEach(() => {
+  native.blocks.mockReset().mockResolvedValue([]);
+  native.block.mockReset().mockResolvedValue(undefined);
+  native.extrinsics.mockReset().mockResolvedValue([]);
+});
 
 import { chainTable, LAKEHOUSE_NAMESPACES } from "../src/chain-network.ts";
 import {
@@ -180,6 +202,27 @@ describe("every chain-history reader targets its network's namespace", () => {
 
   for (const [name, run] of cases) {
     test(`${name}: testnet reads chain_testnet, default reads chain`, async () => {
+      const nativeReader =
+        name === "blocks feed"
+          ? native.blocks
+          : name === "block detail"
+            ? native.block
+            : name === "extrinsics feed"
+              ? native.extrinsics
+              : null;
+      if (nativeReader) {
+        for (const network of ["testnet", undefined] as const) {
+          nativeReader.mockClear();
+          await run(network);
+          assert.ok(nativeReader.mock.calls.length > 0);
+          assert.ok(
+            nativeReader.mock.calls.every(
+              (c) => c[name === "extrinsics feed" ? 4 : 3] === network,
+            ),
+          );
+        }
+        return;
+      }
       await withSql([], async (queries) => {
         await run("testnet");
         assert.ok(queries.length > 0, `${name} issued no query`);
@@ -275,13 +318,11 @@ describe("the hot tier is mainnet's alone", () => {
         { limit: 5, offset: 0 },
         "testnet",
       );
-      assert.ok(queries.length > 0, "no lakehouse query was issued");
-      for (const q of queries) {
-        assert.doesNotMatch(
-          q,
-          /block_number < 1\b/,
-          `testnet feed was ceilinged at block 0: ${q}`,
-        );
+      assert.equal(queries.length, 0);
+      assert.ok(native.blocks.mock.calls.length > 0);
+      for (const call of native.blocks.mock.calls) {
+        assert.equal(call[3], "testnet");
+        assert.ok(call[1].every((q: string) => !/block_number < 1\b/.test(q)));
       }
     });
   });
@@ -306,17 +347,16 @@ describe("the hot tier is mainnet's alone", () => {
       observed_at: 1_700_000_000_000,
     };
     resetDecodeWatermarkCache();
+    native.block.mockResolvedValue([row]);
     await withSql([row], async (queries) => {
       const block = (await loadBlockColdTier(
         mockEnv(TOKEN),
         "7700500",
         "testnet",
       )) as Record<string, unknown> | null;
-      assert.ok(queries.length > 0, "the lakehouse was never queried");
-      assert.ok(
-        queries.some((q) => q.includes("chain_testnet.blocks")),
-        `queried the wrong namespace: ${queries.join(" | ")}`,
-      );
+      assert.equal(queries.length, 0);
+      assert.ok(native.block.mock.calls.length > 0);
+      assert.ok(native.block.mock.calls.every((c) => c[3] === "testnet"));
       const inner = (block?.block ?? block) as Record<string, unknown> | null;
       assert.equal(
         inner?.block_hash,
