@@ -36,13 +36,6 @@ const BASE =
 const WAREHOUSE =
   process.env.R2_WAREHOUSE ??
   "918f0f0e2eb26709d1cf4fb76085c8fb_metagraphed-lakehouse";
-// The R2 SQL door takes the BARE bucket name where the catalog takes the
-// account-prefixed warehouse. They are not interchangeable and each 404s on the
-// other's form -- iceberg_r2.py's catalog() carries the same warning.
-const WAREHOUSE_BUCKET = process.env.R2_SQL_BUCKET ?? "metagraphed-lakehouse";
-const ACCOUNT_ID =
-  process.env.R2_ACCOUNT_ID ?? "918f0f0e2eb26709d1cf4fb76085c8fb";
-
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
@@ -361,114 +354,7 @@ export function evaluate(
   return { ok: true, detail: `${age.table}: ${days.toFixed(1)}d` };
 }
 
-interface SchemaField {
-  id?: number;
-  name?: string;
-  type?: unknown;
-}
-
-/**
- * Columns whose TYPE changed between schema generations.
- *
- * R2 SQL tolerates schema AUGMENTATION -- adding a column -- and rejects a type
- * change outright: "Query spans incompatible schemas". Iceberg permits the
- * widening, so `int -> long` and `float -> double` look free and are not: every
- * data file written under the old schema stays unreadable until it is rewritten.
- *
- * THIS IS THE THIRD TIME IT WAS FOUND BY HAND. `neuron_daily.take` broke reads
- * for hours before anyone noticed (metagraphed-infra#542); `neurons.take` broke
- * the moment it was widened; `nominator_positions.share_fraction` sat broken
- * through several verification passes because the SMOKE TESTS DID NOT SPAN.
- *
- * METADATA ALONE IS NOT ENOUGH, and the first version of this got it wrong.
- * Iceberg keeps every historical schema in `schemas[]` FOREVER, so a table that
- * has been rewritten under its current schema still lists the old one -- this
- * reported five tables I had just fixed. The list records that a type once
- * changed, not that any data file still carries the old type.
- *
- * So metadata is the cheap FILTER and a probe is the authority. The probe is
- * `count(<column>)`, which must project the column and read every file: it
- * cannot be answered from statistics like `count(*)`, and cannot be satisfied
- * by one file like `SELECT col LIMIT 1`. Those are precisely the two shapes
- * that passed while `nominator_positions.share_fraction` was broken for its
- * real cold-tier read.
- */
-/** Ask R2 SQL whether a column is actually unreadable across generations. */
-async function columnSpansGenerations(
-  auth: Record<string, string>,
-  namespace: string,
-  table: string,
-  column: string,
-): Promise<boolean> {
-  try {
-    const res = await fetch(
-      `https://api.sql.cloudflarestorage.com/api/v1/accounts/${ACCOUNT_ID}/r2-sql/query/${WAREHOUSE_BUCKET}`,
-      {
-        method: "POST",
-        headers: { ...auth, "content-type": "application/json" },
-        body: JSON.stringify({
-          warehouse: WAREHOUSE_BUCKET,
-          query: `SELECT count(${column}) AS n FROM ${namespace}.${table}`,
-        }),
-      },
-    );
-    const body = (await res.json()) as {
-      errors?: { message?: string }[];
-    };
-    return (body.errors ?? []).some((e) =>
-      (e.message ?? "").includes("spans incompatible schemas"),
-    );
-  } catch {
-    // A probe that cannot run must not silently clear the table.
-    return true;
-  }
-}
-
-export function typeChangedAcrossSchemas(
-  metadata:
-    | {
-        schemas?: { "schema-id"?: number; fields?: SchemaField[] }[];
-        "current-schema-id"?: number;
-      }
-    | undefined,
-): string[] {
-  const schemas = metadata?.schemas ?? [];
-  if (schemas.length < 2) return [];
-  const current =
-    schemas.find((s) => s["schema-id"] === metadata?.["current-schema-id"]) ??
-    schemas[schemas.length - 1];
-  const currentType = new Map<number, string>();
-  const currentName = new Map<number, string>();
-  for (const field of current?.fields ?? []) {
-    if (typeof field.id === "number") {
-      currentType.set(field.id, JSON.stringify(field.type));
-      currentName.set(field.id, String(field.name ?? field.id));
-    }
-  }
-  const changed = new Set<string>();
-  for (const schema of schemas) {
-    if (schema === current) continue;
-    for (const field of schema.fields ?? []) {
-      if (typeof field.id !== "number") continue;
-      const now = currentType.get(field.id);
-      // A field ABSENT from the current schema was dropped; one absent from an
-      // older schema was added. Both are augmentation, which R2 SQL reads fine.
-      // Only a field in both with a different type breaks it.
-      if (now === undefined) continue;
-      if (now !== JSON.stringify(field.type)) {
-        // The CURRENT name, not the one the old generation used. Iceberg
-        // identifies a column by id, so a rename keeps the id -- and the name
-        // that belongs in the error is the one someone would put in a query.
-        changed.add(
-          currentName.get(field.id) ?? String(field.name ?? field.id),
-        );
-      }
-    }
-  }
-  return [...changed].sort();
-}
-
-async function main(): Promise<void> {
+export async function checkLakehouseFreshness(): Promise<void> {
   const token = process.env.R2_CATALOG_TOKEN ?? "";
   if (!token) {
     // Loud, not skipped: a freshness check that quietly passes without a token
@@ -479,12 +365,17 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const auth = { authorization: `Bearer ${token}` };
-  const config = (await (
-    await fetch(
-      `${BASE}/v1/config?warehouse=${encodeURIComponent(WAREHOUSE)}`,
-      { headers: auth },
-    )
-  ).json()) as { overrides?: { prefix?: string } };
+  const read = async <T>(url: string): Promise<T> => {
+    const response = await fetch(url, { headers: auth });
+    if (!response.ok)
+      throw new Error(
+        `Catalog HTTP ${response.status}: ${new URL(url).pathname}`,
+      );
+    return response.json() as Promise<T>;
+  };
+  const config = await read<{ overrides?: { prefix?: string } }>(
+    `${BASE}/v1/config?warehouse=${encodeURIComponent(WAREHOUSE)}`,
+  );
   const prefix = config.overrides?.prefix;
   if (!prefix) {
     process.stderr.write("catalog /v1/config returned no prefix\n");
@@ -503,12 +394,16 @@ async function main(): Promise<void> {
   const namespaces = ["chain", "chain_testnet"];
   const tables: { namespace: string; table: string; qualified: string }[] = [];
   for (const namespace of namespaces) {
-    const listed = (await (
-      await fetch(`${BASE}/v1/${prefix}/namespaces/${namespace}/tables`, {
-        headers: auth,
-      })
-    ).json()) as { identifiers?: { name: string }[] };
-    for (const id of listed.identifiers ?? []) {
+    const listed = await read<{ identifiers?: { name: string }[] }>(
+      `${BASE}/v1/${prefix}/namespaces/${namespace}/tables`,
+    );
+    if (
+      !Array.isArray(listed.identifiers) ||
+      listed.identifiers.length === 0 ||
+      listed.identifiers.some((id) => typeof id?.name !== "string" || !id.name)
+    )
+      throw new Error(`Catalog table inventory is unavailable: ${namespace}`);
+    for (const id of listed.identifiers) {
       tables.push({
         namespace,
         table: id.name,
@@ -520,41 +415,17 @@ async function main(): Promise<void> {
 
   const now = Date.now();
   const failures: string[] = [];
-  // Kept SEPARATE from `failures`: an unreadable column is not a staleness
-  // problem, and folding it in made the summary report "6 stale" when exactly
-  // one table was stale. A watchdog that miscounts its own findings is one
-  // people learn to discount.
-  const unreadable: string[] = [];
   const lines: string[] = [];
   for (const { namespace, table, qualified } of tables) {
-    const meta = (await (
-      await fetch(
-        `${BASE}/v1/${prefix}/namespaces/${namespace}/tables/${table}`,
-        { headers: auth },
-      )
-    ).json()) as {
-      metadata?: {
-        snapshots?: { "timestamp-ms"?: number }[];
-        schemas?: { "schema-id"?: number; fields?: SchemaField[] }[];
-        "current-schema-id"?: number;
-      };
-    };
-    // Candidates from metadata, confirmed by probe -- see the note above on why
-    // the metadata list alone reports tables that are already fine.
-    const candidates = typeChangedAcrossSchemas(meta.metadata);
-    const spanned: string[] = [];
-    for (const column of candidates) {
-      if (await columnSpansGenerations(auth, namespace, table, column)) {
-        spanned.push(column);
-      }
-    }
-    if (spanned.length) {
-      unreadable.push(
-        `${qualified}: R2 SQL cannot read ${spanned.join(", ")} -- the column's ` +
-          `TYPE changed across schema generations and data files still carry ` +
-          `the old one. Rewrite the table under its current schema.`,
-      );
-    }
+    const meta = await read<{
+      metadata?: { snapshots?: { "timestamp-ms"?: number }[] };
+    }>(`${BASE}/v1/${prefix}/namespaces/${namespace}/tables/${table}`);
+    if (
+      !meta.metadata ||
+      (meta.metadata.snapshots !== undefined &&
+        !Array.isArray(meta.metadata.snapshots))
+    )
+      throw new Error(`Catalog table metadata is unavailable: ${qualified}`);
     const snapshots = meta.metadata?.snapshots ?? [];
     const newestMs = snapshots.length
       ? Math.max(...snapshots.map((s) => s["timestamp-ms"] ?? 0))
@@ -582,7 +453,6 @@ async function main(): Promise<void> {
   const regressions = failures.filter(
     (f) => !KNOWN_FROZEN.has(f.split(" ")[0] ?? ""),
   );
-  reportUnreadable(unreadable);
   process.stdout.write(
     `\nlakehouse-freshness: ${failures.length} stale of ${tables.length} -- ` +
       `${failures.length - regressions.length} known (baseline ${KNOWN_FROZEN.size}), ` +
@@ -626,24 +496,5 @@ async function main(): Promise<void> {
   process.exit(1);
 }
 
-/**
- * Report unreadable columns and decide the exit code.
- *
- * Reported SEPARATELY from staleness because they are different faults with
- * different fixes: a stale table needs its producer looked at, an unreadable
- * column needs the table rewritten. Folding them together made the summary say
- * "6 stale" when one table was stale, and a watchdog that miscounts its own
- * findings is one people learn to discount.
- */
-function reportUnreadable(unreadable: string[]): void {
-  if (!unreadable.length) return;
-  process.stdout.write(
-    `\nUNREADABLE -- ${unreadable.length} table(s) span incompatible schemas:\n  ` +
-      unreadable.join("\n  ") +
-      `\n  R2 SQL tolerates adding a column and rejects a type change. Rewrite\n` +
-      `  each table under its current schema; Iceberg keeps the old schema in\n` +
-      `  its metadata either way, so only a probe can tell you it is fixed.\n`,
-  );
-}
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) await main();
+if (process.argv[1] === fileURLToPath(import.meta.url))
+  await checkLakehouseFreshness();

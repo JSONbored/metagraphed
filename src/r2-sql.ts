@@ -335,8 +335,7 @@ export interface R2SqlDeps {
    * A HOOK rather than a telemetry call, deliberately. A usage event per read
    * would multiply billable volume on a product this repo has already been
    * over-billed by (#10603), and most reads are cheap and uninteresting. The
-   * caller decides what is worth recording; `scripts/check-lakehouse-scan-cost.ts`
-   * is the first one that does.
+   * caller decides which measurements to retain.
    *
    * Optional and side-effect-only, so no existing caller changes behaviour, and
    * a throw here is swallowed for the same reason `onError`'s is: reporting must
