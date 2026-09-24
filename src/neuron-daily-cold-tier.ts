@@ -1,17 +1,11 @@
 import { createD1Sql, selectedD1Store } from "./d1-store.ts";
 import { readSubnetDailyHistory } from "./neuron-snapshot-read.ts";
 import type { ProducerStore } from "./producer-store.ts";
-// Daily history selects its retained D1 owner before the archived SQL path.
+// Retained D1 documents and membership indexes own all daily history.
 // Strict date seams keep each day in exactly one side of the composed series.
 // Subnet totals expand each bounded metric document once; UID, account and
 // validator timelines seek the native membership indexes before metric reads.
-import {
-  r2SqlQuery,
-  safeBlockNumber,
-  safeIsoDate,
-  safeSs58Literal,
-  type R2SqlDeps,
-} from "./r2-sql.ts";
+import { safeBlockNumber, safeIsoDate, safeSs58Literal } from "./r2-sql.ts";
 import {
   ACCOUNT_POSITION_DAILY_COLUMNS,
   NEURON_DAILY_COLUMNS,
@@ -57,9 +51,6 @@ function nativeDates(
     ],
   };
 }
-
-/** The lakehouse namespace holding the decoded/copied chain tables. */
-const NAMESPACE = "chain";
 
 /**
  * The columns the neuron-history payload reads, in the order the hot tier's
@@ -122,12 +113,11 @@ export interface ColdSubnetHistoryRow {
 /**
  * Whether a cold read is worth making at all.
  *
- * `start` is the window's oldest wanted day and `seam` is Neon's floor. When
+ * `start` is the window's oldest wanted day and `seam` is the current series floor. When
  * the window does not reach below the floor there is nothing cold to fetch,
- * and asking anyway would spend an R2 SQL round trip -- and a share of the
- * ACCOUNT-wide rate limit -- to be told so.
+ * and asking anyway would perform an unnecessary database read.
  *
- * A null `seam` means Neon holds nothing, which happens on an empty table
+ * A null `seam` means the current series holds nothing, which happens on an empty table
  * rather than on a pruned one; the cold side is then the only side, so the
  * read IS worth making and the range is open-ended above.
  */
@@ -155,18 +145,6 @@ export function coldDateRange(
   return { lo, hi };
 }
 
-function datePredicate(range: {
-  lo: string | null;
-  hi: string | null;
-}): string {
-  const parts: string[] = [];
-  // STRICTLY below the seam. `<=` would re-serve the seam day the hot tier
-  // already owns, which is the double-count this seam exists to prevent.
-  if (range.hi != null) parts.push(`snapshot_date < '${range.hi}'`);
-  if (range.lo != null) parts.push(`snapshot_date >= '${range.lo}'`);
-  return parts.length === 0 ? "" : ` AND ${parts.join(" AND ")}`;
-}
-
 /**
  * One subnet's per-day rollup, below the seam.
  *
@@ -182,7 +160,6 @@ export async function loadSubnetHistoryColdTier(
   start: string | null,
   seam: string | null,
   limit: number,
-  deps: R2SqlDeps = {},
 ): Promise<ColdSubnetHistoryRow[] | null> {
   const id = safeBlockNumber(netuid);
   if (id == null) return null;
@@ -208,42 +185,7 @@ export async function loadSubnetHistoryColdTier(
           total_stake_tao: numeric(row.total_stake_tao),
           total_emission_tao: numeric(row.total_emission_tao),
         }));
-  const rows = await r2SqlQuery<{
-    snapshot_date: string | null;
-    neuron_count: number | string | null;
-    validator_count: number | string | null;
-    total_stake_tao: number | string | null;
-    total_emission_tao: number | string | null;
-  }>(
-    env,
-    `SELECT snapshot_date,
-        COUNT(*) AS neuron_count,
-        SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
-        SUM(stake_tao) AS total_stake_tao,
-        SUM(emission_tao) AS total_emission_tao
-      FROM ${NAMESPACE}.neuron_daily
-      WHERE netuid = ${id}${datePredicate(range)}
-      GROUP BY snapshot_date
-      ORDER BY snapshot_date DESC
-      LIMIT ${Math.max(1, Math.trunc(limit))}`,
-    deps,
-  );
-  if (rows == null) return null;
-  return rows.flatMap((r) => {
-    // A grouped row with no day cannot be placed in the series, and guessing
-    // one would put a neighbour's counts on the wrong date.
-    const day = typeof r.snapshot_date === "string" ? r.snapshot_date : null;
-    if (day == null) return [];
-    return [
-      {
-        snapshot_date: day,
-        neuron_count: numeric(r.neuron_count),
-        validator_count: numeric(r.validator_count),
-        total_stake_tao: numeric(r.total_stake_tao),
-        total_emission_tao: numeric(r.total_emission_tao),
-      },
-    ];
-  });
+  return null;
 }
 
 /**
@@ -261,7 +203,6 @@ export async function loadNeuronHistoryColdTier(
   start: string | null,
   seam: string | null,
   limit: number,
-  deps: R2SqlDeps = {},
 ): Promise<ColdNeuronHistoryRow[] | null> {
   const id = safeBlockNumber(netuid);
   const slot = safeBlockNumber(uid);
@@ -275,17 +216,7 @@ export async function loadNeuronHistoryColdTier(
       [id, slot, ...dates.values, Math.max(1, Math.trunc(limit))],
     ),
   );
-  if (native !== undefined) return native;
-  const rows = await r2SqlQuery<ColdNeuronHistoryRow>(
-    env,
-    `SELECT ${NEURON_HISTORY_FIELDS.join(", ")}
-      FROM ${NAMESPACE}.neuron_daily
-      WHERE netuid = ${id} AND uid = ${slot}${datePredicate(range)}
-      ORDER BY snapshot_date DESC
-      LIMIT ${Math.max(1, Math.trunc(limit))}`,
-    deps,
-  );
-  return rows ?? null;
+  return native ?? null;
 }
 
 /** A `snapshot_date`-shaped cell off a builder's generic `Row`. The builders
@@ -297,7 +228,7 @@ function asDay(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
-/** COUNT/SUM come back as numbers from R2 SQL and as numeric strings from some
+/** COUNT/SUM can arrive as numbers or as numeric strings from some
  * engines; the payload contract is a number or null, so neither may leak. */
 function numeric(value: unknown): number | null {
   if (value == null) return null;
@@ -310,13 +241,13 @@ function numeric(value: unknown): number | null {
  * The cold range a hot payload leaves unanswered, or null when there is none.
  *
  * THE SEAM COMES FROM THE PAYLOAD, which is the whole trick here. `oldest_day`
- * is what the hot tier actually returned, so it IS Neon's floor for this
+ * is what the hot tier actually returned, so it IS the current series floor for this
  * subnet whenever the hot side ran out of data -- no second query, and nothing
  * to keep in sync. #10791 added that field for a different reason (saying what
  * a response covered); it turns out to be exactly the seam.
  *
  * The distinction that matters: `oldest_day` is the oldest day RETURNED, which
- * is Neon's floor only when the window was not the thing that stopped it. A 7d
+ * is the current series floor only when the window was not the thing that stopped it. A 7d
  * window over a 33-day store stops at 7 days because it was asked to, and
  * reaching below that would answer a question nobody asked. So the cold leg
  * opens only when the hot series ends ABOVE the window's own start.
@@ -385,13 +316,7 @@ export function mergeHistoryDays<T extends { snapshot_date?: unknown }>(
 }
 
 /**
- * Extend a subnet-history payload with days below Neon's floor.
- *
- * AN OVERLAY AT TIER CONVERGENCE, not an argument to the builder --
- * `R2_SQL_TOKEN` is a secret on the MAIN Worker and not on
- * `metagraphed-data-api`, so the lakehouse is unreachable from the tier that
- * produced this payload. That is a deployment fact, not a preference, and it
- * is why this runs after the hot tier has already built its answer.
+ * Extend a subnet-history payload with days below the current series floor.
  *
  * The payload is REBUILT from the merged rows rather than patched, so
  * `point_count`, `oldest_day`, `newest_day` and `days_covered` all describe
@@ -406,7 +331,6 @@ export async function overlaySubnetHistoryColdTier(
   data: ReturnType<typeof buildSubnetHistory>,
   netuid: number,
   window: { label: string; days: number | null },
-  deps: R2SqlDeps = {},
 ): Promise<ReturnType<typeof buildSubnetHistory>> {
   const range = coldWindow(
     { oldest_day: asDay(data.oldest_day), newest_day: asDay(data.newest_day) },
@@ -420,7 +344,6 @@ export async function overlaySubnetHistoryColdTier(
     range.start,
     range.seam,
     MAX_HISTORY_POINTS,
-    deps,
   );
   if (cold == null || cold.length === 0) return data;
   const merged = mergeHistoryDays(
@@ -443,7 +366,6 @@ export async function overlayNeuronHistoryColdTier(
   netuid: number,
   uid: number,
   window: { label: string; days: number | null },
-  deps: R2SqlDeps = {},
 ): Promise<ReturnType<typeof buildNeuronHistory>> {
   const range = coldWindow(
     { oldest_day: asDay(data.oldest_day), newest_day: asDay(data.newest_day) },
@@ -458,7 +380,6 @@ export async function overlayNeuronHistoryColdTier(
     range.start,
     range.seam,
     MAX_HISTORY_POINTS,
-    deps,
   );
   if (cold == null || cold.length === 0) return data;
   const merged = mergeHistoryDays(
@@ -512,7 +433,6 @@ export async function loadAccountPositionHistoryColdTier(
   start: string | null,
   seam: string | null,
   limit: number,
-  deps: R2SqlDeps = {},
 ): Promise<ColdAccountPositionRow[] | null> {
   const account = safeSs58Literal(ss58);
   const id = safeBlockNumber(netuid);
@@ -529,17 +449,7 @@ export async function loadAccountPositionHistoryColdTier(
         [account, id, ...dates.values, Math.max(1, Math.trunc(limit))],
       ),
   );
-  if (native !== undefined) return native;
-  const rows = await r2SqlQuery<ColdAccountPositionRow>(
-    env,
-    `SELECT ${ACCOUNT_POSITION_FIELDS.join(", ")}
-      FROM ${NAMESPACE}.account_position_daily
-      WHERE account = '${account}' AND netuid = ${id}${datePredicate(range)}
-      ORDER BY snapshot_date DESC
-      LIMIT ${Math.max(1, Math.trunc(limit))}`,
-    deps,
-  );
-  return rows ?? null;
+  return native ?? null;
 }
 
 /** The account-position twin of the history overlays; same seam, same rules. */
@@ -549,7 +459,6 @@ export async function overlayAccountPositionHistoryColdTier(
   ss58: string,
   netuid: number,
   window: { label: string; days: number | null },
-  deps: R2SqlDeps = {},
 ): Promise<ReturnType<typeof buildAccountPositionHistory>> {
   // This builder publishes no coverage fields, so the seam is read off the
   // POINTS. That is the more general form -- `oldest_day` is only ever a
@@ -564,7 +473,6 @@ export async function overlayAccountPositionHistoryColdTier(
     range.start,
     range.seam,
     MAX_HISTORY_POINTS,
-    deps,
   );
   if (cold == null || cold.length === 0) return data;
   const merged = mergeHistoryDays(
@@ -650,7 +558,6 @@ export async function loadValidatorHistoryColdTier(
   start: string | null,
   seam: string | null,
   limit: number,
-  deps: R2SqlDeps = {},
 ): Promise<ColdValidatorHistoryRow[] | null> {
   const key = safeSs58Literal(hotkey);
   if (key == null) return null;
@@ -658,12 +565,6 @@ export async function loadValidatorHistoryColdTier(
   if (netuid != null && scoped == null) return null;
   const range = coldDateRange(start, seam);
   if (range == null) return null;
-  // `nd.` prefixed, because datePredicate names the bare column and this is
-  // the one query here with two tables carrying a snapshot_date.
-  const dates = datePredicate(range).replaceAll(
-    "snapshot_date",
-    "nd.snapshot_date",
-  );
   const nativeRange = nativeDates(range, "nd.snapshot_date");
   const native = await readOwnedDaily(
     env,
@@ -686,27 +587,7 @@ export async function loadValidatorHistoryColdTier(
         ],
       ),
   );
-  if (native !== undefined) return native;
-  const rows = await r2SqlQuery<ColdValidatorHistoryRow>(
-    env,
-    `SELECT nd.snapshot_date AS snapshot_date, 1 AS subnet_count,
-        nd.netuid AS netuid, nd.uid AS uid,
-        nd.stake_tao AS stake_alpha, nd.emission_tao AS emission_alpha,
-        nd.validator_trust AS validator_trust, nd.consensus AS consensus,
-        nd.dividends AS dividends, nd.take AS take,
-        nd.validator_permit AS validator_permit,
-        s.total_stake_tao AS subnet_total_stake,
-        nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END AS total_stake_tao,
-        nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END AS total_emission_tao
-      FROM ${NAMESPACE}.neuron_daily nd
-      LEFT JOIN ${NAMESPACE}.subnet_snapshots s
-        ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
-      WHERE nd.hotkey = '${key}'${scoped == null ? "" : ` AND nd.netuid = ${scoped}`}${dates}
-      ORDER BY nd.snapshot_date DESC
-      LIMIT ${Math.max(1, Math.trunc(limit))}`,
-    deps,
-  );
-  return rows ?? null;
+  return native ?? null;
 }
 
 /** The validator twin of the history overlays. */
@@ -716,7 +597,6 @@ export async function overlayValidatorHistoryColdTier(
   hotkey: string,
   netuid: number | null,
   window: { label: string; days: number | null },
-  deps: R2SqlDeps = {},
 ): Promise<ReturnType<typeof buildValidatorHistory>> {
   const range = coldWindow(coverageOf(data.points), window.days, shiftIsoDate);
   if (range == null) return data;
@@ -727,7 +607,6 @@ export async function overlayValidatorHistoryColdTier(
     range.start,
     range.seam,
     MAX_HISTORY_POINTS,
-    deps,
   );
   if (cold == null || cold.length === 0) return data;
   const merged = mergeHistoryDays(

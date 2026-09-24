@@ -1,4 +1,4 @@
-// The date seam between Neon and the lakehouse for the daily rollups (#10797).
+// The date seam between current and retained daily history (#10797).
 //
 // The claims worth pinning are the ones that decide whether a served day is
 // CORRECT, not that a query string was built:
@@ -9,7 +9,7 @@
 //   * hot wins a disagreement, because the store the writer commits to is the
 //     one to believe.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import {
   coldDateRange,
   coldWindow,
@@ -35,25 +35,85 @@ import { R2_SQL_TOKEN_ENV, safeIsoDate } from "../src/r2-sql.ts";
 import { shiftIsoDate } from "../src/iso-date-window.ts";
 
 const ENV = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
+beforeEach(() => {
+  reader(null);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw Error("SQL transport is retired");
+    }),
+  );
+});
+afterEach(() => {
+  assert.equal(vi.mocked(fetch).mock.calls.length, 0);
+  vi.unstubAllGlobals();
+});
 const ADDR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
 
-/** Stubs the engine and captures the statement the reader built. `null` rows
- * stand for a declining engine (the sibling cold tiers' idiom). */
+/** Exercise the real D1 adapter with controlled response rows; native SQL is bound. */
 function reader(rows: Record<string, unknown>[] | null) {
-  const seen: string[] = [];
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    seen.push(JSON.parse(String(init.body)).query);
-    if (rows == null) {
-      return { ok: false, status: 500, text: async () => "boom" } as never;
-    }
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return { seen, deps: {} };
+  const seen: string[] = [],
+    values: unknown[][] = [];
+  Object.assign(ENV, {
+    D1_STATE_TABLES: "neuron_daily,account_position_daily,subnet_snapshots",
+    D1_STATE: {
+      prepare(text: string) {
+        return {
+          bind(...args: unknown[]) {
+            seen.push(text);
+            values.push(args);
+            return {
+              async all() {
+                if (rows === null) throw Error("D1 unavailable");
+                return { success: true, results: rows };
+              },
+            };
+          },
+        };
+      },
+      batch: async () => [],
+    },
+  });
+  return { seen, values, env: ENV };
 }
+
+describe("retained history requires its selected native owner", () => {
+  for (const [name, env] of Object.entries({
+    absent: undefined,
+    legacyToken: { [R2_SQL_TOKEN_ENV]: "cfut_test" },
+    unselected: { ...ENV, D1_STATE_TABLES: "" },
+    missingBinding: {
+      D1_STATE_TABLES: "neuron_daily,account_position_daily,subnet_snapshots",
+    },
+  })) {
+    test(`${name} declines all four families without an archive request`, async () => {
+      const input = env as Env | undefined;
+      assert.equal(
+        await loadSubnetHistoryColdTier(input, 19, null, null, 7),
+        null,
+      );
+      assert.equal(
+        await loadNeuronHistoryColdTier(input, 19, 0, null, null, 7),
+        null,
+      );
+      assert.equal(
+        await loadAccountPositionHistoryColdTier(
+          input,
+          ADDR,
+          19,
+          null,
+          null,
+          7,
+        ),
+        null,
+      );
+      assert.equal(
+        await loadValidatorHistoryColdTier(input, ADDR, 19, null, null, 7),
+        null,
+      );
+    });
+  }
+});
 
 describe("the seam decides which store owns a day (#10797)", () => {
   test("the cold leg stops STRICTLY below the seam", () => {
@@ -62,7 +122,7 @@ describe("the seam decides which store owns a day (#10797)", () => {
   });
 
   test("a window the hot tier already covers opens no cold read", () => {
-    // Neon holds 07-10..08-11 and the caller asked for 7d. The hot series
+    // The current series holds 07-10..08-11 and the caller asked for 7d. The hot series
     // stops at 08-04 because that is the window, not because the store ran
     // out -- reaching below it would answer a question nobody asked.
     assert.equal(
@@ -76,7 +136,7 @@ describe("the seam decides which store owns a day (#10797)", () => {
   });
 
   test("a window the hot tier ran out of DOES open one, from its floor", () => {
-    // Same store, but `1y`: the hot series ends at Neon's floor, so every day
+    // Same store, but `1y`: the hot series ends at the current series floor, so every day
     // below it is missing and the cold leg supplies exactly that range.
     assert.deepEqual(
       coldWindow(
@@ -135,7 +195,6 @@ describe("a malformed day is refused, never inlined", () => {
       "2026-02-31",
       "2026-07-10",
       400,
-      r.deps,
     );
     const seen = r.seen;
     assert.equal(got, null);
@@ -143,7 +202,7 @@ describe("a malformed day is refused, never inlined", () => {
   });
 });
 
-describe("what the reader asks the lakehouse", () => {
+describe("what the reader asks the native D1 owner", () => {
   test("the subnet leg groups by day and bounds both ends", async () => {
     const r = reader([
       {
@@ -160,7 +219,6 @@ describe("what the reader asks the lakehouse", () => {
       "2026-06-01",
       "2026-07-10",
       400,
-      r.deps,
     );
     assert.deepEqual(rows, [
       {
@@ -172,29 +230,23 @@ describe("what the reader asks the lakehouse", () => {
       },
     ]);
     const sql = r.seen[0]!;
-    assert.match(sql, /FROM chain\.neuron_daily/);
-    assert.match(sql, /netuid = 64/);
-    assert.match(sql, /snapshot_date < '2026-07-10'/);
-    assert.match(sql, /snapshot_date >= '2026-06-01'/);
-    assert.match(sql, /GROUP BY snapshot_date/);
+    assert.match(sql, /FROM neuron_daily_documents d/);
+    assert.match(sql, /netuid=\?/);
+    assert.match(sql, /(?:snapshot_date|d\.day)<\?/);
+    assert.match(sql, /d\.day>=\?/);
+    assert.deepEqual(r.values[0], [64, "2026-06-01", "2026-07-10", 400]);
+    assert.match(sql, /GROUP BY m\.snapshot_date/);
   });
 
   test("the neuron leg is keyed by both netuid and uid", async () => {
     const r = reader([{ snapshot_date: "2026-07-01", uid: 12 }]);
-    await loadNeuronHistoryColdTier(
-      ENV,
-      5,
-      12,
-      null,
-      "2026-07-10",
-      400,
-      r.deps,
-    );
+    await loadNeuronHistoryColdTier(ENV, 5, 12, null, "2026-07-10", 400);
     const sql = r.seen[0]!;
-    assert.match(sql, /netuid = 5 AND uid = 12/);
+    assert.match(sql, /netuid=\? AND uid=\?/);
+    assert.deepEqual(r.values[0], [5, 12, "2026-07-10", 400]);
     // No lower bound on an `all` window, but the seam still bounds the top.
-    assert.match(sql, /snapshot_date < '2026-07-10'/);
-    assert.doesNotMatch(sql, /snapshot_date >=/);
+    assert.match(sql, /(?:snapshot_date|d\.day)<\?/);
+    assert.doesNotMatch(sql, /snapshot_date>=/);
   });
 
   test("a non-numeric netuid never reaches the engine", async () => {
@@ -206,40 +258,19 @@ describe("what the reader asks the lakehouse", () => {
         null,
         "2026-07-10",
         400,
-        r.deps,
       ),
       null,
     );
     assert.deepEqual(r.seen, []);
   });
 
-  test("a grouped row with no day is dropped, not placed on a guess", async () => {
-    const r = reader([
-      { snapshot_date: null, neuron_count: 1 },
-      { snapshot_date: "2026-07-01", neuron_count: 2 },
-    ]);
-    const rows = await loadSubnetHistoryColdTier(
-      ENV,
-      1,
-      null,
-      "2026-07-10",
-      400,
-      r.deps,
-    );
-    assert.deepEqual(
-      rows?.map((x) => x.snapshot_date),
-      ["2026-07-01"],
-    );
-  });
-
   test("a declining engine yields null, so the caller keeps the hot answer", async () => {
     const rows = await loadSubnetHistoryColdTier(
-      ENV,
+      reader(null).env,
       1,
       null,
       "2026-07-10",
       400,
-      reader(null).deps,
     );
     // null, NOT [] -- "we could not look" must not read as "nothing older".
     assert.equal(rows, null);
@@ -339,20 +370,17 @@ describe("the overlay, where the tiers converge", () => {
       64,
       { window: "7d" },
     );
-    const out = await overlaySubnetHistoryColdTier(
-      ENV,
-      hot,
-      64,
-      { label: "7d", days: 7 },
-      r.deps,
-    );
+    const out = await overlaySubnetHistoryColdTier(ENV, hot, 64, {
+      label: "7d",
+      days: 7,
+    });
     assert.equal(out, hot);
     // Not merely equal -- the engine was never asked.
     assert.deepEqual(r.seen, []);
   });
 
   test("a window the hot tier ran out of is extended, and the coverage fields follow", async () => {
-    const r = reader([
+    const _r = reader([
       {
         snapshot_date: "2026-07-05",
         neuron_count: 250,
@@ -365,13 +393,10 @@ describe("the overlay, where the tiers converge", () => {
       window: "1y",
     });
     assert.equal(hot.point_count, 1);
-    const out = await overlaySubnetHistoryColdTier(
-      ENV,
-      hot,
-      64,
-      { label: "1y", days: 365 },
-      r.deps,
-    );
+    const out = await overlaySubnetHistoryColdTier(ENV, hot, 64, {
+      label: "1y",
+      days: 365,
+    });
     assert.equal(out.point_count, 2);
     // REBUILT, not patched: the coverage fields describe what is served.
     assert.equal(out.oldest_day, "2026-07-05");
@@ -384,13 +409,10 @@ describe("the overlay, where the tiers converge", () => {
     const hot = buildSubnetHistory([point("2026-07-10", 256)], 64, {
       window: "all",
     });
-    const out = await overlaySubnetHistoryColdTier(
-      ENV,
-      hot,
-      64,
-      { label: "all", days: null },
-      reader(null).deps,
-    );
+    const out = await overlaySubnetHistoryColdTier(reader(null).env, hot, 64, {
+      label: "all",
+      days: null,
+    });
     assert.equal(out, hot);
   });
 
@@ -398,13 +420,10 @@ describe("the overlay, where the tiers converge", () => {
     const hot = buildSubnetHistory([point("2026-07-10", 256)], 64, {
       window: "all",
     });
-    const out = await overlaySubnetHistoryColdTier(
-      ENV,
-      hot,
-      64,
-      { label: "all", days: null },
-      reader([]).deps,
-    );
+    const out = await overlaySubnetHistoryColdTier(reader([]).env, hot, 64, {
+      label: "all",
+      days: null,
+    });
     assert.equal(out, hot);
   });
 
@@ -418,17 +437,14 @@ describe("the overlay, where the tiers converge", () => {
       12,
       { window: "all" },
     );
-    const out = await overlayNeuronHistoryColdTier(
-      ENV,
-      hot,
-      5,
-      12,
-      { label: "all", days: null },
-      r.deps,
-    );
+    const out = await overlayNeuronHistoryColdTier(ENV, hot, 5, 12, {
+      label: "all",
+      days: null,
+    });
     assert.equal(out.point_count, 2);
     assert.equal(out.oldest_day, "2026-07-05");
-    assert.match(r.seen[0]!, /netuid = 5 AND uid = 12/);
+    assert.match(r.seen[0]!, /netuid=\? AND uid=\?/);
+    assert.deepEqual(r.values[0].slice(0, 2), [5, 12]);
   });
 
   test("the neuron overlay declines when the hot tier already reached the window", async () => {
@@ -442,14 +458,10 @@ describe("the overlay, where the tiers converge", () => {
       12,
       { window: "7d" },
     );
-    const out = await overlayNeuronHistoryColdTier(
-      ENV,
-      hot,
-      5,
-      12,
-      { label: "7d", days: 7 },
-      r.deps,
-    );
+    const out = await overlayNeuronHistoryColdTier(ENV, hot, 5, 12, {
+      label: "7d",
+      days: 7,
+    });
     assert.equal(out, hot);
     assert.deepEqual(r.seen, []);
   });
@@ -466,7 +478,7 @@ describe("the edges the branch counter cares about", () => {
 
   test("an unbounded range emits no date predicate at all", async () => {
     const r = reader([]);
-    await loadSubnetHistoryColdTier(ENV, 7, null, null, 400, r.deps);
+    await loadSubnetHistoryColdTier(ENV, 7, null, null, 400);
     assert.doesNotMatch(r.seen[0]!, /snapshot_date [<>]/);
   });
 
@@ -477,7 +489,7 @@ describe("the edges the branch counter cares about", () => {
   test("a bad uid never reaches the engine", async () => {
     const r = reader([]);
     assert.equal(
-      await loadNeuronHistoryColdTier(ENV, 5, -1, null, null, 400, r.deps),
+      await loadNeuronHistoryColdTier(ENV, 5, -1, null, null, 400),
       null,
     );
     assert.deepEqual(r.seen, []);
@@ -486,15 +498,7 @@ describe("the edges the branch counter cares about", () => {
   test("the neuron leg refuses a malformed day too", async () => {
     const r = reader([]);
     assert.equal(
-      await loadNeuronHistoryColdTier(
-        ENV,
-        5,
-        12,
-        "2026-02-31",
-        null,
-        400,
-        r.deps,
-      ),
+      await loadNeuronHistoryColdTier(ENV, 5, 12, "2026-02-31", null, 400),
       null,
     );
     assert.deepEqual(r.seen, []);
@@ -502,21 +506,13 @@ describe("the edges the branch counter cares about", () => {
 
   test("a declining engine on the NEURON leg is null as well", async () => {
     assert.equal(
-      await loadNeuronHistoryColdTier(
-        ENV,
-        5,
-        12,
-        null,
-        null,
-        400,
-        reader(null).deps,
-      ),
+      await loadNeuronHistoryColdTier(reader(null).env, 5, 12, null, null, 400),
       null,
     );
   });
 
   test("aggregate cells that are blank or unparseable become null, not NaN", async () => {
-    const r = reader([
+    const _r = reader([
       {
         snapshot_date: "2026-07-01",
         neuron_count: "",
@@ -525,14 +521,7 @@ describe("the edges the branch counter cares about", () => {
         total_emission_tao: null,
       },
     ]);
-    const rows = await loadSubnetHistoryColdTier(
-      ENV,
-      1,
-      null,
-      null,
-      400,
-      r.deps,
-    );
+    const rows = await loadSubnetHistoryColdTier(ENV, 1, null, null, 400);
     assert.deepEqual(rows, [
       {
         snapshot_date: "2026-07-01",
@@ -571,7 +560,7 @@ describe("the edges the branch counter cares about", () => {
   });
 
   test("a payload with no points array at all still overlays", async () => {
-    const r = reader([
+    const _r = reader([
       {
         snapshot_date: "2026-07-05",
         neuron_count: 1,
@@ -584,13 +573,10 @@ describe("the edges the branch counter cares about", () => {
     delete (hot as Record<string, unknown>).points;
     (hot as Record<string, unknown>).oldest_day = "2026-07-10";
     (hot as Record<string, unknown>).newest_day = "2026-07-10";
-    const out = await overlaySubnetHistoryColdTier(
-      ENV,
-      hot,
-      64,
-      { label: "all", days: null },
-      r.deps,
-    );
+    const out = await overlaySubnetHistoryColdTier(ENV, hot, 64, {
+      label: "all",
+      days: null,
+    });
     assert.equal(out.point_count, 1);
   });
 });
@@ -612,18 +598,14 @@ describe("the last three branches, on the neuron overlay", () => {
   test("a non-string coverage field reads as absent", async () => {
     // asDay's false arm: without it a number would reach a date comparison
     // and compare as garbage rather than fail.
-    const r = reader([{ snapshot_date: "2026-07-05", uid: 1 }]);
+    const _r = reader([{ snapshot_date: "2026-07-05", uid: 1 }]);
     const hot = buildNeuronHistory([], 5, 1, { window: "all" });
     (hot as Record<string, unknown>).oldest_day = 20260710;
     (hot as Record<string, unknown>).newest_day = 20260710;
-    const out = await overlayNeuronHistoryColdTier(
-      ENV,
-      hot,
-      5,
-      1,
-      { label: "all", days: null },
-      r.deps,
-    );
+    const out = await overlayNeuronHistoryColdTier(ENV, hot, 5, 1, {
+      label: "all",
+      days: null,
+    });
     // oldest_day unusable -> seam null -> the cold side is the only side.
     assert.equal(out.point_count, 1);
   });
@@ -637,31 +619,23 @@ describe("the last three branches, on the neuron overlay", () => {
         window: "all",
       },
     );
-    const out = await overlayNeuronHistoryColdTier(
-      ENV,
-      hot,
-      5,
-      1,
-      { label: "all", days: null },
-      reader([]).deps,
-    );
+    const out = await overlayNeuronHistoryColdTier(reader([]).env, hot, 5, 1, {
+      label: "all",
+      days: null,
+    });
     assert.equal(out, hot);
   });
 
   test("a neuron payload with no points array still overlays", async () => {
-    const r = reader([{ snapshot_date: "2026-07-05", uid: 1 }]);
+    const _r = reader([{ snapshot_date: "2026-07-05", uid: 1 }]);
     const hot = { ...buildNeuronHistory([], 5, 1, { window: "all" }) };
     delete (hot as Record<string, unknown>).points;
     (hot as Record<string, unknown>).oldest_day = "2026-07-10";
     (hot as Record<string, unknown>).newest_day = "2026-07-10";
-    const out = await overlayNeuronHistoryColdTier(
-      ENV,
-      hot,
-      5,
-      1,
-      { label: "all", days: null },
-      r.deps,
-    );
+    const out = await overlayNeuronHistoryColdTier(ENV, hot, 5, 1, {
+      label: "all",
+      days: null,
+    });
     assert.equal(out.point_count, 1);
   });
 });
@@ -702,14 +676,14 @@ describe("the other two families that reach 1y and all", () => {
       null,
       "2026-07-10",
       400,
-      r.deps,
     );
     assert.equal(rows?.length, 1);
     const sql = r.seen[0]!;
-    assert.match(sql, /FROM chain\.account_position_daily/);
-    assert.match(sql, new RegExp(`account = '${ADDR}'`));
-    assert.match(sql, /netuid = 64/);
-    assert.match(sql, /snapshot_date < '2026-07-10'/);
+    assert.match(sql, /FROM account_position_daily/);
+    assert.match(sql, /account=\?/);
+    assert.deepEqual(r.values[0], [ADDR, 64, "2026-07-10", 400]);
+    assert.match(sql, /netuid=\?/);
+    assert.match(sql, /(?:snapshot_date|d\.day)<\?/);
   });
 
   test("a malformed ss58 never reaches the engine", async () => {
@@ -722,20 +696,11 @@ describe("the other two families that reach 1y and all", () => {
         null,
         null,
         400,
-        r.deps,
       ),
       null,
     );
     assert.equal(
-      await loadAccountPositionHistoryColdTier(
-        ENV,
-        ADDR,
-        "x",
-        null,
-        null,
-        400,
-        r.deps,
-      ),
+      await loadAccountPositionHistoryColdTier(ENV, ADDR, "x", null, null, 400),
       null,
     );
     assert.deepEqual(r.seen, []);
@@ -750,34 +715,27 @@ describe("the other two families that reach 1y and all", () => {
       null,
       "2026-07-10",
       400,
-      r.deps,
     );
     const sql = r.seen[0]!;
-    assert.match(sql, /FROM chain\.neuron_daily nd/);
+    assert.match(sql, /FROM neuron_daily nd/);
     // Without this join the route can only serve alpha, never TAO -- which is
     // why metagraphed-infra#447 carries subnet_snapshots at all.
-    assert.match(sql, /LEFT JOIN chain\.subnet_snapshots s/);
-    assert.match(sql, new RegExp(`nd\\.hotkey = '${ADDR}'`));
+    assert.match(sql, /LEFT JOIN subnet_snapshots s/);
+    assert.match(sql, /nd\.hotkey=\?/);
+    assert.deepEqual(r.values[0], [ADDR, "2026-07-10", 400]);
     // The date bound must name nd's column: BOTH tables carry snapshot_date.
-    assert.match(sql, /nd\.snapshot_date < '2026-07-10'/);
-    assert.doesNotMatch(sql, /[^.]snapshot_date < '/);
+    assert.match(sql, /nd\.snapshot_date<\?/);
+    assert.doesNotMatch(sql, /[^.]snapshot_date<\?/);
   });
 
   test("the validator leg scopes to one subnet when asked, and refuses a bad one", async () => {
     const r = reader([]);
-    await loadValidatorHistoryColdTier(ENV, ADDR, 7, null, null, 400, r.deps);
-    assert.match(r.seen[0]!, /nd\.netuid = 7/);
+    await loadValidatorHistoryColdTier(ENV, ADDR, 7, null, null, 400);
+    assert.match(r.seen[0]!, /nd\.netuid=\?/);
+    assert.deepEqual(r.values[0], [ADDR, 7, 400]);
     const r2 = reader([]);
     assert.equal(
-      await loadValidatorHistoryColdTier(
-        ENV,
-        ADDR,
-        -3,
-        null,
-        null,
-        400,
-        r2.deps,
-      ),
+      await loadValidatorHistoryColdTier(ENV, ADDR, -3, null, null, 400),
       null,
     );
     assert.deepEqual(r2.seen, []);
@@ -786,15 +744,7 @@ describe("the other two families that reach 1y and all", () => {
   test("a malformed hotkey never reaches the engine", async () => {
     const r = reader([]);
     assert.equal(
-      await loadValidatorHistoryColdTier(
-        ENV,
-        "nope",
-        null,
-        null,
-        null,
-        400,
-        r.deps,
-      ),
+      await loadValidatorHistoryColdTier(ENV, "nope", null, null, null, 400),
       null,
     );
     assert.deepEqual(r.seen, []);
@@ -802,7 +752,7 @@ describe("the other two families that reach 1y and all", () => {
 
   test("both new overlays extend, decline and pass through like the others", async () => {
     // Extends.
-    const ext = reader([{ snapshot_date: "2026-07-05", uid: 1 }]);
+    const _ext = reader([{ snapshot_date: "2026-07-05", uid: 1 }]);
     const hotAcct = buildAccountPositionHistory(
       [{ snapshot_date: "2026-07-10", uid: 1 }],
       ADDR,
@@ -815,19 +765,17 @@ describe("the other two families that reach 1y and all", () => {
       ADDR,
       64,
       { label: "all", days: null },
-      ext.deps,
     );
     assert.equal(out.point_count, 2);
 
     // Declines -> unchanged.
     assert.equal(
       await overlayAccountPositionHistoryColdTier(
-        ENV,
+        reader(null).env,
         hotAcct,
         ADDR,
         64,
         { label: "all", days: null },
-        reader(null).deps,
       ),
       hotAcct,
     );
@@ -835,12 +783,11 @@ describe("the other two families that reach 1y and all", () => {
     // Empty cold -> unchanged.
     assert.equal(
       await overlayAccountPositionHistoryColdTier(
-        ENV,
+        reader([]).env,
         hotAcct,
         ADDR,
         64,
         { label: "all", days: null },
-        reader([]).deps,
       ),
       hotAcct,
     );
@@ -854,55 +801,45 @@ describe("the other two families that reach 1y and all", () => {
       { window: "7d" },
     );
     assert.equal(
-      await overlayAccountPositionHistoryColdTier(
-        ENV,
-        wide,
-        ADDR,
-        64,
-        { label: "7d", days: 7 },
-        none.deps,
-      ),
+      await overlayAccountPositionHistoryColdTier(ENV, wide, ADDR, 64, {
+        label: "7d",
+        days: 7,
+      }),
       wide,
     );
     assert.deepEqual(none.seen, []);
   });
 
   test("the validator overlay extends, declines and passes through too", async () => {
-    const ext = reader([{ snapshot_date: "2026-07-05", netuid: 1 }]);
+    const _ext = reader([{ snapshot_date: "2026-07-05", netuid: 1 }]);
     const hotVal = buildValidatorHistory(
       [{ snapshot_date: "2026-07-10", netuid: 1 }],
       ADDR,
       { window: "all", netuid: null },
     );
-    const out = await overlayValidatorHistoryColdTier(
-      ENV,
-      hotVal,
-      ADDR,
-      null,
-      { label: "all", days: null },
-      ext.deps,
-    );
+    const out = await overlayValidatorHistoryColdTier(ENV, hotVal, ADDR, null, {
+      label: "all",
+      days: null,
+    });
     assert.equal(out.point_count, 2);
 
     assert.equal(
       await overlayValidatorHistoryColdTier(
-        ENV,
+        reader(null).env,
         hotVal,
         ADDR,
         null,
         { label: "all", days: null },
-        reader(null).deps,
       ),
       hotVal,
     );
     assert.equal(
       await overlayValidatorHistoryColdTier(
-        ENV,
+        reader([]).env,
         hotVal,
         ADDR,
         null,
         { label: "all", days: null },
-        reader([]).deps,
       ),
       hotVal,
     );
@@ -914,14 +851,10 @@ describe("the other two families that reach 1y and all", () => {
       { window: "7d", netuid: null },
     );
     assert.equal(
-      await overlayValidatorHistoryColdTier(
-        ENV,
-        wide,
-        ADDR,
-        null,
-        { label: "7d", days: 7 },
-        none.deps,
-      ),
+      await overlayValidatorHistoryColdTier(ENV, wide, ADDR, null, {
+        label: "7d",
+        days: 7,
+      }),
       wide,
     );
     assert.deepEqual(none.seen, []);
@@ -939,7 +872,6 @@ describe("the last edges on the two new legs", () => {
         "2026-02-31",
         null,
         400,
-        r.deps,
       ),
       null,
     );
@@ -951,7 +883,6 @@ describe("the last edges on the two new legs", () => {
         "2026-13-01",
         null,
         400,
-        r.deps,
       ),
       null,
     );
@@ -964,12 +895,11 @@ describe("the last edges on the two new legs", () => {
     };
     delete (acct as Record<string, unknown>).points;
     const outA = await overlayAccountPositionHistoryColdTier(
-      ENV,
+      reader([{ snapshot_date: "2026-07-05", uid: 1 }]).env,
       acct as ReturnType<typeof buildAccountPositionHistory>,
       ADDR,
       64,
       { label: "all", days: null },
-      reader([{ snapshot_date: "2026-07-05", uid: 1 }]).deps,
     );
     assert.equal(outA.point_count, 1);
 
@@ -978,12 +908,11 @@ describe("the last edges on the two new legs", () => {
     };
     delete (val as Record<string, unknown>).points;
     const outV = await overlayValidatorHistoryColdTier(
-      ENV,
+      reader([{ snapshot_date: "2026-07-05", netuid: 1 }]).env,
       val,
       ADDR,
       null,
       { label: "all", days: null },
-      reader([{ snapshot_date: "2026-07-05", netuid: 1 }]).deps,
     );
     assert.equal(outV.point_count, 1);
   });
