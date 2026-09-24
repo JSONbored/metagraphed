@@ -199,6 +199,7 @@ function credentials() {
     "11111111-1111-1111-1111-111111111111",
   );
   vi.stubEnv("CLOUDFLARE_API_TOKEN", "fixture-maintenance-reader");
+  vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", undefined);
   vi.stubEnv("R2_CATALOG_TOKEN", "fixture-catalog-reader");
   vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "");
 }
@@ -259,6 +260,20 @@ test("the live reader uses one bounded R2 object and a two-SELECT D1 batch", asy
   assert.ok(
     fetcher.mock.calls.every(([url]) => !String(url).includes("/r2-sql/")),
   );
+});
+
+test("the workflow uses its D1 credential only for source health queries", async () => {
+  credentials();
+  vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", "fixture-d1-reader");
+  const fetcher = transport();
+  await loadMirrorFreshnessEvidence(fetcher);
+  const headers = fetcher.mock.calls.map(([, init]) =>
+    new Headers(init?.headers).get("authorization"),
+  );
+  assert.deepEqual(headers, [
+    "Bearer fixture-maintenance-reader",
+    "Bearer fixture-d1-reader",
+  ]);
 });
 
 test.each(["http", "missing-body", "oversize", "json", "d1"])(

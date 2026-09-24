@@ -165,7 +165,11 @@ export async function loadMirrorFreshnessEvidence(
       },
       { sql: "SELECT MAX(observed_at) AS newest FROM compute_declarations" },
     ],
-    credentials,
+    d1AdminCredentials({
+      ...process.env,
+      CLOUDFLARE_API_TOKEN:
+        process.env.CLOUDFLARE_D1_API_TOKEN ?? credentials.apiToken,
+    }),
     transport,
   );
   return {
