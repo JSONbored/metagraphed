@@ -499,3 +499,58 @@ it("validates complete manifest identity and serves a proven empty testnet gener
     Math.min(5, expected({ blockStart: 7, blockEnd: 7 }).length),
   );
 });
+
+it("opens only feed segments intersecting the requested block range", async () => {
+  const a = archive();
+  a.ceiling.through = a.selected.lastBlock + 5;
+  a.save();
+  const outer = (
+    generation: string,
+    firstBlock: number,
+    lastBlock: number,
+  ) => ({
+    ...a.selected,
+    generation,
+    firstBlock,
+    lastBlock,
+    blockManifest: {
+      key: `metagraph/indexed-history/v1/mainnet/extrinsics/generations/${generation}/block-manifest.json`,
+      etag: "missing",
+      bytes: 1,
+    },
+    hashManifest: undefined,
+  });
+  a.put(a.pointer, {
+    version: 2,
+    network: "mainnet",
+    table: "extrinsics",
+    segments: [
+      a.selected,
+      outer("8".repeat(64), a.selected.lastBlock + 1, a.ceiling.through),
+    ],
+  });
+  const bounded = { blockStart: 2, blockEnd: 4 };
+  expect(await loadIndexedExtrinsicFeedPage(a.env, bounded, 5001)).toEqual(
+    expected(bounded),
+  );
+  expect(a.get.mock.calls.some(([key]) => key.includes("8".repeat(64)))).toBe(
+    false,
+  );
+  expect(
+    await loadIndexedExtrinsicFeedPage(
+      a.env,
+      { blockStart: a.ceiling.through + 1, blockEnd: a.ceiling.through + 2 },
+      3,
+    ),
+  ).toEqual([]);
+  expect(await loadIndexedExtrinsicFeedPage(a.env, {}, 3)).toBeUndefined();
+  expect(
+    await loadIndexedExtrinsicFeedPage(
+      a.env,
+      { blockStart: a.selected.lastBlock + 1, blockEnd: a.ceiling.through },
+      3,
+    ),
+  ).toBeUndefined();
+  a.objects.delete(a.manifest);
+  expect(await loadIndexedExtrinsicFeedPage(a.env, bounded, 3)).toBeUndefined();
+});

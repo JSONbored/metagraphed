@@ -40,8 +40,8 @@ export async function loadIndexedExtrinsicFeedPage(
     );
     if (!segments) return undefined;
     const floor = network === "mainnet" ? 0 : TESTNET_RAW_CAPTURE_GENESIS_FLOOR;
-    if (segments[0].firstBlock > Math.max(floor, selector.blockStart ?? floor))
-      return undefined;
+    const requestedStart = Math.max(floor, selector.blockStart ?? floor);
+    if (segments[0].firstBlock > requestedStart) return undefined;
     const bucket = (env as { METAGRAPH_ARCHIVE: Bucket }).METAGRAPH_ARCHIVE;
     const base = `metagraph/indexed-history/v1/${network}/extrinsics`;
     const ceilingKey = `${base}/source-ceiling.json`;
@@ -56,16 +56,21 @@ export async function loadIndexedExtrinsicFeedPage(
       !before.etag
     )
       throw new Error("Extrinsic feed source ceiling scope mismatch");
-    if (
-      segments.at(-1)!.lastBlock <
-      Math.min(ceiling.through, selector.blockEnd ?? ceiling.through)
-    )
-      return undefined;
+    const requestedEnd = Math.min(
+      ceiling.through,
+      selector.blockEnd ?? ceiling.through,
+    );
+    if (segments.at(-1)!.lastBlock < requestedEnd) return undefined;
     const source = r2ParquetSource(bucket),
       budget = parquetReadBudget(128 * 1024 * 1024, 1024);
     const generations = new Map<string, HistoryBlockGeneration>(),
       streams = [];
     for (const segment of segments) {
+      if (
+        segment.lastBlock < requestedStart ||
+        segment.firstBlock > requestedEnd
+      )
+        continue;
       const object = await bucket.get(
         `${base}/generations/${segment.generation}/feeds/v1/manifest.json`,
       );

@@ -116,6 +116,11 @@ async function loadSelectedAccountFeed<T>(
       : undefined;
     const streams = [];
     for (const segment of segments) {
+      if (
+        segment.lastBlock < requestedStart ||
+        segment.firstBlock > requestedEnd
+      )
+        continue;
       const object = await bucket.get(
         `${base}/generations/${segment.generation}/accounts/v1/manifest.json`,
       );
