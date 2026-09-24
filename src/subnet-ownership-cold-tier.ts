@@ -7,8 +7,11 @@ import {
   buildSubnetOwnershipHistory,
   OWNERSHIP_CHANGE_EVENT_METHOD,
 } from "./subnet-ownership-history.ts";
-import { safeBlockNumber } from "./r2-sql.ts";
-import type { R2SqlEnv, R2SqlReader } from "./r2-sql.ts";
+import { safeBlockNumber } from "./history-readers.ts";
+import type {
+  HistoryReadEnv,
+  HistoricalQueryReader,
+} from "./history-readers.ts";
 import {
   chainTable,
   type ChainNetworkId,
@@ -18,7 +21,7 @@ import { loadOwnershipRowsFromArtifact } from "./subnet-ownership-artifact.ts";
 import type { ArtifactStoreEnv } from "./projection-store.ts";
 
 /** The ordinary producer and request readers share the same artifact bindings. */
-type OwnershipReadEnv = R2SqlEnv & ArtifactStoreEnv;
+type OwnershipReadEnv = HistoryReadEnv & ArtifactStoreEnv;
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -42,9 +45,9 @@ const OWNERSHIP_EVENT_COLUMNS =
  * ownership transfers are rare chain-wide events, not a feed.
  */
 export async function fetchOwnershipChangeRows(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   network: ChainNetworkId | undefined,
-  query: R2SqlReader,
+  query: HistoricalQueryReader,
 ): Promise<Record<string, unknown>[] | null> {
   const rows = await query(
     env,
@@ -143,7 +146,7 @@ export async function loadSubnetOwnershipHistoryColdTier(
 
 /** Owner changes observed by the poller, ordered by their original capture. */
 export async function loadSubnetOwnerObservations(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   netuid: number,
 ): Promise<Record<string, unknown>[] | null> {
   const n = safeBlockNumber(netuid);

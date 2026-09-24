@@ -1,5 +1,5 @@
 // OHLC candles use complete qualified native account-event indexes.
-// Unsupported deployments retain the archived SQL path during migration.
+// Missing native coverage declines without manufacturing an empty series.
 // Both paths preserve request-time windows, chain ordering, and candle caps.
 import { hasRetainedHistoryStore } from "./retained-history-store.ts";
 import {
@@ -8,11 +8,9 @@ import {
   MAX_OHLC_WINDOW_DAYS,
   OHLC_INTERVALS,
   type OhlcBucket,
-  STAKE_ADDED_KIND,
-  STAKE_REMOVED_KIND,
 } from "./subnet-ohlc.ts";
-import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import { safeBlockNumber } from "./history-readers.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import { loadIndexedSubnetOhlcRows } from "./subnet-indexed-aggregates.ts";
 
 /** Same day length the REST/MCP callers and data-api use, so every tier
@@ -72,7 +70,7 @@ export type SubnetOhlcColdTierResult =
  * root_excluded shape.
  */
 export async function loadSubnetOhlcColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   netuid: unknown,
   query: SubnetOhlcQuery = {},
 ): Promise<SubnetOhlcColdTierResult> {
@@ -94,10 +92,6 @@ export async function loadSubnetOhlcColdTier(
   }
   const cutoff = Date.now() - days * DAY_MS;
 
-  // Every literal below is an integer this function parsed or a module
-  // constant -- src/r2-sql.ts takes no bound parameters, so nothing else may
-  // reach the string.
-  const bucketExpr = `CAST(FLOOR(observed_at / ${intervalMs}) AS BIGINT) * ${intervalMs}`;
   const indexed = await loadIndexedSubnetOhlcRows(
     env,
     subnet,
@@ -105,55 +99,11 @@ export async function loadSubnetOhlcColdTier(
     intervalMs,
   );
   if (indexed === null) return { kind: "gap" };
-  const rows =
-    indexed !== undefined
-      ? indexed
-      : await r2SqlQuery(
-          env,
-          `WITH trades AS (` +
-            `SELECT ${bucketExpr} AS bucket_start, observed_at, block_number, ` +
-            `event_index, amount_tao / alpha_amount AS price, alpha_amount, amount_tao ` +
-            `FROM chain.account_events ` +
-            `WHERE netuid = ${subnet} ` +
-            `AND (event_kind = '${STAKE_ADDED_KIND}' OR event_kind = '${STAKE_REMOVED_KIND}') ` +
-            `AND observed_at >= ${cutoff} ` +
-            `AND alpha_amount > 0 AND amount_tao IS NOT NULL` +
-            `), ordered AS (` +
-            `SELECT bucket_start, observed_at, price, alpha_amount, amount_tao, ` +
-            `ROW_NUMBER() OVER (PARTITION BY bucket_start ORDER BY observed_at ASC, ` +
-            `block_number ASC, event_index ASC) AS seq_first, ` +
-            `ROW_NUMBER() OVER (PARTITION BY bucket_start ORDER BY observed_at DESC, ` +
-            `block_number DESC, event_index DESC) AS seq_last ` +
-            `FROM trades` +
-            `) SELECT bucket_start, ` +
-            `MAX(CASE WHEN seq_first = 1 THEN price END) AS open_price, ` +
-            `MAX(CASE WHEN seq_last = 1 THEN price END) AS close_price, ` +
-            `MAX(price) AS high_price, MIN(price) AS low_price, ` +
-            `SUM(alpha_amount) AS volume_alpha, SUM(amount_tao) AS volume_tao, ` +
-            `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
-            `FROM ordered GROUP BY bucket_start ` +
-            // Newest-first + LIMIT is precisely the assembler's own cap rule (keep
-            // the most recent MAX_CANDLES, drop the oldest tail); doing it in the
-            // engine means the body is bounded before it crosses the wire, and the
-            // assembler's ascending re-sort restores chart order.
-            //
-            // CAP + 1, and that one extra row is the whole truncation signal -- the
-            // same trick `account-feeds-cold-tier.ts` uses to retire a separate cap
-            // probe. Reading MAX_CANDLES rows cannot distinguish "the window holds
-            // exactly the cap" from "the window holds far more and you are seeing
-            // the cap", which is how `candle_count` came to report 2000 for a
-            // 90-day AND a 365-day window. One extra row separates them without a
-            // second query -- and a second query is not available anyway: the
-            // aggregate that would count the window is rejected outright at this
-            // scale (`40015: scan budget exceeded`, measured 2026-08-16).
-            //
-            // The extra row is DROPPED below, so the published page is unchanged.
-            `ORDER BY bucket_start DESC LIMIT ${MAX_CANDLES + 1}`,
-        );
+  const rows = indexed;
   // A configured lakehouse that could not answer is a GAP; no lakehouse at all
   // is a MISS. Same rows, different deployments, and only one of them makes an
   // empty series the correct answer.
-  if (rows === null) {
+  if (rows == null) {
     return hasRetainedHistoryStore(env) ? { kind: "gap" } : { kind: "miss" };
   }
 

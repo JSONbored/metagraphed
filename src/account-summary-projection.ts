@@ -69,7 +69,7 @@ import {
   AccountSummaryRecentMapSchema,
   AccountSummaryRecentSchema,
 } from "../schemas-src/artifacts/account-summary-projection.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import { z } from "zod";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { timed, TIMING_R2 } from "./request-timing.ts";
@@ -335,7 +335,7 @@ async function usablePointer(
 }
 
 export async function loadAccountSummaryProjection(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   account: string,
   {
     now = Date.now,
@@ -668,7 +668,7 @@ function readRecent(
  * safe to add to a route without re-arguing that route's correctness.
  */
 export async function accountHistoryFloorMs(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   account: string,
   network?: ChainNetworkId,
 ): Promise<number | null> {

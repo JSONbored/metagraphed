@@ -7,8 +7,8 @@ import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import type { AccountIdentityRow } from "../generated/lakehouse/types.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import { safeBlockNumber, safeSs58Literal } from "./history-readers.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 
 // Derive the current-state columns from the canonical identity field set.
 const LATEST_COLUMNS = `account, ${IDENTITY_FIELDS.join(", ")}, captured_at`;
@@ -21,7 +21,7 @@ const CURSOR_ARITY = 2;
  * answer, so the caller keeps its schema-stable "no identity" fallback.
  */
 export async function loadAccountIdentityColdTier(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountIdentity> | null> {
   // Validate the account before reading its bound D1 row.
@@ -48,7 +48,7 @@ export async function loadAccountIdentityColdTier(
  * order, columns, cursor token, and OFFSET-only-without-cursor rule.
  */
 export async function loadAccountIdentityHistoryColdTier(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   ss58: string,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildAccountIdentityHistory> | null> {

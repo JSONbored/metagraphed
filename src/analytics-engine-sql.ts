@@ -1,6 +1,6 @@
 // Workers Analytics Engine SQL client — the read path over the AE datasets.
 //
-// Deliberately the same shape as src/r2-sql.ts: a POST to an HTTP SQL
+// Deliberately the same shape as src/history-readers.ts: a POST to an HTTP SQL
 // endpoint, a hard query ceiling, an injectable abort scheduler, a failure
 // generation counter, and null on ANY failure so a caller degrades to the
 // answer it already had rather than 5xx-ing. Two engines, one failure
@@ -63,7 +63,7 @@ export const ANALYTICS_SQL_TOKEN_ENV = "ANALYTICS_ENGINE_SQL_TOKEN";
 /** Cloudflare account that owns the dataset. */
 export const ANALYTICS_SQL_ACCOUNT_ENV = "ANALYTICS_ENGINE_SQL_ACCOUNT_ID";
 
-/** The same account id src/r2-sql.ts defaults to -- one account owns both
+/** The same account id src/history-readers.ts defaults to -- one account owns both
  * engines. Repeated rather than imported so neither module's default becomes
  * load-bearing for the other. Not a secret: an account id is an identifier,
  * and the token is what grants access. */

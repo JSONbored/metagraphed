@@ -12,7 +12,10 @@ import { readStateArchiveRows } from "../src/state-archive-read.ts";
 vi.mock("../src/state-archive-read.ts", () => ({
   readStateArchiveRows: vi.fn(),
 }));
-const env = { R2_SQL_TOKEN: "retired-token-must-not-be-used" },
+const env = {
+    NATIVE_PROJECTIONS: "enabled",
+    NATIVE_HISTORY_FIXTURE: "retired-token-must-not-be-used",
+  },
   archive = vi.mocked(readStateArchiveRows);
 const row = (id: number, netuid = 3) => ({
   id,

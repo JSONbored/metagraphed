@@ -1,7 +1,7 @@
 // The decode-lane watchdog (#9161), tested without a lakehouse.
 //
 // Runs as a WORKER CRON, not a GitHub Action (#9164): the check needs
-// R2_SQL_TOKEN, the METAGRAPH_ARCHIVE bucket and the store holding
+// NATIVE_HISTORY_FIXTURE, the METAGRAPH_ARCHIVE bucket and the store holding
 // raw_capture_state, and this Worker already holds all three.
 //
 // It used to compare a CONSTANT against `max(chain.blocks)`. That question is
@@ -31,7 +31,7 @@ import {
   DECODE_LAG_BLOCKS,
   DECODE_STALE_MS,
   evaluateDecodeSeam,
-  runLakehouseSeamWatchdog,
+  runLakehouseSeamWatchdog as runNativeSeamWatchdog,
   type SeamInput,
 } from "../src/lakehouse-seam-watchdog.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
@@ -40,10 +40,28 @@ import {
   resetDecodeWatermarkCache,
 } from "../src/decode-watermark.ts";
 
+import * as nativeCensus from "../src/indexed-block-census.ts";
+const censusReader = vi.spyOn(nativeCensus, "loadIndexedBlockCensus");
+/** Comparator fixtures enter at the native census boundary; physical census
+ * manifests and source fences are exercised in indexed-block-census.test.ts. */
+async function runLakehouseSeamWatchdog(
+  env: Parameters<typeof runNativeSeamWatchdog>[0],
+  deps: NonNullable<Parameters<typeof runNativeSeamWatchdog>[1]> & {
+    query?: () => Promise<Record<string, unknown>[] | null>;
+  } = {},
+) {
+  const { query, ...nativeDeps } = deps;
+  censusReader.mockResolvedValue(
+    query ? ((await query())?.[0] as never) : undefined,
+  );
+  return runNativeSeamWatchdog(env, nativeDeps);
+}
+
 const NOW = Date.UTC(2026, 7, 3, 12, 0, 0);
 const HI = 8_762_000;
 
 beforeEach(() => {
+  censusReader.mockReset().mockResolvedValue(undefined);
   resetDecodeWatermarkCache();
   pg.control.answers = [];
   pg.control.failNext = null;

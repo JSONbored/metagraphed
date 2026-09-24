@@ -5,7 +5,8 @@
 // declines to the caller's schema-stable empty rather than serving a chart
 // with an invented hole in it.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import * as indexed from "../src/subnet-indexed-aggregates.ts";
 import { loadSubnetOhlcColdTier } from "../src/subnet-ohlc-cold-tier.ts";
 import type { SubnetOhlcColdTierResult } from "../src/subnet-ohlc-cold-tier.ts";
 import {
@@ -13,10 +14,20 @@ import {
   MAX_OHLC_WINDOW_DAYS,
   OHLC_INTERVALS,
 } from "../src/subnet-ohlc.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+
 import type { Row } from "./row-type.ts";
 
-const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
+const TOKEN = { NATIVE_PROJECTIONS: "enabled" };
+const reader = vi.spyOn(indexed, "loadIndexedSubnetOhlcRows");
+beforeEach(() => {
+  reader.mockReset().mockResolvedValue(undefined);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw Error("HTTP is forbidden");
+    }),
+  );
+});
 const HOUR_MS = OHLC_INTERVALS["1h"];
 const DAY_MS = OHLC_INTERVALS["1d"];
 const BUCKET = 1_783_600_000_000 - (1_783_600_000_000 % HOUR_MS);
@@ -37,17 +48,9 @@ function bucketRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function sqlFetch(rows: unknown[]) {
-  const queries: string[] = [];
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    queries.push(JSON.parse(String(init.body)).query);
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return queries;
+function nativeRows(rows: Record<string, unknown>[]) {
+  reader.mockReset().mockResolvedValue(rows);
+  return reader.mock.calls;
 }
 
 /**
@@ -63,55 +66,21 @@ function answerOf(result: SubnetOhlcColdTierResult) {
 }
 
 function noFetch() {
-  const calls: number[] = [];
-  globalThis.fetch = (async () => {
-    calls.push(1);
-    throw new Error("the reader must decline before reaching the engine");
-  }) as unknown as typeof fetch;
-  return calls;
+  reader.mockClear();
+  return reader.mock.calls;
 }
 
 describe("loadSubnetOhlcColdTier", () => {
-  test("bucket math, filters and the cap all live in the engine", async () => {
-    const q = sqlFetch([bucketRow()]);
+  test("passes the exact window and bucket width to the qualified native aggregate", async () => {
+    const q = nativeRows([bucketRow()]);
     const result = await loadSubnetOhlcColdTier(TOKEN, 7, {
       interval: "1h",
       days: 90,
     });
-    const sql = q[0]!;
-    assert.match(sql, /FROM chain\.account_events/);
-    assert.match(sql, /WHERE netuid = 7 /);
-    assert.match(
-      sql,
-      /event_kind = 'StakeAdded' OR event_kind = 'StakeRemoved'/,
-    );
-    // The guards buildSubnetOhlc applies per row, expressed as predicates.
-    assert.match(sql, /alpha_amount > 0 AND amount_tao IS NOT NULL/);
-    assert.match(sql, /amount_tao \/ alpha_amount AS price/);
-    assert.match(
-      sql,
-      new RegExp(
-        `CAST\\(FLOOR\\(observed_at / ${HOUR_MS}\\) AS BIGINT\\) \\* ${HOUR_MS}`,
-      ),
-    );
-    // open/close via the real chain order, not an incidental sort tie.
-    assert.match(
-      sql,
-      /ORDER BY observed_at ASC, block_number ASC, event_index ASC/,
-    );
-    assert.match(
-      sql,
-      /ORDER BY observed_at DESC, block_number DESC, event_index DESC/,
-    );
-    assert.match(sql, /GROUP BY bucket_start/);
-    // Newest-first + the assembler's own cap, applied before the wire -- plus
-    // the ONE extra row that tells the reader whether the window held more
-    // than the cap. Asserted as an exact tail so `LIMIT 2000` cannot satisfy a
-    // loose match for `LIMIT 2001`.
-    assert.match(
-      sql,
-      new RegExp(`ORDER BY bucket_start DESC LIMIT ${MAX_CANDLES + 1}$`),
-    );
+    assert.equal(q.length, 1);
+    assert.equal(q[0][1], 7);
+    assert.equal(q[0][3], HOUR_MS);
+    assert.ok(Math.abs(q[0][2] - (Date.now() - 90 * DAY_MS)) < 1000);
 
     const data = answerOf(result).data as Row;
     assert.equal(data.netuid, 7);
@@ -138,24 +107,19 @@ describe("loadSubnetOhlcColdTier", () => {
   });
 
   test("?days= sets the cutoff and ?interval= sets the bucket width", async () => {
-    const q = sqlFetch([]);
+    const q = nativeRows([]);
     const before = Date.now();
     await loadSubnetOhlcColdTier(TOKEN, 12, { interval: "1d", days: 7 });
-    const cutoff = Number(/observed_at >= (\d+)/.exec(q[0]!)![1]);
+    const cutoff = q[0][2];
     assert.ok(
       cutoff >= before - 7 * DAY_MS && cutoff <= Date.now() - 7 * DAY_MS,
-      "the window is anchored to request time, exactly as data-api anchors it",
     );
-    assert.match(
-      q[0]!,
-      new RegExp(
-        `FLOOR\\(observed_at / ${DAY_MS}\\) AS BIGINT\\) \\* ${DAY_MS}`,
-      ),
-    );
+    assert.equal(q[0][1], 12);
+    assert.equal(q[0][3], DAY_MS);
   });
 
   test("no trades in the window is an empty series, not a decline", async () => {
-    sqlFetch([]);
+    nativeRows([]);
     const result = await loadSubnetOhlcColdTier(TOKEN, 7, {
       interval: "1h",
       days: 1,
@@ -205,9 +169,7 @@ describe("loadSubnetOhlcColdTier", () => {
   // empty series is a lie about them. It used to return the same bare `null` as
   // "no lakehouse here", and every caller turned that into `candle_count: 0`.
   test("a failed query on a CONFIGURED lakehouse is a gap, not an empty", async () => {
-    globalThis.fetch = (async () => {
-      throw new Error("down");
-    }) as unknown as typeof fetch;
+    reader.mockResolvedValue(null);
     assert.deepEqual(
       await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 30 }),
       { kind: "gap" },
@@ -219,9 +181,7 @@ describe("loadSubnetOhlcColdTier", () => {
   // the caller's empty series is the correct answer -- exactly as
   // account-summary-card.ts reserves `miss` for the same deployment.
   test("the same failure with NO lakehouse configured is a miss", async () => {
-    globalThis.fetch = (async () => {
-      throw new Error("down");
-    }) as unknown as typeof fetch;
+    reader.mockResolvedValue(undefined);
     assert.deepEqual(
       await loadSubnetOhlcColdTier({} as unknown as Env, 7, {
         interval: "1h",
@@ -246,7 +206,7 @@ describe("loadSubnetOhlcColdTier", () => {
       "volume_tao",
       "event_count",
     ]) {
-      sqlFetch([bucketRow(), bucketRow({ [field]: "nope" })]);
+      nativeRows([bucketRow(), bucketRow({ [field]: "nope" })]);
       assert.deepEqual(
         await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 30 }),
         { kind: "gap" },
@@ -259,7 +219,7 @@ describe("loadSubnetOhlcColdTier", () => {
     // Rows arrive newest-bucket-first; the max is still taken across all of
     // them rather than trusting the first, and a bucket with no readable
     // last_observed simply does not contribute one.
-    sqlFetch([
+    nativeRows([
       bucketRow({ bucket_start: BUCKET, last_observed: BUCKET + 10 }),
       bucketRow({ bucket_start: BUCKET - HOUR_MS, last_observed: BUCKET + 99 }),
       bucketRow({ bucket_start: BUCKET - 2 * HOUR_MS, last_observed: BUCKET }),
@@ -282,7 +242,7 @@ describe("loadSubnetOhlcColdTier", () => {
   });
 
   test("no readable instant anywhere yields a null generatedAt, not an epoch", async () => {
-    sqlFetch([bucketRow({ last_observed: null })]);
+    nativeRows([bucketRow({ last_observed: null })]);
     const result = await loadSubnetOhlcColdTier(TOKEN, 7, {
       interval: "1h",
       days: 30,
@@ -300,7 +260,7 @@ describe("loadSubnetOhlcColdTier", () => {
     const rows = Array.from({ length: MAX_CANDLES + 1 }, (_, i) =>
       bucketRow({ bucket_start: BUCKET - i * HOUR_MS }),
     );
-    sqlFetch(rows);
+    nativeRows(rows);
     const data = answerOf(
       await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 365 }),
     ).data as Row;
@@ -318,7 +278,7 @@ describe("loadSubnetOhlcColdTier", () => {
     const rows = Array.from({ length: MAX_CANDLES }, (_, i) =>
       bucketRow({ bucket_start: BUCKET - i * HOUR_MS }),
     );
-    sqlFetch(rows);
+    nativeRows(rows);
     const data = answerOf(
       await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 365 }),
     ).data as Row;
@@ -327,7 +287,7 @@ describe("loadSubnetOhlcColdTier", () => {
   });
 
   test("an ordinary window reports window_truncated false", async () => {
-    sqlFetch([bucketRow()]);
+    nativeRows([bucketRow()]);
     const data = answerOf(
       await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 30 }),
     ).data as Row;
@@ -342,7 +302,7 @@ describe("loadSubnetOhlcColdTier", () => {
     const rows = Array.from({ length: MAX_CANDLES + 1 }, (_, i) =>
       bucketRow({ bucket_start: BUCKET - i * HOUR_MS }),
     );
-    sqlFetch(rows);
+    nativeRows(rows);
     const data = answerOf(
       await loadSubnetOhlcColdTier(TOKEN, 7, { interval: "1h", days: 365 }),
     ).data as Row;

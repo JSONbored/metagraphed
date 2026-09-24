@@ -55,13 +55,10 @@ export function loadIndexedAccountFeedAggregate<T>(
   env: unknown,
   selectors: readonly AccountFeedSelector[],
   consume: (rows: AsyncGenerator<AccountEventsRow>) => Promise<T>,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<T | null | undefined> {
-  return loadSelectedAccountFeed(
-    env,
-    selectors,
-    DEFAULT_CHAIN_NETWORK,
-    true,
-    (streams) => consume(mergeAccountFeedEntries(streams)),
+  return loadSelectedAccountFeed(env, selectors, network, true, (streams) =>
+    consume(mergeAccountFeedEntries(streams)),
   );
 }
 

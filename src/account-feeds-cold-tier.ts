@@ -1,46 +1,5 @@
-// The remaining ACCOUNT-scoped feeds served from the lakehouse when the
-// Postgres tier misses: transfers, stake-flow, stake-moves, weight-setters,
-// and counterparties. Fourth member of the cold-tier family (blocks,
-// extrinsics, events, now the account analytics feeds), same posture
-// throughout: rows feed the SAME src/ formatters the Postgres tier feeds,
-// filters the lakehouse cannot express make the whole read DECLINE (null,
-// never a silently-wrong answer), and cursors are data-api's own tokens so
-// paging survives a tier transition.
-//
-// /validators/{hotkey}/nominators lives here too, despite hanging off a
-// different route family. It is the same `chain.account_events` read with the
-// hotkey fixed and the grouping turned around -- StakeAdded/StakeRemoved carry
-// both the validator hotkey and the staker coldkey on every row, so "who is
-// behind this validator" is loadAccountStakeFlowColdTier's query grouped by
-// coldkey instead of netuid. Putting it beside its siblings shares their
-// window cutoff and generatedAt derivation rather than restating both in a
-// module whose only difference is a GROUP BY.
-//
-// These are all reads over chain.account_events with a selective predicate
-// (one address against a big table), which is exactly the shape the
-// request-time lane is for -- unlike the chain-wide aggregates, which moved to
-// scheduled projections. Latency is second-scale (src/r2-sql.ts's measured
-// numbers) and acceptable behind the edge cache, the precedent the merged
-// account-events reader set.
-//
-// EQUIVALENCE ARGUMENTS, stated because data-api's SQL is index-shaped for
-// Postgres/TimescaleDB and R2 SQL has no indexes to shape around:
-//   - transfers "all directions": data-api reads TWO scans (hotkey = X, then
-//     coldkey = X) merged client-side; this tier issues the single disjunction
-//     `(hotkey = X OR coldkey = X)`. Identical row sets -- see
-//     src/events-cold-tier.ts's header for the full argument.
-//   - weight-setters: data-api's UNION ALL of a hotkey branch and a
-//     (netuid, uid)-slot branch has DISJOINT branches (the second requires
-//     hotkey NULL/'', the first requires hotkey = X, a non-empty value), so a
-//     single OR of both predicates yields the identical multiset -- which
-//     matters, because R2 SQL has no UNION at all. The slot list itself still
-//     comes from `neurons`, the same source data-api reads it from.
-//   - counterparties: data-api's UNION ALL of two per-leg-capped ordered scans
-//     re-sorted and capped again equals the top-CAP of the single OR predicate
-//     under the same total order (each leg is a subset of the OR set, so any
-//     row in the overall top CAP sits within its own leg's top CAP; the
-//     IS DISTINCT FROM guards only prevent UNION ALL double-counting, which a
-//     single OR cannot do).
+// Native account feeds share the canonical formatters and preserve every
+// supported filter, cursor, aggregate and explicit unavailable-history state.
 
 import { hasRetainedHistoryStore } from "./retained-history-store.ts";
 import { buildAccountTransfers } from "./account-events.ts";
@@ -62,7 +21,6 @@ import {
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   buildAccountWeightSetters,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-  WEIGHTS_EVENT_KIND,
 } from "./account-weight-setters.ts";
 import {
   buildCounterparties,
@@ -70,10 +28,7 @@ import {
   COUNTERPARTIES_SCAN_CAP,
   type CounterpartyRelationshipResult,
 } from "./counterparties.ts";
-import {
-  ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
-  ACCOUNT_SUMMARY_RECENT_LIMIT,
-} from "./account-events.ts";
+import { ACCOUNT_SUMMARY_RECENT_LIMIT } from "./account-events.ts";
 import {
   buildAccountRegistrations,
   REGISTRATION_EVENT_KIND,
@@ -101,19 +56,11 @@ import {
 } from "./validator-nominators.ts";
 import { storeAll } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
-import { windowedFloorRead, windowedRowRead } from "./account-events-window.ts";
-import {
-  accountHistoryFloorMs,
-  loadAccountSummaryProjection,
-} from "./account-summary-projection.ts";
-import { loadAccountEventsAboveFloorHotTier } from "./chain-detail-hot-tier.ts";
-import type { R2SqlReader } from "./r2-sql.ts";
+import { safeBlockNumber, safeSs58Literal } from "./history-readers.ts";
+import { loadAccountSummaryProjection } from "./account-summary-projection.ts";
 import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
-import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
-import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { readStore } from "./read-store.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import { loadIndexedValidatorNominators } from "./validator-nominators-indexed.ts";
 import { loadNativeAccountWeightSetters } from "./account-weight-setters-native.ts";
 import {
@@ -121,17 +68,6 @@ import {
   loadIndexedAccountFeedGroups,
 } from "./indexed-account-feeds.ts";
 import type { AccountFeedSelector } from "./history-account-feed.ts";
-
-/** Kept identical to the Postgres tier's SELECT list so both tiers hand the
- * formatter the same shape. */
-// The generated tuple, not a retyped copy -- see src/r2-sql-blocks.ts for why.
-const EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
-
-/** EXACTLY the Postgres tier's feed order -- the public cursor token encodes
- * this composite key, so a different order would emit tokens the other tier
- * mis-seeks on. */
-const FEED_ORDER =
-  "ORDER BY observed_at DESC, block_number DESC, event_index DESC";
 
 /** Equality views bound the physical reads; the timestamp range is inclusive,
  * matching the existing aggregate predicates. No pagination cap enters totals. */
@@ -210,14 +146,14 @@ export interface AccountTransfersQuery {
  * Returns null when the lakehouse cannot answer faithfully.
  */
 export async function loadAccountTransfersColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   query: AccountTransfersQuery,
 ): Promise<ReturnType<typeof buildAccountTransfers> | null> {
   const limit = safeBlockNumber(query.limit);
   const offset = safeBlockNumber(query.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
-  // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
+  // Preserve the public depth cap; past this depth the index traversal is not a
   // reasonable trade and declining beats serving a page that is quietly wrong.
   if (offsetBeyondEmulationCap(offset)) return null;
 
@@ -234,32 +170,15 @@ export async function loadAccountTransfersColdTier(
   ) {
     return null;
   }
-  const where = ["event_kind = 'Transfer'"];
-  // data-api's exact direction semantics: sent matches the from side (hotkey),
-  // received the to side (coldkey), and "all"/omitted reads both -- the single
-  // OR standing in for its two-scan merge (see the module header).
-  if (direction === "sent") where.push(`hotkey = '${addr}'`);
-  else if (direction === "received") where.push(`coldkey = '${addr}'`);
-  else where.push(`(hotkey = '${addr}' OR coldkey = '${addr}')`);
-
-  for (const [value, clause] of [
+  for (const [value] of [
     [query.blockStart, "block_number >="],
     [query.blockEnd, "block_number <="],
   ] as [unknown, string][]) {
     if (value == null) continue;
     const n = safeBlockNumber(value);
     if (n === null) return null;
-    where.push(`${clause} ${n}`);
   }
   const cursor = decodeCursor(query.cursor, CURSOR_ARITY);
-  if (cursor) {
-    // data-api's exact 3-part tuple seek; an invalid token means page 1,
-    // exactly as data-api treats it.
-    where.push(
-      `(observed_at, block_number, event_index) < ` +
-        `(${cursor[0]}, ${cursor[1]}, ${cursor[2]})`,
-    );
-  }
 
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;
@@ -283,34 +202,8 @@ export async function loadAccountTransfersColdTier(
     limit,
     paged,
   );
-  const transferFloorMs =
-    indexed === undefined ? await accountHistoryFloorMs(env, ss58) : null;
-  if (transferFloorMs !== null)
-    where.push(`observed_at >= ${Math.trunc(transferFloorMs)}`);
-  // BOUNDED (#11131). `(hotkey = X OR coldkey = X)` is a scattered-key filter,
-  // so without a block bound the engine opens all 51 files: 577.5 MB and 3,480
-  // R2 requests, measured, against 0.1 MB and 9 with one. This feed was one of
-  // the reads timing out at the 15s r2-sql ceiling and failing the deploy's
-  // smoke step. The walk returns the identical rows -- see the module.
-  const rows =
-    indexed !== undefined
-      ? indexed
-      : await windowedRowRead<AccountEventsRow>(env, {
-          table: "chain.account_events",
-          columns: EVENT_COLUMNS,
-          where,
-          order: ` ${FEED_ORDER}`,
-          need: limit + paged,
-          // A cursor page resumes from its own `observed_at` -- cursor[0] of the
-          // 3-part token -- rather than from now.
-          ceiling: cursor ? safeBlockNumber(cursor[0]) : null,
-          // The same floor already pushed into `where`, so the walk stops when it
-          // reaches it rather than reading a range its own predicate excludes.
-          floorMs: transferFloorMs,
-        });
-  if (rows === null) return null;
-
-  const page = indexed === undefined && paged > 0 ? rows.slice(paged) : rows;
+  if (indexed == null) return null;
+  const page = indexed;
   const last = page.length === limit ? page[page.length - 1] : null;
   const nextCursor = last
     ? encodeCursor([
@@ -323,7 +216,7 @@ export async function loadAccountTransfersColdTier(
     limit,
     offset,
     nextCursor,
-    // The fixed-label hint ONLY when the SQL already filtered one side --
+    // The fixed-label hint applies only when the selector filtered one side --
     // the same rule data-api applies (#2362's self-transfer fix).
     direction:
       direction === "sent" || direction === "received" ? direction : undefined,
@@ -337,7 +230,7 @@ export async function loadAccountTransfersColdTier(
  * Returns data-api's `{ data, generatedAt }` wrapped shape.
  */
 export async function loadAccountStakeFlowColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   query: { window?: string | null; direction?: unknown } = {},
 ): Promise<{
@@ -360,13 +253,6 @@ export async function loadAccountStakeFlowColdTier(
   // data-api's per-direction kind filter; the IN (added, removed) branch is
   // rewritten as an OR of the two equalities -- same row set, no IN-list
   // dependence on the beta engine.
-  const kind =
-    direction === "in"
-      ? `event_kind = '${STAKE_ADDED_KIND}'`
-      : direction === "out"
-        ? `event_kind = '${STAKE_REMOVED_KIND}'`
-        : `(event_kind = '${STAKE_ADDED_KIND}' OR event_kind = '${STAKE_REMOVED_KIND}')`;
-
   const { label, cutoff } = windowCutoff(
     STAKE_FLOW_WINDOWS,
     DEFAULT_STAKE_FLOW_WINDOW,
@@ -389,19 +275,8 @@ export async function loadAccountStakeFlowColdTier(
         : [STAKE_ADDED_KIND, STAKE_REMOVED_KIND],
     cutoff,
   );
-  const rows =
-    indexed !== undefined
-      ? indexed
-      : await r2SqlQuery(
-          env,
-          `SELECT netuid, event_kind, SUM(amount_tao) AS total_tao, ` +
-            `SUM(alpha_amount) AS total_alpha, ` +
-            `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
-            `FROM chain.account_events ` +
-            `WHERE (hotkey = '${addr}' OR coldkey = '${addr}') AND ${kind} ` +
-            `AND observed_at >= ${cutoff} GROUP BY netuid, event_kind`,
-        );
-  if (rows === null) return null;
+  const rows = indexed;
+  if (rows == null) return null;
   // data-api wraps the SUM in COALESCE(..., 0); replicate that client-side
   // rather than lean on the beta engine's function coverage -- an all-null
   // group must still count its events, not be skipped by the formatter.
@@ -424,7 +299,7 @@ export async function loadAccountStakeFlowColdTier(
  * StakeMoved footprint, GROUP BY netuid. Same wrapped shape as stake-flow.
  */
 export async function loadAccountStakeMovesColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -444,28 +319,8 @@ export async function loadAccountStakeMovesColdTier(
     [STAKE_MOVED_EVENT_KIND],
     cutoff,
   );
-  const rows =
-    indexed !== undefined
-      ? (indexed?.map((row) => ({ ...row, movements: row.event_count })) ??
-        null)
-      : await r2SqlQuery(
-          env,
-          `SELECT netuid, COUNT(*) AS movements, MIN(observed_at) AS first_observed, ` +
-            `MAX(observed_at) AS last_observed FROM chain.account_events ` +
-            `WHERE (hotkey = '${addr}' OR coldkey = '${addr}') ` +
-            `AND event_kind = '${STAKE_MOVED_EVENT_KIND}' ` +
-            `AND observed_at >= ${cutoff} GROUP BY netuid`,
-        );
-  // A CONFIGURED lakehouse that could not answer is a decline, not an empty
-  // card (#11424). This route was measured at 15,429ms -- i.e. AT the 15s
-  // `QUERY_TIMEOUT_MS` -- on 2026-08-16, so the failed read is routine, and a
-  // bare `null` here reached the caller's `?? emptyCard` as "this account has
-  // never moved stake". The same distinction `loadAccountSummaryColdTier`
-  // draws below in this same file, which this reader never picked up.
-  //
-  // With NO lakehouse bound (a self-hoster, CI) the null stands: there is no
-  // chain history to read, so the caller's empty card is correct.
-  if (rows === null) {
+  const rows = indexed;
+  if (rows == null) {
     return indexed !== undefined || hasRetainedHistoryStore(env)
       ? {
           data: declineAccountStakeMoves(ss58, label),
@@ -476,15 +331,19 @@ export async function loadAccountStakeMovesColdTier(
       : null;
   }
   return {
-    data: buildAccountStakeMoves(rows, ss58, {
-      window: label,
-      // #4332's price-at-tx enrichment, restored. buildAccountStakeMoves has
-      // always taken this map, and NOBODY passed it once the Postgres tier was
-      // retired (#10190) -- data-api computed it, so `price_tao_at_last_move`
-      // has been null on REST, GraphQL and MCP alike ever since. The tests
-      // could not show it: they doubled the tier, which supplied the field.
-      priceByNetuidDate: await alphaPriceByNetuidDate(env, rows, cutoff),
-    }),
+    data: buildAccountStakeMoves(
+      rows.map((row) => ({ ...row, movements: row.event_count })),
+      ss58,
+      {
+        window: label,
+        // #4332's price-at-tx enrichment, restored. buildAccountStakeMoves has
+        // always taken this map, and NOBODY passed it once the Postgres tier was
+        // retired (#10190) -- data-api computed it, so `price_tao_at_last_move`
+        // has been null on REST, GraphQL and MCP alike ever since. The tests
+        // could not show it: they doubled the tier, which supplied the field.
+        priceByNetuidDate: await alphaPriceByNetuidDate(env, rows, cutoff),
+      },
+    ),
     generatedAt: latestObservedIso(rows),
   };
 }
@@ -511,7 +370,7 @@ const ACCOUNT_STAKE_MOVES_PRICE_TABLES = ["subnet_snapshots"] as const;
  * this enrichment had no caller at all.
  */
 async function alphaPriceByNetuidDate(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   rows: Array<Record<string, unknown>>,
   cutoff: number,
 ): Promise<Map<string, number>> {
@@ -544,23 +403,10 @@ async function alphaPriceByNetuidDate(
   return prices;
 }
 
-/**
- * One account's per-subnet NeuronRegistered footprint.
- *
- * The retired D1 loader's query verbatim, minus its SQLite `INDEXED BY
- * idx_account_events_hotkey` hint -- R2 SQL has no indexes to name. Keyed on
- * `hotkey` ALONE, not the `(hotkey OR coldkey)` disjunction the transfer-shaped
- * feeds use: a registration is attributed to the hotkey being registered, and
- * widening it to the coldkey would credit an operator with every registration
- * made by every hotkey it funds.
- *
- * Measured live before shipping (2026-08-03): all three windows execute inside
- * the query timeout on an account registered across 119 subnets -- 7d 82 MB,
- * 30d 238 MB, 90d 392 MB at ~4s. A selective single-hotkey predicate is the
- * shape this request-time module is for; see the header above.
- */
+/** Registrations belong to the registered hotkey alone. Including the coldkey
+ * would incorrectly credit a funding account with all its hotkeys' activity. */
 export async function loadAccountRegistrationsColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -581,20 +427,14 @@ export async function loadAccountRegistrationsColdTier(
     cutoff,
     true,
   );
-  const rows =
-    indexed !== undefined
-      ? (indexed?.map((row) => ({ ...row, registrations: row.event_count })) ??
-        null)
-      : await r2SqlQuery(
-          env,
-          `SELECT netuid, COUNT(*) AS registrations, MIN(observed_at) AS first_observed, ` +
-            `MAX(observed_at) AS last_observed FROM chain.account_events ` +
-            `WHERE hotkey = '${addr}' AND event_kind = '${REGISTRATION_EVENT_KIND}' ` +
-            `AND observed_at >= ${cutoff} GROUP BY netuid`,
-        );
-  if (rows === null) return null;
+  const rows = indexed;
+  if (rows == null) return null;
   return {
-    data: buildAccountRegistrations(rows, ss58, { window: label }),
+    data: buildAccountRegistrations(
+      rows.map((row) => ({ ...row, registrations: row.event_count })),
+      ss58,
+      { window: label },
+    ),
     generatedAt: latestObservedIso(rows),
   };
 }
@@ -606,7 +446,7 @@ export async function loadAccountRegistrationsColdTier(
  * reads (`announcements`).
  */
 export async function loadAccountServingColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -627,20 +467,14 @@ export async function loadAccountServingColdTier(
     cutoff,
     true,
   );
-  const rows =
-    indexed !== undefined
-      ? (indexed?.map((row) => ({ ...row, announcements: row.event_count })) ??
-        null)
-      : await r2SqlQuery(
-          env,
-          `SELECT netuid, COUNT(*) AS announcements, MIN(observed_at) AS first_observed, ` +
-            `MAX(observed_at) AS last_observed FROM chain.account_events ` +
-            `WHERE hotkey = '${addr}' AND event_kind = '${SERVING_EVENT_KIND}' ` +
-            `AND observed_at >= ${cutoff} GROUP BY netuid`,
-        );
-  if (rows === null) return null;
+  const rows = indexed;
+  if (rows == null) return null;
   return {
-    data: buildAccountServing(rows, ss58, { window: label }),
+    data: buildAccountServing(
+      rows.map((row) => ({ ...row, announcements: row.event_count })),
+      ss58,
+      { window: label },
+    ),
     generatedAt: latestObservedIso(rows),
   };
 }
@@ -655,7 +489,7 @@ export async function loadAccountServingColdTier(
  * card answered from the same PrometheusServed stream.
  */
 export async function loadAccountPrometheusColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -676,23 +510,17 @@ export async function loadAccountPrometheusColdTier(
     cutoff,
     true,
   );
-  const rows =
-    indexed !== undefined
-      ? (indexed?.map((row) => ({ ...row, announcements: row.event_count })) ??
-        null)
-      : await r2SqlQuery(
-          env,
-          `SELECT netuid, COUNT(*) AS announcements, MIN(observed_at) AS first_observed, ` +
-            `MAX(observed_at) AS last_observed FROM chain.account_events ` +
-            `WHERE hotkey = '${addr}' AND event_kind = '${PROMETHEUS_EVENT_KIND}' ` +
-            `AND observed_at >= ${cutoff} GROUP BY netuid`,
-        );
-  if (rows === null) return null;
+  const rows = indexed;
+  if (rows == null) return null;
   return {
-    data: buildAccountPrometheus(rows, ss58, {
-      window: label,
-      sourceAvailable: true,
-    }),
+    data: buildAccountPrometheus(
+      rows.map((row) => ({ ...row, announcements: row.event_count })),
+      ss58,
+      {
+        window: label,
+        sourceAvailable: true,
+      },
+    ),
     generatedAt: latestObservedIso(rows),
   };
 }
@@ -703,7 +531,7 @@ export async function loadAccountPrometheusColdTier(
  * without them the hotkey-less WeightsSet rows would be silently dropped --
  * a degrade, and this family declines rather than degrades. */
 async function neuronSlots(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   addr: string,
 ): Promise<{ netuid: number; uid: number }[] | null> {
   const db = readStore(env, ["neurons"]);
@@ -736,7 +564,7 @@ async function neuronSlots(
  * one disjunction here; see the module header for the equivalence.
  */
 export async function loadAccountWeightSettersColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
 ): Promise<{
@@ -754,63 +582,13 @@ export async function loadAccountWeightSettersColdTier(
     query.window,
   );
   const native = await loadNativeAccountWeightSetters(env, addr, slots, cutoff);
-  if (native !== undefined)
-    return native === null
-      ? null
-      : {
-          data: buildAccountWeightSetters(native, ss58, { window: label }),
-          generatedAt: latestObservedIso(native),
-        };
-
-  let predicate = `hotkey = '${addr}'`;
-  if (slots.length > 0) {
-    // A TUPLE IN LIST, NOT A CHAIN OF ORs. One `(netuid = a AND uid = x) OR ...`
-    // clause per slot exceeds R2 SQL's expression nesting limit once an
-    // account holds enough of them:
-    //
-    //   40018: query expression too deep: nesting depth exceeds the protocol's
-    //   limit; rewrite long chains of AND/OR operators using IN/NOT IN lists
-    //
-    // The rejected query made r2SqlQuery return null, the reader decline, and
-    // the route serve an empty payload -- so this failed for exactly the
-    // validators that matter most, the ones registered on many subnets, while
-    // passing for accounts on a handful. Verified live 2026-08-03: an account
-    // on 119 subnets got 40018 from the OR chain and real rows (netuid 19: 454
-    // weight-sets, netuid 15: 444) from the IN form.
-    //
-    // `(netuid, uid) IN (...)` is the engine's own suggested rewrite and is
-    // exact. It must stay a TUPLE list -- `netuid IN (...) AND uid IN (...)`
-    // would match the cross product and attribute other neurons' weight-sets
-    // to this account.
-    const pairs = slots.map((s) => `(${s.netuid}, ${s.uid})`).join(", ");
-    predicate =
-      `(${predicate} OR ` +
-      `((hotkey IS NULL OR hotkey = '') AND (netuid, uid) IN (${pairs})))`;
-  }
-  const rows = await r2SqlQuery(
-    env,
-    `SELECT netuid, COUNT(*) AS weight_sets, MIN(observed_at) AS first_observed, ` +
-      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
-      `WHERE event_kind = '${WEIGHTS_EVENT_KIND}' AND observed_at >= ${cutoff} ` +
-      `AND ${predicate} GROUP BY netuid`,
-  );
-  if (rows === null) return null;
-  return {
-    data: buildAccountWeightSetters(rows, ss58, { window: label }),
-    generatedAt: latestObservedIso(rows),
-  };
+  return native == null
+    ? null
+    : {
+        data: buildAccountWeightSetters(native, ss58, { window: label }),
+        generatedAt: latestObservedIso(native),
+      };
 }
-
-/** The retired Postgres tier's ORDER BY, keyed by sort label. Every branch
- * tie-breaks on `coldkey` ASC (the original wrote it as the ordinal `1`, the
- * grouped column) so equal aggregates page deterministically -- which matters
- * more here than usual, since the offset emulation below re-slices a single
- * ordered scan. */
-const NOMINATOR_ORDER: Record<string, string> = {
-  net_staked: "net_staked_tao DESC, coldkey ASC",
-  gross_staked: "gross_staked_tao DESC, coldkey ASC",
-  last_activity: "last_observed DESC, coldkey ASC",
-};
 
 export interface ValidatorNominatorsQuery {
   window?: string | null;
@@ -818,37 +596,14 @@ export interface ValidatorNominatorsQuery {
   limit: number;
   offset?: number | null;
   /** ?coldkey= narrows to one nominator's own flow -- an exact match, so it
-   * rides the SQL predicate exactly as it did on Postgres. */
+   * narrows the native aggregate to that coldkey. */
   coldkey?: unknown;
 }
 
-/**
- * GET /api/v1/validators/{hotkey}/nominators -- who has staked to one
- * validator over the window, aggregated per coldkey and ranked.
- *
- * Carries the retired Postgres query's projection verbatim: the same six
- * aggregates, the same `hotkey = X AND kind IN (added, removed) AND
- * observed_at >= cutoff` predicate, the same optional coldkey narrowing. Two
- * dialect rewrites, neither of which changes the row set:
- *   - `event_kind IN (a, b)` becomes an OR of the two equalities, as every
- *     sibling here does rather than lean on the beta engine's IN support.
- *   - `LIMIT n OFFSET m` becomes a single `LIMIT n + m` scan sliced in JS,
- *     because R2 SQL has no OFFSET. Past OFFSET_EMULATION_CAP the over-fetch
- *     stops being a reasonable trade and the read declines instead of paging
- *     wrongly -- the same rule the block and transfer feeds apply.
- *
- * `totalCount` is the returned page's own length, which is what the Postgres
- * route passed (`rows.length` of its LIMIT/OFFSET result). Preserved
- * deliberately: it makes the builder emit the SQL-ordered page unsliced, and
- * changing it here would change `nominator_count` under existing callers on a
- * tier switch rather than on a decision to change it.
- *
- * Measured live before shipping (2026-08-03) against the busiest validator on
- * the network (64,520 StakeAdded rows in 30d): 30d 1.36 GB at ~4.2s, 90d
- * 2.06 GB at ~4.1s, against a 15s ceiling.
- */
+/** Rank complete native staking aggregates per coldkey, then apply one page.
+ * The total count describes every matching nominator before pagination. */
 export async function loadValidatorNominatorsColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   hotkey: string,
   query: ValidatorNominatorsQuery,
 ): Promise<{
@@ -867,22 +622,16 @@ export async function loadValidatorNominatorsColdTier(
   // ordering under the caller's requested label -- decline instead.
   if (!(NOMINATOR_SORTS as readonly string[]).includes(sort)) return null;
 
-  const where = [
-    `hotkey = '${addr}'`,
-    `(event_kind = '${STAKE_ADDED_KIND}' OR event_kind = '${STAKE_REMOVED_KIND}')`,
-  ];
   if (query.coldkey != null) {
     const nominator = safeSs58Literal(query.coldkey);
     // An unusable coldkey filter must not widen to "every nominator".
     if (nominator === null) return null;
-    where.push(`coldkey = '${nominator}'`);
   }
   const { label, cutoff } = windowCutoff(
     NOMINATOR_WINDOWS,
     DEFAULT_NOMINATOR_WINDOW,
     query.window,
   );
-  where.push(`observed_at >= ${cutoff}`);
 
   const indexed = await loadIndexedValidatorNominators(env, addr, cutoff, {
     coldkey: query.coldkey == null ? null : String(query.coldkey),
@@ -890,44 +639,10 @@ export async function loadValidatorNominatorsColdTier(
     limit,
     offset,
   });
-  if (indexed === null) return null;
-  const rows =
-    indexed?.rows ??
-    (await r2SqlQuery(
-      env,
-      `SELECT coldkey,` +
-        ` SUM(CASE WHEN event_kind = '${STAKE_ADDED_KIND}' THEN amount_tao ELSE 0 END) AS staked_tao,` +
-        ` SUM(CASE WHEN event_kind = '${STAKE_REMOVED_KIND}' THEN amount_tao ELSE 0 END) AS unstaked_tao,` +
-        ` COUNT(*) AS event_count, MAX(observed_at) AS last_observed,` +
-        ` SUM(CASE WHEN event_kind = '${STAKE_ADDED_KIND}' THEN amount_tao ELSE -amount_tao END) AS net_staked_tao,` +
-        ` SUM(amount_tao) AS gross_staked_tao` +
-        ` FROM chain.account_events WHERE ${where.join(" AND ")}` +
-        ` GROUP BY coldkey ORDER BY ${NOMINATOR_ORDER[sort]} LIMIT ${limit + offset}`,
-    ));
-  if (rows === null) return null;
-
-  // #9393: the TRUE distinct-coldkey count, which the scan above cannot know -- it is
-  // bounded by `LIMIT limit + offset`, so its length is the page size by construction.
-  // Passing that as `totalCount` made nominator_count track `limit` (20 with limit=20,
-  // 100 with limit=100) for a validator whose detail card reported 2,474.
-  //
-  // Wrapped in a GROUP BY subquery, not `count(DISTINCT coldkey)`: R2 SQL rejects the
-  // ungrouped form outright with `40015: scan budget exceeded: scanning too much data
-  // for count(DISTINCT) without GROUP BY`, and a rejected query would decline the whole
-  // reader. Same idiom, and same reason, as loadAccountSummaryColdTier.
-  const countRows =
-    indexed === undefined
-      ? await r2SqlQuery(
-          env,
-          `SELECT count(*) AS c FROM (SELECT coldkey FROM chain.account_events` +
-            ` WHERE ${where.join(" AND ")} GROUP BY coldkey)`,
-        )
-      : [{ c: indexed.totalCount }];
-  // A failed count leaves the total UNKNOWN rather than falling back to the page size.
-  // Null is a real state; a page size dressed as a total is not.
-  const counted = Number(countRows?.[0]?.c);
-  const totalCount =
-    countRows === null || !Number.isFinite(counted) ? null : counted;
+  if (indexed == null) return null;
+  const rows = indexed.rows;
+  const counted = Number(indexed.totalCount);
+  const totalCount = Number.isFinite(counted) ? counted : null;
 
   // data-api wrapped every sum in COALESCE(..., 0); replicate that client-side
   // rather than lean on the beta engine's function coverage. Without it an
@@ -951,93 +666,12 @@ export async function loadValidatorNominatorsColdTier(
 }
 
 /**
- * The bounded newest-first Transfer scan both counterparty modes read.
- *
- * observed_at USED TO BE STRIPPED here. The reason was payload parity: data-api's
- * outer projection dropped it, so keeping it would have let this tier populate
- * relationship timestamps the Postgres tier left null -- "a payload difference
- * callers could observe".
- *
- * That tier is retired (#10190), and with it the only reason to throw the column
- * away. Stripping it now just nulls three published fields on purpose --
- * `first_seen_at`, `last_seen_at`, and every transfer's `observed_at` -- while
- * the query still pays to select and sort by it. The parity it protected was
- * parity with a leg that no longer answers.
- */
-/** Exactly the columns `counterpartyScan` selects, so the read names its own
- * projection rather than defaulting to an untyped row (#10261's ratchet). */
-type CounterpartyScanRow = Pick<
-  AccountEventsRow,
-  | "hotkey"
-  | "coldkey"
-  | "amount_tao"
-  | "block_number"
-  | "event_index"
-  | "observed_at"
->;
-
-/**
- * The floor for a PAIR of accounts: the earlier of the two, or null.
- *
- * A relationship row needs only ONE side to exist, so the bound has to be the
- * MINIMUM. Flooring at the later account's first event would silently drop
- * everything the earlier one did before it -- and a counterparty feed missing
- * its oldest half looks exactly like a quiet relationship.
- *
- * NULL IF EITHER IS UNKNOWN, for the same reason. A floor derived from one
- * known side alone would be a bound on the wrong account: the unknown one may
- * have history below it.
- */
-async function pairHistoryFloorMs(
-  env: R2SqlEnv | null | undefined,
-  a: string,
-  b: string,
-): Promise<number | null> {
-  const [first, second] = await Promise.all([
-    accountHistoryFloorMs(env, a),
-    accountHistoryFloorMs(env, b),
-  ]);
-  if (first === null || second === null) return null;
-  return Math.min(first, second);
-}
-
-async function counterpartyScan(
-  env: R2SqlEnv | null | undefined,
-  predicate: string,
-  /** The projection's lower bound, or null when it could not supply one. */
-  floorMs: number | null,
-): Promise<CounterpartyScanRow[] | null> {
-  // BOUNDED (#11131), same reasoning as the transfer feed: the predicate pins
-  // hotkey/coldkey, which file statistics cannot prune on. The cap is a row
-  // count, not a scan bound -- reaching it still required reading every file.
-  //
-  // `scan_capped` is unaffected: the walk collects the newest CAP rows, which
-  // is what the unbounded LIMIT returned, so the builder still sees CAP rows
-  // exactly when there were at least that many.
-  return windowedRowRead<CounterpartyScanRow>(env, {
-    table: "chain.account_events",
-    columns: `hotkey, coldkey, amount_tao, block_number, event_index, observed_at`,
-    where:
-      floorMs === null
-        ? ["event_kind = 'Transfer'", predicate]
-        : [
-            "event_kind = 'Transfer'",
-            predicate,
-            `observed_at >= ${Math.trunc(floorMs)}`,
-          ],
-    order: ` ${FEED_ORDER}`,
-    need: COUNTERPARTIES_SCAN_CAP,
-    floorMs,
-  });
-}
-
-/**
  * GET /api/v1/accounts/{ss58}/counterparties (list mode) -- who this account
  * transacts native TAO with, aggregated client-side from the capped scan by
  * the same builder every tier feeds.
  */
 export async function loadAccountCounterpartiesColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   query: { limit?: number } = {},
 ): Promise<ReturnType<typeof buildCounterparties> | null> {
@@ -1053,15 +687,8 @@ export async function loadAccountCounterpartiesColdTier(
   );
   // `need` here is COUNTERPARTIES_SCAN_CAP (5,000), so the walk's two probes
   // essentially never fill and every request reached its unbounded third read.
-  const rows =
-    indexed !== undefined
-      ? indexed
-      : await counterpartyScan(
-          env,
-          `(hotkey = '${addr}' OR coldkey = '${addr}')`,
-          await accountHistoryFloorMs(env, ss58),
-        );
-  if (rows === null) return null;
+  const rows = indexed;
+  if (rows == null) return null;
   return buildCounterparties(rows, ss58, { limit: query.limit });
 }
 
@@ -1092,7 +719,7 @@ export interface CounterpartyDrilldownResult {
  * one relationship's fund-flow totals plus the transfer evidence.
  */
 export async function loadCounterpartyRelationshipColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   counterparty: string,
   query: { limit?: number } = {},
@@ -1108,20 +735,8 @@ export async function loadCounterpartyRelationshipColdTier(
     ],
     COUNTERPARTIES_SCAN_CAP,
   );
-  const rows =
-    indexed !== undefined
-      ? indexed
-      : await counterpartyScan(
-          env,
-          `((hotkey = '${addr}' AND coldkey = '${other}') OR ` +
-            `(hotkey = '${other}' AND coldkey = '${addr}'))`,
-          // THE PAIR'S floor is the EARLIER of the two, and null if either is
-          // unknown: a relationship row needs only ONE side to exist, so flooring at
-          // the later account's first event would drop everything the earlier one did
-          // before it.
-          await pairHistoryFloorMs(env, ss58, counterparty),
-        );
-  if (rows === null) return null;
+  const rows = indexed;
+  if (rows == null) return null;
   const relationship = buildCounterpartyRelationship(rows, ss58, counterparty, {
     limit: query.limit,
   });
@@ -1217,359 +832,14 @@ export type AccountSummaryColdTierResult =
     }
   | { declined: string[] };
 
-/**
- * The post-fold aggregate, and whether anything was truncated building it.
- *
- * Two fields rather than a bare array because the two halves have different
- * evidentiary weight: the projection's published groups are lifetime totals and
- * cannot be short, while the post-fold probe reads CAP + 1 rows and can be. A
- * caller handed only the concatenation cannot tell which it has.
- */
-interface PostFoldGroups {
-  groups: Record<string, unknown>[];
-  complete: boolean;
-}
-
-/**
- * A pure lakehouse aggregate, and whether its own probe overflowed.
- *
- * The CTE behind both callers reads `ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1` rows,
- * so a sum at or above the cap means the account has more events than the probe
- * looked at and every total here is a lower bound. That is the ONLY thing the
- * cap decides now, and it is decided in one place so the two lakehouse arms
- * cannot answer it differently.
- */
-function withScanCompleteness(rows: Record<string, unknown>[]): PostFoldGroups {
-  const scanned = rows.reduce((n, row) => n + Number(row.count), 0);
-  return { groups: rows, complete: scanned <= ACCOUNT_EVENT_SUMMARY_SCAN_CAP };
-}
-
-/**
- * The feed's own sort key, as a comparable tuple.
- *
- * The SAME three columns `FEED_ORDER` names, in the same precedence, because
- * the merged page has to be indistinguishable from what the single ordered
- * query returned. Sorting on `observed_at` alone would reorder events inside a
- * block, and the cursor token the other tier issues encodes all three.
- */
-/**
- * The three columns the account feed orders and de-duplicates on.
- *
- * DECLARED AS A SHAPE rather than taking `Record<string, unknown>`, so the two
- * row types that meet here -- the lakehouse's parsed row and the projection's
- * stricter `AccountSummaryRecentEvent` -- can both satisfy it without either
- * being erased through `unknown`. That erasure is what the double-assertion
- * ratchet sits at zero for: it would have let a merge of the wrong two row
- * types compile.
- */
-export interface FeedKeyed {
-  observed_at?: unknown;
-  block_number?: unknown;
-  event_index?: unknown;
-}
-
-/**
- * A row from ANY of the three producers that can answer an account feed, in the
- * shape the page builder consumes.
- *
- * THREE PRODUCERS, ONE FEED. The projection publishes
- * `AccountSummaryRecentEvent`, Neon's `chain_detail_account_events` yields
- * `ChainDetailAccountEvents`, and the lakehouse yields `AccountEventsRow`. They
- * describe the same events and differ in what each storage layer can promise --
- * pg hands back numerics as strings, the lakehouse as numbers, the artifact as
- * whatever it published -- which is exactly why `formatAccountEvent` coerces
- * every one of them on the way out.
- *
- * NAMED rather than written inline as `Record<string, unknown>` at each call.
- * The untyped-read ratchet counts that spelling in a generic position and is
- * right to: a merge that says "any object" reads identically to a read that
- * forgot its row type, and the two need to stay distinguishable.
- */
-export type AccountFeedRow = FeedKeyed & Record<string, unknown>;
-
-function feedKey(row: FeedKeyed): [number, number, number] {
-  return [
-    Number(row.observed_at ?? 0),
-    Number(row.block_number ?? 0),
-    Number(row.event_index ?? 0),
-  ];
-}
-
-/**
- * Merge the published newest events with whatever landed after them.
- *
- * THE RANGES ARE DISJOINT BY CONSTRUCTION -- the projection describes up to the
- * end of its last complete day, the probe starts at the first millisecond
- * after it -- so this is a merge, not a reconciliation, and no row can be
- * counted twice by arithmetic.
- *
- * IT STILL DE-DUPLICATES, on the pair that identifies an event. Disjointness is
- * a property of the producer, asserted across a repository boundary, and the
- * failure it guards against is not symmetric: a producer that widened its
- * window by an hour would put the same event in both halves, and a duplicated
- * row in a card is a visible wrong answer, while the cost of the check is a Set
- * over at most twenty rows.
- */
-export function mergeNewestEvents<Row extends FeedKeyed>(
-  published: readonly Row[],
-  head: readonly Row[],
-  limit: number,
-): Row[] {
-  const seen = new Set<string>();
-  const merged: Row[] = [];
-  for (const row of [...head, ...published]) {
-    const id = `${String(row.block_number)}:${String(row.event_index)}`;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    merged.push(row);
-  }
-  merged.sort((a, b) => {
-    const [ao, ab, ae] = feedKey(a);
-    const [bo, bb, be] = feedKey(b);
-    return bo - ao || bb - ab || be - ae;
-  });
-  return merged.slice(0, limit);
-}
-
-/**
- * Everything newer than the projection's edge, merged onto what it published.
- *
- * ONE BOUNDED QUERY, and the bound is not a guess: `observed_at >= floorMs`
- * covers exactly the days the producer had not folded when it ran, which its
- * own freshness ceiling holds to a small number. That is the difference from
- * the walk this replaces, whose last step had no floor at all.
- *
- * A FAILED PROBE FAILS THE READ. Returning the published half alone would serve
- * a feed that is silently missing the newest events -- the most visible rows on
- * the card -- with nothing in the payload to say so.
- */
-async function headProbe(
-  env: R2SqlEnv | null | undefined,
-  options: {
-    query: R2SqlReader;
-    where: string;
-    floorMs: number;
-    limit: number;
-    published: readonly Record<string, unknown>[];
-    /** The account, for the hot store's own indexed predicate. */
-    ss58: string;
-  },
-): Promise<Record<string, unknown>[] | null> {
-  const { query, where, floorMs, limit, published, ss58 } = options;
-  // NEON FIRST, when it provably covers this floor. Measured on the card
-  // 2026-08-16 via `Server-Timing`: the two post-fold R2 SQL probes were
-  // 3,210ms of a 3,695ms request -- 87% -- against 143ms for two Neon queries
-  // over the same window. They were not badly bounded; they asked the wrong
-  // store. See `loadAccountEventsAboveFloorHotTier` for the overlap argument.
-  const hot = await loadAccountEventsAboveFloorHotTier(
-    env,
-    ss58,
-    floorMs,
-    limit,
-  );
-  if (hot !== null) return mergeNewestEvents(published, hot, limit);
-
-  const head = await query(
-    env,
-    `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} ` +
-      `AND observed_at >= ${Math.trunc(floorMs)} ${FEED_ORDER} LIMIT ${limit}`,
-  );
-  if (!head) return null;
-  return mergeNewestEvents(published, head, limit);
-}
-
-/**
- * The projection's groups PLUS everything it was folded too early to see.
- *
- * The aggregate leg served `found.groups` verbatim, which is the projection's
- * count as of its `through` day -- so a card could report `event_count: 1` while
- * its own feed listed two events. Measured 2026-08-16 on
- * 5EEmaGFE...5oM3qDSC: groups held one NeuronRegistered at block 8836052, the
- * feed's newest row was block 8850439, and the card published both numbers side
- * by side. Whichever is right, they cannot both be, and a card that disagrees
- * with itself is worse than a slow one.
- *
- * The fix is the fold edge the feed already uses. Everything at or before it is
- * in the groups; everything after it is one bounded read away. CONCATENATED
- * rather than merged key-by-key, because `foldSummaryGroups` already sums
- * `count` per kind, unions the netuids and min/maxes the block and observed
- * bounds -- and the two ranges are disjoint by construction, so a (kind, netuid)
- * appearing in both is two real disjoint tallies of the same pair.
- *
- * NO SPAN, NO PROBE. Without `through` there is no edge to read from, and
- * guessing one would either double-count or leave a hole; serving the groups
- * alone is what this did before and is at worst stale, never wrong-by-overlap.
- */
-/**
- * Rows to (kind, netuid) groups, in the shape the SQL aggregate returns.
- *
- * The column names are the SQL's own aliases -- `kind`, `count`, `fb`, `lb`,
- * `fo`, `lo` -- because the caller concatenates these onto the projection's
- * published groups and `foldSummaryGroups` reads them by those names. Two
- * producers of one shape is exactly where a rename goes wrong, so this mirrors
- * the SELECT list above it rather than inventing a parallel vocabulary.
- */
-function foldRowsToGroups(
-  rows: readonly Record<string, unknown>[],
-): Record<string, unknown>[] {
-  const groups = new Map<string, Record<string, unknown>>();
-  for (const row of rows) {
-    const kind = row.event_kind;
-    const netuid = row.netuid ?? null;
-    const key = `${String(kind)}\u0000${String(netuid)}`;
-    const block = Number(row.block_number ?? 0);
-    const observed = Number(row.observed_at ?? 0);
-    const existing = groups.get(key);
-    if (!existing) {
-      groups.set(key, {
-        kind,
-        netuid,
-        count: 1,
-        fb: block,
-        lb: block,
-        fo: observed,
-        lo: observed,
-      });
-      continue;
-    }
-    existing.count = Number(existing.count) + 1;
-    existing.fb = Math.min(Number(existing.fb), block);
-    existing.lb = Math.max(Number(existing.lb), block);
-    existing.fo = Math.min(Number(existing.fo), observed);
-    existing.lo = Math.max(Number(existing.lo), observed);
-  }
-  return [...groups.values()];
-}
-
-async function postFoldGroups(
-  env: R2SqlEnv | null | undefined,
-  options: {
-    query: R2SqlReader;
-    scan: (bound: string) => string;
-    published: Record<string, unknown>[];
-    span: { foldFloorMs: number } | null;
-    /** The account, for the hot store's own indexed predicate. */
-    ss58: string;
-  },
-): Promise<PostFoldGroups | null> {
-  const { query, scan, published, span, ss58 } = options;
-  // No fold edge, so there is nothing to add and nothing that could have been
-  // truncated: the published totals stand on their own and they are lifetime.
-  if (span === null) return { groups: published, complete: true };
-
-  // NEON FIRST, folded here. This aggregate reads the SAME post-fold window the
-  // head probe does, so when the hot store provably covers it the groups can be
-  // built from rows it already holds -- and `Server-Timing` on the live card
-  // (2026-08-16) put these two R2 SQL probes at 3,210ms of a 3,695ms request,
-  // ~1.6s each, against 143ms for two Neon queries over the same window.
-  //
-  // GROUPED IN JS, not in SQL, and that is not a shortcut: the aggregate is
-  // count/min/max per (kind, netuid) over at most `ACCOUNT_EVENT_SUMMARY_SCAN_CAP`
-  // rows of ONE account's recent activity. Postgres would do it faster in
-  // absolute terms and the round trip dwarfs either.
-  //
-  // A FULL PAGE MEANS THE CAP WAS REACHED, which is exactly the case the SQL
-  // version signals with `scan_capped` -- and a windowed subtotal presented as a
-  // lifetime aggregate is the self-contradicting card this whole function
-  // exists to fix. So a hot read that fills its limit falls through to the SQL
-  // path rather than publishing a total it cannot vouch for.
-  const hot = await loadAccountEventsAboveFloorHotTier(
-    env,
-    ss58,
-    span.foldFloorMs,
-    ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
-  );
-  if (hot !== null && hot.length < ACCOUNT_EVENT_SUMMARY_SCAN_CAP) {
-    // COMPLETE: the published half is lifetime by construction and the hot half
-    // did not fill its limit, so nothing was truncated at either end.
-    return { groups: [...published, ...foldRowsToGroups(hot)], complete: true };
-  }
-
-  const bound = ` AND observed_at >= ${Math.trunc(span.foldFloorMs)}`;
-  const above = await query(
-    env,
-    `WITH scan AS (${scan(bound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
-      `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
-      `min(observed_at) AS fo, max(observed_at) AS lo ` +
-      `FROM scan GROUP BY event_kind, netuid`,
-  );
-  // A failed probe DECLINES rather than falling back to the groups alone: the
-  // caller would publish the same self-contradicting card this exists to fix,
-  // and it would do it silently.
-  if (!above) return null;
-  // THE DELTA IS THE ONLY THING THAT CAN BE SHORT HERE. `scan` reads CAP + 1
-  // rows of the POST-FOLD window, so a delta at or above the cap means that
-  // window alone overflowed the probe and its totals are a lower bound -- which
-  // makes the sum a lower bound too, however exact the published half is.
-  // Counted over the delta rather than the total for exactly that reason: the
-  // published half is lifetime and is not evidence of truncation at any size.
-  const delta = above.reduce((n, row) => n + Number(row.count), 0);
-  return {
-    groups: [...published, ...above],
-    complete: delta <= ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
-  };
-}
-
-/**
- * The feed for an account the projection HAS, in two bounded reads.
- *
- * THE CASE THAT IS ACTUALLY IN PRODUCTION. `headProbe` above needs `recent` --
- * the published event map from metagraphed-infra#575 -- and no generation
- * carries one yet: measured 2026-08-16, the live pointer publishes no
- * `recent_limit` and shard 12350 of generation 20260815T062657Z holds 43
- * accounts, all groups-only. So `readRecent` declines for EVERY account and
- * every present account fell through to the unbounded lifetime scan, which is
- * the 15s abort behind the 503 on /accounts/{ss58}.
- *
- * The groups alone are enough to bound it. They are a lifetime aggregate, so
- * `[firstMs, lastMs]` provably contains every event at or before the fold, and
- * `foldFloorMs` is where the fold stops -- the two ranges MEET, so together
- * they cover the account's whole history with nothing outside them.
- *
- * ABOVE THE FOLD FIRST, and short-circuiting, because that window is small (one
- * fold interval) and an account with `limit` events in it needs no second read
- * at all -- those ARE the newest. Only an account quieter than that pays for
- * the second query, and that one is bounded to its own active span instead of
- * to all of time.
- */
-async function spanProbe(
-  env: R2SqlEnv | null | undefined,
-  options: {
-    query: R2SqlReader;
-    where: string;
-    span: { firstMs: number; lastMs: number; foldFloorMs: number };
-    limit: number;
-  },
-): Promise<Record<string, unknown>[] | null> {
-  const { query, where, span, limit } = options;
-  const select = `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} `;
-  const above = await query(
-    env,
-    `${select}AND observed_at >= ${Math.trunc(span.foldFloorMs)} ${FEED_ORDER} LIMIT ${limit}`,
-  );
-  if (!above) return null;
-  if (above.length >= limit) return above.slice(0, limit);
-  // The folded remainder, bounded on BOTH sides by where the groups say this
-  // account's events are. `lastMs` is at or below the fold edge by
-  // construction, so this can never double-count a row the probe above found.
-  const folded = await query(
-    env,
-    `${select}AND observed_at >= ${Math.trunc(span.firstMs)} ` +
-      `AND observed_at <= ${Math.trunc(span.lastMs)} ${FEED_ORDER} LIMIT ${limit}`,
-  );
-  if (!folded) return null;
-  return mergeNewestEvents(above, folded, limit);
-}
-
+/** Combine the verified lifetime fold with complete indexed deltas and a recent page. */
 export async function loadAccountSummaryColdTier(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ss58: string,
   {
     recentLimit = ACCOUNT_SUMMARY_RECENT_LIMIT,
-    query = r2SqlQuery,
   }: {
     recentLimit?: number;
-    query?: R2SqlReader;
   } = {},
 ): Promise<AccountSummaryColdTierResult> {
   const addr = safeSs58Literal(ss58);
@@ -1579,94 +849,11 @@ export async function loadAccountSummaryColdTier(
     return { declined: ["input: unusable recent limit"] };
   }
 
-  const where = `(hotkey = '${addr}' OR coldkey = '${addr}')`;
-  // The newest CAP + 1 events, named once so the reads that share it cannot
-  // drift onto different windows.
-  //
-  // CAP + 1, not CAP, and that one extra row is what retired the separate cap
-  // probe -- see the read block below. The PUBLISHED window is still the newest
-  // CAP events: `c` is clamped back to CAP before it leaves this function, so
-  // the payload is unchanged.
-  // Takes the walk's block bound (#11131), so the window it scans is spliced in
-  // rather than the whole table being opened for a filter statistics cannot
-  // prune. Empty string is the unbounded fallback, when the head is unreadable.
-  const scan = (bound: string) =>
-    `SELECT netuid, event_kind, block_number, observed_at ` +
-    `FROM chain.account_events WHERE ${where}${bound} ` +
-    `ORDER BY block_number DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
-
-  // TWO READS, NOT THREE (was five before #9386).
-  //
-  // This route declined ~50% of requests for a high-activity coldkey, and its shape
-  // was the reason: five concurrent broad scans of `chain.account_events`, with
-  // `Promise.all` + an all-or-nothing check, so the success probability was the
-  // PRODUCT of five and the cost was five scans of an unpartitioned table. A single
-  // `count(*) WHERE hotkey = ...` there reports ~3,390 R2 requests.
-  //
-  // The first three all aggregated the SAME `scan` CTE at different groupings, so one
-  // `GROUP BY event_kind, netuid` yields all of them exactly -- see foldSummaryGroups
-  // for the derivation and why each one is equivalent rather than approximate.
-  //
-  // #9386 kept a third read because the cap probe scanned CAP+1 rows WITHOUT the CTE,
-  // and that was how "exactly CAP" was told from "more than CAP". IT WAS THE QUERY
-  // THAT ABORTED. Measured 2026-08-10, once r2-sql failures finally carried
-  // `query_shape` (the attribution #9459 shipped for exactly this question): 32 of
-  // the 34 request-path r2-sql timeouts were that probe, and nothing else in this
-  // loader. It declined `account-summary` on 92% of calls -- 347 failures to 30
-  // successes -- against a 15s ceiling the other two legs clear.
-  //
-  // A bare `LIMIT` with no ORDER BY is why. The engine cannot stop early on a sorted
-  // prefix, so proving there is no CAP+1'th row means scanning the whole unpartitioned
-  // table -- and it is SLOWEST for the accounts with the fewest events, which is
-  // backwards from what the probe was protecting against.
-  //
-  // So the CTE reads CAP + 1 and the probe is gone. `sum(count)` over the groups is
-  // the rows in the CTE, which is min(total, CAP + 1) -- byte-for-byte the number the
-  // probe returned, from a query that was already being issued. `> CAP` still means
-  // "more than the published window", so buildAccountSummary's cap logic is untouched.
-  //
-  // The recent feed cannot fold in: it selects whole rows in a different order.
-  const failures: string[] = [];
-  const track = (leg: string) => (detail: string) => {
-    failures.push(`${leg}: ${detail}`);
-  };
-
-  // BOTH LEGS ARE BOUNDED (#11131). `(hotkey = X OR coldkey = X)` is a
-  // scattered-key filter, so each of these opened all 51 files -- and this
-  // route is the one #11131 measured timing out most often. The groups leg
-  // cannot use the accumulating walk the feed legs use: a slice would aggregate
-  // EVERY row in its range rather than only enough to reach CAP + 1, widening
-  // the window the totals describe and quietly changing `event_scan_capped`
-  // and `first_seen`. So it re-issues instead, keeping its own ORDER BY and
-  // LIMIT inside the SQL, and stops as soon as the window holds CAP + 1 rows --
-  // at which point the newest CAP + 1 within it are the newest overall.
-  // THE PROJECTION FIRST (#11131). The grouped leg is a LIFETIME aggregate over
-  // a scattered key, so no window bounds it -- measured 4,374 MB and ~14s per
-  // request, which is the read that aborts at the 15s ceiling. A sharded R2
-  // artifact answers the identical question in one GET, and a miss returns null
-  // so this arm simply does not run. It can make the route faster, never wrong.
   const projected = await loadAccountSummaryProjection(env, ss58, {
     recentLimit: limit,
   });
 
-  // THE ACCOUNT THE PROJECTION HAS NEVER SEEN, which is every account newer
-  // than the last generation -- and the case that used to be the worst one.
-  //
-  // An absent account is not a miss (see AccountSummaryProjectionAbsent): the
-  // producer writes every shard, so absence from a shard that exists PROVES
-  // there are no events at or before `through`. Both legs therefore bound to
-  // `[floorMs, now)` and stay COMPLETE -- there is nothing below the floor to
-  // miss -- instead of opening the whole table for a scattered filter.
-  //
-  // This is the read the 503 came from: one event, an unbounded lifetime scan,
-  // aborted at the 15s ceiling.
   const absentFloor = projected?.absent === true ? projected.floorMs : null;
-  const absentBound =
-    absentFloor === null
-      ? ""
-      : ` AND observed_at >= ${Math.trunc(absentFloor)}`;
-  /** The projection when it FOUND the account, narrowed once so neither leg has
-   * to re-discriminate the union. */
   const found = projected && projected.absent !== true ? projected : null;
 
   // Keep the compact lifetime fold and read only events after its cutoff. If no
@@ -1684,170 +871,25 @@ export async function loadAccountSummaryColdTier(
     ),
     loadIndexedAccountFeedPage(env, selectors, limit),
   ]);
-  if (indexedGroups === null || indexedRecent === null)
+  if (indexedGroups == null || indexedRecent == null)
     return { declined: ["indexed history: account summary read failed"] };
-  if (indexedGroups !== undefined && indexedRecent !== undefined) {
-    const folded = foldSummaryGroups([
-      ...(foldFloor !== undefined && found ? found.groups : []),
-      ...indexedGroups.map((row) => ({
-        kind: row.event_kind,
-        netuid: row.netuid,
-        count: row.event_count,
-        fb: row.first_block,
-        lb: row.last_block,
-        fo: row.first_observed,
-        lo: row.last_observed,
-      })),
-    ]);
-    return {
-      ...folded,
-      scanned: Number(folded.agg.c),
-      complete: true,
-      recent: indexedRecent,
-    };
-  }
-
-  const [groupRows, recentRows] = await Promise.all([
-    absentFloor !== null
-      ? // The projection PROVED there is nothing at or before the fold edge, so
-        // this bounded read sees the account's entire history -- complete
-        // unless the read itself overflowed CAP + 1.
-        query(
-          env,
-          `WITH scan AS (${scan(absentBound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
-            `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
-            `min(observed_at) AS fo, max(observed_at) AS lo ` +
-            `FROM scan GROUP BY event_kind, netuid`,
-          { onError: track("summary-groups-bounded") },
-        ).then((rows) => (rows === null ? null : withScanCompleteness(rows)))
-      : found
-        ? postFoldGroups(env, {
-            query: (e, sql) =>
-              query(e, sql, { onError: track("summary-groups-postfold") }),
-            scan,
-            published: found.groups,
-            span: found.span,
-            ss58,
-          })
-        : windowedFloorRead<Record<string, unknown>[]>(env, {
-            query,
-            attempt: (bound, run) =>
-              run(
-                env,
-                `WITH scan AS (${scan(bound)}) SELECT event_kind AS kind, netuid AS netuid, ` +
-                  `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
-                  `min(observed_at) AS fo, max(observed_at) AS lo ` +
-                  `FROM scan GROUP BY event_kind, netuid`,
-                { onError: track("summary-groups") },
-              ),
-            // `sum(count)` over the groups is the rows the CTE saw, which is exactly
-            // the number the retired cap probe returned.
-            //
-            // No `?? 0`: `count(*)` always yields a value, so the nullish half is a
-            // branch no test can reach -- the same reading the `scanned` line below
-            // already applies. An absent count would make the sum NaN, `NaN > CAP` is
-            // false, and the read falls back to the unbounded query it would have
-            // issued anyway, so nothing is lost by not guarding it.
-            satisfied: (rows) =>
-              rows.reduce((n, row) => n + Number(row.count), 0) >
-              ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
-          }).then((rows) =>
-            rows === null ? null : withScanCompleteness(rows),
-          ),
-    // THE FEED LEG, and the read that actually times this route out
-    // (#11222). `windowedRowRead` probes `now-2d` then `now-8d` and then reads
-    // the WHOLE remainder -- and 95.8% of accounts are past both probes, so
-    // for almost every request the third read is an unbounded scattered scan.
-    // Measured on production 2026-08-15: nine real accounts, three 503s at the
-    // 15s ceiling and a 10-19s spread across the rest.
-    //
-    // When the projection carries this account's newest events, the scan is
-    // replaced by ONE bounded probe of everything the producer had not folded
-    // yet. The two halves meet at the edge of the last complete day rather
-    // than overlapping or leaving a gap -- see `recentFloorMs` for why that
-    // edge is `through` and emphatically not `generated_at`.
-    //
-    // An ABSENT account takes the same bounded probe with NOTHING published to
-    // merge onto: the projection proved there is nothing below the floor, so
-    // the probe alone is the complete feed. Leaving this case on
-    // `windowedRowRead` would have bounded the aggregate leg and left the feed
-    // leg scanning the whole table -- fixing the cheaper half of the request
-    // and keeping the timeout.
-    absentFloor !== null
-      ? headProbe(env, {
-          query: (e, sql) => query(e, sql, { onError: track("recent-absent") }),
-          where,
-          floorMs: absentFloor,
-          limit,
-          published: [],
-          ss58,
-        })
-      : found?.recent
-        ? headProbe(env, {
-            query: (e, sql) => query(e, sql, { onError: track("recent-head") }),
-            where,
-            floorMs: found.recent.floorMs,
-            limit,
-            published: found.recent.rows,
-            ss58,
-          })
-        : found?.span
-          ? spanProbe(env, {
-              query: (e, sql) =>
-                query(e, sql, { onError: track("recent-span") }),
-              where,
-              span: found.span,
-              limit,
-            })
-          : windowedRowRead<AccountEventsRow>(env, {
-              query: (e, sql) =>
-                query(e, sql, { onError: track("recent-feed") }),
-              table: "chain.account_events",
-              columns: EVENT_COLUMNS,
-              where: [where],
-              order: ` ${FEED_ORDER}`,
-              need: limit,
-            }),
+  const folded = foldSummaryGroups([
+    ...(foldFloor !== undefined && found ? found.groups : []),
+    ...indexedGroups.map((row) => ({
+      kind: row.event_kind,
+      netuid: row.netuid,
+      count: row.event_count,
+      fb: row.first_block,
+      lb: row.last_block,
+      fo: row.first_observed,
+      lo: row.last_observed,
+    })),
   ]);
-
-  // Either half missing is a decline: a card mixing measured aggregates with a
-  // zeroed count would silently flip event_scan_capped and publish a first_seen
-  // that is really a window floor.
-  if (!groupRows || !recentRows) {
-    return { declined: failures };
-  }
-  const folded = foldSummaryGroups(groupRows.groups);
-
-  // The CTE read CAP + 1, so this is min(total, CAP + 1) -- the probe's number
-  // -- on a lakehouse read, and the account's true lifetime total on a
-  // projection-backed one. `groupRows.complete` is which.
-  //
-  // No `?? 0`: foldSummaryGroups starts `count` at 0 and only ever adds a
-  // finite rowCount, so `agg.c` is always a number and the nullish half is a
-  // branch no test can reach. codecov/patch counts it as an uncovered branch,
-  // which is the correct reading -- an unreachable guard is not safety.
-  const scanned = Number(folded.agg.c);
-
   return {
-    // CLAMPED ONLY WHEN THE COUNT IS A PROBE'S. Clamping exists because the
-    // lakehouse CTE reads CAP + 1 and `sum(count)` over it is therefore
-    // min(total, CAP + 1) -- a number that means "at least this many", and
-    // publishing CAP + 1 of it would be publishing a scan artefact.
-    //
-    // A complete aggregate has no such artefact to hide: it is the account's
-    // lifetime total, and clamping it to 5,000 would replace a true 208,423
-    // with a smaller wrong one on precisely the accounts whose whole history
-    // this tier can now prove.
-    agg: {
-      ...folded.agg,
-      c: groupRows.complete
-        ? scanned
-        : Math.min(scanned, ACCOUNT_EVENT_SUMMARY_SCAN_CAP),
-    },
-    kinds: folded.kinds,
-    scanned,
-    complete: groupRows.complete,
-    recent: recentRows,
+    ...folded,
+    scanned: Number(folded.agg.c),
+    complete: true,
+    recent: indexedRecent,
   };
 }
 

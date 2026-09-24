@@ -53,7 +53,7 @@ import { resolveBlocksSeam } from "./blocks-seam.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { type ChainFirehoseTopic } from "./chain-firehose-topics.ts";
 import { resolveDecodeWatermark } from "./decode-watermark.ts";
-import { safeBlockNumber } from "./r2-sql.ts";
+import { safeBlockNumber } from "./history-readers.ts";
 import { readStore, type OptionalRowQuerier } from "./read-store.ts";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
 import { selectedD1Store } from "./d1-store.ts";

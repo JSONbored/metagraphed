@@ -1,3 +1,4 @@
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 // The date seam between current and retained daily history (#10797).
 //
 // The claims worth pinning are the ones that decide whether a served day is
@@ -31,10 +32,13 @@ import {
   buildNeuronHistory,
   buildSubnetHistory,
 } from "../src/neuron-history.ts";
-import { R2_SQL_TOKEN_ENV, safeIsoDate } from "../src/r2-sql.ts";
+import { safeIsoDate } from "../src/history-readers.ts";
 import { shiftIsoDate } from "../src/iso-date-window.ts";
 
-const ENV = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
+const ENV = {
+  NATIVE_PROJECTIONS: "enabled",
+  [NATIVE_FIXTURE_ENV]: "cfut_test",
+} as unknown as Env;
 beforeEach(() => {
   reader(null);
   vi.stubGlobal(
@@ -80,7 +84,10 @@ function reader(rows: Record<string, unknown>[] | null) {
 describe("retained history requires its selected native owner", () => {
   for (const [name, env] of Object.entries({
     absent: undefined,
-    legacyToken: { [R2_SQL_TOKEN_ENV]: "cfut_test" },
+    legacyToken: {
+      NATIVE_PROJECTIONS: "enabled",
+      [NATIVE_FIXTURE_ENV]: "cfut_test",
+    },
     unselected: { ...ENV, D1_STATE_TABLES: "" },
     missingBinding: {
       D1_STATE_TABLES: "neuron_daily,account_position_daily,subnet_snapshots",

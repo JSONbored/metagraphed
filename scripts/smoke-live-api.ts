@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { API_ROUTES } from "../src/contracts.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
-import { QUERY_TIMEOUT_MS } from "../src/r2-sql.ts";
+import { HISTORY_READ_TIMEOUT_MS } from "../src/history-readers.ts";
 import { X402_VERSION, x402RequiresPayment } from "../src/x402.ts";
 
 // Live production response bodies (API envelopes, MCP JSON-RPC results) --
@@ -24,7 +24,7 @@ const baseUrl = normalizeBaseUrl(
  * The client must outlast the SERVER's own query ceiling, or it measures its own
  * impatience (#11131).
  *
- * This was a flat 15000 -- byte for byte `QUERY_TIMEOUT_MS` in src/r2-sql.ts.
+ * This was a flat 15000 -- byte for byte `HISTORY_READ_TIMEOUT_MS` in src/history-readers.ts.
  * So a request that hit the lakehouse ceiling could never be seen answering:
  * the server needs its full 15s plus response overhead to produce the degraded
  * card, and the client aborted at exactly 15s. Every such request was recorded
@@ -40,7 +40,7 @@ const baseUrl = normalizeBaseUrl(
  * server-side deadline its own failure.
  */
 export const timeoutMs = Number(
-  process.env.METAGRAPH_LIVE_SMOKE_TIMEOUT_MS || QUERY_TIMEOUT_MS * 2,
+  process.env.METAGRAPH_LIVE_SMOKE_TIMEOUT_MS || HISTORY_READ_TIMEOUT_MS * 2,
 );
 
 /**

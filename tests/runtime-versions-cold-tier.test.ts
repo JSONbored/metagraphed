@@ -10,7 +10,10 @@ vi.mock("../src/indexed-runtime-history.ts", () => ({
 afterEach(() => {
   vi.restoreAllMocks();
 });
-const env = { R2_SQL_TOKEN: "legacy-test" };
+const env = {
+  NATIVE_PROJECTIONS: "enabled",
+  NATIVE_HISTORY_FIXTURE: "legacy-test",
+};
 test("verified indexed timeline preserves rollback and nullable observations", async () => {
   const expected = buildRuntimeVersionHistory(
     [

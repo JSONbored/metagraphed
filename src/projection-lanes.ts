@@ -4,7 +4,7 @@
 // windowed aggregate routes (chain/transfers, chain/stake-flow) anchor their
 // windows to the current date, so a one-shot materialization — the
 // top-holders answer, whose inputs are frozen — would rot within a day. And
-// R2 SQL is a second-scale engine with no indexes (src/r2-sql.ts's measured
+// R2 SQL is a second-scale engine with no indexes (src/history-readers.ts's measured
 // characteristics), so recomputing a network-wide aggregate under a request
 // is the hot-path misuse that module's header warns against. A cron is the
 // remaining shape: each lane recomputes its artifact from the lakehouse on an
@@ -41,7 +41,7 @@ import {
   LAKEHOUSE_NAMESPACES,
   projectionKey,
 } from "./chain-network.ts";
-import { isR2SqlConfigured, QUERY_TIMEOUT_MS, r2SqlQuery } from "./r2-sql.ts";
+import { HISTORY_READ_TIMEOUT_MS } from "./history-readers.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import {
   CHAIN_TRANSFER_LIMIT_MAX,
@@ -151,7 +151,7 @@ const TRANSFER_KIND = "Transfer";
  * well inside its own 30-minute interval, and a statement that cannot answer
  * in a minute is a query to fix, not to wait longer for.
  */
-export const PROJECTION_QUERY_TIMEOUT_MS = 4 * QUERY_TIMEOUT_MS;
+export const PROJECTION_QUERY_TIMEOUT_MS = 4 * HISTORY_READ_TIMEOUT_MS;
 
 /**
  * Every lane statement runs on the lane bound, never the request bound.
@@ -169,11 +169,11 @@ export const PROJECTION_QUERY_TIMEOUT_MS = 4 * QUERY_TIMEOUT_MS;
  * else — a direct call is now visible as one, and tests/projection-lanes.test.ts
  * asserts against the source that none creeps back in.
  */
-function laneQuery(env: Env, sql: string) {
+async function laneQuery(env: Env, sql: string) {
   const native = projectionQuery(env);
   if (native)
     return native(env, sql, { timeoutMs: PROJECTION_QUERY_TIMEOUT_MS });
-  return r2SqlQuery(env, sql, { timeoutMs: PROJECTION_QUERY_TIMEOUT_MS });
+  return null;
 }
 
 export interface ProjectionLane {
@@ -244,7 +244,7 @@ export interface ProjectionLane {
 }
 
 /** Every value a lane inlines below is a module constant or a computed
- * integer — never caller input — per src/r2-sql.ts's no-bound-params
+ * integer — never caller input — per src/history-readers.ts's no-bound-params
  * contract. */
 function transferWindowSql(cutoff: number, network: ChainNetworkId): string[] {
   const scope =
@@ -1075,7 +1075,7 @@ async function computeChainWeightSetters(
  * network-wide aggregate: measured with the engine's own metrics (#11436) it
  * reads 17.4 MiB and 682 R2 requests for 7d, which is not a large scan -- but
  * request-time reads against this engine spanned 2.00s to 31.61s on ONE query
- * against ONE subject, and `QUERY_TIMEOUT_MS` turns that tail into a decline.
+ * against ONE subject, and `HISTORY_READ_TIMEOUT_MS` turns that tail into a decline.
  * A cron pays the variance once per interval instead of per caller.
  */
 async function computeChainServing(
@@ -1811,7 +1811,7 @@ export async function runProjectionLanes(
     }
     return { ok, lanes };
   }
-  if (!isR2SqlConfigured(env)) {
+  if (!projectionQuery(env)) {
     // Unconfigured is a deliberate deployment state (local/CI/self-hosters
     // have no lakehouse), not a fault: skip quietly, the same contract as the
     // ACCOUNT_EVENTS_ROLLUP_CRON skip — an exception per tick forever would
@@ -1819,7 +1819,7 @@ export async function runProjectionLanes(
     return {
       ok: false,
       skipped: true,
-      reason: "r2 sql not configured",
+      reason: "native projection producer not configured",
       lanes: {},
     };
   }

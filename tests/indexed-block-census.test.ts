@@ -252,10 +252,10 @@ test("watchdog preserves gap reporting and never calls SQL for selected native p
   const query = vi.fn(async () => {
     throw Error("Selected census cannot query SQL");
   });
+  vi.stubGlobal("fetch", query);
   const recordExceptionEvent = vi.fn(async () => true);
   const env = { ...f.env, ICEBERG_BLOCKS_MAX: "9" } as unknown as Env;
   const result = await runLakehouseSeamWatchdog(env, {
-    query,
     recordExceptionEvent,
   });
   assert.equal(result.ok, true);
@@ -265,8 +265,7 @@ test("watchdog preserves gap reporting and never calls SQL for selected native p
   );
   f.objects.get(ceilingKey)!.size = 8193;
   assert.equal(
-    (await runLakehouseSeamWatchdog(env, { query, recordExceptionEvent }))
-      .reason,
+    (await runLakehouseSeamWatchdog(env, { recordExceptionEvent })).reason,
     "lakehouse_unavailable",
   );
   assert.equal(query.mock.calls.length, 0);

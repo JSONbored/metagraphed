@@ -25,7 +25,7 @@ import { afterEach, describe, test } from "vitest";
 import { coldTierChainEventsPayload } from "../src/chain-events-degraded.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { jsonBody, mockEnv } from "./row-type.ts";
 import type { Row } from "./row-type.ts";
 
@@ -91,7 +91,10 @@ describe("no surface owns the ownership-history cascade", () => {
 
 // --- behavioural parity ------------------------------------------------------
 
-const ENV = mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" });
+const ENV = mockEnv({
+  NATIVE_PROJECTIONS: "enabled",
+  [NATIVE_FIXTURE_ENV]: "cfut_test",
+});
 const NETUID = 86;
 const OWNER_A = "5DHwWLjtpwnZQUQKKXE2N5Gdy2N8PpqhgjLUuzgSB7yuGZkF";
 const OWNER_B = "5GgvCi6h7dNsC489T8UnUMv912SoEXpEUDVt71VJU1Td7WKh";

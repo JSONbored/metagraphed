@@ -23,7 +23,7 @@ import {
   loadChainEventRollup,
 } from "./chain-event-rollup-cold-tier.ts";
 import { declineChainEventCard } from "./chain-event-card-decline.ts";
-import type { R2SqlReader } from "./r2-sql.ts";
+import type { HistoricalQueryReader } from "./history-readers.ts";
 
 /**
  * One window of chain-serving activity from the lakehouse, already built into
@@ -51,7 +51,7 @@ import type { R2SqlReader } from "./r2-sql.ts";
  * window is still resolved here, for the original reason below.
  */
 export async function loadChainServingColdTier(
-  env: Parameters<R2SqlReader>[0],
+  env: Parameters<HistoricalQueryReader>[0],
   {
     window,
     limit,
@@ -62,7 +62,7 @@ export async function loadChainServingColdTier(
      * have to restate it here. */
     limit?: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: R2SqlReader;
+    query?: HistoricalQueryReader;
   },
 ): Promise<ReturnType<typeof buildChainServing> | null> {
   const label = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)

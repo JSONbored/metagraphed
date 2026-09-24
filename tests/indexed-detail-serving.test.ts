@@ -17,7 +17,7 @@ import { loadBlockEventsColdTier } from "../src/events-cold-tier.ts";
 import { buildBlock, declineBlock } from "../src/blocks.ts";
 import { buildBlockExtrinsics, buildExtrinsic } from "../src/extrinsics.ts";
 import { buildBlockEvents, formatAccountEvent } from "../src/account-events.ts";
-const env = { R2_SQL_TOKEN: "test" },
+const env = { NATIVE_PROJECTIONS: "enabled", NATIVE_HISTORY_FIXTURE: "test" },
   hash = "0x" + "a".repeat(64);
 const header = (block_number = 7) => ({
   block_number,

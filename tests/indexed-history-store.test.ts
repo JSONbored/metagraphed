@@ -66,7 +66,11 @@ function fixture(table = "chain_events", network = "mainnet") {
   return {
     selected,
     get,
-    env: { METAGRAPH_ARCHIVE: { get }, R2_SQL_TOKEN: "test" },
+    env: {
+      NATIVE_PROJECTIONS: "enabled",
+      METAGRAPH_ARCHIVE: { get },
+      NATIVE_HISTORY_FIXTURE: "test",
+    },
   };
 }
 function segmentedFixture(table = "blocks", network = "mainnet") {

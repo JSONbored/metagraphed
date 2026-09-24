@@ -77,7 +77,10 @@ export function archiveEnv(
 }
 
 /** The env key R2 SQL needs before the lakehouse leg is attempted at all. */
-export const LAKEHOUSE_ENV = { R2_SQL_TOKEN: "cfut_test" };
+export const LAKEHOUSE_ENV = {
+  NATIVE_PROJECTIONS: "enabled",
+  NATIVE_HISTORY_FIXTURE: "cfut_test",
+};
 
 export interface LakehouseDouble {
   /** Every SQL issued, verbatim -- so a dropped filter is provable. */

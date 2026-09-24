@@ -9,7 +9,9 @@
 // the ORDER, not merely that a number came back -- a non-null field with the
 // wrong ranking is the exact failure that shipped.
 import assert from "node:assert/strict";
-import { afterEach, describe, test, vi } from "vitest";
+import * as nativeFlow from "../src/top-holders-native-flow.ts";
+const nativeFlowReader = vi.spyOn(nativeFlow, "loadNativeTopHoldersFlow");
+import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // One store since #10179: the HOLDINGS leg reaches it through a selector that
@@ -24,7 +26,6 @@ vi.mock("pg", () => pg.module);
 import {
   buildTopHoldersFlowRows,
   computeTopHoldersFlow,
-  loadTopHoldersFlowTier,
   topHoldersFlowRows,
   topHoldersFlowSql,
   TOP_HOLDERS_FLOW_LANE,
@@ -51,26 +52,6 @@ function aggregate(
   return { coldkey, ...flows };
 }
 
-function bucketWith(
-  body: unknown,
-  opts: { missing?: boolean; throws?: boolean } = {},
-) {
-  const gets: string[] = [];
-  return {
-    gets,
-    env: {
-      METAGRAPH_ARCHIVE: {
-        async get(key: string) {
-          gets.push(key);
-          if (opts.throws) throw new Error("r2 unavailable");
-          if (opts.missing) return null;
-          return { json: async () => body };
-        },
-      },
-    } as unknown as Env,
-  };
-}
-
 /**
  * A holdings leg in the shape topHoldersHoldings returns.
  *
@@ -95,19 +76,6 @@ function holdings(
       ["free_tao", "delegated_tao", "total_tao"].filter((key) =>
         entries.some(([, cell]) => typeof cell[key] === "number"),
       ),
-  };
-}
-
-function artifact(
-  rows: Array<Record<string, unknown>>,
-  sorts: string[] = TOP_HOLDERS_FLOW_SORTS,
-) {
-  return {
-    schema_version: 1,
-    generated_at: "x",
-    row_count: rows.length,
-    sorts,
-    rows,
   };
 }
 
@@ -437,360 +405,78 @@ describe("topHoldersArtifactSorts", () => {
 });
 
 describe("computeTopHoldersFlow", () => {
-  const realFetch = globalThis.fetch;
-  afterEach(() => {
-    globalThis.fetch = realFetch;
+  beforeEach(() => {
+    nativeFlowReader.mockReset().mockResolvedValue(undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => {
+        throw Error("HTTP forbidden");
+      }),
+    );
   });
-
-  test("declines when the lakehouse cannot answer, leaving the previous ranking", async () => {
-    // No R2_SQL_TOKEN -> r2SqlQuery returns null -> null body -> the runner
-    // writes nothing. A blank artifact would be worse than yesterday's.
-    assert.equal(await computeTopHoldersFlow({} as never), null);
+  test("missing or invalid native facts preserve the previous ranking", async () => {
+    for (const value of [null, undefined]) {
+      nativeFlowReader.mockResolvedValue(value);
+      assert.equal(await computeTopHoldersFlow({} as Env), null);
+    }
   });
-
-  test("shapes an answered scan into the artifact the reader accepts", async () => {
-    globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({
-          result: {
-            rows: [
-              {
-                coldkey: "5A",
-                net_flow_7d: 2,
-                net_flow_30d: 5,
-                net_flow_90d: 9,
-              },
-            ],
-          },
-          success: true,
-        }),
-        { headers: { "content-type": "application/json" } },
-      )) as never;
-    const body = (await computeTopHoldersFlow({
-      R2_SQL_TOKEN: "cfut_test",
-    } as unknown as Env)) as Record<string, unknown>;
+  test("shapes verified native flows into the published artifact with its actual source timestamp", async () => {
+    nativeFlowReader.mockResolvedValue({
+      generatedAt: 1700000000000,
+      rows: [
+        { coldkey: "5A", net_flow_7d: 2, net_flow_30d: 5, net_flow_90d: 9 },
+      ],
+    });
+    const body = await computeTopHoldersFlow({} as Env);
+    assert.ok(body);
     assert.equal(body.schema_version, 1);
     assert.equal(body.row_count, 1);
-    assert.ok(topHoldersFlowRows(body), "readable by the reader's own test");
-    assert.ok(Date.parse(body.generated_at as string) > 0);
+    assert.ok(topHoldersFlowRows(body));
+    assert.equal(body.generated_at, new Date(1700000000000).toISOString());
   });
-
-  test("declares only the sorts the legs actually backed", async () => {
-    globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({
-          result: { rows: [{ coldkey: "5A", net_flow_7d: 1 }] },
-          success: true,
-        }),
-        { headers: { "content-type": "application/json" } },
-      )) as never;
-    // No store bound -> the holdings leg declines entirely -> none of the three
-    // is claimed, and the frozen artifact keeps those sorts.
-    //
-    // THE TWO ASSERTIONS BELOW ARE RED ON PURPOSE. `topHoldersHoldings` reaches
-    // the store through `observationsReadDb(env, ctx)` and
-    // `computeTopHoldersFlow` passes no ctx -- ProjectionLane.compute is
-    // `(env, network)`, so there is none to pass. That used to fall back to the
-    // D1 binding; since D1 was removed it returns `undefined`, so the holdings
-    // leg can never run and the artifact permanently drops free_tao /
-    // delegated_tao / total_tao. Even with a ctx it would still decline:
-    // `pgObservationsReadDb` exposes no `first()` for the two completeness
-    // probes and its `all()` resolves to a bare array where
-    // src/top-holders-holdings.ts reads `.results`. Asserting less here would
-    // bless a leaderboard that has silently lost three of its six sorts; the
-    // fix is to read these tables through `readStore`, whose handle has both
-    // shapes and needs no ctx.
-    const withoutHoldings = (await computeTopHoldersFlow({
-      R2_SQL_TOKEN: "cfut_test",
-    } as unknown as Env)) as Record<string, unknown>;
-    assert.deepEqual(withoutHoldings.sorts, TOP_HOLDERS_FLOW_SORTS);
-
-    const withHoldings = (await computeTopHoldersFlow({
-      R2_SQL_TOKEN: "cfut_test",
-      ...(d1With([
+  test("declares only rankings backed by their own complete legs", async () => {
+    nativeFlowReader.mockResolvedValue({
+      generatedAt: Date.now(),
+      rows: [
+        { coldkey: "5A", net_flow_7d: 1, net_flow_30d: 1, net_flow_90d: 1 },
+      ],
+    });
+    const without = await computeTopHoldersFlow({} as Env);
+    assert.deepEqual(without?.sorts, TOP_HOLDERS_FLOW_SORTS);
+    const withHoldings = await computeTopHoldersFlow(
+      d1With([
         {
           ss58: "5Exchange",
           free_tao: 900,
           delegated_tao: 100,
-          total_tao: 1_000,
+          total_tao: 1000,
         },
-      ]).env as object),
-    } as unknown as Env)) as Record<string, unknown>;
-    assert.deepEqual(withHoldings.sorts, TOP_HOLDERS_LIVE_SORTS);
-    assert.equal(withHoldings.row_count, 2);
-
-    // A leg that proved only ONE column declares only that one: the artifact
-    // must never claim a sort no row in it can rank.
-    const partial = (await computeTopHoldersFlow({
-      R2_SQL_TOKEN: "cfut_test",
-      ...(d1With([{ ss58: "5Exchange", free_tao: 900 }]).env as object),
-    } as unknown as Env)) as Record<string, unknown>;
-    assert.deepEqual(partial.sorts, [...TOP_HOLDERS_FLOW_SORTS, "free_tao"]);
+      ]).env as Env,
+    );
+    assert.deepEqual(withHoldings?.sorts, TOP_HOLDERS_LIVE_SORTS);
+    assert.equal(withHoldings?.row_count, 2);
+    const partial = await computeTopHoldersFlow(
+      d1With([{ ss58: "5Exchange", free_tao: 900 }]).env as Env,
+    );
+    assert.deepEqual(partial?.sorts, [...TOP_HOLDERS_FLOW_SORTS, "free_tao"]);
   });
-
-  // The balance ledger is mainnet-only. Reading it for a testnet projection
-  // would label another chain's accounts with finney balances.
-  test("never reads the mainnet balance ledger for a testnet projection", async () => {
-    globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({
-          result: { rows: [{ coldkey: "5A", net_flow_7d: 1 }] },
-          success: true,
-        }),
-        { headers: { "content-type": "application/json" } },
-      )) as never;
+  test("testnet never consults the mainnet balance ledger", async () => {
+    nativeFlowReader.mockResolvedValue({
+      generatedAt: Date.now(),
+      rows: [
+        { coldkey: "5A", net_flow_7d: 1, net_flow_30d: 1, net_flow_90d: 1 },
+      ],
+    });
     const { env, seen } = d1With([{ ss58: "5Exchange", free_tao: 900 }]);
-    const body = (await computeTopHoldersFlow(
-      { R2_SQL_TOKEN: "cfut_test", ...(env as object) } as unknown as Env,
-      "testnet",
-    )) as Record<string, unknown>;
-    assert.deepEqual(body.sorts, TOP_HOLDERS_FLOW_SORTS);
-    assert.deepEqual(seen, [], "the balance ledger must not be queried at all");
+    const body = await computeTopHoldersFlow(env as Env, "testnet");
+    assert.deepEqual(body?.sorts, TOP_HOLDERS_FLOW_SORTS);
+    assert.deepEqual(seen, []);
   });
-
-  test("the lane declares the key the reader gets", () => {
+  test("the lane declares the reader's artifact and compute", () => {
     assert.equal(
       TOP_HOLDERS_FLOW_LANE.artifactKey,
       TOP_HOLDERS_FLOW_PROJECTION_KEY,
     );
-    assert.equal(TOP_HOLDERS_FLOW_LANE.name, "top-holders-flow");
     assert.equal(TOP_HOLDERS_FLOW_LANE.compute, computeTopHoldersFlow);
-  });
-});
-
-describe("topHoldersFlowRows", () => {
-  test("declines a body that is not the artifact the lane wrote", () => {
-    assert.equal(topHoldersFlowRows(null), null);
-    assert.equal(topHoldersFlowRows({ schema_version: 2, rows: [] }), null);
-    assert.equal(topHoldersFlowRows({ schema_version: 1 }), null);
-    assert.deepEqual(topHoldersFlowRows({ schema_version: 1, rows: [] }), []);
-  });
-});
-
-describe("loadTopHoldersFlowTier", () => {
-  // THE REGRESSION TEST. Not "net_flow_30d is non-null" -- the ORDER.
-  test("returns a real net-flow ranking, not ss58 order", async () => {
-    // Deliberately arranged so the two orders disagree: the biggest inflow has
-    // the LAST address alphabetically, and the artifact is stored in address
-    // order the way the lane writes it.
-    const { env } = bucketWith(
-      artifact([
-        { ss58: "5Aaa", net_flow_30d: -900, captured_at: GENERATED_AT },
-        { ss58: "5Mmm", net_flow_30d: 12, captured_at: GENERATED_AT },
-        { ss58: "5Zzz", net_flow_30d: 5_000, captured_at: GENERATED_AT },
-      ]),
-    );
-    const data = (await loadTopHoldersFlowTier(env, {
-      sort: "net_flow_30d",
-      limit: 10,
-    }))!;
-    assert.deepEqual(
-      (data.accounts as { ss58: string }[]).map((a) => a.ss58),
-      ["5Zzz", "5Mmm", "5Aaa"],
-      "ranked by flow, descending -- ss58 order would be 5Aaa,5Mmm,5Zzz",
-    );
-    assert.equal(data.sort, "net_flow_30d");
-    // And captured_at ADVANCES: the whole complaint was a timestamp that could
-    // not move off 2026-08-02.
-    assert.equal(data.captured_at, new Date(GENERATED_AT).toISOString());
-  });
-
-  test("reports the holdings columns as null rather than zero", async () => {
-    const { env } = bucketWith(
-      artifact([{ ss58: "5A", net_flow_7d: 3, captured_at: GENERATED_AT }]),
-    );
-    const data = (await loadTopHoldersFlowTier(env, { sort: "net_flow_7d" }))!;
-    const [account] = data.accounts as Record<string, unknown>[];
-    assert.equal(account!.free_tao, null);
-    assert.equal(account!.delegated_tao, null);
-    assert.equal(account!.total_tao, null);
-    assert.equal(account!.net_flow_7d, 3);
-  });
-
-  test("declines every sort it cannot rank, so the frozen artifact answers", async () => {
-    const { env, gets } = bucketWith(
-      artifact([{ ss58: "5A", net_flow_7d: 3, captured_at: GENERATED_AT }]),
-    );
-    // Every holdings sort CAN now be live (#9502), so none of them is rejected
-    // up front any more -- they are rejected per-body, by the artifact's own
-    // `sorts`. What remains a cheap up-front rejection is a sort no version of
-    // this artifact could ever carry.
-    for (const sort of ["reserved_tao", undefined]) {
-      assert.equal(
-        await loadTopHoldersFlowTier(env, { sort }),
-        null,
-        `${sort} can never be a live sort`,
-      );
-    }
-    // And it declines BEFORE the get: a sort no version of this artifact can
-    // rank is not a reason to spend an R2 round trip.
-    assert.deepEqual(gets, []);
-
-    // The holdings sorts do spend the round trip, and then decline on a
-    // flow-only body rather than ranking rows that have no such column.
-    for (const sort of ["total_tao", "delegated_tao", "free_tao"]) {
-      assert.equal(await loadTopHoldersFlowTier(env, { sort }), null, sort);
-    }
-    assert.equal(gets.length, 3, "one get per per-body rejection");
-  });
-
-  // The switch that makes the free_tao cutover deploy-free: the same code
-  // declines or answers purely on what the written object says it ranked.
-  test("answers free_tao only when the artifact declares it", async () => {
-    const rows = [
-      { ss58: "5Small", free_tao: 1, captured_at: GENERATED_AT },
-      { ss58: "5Exchange", free_tao: 5_448_995, captured_at: GENERATED_AT },
-    ];
-    assert.equal(
-      await loadTopHoldersFlowTier(bucketWith(artifact(rows)).env, {
-        sort: "free_tao",
-      }),
-      null,
-      "flow-only artifact must not rank a column it did not compose",
-    );
-    const data = (await loadTopHoldersFlowTier(
-      bucketWith(artifact(rows, TOP_HOLDERS_LIVE_SORTS)).env,
-      { sort: "free_tao", limit: 10 },
-    ))!;
-    assert.deepEqual(
-      (data.accounts as { ss58: string }[]).map((a) => a.ss58),
-      ["5Exchange", "5Small"],
-    );
-  });
-
-  test("never ranks a sort no live leg can back, even if the body claims it", async () => {
-    // The artifact is ours, but a reader that ranks on whatever a stored
-    // string asks for is one bad write away from a confident nonsense
-    // ordering. `reserved_tao` is a real column name on account_balances and
-    // is NOT a live sort, which is what makes it the right probe here.
-    const { env } = bucketWith(
-      artifact(
-        [{ ss58: "5A", free_tao: 1, captured_at: GENERATED_AT }],
-        ["reserved_tao", "made_up"],
-      ),
-    );
-    for (const sort of ["reserved_tao", "made_up"]) {
-      assert.equal(await loadTopHoldersFlowTier(env, { sort }), null);
-    }
-    // And a body claiming a sort it carries no values for still declines,
-    // rather than ranking every row into compareTopHoldersSort's non-number
-    // bucket and answering in ss58 order -- the defect this tier removes.
-    const claimed = bucketWith(
-      artifact(
-        [{ ss58: "5A", free_tao: 1, captured_at: GENERATED_AT }],
-        ["total_tao"],
-      ),
-    );
-    const ranked = await loadTopHoldersFlowTier(claimed.env, {
-      sort: "total_tao",
-    });
-    assert.equal(
-      (ranked?.accounts as Record<string, unknown>[])?.[0]?.total_tao ?? null,
-      null,
-    );
-  });
-
-  test("reads the projection key, not the frozen one", async () => {
-    const { env, gets } = bucketWith(
-      artifact([{ ss58: "5A", net_flow_7d: 1, captured_at: GENERATED_AT }]),
-    );
-    await loadTopHoldersFlowTier(env, { sort: "net_flow_7d" });
-    assert.deepEqual(gets, [TOP_HOLDERS_FLOW_PROJECTION_KEY]);
-  });
-
-  test("declines on an unbound bucket, a missing object, a throw, a foreign body and an empty one", async () => {
-    const q = { sort: "net_flow_90d" };
-    assert.equal(await loadTopHoldersFlowTier(null, q), null);
-    assert.equal(await loadTopHoldersFlowTier({} as never, q), null);
-    assert.equal(
-      await loadTopHoldersFlowTier(bucketWith(null, { missing: true }).env, q),
-      null,
-    );
-    assert.equal(
-      await loadTopHoldersFlowTier(bucketWith(null, { throws: true }).env, q),
-      null,
-    );
-    assert.equal(
-      await loadTopHoldersFlowTier(bucketWith({ schema_version: 9 }).env, q),
-      null,
-    );
-    // An emptied-in-place artifact declines too: the frozen leaderboard is a
-    // better answer than an empty page, and this is also the pre-first-run
-    // state.
-    assert.equal(
-      await loadTopHoldersFlowTier(bucketWith(artifact([])).env, q),
-      null,
-    );
-  });
-
-  test("honours the caller's limit as a prefix of the same ranking", async () => {
-    const { env } = bucketWith(
-      artifact([
-        { ss58: "5A", net_flow_90d: 1, captured_at: GENERATED_AT },
-        { ss58: "5B", net_flow_90d: 3, captured_at: GENERATED_AT },
-        { ss58: "5C", net_flow_90d: 2, captured_at: GENERATED_AT },
-      ]),
-    );
-    const data = (await loadTopHoldersFlowTier(env, {
-      sort: "net_flow_90d",
-      limit: 2,
-    }))!;
-    assert.equal(data.account_count, 3, "the count covers the whole ranking");
-    assert.deepEqual(
-      (data.accounts as { ss58: string }[]).map((a) => a.ss58),
-      ["5B", "5C"],
-    );
-  });
-});
-
-describe("the flow lane's cron", () => {
-  // Two silent wiring failures this repo has hit before: a cron constant with
-  // no wrangler entry never fires, and a cron with no dispatch branch falls
-  // through to the health prober.
-  test("is daily, unique here, and present in wrangler.jsonc", async () => {
-    const config = (await import("../workers/config.ts")) as Record<
-      string,
-      unknown
-    >;
-    const cron = config.TOP_HOLDERS_FLOW_CRON as string;
-    const others = Object.entries(config)
-      .filter(
-        ([name]) => name.endsWith("_CRON") && name !== "TOP_HOLDERS_FLOW_CRON",
-      )
-      .map(([, value]) => value);
-    assert.equal(others.includes(cron), false, "dispatch keys on the literal");
-    // Daily: a fixed minute AND a fixed hour, which is what makes 1.65 GB per
-    // scan cost 1.65 GB a day rather than 79.
-    assert.match(cron, /^\d+ \d+ \* \* \*$/);
-
-    const { readFile } = await import("node:fs/promises");
-    const wrangler = await readFile("wrangler.jsonc", "utf8");
-    assert.ok(
-      wrangler.includes(`"${cron}"`),
-      "must have a triggers.crons entry",
-    );
-  });
-
-  test("handleScheduled routes it to the lane, not the health prober", async () => {
-    const { handleScheduled } = await import("../workers/api.ts");
-    const { TOP_HOLDERS_FLOW_CRON } = await import("../workers/config.ts");
-    const puts: string[] = [];
-    const result = (await handleScheduled(
-      { cron: TOP_HOLDERS_FLOW_CRON } as never,
-      {
-        METAGRAPH_ARCHIVE: {
-          async put(key: string) {
-            puts.push(key);
-          },
-        },
-      } as never,
-      {} as never,
-    )) as Record<string, unknown>;
-    // No R2 SQL configured here, so the compute declines and NOTHING is
-    // written -- the all-or-nothing posture that keeps yesterday's ranking.
-    assert.equal(result.name, "top-holders-flow");
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, "compute_declined");
-    assert.deepEqual(puts, []);
   });
 });

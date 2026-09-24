@@ -41,7 +41,7 @@ import {
   loadExtrinsicHotTier,
 } from "../src/chain-detail-hot-tier.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
-import { safeBlockNumber } from "../src/r2-sql.ts";
+import { safeBlockNumber } from "../src/history-readers.ts";
 import {
   DECODE_WATERMARK_KEY,
   resetDecodeWatermarkCache,

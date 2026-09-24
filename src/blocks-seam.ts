@@ -1,4 +1,4 @@
-import { safeBlockNumber } from "./r2-sql.ts";
+import { safeBlockNumber } from "./history-readers.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import {
   resolveDecodeWatermark,

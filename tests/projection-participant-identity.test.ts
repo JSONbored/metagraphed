@@ -1,3 +1,4 @@
+import { projectionComputeEnv } from "../src/projection-compute-context.ts";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -122,7 +123,7 @@ function storage() {
   const objects = new Map<string, string>();
   const writes: string[] = [];
   const env = {
-    R2_SQL_TOKEN: "cfut_test",
+    NATIVE_HISTORY_FIXTURE: "cfut_test",
     METAGRAPH_ARCHIVE: {
       async put(key: string, value: string) {
         writes.push(key);
@@ -136,7 +137,17 @@ function storage() {
       },
     },
   } as unknown as Env;
-  return { env, objects, writes };
+  return {
+    env: projectionComputeEnv(env, {
+      now: NOW,
+      query: async (_env, sql) => {
+        if (failQuery(sql)) return null;
+        return db.prepare(sql).all();
+      },
+    }),
+    objects,
+    writes,
+  };
 }
 
 for (const scenario of CASES) {

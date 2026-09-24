@@ -23,7 +23,7 @@ import {
   type EventStreamDegraded,
 } from "./uncurated-event-streams.ts";
 import type { ChainEventRollupSpec } from "./chain-event-rollup-cold-tier.ts";
-import type { R2SqlReader } from "./r2-sql.ts";
+import type { HistoricalQueryReader } from "./history-readers.ts";
 
 type Row = Record<string, unknown>;
 
@@ -40,7 +40,7 @@ type Row = Record<string, unknown>;
  * because a summary card needs no rows.
  */
 export async function loadSubnetEventCardColdTier<T extends object>(
-  env: Parameters<R2SqlReader>[0],
+  env: Parameters<HistoricalQueryReader>[0],
   spec: ChainEventRollupSpec,
   netuid: number,
   build: (
@@ -56,7 +56,7 @@ export async function loadSubnetEventCardColdTier<T extends object>(
     windowLabel?: string;
     windowDays: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: R2SqlReader;
+    query?: HistoricalQueryReader;
   },
 ): Promise<(T & { degraded?: EventStreamDegraded }) | null> {
   const rollup = await loadChainEventIdentityRollup(env, spec, {

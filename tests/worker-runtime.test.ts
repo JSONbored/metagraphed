@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -6,7 +8,7 @@ import worker, { handleRequest, recordApiKeyUsage } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import {
   decodeWatermarkKey,
   resetDecodeWatermarkCache,
@@ -326,8 +328,9 @@ describe("Worker runtime", () => {
     return {
       queries,
       env: {
+        NATIVE_PROJECTIONS: "enabled",
         ...env,
-        [R2_SQL_TOKEN_ENV]: "cfut_test",
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
         METAGRAPH_ARCHIVE: {
           async get(key: string) {
             if (key !== decodeWatermarkKey("mainnet")) return null;
@@ -485,8 +488,9 @@ describe("Worker runtime", () => {
       }) as unknown as typeof fetch;
       resetDecodeWatermarkCache();
       const testEnv = {
+        NATIVE_PROJECTIONS: "enabled",
         ...env,
-        [R2_SQL_TOKEN_ENV]: "cfut_test",
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
       } as unknown as Env;
       const waited: Promise<unknown>[] = [];
       const ctx = { waitUntil: (p: Promise<unknown>) => waited.push(p) };
@@ -525,9 +529,7 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    assert.ok(
-      native.keys.includes("metagraph/projections/chain-ownership.json"),
-    );
+    assert.ok(native.keys.some((key) => key.endsWith("/chain-ownership.json")));
     assert.ok(
       native.keys.includes(
         "metagraph/state-archive/v1/subnet_ownership_history/current.json",
@@ -646,7 +648,11 @@ describe("Worker runtime", () => {
     try {
       const response = await handleRequest(
         new Request("https://metagraph.sh/api/v1/chain-events?format=csv"),
-        { ...env, [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env,
+        {
+          NATIVE_PROJECTIONS: "enabled",
+          ...env,
+          [NATIVE_FIXTURE_ENV]: "cfut_test",
+        } as unknown as Env,
         {},
       );
       assert.equal(response.status, 200);

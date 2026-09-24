@@ -14,11 +14,14 @@ import {
   subnetOwnershipHistoryNode,
 } from "../src/subnet-ownership-answer.ts";
 import { loadSubnetOwnerObservations } from "../src/subnet-ownership-cold-tier.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { mockEnv } from "./row-type.ts";
 import type { Row } from "./row-type.ts";
 
-const TOKEN = mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" });
+const TOKEN = mockEnv({
+  NATIVE_PROJECTIONS: "enabled",
+  [NATIVE_FIXTURE_ENV]: "cfut_test",
+});
 const OWNER_A = "5DHwWLjtpwnZQUQKKXE2N5Gdy2N8PpqhgjLUuzgSB7yuGZkF";
 const OWNER_B = "5GgvCi6h7dNsC489T8UnUMv912SoEXpEUDVt71VJU1Td7WKh";
 

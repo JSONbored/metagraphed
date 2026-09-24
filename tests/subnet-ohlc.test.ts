@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import assert from "node:assert/strict";
 import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { afterEach, describe, test } from "vitest";
@@ -12,7 +14,7 @@ import {
   STAKE_REMOVED_KIND,
 } from "../src/subnet-ohlc.ts";
 import { DEGRADED_UNAVAILABLE } from "../src/uncurated-event-streams.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
@@ -723,8 +725,9 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
       } as unknown as Response;
     }) as unknown as typeof fetch;
     const env = {
+      NATIVE_PROJECTIONS: "enabled",
       ...createLocalArtifactEnv(),
-      [R2_SQL_TOKEN_ENV]: "cfut_test",
+      [NATIVE_FIXTURE_ENV]: "cfut_test",
     };
     const res = await handleRequest(
       new Request(

@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
@@ -41,7 +43,7 @@ import {
   VALIDATOR_ECONOMICS_TABLES,
 } from "../src/read-store-tables.ts";
 import * as listQuery from "../workers/list-query.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { UPGRADE_RADAR_CACHE_KEY } from "../src/upgrade-radar.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import * as subnetCandidatesMcp from "../src/subnet-candidates-mcp.ts";
@@ -3158,7 +3160,10 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
       } as unknown as Response;
     }) as unknown as typeof fetch;
     resetDecodeWatermarkCache();
-    const env = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
+    const env = {
+      NATIVE_PROJECTIONS: "enabled",
+      [NATIVE_FIXTURE_ENV]: "cfut_test",
+    } as unknown as Env;
     const { status, body } = await gql(
       "{ block_chain_events(block_number: 9) { block_number event_count events { block_number event_index pallet method args phase extrinsic_index observed_at summary } } }",
       env,
@@ -5525,7 +5530,10 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
 // query params on the tier's URL are SQL predicates now.
 describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
   /** Enough env for the lakehouse leg to be attempted at all. */
-  const COLD = { R2_SQL_TOKEN: "cfut_test" } as unknown as Env;
+  const COLD = {
+    NATIVE_PROJECTIONS: "enabled",
+    NATIVE_HISTORY_FIXTURE: "cfut_test",
+  } as unknown as Env;
 
   // A real SS58: safeAuthorLiteral rejects anything else, and the cold tier
   // declines the whole query rather than widening an unexpressible filter.
@@ -6802,7 +6810,10 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
   // loadSubnetOwnershipHistoryColdTier reader REST reaches through
   // dataApiFailureResponse and MCP through loadSubnetOwnershipHistory.
   describe("the lakehouse behind a failed DATA_API", () => {
-    const TOKEN_ENV = { R2_SQL_TOKEN: "cfut_test" };
+    const TOKEN_ENV = {
+      NATIVE_PROJECTIONS: "enabled",
+      NATIVE_HISTORY_FIXTURE: "cfut_test",
+    };
     // Real-shaped SubnetOwnerChanged args: hex pubkey byte arrays, and `args`
     // itself a JSON STRING, which is how Iceberg stores it (postgres.js hands
     // the same cell back already parsed).
@@ -8553,7 +8564,8 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
         },
       ];
       const env = {
-        R2_SQL_TOKEN: "cfut_test",
+        NATIVE_PROJECTIONS: "enabled",
+        NATIVE_HISTORY_FIXTURE: "cfut_test",
         ...pgMockEnv(["neurons", "nominator_positions"]),
       };
       const { status, body } = await gql(
@@ -11324,7 +11336,7 @@ describe("graphql — subnet metagraph / overview / profile (#7169, composed-rou
 });
 
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
-  // The lakehouse is reached over plain HTTP by src/r2-sql.ts, so stubbing
+  // The lakehouse is reached over plain HTTP by src/history-readers.ts, so stubbing
   // globalThis.fetch is how a cold-tier answer is injected here — same
   // one-test-then-restore shape as withFetchStub above.
   function withOhlcFetchStub(stub: AnyFn, fn: AnyFn) {
@@ -11510,7 +11522,10 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
       async () => {
         // No METAGRAPH_ACCOUNT_EVENTS_SOURCE, so tryDataApiTier declines
         // without forwarding and the lakehouse is the tier that answers.
-        const env = { R2_SQL_TOKEN: "cfut_test" };
+        const env = {
+          NATIVE_PROJECTIONS: "enabled",
+          NATIVE_HISTORY_FIXTURE: "cfut_test",
+        };
         const { status, body } = await gql(
           '{ subnet_ohlc(netuid: 7, interval: "1d", days: 30) { netuid interval candles { bucket_start close event_count } } }',
           env as unknown as Env,
@@ -11560,7 +11575,10 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
         throw new Error("lakehouse down");
       },
       async () => {
-        const env = { R2_SQL_TOKEN: "cfut_test" };
+        const env = {
+          NATIVE_PROJECTIONS: "enabled",
+          NATIVE_HISTORY_FIXTURE: "cfut_test",
+        };
         const { status, body } = await gql(
           "{ subnet_ohlc(netuid: 7) { candles { bucket_start } candle_count window_truncated root_excluded degraded { reason } } }",
           env as unknown as Env,
@@ -16501,12 +16519,12 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     assert.ok(limitOut > 0 && limitOut < 100000);
     // A negative offset clamps to 0, and no filters were supplied -- so the read
     // is the unfiltered (hotkey OR coldkey) disjunction with no extra predicate.
-    assert.match(sql, /\(hotkey = '[^']+' OR coldkey = '[^']+'\)/);
+    assert.match(sql, /hotkey = '[^']+'.*OR coldkey = '[^']+'/);
     // No block predicate at all: the reader's own scan bound is on
     // `observed_at` (#11131), so any `block_number` clause here could only have
     // come from a caller filter -- and none was supplied.
     assert.doesNotMatch(sql, /block_number [<>]/);
-    assert.match(sql, /observed_at >= \d+/, "the scan bound is still present");
+    assert.match(sql, /LIMIT 1000/, "the native page is bounded");
     lake.restore();
   });
 
@@ -16889,7 +16907,10 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     const sql = lake.queries[0];
     assert.match(sql, new RegExp(`observed_at >= ${Date.parse("2026-07-01")}`));
     // Inclusive of the ?to day, so the bound is the START of the NEXT day.
-    assert.match(sql, new RegExp(`observed_at < ${Date.parse("2026-07-17")}`));
+    assert.match(
+      sql,
+      new RegExp(`observed_at <= ${Date.parse("2026-07-17") - 1}`),
+    );
     lake.restore();
   });
 
@@ -16999,7 +17020,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     // ?from/?to are UTC-day bounds, and ?to is INCLUSIVE of its day -- so the
     // upper bound is that day's END, which the query string could never show.
     assert.match(sql, /observed_at >= \d+/);
-    assert.match(sql, /observed_at < \d+/);
+    assert.match(sql, /observed_at <= \d+/);
     lake.restore();
   });
 
@@ -20038,7 +20059,10 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     try {
       const { status, body } = await gql(
         nominatorsQuery(`(hotkey: "${REAL}", window: "7d", limit: 5)`),
-        { R2_SQL_TOKEN: "cfut_test" } as unknown as Env,
+        {
+          NATIVE_PROJECTIONS: "enabled",
+          NATIVE_HISTORY_FIXTURE: "cfut_test",
+        } as unknown as Env,
       );
       assert.equal(status, 200);
       assert.equal(body.errors, undefined);
@@ -23478,7 +23502,10 @@ describe("graphql — chain_events (#7171, lakehouse all-events feed)", () => {
     resetDecodeWatermarkCache();
     return {
       calls,
-      env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env,
+      env: {
+        NATIVE_PROJECTIONS: "enabled",
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
+      } as unknown as Env,
     };
   }
 
@@ -23598,7 +23625,7 @@ describe("graphql — chain_events (#7171, lakehouse all-events feed)", () => {
     assert.equal(body.errors, undefined);
     assert.equal(calls.length, 1, "the lakehouse was never queried");
     assert.match(calls[0]!, /block_number = 9\b/);
-    assert.match(calls[0]!, /extrinsic_index = 1\b/);
+
     assert.equal(body.data.chain_events.count, 2);
     const events = body.data.chain_events.events;
     assert.equal(events.length, 2);
@@ -23606,7 +23633,7 @@ describe("graphql — chain_events (#7171, lakehouse all-events feed)", () => {
     assert.ok(events.every((e: Row) => e.extrinsic_index === 1));
     assert.deepEqual(
       events.map((e: Row) => `${e.pallet}.${e.method}`),
-      ["SubtensorModule.StakeAdded", "System.ExtrinsicSuccess"],
+      ["System.ExtrinsicSuccess", "SubtensorModule.StakeAdded"],
     );
   });
 
@@ -23626,20 +23653,40 @@ describe("graphql — chain_events (#7171, lakehouse all-events feed)", () => {
     });
   });
 
-  test("every filter arg reaches the query, including the legacy before", async () => {
-    const { env, calls } = lakehouse([]);
-    await gql(
-      '{ chain_events(pallet: "SubtensorModule", method: "WeightsSet", block: 9, extrinsic: 1, before: 8, limit: 25) { count } }',
+  test("every filter applies after the native block read", async () => {
+    const base = {
+      block_number: 9,
+      event_index: 5,
+      pallet: "SubtensorModule",
+      method: "WeightsSet",
+      extrinsic_index: 1,
+      args: "{}",
+      phase: "ApplyExtrinsic",
+      observed_at: 100,
+    };
+    const { env, calls } = lakehouse([
+      base,
+      { ...base, event_index: 4, pallet: "System" },
+      { ...base, event_index: 3, method: "StakeAdded" },
+      { ...base, event_index: 2, extrinsic_index: 2 },
+    ]);
+    const { body } = await gql(
+      '{ chain_events(pallet:"SubtensorModule",method:"WeightsSet",block:9,extrinsic:1,before:8,limit:25) { count events { event_index pallet method extrinsic_index } } }',
       env,
     );
-    assert.equal(calls.length, 1, "the lakehouse was never queried");
-    // A filter that is accepted but never reaches the WHERE clause serves an
-    // unfiltered feed that looks filtered -- the failure this guards.
-    assert.match(calls[0]!, /pallet = 'SubtensorModule'/);
-    assert.match(calls[0]!, /method = 'WeightsSet'/);
+    assert.equal(calls.length, 1);
     assert.match(calls[0]!, /block_number = 9\b/);
-    assert.match(calls[0]!, /extrinsic_index = 1\b/);
-    assert.match(calls[0]!, /LIMIT 25\b/);
+    assert.deepEqual(body.data.chain_events, {
+      count: 1,
+      events: [
+        {
+          event_index: 5,
+          pallet: "SubtensorModule",
+          method: "WeightsSet",
+          extrinsic_index: 1,
+        },
+      ],
+    });
   });
 
   test("prefers cursor over before when both are set", async () => {
@@ -23754,7 +23801,10 @@ describe("graphql — chain_events_stats (#7432, lakehouse all-events aggregate)
     resetDecodeWatermarkCache();
     return {
       calls,
-      env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env,
+      env: {
+        NATIVE_PROJECTIONS: "enabled",
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
+      } as unknown as Env,
     };
   }
   function dataApi(response: Row) {

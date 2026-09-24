@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 // The last 21 published parameters no MCP tool could pass (#10793).
 //
 // Each of these is a query parameter our own OpenAPI advertises, over a tool
@@ -18,7 +20,7 @@ import { describe, test } from "vitest";
 import { handleMcpRequest, MCP_TOOLS } from "../src/mcp-server.ts";
 import { searchMatchingRows } from "../workers/list-query.ts";
 import { MCP_LIST_LIMIT_DEFAULT } from "../src/route-limits.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import type { Row } from "./row-type.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
@@ -415,22 +417,32 @@ describe("get_extrinsic_chain_events filters within one extrinsic (#10793)", () 
     }
   });
 
-  test("both reach the lakehouse WHERE clause, not just the schema", async () => {
-    // The failure worth catching is a published argument the handler drops, so
-    // this asserts on the SQL the cold tier actually issues rather than on the
-    // tool's own echo -- an echo can report a filter that never ran.
-    const queries: string[] = [];
+  test("pallet, method and extrinsic filters select rows after a native block read", async () => {
+    const base = {
+      block_number: 8791987,
+      event_index: 5,
+      pallet: "SubtensorModule",
+      method: "set_weights",
+      extrinsic_index: 3,
+      args: "{}",
+      phase: "ApplyExtrinsic",
+      observed_at: 100,
+    };
     const realFetch = globalThis.fetch;
-    globalThis.fetch = (async (_url: string, init: RequestInit) => {
-      queries.push(JSON.parse(String(init.body)).query);
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, result: { rows: [] } }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
+    globalThis.fetch = async () =>
+      Response.json({
+        success: true,
+        result: {
+          rows: [
+            base,
+            { ...base, event_index: 4, pallet: "System" },
+            { ...base, event_index: 3, method: "Other" },
+            { ...base, event_index: 2, extrinsic_index: 2 },
+          ],
+        },
+      });
     try {
-      await handleMcpRequest(
+      const response = await handleMcpRequest(
         new Request(MCP_URL, {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -448,20 +460,20 @@ describe("get_extrinsic_chain_events filters within one extrinsic (#10793)", () 
             },
           }),
         }),
-        { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env,
+        {
+          NATIVE_PROJECTIONS: "enabled",
+          [NATIVE_FIXTURE_ENV]: "cfut_test",
+        } as unknown as Env,
         makeDeps(),
       );
+      const body = (await response.json()) as {
+        result: { structuredContent: { events: Row[] } };
+      };
+      assert.equal(body.result.structuredContent.events.length, 1);
+      assert.equal(body.result.structuredContent.events[0].event_index, 5);
     } finally {
       globalThis.fetch = realFetch;
     }
-    assert.ok(queries.length > 0, "the loader never reached the lakehouse");
-    const sql = queries[0]!;
-    assert.match(sql, /pallet = 'SubtensorModule'/);
-    assert.match(sql, /method = 'set_weights'/);
-    // Still pinned to the ref's own block and index, which is exactly why the
-    // two path-shaped filters stay unexposed.
-    assert.match(sql, /block_number = 8791987/);
-    assert.match(sql, /extrinsic_index = 3/);
   });
 
   test("omitting them does not widen the read to every pallet", async () => {

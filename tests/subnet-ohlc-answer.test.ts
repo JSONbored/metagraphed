@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 // The one place REST, MCP and GraphQL agree about a failed OHLC read (#10312).
 //
 // Each surface used to end its read with `?.data ?? buildSubnetOhlc([], ...)`,
@@ -13,11 +15,14 @@ import { describe, test } from "vitest";
 import { answerSubnetOhlc } from "../src/subnet-ohlc-answer.ts";
 import { MAX_CANDLES } from "../src/subnet-ohlc.ts";
 import { DEGRADED_UNAVAILABLE } from "../src/uncurated-event-streams.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import type { Row } from "./row-type.ts";
 
 /** A configured lakehouse: the deployment where the rows exist. */
-const CONFIGURED = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
+const CONFIGURED = {
+  NATIVE_PROJECTIONS: "enabled",
+  [NATIVE_FIXTURE_ENV]: "cfut_test",
+} as unknown as Env;
 /** A self-hoster or CI: no lakehouse, so no rows to be wrong about. */
 const UNCONFIGURED = {} as unknown as Env;
 

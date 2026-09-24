@@ -261,7 +261,7 @@ export function chainFirehoseCapRefusal(
   const label = unattributed
     ? `${kind}:${CHAIN_FIREHOSE_CAP_UNATTRIBUTED}`
     : kind;
-  // Same labelled shape src/r2-sql.ts gives its suppressed queries, for the same
+  // Same labelled shape src/history-readers.ts gives its suppressed queries, for the same
   // reason: the tail is where every occurrence can be read, and the response
   // deliberately will not carry it.
   console.error("[chain-firehose] cap", label, `${observed}/${limit}`);

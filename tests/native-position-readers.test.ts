@@ -111,9 +111,10 @@ const runtime = new Miniflare({
 });
 let db: D1Database;
 const env = (bucket = archive()) => ({
+  NATIVE_PROJECTIONS: "enabled",
   D1_STATE: db,
   D1_STATE_TABLES: "nominator_positions,neurons",
-  R2_SQL_TOKEN: "cfut_test",
+  NATIVE_HISTORY_FIXTURE: "cfut_test",
   METAGRAPH_ARCHIVE: bucket,
 });
 beforeAll(async () => {

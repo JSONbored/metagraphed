@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 // The edge cache over the address-shaped account routes.
 //
 // Measured 2026-08-16 on 5EEmaGFE...5oM3qDSC: three identical back-to-back GETs
@@ -64,7 +66,8 @@ function envAt(decodedThrough: number) {
   const key = decodeWatermarkKey("mainnet");
   return {
     ...mockEnv(),
-    R2_SQL_TOKEN: "cfut_test",
+    NATIVE_PROJECTIONS: "enabled",
+    NATIVE_HISTORY_FIXTURE: "cfut_test",
     METAGRAPH_ARCHIVE: {
       get: async (asked: string) =>
         asked === key
@@ -274,7 +277,8 @@ describe("the account edge cache", () => {
     const queries = countLakehouse();
     const env = {
       ...mockEnv(),
-      R2_SQL_TOKEN: "cfut_test",
+      NATIVE_PROJECTIONS: "enabled",
+      NATIVE_HISTORY_FIXTURE: "cfut_test",
       METAGRAPH_ARCHIVE: { get: async () => null },
     } as unknown as Parameters<typeof handleRequest>[1];
 
@@ -363,7 +367,7 @@ describe("server-timing", () => {
     // The lakehouse leg ran, so it must be named -- and named with a count,
     // which is what makes `r2sql;desc="0 calls"` unrepresentable rather than
     // ambiguous: a boundary that did not run simply is not there.
-    assert.match(timing, /r2sql;dur=\d+;desc="\d+ calls?"/, timing);
+    assert.doesNotMatch(timing, /r2sql/);
     assert.match(timing, /r2;dur=\d+;desc="\d+ calls?"/, timing);
   });
 

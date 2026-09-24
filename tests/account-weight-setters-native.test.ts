@@ -12,7 +12,7 @@ vi.mock("pg", () => pg.module);
 import { loadNativeAccountWeightSetters } from "../src/account-weight-setters-native.ts";
 import { loadAccountWeightSettersColdTier } from "../src/account-feeds-cold-tier.ts";
 import { buildAccountWeightSetters } from "../src/account-weight-setters.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 
 const fixture = JSON.parse(
   gunzipSync(
@@ -382,7 +382,12 @@ test("cold-tier integration uses the canonical builder and never scans SQL for a
       pg.control.rows = slots;
     };
     const s = store(),
-      env = { ...pgMockEnv(), ...s.env, [R2_SQL_TOKEN_ENV]: "fixture-token" };
+      env = {
+        NATIVE_PROJECTIONS: "enabled",
+        ...pgMockEnv(),
+        ...s.env,
+        [NATIVE_FIXTURE_ENV]: "fixture-token",
+      };
     const result = await loadAccountWeightSettersColdTier(env, fixture.hotkey, {
       window: "30d",
     });

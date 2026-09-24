@@ -1,1163 +1,434 @@
-// Same properties as the sibling cold tiers: no silent widening, parity via
-// the shared formatters, data-api's exact cursor token and order — plus the
-// equivalences specific to this module: the single OR standing in for
-// data-api's two-scan transfer merge, the collapsed weight-setters UNION, and
-// the collapsed counterparties UNION (see the module header for the
-// arguments each test pins down).
 import assert from "node:assert/strict";
-import { visibleInWindow } from "./helpers/scan-window.ts";
-import { afterAll, beforeAll, describe, test, vi } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import * as feed from "../src/indexed-account-feeds.ts";
+import * as weights from "../src/account-weight-setters-native.ts";
+import * as nominators from "../src/validator-nominators-indexed.ts";
+import { nativeAccountRow } from "./helpers/native-account-row.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-
-// One store since #10179: the neuron-slot read goes through src/read-store.ts,
-// which builds `new Client(...)` itself -- these loaders take only `(env, ...)`
-// and cannot be handed a binding. See tests/helpers/pg-mock.ts for why the seam
-// is a module mock and why the controller is built inside vi.hoisted.
+import type { AccountFeedGroup } from "../src/history-account-feed-groups.ts";
+import {
+  loadAccountTransfersColdTier,
+  loadAccountStakeFlowColdTier,
+  loadAccountStakeMovesColdTier,
+  loadAccountRegistrationsColdTier,
+  loadAccountServingColdTier,
+  loadAccountPrometheusColdTier,
+  loadAccountWeightSettersColdTier,
+  loadAccountCounterpartiesColdTier,
+  loadCounterpartyRelationshipColdTier,
+  loadValidatorNominatorsColdTier,
+} from "../src/account-feeds-cold-tier.ts";
 const { pg } = await vi.hoisted(async () => ({
   pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
 }));
 vi.mock("pg", () => pg.module);
-
-import {
-  loadAccountRegistrationsColdTier,
-  loadAccountPrometheusColdTier,
-  loadAccountServingColdTier,
-  loadAccountCounterpartiesColdTier,
-  loadAccountStakeFlowColdTier,
-  loadAccountStakeMovesColdTier,
-  loadAccountTransfersColdTier,
-  loadAccountWeightSettersColdTier,
-  loadCounterpartyRelationshipColdTier,
-  loadValidatorNominatorsColdTier,
-} from "../src/account-feeds-cold-tier.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
-import { accountSummaryArchive } from "./helpers/cold-tier-env.ts";
-
-const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
-const ADDR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
-const OTHER = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-
-function transferRow(block: number, index = 0) {
-  return {
+const ADDR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+  OTHER = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const NOW = 1_700_000_100_000;
+const page = vi.spyOn(feed, "loadIndexedAccountFeedPage"),
+  groups = vi.spyOn(feed, "loadIndexedAccountFeedGroups"),
+  weight = vi.spyOn(weights, "loadNativeAccountWeightSetters"),
+  nominator = vi.spyOn(nominators, "loadIndexedValidatorNominators");
+function event(block = 100, index = 1) {
+  return nativeAccountRow({
     block_number: block,
     event_index: index,
-    extrinsic_index: 1,
-    event_kind: "Transfer",
+    observed_at: NOW + block,
     hotkey: ADDR,
     coldkey: OTHER,
-    netuid: null,
-    uid: null,
     amount_tao: 12.5,
-    alpha_amount: null,
-    observed_at: 1_700_000_000_000 + block,
-  };
+  });
 }
-
-/**
- * WINDOW-AWARE since #11131: the scattered-key reads widen an `observed_at`
- * window until the page fills, so a stub that replays its whole fixture for
- * every step reports the same rows once per window -- one transfer of 25 TAO
- * read as 100. `visibleInWindow` models the bound the query actually carries.
- */
-function sqlFetch(...responses: unknown[][]) {
-  const queries: string[] = [];
-  let call = 0;
-  globalThis.fetch = (async (_u: string, init: RequestInit) => {
-    const sql = String(JSON.parse(String(init.body)).query);
-    queries.push(sql);
-    const rows = visibleInWindow(
-      sql,
-      responses[Math.min(call, responses.length - 1)] ?? [],
-    );
-    call += 1;
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, result: { rows } }),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return queries;
-}
-
-function failingFetch() {
-  globalThis.fetch = (async () => {
-    throw new Error("down");
-  }) as unknown as typeof fetch;
-}
-
-/** A D1 stub whose `neurons` read returns the given rows (or throws). */
-/**
- * The store answering the neuron-slot read, installed on the pg double.
- *
- * A function stands for a store that FAILS the read. `onQuery` rather than a
- * canned answer because the value has to be chosen per call and the callers
- * below hold the env across the loader call; see tests/helpers/pg-mock.ts.
- */
-function d1With(rows: unknown[] | (() => never)) {
-  pg.control.queries.length = 0;
-  pg.control.answers = [];
-  pg.control.rows = null;
-  pg.control.failNext = null;
-  pg.control.onQuery = () => {
-    if (typeof rows === "function") {
-      pg.control.failNext = new Error("store down");
-      return;
-    }
-    pg.control.rows = rows as unknown[];
-  };
-  return pgMockEnv();
-}
-
-// The fixtures below are dated by `1_700_000_000_000 + block`, and the scan
-// window (#11131) is two days wide off the wall clock -- so with a real clock
-// every read here would widen through the whole table before finding them.
-// Pinning Date to the fixtures' own era makes the FIRST window the one that
-// answers, which is the production shape for an account with recent activity.
-// Only Date is faked; timers are left alone.
-beforeAll(() => {
-  vi.useFakeTimers({ now: 1_700_000_100_000, toFake: ["Date"] });
-});
-afterAll(() => {
-  vi.useRealTimers();
-});
-
-describe("loadAccountTransfersColdTier", () => {
-  test("reads both sides with one disjunction on the Transfer kind, newest first", async () => {
-    const q = sqlFetch([transferRow(10, 1), transferRow(10, 0)]);
-    const data = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 2,
-    });
-    assert.equal(data!.transfer_count, 2);
-    assert.equal(data!.transfers[0]!.direction, "sent");
-    const s = q[0]!;
-    assert.match(s, /event_kind = 'Transfer'/);
-    assert.match(
-      s,
-      new RegExp(`\\(hotkey = '${ADDR}' OR coldkey = '${ADDR}'\\)`),
-      "one OR stands in for data-api's two-scan merge — same row set",
-    );
-    assert.match(
-      s,
-      /ORDER BY observed_at DESC, block_number DESC, event_index DESC/,
-    );
-  });
-
-  test("direction narrows to a single indexed side, exactly like data-api", async () => {
-    const qSent = sqlFetch([transferRow(5)]);
-    const sent = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-      direction: "sent",
-    });
-    assert.match(qSent[0]!, new RegExp(`hotkey = '${ADDR}'`));
-    assert.ok(!/ OR /.test(qSent[0]!), "no disjunction on a single side");
-    assert.equal(sent!.transfers[0]!.direction, "sent");
-
-    const qRecv = sqlFetch([
-      { ...transferRow(5), hotkey: OTHER, coldkey: ADDR },
-    ]);
-    const received = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-      direction: "received",
-    });
-    assert.match(qRecv[0]!, new RegExp(`coldkey = '${ADDR}'`));
-    assert.equal(received!.transfers[0]!.direction, "received");
-
-    const qAll = sqlFetch([transferRow(5)]);
-    await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-      direction: "all",
-    });
-    assert.match(qAll[0]!, / OR /, "all reads both sides");
-  });
-
-  test("applies block-range filters and data-api's exact 3-part tuple seek", async () => {
-    const q = sqlFetch([transferRow(5)]);
-    await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-      blockStart: "100",
-      blockEnd: 900,
-      cursor: "1700000000950.950.2",
-    });
-    const s = q[0]!;
-    assert.match(s, /block_number >= 100/);
-    assert.match(s, /block_number <= 900/);
-    assert.match(
-      s,
-      /\(observed_at, block_number, event_index\) < \(1700000000950, 950, 2\)/,
-    );
-  });
-
-  test("declines an unusable address, direction, or range instead of widening", async () => {
-    for (const [ss58, extra] of [
-      ["not-an-address", {}],
-      [ADDR, { direction: "sideways" }],
-      [ADDR, { blockStart: -1 }],
-      [ADDR, { blockEnd: "abc" }],
-    ] as [string, Record<string, unknown>][]) {
-      const q = sqlFetch([transferRow(1)]);
-      assert.equal(
-        await loadAccountTransfersColdTier(TOKEN as never, ss58, {
-          limit: 5,
-          ...extra,
-        }),
-        null,
-        JSON.stringify(extra),
-      );
-      assert.equal(q.length, 0, "decline issues no query");
-    }
-  });
-
-  test("invalid paging declines; a malformed cursor means page 1", async () => {
-    const q = sqlFetch([transferRow(1)]);
-    assert.equal(
-      await loadAccountTransfersColdTier(TOKEN as never, ADDR, { limit: 0 }),
-      null,
-    );
-    assert.equal(
-      await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-        limit: 5,
-        offset: 100_000,
-      }),
-      null,
-    );
-    assert.equal(q.length, 0);
-
-    const q2 = sqlFetch([transferRow(9)]);
-    const data = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-      cursor: "junk",
-    });
-    assert.ok(data, "page 1, not a decline");
-    assert.ok(!/junk/.test(q2[0]!));
-  });
-
-  test("offset is emulated by over-fetch + slice; a cursor page skips it", async () => {
-    const q = sqlFetch([transferRow(9), transferRow(8), transferRow(7)]);
-    const data = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 1,
-      offset: 2,
-    });
-    assert.match(q[0]!, /LIMIT 3/);
-    assert.equal(data!.transfers[0]!.block_number, 7);
-
-    const q2 = sqlFetch([transferRow(9), transferRow(8)]);
-    const paged = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 2,
-      offset: 5,
-      cursor: "1700000000009.9.0",
-    });
-    assert.match(q2[0]!, /LIMIT 2/, "no over-fetch on a cursor page");
-    assert.equal(paged!.next_cursor, "1700000000008.8.0");
-  });
-
-  test("a short page carries no cursor; an unusable last row emits none; a failed query declines", async () => {
-    sqlFetch([transferRow(3)]);
-    const short = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-    });
-    assert.equal(short!.next_cursor, null);
-
-    sqlFetch([{ ...transferRow(3), block_number: null }]);
-    const odd = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 1,
-    });
-    assert.equal(odd!.next_cursor, null);
-
-    failingFetch();
-    assert.equal(
-      await loadAccountTransfersColdTier(TOKEN as never, ADDR, { limit: 5 }),
-      null,
-    );
-  });
-});
-
-describe("loadAccountStakeFlowColdTier", () => {
-  const FLOW_ROW = {
+function group(
+  kind = "StakeAdded",
+  extra: Partial<AccountFeedGroup> = {},
+): AccountFeedGroup {
+  return {
+    event_kind: kind,
     netuid: 7,
-    event_kind: "StakeAdded",
-    total_tao: "100",
-    event_count: 2,
-    last_observed: 1_700_000_000_500,
+    event_count: 4,
+    total_tao: 12.5,
+    total_alpha: 25,
+    first_block: 1,
+    last_block: 100,
+    first_observed: NOW - 1000,
+    last_observed: NOW,
+    ...extra,
   };
-
-  test("groups by (netuid, kind) over both stake kinds within the window", async () => {
-    const q = sqlFetch([FLOW_ROW]);
-    const res = await loadAccountStakeFlowColdTier(TOKEN as never, ADDR, {
-      window: "7d",
-    });
-    const s = q[0]!;
-    assert.match(
-      s,
-      new RegExp(`\\(hotkey = '${ADDR}' OR coldkey = '${ADDR}'\\)`),
-    );
-    assert.match(
-      s,
-      /\(event_kind = 'StakeAdded' OR event_kind = 'StakeRemoved'\)/,
-      "the IN list rewritten as an OR — same row set",
-    );
-    assert.match(s, /GROUP BY netuid, event_kind/);
-    const cutoff = Number(/observed_at >= (\d+)/.exec(s)![1]);
-    const expected = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    assert.ok(
-      Math.abs(cutoff - expected) < 60_000,
-      "request-time window math, same as data-api's windowCutoff",
-    );
-    assert.equal(res!.data.window, "7d");
-    assert.equal(res!.data.total_staked_tao, 100);
-    assert.equal(res!.generatedAt, new Date(1_700_000_000_500).toISOString());
-  });
-
-  test("direction narrows the kind; an unknown window falls back to the default", async () => {
-    const qIn = sqlFetch([FLOW_ROW]);
-    await loadAccountStakeFlowColdTier(TOKEN as never, ADDR, {
-      direction: "in",
-    });
-    assert.match(qIn[0]!, /event_kind = 'StakeAdded'/);
-    assert.ok(!/StakeRemoved/.test(qIn[0]!));
-
-    const qOut = sqlFetch([FLOW_ROW]);
-    const res = await loadAccountStakeFlowColdTier(TOKEN as never, ADDR, {
-      window: "6000d",
-      direction: "out",
-    });
-    assert.match(qOut[0]!, /event_kind = 'StakeRemoved'/);
-    assert.equal(res!.data.window, "30d", "data-api's fallback, not an error");
-  });
-
-  test("a null SUM is coalesced to 0 client-side, matching data-api's COALESCE", async () => {
-    sqlFetch([{ ...FLOW_ROW, total_tao: null }]);
-    const res = await loadAccountStakeFlowColdTier(TOKEN as never, ADDR, {});
-    assert.equal(res!.data.subnets[0]!.staked_tao, 0);
-    assert.equal(
-      res!.data.stake_events,
-      2,
-      "the group still counts its events",
-    );
-  });
-
-  test("declines a bad address or direction without querying; a failed query yields null", async () => {
-    const q = sqlFetch([FLOW_ROW]);
-    assert.equal(
-      await loadAccountStakeFlowColdTier(TOKEN as never, "junk", {}),
-      null,
-    );
-    assert.equal(
-      await loadAccountStakeFlowColdTier(TOKEN as never, ADDR, {
-        direction: "up",
-      }),
-      null,
-    );
-    assert.equal(q.length, 0);
-    failingFetch();
-    assert.equal(
-      await loadAccountStakeFlowColdTier(TOKEN as never, ADDR),
-      null,
-    );
-  });
+}
+function store(rows: Record<string, unknown>[], fail = false) {
+  pg.control.rows = rows;
+  pg.control.onQuery = null;
+  pg.control.answers = [];
+  pg.control.failNext = fail ? Error("store down") : null;
+  return { ...pgMockEnv(), NATIVE_PROJECTIONS: "enabled" };
+}
+beforeEach(() => {
+  page.mockReset().mockResolvedValue([]);
+  groups.mockReset().mockResolvedValue([]);
+  weight.mockReset().mockResolvedValue([]);
+  nominator.mockReset().mockResolvedValue({ rows: [], totalCount: 0 });
+  vi.spyOn(Date, "now").mockReturnValue(NOW);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw Error("HTTP forbidden");
+    }),
+  );
 });
-
-describe("loadAccountStakeMovesColdTier", () => {
-  const MOVE_ROW = {
-    netuid: 3,
-    movements: "4",
-    first_observed: 1_700_000_000_100,
-    last_observed: 1_700_000_000_900,
-  };
-
-  test("groups StakeMoved by netuid over the window", async () => {
-    const q = sqlFetch([MOVE_ROW]);
-    const res = await loadAccountStakeMovesColdTier(TOKEN as never, ADDR, {
-      window: "90d",
+describe("native transfer feed", () => {
+  test("preserves direction, ranges, composite cursor and an already paged result", async () => {
+    for (const [direction, sides] of [
+      [undefined, ["hotkey", "coldkey"]],
+      ["all", ["hotkey", "coldkey"]],
+      ["sent", ["hotkey"]],
+      ["received", ["coldkey"]],
+    ] as const) {
+      page.mockResolvedValue([event(100, 2), event(100, 1)]);
+      const result = await loadAccountTransfersColdTier({}, ADDR, {
+        limit: 2,
+        offset: 5,
+        direction,
+        blockStart: 10,
+        blockEnd: 200,
+        cursor: "1700000100300.300.3",
+      });
+      assert.equal(result?.transfer_count, 2);
+      assert.equal(result?.next_cursor, `${NOW + 100}.100.1`);
+      assert.deepEqual(
+        page.mock.lastCall?.[1],
+        sides.map((side) => ({
+          side,
+          account: ADDR,
+          kind: "Transfer",
+          blockStart: 10,
+          blockEnd: 200,
+          cursor: [1700000100300, 300, 3],
+        })),
+      );
+      assert.equal(page.mock.lastCall?.[3], 0);
+    }
+  });
+  test("offset applies once, malformed cursor means first page, short pages terminate", async () => {
+    page.mockResolvedValue([event()]);
+    const result = await loadAccountTransfersColdTier({}, ADDR, {
+      limit: 5,
+      offset: 2,
+      cursor: "bad",
     });
-    const s = q[0]!;
-    assert.match(s, /event_kind = 'StakeMoved'/);
-    assert.match(
-      s,
-      new RegExp(`\\(hotkey = '${ADDR}' OR coldkey = '${ADDR}'\\)`),
-    );
-    assert.match(s, /GROUP BY netuid$/);
-    assert.equal(res!.data.total_movements, 4);
-    assert.equal(res!.data.window, "90d");
-    assert.equal(res!.generatedAt, new Date(1_700_000_000_900).toISOString());
-  });
-
-  test("an empty window answers zeros with a null generatedAt — an answer, not a decline", async () => {
-    sqlFetch([]);
-    const res = await loadAccountStakeMovesColdTier(TOKEN as never, ADDR);
-    assert.equal(res!.data.total_movements, 0);
-    assert.equal(res!.generatedAt, null);
-  });
-
-  test("declines a bad address without querying", async () => {
-    const q = sqlFetch([MOVE_ROW]);
+    assert.equal(result?.transfer_count, 1);
+    assert.equal(result?.next_cursor, null);
+    assert.equal(page.mock.lastCall?.[3], 2);
+    assert.equal(page.mock.lastCall?.[1][0].cursor, null);
+    page.mockResolvedValue([nativeAccountRow({ observed_at: null })]);
     assert.equal(
-      await loadAccountStakeMovesColdTier(TOKEN as never, "junk", {}),
+      (await loadAccountTransfersColdTier({}, ADDR, { limit: 1 }))?.next_cursor,
       null,
     );
-    assert.equal(q.length, 0);
   });
-
-  test("a failed query on a CONFIGURED lakehouse is MARKED, not a null", async () => {
-    // #11424. It used to return the same bare null as an unusable address, and
-    // the caller spelled that `?? emptyCard` -- so a 15-second timeout (this
-    // route was measured AT `QUERY_TIMEOUT_MS` on 2026-08-16) published
-    // `total_movements: 0`, which reads as "this account has never moved
-    // stake".
-    failingFetch();
-    const out = await loadAccountStakeMovesColdTier(TOKEN as never, ADDR, {});
-    assert.ok(out, "a decline still answers");
-    assert.deepEqual(out.data.degraded, { reason: "unavailable" });
-    assert.equal(out.data.total_movements, null);
-    assert.equal(out.data.subnet_count, null);
-    assert.equal(out.generatedAt, null);
-  });
-});
-
-describe("loadAccountWeightSettersColdTier", () => {
-  const WS_ROW = {
-    netuid: 11,
-    weight_sets: "6",
-    first_observed: 1_700_000_000_100,
-    last_observed: 1_700_000_000_800,
-  };
-  const envWith = (store: unknown) => ({ ...TOKEN, ...(store ?? {}) }) as never;
-
-  test("collapses data-api's UNION into one disjunction over the D1 neuron slots", async () => {
-    const q = sqlFetch([WS_ROW]);
-    const res = await loadAccountWeightSettersColdTier(
-      envWith(
-        d1With([
-          { netuid: 11, uid: 4 },
-          { netuid: 20, uid: 9 },
-        ]),
-      ),
-      ADDR,
-      { window: "30d" },
-    );
-    const s = q[0]!;
-    assert.match(s, /event_kind = 'WeightsSet'/);
-    assert.match(
-      s,
-      new RegExp(
-        `\\(hotkey = '${ADDR}' OR \\(\\(hotkey IS NULL OR hotkey = ''\\) AND ` +
-          `\\(netuid, uid\\) IN \\(\\(11, 4\\), \\(20, 9\\)\\)\\)\\)`,
-      ),
-      "the two UNION ALL branches are disjoint, so one OR is the same multiset",
-    );
-    // A TUPLE list, never `netuid IN (...) AND uid IN (...)` -- that would
-    // match the cross product and credit this account with other neurons'
-    // weight-sets.
-    assert.doesNotMatch(s, /netuid IN \(/);
-    assert.match(s, /GROUP BY netuid$/);
-    assert.equal(res!.data.total_weight_sets, 6);
-    assert.equal(res!.data.window, "30d");
-    assert.equal(res!.generatedAt, new Date(1_700_000_000_800).toISOString());
-  });
-
-  test("a many-subnet account produces a flat IN list, not a deep OR chain", async () => {
-    // THE REGRESSION THIS GUARDS. One OR clause per slot exceeded R2 SQL's
-    // expression nesting limit once an account held enough of them:
-    //   40018: query expression too deep ... rewrite long chains of AND/OR
-    //   operators using IN/NOT IN lists
-    // The engine rejected the query, r2SqlQuery returned null, the reader
-    // declined, and the route served an empty payload -- so it failed for
-    // exactly the validators registered on the most subnets and passed for
-    // accounts on a handful. Verified live: an account on 119 subnets got
-    // 40018 from the OR chain and real rows from this form.
-    const slots = Array.from({ length: 128 }, (_, i) => ({
-      netuid: i,
-      uid: i + 1,
-    }));
-    const q = sqlFetch([WS_ROW]);
-    const res = await loadAccountWeightSettersColdTier(
-      envWith(d1With(slots)),
-      ADDR,
-      {},
-    );
-    assert.ok(res, "a many-subnet account must not decline");
-    const sql = q[0]!;
-    assert.match(sql, /\(netuid, uid\) IN \(\(0, 1\), \(1, 2\), /);
-    assert.match(sql, /\(127, 128\)\)/);
-    // No per-slot OR clauses at all: the only ORs left are the two structural
-    // ones (hotkey branch, and the NULL/empty hotkey test).
+  test("invalid input never widens the read; unavailable history declines", async () => {
+    for (const args of [
+      { limit: 0 },
+      { limit: 5, offset: 100000 },
+      { limit: 5, offset: -1 },
+      { limit: 5, direction: "bad" },
+      { limit: 5, blockStart: -1 },
+      { limit: 5, blockEnd: "bad" },
+    ])
+      assert.equal(await loadAccountTransfersColdTier({}, ADDR, args), null);
     assert.equal(
-      (sql.match(/ OR /g) ?? []).length,
-      2,
-      "slot count must not add OR clauses",
+      await loadAccountTransfersColdTier({}, "bad", { limit: 1 }),
+      null,
     );
-  });
-
-  test("no registered slots leaves only the hotkey branch, like data-api's dropped UNION", async () => {
-    const q = sqlFetch([WS_ROW]);
-    const res = await loadAccountWeightSettersColdTier(
-      envWith(d1With([])),
-      ADDR,
-      {},
-    );
-    assert.match(q[0]!, new RegExp(`AND hotkey = '${ADDR}' GROUP BY`));
-    assert.ok(!/uid =/.test(q[0]!));
-    assert.equal(res!.data.window, "7d", "the route's own default window");
-  });
-
-  test("declines without the slot source: no store, a failed read, or an unusable slot", async () => {
-    // The old list ended with a binding whose statement had no `.all` at all.
-    // readStore's handle always has one, so that shape is gone; what replaces
-    // it is the other way a store can be absent -- bound, but this deployment
-    // has not declared `neurons` Neon's, so the selector refuses to read a
-    // table it was not told the store owns.
-    for (const store of [
-      undefined,
-      { HYPERDRIVE: { connectionString: "postgresql://mock/db" } },
-      d1With(() => {
-        throw new Error("store down");
-      }),
-      d1With([{ netuid: "bad", uid: 1 }]),
-      d1With([{ netuid: 1, uid: null }]),
-    ]) {
-      const q = sqlFetch([WS_ROW]);
+    assert.equal(page.mock.calls.length, 0);
+    for (const value of [null, undefined]) {
+      page.mockResolvedValue(value);
       assert.equal(
-        await loadAccountWeightSettersColdTier(envWith(store), ADDR, {}),
+        await loadAccountTransfersColdTier({}, ADDR, { limit: 1 }),
         null,
       );
-      assert.equal(q.length, 0, "decline issues no lakehouse query");
     }
   });
-
-  test("declines a bad address before touching the store; a failed query yields null", async () => {
-    const q = sqlFetch([WS_ROW]);
-    assert.equal(
-      await loadAccountWeightSettersColdTier(
-        envWith(
-          d1With(() => {
-            throw new Error("never reached");
-          }),
-        ),
-        "junk",
-        {},
-      ),
-      null,
-    );
-    assert.equal(q.length, 0);
-    failingFetch();
-    assert.equal(
-      await loadAccountWeightSettersColdTier(envWith(d1With([])), ADDR),
-      null,
-    );
-  });
 });
-
-describe("loadAccountCounterpartiesColdTier", () => {
-  test("aggregates the capped newest-first Transfer scan through the shared builder", async () => {
-    const q = sqlFetch([transferRow(10), transferRow(9)]);
-    const data = await loadAccountCounterpartiesColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-    });
-    const s = q[0]!;
-    assert.match(s, /event_kind = 'Transfer'/);
-    assert.match(
-      s,
-      new RegExp(`\\(hotkey = '${ADDR}' OR coldkey = '${ADDR}'\\)`),
-    );
-    assert.match(s, /LIMIT 5000$/, "data-api's exact scan cap");
-    assert.equal(data!.counterparty_count, 1);
-    assert.equal(data!.counterparties[0]!.address, OTHER);
-    assert.equal(data!.counterparties[0]!.sent_tao, 25);
-  });
-
-  test("declines a bad address without querying; a failed query yields null", async () => {
-    const q = sqlFetch([transferRow(1)]);
-    assert.equal(
-      await loadAccountCounterpartiesColdTier(TOKEN as never, "junk", {}),
-      null,
-    );
-    assert.equal(q.length, 0);
-    failingFetch();
-    assert.equal(
-      await loadAccountCounterpartiesColdTier(TOKEN as never, ADDR),
-      null,
-    );
-  });
-});
-
-describe("loadCounterpartyRelationshipColdTier", () => {
-  test("reads the pair in both orientations and reproduces data-api's composite payload", async () => {
-    const q = sqlFetch([
-      transferRow(10),
-      { ...transferRow(9), hotkey: OTHER, coldkey: ADDR },
-    ]);
-    const data = await loadCounterpartyRelationshipColdTier(
-      TOKEN as never,
-      ADDR,
-      OTHER,
-      { limit: 50 },
-    );
-    assert.match(
-      q[0]!,
-      new RegExp(
-        `\\(\\(hotkey = '${ADDR}' AND coldkey = '${OTHER}'\\) OR ` +
-          `\\(hotkey = '${OTHER}' AND coldkey = '${ADDR}'\\)\\)`,
-      ),
-    );
-    assert.equal(data!.counterparty_count, 1);
-    assert.equal(data!.relationship.transfer_count, 2);
-    assert.equal(data!.counterparties[0]!.net_tao, 0);
-    // observed_at is KEPT now (#10190). It was stripped for payload parity with
-    // the Postgres tier, whose projection dropped it -- and that tier is retired,
-    // so the strip only nulled three published fields for no remaining reason
-    // while the query still paid to select and sort by the column.
-    assert.equal(
-      data!.relationship.last_seen_at,
-      new Date(transferRow(10).observed_at as number).toISOString(),
-      "the newest transfer's observed_at is the relationship's last_seen_at",
-    );
-  });
-
-  test("no transfers between the pair yields the empty composite, not a decline", async () => {
-    sqlFetch([]);
-    const data = await loadCounterpartyRelationshipColdTier(
-      TOKEN as never,
-      ADDR,
-      OTHER,
-    );
-    assert.equal(data!.counterparty_count, 0);
-    assert.deepEqual(data!.counterparties, []);
-    assert.equal(data!.relationship.transfer_count, 0);
-  });
-
-  test("declines a bad address on either side without querying; a failed query yields null", async () => {
-    const q = sqlFetch([transferRow(1)]);
-    assert.equal(
-      await loadCounterpartyRelationshipColdTier(TOKEN as never, "junk", OTHER),
-      null,
-    );
-    assert.equal(
-      await loadCounterpartyRelationshipColdTier(TOKEN as never, ADDR, "junk"),
-      null,
-    );
-    assert.equal(q.length, 0);
-    failingFetch();
-    assert.equal(
-      await loadCounterpartyRelationshipColdTier(TOKEN as never, ADDR, OTHER),
-      null,
-    );
-  });
-});
-
-describe("loadAccountRegistrationsColdTier", () => {
-  const REG_ROW = {
-    netuid: 104,
-    registrations: "3",
-    first_observed: 1_783_319_088_000,
-    last_observed: 1_783_386_048_000,
-  };
-
-  test("groups NeuronRegistered by netuid over the window", async () => {
-    const q = sqlFetch([REG_ROW]);
-    const res = await loadAccountRegistrationsColdTier(TOKEN as never, ADDR, {
-      window: "90d",
-    });
-    const s = q[0]!;
-    assert.match(s, /event_kind = 'NeuronRegistered'/);
-    assert.match(s, /GROUP BY netuid$/);
-    assert.equal(res!.data.total_registrations, 3);
-    assert.equal(res!.data.window, "90d");
-    assert.equal(res!.generatedAt, new Date(1_783_386_048_000).toISOString());
-  });
-
-  test("attributes on the hotkey ALONE, never widening to the coldkey", async () => {
-    // A registration belongs to the hotkey being registered. Widening to
-    // `hotkey OR coldkey` -- the shape the transfer-style feeds use -- would
-    // credit an operator with every registration made by every hotkey it
-    // funds, which is a plausible-looking wrong answer rather than an error.
-    const q = sqlFetch([REG_ROW]);
-    await loadAccountRegistrationsColdTier(TOKEN as never, ADDR, {});
-    assert.match(q[0]!, new RegExp(`hotkey = '${ADDR}'`));
-    assert.doesNotMatch(q[0]!, /coldkey/);
-  });
-
-  test("does not carry the SQLite INDEXED BY hint into R2 SQL", async () => {
-    // The retired D1 loader named an index; R2 SQL has none to name and would
-    // reject the statement.
-    const q = sqlFetch([REG_ROW]);
-    await loadAccountRegistrationsColdTier(TOKEN as never, ADDR, {});
-    assert.doesNotMatch(q[0]!, /INDEXED BY/);
-  });
-
-  test("falls back to the default window for an unknown label", async () => {
-    const q = sqlFetch([REG_ROW]);
-    const res = await loadAccountRegistrationsColdTier(TOKEN as never, ADDR, {
-      window: "1y",
-    });
-    assert.equal(res!.data.window, "30d");
-    void q;
-  });
-
-  test("an empty window answers zeros with a null generatedAt — an answer, not a decline", async () => {
-    sqlFetch([]);
-    const res = await loadAccountRegistrationsColdTier(TOKEN as never, ADDR);
-    assert.equal(res!.data.total_registrations, 0);
-    assert.equal(res!.generatedAt, null);
-  });
-
-  test("declines an unusable address rather than scanning every account", async () => {
-    const q = sqlFetch([]);
-    assert.equal(
-      await loadAccountRegistrationsColdTier(TOKEN as never, "not-an-ss58"),
-      null,
-    );
-    assert.equal(q.length, 0, "must not issue a query at all");
-  });
-
-  test("declines when the lakehouse cannot answer", async () => {
-    globalThis.fetch = (async () =>
-      ({
-        ok: false,
-        status: 500,
-      }) as unknown as Response) as unknown as typeof fetch;
-    assert.equal(
-      await loadAccountRegistrationsColdTier(TOKEN as never, ADDR),
-      null,
-    );
-  });
-});
-
-describe("loadAccountServingColdTier", () => {
-  const SERVE_ROW = {
-    netuid: 55,
-    announcements: "3",
-    first_observed: 1_784_016_000_001,
-    last_observed: 1_785_342_888_001,
-  };
-
-  test("groups AxonServed by netuid and reads the announcements column", async () => {
-    const q = sqlFetch([SERVE_ROW]);
-    const res = await loadAccountServingColdTier(TOKEN as never, ADDR, {
-      window: "7d",
-    });
-    const s = q[0]!;
-    assert.match(s, /event_kind = 'AxonServed'/);
-    // The builder reads `announcements`, not `registrations` -- aliasing it
-    // wrongly would yield a card of zeros from a healthy read.
-    assert.match(s, /COUNT\(\*\) AS announcements/);
-    assert.equal(res!.data.total_announcements, 3);
-    assert.equal(res!.data.window, "7d");
-  });
-
-  test("attributes on the hotkey ALONE, never widening to the coldkey", async () => {
-    const q = sqlFetch([SERVE_ROW]);
-    await loadAccountServingColdTier(TOKEN as never, ADDR, {});
-    assert.match(q[0]!, new RegExp(`hotkey = '${ADDR}'`));
-    assert.doesNotMatch(q[0]!, /coldkey/);
-  });
-
-  test("an empty window answers zeros with a null generatedAt", async () => {
-    sqlFetch([]);
-    const res = await loadAccountServingColdTier(TOKEN as never, ADDR);
-    assert.equal(res!.data.total_announcements, 0);
-    assert.equal(res!.generatedAt, null);
-  });
-
-  test("declines an unusable address rather than scanning every account", async () => {
-    const q = sqlFetch([]);
-    assert.equal(
-      await loadAccountServingColdTier(TOKEN as never, "not-an-ss58"),
-      null,
-    );
-    assert.equal(q.length, 0);
-  });
-
-  test("declines when the lakehouse cannot answer", async () => {
-    globalThis.fetch = (async () =>
-      ({
-        ok: false,
-        status: 500,
-      }) as unknown as Response) as unknown as typeof fetch;
-    assert.equal(await loadAccountServingColdTier(TOKEN as never, ADDR), null);
-  });
-});
-
-describe("loadValidatorNominatorsColdTier", () => {
-  const THIRD = "5CkS5AGtGDPnXFXnZgBHqhqnaGsQzEwGmnPmauK1EhdG3JQY";
-
-  // The lakehouse's aggregate shape carries no event_kind column, so the
-  // builder takes its pre-grouped branch -- the same shape the Postgres tier
-  // returned from its own GROUP BY.
-  function nominatorRow(coldkey: string, staked: number, unstaked = 0) {
-    return {
-      coldkey,
-      staked_tao: staked,
-      unstaked_tao: unstaked,
-      event_count: 3,
-      last_observed: 1_785_544_524_000,
-      net_staked_tao: staked - unstaked,
-      gross_staked_tao: staked + unstaked,
-    };
-  }
-
-  test("carries the retired Postgres projection and predicate verbatim", async () => {
-    const q = sqlFetch([nominatorRow(OTHER, 20)], [{ c: 1 }]);
-    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-      limit: 20,
-      window: "30d",
-    });
-    const s = q[0]!;
-    assert.match(s, new RegExp(`hotkey = '${ADDR}'`));
-    assert.match(s, /COUNT\(\*\) AS event_count/);
-    assert.match(s, /MAX\(observed_at\) AS last_observed/);
-    assert.match(s, /SUM\(amount_tao\) AS gross_staked_tao/);
-    assert.match(s, /GROUP BY coldkey/);
-    assert.equal(res!.data.window, "30d");
-    assert.equal(res!.data.nominator_count, 1);
-    assert.equal(
-      (res!.data.nominators as { net_staked_tao: number }[])[0]!.net_staked_tao,
-      20,
-    );
-    assert.equal(
-      res!.generatedAt,
-      new Date(1_785_544_524_000).toISOString(),
-      "generatedAt is the newest last_observed, as data-api derived it",
-    );
-  });
-
-  test("rewrites the kind IN-list as an OR, never leaning on IN", async () => {
-    const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
-    await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, { limit: 5 });
-    assert.match(
-      q[0]!,
-      /\(event_kind = 'StakeAdded' OR event_kind = 'StakeRemoved'\)/,
-    );
-    assert.doesNotMatch(q[0]!, /event_kind IN/);
-  });
-
-  test("each sort picks its own ORDER BY, tie-broken on coldkey", async () => {
-    for (const [sort, expected] of [
-      ["net_staked", "net_staked_tao DESC, coldkey ASC"],
-      ["gross_staked", "gross_staked_tao DESC, coldkey ASC"],
-      ["last_activity", "last_observed DESC, coldkey ASC"],
+describe("native complete account aggregates", () => {
+  test("stake flow forwards both units and chooses the exact direction and default window", async () => {
+    groups.mockResolvedValue([group()]);
+    for (const [direction, kinds] of [
+      [undefined, ["StakeAdded", "StakeRemoved"]],
+      ["in", ["StakeAdded"]],
+      ["out", ["StakeRemoved"]],
     ] as const) {
-      const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
-      const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-        limit: 5,
-        sort,
+      const result = await loadAccountStakeFlowColdTier({}, ADDR, {
+        direction,
+        window: "unknown",
       });
-      assert.match(q[0]!, new RegExp(`ORDER BY ${expected} LIMIT`));
-      assert.equal(res!.data.sort, sort);
+      assert.ok(result);
+      assert.equal(result.data.window, "30d");
+      assert.equal(result.rows[0].total_alpha, 25);
+      assert.deepEqual(
+        groups.mock.lastCall?.[1],
+        kinds.flatMap((kind) =>
+          ["hotkey", "coldkey"].map((side) => ({
+            side,
+            account: ADDR,
+            kind,
+            observedStart: NOW - 30 * 86400000,
+          })),
+        ),
+      );
+    }
+    groups.mockResolvedValue([group("StakeAdded", { total_tao: null })]);
+    assert.ok(await loadAccountStakeFlowColdTier({}, ADDR));
+    assert.equal(
+      await loadAccountStakeFlowColdTier({}, ADDR, { direction: "bad" }),
+      null,
+    );
+    assert.equal(await loadAccountStakeFlowColdTier({}, "bad"), null);
+    groups.mockResolvedValue(null);
+    assert.equal(await loadAccountStakeFlowColdTier({}, ADDR), null);
+  });
+  test("maps native event counts into every published account scorecard", async () => {
+    const cases = [
+      {
+        load: loadAccountRegistrationsColdTier,
+        kind: "NeuronRegistered",
+        field: "total_registrations",
+        sides: ["hotkey"],
+      },
+      {
+        load: loadAccountServingColdTier,
+        kind: "AxonServed",
+        field: "total_announcements",
+        sides: ["hotkey"],
+      },
+      {
+        load: loadAccountPrometheusColdTier,
+        kind: "PrometheusServed",
+        field: "total_announcements",
+        sides: ["hotkey"],
+      },
+      {
+        load: loadAccountStakeMovesColdTier,
+        kind: "StakeMoved",
+        field: "total_movements",
+        sides: ["hotkey", "coldkey"],
+      },
+    ];
+    for (const item of cases) {
+      groups.mockResolvedValue([group(item.kind)]);
+      const result = await item.load({}, ADDR, { window: "7d" });
+      assert.ok(result);
+      assert.equal(Reflect.get(result.data, item.field), 4, item.kind);
+      assert.equal(result.generatedAt, new Date(NOW).toISOString());
+      assert.deepEqual(
+        groups.mock.lastCall?.[1],
+        item.sides.map((side) => ({
+          side,
+          account: ADDR,
+          kind: item.kind,
+          observedStart: NOW - 7 * 86400000,
+        })),
+      );
+      groups.mockResolvedValue([]);
+      const empty = await item.load({}, ADDR);
+      assert.ok(empty);
+      assert.equal(Reflect.get(empty.data, item.field), 0);
+      assert.equal(empty.generatedAt, null);
+      assert.equal(await item.load({}, "bad"), null);
     }
   });
-
-  test("declines a sort it cannot express rather than serving the default order", async () => {
-    // Silently substituting net_staked under the caller's requested label
-    // would be a wrong answer wearing the right label.
-    const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
-    assert.equal(
-      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-        limit: 5,
-        sort: "apy",
-      }),
-      null,
-    );
-    assert.equal(q.length, 0, "must not issue a query at all");
+  test("unavailable aggregates decline and stake moves retain explicit gap semantics", async () => {
+    for (const load of [
+      loadAccountRegistrationsColdTier,
+      loadAccountServingColdTier,
+      loadAccountPrometheusColdTier,
+    ])
+      for (const value of [null, undefined]) {
+        groups.mockResolvedValue(value);
+        assert.equal(await load({}, ADDR), null);
+      }
+    groups.mockResolvedValue(undefined);
+    assert.equal(await loadAccountStakeMovesColdTier({}, ADDR), null);
+    for (const value of [null, undefined]) {
+      groups.mockResolvedValue(value);
+      const result = await loadAccountStakeMovesColdTier(
+        { NATIVE_PROJECTIONS: "enabled" },
+        ADDR,
+      );
+      assert.ok(result?.data.degraded);
+      assert.equal(result.generatedAt, null);
+    }
   });
-
-  test("emulates OFFSET by over-fetching and slicing, since R2 SQL has none", async () => {
-    const q = sqlFetch([
-      nominatorRow(OTHER, 30),
-      nominatorRow(ADDR, 20),
-      nominatorRow(THIRD, 10),
-    ]);
-    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-      limit: 2,
-      offset: 1,
-    });
-    assert.match(q[0]!, /LIMIT 3/, "over-fetches limit + offset");
-    assert.doesNotMatch(q[0]!, /OFFSET/);
-    const rows = res!.data.nominators as { coldkey: string }[];
-    assert.equal(rows.length, 2);
-    assert.equal(res!.data.offset, 1);
-    assert.ok(
-      !rows.some((row) => row.coldkey === OTHER),
-      "the skipped first row must not reappear in the page",
-    );
+  test("price enrichment reads live snapshots and tolerates unavailable or nonfinite prices", async () => {
+    groups.mockResolvedValue([group("StakeMoved")]);
+    const date = new Date(NOW).toISOString().slice(0, 10);
+    for (const [rows, price] of [
+      [[{ netuid: 7, snapshot_date: date, alpha_price_tao: 0.25 }], 0.25],
+      [[{ netuid: 7, snapshot_date: date, alpha_price_tao: "bad" }], null],
+    ] as const) {
+      const result = await loadAccountStakeMovesColdTier(
+        store([...rows]),
+        ADDR,
+      );
+      assert.equal(result?.data.subnets[0].price_tao_at_last_move, price);
+    }
+    assert.ok(await loadAccountStakeMovesColdTier(store([], true), ADDR));
   });
-
-  test("declines past the offset-emulation cap rather than paging wrongly", async () => {
-    const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
-    assert.equal(
-      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-        limit: 5,
-        offset: 1001,
-      }),
-      null,
-    );
-    assert.equal(q.length, 0);
-  });
-
-  test("narrows on an exact coldkey, and declines an unusable one", async () => {
-    const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
-    await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-      coldkey: OTHER,
-    });
-    assert.match(q[0]!, new RegExp(`coldkey = '${OTHER}'`));
-
-    // A filter that cannot be inlined must not widen to every nominator.
-    const bad = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
-    assert.equal(
-      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-        limit: 5,
-        coldkey: "not-an-ss58",
-      }),
-      null,
-    );
-    assert.equal(bad.length, 0);
-  });
-
-  test("coalesces null sums to zero, as data-api's COALESCE did", async () => {
-    // Without this the builder skips the group entirely, losing a nominator a
-    // healthy read did return.
-    sqlFetch(
+  test("weight sets retain all registered slot pairs and decline missing or malformed slots", async () => {
+    for (const slots of [
+      [],
       [
-        {
-          coldkey: OTHER,
-          staked_tao: null,
-          unstaked_tao: null,
-          event_count: 2,
-          last_observed: 1_785_000_000_000,
-        },
+        { netuid: 11, uid: 4 },
+        { netuid: 20, uid: 9 },
       ],
-      [{ c: 1 }],
-    );
-    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-    });
-    assert.equal(res!.data.nominator_count, 1);
+      Array.from({ length: 128 }, (_, i) => ({ netuid: i, uid: i + 1 })),
+    ]) {
+      weight.mockResolvedValue([
+        {
+          netuid: 11,
+          weight_sets: 6,
+          first_observed: NOW - 1000,
+          last_observed: NOW,
+        },
+      ]);
+      const result = await loadAccountWeightSettersColdTier(store(slots), ADDR);
+      assert.equal(result?.data.total_weight_sets, 6);
+      assert.deepEqual(weight.mock.lastCall?.[2], slots);
+      assert.equal(weight.mock.lastCall?.[3], NOW - 7 * 86400000);
+    }
+    for (const slots of [
+      [{ netuid: "bad", uid: 1 }],
+      [{ netuid: 1, uid: null }],
+    ])
+      assert.equal(
+        await loadAccountWeightSettersColdTier(store(slots), ADDR),
+        null,
+      );
+    assert.equal(await loadAccountWeightSettersColdTier({}, ADDR), null);
     assert.equal(
-      (res!.data.nominators as { staked_tao: number }[])[0]!.staked_tao,
+      await loadAccountWeightSettersColdTier(store([], true), ADDR),
+      null,
+    );
+    assert.equal(await loadAccountWeightSettersColdTier({}, "bad"), null);
+    weight.mockResolvedValue(null);
+    assert.equal(await loadAccountWeightSettersColdTier(store([]), ADDR), null);
+  });
+});
+describe("counterparty and nominator contracts", () => {
+  test("counterparties retain capped totals and pair orientation", async () => {
+    page.mockResolvedValue([
+      event(),
+      nativeAccountRow({
+        ...event(99),
+        hotkey: OTHER,
+        coldkey: ADDR,
+        amount_tao: 5,
+      }),
+    ]);
+    const list = await loadAccountCounterpartiesColdTier({}, ADDR, {
+      limit: 1,
+    });
+    assert.equal(list?.total_sent_tao, 12.5);
+    assert.equal(list?.total_received_tao, 5);
+    assert.equal(page.mock.lastCall?.[2], 5000);
+    const pair = await loadCounterpartyRelationshipColdTier({}, ADDR, OTHER, {
+      limit: 1,
+    });
+    assert.equal(pair?.counterparty_count, 1);
+    assert.equal(pair?.relationship.transfer_count, 2);
+    assert.equal(pair?.counterparties[0].net_tao, -7.5);
+    assert.deepEqual(
+      page.mock.lastCall?.[1],
+      ["hotkey", "coldkey"].map((side) => ({
+        side,
+        account: ADDR,
+        counterparty: OTHER,
+        kind: "Transfer",
+      })),
+    );
+    page.mockResolvedValue([]);
+    assert.equal(
+      (await loadCounterpartyRelationshipColdTier({}, ADDR, OTHER))
+        ?.counterparty_count,
       0,
     );
-  });
-
-  test("falls back to the default window for an unknown label", async () => {
-    sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
-    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-      window: "1y",
-    });
-    assert.equal(res!.data.window, "30d");
-  });
-
-  test("a validator with no nominators answers an empty list, not a decline", async () => {
-    sqlFetch([], [{ c: 0 }]);
-    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-    });
-    assert.equal(res!.data.nominator_count, 0);
-    assert.equal(res!.generatedAt, null);
-  });
-
-  test("declines an unusable hotkey, limit or offset rather than scanning", async () => {
-    const q = sqlFetch([], [{ c: 0 }]);
+    for (const load of [
+      () => loadAccountCounterpartiesColdTier({}, ADDR),
+      () => loadCounterpartyRelationshipColdTier({}, ADDR, OTHER),
+    ]) {
+      page.mockResolvedValue(null);
+      assert.equal(await load(), null);
+    }
+    assert.equal(await loadAccountCounterpartiesColdTier({}, "bad"), null);
     assert.equal(
-      await loadValidatorNominatorsColdTier(TOKEN as never, "not-an-ss58", {
-        limit: 5,
-      }),
+      await loadCounterpartyRelationshipColdTier({}, "bad", OTHER),
       null,
     );
     assert.equal(
-      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, { limit: 0 }),
+      await loadCounterpartyRelationshipColdTier({}, ADDR, "bad"),
       null,
     );
+  });
+  test("nominators preserve every sort, coldkey narrowing, true total and one offset", async () => {
+    const row = {
+      coldkey: OTHER,
+      staked_tao: 10,
+      unstaked_tao: 2,
+      net_staked_tao: 8,
+      gross_staked_tao: 12,
+      event_count: 3,
+      last_observed: NOW,
+    };
+    nominator.mockResolvedValue({ rows: [row, row], totalCount: 7 });
+    for (const sort of ["net_staked", "gross_staked", "last_activity"]) {
+      const result = await loadValidatorNominatorsColdTier({}, ADDR, {
+        window: "7d",
+        sort,
+        coldkey: OTHER,
+        limit: 1,
+        offset: 1,
+      });
+      assert.equal(result?.data.nominator_count, 7);
+      assert.ok(Array.isArray(result.data.nominators));
+      assert.equal(result.data.nominators.length, 1);
+      assert.deepEqual(nominator.mock.lastCall?.[3], {
+        coldkey: OTHER,
+        sort,
+        limit: 1,
+        offset: 1,
+      });
+    }
+    nominator.mockResolvedValue({ rows: [], totalCount: 0 });
     assert.equal(
-      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-        limit: 1.5,
-      }),
-      null,
-      "a limit that is not a safe integer cannot be inlined",
+      (
+        await loadValidatorNominatorsColdTier({}, ADDR, {
+          limit: 3,
+          window: "bad",
+        })
+      )?.data.window,
+      "30d",
     );
+    for (const query of [
+      { limit: 0 },
+      { limit: 2, offset: -1 },
+      { limit: 2, offset: 100000 },
+      { limit: 2, sort: "bad" },
+      { limit: 2, coldkey: "bad" },
+    ])
+      assert.equal(
+        await loadValidatorNominatorsColdTier({}, ADDR, query),
+        null,
+      );
     assert.equal(
-      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
-        limit: 5,
-        offset: -1,
-      }),
+      await loadValidatorNominatorsColdTier({}, "bad", { limit: 1 }),
       null,
     );
-    assert.equal(q.length, 0);
-  });
-
-  test("declines when the lakehouse cannot answer", async () => {
-    failingFetch();
-    assert.equal(
-      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, { limit: 5 }),
-      null,
-    );
-  });
-});
-
-// #10322: the rung this family never had. Every surface answered
-// `buildAccountPrometheus([])` while /api/v1/chain/prometheus read the same
-// PrometheusServed stream and reported real numbers.
-describe("loadAccountPrometheusColdTier", () => {
-  const PROM_ROW = {
-    netuid: 112,
-    announcements: "1",
-    first_observed: 1_784_016_000_001,
-    last_observed: 1_785_342_888_001,
-  };
-
-  test("groups PrometheusServed by netuid and reads the announcements column", async () => {
-    const q = sqlFetch([PROM_ROW]);
-    const res = await loadAccountPrometheusColdTier(TOKEN as never, ADDR, {
-      window: "7d",
-    });
-    const sql = q[0]!;
-    // The event kind is the ONLY thing that differs from the serving sibling;
-    // getting it wrong yields a healthy-looking card of somebody else's events.
-    assert.match(sql, /event_kind = 'PrometheusServed'/);
-    assert.match(sql, /COUNT\(\*\) AS announcements/);
-    assert.equal(res!.data.total_announcements, 1);
-    assert.equal(res!.data.window, "7d");
-  });
-
-  test("attributes on the hotkey ALONE, never widening to the coldkey", async () => {
-    const q = sqlFetch([PROM_ROW]);
-    await loadAccountPrometheusColdTier(TOKEN as never, ADDR, {});
-    assert.match(q[0]!, new RegExp(`hotkey = '${ADDR}'`));
-    assert.doesNotMatch(q[0]!, /coldkey/);
-  });
-
-  test("an empty window answers zeros with a null generatedAt", async () => {
-    sqlFetch([]);
-    const res = await loadAccountPrometheusColdTier(TOKEN as never, ADDR);
-    assert.equal(res!.data.total_announcements, 0);
-    assert.equal(res!.generatedAt, null);
-    assert.equal(res!.data.degraded, undefined);
-  });
-
-  test("declines an unusable address rather than scanning every account", async () => {
-    const q = sqlFetch([]);
-    assert.equal(
-      await loadAccountPrometheusColdTier(TOKEN as never, "not-an-ss58"),
-      null,
-    );
-    assert.equal(q.length, 0);
-  });
-
-  // DECLINES rather than degrades: a null here lets the caller fall through to
-  // the zeroed builder, which is a different answer from "zero announcements".
-  test("declines when the lakehouse cannot answer", async () => {
-    globalThis.fetch = (async () =>
-      new Response("nope", { status: 500 })) as typeof fetch;
-    assert.equal(
-      await loadAccountPrometheusColdTier(TOKEN as never, ADDR),
-      null,
-    );
-  });
-});
-
-/**
- * The projection floor, applied to the three feeds that walked with none.
- *
- * Measured 2026-08-16 on 5EEmaGFE...5oM3qDSC: `/counterparties` 15.1s,
- * `/transfers` 12.6s. `counterpartyScan` asks for COUNTERPARTIES_SCAN_CAP
- * (5,000) rows, so its two probes essentially never fill and every request
- * reached the unbounded third read of an ~894M-row table.
- */
-describe("the account feeds -- the projection floor", () => {
-  const FIRST = 1_699_999_000_000;
-  const OTHER_FIRST = 1_699_990_000_000;
-
-  /** One folded group, as the producer publishes it. */
-  const group = (fo: number) => [
-    { kind: "Transfer", netuid: null, count: 1, fb: 10, lb: 10, fo, lo: fo },
-  ];
-
-  test("TRANSFERS floor at the account's earliest folded event", async () => {
-    const q = sqlFetch([transferRow(10)]);
-    await loadAccountTransfersColdTier(
-      {
-        ...TOKEN,
-        ...accountSummaryArchive({ accounts: { [ADDR]: group(FIRST) } }),
-      } as never,
-      ADDR,
-      { limit: 5 },
-    );
-    assert.ok(q.length > 0, "premise: a read was issued");
-    assert.ok(
-      q.every((sql) => sql.includes(`observed_at >= ${FIRST}`)),
-      `unfloored: ${q.find((sql) => !sql.includes(`observed_at >= ${FIRST}`))?.slice(0, 140)}`,
-    );
-  });
-
-  test("COUNTERPARTIES floor, including the read that never widens", async () => {
-    const q = sqlFetch([transferRow(10)]);
-    await loadAccountCounterpartiesColdTier(
-      {
-        ...TOKEN,
-        ...accountSummaryArchive({ accounts: { [ADDR]: group(FIRST) } }),
-      } as never,
-      ADDR,
-      { limit: 5 },
-    );
-    assert.ok(q.length > 0, "premise: a read was issued");
-    assert.ok(
-      q.every((sql) => sql.includes(`observed_at >= ${FIRST}`)),
-      `unfloored: ${q.find((sql) => !sql.includes(`observed_at >= ${FIRST}`))?.slice(0, 140)}`,
-    );
-  });
-
-  test("a RELATIONSHIP floors at the EARLIER of the two accounts", async () => {
-    // A relationship row needs only ONE side to exist. Flooring at the later
-    // account's first event would silently drop everything the earlier one did
-    // before it -- and a counterparty feed missing its oldest half looks
-    // exactly like a quiet relationship, which is the worst kind of wrong.
-    const q = sqlFetch([transferRow(10)]);
-    await loadCounterpartyRelationshipColdTier(
-      {
-        ...TOKEN,
-        ...accountSummaryArchive({
-          accounts: { [ADDR]: group(FIRST), [OTHER]: group(OTHER_FIRST) },
-        }),
-      } as never,
-      ADDR,
-      OTHER,
-      { limit: 5 },
-    );
-    assert.ok(q.length > 0, "premise: a read was issued");
-    assert.ok(
-      q.every((sql) => sql.includes(`observed_at >= ${OTHER_FIRST}`)),
-      `must floor at the EARLIER account: ${q[0]?.slice(0, 140)}`,
-    );
-  });
-
-  test("a RELATIONSHIP with ONE unknown side takes no floor at all", async () => {
-    // A floor derived from one known side is a bound on the wrong account: the
-    // unknown one may have history below it. Slower and right beats faster and
-    // short.
-    const q = sqlFetch([transferRow(10)]);
-    await loadCounterpartyRelationshipColdTier(
-      {
-        ...TOKEN,
-        ...accountSummaryArchive({ accounts: { [ADDR]: group(FIRST) } }),
-      } as never,
-      ADDR,
-      OTHER,
-      { limit: 5 },
-    );
-    assert.ok(q.length > 0, "premise: a read was issued");
-    assert.ok(
-      q.every((sql) => !sql.includes(`observed_at >= ${FIRST}`)),
-      "one known side must not floor the pair",
-    );
-  });
-
-  test("NO projection leaves every feed exactly as it was", async () => {
-    // The floor is an optimization over a correct read, never a precondition
-    // for one: with no artifact bound these must behave as before.
-    const q = sqlFetch([transferRow(10)]);
-    const data = await loadAccountTransfersColdTier(TOKEN as never, ADDR, {
-      limit: 5,
-    });
-    assert.ok(data);
-    assert.ok(q.every((sql) => !sql.includes(`observed_at >= ${FIRST}`)));
+    for (const value of [null, undefined]) {
+      nominator.mockResolvedValue(value);
+      assert.equal(
+        await loadValidatorNominatorsColdTier({}, ADDR, { limit: 1 }),
+        null,
+      );
+    }
   });
 });

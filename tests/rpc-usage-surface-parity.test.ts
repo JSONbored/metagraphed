@@ -95,8 +95,9 @@ describe("no surface owns the tier cascade", () => {
 // --- behavioural parity ------------------------------------------------------
 
 const ENV = {
+  NATIVE_PROJECTIONS: "enabled",
   ANALYTICS_ENGINE_SQL_TOKEN: "test-token",
-  R2_SQL_TOKEN: "legacy-must-not-be-used",
+  NATIVE_HISTORY_FIXTURE: "legacy-must-not-be-used",
   METAGRAPH_ARCHIVE: {
     async get(key: string) {
       const item = nativeFixture.objects[key];

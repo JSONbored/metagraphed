@@ -16,7 +16,10 @@ import {
 } from "../src/r2-sql-blocks.ts";
 import { declineBlock } from "../src/blocks.ts";
 import { CHAIN_EVENTS_LIMIT_MAX } from "../src/route-limits.ts";
-const TOKEN = { R2_SQL_TOKEN: "obsolete-fixture" };
+const TOKEN = {
+  NATIVE_PROJECTIONS: "enabled",
+  NATIVE_HISTORY_FIXTURE: "obsolete-fixture",
+};
 const AUTHOR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
 beforeEach(() => {
   native.block.mockReset().mockResolvedValue(undefined);
@@ -67,7 +70,7 @@ test("missing native ownership never invokes the obsolete transport or manufactu
   assert.deepEqual(
     await loadBlockFromR2Sql(
       Object.assign(
-        { R2_SQL_TOKEN: undefined },
+        { NATIVE_PROJECTIONS: "enabled", NATIVE_HISTORY_FIXTURE: undefined },
         { NATIVE_PROJECTIONS: "enabled" },
       ),
       "0xabc",

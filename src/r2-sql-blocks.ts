@@ -13,8 +13,12 @@ import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import { type ChainNetworkId } from "./chain-network.ts";
 import type { BlocksRow } from "../generated/lakehouse/types.ts";
-import { safeBlockNumber, safeHexLiteral, safeSs58Literal } from "./r2-sql.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import {
+  safeBlockNumber,
+  safeHexLiteral,
+  safeSs58Literal,
+} from "./history-readers.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import {
   BlocksRowSchema,
   ExtrinsicsRowSchema,
@@ -44,7 +48,7 @@ function lakehouseDecimal(value: unknown): unknown {
 }
 
 async function loadBlockEconomicsFromIndexes(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   height: number,
   network?: ChainNetworkId,
   budget = parquetReadBudget(),
@@ -125,7 +129,7 @@ export function safeAuthorLiteral(value: unknown): string | null {
  * cannot serve faithfully) so the caller keeps its existing fallback.
  */
 export async function loadBlockFeedFromR2Sql(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   query: BlockFeedQuery,
   /** Network identity of the retained history. */
   network?: ChainNetworkId,
@@ -149,7 +153,7 @@ export async function loadBlockFeedFromR2Sql(
  * over rows from every source.
  */
 export async function fetchBlockRowsFromR2Sql(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   query: BlockFeedQuery,
   /** Network identity of the retained history. */
   network?: ChainNetworkId,
@@ -230,7 +234,7 @@ export async function fetchBlockRowsFromR2Sql(
  * validated here rather than trusted, because it reaches a string-built query.
  */
 export async function loadBlockFromR2Sql(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ref: string,
   /** Network identity of the retained history. */
   network?: ChainNetworkId,
@@ -281,7 +285,7 @@ export async function loadBlockFromR2Sql(
  * first, because the companion tables carry no block hash.
  */
 export async function loadBlockWithEconomicsFromR2Sql(
-  env: R2SqlEnv | null | undefined,
+  env: HistoryReadEnv | null | undefined,
   ref: string,
   network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildBlock> | null> {

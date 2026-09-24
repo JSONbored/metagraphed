@@ -288,10 +288,11 @@ test("a failed superseded load cannot evict a newer verified payload", async () 
   assert.equal(loads, 2);
 });
 const env = () => ({
+  NATIVE_PROJECTIONS: "enabled",
   METAGRAPH_ARCHIVE: archiveFixture().bucket,
   D1_STATE: db,
   D1_STATE_TABLES: tables,
-  R2_SQL_TOKEN: "cfut_test",
+  NATIVE_HISTORY_FIXTURE: "cfut_test",
 });
 async function seed(sql: string, ...values: (number | string | null)[]) {
   const stmt = db.prepare(sql);

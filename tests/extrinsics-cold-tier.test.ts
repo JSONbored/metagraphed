@@ -19,7 +19,10 @@ import {
   loadAccountExtrinsicsColdTier,
   loadExtrinsicFeedColdTier,
 } from "../src/extrinsics-cold-tier.ts";
-const TOKEN = { R2_SQL_TOKEN: "obsolete-fixture" };
+const TOKEN = {
+  NATIVE_PROJECTIONS: "enabled",
+  NATIVE_HISTORY_FIXTURE: "obsolete-fixture",
+};
 const SIGNER = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
 const row = (block: number, index = 0) => ({
   block_number: block,

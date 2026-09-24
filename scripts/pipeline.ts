@@ -104,7 +104,7 @@ function checkCommands(): Step[] {
     step("validate:store-type-parity"),
     step("validate:featured-validators-drift"),
     step("validate:rpc-usage-slots-drift"),
-    step("validate:r2-sql-scan-bounds"),
+    step("validate:retired-storage"),
     step("validate:archive-policy"),
     step("validate:client-sdk-sync"),
     step("validate:schema-enums"),
@@ -140,7 +140,6 @@ function checkCommands(): Step[] {
     // build artifacts.
     step("validate:ui-route-coverage"),
     step("validate:untyped-db-reads"),
-    step("validate:untyped-lakehouse-reads"),
     step("validate:declared-tables-exist"),
     // Same shape, and it was in neither the pipeline nor CI until #10251: the
     // registry README's catalog section is generated, so a registry change
@@ -244,7 +243,7 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("validate:store-type-parity"),
     step("validate:featured-validators-drift"),
     step("validate:rpc-usage-slots-drift"),
-    step("validate:r2-sql-scan-bounds"),
+    step("validate:retired-storage"),
     step("validate:archive-policy"),
     step("validate:client-sdk-sync"),
     step("validate:schema-enums"),
@@ -280,7 +279,6 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     // build artifacts.
     step("validate:ui-route-coverage"),
     step("validate:untyped-db-reads"),
-    step("validate:untyped-lakehouse-reads"),
     step("validate:declared-tables-exist"),
     // Same shape, and it was in neither the pipeline nor CI until #10251: the
     // registry README's catalog section is generated, so a registry change

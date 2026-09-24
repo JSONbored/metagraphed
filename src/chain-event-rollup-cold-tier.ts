@@ -1,3 +1,4 @@
+import { loadIndexedSubnetIdentities } from "./indexed-subnet-identities.ts";
 // Per-subnet event-activity rollups, served from the lakehouse.
 //
 // /api/v1/chain/serving and /api/v1/chain/registrations answered with a
@@ -32,13 +33,13 @@
 // both account_events and chain_events, and PrometheusServed exists only in
 // chain_events with its hotkey inside the args JSON. See the survey on #9146.
 import { hasRetainedHistoryStore } from "./retained-history-store.ts";
-import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import { safeBlockNumber } from "./history-readers.ts";
 import {
   type ChainNetworkId,
   chainTable,
   DEFAULT_CHAIN_NETWORK,
 } from "./chain-network.ts";
-import type { R2SqlReader } from "./r2-sql.ts";
+import type { HistoricalQueryReader } from "./history-readers.ts";
 
 type Row = Record<string, unknown>;
 
@@ -172,7 +173,7 @@ export function safeColumnAlias(value: unknown): string | null {
  * exist, and publishing zeros is a claim about them that nothing measured.
  */
 function rollupDecline(
-  env: Parameters<R2SqlReader>[0],
+  env: Parameters<HistoricalQueryReader>[0],
 ): { kind: "gap" } | { kind: "miss" } {
   return hasRetainedHistoryStore(env) ? { kind: "gap" } : { kind: "miss" };
 }
@@ -293,7 +294,7 @@ export type ChainEventRollupOutcome<T> =
  * degrades to null instead of blanking the card (#10249).
  */
 export async function loadChainEventRollup(
-  env: Parameters<R2SqlReader>[0],
+  env: Parameters<HistoricalQueryReader>[0],
   spec: ChainEventRollupSpec,
   {
     windowDays,
@@ -301,7 +302,7 @@ export async function loadChainEventRollup(
     // Injectable so both queries and every decline path are testable without a
     // lakehouse -- a branch that only runs against live infrastructure is a
     // branch nothing verifies.
-    query = r2SqlQuery,
+    query,
     network = DEFAULT_CHAIN_NETWORK,
   }: {
     windowDays: number;
@@ -312,7 +313,7 @@ export async function loadChainEventRollup(
      * on these cards. Callers keep passing their limit to the BUILDER, which is
      * where the page slice has always belonged.
      */
-    query?: R2SqlReader;
+    query?: HistoricalQueryReader;
     /**
      * Which chain's namespace to read (#11419).
      *
@@ -342,6 +343,9 @@ export async function loadChainEventRollup(
     return { kind: "miss" };
   }
   if (!Number.isFinite(windowDays) || windowDays <= 0) return { kind: "miss" };
+
+  if (!query)
+    return hasRetainedHistoryStore(env) ? { kind: "gap" } : { kind: "miss" };
 
   const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
   if (!Number.isSafeInteger(cutoff) || cutoff < 0) return { kind: "miss" };
@@ -520,14 +524,14 @@ export interface ChainEventIdentityRollup {
  * COUNT(DISTINCT) left is in the ungrouped totals, over a single row.
  */
 export async function loadChainEventIdentityRollup(
-  env: Parameters<R2SqlReader>[0],
+  env: Parameters<HistoricalQueryReader>[0],
   spec: ChainEventRollupSpec,
   {
     windowDays,
     now = Date.now(),
     limit = 200,
     netuid,
-    query = r2SqlQuery,
+    query,
     network = DEFAULT_CHAIN_NETWORK,
   }: {
     windowDays: number;
@@ -539,7 +543,7 @@ export async function loadChainEventIdentityRollup(
      * the identity shape the builders read either way.
      */
     netuid?: number;
-    query?: R2SqlReader;
+    query?: HistoricalQueryReader;
     /**
      * Which chain's namespace to read (#11419).
      *
@@ -577,6 +581,24 @@ export async function loadChainEventIdentityRollup(
     const safe = safeBlockNumber(netuid);
     if (safe === null) return { kind: "miss" };
     subnetFilter = ` AND netuid = ${safe}`;
+  }
+
+  if (!query) {
+    if (netuid === undefined)
+      return hasRetainedHistoryStore(env) ? { kind: "gap" } : { kind: "miss" };
+    const native = await loadIndexedSubnetIdentities(
+      env,
+      spec,
+      netuid,
+      cutoff,
+      cap,
+      network,
+    );
+    if (native == null)
+      return hasRetainedHistoryStore(env) ? { kind: "gap" } : { kind: "miss" };
+    return native.rows.length
+      ? { kind: "answer", rollup: native }
+      : { kind: "empty" };
   }
 
   const where = `WHERE event_kind = '${kind}' AND observed_at >= ${cutoff}${subnetFilter}`;

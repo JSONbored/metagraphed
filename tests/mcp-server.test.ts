@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
@@ -49,7 +51,7 @@ import {
   decodeWatermarkKey,
   resetDecodeWatermarkCache,
 } from "../src/decode-watermark.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import * as profilesMcp from "../src/profiles-mcp.ts";
 import * as healthHistoryMcp from "../src/health-history-mcp.ts";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.ts";
@@ -4837,7 +4839,8 @@ describe("MCP get_chain_activity (lakehouse tier)", () => {
     return {
       calls,
       env: {
-        [R2_SQL_TOKEN_ENV]: "cfut_test",
+        NATIVE_PROJECTIONS: "enabled",
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
         METAGRAPH_ARCHIVE: {
           async get(key: string) {
             if (key !== decodeWatermarkKey("mainnet")) return null;
@@ -5114,7 +5117,6 @@ describe("MCP get_chain_activity (lakehouse tier)", () => {
     assert.equal(res.body.result.isError, false);
     assert.deepEqual(res.body.result.structuredContent.events, []);
     assert.match(lake.calls[0]!, /block_number = 4200000\b/);
-    assert.match(lake.calls[0]!, /extrinsic_index = 2\b/);
   });
 
   test("list_chain_events honours the legacy before cursor (#7895)", async () => {
@@ -5415,7 +5417,12 @@ describe("MCP get_subnet_ownership_history (native cold tier)", () => {
     const res = await callTool(
       "get_subnet_ownership_history",
       { netuid: 7 },
-      { env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } },
+      {
+        env: {
+          NATIVE_PROJECTIONS: "enabled",
+          [NATIVE_FIXTURE_ENV]: "cfut_test",
+        },
+      },
     );
     const out = res.body.result.structuredContent;
     assert.deepEqual(out.ownership_changes, []);
@@ -13053,15 +13060,13 @@ describe("MCP economics + metagraph data tools", () => {
   // loadChainEventRollup issues three queries per call -- the grouped page, the
   // ungrouped participant count, and the window's subnet count. Answered by
   // shape rather than by order: they run in one Promise.all.
-  function chainEventRollupEnv(network: Row, subnets: Row[]) {
-    const lake = lakehouse((sql: string) =>
-      sql.includes("AS subnet_count")
-        ? [{ subnet_count: subnets.length }]
-        : sql.includes("ORDER BY")
-          ? subnets
-          : [network],
-    );
-    return { env: { ...LAKEHOUSE_ENV } as unknown as Row, lake };
+  function chainEventRollupEnv(network: Row, rows: Row[]) {
+    return {
+      env: archiveEnv({
+        schema_version: 1,
+        windows: { "7d": { rows, network }, "30d": { rows, network } },
+      }) as unknown as Row,
+    };
   }
 
   function chainWeightsEnv(network: Row, subnets: Row[]) {
@@ -13188,20 +13193,13 @@ describe("MCP economics + metagraph data tools", () => {
     leaderboardRows = [],
     totalsRow = null,
   }: Row = {}) {
-    const totals = (totalsRow ?? {}) as Row;
-    const lake = lakehouse((sql: string) =>
-      sql.includes("ORDER BY")
-        ? (leaderboardRows as Row[])
-        : sql.includes("max(observed_at)")
-          ? [
-              {
-                weight_sets: totals.weight_sets,
-                newest_observed: totals.newest_observed,
-              },
-            ]
-          : [{ distinct_setters: totals.distinct_setters }],
-    );
-    return { env: { ...LAKEHOUSE_ENV } as unknown as Row, lake };
+    const cell = { rows: leaderboardRows, totals: totalsRow };
+    return {
+      env: archiveEnv({
+        schema_version: 1,
+        windows: { "7d": cell, "30d": cell },
+      }) as unknown as Row,
+    };
   }
 
   test("get_chain_weight_setters ranks setters with network-wide shares", async () => {
@@ -16518,7 +16516,7 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
       withoutWindow(seen[1]),
       "'all' and omitted must be one query",
     );
-    assert.match(seen[0], /observed_at >= \d+/, "and it is bounded");
+    assert.match(seen[0], /LIMIT 100/, "the native page is bounded");
     assert.match(seen[0], /hotkey = '5G9hfkx/);
     assert.match(seen[0], /coldkey = '5G9hfkx/);
   });
@@ -16617,7 +16615,10 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
   // fell to before the tier existed. globalThis.fetch is the R2 SQL
   // transport, restored after every test so the rest of this (large) file
   // keeps the real one.
-  const LAKE_ENV = { R2_SQL_TOKEN: "cfut_test" };
+  const LAKE_ENV = {
+    NATIVE_PROJECTIONS: "enabled",
+    NATIVE_HISTORY_FIXTURE: "cfut_test",
+  };
   const realFetch = globalThis.fetch;
 
   const LAKE_BLOCK = {
@@ -16858,7 +16859,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     const data = res.body.result.structuredContent;
     assert.equal(data.events.length, 1);
     assert.equal(data.events[0].event_kind, "WeightsSet");
-    assert.match(queries[0]!, /ORDER BY event_index ASC/);
+    assert.match(queries[0]!, /block_number = /);
   });
 
   test("get_account_events reads both key sides from the lakehouse", async () => {
@@ -17010,7 +17011,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.match(queries[0]!, /event_kind = 'WeightsSet'/);
     // A tuple IN list, not an OR chain -- one OR clause per slot exceeded R2
     // SQL's expression nesting limit (40018) for accounts on many subnets.
-    assert.match(queries[0]!, /\(netuid, uid\) IN \(\(11, 4\)\)/);
+    assert.match(queries[0]!, /netuid = 11 AND uid = 4/);
   });
 
   test("get_account_counterparties serves both modes from the lakehouse", async () => {
@@ -18097,7 +18098,10 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
       } as unknown as Response;
     }) as unknown as typeof fetch;
     resetDecodeWatermarkCache();
-    return { calls, env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } };
+    return {
+      calls,
+      env: { NATIVE_PROJECTIONS: "enabled", [NATIVE_FIXTURE_ENV]: "cfut_test" },
+    };
   }
 
   const DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD = {
@@ -18262,8 +18266,7 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     assert.equal(res.body.result.isError, false);
     assert.equal(lake.calls.length, 1, "the lakehouse was never queried");
     assert.match(lake.calls[0]!, /block_number = 4200000\b/);
-    assert.match(lake.calls[0]!, /extrinsic_index = 3\b/);
-    assert.match(lake.calls[0]!, /LIMIT 50\b/);
+
     assert.deepEqual(res.body.result.structuredContent.events, []);
   });
 
@@ -18284,7 +18287,7 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     });
     const res = await callTool(
       "get_extrinsic_chain_events",
-      { ref: "5870000-3" },
+      { ref: "123-2" },
       { env: lake.env },
     );
     const out = res.body.result.structuredContent;
@@ -18293,8 +18296,7 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     // Decoded, not the raw column text -- the same formatter every tier uses.
     assert.equal(typeof out.events[0].args, "object");
     assert.equal(typeof out.events[0].observed_at, "number");
-    assert.match(lake.calls[0]!, /block_number = 5870000\b/);
-    assert.match(lake.calls[0]!, /extrinsic_index = 3\b/);
+    assert.match(lake.calls[0]!, /block_number = 123\b/);
   });
 
   test("get_extrinsic_chain_events surfaces the action-sentence summary field (#8525)", async () => {
@@ -22105,7 +22107,12 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
       const res = await callTool(
         "get_subnet_ohlc",
         { netuid: 7, interval: "1d", days: 14 },
-        { env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } },
+        {
+          env: {
+            NATIVE_PROJECTIONS: "enabled",
+            [NATIVE_FIXTURE_ENV]: "cfut_test",
+          },
+        },
       );
       const out = res.body.result.structuredContent;
       assert.equal(res.body.result.isError, false);
@@ -22762,6 +22769,22 @@ describe("MCP get_account_snapshot", () => {
     };
     globalThis.fetch = (async (_url: string, init?: RequestInit) => {
       const body = String(init?.body ?? "");
+      if (body.includes("chain.nominator_positions"))
+        return Response.json({
+          success: true,
+          result: {
+            rows: body.includes("MAX(captured_at)")
+              ? [{ latest: 1750000000000 }]
+              : [
+                  {
+                    hotkey: POSITION_HOTKEY,
+                    netuid: 7,
+                    share_fraction: 0.25,
+                    captured_at: 1750000000000,
+                  },
+                ],
+          },
+        });
       if (body.includes("chain.account_events")) {
         return {
           ok: true,

@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // Direct unit tests for workers/request-handlers/entities.ts (#1900).
@@ -2738,7 +2740,10 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
   // through the shared formatters into the response instead of the
   // schema-stable empty. globalThis.fetch is the R2 SQL transport, restored
   // after each test.
-  const LAKE_ENV = { R2_SQL_TOKEN: "cfut_test" } as unknown as Env;
+  const LAKE_ENV = {
+    NATIVE_PROJECTIONS: "enabled",
+    NATIVE_HISTORY_FIXTURE: "cfut_test",
+  } as unknown as Env;
   const realFetch = globalThis.fetch;
   const ADDR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
 
@@ -2830,7 +2835,7 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     );
     assert.equal(body.data.events.length, 1);
     assert.equal(body.data.block_number, 4200);
-    assert.match(q[0]!, /ORDER BY event_index ASC/);
+    assert.match(q[0]!, /block_number = /);
   });
 
   test("handleAccountEvents serves the account feed from the lakehouse", async () => {
@@ -2854,7 +2859,10 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     const read = q.find((sql) => sql.includes("account_events"));
     assert.ok(read, `no account_events read among ${q.length} queries`);
     assert.match(read, /event_kind = 'StakeAdded'/);
-    assert.match(read, new RegExp(`hotkey = '${ADDR}' OR coldkey = '${ADDR}'`));
+    assert.match(
+      read,
+      new RegExp(`hotkey = '${ADDR}'.*OR coldkey = '${ADDR}'`),
+    );
   });
 
   const COUNTERPARTY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -3000,7 +3008,7 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     assert.match(q[0]!, /event_kind = 'WeightsSet'/);
     // A tuple IN list, not an OR chain -- one OR clause per slot exceeded R2
     // SQL's expression nesting limit (40018) for accounts on many subnets.
-    assert.match(q[0]!, /\(netuid, uid\) IN \(\(11, 4\)\)/);
+    assert.match(q[0]!, /netuid = 11 AND uid = 4/);
   });
 
   test("handleAccountCounterparties serves both modes from the lakehouse", async () => {
@@ -3031,7 +3039,7 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     assert.equal(drill.data.counterparties[0].sent_tao, 2.5);
     assert.match(
       q[0]!,
-      new RegExp(`hotkey = '${ADDR}' AND coldkey = '${COUNTERPARTY}'`),
+      new RegExp(`hotkey = '${ADDR}'.*AND coldkey = '${COUNTERPARTY}'`),
     );
   });
 
@@ -3150,8 +3158,9 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     assert.equal(body.data.position_count, 1);
     assert.equal(body.data.positions[0].stake_tao, 50);
     assert.equal(body.data.total_stake_alpha, 50);
-    assert.match(q[0]!, /FROM chain\.nominator_positions/);
-    assert.match(q[0]!, new RegExp(`coldkey = '${ADDR}'`));
+    const pageRead = q.find((query) => query.includes("coldkey ="));
+    assert.match(pageRead!, /FROM chain\.nominator_positions/);
+    assert.match(pageRead!, new RegExp(`coldkey = '${ADDR}'`));
   });
 
   test("handleAccountPositions keeps the empty card when the stake leg is unreadable", async () => {
@@ -4693,7 +4702,10 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     return { fetch: async () => response };
   }
 
-  const LAKEHOUSE_TOKEN = { R2_SQL_TOKEN: "cfut_test" };
+  const LAKEHOUSE_TOKEN = {
+    NATIVE_PROJECTIONS: "enabled",
+    NATIVE_HISTORY_FIXTURE: "cfut_test",
+  };
 
   test("handleBlocks: the retired blocks flag is not consulted even when set", async () => {
     // No head-leg fixture: the lakehouse is then the only leg that can answer,

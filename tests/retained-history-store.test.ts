@@ -18,10 +18,9 @@ it("distinguishes a configured history store from a deployment with none", () =>
     { METAGRAPH_ARCHIVE: {} },
     { METAGRAPH_ARCHIVE: { get: async () => null } },
     { NATIVE_PROJECTIONS: "disabled" },
-    { R2_SQL_TOKEN: " " },
+    { NATIVE_PROJECTIONS: "" },
   ])
     expect(hasRetainedHistoryStore(env)).toBe(false);
-  expect(hasRetainedHistoryStore({ R2_SQL_TOKEN: "fixture" })).toBe(true);
   expect(hasRetainedHistoryStore({ NATIVE_PROJECTIONS: "enabled" })).toBe(true);
 });
 it("keeps history failures visible after removing the SQL token", async () => {

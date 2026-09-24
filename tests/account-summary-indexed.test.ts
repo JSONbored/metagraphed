@@ -138,12 +138,22 @@ describe("indexed account summary", () => {
     ] as const) {
       groups.mockResolvedValue(aggregate === undefined ? undefined : []);
       page.mockResolvedValue(recent === undefined ? undefined : []);
-      expect(
-        await loadAccountSummaryColdTier({}, address, {
-          query: async () => null,
-        }),
-      ).toEqual({ declined: [] });
+      expect(await loadAccountSummaryColdTier({}, address)).toEqual({
+        declined: ["indexed history: account summary read failed"],
+      });
     }
     expect(fetch).not.toHaveBeenCalled();
   });
+});
+
+it("rejects malformed account and recent limits before reading native history", async () => {
+  expect(await loadAccountSummaryColdTier({}, "invalid")).toEqual({
+    declined: ["input: unusable ss58"],
+  });
+  for (const recentLimit of [0, -1, 1.5, NaN])
+    expect(
+      await loadAccountSummaryColdTier({}, address, { recentLimit }),
+    ).toEqual({ declined: ["input: unusable recent limit"] });
+  expect(groups).not.toHaveBeenCalled();
+  expect(page).not.toHaveBeenCalled();
 });

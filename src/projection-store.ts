@@ -66,7 +66,7 @@ export interface ArtifactObjectStore {
  *
  * Structural, and `Partial`, for two reasons. Several callers here type their
  * env narrowly on purpose -- `ContainerLaneWatchdogEnv` and
- * `R2SqlEnv` declare only the bindings they touch -- and demanding the whole
+ * `HistoryReadEnv` declare only the bindings they touch -- and demanding the whole
  * generated `Env` would push every one of them back to a cast. And a binding
  * present but not usable is a real runtime state, so the guard below is what
  * turns "maybe" into "yes" rather than an assertion (#11339's spelling).

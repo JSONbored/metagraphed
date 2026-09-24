@@ -5,13 +5,13 @@ import { readD1Metadata } from "./d1-metadata-read.ts";
 // canonical parameter format, nullable values, filters, and timeline cursor.
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
-import { safeBlockNumber } from "./r2-sql.ts";
+import { safeBlockNumber } from "./history-readers.ts";
 import {
   buildSubnetHyperparams,
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
 } from "./subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 
 // Keep the current-state read aligned with the canonical write columns.
 const LATEST_COLUMNS = SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(1).join(", ");
@@ -24,7 +24,7 @@ const CURSOR_ARITY = 2;
  * answer, so the caller keeps its existing schema-stable fallback.
  */
 export async function loadSubnetHyperparamsColdTier(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   netuid: unknown,
 ): Promise<ReturnType<typeof buildSubnetHyperparams> | null> {
   // Keep the published integer-input contract before issuing a bound read.
@@ -47,7 +47,7 @@ export async function loadSubnetHyperparamsColdTier(
  * exact order, columns, cursor token, and OFFSET-only-without-cursor rule.
  */
 export async function loadSubnetHyperparamsHistoryColdTier(
-  env: (R2SqlEnv & ArtifactStoreEnv) | null | undefined,
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   netuid: unknown,
   query: { limit: number; offset?: number | null; cursor?: unknown },
 ): Promise<ReturnType<typeof buildSubnetHyperparamsHistory> | null> {

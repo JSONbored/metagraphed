@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { handleRequest, withChainDetailEdgeCache } from "../workers/api.ts";
 import { readSelectedHistoryBlock } from "../src/indexed-history-store.ts";
-import { currentR2SqlFailureGeneration } from "../src/r2-sql.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
 
 beforeEach(() => resetModuleState());
@@ -12,7 +11,11 @@ function failingArchive() {
   const get = vi.fn(async () => {
     throw new Error("R2 unavailable");
   });
-  return { METAGRAPH_ARCHIVE: { get }, R2_SQL_TOKEN: "test" } as unknown as Env;
+  return {
+    NATIVE_PROJECTIONS: "enabled",
+    METAGRAPH_ARCHIVE: { get },
+    NATIVE_HISTORY_FIXTURE: "test",
+  } as unknown as Env;
 }
 
 test("real numeric and hash detail routes label selected failures without querying SQL", async () => {
@@ -21,7 +24,6 @@ test("real numeric and hash detail routes label selected failures without queryi
   });
   vi.stubGlobal("fetch", fetch);
   for (const ref of ["7700100", "0x" + "a".repeat(64)]) {
-    const before = currentR2SqlFailureGeneration();
     const response = await handleRequest(
       new Request(`https://api.metagraph.sh/api/v1/testnet/blocks/${ref}`),
       failingArchive(),
@@ -31,7 +33,6 @@ test("real numeric and hash detail routes label selected failures without queryi
       response.headers.get("x-metagraph-degraded"),
       "tier_unavailable",
     );
-    assert.equal(currentR2SqlFailureGeneration(), before);
   }
   assert.equal(fetch.mock.calls.length, 0);
 });

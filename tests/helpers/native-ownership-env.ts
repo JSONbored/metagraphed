@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { NATIVE_PROJECTION_FILES } from "../../src/native-projection-store.ts";
 
 /** Native ownership projection plus a complete immutable observation archive. */
 export function nativeOwnershipEnv(
@@ -45,11 +46,42 @@ export function nativeOwnershipEnv(
     objects.set(key, { raw, etag, size });
     return { key, etag, bytes: size };
   };
-  if (stream !== null)
-    put("metagraph/projections/chain-ownership.json", {
+  const generatedAt = Date.now();
+  const nativeRoot = `metagraph/native-projections/v1/mainnet/${generation}/`;
+  const artifacts = NATIVE_PROJECTION_FILES.map((file) => {
+    const object = put(nativeRoot + file, {
       schema_version: 1,
-      rows: stream,
+      generated_at: new Date(generatedAt).toISOString(),
+      rows: file === "chain-ownership.json" ? stream : [],
     });
+    return {
+      artifactKey: `metagraph/projections/${file}`,
+      rowCount: file === "chain-ownership.json" ? (stream?.length ?? 0) : 0,
+      object,
+    };
+  });
+  put("metagraph/native-projections/v1/mainnet/current.json", {
+    version: 1,
+    state: "complete",
+    network: "mainnet",
+    generatedAt,
+    readerCommit: "a".repeat(40),
+    generation,
+    artifacts,
+    sources: ["blocks", "extrinsics", "account_events", "chain_events"].map(
+      (table) => ({
+        version: 1,
+        network: "mainnet",
+        table,
+        table_uuid: table,
+        snapshot: "1",
+        sequence: 1,
+        coverage: null,
+        cutoff: generatedAt - 90 * 86400000,
+      }),
+    ),
+  });
+  if (stream === null) objects.delete(nativeRoot + "chain-ownership.json");
   if (observations !== null) {
     const object = put(`${root}/${generation}/rows.json`, {
       version: 1,
@@ -70,7 +102,8 @@ export function nativeOwnershipEnv(
   }
   const keys: string[] = [];
   const env = {
-    R2_SQL_TOKEN: "legacy-must-not-be-used",
+    NATIVE_PROJECTIONS: "enabled",
+    NATIVE_HISTORY_FIXTURE: "legacy-must-not-be-used",
     METAGRAPH_ARCHIVE: {
       async get(key: string) {
         keys.push(key);

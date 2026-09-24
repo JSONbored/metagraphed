@@ -27,7 +27,7 @@ import { concretePath } from "./concrete-path.ts";
 import { handleRequest, isMainnetOnlyApiPath } from "../workers/api.ts";
 import { BLOCKS_SUMMARY_PROJECTION_KEY as BLOCKS_SUMMARY_KEY } from "../src/blocks-summary-artifact.ts";
 import { buildBlocksSummary } from "../src/blocks-summary.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import type { Row } from "./row-type.ts";
 
 /** The shape buildBlocksSummary produces for an empty read, reused so the
@@ -269,7 +269,10 @@ describe("the network-prefixed path reaches the projection table", () => {
     // projection dispatch that swallowed it would 404 a working route.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/testnet/blocks/7700500"),
-      { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env,
+      {
+        NATIVE_PROJECTIONS: "enabled",
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
+      } as unknown as Env,
       {},
     );
     assert.notEqual(res.status, 404);

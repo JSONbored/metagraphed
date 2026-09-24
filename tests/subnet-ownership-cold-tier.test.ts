@@ -66,7 +66,11 @@ test("native ownership cards decode both string and parsed event arguments", asy
     assert.equal(data?.ownership_ties[0].role, "gained_ownership");
     assert.equal(data?.ownership_ties[0].netuid, 7);
     assert.equal(data?.labels.length, 0);
-    assert.deepEqual(f.keys, ["metagraph/projections/chain-ownership.json"]);
+    assert.equal(
+      f.keys[0],
+      "metagraph/native-projections/v1/mainnet/current.json",
+    );
+    assert.ok(f.keys[1]?.endsWith("/chain-ownership.json"));
   }
 });
 test("the lost-owner side uses the same decoder", async () => {
@@ -86,7 +90,7 @@ test("the lost-owner side uses the same decoder", async () => {
 test("absent, broken and malformed native projections decline even with a legacy token", async () => {
   for (const env of [
     undefined,
-    { R2_SQL_TOKEN: "legacy" },
+    { NATIVE_PROJECTIONS: "enabled", NATIVE_HISTORY_FIXTURE: "legacy" },
     nativeOwnershipEnv(null).env,
     nativeOwnershipEnv([ownershipRow({ args: "{not json" })]).env,
     {
@@ -140,7 +144,7 @@ test("either missing source declines the entire ownership history", async () => 
     nativeOwnershipEnv([], null),
   ]) {
     assert.equal(await loadSubnetOwnershipHistoryColdTier(f.env, 7), null);
-    assert.ok(f.keys.includes("metagraph/projections/chain-ownership.json"));
+    assert.ok(f.keys.some((key) => key.endsWith("/chain-ownership.json")));
     assert.ok(
       f.keys.includes(
         "metagraph/state-archive/v1/subnet_ownership_history/current.json",

@@ -1,3 +1,5 @@
+import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
+installNativeSurfaceFixtures();
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 // The six chain-events family routes have no METAGRAPH_*_SOURCE flag, so they
 // never had the degrade path every flagged tier has. When the Postgres box was
@@ -18,7 +20,7 @@ import {
   hotTierBlockChainEvents,
   parseCachedColdTierAnswer,
 } from "../src/chain-events-degraded.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { handleChainEventsFamily, handleRequest } from "../workers/api.ts";
 import { BlockChainEventsArtifactSchema } from "../schemas-src/routes/block-chain-events.ts";
 import {
@@ -56,7 +58,9 @@ function envWith(mode: "ok" | "down" | "unconfigured") {
     } as unknown as Response;
   }) as unknown as typeof fetch;
   return mockEnv(
-    mode === "unconfigured" ? {} : { [R2_SQL_TOKEN_ENV]: "cfut_test" },
+    mode === "unconfigured"
+      ? {}
+      : { NATIVE_PROJECTIONS: "enabled", [NATIVE_FIXTURE_ENV]: "cfut_test" },
   ) as unknown as Env;
 }
 
@@ -271,7 +275,10 @@ describe("coldTierChainEventsPayload", () => {
         status: 200,
         json: async () => ({ success: true, result: { rows } }),
       }) as unknown as Response) as unknown as typeof fetch;
-    return mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env;
+    return mockEnv({
+      NATIVE_PROJECTIONS: "enabled",
+      [NATIVE_FIXTURE_ENV]: "cfut_test",
+    }) as unknown as Env;
   }
 
   test("ownership-history is served from the native archive", async () => {
@@ -559,7 +566,8 @@ describe("block chain-events routes to the lakehouse off mainnet", () => {
     }) as unknown as typeof fetch;
     let d1Reads = 0;
     const env = mockEnv({
-      [R2_SQL_TOKEN_ENV]: "cfut_test",
+      NATIVE_PROJECTIONS: "enabled",
+      [NATIVE_FIXTURE_ENV]: "cfut_test",
       METAGRAPH_HEALTH_DB: {
         prepare() {
           d1Reads += 1;
@@ -605,7 +613,10 @@ describe("the 0x block-hash form of {ref} reaches a tier", () => {
         json: async () => ({ success: true, result: { rows: [] } }),
       } as unknown as Response;
     }) as unknown as typeof fetch;
-    const env = mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env;
+    const env = mockEnv({
+      NATIVE_PROJECTIONS: "enabled",
+      [NATIVE_FIXTURE_ENV]: "cfut_test",
+    }) as unknown as Env;
 
     const answer = await hotTierBlockChainEvents(
       env,
@@ -646,7 +657,10 @@ describe("a failed testnet read is a miss, not an empty block", () => {
       throw new Error("r2 sql unreachable");
     }) as unknown as typeof fetch;
     const answer = await hotTierBlockChainEvents(
-      mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env,
+      mockEnv({
+        NATIVE_PROJECTIONS: "enabled",
+        [NATIVE_FIXTURE_ENV]: "cfut_test",
+      }) as unknown as Env,
       new URL("https://api.metagraph.sh/api/v1/blocks/7700500/chain-events"),
       "testnet",
     );

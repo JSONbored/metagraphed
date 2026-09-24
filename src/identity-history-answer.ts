@@ -38,7 +38,7 @@ import { loadChainIdentityHistory } from "./chain-identity-history.ts";
 import { SUBNET_IDENTITY_HISTORY_TABLES } from "./read-store-tables.ts";
 import { readStore } from "./read-store.ts";
 import { storeAll } from "./analytics-live.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { ArtifactEnv } from "../workers/storage.ts";
 import {
@@ -52,7 +52,7 @@ import {
 import { numberOrNull, recordOrNull } from "./read-store.ts";
 
 /** One env, forwarded to both legs: the Neon store and the lakehouse. */
-type ComposerEnv = R2SqlEnv & StoreEnv & ArtifactEnv;
+type ComposerEnv = HistoryReadEnv & StoreEnv & ArtifactEnv;
 
 type Row = Record<string, unknown>;
 

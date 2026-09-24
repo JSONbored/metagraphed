@@ -26,7 +26,7 @@
 
 import { buildChainConcentration } from "./concentration.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import { selectedD1Store } from "./d1-store.ts";
 
 type Row = Record<string, unknown>;
@@ -98,7 +98,7 @@ export async function rollupChainConcentration(
     nowMs = Date.now(),
     maxDays = CHAIN_CONCENTRATION_ROLLUP_MAX_DAYS_PER_TICK,
     env = null,
-  }: { nowMs?: number; maxDays?: number; env?: R2SqlEnv | null } = {},
+  }: { nowMs?: number; maxDays?: number; env?: HistoryReadEnv | null } = {},
 ): Promise<Row> {
   if (!db?.query || !db?.run) return { rolled: false, reason: "unavailable" };
 

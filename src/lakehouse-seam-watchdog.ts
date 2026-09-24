@@ -29,13 +29,10 @@
 //      load half works.
 //
 // WHY A WORKER CRON, NOT A GITHUB ACTION. Unchanged from #9164: the check
-// needs `R2_SQL_TOKEN`, the `METAGRAPH_ARCHIVE` bucket and the store binding, and
-// this Worker already holds all three. An Actions job would need every one of
-// them duplicated as a repository secret, plus a third-party trigger hop, to
-// ask a question the Worker can ask itself.
-import { r2SqlQuery } from "./r2-sql.ts";
+// reads native R2 indexes and D1 state already bound to this Worker. Keeping
+// the check here avoids duplicating those bindings and adding another trigger.
 import { loadIndexedBlockCensus } from "./indexed-block-census.ts";
-import type { R2SqlReader } from "./r2-sql.ts";
+import type { HistoricalQueryReader } from "./history-readers.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import {
   recordLaneVerdict,
@@ -352,18 +349,16 @@ const LAKEHOUSE_SEAM_LANE = "lakehouse-seam";
 type LaneVerdictInput = Omit<LaneHealthRecord, "lane" | "checked_at">;
 
 export async function runLakehouseSeamWatchdog(
-  env: Parameters<R2SqlReader>[0],
+  env: Parameters<HistoricalQueryReader>[0],
   // Injectable so the MEASURED path is testable without a lakehouse. Same seam
   // as r2-sql.ts's scheduleAbort and webhooks.ts's sleepFn: a branch that can
   // only run against live infrastructure is a branch nothing verifies.
   deps: {
-    query?: R2SqlReader;
     now?: () => number;
     laneHealthDb?: LaneHealthDb;
     recordExceptionEvent?: typeof recordExceptionEvent;
   } = {},
 ): Promise<Record<string, unknown>> {
-  const query = deps.query ?? r2SqlQuery;
   // The only watchdog in the family that still named the binding here; every
   // other one goes through laneHealthStore (#10154).
   const laneHealthDb = laneHealthStore(env, deps.laneHealthDb);
@@ -374,15 +369,7 @@ export async function runLakehouseSeamWatchdog(
       checked_at: (deps.now ?? Date.now)(),
     });
   const census = await loadIndexedBlockCensus(env);
-  const rows =
-    census === undefined
-      ? await query(
-          env,
-          "SELECT min(block_number) AS lo, max(block_number) AS hi, count(*) AS n FROM chain.blocks",
-        )
-      : census === null
-        ? null
-        : [census];
+  const rows = census == null ? null : [census];
   // r2SqlQuery returns null when the lakehouse is UNCONFIGURED as well as when
   // a query fails. Unconfigured is not a fault -- self-hosters and CI have no
   // lakehouse -- so it is reported as skipped rather than as drift.

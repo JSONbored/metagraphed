@@ -106,7 +106,11 @@ async function fixture() {
     segments,
   });
   return {
-    env: { METAGRAPH_ARCHIVE: bucket, R2_SQL_TOKEN: undefined },
+    env: {
+      NATIVE_PROJECTIONS: "enabled",
+      METAGRAPH_ARCHIVE: bucket,
+      NATIVE_HISTORY_FIXTURE: undefined,
+    },
     segments,
     summaries,
   };

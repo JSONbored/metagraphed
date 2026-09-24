@@ -16,7 +16,7 @@ import {
   DEFAULT_CHAIN_NETWORK,
   networkScopedRoute,
 } from "../src/chain-network.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { chainTable } from "../src/chain-network.ts";
 import type { Row } from "./row-type.ts";
 
@@ -48,7 +48,10 @@ function recordingArchive(body: unknown) {
 }
 
 /** Enough env for the lakehouse leg to be attempted at all. */
-const LAKEHOUSE_ENV = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
+const LAKEHOUSE_ENV = {
+  NATIVE_PROJECTIONS: "enabled",
+  [NATIVE_FIXTURE_ENV]: "cfut_test",
+};
 
 async function query(text: string, env: Row) {
   const res = await handleGraphQLRequest(

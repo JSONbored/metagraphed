@@ -24,7 +24,8 @@ const account = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
 const days = ["2026-07-10", "2026-07-11", "2026-07-12", "2026-07-13"];
 const statements: { text: string; values: unknown[] }[] = [];
 const env = () => ({
-  R2_SQL_TOKEN: "cfut_test",
+  NATIVE_PROJECTIONS: "enabled",
+  NATIVE_HISTORY_FIXTURE: "cfut_test",
   D1_STATE_TABLES: "neuron_daily,account_position_daily,subnet_snapshots",
   D1_STATE: {
     prepare(text: string) {

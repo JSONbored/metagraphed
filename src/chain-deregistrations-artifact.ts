@@ -6,7 +6,7 @@
 // held this slot before" is a sequence question no GROUP BY answers. Measured
 // live (2026-08-03) that read costs 693 MB scanned / ~5s for 30 days, which is
 // the same order as the chain-registrations lane's own 508 MB and firmly in
-// "once per tick, never per request" territory (src/r2-sql.ts's measured
+// "once per tick, never per request" territory (src/history-readers.ts's measured
 // characteristics; src/projection-lanes.ts's header).
 //
 // ONE PULL, EVERY SCOPE. The lane pulls the WIDEST window once and slices the

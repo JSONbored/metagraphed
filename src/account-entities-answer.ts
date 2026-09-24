@@ -37,7 +37,7 @@ import {
   type SubnetOwnerSnapshot,
 } from "./entity-labels.ts";
 import { readArtifact } from "../workers/storage.ts";
-import type { R2SqlEnv } from "./r2-sql.ts";
+import type { HistoryReadEnv } from "./history-readers.ts";
 import { DEGRADED_UNAVAILABLE } from "./uncurated-event-streams.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { ArtifactEnv } from "../workers/storage.ts";
@@ -47,7 +47,7 @@ import {
 } from "../schemas-src/routes/account-entities.ts";
 
 /** One env, forwarded to both legs: the Neon store and the lakehouse. */
-type ComposerEnv = R2SqlEnv & StoreEnv & ArtifactEnv;
+type ComposerEnv = HistoryReadEnv & StoreEnv & ArtifactEnv;
 
 type Row = Record<string, unknown>;
 
