@@ -5965,6 +5965,14 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   if (url.pathname === "/api/v1/internal/root-basket-capture-sync") {
     return handleRootBasketCaptureSyncProxy(request, env);
   }
+  if (url.pathname === "/api/v1/internal/retained-blocks-sync") {
+    return proxyToDataApi(request, env, {
+      code: "retained_blocks_sync_unavailable",
+      notBoundMessage: "The retained blocks tier is not bound.",
+      unreadableMessage:
+        "The retained blocks tier returned an unreadable response.",
+    });
+  }
   if (url.pathname === "/api/v1/internal/state-export") {
     return proxyToDataApi(request, env, {
       code: "state_export_unavailable",

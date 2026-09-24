@@ -698,6 +698,12 @@
       "database_id": "8fde78ea-438f-4d91-9aef-b377ae43fd4a",
       "migrations_dir": "migrations/d1",
     },
+    {
+      "binding": "D1_RETAINED_BLOCKS",
+      "database_name": "metagraphed-retained-blocks",
+      "database_id": "cf7e5e08-ed4e-4dd3-aae5-63c2861e2d82",
+      "migrations_dir": "migrations/retained-blocks",
+    },
   ],
   // RPC reverse-proxy usage telemetry (#9228). Both proxy entry points --
   // the public /rpc/v1/{network} proxy and the gated /rpc/v1/fullnode gate --

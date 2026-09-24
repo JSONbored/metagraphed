@@ -64,6 +64,7 @@ import {
   type ParquetReadBudget,
 } from "./indexed-parquet.ts";
 import { recordOrNull } from "./read-store.ts";
+import { readRetainedBlockRows } from "./retained-blocks-d1.ts";
 
 /** Columns the formatters need — kept identical to the Postgres tier's SELECT
  * list so both tiers hand the formatter the same shape. */
@@ -270,7 +271,15 @@ export async function fetchBlockRowsFromR2Sql(
     // this composite key, so a different order would mis-seek its tokens.
     ` ORDER BY observed_at DESC, block_number DESC LIMIT ${limit + paged}`;
 
-  const rows = await r2SqlQuery(env, sql);
+  const selected = await readRetainedBlockRows(
+    env,
+    where,
+    limit + paged,
+    network,
+    Date.now(),
+    { minEvents: query.minEvents, minExtrinsics: query.minExtrinsics },
+  );
+  const rows = selected === undefined ? await r2SqlQuery(env, sql) : selected;
   if (rows === null) return null;
 
   const page = paged > 0 ? rows.slice(paged) : rows;

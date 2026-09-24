@@ -1,0 +1,122 @@
+import { z } from "zod";
+import type { D1StoreBinding } from "./d1-store.ts";
+import type { ChainNetworkId } from "./chain-network.ts";
+import { BLOCKS_COLUMNS } from "../generated/lakehouse/types.ts";
+import { BlocksRowSchema } from "../schemas-src/lakehouse.ts";
+
+export interface RetainedBlocksEnv {
+  D1_RETAINED_BLOCKS?: D1StoreBinding;
+  RETAINED_BLOCKS_NETWORKS?: string;
+}
+const integer = z.number().int().nonnegative().safe();
+const State = z.object({
+  network: z.union([z.literal(0), z.literal(1)]),
+  generation: z.string().regex(/^[0-9a-f]{64}$/),
+  table_uuid: z.string().uuid(),
+  snapshot: z.string().regex(/^[0-9]+$/),
+  sequence: integer,
+  generated_at: integer,
+  source_rows: integer,
+  source_files: integer.max(32768),
+  coverage: z.string().nullable(),
+});
+const Counts = z.object({
+  kind: z.enum(["events", "extrinsics"]),
+  matches: integer,
+});
+function checkedState(value: unknown, net: number, now: number) {
+  const state = State.parse(value);
+  if (
+    state.network !== net ||
+    state.generated_at > now ||
+    now - state.generated_at > 7200000 ||
+    state.source_files > state.source_rows ||
+    (state.source_files === 0 && state.source_rows !== 0)
+  )
+    throw new Error("Retained block snapshot receipt is invalid");
+  return state;
+}
+
+/** `where` is constructed only by the existing block-feed input guards.
+ * Both stores execute exactly the same predicates and tuple ordering. The
+ * D1 batch pins the selected source membership and receipt to the same read.
+ */
+export async function readRetainedBlockRows(
+  env: RetainedBlocksEnv | null | undefined,
+  where: readonly string[],
+  count: number,
+  network: ChainNetworkId = "mainnet",
+  now = Date.now(),
+  minimums: { minEvents?: number | null; minExtrinsics?: number | null } = {},
+): Promise<Record<string, unknown>[] | null | undefined> {
+  if (!env?.RETAINED_BLOCKS_NETWORKS?.split(",").includes(network))
+    return undefined;
+  try {
+    const db = env.D1_RETAINED_BLOCKS;
+    if (!db) return null;
+    const net = network === "mainnet" ? 0 : 1;
+    const stateQuery = () =>
+      db.prepare("SELECT * FROM history_block_state WHERE network=?").bind(net);
+    const filters = [
+      ["events", minimums.minEvents],
+      ["extrinsics", minimums.minExtrinsics],
+    ] as const;
+    const selected = filters.filter(([, minimum]) => minimum != null);
+    let generation: string | undefined;
+    let index = "";
+    if (selected.length) {
+      // Complete per-source histograms are combined with snapshot selection.
+      // Their cardinalities avoid both an empty-result scan and a sort over a
+      // common count range. No request counts millions of block rows.
+      const [receipt, ...results] = await db.batch([
+        stateQuery(),
+        ...selected.map(([kind, minimum]) =>
+          db
+            .prepare(
+              "SELECT ? AS kind,COALESCE(SUM(rows),0) AS matches FROM history_block_counts WHERE network=? AND kind=? AND value>=?",
+            )
+            .bind(kind, net, kind, minimum),
+        ),
+      ]);
+      if (!receipt!.success || results.some((result) => !result.success))
+        return null;
+      const state = checkedState(receipt!.results[0], net, now);
+      generation = state.generation;
+      const counts = results
+        .map((result) => Counts.parse(result.results[0]))
+        .sort((a, b) => a.matches - b.matches);
+      if (counts[0]!.matches === 0) return [];
+      if (counts[0]!.matches <= 50000)
+        index = ` INDEXED BY history_blocks_${counts[0]!.kind}`;
+    }
+    // Explicit null placement matches the original PostgreSQL/DataFusion
+    // descending order; SQLite's default places these nulls last instead.
+    const [receipt, result] = await db.batch([
+      stateQuery(),
+      db
+        .prepare(
+          `WITH candidates AS MATERIALIZED (SELECT b.source_id,b.ordinal FROM history_blocks b${index} ` +
+            (where.some((clause) => clause.startsWith("author = "))
+              ? "JOIN history_block_authors a ON a.id=b.author_id "
+              : "") +
+            "WHERE b.network=? " +
+            "AND b.source_id IN (SELECT id FROM history_block_sources WHERE network=? AND active=1)" +
+            (where.length
+              ? ` AND ${where.map((clause) => (clause.startsWith("author = ") ? `a.address${clause.slice(6)}` : clause)).join(" AND ")}`
+              : "") +
+            " ORDER BY observed_at DESC NULLS FIRST, block_number DESC NULLS FIRST LIMIT ?) " +
+            `SELECT ${BLOCKS_COLUMNS.map((column) => (column === "author" ? "a.address AS author" : `b.${column}`)).join(", ")} ` +
+            "FROM candidates c JOIN history_blocks b ON b.source_id=c.source_id AND b.ordinal=c.ordinal " +
+            "LEFT JOIN history_block_authors a ON a.id=b.author_id ORDER BY b.observed_at DESC NULLS FIRST,b.block_number DESC NULLS FIRST",
+        )
+        .bind(net, net, count),
+    ]);
+    if (!receipt!.success || !result!.success) return null;
+    const state = checkedState(receipt!.results[0], net, now);
+    if (generation !== undefined && generation !== state.generation)
+      return null;
+    return BlocksRowSchema.required().array().parse(result!.results);
+  } catch {
+    return null;
+  }
+}

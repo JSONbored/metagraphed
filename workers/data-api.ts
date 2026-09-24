@@ -29,6 +29,7 @@ import {
 import { COMPUTE_DECLARATIONS_TABLES } from "../src/read-store-tables.ts";
 import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
 import { handleD1StateExport } from "../src/d1-state-export.ts";
+import { handleRetainedBlocksSync } from "../src/retained-blocks-sync.ts";
 import {
   accountBalanceSyncRowSchema,
   accountIdentitySyncRowSchema,
@@ -8959,6 +8960,12 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/hotkey-alpha-sync"
     ) {
       return handleHotkeyAlphaSync(request, env, ctx);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/retained-blocks-sync"
+    ) {
+      return handleRetainedBlocksSync(request, env);
     }
     if (
       request.method === "POST" &&

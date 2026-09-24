@@ -125,11 +125,14 @@ describe("data-api's bundle boundary", () => {
     // source bytes versus the qualified module-analytics base). esbuild emits
     // only 1,695 additional bytes / 300 gzip bytes; no router, ingestion cron,
     // GraphQL or MCP module enters this graph. Keep the named boundaries above.
+    // The separately owned retained-block reader/receiver adds 12,873 source
+    // bytes, 7,852 minified bytes and 2,106 gzip bytes over 3b7c504a1. Its
+    // source graph is 4,806,255 bytes; none of the forbidden imports changes.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_800_000,
+      firstParty < 4_815_000,
       `first-party source in data-api's bundle is ${(firstParty / 1024).toFixed(0)} KiB; ` +
         `something large was re-imported. See the named checks above.`,
     );
