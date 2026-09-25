@@ -18113,9 +18113,19 @@ function bodyTooLargeResponse() {
 // (JSON-RPC vs GraphQL) differ enough that a shared abstraction would need
 // to take a response-builder callback for no real reuse benefit.
 async function readLimitedMcpBody(request: Request) {
-  const declaredLength = Number(request.headers.get("content-length") || 0);
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_MCP_BODY_BYTES) {
-    return { error: bodyTooLargeResponse() };
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null) {
+    if (!/^\d+$/.test(declaredLength)) {
+      return {
+        error: jsonResponse(
+          rpcError(null, RPC_INVALID_REQUEST, "Invalid Content-Length header."),
+          400,
+        ),
+      };
+    }
+    if (Number(declaredLength) > MAX_MCP_BODY_BYTES) {
+      return { error: bodyTooLargeResponse() };
+    }
   }
 
   const chunks = [];
