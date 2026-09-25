@@ -418,6 +418,14 @@ jobs:
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           METAGRAPH_R2_GC_PUBLISH_LOCK: "1"
 
+      - name: Collect superseded native history generations
+        if: steps.cloudflare-secrets.outputs.kv_publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: node scripts/r2-history-gc.ts --write
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_R2_GC_PUBLISH_LOCK: "1"
+
       # Scheduled publish failures must page someone — a silent failure leaves stale
       # R2/KV data live (a multi-day wedge previously went unnoticed). Reuses the
       # opt-in METAGRAPH_ALERT_WEBHOOK_URL (no-ops if unset). The message is clearly
