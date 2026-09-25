@@ -159,6 +159,59 @@ describe("registry API boundary", () => {
   const store = () =>
     cloudflareRegistryStore("account", "fixture-token", "namespace");
   const reply = (value: unknown) => new Response(JSON.stringify(value));
+  const listedObjects = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      key: `runs/${i}.json`,
+      etag: `etag-${i}`,
+      size: 100,
+      last_modified: "2026-09-01T00:00:00Z",
+    }));
+  it.each([0, 54, 999])(
+    "accepts a terminal %i-object page without result_info",
+    async (count) => {
+      const objects = listedObjects(count),
+        fetcher = vi
+          .fn()
+          .mockResolvedValue(reply({ success: true, result: objects }));
+      vi.stubGlobal("fetch", fetcher);
+      expect(await store().list("runs/")).toEqual(objects);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each([1000, 1001])(
+    "refuses an ambiguous %i-object page without result_info",
+    async (count) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            reply({ success: true, result: listedObjects(count) }),
+          ),
+      );
+      await expect(store().list("runs/")).rejects.toThrow(/metadata/);
+    },
+  );
+  it("ends an explicit continuation at a short page without result_info", async () => {
+    vi.useFakeTimers();
+    const objects = listedObjects(2);
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        reply({
+          success: true,
+          result: [objects[0]],
+          result_info: { is_truncated: true, cursor: "next" },
+        }),
+      )
+      .mockResolvedValueOnce(reply({ success: true, result: [objects[1]] }));
+    vi.stubGlobal("fetch", fetcher);
+    const listing = store().list("runs/");
+    await vi.runAllTimersAsync();
+    expect(await listing).toEqual(objects);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(String(fetcher.mock.calls[1][0])).toContain("cursor=next");
+  });
   it("paginates metadata and rejects repeated cursors", async () => {
     vi.useFakeTimers();
     const fetcher = vi.fn().mockImplementation(async () =>
