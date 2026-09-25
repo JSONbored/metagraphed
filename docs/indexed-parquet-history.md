@@ -144,3 +144,52 @@ The producer must also accept the marker when maintaining an already-complete
 selected generation; a legacy-only validation branch would otherwise stop tail
 ingestion. Qualify both consumers before changing the selected manifest. This
 library does not update production producers or retire any objects by itself.
+
+## Optional immutable extrinsic assets
+
+`src/history-asset-source.ts` can serve byte-identical extrinsic feed directories
+and packs through a `HISTORY_ASSETS` fetch binding. Activation also requires
+`HISTORY_ASSET_RELEASE`, formatted as `<sha256>:<byte-length>` for a release
+manifest of at most 128 KiB. With neither setting present, the original reader
+is returned unchanged. Partial or malformed activation fails closed.
+
+Every asset is served at `/<sha256>.mgpack`. The version-1 release maps two-digit
+prefixes of SHA-256(original R2 key) to `{ sha256, bytes }` metadata shards.
+Each shard maps complete key digests to the original `{ key, etag, bytes }` and
+an ordered array of `{ sha256, bytes }` chunks. Chunks must cover the complete
+original object and cannot exceed 4 MiB each. The schemas are defined in
+`schemas-src/artifacts/history-assets.ts`. The publisher must verify the original
+conditional identity and complete byte-for-byte reconstruction before signing
+off on that mapping; a successful upload alone is insufficient.
+
+The reader verifies release, shard and payload hashes, exact sizes, original
+ETags and requested ranges. It cancels oversized bodies while streaming. A
+separate operation budget counts actual asset transfers, including chunk
+over-read: 128 MiB and 1,024 requests. Payload caching is confined to the current
+operation and bounded to 8 MiB/256 entries; parsed shard retention is also bounded.
+Choose chunk sizes against the largest supported query and cursor workloads,
+not only the average page size. Asset file limits, deployment retention, worker
+CPU and transfer budgets remain cutover qualification requirements.
+
+When supplied through a service binding, the platform's per-request limit on
+Worker invocations also applies, including calls elsewhere in the API/MCP chain.
+The 1,024-read byte-source budget does not override that limit. Qualify maximum
+supported query sizes through the complete call chain; use a native asset
+binding or delegate a complete query to the asset-owning Worker if individual
+range requests would exceed the service-invocation limit.
+
+Only immutable, content-addressed objects under an extrinsic generation's
+`feeds/v1/` tree are eligible. Mutable selections and source ceilings, canonical
+Parquet, account history and unmapped keys keep their existing readers. A missing
+mapping permits staged adoption; a corrupt or unavailable mapped asset throws
+instead of returning an empty or partial answer. Source-ceiling checks, native
+filters, cursor ordering, deduplication and canonical-row verification remain in
+the existing table adapter. Tests remove all immutable feed objects from the R2
+fixture and still compare complete hydrated results across these query shapes.
+
+This change does not provision an asset store, activate a release, or delete R2
+data. Before retiring any original object, qualify its complete asset mapping,
+all consumers and restoration paths, both deployed API readers, public API/MCP
+parity, worst-case query budgets, and the ability to preserve the selected asset
+release through subsequent deployments. Preserve the selected feed manifest and
+its encoding for producers that still use it as their completion record.

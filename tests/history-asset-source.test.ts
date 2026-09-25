@@ -1,0 +1,308 @@
+import { describe, expect, it, vi } from "vitest";
+import { historyAssetSource } from "../src/history-asset-source.ts";
+import {
+  assetHash,
+  assetKey,
+  historyAssetsFixture,
+} from "./history-assets-fixture.ts";
+
+const etag = "b".repeat(32),
+  key = assetKey("first");
+const input = () => ({
+  key,
+  etag,
+  chunks: [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5, 6])],
+});
+const fallback = () => ({
+  read: vi.fn(async () => new Uint8Array([99]).buffer),
+});
+const setup = () => {
+  const assets = historyAssetsFixture([input()]),
+    r2 = fallback();
+  return { ...assets, r2, source: historyAssetSource(assets.env, r2) };
+};
+
+describe("immutable history asset ranges", () => {
+  it("keeps the exact source when unconfigured", () => {
+    const r2 = fallback();
+    for (const env of [undefined, null, {}])
+      expect(historyAssetSource(env, r2)).toBe(r2);
+  });
+  it.each([
+    { HISTORY_ASSET_RELEASE: `${"a".repeat(64)}:1` },
+    { HISTORY_ASSETS: { fetch() {} } },
+    { HISTORY_ASSETS: null, HISTORY_ASSET_RELEASE: `${"a".repeat(64)}:1` },
+    { HISTORY_ASSETS: {}, HISTORY_ASSET_RELEASE: `${"a".repeat(64)}:1` },
+    {
+      HISTORY_ASSETS: { fetch: "invalid" },
+      HISTORY_ASSET_RELEASE: `${"a".repeat(64)}:1`,
+    },
+    { HISTORY_ASSETS: { fetch() {} }, HISTORY_ASSET_RELEASE: "bad" },
+    { HISTORY_ASSETS: { fetch() {} }, HISTORY_ASSET_RELEASE: 17 },
+    {
+      HISTORY_ASSETS: { fetch() {} },
+      HISTORY_ASSET_RELEASE: `${"a".repeat(64)}:131073`,
+    },
+  ])("refuses partial or malformed activation: %j", (env) => {
+    expect(() => historyAssetSource(env, fallback())).toThrow(/configuration/);
+  });
+  it("leaves mutable manifests, account history and canonical Parquet on their existing source", async () => {
+    const f = setup();
+    for (const k of [
+      "current.json",
+      key.replace("extrinsics", "account_events"),
+      key.replace(/directory\/.+$/, "manifest.json"),
+      key.replace(/\.json$/, ".parquet"),
+    ])
+      expect(new Uint8Array(await f.source.read(k, etag, 0, 1))).toEqual(
+        new Uint8Array([99]),
+      );
+    expect(f.fetch).not.toHaveBeenCalled();
+    expect(f.r2.read).toHaveBeenCalledTimes(4);
+  });
+  it("returns exact cross-chunk ranges and caller-owned buffers without repeat payload reads", async () => {
+    const f = setup();
+    const first = new Uint8Array(await f.source.read(key, etag, 2, 3));
+    expect(first).toEqual(new Uint8Array([3, 4, 5]));
+    first.fill(0);
+    expect(new Uint8Array(await f.source.read(key, etag, 0, 6))).toEqual(
+      new Uint8Array([1, 2, 3, 4, 5, 6]),
+    );
+    expect(new Uint8Array(await f.source.read(key, etag, 4, 1))).toEqual(
+      new Uint8Array([5]),
+    );
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    expect(f.r2.read).not.toHaveBeenCalled();
+    await historyAssetSource(f.env, f.r2).read(key, etag, 0, 1);
+    expect(f.fetch).toHaveBeenCalledTimes(7);
+  });
+  it("accepts exact decimal Content-Length", async () => {
+    const f = setup();
+    f.override(
+      (_hash, raw) =>
+        raw &&
+        new Response(raw, {
+          headers: { "content-length": String(raw.length) },
+        }),
+    );
+    expect(new Uint8Array(await f.source.read(key, etag, 0, 1))).toEqual(
+      new Uint8Array([1]),
+    );
+  });
+  it("falls back only when the verified release does not map an object", async () => {
+    const f = setup();
+    f.publishRoot({ version: 1, shards: {} });
+    expect(
+      new Uint8Array(
+        await historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+      ),
+    ).toEqual(new Uint8Array([99]));
+    f.shards[assetHash(key).slice(0, 2)].objects = {};
+    f.publish();
+    expect(
+      new Uint8Array(
+        await historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+      ),
+    ).toEqual(new Uint8Array([99]));
+    expect(f.r2.read).toHaveBeenCalledTimes(2);
+  });
+  it.each([
+    [-1, 1],
+    [0, 0],
+    [0, -1],
+    [0.5, 1],
+    [0, 1.5],
+    [NaN, 1],
+    [Infinity, 1],
+    [0, 16 * 1024 * 1024 + 1],
+    [Number.MAX_SAFE_INTEGER, 1],
+  ])("refuses invalid range %s/%s before I/O", async (offset, length) => {
+    const f = setup();
+    await expect(f.source.read(key, etag, offset, length)).rejects.toThrow(
+      /range/,
+    );
+    expect(f.fetch).not.toHaveBeenCalled();
+    expect(f.r2.read).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["wrong-etag", 0, 1],
+    [etag, 6, 1],
+  ] as const)(
+    "refuses original identity/bounds mismatch",
+    async (expected, offset, length) => {
+      const f = setup();
+      await expect(
+        f.source.read(key, expected, offset, length),
+      ).rejects.toThrow(/original identity/);
+      expect(f.fetch).toHaveBeenCalledTimes(2);
+      expect(f.r2.read).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["key", "bytes"])("refuses a changed %s mapping", async (field) => {
+    const f = setup(),
+      object = f.shards[assetHash(key).slice(0, 2)].objects[assetHash(key)];
+    if (field === "key") object.key = assetKey("different");
+    else object.bytes++;
+    f.publish();
+    await expect(
+      historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+    ).rejects.toThrow(/mapping/);
+    expect(f.r2.read).not.toHaveBeenCalled();
+  });
+  it.each(["abc", "3.0", "1e2", "-1", "0", "10000000"])(
+    "rejects invalid declared asset length %s and cancels",
+    async (length) => {
+      const f = setup();
+      let canceled = false;
+      f.override(
+        () =>
+          new Response(
+            new ReadableStream({
+              start(c) {
+                c.enqueue(new Uint8Array([1]));
+              },
+              cancel() {
+                canceled = true;
+              },
+            }),
+            { headers: { "content-length": length } },
+          ),
+      );
+      await expect(f.source.read(key, etag, 0, 1)).rejects.toThrow(
+        /missing or changed/,
+      );
+      expect(canceled).toBe(true);
+    },
+  );
+  it.each([404, 500, 206])(
+    "rejects HTTP %s without an R2 fallback",
+    async (status) => {
+      const f = setup();
+      f.override(() => new Response(null, { status }));
+      await expect(f.source.read(key, etag, 0, 1)).rejects.toThrow(
+        /missing or changed/,
+      );
+      expect(f.r2.read).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects a successful response without a body", async () => {
+    const f = setup();
+    f.override(() => new Response(null));
+    await expect(f.source.read(key, etag, 0, 1)).rejects.toThrow(
+      /missing or changed/,
+    );
+  });
+  it("cancels a streamed body as soon as it exceeds its pinned size", async () => {
+    const f = setup();
+    let canceled = false;
+    f.override((hash) =>
+      hash === assetHash(input().chunks[0])
+        ? new Response(
+            new ReadableStream({
+              start(c) {
+                c.enqueue(new Uint8Array(4));
+              },
+              cancel() {
+                canceled = true;
+              },
+            }),
+          )
+        : undefined,
+    );
+    await expect(f.source.read(key, etag, 0, 1)).rejects.toThrow(/size bound/);
+    expect(canceled).toBe(true);
+  });
+  it.each([new Uint8Array([1, 2]), new Uint8Array([1, 2, 9])])(
+    "rejects truncated/corrupt bytes",
+    async (raw) => {
+      const f = setup();
+      f.override((hash) =>
+        hash === assetHash(input().chunks[0]) ? new Response(raw) : undefined,
+      );
+      await expect(f.source.read(key, etag, 0, 1)).rejects.toThrow(
+        /content identity/,
+      );
+    },
+  );
+  it("rejects malformed JSON and UTF-8 even when their hash is pinned", async () => {
+    for (const raw of [new TextEncoder().encode("{"), new Uint8Array([255])]) {
+      const f = setup(),
+        hash = assetHash(raw);
+      f.files.set(hash, raw);
+      f.env.HISTORY_ASSET_RELEASE = `${hash}:${raw.length}`;
+      await expect(
+        historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+      ).rejects.toThrow();
+    }
+  });
+  it("rejects invalid release and shard schemas", async () => {
+    const f = setup();
+    f.publishRoot({ version: 2, shards: {} });
+    await expect(
+      historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+    ).rejects.toThrow();
+    f.shards[assetHash(key).slice(0, 2)].objects[assetHash(key)].chunks = [];
+    f.publish();
+    await expect(
+      historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+    ).rejects.toThrow();
+  });
+  it("detects conflicting pinned sizes even for a cached content hash", async () => {
+    const second = assetKey("second"),
+      f = historyAssetsFixture([
+        input(),
+        { key: second, etag, chunks: [input().chunks[0]] },
+      ]);
+    const o =
+      f.shards[assetHash(second).slice(0, 2)].objects[assetHash(second)];
+    o.bytes = 4;
+    o.chunks[0].bytes = 4;
+    f.publish();
+    const source = historyAssetSource(f.env, fallback());
+    await source.read(key, etag, 0, 1);
+    await expect(source.read(second, etag, 0, 1)).rejects.toThrow(
+      /size conflict/,
+    );
+  });
+  it("bounds transferred bytes despite small requested ranges and bounded cache eviction", async () => {
+    const chunks = [1, 2, 3].map((n) => {
+      const b = new Uint8Array(4 * 1024 * 1024);
+      b[0] = n;
+      return b;
+    });
+    const f = historyAssetsFixture([{ key, etag, chunks }]),
+      source = historyAssetSource(f.env, fallback());
+    let error: unknown;
+    for (let i = 0; i < 40; i++) {
+      try {
+        await source.read(key, etag, (i % 3) * 4 * 1024 * 1024, 1);
+      } catch (caught) {
+        error = caught;
+        break;
+      }
+    }
+    expect(error).toBeInstanceOf(Error);
+    expect(String(error)).toMatch(/transfer budget/);
+    expect(f.fetch.mock.calls.length).toBeLessThan(40);
+  });
+  it("bounds tiny-asset requests and parsed shard retention", async () => {
+    const inputs = Array.from({ length: 300 }, (_, i) => ({
+      key: assetKey(`object-${i}`),
+      etag,
+      chunks: [new TextEncoder().encode(`payload-${i}`)],
+    }));
+    const f = historyAssetsFixture(inputs),
+      source = historyAssetSource(f.env, fallback());
+    let error: unknown;
+    for (let i = 0; i < 1500; i++) {
+      try {
+        await source.read(inputs[i % inputs.length].key, etag, 0, 1);
+      } catch (caught) {
+        error = caught;
+        break;
+      }
+    }
+    expect(String(error)).toMatch(/transfer budget/);
+    expect(f.fetch).toHaveBeenCalledTimes(1024);
+  });
+});

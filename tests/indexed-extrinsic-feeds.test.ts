@@ -17,6 +17,8 @@ import type { HistoryExtrinsicFeed } from "../schemas-src/artifacts/history-extr
 import { loadExtrinsicFeedColdTier } from "../src/extrinsics-cold-tier.ts";
 import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
 import { hotHistoryFixture } from "./hot-history-fixture.ts";
+import { historyAssetsFixture } from "./history-assets-fixture.ts";
+import { HISTORY_ASSET_OBJECT_KEY } from "../schemas-src/artifacts/history-assets.ts";
 
 const fixture = JSON.parse(
   readFileSync(
@@ -155,6 +157,54 @@ async function* stream(rows: ExtrinsicFeedPointer[]) {
 }
 
 describe("qualified native extrinsic feeds", () => {
+  it("hydrates identical full rows after every immutable feed object leaves R2", async () => {
+    const a = archive();
+    const moved = [...a.objects].filter(([key]) =>
+      HISTORY_ASSET_OBJECT_KEY.test(key),
+    );
+    expect(moved.length).toBeGreaterThan(0);
+    const assets = historyAssetsFixture(
+      moved.map(([key, object]) => ({
+        key,
+        etag: object.etag,
+        chunks: [object.raw],
+      })),
+    );
+    for (const [key] of moved) a.objects.delete(key);
+    const env = { ...a.env, ...assets.env };
+    for (const selector of [
+      {},
+      { signer: "account-1" },
+      { module: "Module0" },
+      { module: "Module1", callFunction: "function3" },
+      { callFunction: "function2" },
+      { success: true },
+      { success: false },
+      {
+        signer: "account-1",
+        module: "Module1",
+        callFunction: "function3",
+        success: false,
+      },
+      { module: "Module0", success: false },
+      { signer: "absent" },
+      { blockStart: 4, blockEnd: 9, observedStart: 1002, observedEnd: 1006 },
+      { cursor: [1007, 13, 2] as [number, number, number] },
+    ])
+      expect(await loadIndexedExtrinsicFeedPage(env, selector, 200)).toEqual(
+        expected(selector),
+      );
+    expect(await loadIndexedExtrinsicFeedPage(env, {}, 7, 3)).toEqual(
+      expected({}).slice(3, 10),
+    );
+    expect(assets.fetch).toHaveBeenCalled();
+    expect(
+      a.get.mock.calls.some(([key]) => HISTORY_ASSET_OBJECT_KEY.test(key)),
+    ).toBe(false);
+    expect(a.get.mock.calls.some(([key]) => key.endsWith(".parquet"))).toBe(
+      true,
+    );
+  });
   it("merges hot rows with retained physical pointers while preserving filters, offsets and cursor order", async () => {
     const a = archive();
     const hot = [true, false, null].map((success, i) => ({
