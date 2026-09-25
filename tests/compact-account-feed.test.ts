@@ -293,6 +293,141 @@ describe("bounded account-feed compaction", () => {
     expect(again.outputs).toEqual([]);
     expect(again.manifest).toEqual(result.manifest);
   });
+  it("splits large output into bounded packs without changing rows, tokens or the content digest", async () => {
+    const f = synthetic();
+    const queryHash = hash(
+      Buffer.from(JSON.stringify(["all", "*", null, null])),
+    );
+    const records: AccountPageEntry[] = Array.from(
+      { length: 16384 },
+      (_, i) => ({
+        token:
+          queryHash +
+          feedOrder(1000 + i, 500, i) +
+          "b".repeat(64) +
+          i.toString(16).padStart(8, "0"),
+        values: [
+          500,
+          i,
+          null,
+          "Transfer",
+          hash(Buffer.from(`cold-${i}`)),
+          hash(Buffer.from(`hot-${i}`)),
+          null,
+          null,
+          i / 16,
+          null,
+          1000 + i,
+        ],
+      }),
+    ).sort((a, b) => a.token.localeCompare(b.token));
+    const pages = Array.from({ length: 64 }, (_, i) =>
+      records.slice(i * 256, (i + 1) * 256),
+    );
+    const raw = pages.map((rows) =>
+      Buffer.from(
+        rows.map((e) => `${e.token}\t${JSON.stringify(e.values)}\n`).join(""),
+      ),
+    );
+    const compressed = raw.map((bytes) => gzipSync(bytes, { level: 1 }));
+    const packed = Buffer.concat(compressed);
+    const object = f.put(`${f.base}packs/${hash(packed)}.bin`, packed);
+    let offset = 0;
+    const children: HistoryFeedNode[] = pages.map((rows, i) => {
+      const node: HistoryFeedNode = {
+        height: 0,
+        first: rows[0].token,
+        last: rows.at(-1)!.token,
+        rows: rows.length,
+        minBlock: 500,
+        maxBlock: 500,
+        object,
+        offset,
+        length: compressed[i].length,
+        decodedBytes: raw[i].length,
+      };
+      offset += compressed[i].length;
+      return node;
+    });
+    Object.assign(f.manifest, {
+      rows: records.length,
+      entries: records.length,
+    });
+    Object.assign(f.manifest.root!, {
+      first: records[0].token,
+      last: records.at(-1)!.token,
+      rows: records.length,
+    });
+    f.setChildren(children);
+    const original = structuredClone(f.manifest);
+    const baseline = await compactAccountFeed(
+      original,
+      original.selection,
+      f.store,
+    );
+    const limited = await compactAccountFeed(
+      original,
+      original.selection,
+      f.store,
+      { maxPackBytes: 1024 ** 2 },
+    );
+    const baselinePacks = baseline.outputs.filter((o) =>
+      o.key.endsWith(".bin"),
+    );
+    const limitedPacks = limited.outputs.filter((o) => o.key.endsWith(".bin"));
+    expect(baselinePacks).toHaveLength(1);
+    expect(limitedPacks.length).toBeGreaterThan(1);
+    expect(limitedPacks.every((o) => o.bytes <= 1024 ** 2)).toBe(true);
+    expect(limited.entryDigest).toBe(baseline.entryDigest);
+    expect(limited.stats.entries).toBe(records.length);
+    expect(limited.stats.newPageBytes).toBe(baseline.stats.newPageBytes);
+    expect(limited.replacedPages).toEqual(baseline.replacedPages);
+    for (const manifest of [original, baseline.manifest, limited.manifest]) {
+      const actual = [];
+      for await (const entry of iterateAccountFeed(
+        f.store,
+        manifest,
+        { side: "all", account: "*" },
+        parquetReadBudget(128 * 1024 ** 2, 1024),
+      ))
+        actual.push({
+          token: entry.token,
+          values: [
+            entry.row.block_number,
+            entry.row.event_index,
+            entry.row.extrinsic_index,
+            entry.row.event_kind,
+            entry.row.hotkey,
+            entry.row.coldkey,
+            entry.row.netuid,
+            entry.row.uid,
+            entry.row.amount_tao,
+            entry.row.alpha_amount,
+            entry.row.observed_at,
+          ],
+        });
+      expect(actual).toEqual(records);
+    }
+    expect(f.manifest).toEqual(original);
+  });
+  it("rejects invalid pack bounds before reading or staging", async () => {
+    for (const maxPackBytes of [
+      0,
+      1024 ** 2 - 1,
+      16 * 1024 ** 2 + 1,
+      1.5,
+      NaN,
+    ]) {
+      const f = synthetic();
+      await expect(
+        compactAccountFeed(f.manifest, f.manifest.selection, f.store, {
+          maxPackBytes,
+        }),
+      ).rejects.toThrow();
+      expect(f.reads).toEqual([]);
+      expect(f.writes).toEqual([]);
+    }
+  });
   it("rebuilds a selected path while preserving the other subtree's descriptors", async () => {
     const f = synthetic();
     const result = await compactAccountFeed(

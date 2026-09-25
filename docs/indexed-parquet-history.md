@@ -84,7 +84,11 @@ returns the original manifest. Untouched sibling descriptors are preserved.
 Defaults limit each call to 64 MiB read (including output verification), 64 MiB
 written, 4,096 storage reads, 8,192 tree nodes, and 4,096 pages. Overrides cannot
 exceed 128 MiB read/written, 16,384 reads/nodes, or 8,192 pages. Packs are at most
-16 MiB, directories 128 KiB, and decoded pages 256 KiB. Compressed page staging
+16 MiB, directories 128 KiB, and decoded pages 256 KiB. The optional
+`maxPackBytes` setting accepts 1–16 MiB (default 16 MiB), allowing a bounded
+uploader to transfer smaller independent packs concurrently. It changes only
+pack boundaries; page contents, ordering, and reference checks are preserved.
+Compressed page staging
 also uses the write-byte limit; the converter does not accumulate decoded rows.
 Every output is read back and verified before a replacement manifest is returned.
 If a call fails after staging objects, the caller owns cleanup of those staged
