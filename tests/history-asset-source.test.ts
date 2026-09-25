@@ -22,7 +22,125 @@ const setup = () => {
   return { ...assets, r2, source: historyAssetSource(assets.env, r2) };
 };
 
+const partitioned = () => {
+  const f = setup(),
+    bindings: Record<string, { fetch: typeof f.fetch }> = {};
+  f.root.partitionCount = 16;
+  for (let i = 0; i < 16; i++) {
+    const prefix = i.toString(16);
+    bindings[`HISTORY_ASSETS_${prefix}`] = {
+      fetch: vi.fn(async (request: Request) => {
+        expect(new URL(request.url).pathname[1]).toBe(prefix);
+        return f.fetch(request);
+      }),
+    };
+  }
+  f.publish();
+  return { ...f, bindings, env: Object.assign(f.env, bindings) };
+};
+
 describe("immutable history asset ranges", () => {
+  it("routes small payload chunks by digest while metadata stays in the root store", async () => {
+    const f = partitioned(),
+      source = historyAssetSource(f.env, f.r2);
+    expect(new Uint8Array(await source.read(key, etag, 2, 3))).toEqual(
+      new Uint8Array([3, 4, 5]),
+    );
+    expect(
+      Object.values(f.bindings).reduce(
+        (n, b) => n + b.fetch.mock.calls.length,
+        0,
+      ),
+    ).toBe(2);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    expect(f.r2.read).not.toHaveBeenCalled();
+    await source.read(key, etag, 0, 6);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+  });
+  it.each([undefined, null, {}, { fetch: "invalid" }])(
+    "rejects a missing or malformed partition before any payload read: %j",
+    async (binding) => {
+      const f = partitioned();
+      await expect(
+        historyAssetSource({ ...f.env, HISTORY_ASSETS_f: binding }, f.r2).read(
+          key,
+          etag,
+          0,
+          1,
+        ),
+      ).rejects.toThrow(/partitions/);
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+      expect(f.r2.read).not.toHaveBeenCalled();
+    },
+  );
+  it("keeps unmapped keys on R2 with a partitioned release", async () => {
+    const f = partitioned();
+    f.shards[assetHash(key).slice(0, 2)].objects = {};
+    f.publish();
+    await historyAssetSource({ ...f.env, ...f.bindings }, f.r2).read(
+      key,
+      etag,
+      0,
+      1,
+    );
+    expect(f.r2.read).toHaveBeenCalledTimes(1);
+  });
+  it("refuses partitioned payload chunks larger than 128 KiB", async () => {
+    const f = partitioned(),
+      object = f.shards[assetHash(key).slice(0, 2)].objects[assetHash(key)];
+    object.chunks[0].bytes = 128 * 1024 + 1;
+    f.publish();
+    await expect(
+      historyAssetSource({ ...f.env, ...f.bindings }, f.r2).read(
+        key,
+        etag,
+        0,
+        1,
+      ),
+    ).rejects.toThrow(/chunk exceeds/);
+  });
+  it.each([0, 1, 8, 32, "16"])(
+    "refuses unsupported partition counts %j",
+    async (partitionCount) => {
+      const f = setup();
+      f.publishRoot({ ...f.root, partitionCount });
+      await expect(
+        historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+      ).rejects.toThrow();
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("allows bounded high-fanout reads while retaining a hard partition request ceiling", async () => {
+    const inputs = Array.from({ length: 300 }, (_, i) => ({
+      key: assetKey(`partition-object-${i}`),
+      etag,
+      chunks: [new TextEncoder().encode(`partition-payload-${i}`)],
+    }));
+    const f = historyAssetsFixture(inputs);
+    f.root.partitionCount = 16;
+    f.publish();
+    const bindings = Object.fromEntries(
+      Array.from({ length: 16 }, (_, i) => [
+        `HISTORY_ASSETS_${i.toString(16)}`,
+        { fetch: f.fetch },
+      ]),
+    );
+    const source = historyAssetSource({ ...f.env, ...bindings }, fallback());
+    let completed = 0,
+      error: unknown;
+    for (let i = 0; i < 6000; i++) {
+      try {
+        await source.read(inputs[i % inputs.length].key, etag, 0, 1);
+        completed++;
+      } catch (caught) {
+        error = caught;
+        break;
+      }
+    }
+    expect(completed).toBeGreaterThan(1024);
+    expect(String(error)).toMatch(/transfer budget/);
+    expect(f.fetch).toHaveBeenCalledTimes(4096);
+  });
   it("keeps the exact source when unconfigured", () => {
     const r2 = fallback();
     for (const env of [undefined, null, {}])

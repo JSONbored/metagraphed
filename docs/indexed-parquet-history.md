@@ -171,6 +171,20 @@ Choose chunk sizes against the largest supported query and cursor workloads,
 not only the average page size. Asset file limits, deployment retention, worker
 CPU and transfer budgets remain cutover qualification requirements.
 
+A release can declare `partitionCount: 16` to use smaller payload files without
+exhausting a single deployment's file allowance. Release and mapping shards stay
+on `HISTORY_ASSETS`; payload chunks are routed by the first hexadecimal digit of
+their SHA-256 to `HISTORY_ASSETS_0` through `HISTORY_ASSETS_f`. All sixteen fetch
+bindings are required before reading any payload, and every payload chunk is
+limited to 128 KiB. Missing partitions and oversized chunks fail closed. The
+partitioned release allows at most 512 MiB transferred and 4,096 asset requests
+per operation, counting metadata and repeated reads after eviction. This does
+not raise the native query's logical byte/request budgets or the 8 MiB payload
+cache. Publishers must qualify the largest supported query, preserve every
+selected partition together, and verify complete reconstruction before removal
+of the original objects. A partitioned release is optional; existing single-store
+releases keep their original limits and routing.
+
 When supplied through a service binding, the platform's per-request limit on
 Worker invocations also applies, including calls elsewhere in the API/MCP chain.
 The 1,024-read byte-source budget does not override that limit. Qualify maximum
