@@ -8,6 +8,7 @@ import {
 } from "../scripts/build-parquet-page-index.ts";
 import {
   HistoryFileSchema,
+  HistoryBlockGenerationSchema,
   type HistoryGeneration,
   type HistoryObject,
 } from "../schemas-src/artifacts/history-generation.ts";
@@ -15,6 +16,7 @@ import {
   loadHistoryGeneration,
   readHistoryHash,
   readHistoryRow,
+  readHistoryPointers,
   validateHistoryGeneration,
 } from "../src/history-generation.ts";
 import { parquetReadBudget, r2ParquetSource } from "../src/indexed-parquet.ts";
@@ -126,6 +128,157 @@ async function fixture(table: "extrinsics" | "blocks" = "extrinsics") {
   };
   return { generation, file, indexes, descriptor, records };
 }
+test("sparse pointers share compact groups and preserve order, duplicates and exact values", async () => {
+  const { generation, file } = await fixture();
+  const { shards: _shards, ...base } = generation;
+  const selected = HistoryBlockGenerationSchema.parse({
+    ...base,
+    blockIndex: { key: `${root}/blocks/index.json`, etag: "unused", bytes: 1 },
+  });
+  const r2 = r2ParquetSource(bucket);
+  const reads: { key: string; offset: number; length: number }[] = [];
+  const source = {
+    async read(key: string, etag: string, offset: number, length: number) {
+      reads.push({ key, offset, length });
+      return r2.read(key, etag, offset, length);
+    },
+  };
+  const hydrate = (ordinals: number[], budget = parquetReadBudget()) =>
+    readHistoryPointers(
+      source,
+      selected,
+      scope,
+      ordinals.map((row) => ({ fileId: 0, sourceIdentity, row })),
+      budget,
+    );
+  const ordinals = [19, 0, 3, 1, 9, 11, 10, 17, 3];
+  const expected = [];
+  for (const ordinal of ordinals) expected.push(...(await hydrate([ordinal])));
+  reads.length = 0;
+  const budget = parquetReadBudget();
+  assert.deepEqual(await hydrate(ordinals, budget), expected);
+  assert.deepEqual(
+    expected.map((row) => row.wide),
+    ordinals.map((row) => 9007199254740992n + BigInt(row)),
+  );
+  assert.equal(
+    new Set(reads.map((read) => JSON.stringify(read))).size,
+    reads.length,
+  );
+  assert.equal(reads.filter(({ key }) => key.endsWith(".parquet")).length, 5);
+  assert.equal(
+    reads.filter(({ key }) => key === selected.files[0].key).length,
+    1,
+  );
+  assert.equal(
+    reads.filter(({ key }) => key.endsWith(".page-index.json")).length,
+    2,
+  );
+  const tight = parquetReadBudget(budget.bytes, budget.requests);
+  assert.deepEqual(await hydrate(ordinals, tight), expected);
+  assert.equal(tight.decodedBytes, budget.decodedBytes);
+  assert.equal(tight.values, budget.values);
+  for (const limited of [
+    parquetReadBudget(budget.bytes - 1, budget.requests),
+    parquetReadBudget(budget.bytes, budget.requests - 1),
+    { ...parquetReadBudget(), decodedBytes: 32 * 1024 * 1024 },
+    { ...parquetReadBudget(), values: 1_000_000 },
+  ])
+    await assert.rejects(hydrate(ordinals, limited), /budget/);
+
+  reads.length = 0;
+  assert.deepEqual(await hydrate([3, 0, 3]), [
+    expected[2],
+    expected[1],
+    expected[2],
+  ]);
+  assert.equal(reads.length, 3);
+  assert.ok(reads.every(({ key }) => key !== file.parts[1].key));
+  await bucket.put(file.parts[0].key, "replaced");
+  await assert.rejects(hydrate([0, 3]), /missing or changed/);
+});
+
+test("sparse pointers retain multi-page pruning and skip unselected row groups", async () => {
+  const { generation, file } = await fixture();
+  const raw = readFileSync(
+    new URL("./fixtures/parquet/compact-ranges.parquet", import.meta.url),
+  );
+  const bytes = raw.buffer.slice(
+    raw.byteOffset,
+    raw.byteOffset + raw.byteLength,
+  );
+  const parquet = {
+    byteLength: bytes.byteLength,
+    slice: (start: number, end?: number) => bytes.slice(start, end),
+  };
+  const key = file.parts[0].key;
+  const object = await bucket.put(key, bytes);
+  assert.ok(object);
+  const index = await buildParquetPageIndex(
+    parquet,
+    key,
+    object.etag,
+    await parquetFooter(parquet),
+  );
+  file.rows = index.rows;
+  file.parts = [
+    {
+      key,
+      etag: object.etag,
+      bytes: bytes.byteLength,
+      rowStart: 0,
+      rows: index.rows,
+      index: await put(key.replace(/\.parquet$/, ".page-index.json"), index),
+    },
+  ];
+  const { shards: _shards, ...base } = generation;
+  const selected = HistoryBlockGenerationSchema.parse({
+    ...base,
+    rows: index.rows,
+    files: [
+      { ...(await put(generation.files[0].key, file)), rows: index.rows },
+    ],
+    blockIndex: { key: `${root}/blocks/index.json`, etag: "unused", bytes: 1 },
+  });
+  const r2 = r2ParquetSource(bucket);
+  const reads: string[] = [];
+  const source = {
+    async read(key: string, etag: string, offset: number, length: number) {
+      if (key.endsWith(".parquet")) reads.push(`${offset}:${length}`);
+      return r2.read(key, etag, offset, length);
+    },
+  };
+  const hydrate = (ordinals: number[]) =>
+    readHistoryPointers(
+      source,
+      selected,
+      scope,
+      ordinals.map((row) => ({ fileId: 0, sourceIdentity, row })),
+      parquetReadBudget(),
+    );
+  const ordinals = [200, 0, 129, 63, 2047];
+  const expected = [];
+  for (const row of ordinals) expected.push(...(await hydrate([row])));
+  const originalReads = [...reads].sort();
+  reads.length = 0;
+  assert.deepEqual(await hydrate(ordinals), expected);
+  assert.deepEqual(reads.sort(), originalReads);
+  assert.deepEqual(
+    expected.map((row) => row.id),
+    ordinals.map((row) => 9007199254740993n + BigInt(row)),
+  );
+
+  const invalid = { ...index, groups: [] };
+  file.parts[0].index = await put(file.parts[0].index.key, invalid);
+  selected.files[0] = {
+    ...(await put(generation.files[0].key, file)),
+    rows: index.rows,
+  };
+  reads.length = 0;
+  await assert.rejects(hydrate([0, 129]), /metadata mismatch/);
+  assert.deepEqual(reads, []);
+});
+
 test("packed generations prove contiguous prefix coverage before exact native row reads", async () => {
   const { generation, records } = await fixture();
   const key = `${root}/hash/packed.bin`;
