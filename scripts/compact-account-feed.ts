@@ -13,16 +13,13 @@ import {
 import { validateAccountFeed } from "../src/history-account-feed.ts";
 import { decodeAccountPage } from "../src/history-account-page.ts";
 import { checkFeedNode } from "../src/history-feed-tree.ts";
+import { createAccountPageDigest } from "./lib/account-page-digest.ts";
 import {
   boundedParquetBuffer,
   parquetReadBudget,
   type ParquetRangeSource,
 } from "../src/indexed-parquet.ts";
-import {
-  encodeAccountPage,
-  validateAccountPageEntries,
-  type AccountPageEntry,
-} from "./lib/account-page-encoding.ts";
+import { encodeAccountPage } from "./lib/account-page-encoding.ts";
 
 const MiB = 1024 * 1024;
 const OptionsSchema = z.strictObject({
@@ -73,6 +70,7 @@ export async function compactAccountFeed(
   const leaves: Tree[] = [];
   const groups = new Map<string, Tree[]>();
   const pageDigests = new Map<Tree, string>();
+  const digestPage = createAccountPageDigest();
   const digestFormat = "sha256-ordered-page-digests-v1" as const;
   const seenDirectories = new Set<string>();
   const stats = {
@@ -91,25 +89,6 @@ export async function compactAccountFeed(
     pending: Leaf[] = [],
     packBytes = 0;
 
-  function fingerprint(
-    hash: ReturnType<typeof createHash>,
-    entry: AccountPageEntry,
-  ) {
-    hash.update(entry.token);
-    for (const value of entry.values) {
-      if (value === null) hash.update("N");
-      else if (typeof value === "string") {
-        const raw = Buffer.from(value, "utf16le"),
-          size = Buffer.alloc(4);
-        size.writeUInt32LE(raw.length);
-        hash.update("S").update(size).update(raw);
-      } else {
-        const raw = Buffer.alloc(8);
-        raw.writeDoubleLE(value);
-        hash.update("D").update(raw);
-      }
-    }
-  }
   function register(object: HistoryObject) {
     const prior = originals.get(object.key);
     if (prior && (prior.etag !== object.etag || prior.bytes !== object.bytes))
@@ -243,7 +222,9 @@ export async function compactAccountFeed(
           };
         });
     }
-    validateAccountPageEntries(entries);
+    // Encoding validates every source row before any census check or write,
+    // including pages that retain their original bytes. Do not validate twice.
+    const encoded = encodeAccountPage(entries);
     if (
       entries.length !== node.rows ||
       entries[0].token !== node.first ||
@@ -256,7 +237,6 @@ export async function compactAccountFeed(
       throw new Error("Account compaction page census mismatch");
     stats.entries += entries.length;
     stats.oldPageBytes += original.length;
-    const encoded = encodeAccountPage(entries);
     const candidate = encoded && gzipSync(encoded, { level: 6 });
     const compact = candidate && candidate.length < original.length;
     const recovered = compact
@@ -264,14 +244,8 @@ export async function compactAccountFeed(
           gunzipSync(candidate, { maxOutputLength: encoded.length }),
         )!
       : entries;
-    const oldDigest = createHash("sha256"),
-      newDigest = createHash("sha256");
-    for (const [i, entry] of entries.entries()) {
-      fingerprint(oldDigest, entry);
-      fingerprint(newDigest, recovered[i]);
-    }
-    const pageDigest = oldDigest.digest("hex");
-    if (pageDigest !== newDigest.digest("hex"))
+    const pageDigest = digestPage(entries);
+    if (pageDigest !== digestPage(recovered))
       throw new Error("Account compaction round-trip content mismatch");
     pageDigests.set(tree, pageDigest);
     if (compact) stats.compactPages++;

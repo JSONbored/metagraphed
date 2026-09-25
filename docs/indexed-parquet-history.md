@@ -99,6 +99,12 @@ hashed again. Old and new page fingerprints must match. This digest describes
 the selected pages and their boundaries, not a whole generation or a flat JSON
 serialization.
 
+Typed fingerprinting reuses a 64 KiB scratch buffer across pages; large strings
+stream through that buffer without changing UTF-16 code units or numeric bits.
+The encoder validates source rows once, including pages whose original bytes
+are retained. This avoids duplicate schema validation and per-field buffer
+allocation while preserving the digest format and all round-trip checks.
+
 Publication requires a separate fence against the currently selected manifest
 and concurrent producers, plus a verified consumer/reference inventory. Neither
 `originals` nor `replacedPages` is a deletion allowlist: an unselected page or
