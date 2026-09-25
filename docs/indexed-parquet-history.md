@@ -136,4 +136,7 @@ normal-sized pages rebuilt from the native producer fixture, mixed subtrees,
 selector/intersection/cursor parity and unchanged account-compactor fixtures.
 
 Deploy compatible readers before publishing an extrinsic mixed-format manifest.
-This library does not update production producers or retire any objects by itself.
+The producer must also accept the marker when maintaining an already-complete
+selected generation; a legacy-only validation branch would otherwise stop tail
+ingestion. Qualify both consumers before changing the selected manifest. This
+library does not update production producers or retire any objects by itself.
