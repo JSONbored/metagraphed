@@ -1,4 +1,7 @@
-import { z } from "zod";
+import {
+  decodeExtrinsicPage,
+  ExtrinsicFeedRecordSchema,
+} from "./history-extrinsic-page.ts";
 import {
   HistoryExtrinsicFeedSchema,
   type HistoryExtrinsicFeed,
@@ -20,17 +23,6 @@ export interface ExtrinsicFeedSelector extends FeedRange {
   callFunction?: string;
   success?: boolean;
 }
-const integer = z.number().int().nonnegative();
-const record = z.tuple([
-  integer.max(0xffffffff),
-  integer.max(0xffffffff),
-  integer.max(Number.MAX_SAFE_INTEGER),
-  z.string().nullable(),
-  z.string().nullable(),
-  z.string().nullable(),
-  z.boolean().nullable(),
-  integer.max(0xffffffff),
-]);
 export interface ExtrinsicFeedPointer {
   token: string;
   generation: string;
@@ -123,7 +115,7 @@ export async function* iterateExtrinsicFeed(
       call_function,
       success,
       fileId,
-    ] = record.parse(values);
+    ] = ExtrinsicFeedRecordSchema.parse(values);
     if (
       feedOrder(observed_at, block_number, extrinsic_index) !==
       token.slice(64, 94)
@@ -147,6 +139,10 @@ export async function* iterateExtrinsicFeed(
     budget,
     key,
     decode,
+    undefined,
+    feed.encoding === "extrinsic-mixed-gzip-v1"
+      ? decodeExtrinsicPage
+      : undefined,
   )) {
     // Verify the indexed predicate before applying any remaining intersection.
     const indexed =

@@ -111,3 +111,32 @@ and concurrent producers, plus a verified consumer/reference inventory. Neither
 another retained manifest can still reference the same pack. Retire an old pack
 only after all its consumers have moved to verified replacements. Preserve the
 canonical source objects and rollback references until that proof is complete.
+
+## Bounded extrinsic-feed compaction
+
+`scripts/compact-extrinsic-feed.ts` exports `compactExtrinsicFeed` with the same
+arguments, limits, staging contract and publication requirements as the account
+compactor. Both use `scripts/lib/compact-history-feed.ts`; account output and its
+existing digest format remain unchanged.
+
+The `extrinsic-mixed-gzip-v1` marker permits legacy JSONL pages and MGE1 binary
+pages in one tree. MGE1 stores the eight existing filter/pointer fields, query
+hash, source hash and source ordinal as eleven float64 little-endian columns,
+with an exact JSON string dictionary. Only canonical quiet NaN represents null;
+the success column accepts only 0/1 as false/true. The reader checks dimensions,
+dictionary indices, physical identity and the existing row schema before the
+shared tree reader verifies ordering, census and query predicates. Responses,
+filters, cursors, deduplication and canonical-row hydration do not change.
+
+The compactor checks every token and value through the production decoder. Its
+typed page digest maps the schema's boolean-only success field to 0/1; null has a
+separate tag. Small pages and oversized dictionaries retain legacy bytes when
+conversion would not save space. Tests include independently encoded wire bytes,
+normal-sized pages rebuilt from the native producer fixture, mixed subtrees,
+selector/intersection/cursor parity and unchanged account-compactor fixtures.
+
+Deploy compatible readers before publishing an extrinsic mixed-format manifest.
+The producer must also accept the marker when maintaining an already-complete
+selected generation; a legacy-only validation branch would otherwise stop tail
+ingestion. Qualify both consumers before changing the selected manifest. This
+library does not update production producers or retire any objects by itself.
