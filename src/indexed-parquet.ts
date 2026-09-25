@@ -1,4 +1,5 @@
 import { timed, TIMING_R2 } from "./request-timing.ts";
+import { createImmutableHistoryMetadataReader } from "./immutable-history-metadata.ts";
 // Ordinary R2 range reads of an immutable Parquet object. There is no SQL
 // engine or scan fallback in this path: an invalid index is an error, never
 // an empty result. Producers publish a complete generation before selecting it.
@@ -63,29 +64,32 @@ export function parquetReadBudget(
 export function r2ParquetSource(
   bucket: Pick<R2Bucket, "get">,
 ): ParquetRangeSource {
+  const metadata = createImmutableHistoryMetadataReader(bucket);
   return {
     async read(key, etag, offset, length) {
-      const object = await timed(TIMING_R2, () =>
-        bucket.get(key, {
-          onlyIf: { etagMatches: etag },
-          range: { offset, length },
-        }),
-      );
-      if (
-        !object ||
-        !("body" in object) ||
-        object.etag !== etag ||
-        !object.range ||
-        !("offset" in object.range) ||
-        object.range.offset !== offset ||
-        object.range.length !== length
-      ) {
-        throw new Error("Parquet source missing or changed");
-      }
-      const bytes = await new Response(object.body).arrayBuffer();
-      if (bytes.byteLength !== length)
-        throw new Error("Truncated Parquet source range");
-      return bytes;
+      return metadata(key, etag, offset, length, async () => {
+        const object = await timed(TIMING_R2, () =>
+          bucket.get(key, {
+            onlyIf: { etagMatches: etag },
+            range: { offset, length },
+          }),
+        );
+        if (
+          !object ||
+          !("body" in object) ||
+          object.etag !== etag ||
+          !object.range ||
+          !("offset" in object.range) ||
+          object.range.offset !== offset ||
+          object.range.length !== length
+        ) {
+          throw new Error("Parquet source missing or changed");
+        }
+        const bytes = await new Response(object.body).arrayBuffer();
+        if (bytes.byteLength !== length)
+          throw new Error("Truncated Parquet source range");
+        return bytes;
+      });
     },
   };
 }
