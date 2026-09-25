@@ -21,6 +21,7 @@ import {
   readHistoryPointers,
 } from "./history-generation.ts";
 import { parquetReadBudget, r2ParquetSource } from "./indexed-parquet.ts";
+import { historyAssetSource } from "./history-asset-source.ts";
 import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
 import { requireRetainedHistoryAnswer } from "./retained-history-store.ts";
 import {
@@ -93,7 +94,7 @@ async function loadSelectedExtrinsicFeedPage(
       limit + offset,
     );
     if (!hot) return undefined;
-    const source = r2ParquetSource(bucket),
+    const source = historyAssetSource(env, r2ParquetSource(bucket)),
       budget = parquetReadBudget(128 * 1024 * 1024, 1024);
     const generations = new Map<string, HistoryBlockGeneration>(),
       streams = [];
