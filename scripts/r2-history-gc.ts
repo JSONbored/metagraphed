@@ -341,7 +341,14 @@ export function cloudflareHistoryGcStore(
             last_modified: o.last_modified,
           });
         }
-        const info = record(result.result_info);
+        // R2 omits result_info on completed non-delimited object listings.
+        // A full page still needs explicit pagination state.
+        const info: Record<string, unknown> =
+          result.result_info === undefined &&
+          !delimiter &&
+          result.result.length < 1000
+            ? { is_truncated: false }
+            : record(result.result_info);
         if (
           (typeof info.is_truncated !== "boolean" &&
             !(

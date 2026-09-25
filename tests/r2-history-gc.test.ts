@@ -349,6 +349,84 @@ describe("native history collection", () => {
   });
 });
 describe("history R2 adapter", () => {
+  const listedObjects = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      key: prefix() + `files/${i}.json`,
+      etag: `etag-${i}`,
+      size: 100,
+      last_modified: "2026-09-01T00:00:00Z",
+    }));
+  it.each([0, 54, 999])(
+    "accepts a terminal %i-object page without result_info",
+    async (count) => {
+      const objects = listedObjects(count);
+      const fetcher = vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ success: true, result: objects })),
+        );
+      vi.stubGlobal("fetch", fetcher);
+      expect(
+        await cloudflareHistoryGcStore("account", "token").list(prefix()),
+      ).toEqual({ objects, prefixes: [] });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each([1000, 1001])(
+    "refuses an ambiguous %i-object page without result_info",
+    async (count) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ success: true, result: listedObjects(count) }),
+            ),
+          ),
+      );
+      await expect(
+        cloudflareHistoryGcStore("account", "token").list(prefix()),
+      ).rejects.toThrow(/metadata/);
+    },
+  );
+  it("does not infer completion for a delimiter listing without metadata", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ success: true, result: [] })),
+        ),
+    );
+    await expect(
+      cloudflareHistoryGcStore("account", "token").list(prefix(), "/"),
+    ).rejects.toThrow(/metadata/);
+  });
+  it("ends an explicit continuation at a short page without result_info", async () => {
+    vi.useFakeTimers();
+    const objects = listedObjects(2);
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: true,
+            result: [objects[0]],
+            result_info: { is_truncated: true, cursor: "next" },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, result: [objects[1]] })),
+      );
+    vi.stubGlobal("fetch", fetcher);
+    const listing = cloudflareHistoryGcStore("account", "token").list(prefix());
+    await vi.runAllTimersAsync();
+    expect(await listing).toEqual({ objects, prefixes: [] });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(String(fetcher.mock.calls[1][0])).toContain("cursor=next");
+  });
   it("accepts the terminal delimiter-only response returned by R2", async () => {
     vi.stubGlobal(
       "fetch",
