@@ -1,0 +1,17 @@
+{
+  "base64": "TUdFMQMAxgAAAFsiYWNjb3VudC1hIiwiQmFsYW5jZXMiLCJ0cmFuc2ZlciIsImFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWEiLCJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIiwiXHVkODAwIiwiXHU5NmVhXHUwMDAwXG4iLCIiXQAAAAAAQH9AAAAAAABAf0AAAAAAAAAAAAAAAAAAAPA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAQI9AAAAAAAA4j0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFEAAAAAAAAD4fwAAAAAAAPA/AAAAAAAAGEAAAAAAAAD4fwAAAAAAAABAAAAAAAAAHEAAAAAAAAD4fwAAAAAAAPA/AAAAAAAAAAAAAAAAAAD4fwAAAAAAAAhAAAAAAAAAAAAAAOD////vQQAAAAAAAAhAAAAAAAAACEAAAAAAAAAIQAAAAAAAABBAAAAAAAAAEEAAAAAAAAAQQAAAAAAAAAAAAAAAAAAA8D8AAAAAAAAAQA==",
+  "entries": [
+    [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1ffffffffffc17fffffe0bfffffffebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb00000000",
+      [500, 1, 1000, "account-a", "Balances", "transfer", true, 3]
+    ],
+    [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1ffffffffffc18fffffe0bffffffffbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb00000001",
+      [500, 0, 999, "\ud800", "\u96ea\u0000\n", "", false, 0]
+    ],
+    [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1fffffffffffffffffffffffffffffbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb00000002",
+      [0, 0, 0, null, null, null, null, 4294967295]
+    ]
+  ]
+}
