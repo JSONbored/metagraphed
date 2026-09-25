@@ -13,6 +13,7 @@ const reference = z
 export const HistoryAssetReleaseSchema = z
   .object({
     version: z.literal(1),
+    partitionCount: z.literal(16).optional(),
     shards: z.record(z.string().regex(/^[a-f0-9]{2}$/), reference),
   })
   .strict();

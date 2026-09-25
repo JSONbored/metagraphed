@@ -6,8 +6,6 @@ import {
 } from "../schemas-src/artifacts/history-assets.ts";
 import type { ParquetRangeSource } from "./indexed-parquet.ts";
 
-const MAX_BYTES = 128 * 1024 * 1024;
-const MAX_REQUESTS = 1024;
 const MAX_CACHE_BYTES = 8 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 256;
 const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
@@ -48,12 +46,15 @@ export function historyAssetSource(
   let bytes = 0,
     requests = 0,
     retained = 0;
+  let maxBytes = 128 * 1024 * 1024,
+    maxRequests = 1024;
+  let partitions: Pick<Fetcher, "fetch">[] | undefined;
   const cache = new Map<string, Uint8Array>();
   let releasePromise:
     Promise<ReturnType<typeof HistoryAssetReleaseSchema.parse>> | undefined;
   const shards = new Map<string, Promise<HistoryAssetShard>>();
 
-  async function readAsset(hash: string, size: number) {
+  async function readAsset(hash: string, size: number, payload = false) {
     const prior = cache.get(hash);
     if (prior) {
       if (prior.length !== size)
@@ -62,10 +63,12 @@ export function historyAssetSource(
       cache.set(hash, prior);
       return prior;
     }
-    if (++requests > MAX_REQUESTS || bytes + size > MAX_BYTES)
+    if (++requests > maxRequests || bytes + size > maxBytes)
       throw new Error("Immutable history asset transfer budget exceeded");
     bytes += size;
-    const response = await assets!.fetch(
+    const store =
+      payload && partitions ? partitions[parseInt(hash[0], 16)] : assets!;
+    const response = await store.fetch(
       new Request(`https://history-assets.invalid/${hash}.mgpack`, {
         headers: { "accept-encoding": "identity" },
       }),
@@ -115,9 +118,27 @@ export function historyAssetSource(
     releasePromise ??= readAsset(
       releaseReference![1],
       Number(releaseReference![2]),
-    ).then((raw) =>
-      HistoryAssetReleaseSchema.parse(JSON.parse(text.decode(raw))),
-    );
+    ).then((raw) => {
+      const root = HistoryAssetReleaseSchema.parse(
+        JSON.parse(text.decode(raw)),
+      );
+      if (root.partitionCount) {
+        partitions = Array.from({ length: root.partitionCount }, (_, i) => {
+          const binding = (env as Record<string, Pick<Fetcher, "fetch">>)[
+            `HISTORY_ASSETS_${i.toString(16)}`
+          ];
+          if (!binding || typeof binding.fetch !== "function")
+            throw new Error("Incomplete immutable history asset partitions");
+          return binding;
+        });
+        // Smaller payload chunks preserve bounded over-read without exceeding
+        // the per-deployment file limit. These are transfer, not heap limits;
+        // native logical query budgets and the 8 MiB cache remain unchanged.
+        maxBytes = 512 * 1024 * 1024;
+        maxRequests = 4096;
+      }
+      return root;
+    });
     const root = await releasePromise,
       identity = await sha256(new TextEncoder().encode(key)),
       prefix = identity.slice(0, 2),
@@ -133,6 +154,8 @@ export function historyAssetSource(
       shards.set(prefix, pending);
     }
     const object = (await pending).objects[identity];
+    if (partitions && object?.chunks.some((chunk) => chunk.bytes > 128 * 1024))
+      throw new Error("Partitioned history asset chunk exceeds its size bound");
     if (
       object &&
       (object.key !== key ||
@@ -166,7 +189,7 @@ export function historyAssetSource(
       for (const chunk of object.chunks) {
         const chunkEnd = position + chunk.bytes;
         if (position < end && chunkEnd > offset) {
-          const raw = await readAsset(chunk.sha256, chunk.bytes),
+          const raw = await readAsset(chunk.sha256, chunk.bytes, true),
             from = Math.max(offset, position) - position,
             to = Math.min(end, chunkEnd) - position;
           output.set(raw.subarray(from, to), written);
