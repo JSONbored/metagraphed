@@ -55,3 +55,53 @@ results over 4,096 runs or 65,536 physical rows. It never returns a partial resu
 after a budget failure. The table adapter must decode each returned range and
 verify its logical block before serving it; this primitive does not select a
 production generation or change any REST, GraphQL or MCP route.
+
+## Bounded account-feed compaction
+
+`scripts/compact-account-feed.ts` exports `compactAccountFeed(manifest, selection,
+store, options)`. It converts one selected account-feed subtree to the deployed
+`account-mixed-gzip-v2` format. The store supplies conditional `read(key, etag,
+offset, length)` and immutable `write(key, bytes)` operations; `write` returns only
+the object's `{ key, etag, bytes }` descriptor. The primitive has no credentials,
+manifest-publication operation, or deletion operation.
+
+The optional `path` is a sequence of directory child indexes from the root. Before
+payload reads, the converter validates directory content hashes, scope, order,
+identities, and row/block bounds. It groups selected pages by source pack and
+reads adjacent ranges together, without fetching gaps. Full reads verify the
+content-addressed filename; partial reads rely on the store's conditional ETag
+and exact-range contract, gzip integrity, and the directory's exact page census.
+They cannot verify the hash of bytes outside the requested range.
+
+Each page is validated against the serving row schema. Compact encoding preserves
+every token and field, including nulls, negative zero, and UTF-16 strings. Pages
+whose encoded dictionary exceeds the decoder limit, or whose compressed encoding
+does not shrink, retain their original compressed bytes. When at least one page
+shrinks, **all** selected pages are repacked so an unchanged page does not keep a
+source pack referenced unnecessarily. A batch with no savings writes nothing and
+returns the original manifest. Untouched sibling descriptors are preserved.
+
+Defaults limit each call to 64 MiB read (including output verification), 64 MiB
+written, 4,096 storage reads, 8,192 tree nodes, and 4,096 pages. Overrides cannot
+exceed 128 MiB read/written, 16,384 reads/nodes, or 8,192 pages. Packs are at most
+16 MiB, directories 128 KiB, and decoded pages 256 KiB. Compressed page staging
+also uses the write-byte limit; the converter does not accumulate decoded rows.
+Every output is read back and verified before a replacement manifest is returned.
+If a call fails after staging objects, the caller owns cleanup of those staged
+objects; it must never publish a partial result.
+
+The result contains a candidate `manifest`, I/O `budget`, byte/page `stats`,
+`originals`, verified `outputs`, and exact original leaf descriptors in
+`replacedPages`. `entryDigest` uses `sha256-ordered-page-digests-v1`: each page
+fingerprints its tokens and typed values (exact float64 bits and UTF-16 strings),
+then SHA-256 hashes are concatenated as raw 32-byte digests in tree order and
+hashed again. Old and new page fingerprints must match. This digest describes
+the selected pages and their boundaries, not a whole generation or a flat JSON
+serialization.
+
+Publication requires a separate fence against the currently selected manifest
+and concurrent producers, plus a verified consumer/reference inventory. Neither
+`originals` nor `replacedPages` is a deletion allowlist: an unselected page or
+another retained manifest can still reference the same pack. Retire an old pack
+only after all its consumers have moved to verified replacements. Preserve the
+canonical source objects and rollback references until that proof is complete.
