@@ -1460,10 +1460,7 @@ describe("MCP transport handling", () => {
     assert.equal(body.error.code, -32700);
   });
 
-  test("a malformed Content-Length does not bypass the size guard", async () => {
-    // Number("not-a-real-length") is NaN, so the fast-path pre-check in
-    // readLimitedMcpBody can't reject this early; enforcement has to come
-    // from the reader loop's own running byte count instead.
+  test("a malformed Content-Length is rejected before the oversized body is read", async () => {
     const request = new Request(MCP_URL, {
       method: "POST",
       headers: {
@@ -1477,9 +1474,11 @@ describe("MCP transport handling", () => {
       {} as unknown as Env,
       makeDeps(),
     );
-    assert.equal(response.status, 413);
+    assert.equal(response.status, 400);
+    assert.equal(request.bodyUsed, false);
     const body = (await response.json()) as Row;
     assert.equal(body.error.code, -32600);
+    assert.equal(body.error.message, "Invalid Content-Length header.");
   });
 
   test("an oversized body is aborted mid-stream, never buffered to completion (regression: a missing/lying Content-Length must not force the whole body into memory first)", async () => {

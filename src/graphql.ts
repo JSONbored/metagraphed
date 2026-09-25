@@ -9788,8 +9788,7 @@ const graphqlHeaders = (extra = {}) => ({
 async function readLimitedJson(request: Request) {
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
-    const length = Number(declaredLength);
-    if (!Number.isFinite(length) || length < 0) {
+    if (!/^\d+$/.test(declaredLength)) {
       return {
         error: graphqlError(
           "Invalid Content-Length header.",
@@ -9798,7 +9797,7 @@ async function readLimitedJson(request: Request) {
         ),
       };
     }
-    if (length > GRAPHQL_MAX_BODY_BYTES) {
+    if (Number(declaredLength) > GRAPHQL_MAX_BODY_BYTES) {
       return {
         error: graphqlError(
           "GraphQL request body is too large.",
