@@ -50,6 +50,7 @@ export function historyAssetsFixture(
   const root: {
     version: 1;
     partitionCount?: 16;
+    prefixes?: string[];
     shards: Record<string, { sha256: string; bytes: number }>;
   } = { version: 1, shards: {} };
   const publish = () => {

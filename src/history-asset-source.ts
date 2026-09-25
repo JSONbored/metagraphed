@@ -139,8 +139,13 @@ export function historyAssetSource(
       }
       return root;
     });
-    const root = await releasePromise,
-      identity = await sha256(new TextEncoder().encode(key)),
+    const root = await releasePromise;
+    if (
+      root.prefixes &&
+      !root.prefixes.some((prefix) => key.startsWith(prefix))
+    )
+      return undefined;
+    const identity = await sha256(new TextEncoder().encode(key)),
       prefix = identity.slice(0, 2),
       reference = root.shards[prefix];
     if (!reference) return undefined;

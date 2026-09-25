@@ -40,6 +40,67 @@ const partitioned = () => {
 };
 
 describe("immutable history asset ranges", () => {
+  it("reads exact ranges when any declared generation prefix matches", async () => {
+    const f = partitioned(),
+      prefix = key.slice(0, key.indexOf("directory/"));
+    f.root.prefixes = [prefix.replace("mainnet", "testnet"), prefix];
+    f.publish();
+    const source = historyAssetSource(f.env, f.r2);
+    expect(new Uint8Array(await source.read(key, etag, 2, 3))).toEqual(
+      new Uint8Array([3, 4, 5]),
+    );
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    expect(f.r2.read).not.toHaveBeenCalled();
+  });
+  it("skips metadata shards and payloads outside a release's generation scope", async () => {
+    const f = partitioned();
+    f.root.prefixes = [key.slice(0, key.indexOf("directory/"))];
+    // Even a referenced shard is irrelevant outside the declared scope.
+    const ref = Object.values(f.root.shards)[0];
+    for (let i = 0; i < 256; i++)
+      f.root.shards[i.toString(16).padStart(2, "0")] = ref;
+    for (const ref of Object.values(f.root.shards)) f.files.delete(ref.sha256);
+    f.publishRoot(f.root);
+    const source = historyAssetSource(f.env, f.r2);
+    for (const other of [
+      key.replace("mainnet", "testnet"),
+      key.replace("a".repeat(64), "c".repeat(64)),
+    ]) {
+      expect(new Uint8Array(await source.read(other, etag, 2, 3))).toEqual(
+        new Uint8Array([99]),
+      );
+      expect(f.r2.read).toHaveBeenLastCalledWith(other, etag, 2, 3);
+    }
+    expect(f.fetch).toHaveBeenCalledTimes(1);
+    expect(
+      Object.values(f.bindings).every((b) => b.fetch.mock.calls.length === 0),
+    ).toBe(true);
+  });
+  it.each(
+    [
+      [],
+      ["metagraph/"],
+      [key],
+      [key.slice(0, key.indexOf("directory/") - 1)],
+      [
+        key
+          .slice(0, key.indexOf("directory/"))
+          .replace("extrinsics", "account_events"),
+      ],
+      Array(65).fill(key.slice(0, key.indexOf("directory/"))),
+    ].map((prefixes) => ({ prefixes })),
+  )(
+    "rejects malformed generation scopes before fallback: $prefixes",
+    async ({ prefixes }) => {
+      const f = setup();
+      f.publishRoot({ ...f.root, prefixes });
+      await expect(
+        historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+      ).rejects.toThrow();
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+      expect(f.r2.read).not.toHaveBeenCalled();
+    },
+  );
   it("routes small payload chunks by digest while metadata stays in the root store", async () => {
     const f = partitioned(),
       source = historyAssetSource(f.env, f.r2);

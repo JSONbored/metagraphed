@@ -162,6 +162,13 @@ original object and cannot exceed 4 MiB each. The schemas are defined in
 conditional identity and complete byte-for-byte reconstruction before signing
 off on that mapping; a successful upload alone is insufficient.
 
+A release may also declare `prefixes`: one to 64 exact extrinsic generation
+paths ending in `/feeds/v1/`. Once the root is verified, requests outside those
+generations use the existing reader without hashing the key or fetching a
+metadata shard. This avoids archive-catalog lookups for newer history. Publishers
+must include every mapped object's generation in this scope. Releases without
+`prefixes` retain their original lookup behavior.
+
 The reader verifies release, shard and payload hashes, exact sizes, original
 ETags and requested ranges. It cancels oversized bodies while streaming. A
 separate operation budget counts actual asset transfers, including chunk
