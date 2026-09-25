@@ -35,6 +35,11 @@ const OptionsSchema = z.strictObject({
   maxRequests: z.int().positive().max(16384).default(4096),
   maxNodes: z.int().positive().max(16384).default(8192),
   maxPages: z.int().positive().max(8192).default(4096),
+  maxPackBytes: z
+    .int()
+    .min(MiB)
+    .max(16 * MiB)
+    .default(16 * MiB),
 });
 type Tree = { node: HistoryFeedNode; children?: Tree[]; changed: boolean };
 type Leaf = Extract<HistoryFeedNode, { height: 0 }>;
@@ -133,7 +138,7 @@ export async function compactHistoryFeed<
     kind: "packs" | "nodes",
     raw: Uint8Array,
   ): Promise<HistoryObject> {
-    if (raw.length > (kind === "packs" ? 16 * MiB : 128 * 1024))
+    if (raw.length > (kind === "packs" ? config.maxPackBytes : 128 * 1024))
       throw new Error(
         `${codec.name} compaction output object exceeds size bound`,
       );
@@ -320,7 +325,7 @@ export async function compactHistoryFeed<
     }
     const page = pages.get(tree)!;
     const node = tree.node as Leaf;
-    if (packBytes + page.raw.length > 16 * MiB) await flush();
+    if (packBytes + page.raw.length > config.maxPackBytes) await flush();
     const replacement: Leaf = {
       ...node,
       offset: packBytes,
