@@ -44,7 +44,8 @@ export const HistoryAccountFeedSchema = z.strictObject({
   rows: count,
   entries: count,
   state: z.literal("complete"),
-  encoding: z.literal("jsonl-gzip-v1"),
+  // v2 may reuse immutable v1 pages beside MGA2 columnar pages.
+  encoding: z.enum(["jsonl-gzip-v1", "account-mixed-gzip-v2"]),
   plan: HistoryObjectSchema,
   selection,
   root: HistoryFeedNodeSchema.nullable(),

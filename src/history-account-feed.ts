@@ -1,3 +1,4 @@
+import { decodeAccountPage } from "./history-account-page.ts";
 import {
   checkFeedNode,
   feedInverse as inverse,
@@ -154,6 +155,7 @@ export async function* iterateAccountFeed(
     key,
     decode,
     readPage,
+    feed.encoding === "account-mixed-gzip-v2" ? decodeAccountPage : undefined,
   )) {
     const { row } = entry;
     if (
