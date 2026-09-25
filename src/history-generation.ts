@@ -17,6 +17,7 @@ import {
 import {
   boundedParquetBuffer,
   readIndexedParquet,
+  validateParquetPageIndex,
   type ParquetRangeSource,
   type ParquetReadBudget,
 } from "./indexed-parquet.ts";
@@ -303,33 +304,57 @@ async function readFileRanges(
     next += part.rows;
   }
   if (next !== file.rows) throw new Error("History parts are incomplete");
-  const indexes = new Map<
-    string,
-    ReturnType<typeof ParquetPageIndexSchema.parse>
-  >();
-  const rows: Record<string, unknown>[] = [];
-  for (const range of ranges)
-    for (const part of file.parts) {
-      const start = Math.max(range.start, part.rowStart),
-        end = Math.min(range.end, part.rowStart + part.rows);
-      if (start >= end) continue;
-      let index = indexes.get(part.key);
-      if (!index) {
-        index = ParquetPageIndexSchema.parse(
-          await readJson(source, part.index, budget, 8 * 1024 * 1024),
-        );
-        if (
-          index.key !== part.key ||
-          index.etag !== part.etag ||
-          index.bytes !== part.bytes ||
-          index.rows !== part.rows ||
-          index.groups.some((group) => group.rows > 512)
+  const rows: Record<string, unknown>[][] = ranges.map(() => []);
+  for (const part of file.parts) {
+    const selections = ranges
+      .map((range, ordinal) => ({
+        start: Math.max(range.start, part.rowStart) - part.rowStart,
+        end: Math.min(range.end, part.rowStart + part.rows) - part.rowStart,
+        ordinal,
+      }))
+      .filter(({ start, end }) => start < end)
+      .sort((a, b) => a.start - b.start);
+    if (!selections.length) continue;
+    const index = ParquetPageIndexSchema.parse(
+      await readJson(source, part.index, budget, 8 * 1024 * 1024),
+    );
+    if (
+      index.key !== part.key ||
+      index.etag !== part.etag ||
+      index.bytes !== part.bytes ||
+      index.rows !== part.rows ||
+      index.groups.some((group) => group.rows > 512)
+    )
+      throw new Error("History page index does not identify its bounded part");
+    validateParquetPageIndex(index);
+
+    // Sparse runs in the same single-page group already read/decode the same
+    // columns. Share that work, then discard gap rows and restore run order.
+    // Keep multi-page pruning and streaming projection memory bounds intact.
+    const batches: {
+      start: number;
+      end: number;
+      selections: typeof selections;
+    }[] = [];
+    let group = 0,
+      groupEnd = index.groups[0].rows;
+    for (const selection of selections) {
+      const previous = batches.at(-1);
+      if (previous)
+        while (groupEnd < previous.end) groupEnd += index.groups[++group].rows;
+      if (
+        !projection &&
+        previous &&
+        selection.start < groupEnd &&
+        Object.values(index.groups[group].columns).every(
+          (pages) => pages.length === 1,
         )
-          throw new Error(
-            "History page index does not identify its bounded part",
-          );
-        indexes.set(part.key, index);
-      }
+      ) {
+        previous.end = Math.max(previous.end, selection.end);
+        previous.selections.push(selection);
+      } else batches.push({ ...selection, selections: [selection] });
+    }
+    for (const { start, end, selections } of batches) {
       // A streaming projection releases each bounded part before reading the
       // next. Keep the operation's cumulative I/O quota, but bound decoded
       // memory per live batch instead of treating released rows as resident.
@@ -341,8 +366,8 @@ async function readFileRanges(
         batch = await readIndexedParquet(
           source,
           index,
-          start - part.rowStart,
-          end - part.rowStart,
+          start,
+          end,
           projection?.columns ?? Object.keys(index.groups[0].columns),
           partBudget,
         );
@@ -350,10 +375,16 @@ async function readFileRanges(
         budget.bytes = partBudget.bytes;
         budget.requests = partBudget.requests;
       }
-      if (projection) projection.consume(batch, start, file.sourceIdentity);
-      else rows.push(...batch);
+      if (projection)
+        projection.consume(batch, start + part.rowStart, file.sourceIdentity);
+      else
+        for (const selection of selections)
+          rows[selection.ordinal].push(
+            ...batch.slice(selection.start - start, selection.end - start),
+          );
     }
-  return rows;
+  }
+  return rows.flat();
 }
 
 /** Block indexes retain all captures; route-specific logical deduplication
