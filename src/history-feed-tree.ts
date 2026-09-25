@@ -107,6 +107,9 @@ export async function* iteratePackedFeed<T extends FeedRow>(
   readPage?: (
     node: Extract<HistoryFeedNode, { height: 0 }>,
   ) => Promise<ArrayBuffer>,
+  decodePage?: (
+    raw: Uint8Array,
+  ) => { token: string; values: unknown }[] | undefined,
 ): AsyncGenerator<{ token: string; row: T }> {
   const after = selector.cursor ? feedOrder(...selector.cursor) : null;
   const cursorLower =
@@ -165,15 +168,24 @@ export async function* iteratePackedFeed<T extends FeedRow>(
     const raw = readPage
       ? await readPage(node)
       : await file.slice(node.offset, node.offset + node.length);
-    const decoded = text.decode(await inflate(raw, node.decodedBytes, budget));
-    if (!decoded.endsWith("\n"))
-      throw new Error("Truncated history feed record");
-    const lines = decoded.slice(0, -1).split("\n");
-    const entries = lines.map((line) => {
-      const token = line.slice(0, 166);
-      if (!/^[0-9a-f]{166}$/.test(token) || line[166] !== "\t")
-        throw new Error("Invalid history feed record token");
-      const values: unknown = JSON.parse(line.slice(167));
+    const inflated = await inflate(raw, node.decodedBytes, budget);
+    let records = decodePage?.(inflated);
+    if (!records) {
+      const decoded = text.decode(inflated);
+      if (!decoded.endsWith("\n"))
+        throw new Error("Truncated history feed record");
+      records = decoded
+        .slice(0, -1)
+        .split("\n")
+        .map((line) => {
+          const token = line.slice(0, 166);
+          if (!/^[0-9a-f]{166}$/.test(token) || line[166] !== "\t")
+            throw new Error("Invalid history feed record token");
+          const values: unknown = JSON.parse(line.slice(167));
+          return { token, values };
+        });
+    }
+    const entries = records.map(({ token, values }) => {
       const row = decode(values, token);
       return { token, row };
     });
