@@ -4631,6 +4631,7 @@ async function proxyToDataApi(
     notBoundMessage,
     unreadableMessage,
     method = "POST",
+    preserveResponse = false,
   }: {
     code: string;
     notBoundMessage: string;
@@ -4640,6 +4641,9 @@ async function proxyToDataApi(
      * is still a single-method route -- the gate stays "exactly one", not "any
      * method", so a POST to a read route is still a clean 405. */
     method?: "GET" | "POST";
+    /** The authenticated exporter serves JSON metadata and binary ranges.
+     * Preserve its stream, original identity headers and no-store policy. */
+    preserveResponse?: boolean;
   },
 ) {
   if (request.method !== method) {
@@ -4659,6 +4663,7 @@ async function proxyToDataApi(
     return errorResponse(code, notBoundMessage, 503);
   }
   const upstream = fetched.upstream;
+  if (preserveResponse) return upstream;
   let body;
   try {
     body = await upstream.json();
@@ -5987,6 +5992,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       notBoundMessage: "The state export tier is not bound.",
       unreadableMessage:
         "The state export tier returned an unreadable response.",
+      preserveResponse: true,
     });
   }
   // The poller's own tick outcomes (#9599) -- the diagnostic channel, not a
