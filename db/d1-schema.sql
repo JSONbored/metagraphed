@@ -230,6 +230,8 @@ CREATE INDEX subnet_ownership_history_netuid_captured_at_idx ON subnet_ownership
 
 CREATE UNIQUE INDEX subnet_ownership_history_netuid_owner_idx ON subnet_ownership_history (netuid, owner_hotkey, owner_coldkey);
 
+CREATE INDEX sync_dead_letters_received_idx ON sync_dead_letters(received_at);
+
 CREATE TABLE _audit_neuron_docs_20260922(netuid INTEGER PRIMARY KEY NOT NULL,payload BLOB NOT NULL,stamp INTEGER NOT NULL);
 
 CREATE TABLE _audit_neuron_members_20260922(netuid INTEGER NOT NULL,uid INTEGER NOT NULL,hotkey TEXT NOT NULL,coldkey TEXT,PRIMARY KEY(netuid,uid)) WITHOUT ROWID;
@@ -1141,6 +1143,14 @@ CREATE TABLE surfaces(
  updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec')*1000 AS INTEGER)),
  PRIMARY KEY (id),
  UNIQUE (subnet_netuid, kind, url)
+) WITHOUT ROWID;
+
+CREATE TABLE sync_dead_letters (
+  message_id TEXT PRIMARY KEY NOT NULL CHECK (length(message_id) BETWEEN 1 AND 256),
+  body_sha256 TEXT NOT NULL CHECK (length(body_sha256) = 64),
+  encoding TEXT NOT NULL CHECK (encoding IN ('json', 'base64')),
+  payload TEXT NOT NULL CHECK (length(CAST(payload AS BLOB)) <= 174764),
+  received_at INTEGER NOT NULL
 ) WITHOUT ROWID;
 
 CREATE TABLE tao_usd_index(

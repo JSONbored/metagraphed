@@ -6,7 +6,8 @@
 // them apart is the only thing standing between "record the loss" and "attempt
 // the failing write a sixth time".
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, describe, test } from "vitest";
+import { syncDeadLetterDb } from "./helpers/sync-dead-letter-db.ts";
 import {
   DEAD_LETTER_LANES,
   DEAD_LETTER_MAX_NAMED_SUBJECTS,
@@ -15,9 +16,25 @@ import {
   summarizeDeadLetterBatch,
 } from "../src/dead-letter.ts";
 
+const stores: ReturnType<typeof syncDeadLetterDb>[] = [];
+function quarantine() {
+  const f = syncDeadLetterDb();
+  stores.push(f);
+  return f.db;
+}
+afterEach(() => {
+  for (const f of stores.splice(0)) f.sql.close();
+});
+let nextMessageId = 0;
+
 function message(body: unknown) {
   const calls: string[] = [];
-  return { body, calls, ack: () => calls.push("ack") };
+  return {
+    id: String(++nextMessageId),
+    body,
+    calls,
+    ack: () => calls.push("ack"),
+  };
 }
 
 /** A LaneHealthDb that records what was bound, so the verdict is inspectable.
@@ -131,6 +148,7 @@ describe("handleDeadLetterBatch", () => {
       batch("sync-batches-dlq", [a, b]),
       store,
       1_780_000_000_000,
+      quarantine(),
     );
 
     assert.deepEqual(a.calls, ["ack"]);
@@ -153,16 +171,20 @@ describe("handleDeadLetterBatch", () => {
     assert.equal(checkedAt, 1_780_000_000_000);
   });
 
-  test("acks even when the record cannot be written", async () => {
-    // The message is already lost. Refusing to ack would cycle it through this
-    // handler's own budget and change nothing -- reporting must never be able
-    // to make the loss worse.
+  test("preserves sync payloads even when the alarm record cannot be written", async () => {
+    // Alarm storage and payload preservation are separate. A failed alarm
+    // write does not prevent acknowledgment of a durably preserved payload.
     const m = message({ lane: "account-balances", rows: [] });
-    await handleDeadLetterBatch(batch("sync-batches-dlq", [m]), {
-      prepare() {
-        throw new Error("D1 DB is overloaded");
-      },
-    } as never);
+    await handleDeadLetterBatch(
+      batch("sync-batches-dlq", [m]),
+      {
+        prepare() {
+          throw new Error("D1 DB is overloaded");
+        },
+      } as never,
+      1,
+      quarantine(),
+    );
     assert.deepEqual(m.calls, ["ack"]);
   });
 
