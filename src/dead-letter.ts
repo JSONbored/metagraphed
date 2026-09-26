@@ -1,33 +1,12 @@
-// The dead-letter queues, finally read (metagraphed-infra#354/#363).
-//
-// Both queues declared a `dead_letter_queue` and nothing consumed either one.
-// A message that exhausts its retries lands there, sits for the queue's
-// retention, and disappears — so the one class of failure the migration to
-// queues was supposed to make VISIBLE was the one class nothing could see.
-// #363 put it plainly: a dead-letter nobody looks at is a second log.
-//
-// WHAT A READER CAN AND CANNOT DO HERE. It cannot fix anything. A message
-// reaches a DLQ having already failed its full budget — five attempts for
-// `sync-batches`, eight for `webhook-deliveries` — so re-attempting it here
-// would be a ninth attempt wearing a different hat. What it CAN do is turn a
-// silent loss into a durable, alarmed record, which is the same trade
-// src/lane-health.ts makes and for the same reason: a notification answers
-// "was anyone paged", a row answers "was anything lost overnight".
-//
-// IT DOES NOT RECOVER, AND THE ALARM SHOULD NOT EITHER. Every other lane in
-// `lane_health` goes stale and then goes `ok` again when its producer catches
-// up, and src/lane-alarm.ts closes the issue on that recovery. A dead letter
-// has no equivalent: the message is gone, and nothing later un-loses it. So
-// this writes `stale` and never writes `ok`, an alarm opens after the usual
-// one-hour floor, and it closes when a HUMAN has dealt with it. An alarm that
-// cleared itself here would be asserting a recovery that cannot happen.
-//
-// The lane does age out on its own: lane-alarm stops re-raising a lane whose
-// newest verdict is older than seven days, treating it as residue rather than
-// an outage. So a one-off dead letter produces one issue, not a permanent one.
+// Dead letters are reported separately from successful producer deliveries.
+// Sync payloads are preserved in D1 before acknowledgment so operators can
+// recover them after repairing the original write failure (#12270). Other
+// queue families keep their existing acknowledgment policy. No dead letter is
+// automatically replayed into its failed business operation.
 
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { ProbeJobTypeSchema } from "../schemas-src/probe-jobs.ts";
+import { preserveSyncDeadLetter } from "./sync-dead-letter-store.ts";
 
 /** The two dead-letter queues, and the lane each reports under.
  *
@@ -208,43 +187,41 @@ export function summarizeDeadLetterBatch(
 }
 
 /**
- * Ack a dead-letter batch and leave a record somebody will be shown.
- *
- * ACKS UNCONDITIONALLY, including when the record cannot be written. The
- * message is already lost; refusing to ack would only cycle it through this
- * handler's own retry budget and then through a second-order dead-letter that
- * does not exist. Reporting must never be able to make the loss worse.
+ * Preserve sync payloads before acknowledgment; never retry their business write.
+ * Other queue families retain their existing acknowledgment policy.
  */
 export async function handleDeadLetterBatch(
   batch: {
     readonly queue: string;
     readonly messages: readonly {
+      readonly id?: string;
       readonly body: unknown;
       ack: () => void;
     }[];
   },
   db: LaneHealthDb | undefined,
   nowMs: number = Date.now(),
+  quarantine?: Pick<D1Database, "prepare">,
 ): Promise<string> {
   const detail = summarizeDeadLetterBatch(batch.queue, batch.messages);
   console.error(`dead-letter: ${detail}`);
-  for (const message of batch.messages) message.ack();
   const lane = DEAD_LETTER_LANES[batch.queue];
   if (lane && db) {
-    // NOT WRAPPED IN A CATCH, and the acks above are why it does not need one:
-    // recordLaneVerdict swallows every D1 error and returns false rather than
-    // rejecting, and the messages are already acked by the time it runs. A
-    // `.catch` here would be a branch no test can reach, which is how a file
-    // starts collecting coverage pragmas instead of reasons.
+    // Record the incident even if quarantine persistence subsequently fails.
     await recordLaneVerdict(db, {
       lane,
       verdict: "stale",
-      // Not an age: nothing here is behind, something here is gone. A number
-      // would be read as lag by every consumer of this table.
+      // This records failed delivery, not freshness. Sync payloads remain
+      // quarantined until an operator verifies recovery.
       age_ms: null,
       detail,
       checked_at: nowMs,
     });
+  }
+  for (const message of batch.messages) {
+    if (batch.queue === "sync-batches-dlq")
+      await preserveSyncDeadLetter(quarantine, message, nowMs);
+    message.ack();
   }
   return detail;
 }

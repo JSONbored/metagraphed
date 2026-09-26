@@ -1782,7 +1782,12 @@ export default {
       // The dead-letter record is a lane verdict, so it goes where the other
       // 27 do (#10158). recordLaneVerdict swallows failures, so a dead letter
       // written to a store nobody reads is a message lost twice over.
-      await handleDeadLetterBatch(batch, laneHealthStore(env));
+      await handleDeadLetterBatch(
+        batch,
+        laneHealthStore(env),
+        Date.now(),
+        env.D1_STATE,
+      );
       return;
     }
     if (batch.queue === PROBE_JOBS_QUEUE) {

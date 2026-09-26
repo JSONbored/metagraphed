@@ -642,6 +642,12 @@
     "sql": "CREATE UNIQUE INDEX subnet_ownership_history_netuid_owner_idx ON subnet_ownership_history (netuid, owner_hotkey, owner_coldkey)"
   },
   {
+    "type": "index",
+    "name": "sync_dead_letters_received_idx",
+    "tbl_name": "sync_dead_letters",
+    "sql": "CREATE INDEX sync_dead_letters_received_idx ON sync_dead_letters(received_at)"
+  },
+  {
     "type": "table",
     "name": "_audit_neuron_docs_20260922",
     "tbl_name": "_audit_neuron_docs_20260922",
@@ -1138,6 +1144,12 @@
     "name": "surfaces",
     "tbl_name": "surfaces",
     "sql": "CREATE TABLE surfaces(\n id TEXT NOT NULL,\n subnet_netuid INTEGER NOT NULL,\n provider_id TEXT,\n surface_key TEXT NOT NULL,\n kind TEXT NOT NULL,\n url TEXT NOT NULL,\n authority TEXT NOT NULL DEFAULT 'community',\n review_state TEXT NOT NULL DEFAULT 'community-submitted',\n probe_eligible INTEGER NOT NULL DEFAULT 0 CHECK(probe_eligible IN (0,1)),\n public_safe INTEGER NOT NULL DEFAULT 1 CHECK(public_safe IN (0,1)),\n overlay TEXT NOT NULL,\n source_commit TEXT NOT NULL,\n updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec')*1000 AS INTEGER)),\n PRIMARY KEY (id),\n UNIQUE (subnet_netuid, kind, url)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "sync_dead_letters",
+    "tbl_name": "sync_dead_letters",
+    "sql": "CREATE TABLE sync_dead_letters (\n  message_id TEXT PRIMARY KEY NOT NULL CHECK (length(message_id) BETWEEN 1 AND 256),\n  body_sha256 TEXT NOT NULL CHECK (length(body_sha256) = 64),\n  encoding TEXT NOT NULL CHECK (encoding IN ('json', 'base64')),\n  payload TEXT NOT NULL CHECK (length(CAST(payload AS BLOB)) <= 174764),\n  received_at INTEGER NOT NULL\n) WITHOUT ROWID"
   },
   {
     "type": "table",

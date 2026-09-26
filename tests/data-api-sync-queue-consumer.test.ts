@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 
+import { syncDeadLetterDb } from "./helpers/sync-dead-letter-db.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The store is Postgres now (#10179). The consumer reaches it through
@@ -364,20 +365,29 @@ describe("the sync queue consumer", () => {
     );
   });
 
-  test("a dead-letter batch is acked and NOT written (metagraphed-infra#363)", async () => {
-    // sync-batches-dlq is bound to this same handler, so the branch on
-    // batch.queue is the only thing standing between recording the loss and
-    // attempting -- for the sixth time -- the write that caused it. A message
-    // reaches the DLQ having already failed five times; re-running the writer
-    // here would be that same failure with a different label.
-    const m = positionMessage();
-    await worker.queue!(
-      { queue: "sync-batches-dlq", messages: [m] } as never,
-      { ...pgMockEnv() } as never,
-      { waitUntil: () => {} } as never,
-    );
-    assert.deepEqual(m.calls, ["ack"]);
-    assert.equal(rows().length, 0, "recorded, not re-written");
+  test("a dead-letter batch is preserved and acked without applying its failed write", async () => {
+    const f = syncDeadLetterDb();
+    try {
+      const m = { ...positionMessage(), id: "failed-sync" };
+      await worker.queue!(
+        { queue: "sync-batches-dlq", messages: [m] } as never,
+        { ...pgMockEnv(), D1_STATE: f.db } as never,
+        { waitUntil: () => {} } as never,
+      );
+      assert.deepEqual(m.calls, ["ack"]);
+      assert.equal(rows().length, 0);
+      assert.deepEqual(
+        JSON.parse(
+          String(
+            f.sql.prepare("SELECT payload FROM sync_dead_letters").get()!
+              .payload,
+          ),
+        ),
+        m.body,
+      );
+    } finally {
+      f.sql.close();
+    }
   });
 
   test("a live batch is still written, so the branch cannot swallow one", async () => {

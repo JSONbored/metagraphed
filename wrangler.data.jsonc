@@ -528,10 +528,8 @@
       // message back to the writer, which is a sixth attempt at the write that
       // killed it.
       //
-      // "max_retries": 0 because there is nothing to retry: the reader acks and
-      // records, and a failure to record must not put the message back. No
-      // dead_letter_queue of its own for the same reason -- a DLQ for the DLQ
-      // is a second place nobody looks.
+      // Retry only persistence to the recovery table, never the failed sync
+      // write. Ten-minute delays give D1 time to recover without a retry storm.
       {
         "queue": "sync-batches-dlq",
         // Bigger batch and a longer timeout than the live queue: this path is
@@ -539,7 +537,8 @@
         // reading them one small batch at a time is least useful.
         "max_batch_size": 100,
         "max_batch_timeout": 30,
-        "max_retries": 0,
+        "max_retries": 100,
+        "retry_delay": 600,
         "max_concurrency": 1,
       },
     ],
