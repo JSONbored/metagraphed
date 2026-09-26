@@ -14,6 +14,8 @@ export const NOMINATOR_HISTORY_MS = 30 * 24 * 60 * 60_000;
 // single day seven votes. Exclude the newest day's scans from its own baseline.
 // A pass counter can be inflated by queue replay: only exact receipt row counts
 // prove delivery. Completed-but-small scans remain visible to the width rule.
+// Window ranks express the same daily selection and continuous median on both
+// PostgreSQL and D1; DISTINCT ON and percentile_cont cannot execute on D1.
 export const NOMINATOR_POSITIONS_COVERAGE_SQL = `
 WITH recent_receipts AS (
   SELECT captured_at, coldkey, row_count
@@ -22,25 +24,36 @@ WITH recent_receipts AS (
   SELECT captured_at, COUNT(*) AS covered, SUM(row_count) AS received
   FROM recent_receipts GROUP BY captured_at
 ), latest AS (
-  SELECT GREATEST(
-    (SELECT MAX(captured_at) FROM scans),
-    (SELECT MAX(captured_at) FROM nominator_positions_passes)
-  ) AS captured_at
-), history AS (
-  SELECT DISTINCT ON (s.captured_at / 86400000)
-    s.captured_at / 86400000 AS day, s.covered
+  SELECT MAX(captured_at) AS captured_at FROM (
+    SELECT MAX(captured_at) AS captured_at FROM scans
+    UNION ALL
+    SELECT MAX(captured_at) AS captured_at FROM nominator_positions_passes
+  ) captures
+), ranked_days AS (
+  SELECT s.captured_at / 86400000 AS day, s.covered,
+    ROW_NUMBER() OVER (
+      PARTITION BY s.captured_at / 86400000 ORDER BY s.captured_at DESC
+    ) AS daily_rank
   FROM scans s
   JOIN nominator_positions_passes p USING (captured_at)
   CROSS JOIN latest l
   WHERE s.captured_at / 86400000 < l.captured_at / 86400000
     AND p.expected_rows > 0 AND p.completed_at IS NOT NULL
     AND s.received = p.expected_rows
-  ORDER BY s.captured_at / 86400000 DESC, s.captured_at DESC
+), history AS (
+  SELECT day, covered FROM ranked_days WHERE daily_rank = 1
+  ORDER BY day DESC
   LIMIT ${NOMINATOR_BASELINE_DAYS}
+), ordered_history AS (
+  SELECT covered, ROW_NUMBER() OVER (ORDER BY covered) AS ordinal,
+    COUNT(*) OVER () AS sample_size
+  FROM history
 ), baseline AS (
   SELECT COUNT(*) AS days,
-    percentile_cont(0.5) WITHIN GROUP (ORDER BY covered) AS coldkeys
-  FROM history
+    CAST(AVG(CASE WHEN ordinal IN (
+      (sample_size + 1) / 2, (sample_size + 2) / 2
+    ) THEN covered END) AS DOUBLE PRECISION) AS coldkeys
+  FROM ordered_history
 )
 SELECT l.captured_at AS latest, COALESCE(s.covered, 0) AS covered,
   (SELECT COUNT(DISTINCT coldkey) FROM recent_receipts) AS total,
