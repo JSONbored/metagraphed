@@ -232,7 +232,9 @@ export function historyAssetSource(
         key: object.key,
         etag: object.etag,
         bytes: object.bytes,
-        ...("sha256" in object ? { sha256: object.sha256 } : {}),
+        ...("sha256" in object && typeof object.sha256 === "string"
+          ? { sha256: object.sha256 }
+          : {}),
       };
     },
     async read(key, etag, offset, length) {
