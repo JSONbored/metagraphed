@@ -20,6 +20,8 @@ function fixture(): MirrorFreshnessEvidence {
   tables.surface_history = "surface_history: no rows above 10006";
   tables.subnet_ownership_history =
     "subnet_ownership_history: no rows above 129";
+  tables.subnet_hyperparams_history =
+    "subnet_hyperparams_history: no rows above 1010020630";
   tables.treasury_readings =
     "treasury_readings: unchanged (0 rows), no snapshot";
   return {
@@ -28,8 +30,8 @@ function fixture(): MirrorFreshnessEvidence {
       complete: true,
       namespace: "chain",
       checked_at: new Date(now - HOUR).toISOString(),
-      tables_expected: 8,
-      tables_reported: 8,
+      tables_expected: Object.keys(tables).length,
+      tables_reported: Object.keys(tables).length,
       tables,
       failures: {},
     },
@@ -39,9 +41,12 @@ function fixture(): MirrorFreshnessEvidence {
       "compute-declarations",
       "subnet-ownership",
       "neon:subnet-ownership",
+      "subnet-hyperparams",
+      "neon:subnet-hyperparams",
     ].map((lane) => ({ lane, verdict: "ok", checked_at: now - HOUR })),
     computeNewest: now - HOUR,
     ownershipNewest: now - HOUR,
+    hyperparamsNewest: now - HOUR,
   };
 }
 afterEach(() => {
@@ -129,6 +134,8 @@ test("source failure or silence still fails when the catalog is recent", () => {
     "compute-declarations",
     "subnet-ownership",
     "neon:subnet-ownership",
+    "subnet-hyperparams",
+    "neon:subnet-hyperparams",
   ])
     for (const change of [
       "missing",
@@ -152,7 +159,9 @@ test("source failure or silence still fails when the catalog is recent", () => {
           ? "compute_declarations"
           : source.endsWith("subnet-ownership")
             ? "subnet_ownership"
-            : "providers";
+            : source.endsWith("subnet-hyperparams")
+              ? "subnet_hyperparams_history"
+              : "providers";
       assert.equal(
         evaluateMirrorFreshness(table, true, true, evidence, now).ok,
         false,
@@ -221,6 +230,39 @@ test("unchanged ownership requires current collection, ingestion and source rows
       true,
     );
   }
+});
+
+test("unchanged hyperparameter history requires fresh source rows and a complete mirror", () => {
+  const table = "subnet_hyperparams_history";
+  for (const hyperparamsNewest of [
+    null,
+    NaN,
+    0,
+    now - 4 * HOUR - 1,
+    now + 1,
+    "recent",
+  ])
+    assert.equal(
+      evaluateMirrorFreshness(
+        table,
+        true,
+        true,
+        { ...fixture(), hyperparamsNewest },
+        now,
+      ).ok,
+      false,
+    );
+  const evidence = fixture();
+  evidence.hyperparamsNewest = now - 4 * HOUR;
+  assert.equal(
+    evaluateMirrorFreshness(table, false, true, evidence, now).ok,
+    true,
+  );
+  evidence.receipt = { ...(evidence.receipt as object), complete: false };
+  assert.equal(
+    evaluateMirrorFreshness(table, false, true, evidence, now).ok,
+    false,
+  );
 });
 
 test("an append receipt cannot excuse an old or absent catalog snapshot", () => {
@@ -294,7 +336,7 @@ function transport(evidence = fixture()) {
           ],
         });
       }
-      assert.equal(batch.length, 3);
+      assert.equal(batch.length, 4);
       assert.ok(
         batch.every((statement: { sql: string }) =>
           statement.sql.startsWith("SELECT "),
@@ -306,6 +348,7 @@ function transport(evidence = fixture()) {
           { success: true, results: evidence.lanes },
           { success: true, results: [{ newest: evidence.computeNewest }] },
           { success: true, results: [{ newest: evidence.ownershipNewest }] },
+          { success: true, results: [{ newest: evidence.hyperparamsNewest }] },
         ],
       });
     }
@@ -313,7 +356,7 @@ function transport(evidence = fixture()) {
   });
 }
 
-test("the live reader uses one bounded R2 object and a three-SELECT D1 batch", async () => {
+test("the live reader uses one bounded R2 object and a four-SELECT D1 batch", async () => {
   credentials();
   const fetcher = transport();
   assert.deepEqual(await loadMirrorFreshnessEvidence(fetcher), fixture());

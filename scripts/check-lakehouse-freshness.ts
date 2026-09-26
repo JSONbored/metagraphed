@@ -165,7 +165,8 @@ export const EXPECTED: Readonly<Record<string, FreshnessRule>> = {
   },
   subnet_hyperparams_history: {
     maxAgeMs: 2 * DAY,
-    reason: "hyperparams poller, restore pending",
+    reason:
+      "append-on-change; quiet snapshots require a complete mirror and live collection",
   },
   subnet_identity_history: {
     maxAgeMs: 2 * DAY,
