@@ -322,21 +322,24 @@ describe("the watchdog tick", () => {
     }
   });
 
-  test("a failing read is reported, not rendered as a clean series", async () => {
-    // The direction that matters: a query error must never read as "no gaps".
-    pg.control.failNext = new Error("connection reset");
-    const result = (await runDailySeriesCoverageWatchdog(pgMockEnv(), {
-      now: () => 1000,
-      recordException: (async () => true) as never,
-    })) as { ok: boolean; reason?: string };
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, "query_failed");
-    assert.equal(recordedVerdict().verdict, "stale");
-    assert.match(
-      String(recordedVerdict().detail),
-      /query failed: connection reset/,
-    );
-  });
+  test.each([new Error("connection reset"), "connection reset"])(
+    "a failing read records a durable stale verdict (%s)",
+    async (failure) => {
+      // The direction that matters: a query error must never read as "no gaps".
+      pg.control.failNext = failure as Error;
+      const result = (await runDailySeriesCoverageWatchdog(pgMockEnv(), {
+        now: () => 1000,
+        recordException: (async () => true) as never,
+      })) as { ok: boolean; reason?: string };
+      assert.equal(result.ok, false);
+      assert.equal(result.reason, "query_failed");
+      assert.equal(recordedVerdict().verdict, "stale");
+      assert.match(
+        String(recordedVerdict().detail),
+        /query failed: connection reset/,
+      );
+    },
+  );
 
   test("declines rather than reporting a clean series with no store", async () => {
     const result = (await runDailySeriesCoverageWatchdog({}, {})) as {
