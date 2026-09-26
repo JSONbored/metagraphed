@@ -1,5 +1,10 @@
-// Large decoded calls exceed D1's row limit. Keep their exact UTF-8 bytes in
-// immutable, compressed R2 objects; only the opaque reference lives in D1.
+// Large decoded calls retain exact logical bytes in compressed inline values
+// or immutable D1 chunks. R2 references remain readable during retirement.
+import {
+  NATIVE_PAYLOAD_PREFIX,
+  readNativePayload,
+  writeNativePayload,
+} from "./chain-detail-native-payloads.ts";
 const PREFIX = "\0metagraphed:r2:";
 const INLINE_BYTES = 128 * 1024;
 const MAX_VALUE_BYTES = 16 * 1024 * 1024;
@@ -23,20 +28,20 @@ function objectKey(hash: string, compressed: boolean): string {
   return `metagraph/d1-chain-payloads/v1/${hash}.json${compressed ? ".gz" : ""}`;
 }
 
-/** Write objects before the D1 transaction. A failed transaction may leave an
- * unreferenced immutable object, but can never publish a dangling reference. */
+/** Prepare exact payloads before committing their chain-detail references. */
 export async function storeChainDetailPayloads(
   env: unknown,
   rows: Row[],
 ): Promise<Row[]> {
   const output: Row[] = [];
+  const prepared = new Map<string, string>();
   let total = 0;
   for (const row of rows) {
     const next = { ...row };
     for (const field of FIELDS) {
       const value = row[field];
       if (typeof value !== "string") continue;
-      if (value.startsWith(PREFIX))
+      if (value.startsWith(PREFIX) || value.startsWith(NATIVE_PAYLOAD_PREFIX))
         throw new Error("Reserved chain detail payload reference");
       const raw = new TextEncoder().encode(value);
       total += raw.byteLength;
@@ -44,6 +49,11 @@ export async function storeChainDetailPayloads(
         throw new RangeError("Chain detail payload exceeds byte budget");
       if (raw.byteLength <= INLINE_BYTES) continue;
       const hash = await digest(raw);
+      const prior = prepared.get(hash);
+      if (prior !== undefined) {
+        next[field] = prior;
+        continue;
+      }
       const zipped = new Uint8Array(
         await new Response(
           new Blob([raw]).stream().pipeThrough(new CompressionStream("gzip")),
@@ -51,28 +61,14 @@ export async function storeChainDetailPayloads(
       );
       const compressed = zipped.byteLength < raw.byteLength;
       const bytes = compressed ? zipped : raw;
-      const archive = bucket(env);
-      const key = objectKey(hash, compressed);
-      // Captures and retries often repeat the same large call. Reuse an
-      // immutable object before sending its body again; the conditional put
-      // still handles a competing writer between this head and the upload.
-      let object = await archive.head(key);
-      if (!object) {
-        object = await archive.put(key, bytes, {
-          onlyIf: { etagDoesNotMatch: "*" },
-          customMetadata: { sha256: hash, rawBytes: String(raw.byteLength) },
-          httpMetadata: { contentType: "application/octet-stream" },
-        });
-        if (!object) object = await archive.head(key);
-      }
-      if (
-        !object ||
-        object.size !== bytes.byteLength ||
-        object.customMetadata?.sha256 !== hash
-      )
-        throw new Error("Chain detail payload object conflict");
-      next[field] =
-        `${PREFIX}v2:${hash}:${raw.byteLength}:${bytes.byteLength}:${compressed ? "gzip" : "raw"}`;
+      next[field] = await writeNativePayload(
+        env,
+        hash,
+        raw.byteLength,
+        bytes,
+        compressed ? "gzip" : "raw",
+      );
+      prepared.set(hash, next[field] as string);
     }
     output.push(next);
   }
@@ -92,16 +88,32 @@ export async function restoreChainDetailPayloads(
     const next = { ...row };
     for (const field of FIELDS) {
       const reference = row[field];
-      if (typeof reference !== "string" || !reference.startsWith(PREFIX))
+      if (
+        typeof reference !== "string" ||
+        (!reference.startsWith(PREFIX) &&
+          !reference.startsWith(NATIVE_PAYLOAD_PREFIX))
+      )
         continue;
+      const native = reference.startsWith(NATIVE_PAYLOAD_PREFIX);
+      const nativeMatch = native
+        ? /^([a-f0-9]{64}):([1-9][0-9]*):([1-9][0-9]*):(gzip|raw):(d1|inline:[A-Za-z0-9+/]*={0,2})$/.exec(
+            reference.slice(NATIVE_PAYLOAD_PREFIX.length),
+          )
+        : null;
       const match =
         /^(?:v1:([a-f0-9]{64}):([1-9][0-9]*)|v2:([a-f0-9]{64}):([1-9][0-9]*):([1-9][0-9]*):(gzip|raw))$/.exec(
           reference.slice(PREFIX.length),
         );
-      if (!match) throw new Error("Invalid chain detail payload reference");
-      const hash = match[1] ?? match[3];
-      const rawBytes = Number(match[2] ?? match[4]);
-      const storedBytes = Number(match[5] ?? match[2]);
+      if (native ? !nativeMatch : !match)
+        throw new Error("Invalid chain detail payload reference");
+      const hash = native ? nativeMatch![1] : (match![1] ?? match![3]);
+      const rawBytes = Number(
+        native ? nativeMatch![2] : (match![2] ?? match![4]),
+      );
+      const storedBytes = Number(
+        native ? nativeMatch![3] : (match![5] ?? match![2]),
+      );
+      const compressed = (native ? nativeMatch![4] : match![6]) === "gzip";
       total += rawBytes;
       if (
         !Number.isSafeInteger(rawBytes) ||
@@ -113,15 +125,24 @@ export async function restoreChainDetailPayloads(
         throw new RangeError("Chain detail payload exceeds byte budget");
       let value = cache.get(reference);
       if (value === undefined) {
-        const object = await bucket(env).get(
-          objectKey(hash, match[6] === "gzip"),
-        );
-        if (!object || object.size !== storedBytes)
-          throw new Error("Missing or truncated chain detail payload");
-        const stream =
-          match[6] === "gzip"
-            ? object.body.pipeThrough(new DecompressionStream("gzip"))
-            : object.body;
+        let body: ReadableStream<Uint8Array>;
+        if (native) {
+          const bytes = await readNativePayload(
+            env,
+            hash,
+            storedBytes,
+            nativeMatch![5],
+          );
+          body = new Blob([bytes]).stream();
+        } else {
+          const object = await bucket(env).get(objectKey(hash, compressed));
+          if (!object || object.size !== storedBytes)
+            throw new Error("Missing or truncated chain detail payload");
+          body = object.body;
+        }
+        const stream = compressed
+          ? body.pipeThrough(new DecompressionStream("gzip"))
+          : body;
         const reader = stream.getReader();
         const bytes = new Uint8Array(rawBytes);
         let offset = 0;
