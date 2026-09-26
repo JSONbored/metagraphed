@@ -117,6 +117,36 @@ describe("one-read immutable history transfer", () => {
     expect(io.upload).toHaveBeenCalledTimes(40);
   });
 
+  it("bounds upload concurrency and waits for active lanes when one fails", async () => {
+    const raw = new Uint8Array(128 * 1024 * 40);
+    for (let i = 0; i < 40; i++)
+      raw.fill(i, i * 128 * 1024, (i + 1) * 128 * 1024);
+    const { sources, io } = setup([raw]);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    io.session = vi.fn(async () => {
+      const index = calls++;
+      if (index === 0) throw new Error("partition failed");
+      await gate;
+      return { jwt: "complete", buckets: [] };
+    });
+    let settled = false;
+    const pending = transferHistoryAssets(sources, io).finally(() => {
+      settled = true;
+    });
+    const assertion = expect(pending).rejects.toThrow("partition failed");
+    // Reading the source is asynchronous; wait for the first wave to start.
+    await vi.waitFor(() => expect(calls).toBe(4));
+    expect(settled).toBe(false);
+    release();
+    await assertion;
+    expect(calls).toBe(4);
+    expect(io.get).toHaveBeenCalledOnce();
+  });
+
   it.each([
     (s: HistoryTransferSource) => ({ ...s, bytes: 0 }),
     (s: HistoryTransferSource) => ({ ...s, bytes: 1.5 }),

@@ -115,9 +115,9 @@ export async function transferHistoryAssets(
 
   let uploadRequests = 0;
   let uploadedBytes = 0;
-  // One partition at a time bounds base64/FormData overhead independently of
-  // source size and keeps the administrative API below its concurrency limit.
-  for (const [partition, chunks] of groups) {
+  // Validate every hash before starting uploads. Four bounded lanes overlap
+  // network latency; the I/O adapter still enforces the account request rate.
+  const partitions = [...groups].map(([partition, chunks]) => {
     const byHash = new Map(
       [...chunks].map(([sha256, raw]) => [sha256.slice(0, 32), raw]),
     );
@@ -129,6 +129,13 @@ export async function transferHistoryAssets(
         { hash: sha256.slice(0, 32), size: raw.length },
       ]),
     );
+    return { partition, manifest, byHash };
+  });
+  async function uploadPartition({
+    partition,
+    manifest,
+    byHash,
+  }: (typeof partitions)[number]) {
     const session = await io.session(partition, manifest);
     if (
       typeof session.jwt !== "string" ||
@@ -168,6 +175,27 @@ export async function transferHistoryAssets(
     if (!completed)
       throw new Error("History transfer upload completion missing");
   }
+  let cursor = 0;
+  let failed = false;
+  const workers = Array.from(
+    { length: Math.min(4, partitions.length) },
+    async () => {
+      while (!failed && cursor < partitions.length) {
+        const partition = partitions[cursor++]!;
+        try {
+          await uploadPartition(partition);
+        } catch (error) {
+          failed = true;
+          throw error;
+        }
+      }
+    },
+  );
+  // A failed lane waits for already-started work before returning. Callers can
+  // then clean up the staging helper without abandoning an in-flight upload.
+  const results = await Promise.allSettled(workers);
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
   return {
     files,
     sourceBytes,
