@@ -40,6 +40,28 @@ const partitioned = () => {
 };
 
 describe("immutable history asset ranges", () => {
+  it("reuses verified catalog metadata across requests while payload reads stay bounded", async () => {
+    const packKey = key.replace(".json", ".bin"),
+      f = historyAssetsFixture([{ ...input(), key: packKey }]),
+      r2 = fallback();
+    await historyAssetSource(f.env, r2).read(packKey, etag, 0, 6);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    await historyAssetSource(f.env, r2).read(packKey, etag, 0, 6);
+    expect(f.fetch).toHaveBeenCalledTimes(6);
+    expect(r2.read).not.toHaveBeenCalled();
+  });
+
+  it("reuses relocated immutable JSON bytes across requests", async () => {
+    const nodeKey = key.replace(/\.[^.]+$/, ".json"),
+      f = historyAssetsFixture([{ ...input(), key: nodeKey }]),
+      r2 = fallback();
+    await historyAssetSource(f.env, r2).read(nodeKey, etag, 0, 6);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    await historyAssetSource(f.env, r2).read(nodeKey, etag, 0, 6);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    expect(r2.read).not.toHaveBeenCalled();
+  });
+
   it("reads a fully populated three-digit catalog within the metadata bound", async () => {
     const f = historyAssetsFixture([input()], 3),
       r2 = fallback(),
@@ -330,7 +352,7 @@ describe("immutable history asset ranges", () => {
     expect(f.fetch).toHaveBeenCalledTimes(4);
     expect(f.r2.read).not.toHaveBeenCalled();
     await historyAssetSource(f.env, f.r2).read(key, etag, 0, 1);
-    expect(f.fetch).toHaveBeenCalledTimes(7);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
   });
   it("accepts exact decimal Content-Length", async () => {
     const f = setup();
