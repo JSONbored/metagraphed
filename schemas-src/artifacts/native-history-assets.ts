@@ -39,7 +39,3 @@ export const NativeHistoryAssetShardSchema = HistoryAssetShardSchema.extend({
     }),
   ),
 });
-
-export type NativeHistoryAssetShard = z.infer<
-  typeof NativeHistoryAssetShardSchema
->;
