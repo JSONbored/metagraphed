@@ -120,7 +120,7 @@
   // secret (see UNKEY_ROOT_KEY above for the actual credential), just an
   // opaque id every src/unkey-client.ts call needs to scope its request to.
   "vars": {
-    "ACCOUNT_HISTORY_ASSET_RELEASE": "b8ad8e1285c7a7bd758be2e310d24debef24f948f372879a2027b6424545253d:401632",
+    "ACCOUNT_HISTORY_ASSET_RELEASE": "39648ba9e6cd6e5acd955bf873dd4264763496921221811d978453d1f5a75598:401638",
     "HISTORY_ASSET_RELEASE": "2f33d8c5e292dc509354231d3e5fd75ac0f50cdb0b549b98107d5c93bbda1c1f:25282",
     // Both networks passed complete native artifact and reader qualification.
     "NATIVE_PROJECTIONS": "enabled",
