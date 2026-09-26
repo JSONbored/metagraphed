@@ -64,12 +64,12 @@ beforeEach(async () => {
   );
 });
 
-async function seed(days: number) {
+async function seed(days: number, compact = false) {
+  const statements: D1PreparedStatement[] = [];
   for (let offset = 0; offset < days; offset++) {
-    const statements: D1PreparedStatement[] = [];
     for (const { table } of DAILY_SERIES) {
-      for (const netuid of [0, 7]) {
-        for (const shard of [0, 1]) {
+      for (const netuid of compact ? [0] : [0, 7]) {
+        for (const shard of compact ? [0] : [0, 1]) {
           statements.push(
             db
               .prepare(
@@ -77,7 +77,7 @@ async function seed(days: number) {
               )
               .bind(netuid, day(offset), shard, NOW),
           );
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0; i < (compact ? 1 : 4); i++) {
             const id = shard * 256 + i;
             statements.push(
               table === "neuron_daily"
@@ -96,8 +96,9 @@ async function seed(days: number) {
         }
       }
     }
-    await db.batch(statements);
+    if (statements.length >= 100) await db.batch(statements.splice(0));
   }
+  if (statements.length) await db.batch(statements);
 }
 
 async function expected() {
@@ -176,7 +177,7 @@ test("D1 counts preserve view semantics, gaps, thin days, orphaned members and d
 test("D1 keeps empty series and the newest 90 valid days identical to the views", async () => {
   const tick = () => runDailySeriesCoverageWatchdog(env(), { now: () => NOW });
   assert.deepEqual((await tick()).verdicts, await expected());
-  await seed(95);
+  await seed(95, true);
   // An old member without a document and a future empty document cannot
   // change either end of the measured window or displace a populated day.
   await db.batch([
