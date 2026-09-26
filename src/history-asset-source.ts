@@ -29,7 +29,17 @@ export function historyAssetSource(
   env: unknown,
   fallback: ParquetRangeSource,
   bindingPrefix: "HISTORY" | "ACCOUNT_HISTORY" | "NATIVE_HISTORY" = "HISTORY",
-): ParquetRangeSource {
+): ParquetRangeSource & {
+  describe?: (key: string) => Promise<
+    | {
+        key: string;
+        etag: string;
+        bytes: number;
+        sha256?: string;
+      }
+    | undefined
+  >;
+} {
   const native = bindingPrefix === "NATIVE_HISTORY";
   const objectKey = native
     ? NATIVE_HISTORY_ASSET_OBJECT_KEY
@@ -68,7 +78,12 @@ export function historyAssetSource(
   const cache = new Map<string, Uint8Array>();
   let releasePromise:
     Promise<ReturnType<typeof HistoryAssetReleaseSchema.parse>> | undefined;
-  const shards = new Map<string, Promise<HistoryAssetShard>>();
+  const shards = new Map<
+    string,
+    Promise<
+      HistoryAssetShard | ReturnType<typeof NativeHistoryAssetShardSchema.parse>
+    >
+  >();
   const metadataReaders = new Map<
     object,
     ReturnType<typeof createHistoryAssetMetadataReader>
@@ -209,6 +224,17 @@ export function historyAssetSource(
   }
 
   return {
+    async describe(key) {
+      if (!objectKey.test(key)) return undefined;
+      const object = await locate(key);
+      if (!object) return undefined;
+      return {
+        key: object.key,
+        etag: object.etag,
+        bytes: object.bytes,
+        ...("sha256" in object ? { sha256: object.sha256 } : {}),
+      };
+    },
     async read(key, etag, offset, length) {
       if (!objectKey.test(key)) return fallback.read(key, etag, offset, length);
       if (

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { timingSafeEqual } from "./webhooks.ts";
 import { D1_EXPORT_TABLES } from "./d1-export-tables.ts";
 import { D1_EXPORT_COLUMNS } from "./d1-export-columns.ts";
+import { handleNativeHistoryExport } from "./native-history-export.ts";
 import { handleRootBasketExport } from "./root-basket-export.ts";
 import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
 const scalar = z.union([z.string().max(2048), z.number().safe()]);
@@ -132,6 +133,12 @@ export async function handleD1StateExport(
     (inputBody as { kind?: unknown }).kind === "basket"
   )
     return handleRootBasketExport(inputBody, env);
+  if (
+    inputBody &&
+    typeof inputBody === "object" &&
+    (inputBody as { kind?: unknown }).kind === "native-history"
+  )
+    return handleNativeHistoryExport(inputBody, env);
   const parsed = RequestSchema.safeParse(inputBody);
   if (!parsed.success || !Object.hasOwn(D1_EXPORT_TABLES, parsed.data.table))
     return fail(400, "invalid export request");
