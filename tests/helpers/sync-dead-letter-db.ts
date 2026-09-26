@@ -17,10 +17,6 @@ export function syncDeadLetterDb() {
       return {
         bind(...values: (string | number)[]) {
           return {
-            async run() {
-              sql.prepare(text).run(...values);
-              return { success: true };
-            },
             async first() {
               return sql.prepare(text).get(...values) ?? null;
             },

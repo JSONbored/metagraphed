@@ -26,6 +26,7 @@ test("JSON and compressed transport bytes remain replayable after acknowledgment
     ["json", body],
     ["bytes", compressed],
     ["buffer", Uint8Array.from(compressed).buffer],
+    ["slice", Uint8Array.from([0, ...compressed, 0]).subarray(1, -1)],
   ] as const) {
     let acked = false;
     await handleDeadLetterBatch(
@@ -167,7 +168,7 @@ test("missing storage, identity, unserializable or oversized payloads stay unack
   );
 });
 
-test("unsuccessful writes and missing or mismatched readback cannot report persistence", async () => {
+test("missing or mismatched stored identities cannot report persistence", async () => {
   const f = fixture();
   for (const result of [null, { body_sha256: "bad", encoding: "json" }]) {
     const db = {
@@ -175,9 +176,6 @@ test("unsuccessful writes and missing or mismatched readback cannot report persi
         return {
           bind() {
             return {
-              async run() {
-                return { success: true };
-              },
               async first() {
                 return result;
               },
@@ -191,23 +189,6 @@ test("unsuccessful writes and missing or mismatched readback cannot report persi
       /readback differs/,
     );
   }
-  const failed = {
-    prepare() {
-      return {
-        bind() {
-          return {
-            async run() {
-              return { success: false };
-            },
-          };
-        },
-      };
-    },
-  } as unknown as Pick<D1Database, "prepare">;
-  await assert.rejects(
-    preserveSyncDeadLetter(failed, { id: "a", body: {} }, 1),
-    /persistence failed/,
-  );
   await preserveSyncDeadLetter(f.db, { id: "encoding", body: {} }, 1);
   f.sql.exec(
     "UPDATE sync_dead_letters SET encoding='base64' WHERE message_id='encoding'",
