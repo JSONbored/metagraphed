@@ -1,7 +1,6 @@
 import { registerModuleStateReset } from "./module-state-registry.ts";
 
 const MAX_BYTES = 4 * 1024 * 1024;
-const MAX_ENTRIES = 128;
 
 function createState() {
   return {
@@ -11,20 +10,27 @@ function createState() {
     bytes: 0,
   };
 }
-let state = createState();
+let metadataState = createState();
+let payloadState = createState();
 registerModuleStateReset("src/history-asset-metadata.ts", () => {
-  state = createState();
+  metadataState = createState();
+  payloadState = createState();
 });
 
-/** Retain only completed, verified metadata bytes. Requests never share pending
+/** Retain only completed, verified immutable bytes. Requests never share pending
  * I/O, mutable selectors or decoded objects, and each consumer owns its buffer. */
-export function createHistoryAssetMetadataReader(store: object) {
+function createReader(
+  store: object,
+  getState: () => ReturnType<typeof createState>,
+  maxEntries: number,
+  maxEntryBytes: number,
+) {
   return async (
     hash: string,
     size: number,
     readVerified: () => Promise<Uint8Array>,
   ): Promise<Uint8Array> => {
-    const active = state;
+    const active = getState();
     let owner = active.owners.get(store);
     if (owner === undefined) {
       owner = active.nextOwner++;
@@ -43,10 +49,10 @@ export function createHistoryAssetMetadataReader(store: object) {
     const bytes = (await readVerified()).slice();
     if (bytes.length !== size)
       throw new Error("Immutable history asset size conflict");
-    if (bytes.length > 512 * 1024 || active.entries.has(id)) return bytes;
+    if (bytes.length > maxEntryBytes || active.entries.has(id)) return bytes;
     for (const [oldest, value] of active.entries) {
       if (
-        active.entries.size < MAX_ENTRIES &&
+        active.entries.size < maxEntries &&
         active.bytes + bytes.length <= MAX_BYTES
       )
         break;
@@ -57,4 +63,14 @@ export function createHistoryAssetMetadataReader(store: object) {
     active.bytes += bytes.length;
     return bytes.slice();
   };
+}
+
+export function createHistoryAssetMetadataReader(store: object) {
+  return createReader(store, () => metadataState, 128, 512 * 1024);
+}
+
+/** Keep hot 128 KiB payload chunks in a separate 4 MiB budget so sequential
+ * explorer, REST and MCP requests can reuse them without evicting metadata. */
+export function createHistoryAssetPayloadReader(store: object) {
+  return createReader(store, () => payloadState, 64, 128 * 1024);
 }

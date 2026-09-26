@@ -10,7 +10,10 @@ import {
   NativeHistoryAssetShardSchema,
 } from "../schemas-src/artifacts/native-history-assets.ts";
 import type { ParquetRangeSource } from "./indexed-parquet.ts";
-import { createHistoryAssetMetadataReader } from "./history-asset-metadata.ts";
+import {
+  createHistoryAssetMetadataReader,
+  createHistoryAssetPayloadReader,
+} from "./history-asset-metadata.ts";
 
 const MAX_CACHE_BYTES = 8 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 256;
@@ -88,6 +91,10 @@ export function historyAssetSource(
     object,
     ReturnType<typeof createHistoryAssetMetadataReader>
   >();
+  const payloadReaders = new Map<
+    object,
+    ReturnType<typeof createHistoryAssetPayloadReader>
+  >();
 
   async function readAsset(
     hash: string,
@@ -95,6 +102,7 @@ export function historyAssetSource(
     payload = false,
     metadata = !payload,
     partition?: string,
+    shared = true,
   ): Promise<Uint8Array> {
     const prior = cache.get(hash);
     if (prior) {
@@ -108,14 +116,17 @@ export function historyAssetSource(
       payload && partitions
         ? partitions[parseInt(partition ?? hash[0], 16)]
         : assets!;
-    if (metadata) {
-      let read = metadataReaders.get(store);
+    if (shared) {
+      const readers = metadata ? metadataReaders : payloadReaders;
+      let read = readers.get(store);
       if (!read) {
-        read = createHistoryAssetMetadataReader(store);
-        metadataReaders.set(store, read);
+        read = metadata
+          ? createHistoryAssetMetadataReader(store)
+          : createHistoryAssetPayloadReader(store);
+        readers.set(store, read);
       }
       return read(hash, size, () =>
-        readAsset(hash, size, payload, false, partition),
+        readAsset(hash, size, payload, false, partition, false),
       );
     }
     if (++requests > maxRequests || bytes + size > maxBytes)

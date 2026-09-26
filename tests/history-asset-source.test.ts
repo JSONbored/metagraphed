@@ -40,14 +40,74 @@ const partitioned = () => {
 };
 
 describe("immutable history asset ranges", () => {
-  it("reuses verified catalog metadata across requests while payload reads stay bounded", async () => {
+  it("reuses verified metadata and payloads across requests with independently owned ranges", async () => {
     const packKey = key.replace(".json", ".bin"),
       f = historyAssetsFixture([{ ...input(), key: packKey }]),
       r2 = fallback();
-    await historyAssetSource(f.env, r2).read(packKey, etag, 0, 6);
+    const first = await historyAssetSource(f.env, r2).read(packKey, etag, 0, 6);
+    new Uint8Array(first).fill(9);
     expect(f.fetch).toHaveBeenCalledTimes(4);
-    await historyAssetSource(f.env, r2).read(packKey, etag, 0, 6);
-    expect(f.fetch).toHaveBeenCalledTimes(6);
+    const second = await historyAssetSource(f.env, r2).read(
+      packKey,
+      etag,
+      0,
+      6,
+    );
+    expect(new Uint8Array(second)).toEqual(new Uint8Array([1, 2, 3, 4, 5, 6]));
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    expect(r2.read).not.toHaveBeenCalled();
+  });
+
+  it("does not retain corrupt payloads across independent requests", async () => {
+    const packKey = key.replace(".json", ".bin"),
+      chunk = new Uint8Array([1, 2, 3]),
+      f = historyAssetsFixture([{ key: packKey, etag, chunks: [chunk] }]),
+      r2 = fallback(),
+      hash = assetHash(chunk);
+    f.override((id) =>
+      id === hash ? new Response(new Uint8Array([9, 9, 9])) : undefined,
+    );
+    await expect(
+      historyAssetSource(f.env, r2).read(packKey, etag, 0, 3),
+    ).rejects.toThrow("content identity changed");
+    f.override(undefined);
+    expect(
+      new Uint8Array(
+        await historyAssetSource(f.env, r2).read(packKey, etag, 0, 3),
+      ),
+    ).toEqual(chunk);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    await historyAssetSource(f.env, r2).read(packKey, etag, 0, 3);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    expect(r2.read).not.toHaveBeenCalled();
+  });
+
+  it("keeps large payloads out of shared retention and preserves metadata hits", async () => {
+    const packKey = key.replace(".json", ".bin"),
+      chunk = new Uint8Array(128 * 1024 + 1),
+      f = historyAssetsFixture([{ key: packKey, etag, chunks: [chunk] }]),
+      r2 = fallback();
+    await historyAssetSource(f.env, r2).read(packKey, etag, 0, 1);
+    await historyAssetSource(f.env, r2).read(packKey, etag, 0, 1);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    expect(r2.read).not.toHaveBeenCalled();
+  });
+
+  it("does not reuse payloads across different service bindings", async () => {
+    const packKey = key.replace(".json", ".bin"),
+      record = { ...input(), key: packKey },
+      first = historyAssetsFixture([record]),
+      second = historyAssetsFixture([record]),
+      r2 = fallback();
+    await historyAssetSource(first.env, r2).read(packKey, etag, 0, 6);
+    second.override((hash) =>
+      hash === assetHash(record.chunks[0])
+        ? new Response(null, { status: 404 })
+        : undefined,
+    );
+    await expect(
+      historyAssetSource(second.env, r2).read(packKey, etag, 0, 6),
+    ).rejects.toThrow("missing or changed");
     expect(r2.read).not.toHaveBeenCalled();
   });
 
