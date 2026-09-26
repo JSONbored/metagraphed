@@ -72,9 +72,9 @@ function fixture() {
   };
 }
 
-test("inline values pass unchanged; large UTF-8 payloads compress, deduplicate, and replay", async () => {
-  const f = fixture();
-  const put = vi.spyOn(f.archive, "put");
+test("inline values pass unchanged and compressed native values need no R2", async () => {
+  const f = fixture(),
+    put = vi.spyOn(f.archive, "put");
   const value = "\uFEFF" + JSON.stringify({ text: "界".repeat(60_000) });
   const rows = [
     { call_args: value, args: null },
@@ -82,13 +82,11 @@ test("inline values pass unchanged; large UTF-8 payloads compress, deduplicate, 
     { call_args: "[]", other: 3 },
   ];
   const stored = await storeChainDetailPayloads(f.env, rows);
-  assert.match(String(stored[0].call_args), /:gzip$/);
-  assert.equal(f.objects.size, 1);
-  assert.ok([...f.objects.values()][0].bytes.length < 1000);
-  assert.deepEqual(await restoreChainDetailPayloads(f.env, stored), rows);
-  assert.equal(f.reads(), 1);
-  assert.deepEqual(await storeChainDetailPayloads(f.env, rows), stored);
-  assert.equal(put.mock.calls.length, 1);
+  assert.match(String(stored[0].call_args), /:gzip:inline:/);
+  assert.equal(f.objects.size, 0);
+  assert.deepEqual(await restoreChainDetailPayloads(undefined, stored), rows);
+  assert.deepEqual(await storeChainDetailPayloads(undefined, rows), stored);
+  assert.equal(put.mock.calls.length, 0);
   assert.deepEqual(
     await restoreChainDetailPayloads(undefined, [
       { call_args: 1 },
@@ -98,76 +96,22 @@ test("inline values pass unchanged; large UTF-8 payloads compress, deduplicate, 
   );
 });
 
-test("a concurrent immutable upload is verified after a head misses", async () => {
-  const f = fixture();
-  const rows = [{ args: "race".repeat(40_000) }];
-  const stored = await storeChainDetailPayloads(f.env, rows);
-  const head = vi.spyOn(f.archive, "head").mockResolvedValueOnce(null);
-  const put = vi.spyOn(f.archive, "put");
-  assert.deepEqual(await storeChainDetailPayloads(f.env, rows), stored);
-  assert.equal(put.mock.calls.length, 1);
-  assert.equal(head.mock.calls.length, 2);
-  assert.deepEqual(await restoreChainDetailPayloads(f.env, stored), rows);
-});
-
-test("a codec with no size benefit keeps raw bytes, and legacy raw references stay readable", async () => {
-  const f = fixture();
-  const value = "a".repeat(140_000);
-  vi.stubGlobal(
-    "CompressionStream",
-    class extends TransformStream {
-      constructor() {
-        super({
-          transform(chunk, controller) {
-            controller.enqueue(chunk);
-          },
-        });
-      }
-    },
-  );
-  try {
-    const stored = await storeChainDetailPayloads(f.env, [
-      { call_args: value },
+test("legacy raw and compressed references stay readable after native writer activation", async () => {
+  const f = fixture(),
+    bytes = new TextEncoder().encode("legacy");
+  for (const options of [{ version: 1 }, {}, { gzip: true }] as const) {
+    const ref = f.seed(bytes, options);
+    assert.deepEqual(await restoreChainDetailPayloads(f.env, [{ args: ref }]), [
+      { args: "legacy" },
     ]);
-    assert.match(String(stored[0].call_args), /:raw$/);
-    assert.deepEqual(await restoreChainDetailPayloads(f.env, stored), [
-      { call_args: value },
-    ]);
-  } finally {
-    vi.unstubAllGlobals();
   }
-  const reference = f.seed(new TextEncoder().encode("legacy"), { version: 1 });
-  assert.deepEqual(
-    await restoreChainDetailPayloads(f.env, [{ args: reference }]),
-    [{ args: "legacy" }],
-  );
 });
 
-test("missing archives, reserved references, and conflicting immutable objects reject writes", async () => {
-  const value = "a".repeat(140_000);
-  await assert.rejects(
-    storeChainDetailPayloads(null, [{ args: value }]),
-    /unbound/,
-  );
+test("reserved legacy references reject new writes", async () => {
   await assert.rejects(
     storeChainDetailPayloads({}, [{ args: prefix + "v1:bad" }]),
     /Reserved/,
   );
-  for (const mode of ["missing", "size", "metadata", "digest"]) {
-    const f = fixture();
-    await storeChainDetailPayloads(f.env, [{ args: value }]);
-    const object = [...f.objects.values()][0];
-    if (mode === "missing") {
-      f.archive.put = async () => null;
-      f.archive.head = async () => null;
-    } else if (mode === "size") object.bytes = new Uint8Array(1);
-    else if (mode === "metadata") object.customMetadata = undefined;
-    else object.customMetadata!.sha256 = "wrong";
-    await assert.rejects(
-      storeChainDetailPayloads(f.env, [{ args: value }]),
-      /object conflict/,
-    );
-  }
 });
 
 test("malformed references, unsafe sizes, and byte budgets fail before unbounded reads", async () => {

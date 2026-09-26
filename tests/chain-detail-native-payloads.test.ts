@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { gzipSync } from "node:zlib";
+import { test, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import { test } from "vitest";
 import {
   NATIVE_PAYLOAD_PREFIX as prefix,
   readNativePayload,
+  writeNativePayload,
 } from "../src/chain-detail-native-payloads.ts";
 import {
-  restoreChainDetailPayloads,
   storeChainDetailPayloads,
+  restoreChainDetailPayloads,
 } from "../src/chain-detail-payloads.ts";
 
 const hash = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
@@ -33,61 +33,97 @@ function fixture() {
             async all() {
               return { results: sql.prepare(text).all(...values) };
             },
+            async run() {
+              return sql.prepare(text).run(...values);
+            },
           };
         },
       };
     },
+    async batch(statements: { run(): Promise<unknown> }[]) {
+      sql.exec("BEGIN");
+      try {
+        for (const s of statements) await s.run();
+        sql.exec("COMMIT");
+      } catch (e) {
+        sql.exec("ROLLBACK");
+        throw e;
+      }
+      return [];
+    },
   };
-  return { sql, env: { D1_STATE: db } };
-}
-function seed(sql: DatabaseSync, bytes: Uint8Array, digest: string) {
-  for (let i = 0; i * 1_490_000 < bytes.length; i++)
-    sql
-      .prepare("INSERT INTO chain_detail_payload_chunks VALUES (?, ?, ?)")
-      .run(
-        digest,
-        i,
-        Buffer.from(
-          bytes.subarray(i * 1_490_000, (i + 1) * 1_490_000),
-        ).toString("base64"),
-      );
+  return { env: { D1_STATE: db }, db, sql };
 }
 
-for (const encoding of ["gzip", "raw"] as const) {
-  test(`native ${encoding} chunks restore exact UTF-8 through the shared reader`, async () => {
-    const f = fixture();
-    try {
-      const value = "\uFEFF" + "界abc".repeat(300_000);
-      const raw = Buffer.from(value),
-        bytes = encoding === "gzip" ? gzipSync(raw) : raw;
-      const h = hash(raw);
-      seed(f.sql, bytes, h);
-      const ref = `${prefix}${h}:${raw.length}:${bytes.length}:${encoding}:d1`;
-      const rows = [{ args: ref }, { call_args: ref }];
-      assert.deepEqual(await restoreChainDetailPayloads(f.env, rows), [
-        { args: value },
-        { call_args: value },
-      ]);
-    } finally {
-      f.sql.close();
-    }
-  });
+function rawCodec() {
+  vi.stubGlobal(
+    "CompressionStream",
+    class extends TransformStream {
+      constructor() {
+        super({
+          transform(chunk, controller) {
+            controller.enqueue(chunk);
+          },
+        });
+      }
+    },
+  );
 }
 
-test("the full sixteen-megabyte payload is preserved across twelve D1 chunks", async () => {
+test("incompressible calls use bounded immutable D1 chunks and round trip exact UTF-8", async () => {
   const f = fixture();
+  rawCodec();
   try {
-    const value = "x".repeat(16 * 1024 * 1024),
-      bytes = Buffer.from(value),
-      h = hash(bytes);
-    seed(f.sql, bytes, h);
-    assert.deepEqual(
-      await restoreChainDetailPayloads(f.env, [
-        { args: `${prefix}${h}:${bytes.length}:${bytes.length}:raw:d1` },
-      ]),
-      [{ args: value }],
+    const value = "\uFEFF" + "界abc".repeat(300_000);
+    const rows = [{ args: value }, { call_args: value }];
+    const stored = await storeChainDetailPayloads(f.env, rows);
+    assert.match(String(stored[0].args), /:raw:d1$/);
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM chain_detail_payload_chunks").get()!
+        .n,
+      2,
     );
+    assert.deepEqual(await restoreChainDetailPayloads(f.env, stored), rows);
+    assert.deepEqual(await storeChainDetailPayloads(f.env, rows), stored);
+    const max = f.sql
+      .prepare("SELECT max(length(data)) n FROM chain_detail_payload_chunks")
+      .get()!.n;
+    assert.equal(max, 1986668);
   } finally {
+    vi.unstubAllGlobals();
+    f.sql.close();
+  }
+});
+
+test("gzip values too large to inline retain compressed bytes in D1", async () => {
+  const f = fixture();
+  // Distinct hashes make deterministic, poorly compressible valid text.
+  const value = Array.from({ length: 6000 }, (_, i) =>
+    hash(new TextEncoder().encode(String(i))),
+  ).join("");
+  const rows = [{ args: value }];
+  const stored = await storeChainDetailPayloads(f.env, rows);
+  assert.match(String(stored[0].args), /:gzip:d1$/);
+  assert.deepEqual(await restoreChainDetailPayloads(f.env, stored), rows);
+  f.sql.close();
+});
+
+test("maximum admitted payload spans twelve bounded chunks without an R2 binding", async () => {
+  const f = fixture();
+  rawCodec();
+  try {
+    const value = "x".repeat(16 * 1024 * 1024);
+    const stored = await storeChainDetailPayloads(f.env, [{ args: value }]);
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM chain_detail_payload_chunks").get()!
+        .n,
+      12,
+    );
+    assert.deepEqual(await restoreChainDetailPayloads(f.env, stored), [
+      { args: value },
+    ]);
+  } finally {
+    vi.unstubAllGlobals();
     f.sql.close();
   }
 });
@@ -115,6 +151,10 @@ test("native references reject malformed locations and sizes before reading", as
       /byte budget/,
     );
   await assert.rejects(readNativePayload(null, h, 1, "d1"), /unbound/);
+  await assert.rejects(
+    writeNativePayload(null, h, 140000, new Uint8Array(140000), "raw"),
+    /unbound/,
+  );
 });
 
 test("inline bytes enforce canonical base64 and declared length", async () => {
@@ -138,55 +178,79 @@ test("inline bytes enforce canonical base64 and declared length", async () => {
   );
   const raw = new Uint8Array([1, 2, 3]);
   assert.deepEqual(await readNativePayload(null, h, 3, "inline:AQID"), raw);
+  assert.equal(
+    await writeNativePayload(null, h, 3, raw, "raw"),
+    `${prefix}${h}:3:3:raw:inline:AQID`,
+  );
 });
 
-test("missing, misordered and corrupt chunks fail closed", async () => {
+test("missing, misordered, corrupt or conflicting chunks fail closed", async () => {
   const f = fixture(),
     bytes = new Uint8Array(140000),
     h = hash(bytes);
-  try {
-    await assert.rejects(
-      readNativePayload(f.env, h, bytes.length, "d1"),
-      /Missing/,
-    );
-    seed(f.sql, bytes, h);
-    f.sql.prepare("UPDATE chain_detail_payload_chunks SET part=1").run();
-    await assert.rejects(
-      readNativePayload(f.env, h, bytes.length, "d1"),
-      /ordering/,
-    );
-    f.sql
-      .prepare("UPDATE chain_detail_payload_chunks SET part=0, data='AAAA'")
-      .run();
-    await assert.rejects(
-      readNativePayload(f.env, h, bytes.length, "d1"),
-      /Truncated/,
-    );
-    f.sql
-      .prepare("UPDATE chain_detail_payload_chunks SET data=?")
-      .run(Buffer.from(new Uint8Array(140000).fill(1)).toString("base64"));
-    await assert.rejects(
-      restoreChainDetailPayloads(f.env, [
-        { args: `${prefix}${h}:140000:140000:raw:d1` },
-      ]),
-      /Corrupt/,
-    );
-  } finally {
-    f.sql.close();
-  }
-});
-
-test("inline native reads preserve BOM and replay without storage bindings", async () => {
-  const value = "\uFEFF" + "界".repeat(60000),
-    raw = Buffer.from(value),
-    bytes = gzipSync(raw);
-  const ref = `${prefix}${hash(raw)}:${raw.length}:${bytes.length}:gzip:inline:${bytes.toString("base64")}`;
-  assert.deepEqual(
-    await restoreChainDetailPayloads(null, [{ args: ref }, { call_args: ref }]),
-    [{ args: value }, { call_args: value }],
+  await assert.rejects(
+    readNativePayload(f.env, h, bytes.length, "d1"),
+    /Missing/,
+  );
+  await writeNativePayload(f.env, h, bytes.length, bytes, "raw");
+  f.sql.prepare("UPDATE chain_detail_payload_chunks SET part=1").run();
+  await assert.rejects(
+    readNativePayload(f.env, h, bytes.length, "d1"),
+    /ordering/,
+  );
+  f.sql
+    .prepare("UPDATE chain_detail_payload_chunks SET part=0, data='AAAA'")
+    .run();
+  await assert.rejects(
+    readNativePayload(f.env, h, bytes.length, "d1"),
+    /Truncated/,
+  );
+  f.sql
+    .prepare("UPDATE chain_detail_payload_chunks SET data=?")
+    .run(Buffer.from(new Uint8Array(140000).fill(1)).toString("base64"));
+  await assert.rejects(
+    writeNativePayload(f.env, h, bytes.length, bytes, "raw"),
+    /conflict/,
   );
   await assert.rejects(
-    storeChainDetailPayloads(null, [{ args: prefix + "bad" }]),
+    restoreChainDetailPayloads(f.env, [
+      { args: `${prefix}${h}:140000:140000:raw:d1` },
+    ]),
+    /Corrupt/,
+  );
+  f.sql.close();
+});
+
+test("a failed chunk transaction cannot publish a reference", async () => {
+  const f = fixture();
+  vi.spyOn(f.db, "batch").mockRejectedValueOnce(new Error("unavailable"));
+  await assert.rejects(
+    writeNativePayload(
+      f.env,
+      "a".repeat(64),
+      140000,
+      new Uint8Array(140000),
+      "raw",
+    ),
+    /unavailable/,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM chain_detail_payload_chunks").get()!
+      .n,
+    0,
+  );
+  f.sql.close();
+});
+
+test("inline native writes preserve BOM and replay without any storage binding", async () => {
+  const env = {};
+  const value = "\uFEFF" + "界".repeat(60000);
+  const rows = [{ args: value }, { call_args: value }];
+  const stored = await storeChainDetailPayloads(env, rows);
+  assert.match(String(stored[0].args), /:gzip:inline:/);
+  assert.deepEqual(await restoreChainDetailPayloads(null, stored), rows);
+  await assert.rejects(
+    storeChainDetailPayloads(env, [{ args: prefix + "bad" }]),
     /Reserved/,
   );
 });
