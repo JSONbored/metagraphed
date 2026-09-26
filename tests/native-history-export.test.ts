@@ -250,3 +250,154 @@ describe("credential-protected native history producer reads", () => {
     });
   });
 });
+
+describe("bounded native history metadata batches", () => {
+  const heads = (keys: string[]) => ({
+    kind: "native-history",
+    operation: "heads",
+    keys,
+  });
+  const keys = Array.from({ length: 10 }, (_, i) =>
+    key.replace("00000-", String(i).padStart(5, "0") + "-"),
+  );
+  const object = (key: string) => ({
+    key,
+    etag,
+    bytes: raw.length,
+    sha256: assetHash(raw),
+  });
+
+  it("returns metadata and explicit misses in request order through the authenticated proxy", async () => {
+    const f = fixture();
+    const env = {
+      DATA_API: {
+        fetch: (incoming: Request) => handleD1StateExport(incoming, f.env),
+      },
+    } as unknown as Env;
+    expect(
+      (await handleRequest(request(heads([key]), "wrong"), env, {})).status,
+    ).toBe(401);
+    expect(f.fetch).not.toHaveBeenCalled();
+    const response = await handleRequest(
+      request(heads([keys[1], key]), "existing-producer-secret"),
+      env,
+      {},
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      version: 1,
+      objects: [null, object(key)],
+    });
+    // Only the release and its one populated metadata shard are fetched.
+    expect(f.fetch).toHaveBeenCalledTimes(2);
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+    const single = await handleNativeHistoryExport(heads([key]), f.env);
+    expect(await single.json()).toEqual({ version: 1, objects: [object(key)] });
+  });
+
+  it("rejects empty, duplicate, oversized and out-of-scope batches before access", async () => {
+    const f = fixture();
+    for (const input of [
+      heads([]),
+      heads([key, key]),
+      heads(Array(65).fill(key)),
+      heads(["unrelated"]),
+      { ...heads([key]), extra: true },
+    ])
+      expect((await handleNativeHistoryExport(input, f.env)).status).toBe(400);
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
+
+  it("limits metadata concurrency to four and retains order after out-of-order completion", async () => {
+    const pending = new Map<
+      string,
+      (value: ReturnType<typeof object>) => void
+    >();
+    let active = 0,
+      maximum = 0;
+    const describe = vi.fn(
+      (key: string) =>
+        new Promise<ReturnType<typeof object>>((resolve) => {
+          active++;
+          maximum = Math.max(maximum, active);
+          pending.set(key, (value) => {
+            active--;
+            pending.delete(key);
+            resolve(value);
+          });
+        }),
+    );
+    vi.spyOn(assets, "historyAssetSource").mockReturnValue({
+      describe,
+      read: vi.fn(),
+    });
+    const response = handleNativeHistoryExport(heads(keys), {});
+    await vi.waitFor(() => expect(pending.size).toBe(4));
+    for (const index of [3, 2, 1, 0, 7, 6, 5, 4, 9, 8]) {
+      await vi.waitFor(() => expect(pending.has(keys[index])).toBe(true));
+      pending.get(keys[index])!(object(keys[index]));
+    }
+    const result = await response;
+    expect(result.status).toBe(200);
+    expect(await result.json()).toEqual({
+      version: 1,
+      objects: keys.map(object),
+    });
+    expect(maximum).toBe(4);
+    expect(active).toBe(0);
+    expect(describe).toHaveBeenCalledTimes(10);
+  });
+
+  it("stops queued requests and drains started requests before reporting a failure", async () => {
+    const pending = new Map<
+      string,
+      {
+        resolve: (value: ReturnType<typeof object>) => void;
+        reject: (error: Error) => void;
+      }
+    >();
+    const describe = vi.fn(
+      (key: string) =>
+        new Promise<ReturnType<typeof object>>((resolve, reject) =>
+          pending.set(key, { resolve, reject }),
+        ),
+    );
+    vi.spyOn(assets, "historyAssetSource").mockReturnValue({
+      describe,
+      read: vi.fn(),
+    });
+    let completed = false;
+    const response = handleNativeHistoryExport(heads(keys), {}).then(
+      (value) => {
+        completed = true;
+        return value;
+      },
+    );
+    await vi.waitFor(() => expect(pending.size).toBe(4));
+    pending.get(keys[0])!.reject(new Error("private upstream detail"));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(completed).toBe(false);
+    for (const index of [3, 1, 2])
+      pending.get(keys[index])!.resolve(object(keys[index]));
+    const result = await response;
+    expect(result.status).toBe(502);
+    expect(await result.json()).toEqual({
+      error: "native history static source is unavailable",
+    });
+    expect(result.headers.get("cache-control")).toBe("no-store");
+    expect(describe).toHaveBeenCalledTimes(4);
+  });
+
+  it("fails closed without a configured reader or a qualified checksum", async () => {
+    expect((await handleNativeHistoryExport(heads([key]), {})).status).toBe(
+      503,
+    );
+    const f = fixture(false);
+    expect((await handleNativeHistoryExport(heads([key]), f.env)).status).toBe(
+      502,
+    );
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+  });
+});
