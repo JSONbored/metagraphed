@@ -11,6 +11,13 @@ const head = z
   .strict();
 const inputSchema = z.discriminatedUnion("operation", [
   head,
+  z
+    .object({
+      kind: z.literal("native-history"),
+      operation: z.literal("heads"),
+      keys: z.array(head.shape.key).min(1).max(64),
+    })
+    .strict(),
   head.extend({
     operation: z.literal("range"),
     etag: z.string().regex(/^[a-f0-9]{32}$/),
@@ -45,6 +52,11 @@ export async function handleNativeHistoryExport(
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success)
     return fail(400, "invalid native history export request");
+  if (
+    parsed.data.operation === "heads" &&
+    new Set(parsed.data.keys).size !== parsed.data.keys.length
+  )
+    return fail(400, "duplicate native history keys");
   try {
     const source = historyAssetSource(
       env,
@@ -57,6 +69,40 @@ export async function handleNativeHistoryExport(
     );
     if (!source.describe)
       return fail(503, "native history export is not provisioned");
+    const describe = source.describe;
+    if (parsed.data.operation === "heads") {
+      const keys = parsed.data.keys;
+      type NativeObject = NonNullable<Awaited<ReturnType<typeof describe>>>;
+      const objects: (NativeObject | null)[] = new Array(keys.length);
+      let cursor = 0,
+        failed = false;
+      // One authenticated request shares release/shard metadata across its
+      // bounded batch. Stop queued reads on error and drain started work.
+      await Promise.allSettled(
+        Array.from({ length: Math.min(4, keys.length) }, async () => {
+          while (!failed && cursor < keys.length) {
+            const index = cursor++;
+            try {
+              const object = await describe(keys[index]);
+              if (object && !object.sha256)
+                throw new Error("Unqualified native checksum");
+              objects[index] = object ?? null;
+            } catch (error) {
+              failed = true;
+              throw error;
+            }
+          }
+        }),
+      );
+      if (failed)
+        return fail(502, "native history static source is unavailable");
+      return Response.json(
+        { version: 1, objects },
+        {
+          headers: { "cache-control": "no-store" },
+        },
+      );
+    }
     const object = await source.describe(parsed.data.key);
     if (!object) return fail(404, "native history object is not migrated");
     if (!object.sha256)
