@@ -16697,6 +16697,42 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     lake.restore();
   });
 
+  test("preserves account event price fields exposed by the schema", async () => {
+    const lake = lakehouse([
+      {
+        block_number: 1200,
+        event_index: 3,
+        event_kind: "StakeAdded",
+        hotkey: SS58,
+        coldkey: OTHER,
+        netuid: 7,
+        amount_tao: 1.5,
+        alpha_amount: 2.25,
+        observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
+      },
+    ]);
+    try {
+      const { status, body } = await gql(
+        `{ account_events(ss58: "${SS58}") {
+          events { price_at_tx price_basis usd_at_tx usd_basis }
+        } }`,
+        { ...LAKEHOUSE_ENV },
+      );
+      assert.equal(status, 200);
+      assert.equal(body.errors, undefined);
+      assert.deepEqual(body.data.account_events.events, [
+        {
+          price_at_tx: 0.666666667,
+          price_basis: "trade_exact",
+          usd_at_tx: null,
+          usd_basis: null,
+        },
+      ]);
+    } finally {
+      lake.restore();
+    }
+  });
+
   test("hits /api/v1/accounts/{ss58}/events and forwards every filter", async () => {
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is deleted from every wrangler config
     // and is absent from FORWARDABLE_TIER_FLAGS, so the tier this doubled
