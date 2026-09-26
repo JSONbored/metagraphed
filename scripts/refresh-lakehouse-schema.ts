@@ -5,7 +5,6 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
-type Row = Record<string, unknown>;
 
 import { CHAIN_FIREHOSE_TOPICS } from "../src/chain-firehose-topics.ts";
 import {
@@ -127,12 +126,12 @@ async function main(): Promise<void> {
     namespace: string,
     table: string,
   ): Promise<[string, string, boolean][]> {
-    const meta = lakehouseTable(metadata, namespace, table) as unknown as Row;
-    const schemas = (meta?.schemas ?? []) as Row[];
+    const meta = lakehouseTable(metadata, namespace, table);
+    const schemas = meta.schemas;
     const current =
       schemas.find((s) => s["schema-id"] === meta?.["current-schema-id"]) ??
       schemas[schemas.length - 1];
-    return ((current?.fields ?? []) as Row[]).map((f) => [
+    return (current?.fields ?? []).map((f) => [
       String(f.name),
       typeof f.type === "string" ? f.type : JSON.stringify(f.type),
       Boolean(f.required),

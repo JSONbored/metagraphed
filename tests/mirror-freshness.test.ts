@@ -253,7 +253,6 @@ function credentials() {
   );
   vi.stubEnv("CLOUDFLARE_API_TOKEN", "fixture-maintenance-reader");
   vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", undefined);
-  vi.stubEnv("R2_CATALOG_TOKEN", "fixture-catalog-reader");
   vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "");
 }
 function transport(evidence = fixture()) {
@@ -264,6 +263,37 @@ function transport(evidence = fixture()) {
     if (url.pathname.includes("/d1/database/")) {
       assert.equal(init?.method, "POST");
       const { batch } = JSON.parse(String(init?.body));
+      if (batch.length === 1) {
+        assert.match(batch[0].sql, /FROM iceberg_catalog_tables/);
+        return Response.json({
+          success: true,
+          result: [
+            {
+              success: true,
+              results: [
+                {
+                  namespace: "chain",
+                  name: "providers",
+                  metadata_summary: JSON.stringify({
+                    "current-schema-id": 0,
+                    schemas: [{ "schema-id": 0, fields: [] }],
+                    snapshots: [{ "timestamp-ms": now - 30 * 24 * HOUR }],
+                  }),
+                },
+                {
+                  namespace: "chain_testnet",
+                  name: "blocks",
+                  metadata_summary: JSON.stringify({
+                    "current-schema-id": 0,
+                    schemas: [{ "schema-id": 0, fields: [] }],
+                    snapshots: [{ "timestamp-ms": now }],
+                  }),
+                },
+              ],
+            },
+          ],
+        });
+      }
       assert.equal(batch.length, 3);
       assert.ok(
         batch.every((statement: { sql: string }) =>
@@ -279,30 +309,7 @@ function transport(evidence = fixture()) {
         ],
       });
     }
-    assert.equal(url.hostname, "catalog.cloudflarestorage.com");
-    if (url.pathname.endsWith("/v1/config"))
-      return Response.json({ overrides: { prefix: "fixture" } });
-    if (url.pathname.endsWith("/tables"))
-      return Response.json({
-        identifiers: [
-          {
-            name: url.pathname.includes("chain_testnet")
-              ? "blocks"
-              : "providers",
-          },
-        ],
-      });
-    return Response.json({
-      metadata: {
-        snapshots: [
-          {
-            "timestamp-ms": url.pathname.endsWith("/providers")
-              ? now - 30 * 24 * HOUR
-              : now,
-          },
-        ],
-      },
-    });
+    throw new Error(`Unexpected freshness request: ${url.origin}`);
   });
 }
 
@@ -359,7 +366,12 @@ test("catalog sweep reconciles quiet tables with source health and preserves tes
     .spyOn(process.stdout, "write")
     .mockImplementation(() => true);
   await checkLakehouseFreshness();
-  assert.equal(fetcher.mock.calls.length, 7);
+  assert.equal(fetcher.mock.calls.length, 3);
+  assert.ok(
+    fetcher.mock.calls.every(
+      ([url]) => !String(url).includes("catalog.cloudflarestorage.com"),
+    ),
+  );
   assert.match(
     output.mock.calls.map(([text]) => String(text)).join(""),
     /0 stale of 2/,
