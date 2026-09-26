@@ -1,29 +1,8 @@
 name: Refresh lakehouse schema
 
-# THE CHECK NO PULL REQUEST CAN MAKE.
-#
-# `validate:lakehouse-types-drift` proves the committed types are what the
-# committed snapshot produces -- that the repo is internally consistent. It
-# cannot prove the SNAPSHOT still matches the live Iceberg catalog, and both
-# scripts/generate-lakehouse-types.ts and scripts/validate-lakehouse-types-drift.ts
-# say so in as many words: "nothing readable from a pull request can catch the
-# LAKEHOUSE having moved."
-#
-# Until this workflow existed, nothing caught it at all.
-# `npm run refresh:lakehouse-schema` was reachable only by hand -- it appeared in
-# package.json and in no workflow -- so the snapshot aged silently and the drift
-# validator kept passing on a stale pair. A column renamed upstream would have
-# been discovered by a cold-tier query returning nothing.
-#
-# WEEKLY, not daily. An Iceberg schema changes when someone changes a producer,
-# which is rare; a daily run would mostly re-prove the same answer, and the
-# window this closes is measured in "before anyone notices a route went empty",
-# not in hours.
-#
-# NO AUTO-MERGE, deliberately, unlike the sync-* lanes this is modelled on. A
-# schema change is exactly the event a human should see: the generated tuples
-# feed the cold tiers' SELECT lists, so a merged rename silently rewrites what
-# the readers ask for. The PR is the alert.
+# The decoder commits current schemas to D1 beside its table pointers.
+# One bounded metadata read detects schema drift without R2 SQL/catalog/object
+# reads. Keep the resulting schema PR reviewable rather than auto-merging it.
 on:
   schedule:
     - cron: "0 6 * * 2"
@@ -38,7 +17,7 @@ concurrency:
 
 jobs:
   refresh:
-    name: Re-snapshot the Iceberg catalog
+    name: Re-snapshot the D1 metadata registry
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -59,25 +38,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # LOUD, not skipped. A missing credential means the catalog went unchecked
-      # this week, which is the condition this workflow exists to report -- and a
-      # silent skip would restore exactly the "passing on a stale pair" state it
-      # replaces. One red run naming the secret is cheaper than a green one that
-      # proved nothing.
-      - name: Require the catalog credential
-        env:
-          R2_CATALOG_TOKEN: ${{ secrets.R2_CATALOG_TOKEN }}
-        run: |
-          if [ -z "$R2_CATALOG_TOKEN" ]; then
-            echo "::error::R2_CATALOG_TOKEN is not set. The Iceberg catalog cannot be read," \
-                 "so the committed snapshot went unverified. Add it under Settings ->" \
-                 "Secrets -> Actions (an R2 API token with data-catalog read)."
-            exit 1
-          fi
-
       - name: Re-snapshot and regenerate
         env:
-          R2_CATALOG_TOKEN: ${{ secrets.R2_CATALOG_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
         run: |
           npm run refresh:lakehouse-schema
           npm run build:lakehouse-types
@@ -87,7 +53,7 @@ jobs:
         run: |
           if git diff --quiet -- generated/lakehouse; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "The committed snapshot still matches the live catalog."
+            echo "The committed snapshot still matches the D1 registry."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             git --no-pager diff --stat -- generated/lakehouse
@@ -102,10 +68,10 @@ jobs:
           delete-branch: true
           add-paths: |
             generated/lakehouse
-          title: "chore(lakehouse): the Iceberg catalog moved"
-          commit-message: "chore(lakehouse): re-snapshot the Iceberg catalog"
+          title: "chore(lakehouse): the D1 metadata registry moved"
+          commit-message: "chore(lakehouse): re-snapshot the D1 metadata registry"
           body: |
-            The live Iceberg catalog no longer matches the committed snapshot. This is the drift `validate:lakehouse-types-drift` structurally cannot see — it compares the committed types to the committed snapshot, and both are updated together here.
+            The live D1 metadata registry no longer matches the committed snapshot. This is the drift `validate:lakehouse-types-drift` structurally cannot see — it compares the committed types to the committed snapshot, and both are updated together here.
 
             **Read the diff before merging.** The generated column tuples feed the cold tiers' `SELECT` lists (`src/*-cold-tier.ts`), so a renamed or dropped column changes what those readers ask the lakehouse for. A merge is a decision that the readers are still correct against the new schema, not a formality.
 

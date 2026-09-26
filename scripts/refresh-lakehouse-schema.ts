@@ -1,23 +1,10 @@
-// Re-snapshot the four Iceberg tables from the live R2 Data Catalog (#10315).
-//
-// OUT OF BAND, exactly like scripts/snapshot-d1-schema.ts. It needs
-// R2_CATALOG_TOKEN, so it cannot run from a pull request -- and that boundary
-// is the point rather than a limitation: the committed snapshot is what a PR
-// can be judged against, and whether the LAKEHOUSE has moved is a different
-// question that only a real catalog can answer.
-//
-// Run:
-//   R2_CATALOG_TOKEN=... node scripts/refresh-lakehouse-schema.ts
-//   npm run build:lakehouse-types
-//
-// The REST prefix is discovered from /v1/config rather than hardcoded: the
-// catalog returns it as `overrides.prefix` and it is a UUID, so a literal here
-// would be a second copy of a value the server already publishes.
+// Re-snapshot the decoder's current schemas from its atomic D1 metadata registry.
+// Run out of band with the existing Cloudflare D1 maintenance credentials,
+// then `npm run build:lakehouse-types`. No R2 catalog or object reads are used.
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
-type Row = Record<string, unknown>;
 
 import { CHAIN_FIREHOSE_TOPICS } from "../src/chain-firehose-topics.ts";
 import {
@@ -25,12 +12,10 @@ import {
   type LakehouseColumn,
 } from "./generate-lakehouse-types.ts";
 
-const BASE =
-  process.env.R2_CATALOG_URI ??
-  "https://catalog.cloudflarestorage.com/918f0f0e2eb26709d1cf4fb76085c8fb/metagraphed-lakehouse";
-const WAREHOUSE =
-  process.env.R2_WAREHOUSE ??
-  "918f0f0e2eb26709d1cf4fb76085c8fb_metagraphed-lakehouse";
+import {
+  loadLakehouseMetadata,
+  lakehouseTable,
+} from "./lib/lakehouse-metadata.ts";
 
 /**
  * Every `chain.*` table this repo READS, not every table the catalog holds.
@@ -135,49 +120,18 @@ export const TABLES = [
 // list -- scripts/validate-lakehouse-readers.ts, for one -- had to have a
 // catalog token to read a constant.
 async function main(): Promise<void> {
-  const token = process.env.R2_CATALOG_TOKEN ?? "";
-  if (!token) {
-    process.stderr.write(
-      "R2_CATALOG_TOKEN is required -- this reads the live catalog.\n",
-    );
-    process.exit(1);
-  }
-
-  const auth = { Authorization: `Bearer ${token}` };
-
-  const config = (await (
-    await fetch(
-      `${BASE}/v1/config?warehouse=${encodeURIComponent(WAREHOUSE)}`,
-      {
-        headers: auth,
-      },
-    )
-  ).json()) as { overrides?: { prefix?: string } };
-  const prefix = config.overrides?.prefix;
-  if (!prefix) {
-    process.stderr.write("catalog /v1/config returned no prefix\n");
-    process.exit(1);
-  }
+  const metadata = await loadLakehouseMetadata();
 
   async function tableFields(
     namespace: string,
     table: string,
   ): Promise<[string, string, boolean][]> {
-    const res = await fetch(
-      `${BASE}/v1/${prefix}/namespaces/${namespace}/tables/${table}`,
-      { headers: auth },
-    );
-    if (!res.ok) {
-      process.stderr.write(`${namespace}.${table}: HTTP ${res.status}\n`);
-      process.exit(1);
-    }
-    const body = (await res.json()) as Row;
-    const meta = body.metadata as Row;
-    const schemas = (meta?.schemas ?? []) as Row[];
+    const meta = lakehouseTable(metadata, namespace, table);
+    const schemas = meta.schemas;
     const current =
       schemas.find((s) => s["schema-id"] === meta?.["current-schema-id"]) ??
       schemas[schemas.length - 1];
-    return ((current?.fields ?? []) as Row[]).map((f) => [
+    return (current?.fields ?? []).map((f) => [
       String(f.name),
       typeof f.type === "string" ? f.type : JSON.stringify(f.type),
       Boolean(f.required),
@@ -186,20 +140,7 @@ async function main(): Promise<void> {
 
   const columns: LakehouseColumn[] = [];
   for (const table of TABLES) {
-    const res = await fetch(
-      `${BASE}/v1/${prefix}/namespaces/chain/tables/${table}`,
-      { headers: auth },
-    );
-    if (!res.ok) {
-      process.stderr.write(`chain.${table}: HTTP ${res.status}\n`);
-      process.exit(1);
-    }
-    const body = (await res.json()) as {
-      metadata?: {
-        "current-schema-id"?: number;
-        schemas?: { "schema-id"?: number; fields?: unknown[] }[];
-      };
-    };
+    const body = { metadata: lakehouseTable(metadata, "chain", table) };
     const schemas = body.metadata?.schemas ?? [];
     // The CURRENT schema, not the newest in the list: Iceberg keeps every
     // historical schema, and reading the last one would pin whichever happened

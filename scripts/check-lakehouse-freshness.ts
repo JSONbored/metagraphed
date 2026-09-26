@@ -17,10 +17,10 @@
 //
 // Freshness here is "did anything arrive", which Iceberg already records: each
 // table's metadata carries `snapshots[].timestamp-ms`, so the newest write is
-// one metadata read per table. Asking the DATA the same question
+// one bounded D1 metadata read for all tables. Asking the data the same question
 // (`SELECT MAX(observed_at)`) is a full scan against a budget this repo has
 // already been rate-limited on (#9465), for an answer the catalog hands over
-// for free.
+// without reading the archived data.
 //
 // ## Every table must be CLASSIFIED
 //
@@ -35,12 +35,11 @@ import {
   loadMirrorFreshnessEvidence,
 } from "./lib/mirror-freshness.ts";
 
-const BASE =
-  process.env.R2_CATALOG_URI ??
-  "https://catalog.cloudflarestorage.com/918f0f0e2eb26709d1cf4fb76085c8fb/metagraphed-lakehouse";
-const WAREHOUSE =
-  process.env.R2_WAREHOUSE ??
-  "918f0f0e2eb26709d1cf4fb76085c8fb_metagraphed-lakehouse";
+import {
+  loadLakehouseMetadata,
+  lakehouseTable,
+} from "./lib/lakehouse-metadata.ts";
+
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
@@ -360,32 +359,7 @@ export function evaluate(
 }
 
 export async function checkLakehouseFreshness(): Promise<void> {
-  const token = process.env.R2_CATALOG_TOKEN ?? "";
-  if (!token) {
-    // Loud, not skipped: a freshness check that quietly passes without a token
-    // is the "gate that cannot fail" this repo has been bitten by before.
-    process.stderr.write(
-      "R2_CATALOG_TOKEN is required -- this reads the live catalog.\n",
-    );
-    process.exit(1);
-  }
-  const auth = { authorization: `Bearer ${token}` };
-  const read = async <T>(url: string): Promise<T> => {
-    const response = await fetch(url, { headers: auth });
-    if (!response.ok)
-      throw new Error(
-        `Catalog HTTP ${response.status}: ${new URL(url).pathname}`,
-      );
-    return response.json() as Promise<T>;
-  };
-  const config = await read<{ overrides?: { prefix?: string } }>(
-    `${BASE}/v1/config?warehouse=${encodeURIComponent(WAREHOUSE)}`,
-  );
-  const prefix = config.overrides?.prefix;
-  if (!prefix) {
-    process.stderr.write("catalog /v1/config returned no prefix\n");
-    process.exit(1);
-  }
+  const metadata = await loadLakehouseMetadata();
   // BOTH NAMESPACES. This watched `chain` only, so the four decoded
   // `chain_testnet` tables had no freshness coverage at all -- testnet is a
   // SERVED network, so a stalled testnet decode would have been invisible here
@@ -399,9 +373,11 @@ export async function checkLakehouseFreshness(): Promise<void> {
   const namespaces = ["chain", "chain_testnet"];
   const tables: { namespace: string; table: string; qualified: string }[] = [];
   for (const namespace of namespaces) {
-    const listed = await read<{ identifiers?: { name: string }[] }>(
-      `${BASE}/v1/${prefix}/namespaces/${namespace}/tables`,
-    );
+    const listed = {
+      identifiers: [...metadata.keys()]
+        .filter((key) => key.startsWith(`${namespace}.`))
+        .map((key) => ({ name: key.slice(namespace.length + 1) })),
+    };
     if (
       !Array.isArray(listed.identifiers) ||
       listed.identifiers.length === 0 ||
@@ -439,9 +415,7 @@ export async function checkLakehouseFreshness(): Promise<void> {
   const failures: string[] = [];
   const lines: string[] = [];
   for (const { namespace, table, qualified } of tables) {
-    const meta = await read<{
-      metadata?: { snapshots?: { "timestamp-ms"?: number }[] };
-    }>(`${BASE}/v1/${prefix}/namespaces/${namespace}/tables/${table}`);
+    const meta = { metadata: lakehouseTable(metadata, namespace, table) };
     if (
       !meta.metadata ||
       (meta.metadata.snapshots !== undefined &&
