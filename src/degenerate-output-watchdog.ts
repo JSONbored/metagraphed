@@ -244,14 +244,21 @@ export async function runDegenerateOutputWatchdog(
     if (fault) faults.push(fault);
   }
 
+  const failed = CLASSIFYING_LANES.length - checked;
+  const ok = failed === 0 && faults.length === 0;
+  const details = faults.map((f) => f.detail);
+  if (failed)
+    details.push(
+      `${failed} classifying lane read(s) failed; ${checked} checked`,
+    );
   await recordLaneVerdict(deps.laneHealthDb ?? laneHealthStore(env), {
     lane: DEGENERATE_OUTPUT_LANE,
-    verdict: faults.length ? "stale" : "ok",
+    verdict: ok ? "ok" : "stale",
     age_ms: null,
-    detail: faults.length
-      ? faults.map((f) => f.detail).join("; ")
+    detail: details.length
+      ? details.join("; ")
       : `${checked} classifying lane(s), none degenerate`,
     checked_at: now(),
   });
-  return { ok: faults.length === 0, faults, checked };
+  return { ok, faults, checked };
 }
