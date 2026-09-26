@@ -66,8 +66,16 @@ export function historyAssetSource(
     if (++requests > maxRequests || bytes + size > maxBytes)
       throw new Error("Immutable history asset transfer budget exceeded");
     bytes += size;
+    // Use the high bits of the first digest byte. Sixteen stores retain their
+    // original first-hex-digit routing; larger releases keep the same chunks.
     const store =
-      payload && partitions ? partitions[parseInt(hash[0], 16)] : assets!;
+      payload && partitions
+        ? partitions[
+            Math.floor(
+              (parseInt(hash.slice(0, 2), 16) * partitions.length) / 256,
+            )
+          ]
+        : assets!;
     const response = await store.fetch(
       new Request(`https://history-assets.invalid/${hash}.mgpack`, {
         headers: { "accept-encoding": "identity" },
