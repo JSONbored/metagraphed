@@ -441,6 +441,12 @@
       "url": "https://api.chutes.ai/users/growth"
     },
     {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "The official OpenAPI APIKeyHeader scheme requires an Authorization header; the schema does not specify a token prefix or revenue-access scope."
+      },
       "auth_required": true,
       "authority": "community",
       "id": "sn-64-chutes-daily-revenue-summary",
@@ -712,6 +718,12 @@
       "url": "https://api.chutes.ai/fmv"
     },
     {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "The official OpenAPI APIKeyHeader scheme requires an Authorization header; the schema does not specify a token prefix or revenue-access scope."
+      },
       "auth_required": true,
       "authority": "community",
       "id": "sn-64-chutes-tao-payment-totals-api",
@@ -901,6 +913,12 @@
       "url": "https://api.chutes.ai/miner/metrics/"
     },
     {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "The official OpenAPI APIKeyHeader scheme requires an Authorization header; the schema does not specify a token prefix or revenue-access scope."
+      },
       "auth_required": true,
       "authority": "official",
       "id": "sn-64-chutes-payments-list",
