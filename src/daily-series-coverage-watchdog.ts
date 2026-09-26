@@ -40,6 +40,7 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
+import { selectedD1Store } from "./d1-store.ts";
 import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import type { StoreEnv } from "./read-store.ts";
 
@@ -240,20 +241,31 @@ export async function runDailySeriesCoverageWatchdog(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const db = readStore(
-    env,
-    DAILY_SERIES.map((s) => s.table),
-  );
+  const tables = DAILY_SERIES.map((s) => s.table);
+  const native = selectedD1Store(env, tables);
+  const db = native ?? readStore(env, tables);
   if (!db?.query) return { ok: false, reason: "no store bound" };
 
   const verdicts: DailySeriesVerdict[] = [];
   try {
     for (const { table, column } of DAILY_SERIES) {
-      // Grouped in the store rather than pulled row by row: these tables hold
-      // ~30k rows a day and the answer is one integer per date.
+      // On D1, count the small membership records before joining their metric
+      // documents. The view otherwise looks up the same document once for
+      // every member. Keep the join: orphaned or displaced memberships must
+      // not make an incomplete series appear whole. Materialization prevents
+      // SQLite from flattening this back into a document lookup per member.
       const result = await db.query(
-        `SELECT ${column} AS date, COUNT(*) AS rows FROM ${table} ` +
-          `GROUP BY ${column} ORDER BY ${column} DESC LIMIT ?`,
+        native
+          ? `WITH member_counts AS MATERIALIZED (
+              SELECT ${column}, netuid, shard, COUNT(*) AS rows
+              FROM ${table}_members GROUP BY ${column}, netuid, shard
+            )
+            SELECT m.${column} AS date, SUM(m.rows) AS rows
+            FROM member_counts m JOIN ${table}_documents d
+              ON d.netuid=m.netuid AND d.day=m.${column} AND d.shard=m.shard
+            GROUP BY m.${column} ORDER BY m.${column} DESC LIMIT ?`
+          : `SELECT ${column} AS date, COUNT(*) AS rows FROM ${table} ` +
+              `GROUP BY ${column} ORDER BY ${column} DESC LIMIT ?`,
         [DAILY_COVERAGE_LOOKBACK_DAYS],
       );
       const days = result
