@@ -33,6 +33,16 @@ export const READABLE_PROVENANCES = [
  * A sentinel rather than NULL so the primary key stays total -- see 0016. */
 export const SCALAR_PERIOD = "__total__";
 
+/** A rejected HTTP request, distinct from a timeout or a transport failure. */
+export class RevenueProbeHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`HTTP ${status}`);
+    this.status = status;
+  }
+}
+
 export interface ProbeSurfaceInput {
   id: string;
   netuid: number;
@@ -71,8 +81,10 @@ export interface RevenueFailureRow {
    * `revenue_probe_failures` needs. It exists because the two failures this
    * lane records are opposites:
    *
-   *   a FETCH failure is transient. The endpoint was slow, throttling, or
-   *   briefly 5xx, and the next delivery may well succeed.
+   *   a transport, throttling or 5xx failure is transient. Authentication
+   *   refusal and missing/withdrawn feeds cannot be repaired by immediate
+   *   redelivery of the same unauthenticated request. Their next scheduled
+   *   probe still runs, so a recovered feed is discovered normally.
    *
    *   an EXTRACTION failure is deterministic. `expected an array payload`
    *   depends on the declaration and the payload's shape, neither of which a
@@ -175,9 +187,12 @@ export async function runRevenueProbe(
         netuid: surface.netuid,
         reason: `fetch failed: ${error instanceof Error ? error.message : String(error)}`,
         observed_at,
-        // Transient: a slow, throttling or briefly-5xx endpoint is worth
-        // asking again.
-        terminal: false,
+        // Preserve the failure, but do not exhaust the queue retry budget
+        // against an auth-gated or withdrawn feed. Unknown failures, 408,
+        // 429 and 5xx remain retryable. Never infer status from error text.
+        terminal:
+          error instanceof RevenueProbeHttpError &&
+          [401, 403, 404, 410].includes(error.status),
       });
       continue;
     }
