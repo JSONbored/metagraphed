@@ -1047,9 +1047,85 @@ describe("laneAlarmGitHub", () => {
     });
     assert.match(
       seen[0].url,
-      /\/repos\/o\/r\/issues\?state=open&per_page=100$/,
+      /\/repos\/o\/r\/issues\?state=open&per_page=100&sort=created&direction=asc&page=1$/,
     );
   });
+
+  test("finds an existing alarm after a full page of PRs and unrelated issues", async () => {
+    const fullPage = Array.from({ length: 100 }, (_, index) => ({
+      number: index + 1,
+      title: index === 0 ? `${LANE_ALARM_TITLE_PREFIX}metagraph` : "unrelated",
+      ...(index === 0 ? { pull_request: {} } : {}),
+    }));
+    const { gh, seen } = client((url) => ({
+      ok: true,
+      json: async () =>
+        new URL(url).searchParams.get("page") === "1"
+          ? fullPage
+          : [{ number: 101, title: `${LANE_ALARM_TITLE_PREFIX}metagraph` }],
+    }));
+    assert.deepEqual(await gh.listOpen(), {
+      metagraph: { issue: 101, updatedAt: null },
+    });
+    assert.equal(seen.length, 2);
+    assert.equal(new URL(seen[1].url).searchParams.get("page"), "2");
+  });
+
+  test.each(["http", "shape", "oversized"])(
+    "discards partial results when a later page is %s",
+    async (failure) => {
+      const { gh, seen } = client((url) => {
+        const first = new URL(url).searchParams.get("page") === "1";
+        return {
+          ok: first || failure !== "http",
+          json: async () =>
+            first
+              ? Array.from({ length: 100 }, (_, index) => ({
+                  number: index + 1,
+                  title: `${LANE_ALARM_TITLE_PREFIX}lane-${index}`,
+                }))
+              : failure === "shape"
+                ? { message: "unreadable" }
+                : Array.from({ length: 101 }, () => ({})),
+        };
+      });
+      assert.equal(await gh.listOpen(), null);
+      assert.equal(seen.length, 2);
+    },
+  );
+
+  test("stops after ten full pages and refuses to report a partial inventory", async () => {
+    const { gh, seen } = client(() => ({
+      ok: true,
+      json: async () => Array.from({ length: 100 }, () => ({})),
+    }));
+    assert.equal(await gh.listOpen(), null);
+    assert.equal(seen.length, 10);
+  });
+
+  test.each([
+    [10, 20],
+    [20, 10],
+  ])(
+    "keeps the original incident regardless of duplicate arrival order %s, %s",
+    async (first, second) => {
+      const { gh } = client(() => ({
+        ok: true,
+        json: async () =>
+          [first, second].map((number) => ({
+            number,
+            title: `${LANE_ALARM_TITLE_PREFIX}probe-jobs-dlq`,
+            updated_at: number === 10 ? "2026-09-26T00:00:00Z" : null,
+          })),
+      }));
+      assert.deepEqual(await gh.listOpen(), {
+        "probe-jobs-dlq": {
+          issue: 10,
+          updatedAt: Date.parse("2026-09-26T00:00:00Z"),
+        },
+      });
+    },
+  );
 
   // The mark a recurrence is measured against. Without it the alarm has no way
   // to tell a loss it has already reported from one it has not, and a

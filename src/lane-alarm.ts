@@ -1223,54 +1223,46 @@ export function laneAlarmGitHub(
       return out;
     },
     async listOpen() {
-      const response = await fetchImpl(
-        `${GITHUB_API}/repos/${repo}/issues?state=open&per_page=100`,
-        { headers },
-      );
-      // NULL, not `{}` -- runLaneAlarm's own comment says an unreadable issue
-      // list must not be read as "no alarms are open", and then this returned
-      // exactly that for every non-2xx. A token that cannot list issues cannot
-      // create them either, so the tick would plan a full set of opens, watch
-      // every create fail, and report nothing: which is the state production
-      // was in, with zero `alarm(lane):` issues ever filed against days of
-      // alarming lanes.
-      if (!response.ok) return null;
-      // PARSED, NOT CAST (#11194). The `Array.isArray` below was doing the
-      // schema's job for one field and nothing for the rest; the parse does
-      // both, and a body that is not a list at all now yields no alarms rather
-      // than an empty loop that reads identically to "GitHub has no open
-      // issues" -- the difference between "nothing to close" and "we could not
-      // ask", on the lane that closes alarms.
-      const page = GithubIssueListSchema.safeParse(await response.json());
-      // Same reasoning as the status check: a body we cannot read is not a
-      // report that nothing is open.
-      if (!page.success) return null;
       const out: Record<string, LaneAlarmOpenIssue> = {};
-      for (const row of page.data) {
-        // Per ROW, so one issue GitHub shapes unexpectedly costs that issue
-        // and not the whole page -- see GithubIssueListSchema.
-        const parsed = GithubIssueSchema.safeParse(row);
-        if (!parsed.success) continue;
-        const issue = parsed.data;
-        // The issues endpoint returns pull requests too, and a PR whose title
-        // happens to match would be closed as though it were an alarm.
-        if (issue.pull_request) continue;
-        const title = issue.title ?? "";
-        if (!title.startsWith(LANE_ALARM_TITLE_PREFIX)) continue;
-        const lane = title.slice(LANE_ALARM_TITLE_PREFIX.length).trim();
-        if (!lane || typeof issue.number !== "number") continue;
-        // A stamp we cannot read becomes null rather than 0. Zero would date
-        // the issue to 1970 and make every dead-letter row look newer than it,
-        // which is a comment every tick -- see LaneAlarmPlan.update.
-        const parsedAt = issue.updated_at
-          ? Date.parse(issue.updated_at)
-          : Number.NaN;
-        out[lane] = {
-          issue: issue.number,
-          updatedAt: Number.isFinite(parsedAt) ? parsedAt : null,
-        };
+      // The issues endpoint includes PRs. Reading only its first page can
+      // hide an older alarm and make the next tick file a duplicate. Walk a
+      // bounded set in creation order; issue comments cannot reorder it.
+      const pageSize = 100;
+      for (let pageNumber = 1; pageNumber <= 10; pageNumber += 1) {
+        const response = await fetchImpl(
+          `${GITHUB_API}/repos/${repo}/issues?state=open&per_page=${pageSize}` +
+            `&sort=created&direction=asc&page=${pageNumber}`,
+          { headers },
+        );
+        // A partial list is unknown, never "no other alarms are open".
+        if (!response.ok) return null;
+        const page = GithubIssueListSchema.safeParse(await response.json());
+        if (!page.success || page.data.length > pageSize) return null;
+        for (const row of page.data) {
+          const parsed = GithubIssueSchema.safeParse(row);
+          if (!parsed.success) continue;
+          const issue = parsed.data;
+          if (issue.pull_request) continue;
+          const title = issue.title ?? "";
+          if (!title.startsWith(LANE_ALARM_TITLE_PREFIX)) continue;
+          const lane = title.slice(LANE_ALARM_TITLE_PREFIX.length).trim();
+          if (!lane || typeof issue.number !== "number") continue;
+          // Keep the original incident when duplicates already exist. Do not
+          // close another issue merely because it shares an alarm title.
+          if (out[lane] && out[lane].issue <= issue.number) continue;
+          const parsedAt = issue.updated_at
+            ? Date.parse(issue.updated_at)
+            : Number.NaN;
+          out[lane] = {
+            issue: issue.number,
+            updatedAt: Number.isFinite(parsedAt) ? parsedAt : null,
+          };
+        }
+        if (page.data.length < pageSize) return out;
       }
-      return out;
+      // Hitting the cap is an incomplete inventory. The runner reports its
+      // delivery failure and keeps PostHog visibility without opening issues.
+      return null;
     },
     async open(_alarm, title, body) {
       const response = await fetchImpl(`${GITHUB_API}/repos/${repo}/issues`, {
