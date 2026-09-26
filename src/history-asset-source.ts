@@ -5,6 +5,7 @@ import {
   type HistoryAssetShard,
 } from "../schemas-src/artifacts/history-assets.ts";
 import type { ParquetRangeSource } from "./indexed-parquet.ts";
+import { createHistoryAssetMetadataReader } from "./history-asset-metadata.ts";
 
 const MAX_CACHE_BYTES = 8 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 256;
@@ -53,8 +54,17 @@ export function historyAssetSource(
   let releasePromise:
     Promise<ReturnType<typeof HistoryAssetReleaseSchema.parse>> | undefined;
   const shards = new Map<string, Promise<HistoryAssetShard>>();
+  const metadataReaders = new Map<
+    object,
+    ReturnType<typeof createHistoryAssetMetadataReader>
+  >();
 
-  async function readAsset(hash: string, size: number, payload = false) {
+  async function readAsset(
+    hash: string,
+    size: number,
+    payload = false,
+    metadata = !payload,
+  ): Promise<Uint8Array> {
     const prior = cache.get(hash);
     if (prior) {
       if (prior.length !== size)
@@ -63,11 +73,19 @@ export function historyAssetSource(
       cache.set(hash, prior);
       return prior;
     }
+    const store =
+      payload && partitions ? partitions[parseInt(hash[0], 16)] : assets!;
+    if (metadata) {
+      let read = metadataReaders.get(store);
+      if (!read) {
+        read = createHistoryAssetMetadataReader(store);
+        metadataReaders.set(store, read);
+      }
+      return read(hash, size, () => readAsset(hash, size, payload, false));
+    }
     if (++requests > maxRequests || bytes + size > maxBytes)
       throw new Error("Immutable history asset transfer budget exceeded");
     bytes += size;
-    const store =
-      payload && partitions ? partitions[parseInt(hash[0], 16)] : assets!;
     const response = await store.fetch(
       new Request(`https://history-assets.invalid/${hash}.mgpack`, {
         headers: { "accept-encoding": "identity" },
@@ -194,7 +212,12 @@ export function historyAssetSource(
       for (const chunk of object.chunks) {
         const chunkEnd = position + chunk.bytes;
         if (position < end && chunkEnd > offset) {
-          const raw = await readAsset(chunk.sha256, chunk.bytes, true),
+          const raw = await readAsset(
+              chunk.sha256,
+              chunk.bytes,
+              true,
+              object.key.endsWith(".json"),
+            ),
             from = Math.max(offset, position) - position,
             to = Math.min(end, chunkEnd) - position;
           output.set(raw.subarray(from, to), written);
