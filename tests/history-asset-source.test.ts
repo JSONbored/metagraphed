@@ -40,6 +40,100 @@ const partitioned = () => {
 };
 
 describe("immutable history asset ranges", () => {
+  it.each([
+    { count: 16 as const, expected: [0, 0, 0, 0, 1, 3, 4, 7, 8, 11, 12, 15] },
+    { count: 32 as const, expected: [0, 0, 0, 1, 2, 7, 8, 15, 16, 23, 24, 31] },
+    {
+      count: 64 as const,
+      expected: [0, 0, 1, 3, 4, 15, 16, 31, 32, 47, 48, 63],
+    },
+  ])(
+    "routes digest boundaries across $count stores without R2 reads",
+    async ({ count, expected }) => {
+      const prefixes = [
+        "00",
+        "03",
+        "04",
+        "0f",
+        "10",
+        "3f",
+        "40",
+        "7f",
+        "80",
+        "bf",
+        "c0",
+        "ff",
+      ];
+      const chunks = new Map<string, Uint8Array>();
+      for (let i = 0; i < 20000 && chunks.size < prefixes.length; i++) {
+        const raw = new TextEncoder().encode(`partition-boundary-${i}`);
+        const prefix = assetHash(raw).slice(0, 2);
+        if (prefixes.includes(prefix)) chunks.set(prefix, raw);
+      }
+      expect(chunks.size).toBe(prefixes.length);
+      const inputs = prefixes.map((prefix) => ({
+        key: assetKey(prefix),
+        etag,
+        chunks: [chunks.get(prefix)!],
+      }));
+      const f = historyAssetsFixture(inputs),
+        r2 = fallback();
+      f.root.partitionCount = count;
+      f.publish();
+      const routes = new Map(
+        inputs.map((input, i) => [assetHash(input.chunks[0]), expected[i]]),
+      );
+      let payloadReads = 0;
+      const env = {
+        ...f.env,
+        ...Object.fromEntries(
+          Array.from({ length: count }, (_, index) => [
+            `HISTORY_ASSETS_${index.toString(16)}`,
+            {
+              fetch: async (request: Request) => {
+                const hash = new URL(request.url).pathname.slice(1, -7);
+                expect(routes.get(hash)).toBe(index);
+                payloadReads++;
+                return f.fetch(request);
+              },
+            },
+          ]),
+        ),
+      };
+      const source = historyAssetSource(env, r2);
+      for (const input of inputs) {
+        expect(
+          new Uint8Array(
+            await source.read(input.key, etag, 1, input.chunks[0].length - 2),
+          ),
+        ).toEqual(input.chunks[0].slice(1, -1));
+      }
+      expect(payloadReads).toBe(inputs.length);
+      expect(r2.read).not.toHaveBeenCalled();
+    },
+  );
+  it.each([32, 64] as const)(
+    "rejects an incomplete %i-store release before payload reads",
+    async (count) => {
+      const f = setup();
+      f.root.partitionCount = count;
+      f.publish();
+      const env = {
+        ...f.env,
+        ...Object.fromEntries(
+          Array.from({ length: count - 1 }, (_, index) => [
+            `HISTORY_ASSETS_${index.toString(16)}`,
+            { fetch: f.fetch },
+          ]),
+        ),
+      };
+      await expect(
+        historyAssetSource(env, f.r2).read(key, etag, 0, 1),
+      ).rejects.toThrow(/partitions/);
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+      expect(f.r2.read).not.toHaveBeenCalled();
+    },
+  );
   it("reads exact ranges when any declared generation prefix matches", async () => {
     const f = partitioned(),
       prefix = key.slice(0, key.indexOf("directory/"));
@@ -160,7 +254,7 @@ describe("immutable history asset ranges", () => {
       ),
     ).rejects.toThrow(/chunk exceeds/);
   });
-  it.each([0, 1, 8, 32, "16"])(
+  it.each([0, 1, 8, 17, 48, 128, "16", "64"])(
     "refuses unsupported partition counts %j",
     async (partitionCount) => {
       const f = setup();

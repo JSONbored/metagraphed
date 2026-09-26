@@ -13,7 +13,9 @@ const reference = z
 export const HistoryAssetReleaseSchema = z
   .object({
     version: z.literal(1),
-    partitionCount: z.literal(16).optional(),
+    partitionCount: z
+      .union([z.literal(16), z.literal(32), z.literal(64)])
+      .optional(),
     prefixes: z
       .array(
         z
