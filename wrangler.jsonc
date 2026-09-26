@@ -77,6 +77,7 @@
     "not_found_handling": "404-page",
   },
   "vars": {
+    "NATIVE_HISTORY_ASSET_RELEASE": "605a8b032072c80df205aed5e8012f331acf4644ab75e2748942c8085c92ec55:182428",
     "ACCOUNT_HISTORY_ASSET_RELEASE": "39648ba9e6cd6e5acd955bf873dd4264763496921221811d978453d1f5a75598:401638",
     "HISTORY_ASSET_RELEASE": "2f33d8c5e292dc509354231d3e5fd75ac0f50cdb0b549b98107d5c93bbda1c1f:25282",
     // Both networks passed complete native artifact and reader qualification.
@@ -748,6 +749,74 @@
   // shared-secret check. The only write path in either direction -- GitHub
   // Actions calls this route over HTTPS, never touches Postgres directly.
   "services": [
+    {
+      "binding": "NATIVE_HISTORY_ASSETS",
+      "service": "metagraphed-history-native-01c21211f2f4-0",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_0",
+      "service": "metagraphed-history-native-01c21211f2f4-0",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_1",
+      "service": "metagraphed-history-native-01c21211f2f4-1",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_2",
+      "service": "metagraphed-history-native-01c21211f2f4-2",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_3",
+      "service": "metagraphed-history-native-01c21211f2f4-3",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_4",
+      "service": "metagraphed-history-native-01c21211f2f4-4",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_5",
+      "service": "metagraphed-history-native-01c21211f2f4-5",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_6",
+      "service": "metagraphed-history-native-01c21211f2f4-6",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_7",
+      "service": "metagraphed-history-native-01c21211f2f4-7",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_8",
+      "service": "metagraphed-history-native-01c21211f2f4-8",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_9",
+      "service": "metagraphed-history-native-01c21211f2f4-9",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_a",
+      "service": "metagraphed-history-native-01c21211f2f4-a",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_b",
+      "service": "metagraphed-history-native-01c21211f2f4-b",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_c",
+      "service": "metagraphed-history-native-01c21211f2f4-c",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_d",
+      "service": "metagraphed-history-native-01c21211f2f4-d",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_e",
+      "service": "metagraphed-history-native-01c21211f2f4-e",
+    },
+    {
+      "binding": "NATIVE_HISTORY_ASSETS_f",
+      "service": "metagraphed-history-native-01c21211f2f4-f",
+    },
     {
       "binding": "ACCOUNT_HISTORY_ASSETS",
       "service": "metagraphed-history-accounts-f090a73e69b0-meta",
