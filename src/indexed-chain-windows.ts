@@ -1,3 +1,4 @@
+import { historyAssetSource } from "./history-asset-source.ts";
 import { HistorySourceCeilingSchema } from "../schemas-src/artifacts/history-source-ceiling.ts";
 import { z } from "zod";
 import type { HistoryBlockGeneration } from "../schemas-src/artifacts/history-generation.ts";
@@ -145,7 +146,11 @@ async function windowContext(
     query ? undefined : ["pallet", "method"],
   );
   if (!hot) return undefined;
-  const source = r2ParquetSource(bucket),
+  const source = historyAssetSource(
+      env,
+      r2ParquetSource(bucket),
+      "NATIVE_HISTORY",
+    ),
     budget = parquetReadBudget(128 * 1024 * 1024, 4096);
   const generations: HistoryBlockGeneration[] = [];
   for (const segment of segments) {

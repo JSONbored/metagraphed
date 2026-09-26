@@ -1,3 +1,5 @@
+import { historyAssetSource } from "../src/history-asset-source.ts";
+import { nativeHistoryAssetsFixture } from "./native-history-assets-fixture.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, test } from "vitest";
@@ -255,4 +257,57 @@ test("valid physical pointers must still match block and observation keys", asyn
       /different logical record/,
     );
   }
+});
+
+test("native event block lookups retain duplicates, wide values and absence after relocation", async () => {
+  const { generation } = await fixture();
+  const descriptor = await put(`${root}/block-manifest.json`, generation);
+  const keys = new Set<string>(),
+    original = r2ParquetSource(bucket);
+  const source = {
+    async read(key: string, etag: string, offset: number, length: number) {
+      keys.add(key);
+      return original.read(key, etag, offset, length);
+    },
+  };
+  const budget = parquetReadBudget(128 * 1024 * 1024, 1024);
+  const loaded = await loadHistoryBlockGeneration(
+    source,
+    descriptor,
+    scope,
+    budget,
+  );
+  const expected = [];
+  for (const block of [7, 8, 9])
+    expected.push(await readHistoryBlock(source, loaded, scope, block, budget));
+  const env = await nativeHistoryAssetsFixture(bucket, keys);
+  const relocated = historyAssetSource(
+    env,
+    {
+      read: async () => {
+        throw new Error("R2 fallback must not run");
+      },
+    },
+    "NATIVE_HISTORY",
+  );
+  const assetBudget = parquetReadBudget(128 * 1024 * 1024, 1024);
+  const assetGeneration = await loadHistoryBlockGeneration(
+    relocated,
+    descriptor,
+    scope,
+    assetBudget,
+  );
+  const actual = [];
+  for (const block of [7, 8, 9])
+    actual.push(
+      await readHistoryBlock(
+        relocated,
+        assetGeneration,
+        scope,
+        block,
+        assetBudget,
+      ),
+    );
+  assert.deepEqual(actual, expected);
+  assert.deepEqual(assetBudget, budget);
 });

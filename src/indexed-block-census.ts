@@ -1,3 +1,4 @@
+import { historyAssetSource } from "./history-asset-source.ts";
 import { HistorySourceCeilingSchema } from "../schemas-src/artifacts/history-source-ceiling.ts";
 import { readSelectedHistorySegments } from "./indexed-history-store.ts";
 import { readHistoryBlockCensus } from "./history-generation.ts";
@@ -27,7 +28,11 @@ export async function loadIndexedBlockCensus(env: unknown) {
       segments.at(-1)!.lastBlock < ceiling.through
     )
       return null;
-    const source = r2ParquetSource(bucket);
+    const source = historyAssetSource(
+      env,
+      r2ParquetSource(bucket),
+      "NATIVE_HISTORY",
+    );
     const budget = parquetReadBudget(32 * 1024 * 1024, 128);
     let lo: number | null = null,
       hi: number | null = null,
