@@ -64,6 +64,7 @@ export function historyAssetSource(
     size: number,
     payload = false,
     metadata = !payload,
+    partition?: string,
   ): Promise<Uint8Array> {
     const prior = cache.get(hash);
     if (prior) {
@@ -74,14 +75,18 @@ export function historyAssetSource(
       return prior;
     }
     const store =
-      payload && partitions ? partitions[parseInt(hash[0], 16)] : assets!;
+      payload && partitions
+        ? partitions[parseInt(partition ?? hash[0], 16)]
+        : assets!;
     if (metadata) {
       let read = metadataReaders.get(store);
       if (!read) {
         read = createHistoryAssetMetadataReader(store);
         metadataReaders.set(store, read);
       }
-      return read(hash, size, () => readAsset(hash, size, payload, false));
+      return read(hash, size, () =>
+        readAsset(hash, size, payload, false, partition),
+      );
     }
     if (++requests > maxRequests || bytes + size > maxBytes)
       throw new Error("Immutable history asset transfer budget exceeded");
@@ -177,6 +182,8 @@ export function historyAssetSource(
       shards.set(prefix, pending);
     }
     const object = (await pending).objects[identity];
+    if (object?.partition !== undefined && !partitions)
+      throw new Error("History asset placement requires partition bindings");
     if (partitions && object?.chunks.some((chunk) => chunk.bytes > 128 * 1024))
       throw new Error("Partitioned history asset chunk exceeds its size bound");
     if (
@@ -217,6 +224,7 @@ export function historyAssetSource(
               chunk.bytes,
               true,
               object.key.endsWith(".json"),
+              object.partition,
             ),
             from = Math.max(offset, position) - position,
             to = Math.min(end, chunkEnd) - position;

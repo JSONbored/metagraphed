@@ -47,6 +47,10 @@ export const HistoryAssetShardSchema = z
         .object({
           key: z.string().max(1024).regex(HISTORY_ASSET_OBJECT_KEY),
           etag: z.string().regex(/^[a-f0-9]{32}(?:-\d+)?$/),
+          partition: z
+            .string()
+            .regex(/^[a-f0-9]$/)
+            .optional(),
           bytes: size.max(16 * 1024 * 1024),
           chunks: z
             .array(
