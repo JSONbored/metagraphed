@@ -6,6 +6,8 @@ export interface HistoryTransferSource {
   bytes: number;
   sha256: string;
   etag: string;
+  /** Keep a pack's chunks together to avoid one upload session per hash prefix. */
+  partition?: string;
 }
 
 interface Chunk {
@@ -72,6 +74,9 @@ export async function transferHistoryAssets(
       source.bytes > MAX_BATCH_BYTES ||
       !/^[a-f0-9]{64}$/.test(source.sha256) ||
       !/^[a-f0-9]{32}$/.test(source.etag) ||
+      (source.partition !== undefined &&
+        (typeof source.partition !== "string" ||
+          !/^[a-f0-9]$/.test(source.partition))) ||
       !source.key.endsWith(`/${source.sha256}.bin`) ||
       keys.has(source.key)
     )
@@ -105,7 +110,7 @@ export async function transferHistoryAssets(
       const bytes = raw.subarray(offset, offset + CHUNK_BYTES);
       const sha256 = digest("sha256", bytes);
       chunks.push({ sha256, bytes: bytes.length });
-      const partition = sha256[0]!;
+      const partition = source.partition ?? sha256[0]!;
       let group = groups.get(partition);
       if (!group) groups.set(partition, (group = new Map()));
       group.set(sha256, bytes);

@@ -73,24 +73,66 @@ describe("one-read immutable history transfer", () => {
     }
   });
 
-  it("restores exact files from discovered chunks with one source read each", async () => {
-    const raw = new Uint8Array(128 * 1024 * 2 + 7);
-    raw.fill(17, 0, 128 * 1024);
-    raw.fill(29, 128 * 1024);
-    const { sources, io, uploaded } = setup([raw, raw.slice(0, 128 * 1024)]);
-    const result = await transferHistoryAssets(sources, io);
-    expect(io.get).toHaveBeenCalledTimes(2);
-    expect(result.sourceBytes).toBe(raw.length + 128 * 1024);
-    expect(result.uploadedBytes).toBe(raw.length);
-    for (const file of result.files) {
-      const restored = Buffer.concat(
-        file.chunks.map((c) => uploaded.get(c.sha256)!),
+  it.each([undefined, "0", "f"])(
+    "restores exact files with one source read and placement %s",
+    async (partition) => {
+      const raw = new Uint8Array(128 * 1024 * 2 + 7);
+      raw.fill(17, 0, 128 * 1024);
+      raw.fill(29, 128 * 1024);
+      const { sources, io, uploaded } = setup([raw, raw.slice(0, 128 * 1024)]);
+      const result = await transferHistoryAssets(
+        sources.map((s) => ({ ...s, partition })),
+        io,
       );
-      expect(restored.length).toBe(file.source.bytes);
-      expect(hash("sha256", restored)).toBe(file.source.sha256);
-      expect(hash("md5", restored)).toBe(file.source.etag);
-    }
+      expect(io.get).toHaveBeenCalledTimes(2);
+      expect(result.sourceBytes).toBe(raw.length + 128 * 1024);
+      expect(result.uploadedBytes).toBe(raw.length);
+      for (const file of result.files) {
+        const restored = Buffer.concat(
+          file.chunks.map((c) => uploaded.get(c.sha256)!),
+        );
+        expect(restored.length).toBe(file.source.bytes);
+        expect(hash("sha256", restored)).toBe(file.source.sha256);
+        expect(hash("md5", restored)).toBe(file.source.etag);
+      }
+    },
+  );
+
+  it("groups a whole pack into one upload session without changing its chunks", async () => {
+    const raw = new Uint8Array(128 * 1024 * 40);
+    for (let i = 0; i < 40; i++)
+      raw.fill(i, i * 128 * 1024, (i + 1) * 128 * 1024);
+    const old = setup([raw]),
+      next = setup([raw]);
+    const before = await transferHistoryAssets(old.sources, old.io);
+    const after = await transferHistoryAssets(
+      next.sources.map((s) => ({ ...s, partition: "0" })),
+      next.io,
+    );
+    expect(before.sessions).toBeGreaterThan(1);
+    expect(after.sessions).toBe(1);
+    expect(next.io.get).toHaveBeenCalledOnce();
+    expect(next.io.session).toHaveBeenCalledOnce();
+    expect(vi.mocked(next.io.session).mock.calls[0][0]).toBe("0");
+    expect(after.files[0].chunks).toEqual(before.files[0].chunks);
+    expect(after.files[0].source).toEqual({
+      ...next.sources[0],
+      partition: "0",
+    });
+    expect(after.uploadedBytes).toBe(before.uploadedBytes);
   });
+
+  it.each([null, 0, "", "00", "g", "F"])(
+    "rejects invalid source placement %j before I/O",
+    async (partition) => {
+      const { sources, io } = setup();
+      Object.assign(sources[0], { partition });
+      await expect(transferHistoryAssets(sources, io)).rejects.toThrow(
+        "Invalid",
+      );
+      expect(io.get).not.toHaveBeenCalled();
+    },
+  );
 
   it("honors already present assets and does not upload or disclose tokens", async () => {
     const { sources, io } = setup();

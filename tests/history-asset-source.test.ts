@@ -233,6 +233,72 @@ describe("immutable history asset ranges", () => {
       expect(f.r2.read).not.toHaveBeenCalled();
     },
   );
+  it.each(["json", "bin"])(
+    "reads exact %s ranges from a pack placement while retaining digest routing",
+    async (extension) => {
+      const placedKey = key.replace(/\.[^.]+$/, "." + extension);
+      const f = historyAssetsFixture([{ ...input(), key: placedKey }]),
+        r2 = fallback();
+      f.root.partitionCount = 16;
+      const object =
+        f.shards[assetHash(placedKey).slice(0, 2)].objects[
+          assetHash(placedKey)
+        ];
+      object.partition = "0";
+      const bindings = Object.fromEntries(
+        Array.from({ length: 16 }, (_, i) => [
+          `HISTORY_ASSETS_${i.toString(16)}`,
+          {
+            fetch: vi.fn(async (request: Request) => {
+              expect(i).toBe(0);
+              return f.fetch(request);
+            }),
+          },
+        ]),
+      );
+      f.publish();
+      const reader = historyAssetSource({ ...f.env, ...bindings }, r2);
+      expect(new Uint8Array(await reader.read(placedKey, etag, 2, 3))).toEqual(
+        new Uint8Array([3, 4, 5]),
+      );
+      expect(new Uint8Array(await reader.read(placedKey, etag, 0, 6))).toEqual(
+        new Uint8Array([1, 2, 3, 4, 5, 6]),
+      );
+      expect(bindings.HISTORY_ASSETS_0.fetch).toHaveBeenCalledTimes(2);
+      expect(f.fetch).toHaveBeenCalledTimes(4);
+      expect(r2.read).not.toHaveBeenCalled();
+      await expect(
+        reader.read(placedKey, "c".repeat(32), 0, 1),
+      ).rejects.toThrow("original identity");
+    },
+  );
+  it("rejects explicit placement in a release without partition bindings", async () => {
+    const f = setup();
+    f.shards[assetHash(key).slice(0, 2)].objects[assetHash(key)].partition =
+      "0";
+    f.publish();
+    await expect(
+      historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+    ).rejects.toThrow("placement requires");
+    expect(f.fetch).toHaveBeenCalledTimes(2);
+    expect(f.r2.read).not.toHaveBeenCalled();
+  });
+  it.each([null, 0, "", "00", "g", "F"])(
+    "rejects invalid object placement %j without fallback",
+    async (partition) => {
+      const f = partitioned();
+      Object.assign(
+        f.shards[assetHash(key).slice(0, 2)].objects[assetHash(key)],
+        { partition },
+      );
+      f.publish();
+      await expect(
+        historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+      ).rejects.toThrow();
+      expect(f.fetch).toHaveBeenCalledTimes(2);
+      expect(f.r2.read).not.toHaveBeenCalled();
+    },
+  );
   it("keeps unmapped keys on R2 with a partitioned release", async () => {
     const f = partitioned();
     f.shards[assetHash(key).slice(0, 2)].objects = {};
