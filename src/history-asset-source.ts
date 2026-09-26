@@ -254,25 +254,59 @@ export function historyAssetSource(
         throw new Error("Immutable history asset original identity changed");
       const output = new Uint8Array(length),
         end = offset + length;
-      let position = 0,
-        written = 0;
+      const chunks = new Map<
+        string,
+        { bytes: number; spans: { from: number; to: number; target: number }[] }
+      >();
+      let position = 0;
       for (const chunk of object.chunks) {
         const chunkEnd = position + chunk.bytes;
         if (position < end && chunkEnd > offset) {
-          const raw = await readAsset(
-              chunk.sha256,
-              chunk.bytes,
-              true,
-              object.key.endsWith(".json"),
-              object.partition,
-            ),
-            from = Math.max(offset, position) - position,
-            to = Math.min(end, chunkEnd) - position;
-          output.set(raw.subarray(from, to), written);
-          written += to - from;
+          let work = chunks.get(chunk.sha256);
+          if (work && work.bytes !== chunk.bytes)
+            throw new Error("Immutable history asset size conflict");
+          if (!work) {
+            work = { bytes: chunk.bytes, spans: [] };
+            chunks.set(chunk.sha256, work);
+          }
+          work.spans.push({
+            from: Math.max(offset, position) - position,
+            to: Math.min(end, chunkEnd) - position,
+            target: Math.max(offset, position) - offset,
+          });
         }
         position = chunkEnd;
       }
+      // Fetch each content digest once, with bounded parallelism. A failure
+      // stops new reads and drains already-started bodies before returning.
+      const pending = [...chunks];
+      let cursor = 0,
+        failed = false;
+      let failure: unknown;
+      await Promise.all(
+        Array.from({ length: Math.min(4, pending.length) }, async () => {
+          while (!failed && cursor < pending.length) {
+            const [hash, work] = pending[cursor++];
+            try {
+              const raw = await readAsset(
+                hash,
+                work.bytes,
+                true,
+                object.key.endsWith(".json"),
+                object.partition,
+              );
+              for (const span of work.spans)
+                output.set(raw.subarray(span.from, span.to), span.target);
+            } catch (error) {
+              if (!failed) {
+                failed = true;
+                failure = error;
+              }
+            }
+          }
+        }),
+      );
+      if (failed) throw failure;
       return output.buffer;
     },
   };
