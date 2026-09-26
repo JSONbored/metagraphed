@@ -1,3 +1,4 @@
+import { historyAssetSource } from "./history-asset-source.ts";
 import {
   HistorySelectionSchema,
   type HistorySelection,
@@ -128,7 +129,11 @@ export async function readSelectedHistoryBlock(
       (segment) => block >= segment.firstBlock && block <= segment.lastBlock,
     );
     if (!selected) return undefined;
-    const source = r2ParquetSource(bucket);
+    const source = historyAssetSource(
+      env,
+      r2ParquetSource(bucket),
+      "NATIVE_HISTORY",
+    );
     const generation = await loadHistoryBlockGeneration(
       source,
       selected.blockManifest,
@@ -198,7 +203,11 @@ export async function readSelectedHistoryHash(
   try {
     const segments = await selection(bucket, table, network);
     if (!segments) return undefined;
-    const source = r2ParquetSource(bucket);
+    const source = historyAssetSource(
+      env,
+      r2ParquetSource(bucket),
+      "NATIVE_HISTORY",
+    );
     for (const selected of [...segments].reverse()) {
       if (!selected.hashManifest) continue;
       const generation = await loadHistoryGeneration(

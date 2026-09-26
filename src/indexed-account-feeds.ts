@@ -147,7 +147,7 @@ async function loadSelectedAccountFeed<T>(
     if (!hot) return undefined;
     const source = historyAssetSource(
       env,
-      r2ParquetSource(bucket),
+      historyAssetSource(env, r2ParquetSource(bucket), "NATIVE_HISTORY"),
       "ACCOUNT_HISTORY",
     );
     const budget = aggregate
@@ -297,7 +297,7 @@ export async function loadRuntimeAccountSummaryGroups(
   try {
     const source = historyAssetSource(
       env,
-      r2ParquetSource(bucket),
+      historyAssetSource(env, r2ParquetSource(bucket), "NATIVE_HISTORY"),
       "ACCOUNT_HISTORY",
     );
     const budget = parquetReadBudget(128 * 1024 * 1024, 1024);

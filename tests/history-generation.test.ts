@@ -1,3 +1,5 @@
+import { historyAssetSource } from "../src/history-asset-source.ts";
+import { nativeHistoryAssetsFixture } from "./native-history-assets-fixture.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, test } from "vitest";
@@ -545,4 +547,54 @@ test("a valid physical pointer cannot substitute another logical hash", async ()
     parquetReadBudget(),
   );
   assert.equal(row?.block_hash, hash(15));
+});
+
+test("native hash lookups retain exact rows and absence after immutable sources move to assets", async () => {
+  const { generation } = await fixture();
+  const descriptor = await put(`${root}/manifest.json`, generation);
+  const keys = new Set<string>(),
+    original = r2ParquetSource(bucket);
+  const source = {
+    async read(key: string, etag: string, offset: number, length: number) {
+      keys.add(key);
+      return original.read(key, etag, offset, length);
+    },
+  };
+  const budget = parquetReadBudget(128 * 1024 * 1024, 1024);
+  const loaded = await loadHistoryGeneration(source, descriptor, scope, budget);
+  const expected = [];
+  for (const value of [0, 11, 19, 20])
+    expected.push(
+      await readHistoryHash(source, loaded, scope, hash(value), budget),
+    );
+  const env = await nativeHistoryAssetsFixture(bucket, keys);
+  const relocated = historyAssetSource(
+    env,
+    {
+      read: async () => {
+        throw new Error("R2 fallback must not run");
+      },
+    },
+    "NATIVE_HISTORY",
+  );
+  const assetBudget = parquetReadBudget(128 * 1024 * 1024, 1024);
+  const assetGeneration = await loadHistoryGeneration(
+    relocated,
+    descriptor,
+    scope,
+    assetBudget,
+  );
+  const actual = [];
+  for (const value of [0, 11, 19, 20])
+    actual.push(
+      await readHistoryHash(
+        relocated,
+        assetGeneration,
+        scope,
+        hash(value),
+        assetBudget,
+      ),
+    );
+  assert.deepEqual(actual, expected);
+  assert.deepEqual(assetBudget, budget);
 });

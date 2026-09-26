@@ -1,3 +1,4 @@
+import { historyAssetSource } from "./history-asset-source.ts";
 import { HistoryRuntimeSummarySchema } from "../schemas-src/artifacts/history-runtime-summary.ts";
 import { readSelectedHistorySegments } from "./indexed-history-store.ts";
 import { loadHistoryBlockGeneration } from "./history-generation.ts";
@@ -25,7 +26,11 @@ export async function loadIndexedRuntimeHistory(env: unknown) {
     )
       return undefined;
     const bucket = (env as { METAGRAPH_ARCHIVE: Bucket }).METAGRAPH_ARCHIVE;
-    const source = r2ParquetSource(bucket);
+    const source = historyAssetSource(
+      env,
+      r2ParquetSource(bucket),
+      "NATIVE_HISTORY",
+    );
     const budget = parquetReadBudget();
     const transitions = new Map<
       number,

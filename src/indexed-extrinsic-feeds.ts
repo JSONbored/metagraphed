@@ -94,7 +94,10 @@ async function loadSelectedExtrinsicFeedPage(
       limit + offset,
     );
     if (!hot) return undefined;
-    const source = historyAssetSource(env, r2ParquetSource(bucket)),
+    const source = historyAssetSource(
+        env,
+        historyAssetSource(env, r2ParquetSource(bucket), "NATIVE_HISTORY"),
+      ),
       budget = parquetReadBudget(128 * 1024 * 1024, 1024);
     const generations = new Map<string, HistoryBlockGeneration>(),
       streams = [];

@@ -1,3 +1,4 @@
+import { historyAssetSource } from "./history-asset-source.ts";
 import { z } from "zod";
 import { artifactBucket, type ArtifactStoreEnv } from "./projection-store.ts";
 import { r2ParquetSource } from "./indexed-parquet.ts";
@@ -163,7 +164,11 @@ export async function loadNativeAccountWeightSetters(
         128 * 1024 * 1024
     )
       return null;
-    const source = r2ParquetSource(bucket),
+    const source = historyAssetSource(
+        env,
+        r2ParquetSource(bucket),
+        "NATIVE_HISTORY",
+      ),
       groups = new Map<number | null, Group>();
     // Four compressed ranges overlap latency while decode remains sequential.
     // At most 8 MiB of prefetched compressed data accompanies one decoded body.

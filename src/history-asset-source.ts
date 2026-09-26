@@ -4,6 +4,11 @@ import {
   HistoryAssetShardSchema,
   type HistoryAssetShard,
 } from "../schemas-src/artifacts/history-assets.ts";
+import {
+  NATIVE_HISTORY_ASSET_OBJECT_KEY,
+  NativeHistoryAssetReleaseSchema,
+  NativeHistoryAssetShardSchema,
+} from "../schemas-src/artifacts/native-history-assets.ts";
 import type { ParquetRangeSource } from "./indexed-parquet.ts";
 import { createHistoryAssetMetadataReader } from "./history-asset-metadata.ts";
 
@@ -23,8 +28,18 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 export function historyAssetSource(
   env: unknown,
   fallback: ParquetRangeSource,
-  bindingPrefix: "HISTORY" | "ACCOUNT_HISTORY" = "HISTORY",
+  bindingPrefix: "HISTORY" | "ACCOUNT_HISTORY" | "NATIVE_HISTORY" = "HISTORY",
 ): ParquetRangeSource {
+  const native = bindingPrefix === "NATIVE_HISTORY";
+  const objectKey = native
+    ? NATIVE_HISTORY_ASSET_OBJECT_KEY
+    : HISTORY_ASSET_OBJECT_KEY;
+  const releaseSchema = native
+    ? NativeHistoryAssetReleaseSchema
+    : HistoryAssetReleaseSchema;
+  const shardSchema = native
+    ? NativeHistoryAssetShardSchema
+    : HistoryAssetShardSchema;
   const bindings = (env ?? {}) as Record<string, unknown>;
   const assets = bindings[`${bindingPrefix}_ASSETS`] as
     Pick<Fetcher, "fetch"> | undefined;
@@ -142,9 +157,7 @@ export function historyAssetSource(
       releaseReference![1],
       Number(releaseReference![2]),
     ).then((raw) => {
-      const root = HistoryAssetReleaseSchema.parse(
-        JSON.parse(text.decode(raw)),
-      );
+      const root = releaseSchema.parse(JSON.parse(text.decode(raw)));
       if (root.partitionCount) {
         partitions = Array.from({ length: root.partitionCount }, (_, i) => {
           const binding = (env as Record<string, Pick<Fetcher, "fetch">>)[
@@ -177,7 +190,7 @@ export function historyAssetSource(
       // Parsed metadata is also bounded; never retain every shard in a query.
       if (shards.size >= 16) shards.delete(shards.keys().next().value!);
       pending = readAsset(reference.sha256, reference.bytes).then((raw) =>
-        HistoryAssetShardSchema.parse(JSON.parse(text.decode(raw))),
+        shardSchema.parse(JSON.parse(text.decode(raw))),
       );
       shards.set(prefix, pending);
     }
@@ -197,14 +210,13 @@ export function historyAssetSource(
 
   return {
     async read(key, etag, offset, length) {
-      if (!HISTORY_ASSET_OBJECT_KEY.test(key))
-        return fallback.read(key, etag, offset, length);
+      if (!objectKey.test(key)) return fallback.read(key, etag, offset, length);
       if (
         !Number.isSafeInteger(offset) ||
         offset < 0 ||
         !Number.isSafeInteger(length) ||
         length < 1 ||
-        length > 16 * 1024 * 1024 ||
+        length > (native ? 32 : 16) * 1024 * 1024 ||
         !Number.isSafeInteger(offset + length)
       )
         throw new Error("Invalid immutable history asset range");
