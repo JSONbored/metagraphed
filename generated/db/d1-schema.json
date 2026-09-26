@@ -811,6 +811,12 @@
   },
   {
     "type": "table",
+    "name": "chain_detail_payload_chunks",
+    "tbl_name": "chain_detail_payload_chunks",
+    "sql": "CREATE TABLE chain_detail_payload_chunks (\n  sha256 TEXT NOT NULL CHECK (length(sha256) = 64),\n  part INTEGER NOT NULL CHECK (part >= 0 AND part < 12),\n  data TEXT NOT NULL CHECK (length(data) <= 1986668),\n  PRIMARY KEY (sha256, part)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
     "name": "compute_declarations",
     "tbl_name": "compute_declarations",
     "sql": "CREATE TABLE compute_declarations (\n  netuid INTEGER NOT NULL,\n  source_url TEXT NOT NULL,\n  read_at_sha TEXT NOT NULL,\n  observed_at INTEGER NOT NULL CHECK (observed_at >= 1000000000000),\n  first_seen INTEGER NOT NULL CHECK (first_seen >= 1000000000000),\n  found INTEGER NOT NULL CHECK (found IN (0, 1)),\n  spec_version TEXT,\n  miner TEXT CHECK (miner IS NULL OR (json_valid(miner) AND json_type(miner) = 'object')),\n  validator TEXT CHECK (validator IS NULL OR (json_valid(validator) AND json_type(validator) = 'object')),\n  unscoped TEXT CHECK (unscoped IS NULL OR (json_valid(unscoped) AND json_type(unscoped) = 'object')),\n  PRIMARY KEY (netuid, source_url),\n  CHECK (found = 0 OR miner IS NOT NULL OR validator IS NOT NULL OR unscoped IS NOT NULL),\n  CHECK (found = 1 OR (miner IS NULL AND validator IS NULL AND unscoped IS NULL))\n)"
@@ -850,6 +856,18 @@
     "name": "hotkey_alpha_passes",
     "tbl_name": "hotkey_alpha_passes",
     "sql": "CREATE TABLE hotkey_alpha_passes(\n captured_at INTEGER NOT NULL,\n expected_rows INTEGER NOT NULL,\n received_rows INTEGER NOT NULL DEFAULT 0,\n completed_at INTEGER,\n PRIMARY KEY (captured_at)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "iceberg_catalog_namespaces",
+    "tbl_name": "iceberg_catalog_namespaces",
+    "sql": "CREATE TABLE iceberg_catalog_namespaces (\n    namespace TEXT PRIMARY KEY NOT NULL,\n    properties TEXT NOT NULL CHECK (json_valid(properties))\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "iceberg_catalog_tables",
+    "tbl_name": "iceberg_catalog_tables",
+    "sql": "CREATE TABLE iceberg_catalog_tables (\n    namespace TEXT NOT NULL REFERENCES iceberg_catalog_namespaces(namespace),\n    name TEXT NOT NULL,\n    metadata_location TEXT NOT NULL,\n    previous_metadata_location TEXT,\n    metadata_summary TEXT NOT NULL CHECK (json_valid(metadata_summary)),\n    PRIMARY KEY (namespace, name)\n) WITHOUT ROWID"
   },
   {
     "type": "table",

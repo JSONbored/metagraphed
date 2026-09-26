@@ -490,6 +490,13 @@ CREATE TABLE chain_detail_extrinsics(
  PRIMARY KEY (block_number, extrinsic_index)
 ) WITHOUT ROWID;
 
+CREATE TABLE chain_detail_payload_chunks (
+  sha256 TEXT NOT NULL CHECK (length(sha256) = 64),
+  part INTEGER NOT NULL CHECK (part >= 0 AND part < 12),
+  data TEXT NOT NULL CHECK (length(data) <= 1986668),
+  PRIMARY KEY (sha256, part)
+) WITHOUT ROWID;
+
 CREATE TABLE compute_declarations (
   netuid INTEGER NOT NULL,
   source_url TEXT NOT NULL,
@@ -565,6 +572,20 @@ CREATE TABLE hotkey_alpha_passes(
  received_rows INTEGER NOT NULL DEFAULT 0,
  completed_at INTEGER,
  PRIMARY KEY (captured_at)
+) WITHOUT ROWID;
+
+CREATE TABLE iceberg_catalog_namespaces (
+    namespace TEXT PRIMARY KEY NOT NULL,
+    properties TEXT NOT NULL CHECK (json_valid(properties))
+) WITHOUT ROWID;
+
+CREATE TABLE iceberg_catalog_tables (
+    namespace TEXT NOT NULL REFERENCES iceberg_catalog_namespaces(namespace),
+    name TEXT NOT NULL,
+    metadata_location TEXT NOT NULL,
+    previous_metadata_location TEXT,
+    metadata_summary TEXT NOT NULL CHECK (json_valid(metadata_summary)),
+    PRIMARY KEY (namespace, name)
 ) WITHOUT ROWID;
 
 CREATE TABLE lane_health (
