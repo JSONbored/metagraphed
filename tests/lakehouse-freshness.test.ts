@@ -83,53 +83,63 @@ describe("lakehouse freshness", () => {
   });
 });
 
-test("the scheduled checker uses only catalog metadata, including historical type changes", async () => {
-  const calls: string[] = [];
-  vi.stubEnv("R2_CATALOG_TOKEN", "fixture-catalog-reader");
+function credentials() {
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+  vi.stubEnv(
+    "CLOUDFLARE_D1_DATABASE_ID",
+    "12345678-1234-1234-1234-123456789012",
+  );
+  vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", "fixture-d1-reader");
   vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "");
+}
+const summary = () => ({
+  snapshots: [{ "timestamp-ms": Date.now() }],
+  "current-schema-id": 1,
+  schemas: [
+    {
+      "schema-id": 1,
+      fields: [{ id: 1, name: "value", type: "double", required: false }],
+    },
+  ],
+});
+const rows = () =>
+  ["chain", "chain_testnet"].map((namespace) => ({
+    namespace,
+    name: "blocks",
+    metadata_summary: JSON.stringify(summary()),
+  }));
+const response = (results: unknown) =>
+  Response.json({ success: true, result: [{ success: true, results }] });
+
+test("the scheduled checker uses one bounded D1 metadata query for both networks", async () => {
+  credentials();
   const output = vi
     .spyOn(process.stdout, "write")
     .mockImplementation(() => true);
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string | URL | Request) => {
-      const parsed = new URL(String(url));
-      calls.push(parsed.href);
-      assert.equal(parsed.hostname, "catalog.cloudflarestorage.com");
-      assert.equal(parsed.searchParams.has("query"), false);
-      if (parsed.pathname.endsWith("/v1/config"))
-        return Response.json({ overrides: { prefix: "fixture" } });
-      if (parsed.pathname.endsWith("/tables"))
-        return Response.json({ identifiers: [{ name: "blocks" }] });
+  const fetcher = vi.fn(
+    async (url: string | URL | Request, init?: RequestInit) => {
+      assert.equal(new URL(String(url)).hostname, "api.cloudflare.com");
       assert.match(
-        parsed.pathname,
-        /\/namespaces\/chain(?:_testnet)?\/tables\/blocks$/,
+        new URL(String(url)).pathname,
+        /\/d1\/database\/[^/]+\/query$/,
       );
-      return Response.json({
-        metadata: {
-          snapshots: [{ "timestamp-ms": Date.now() }],
-          "current-schema-id": 1,
-          schemas: [
-            {
-              "schema-id": 0,
-              fields: [{ id: 1, name: "value", type: "float" }],
-            },
-            {
-              "schema-id": 1,
-              fields: [{ id: 1, name: "value", type: "double" }],
-            },
-          ],
-        },
-      });
-    }),
+      const statements = JSON.parse(String(init?.body)).batch;
+      assert.equal(statements.length, 1);
+      assert.match(
+        statements[0].sql,
+        /^SELECT .* FROM iceberg_catalog_tables .* LIMIT 1001$/,
+      );
+      assert.equal(
+        new Headers(init?.headers).get("authorization"),
+        "Bearer fixture-d1-reader",
+      );
+      return response(rows());
+    },
   );
+  vi.stubGlobal("fetch", fetcher);
   try {
     await checkLakehouseFreshness();
-    assert.equal(calls.length, 5);
-    assert.equal(
-      calls.filter((url) => url.endsWith("/tables/blocks")).length,
-      2,
-    );
+    assert.equal(fetcher.mock.calls.length, 1);
     assert.match(
       output.mock.calls.map(([text]) => String(text)).join(""),
       /0 stale of 2/,
@@ -141,45 +151,62 @@ test("the scheduled checker uses only catalog metadata, including historical typ
   }
 });
 
-test("catalog failures and incomplete responses cannot report a healthy inventory", async () => {
-  vi.stubEnv("R2_CATALOG_TOKEN", "fixture-catalog-reader");
+test("failed, incomplete, duplicated and malformed D1 metadata cannot report healthy", async () => {
+  credentials();
   const output = vi
     .spyOn(process.stdout, "write")
     .mockImplementation(() => true);
+  const valid = rows();
+  const invalid = [
+    null,
+    [],
+    [valid[0]],
+    Array(1001).fill(valid[0]),
+    [...valid, valid[0]],
+    [{ ...valid[0], name: "" }],
+    [{ ...valid[0], namespace: "unknown" }],
+    [{ ...valid[0], metadata_summary: "invalid" }],
+    [
+      {
+        ...valid[0],
+        metadata_summary: JSON.stringify({
+          ...summary(),
+          snapshots: "unavailable",
+        }),
+      },
+    ],
+    [
+      {
+        ...valid[0],
+        metadata_summary: JSON.stringify({
+          ...summary(),
+          snapshots: [{ "timestamp-ms": -1 }],
+        }),
+      },
+    ],
+    [
+      {
+        ...valid[0],
+        metadata_summary: JSON.stringify({
+          ...summary(),
+          "current-schema-id": 99,
+        }),
+      },
+    ],
+  ];
   try {
-    for (const mode of [
-      "http",
-      "missing-list",
-      "empty-list",
-      "invalid-name",
-      "missing-metadata",
-      "invalid-snapshots",
-    ]) {
+    for (const value of invalid) {
       vi.stubGlobal(
         "fetch",
-        vi.fn(async (url: string | URL | Request) => {
-          const path = new URL(String(url)).pathname;
-          if (path.endsWith("/v1/config"))
-            return Response.json({ overrides: { prefix: "fixture" } });
-          if (mode === "http")
-            return new Response("unavailable", { status: 503 });
-          if (path.endsWith("/tables")) {
-            if (mode === "missing-list") return Response.json({});
-            if (mode === "empty-list")
-              return Response.json({ identifiers: [] });
-            if (mode === "invalid-name")
-              return Response.json({ identifiers: [{}] });
-            return Response.json({ identifiers: [{ name: "blocks" }] });
-          }
-          return Response.json(
-            mode === "missing-metadata"
-              ? {}
-              : { metadata: { snapshots: "unavailable" } },
-          );
-        }),
+        vi.fn(async () => response(value)),
       );
-      await assert.rejects(checkLakehouseFreshness(), /Catalog/);
+      await assert.rejects(checkLakehouseFreshness(), /Catalog|D1/);
     }
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("unavailable", { status: 503 })),
+    );
+    await assert.rejects(checkLakehouseFreshness(), /D1/);
     assert.equal(output.mock.calls.length, 0);
   } finally {
     vi.unstubAllGlobals();
