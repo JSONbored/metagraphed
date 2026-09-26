@@ -138,9 +138,13 @@ function archive(network: "mainnet" | "testnet" = "mainnet") {
 }
 
 describe("selected account feed serving", () => {
-  it.each([false, true])(
-    "preserves complete pages and aggregate windows after feed objects leave R2 (partitioned=%s)",
-    async (partitioned) => {
+  it.each([
+    { partitioned: false, shardPrefixLength: 2 },
+    { partitioned: true, shardPrefixLength: 2 },
+    { partitioned: true, shardPrefixLength: 3 },
+  ] as const)(
+    "preserves complete pages and aggregate windows after feed objects leave R2 (partitioned=$partitioned, prefix=$shardPrefixLength)",
+    async ({ partitioned, shardPrefixLength }) => {
       const before = archive(),
         after = archive();
       const inputs = [...after.objects]
@@ -154,7 +158,7 @@ describe("selected account feed serving", () => {
           ),
         }));
       expect(inputs.length).toBeGreaterThan(0);
-      const assets = historyAssetsFixture(inputs);
+      const assets = historyAssetsFixture(inputs, shardPrefixLength);
       assets.root.prefixes = [after.manifest.slice(0, -"manifest.json".length)];
       if (partitioned) assets.root.partitionCount = 16;
       assets.publish();

@@ -40,6 +40,45 @@ const partitioned = () => {
 };
 
 describe("immutable history asset ranges", () => {
+  it("reads a fully populated three-digit catalog within the metadata bound", async () => {
+    const f = historyAssetsFixture([input()], 3),
+      r2 = fallback(),
+      ref = Object.values(f.root.shards)[0];
+    for (let i = 0; i < 4096; i++)
+      f.root.shards[i.toString(16).padStart(3, "0")] = ref;
+    f.publishRoot(f.root);
+    const bytes = Number(f.env.HISTORY_ASSET_RELEASE.split(":")[1]);
+    expect(bytes).toBeGreaterThan(128 * 1024);
+    expect(bytes).toBeLessThanOrEqual(512 * 1024);
+    expect(
+      new Uint8Array(await historyAssetSource(f.env, r2).read(key, etag, 2, 3)),
+    ).toEqual(new Uint8Array([3, 4, 5]));
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    expect(r2.read).not.toHaveBeenCalled();
+  });
+  it.each([
+    { declared: undefined, prefix: "abc" },
+    { declared: 3, prefix: "ab" },
+    { declared: 3, prefix: "a" },
+    { declared: 3, prefix: "abcd" },
+    { declared: 2, prefix: "ab" },
+    { declared: 4, prefix: "abcd" },
+  ])(
+    "rejects inconsistent shard widths before reading payloads: %j",
+    async ({ declared, prefix }) => {
+      const f = setup();
+      f.publishRoot({
+        ...f.root,
+        ...(declared === undefined ? {} : { shardPrefixLength: declared }),
+        shards: { [prefix]: Object.values(f.root.shards)[0] },
+      });
+      await expect(
+        historyAssetSource(f.env, f.r2).read(key, etag, 0, 1),
+      ).rejects.toThrow();
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+      expect(f.r2.read).not.toHaveBeenCalled();
+    },
+  );
   it("serves account history from separate pinned stores without consulting transaction stores", async () => {
     const accountKey = key
       .replace("/extrinsics/", "/account_events/")
@@ -258,7 +297,7 @@ describe("immutable history asset ranges", () => {
     { HISTORY_ASSETS: { fetch() {} }, HISTORY_ASSET_RELEASE: 17 },
     {
       HISTORY_ASSETS: { fetch() {} },
-      HISTORY_ASSET_RELEASE: `${"a".repeat(64)}:131073`,
+      HISTORY_ASSET_RELEASE: `${"a".repeat(64)}:524289`,
     },
   ])("refuses partial or malformed activation: %j", (env) => {
     expect(() => historyAssetSource(env, fallback())).toThrow(/configuration/);

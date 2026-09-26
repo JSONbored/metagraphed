@@ -37,7 +37,7 @@ export function historyAssetSource(
     !assets ||
     typeof assets.fetch !== "function" ||
     !releaseReference ||
-    Number(releaseReference[2]) > 128 * 1024
+    Number(releaseReference[2]) > 512 * 1024
   )
     throw new Error("Incomplete immutable history asset configuration");
 
@@ -146,7 +146,7 @@ export function historyAssetSource(
     )
       return undefined;
     const identity = await sha256(new TextEncoder().encode(key)),
-      prefix = identity.slice(0, 2),
+      prefix = identity.slice(0, root.shardPrefixLength ?? 2),
       reference = root.shards[prefix];
     if (!reference) return undefined;
     let pending = shards.get(prefix);

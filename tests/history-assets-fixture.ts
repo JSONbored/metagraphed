@@ -9,6 +9,7 @@ export const assetKey = (name: string) =>
 
 export function historyAssetsFixture(
   inputs: { key: string; etag: string; chunks: Uint8Array[] }[],
+  shardPrefixLength: 2 | 3 = 2,
 ) {
   const files = new Map<string, Uint8Array>();
   const shards: Record<string, HistoryAssetShard> = {};
@@ -19,7 +20,7 @@ export function historyAssetsFixture(
   };
   for (const input of inputs) {
     const id = assetHash(input.key),
-      prefix = id.slice(0, 2);
+      prefix = id.slice(0, shardPrefixLength);
     const shard = (shards[prefix] ??= { version: 1, objects: {} });
     shard.objects[id] = {
       key: input.key,
@@ -50,9 +51,14 @@ export function historyAssetsFixture(
   const root: {
     version: 1;
     partitionCount?: 16;
+    shardPrefixLength?: 3;
     prefixes?: string[];
     shards: Record<string, { sha256: string; bytes: number }>;
-  } = { version: 1, shards: {} };
+  } = {
+    version: 1,
+    ...(shardPrefixLength === 3 ? { shardPrefixLength: 3 } : {}),
+    shards: {},
+  };
   const publish = () => {
     root.shards = Object.fromEntries(
       Object.entries(shards).map(([prefix, shard]) => [
