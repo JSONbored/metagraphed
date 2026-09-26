@@ -59,7 +59,7 @@ import { ROUTABLE_AXON_SQL } from "./axon-routable.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import {
   axonSequenceD1Sql,
-  axonDayCountsD1Sql,
+  readAxonDayCountsD1,
   axonProjectionReady,
 } from "./axon-transition-d1.ts";
 import {
@@ -479,23 +479,28 @@ export async function runAxonAnnouncementWatchdog(
   try {
     // Aggregated in the store: the raw window is ~129 subnets x 256 neurons x 8
     // days, and the answer is two integers per subnet-day.
-    const rows = await db.query(
-      native
-        ? axonDayCountsD1Sql(await axonProjectionReady(native.query))
-        : "SELECT netuid, snapshot_date AS date, " +
+    const since = isoDaysAgo(now(), AXON_BASELINE_DAYS + 1);
+    const rows = native
+      ? await readAxonDayCountsD1(native.query, since)
+      : await db.query(
+          "SELECT netuid, snapshot_date AS date, " +
             `COUNT(*) FILTER (WHERE ${ROUTABLE_AXON_SQL}) AS with_axon, ` +
             "COUNT(*) AS neurons FROM neuron_daily " +
             "WHERE snapshot_date >= ? GROUP BY netuid, snapshot_date " +
             "ORDER BY netuid, snapshot_date",
-      [isoDaysAgo(now(), AXON_BASELINE_DAYS + 1)],
-    );
+          [since],
+        );
     bySubnet = groupAxonDays(rows);
   } catch (err) {
-    return {
-      ok: false,
-      reason: "query_failed",
-      detail: err instanceof Error ? err.message : String(err),
-    };
+    const detail = err instanceof Error ? err.message : String(err);
+    await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+      lane: AXON_ANNOUNCEMENT_LANE,
+      verdict: "stale",
+      age_ms: null,
+      detail: `query failed: ${detail}`,
+      checked_at: now(),
+    });
+    return { ok: false, reason: "query_failed", detail };
   }
 
   const findings = evaluateAxonAnnouncements(bySubnet);

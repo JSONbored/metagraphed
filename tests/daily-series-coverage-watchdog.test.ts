@@ -331,6 +331,11 @@ describe("the watchdog tick", () => {
     })) as { ok: boolean; reason?: string };
     assert.equal(result.ok, false);
     assert.equal(result.reason, "query_failed");
+    assert.equal(recordedVerdict().verdict, "stale");
+    assert.match(
+      String(recordedVerdict().detail),
+      /query failed: connection reset/,
+    );
   });
 
   test("declines rather than reporting a clean series with no store", async () => {

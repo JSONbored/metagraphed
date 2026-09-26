@@ -41,6 +41,10 @@ import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import {
+  dailySeriesCountsD1,
+  type DailySeriesTable,
+} from "./daily-series-counts-d1.ts";
 import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import type { StoreEnv } from "./read-store.ts";
 
@@ -55,7 +59,10 @@ export const DAILY_COVERAGE_LANE = "daily-series-coverage";
  * days with traffic, so a gap there is a quiet Tuesday, and alarming on it
  * would be the #9301 failure by construction.
  */
-export const DAILY_SERIES: readonly { table: string; column: string }[] = [
+export const DAILY_SERIES: readonly {
+  table: DailySeriesTable;
+  column: string;
+}[] = [
   { table: "neuron_daily", column: "snapshot_date" },
   { table: "account_position_daily", column: "snapshot_date" },
 ];
@@ -249,25 +256,17 @@ export async function runDailySeriesCoverageWatchdog(
   const verdicts: DailySeriesVerdict[] = [];
   try {
     for (const { table, column } of DAILY_SERIES) {
-      // On D1, count the small membership records before joining their metric
-      // documents. The view otherwise looks up the same document once for
-      // every member. Keep the join: orphaned or displaced memberships must
-      // not make an incomplete series appear whole. Materialization prevents
-      // SQLite from flattening this back into a document lookup per member.
-      const result = await db.query(
-        native
-          ? `WITH member_counts AS MATERIALIZED (
-              SELECT ${column}, netuid, shard, COUNT(*) AS rows
-              FROM ${table}_members GROUP BY ${column}, netuid, shard
-            )
-            SELECT m.${column} AS date, SUM(m.rows) AS rows
-            FROM member_counts m JOIN ${table}_documents d
-              ON d.netuid=m.netuid AND d.day=m.${column} AND d.shard=m.shard
-            GROUP BY m.${column} ORDER BY m.${column} DESC LIMIT ?`
-          : `SELECT ${column} AS date, COUNT(*) AS rows FROM ${table} ` +
+      const result = native
+        ? await dailySeriesCountsD1(
+            native.query,
+            table,
+            DAILY_COVERAGE_LOOKBACK_DAYS,
+          )
+        : await db.query(
+            `SELECT ${column} AS date, COUNT(*) AS rows FROM ${table} ` +
               `GROUP BY ${column} ORDER BY ${column} DESC LIMIT ?`,
-        [DAILY_COVERAGE_LOOKBACK_DAYS],
-      );
+            [DAILY_COVERAGE_LOOKBACK_DAYS],
+          );
       const days = result
         .map((row) => ({
           date: String(row.date ?? ""),
@@ -277,11 +276,15 @@ export async function runDailySeriesCoverageWatchdog(
       verdicts.push(evaluateDailyCoverage(table, days));
     }
   } catch (err) {
-    return {
-      ok: false,
-      reason: "query_failed",
-      detail: err instanceof Error ? err.message : String(err),
-    };
+    const detail = err instanceof Error ? err.message : String(err);
+    await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+      lane: DAILY_COVERAGE_LANE,
+      verdict: "stale",
+      age_ms: null,
+      detail: `query failed: ${detail}`,
+      checked_at: now(),
+    });
+    return { ok: false, reason: "query_failed", detail };
   }
 
   const holed = verdicts.some((v) => v.missing.length > 0 || v.thin.length > 0);

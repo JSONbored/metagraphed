@@ -546,12 +546,10 @@ describe("the watchdog tick", () => {
     assert.equal(result.ok, false);
     assert.equal(result.reason, "query_failed");
     assert.match(result.detail, /connection reset/);
-    assert.equal(
-      pg.control.queries.some((q) =>
-        q.text.includes("INSERT INTO lane_health"),
-      ),
-      false,
-      "a failed read records NO verdict -- silence beats a false `ok`",
+    assert.equal(recordedVerdict().verdict, "stale");
+    assert.match(
+      String(recordedVerdict().detail),
+      /query failed: connection reset/,
     );
   });
 
