@@ -120,6 +120,7 @@
   // secret (see UNKEY_ROOT_KEY above for the actual credential), just an
   // opaque id every src/unkey-client.ts call needs to scope its request to.
   "vars": {
+    "HISTORY_ASSET_RELEASE": "2f33d8c5e292dc509354231d3e5fd75ac0f50cdb0b549b98107d5c93bbda1c1f:25282",
     // Both networks passed complete native artifact and reader qualification.
     "NATIVE_PROJECTIONS": "enabled",
     "RETAINED_BLOCKS_NETWORKS": "mainnet,testnet",
@@ -542,6 +543,76 @@
     ],
   },
   // Operational state is served and written through the explicitly owned D1 binding.
+  "services": [
+    {
+      "binding": "HISTORY_ASSETS",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-meta",
+    },
+    {
+      "binding": "HISTORY_ASSETS_0",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-0",
+    },
+    {
+      "binding": "HISTORY_ASSETS_1",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-1",
+    },
+    {
+      "binding": "HISTORY_ASSETS_2",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-2",
+    },
+    {
+      "binding": "HISTORY_ASSETS_3",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-3",
+    },
+    {
+      "binding": "HISTORY_ASSETS_4",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-4",
+    },
+    {
+      "binding": "HISTORY_ASSETS_5",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-5",
+    },
+    {
+      "binding": "HISTORY_ASSETS_6",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-6",
+    },
+    {
+      "binding": "HISTORY_ASSETS_7",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-7",
+    },
+    {
+      "binding": "HISTORY_ASSETS_8",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-8",
+    },
+    {
+      "binding": "HISTORY_ASSETS_9",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-9",
+    },
+    {
+      "binding": "HISTORY_ASSETS_a",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-a",
+    },
+    {
+      "binding": "HISTORY_ASSETS_b",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-b",
+    },
+    {
+      "binding": "HISTORY_ASSETS_c",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-c",
+    },
+    {
+      "binding": "HISTORY_ASSETS_d",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-d",
+    },
+    {
+      "binding": "HISTORY_ASSETS_e",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-e",
+    },
+    {
+      "binding": "HISTORY_ASSETS_f",
+      "service": "metagraphed-history-extrinsics-2f33d8c5e292-f",
+    },
+  ],
   "r2_buckets": [
     {
       "binding": "METAGRAPH_ARCHIVE",
