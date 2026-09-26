@@ -7415,19 +7415,7 @@ const rootValue = {
       limit: data.limit ?? safeLimit,
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
-      events: rowsOf(data.events).map((e: Row) => ({
-        block_number: e.block_number ?? null,
-        event_index: e.event_index ?? null,
-        event_kind: e.event_kind ?? null,
-        hotkey: e.hotkey ?? null,
-        coldkey: e.coldkey ?? null,
-        netuid: e.netuid ?? null,
-        uid: e.uid ?? null,
-        amount_tao: e.amount_tao ?? null,
-        alpha_amount: e.alpha_amount ?? null,
-        observed_at: e.observed_at ?? null,
-        extrinsic_index: e.extrinsic_index ?? null,
-      })),
+      events: rowsOf(data.events),
     };
   },
 
