@@ -160,7 +160,9 @@ test("D1 counts preserve view semantics, gaps, thin days, orphaned members and d
       results.some(({ detail }) => detail === "MATERIALIZE member_counts"),
     );
     assert.ok(
-      results.some(({ detail }) => /SEARCH d USING PRIMARY KEY/.test(detail)),
+      results.some(({ detail }) => /SEARCH d USING .*day=\?/.test(detail)),
+      "document lookup must stay indexed by the exact day: " +
+        JSON.stringify(results),
     );
     assert.ok(
       results.some(({ detail }) =>
