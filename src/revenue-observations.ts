@@ -18,6 +18,7 @@
 // exact confusion the lane exists to prevent (see migrations/neon/0016).
 import {
   READABLE_PROVENANCES,
+  RevenueProbeHttpError,
   runRevenueProbe,
   type ProbeSurfaceInput,
   type RevenueProbeResult,
@@ -365,7 +366,10 @@ export async function fetchRevenuePayload(
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    // The error payload is never an observation. Release its stream without
+    // reading it; cancellation failure must not erase the original status.
+    await response.body?.cancel().catch(() => {});
+    throw new RevenueProbeHttpError(response.status);
   }
   const raw = await response.text();
   return { payload: JSON.parse(raw) as unknown, raw };
@@ -492,8 +496,9 @@ export async function handleRevenueProbeBatch(
       // retry bought a second identical row and a second request against
       // somebody else's API.
       //
-      // A transient failure still retries: `retryable` is true for a fetch that
-      // threw and for a write that did not land.
+      // Transient fetch failures and failed persistence still retry. A durable
+      // 401/403/404/410 failure waits for the next scheduled probe instead of
+      // repeating the same request through every queue retry and the DLQ.
       // Split rather than `||`ed, so the union narrows: after both guards
       // `outcome` is the decline arm and its reason is a string, not a maybe.
       if (outcome.ok) return true;

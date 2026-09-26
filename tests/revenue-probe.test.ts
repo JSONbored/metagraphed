@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   READABLE_PROVENANCES,
+  RevenueProbeHttpError,
   SCALAR_PERIOD,
   probeEligibility,
   runRevenueProbe,
@@ -131,6 +132,51 @@ describe("probeEligibility", () => {
 });
 
 describe("runRevenueProbe", () => {
+  test.each([401, 403, 404, 410])(
+    "records HTTP %s as a terminal failure without inventing revenue",
+    async (status) => {
+      const result = await runRevenueProbe([CHUTES], {
+        ...deps(null),
+        fetchPayload: async () => {
+          throw new RevenueProbeHttpError(status);
+        },
+      });
+      assert.deepEqual(result.observations, []);
+      assert.deepEqual(result.failures, [
+        {
+          surface_id: CHUTES.id,
+          netuid: CHUTES.netuid,
+          observed_at: 1_786_400_000_000,
+          reason: `fetch failed: HTTP ${status}`,
+          terminal: true,
+        },
+      ]);
+    },
+  );
+
+  test.each([400, 408, 409, 425, 429, 500, 502, 503, 504])(
+    "keeps HTTP %s retryable",
+    async (status) => {
+      const result = await runRevenueProbe([CHUTES], {
+        ...deps(null),
+        fetchPayload: async () => {
+          throw new RevenueProbeHttpError(status);
+        },
+      });
+      assert.equal(result.failures[0].terminal, false);
+    },
+  );
+
+  test("does not infer a terminal HTTP status from an untyped error message", async () => {
+    const result = await runRevenueProbe([CHUTES], {
+      ...deps(null),
+      fetchPayload: async () => {
+        throw new Error("HTTP 401");
+      },
+    });
+    assert.equal(result.failures[0].terminal, false);
+  });
+
   test("extracts a net observation and stamps it with the response hash", async () => {
     const r = await runRevenueProbe([CHUTES], deps([ROW]));
     assert.equal(r.observations.length, 1);

@@ -16,6 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { SEND_BATCH_MAX } from "../src/lane-queue.ts";
+import { RevenueProbeHttpError } from "../src/revenue-probe.ts";
 import {
   eligibleRevenueSurfaces,
   enqueueRevenueProbes,
@@ -597,6 +598,47 @@ describe("the lane end to end", () => {
 });
 
 describe("fetchRevenuePayload", () => {
+  test.each([false, true])(
+    "cancels an unread rejected response and preserves status when cancellation rejects: %s",
+    async (rejectCancellation) => {
+      const original = globalThis.fetch;
+      let canceled = 0;
+      const body = new ReadableStream({
+        cancel() {
+          canceled += 1;
+          if (rejectCancellation) throw new Error("cancel failed");
+        },
+      });
+      globalThis.fetch = (async () =>
+        new Response(body, { status: 401 })) as typeof fetch;
+      try {
+        await assert.rejects(
+          () => fetchRevenuePayload("https://example/x"),
+          (error: unknown) =>
+            error instanceof RevenueProbeHttpError && error.status === 401,
+        );
+        assert.equal(canceled, 1);
+      } finally {
+        globalThis.fetch = original;
+      }
+    },
+  );
+
+  test("preserves HTTP status when the rejected response has no body", async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(null, { status: 404 })) as typeof fetch;
+    try {
+      await assert.rejects(
+        () => fetchRevenuePayload("https://example/x"),
+        (error: unknown) =>
+          error instanceof RevenueProbeHttpError && error.status === 404,
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
   test("a non-2xx throws rather than handing an error body to the extractor", async () => {
     // An operator returning 500 with a JSON error body must not have that body
     // read for a field name.
@@ -968,6 +1010,90 @@ describe("the queue lane (#10715)", () => {
       dropped: 0,
       firstFailure: null,
     });
+  });
+
+  test.each([401, 403, 404, 410, 408, 429, 503])(
+    "routes real HTTP %s responses only after persisting the failure",
+    async (status) => {
+      const original = globalThis.fetch;
+      const { db, calls } = recordingDb();
+      const m = message({ surface_id: surface.id });
+      const terminal = [401, 403, 404, 410].includes(status);
+      const acknowledge = m.ack;
+      m.ack = () => {
+        assert.equal(calls.length, 1, "persist before acknowledging");
+        acknowledge();
+      };
+      globalThis.fetch = (async () =>
+        new Response(null, { status })) as typeof fetch;
+      try {
+        const out = await handleRevenueProbeBatch(
+          [m],
+          db,
+          deps({ fetchPayload: fetchRevenuePayload }) as never,
+        );
+        assert.equal(m.calls.acked, terminal ? 1 : 0);
+        assert.equal(out.retried, terminal ? 0 : 1);
+        assert.equal(calls.length, 1);
+        assert.match(calls[0].sql, /INSERT INTO revenue_probe_failures/);
+        assert.deepEqual(calls[0].values, [
+          surface.id,
+          surface.netuid,
+          `fetch failed: HTTP ${status}`,
+          1_786_320_000_000,
+        ]);
+      } finally {
+        globalThis.fetch = original;
+      }
+    },
+  );
+
+  test("retries terminal HTTP failures if their durable failure record cannot be written", async () => {
+    const m = message({ surface_id: surface.id });
+    const out = await handleRevenueProbeBatch(
+      [m],
+      {
+        run: async () => {
+          throw new Error("store unavailable");
+        },
+      },
+      deps({
+        fetchPayload: async () => {
+          throw new RevenueProbeHttpError(401);
+        },
+      }) as never,
+    );
+    assert.equal(m.calls.acked, 0);
+    assert.equal(out.retried, 1);
+    assert.match(out.firstFailure ?? "", /write_failed: store unavailable/);
+  });
+
+  test("a later scheduled probe still records recovery after an auth refusal", async () => {
+    const { db, calls } = recordingDb();
+    const failed = message({ surface_id: surface.id });
+    await handleRevenueProbeBatch(
+      [failed],
+      db,
+      deps({
+        fetchPayload: async () => {
+          throw new RevenueProbeHttpError(401);
+        },
+      }) as never,
+    );
+    const recovered = message({ surface_id: surface.id });
+    const out = await handleRevenueProbeBatch(
+      [recovered],
+      db,
+      deps({ now: () => 1_786_323_600_000 }) as never,
+    );
+    assert.equal(failed.calls.acked, 1);
+    assert.equal(recovered.calls.acked, 1);
+    assert.equal(out.retried, 0);
+    assert.equal(calls.length, 2);
+    assert.match(calls[0].sql, /INSERT INTO revenue_probe_failures/);
+    assert.match(calls[1].sql, /INSERT INTO revenue_observations/);
+    assert.equal(calls[1].values[4], 11668);
+    assert.equal(calls[1].values[8], 1_786_323_600_000);
   });
 
   test("a FETCH failure still RETRIES, because that one is transient", async () => {
