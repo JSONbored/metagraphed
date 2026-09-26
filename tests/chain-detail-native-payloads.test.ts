@@ -52,7 +52,7 @@ function fixture() {
       return [];
     },
   };
-  return { env: { D1_STATE: db }, db, sql };
+  return { env: { D1_STATE: db, NATIVE_CHAIN_PAYLOADS: "enabled" }, db, sql };
 }
 
 function rawCodec() {
@@ -240,4 +240,17 @@ test("a failed chunk transaction cannot publish a reference", async () => {
     0,
   );
   f.sql.close();
+});
+
+test("inline native writes preserve BOM and replay without any storage binding", async () => {
+  const env = { NATIVE_CHAIN_PAYLOADS: "enabled" };
+  const value = "\uFEFF" + "界".repeat(60000);
+  const rows = [{ args: value }, { call_args: value }];
+  const stored = await storeChainDetailPayloads(env, rows);
+  assert.match(String(stored[0].args), /:gzip:inline:/);
+  assert.deepEqual(await restoreChainDetailPayloads(null, stored), rows);
+  await assert.rejects(
+    storeChainDetailPayloads(env, [{ args: prefix + "bad" }]),
+    /Reserved/,
+  );
 });

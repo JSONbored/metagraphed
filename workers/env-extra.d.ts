@@ -28,6 +28,11 @@
 // needs a type and `X` isn't in any wrangler*.jsonc `vars` block. Keep it
 // alphabetized; don't add a field speculatively for something not yet read
 // anywhere.
+interface ChainPayloadStorageEnv {
+  /** Enable writes only after both production readers support native payloads. */
+  NATIVE_CHAIN_PAYLOADS?: "enabled";
+}
+
 interface RuntimeSecretEnv {
   ACCOUNT_BALANCES_SYNC_SECRET?: string;
   /** Web Bot Auth signing key for the prober fleet (metagraphed-infra#562):
@@ -362,6 +367,7 @@ interface LegacyBufferFixtureEnv {
 interface Env
   extends
     RuntimeSecretEnv,
+    ChainPayloadStorageEnv,
     LegacyStoreFixtureEnv,
     LegacyBufferFixtureEnv,
     ChainHeadPollEnv,
@@ -376,7 +382,11 @@ interface Env
 
 /** data-api serves the authenticated surfaces, so it holds the secrets. */
 interface DataApiEnv
-  extends RuntimeSecretEnv, LegacyStoreFixtureEnv, LegacyBufferFixtureEnv {}
+  extends
+    RuntimeSecretEnv,
+    ChainPayloadStorageEnv,
+    LegacyStoreFixtureEnv,
+    LegacyBufferFixtureEnv {}
 
 /** The registry sync Worker authenticates its own callers. */
 interface RegistrySyncApiEnv extends RuntimeSecretEnv, LegacyStoreFixtureEnv {}

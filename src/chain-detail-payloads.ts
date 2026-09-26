@@ -28,11 +28,45 @@ function objectKey(hash: string, compressed: boolean): string {
   return `metagraph/d1-chain-payloads/v1/${hash}.json${compressed ? ".gz" : ""}`;
 }
 
+async function writeLegacyPayload(
+  env: unknown,
+  hash: string,
+  rawBytes: number,
+  bytes: Uint8Array,
+  compressed: boolean,
+): Promise<string> {
+  const archive = bucket(env);
+  const key = objectKey(hash, compressed);
+  // Captures and retries often repeat the same large call. Reuse an
+  // immutable object before sending its body again; the conditional put
+  // still handles a competing writer between this head and the upload.
+  let object = await archive.head(key);
+  if (!object) {
+    object = await archive.put(key, bytes, {
+      onlyIf: { etagDoesNotMatch: "*" },
+      customMetadata: { sha256: hash, rawBytes: String(rawBytes) },
+      httpMetadata: { contentType: "application/octet-stream" },
+    });
+    if (!object) object = await archive.head(key);
+  }
+  if (
+    !object ||
+    object.size !== bytes.byteLength ||
+    object.customMetadata?.sha256 !== hash
+  )
+    throw new Error("Chain detail payload object conflict");
+  return `${PREFIX}v2:${hash}:${rawBytes}:${bytes.byteLength}:${compressed ? "gzip" : "raw"}`;
+}
+
 /** Prepare exact payloads before committing their chain-detail references. */
 export async function storeChainDetailPayloads(
   env: unknown,
   rows: Row[],
 ): Promise<Row[]> {
+  // Enable only after both production readers support the new reference.
+  const native =
+    (env as { NATIVE_CHAIN_PAYLOADS?: string } | null)
+      ?.NATIVE_CHAIN_PAYLOADS === "enabled";
   const output: Row[] = [];
   const prepared = new Map<string, string>();
   let total = 0;
@@ -61,13 +95,21 @@ export async function storeChainDetailPayloads(
       );
       const compressed = zipped.byteLength < raw.byteLength;
       const bytes = compressed ? zipped : raw;
-      next[field] = await writeNativePayload(
-        env,
-        hash,
-        raw.byteLength,
-        bytes,
-        compressed ? "gzip" : "raw",
-      );
+      next[field] = native
+        ? await writeNativePayload(
+            env,
+            hash,
+            raw.byteLength,
+            bytes,
+            compressed ? "gzip" : "raw",
+          )
+        : await writeLegacyPayload(
+            env,
+            hash,
+            raw.byteLength,
+            bytes,
+            compressed,
+          );
       prepared.set(hash, next[field] as string);
     }
     output.push(next);

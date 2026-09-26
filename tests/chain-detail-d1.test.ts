@@ -37,6 +37,7 @@ const tables = ["blocks_head", ...chainDetailTables()];
 const env = () =>
   dataApiEnv({
     D1_STATE: db,
+    NATIVE_CHAIN_PAYLOADS: "enabled",
     D1_STATE_TABLES: tables.join(","),
     HYPERDRIVE: undefined,
     METAGRAPH_ARCHIVE: archive,
