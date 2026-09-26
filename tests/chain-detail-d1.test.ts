@@ -37,7 +37,6 @@ const tables = ["blocks_head", ...chainDetailTables()];
 const env = () =>
   dataApiEnv({
     D1_STATE: db,
-    NATIVE_CHAIN_PAYLOADS: "enabled",
     D1_STATE_TABLES: tables.join(","),
     HYPERDRIVE: undefined,
     METAGRAPH_ARCHIVE: archive,
@@ -173,7 +172,7 @@ test("a bad late family rolls back detail and coverage together", async () => {
   assert.equal(await count("chain_detail_blocks"), 0);
 });
 
-test("a nine-megabyte call is compressed inline and hydrated without R2", async () => {
+test("a nine-megabyte call is compressed off-row and hydrated byte-for-byte", async () => {
   const args = JSON.stringify([
     { name: "payload", type: "Vec<u8>", value: "x".repeat(9_088_840) },
   ]);
@@ -184,7 +183,7 @@ test("a nine-megabyte call is compressed inline and hydrated without R2", async 
   const stored = await db
     .prepare("SELECT call_args FROM chain_detail_extrinsics")
     .first<string>("call_args");
-  assert.match(stored!, /^\0metagraphed:payload:v1:.*:gzip:inline:/);
+  assert.match(stored!, /^\0metagraphed:r2:v2:.*:gzip$/);
   const { restoreChainDetailPayloads } =
     await import("../src/chain-detail-payloads.ts");
   const restored = await restoreChainDetailPayloads(env(), [
@@ -193,11 +192,11 @@ test("a nine-megabyte call is compressed inline and hydrated without R2", async 
   assert.equal(restored[0].call_args, args);
   assert.ok(await loadExtrinsicHotTier(env(), xtHash));
   const unbound = { ...env(), METAGRAPH_ARCHIVE: undefined };
-  assert.ok(await loadExtrinsicHotTier(unbound, xtHash));
-  const replay = await mirrorChainDetailToNeon(unbound, null, input(args), {
+  assert.equal(await loadExtrinsicHotTier(unbound, xtHash), null);
+  const failed = await mirrorChainDetailToNeon(unbound, null, input(args), {
     laneHealthDb,
   });
-  assert.ok(Object.values(replay.results).every((r) => r.ok));
+  assert.ok(Object.values(failed.results).every((r) => !r.ok));
 });
 
 test("native header updates retain known author and event count", async () => {
