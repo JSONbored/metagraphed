@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleD1StateExport } from "../src/d1-state-export.ts";
 import { handleNativeHistoryExport } from "../src/native-history-export.ts";
 import * as assets from "../src/history-asset-source.ts";
+import { handleRequest } from "../workers/api.ts";
 import {
   assetHash,
   assetKey,
@@ -41,6 +42,73 @@ const request = (input: unknown, secret = "existing-producer-secret") =>
 afterEach(() => vi.restoreAllMocks());
 
 describe("credential-protected native history producer reads", () => {
+  it("preserves native binary ranges through the public API proxy", async () => {
+    const f = fixture();
+    const env = {
+      DATA_API: {
+        fetch: (incoming: Request) => handleD1StateExport(incoming, f.env),
+      },
+    } as unknown as Env;
+    const response = await handleRequest(request(range), env, {});
+    expect(response.status).toBe(206);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(
+      raw.slice(2, 5),
+    );
+    expect(response.headers.get("content-type")).toBe(
+      "application/octet-stream",
+    );
+    expect(response.headers.get("content-range")).toBe("bytes 2-4/7");
+    expect(response.headers.get("etag")).toBe(`"${etag}"`);
+    expect(response.headers.get("x-history-sha256")).toBe(assetHash(raw));
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    const denied = await handleRequest(request(range, "wrong"), env, {});
+    expect(denied.status).toBe(401);
+    expect(denied.headers.get("cache-control")).toBe("no-store");
+    expect(await denied.json()).toEqual({
+      error: "invalid state export credential",
+    });
+    const metadata = await handleRequest(request(head), env, {});
+    expect(metadata.status).toBe(200);
+    expect(metadata.headers.get("cache-control")).toBe("no-store");
+    expect(await metadata.json()).toEqual({
+      version: 1,
+      object: { key, etag, bytes: raw.length, sha256: assetHash(raw) },
+    });
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+  });
+
+  it("forwards an export stream without buffering it in the public Worker", async () => {
+    let pulls = 0;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          pulls++;
+          controller.enqueue(raw);
+          controller.close();
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const upstream = new Response(stream, {
+      status: 206,
+      headers: {
+        "content-type": "application/octet-stream",
+        "cache-control": "no-store",
+      },
+    });
+    const response = await handleRequest(
+      request(range),
+      {
+        DATA_API: { fetch: () => upstream },
+      } as unknown as Env,
+      {},
+    );
+    expect(pulls).toBe(0);
+    expect(response.status).toBe(206);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(raw);
+    expect(pulls).toBe(1);
+  });
+
   it("uses the existing credential gate before disclosing metadata or reading assets", async () => {
     const f = fixture();
     const denied = await handleD1StateExport(request(head, "wrong"), f.env);
