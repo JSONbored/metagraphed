@@ -1,8 +1,10 @@
+// Large decoded calls retain exact logical bytes in compressed inline values
+// or immutable D1 chunks. R2 references remain readable during retirement.
 import {
   NATIVE_PAYLOAD_PREFIX,
   readNativePayload,
+  writeNativePayload,
 } from "./chain-detail-native-payloads.ts";
-// Roll out native readers before switching writers away from legacy R2.
 const PREFIX = "\0metagraphed:r2:";
 const INLINE_BYTES = 128 * 1024;
 const MAX_VALUE_BYTES = 16 * 1024 * 1024;
@@ -26,13 +28,13 @@ function objectKey(hash: string, compressed: boolean): string {
   return `metagraph/d1-chain-payloads/v1/${hash}.json${compressed ? ".gz" : ""}`;
 }
 
-/** Write objects before the D1 transaction. A failed transaction may leave an
- * unreferenced immutable object, but can never publish a dangling reference. */
+/** Prepare exact payloads before committing their chain-detail references. */
 export async function storeChainDetailPayloads(
   env: unknown,
   rows: Row[],
 ): Promise<Row[]> {
   const output: Row[] = [];
+  const prepared = new Map<string, string>();
   let total = 0;
   for (const row of rows) {
     const next = { ...row };
@@ -47,6 +49,11 @@ export async function storeChainDetailPayloads(
         throw new RangeError("Chain detail payload exceeds byte budget");
       if (raw.byteLength <= INLINE_BYTES) continue;
       const hash = await digest(raw);
+      const prior = prepared.get(hash);
+      if (prior !== undefined) {
+        next[field] = prior;
+        continue;
+      }
       const zipped = new Uint8Array(
         await new Response(
           new Blob([raw]).stream().pipeThrough(new CompressionStream("gzip")),
@@ -54,28 +61,14 @@ export async function storeChainDetailPayloads(
       );
       const compressed = zipped.byteLength < raw.byteLength;
       const bytes = compressed ? zipped : raw;
-      const archive = bucket(env);
-      const key = objectKey(hash, compressed);
-      // Captures and retries often repeat the same large call. Reuse an
-      // immutable object before sending its body again; the conditional put
-      // still handles a competing writer between this head and the upload.
-      let object = await archive.head(key);
-      if (!object) {
-        object = await archive.put(key, bytes, {
-          onlyIf: { etagDoesNotMatch: "*" },
-          customMetadata: { sha256: hash, rawBytes: String(raw.byteLength) },
-          httpMetadata: { contentType: "application/octet-stream" },
-        });
-        if (!object) object = await archive.head(key);
-      }
-      if (
-        !object ||
-        object.size !== bytes.byteLength ||
-        object.customMetadata?.sha256 !== hash
-      )
-        throw new Error("Chain detail payload object conflict");
-      next[field] =
-        `${PREFIX}v2:${hash}:${raw.byteLength}:${bytes.byteLength}:${compressed ? "gzip" : "raw"}`;
+      next[field] = await writeNativePayload(
+        env,
+        hash,
+        raw.byteLength,
+        bytes,
+        compressed ? "gzip" : "raw",
+      );
+      prepared.set(hash, next[field] as string);
     }
     output.push(next);
   }
