@@ -30,7 +30,7 @@ function setup(raws = [new Uint8Array([1, 2, 3])]) {
       body: new Response(raws[sources.findIndex((s) => s.key === ref.key)])
         .body,
     })),
-    session: vi.fn(async (_part, manifest) => ({
+    session: vi.fn<HistoryTransferIo["session"]>(async (_part, manifest) => ({
       jwt: "upload-token",
       buckets: [Object.values(manifest).map((f) => f.hash)],
     })),
@@ -109,7 +109,7 @@ describe("one-read immutable history transfer", () => {
     for (let i = 0; i < 40; i++)
       raw.fill(i, i * 128 * 1024, (i + 1) * 128 * 1024);
     const { sources, io } = setup([raw]);
-    io.session = vi.fn(async (_p, manifest) => ({
+    io.session = vi.fn<HistoryTransferIo["session"]>(async (_p, manifest) => ({
       jwt: "upload",
       buckets: Object.values(manifest).map((v) => [v.hash]),
     }));
@@ -234,7 +234,7 @@ describe("one-read immutable history transfer", () => {
 
   it("rejects duplicate requests across provider buckets", async () => {
     const { sources, io } = setup();
-    io.session = vi.fn(async (_p, manifest) => {
+    io.session = vi.fn<HistoryTransferIo["session"]>(async (_p, manifest) => {
       const h = Object.values(manifest)[0].hash;
       return { jwt: "x", buckets: [[h], [h]] };
     });
