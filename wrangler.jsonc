@@ -77,7 +77,7 @@
     "not_found_handling": "404-page",
   },
   "vars": {
-    "ACCOUNT_HISTORY_ASSET_RELEASE": "f090a73e69b0db5732e0493d971abd708aad38efa458b557843e5647d3919f81:309551",
+    "ACCOUNT_HISTORY_ASSET_RELEASE": "8086a04202145fd0871a21948ad17127d4a09e4ae2769c65162010a4659cac9c:401355",
     "HISTORY_ASSET_RELEASE": "2f33d8c5e292dc509354231d3e5fd75ac0f50cdb0b549b98107d5c93bbda1c1f:25282",
     // Both networks passed complete native artifact and reader qualification.
     "NATIVE_PROJECTIONS": "enabled",
