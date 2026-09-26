@@ -1,0 +1,184 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { handleD1StateExport } from "../src/d1-state-export.ts";
+import { handleNativeHistoryExport } from "../src/native-history-export.ts";
+import * as assets from "../src/history-asset-source.ts";
+import {
+  assetHash,
+  assetKey,
+  historyAssetsFixture,
+} from "./history-assets-fixture.ts";
+
+const key = `metagraph/indexed-history/v1/mainnet/blocks/${"a".repeat(64)}/00000-${"c".repeat(64)}.parquet`;
+const etag = "b".repeat(32);
+const raw = new Uint8Array([1, 2, 3, 4, 5, 6, 7]);
+const head = { kind: "native-history", operation: "head", key };
+const range = { ...head, operation: "range", etag, offset: 2, length: 3 };
+function fixture(checksum = true) {
+  const f = historyAssetsFixture([
+    { key, etag, chunks: [raw.slice(0, 3), raw.slice(3)] },
+  ]);
+  const object = Object.values(f.shards)[0].objects[assetHash(key)];
+  if (checksum) Object.assign(object, { sha256: assetHash(raw) });
+  f.publish();
+  const env = {
+    STATE_EXPORT_SECRET: "existing-producer-secret",
+    NATIVE_HISTORY_ASSETS: f.env.HISTORY_ASSETS,
+    NATIVE_HISTORY_ASSET_RELEASE: f.env.HISTORY_ASSET_RELEASE,
+    METAGRAPH_ARCHIVE: {
+      get: vi.fn(() => {
+        throw new Error("R2 must not be consulted");
+      }),
+    },
+  };
+  return { ...f, env, object };
+}
+const request = (input: unknown, secret = "existing-producer-secret") =>
+  new Request("https://example.com/api/v1/internal/state-export", {
+    method: "POST",
+    headers: { "x-state-export-token": secret },
+    body: JSON.stringify(input),
+  });
+afterEach(() => vi.restoreAllMocks());
+
+describe("credential-protected native history producer reads", () => {
+  it("uses the existing credential gate before disclosing metadata or reading assets", async () => {
+    const f = fixture();
+    const denied = await handleD1StateExport(request(head, "wrong"), f.env);
+    expect(denied.status).toBe(401);
+    expect(f.fetch).not.toHaveBeenCalled();
+    const response = await handleD1StateExport(request(head), f.env);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      version: 1,
+      object: { key, etag, bytes: raw.length, sha256: assetHash(raw) },
+    });
+    expect(f.fetch).toHaveBeenCalledTimes(2);
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+  });
+
+  it("preserves original identity and exact cross-chunk binary ranges without R2", async () => {
+    const f = fixture();
+    const response = await handleD1StateExport(request(range), f.env);
+    expect(response.status).toBe(206);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(
+      raw.slice(2, 5),
+    );
+    expect(response.headers.get("etag")).toBe(`"${etag}"`);
+    expect(response.headers.get("content-range")).toBe("bytes 2-4/7");
+    expect(response.headers.get("content-length")).toBe("3");
+    expect(response.headers.get("x-history-sha256")).toBe(assetHash(raw));
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported keys and malformed ranges before any asset access", async () => {
+    const f = fixture();
+    for (const input of [
+      null,
+      {},
+      { ...head, key: "unrelated" },
+      { ...head, key: key.replace(/[^/]+$/, "current.json") },
+      { ...head, extra: true },
+      { ...range, etag: "invalid" },
+      { ...range, offset: -1 },
+      { ...range, offset: 1.5 },
+      { ...range, offset: 128 * 1024 * 1024 },
+      { ...range, length: 0 },
+      { ...range, length: 8 * 1024 * 1024 + 1 },
+    ]) {
+      const response = await handleNativeHistoryExport(input, f.env);
+      expect(response.status).toBe(400);
+    }
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
+
+  it("distinguishes unmigrated objects from identity and range failures", async () => {
+    const f = fixture();
+    expect(
+      (
+        await handleNativeHistoryExport(
+          { ...head, key: key.replace("00000-", "00001-") },
+          f.env,
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await handleNativeHistoryExport(
+          { ...range, etag: "d".repeat(32) },
+          f.env,
+        )
+      ).status,
+    ).toBe(412);
+    expect(
+      (
+        await handleNativeHistoryExport(
+          { ...range, offset: 6, length: 2 },
+          f.env,
+        )
+      ).status,
+    ).toBe(416);
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+  });
+
+  it("requires a configured static source and a qualified original SHA256", async () => {
+    expect((await handleNativeHistoryExport(head, {})).status).toBe(503);
+    const f = fixture(false);
+    expect((await handleNativeHistoryExport(head, f.env)).status).toBe(503);
+    expect(
+      (
+        await handleNativeHistoryExport(head, {
+          ...f.env,
+          NATIVE_HISTORY_ASSET_RELEASE: "invalid",
+        })
+      ).status,
+    ).toBe(502);
+  });
+
+  it("fails closed if the immutable source cannot be read", async () => {
+    const f = fixture();
+    f.fetch.mockImplementation(
+      async () => new Response("unavailable", { status: 503 }),
+    );
+    expect((await handleNativeHistoryExport(range, f.env)).status).toBe(502);
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+  });
+
+  it("defensively rejects an attempted fallback even after successful metadata lookup", async () => {
+    vi.spyOn(assets, "historyAssetSource").mockImplementationOnce(
+      (_env, fallback) => ({
+        describe: async () => ({
+          key,
+          etag,
+          bytes: raw.length,
+          sha256: assetHash(raw),
+        }),
+        read: fallback.read,
+      }),
+    );
+    expect((await handleNativeHistoryExport(range, {})).status).toBe(502);
+  });
+
+  it("describes only mapped immutable keys and preserves feed compatibility", async () => {
+    const f = fixture();
+    const reader = assets.historyAssetSource(
+      f.env,
+      { read: vi.fn() },
+      "NATIVE_HISTORY",
+    );
+    expect(await reader.describe!("unrelated")).toBeUndefined();
+    expect(
+      await reader.describe!(key.replace("00000-", "00002-")),
+    ).toBeUndefined();
+    const feed = historyAssetsFixture([
+      { key: assetKey("feed"), etag, chunks: [raw] },
+    ]);
+    const source = assets.historyAssetSource(feed.env, { read: vi.fn() });
+    expect(await source.describe!(assetKey("feed"))).toEqual({
+      key: assetKey("feed"),
+      etag,
+      bytes: raw.length,
+    });
+  });
+});

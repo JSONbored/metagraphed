@@ -31,6 +31,10 @@ export const NativeHistoryAssetShardSchema = HistoryAssetShardSchema.extend({
     HistoryAssetShardSchema.shape.objects.keyType,
     HistoryAssetShardSchema.shape.objects.valueType.extend({
       key: z.string().max(1024).regex(NATIVE_HISTORY_ASSET_OBJECT_KEY),
+      sha256: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
       bytes: z
         .number()
         .int()
