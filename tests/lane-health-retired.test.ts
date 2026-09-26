@@ -58,6 +58,8 @@ const PRODUCERS: Record<string, string | null> = {
   // -- justified by the DERIVED assertion below rather than by a deleted file.
   "nominator-positions": null,
   "validator-nominator-counts": null,
+  "neon:buffer-flush": null,
+  "neon:tao-usd-index": null,
 };
 
 /**
@@ -137,8 +139,8 @@ describe("retired lanes (#10222)", () => {
       assert.equal(isRetiredLane(lane), true, `${lane} (bare) is retired`);
       assert.equal(
         isRetiredLane(neonLaneKey(lane)),
-        false,
-        `${neonLaneKey(lane)} stays watched`,
+        lane === TAO_USD_INDEX_NEON_LANE,
+        `${neonLaneKey(lane)} follows the current writer`,
       );
     }
   });
@@ -210,12 +212,12 @@ describe("retired lanes (#10222)", () => {
           ? `${lane} is written by the poller under its bare name -- retiring it would be suppression`
           : `${lane} is buffered and has no producer of its own name, so since #10851 nothing writes the bare spelling: retire it in RETIRED_LANES`,
       );
-      // The prefixed spelling is the live one in BOTH cases and is never
-      // retired -- retiring it would mute the flush itself.
+      // TAO/USD writes directly to D1 and no longer emits a flush verdict.
+      // Other prefixed writers still record their own durable write result.
       assert.equal(
         isRetiredLane(neonLaneKey(lane)),
-        false,
-        `${neonLaneKey(lane)} stays watched`,
+        lane === TAO_USD_INDEX_NEON_LANE,
+        `${neonLaneKey(lane)} follows the current writer`,
       );
     }
     // Non-vacuity, on both sides. An empty `fossils` would pass the loop while
@@ -241,6 +243,63 @@ describe("retired lanes (#10222)", () => {
       "subnet-hyperparams",
       "subnet-identity",
     ]);
+  });
+
+  test("retired flush verdicts have no configured buffer and TAO/USD is selected in D1", () => {
+    for (const file of [
+      "wrangler.jsonc",
+      "wrangler.data.jsonc",
+      "wrangler.registry.jsonc",
+    ]) {
+      const config = JSON.parse(
+        stripJsonComments(
+          readFileSync(new URL(`../${file}`, import.meta.url), "utf8"),
+        ),
+      ) as {
+        vars: { NEON_WRITE_BUFFER_LANES?: string; D1_STATE_TABLES?: string };
+        durable_objects?: { bindings: Array<{ name: string }> };
+        d1_databases?: Array<{ binding: string }>;
+        hyperdrive?: Array<{ binding: string }>;
+      };
+      assert.equal(config.vars.NEON_WRITE_BUFFER_LANES ?? "", "");
+      assert.equal(
+        config.durable_objects?.bindings.some(
+          (b) => b.name === "NEON_WRITE_BUFFER",
+        ) ?? false,
+        false,
+      );
+      if (file === "wrangler.data.jsonc") {
+        assert(config.d1_databases?.some((b) => b.binding === "D1_STATE"));
+        assert.equal(
+          config.hyperdrive?.some((b) => b.binding === "HYPERDRIVE") ?? false,
+          false,
+        );
+        assert(
+          config.vars.D1_STATE_TABLES?.split(",").includes("tao_usd_index"),
+        );
+      }
+    }
+    assert(isRetiredLane("neon:buffer-flush"));
+    assert(isRetiredLane("neon:tao-usd-index"));
+    assert.equal(isRetiredLane("watchdog:tao-usd-index"), false);
+    assert.equal(isRetiredLane("table-freshness"), false);
+  });
+
+  test("obsolete flush records cannot hide a current price watchdog failure", async () => {
+    const lanes = await loadLatestLaneHealth(
+      fakeDb([
+        row("neon:buffer-flush", "ok"),
+        row("neon:tao-usd-index", "ok"),
+        row("watchdog:tao-usd-index", "stale"),
+        row("neon:neurons", "stale"),
+      ]),
+    );
+    assert.deepEqual(Object.keys(lanes).sort(), [
+      "neon:neurons",
+      "watchdog:tao-usd-index",
+    ]);
+    assert.equal(lanes["watchdog:tao-usd-index"].verdict, "stale");
+    assert.equal(lanes["neon:neurons"].verdict, "stale");
   });
 
   test("the POLLER's own bare lanes are NOT retired", () => {

@@ -155,6 +155,12 @@ export const RETIRED_LANES: readonly string[] = [
   // set every tick, so a surface that keeps failing dead-letters again on
   // `probe-jobs-dlq` and is reported there -- under a lane that has a writer.
   "revenue-probes-dlq",
+  // The write-behind buffer is unbound in every deployed Worker. TAO/USD
+  // now writes directly to selected D1, so neither flush verdict has a
+  // producer. Its live watchdog still checks the durable price samples;
+  // other neon:-prefixed writers continue reporting and stay monitored.
+  "neon:buffer-flush",
+  "neon:tao-usd-index",
 ];
 
 /**
