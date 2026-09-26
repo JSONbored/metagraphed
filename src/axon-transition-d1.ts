@@ -37,10 +37,34 @@ export function axonSequenceD1Sql(extraWhere = "", indexed = false): string {
  WINDOW w AS (PARTITION BY netuid,uid ORDER BY snapshot_date)`;
 }
 
-export function axonDayCountsD1Sql(indexed = false): string {
-  return `WITH classified AS MATERIALIZED(${classified("", indexed)})
+export function axonDayCountsD1Sql(indexed = false, singleDay = false): string {
+  return `WITH classified AS MATERIALIZED(${classified(singleDay ? "AND d.day=?" : "", indexed)})
  SELECT netuid,snapshot_date AS date,COUNT(*) FILTER (WHERE routable) AS with_axon,
  COUNT(*) AS neurons FROM classified GROUP BY netuid,snapshot_date ORDER BY netuid,snapshot_date`;
+}
+
+/** Bound each classification query to a single day. Concurrent watchdogs
+ * otherwise exhaust D1's CPU limit and can reset even unrelated verdict writes. */
+export async function readAxonDayCountsD1(
+  query: (
+    sql: string,
+    values?: unknown[],
+  ) => Promise<Record<string, unknown>[]>,
+  since: string,
+): Promise<Record<string, unknown>[]> {
+  const dates = await query(
+    "SELECT DISTINCT day FROM neuron_daily_documents WHERE day>=? ORDER BY day LIMIT 33",
+    [since],
+  );
+  if (dates.length > 32)
+    throw new Error("Axon watchdog dates exceed their query budget");
+  const indexed = await axonProjectionReady(query);
+  const result: Record<string, unknown>[] = [];
+  for (const { day } of dates)
+    result.push(
+      ...(await query(axonDayCountsD1Sql(indexed, true), [since, day])),
+    );
+  return result;
 }
 
 /** The partial index makes the completed-backfill check an empty index lookup. */

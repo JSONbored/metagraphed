@@ -7,6 +7,7 @@ import { createD1Store } from "../src/d1-store.ts";
 import {
   axonSequenceD1Sql,
   axonDayCountsD1Sql,
+  readAxonDayCountsD1,
   axonProjectionReady,
 } from "../src/axon-transition-d1.ts";
 import { isRoutableAxon, splitAxon } from "../src/axon-routable.ts";
@@ -565,4 +566,65 @@ test("network removals yield between subnet partitions and preserve the complete
     [7, 8],
   );
   assert.ok(partitions.every(({ sql }) => sql.includes("AND d.netuid=?")));
+});
+
+test("day-bounded axon queries preserve complete counts and skip empty document days", async () => {
+  await seed(rows);
+  await db
+    .prepare(
+      "INSERT INTO neuron_daily_documents VALUES(99,'2026-08-04',0,?,jsonb('{}'))",
+    )
+    .bind(now)
+    .run();
+  const store = createD1Store(db);
+  const read = vi.fn((sql: string, values?: unknown[]) =>
+    store.query<Record<string, unknown>>(sql, values),
+  );
+  const expected = await store.query<Record<string, unknown>>(
+    axonDayCountsD1Sql(),
+    ["2026-08-01"],
+  );
+  const sort = (values: Record<string, unknown>[]) =>
+    values.sort(
+      (a, b) =>
+        Number(a.netuid) - Number(b.netuid) ||
+        String(a.date).localeCompare(String(b.date)),
+    );
+  assert.deepEqual(
+    sort(await readAxonDayCountsD1(read, "2026-08-01")),
+    sort(expected),
+  );
+  const classifications = read.mock.calls.filter(([sql]) =>
+    sql.startsWith("WITH classified"),
+  );
+  assert.equal(classifications.length, 4);
+  for (const [sql, values] of classifications) {
+    assert.match(sql, /AND d.day=\?/);
+    assert.equal(values?.length, 2);
+    const plan = await store.query<{ detail: string }>(
+      "EXPLAIN QUERY PLAN " + sql,
+      values,
+    );
+    assert.ok(plan.some((r) => /SEARCH m .*snapshot_date=/.test(r.detail)));
+  }
+  await db
+    .prepare(
+      "UPDATE neuron_daily_members SET axon_index=(SELECT json_extract(d.payload,'$.\"'||neuron_daily_members.uid||'\".axon') FROM neuron_daily_documents d WHERE d.netuid=neuron_daily_members.netuid AND d.day=neuron_daily_members.snapshot_date AND d.shard=neuron_daily_members.shard),axon_indexed=1",
+    )
+    .run();
+  assert.deepEqual(
+    sort(await readAxonDayCountsD1(store.query, "2026-08-01")),
+    sort(expected),
+  );
+});
+
+test("axon date overflow stops before expensive classification instead of truncating history", async () => {
+  const query = vi.fn(async () =>
+    Array.from({ length: 33 }, (_, i) => ({ day: String(i) })),
+  );
+  await assert.rejects(
+    () => readAxonDayCountsD1(query, "2026-08-01"),
+    /query budget/,
+  );
+  assert.equal(query.mock.calls.length, 1);
 });

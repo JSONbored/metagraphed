@@ -9,6 +9,8 @@ import {
   runDailySeriesCoverageWatchdog,
 } from "../src/daily-series-coverage-watchdog.ts";
 
+import { dailySeriesCountsD1 } from "../src/daily-series-counts-d1.ts";
+
 const runtime = new Miniflare({
   modules: true,
   script: "export default { fetch() { return new Response('test'); } }",
@@ -62,12 +64,12 @@ beforeEach(async () => {
   );
 });
 
-async function seed(days: number) {
+async function seed(days: number, compact = false) {
+  const statements: D1PreparedStatement[] = [];
   for (let offset = 0; offset < days; offset++) {
-    const statements: D1PreparedStatement[] = [];
     for (const { table } of DAILY_SERIES) {
-      for (const netuid of [0, 7]) {
-        for (const shard of [0, 1]) {
+      for (const netuid of compact ? [0] : [0, 7]) {
+        for (const shard of compact ? [0] : [0, 1]) {
           statements.push(
             db
               .prepare(
@@ -75,7 +77,7 @@ async function seed(days: number) {
               )
               .bind(netuid, day(offset), shard, NOW),
           );
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0; i < (compact ? 1 : 4); i++) {
             const id = shard * 256 + i;
             statements.push(
               table === "neuron_daily"
@@ -94,8 +96,9 @@ async function seed(days: number) {
         }
       }
     }
-    await db.batch(statements);
+    if (statements.length >= 100) await db.batch(statements.splice(0));
   }
+  if (statements.length) await db.batch(statements);
 }
 
 async function expected() {
@@ -147,18 +150,26 @@ test("D1 counts preserve view semantics, gaps, thin days, orphaned members and d
   assert.equal(verdict?.verdict, "stale");
   assert.match(String(verdict?.detail), new RegExp(day(3)));
   assert.match(String(verdict?.detail), new RegExp(day(4)));
-  for (const sql of queries.filter((sql) =>
-    sql.startsWith("WITH member_counts"),
+  for (const sql of new Set(
+    queries.filter((sql) => sql.startsWith("WITH member_counts")),
   )) {
     const { results } = await db
       .prepare(`EXPLAIN QUERY PLAN ${sql}`)
-      .bind(90)
+      .bind(day(0), day(0), day(0))
       .all<{ detail: string }>();
     assert.ok(
       results.some(({ detail }) => detail === "MATERIALIZE member_counts"),
     );
     assert.ok(
-      results.some(({ detail }) => /SEARCH d USING PRIMARY KEY/.test(detail)),
+      results.some(({ detail }) => /SEARCH d USING .*day=\?/.test(detail)),
+      "document lookup must stay indexed by the exact day: " +
+        JSON.stringify(results),
+    );
+    assert.ok(
+      results.some(({ detail }) =>
+        /SEARCH .*members.*snapshot_date=/.test(detail),
+      ),
+      "each membership query must use an exact date lookup",
     );
   }
 });
@@ -166,7 +177,7 @@ test("D1 counts preserve view semantics, gaps, thin days, orphaned members and d
 test("D1 keeps empty series and the newest 90 valid days identical to the views", async () => {
   const tick = () => runDailySeriesCoverageWatchdog(env(), { now: () => NOW });
   assert.deepEqual((await tick()).verdicts, await expected());
-  await seed(95);
+  await seed(95, true);
   // An old member without a document and a future empty document cannot
   // change either end of the measured window or displace a populated day.
   await db.batch([
@@ -183,4 +194,25 @@ test("D1 keeps empty series and the newest 90 valid days identical to the views"
   assert.equal(result.ok, true);
   assert.equal(result.alerted, false);
   assert.deepEqual(result.verdicts, await expected());
+});
+
+test("empty document history is bounded and never reported as successful partial coverage", async () => {
+  let pages = 0;
+  let counts = 0;
+  const query = async (sql: string): Promise<Record<string, unknown>[]> => {
+    if (sql.startsWith("SELECT day")) {
+      pages++;
+      return Array.from({ length: 32 }, (_, i) => ({
+        day: day(pages * 32 + i),
+      }));
+    }
+    counts++;
+    return [];
+  };
+  await assert.rejects(
+    () => dailySeriesCountsD1(query, "neuron_daily", 90),
+    /query budget/,
+  );
+  assert.equal(pages, 128);
+  assert.equal(counts, 4096);
 });
