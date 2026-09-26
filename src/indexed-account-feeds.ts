@@ -14,6 +14,7 @@ import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
 import { readSelectedHistorySegments } from "./indexed-history-store.ts";
 import { loadHistoryBlockGeneration } from "./history-generation.ts";
 import { parquetReadBudget, r2ParquetSource } from "./indexed-parquet.ts";
+import { historyAssetSource } from "./history-asset-source.ts";
 import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
 import { requireRetainedHistoryAnswer } from "./retained-history-store.ts";
 import {
@@ -144,7 +145,11 @@ async function loadSelectedAccountFeed<T>(
       pageSize,
     );
     if (!hot) return undefined;
-    const source = r2ParquetSource(bucket);
+    const source = historyAssetSource(
+      env,
+      r2ParquetSource(bucket),
+      "ACCOUNT_HISTORY",
+    );
     const budget = aggregate
       ? parquetReadBudget(128 * 1024 * 1024, 1024)
       : parquetReadBudget(24 * 1024 * 1024, 128);
@@ -290,7 +295,11 @@ export async function loadRuntimeAccountSummaryGroups(
     ?.METAGRAPH_ARCHIVE;
   if (!bucket) return undefined;
   try {
-    const source = r2ParquetSource(bucket);
+    const source = historyAssetSource(
+      env,
+      r2ParquetSource(bucket),
+      "ACCOUNT_HISTORY",
+    );
     const budget = parquetReadBudget(128 * 1024 * 1024, 1024);
     const correction = await loadRuntimeAccountCuration(
       bucket,

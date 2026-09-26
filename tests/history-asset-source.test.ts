@@ -40,6 +40,43 @@ const partitioned = () => {
 };
 
 describe("immutable history asset ranges", () => {
+  it("serves account history from separate pinned stores without consulting transaction stores", async () => {
+    const accountKey = key
+      .replace("/extrinsics/", "/account_events/")
+      .replace("/feeds/", "/accounts/");
+    const f = historyAssetsFixture([{ ...input(), key: accountKey }]);
+    f.root.partitionCount = 16;
+    f.root.prefixes = [accountKey.slice(0, accountKey.indexOf("directory/"))];
+    f.publish();
+    const wrongStore = {
+      fetch: vi.fn(async () => new Response(null, { status: 500 })),
+    };
+    const env = {
+      HISTORY_ASSETS: wrongStore,
+      HISTORY_ASSET_RELEASE: "invalid-transaction-release",
+      ACCOUNT_HISTORY_ASSETS: f.env.HISTORY_ASSETS,
+      ACCOUNT_HISTORY_ASSET_RELEASE: f.env.HISTORY_ASSET_RELEASE,
+      ...Object.fromEntries(
+        Array.from({ length: 16 }, (_, i) => [
+          `ACCOUNT_HISTORY_ASSETS_${i.toString(16)}`,
+          { fetch: f.fetch },
+        ]),
+      ),
+    };
+    const r2 = fallback(),
+      source = historyAssetSource(env, r2, "ACCOUNT_HISTORY");
+    expect(new Uint8Array(await source.read(accountKey, etag, 2, 3))).toEqual(
+      new Uint8Array([3, 4, 5]),
+    );
+    expect(r2.read).not.toHaveBeenCalled();
+    expect(wrongStore.fetch).not.toHaveBeenCalled();
+    await source.read(key, etag, 0, 1);
+    expect(r2.read).toHaveBeenCalledExactlyOnceWith(key, etag, 0, 1);
+  });
+  it("leaves account reads on their exact R2 source until their own release is configured", () => {
+    const f = setup();
+    expect(historyAssetSource(f.env, f.r2, "ACCOUNT_HISTORY")).toBe(f.r2);
+  });
   it("reads exact ranges when any declared generation prefix matches", async () => {
     const f = partitioned(),
       prefix = key.slice(0, key.indexOf("directory/"));
@@ -82,6 +119,7 @@ describe("immutable history asset ranges", () => {
       ["metagraph/"],
       [key],
       [key.slice(0, key.indexOf("directory/") - 1)],
+      [key.slice(0, key.indexOf("directory/")).replace("extrinsics", "blocks")],
       [
         key
           .slice(0, key.indexOf("directory/"))
