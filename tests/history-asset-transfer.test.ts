@@ -139,11 +139,11 @@ describe("one-read immutable history transfer", () => {
     });
     const assertion = expect(pending).rejects.toThrow("partition failed");
     // Reading the source is asynchronous; wait for the first wave to start.
-    await vi.waitFor(() => expect(calls).toBe(4));
+    await vi.waitFor(() => expect(calls).toBe(8));
     expect(settled).toBe(false);
     release();
     await assertion;
-    expect(calls).toBe(4);
+    expect(calls).toBe(8);
     expect(io.get).toHaveBeenCalledOnce();
   });
 

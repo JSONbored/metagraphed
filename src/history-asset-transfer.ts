@@ -115,8 +115,9 @@ export async function transferHistoryAssets(
 
   let uploadRequests = 0;
   let uploadedBytes = 0;
-  // Validate every hash before starting uploads. Four bounded lanes overlap
-  // network latency; the I/O adapter still enforces the account request rate.
+  // Validate every hash before starting uploads. Eight lanes overlap network
+  // latency within the same 16 MiB total source budget. Partition byte sets
+  // are disjoint; the I/O adapter still enforces the account request rate.
   const partitions = [...groups].map(([partition, chunks]) => {
     const byHash = new Map(
       [...chunks].map(([sha256, raw]) => [sha256.slice(0, 32), raw]),
@@ -178,7 +179,7 @@ export async function transferHistoryAssets(
   let cursor = 0;
   let failed = false;
   const workers = Array.from(
-    { length: Math.min(4, partitions.length) },
+    { length: Math.min(8, partitions.length) },
     async () => {
       while (!failed && cursor < partitions.length) {
         const partition = partitions[cursor++]!;
