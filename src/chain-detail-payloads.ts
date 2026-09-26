@@ -175,7 +175,13 @@ export async function restoreChainDetailPayloads(
             storedBytes,
             nativeMatch![5],
           );
-          body = new Blob([bytes]).stream();
+          // The adapter owns this buffer; stream it without another full copy.
+          body = new ReadableStream({
+            start(controller) {
+              controller.enqueue(bytes);
+              controller.close();
+            },
+          });
         } else {
           const object = await bucket(env).get(objectKey(hash, compressed));
           if (!object || object.size !== storedBytes)
