@@ -221,8 +221,9 @@ describe("runDegenerateOutputWatchdog", () => {
     const written: unknown[][] = [];
     const health = {
       query: async () => [],
-      run: async (_sql: string, values?: unknown[]) => {
-        written.push(values ?? []);
+      run: async (sql: string, values?: unknown[]) => {
+        if (sql.startsWith("INSERT INTO lane_health "))
+          written.push(values ?? []);
         return { changes: 1 };
       },
     };
