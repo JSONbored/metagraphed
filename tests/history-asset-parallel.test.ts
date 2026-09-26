@@ -75,37 +75,46 @@ describe("bounded parallel immutable history reads", () => {
     expect(f.r2.read).not.toHaveBeenCalled();
   });
 
-  it("stops queued chunks on failure and drains outstanding work before rejecting without R2 fallback", async () => {
-    const f = controlled(
-      Array.from({ length: 7 }, (_, i) => new Uint8Array([i])),
-    );
-    let settled = false;
-    const result = f.source.read(key, etag, 0, 7).then(
-      () => {
-        settled = true;
-        return undefined;
-      },
-      (error: Error) => {
-        settled = true;
-        return error;
-      },
-    );
-    await vi.waitFor(() => expect(f.started).toHaveLength(4));
-    const cancel = vi.fn();
-    f.release(
-      f.started[0],
-      new Response(new ReadableStream({ cancel }), { status: 404 }),
-    );
-    await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce());
-    expect(settled).toBe(false);
-    for (const hash of [...f.waiting.keys()]) f.release(hash);
-    expect(await result).toMatchObject({
-      message: "Immutable history asset missing or changed",
-    });
-    expect(f.started).toHaveLength(4);
-    expect(f.active).toBe(0);
-    expect(f.r2.read).not.toHaveBeenCalled();
-  });
+  it.each([false, true])(
+    "stops queued chunks and drains work without R2 fallback (late corruption: %s)",
+    async (lateCorruption) => {
+      const f = controlled(
+        Array.from({ length: 7 }, (_, i) => new Uint8Array([i])),
+      );
+      let settled = false;
+      const result = f.source.read(key, etag, 0, 7).then(
+        () => {
+          settled = true;
+          return undefined;
+        },
+        (error: Error) => {
+          settled = true;
+          return error;
+        },
+      );
+      await vi.waitFor(() => expect(f.started).toHaveLength(4));
+      const cancel = vi.fn();
+      f.release(
+        f.started[0],
+        new Response(new ReadableStream({ cancel }), { status: 404 }),
+      );
+      await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce());
+      expect(settled).toBe(false);
+      for (const [index, hash] of [...f.waiting.keys()].entries())
+        f.release(
+          hash,
+          lateCorruption && index === 0
+            ? new Response(new Uint8Array([99]))
+            : undefined,
+        );
+      expect(await result).toMatchObject({
+        message: "Immutable history asset missing or changed",
+      });
+      expect(f.started).toHaveLength(4);
+      expect(f.active).toBe(0);
+      expect(f.r2.read).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects conflicting sizes for a repeated digest before payload reads", async () => {
     const f = historyAssetsFixture([
