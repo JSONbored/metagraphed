@@ -157,54 +157,102 @@ async function* stream(rows: ExtrinsicFeedPointer[]) {
 }
 
 describe("qualified native extrinsic feeds", () => {
-  it("hydrates identical full rows after every immutable feed object leaves R2", async () => {
-    const a = archive();
-    const moved = [...a.objects].filter(([key]) =>
-      HISTORY_ASSET_OBJECT_KEY.test(key),
-    );
-    expect(moved.length).toBeGreaterThan(0);
-    const assets = historyAssetsFixture(
-      moved.map(([key, object]) => ({
-        key,
-        etag: object.etag,
-        chunks: [object.raw],
-      })),
-    );
-    for (const [key] of moved) a.objects.delete(key);
-    const env = { ...a.env, ...assets.env };
-    for (const selector of [
-      {},
-      { signer: "account-1" },
-      { module: "Module0" },
-      { module: "Module1", callFunction: "function3" },
-      { callFunction: "function2" },
-      { success: true },
-      { success: false },
-      {
-        signer: "account-1",
-        module: "Module1",
-        callFunction: "function3",
-        success: false,
-      },
-      { module: "Module0", success: false },
-      { signer: "absent" },
-      { blockStart: 4, blockEnd: 9, observedStart: 1002, observedEnd: 1006 },
-      { cursor: [1007, 13, 2] as [number, number, number] },
-    ])
-      expect(await loadIndexedExtrinsicFeedPage(env, selector, 200)).toEqual(
-        expected(selector),
+  it.each([false, true])(
+    "hydrates identical full rows after every immutable feed object leaves R2 (partitioned: %s)",
+    async (partitioned) => {
+      const a = archive();
+      const moved = [...a.objects].filter(([key]) =>
+        HISTORY_ASSET_OBJECT_KEY.test(key),
       );
-    expect(await loadIndexedExtrinsicFeedPage(env, {}, 7, 3)).toEqual(
-      expected({}).slice(3, 10),
-    );
-    expect(assets.fetch).toHaveBeenCalled();
-    expect(
-      a.get.mock.calls.some(([key]) => HISTORY_ASSET_OBJECT_KEY.test(key)),
-    ).toBe(false);
-    expect(a.get.mock.calls.some(([key]) => key.endsWith(".parquet"))).toBe(
-      true,
-    );
-  });
+      expect(moved.length).toBeGreaterThan(0);
+      const assets = historyAssetsFixture(
+        moved.map(([key, object]) => ({
+          key,
+          etag: object.etag,
+          chunks: partitioned
+            ? Array.from(
+                { length: Math.ceil(object.raw.length / 512) },
+                (_, i) => object.raw.subarray(i * 512, (i + 1) * 512),
+              )
+            : [object.raw],
+        })),
+      );
+      for (const [key] of moved) a.objects.delete(key);
+      const env = { ...a.env, ...assets.env };
+      if (partitioned) {
+        const payloads = new Set(
+          Object.values(assets.shards).flatMap((shard) =>
+            Object.values(shard.objects).flatMap((object) =>
+              object.chunks.map((chunk) => chunk.sha256),
+            ),
+          ),
+        );
+        const requestedHash = (request: Request) =>
+          new URL(request.url).pathname.slice(1, -".mgpack".length);
+        assets.root.partitionCount = 16;
+        assets.root.prefixes = [a.manifest.slice(0, -"manifest.json".length)];
+        assets.publish();
+        env.HISTORY_ASSET_RELEASE = assets.env.HISTORY_ASSET_RELEASE;
+        env.HISTORY_ASSETS = {
+          fetch: vi.fn(async (request: Request) => {
+            expect(payloads.has(requestedHash(request))).toBe(false);
+            return assets.fetch(request);
+          }),
+        };
+        Object.assign(
+          env,
+          Object.fromEntries(
+            Array.from({ length: 16 }, (_, i) => {
+              const partition = i.toString(16);
+              return [
+                `HISTORY_ASSETS_${partition}`,
+                {
+                  fetch: async (request: Request) => {
+                    const hash = requestedHash(request);
+                    expect(hash[0]).toBe(partition);
+                    expect(payloads.has(hash)).toBe(true);
+                    return assets.fetch(request);
+                  },
+                },
+              ];
+            }),
+          ),
+        );
+      }
+      for (const selector of [
+        {},
+        { signer: "account-1" },
+        { module: "Module0" },
+        { module: "Module1", callFunction: "function3" },
+        { callFunction: "function2" },
+        { success: true },
+        { success: false },
+        {
+          signer: "account-1",
+          module: "Module1",
+          callFunction: "function3",
+          success: false,
+        },
+        { module: "Module0", success: false },
+        { signer: "absent" },
+        { blockStart: 4, blockEnd: 9, observedStart: 1002, observedEnd: 1006 },
+        { cursor: [1007, 13, 2] as [number, number, number] },
+      ])
+        expect(await loadIndexedExtrinsicFeedPage(env, selector, 200)).toEqual(
+          expected(selector),
+        );
+      expect(await loadIndexedExtrinsicFeedPage(env, {}, 7, 3)).toEqual(
+        expected({}).slice(3, 10),
+      );
+      expect(assets.fetch).toHaveBeenCalled();
+      expect(
+        a.get.mock.calls.some(([key]) => HISTORY_ASSET_OBJECT_KEY.test(key)),
+      ).toBe(false);
+      expect(a.get.mock.calls.some(([key]) => key.endsWith(".parquet"))).toBe(
+        true,
+      );
+    },
+  );
   it("merges hot rows with retained physical pointers while preserving filters, offsets and cursor order", async () => {
     const a = archive();
     const hot = [true, false, null].map((success, i) => ({

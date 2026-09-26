@@ -22,12 +22,12 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 export function historyAssetSource(
   env: unknown,
   fallback: ParquetRangeSource,
+  bindingPrefix: "HISTORY" | "ACCOUNT_HISTORY" = "HISTORY",
 ): ParquetRangeSource {
-  const { HISTORY_ASSETS: assets, HISTORY_ASSET_RELEASE: release } = (env ??
-    {}) as {
-    HISTORY_ASSETS?: Pick<Fetcher, "fetch">;
-    HISTORY_ASSET_RELEASE?: string;
-  };
+  const bindings = (env ?? {}) as Record<string, unknown>;
+  const assets = bindings[`${bindingPrefix}_ASSETS`] as
+    Pick<Fetcher, "fetch"> | undefined;
+  const release = bindings[`${bindingPrefix}_ASSET_RELEASE`];
   if (assets === undefined && release === undefined) return fallback;
   const releaseReference =
     typeof release === "string"
@@ -37,7 +37,7 @@ export function historyAssetSource(
     !assets ||
     typeof assets.fetch !== "function" ||
     !releaseReference ||
-    Number(releaseReference[2]) > 128 * 1024
+    Number(releaseReference[2]) > 512 * 1024
   )
     throw new Error("Incomplete immutable history asset configuration");
 
@@ -125,7 +125,7 @@ export function historyAssetSource(
       if (root.partitionCount) {
         partitions = Array.from({ length: root.partitionCount }, (_, i) => {
           const binding = (env as Record<string, Pick<Fetcher, "fetch">>)[
-            `HISTORY_ASSETS_${i.toString(16)}`
+            `${bindingPrefix}_ASSETS_${i.toString(16)}`
           ];
           if (!binding || typeof binding.fetch !== "function")
             throw new Error("Incomplete immutable history asset partitions");
@@ -146,7 +146,7 @@ export function historyAssetSource(
     )
       return undefined;
     const identity = await sha256(new TextEncoder().encode(key)),
-      prefix = identity.slice(0, 2),
+      prefix = identity.slice(0, root.shardPrefixLength ?? 2),
       reference = root.shards[prefix];
     if (!reference) return undefined;
     let pending = shards.get(prefix);

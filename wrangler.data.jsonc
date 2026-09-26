@@ -120,6 +120,7 @@
   // secret (see UNKEY_ROOT_KEY above for the actual credential), just an
   // opaque id every src/unkey-client.ts call needs to scope its request to.
   "vars": {
+    "ACCOUNT_HISTORY_ASSET_RELEASE": "f090a73e69b0db5732e0493d971abd708aad38efa458b557843e5647d3919f81:309551",
     "HISTORY_ASSET_RELEASE": "2f33d8c5e292dc509354231d3e5fd75ac0f50cdb0b549b98107d5c93bbda1c1f:25282",
     // Both networks passed complete native artifact and reader qualification.
     "NATIVE_PROJECTIONS": "enabled",
@@ -544,6 +545,74 @@
   },
   // Operational state is served and written through the explicitly owned D1 binding.
   "services": [
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS",
+      "service": "metagraphed-history-accounts-f090a73e69b0-meta",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_0",
+      "service": "metagraphed-history-accounts-f090a73e69b0-0",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_1",
+      "service": "metagraphed-history-accounts-f090a73e69b0-1",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_2",
+      "service": "metagraphed-history-accounts-f090a73e69b0-2",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_3",
+      "service": "metagraphed-history-accounts-f090a73e69b0-3",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_4",
+      "service": "metagraphed-history-accounts-f090a73e69b0-4",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_5",
+      "service": "metagraphed-history-accounts-f090a73e69b0-5",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_6",
+      "service": "metagraphed-history-accounts-f090a73e69b0-6",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_7",
+      "service": "metagraphed-history-accounts-f090a73e69b0-7",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_8",
+      "service": "metagraphed-history-accounts-f090a73e69b0-8",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_9",
+      "service": "metagraphed-history-accounts-f090a73e69b0-9",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_a",
+      "service": "metagraphed-history-accounts-f090a73e69b0-a",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_b",
+      "service": "metagraphed-history-accounts-f090a73e69b0-b",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_c",
+      "service": "metagraphed-history-accounts-f090a73e69b0-c",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_d",
+      "service": "metagraphed-history-accounts-f090a73e69b0-d",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_e",
+      "service": "metagraphed-history-accounts-f090a73e69b0-e",
+    },
+    {
+      "binding": "ACCOUNT_HISTORY_ASSETS_f",
+      "service": "metagraphed-history-accounts-f090a73e69b0-f",
+    },
     {
       "binding": "HISTORY_ASSETS",
       "service": "metagraphed-history-extrinsics-2f33d8c5e292-meta",

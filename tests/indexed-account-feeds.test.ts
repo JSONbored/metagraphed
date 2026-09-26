@@ -12,6 +12,8 @@ import type { HistoryAccountFeed } from "../schemas-src/artifacts/history-accoun
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
 import { hotHistoryFixture } from "./hot-history-fixture.ts";
+import { historyAssetsFixture } from "./history-assets-fixture.ts";
+import { HISTORY_ASSET_OBJECT_KEY } from "../schemas-src/artifacts/history-assets.ts";
 
 const fixture = JSON.parse(
   readFileSync(
@@ -136,6 +138,97 @@ function archive(network: "mainnet" | "testnet" = "mainnet") {
 }
 
 describe("selected account feed serving", () => {
+  it.each([
+    { partitioned: false, shardPrefixLength: 2 },
+    { partitioned: true, shardPrefixLength: 2 },
+    { partitioned: true, shardPrefixLength: 3 },
+  ] as const)(
+    "preserves complete pages and aggregate windows after feed objects leave R2 (partitioned=$partitioned, prefix=$shardPrefixLength)",
+    async ({ partitioned, shardPrefixLength }) => {
+      const before = archive(),
+        after = archive();
+      const inputs = [...after.objects]
+        .filter(([key]) => HISTORY_ASSET_OBJECT_KEY.test(key))
+        .map(([key, object]) => ({
+          key,
+          etag: object.etag,
+          chunks: Array.from(
+            { length: Math.ceil(object.raw.length / 512) },
+            (_, index) => object.raw.subarray(index * 512, (index + 1) * 512),
+          ),
+        }));
+      expect(inputs.length).toBeGreaterThan(0);
+      const assets = historyAssetsFixture(inputs, shardPrefixLength);
+      assets.root.prefixes = [after.manifest.slice(0, -"manifest.json".length)];
+      if (partitioned) assets.root.partitionCount = 16;
+      assets.publish();
+      const env = {
+        ...after.env,
+        ACCOUNT_HISTORY_ASSETS: assets.env.HISTORY_ASSETS,
+        ACCOUNT_HISTORY_ASSET_RELEASE: assets.env.HISTORY_ASSET_RELEASE,
+        ...(partitioned
+          ? Object.fromEntries(
+              Array.from({ length: 16 }, (_, i) => [
+                `ACCOUNT_HISTORY_ASSETS_${i.toString(16)}`,
+                { fetch: assets.fetch },
+              ]),
+            )
+          : {}),
+      };
+      for (const input of inputs) after.objects.delete(input.key);
+      for (const query of [
+        selectors,
+        selectors.map((s) => ({ ...s, netuid: 0 })),
+        selectors.map((s) => ({ ...s, blockStart: 2, blockEnd: 40 })),
+      ]) {
+        const expected = await loadIndexedAccountFeedPage(
+          before.env,
+          query,
+          5001,
+        );
+        expect(expected!.length).toBeGreaterThan(0);
+        expect(await loadIndexedAccountFeedPage(env, query, 5001)).toEqual(
+          expected,
+        );
+        expect(await loadIndexedAccountFeedPage(env, query, 5, 2)).toEqual(
+          expected!.slice(2, 7),
+        );
+        const row = expected![0];
+        expect(
+          await loadIndexedAccountFeedPage(
+            env,
+            query.map((s) => ({
+              ...s,
+              cursor: [
+                row.observed_at!,
+                row.block_number!,
+                row.event_index!,
+              ] as [number, number, number],
+            })),
+            5001,
+          ),
+        ).toEqual(
+          expected!.filter(
+            (candidate) =>
+              candidate.observed_at! < row.observed_at! ||
+              (candidate.observed_at === row.observed_at &&
+                (candidate.block_number! < row.block_number! ||
+                  (candidate.block_number === row.block_number &&
+                    candidate.event_index! < row.event_index!))),
+          ),
+        );
+        expect(await loadIndexedAccountFeedGroups(env, query)).toEqual(
+          await loadIndexedAccountFeedGroups(before.env, query),
+        );
+      }
+      expect(
+        after.get.mock.calls.some(([key]) =>
+          HISTORY_ASSET_OBJECT_KEY.test(key),
+        ),
+      ).toBe(false);
+      expect(assets.fetch).toHaveBeenCalled();
+    },
+  );
   it("merges a source-fenced hot tail through pages, cursor boundaries and complete folds", async () => {
     const a = archive();
     const hot: AccountEventsRow[] = [85, 86, 87].map((block, i) => ({
