@@ -1,5 +1,8 @@
-// Large decoded calls exceed D1's row limit. Keep their exact UTF-8 bytes in
-// immutable, compressed R2 objects; only the opaque reference lives in D1.
+import {
+  NATIVE_PAYLOAD_PREFIX,
+  readNativePayload,
+} from "./chain-detail-native-payloads.ts";
+// Roll out native readers before switching writers away from legacy R2.
 const PREFIX = "\0metagraphed:r2:";
 const INLINE_BYTES = 128 * 1024;
 const MAX_VALUE_BYTES = 16 * 1024 * 1024;
@@ -36,7 +39,7 @@ export async function storeChainDetailPayloads(
     for (const field of FIELDS) {
       const value = row[field];
       if (typeof value !== "string") continue;
-      if (value.startsWith(PREFIX))
+      if (value.startsWith(PREFIX) || value.startsWith(NATIVE_PAYLOAD_PREFIX))
         throw new Error("Reserved chain detail payload reference");
       const raw = new TextEncoder().encode(value);
       total += raw.byteLength;
@@ -92,16 +95,29 @@ export async function restoreChainDetailPayloads(
     const next = { ...row };
     for (const field of FIELDS) {
       const reference = row[field];
-      if (typeof reference !== "string" || !reference.startsWith(PREFIX))
+      if (
+        typeof reference !== "string" ||
+        (!reference.startsWith(PREFIX) &&
+          !reference.startsWith(NATIVE_PAYLOAD_PREFIX))
+      )
         continue;
-      const match =
-        /^(?:v1:([a-f0-9]{64}):([1-9][0-9]*)|v2:([a-f0-9]{64}):([1-9][0-9]*):([1-9][0-9]*):(gzip|raw))$/.exec(
-          reference.slice(PREFIX.length),
-        );
+      const native = reference.startsWith(NATIVE_PAYLOAD_PREFIX);
+      const match = native
+        ? /^([a-f0-9]{64}):([1-9][0-9]*):([1-9][0-9]*):(gzip|raw):(d1|inline:[A-Za-z0-9+/]*={0,2})$/.exec(
+            reference.slice(NATIVE_PAYLOAD_PREFIX.length),
+          )
+        : /^(?:v1:([a-f0-9]{64}):([1-9][0-9]*)|v2:([a-f0-9]{64}):([1-9][0-9]*):([1-9][0-9]*):(gzip|raw))$/.exec(
+            reference.slice(PREFIX.length),
+          );
       if (!match) throw new Error("Invalid chain detail payload reference");
-      const hash = match[1] ?? match[3];
-      const rawBytes = Number(match[2] ?? match[4]);
-      const storedBytes = Number(match[5] ?? match[2]);
+      const [hash, raw, stored = raw, encoding = "raw", location] = native
+        ? match.slice(1)
+        : match[1]
+          ? match.slice(1, 3)
+          : match.slice(3);
+      const rawBytes = Number(raw),
+        storedBytes = Number(stored);
+      const compressed = encoding === "gzip";
       total += rawBytes;
       if (
         !Number.isSafeInteger(rawBytes) ||
@@ -113,15 +129,30 @@ export async function restoreChainDetailPayloads(
         throw new RangeError("Chain detail payload exceeds byte budget");
       let value = cache.get(reference);
       if (value === undefined) {
-        const object = await bucket(env).get(
-          objectKey(hash, match[6] === "gzip"),
-        );
-        if (!object || object.size !== storedBytes)
-          throw new Error("Missing or truncated chain detail payload");
-        const stream =
-          match[6] === "gzip"
-            ? object.body.pipeThrough(new DecompressionStream("gzip"))
-            : object.body;
+        let body: ReadableStream<Uint8Array>;
+        if (native) {
+          const bytes = await readNativePayload(
+            env,
+            hash,
+            storedBytes,
+            location,
+          );
+          // The adapter owns this buffer; stream it without another full copy.
+          body = new ReadableStream({
+            start(controller) {
+              controller.enqueue(bytes);
+              controller.close();
+            },
+          });
+        } else {
+          const object = await bucket(env).get(objectKey(hash, compressed));
+          if (!object || object.size !== storedBytes)
+            throw new Error("Missing or truncated chain detail payload");
+          body = object.body;
+        }
+        const stream = compressed
+          ? body.pipeThrough(new DecompressionStream("gzip"))
+          : body;
         const reader = stream.getReader();
         const bytes = new Uint8Array(rawBytes);
         let offset = 0;
