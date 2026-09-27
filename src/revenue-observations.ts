@@ -1,3 +1,4 @@
+import { historySha256 } from "./history-sha256.ts";
 // #10566: the revenue probe lane's store — the producer half, and the read the
 // serving layer needs.
 //
@@ -308,13 +309,7 @@ export function eligibleRevenueSurfaces(
 
 /** sha-256 of the exact bytes a figure was extracted from. */
 export async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  return historySha256(text);
 }
 
 /**

@@ -1,3 +1,4 @@
+import { historySha256 } from "./history-sha256.ts";
 // Typed PostHog usage-event wrapper for the Worker backend (#6030 / #366).
 //
 // Single chokepoint for product-usage capture: callers pass an allowlisted
@@ -141,14 +142,10 @@ export async function anonymousUsageDistinctId(
   clientIp: string | undefined,
 ): Promise<string | undefined> {
   if (!salt || !clientIp) return undefined;
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(`${salt}:${clientIp}`),
+  const hex = historySha256(`${salt}:${clientIp}`).slice(
+    0,
+    USAGE_ANONYMOUS_ID_HEX_LENGTH,
   );
-  const hex = [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, USAGE_ANONYMOUS_ID_HEX_LENGTH);
   return `${USAGE_ANONYMOUS_NAMESPACE}${hex}`;
 }
 
