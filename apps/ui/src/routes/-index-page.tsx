@@ -43,7 +43,8 @@ import {
   economicsQuery,
   subnetMoversQuery,
 } from "@/lib/metagraphed/queries";
-import { formatDecimal, formatNumber, formatRelative } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
+import { useRelativeTime } from "@/hooks/use-time-format";
 
 const SECTIONS = [
   { id: "emission", name: "Emission gains" },
@@ -118,6 +119,7 @@ function HomeDotField() {
 }
 
 export function OverviewPage() {
+  const formatRelative = useRelativeTime();
   const [emissionWindow, setEmissionWindow] = useState<EmissionWindow>("30d");
   const [chainMetric, setChainMetric] = useState<ChainMetric>("extrinsics");
   const heroBlockRailEnabled = useHeroBlockRailEnabled();

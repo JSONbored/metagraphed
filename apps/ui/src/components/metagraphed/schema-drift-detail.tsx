@@ -13,7 +13,8 @@ import {
 } from "@jsonbored/ui-kit";
 import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-summary";
 import { useCopy } from "@/hooks/use-copy";
-import { formatFreshness, formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";
+import { formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";
+import { useFreshnessTime } from "@/hooks/use-time-format";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 import { readKey, readString } from "@/lib/metagraphed/read-key";
 
@@ -81,6 +82,7 @@ function DriftBody({
   onOpenInExplorer?: (id: string) => void;
   onClose: () => void;
 }) {
+  const formatFreshness = useFreshnessTime();
   const { copied, copy } = useCopy({ label: "schema url" });
 
   // No backend /schemas/{id}/diff endpoint exists (404). The drift summary is

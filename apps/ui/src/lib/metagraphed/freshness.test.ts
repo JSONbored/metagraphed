@@ -62,9 +62,7 @@ describe("formatFreshnessAbsolute", () => {
     expect(formatFreshnessAbsolute("nonsense")).toBeNull();
   });
 
-  it("returns a locale string for a valid timestamp", () => {
-    expect(formatFreshnessAbsolute("2024-06-01T12:00:00.000Z")).toBe(
-      new Date("2024-06-01T12:00:00.000Z").toLocaleString(),
-    );
+  it("labels a valid timestamp in UTC regardless of the runtime time zone", () => {
+    expect(formatFreshnessAbsolute("2024-06-01T12:00:00.000Z")).toBe("6/1/2024, 12:00:00 PM UTC");
   });
 });
