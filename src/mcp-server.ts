@@ -1998,7 +1998,7 @@ interface McpCtx {
   env: Env;
   domain?: string;
   /** Which listing profile this request's endpoint serves (#11164): "core"
-   * for /mcp/core, "full" otherwise. Filters tools/list ONLY -- dispatch,
+   * for /mcp/core, "full" otherwise. Filters listing and discovery guidance -- dispatch,
    * validation, tripwire and analytics are identical on both endpoints. */
   profile?: McpProfile;
   sessionId?: string | null;
@@ -6178,17 +6178,27 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     //
     // Deliberately NOT annotated open-world: it reads nothing at all.
     name: MCP_MISSING_CAPABILITY_TOOL,
-    title: "Report a capability this server does not have",
+    title: "Find the full catalog or report a missing capability",
     description:
-      "Call this ONLY when you have looked through the available tools and " +
-      "none of them can do what you need. Describe what you were trying to " +
-      "accomplish in the `context` argument, in plain language -- that text " +
-      "is the whole point of the call and is what gets read. This tool " +
-      "returns no data and unlocks no additional tools; it records the gap " +
-      "so the capability can be built. Do not call it as a discovery step: " +
-      "the full catalogue is already in tools/list.",
+      "On /mcp/core, call this when the small starter listing does not cover " +
+      "your task: it explains how to access the full catalog. On /mcp, call " +
+      "this only after checking the full tools/list and finding no suitable " +
+      "tool; describe the missing capability in context to record the gap.",
     inputSchema: inputJsonSchema(GetMoreToolsInputSchema),
-    async handler(_args: GetMoreToolsInput, _ctx: McpCtx) {
+    async handler(_args: GetMoreToolsInput, ctx: McpCtx) {
+      if (ctx.profile === "core") {
+        return {
+          acknowledged: true,
+          additional_tools_available: true,
+          message:
+            `/mcp/core lists ${MCP_CORE_TOOL_NAMES.length} starter tools; ` +
+            `${MCP_TOOLS.length} tools are available. Request tools/list at ` +
+            "/mcp on this same server for their full definitions. All listed " +
+            "tools can also be called through /mcp/core with the same " +
+            "arguments, authentication, and rate limits. This discovery " +
+            "request was not recorded as a missing capability.",
+        };
+      }
       // Answering honestly matters as much as recording. An agent told
       // something vague retries; told plainly that no more tools exist, it
       // stops and reports back to its user, which is the correct outcome.
@@ -15710,8 +15720,8 @@ export function withAdvertisedRequiredIntent(
  *
  * ## WHY A SECOND ENDPOINT AND NOT A SMALLER CATALOGUE
  *
- * The full tools/list serializes to ~1.6 MB -- roughly 406K tokens for any
- * client that holds tool definitions in model context, which is most of them.
+ * The full tools/list serializes to ~1.6 MB. Context cost depends on which
+ * schema fields a client forwards to its model and on the model tokenizer.
  * The wire was never the cost (gzip takes it to ~190 KB); the CONTEXT is, and
  * no encoding reaches that. The only lever that does is listing fewer tools,
  * and removing tools from /mcp would break "Bittensor in a box". So /mcp
@@ -16646,7 +16656,11 @@ async function callTool(params: Row | null, ctx: McpCtx) {
   // with no context reports nothing, because an empty gap report is not a
   // data point -- it would inflate the count of unmet asks with calls that
   // name no ask.
-  if (params?.name === MCP_MISSING_CAPABILITY_TOOL && intent) {
+  if (
+    params?.name === MCP_MISSING_CAPABILITY_TOOL &&
+    intent &&
+    ctx?.profile !== "core"
+  ) {
     scheduleMcpMissingCapabilityEvent(ctx, {
       intent,
       sessionId: ctx?.sessionId,
