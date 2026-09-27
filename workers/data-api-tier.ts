@@ -2,54 +2,15 @@ import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 
-// DATA_API-forwarding serving gate, one env flag per data source (originally
-// ADR 0013 Sequencing step 3's gated D1 -> Postgres cutover; D1 fully
-// eliminated 2026-07-17 -- reconfirmed 2026-08-11, zero `d1_databases` blocks
-// in any wrangler config and no store binding on any deployed Worker).
+// Store-backed requests forward through the existing DATA_API service binding.
+// D1_STATE_TABLES selects the native D1 owner inside that Worker. The legacy
+// "d1" and "postgres" tier-flag values select forwarding, not a database vendor.
+// Each flag remains scoped to the route family DATA_API actually implements.
 //
-// WHAT THE FLAGS ACTUALLY READ, measured across all three configs 2026-08-11:
-// 8 read "retired", 8 read "d1", and NONE reads "postgres". The
-// `value === "postgres"` disjunct below is therefore unreachable in
-// production. It survives because 657 sites in tests/ use "postgres" as the
-// "forward this" value, so deleting it is a test migration rather than a
-// dead-branch removal -- #10223 step 2, after #10190's sweep.
-//
-// A READER WHO TRUSTS THESE NAMES WILL BE WRONG TWICE: "d1" is the live
-// forwarding value and names no D1, and "postgres" names no Postgres box --
-// both stores were wiped. The forward lands on DATA_API, which reads Neon
-// through Hyperdrive. Renaming the surviving concept is #10223's step 3, and
-// it wants the sweep to land first so 407 call sites are not churned twice.
-//
-// Each tier keeps its own flag as a kill switch: a failure here degrades to a
-// schema-stable EMPTY response (there is no second store left to fall back
-// to), so a maintainer can force that same degraded-but-never-erroring state
-// with a single flag flip if a specific tier needs to be taken offline, with
-// no code change or redeploy.
-// `request` is forwarded to the DATA_API service binding after normalizing HEAD
-// probes to GET: DATA_API is GET-only, while the public API computes HEAD
-// metadata from the GET representation and strips the body later. The caller
-// has already run its own validation (or, for an MCP tool caller, already
-// validated via its own inputSchema), so this trusts well-formed params and
-// treats ANY failure (binding absent, network error, non-2xx, unparseable/
-// malformed body) as "degrade to the empty response," never as a
-// client-facing error.
-//
-// Extracted from workers/request-handlers/entities.ts (#4668/#4686) into this
-// neutral module so src/mcp-server.ts (#4694) can share the identical
-// contract without importing a route-handler file or duplicating the fallback
-// logic -- REST's handleBlocks/handleExtrinsics and MCP's list_extrinsics/
-// get_extrinsic all call this same function.
-//
-// Every branch below logs + captures before falling back (#4686 logging;
-// error-tracking capture added 2026-07-25) -- prior to the original #4686 fix,
-// a canceled/failed DATA_API subrequest was indistinguishable from "the flag
-// isn't on," which let a silently-unreliable Postgres tier look shipped while
-// actually degrading to empty on most requests (see the blocks-tier incident
-// this was added for: METAGRAPH_BLOCKS_SOURCE was flipped, live re-testing
-// found DATA_API subrequests reporting outcome "canceled" on a real fraction
-// of requests, and there was no signal anywhere to catch it before a wider
-// live-testing pass happened to notice). The same silent-degradation risk is
-// why this also now reaches PostHog, not just Wrangler's own log tail.
+// Normalize HEAD to GET so the public handler can compute response metadata.
+// Binding, HTTP and payload failures are captured before returning null to the
+// caller's schema-stable degraded response. The generation counter keeps that
+// degradation out of the edge cache. REST and MCP share this same gate.
 let postgresTierFallbackGeneration = 0;
 
 registerModuleStateReset("workers/data-api-tier.ts", () => {

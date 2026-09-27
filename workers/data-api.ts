@@ -2,21 +2,10 @@
 // api.ts Worker (which is near its bundle budget); the main Worker routes the
 // relevant paths in via a service binding (DATA_API).
 //
-// This Worker WAS the serving half of ADR 0013: the Postgres tiers the indexer
-// and the Rust backfill wrote, fronted by Cloudflare Hyperdrive. That box was
-// destroyed, #9186 removed the HYPERDRIVE binding, and #9193 deleted the code
-// behind it -- the postgres.js driver, the ~5,200-line Postgres read
-// dispatcher, and the Postgres half of every dual-write sync route. All of it
-// sat behind `env.HYPERDRIVE?.connectionString`, which no wrangler config can
-// make truthy any more, so none of it could run.
-//
-// What is left is the store surface: the neurons / subnet-hyperparams /
-// account-identity read families (tests/fixtures/sqlite-schema/0007 + 0009), the user-state
-// routes (accounts, API keys, usage accounting, alert triggers, push
-// subscriptions), the internal sync WRITE routes that land in D1, and the
-// TAO/USD index cron. Routes whose store is gone still answer exactly what
-// they answered before the deletion -- see dispatchDataApiRequest's own note
-// for why that matters to the forward gate.
+// D1 owns the migrated serving and ingestion tables through explicit
+// D1_STATE_TABLES selection. The dispatcher also serves internal sync writes,
+// account/API-key state and the TAO/USD index. Read-store adapters preserve
+// compatibility for table families whose configured owner has not moved.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import {
@@ -25,6 +14,7 @@ import {
   readSubnetDailyHistory,
   readNeuronDirectoryRows,
   readDirectoryNominatorCounts,
+  readSubnetNeuronRows,
 } from "../src/neuron-snapshot-read.ts";
 import { COMPUTE_DECLARATIONS_TABLES } from "../src/read-store-tables.ts";
 import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
@@ -7293,19 +7283,11 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/metagraph$/,
   );
   if (subnetMetagraph) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(subnetMetagraph[1]);
       const validatorsOnly =
         url.searchParams.get("validator_permit") === "true";
-      const rows = validatorsOnly
-        ? await sql.unsafe<NeuronColumnsRow>(
-            `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = TRUE ORDER BY uid`,
-            [netuid],
-          )
-        : await sql.unsafe<NeuronColumnsRow>(
-            `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
-            [netuid],
-          );
+      const rows = await readSubnetNeuronRows(sql, env, netuid, validatorsOnly);
       return json(
         buildSubnetMetagraph(rows, netuid, {
           immunityPeriod: null,
