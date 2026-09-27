@@ -11,7 +11,14 @@ import {
   axonProjectionReady,
 } from "../src/axon-transition-d1.ts";
 import { isRoutableAxon, splitAxon } from "../src/axon-routable.ts";
-import { loadAxonRemovals } from "../src/axon-removals-loader.ts";
+import {
+  readAxonRemovalProjection,
+  AXON_REMOVAL_PROJECTION_KEY,
+} from "../src/axon-removals-projection.ts";
+import {
+  loadAxonRemovals,
+  refreshAxonRemovalProjection,
+} from "../src/axon-removals-loader.ts";
 import {
   deriveAxonRemovals,
   type NeuronAxonDayRow,
@@ -122,6 +129,10 @@ beforeAll(async () => {
   );
 });
 beforeEach(async () => {
+  await db.exec(
+    "CREATE TABLE IF NOT EXISTS generated_artifacts(key TEXT PRIMARY KEY,payload TEXT NOT NULL,updated_at TEXT NOT NULL)",
+  );
+  await db.exec("DELETE FROM generated_artifacts");
   await db.batch([
     db.prepare("DELETE FROM neuron_daily_documents"),
     db.prepare("DELETE FROM neuron_daily_members"),
@@ -785,4 +796,49 @@ test("requested axon windows preserve boundary context and agree across D1 and P
     assert.equal(native?.derivation.moved_unroutable, (expected / 3) * 2);
     assert.ok(native?.removals.some((row) => row.removed_on === "2026-08-02"));
   }
+});
+
+test("stored axon scorecards preserve both windows with a single bounded read", async () => {
+  await seed(rows);
+  await refreshAxonRemovalProjection(env(), now);
+  const stored = await db
+    .prepare("SELECT payload FROM generated_artifacts WHERE key=?")
+    .bind(AXON_REMOVAL_PROJECTION_KEY)
+    .first<{ payload: string }>();
+  assert.ok(stored);
+  assert.ok(stored.payload.length < 4000);
+  for (const windowDays of [7, 30]) {
+    const projected = await readAxonRemovalProjection(env(), windowDays, now);
+    assert.deepEqual(
+      projected,
+      deriveAxonRemovals(rows, {
+        lookbackDays: 31,
+        sinceDate: new Date(now - windowDays * 86400000)
+          .toISOString()
+          .slice(0, 10),
+      }),
+    );
+    const direct = await loadAxonRemovals(
+      {},
+      { query, now: () => now, windowDays },
+    );
+    const actual = await loadAxonRemovals(env(), {
+      now: () => now,
+      windowDays,
+    });
+    assert.deepEqual(actual?.removals, direct?.removals);
+    assert.deepEqual(actual?.subnets, direct?.subnets);
+    assert.deepEqual(actual?.network, direct?.network);
+  }
+  // Removing the source after the successful publication proves that serving
+  // opens only the compact object; a hidden window scan would fail here.
+  await db.batch([
+    db.prepare("DELETE FROM neuron_daily_documents"),
+    db.prepare("DELETE FROM neuron_daily_members"),
+  ]);
+  const served = await loadAxonRemovals(env(), {
+    now: () => now,
+    windowDays: 7,
+  });
+  assert.equal(served?.removals.length, 3);
 });

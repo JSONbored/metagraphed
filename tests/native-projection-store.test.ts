@@ -18,6 +18,7 @@ import {
   runProjectionLanes,
   projectionKey,
 } from "../src/projection-lanes.ts";
+import * as axonProjection from "../src/axon-removals-loader.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
 import type { ChainNetworkId } from "../src/chain-network.ts";
 
@@ -295,4 +296,29 @@ test("scheduled native ownership never issues SQL, writes artifacts, or hides a 
   // Exercise the production recorder too; with no telemetry binding it must remain quiet.
   assert.equal((await runProjectionLanes(env as unknown as Env)).ok, false);
   assert.equal(request.mock.calls.length, 0);
+});
+
+test("a failed axon refresh reports failure while existing native lanes remain readable", async () => {
+  vi.spyOn(Date, "now").mockReturnValue(now);
+  const { env } = fixture();
+  const baseline = await runProjectionLanes(env as unknown as Env);
+  const refresh = vi.spyOn(axonProjection, "refreshAxonRemovalProjection");
+  const recordException = vi.fn(async () => true);
+  for (const failure of [
+    new Error("source read failed"),
+    "storage unavailable",
+  ]) {
+    refresh.mockRejectedValueOnce(failure);
+    const result = await runProjectionLanes(env as unknown as Env, {
+      recordException,
+    });
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.lanes, baseline.lanes);
+    assert.equal(
+      recordException.mock.calls.length,
+      failure instanceof Error ? 1 : 2,
+    );
+  }
+  refresh.mockRejectedValueOnce(new Error("source read failed"));
+  assert.equal((await runProjectionLanes(env as unknown as Env)).ok, false);
 });

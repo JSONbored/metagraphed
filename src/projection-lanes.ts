@@ -17,6 +17,7 @@
 // (one lane's throw never skips the next) and each failure records exactly
 // one exception under `projection:<name>` so a silently dead lane is visible.
 
+import { refreshAxonRemovalProjection } from "./axon-removals-loader.ts";
 import {
   projectionNow,
   projectionQuery,
@@ -1778,6 +1779,16 @@ export async function runProjectionLanes(
   reason?: string;
   lanes: Record<string, number | null>;
 }> {
+  let axonOk = true;
+  try {
+    await refreshAxonRemovalProjection(env);
+  } catch (error) {
+    axonOk = false;
+    await (deps.recordException ?? recordExceptionEvent)(env, {
+      error: error instanceof Error ? error : new Error(String(error)),
+      route: "projection:axon-removals",
+    });
+  }
   if (nativeProjectionsEnabled(env)) {
     const lanes: Record<string, number | null> = {};
     let ok = true;
@@ -1809,7 +1820,7 @@ export async function runProjectionLanes(
       }
       if (network === DEFAULT_CHAIN_NETWORK) ok = current;
     }
-    return { ok, lanes };
+    return { ok: ok && axonOk, lanes };
   }
   if (!projectionQuery(env)) {
     // Unconfigured is a deliberate deployment state (local/CI/self-hosters
@@ -1837,5 +1848,5 @@ export async function runProjectionLanes(
       if (network === DEFAULT_CHAIN_NETWORK) ok = ok && result.ok;
     }
   }
-  return { ok, lanes };
+  return { ok: ok && axonOk, lanes };
 }
