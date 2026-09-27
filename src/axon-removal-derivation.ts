@@ -205,7 +205,15 @@ function normalize(row: NeuronAxonDayRow): NormalizedDay | null {
  */
 export function deriveAxonRemovals(
   rows: NeuronAxonDayRow[] | null | undefined,
-  { lookbackDays, sinceDate }: { lookbackDays: number; sinceDate?: string },
+  {
+    lookbackDays,
+    sinceDate,
+    onExcluded,
+  }: {
+    lookbackDays: number;
+    sinceDate?: string;
+    onExcluded?: (kind: "uid-reuse" | "pending", date: string) => void;
+  },
 ): DerivedAxonRemovals {
   const bySlot = new Map<string, NormalizedDay[]>();
   for (const row of Array.isArray(rows) ? rows : []) {
@@ -234,6 +242,7 @@ export function deriveAxonRemovals(
       // CORRECTION 1: the slot changed hands, so this is a deregistration.
       if (previous.hotkey !== current.hotkey) {
         excludedUidReuse += 1;
+        onExcluded?.("uid-reuse", current.date);
         continue;
       }
       // CORRECTION 2: confirmation needs a later observation of the same
@@ -244,6 +253,7 @@ export function deriveAxonRemovals(
         .find((day) => day.hotkey === current.hotkey);
       if (later === undefined) {
         pending += 1;
+        onExcluded?.("pending", current.date);
         continue;
       }
       // It came back. A flap is a capture gap, not a removal.
@@ -286,4 +296,9 @@ export function deriveAxonRemovals(
       ).length,
     },
   };
+}
+
+/** UTC date boundary shared by direct queries and compact projections. */
+export function isoDaysAgo(nowMs: number, days: number): string {
+  return new Date(nowMs - days * 86_400_000).toISOString().slice(0, 10);
 }
