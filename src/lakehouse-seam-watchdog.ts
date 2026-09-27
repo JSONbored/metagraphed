@@ -177,7 +177,7 @@ export function evaluateDecodeSeam({
   } else if (age > DECODE_STALE_MS) {
     reasons.push(
       `the decode watermark is ${hours(age)}h old (threshold ${hours(DECODE_STALE_MS)}h): the decode lane has stopped publishing. ` +
-        `The seam is frozen at ${seam}, so block detail above it is empty while the block list stays at chain head`,
+        `Retained decoded-history coverage is frozen at ${seam}; recent hot-tier block details may still be available`,
     );
   }
 
