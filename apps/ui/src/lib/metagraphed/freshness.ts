@@ -8,13 +8,14 @@ import { formatAbsoluteTime, relativeFromDiff } from "./format";
 export function formatFreshness(
   updatedAt?: string | null,
   windowLabel?: string | null,
+  now: number | null = Date.now(),
 ): string | null {
   const parts: string[] = [];
   if (updatedAt) {
     const t = new Date(updatedAt);
     if (!Number.isNaN(t.getTime())) {
-      const diffMs = Date.now() - t.getTime();
-      parts.push(`updated ${relative(diffMs)}`);
+      const stamp = now === null ? formatAbsoluteTime(updatedAt) : relative(now - t.getTime());
+      parts.push(`updated ${stamp}`);
     }
   }
   if (windowLabel) parts.push(`${windowLabel} window`);

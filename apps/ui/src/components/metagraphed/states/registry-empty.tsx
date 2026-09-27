@@ -4,7 +4,8 @@ import { Inbox, AlertTriangle, Clock, RefreshCw, ArrowRight, Search, FileText } 
 import type { ReactNode } from "react";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
-import { formatFreshness, formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";
+import { formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";
+import { useFreshnessTime } from "@/hooks/use-time-format";
 
 /**
  * Resolve an evidence link to the host that serves it (#11204).
@@ -94,6 +95,7 @@ export function RegistryEmpty({
   evidenceHref,
   className,
 }: Props) {
+  const formatFreshness = useFreshnessTime();
   const tone = TONE[variant];
   const Icon = tone.Icon;
   const fresh = formatFreshness(updatedAt, windowLabel);

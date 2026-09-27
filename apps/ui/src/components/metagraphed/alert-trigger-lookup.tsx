@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/metagraphed/client";
-import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
+import { useRelativeTime } from "@/hooks/use-time-format";
 
 /** Mirrors src/alert-triggers.ts. */
 const OWNER_TOKEN_HEADER = "x-alert-trigger-owner-token";
@@ -37,6 +38,7 @@ interface TriggerView {
  * from the other.
  */
 export function AlertTriggerLookup() {
+  const formatRelative = useRelativeTime();
   const [id, setId] = useState("");
   const [token, setToken] = useState("");
 

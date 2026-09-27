@@ -35,7 +35,8 @@ import {
   accountStakeFlowQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
+import { useRelativeTime } from "@/hooks/use-time-format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { Route } from "./accounts.$ss58";
 
@@ -82,6 +83,7 @@ function ApiSources({ paths }: { paths: string[] }) {
 const short = (ss58: string) => `${ss58.slice(0, 6)}…${ss58.slice(-6)}`;
 
 export function AccountDetailPage() {
+  const formatRelative = useRelativeTime();
   const { ss58 } = Route.useParams();
   const { window } = Route.useSearch();
   const navigate = Route.useNavigate();

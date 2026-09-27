@@ -264,10 +264,12 @@ export function relativeFromDiff(
   return past ? `${value}${unit} ago` : `in ${value}${unit}`;
 }
 
-export function formatRelative(iso?: string | null): string {
+/** Pass null while hydrating: an absolute UTC stamp cannot drift with the clock. */
+export function formatRelative(iso?: string | null, now: number | null = Date.now()): string {
   if (!isUsableTimestamp(iso)) return "—";
+  if (now === null) return formatAbsoluteTime(iso) ?? "—";
   // General relative formatter: surfaces a genuine future event as "in Xunit".
-  return relativeFromDiff(Date.now() - Date.parse(iso));
+  return relativeFromDiff(now - Date.parse(iso));
 }
 
 export function isStaleFreshness(iso?: string | null, thresholdMs = 12 * 60 * 60_000): boolean {
@@ -409,7 +411,7 @@ export function formatDecimal(n: number | null | undefined, digits = 2, fallback
 }
 
 /**
- * An absolute timestamp in the site's one locale: `Aug 23, 2026, 7:52 AM`.
+ * An absolute timestamp in the site's locale and explicit UTC time zone.
  *
  * Dates are formatted here for the same reason numbers are: two call sites
  * that pick their own locale render the same instant two ways, and a reader
@@ -420,7 +422,7 @@ export function formatAbsoluteTime(iso?: string | null): string | null {
   if (!iso) return null;
   const t = new Date(iso);
   if (Number.isNaN(t.getTime())) return null;
-  return t.toLocaleString("en-US");
+  return t.toLocaleString("en-US", { timeZone: "UTC", timeZoneName: "short" });
 }
 
 /**
