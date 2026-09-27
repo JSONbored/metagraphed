@@ -14,6 +14,11 @@
 //
 // ## COVERAGE IS COUNTED IN NETUIDS HERE, NOT ROWS
 //
+// Native D1 captures now arrive as bounded transactions with a durable pass
+// receipt. The native query below distinguishes an active upload from a
+// completed partial scan; the older single-request explanation describes the
+// retained PostgreSQL query path.
+//
 // #9530 established that `MAX(captured_at)` cannot distinguish a complete pass
 // from a truncated one, after 147,000 account_balances rows -- 48% of the
 // network -- reported `ok | age=0.6h` in production. This lane has the same
@@ -43,6 +48,7 @@
 // so ~2.9M store rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { selectedD1Store } from "./d1-store.ts";
 import { laneVerdictDetail } from "./lane-verdict-detail.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import {
@@ -205,6 +211,39 @@ export const NEURONS_COVERAGE_SQL =
   "(SELECT MAX(captured_at) FROM neurons) - ? THEN netuid END) AS covered " +
   "FROM neurons";
 
+// The native writer commits bounded chunks and a pass receipt, so a watchdog
+// can observe a healthy upload halfway through. Only a matching, incomplete
+// receipt within the existing pass window may use the preceding completed
+// capture as its coverage/freshness anchor. A completed partial pass, abandoned
+// upload, missing receipt, or stale previous capture still alerts.
+// A document's stamp is its greatest retained member stamp; empty documents
+// are excluded through the membership index. This avoids expanding ~30k JSON
+// view rows merely to count ~130 document shards.
+export const NEURONS_D1_COVERAGE_SQL = `WITH
+  documents AS MATERIALIZED (
+    SELECT d.netuid,d.stamp FROM neurons_documents d WHERE d.day=''
+      AND EXISTS (SELECT 1 FROM neurons_members m WHERE m.netuid=d.netuid AND m.shard=d.shard)
+  ),
+  head AS (SELECT MAX(stamp) AS latest FROM documents),
+  prior AS (
+    SELECT MAX(captured_at) AS latest FROM neurons_passes
+    WHERE completed_at IS NOT NULL AND expected_rows>0 AND received_rows>=expected_rows
+      AND captured_at<(SELECT latest FROM head)
+  ),
+  pending AS (
+    SELECT 1 FROM neurons_passes p,head,prior
+    WHERE p.captured_at=head.latest AND p.completed_at IS NULL
+      AND p.received_rows>0 AND p.received_rows<p.expected_rows
+      AND head.latest<=? AND head.latest>=? AND prior.latest IS NOT NULL
+  ),
+  anchor AS (
+    SELECT CASE WHEN EXISTS(SELECT 1 FROM pending) THEN prior.latest ELSE head.latest END AS latest,
+      EXISTS(SELECT 1 FROM pending) AS uploading FROM head,prior
+  )
+  SELECT COUNT(DISTINCT netuid) AS total,(SELECT latest FROM anchor) AS latest,
+    COUNT(DISTINCT CASE WHEN stamp>=(SELECT latest FROM anchor)-? THEN netuid END) AS covered,
+    (SELECT uploading FROM anchor) AS uploading FROM documents`;
+
 export type NeuronsStalenessReason = "no_rows" | "stale" | "partial" | null;
 
 export interface NeuronsStalenessVerdict {
@@ -276,6 +315,7 @@ interface NeuronsCoverageRow {
   latest: Neurons["captured_at"] | null;
   covered: string | number | null;
   total: string | number | null;
+  uploading?: number;
 }
 
 export interface NeuronsStalenessDeps {
@@ -302,7 +342,8 @@ export async function runNeuronsStalenessWatchdog(
   // laneHealthStore already; this read did not, so the watchdog was measuring
   // the frozen copy D1 left and would have alarmed permanently -- reporting the lane
   // stalled while the lane was fine.
-  const db = readStore(env, ["neurons"]);
+  const native = selectedD1Store(env, ["neurons", "neurons_passes"]);
+  const db = native ?? readStore(env, ["neurons"]);
   if (!db?.first) return { ok: false, reason: "no store bound" };
 
   const thresholdMs = neuronsStalenessThresholdMs(env);
@@ -313,9 +354,13 @@ export async function runNeuronsStalenessWatchdog(
     NEURONS_COVERAGE_FLOOR_NETUIDS;
 
   try {
-    const row = await db.first<NeuronsCoverageRow>(NEURONS_COVERAGE_SQL, [
-      passWindowMs,
-    ]);
+    const checkedAt = now();
+    const row = await db.first<NeuronsCoverageRow>(
+      native ? NEURONS_D1_COVERAGE_SQL : NEURONS_COVERAGE_SQL,
+      native
+        ? [checkedAt, checkedAt - passWindowMs, passWindowMs]
+        : [passWindowMs],
+    );
     const verdict = evaluateNeuronsStaleness({
       latestCapturedAtMs: numberOrNull(row?.latest),
       coveredNetuids: countOrZero(row?.covered),
@@ -366,6 +411,7 @@ export async function runNeuronsStalenessWatchdog(
         covered: verdict.covered_netuids,
         total: verdict.total_netuids,
         floor: verdict.coverage_floor_netuids,
+        ...(row?.uploading === 1 ? { capture_in_flight: 1 } : {}),
       }),
       checked_at: now(),
     });

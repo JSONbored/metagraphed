@@ -13,6 +13,12 @@ import {
 } from "../src/neurons-neon-write.ts";
 import { NEURON_INSERT_COLUMNS } from "../src/metagraph-neurons.ts";
 import {
+  NEURONS_COVERAGE_SQL,
+  NEURONS_D1_COVERAGE_SQL,
+  evaluateNeuronsStaleness,
+  runNeuronsStalenessWatchdog,
+} from "../src/neurons-staleness-watchdog.ts";
+import {
   crossCheckSql,
   crossCheckStamps,
   confirmRedirectedStale,
@@ -675,4 +681,187 @@ test("D1 confirms an old pass against fresh documents and fails closed without t
       env,
     ).includes("MAX(updated_at) FROM neurons)"),
   );
+});
+
+const captureNetwork = async (
+  at: number,
+  first: number,
+  count: number,
+  expected = 129,
+) =>
+  writeNeuronDocuments(store(), {
+    ...empty(),
+    rows: Array.from({ length: count }, (_, i) => ({
+      netuid: first + i,
+      uid: 0,
+      captured_at: at,
+      hotkey: `5key${first + i}`,
+      coldkey: "5cold",
+    })),
+    pass: {
+      capturedAt: at,
+      expectedRows: expected,
+      receivedRows: count,
+      nowMs: at + 1000,
+    },
+  });
+
+const coverage = (now: number) =>
+  store().first<{
+    latest: number | null;
+    total: number;
+    covered: number;
+    uploading: number;
+  }>(NEURONS_D1_COVERAGE_SQL, [now, now - 300_000, 300_000]);
+
+test("native coverage observes bounded upload progress without reporting a truncated completed pass", async () => {
+  const next = stamp + 900_000;
+  await captureNetwork(stamp, 0, 129);
+  await captureNetwork(next, 0, 42);
+  const old = await store().first<{ covered: number }>(
+    NEURONS_COVERAGE_SQL,
+    [300_000],
+  );
+  assert.equal(
+    old?.covered,
+    42,
+    "reproduces the production alert during an upload",
+  );
+  assert.deepEqual(await coverage(next + 10_000), {
+    latest: stamp,
+    total: 129,
+    covered: 129,
+    uploading: 1,
+  });
+  await captureNetwork(next, 42, 87);
+  assert.deepEqual(await coverage(next + 20_000), {
+    latest: next,
+    total: 129,
+    covered: 129,
+    uploading: 0,
+  });
+});
+
+test("an abandoned or completed partial native capture still alerts", async () => {
+  const next = stamp + 900_000;
+  await captureNetwork(stamp, 0, 129);
+  await captureNetwork(next, 0, 42);
+  assert.deepEqual(await coverage(next + 300_001), {
+    latest: next,
+    total: 129,
+    covered: 42,
+    uploading: 0,
+  });
+  await db
+    .prepare(
+      "UPDATE neurons_passes SET expected_rows=42,completed_at=? WHERE captured_at=?",
+    )
+    .bind(next + 1000, next)
+    .run();
+  assert.deepEqual(await coverage(next + 2000), {
+    latest: next,
+    total: 129,
+    covered: 42,
+    uploading: 0,
+  });
+  await db
+    .prepare("DELETE FROM neurons_passes WHERE captured_at=?")
+    .bind(next)
+    .run();
+  assert.deepEqual(await coverage(next + 2000), {
+    latest: next,
+    total: 129,
+    covered: 42,
+    uploading: 0,
+  });
+});
+
+test("in-flight proof cannot hide stale history or bootstrap without a completed capture", async () => {
+  const next = stamp + 3_600_000;
+  await captureNetwork(next, 0, 42);
+  assert.deepEqual(await coverage(next + 2000), {
+    latest: next,
+    total: 42,
+    covered: 42,
+    uploading: 0,
+  });
+  await captureNetwork(stamp, 42, 87, 87);
+  const result = (await coverage(next + 2000))!;
+  assert.equal(result.latest, stamp);
+  assert.equal(result.uploading, 1);
+  assert.equal(
+    evaluateNeuronsStaleness({
+      latestCapturedAtMs: result.latest,
+      coveredNetuids: result.covered,
+      totalNetuids: result.total,
+      nowMs: next + 2000,
+      thresholdMs: 2_700_000,
+      coverageFloorNetuids: 103,
+    }).reason,
+    "stale",
+  );
+});
+
+test("empty native shards do not count as subnet coverage", async () => {
+  await captureNetwork(stamp, 0, 1, 1);
+  await db
+    .prepare("INSERT INTO neurons_documents VALUES(999,'',0,?,jsonb('{}'))")
+    .bind(stamp + 900_000)
+    .run();
+  const legacy = await store().first(NEURONS_COVERAGE_SQL, [300_000]);
+  const native = await coverage(stamp + 901_000);
+  assert.deepEqual(native, { ...legacy, uploading: 0 });
+});
+
+test("the production watchdog selects native capture proof and persists its bounded verdict", async () => {
+  const next = stamp + 900_000;
+  await captureNetwork(stamp, 0, 129);
+  await captureNetwork(next, 0, 42);
+  const writes: unknown[][] = [];
+  const errors: string[] = [];
+  const tick = (now: number) =>
+    runNeuronsStalenessWatchdog(
+      { D1_STATE: db, D1_STATE_TABLES: owners },
+      {
+        now: () => now,
+        laneHealthDb: {
+          query: async () => [],
+          run: async (_sql, values = []) => {
+            writes.push(values);
+            return { changes: 1 };
+          },
+        },
+        recordException: async (_env, event) => {
+          errors.push(String(event.error));
+          return true;
+        },
+      },
+    );
+  const uploading = await tick(next + 10_000);
+  assert.equal(uploading.ok, true);
+  assert.equal(uploading.alerted, false);
+  assert.equal(uploading.covered_netuids, 129);
+  assert.equal(errors.length, 0);
+  assert.ok(
+    writes.some(
+      (values) =>
+        values.includes("ok") &&
+        values.some(
+          (v) => typeof v === "string" && v.includes("capture_in_flight=1"),
+        ),
+    ),
+  );
+
+  const expired = await tick(next + 300_001);
+  assert.equal(expired.ok, true);
+  assert.equal(expired.alerted, true);
+  assert.equal(expired.reason, "partial");
+  assert.match(errors[0], /covered only 42 of 129/);
+
+  await captureNetwork(next, 42, 87);
+  const complete = await tick(next + 310_000);
+  assert.equal(complete.ok, true);
+  assert.equal(complete.alerted, false);
+  assert.equal(complete.covered_netuids, 129);
+  assert.equal(errors.length, 1);
 });
