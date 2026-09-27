@@ -7,6 +7,7 @@ import { timingSafeEqual } from "./webhooks.ts";
 import { D1_EXPORT_TABLES } from "./d1-export-tables.ts";
 import { D1_EXPORT_COLUMNS } from "./d1-export-columns.ts";
 import { handleNativeHistoryExport } from "./native-history-export.ts";
+import { handleNativeStoreExport } from "./native-store-export.ts";
 import { handleRootBasketExport } from "./root-basket-export.ts";
 import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
 const scalar = z.union([z.string().max(2048), z.number().safe()]);
@@ -96,6 +97,7 @@ export async function handleD1StateExport(
     if (kind === "basket") return handleRootBasketExport(inputBody, env);
     if (kind === "native-history")
       return handleNativeHistoryExport(inputBody, env);
+    if (kind === "native-store") return handleNativeStoreExport(inputBody, env);
   }
   const parsed = RequestSchema.safeParse(inputBody);
   if (!parsed.success || !Object.hasOwn(D1_EXPORT_TABLES, parsed.data.table))
