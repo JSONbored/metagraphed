@@ -1051,6 +1051,34 @@ test("no cache database still resolves and 404s", async () => {
   assert.equal(res.status, 404);
 });
 
+test("successful icons remain available when D1 is absent or rejects writes", async () => {
+  for (const missing of [true, false]) {
+    let writes = 0;
+    const env = {
+      METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+      iconCache: missing
+        ? undefined
+        : {
+            get: async () => null,
+            put: async () => {
+              writes++;
+              throw new Error("D1 unavailable");
+            },
+          },
+    };
+    const response = await call("?host=example.com", {
+      env,
+      fetchImpl: async () =>
+        new Response(PNG, { headers: { "content-type": "image/png" } }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.arrayBuffer(), PNG);
+    assert.equal(response.headers.get("etag"), '"icon-example.com-64"');
+    assert.equal(response.headers.get("x-icon-cache"), "miss");
+    assert.equal(writes, missing ? 0 : 1);
+  }
+});
+
 test("a tombstone with NO timestamp field is treated as expired too", async () => {
   // Distinct branch from the malformed case above: `negative_at` absent
   // entirely, which falls to the `?? 0` default. Same fail-open outcome, and
