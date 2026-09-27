@@ -25,6 +25,7 @@ import {
   readSubnetDailyHistory,
   readNeuronDirectoryRows,
   readDirectoryNominatorCounts,
+  readSubnetNeuronRows,
 } from "../src/neuron-snapshot-read.ts";
 import { COMPUTE_DECLARATIONS_TABLES } from "../src/read-store-tables.ts";
 import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
@@ -7293,19 +7294,11 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/metagraph$/,
   );
   if (subnetMetagraph) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(subnetMetagraph[1]);
       const validatorsOnly =
         url.searchParams.get("validator_permit") === "true";
-      const rows = validatorsOnly
-        ? await sql.unsafe<NeuronColumnsRow>(
-            `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = TRUE ORDER BY uid`,
-            [netuid],
-          )
-        : await sql.unsafe<NeuronColumnsRow>(
-            `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
-            [netuid],
-          );
+      const rows = await readSubnetNeuronRows(sql, env, netuid, validatorsOnly);
       return json(
         buildSubnetMetagraph(rows, netuid, {
           immunityPeriod: null,

@@ -5,6 +5,72 @@
 // membership lookup order; an ordinary JOIN lets SQLite reverse it again.
 import { selectedD1Store } from "./d1-store.ts";
 import type { PgSql } from "./pg-sql.ts";
+import { NEURON_COLUMNS } from "./metagraph-neurons.ts";
+import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
+
+interface SubnetSnapshotPart {
+  shard: number;
+  payload: string | null;
+  uid: number | null;
+  hotkey: string | null;
+  coldkey: string | null;
+}
+
+/** One statement binds documents and accepted memberships to the same snapshot. */
+export async function readSubnetNeuronRows(
+  sql: PgSql,
+  env: unknown,
+  netuid: number,
+  validatorsOnly = false,
+): Promise<Record<string, unknown>[]> {
+  const store = selectedD1Store(env, ["neurons"]);
+  if (!store)
+    return sql.unsafe(
+      `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?
+       ${validatorsOnly ? "AND validator_permit = TRUE" : ""} ORDER BY uid`,
+      [netuid],
+    );
+  // Expanding json_each in SQL bills a read for every virtual row as well as
+  // each membership. Read the bounded shards once and expand them in memory.
+  // UNION ALL keeps both halves atomic without adding a transaction or index.
+  const parts = await store.query<SubnetSnapshotPart>(
+    `SELECT shard,json(payload) AS payload,NULL AS uid,NULL AS hotkey,NULL AS coldkey
+     FROM neurons_documents WHERE netuid=? AND day=''
+     UNION ALL
+     SELECT shard,NULL AS payload,uid,hotkey,coldkey
+     FROM neurons_members WHERE netuid=?`,
+    [netuid, netuid],
+  );
+  const documents = new Map<number, Record<string, unknown>>();
+  for (const part of parts)
+    if (part.payload !== null)
+      documents.set(
+        part.shard,
+        JsonObjectBodySchema.parse(JSON.parse(part.payload)),
+      );
+  const rows: Record<string, unknown>[] = [];
+  for (const member of parts) {
+    if (member.uid === null) continue;
+    const document = documents.get(member.shard);
+    if (!document) continue;
+    const metrics = JsonObjectBodySchema.parse(
+      document[String(member.uid)] ?? {},
+    );
+    if (validatorsOnly && metrics.validator_permit !== 1) continue;
+    rows.push({
+      ...Object.fromEntries(
+        NEURON_COLUMNS.split(", ").map((column) => [
+          column,
+          metrics[column] ?? null,
+        ]),
+      ),
+      uid: member.uid,
+      hotkey: member.hotkey,
+      coldkey: member.coldkey,
+    });
+  }
+  return rows.sort((left, right) => Number(left.uid) - Number(right.uid));
+}
 
 interface NeuronDirectoryRow extends Record<string, unknown> {
   // Both statements exclude NULL hotkeys before returning rows.
