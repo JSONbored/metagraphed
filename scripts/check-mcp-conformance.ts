@@ -187,7 +187,25 @@ export function violationsFor(
   }));
 }
 
+export interface CallEvidence {
+  tool: string;
+  call: string;
+  outcome:
+    | "validated"
+    | "schema_violation"
+    | "declined"
+    | "transport_error"
+    | "undocumented"
+    | "no_schema";
+  /** Includes the transport's inter-call throttle; not an origin latency percentile. */
+  elapsedMs?: number;
+  jsonBytes?: number;
+  errorCode?: string;
+}
+
 export interface ConformanceReport {
+  calls: CallEvidence[];
+  transportFailures: string[];
   checked: number;
   projectionChecked: number;
   projectionUnexercised: string[];
@@ -202,9 +220,11 @@ export interface ConformanceReport {
  * with two call paths would differ on retries first and on results eventually.
  */
 export async function callTool(name: string, args: Row): Promise<Row> {
-  const body = await rpc("tools/call", { name, arguments: args });
-  await sleep(CALL_SPACING_MS);
-  return body;
+  try {
+    return await rpc("tools/call", { name, arguments: args });
+  } finally {
+    await sleep(CALL_SPACING_MS);
+  }
 }
 
 /** The tool's structured result, or null when it declined. */
@@ -215,9 +235,19 @@ export function structuredOf(body: Row): Row | null {
   return structured && typeof structured === "object" ? structured : null;
 }
 
-export async function run(): Promise<ConformanceReport> {
-  const tools = await listLiveTools();
+export async function run({
+  listTools = listLiveTools,
+  call = callTool,
+  onResult,
+}: {
+  listTools?: () => Promise<Row[]>;
+  call?: (name: string, args: Row) => Promise<Row>;
+  onResult?: (evidence: CallEvidence) => void;
+} = {}): Promise<ConformanceReport> {
+  const tools = await listTools();
   const report: ConformanceReport = {
+    calls: [],
+    transportFailures: [],
     checked: 0,
     projectionChecked: 0,
     projectionUnexercised: [],
@@ -226,55 +256,102 @@ export async function run(): Promise<ConformanceReport> {
     violations: [],
   };
 
+  const record = (evidence: CallEvidence) => {
+    report.calls.push(evidence);
+    onResult?.(evidence);
+  };
+  // Each request gets its own receipt. A timeout must fail the run without
+  // discarding already collected evidence or preventing later tools from running.
+  const check = async (name: string, schema: Row, args: Row, mode: string) => {
+    const started = Date.now();
+    let body: Row;
+    try {
+      body = await call(name, args);
+    } catch (error) {
+      const errorCode = error instanceof Error ? error.name : "TransportError";
+      report.transportFailures.push(`${name} [${mode}]: ${errorCode}`);
+      record({
+        tool: name,
+        call: mode,
+        outcome: "transport_error",
+        elapsedMs: Date.now() - started,
+        errorCode,
+      });
+      return null;
+    }
+    // Measure only the call, not local schema compilation/validation.
+    const elapsedMs = Date.now() - started;
+    const jsonBytes = Buffer.byteLength(JSON.stringify(body), "utf8");
+    const structured = structuredOf(body);
+    if (structured === null) {
+      const code =
+        body.error?.code ?? body.result?.structuredContent?.error?.code;
+      record({
+        tool: name,
+        call: mode,
+        outcome: "declined",
+        elapsedMs,
+        jsonBytes,
+        ...(code === undefined ? {} : { errorCode: String(code) }),
+      });
+      return null;
+    }
+    const violations = violationsFor(schema, structured, name, mode);
+    report.violations.push(...violations);
+    record({
+      tool: name,
+      call: mode,
+      outcome: violations.length ? "schema_violation" : "validated",
+      elapsedMs,
+      jsonBytes,
+    });
+    return structured;
+  };
+
   for (const tool of tools) {
     const name = String(tool.name);
     const schema = tool.outputSchema as Row | undefined;
-    // A tool with no published outputSchema promises nothing about its shape,
-    // so there is nothing here to conform to. That is a real gap, but it is
-    // #9797's gap, not a conformance failure.
-    if (!schema) continue;
+    if (!schema) {
+      record({ tool: name, call: "plain", outcome: "no_schema" });
+      continue;
+    }
     const { args, undocumented } = buildToolArguments(tool.inputSchema as Row);
     if (undocumented.length > 0) {
       report.undocumented.push(`${name} (${undocumented.join(", ")})`);
+      record({ tool: name, call: "plain", outcome: "undocumented" });
       continue;
     }
-    const body = await callTool(name, args);
-    const structured = structuredOf(body);
+    const structured = await check(name, schema, args, "plain");
     if (structured === null) {
-      // A decline is not a conformance failure: production legitimately
-      // answers not_found for an example subject that has since changed, and a
-      // scheduled check that pages on that would be turned off within a week.
-      // Reported so the count is legible rather than silently smaller.
-      report.declined.push(name);
+      if (report.calls.at(-1)?.outcome === "declined")
+        report.declined.push(name);
       continue;
     }
     report.checked += 1;
-    report.violations.push(...violationsFor(schema, structured, name, "plain"));
 
-    // The projected path -- the one #9884 broke while CI stayed green.
     const properties = ((tool.inputSchema as Row)?.properties ?? {}) as Row;
     if (!properties.fields) continue;
     const field = projectableFieldFrom(structured);
     if (!field) {
-      // Production served no rows either, so the projection is genuinely
-      // unexercisable right now. Named rather than counted, so a tool that is
-      // permanently empty is visible instead of quietly absent.
       report.projectionUnexercised.push(name);
       continue;
     }
-    const projected = await callTool(name, {
-      ...args,
-      fields: projectionArgumentFor(tool.inputSchema as Row, field),
-    });
-    const projectedStructured = structuredOf(projected);
+    const projectedStructured = await check(
+      name,
+      schema,
+      {
+        ...args,
+        fields: projectionArgumentFor(tool.inputSchema as Row, field),
+      },
+      `projected:${field}`,
+    );
     if (projectedStructured === null) {
-      report.projectionUnexercised.push(`${name} (declined when projected)`);
+      report.projectionUnexercised.push(
+        `${name} (${report.calls.at(-1)?.outcome} when projected)`,
+      );
       continue;
     }
     report.projectionChecked += 1;
-    report.violations.push(
-      ...violationsFor(schema, projectedStructured, name, `projected:${field}`),
-    );
   }
   return report;
 }
@@ -299,6 +376,9 @@ export function formatReport(report: ConformanceReport): string {
       `not callable -- a required parameter declares no example: ${report.undocumented.join(", ")}`,
     );
   }
+  if (report.transportFailures.length > 0) {
+    lines.push(`TRANSPORT FAILURE(S): ${report.transportFailures.join(", ")}`);
+  }
   if (report.violations.length === 0) {
     lines.push("");
     lines.push("No response violated the schema it publishes.");
@@ -320,12 +400,16 @@ if (
   process.argv[1] &&
   import.meta.url.endsWith(process.argv[1].split("/").pop() ?? "")
 ) {
-  const report = await run();
+  const report = await run({
+    onResult: (evidence) =>
+      console.log(`MCP_AUDIT ${JSON.stringify(evidence)}`),
+  });
   console.log(formatReport(report));
   // A violation is a real contract defect -- the response does not match the
   // schema we publish, which needs no judgement to confirm. Unlike the triage
   // sweep's SUSPECT flags, it fails.
-  if (report.violations.length > 0) process.exitCode = 1;
+  if (report.violations.length > 0 || report.transportFailures.length > 0)
+    process.exitCode = 1;
   // Zero validated tools means the sweep did not run, not that everything
   // passed. Without this the check reports "No response violated the schema it
   // publishes" after a total outage.

@@ -16,6 +16,7 @@ import {
 } from "../scripts/mcp-tool-arguments.ts";
 import {
   formatReport,
+  run,
   violationsFor,
   type ConformanceReport,
 } from "../scripts/check-mcp-conformance.ts";
@@ -155,6 +156,8 @@ describe("violations are reported against the published schema", () => {
 
 describe("the report is legible on a clean run and on a failing one", () => {
   const base: ConformanceReport = {
+    calls: [],
+    transportFailures: [],
     checked: 219,
     projectionChecked: 32,
     projectionUnexercised: [],
@@ -208,5 +211,82 @@ describe("the scheduled workflow that runs it (#9879)", () => {
 
   test("does not mask a failure", () => {
     assert.equal(/continue-on-error:\s*true/.test(workflow), false);
+  });
+});
+
+describe("complete per-tool evidence", () => {
+  test("continues after plain and projected timeouts without calling them declines", async () => {
+    const schema = {
+      type: "object",
+      properties: { items: { type: "array" } },
+      required: ["items"],
+    };
+    const tools = [
+      "timeout",
+      "projection_timeout",
+      "declined",
+      "bad_shape",
+      "healthy",
+      "undocumented",
+      "no_schema",
+    ].map((name) => ({
+      name,
+      outputSchema: name === "no_schema" ? undefined : schema,
+      inputSchema:
+        name === "undocumented"
+          ? { required: ["secret"], properties: {} }
+          : {
+              properties:
+                name === "projection_timeout"
+                  ? { fields: { type: "string" } }
+                  : {},
+            },
+    }));
+    const receipts: string[] = [];
+    const report = await run({
+      listTools: async () => tools,
+      call: async (name, args) => {
+        if (name === "timeout" || args.fields)
+          throw new DOMException("timed out", "AbortError");
+        if (name === "declined")
+          return {
+            result: {
+              isError: true,
+              structuredContent: { error: { code: "auth_required" } },
+            },
+          };
+        return {
+          result: {
+            structuredContent:
+              name === "bad_shape" ? {} : { items: [{ id: 1 }] },
+          },
+        };
+      },
+      onResult: (evidence) =>
+        receipts.push(`${evidence.tool}:${evidence.outcome}`),
+    });
+    assert.deepEqual(receipts, [
+      "timeout:transport_error",
+      "projection_timeout:validated",
+      "projection_timeout:transport_error",
+      "declined:declined",
+      "bad_shape:schema_violation",
+      "healthy:validated",
+      "undocumented:undocumented",
+      "no_schema:no_schema",
+    ]);
+    assert.equal(report.transportFailures.length, 2);
+    assert.deepEqual(report.declined, ["declined"]);
+    assert.equal(report.checked, 3);
+    assert.equal(report.violations.length, 1);
+    assert.equal(
+      report.calls.find((c) => c.tool === "declined")?.errorCode,
+      "auth_required",
+    );
+    assert.ok(report.calls.find((c) => c.tool === "healthy")!.jsonBytes! > 0);
+    assert.match(
+      formatReport(report),
+      /TRANSPORT FAILURE.*timeout.*projection_timeout/,
+    );
   });
 });
