@@ -1,6 +1,7 @@
 import { internalJson as reply } from "./internal-json.ts";
 import { z } from "zod";
 import { createHash } from "node:crypto";
+import { Buffer } from "node:buffer";
 import { NATIVE_HISTORY_ASSET_OBJECT_KEY } from "../schemas-src/artifacts/native-history-assets.ts";
 import { historyAssetSource } from "./history-asset-source.ts";
 
@@ -24,6 +25,10 @@ const inputSchema = z.discriminatedUnion("operation", [
     operation: z.literal("heads"),
     keys: z.array(head.shape.key).min(1).max(64),
     verify: z.literal(true).optional(),
+  }),
+  head.omit({ key: true }).extend({
+    operation: z.literal("footers"),
+    keys: z.array(head.shape.key.endsWith(".parquet")).min(1).max(16),
   }),
   head.extend({
     operation: z.literal("range"),
@@ -54,7 +59,7 @@ export async function handleNativeHistoryExport(
     return fail(400, "invalid native history export request");
   const value = parsed.data;
   if (
-    value.operation === "heads" &&
+    (value.operation === "heads" || value.operation === "footers") &&
     new Set(value.keys).size !== value.keys.length
   )
     return fail(400, "duplicate native history keys");
@@ -101,9 +106,11 @@ export async function handleNativeHistoryExport(
         sha.digest("hex") === object.sha256 && md5.digest("hex") === object.etag
       );
     }
-    if (value.operation === "heads") {
+    if (value.operation === "heads" || value.operation === "footers") {
       const keys = value.keys;
-      const objects: (NativeObject | null)[] = new Array(keys.length);
+      const objects: (
+        (NativeObject & { offset?: number; data?: string }) | null
+      )[] = new Array(keys.length);
       let cursor = 0,
         failed = false;
       // One authenticated request shares release/shard metadata across its
@@ -116,9 +123,35 @@ export async function handleNativeHistoryExport(
               const object = await describe(keys[index]);
               if (object && !object.sha256)
                 throw new Error("Unqualified native checksum");
-              if (value.verify && (!object || !(await verify(object))))
+              if (
+                value.operation === "heads" &&
+                value.verify &&
+                (!object || !(await verify(object)))
+              )
                 throw new Error("Native verification failed");
-              objects[index] = object ?? null;
+              if (value.operation === "footers") {
+                if (!object) throw new Error("Native footer is not migrated");
+                // PyArrow starts with the last 64 KiB. Share immutable index
+                // metadata across up to sixteen such reads, at most 1 MiB,
+                // retaining the existing four-read concurrency ceiling.
+                const length = Math.min(65536, object.bytes);
+                const offset = object.bytes - length;
+                const raw = await source.read(
+                  object.key,
+                  object.etag,
+                  offset,
+                  length,
+                );
+                if (raw.byteLength !== length)
+                  throw new Error("Native footer is truncated");
+                objects[index] = {
+                  ...object,
+                  offset,
+                  data: Buffer.from(raw).toString("base64"),
+                };
+              } else {
+                objects[index] = object ?? null;
+              }
             } catch {
               failed = true;
             }
@@ -130,7 +163,9 @@ export async function handleNativeHistoryExport(
       return reply({
         version: 1,
         objects,
-        ...(value.verify ? { verified: true } : {}),
+        ...(value.operation === "heads" && value.verify
+          ? { verified: true }
+          : {}),
       });
     }
     const object = await describe(value.key);

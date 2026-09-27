@@ -50,6 +50,129 @@ const request = (input: unknown, secret = "existing-producer-secret") =>
   });
 afterEach(() => vi.restoreAllMocks());
 
+describe("bounded native Parquet footer batches", () => {
+  const footers = { kind: "native-history", operation: "footers", keys: [key] };
+
+  it("preserves exact bytes and identities through the existing credential and proxy", async () => {
+    const f = fixture();
+    const env = {
+      DATA_API: {
+        fetch: (incoming: Request) => handleD1StateExport(incoming, f.env),
+      },
+    } as unknown as Env;
+    expect(
+      (await handleRequest(request(footers, "wrong"), env, {})).status,
+    ).toBe(401);
+    expect(f.fetch).not.toHaveBeenCalled();
+    const response = await handleRequest(request(footers), env, {});
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      version: 1,
+      objects: [
+        {
+          key,
+          etag,
+          bytes: raw.length,
+          sha256: assetHash(raw),
+          offset: 0,
+          data: Buffer.from(raw).toString("base64"),
+        },
+      ],
+    });
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+  });
+
+  it("bounds metadata sharing, total bytes, order and concurrency for sixteen large files", async () => {
+    const keys = Array.from({ length: 16 }, (_, i) =>
+      key.replace("00000-", `${String(i).padStart(5, "0")}-`),
+    );
+    let active = 0,
+      maximum = 0;
+    const describe = vi.fn(async (key: string) => ({
+      key,
+      etag,
+      bytes: 100000,
+      sha256: "c".repeat(64),
+    }));
+    const read = vi.fn(
+      async (
+        _key: string,
+        identity: string,
+        offset: number,
+        length: number,
+      ) => {
+        expect(identity).toBe(etag);
+        expect(offset).toBe(34464);
+        expect(length).toBe(65536);
+        active++;
+        maximum = Math.max(maximum, active);
+        await Promise.resolve();
+        active--;
+        return new Uint8Array(length).fill(7).buffer;
+      },
+    );
+    const factory = vi
+      .spyOn(assets, "historyAssetSource")
+      .mockReturnValue({ describe, read });
+    const response = await handleNativeHistoryExport({ ...footers, keys }, {});
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.objects.map((o: { key: string }) => o.key)).toEqual(keys);
+    expect(
+      body.objects.every(
+        (o: { offset: number; data: string }) =>
+          o.offset === 34464 &&
+          Buffer.from(o.data, "base64").equals(Buffer.alloc(65536, 7)),
+      ),
+    ).toBe(true);
+    expect(factory).toHaveBeenCalledTimes(1);
+    expect(describe).toHaveBeenCalledTimes(16);
+    expect(read).toHaveBeenCalledTimes(16);
+    expect(maximum).toBeLessThanOrEqual(4);
+  });
+
+  it("rejects malformed or duplicate batches before storage access", async () => {
+    const f = fixture();
+    for (const input of [
+      { ...footers, keys: [] },
+      { ...footers, keys: Array(17).fill(key) },
+      { ...footers, keys: [key, key] },
+      { ...footers, keys: [key.replace(".parquet", ".page-index.json")] },
+      { ...footers, verify: true },
+    ])
+      expect((await handleNativeHistoryExport(input, f.env)).status).toBe(400);
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not return a partial batch for unmigrated, corrupt or truncated objects", async () => {
+    const f = fixture();
+    expect(
+      (
+        await handleNativeHistoryExport(
+          { ...footers, keys: [key.replace("00000-", "00001-")] },
+          f.env,
+        )
+      ).status,
+    ).toBe(502);
+    const missingChecksum = fixture(false);
+    expect(
+      (await handleNativeHistoryExport(footers, missingChecksum.env)).status,
+    ).toBe(502);
+    vi.spyOn(assets, "historyAssetSource").mockReturnValueOnce({
+      describe: async () => ({
+        key,
+        etag,
+        bytes: raw.length,
+        sha256: assetHash(raw),
+      }),
+      read: async () => new ArrayBuffer(0),
+    });
+    expect((await handleNativeHistoryExport(footers, f.env)).status).toBe(502);
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+  });
+});
+
 describe("credential-protected native history producer reads", () => {
   it("preserves native binary ranges through the public API proxy", async () => {
     const f = fixture();
