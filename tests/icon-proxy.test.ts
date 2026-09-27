@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { handleIconProxy } from "../src/icon-proxy.ts";
 import type { Row, AnyFn } from "./row-type.ts";
+import { iconCacheDb } from "./helpers/icon-cache-db.ts";
+import { generatedArtifactDb } from "./helpers/generated-artifact-db.ts";
 
 const PNG = new Uint8Array(200).fill(1).buffer; // >100 bytes -> not a placeholder
 
@@ -26,6 +28,7 @@ async function call(
   const orig = globalThis.fetch;
   if (fetchImpl) globalThis.fetch = fetchImpl as unknown as typeof fetch;
   try {
+    env.D1_STATE ??= iconCacheDb(env.iconCache);
     return await handleIconProxy(request, env as unknown as Env, url, options);
   } finally {
     globalThis.fetch = orig;
@@ -40,11 +43,11 @@ test("rejects invalid hosts (400): empty, IP literal, localhost, single-label", 
   assert.equal((await call("?host=%5B::1%5D")).status, 400);
 });
 
-test("serves + caches a fetched favicon (R2 miss -> 200, put called)", async () => {
+test("serves + caches a fetched favicon (D1 miss -> 200, put called)", async () => {
   const puts: Row[] = [];
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async () => null,
       put: async (k: unknown, _v: unknown, o: unknown) => puts.push({ k, o }),
     },
@@ -64,11 +67,11 @@ test("serves + caches a fetched favicon (R2 miss -> 200, put called)", async () 
   assert.equal(puts[0].k, "icon-cache/example.com/64");
 });
 
-test("serves from the R2 cache when present (hit, no fetch)", async () => {
+test("serves from the D1 cache when present (hit, no fetch)", async () => {
   let fetched = false;
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async () => ({
         body: PNG,
         httpMetadata: { contentType: "image/png" },
@@ -91,7 +94,7 @@ test("serves from the R2 cache when present (hit, no fetch)", async () => {
 test("404 when no source resolves", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
     env,
@@ -103,7 +106,7 @@ test("404 when no source resolves", async () => {
 test("rejects too-small (placeholder) responses -> 404", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const tiny = new Uint8Array(10).buffer;
   const res = await call("?host=example.com", {
@@ -121,7 +124,7 @@ test("never fetches the requested host directly (only fixed aggregators)", async
   const requested: string[] = [];
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
     env,
@@ -137,7 +140,7 @@ test("never fetches the requested host directly (only fixed aggregators)", async
   ]);
 });
 
-test("304 on matching If-None-Match (no fetch, no R2)", async () => {
+test("304 on matching If-None-Match (no fetch, no D1)", async () => {
   const res = await call("?host=example.com&size=64", {
     env: { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },
     headers: { "if-none-match": '"icon-example.com-64"' },
@@ -178,7 +181,7 @@ test("rejects oversized upstream responses before caching", async () => {
   const res = await call("?host=example.com", {
     env: {
       METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-      METAGRAPH_ARCHIVE: {
+      iconCache: {
         get: async () => null,
         put: async (k: unknown, body: Uint8Array, opts: Row = {}) =>
           puts.push({ key: k, body, opts }),
@@ -210,7 +213,7 @@ test("rejects oversized upstream responses before caching", async () => {
 test("builds the allowlist from artifact url/base_url/website fields (nested + arrays)", async () => {
   const seen = [];
   const env = {
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const readArtifact = async (_env: unknown, path: string) => {
     seen.push(path);
@@ -284,7 +287,7 @@ const orgArtifact = async (_env: unknown, path: string) => {
 
 test("github_org mode proxies an allowlisted org's avatar", async () => {
   const env = {
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const fetched: string[] = [];
   const res = await call("?github_org=opentensor&size=64", {
@@ -309,7 +312,7 @@ test("github_org mode rejects an org that isn't in the registry", async () => {
   // Without the allowlist this is an open GitHub-avatar proxy anyone can point
   // at any account.
   const res = await call("?github_org=some-random-user", {
-    env: { METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} } },
+    env: { iconCache: { get: async () => null, put: async () => {} } },
     options: { readArtifact: orgArtifact },
     fetchImpl: async () => {
       throw new Error("must not fetch a non-allowlisted org");
@@ -333,7 +336,7 @@ test("github_org mode 400s on anything outside GitHub's username charset", async
   ]) {
     const res = await call(`?github_org=${encodeURIComponent(bad)}`, {
       env: {
-        METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+        iconCache: { get: async () => null, put: async () => {} },
       },
       options: { readArtifact: orgArtifact },
       fetchImpl: async () => {
@@ -348,7 +351,7 @@ test("github_org does not resolve an org from a lookalike host", async () => {
   // "evilgithub.com" must not be read as github.com -- the second artifact
   // entry above uses exactly that shape.
   const res = await call("?github_org=evilgithub", {
-    env: { METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} } },
+    env: { iconCache: { get: async () => null, put: async () => {} } },
     options: { readArtifact: orgArtifact },
     fetchImpl: async () => {
       throw new Error("must not fetch");
@@ -358,10 +361,10 @@ test("github_org does not resolve an org from a lookalike host", async () => {
 });
 
 test("github_org and host namespaces can't collide in the cache", async () => {
-  // An org and a host with the same string must not share an R2 key or ETag.
+  // An org and a host with the same string must not share an D1 key or ETag.
   const puts: string[] = [];
   const env = {
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async () => null,
       put: async (k: string) => {
         puts.push(k);
@@ -410,7 +413,7 @@ test("github_org org collection survives junk repo values", async () => {
   ] as const) {
     const res = await call(`?github_org=${org}`, {
       env: {
-        METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+        iconCache: { get: async () => null, put: async () => {} },
       },
       options: { readArtifact },
       fetchImpl: async () =>
@@ -426,7 +429,7 @@ test("github_org org collection survives junk repo values", async () => {
 test("github_org fails closed when no artifact reader is configured", async () => {
   // No reader -> no allowlist -> nothing is proxied, rather than everything.
   const res = await call("?github_org=opentensor", {
-    env: { METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} } },
+    env: { iconCache: { get: async () => null, put: async () => {} } },
     options: {},
     fetchImpl: async () => {
       throw new Error("must not fetch");
@@ -439,7 +442,7 @@ test("memoizes the artifact allowlist per env (readArtifact not re-read)", async
   let reads = 0;
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const readArtifact = async () => {
     reads += 1;
@@ -468,7 +471,7 @@ test("re-reads the artifact allowlist after the memo TTL expires", async () => {
   let reads = 0;
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const readArtifact = async () => {
     reads += 1;
@@ -506,7 +509,7 @@ test("re-reads the artifact allowlist after the memo TTL expires", async () => {
 test("a host published after the first memo resolves once the TTL lapses", async () => {
   let published = false;
   const env = {
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   // The allowlist artifact starts empty, then a new surface appears.
   const readArtifact = async (_e: unknown, path: string) => {
@@ -548,7 +551,7 @@ test("a host published after the first memo resolves once the TTL lapses", async
 test("artifact read errors fail closed (host still allowed via configured env)", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const readArtifact = async () => {
     throw new Error("artifact store down");
@@ -569,7 +572,7 @@ test("artifact read errors fail closed (host still allowed via configured env)",
 test("boundedArrayBuffer falls back to arrayBuffer() when body has no getReader", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   // A Response-like object whose body lacks getReader -> the non-stream path.
   const fakeRes = {
@@ -589,7 +592,7 @@ test("boundedArrayBuffer falls back to arrayBuffer() when body has no getReader"
 test("boundedArrayBuffer rejects oversized arrayBuffer() in the non-stream path", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const tooLarge = new Uint8Array(256 * 1024 + 1).buffer;
   // No content-length header + body without getReader -> arrayBuffer() fallback,
@@ -611,7 +614,7 @@ test("boundedArrayBuffer rejects an oversized streamed body (no content-length)"
   const puts: { key: unknown; body: Uint8Array }[] = [];
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async () => null,
       put: async (k: unknown, body: Uint8Array) => puts.push({ key: k, body }),
     },
@@ -656,7 +659,7 @@ test("accepts a streamed body under the size cap (reader path success)", async (
   const puts = [];
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async () => null,
       put: async (k: unknown) => puts.push(k),
     },
@@ -690,7 +693,7 @@ test("accepts a streamed body under the size cap (reader path success)", async (
 test("skips a non-image content-type and cancels its body", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   let canceled = false;
   const fakeRes = {
@@ -710,17 +713,12 @@ test("skips a non-image content-type and cancels its body", async () => {
   assert.equal(canceled, true);
 });
 
-test("HEAD on an R2 hit returns a bodyless 200 with matching headers", async () => {
-  let bodyCanceled = false;
+test("HEAD on a D1 hit returns a bodyless 200 with matching headers", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async () => ({
-        body: {
-          cancel: async () => {
-            bodyCanceled = true;
-          },
-        },
+        body: PNG,
         size: 200,
         httpMetadata: { contentType: "image/png" },
       }),
@@ -732,16 +730,15 @@ test("HEAD on an R2 hit returns a bodyless 200 with matching headers", async () 
   assert.equal(res.headers.get("x-icon-cache"), "hit");
   assert.equal(res.headers.get("content-type"), "image/png");
   assert.equal(res.headers.get("etag"), '"icon-example.com-64"');
-  assert.equal(res.headers.get("content-length"), "200"); // R2 object size
+  assert.equal(res.headers.get("content-length"), "200"); // D1 object size
   assert.match(res.headers.get("cache-control")!, /immutable/);
   assert.equal(await res.text(), ""); // no body streamed
-  assert.equal(bodyCanceled, true); // the R2 body stream was released
 });
 
 test("HEAD on a live miss returns a bodyless 200 advertising the byte length", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
     env,
@@ -769,7 +766,7 @@ test("non-allowlisted host negative-caches for a full day (stable no)", async ()
 test("allowlisted host, clean 404 from every aggregator -> 24h negative cache", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
     env,
@@ -782,7 +779,7 @@ test("allowlisted host, clean 404 from every aggregator -> 24h negative cache", 
 test("allowlisted host, thrown upstream error -> short transient negative cache", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
     env,
@@ -798,7 +795,7 @@ test("allowlisted host, thrown upstream error -> short transient negative cache"
 test("allowlisted host, 5xx from an aggregator -> short transient negative cache", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
     env,
@@ -811,7 +808,7 @@ test("allowlisted host, 5xx from an aggregator -> short transient negative cache
 test("allowlisted host, 429 rate-limit from an aggregator -> short transient negative cache", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
     env,
@@ -826,7 +823,7 @@ test("allowlisted host, 429 rate-limit from an aggregator -> short transient neg
 test("allowlisted host, 403 bot-block from an aggregator -> short transient negative cache", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
     env,
@@ -841,7 +838,7 @@ test("allowlisted host, 403 bot-block from an aggregator -> short transient nega
 test("allowlisted host, genuine 404 from an aggregator -> stable 24h negative cache", async () => {
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+    iconCache: { get: async () => null, put: async () => {} },
   };
   const res = await call("?host=example.com", {
     env,
@@ -857,7 +854,7 @@ test("aborts a hung upstream fetch via the timeout controller", async () => {
   try {
     const env = {
       METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-      METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+      iconCache: { get: async () => null, put: async () => {} },
     };
     let aborts = 0;
     const fetchImpl = (_src: unknown, init: Row) =>
@@ -904,7 +901,7 @@ test("a stable negative is recorded server-side and skips the fan-out next time"
   let upstreamCalls = 0;
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async (k: string) => {
         const hit = store.get(k);
         return hit
@@ -946,7 +943,7 @@ test("a transient failure is recorded as transient, and expires on its own windo
   let upstreamCalls = 0;
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async (k: string) => {
         const hit = store.get(k);
         return hit
@@ -1005,10 +1002,10 @@ test("a tombstone write that throws still returns the 404", async () => {
   // negative must never turn a 404 into a 500.
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async () => null,
       put: async () => {
-        throw new Error("r2 unavailable");
+        throw new Error("D1 unavailable");
       },
     },
   };
@@ -1026,7 +1023,7 @@ test("a tombstone with no usable timestamp is treated as expired", async () => {
   let upstreamCalls = 0;
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async () => ({
         body: { cancel: async () => {} },
         customMetadata: { negative: "stable", negative_at: "not-a-number" },
@@ -1046,7 +1043,7 @@ test("a tombstone with no usable timestamp is treated as expired", async () => {
   assert.ok(upstreamCalls > 0, "an undateable tombstone must re-resolve");
 });
 
-test("no bucket at all still resolves and 404s", async () => {
+test("no cache database still resolves and 404s", async () => {
   const res = await call("?host=example.com", {
     env: { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },
     fetchImpl: async () => new Response("nope", { status: 404 }),
@@ -1062,7 +1059,7 @@ test("a tombstone with NO timestamp field is treated as expired too", async () =
   let upstreamCalls = 0;
   const env = {
     METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
-    METAGRAPH_ARCHIVE: {
+    iconCache: {
       get: async () => ({
         body: { cancel: async () => {} },
         customMetadata: { negative: "stable" },
@@ -1080,4 +1077,40 @@ test("a tombstone with NO timestamp field is treated as expired too", async () =
   });
   assert.equal(res.status, 404);
   assert.ok(upstreamCalls > 0, "an undated tombstone must re-resolve");
+});
+
+test("the durable icon cache never reads or writes R2, including corrupt-cache recovery", async () => {
+  for (const corrupt of [false, true]) {
+    let fetches = 0;
+    let writes = 0;
+    const env = {
+      METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+      D1_STATE: generatedArtifactDb({
+        get: async () => ({
+          json: async () => ({
+            data: corrupt ? "%" : Buffer.from(PNG).toString("base64"),
+            httpMetadata: { contentType: "image/png" },
+          }),
+        }),
+        put: async () => {
+          writes++;
+        },
+      }),
+      METAGRAPH_ARCHIVE: {
+        get: () => assert.fail("R2 cache read"),
+        put: () => assert.fail("R2 cache write"),
+      },
+    };
+    const response = await call("?host=example.com", {
+      env,
+      fetchImpl: async () => {
+        fetches++;
+        return new Response(PNG, { headers: { "content-type": "image/png" } });
+      },
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.arrayBuffer(), PNG);
+    assert.equal(fetches, corrupt ? 1 : 0);
+    assert.equal(writes, corrupt ? 1 : 0);
+  }
 });

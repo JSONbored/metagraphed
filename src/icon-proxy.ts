@@ -1,30 +1,14 @@
-// Brand-icon favicon proxy (#1124 frontend-surfacing) — implements the icon-proxy
-// contract documented in metagraphed-ui src/lib/metagraphed/brand-overrides.ts:
-//
-//   GET /api/v1/icon?host={domain}&size={px}&theme={light|dark}
-//   -> 200 image/png|x-icon (square, cached) | 404 when no source resolves
-//
-// SSRF SAFETY: this Worker fetches ONLY the fixed favicon-aggregator origins
-// (icons.duckduckgo.com, www.google.com). The requested `host` is passed solely as a
-// path/query parameter to those constant origins — it never becomes the request target
-// itself — so an operator-controlled or DNS-rebound registry host cannot make the proxy
-// initiate outbound requests to arbitrary infrastructure. `host` is additionally
-// validated to a plain public DNS name (no IP literals, no localhost/.local/.internal),
-// and only an image/* response of sane size is ever returned. Results are cached in R2
-// (immutable) so repeat loads are a single edge read.
-//
-// NOTE: we deliberately do NOT fetch the host directly (no <link rel=icon> scrape, no
-// direct /favicon.ico). Those add an SSRF surface for marginal gain — aggregators are
-// often bot-blocked from Worker egress anyway, and the UI's GitHub-avatar fallback
-// (BrandIcon repoUrl) is the real icon source for most subnets.
+// Registry-allowlisted favicon/avatar proxy. Only fixed aggregator origins are
+// fetched; a requested host is never itself the outbound destination. Durable
+// image bytes and global negative results share the existing D1 artifact store.
 import type { StorageReadResult } from "../workers/storage.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import { iconCacheStore, MAX_ICON_BYTES } from "./icon-cache-store.ts";
 
 const ICON_CACHE_PREFIX = "icon-cache";
 const MAX_SIZE = 256;
 const DEFAULT_SIZE = 64;
 const MIN_ICON_BYTES = 100; // reject empty / 1x1 placeholder responses
-const MAX_ICON_BYTES = 256 * 1024; // bound Worker memory and R2 object size
 const FETCH_TIMEOUT_MS = 3000;
 const CACHE_CONTROL = "public, max-age=2592000, immutable"; // 30d, per contract
 // Negative-cache windows split by cause: a structurally-invalid / non-allowlisted
@@ -34,22 +18,8 @@ const CACHE_CONTROL = "public, max-age=2592000, immutable"; // 30d, per contract
 const NEGATIVE_CACHE_STABLE = "public, max-age=86400"; // 24h — won't resolve
 const NEGATIVE_CACHE_TRANSIENT = "public, max-age=600"; // 10m — retry soon
 
-/**
- * The same two windows, as a SERVER-SIDE record (#11020).
- *
- * The two `Cache-Control` values above were the whole negative cache, and a
- * response header is per-colo, per-client state. So a subject that will never
- * resolve re-ran the entire aggregator fan-out in every colo, forever: over one
- * 3-day window `icon-cache/gh:tensorclaw/192`, `icon-cache/gh:PlatformNetwork/192`
- * and two others missed ~30+ times across DFW, LAX, IAD, ORD, MSP, SJC, SEA,
- * FRA and PHX, and those misses were 55% of the entire Worker error channel
- * (#11022).
- *
- * A tombstone in R2 makes "24h" and "10m" mean 24h and 10m GLOBALLY, which is
- * what the two constants above always claimed. The stable/transient split is
- * preserved exactly as the fan-out already reasons about it: a clean 4xx is a
- * stable "no", an abort/5xx/403 is transient and must be retried soon.
- */
+// Shared negative records prevent repeated cross-region fan-out. Preserve the
+// stable/transient retry windows independently of browser caching.
 const NEGATIVE_TOMBSTONE_STABLE_MS = 86_400_000; // 24h, matching the header
 const NEGATIVE_TOMBSTONE_TRANSIENT_MS = 600_000; // 10m, matching the header
 
@@ -402,7 +372,7 @@ export async function handleIconProxy(
     const orgs = await iconGithubOrgAllowlist(env, options, now);
     if (!orgs.has(org)) return notFound(NEGATIVE_CACHE_STABLE);
     // Namespaced so an org can never collide with a host of the same string
-    // in the R2 cache or the ETag.
+    // in the cache or the ETag.
     subject = `gh:${org}`;
     sources = (sz) => githubAvatarSources(org, sz);
   } else {
@@ -435,15 +405,14 @@ export async function handleIconProxy(
     });
   }
 
-  const bucket = env?.METAGRAPH_ARCHIVE;
+  const cache = iconCacheStore(env?.D1_STATE);
   const cacheKey = `${ICON_CACHE_PREFIX}/${subject}/${size}`;
 
-  // R2 cache hit -> single edge read. A HEAD short-circuits to a bodyless 200 but
-  // still wants an accurate content-length, so prefer R2's stored object size and
-  // release the body stream we won't send.
-  if (bucket?.get) {
+  // One keyed read returns either exact image bytes or a shared negative result.
+  // HEAD remains bodyless and advertises the original byte length.
+  if (cache?.get) {
     try {
-      const cached = await bucket.get(cacheKey);
+      const cached = await cache.get(cacheKey);
       // A TOMBSTONE is stored under the same key as an icon would be, so one
       // read answers both questions. It must be tested BEFORE the hit path:
       // its body is empty, and serving that as an image would turn "no icon"
@@ -458,7 +427,6 @@ export async function handleIconProxy(
             ? NEGATIVE_TOMBSTONE_TRANSIENT_MS
             : NEGATIVE_TOMBSTONE_STABLE_MS;
         if (Number.isFinite(writtenAt) && now - writtenAt < ttl) {
-          await (cached.body as ReadableStream | undefined)?.cancel?.();
           return notFound(
             negativeKind === "transient"
               ? NEGATIVE_CACHE_TRANSIENT
@@ -473,12 +441,10 @@ export async function handleIconProxy(
         const ct = cached.httpMetadata?.contentType || "image/png";
         const extra: Record<string, string> = { "x-icon-cache": "hit" };
         if (isHead) {
-          if (typeof cached.size === "number")
-            extra["content-length"] = String(cached.size);
-          await (cached.body as ReadableStream | undefined)?.cancel?.();
+          extra["content-length"] = String(cached.size);
           return imageResponse(null, ct, etag, extra, true);
         }
-        return imageResponse(cached.body as ReadableStream, ct, etag, extra);
+        return imageResponse(cached.body, ct, etag, extra);
       }
     } catch {
       // fall through to live resolution
@@ -488,7 +454,7 @@ export async function handleIconProxy(
   // Try each fixed aggregator. A browser-ish UA (the services bot-block the default
   // Worker UA); follow redirects (the aggregators 30x to their own CDNs); no
   // cf.cacheEverything (it forced caching of redirect/non-200 responses and broke
-  // resolution) — successful icons are cached in R2 below.
+  // resolution) — successful icons are retained below.
   //
   // Track whether any source *transiently* failed (network error / timeout / abort,
   // or a 5xx upstream) vs. a clean negative (4xx / non-image). An allowlisted host
@@ -527,9 +493,9 @@ export async function handleIconProxy(
       }
       const buf = await boundedArrayBuffer(res);
       if (!buf || buf.byteLength < MIN_ICON_BYTES) continue; // skip empty/placeholder/oversized
-      if (bucket?.put) {
+      if (cache?.put) {
         try {
-          await bucket.put(cacheKey, buf, {
+          await cache.put(cacheKey, buf, {
             httpMetadata: { contentType: ct, cacheControl: CACHE_CONTROL },
           });
         } catch {
@@ -547,12 +513,12 @@ export async function handleIconProxy(
   //
   // #11020: record it server-side too, so the next colo does not repeat the
   // whole fan-out. Awaited rather than deferred because this handler takes no
-  // ExecutionContext -- the same reason the positive `bucket.put` above is
+  // ExecutionContext -- the same reason the positive `cache.put` above is
   // awaited -- and best-effort for the same reason: failing to cache a negative
   // must never turn a 404 into a 500.
-  if (bucket?.put) {
+  if (cache?.put) {
     try {
-      await bucket.put(cacheKey, new Uint8Array(0), {
+      await cache.put(cacheKey, new Uint8Array(0), {
         customMetadata: {
           [NEGATIVE_META_KEY]: transient ? "transient" : "stable",
           [NEGATIVE_META_AT]: String(now),
