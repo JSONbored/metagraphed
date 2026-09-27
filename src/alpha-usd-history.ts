@@ -39,7 +39,7 @@
 //
 // The index writes about once a minute: an 8-day overlap is ~11,500 rows to
 // fetch and walk per request, to produce at most a few hundred rates. The
-// DISTINCT ON below collapses that to one row per bucket in the engine, so the
+// window query below collapses that to one row per bucket in the engine, so the
 // body crossing the wire is bounded by the CANDLE count, not by the index's
 // cadence -- the same reason src/subnet-ohlc-cold-tier.ts buckets in SQL.
 //
@@ -105,7 +105,7 @@ export const TAO_USD_BUCKET_CAP = 2500;
 /**
  * The last reading inside each bucket, one row per bucket.
  *
- * `DISTINCT ON` orders priced readings ahead of unpriced ones within a bucket,
+ * Ranking orders priced readings ahead of unpriced ones within a bucket,
  * so a single `insufficient_pools` row landing at :59 cannot mark an hour
  * unpriced when fifty-nine priced readings preceded it. When a bucket holds
  * ONLY unpriced readings, the surviving row carries that basis through -- the
@@ -114,22 +114,22 @@ export const TAO_USD_BUCKET_CAP = 2500;
  * to the trouble of recording, and it survives to the caller.
  */
 export function taoUsdBucketSql(bucketMs: number): string {
-  // Interpolated, never bound: this is an internal interval constant, and a
-  // placeholder inside the DISTINCT ON expression would not be usable as a
-  // sort key. Integral by construction, and asserted so a fractional value
-  // fails here rather than producing a silently misaligned bucket.
+  // Repeat the same validated internal interval in the bucket and partition
+  // expressions. Integral by construction; reject fractional values rather
+  // than silently misaligning buckets on either D1/SQLite or Postgres.
   if (!Number.isSafeInteger(bucketMs) || bucketMs <= 0) {
     throw new RangeError(
       `bucketMs must be a positive integer, got ${bucketMs}`,
     );
   }
   return (
-    `SELECT DISTINCT ON (observed_at / ${bucketMs})` +
-    ` (observed_at / ${bucketMs}) * ${bucketMs} AS bucket_start,` +
-    ` observed_at, usd_per_tao, block_number, price_basis` +
-    ` FROM ${TAO_USD_TABLE} WHERE observed_at >= ?` +
-    ` ORDER BY observed_at / ${bucketMs},` +
-    ` (usd_per_tao IS NOT NULL) DESC, observed_at DESC` +
+    `SELECT bucket_start, observed_at, usd_per_tao, block_number, price_basis` +
+    ` FROM (SELECT (observed_at / ${bucketMs}) * ${bucketMs} AS bucket_start,` +
+    ` observed_at, usd_per_tao, block_number, price_basis,` +
+    ` ROW_NUMBER() OVER (PARTITION BY observed_at / ${bucketMs}` +
+    ` ORDER BY (usd_per_tao IS NOT NULL) DESC, observed_at DESC) AS price_rank` +
+    ` FROM ${TAO_USD_TABLE} WHERE observed_at >= ?) AS ranked` +
+    ` WHERE price_rank = 1 ORDER BY bucket_start` +
     ` LIMIT ${TAO_USD_BUCKET_CAP}`
   );
 }
