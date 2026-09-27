@@ -29,6 +29,7 @@ import {
   resolveBlocksSeam,
 } from "../src/blocks-cold-tier.ts";
 import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
+import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 import {
   DECODE_WATERMARK_KEY,
   resetDecodeWatermarkCache,
@@ -357,15 +358,14 @@ describe("loadBlockFeedColdTier", () => {
     assert.equal(data!.blocks.length, 1);
   });
 
-  test("both sources failing yields null so the caller keeps its empty", async () => {
+  test("configured sources failing report unavailable instead of an empty chain", async () => {
     globalThis.fetch = (async () => {
       throw new Error("down");
     }) as unknown as typeof fetch;
-    const data = await loadBlockFeedColdTier({ ...TOKEN } as never, {
-      limit: 5,
-      offset: 0,
-    });
-    assert.equal(data, null);
+    await assert.rejects(
+      loadBlockFeedColdTier({ ...TOKEN } as never, { limit: 5, offset: 0 }),
+      RetainedHistoryUnavailableError,
+    );
   });
 
   test("an invalid limit declines instead of guessing a page size", async () => {
@@ -531,17 +531,18 @@ describe("loadBlockFeedColdTier", () => {
     );
   });
 
-  test("D1 rows survive a lakehouse failure rather than being discarded", async () => {
+  test("an incomplete hot page cannot turn a history outage into the end of pagination", async () => {
     const { db } = runner([headRow(SEAM + 1)]);
     globalThis.fetch = (async () => {
       throw new Error("lakehouse down");
     }) as unknown as typeof fetch;
-    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
-      limit: 5,
-      offset: 0,
-    });
-    assert.equal(data!.blocks.length, 1, "partial beats nothing");
-    assert.equal(data!.blocks[0]!.block_number, SEAM + 1);
+    await assert.rejects(
+      loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+        limit: 5,
+        offset: 0,
+      }),
+      RetainedHistoryUnavailableError,
+    );
   });
 
   test("a full page whose last row has no usable height carries no cursor", async () => {
