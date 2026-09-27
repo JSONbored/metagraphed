@@ -634,7 +634,8 @@ import { handleEntityOgImage, edgeCardCache } from "../src/og-entity-card.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { sampleEmissionGateWithFailover } from "../src/emission-gate-sampler.ts";
-import { checkEmissionDrift } from "../src/emission-drift-check.ts";
+import { checkEmissionDriftWithFailover } from "../src/emission-drift-check.ts";
+import { emissionRpcUrls } from "../src/emission-rpc.ts";
 import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
 import { runLaneAlarm } from "../src/lane-alarm.ts";
@@ -3380,17 +3381,18 @@ async function dispatchScheduled(
         reason: "EMISSION_GATE_SYNC_SECRET not configured",
       };
     }
-    // An explicit override still wins and runs alone -- an operator naming one
-    // endpoint means that endpoint, not "start there and fail over elsewhere".
-    // Absent one, the sample rotates across the archive pool, a WHOLE sample per
-    // endpoint (#10742).
+    // A dedicated override runs alone. The generic head URL equals the first
+    // archive in production; treating that default as an override disabled
+    // failover despite the sampler supporting it (#10742).
     //
     // The offset is derived from the tick rather than kept in module state: an
     // isolate-local counter restarts at zero on every cold start, so it would
     // pin nearly every sample to the first endpoint and spread nothing.
-    const override = env.EMISSION_SAMPLER_RPC_URL || env.CHAIN_HEAD_RPC_URL;
     const sample = await sampleEmissionGateWithFailover({
-      urls: override ? [override] : undefined,
+      urls: emissionRpcUrls(
+        env.EMISSION_SAMPLER_RPC_URL,
+        env.CHAIN_HEAD_RPC_URL,
+      ),
       offset: Math.floor(Date.now() / EMISSION_GATE_SAMPLE_INTERVAL_MS),
     });
     const response = await handleEmissionGateSync(
@@ -3570,9 +3572,8 @@ async function dispatchScheduled(
     // the optional webhook post -- the scheduled-run scaffolding then records
     // the cron failure and the exception under cron:emission-drift-check,
     // which is the same visibility the Actions run's red X provided.
-    const { summary, reasons } = await checkEmissionDrift({
-      rpcUrl:
-        env.EMISSION_DRIFT_RPC_URL || "https://archive.chain.opentensor.ai",
+    const { summary, reasons } = await checkEmissionDriftWithFailover({
+      urls: emissionRpcUrls(env.EMISSION_DRIFT_RPC_URL),
     });
     if (reasons.length > 0) {
       if (env.LIVE_ALERT_WEBHOOK_URL) {

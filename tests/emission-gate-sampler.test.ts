@@ -533,6 +533,28 @@ describe("rotating the archive pool", () => {
 });
 
 describe("the cron branch", () => {
+  test("the production head default retains both archive attempts", async () => {
+    const original = globalThis.fetch;
+    const visited = new Set<string>();
+    globalThis.fetch = (async (url) => {
+      visited.add(String(url));
+      return new Response("upstream unavailable", { status: 520 });
+    }) as typeof fetch;
+    try {
+      await handleScheduled(
+        { cron: EMISSION_GATE_SAMPLE_CRON } as unknown as ScheduledController,
+        {
+          EMISSION_GATE_SYNC_SECRET: "s",
+          CHAIN_HEAD_RPC_URL: EMISSION_SAMPLER_ARCHIVE_URLS[0],
+        } as never,
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      ).catch(() => {});
+      assert.deepEqual(visited, new Set(EMISSION_SAMPLER_ARCHIVE_URLS));
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
   test("no sync secret declines before any chain read", async () => {
     let fetched = 0;
     const original = globalThis.fetch;
@@ -587,6 +609,11 @@ describe("the cron branch", () => {
         }),
         ["https://operator.example"],
         "an explicit endpoint means THAT endpoint",
+      );
+      assert.deepEqual(
+        await hostsFor({ CHAIN_HEAD_RPC_URL: "https://operator.example" }),
+        ["https://operator.example"],
+        "a custom head endpoint retains the existing operator policy",
       );
       const rotated = await hostsFor({});
       assert.equal(rotated.length, 1, "one sample, one endpoint");

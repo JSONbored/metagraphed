@@ -57,10 +57,8 @@ export const SUBNET_EMA_TAO_FLOW_PREFIX =
  * asked about a block the other one reported. Rotating the WHOLE sample gets
  * the load spreading without ever splitting a sample's reads.
  */
-export const EMISSION_SAMPLER_ARCHIVE_URLS = [
-  "https://archive.chain.opentensor.ai",
-  "https://bittensor-finney.api.onfinality.io/public",
-] as const;
+export { EMISSION_SAMPLER_ARCHIVE_URLS } from "./emission-rpc.ts";
+import { withEmissionFailover } from "./emission-rpc.ts";
 
 export interface EmissionGateSamplerOptions {
   rpcUrl: string;
@@ -320,27 +318,9 @@ export async function sampleEmissionGateWithFailover(
     offset?: number;
   } = {},
 ): Promise<EmissionGateSample> {
-  const urls = options.urls?.length
-    ? options.urls
-    : EMISSION_SAMPLER_ARCHIVE_URLS;
-  const start = Number.isFinite(options.offset)
-    ? Math.abs(Math.trunc(options.offset as number))
-    : 0;
-  let lastError: unknown;
-  for (let i = 0; i < urls.length; i += 1) {
-    const rpcUrl = urls[(start + i) % urls.length]!;
-    try {
-      return await sampleEmissionGate({ ...options, rpcUrl });
-    } catch (error) {
-      // Kept, not swallowed: if every endpoint fails the caller needs the last
-      // reason, and a lane that reported a generic failure over a specific one
-      // is how #10742 hid behind a stale issue title for a week.
-      lastError = error;
-    }
-  }
-  throw lastError instanceof Error
-    ? lastError
-    : new Error(
-        `emission-gate sample failed on all ${urls.length} endpoint(s)`,
-      );
+  return withEmissionFailover(
+    options,
+    (rpcUrl) => sampleEmissionGate({ ...options, rpcUrl }),
+    "emission-gate sample",
+  );
 }
