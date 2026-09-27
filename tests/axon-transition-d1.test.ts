@@ -773,18 +773,18 @@ test("requested axon windows preserve boundary context and agree across D1 and P
     ...rows.map((row) => ({
       ...row,
       uid: row.uid + 100,
-      snapshot_date: row.snapshot_date.replace("2026-08-", "2026-07-"),
+      snapshot_date: row.snapshot_date.replace("2026-08-0", "2026-07-2"),
     })),
     ...rows.map((row) => ({
       ...row,
       uid: row.uid + 200,
-      snapshot_date: row.snapshot_date.replace("2026-08-", "2026-05-"),
+      snapshot_date: row.snapshot_date.replace("2026-08-0", "2026-05-2"),
     })),
   ]);
   for (const [windowDays, expected] of [
     [7, 3],
-    [30, 3],
-    [90, 6],
+    [30, 6],
+    [90, 9],
   ]) {
     const deps = { now: () => at, windowDays };
     const native = await loadAxonRemovals(env(), deps);
