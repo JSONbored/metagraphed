@@ -73,6 +73,7 @@ export interface ArtifactObjectStore {
  */
 export interface ArtifactStoreEnv {
   NATIVE_PROJECTIONS?: string;
+  D1_STATE?: Pick<D1Database, "prepare">;
   METAGRAPH_ARCHIVE?: Partial<ArtifactObjectStore>;
 }
 

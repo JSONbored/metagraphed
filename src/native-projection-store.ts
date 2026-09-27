@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { projectionKey, type ChainNetworkId } from "./chain-network.ts";
-import type { ArtifactStoreEnv } from "./projection-store.ts";
+import type {
+  ArtifactStoreEnv,
+  ArtifactObjectStore,
+} from "./projection-store.ts";
+import { nativeProjectionD1 } from "./native-projection-d1.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { CHAIN_FIREHOSE_TOPICS } from "./chain-firehose-topics.ts";
 import { HistoryObjectSchema } from "../schemas-src/artifacts/history-generation.ts";
@@ -74,8 +78,10 @@ let cache = new WeakMap<
     { until: number; value: Promise<NativeProjectionManifest | null> }
   >
 >();
+let owners = new WeakMap<NativeProjectionManifest, ArtifactObjectStore>();
 registerModuleStateReset("src/native-projection-store.ts", () => {
   cache = new WeakMap();
+  owners = new WeakMap();
 });
 
 export function nativeProjectionsEnabled(
@@ -135,26 +141,33 @@ export async function loadNativeProjectionManifest(
   fresh = false,
 ): Promise<NativeProjectionManifest | null> {
   const bucket = env?.METAGRAPH_ARCHIVE;
-  if (!bucket || typeof bucket.get !== "function") return null;
+  const db = env?.D1_STATE;
+  const identity = db ?? bucket;
+  if (!identity) return null;
   const now = Date.now();
-  let entries = cache.get(bucket);
+  let entries = cache.get(identity);
   if (!entries) {
     entries = new Map();
-    cache.set(bucket, entries);
+    cache.set(identity, entries);
   }
   const prior = entries.get(network);
   if (!fresh && prior && prior.until > now) return prior.value;
   const value = (async () => {
     try {
-      const object = await bucket.get!(
-        `metagraph/native-projections/v1/${network}/current.json`,
-      );
-      return object &&
+      const key = `metagraph/native-projections/v1/${network}/current.json`;
+      const d1 = db ? nativeProjectionD1(db) : null;
+      const selected = await d1?.get(key);
+      const store = selected ? d1! : bucket;
+      const object = selected ?? (await store?.get?.(key));
+      const manifest =
+        object &&
         typeof object.size === "number" &&
         object.size > 0 &&
         object.size <= 65536
-        ? validateNativeProjectionManifest(await object.json(), network)
-        : null;
+          ? validateNativeProjectionManifest(await object.json(), network)
+          : null;
+      if (manifest) owners.set(manifest, store as ArtifactObjectStore);
+      return manifest;
     } catch {
       return null;
     }
@@ -174,7 +187,7 @@ export async function readNativeProjectionObject(
     (item) => item.artifactKey === projectionKey(key, network),
   );
   if (!selected) return null;
-  const object = await env.METAGRAPH_ARCHIVE!.get!(selected.object.key);
+  const object = await owners.get(manifest)!.get(selected.object.key);
   if (
     !object ||
     object.etag !== selected.object.etag ||
