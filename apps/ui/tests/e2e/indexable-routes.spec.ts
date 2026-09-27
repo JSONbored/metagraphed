@@ -3,7 +3,46 @@ import { gzipSync } from "node:zlib";
 
 import { SUBNET_SLOT_CAP } from "../../src/lib/metagraphed/bittensor";
 import { OG_CARD_VERSION } from "../../src/lib/metagraphed/og-card-limits";
+import { gotoThroughRestart } from "./server-restart.ts";
 import { HUB_COPY, HUB_DESCRIPTION_MAX, HUB_TITLE_MAX } from "../../src/lib/metagraphed/hub-copy";
+
+// Retained PostHog hydration incidents affected subnet and validator details.
+// Exercise their current shared renderers with a browser locale/timezone that
+// differs from the server; a recovered React tree must not count as success.
+for (const timezoneId of ["America/Phoenix", "Asia/Tokyo"]) {
+  test.describe(`entity hydration in ${timezoneId}`, () => {
+    test.use({ timezoneId, locale: "de-DE" });
+    for (const route of [
+      "/subnets/19?tab=validators",
+      "/validators/5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u?window=30d&sort=net_staked&limit=20&offset=0&coldkey=",
+    ]) {
+      test(`${route} retains its server-rendered entity without hydration recovery`, async ({
+        page,
+      }) => {
+        const errors: string[] = [];
+        const hydrationError = /hydration|server rendered|Minified React error #(418|419|423|425)/i;
+        page.on("pageerror", (error) => errors.push(error.message));
+        page.on("console", (message) => {
+          if (message.type() === "error" && hydrationError.test(message.text()))
+            errors.push(message.text());
+        });
+        await gotoThroughRestart(page, route);
+        await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+        await expect(page.locator("h1")).toBeVisible();
+        await expect(
+          page.locator("section#" + (route.startsWith("/subnets") ? "validators" : "memberships")),
+        ).toBeAttached();
+        await page.evaluate(
+          () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+            ),
+        );
+        expect(errors).toEqual([]);
+      });
+    }
+  });
+}
 
 // #11204: a URL we ask Google to index must ANSWER, and a URL we have retired
 // must say so permanently.
