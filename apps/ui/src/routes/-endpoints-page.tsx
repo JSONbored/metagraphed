@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import {
   AnalyticsSection,
   CopyableCode,
@@ -28,6 +28,7 @@ import { ErrorState } from "@/components/metagraphed/states";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
+import { parseAppSearch } from "@/lib/metagraphed/search-params";
 import {
   endpointIncidentsQuery,
   endpointsInfiniteQuery,
@@ -70,7 +71,20 @@ function ApiSources() {
 
 /** The endpoint directory leads; routing and probe diagnostics follow it. */
 export function EndpointsPage() {
-  const search = Route.useSearch();
+  const routeSearch = Route.useSearch();
+  const { history } = useRouter();
+  // History commits immediately, while route matches render in a transition.
+  // A controlled input must never restore a previous match's text mid-keystroke.
+  // The same subscription also follows Back/Forward without a second draft state.
+  const q = useSyncExternalStore(
+    history.subscribe,
+    () => {
+      const value = parseAppSearch(history.location.search).q;
+      return typeof value === "string" ? value : "";
+    },
+    () => routeSearch.q,
+  );
+  const search = { ...routeSearch, q };
   const navigate = useNavigate({ from: "/apis/endpoints" });
   const [settledSearch, setSettledSearch] = useState(search.q);
   useEffect(() => {
