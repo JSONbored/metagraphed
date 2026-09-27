@@ -1,4 +1,5 @@
-// Daily link-rot capture as a Worker cron writing R2 — the same lane shape as
+import { generatedArtifactStore } from "./generated-artifact-store.ts";
+// Daily link-rot capture as a Worker cron writing D1 — the same lane shape as
 // github-signals-sync (#233 pattern): the cron captures, the artifact build
 // projects, and freshness never depends on a bot PR landing.
 //
@@ -113,9 +114,9 @@ export async function runLinkStatusSync(
   if (typeof deps.readArtifact !== "function") {
     return { ok: false, reason: "reader_unavailable" };
   }
-  const bucket = env.METAGRAPH_ARCHIVE;
-  if (!bucket?.get || !bucket?.put) {
-    return { ok: false, reason: "r2_binding_missing" };
+  const store = generatedArtifactStore(env.D1_STATE);
+  if (!store) {
+    return { ok: false, reason: "artifact_store_missing" };
   }
 
   try {
@@ -147,7 +148,7 @@ export async function runLinkStatusSync(
     const now = deps.now ?? Date.now;
     const checkedAt = new Date(now()).toISOString();
 
-    const previousDoc = await readJsonObject(bucket, LINK_STATUS_R2_KEY);
+    const previousDoc = await store.get(LINK_STATUS_R2_KEY);
     const prior = new Map<string, LinkStatusRecord>(
       (((previousDoc as Row | null)?.links as LinkStatusRecord[]) || []).map(
         (record) => [record.url, record],
@@ -203,9 +204,7 @@ export async function runLinkStatusSync(
       links,
     };
 
-    await bucket.put(LINK_STATUS_R2_KEY, JSON.stringify(artifact), {
-      httpMetadata: { contentType: "application/json" },
-    });
+    await store.put(LINK_STATUS_R2_KEY, JSON.stringify(artifact));
     return {
       ok: true,
       changed: true,
@@ -224,19 +223,5 @@ export async function runLinkStatusSync(
     ).catch(() => false);
     ctx?.waitUntil?.(pending);
     return { ok: false, reason: "unreachable" };
-  }
-}
-
-async function readJsonObject(
-  bucket: R2Bucket,
-  key: string,
-): Promise<unknown | null> {
-  try {
-    const object = await bucket.get(key);
-    return object ? await object.json() : null;
-  } catch {
-    // A cold or unreadable store degrades to "no prior credit", the same as a
-    // first run — never to a wipe.
-    return null;
   }
 }

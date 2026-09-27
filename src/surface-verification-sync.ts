@@ -1,4 +1,5 @@
-// Daily surface-verification capture as a Worker cron writing R2 (#9096,
+import { generatedArtifactStore } from "./generated-artifact-store.ts";
+// Daily surface-verification capture as a Worker cron writing D1 (#9096,
 // following the #233 github-signals template) — the third retirement of a
 // PR-based sync lane.
 //
@@ -58,7 +59,7 @@ import { readStore } from "./read-store.ts";
 type Row = Record<string, unknown>;
 
 /**
- * Literal R2 key for the Worker-cron-written surface-health store.
+ * Stable artifact key for the Worker-cron-written surface-health store.
  *
  * Deliberately OUTSIDE the publish pipeline's `latest/` / `runs/` / `by-hash/`
  * trees (same posture as the github-signals and operational-surfaces stores):
@@ -143,7 +144,7 @@ export async function readProberLastRunAt(env: Env): Promise<string | null> {
 
 /**
  * The daily cron tick: sweep every registry subnet's 90-day uptime history out
- * of D1, verify each surface against the promotion bar, and write the R2 store
+ * of D1, verify each surface against the promotion bar, and write the D1 store
  * ONLY when the evidence actually moved (generated_at excluded — the same
  * content-only gate the retired workflow got from git-diff).
  *
@@ -187,14 +188,14 @@ export async function runSurfaceVerificationSync(
       "store_unavailable",
     );
   }
-  const bucket = env.METAGRAPH_ARCHIVE;
-  if (!bucket?.get || !bucket?.put) {
+  const store = generatedArtifactStore(env.D1_STATE);
+  if (!store) {
     return loud(
-      "METAGRAPH_ARCHIVE is not bound; the probe-evidence snapshot cannot be " +
+      "D1_STATE is not bound; the probe-evidence snapshot cannot be " +
         "refreshed and the registry's machine-verified tiers will age against " +
         "the committed seed until this is fixed.",
-      "surface_verification_bucket_missing",
-      "r2_binding_missing",
+      "surface_verification_artifact_store_missing",
+      "artifact_store_missing",
     );
   }
   if (typeof deps.readArtifact !== "function") {
@@ -267,14 +268,7 @@ export async function runSurfaceVerificationSync(
       return { ok: false, reason: "no_probe_evidence" };
     }
 
-    let previousDoc: unknown = null;
-    try {
-      const object = await bucket.get(SURFACE_HEALTH_R2_KEY);
-      previousDoc = object ? await object.json() : null;
-    } catch {
-      // A cold or unreadable previous store just means "write it".
-      previousDoc = null;
-    }
+    const previousDoc = await store.get(SURFACE_HEALTH_R2_KEY);
     const previousSurfaces = (previousDoc as Row | null)?.surfaces;
     const previousDigest =
       previousSurfaces &&
@@ -293,9 +287,7 @@ export async function runSurfaceVerificationSync(
       };
     }
 
-    await bucket.put(SURFACE_HEALTH_R2_KEY, JSON.stringify(artifact), {
-      httpMetadata: { contentType: "application/json" },
-    });
+    await store.put(SURFACE_HEALTH_R2_KEY, JSON.stringify(artifact));
     return {
       ok: true,
       changed: true,

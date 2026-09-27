@@ -1,4 +1,5 @@
-// Daily schema-snapshot baseline capture as a Worker cron writing R2 (#9096,
+import { generatedArtifactStore } from "./generated-artifact-store.ts";
+// Daily schema-snapshot baseline capture as a Worker cron writing D1 (#9096,
 // following the #233 github-signals template) — the last retirement of a
 // PR-based sync lane.
 //
@@ -63,7 +64,7 @@ import { recordExceptionEvent } from "./usage-telemetry.ts";
 type Row = Record<string, unknown>;
 
 /**
- * Literal R2 key for the Worker-cron-written schema-index baseline store.
+ * Stable artifact key for the Worker-cron-written schema-index baseline store.
  *
  * Deliberately OUTSIDE the publish pipeline's `latest/` / `runs/` / `by-hash/`
  * trees (same posture as the github-signals, operational-surfaces and
@@ -364,7 +365,7 @@ export interface SchemaSnapshotsSyncResult {
  * durable baseline store, retaining last-good captures for surfaces this
  * publish could not reach, and write ONLY when the content actually moved.
  *
- * WITHOUT the METAGRAPH_ARCHIVE R2 binding this no-ops LOUDLY — console.error
+ * WITHOUT the D1_STATE D1 binding this no-ops LOUDLY — console.error
  * plus one recordExceptionEvent. A lane that exists to end silent staleness
  * must not itself go quiet when it cannot write.
  */
@@ -373,22 +374,22 @@ export async function runSchemaSnapshotsSync(
   ctx?: Ctx,
   deps: SchemaSnapshotsSyncDeps = {},
 ): Promise<SchemaSnapshotsSyncResult> {
-  const bucket = env.METAGRAPH_ARCHIVE;
-  if (!bucket?.get || !bucket?.put) {
+  const store = generatedArtifactStore(env.D1_STATE);
+  if (!store) {
     console.error(
-      "[schema-snapshots-sync] METAGRAPH_ARCHIVE is not bound; the OpenAPI " +
+      "[schema-snapshots-sync] D1_STATE is not bound; the OpenAPI " +
         "drift baseline cannot be refreshed, so every later capture will " +
         'report drift_status "new" against a frozen seed.',
     );
     const pending = Promise.resolve(
       (deps.recordException ?? recordExceptionEvent)(env, {
-        error: new Error("METAGRAPH_ARCHIVE not bound"),
+        error: new Error("D1_STATE not bound"),
         route: "cron:schema-snapshots-sync",
-        errorCode: "schema_snapshots_bucket_missing",
+        errorCode: "schema_snapshots_artifact_store_missing",
       }),
     ).catch(() => false);
     ctx?.waitUntil?.(pending);
-    return { ok: false, skipped: true, reason: "r2_binding_missing" };
+    return { ok: false, skipped: true, reason: "artifact_store_missing" };
   }
   if (typeof deps.readArtifact !== "function") {
     return { ok: false, reason: "reader_unavailable" };
@@ -411,15 +412,7 @@ export async function runSchemaSnapshotsSync(
       return { ok: false, reason: "empty_schema_index" };
     }
 
-    let previousDoc: unknown = null;
-    try {
-      const object = await bucket.get(SCHEMA_INDEX_R2_KEY);
-      previousDoc = object ? await object.json() : null;
-    } catch {
-      // A cold or unreadable previous store degrades to "no retention
-      // credit", the same as the lane's very first run.
-      previousDoc = null;
-    }
+    const previousDoc = await store.get(SCHEMA_INDEX_R2_KEY);
 
     const nowMs = (deps.now ?? Date.now)();
     const { schemas, retained_count } = retainLastGoodSchemas(
@@ -449,9 +442,7 @@ export async function runSchemaSnapshotsSync(
       };
     }
 
-    await bucket.put(SCHEMA_INDEX_R2_KEY, JSON.stringify(artifact), {
-      httpMetadata: { contentType: "application/json" },
-    });
+    await store.put(SCHEMA_INDEX_R2_KEY, JSON.stringify(artifact));
     return {
       ok: true,
       changed: true,

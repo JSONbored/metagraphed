@@ -1,3 +1,4 @@
+import { generatedArtifactStore } from "./generated-artifact-store.ts";
 import { createD1Sql, selectedD1Store } from "./d1-store.ts";
 import { OBSERVATION_TABLES } from "./observations-neon.ts";
 // Live operational-health cron prober.
@@ -403,7 +404,7 @@ export function workerWebSocketConnector(
 //      writer that cannot silently stop without an alarm.
 //   2. The COMMITTED copy via ASSETS. Kept as the cold-start seed exactly as
 //      before: it is always present in the deployed bundle, so a cold store
-//      (first deploy, an R2 outage) can never leave the prober with nothing to
+//      (first deploy, a store outage) can never leave the prober with nothing to
 //      probe. This is the #1017 SPOF guard, unchanged.
 //   3. The published R2 `latest/` copy, the last resort it always was.
 //
@@ -411,20 +412,13 @@ export function workerWebSocketConnector(
 // than throwing).
 export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
   // Cron store first (freshest; independent of the artifact publish).
-  try {
-    if (env.METAGRAPH_ARCHIVE?.get) {
-      const object = await env.METAGRAPH_ARCHIVE.get(
-        OPERATIONAL_SURFACES_R2_KEY,
-      );
-      if (object) {
-        const body = asJsonObject(JSON.parse(await object.text()));
-        if (Array.isArray(body?.surfaces) && body.surfaces.length) {
-          return body.surfaces as Row[];
-        }
-      }
-    }
-  } catch {
-    // fall through to the committed seed
+  const generated = asJsonObject(
+    await generatedArtifactStore(env.D1_STATE)?.get(
+      OPERATIONAL_SURFACES_R2_KEY,
+    ),
+  );
+  if (Array.isArray(generated?.surfaces) && generated.surfaces.length) {
+    return generated.surfaces as Row[];
   }
   // ASSETS next (committed, always present in the deployed Worker).
   try {

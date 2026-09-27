@@ -1,4 +1,5 @@
-// Daily github-signals capture as a Worker cron writing R2 (#233 pattern) —
+import { generatedArtifactStore } from "./generated-artifact-store.ts";
+// Daily github-signals capture as a Worker cron writing D1 (#233 pattern) —
 // the first retirement of a PR-based sync lane.
 //
 // Provenance: this replaces .github/workflows/sync-github-signals.yml (daily
@@ -7,7 +8,7 @@
 // That lane's failure mode was SILENT STALENESS: any workflow misfire left the
 // committed file frozen, and a stale capture suppressed release feed items and
 // weekly digests with no alarm anywhere. Here the cron writes the artifact
-// straight to the R2 store the artifact build reads (scripts/github-signals.ts
+// straight to the D1 store the artifact build reads (scripts/github-signals.ts
 // `loadGithubSignals()` tries the store first, committed file as fallback
 // seed), so freshness no longer depends on a bot PR landing.
 //
@@ -55,7 +56,7 @@ export const GITHUB_SIGNALS_SUBNETS_ARTIFACT_PATH = "/metagraph/subnets.json";
 /**
  * Defensive per-run repo ceiling: 230 repos x 4 calls = 920 GitHub
  * subrequests, leaving headroom under the 1000/invocation platform limit for
- * the R2/KV reads, the write, and telemetry.
+ * the store/KV reads, the write, and telemetry.
  */
 export const GITHUB_SIGNALS_MAX_REPOS_PER_RUN = 230;
 
@@ -150,7 +151,7 @@ export interface GithubSignalsSyncResult {
 
 /**
  * The daily cron tick: resolve repos from the published registry, capture via
- * the shared core (last-good retention intact), and write the R2 store ONLY
+ * the shared core (last-good retention intact), and write the D1 store ONLY
  * when the content actually moved (timestamps excluded — the same
  * content-only gate the retired workflow got from git-diff).
  *
@@ -194,9 +195,9 @@ export async function runGithubSignalsSync(
   if (typeof deps.readArtifact !== "function") {
     return { ok: false, reason: "reader_unavailable" };
   }
-  const bucket = env.METAGRAPH_ARCHIVE;
-  if (!bucket?.get || !bucket?.put) {
-    return { ok: false, reason: "r2_binding_missing" };
+  const store = generatedArtifactStore(env.D1_STATE);
+  if (!store) {
+    return { ok: false, reason: "artifact_store_missing" };
   }
   try {
     const subnetsRead = await deps.readArtifact(
@@ -218,15 +219,7 @@ export async function runGithubSignalsSync(
     const tickAt = new Date(now());
     const repos = reposForRun(allRepos, tickAt.getUTCDate());
 
-    let previousDoc: unknown = null;
-    try {
-      const object = await bucket.get(GITHUB_SIGNALS_R2_KEY);
-      previousDoc = object ? await object.json() : null;
-    } catch {
-      // A cold or unreadable previous store degrades to "no retention
-      // credit", the same as the lane's very first run.
-      previousDoc = null;
-    }
+    const previousDoc = await store.get(GITHUB_SIGNALS_R2_KEY);
     const previousByKey = signalsByKey(previousDoc);
 
     const artifact = await captureGithubSignals(repos, {
@@ -261,9 +254,7 @@ export async function runGithubSignalsSync(
       };
     }
 
-    await bucket.put(GITHUB_SIGNALS_R2_KEY, JSON.stringify(artifact), {
-      httpMetadata: { contentType: "application/json" },
-    });
+    await store.put(GITHUB_SIGNALS_R2_KEY, JSON.stringify(artifact));
     return {
       ok: true,
       changed: true,
