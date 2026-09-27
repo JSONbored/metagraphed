@@ -8,6 +8,7 @@
 import type { PgSql } from "./pg-sql.ts";
 import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
 import { D1_EXPORT_TABLES } from "./d1-export-tables.ts";
+import { timed, TIMING_D1 } from "./request-timing.ts";
 
 export type D1StoreBinding = Pick<D1Database, "prepare" | "batch">;
 
@@ -63,7 +64,9 @@ export function createD1Store(
     text: string,
     values: unknown[] = [],
   ): Promise<Row[]> => {
-    const result = await prepare({ text, values }).all<Row>();
+    const result = await timed(TIMING_D1, () =>
+      prepare({ text, values }).all<Row>(),
+    );
     return result.results;
   };
   const batch = async (statements: readonly ProducerStatement[]) => {
@@ -77,7 +80,7 @@ export function createD1Store(
           values: [JSON.stringify(revisions)],
         }),
       );
-    const result = await db.batch(prepared);
+    const result = await timed(TIMING_D1, () => db.batch(prepared));
     return result.slice(0, statements.length);
   };
   return {
@@ -91,7 +94,7 @@ export function createD1Store(
     async run(text: string, values: unknown[] = []) {
       const result = revisions.length
         ? (await batch([{ text, values }]))[0]!
-        : await prepare({ text, values }).run();
+        : await timed(TIMING_D1, () => prepare({ text, values }).run());
       return { changes: result.meta.changes };
     },
     async transaction(statements: readonly ProducerStatement[]) {

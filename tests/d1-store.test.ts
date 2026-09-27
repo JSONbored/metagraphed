@@ -11,6 +11,12 @@ import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
 import { readStore } from "../src/read-store.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import {
+  withRequestTiming,
+  requestTimings,
+  serverTimingHeader,
+  TIMING_D1,
+} from "../src/request-timing.ts";
+import {
   loadLaneMaxGap,
   loadLaneStaleRuns,
   loadLaneUnknownRuns,
@@ -60,6 +66,24 @@ afterAll(async () => {
 });
 
 describe("D1 implements the existing store contract", () => {
+  test("request timing measures reads, writes, transactions and failures without leaking SQL", async () => {
+    const store = createD1Store(db);
+    await withRequestTiming(async () => {
+      await store.query("SELECT 'private-value' AS value");
+      await store.first("SELECT 1 AS value");
+      await store.run("DELETE FROM rows WHERE id=-999");
+      await store.transaction([{ text: "SELECT 1" }, { text: "SELECT 2" }]);
+      await assert.rejects(store.query("SELECT * FROM absent_table"));
+      await assert.rejects(store.run("DELETE FROM absent_table"));
+      await assert.rejects(
+        store.transaction([{ text: "SELECT * FROM absent_table" }]),
+      );
+      assert.equal(requestTimings()!.get(TIMING_D1)!.count, 7);
+      assert.match(serverTimingHeader()!, /^d1;dur=\d+;desc="7 calls"$/);
+    });
+    assert.equal(requestTimings(), null);
+    assert.deepEqual(await store.first("SELECT 1 AS value"), { value: 1 });
+  });
   test("preserves bound values, null, large integers and actual changed-row counts", async () => {
     const store = createD1Store(db);
     assert.deepEqual(

@@ -19,12 +19,13 @@
 // Instrumenting handlers would mean touching every one of them and remembering
 // to on the next -- the same argument `withEdgeCache`, `dataRouteRateLimit` and
 // `labelDegradedResponse` all make for living at the dispatch point. There are
-// exactly three places a request can spend real time here, and each has ONE
+// shared places a request can spend real time here, and each has ONE
 // function in front of it:
 //
 //   neon    `pgReadStore`'s runner      src/read-store.ts
 //   r2sql   `r2SqlQuery`                src/history-readers.ts
 //   r2      the projection's `readJson` src/account-summary-projection.ts
+//   d1      the owned read/producer adapter src/d1-store.ts
 //
 // Instrument those and every route -- including ones written next year -- is
 // covered without its author doing anything.
@@ -135,3 +136,4 @@ export function serverTimingHeader(
 export const TIMING_NEON = "neon";
 export const TIMING_R2_SQL = "r2sql";
 export const TIMING_R2 = "r2";
+export const TIMING_D1 = "d1";
