@@ -61,6 +61,31 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
         captured_at: capturedAt,
       };
       const values = Object.values(descriptor);
+      const archived = await db
+        .prepare("SELECT * FROM raw_capture_archives WHERE key=? AND sha256=?")
+        .bind(key, digest)
+        .first<Record<string, string | number>>();
+      if (archived) {
+        // The archive consumer records this identity only after independent
+        // native-byte verification, atomically releasing the staging chunks.
+        if (
+          Object.entries(descriptor).some(([k, v]) => archived[k] !== v) ||
+          archived.complete !== 1 ||
+          archived.native_sha256 !== compressedDigest ||
+          archived.native_key !==
+            `chain/raw/native/v1/${network}/${digest}/${compressedDigest}.gz`
+        )
+          throw new Error("Raw capture archive identity differs");
+        const current = await db
+          .prepare(
+            "SELECT sha256 FROM (SELECT sha256,captured_at FROM raw_capture_selected WHERE key=? UNION ALL SELECT sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1) ORDER BY captured_at DESC LIMIT 1",
+          )
+          .bind(key, key)
+          .first<{ sha256: string }>();
+        if (current?.sha256 !== digest)
+          throw new Error("Raw capture selection was not acknowledged");
+        return;
+      }
       await db
         .prepare(
           "INSERT INTO raw_capture_batches(key,sha256,network,first_block,last_block,raw_bytes,compressed_bytes,compressed_sha256,parts,captured_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(key,sha256) DO NOTHING",
@@ -136,7 +161,7 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
           .bind(key, digest, key, digest, key, digest),
         db
           .prepare(
-            "INSERT INTO raw_capture_selected(key,sha256,network,last_block,captured_at) SELECT key,sha256,network,last_block,captured_at FROM raw_capture_batches WHERE key=? AND sha256=? AND complete=1 ON CONFLICT(key) DO UPDATE SET sha256=excluded.sha256,network=excluded.network,last_block=excluded.last_block,captured_at=excluded.captured_at WHERE raw_capture_selected.captured_at<excluded.captured_at OR raw_capture_selected.sha256=excluded.sha256",
+            "INSERT INTO raw_capture_selected(key,sha256,network,last_block,captured_at) SELECT key,sha256,network,last_block,captured_at FROM raw_capture_batches b WHERE key=? AND sha256=? AND complete=1 AND NOT EXISTS(SELECT 1 FROM raw_capture_archives a WHERE a.key=b.key AND a.selected=1 AND a.sha256<>b.sha256 AND a.captured_at>=b.captured_at) ON CONFLICT(key) DO UPDATE SET sha256=excluded.sha256,network=excluded.network,last_block=excluded.last_block,captured_at=excluded.captured_at WHERE raw_capture_selected.captured_at<excluded.captured_at OR raw_capture_selected.sha256=excluded.sha256",
           )
           .bind(key, digest),
       ]);

@@ -31,6 +31,12 @@ function fixture() {
       "utf8",
     ),
   );
+  sql.exec(
+    readFileSync(
+      new URL("../migrations/d1/0029_raw_capture_archive.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   let fail: ((text: string, params: unknown[]) => void) | undefined;
   const prepared = (text: string, params: unknown[] = []) => ({
     text,
@@ -94,6 +100,100 @@ function fixture() {
     },
   };
 }
+
+function archive(f: ReturnType<typeof fixture>, objectKey = key()) {
+  const row = f.sql
+    .prepare(
+      "SELECT b.* FROM raw_capture_batches b JOIN raw_capture_selected s USING(key,sha256) WHERE b.key=?",
+    )
+    .get(objectKey)!;
+  const nativeKey = `chain/raw/native/v1/${row.network}/${row.sha256}/${row.compressed_sha256}.gz`;
+  f.sql
+    .prepare(
+      "INSERT INTO raw_capture_archives SELECT b.*,1,?,?,compressed_sha256 FROM raw_capture_batches b WHERE b.key=? AND b.sha256=?",
+    )
+    .run(nativeKey, "a".repeat(32), objectKey, row.sha256!);
+  return row;
+}
+
+test("archiving atomically releases staging capacity and a lost capture acknowledgement remains retryable", async () => {
+  const f = fixture();
+  await f.store.put(key(), value());
+  const row = archive(f);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_chunks").get()?.n,
+    0,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_batches").get()?.n,
+    0,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT bytes FROM raw_capture_budget").get()?.bytes,
+    0,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+  await f.store.put(key(), value());
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_batches").get()?.n,
+    0,
+  );
+  assert.equal(
+    f.sql
+      .prepare("SELECT sha256 FROM raw_capture_archives WHERE selected=1")
+      .get()?.sha256,
+    row.sha256,
+  );
+});
+
+test("an older capture cannot displace an archived selection and newer captures retain old history", async () => {
+  const f = fixture();
+  await f.store.put(key(), value(2000));
+  const old = archive(f);
+  await assert.rejects(f.store.put(key(), value(1000)), /selection/);
+  await f.store.put(key(), value(3000));
+  const current = archive(f);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_archives").get()?.n,
+    2,
+  );
+  assert.equal(
+    f.sql
+      .prepare("SELECT selected FROM raw_capture_archives WHERE sha256=?")
+      .get(old.sha256!)?.selected,
+    0,
+  );
+  assert.equal(
+    f.sql
+      .prepare("SELECT selected FROM raw_capture_archives WHERE sha256=?")
+      .get(current.sha256!)?.selected,
+    1,
+  );
+  await assert.rejects(f.store.put(key(), value(2000)), /selection/);
+});
+
+test("an archive with changed source metadata cannot release staging bytes", async () => {
+  const f = fixture();
+  await f.store.put(key(), value());
+  const before = f.sql.prepare("SELECT * FROM raw_capture_budget").get();
+  assert.throws(
+    () =>
+      f.sql
+        .prepare(
+          "INSERT INTO raw_capture_archives SELECT key,sha256,network,first_block,last_block,raw_bytes+1,compressed_bytes,compressed_sha256,parts,captured_at,complete,1,'bad',?,compressed_sha256 FROM raw_capture_batches",
+        )
+        .run("a".repeat(32)),
+    /source changed/,
+  );
+  assert.deepEqual(
+    f.sql.prepare("SELECT * FROM raw_capture_budget").get(),
+    before,
+  );
+  assert(f.selected());
+});
 
 test("both networks reconstruct exact raw bytes and null events through the real schema", async () => {
   const f = fixture(),
