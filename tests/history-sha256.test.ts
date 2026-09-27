@@ -1,3 +1,4 @@
+import { sha256Hex } from "../src/sha256-hex.ts";
 import { createHash } from "node:crypto";
 import { expect, it } from "vitest";
 import { historyJson, historySha256 } from "../src/history-sha256.ts";
@@ -25,4 +26,15 @@ it("hashes only the supplied byte view and preserves UTF-8 replacement", () => {
   const view = bytes.subarray(7, bytes.length - 7);
   expect(historySha256(view)).toBe(historySha256("é🌐"));
   expect(historySha256("\ud800")).toBe(historySha256("\ufffd"));
+});
+
+it("Web Crypto digests preserve exact text without Node compatibility", async () => {
+  for (const value of [
+    "",
+    "plain",
+    "界\ud83d\ude00",
+    "\ud800",
+    "salt:127.0.0.1",
+  ])
+    expect(await sha256Hex(value)).toBe(historySha256(value));
 });
