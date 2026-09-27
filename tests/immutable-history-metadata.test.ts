@@ -314,12 +314,14 @@ test("workerd shares only completed bytes across real R2 request contexts", asyn
     bundle: true,
     format: "esm",
     platform: "browser",
+    external: ["node:crypto"],
     write: false,
   });
   const runtime = new Miniflare({
     modules: true,
     script: bundled.outputFiles[0].text,
     compatibilityDate: "2026-06-06",
+    compatibilityFlags: ["nodejs_compat"],
     r2Buckets: ["ARCHIVE"],
   });
   try {
