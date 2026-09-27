@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { handleD1StateExport } from "../src/d1-state-export.ts";
 import { handleNativeHistoryExport } from "../src/native-history-export.ts";
 import * as assets from "../src/history-asset-source.ts";
@@ -14,9 +15,9 @@ const etag = "b".repeat(32);
 const raw = new Uint8Array([1, 2, 3, 4, 5, 6, 7]);
 const head = { kind: "native-history", operation: "head", key };
 const range = { ...head, operation: "range", etag, offset: 2, length: 3 };
-function fixture(checksum = true) {
+function fixture(checksum = true, originalEtag = etag) {
   const f = historyAssetsFixture([
-    { key, etag, chunks: [raw.slice(0, 3), raw.slice(3)] },
+    { key, etag: originalEtag, chunks: [raw.slice(0, 3), raw.slice(3)] },
   ]);
   const object = Object.values(f.shards)[0].objects[assetHash(key)];
   if (checksum) Object.assign(object, { sha256: assetHash(raw) });
@@ -31,7 +32,15 @@ function fixture(checksum = true) {
       }),
     },
   };
-  return { ...f, env, object };
+  return {
+    ...f,
+    env,
+    object,
+    publish() {
+      f.publish();
+      env.NATIVE_HISTORY_ASSET_RELEASE = f.env.HISTORY_ASSET_RELEASE;
+    },
+  };
 }
 const request = (input: unknown, secret = "existing-producer-secret") =>
   new Request("https://example.com/api/v1/internal/state-export", {
@@ -148,6 +157,10 @@ describe("credential-protected native history producer reads", () => {
       { ...head, key: "unrelated" },
       { ...head, key: key.replace(/[^/]+$/, "current.json") },
       { ...head, extra: true },
+      { ...head, release: "" },
+      { ...head, release: "https://untrusted.invalid/file" },
+      { ...head, release: `${"a".repeat(64)}:0` },
+      { ...head, release: `${"a".repeat(64)}:524289` },
       { ...range, etag: "invalid" },
       { ...range, offset: -1 },
       { ...range, offset: 1.5 },
@@ -248,6 +261,98 @@ describe("credential-protected native history producer reads", () => {
       etag,
       bytes: raw.length,
     });
+  });
+});
+
+describe("immutable release verification without a migration Worker", () => {
+  const verify = { ...head, operation: "verify" };
+  const digest = createHash("md5").update(raw).digest("hex");
+
+  it("authenticates release selection and verifies both original hashes without changing the serving release", async () => {
+    const f = fixture(true, digest);
+    const release = f.env.NATIVE_HISTORY_ASSET_RELEASE;
+    f.env.NATIVE_HISTORY_ASSET_RELEASE = `${"a".repeat(64)}:100`;
+    const input = { ...verify, release };
+    expect(
+      (await handleD1StateExport(request(input, "wrong"), f.env)).status,
+    ).toBe(401);
+    expect(f.fetch).not.toHaveBeenCalled();
+    const response = await handleD1StateExport(request(input), f.env);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      version: 1,
+      verified: true,
+      object: { key, etag: digest, bytes: raw.length, sha256: assetHash(raw) },
+    });
+    expect(f.env.NATIVE_HISTORY_ASSET_RELEASE).toBe(`${"a".repeat(64)}:100`);
+    expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+    expect((await handleD1StateExport(request(verify), f.env)).status).toBe(
+      502,
+    );
+    for (const operation of [
+      head,
+      range,
+      { kind: "native-history", operation: "heads", keys: [key] },
+    ]) {
+      const response = await handleD1StateExport(
+        request({
+          ...operation,
+          release,
+          ...(operation.operation === "range" ? { etag: digest } : {}),
+        }),
+        f.env,
+      );
+      expect(response.status).toBe(operation.operation === "range" ? 206 : 200);
+    }
+  });
+
+  it("rejects an original SHA256 or MD5 mismatch instead of trusting chunk hashes", async () => {
+    for (const badSha of [true, false]) {
+      const f = fixture(true, badSha ? digest : etag);
+      if (badSha) Object.assign(f.object, { sha256: "0".repeat(64) });
+      f.publish();
+      const response = await handleD1StateExport(request(verify), f.env);
+      expect(response.status).toBe(502);
+      expect(await response.json()).toEqual({
+        error: "native history original checksum mismatch",
+      });
+      expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
+    }
+  });
+
+  it("hashes a multi-range original sequentially and does not acknowledge a failed later read", async () => {
+    const bytes = new Uint8Array(8 * 1024 * 1024 + 7).fill(17);
+    const object = {
+      key,
+      etag: createHash("md5").update(bytes).digest("hex"),
+      bytes: bytes.length,
+      sha256: assetHash(bytes),
+    };
+    const read = vi.fn(
+      async (_key: string, _etag: string, offset: number, length: number) =>
+        bytes.slice(offset, offset + length).buffer,
+    );
+    vi.spyOn(assets, "historyAssetSource").mockReturnValue({
+      describe: async () => object,
+      read,
+    });
+    expect((await handleNativeHistoryExport(verify, {})).status).toBe(200);
+    expect(read.mock.calls.map((c) => c.slice(2))).toEqual([
+      [0, 8 * 1024 * 1024],
+      [8 * 1024 * 1024, 7],
+    ]);
+    read.mockClear();
+    read.mockImplementationOnce(
+      async () => bytes.slice(0, 8 * 1024 * 1024).buffer,
+    );
+    read.mockRejectedValueOnce(new Error("later chunk unavailable"));
+    const failed = await handleNativeHistoryExport(verify, {});
+    expect(failed.status).toBe(502);
+    expect(await failed.json()).toEqual({
+      error: "native history static source is unavailable",
+    });
+    expect(read).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   HISTORY_ASSET_OBJECT_KEY,
   HistoryAssetReleaseSchema,
@@ -19,11 +20,8 @@ const MAX_CACHE_BYTES = 8 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 256;
 const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
 
-async function sha256(bytes: Uint8Array): Promise<string> {
-  return Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
-    (byte) => byte.toString(16).padStart(2, "0"),
-  ).join("");
+function sha256(value: string | Uint8Array): string {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 /** A pinned release relocates immutable feed bytes, preserving their original
@@ -163,7 +161,7 @@ export function historyAssetSource(
       reader.releaseLock();
     }
     const raw = output;
-    if (offset !== size || (await sha256(raw)) !== hash)
+    if (offset !== size || sha256(raw) !== hash)
       throw new Error("Immutable history asset content identity changed");
     while (
       retained + raw.length > MAX_CACHE_BYTES ||
@@ -207,7 +205,7 @@ export function historyAssetSource(
       !root.prefixes.some((prefix) => key.startsWith(prefix))
     )
       return undefined;
-    const identity = await sha256(new TextEncoder().encode(key)),
+    const identity = sha256(key),
       prefix = identity.slice(0, root.shardPrefixLength ?? 2),
       reference = root.shards[prefix];
     if (!reference) return undefined;

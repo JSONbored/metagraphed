@@ -1,3 +1,4 @@
+import { internalJson as reply } from "./internal-json.ts";
 // Completed captures are immutable in D1. Every page checks its scoped receipt;
 // a missing/incomplete capture cannot leak provisional rows into the archive.
 import { z } from "zod";
@@ -68,11 +69,6 @@ export async function handleRootBasketExport(
   input: unknown,
   env: unknown,
 ): Promise<Response> {
-  const reply = (value: unknown, status = 200) =>
-    Response.json(value, {
-      status,
-      headers: { "cache-control": "no-store" },
-    });
   const parsed = RequestSchema.safeParse(input);
   if (!parsed.success) return reply({ error: "invalid basket export" }, 400);
   const value = parsed.data;

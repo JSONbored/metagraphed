@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { boundedInternalJson, internalJson } from "./internal-json.ts";
 import { z } from "zod";
 import type { D1StoreBinding } from "./d1-store.ts";
 import { timingSafeEqual } from "./webhooks.ts";
@@ -55,43 +57,11 @@ interface Source {
   expected_rows: number;
   received_rows: number;
 }
-const response = (status: number, body: unknown) =>
-  Response.json(body, { status, headers: { "cache-control": "no-store" } });
-const fail = (status: number, error: string) => response(status, { error });
+const fail = (status: number, error: string) => internalJson({ error }, status);
+function digest(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
 
-async function inputBody(request: Request): Promise<unknown> {
-  if (!request.body) return null;
-  const reader = request.body.getReader(),
-    decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
-  let text = "",
-    bytes = 0;
-  try {
-    for (;;) {
-      const part = await reader.read();
-      if (part.done) break;
-      bytes += part.value.byteLength;
-      if (bytes > 1024 * 1024) {
-        await reader.cancel();
-        throw new Error("body budget exceeded");
-      }
-      text += decoder.decode(part.value, { stream: true });
-    }
-    return JSON.parse(text + decoder.decode());
-  } finally {
-    reader.releaseLock();
-  }
-}
-async function digest(value: unknown): Promise<string> {
-  return Array.from(
-    new Uint8Array(
-      await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(JSON.stringify(value)),
-      ),
-    ),
-    (byte) => byte.toString(16).padStart(2, "0"),
-  ).join("");
-}
 async function begin(
   db: D1StoreBinding,
   input: Extract<Input, { kind: "begin" }>,
@@ -111,7 +81,7 @@ async function begin(
   const stored = result[1]!.results[0]!;
   if (stored.source !== descriptor)
     return fail(409, "source identity conflict");
-  return response(200, {
+  return internalJson({
     received_rows: stored.received_rows,
     expected_rows: stored.expected_rows,
   });
@@ -128,7 +98,7 @@ async function chunk(
   const end = input.start + input.rows.length;
   if (end > source.expected_rows || input.start > source.received_rows)
     return fail(409, "chunk exceeds source or skips rows");
-  const sha = await digest(input.rows);
+  const sha = digest(input.rows);
   const receipt = () =>
     db
       .prepare(
@@ -138,7 +108,7 @@ async function chunk(
   if (input.start < source.received_rows) {
     const prior = await receipt().first<{ rows: number; digest: string }>();
     return prior?.digest === sha && prior.rows === input.rows.length
-      ? response(200, { received_rows: source.received_rows })
+      ? internalJson({ received_rows: source.received_rows })
       : fail(409, "chunk identity conflict");
   }
   const json = JSON.stringify(input.rows),
@@ -197,14 +167,14 @@ async function chunk(
   };
   if (proof.digest !== sha || proof.rows !== input.rows.length)
     return fail(409, "concurrent chunk identity conflict");
-  return response(200, { received_rows: end });
+  return internalJson({ received_rows: end });
 }
 async function publish(
   db: D1StoreBinding,
   input: Extract<Input, { kind: "publish" }>,
   now: number,
 ): Promise<Response> {
-  const generation = await digest(input);
+  const generation = digest(input);
   if (
     new Set(input.sources).size !== input.sources.length ||
     input.generated_at > now ||
@@ -287,7 +257,7 @@ async function publish(
       ?.generation !== generation
   )
     return fail(409, "snapshot publication raced another publisher");
-  return response(200, {
+  return internalJson({
     generation,
     source_rows: input.source_rows,
     source_files: input.sources.length,
@@ -309,7 +279,9 @@ export async function handleRetainedBlocksSync(
     return fail(401, "invalid retained blocks sync credential");
   if (request.method !== "POST")
     return fail(405, "retained blocks sync requires POST");
-  const parsed = Input.safeParse(await inputBody(request).catch(() => null));
+  const parsed = Input.safeParse(
+    await boundedInternalJson(request, 1024 * 1024).catch(() => null),
+  );
   if (!parsed.success) return fail(400, "invalid retained blocks sync request");
   try {
     const input = parsed.data,
@@ -333,7 +305,7 @@ export async function handleRetainedBlocksSync(
       )
         return fail(409, "snapshot changed during status pagination");
       const sources = rows!.results.slice(0, 200) as { id: number }[];
-      return response(200, {
+      return internalJson({
         state: selected ?? null,
         sources,
         next_cursor: rows!.results.length > 200 ? sources[199]!.id : null,

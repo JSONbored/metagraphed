@@ -1,3 +1,4 @@
+import { boundedInternalJson, internalJson } from "./internal-json.ts";
 // Protected native D1 export protocol for the existing archive jobs (#12184).
 // A revision is committed with every selected family write. Each page's data
 // and revision share one D1 batch, and a final check precedes archive append.
@@ -29,6 +30,16 @@ const BOOLEANS = new Set(
     " ",
   ),
 );
+const INTEGER_FIELDS = new Set(
+  "netuid uid captured_at updated_at block_number registered_at_block".split(
+    " ",
+  ),
+);
+const FLOAT_FIELDS = new Set(
+  "rank trust validator_trust consensus incentive dividends emission_tao stake_tao take".split(
+    " ",
+  ),
+);
 const MAX_BYTES = 2 * 1024 * 1024;
 const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
 interface ExportEnv {
@@ -48,31 +59,8 @@ function logicalType(table: string, name: string, type: string): string {
   // can contain either numeric JSON strings or numbers, so Arrow needs the
   // same explicit logical types as the original neuron row contract.
   if (["neurons", "neuron_daily", "account_position_daily"].includes(table)) {
-    if (
-      [
-        "netuid",
-        "uid",
-        "captured_at",
-        "updated_at",
-        "block_number",
-        "registered_at_block",
-      ].includes(name)
-    )
-      return "int8";
-    if (
-      [
-        "rank",
-        "trust",
-        "validator_trust",
-        "consensus",
-        "incentive",
-        "dividends",
-        "emission_tao",
-        "stake_tao",
-        "take",
-      ].includes(name)
-    )
-      return "float8";
+    if (INTEGER_FIELDS.has(name)) return "int8";
+    if (FLOAT_FIELDS.has(name)) return "float8";
   }
   if (
     table === "compute_declarations" &&
@@ -85,37 +73,12 @@ function logicalType(table: string, name: string, type: string): string {
   if (table === "self_health_daily" && name === "day") return "date";
   return type === "INTEGER" ? "int8" : type === "REAL" ? "float8" : "text";
 }
-async function body(request: Request): Promise<unknown> {
-  if (!request.body) throw new Error("body absent");
-  const reader = request.body.getReader();
-  let text = "",
-    bytes = 0;
-  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
-  try {
-    while (true) {
-      const part = await reader.read();
-      if (part.done) break;
-      bytes += part.value.byteLength;
-      if (bytes > 8192) {
-        await reader.cancel();
-        throw new Error("body too large");
-      }
-      text += decoder.decode(part.value, { stream: true });
-    }
-    return JSON.parse(text + decoder.decode());
-  } finally {
-    reader.releaseLock();
-  }
-}
 export async function handleD1StateExport(
   request: Request,
   env: ExportEnv,
 ): Promise<Response> {
   const fail = (status: number, error: string) =>
-    Response.json(
-      { error },
-      { status, headers: { "cache-control": "no-store" } },
-    );
+    internalJson({ error }, status);
   if (!env.STATE_EXPORT_SECRET)
     return fail(503, "state export is not provisioned");
   if (
@@ -126,7 +89,7 @@ export async function handleD1StateExport(
   )
     return fail(401, "invalid state export credential");
   if (request.method !== "POST") return fail(405, "state export requires POST");
-  const inputBody = await body(request).catch(() => null);
+  const inputBody = await boundedInternalJson(request, 8192).catch(() => null);
   if (
     inputBody &&
     typeof inputBody === "object" &&
@@ -171,10 +134,7 @@ export async function handleD1StateExport(
       }));
     if (!columns.length) throw new Error("export source absent");
     const reply = (value: Record<string, unknown>) =>
-      Response.json(
-        { version: 1, ...value },
-        { headers: { "cache-control": "no-store" } },
-      );
+      internalJson({ version: 1, ...value });
     if (input.kind === "schema") return reply({ columns });
     const revisionStatement = db
       .prepare(
