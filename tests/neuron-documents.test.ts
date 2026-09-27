@@ -155,6 +155,51 @@ test("partial, equal and older captures preserve per-member ordering and account
   assert.equal((await read("neuron_daily")).length, 3);
   assert.equal((await read()).length, 2);
 });
+test("sparse mixed-age captures index only their accepted members within a populated shard", async () => {
+  const initial = Array.from({ length: 8 }, (_, uid) => ({
+    ...rows()[0],
+    uid,
+    hotkey: `hotkey-${uid}`,
+    coldkey: `coldkey-${uid}`,
+  }));
+  await writeNeuronDocuments(store(), capture(initial));
+  await db.prepare("CREATE TABLE attempted_daily_members(uid INTEGER)").run();
+  await db
+    .prepare(
+      "CREATE TRIGGER track_daily_insert BEFORE INSERT ON neuron_daily_members BEGIN INSERT INTO attempted_daily_members VALUES(NEW.uid); END",
+    )
+    .run();
+  try {
+    await writeNeuronDocuments(store(), {
+      ...capture([
+        { ...initial[2], captured_at: stamp + 1000, hotkey: "new-owner" },
+        { ...initial[5], captured_at: stamp - 1000, hotkey: "stale-owner" },
+      ]),
+      netuidMaxCapturedAt: null,
+    });
+    assert.deepEqual(
+      (
+        await db
+          .prepare("SELECT uid FROM attempted_daily_members ORDER BY uid")
+          .all()
+      ).results,
+      [{ uid: 2 }, { uid: 5 }],
+    );
+    const daily = await read("neuron_daily");
+    assert.equal(daily.length, initial.length);
+    assert.equal(daily[2].hotkey, "new-owner");
+    assert.equal(daily[2].captured_at, stamp + 1000);
+    assert.equal(daily[5].hotkey, "hotkey-5");
+    assert.equal(daily[5].captured_at, stamp);
+    for (const uid of [0, 1, 3, 4, 6, 7]) {
+      assert.equal(daily[uid].hotkey, initial[uid].hotkey);
+      assert.equal(daily[uid].captured_at, stamp);
+    }
+  } finally {
+    await db.prepare("DROP TRIGGER track_daily_insert").run();
+    await db.prepare("DROP TABLE attempted_daily_members").run();
+  }
+});
 test("pruning is per-netuid, preserves newer captures, and never prunes either daily family", async () => {
   await writeNeuronDocuments(
     store(),
