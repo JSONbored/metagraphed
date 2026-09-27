@@ -29,6 +29,7 @@ import type {
 import type { LaneHealthRecord } from "./lane-health.ts";
 import {
   LANE_ALARM_MAX_VERDICT_AGE_MS,
+  LANE_SILENCE_EXEMPT,
   laneSilenceThresholdMs,
 } from "./lane-alarm.ts";
 import { DEAD_LETTER_LANES } from "./dead-letter.ts";
@@ -342,31 +343,14 @@ export function withLaneHealth(
         nowMs - row.checked_at <= LANE_ALARM_MAX_VERDICT_AGE_MS,
     )
     .map((row) => {
-      // The lane's own observed maximum gap, floored by its producer's
-      // declared cadence where one exists (#10333). Neither alone is enough:
-      // observation drifts to zero for a mirror that writes many rows per
-      // pass, and a declaration alone cannot notice a lane whose real interval
-      // has moved away from the configured one.
-      // A DEAD-LETTER LANE'S SILENCE IS THE GOAL, NOT AN ABSENCE (#11297).
-      //
-      // `laneSilenceCadenceMs` derives a bound from the observed gaps between
-      // a lane's rows. For every other lane those gaps are its heartbeat. For a
-      // `*-dlq` they are the spacing between FAILURES, so a queue that lost
-      // messages roughly hourly for an afternoon gets handed a "cadence" of an
-      // hour -- and three hours later the card reports `unknown`, detail
-      // `no verdict for 186m (cadence ~60m)`, which reads as "this lane was
-      // expected to lose a message every hour and has not".
-      //
-      // Measured on production 2026-08-15, that exact string, on a queue whose
-      // last loss was three hours earlier and whose causes were all fixed.
-      //
-      // So they are exempt from the silence treatment entirely. What remains is
-      // the honest set: a recent loss is `stale` and counted, a loss past the
-      // residue window is dropped above, and a queue that has never lost
-      // anything has no row at all.
-      const cadence = DEAD_LETTER_LANE_NAMES.has(row.lane)
-        ? null
-        : laneSilenceCadenceMs(row.lane, cadences?.[row.lane]);
+      // Periodic lanes use their observed maximum gap and declared cadence.
+      // Dead letters report losses, and startup announcements report values;
+      // neither has a heartbeat. Preserve their actual verdicts and use the
+      // alarm planner's exemption map so both health surfaces agree.
+      const cadence =
+        DEAD_LETTER_LANE_NAMES.has(row.lane) || LANE_SILENCE_EXEMPT[row.lane]
+          ? null
+          : laneSilenceCadenceMs(row.lane, cadences?.[row.lane]);
       const quietFor = nowMs - row.checked_at;
       const silent =
         typeof cadence === "number" &&

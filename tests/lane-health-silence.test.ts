@@ -217,3 +217,36 @@ describe("stale_lane_count", () => {
     assert.equal(out.stale_lane_count, 1);
   });
 });
+
+describe("startup-only build announcements", () => {
+  test.each(["ok", "stale", "unknown"] as const)(
+    "preserves a reported %s verdict across a long uptime",
+    (verdict) => {
+      const checkedAt = NOW - 4 * 24 * 60 * MIN;
+      const build = record({
+        lane: "poller-build",
+        verdict,
+        checked_at: checkedAt,
+        age_ms: 42,
+        detail: "reported build identity",
+      });
+      const out = withLaneHealth(
+        card(),
+        {
+          "poller-build": build,
+          neurons: record({ checked_at: checkedAt }),
+        },
+        { cadences: { "poller-build": 60 * MIN, neurons: MIN }, nowMs: NOW },
+      );
+      assert.deepEqual(
+        out.lanes.find((lane) => lane.lane === "poller-build"),
+        { ...build, checked_at: new Date(checkedAt).toISOString() },
+      );
+      assert.equal(out.stale_lane_count, verdict === "stale" ? 1 : 0);
+      assert.equal(
+        out.lanes.find((lane) => lane.lane === "neurons")!.verdict,
+        "unknown",
+      );
+    },
+  );
+});
