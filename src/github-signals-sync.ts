@@ -1,16 +1,7 @@
 import { generatedArtifactStore } from "./generated-artifact-store.ts";
-// Daily github-signals capture as a Worker cron writing D1 (#233 pattern) —
-// the first retirement of a PR-based sync lane.
-//
-// Provenance: this replaces .github/workflows/sync-github-signals.yml (daily
-// 06:20 UTC), which ran `node scripts/github-signals.ts --write` and opened an
-// auto-merged bot PR whenever registry/generated/github-signals.json drifted.
-// That lane's failure mode was SILENT STALENESS: any workflow misfire left the
-// committed file frozen, and a stale capture suppressed release feed items and
-// weekly digests with no alarm anywhere. Here the cron writes the artifact
-// straight to the D1 store the artifact build reads (scripts/github-signals.ts
-// `loadGithubSignals()` tries the store first, committed file as fallback
-// seed), so freshness no longer depends on a bot PR landing.
+// Daily GitHub signals are persisted in D1, retaining the last good capture.
+// The artifact build reads the same store and keeps its committed cold-start
+// seed. Cron failures remain visible rather than silently freezing enrichment.
 //
 // Repo-list source: the PUBLISHED /metagraph/subnets.json artifact, read
 // through the same internal readArtifact path other crons use (it is an
