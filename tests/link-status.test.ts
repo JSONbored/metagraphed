@@ -1,3 +1,4 @@
+import { generatedArtifactDb } from "./helpers/generated-artifact-db.ts";
 // Tests for the daily link-rot lane (#9907/#9914/#9917) and the SSRF-guard
 // split it depends on (#9870).
 //
@@ -645,14 +646,14 @@ describe("runLinkStatusSync", () => {
       await runLinkStatusSync(mockEnv({}), undefined, {
         readArtifact: artifactStub(ONE_DOC_SUBNET, null) as never,
       }),
-      { ok: false, reason: "r2_binding_missing" },
+      { ok: false, reason: "artifact_store_missing" },
     );
   });
 
   test("refuses when the subnets artifact is unreadable", async () => {
     const { bucket } = fakeBucket();
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       { readArtifact: artifactStub(null, null) as never },
     );
@@ -665,7 +666,7 @@ describe("runLinkStatusSync", () => {
   test("a readable artifact yielding zero targets never wipes the store", async () => {
     const { bucket, puts } = fakeBucket();
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       { readArtifact: artifactStub({ subnets: [] }, null) as never },
     );
@@ -676,7 +677,7 @@ describe("runLinkStatusSync", () => {
   test("checks the targets and writes the store", async () => {
     const { bucket, puts } = fakeBucket();
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       {
         readArtifact: artifactStub(ONE_DOC_SUBNET, null) as never,
@@ -711,7 +712,7 @@ describe("runLinkStatusSync", () => {
     };
     const { bucket, puts } = fakeBucket({ [LINK_STATUS_R2_KEY]: priorTwo });
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       {
         readArtifact: artifactStub(ONE_DOC_SUBNET, null) as never,
@@ -754,7 +755,7 @@ describe("runLinkStatusSync", () => {
     };
     const { bucket, puts } = fakeBucket({ [LINK_STATUS_R2_KEY]: prior });
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       {
         readArtifact: artifactStub(subnetsDoc, null) as never,
@@ -786,7 +787,7 @@ describe("runLinkStatusSync", () => {
     };
     const { bucket } = fakeBucket();
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       {
         readArtifact: artifactStub(subnetsDoc, providersDoc) as never,
@@ -802,7 +803,7 @@ describe("runLinkStatusSync", () => {
   test("an unreadable providers artifact costs only the provider population", async () => {
     const { bucket } = fakeBucket();
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       {
         readArtifact: artifactStub(ONE_DOC_SUBNET, null) as never,
@@ -821,12 +822,12 @@ describe("runLinkStatusSync", () => {
     const waitUntil = vi.fn();
     const result = await runLinkStatusSync(
       mockEnv({
-        METAGRAPH_ARCHIVE: {
+        D1_STATE: generatedArtifactDb({
           get: async () => {
             throw new Error("r2 down");
           },
           put: async () => undefined,
-        },
+        }),
       }),
       { waitUntil },
       {
@@ -847,7 +848,7 @@ describe("runLinkStatusSync", () => {
       throw new Error("cold");
     };
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       {
         readArtifact: artifactStub(ONE_DOC_SUBNET, null) as never,
@@ -909,7 +910,10 @@ describe("cron registration", () => {
     const waited: Promise<unknown>[] = [];
     const result = (await worker.scheduled(
       { cron: LINK_STATUS_SYNC_CRON, scheduledTime: TICK_MS } as never,
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }) as never,
+      mockEnv({
+        METAGRAPH_ARCHIVE: { get: bucket.get },
+        D1_STATE: generatedArtifactDb(bucket),
+      }) as never,
       { waitUntil: (p: Promise<unknown>) => waited.push(p) } as never,
     )) as { ok: boolean };
     await Promise.all(waited);
@@ -925,10 +929,10 @@ describe("telemetry failure containment", () => {
     // day" and an unhandled rejection in a scheduled handler.
     const result = await runLinkStatusSync(
       mockEnv({
-        METAGRAPH_ARCHIVE: {
+        D1_STATE: generatedArtifactDb({
           get: async () => null,
           put: async () => undefined,
-        },
+        }),
       }),
       { waitUntil: (p: Promise<unknown>) => p },
       {
@@ -979,7 +983,7 @@ describe("degenerate inputs", () => {
   test("artifacts missing their collection key degrade to empty, not to a throw", async () => {
     const { bucket } = fakeBucket();
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       {
         // subnets artifact ok but with no `subnets` key; providers ok but with
@@ -1022,7 +1026,10 @@ describe("degenerate inputs", () => {
     const calls: Array<{ url: string; method: string; headers: unknown }> = [];
     const { bucket } = fakeBucket();
     const result = await runLinkStatusSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket, GITHUB_SIGNALS_TOKEN: "  tok  " }),
+      mockEnv({
+        D1_STATE: generatedArtifactDb(bucket),
+        GITHUB_SIGNALS_TOKEN: "  tok  ",
+      }),
       undefined,
       {
         readArtifact: artifactStub(subnetsDoc, null) as never,
@@ -1069,10 +1076,10 @@ describe("default dependencies", () => {
     );
     const result = await runLinkStatusSync(
       mockEnv({
-        METAGRAPH_ARCHIVE: {
+        D1_STATE: generatedArtifactDb({
           get: async () => null,
           put: async () => undefined,
-        },
+        }),
       }),
       { waitUntil: (p: Promise<unknown>) => p },
       {

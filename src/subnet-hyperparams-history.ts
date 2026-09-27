@@ -1,3 +1,4 @@
+import { historyJson, historySha256 } from "./history-sha256.ts";
 // Historical hyperparameter change tracking (#4309, epic #4301): detect
 // subnet_hyperparams changes against the last recorded hash per netuid and
 // store append-only rows, served as a paginated per-subnet timeline.
@@ -23,35 +24,13 @@ import { formatSubnetHyperparams } from "./subnet-hyperparams.ts";
 
 type Row = Record<string, unknown>;
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(",")}]`;
-  }
-  const record = value as Row;
-  const keys = Object.keys(record).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
-}
-
-async function sha256Hex(text: unknown): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(String(text)),
-  );
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 /** Hash of the formatted (type-coerced) hyperparameters object — stable
  * regardless of the raw staged row's string-vs-number/0-1-vs-boolean shape. */
 export async function hyperparamsHash(
   hyperparameters: unknown,
 ): Promise<string | null> {
   if (!hyperparameters) return null;
-  return sha256Hex(stableStringify(hyperparameters));
+  return historySha256(String(historyJson(hyperparameters)));
 }
 
 function toBlockNumber(value: unknown): number | null {

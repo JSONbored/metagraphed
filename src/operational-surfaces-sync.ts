@@ -1,4 +1,5 @@
-// Hourly operational-surfaces capture as a Worker cron writing R2 (#9096,
+import { generatedArtifactStore } from "./generated-artifact-store.ts";
+// Hourly operational-surfaces capture as a Worker cron writing D1 (#9096,
 // following the #233 github-signals template) — the second retirement of a
 // PR-based sync lane.
 //
@@ -12,7 +13,7 @@
 // registry. It was measured drifting 79 -> 96 surfaces on a clean main
 // checkout (2026-07-06) and, later, advertising 10 probe-enabled surfaces that
 // were never probed while 4 removed ones still were (#8658). Here the cron
-// writes the list straight to the R2 store the prober now reads first, so its
+// writes the list straight to the D1 store the prober now reads first, so its
 // freshness no longer depends on a bot PR landing.
 //
 // DERIVATION EQUIVALENCE — why the published surfaces.json is the same input
@@ -55,7 +56,7 @@ import { recordExceptionEvent } from "./usage-telemetry.ts";
 type Row = Record<string, unknown>;
 
 /**
- * Literal R2 key for the Worker-cron-written operational-surfaces store.
+ * Stable artifact key for the Worker-cron-written operational-surfaces store.
  *
  * Deliberately OUTSIDE the publish pipeline's `latest/` / `runs/` / `by-hash/`
  * trees (same posture as github-signals' `generated/` key and icon-proxy's
@@ -225,11 +226,11 @@ export interface OperationalSurfacesSyncResult {
 
 /**
  * The hourly cron tick: derive the prober's surface list from the published
- * registry and write the R2 store ONLY when the content actually moved
+ * registry and write the D1 store ONLY when the content actually moved
  * (generated_at excluded — the same content-only gate the retired workflow got
  * from git-diff).
  *
- * WITHOUT the METAGRAPH_ARCHIVE R2 binding this no-ops LOUDLY — console.error
+ * WITHOUT the D1_STATE D1 binding this no-ops LOUDLY — console.error
  * plus one recordExceptionEvent. It never degrades to "write nothing and
  * report success": a lane whose whole purpose is to end silent staleness must
  * not itself go quiet when it cannot write.
@@ -239,22 +240,22 @@ export async function runOperationalSurfacesSync(
   ctx?: Ctx,
   deps: OperationalSurfacesSyncDeps = {},
 ): Promise<OperationalSurfacesSyncResult> {
-  const bucket = env.METAGRAPH_ARCHIVE;
-  if (!bucket?.get || !bucket?.put) {
+  const store = generatedArtifactStore(env.D1_STATE);
+  if (!store) {
     console.error(
-      "[operational-surfaces-sync] METAGRAPH_ARCHIVE is not bound; the " +
+      "[operational-surfaces-sync] D1_STATE is not bound; the " +
         "prober's surface list cannot be refreshed and will age against the " +
         "committed cold-start copy until this is fixed.",
     );
     const pending = Promise.resolve(
       (deps.recordException ?? recordExceptionEvent)(env, {
-        error: new Error("METAGRAPH_ARCHIVE not bound"),
+        error: new Error("D1_STATE not bound"),
         route: "cron:operational-surfaces-sync",
-        errorCode: "operational_surfaces_bucket_missing",
+        errorCode: "operational_surfaces_artifact_store_missing",
       }),
     ).catch(() => false);
     ctx?.waitUntil?.(pending);
-    return { ok: false, skipped: true, reason: "r2_binding_missing" };
+    return { ok: false, skipped: true, reason: "artifact_store_missing" };
   }
   if (typeof deps.readArtifact !== "function") {
     return { ok: false, reason: "reader_unavailable" };
@@ -268,15 +269,7 @@ export async function runOperationalSurfacesSync(
       return { ok: false, reason: "surfaces_artifact_unavailable" };
     }
 
-    let previousDoc: unknown = null;
-    try {
-      const object = await bucket.get(OPERATIONAL_SURFACES_R2_KEY);
-      previousDoc = object ? await object.json() : null;
-    } catch {
-      // A cold or unreadable previous store degrades to "no carry-forward",
-      // the same as the lane's very first run.
-      previousDoc = null;
-    }
+    const previousDoc = await store.get(OPERATIONAL_SURFACES_R2_KEY);
     // schema_source carry-forward: the store's own last copy first, then the
     // published artifact (which the build DOES compute it in) on a cold store.
     let schemaSources = schemaSourcesById(previousDoc);
@@ -317,9 +310,7 @@ export async function runOperationalSurfacesSync(
       return { ok: true, changed: false, surface_count: surfaces.length };
     }
 
-    await bucket.put(OPERATIONAL_SURFACES_R2_KEY, JSON.stringify(artifact), {
-      httpMetadata: { contentType: "application/json" },
-    });
+    await store.put(OPERATIONAL_SURFACES_R2_KEY, JSON.stringify(artifact));
     return { ok: true, changed: true, surface_count: surfaces.length };
   } catch (error) {
     // One failed tick is one stale hour, not an outage — contained, but never

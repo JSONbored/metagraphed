@@ -7,6 +7,7 @@ import type { ExtrinsicFeedSelector } from "./history-extrinsic-feed.ts";
 export interface HotHistoryPredicate {
   text: string;
   values: unknown[];
+  blockRange?: boolean;
 }
 
 /** Bind every caller value; only the internal column vocabulary enters SQL. */
@@ -36,7 +37,13 @@ export function hotHistoryPredicate(
     clauses.push(`(observed_at, block_number, ${index}) < (?, ?, ?)`);
     values.push(...range.cursor);
   }
-  return { text: clauses.join(" AND "), values };
+  return {
+    text: clauses.join(" AND "),
+    values,
+    blockRange: !["hotkey", "coldkey", "signer", "call_module"].some(
+      (column) => matches[column] != null,
+    ),
+  };
 }
 
 export function hotAccountPredicate(
@@ -58,6 +65,7 @@ export function hotAccountPredicate(
   return {
     text: predicates.map((predicate) => `(${predicate.text})`).join(" OR "),
     values: predicates.flatMap((predicate) => predicate.values),
+    blockRange: predicates.some((predicate) => predicate.blockRange),
   };
 }
 
@@ -103,6 +111,12 @@ export async function readHotHistoryTail(
   // Aggregates must consume the whole bounded selection; a page may stop once
   // it has enough candidates. One sentinel row distinguishes those outcomes.
   const maximum = pageSize ?? 50_000;
+  // Broad filters must scan only the bounded tail, not the entire timestamp
+  // index to satisfy ORDER BY. Account/signer/module lookups retain their
+  // selective indexes. These WITHOUT ROWID tables use the block-leading PK.
+  const access = predicate.blockRange
+    ? ` INDEXED BY sqlite_autoindex_${hotTable}_1`
+    : "";
   const result = await store.query<{
     first: number | null;
     last: number | null;
@@ -113,7 +127,7 @@ export async function readHotHistoryTail(
        SELECT MIN(block_number) AS first, MAX(block_number) AS last, COUNT(*) AS rows
        FROM chain_detail_blocks WHERE block_number > ? AND block_number <= ?
      ), matching AS (
-       SELECT ${groupBy ? `${groupBy.join(",")}, COUNT(*) AS count` : columns.join(",")} FROM ${hotTable}
+       SELECT ${groupBy ? `${groupBy.join(",")}, COUNT(*) AS count` : columns.join(",")} FROM ${hotTable}${access}
        WHERE block_number > ? AND block_number <= ? AND (${predicate.text})
        ${groupBy ? `GROUP BY ${groupBy.join(",")} ORDER BY count DESC` : `ORDER BY ${order}`} LIMIT ?
      )

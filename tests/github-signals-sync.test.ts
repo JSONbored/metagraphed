@@ -1,5 +1,6 @@
+import { generatedArtifactDb } from "./helpers/generated-artifact-db.ts";
 // Worker-side tests for the github-signals cron (#233 pattern): the daily
-// scheduled branch that captures GitHub dev-signals and writes the R2 store,
+// scheduled branch that captures GitHub dev-signals and writes the D1 store,
 // replacing the retired sync-github-signals.yml commit-a-file workflow.
 //
 // Same URL-dispatching fetch double convention as
@@ -195,7 +196,10 @@ describe("runGithubSignalsSync", () => {
     const deps = syncDeps();
     const waited: Promise<unknown>[] = [];
     const result = await runGithubSignalsSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket, POSTHOG_PROJECT_TOKEN: "phc_t" }),
+      mockEnv({
+        D1_STATE: generatedArtifactDb(bucket),
+        POSTHOG_PROJECT_TOKEN: "phc_t",
+      }),
       { waitUntil: (p) => waited.push(p) },
       deps,
     );
@@ -258,21 +262,27 @@ describe("runGithubSignalsSync", () => {
     assert.deepEqual(result, { ok: false, reason: "reader_unavailable" });
   });
 
-  test("refuses to run without a complete R2 binding", async () => {
+  test("refuses to run without a configured artifact store", async () => {
     for (const archive of [undefined, {}, { get: async () => null }]) {
       const result = await runGithubSignalsSync(
-        mockEnv({ GITHUB_SIGNALS_TOKEN: "tok", METAGRAPH_ARCHIVE: archive }),
+        mockEnv({
+          GITHUB_SIGNALS_TOKEN: "tok",
+          D1_STATE: generatedArtifactDb(archive),
+        }),
         undefined,
         syncDeps(),
       );
-      assert.deepEqual(result, { ok: false, reason: "r2_binding_missing" });
+      assert.deepEqual(result, { ok: false, reason: "artifact_store_missing" });
     }
   });
 
   test("an unreadable subnets artifact is a no-op, never a wipe", async () => {
     const { bucket, puts } = fakeBucket();
     const result = await runGithubSignalsSync(
-      mockEnv({ GITHUB_SIGNALS_TOKEN: "tok", METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({
+        GITHUB_SIGNALS_TOKEN: "tok",
+        D1_STATE: generatedArtifactDb(bucket),
+      }),
       undefined,
       syncDeps({ readArtifact: readArtifactStub(null) }),
     );
@@ -286,7 +296,10 @@ describe("runGithubSignalsSync", () => {
   test("an artifact with zero resolvable source repos is rejected as broken input", async () => {
     const { bucket, puts } = fakeBucket();
     const result = await runGithubSignalsSync(
-      mockEnv({ GITHUB_SIGNALS_TOKEN: "tok", METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({
+        GITHUB_SIGNALS_TOKEN: "tok",
+        D1_STATE: generatedArtifactDb(bucket),
+      }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub(subnetsArtifact([null, null])),
@@ -300,7 +313,10 @@ describe("runGithubSignalsSync", () => {
     const { bucket, puts, store } = fakeBucket();
     const calls: Array<{ url: string; headers: unknown }> = [];
     const result = await runGithubSignalsSync(
-      mockEnv({ GITHUB_SIGNALS_TOKEN: "tok", METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({
+        GITHUB_SIGNALS_TOKEN: "tok",
+        D1_STATE: generatedArtifactDb(bucket),
+      }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub(
@@ -322,9 +338,7 @@ describe("runGithubSignalsSync", () => {
     });
     assert.equal(puts.length, 1);
     assert.equal(puts[0].key, GITHUB_SIGNALS_R2_KEY);
-    assert.deepEqual(puts[0].options, {
-      httpMetadata: { contentType: "application/json" },
-    });
+    assert.equal(puts[0].options, undefined);
     const written = JSON.parse(
       store.get(GITHUB_SIGNALS_R2_KEY) as string,
     ) as GithubSignalsArtifact;
@@ -352,7 +366,7 @@ describe("runGithubSignalsSync", () => {
     const deps = syncDeps();
     const env = mockEnv({
       GITHUB_SIGNALS_TOKEN: "tok",
-      METAGRAPH_ARCHIVE: coldBucket,
+      D1_STATE: generatedArtifactDb(coldBucket),
     });
     const first = await runGithubSignalsSync(env, undefined, deps);
     assert.equal(first.changed, true);
@@ -364,7 +378,10 @@ describe("runGithubSignalsSync", () => {
       ),
     });
     const second = await runGithubSignalsSync(
-      mockEnv({ GITHUB_SIGNALS_TOKEN: "tok", METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({
+        GITHUB_SIGNALS_TOKEN: "tok",
+        D1_STATE: generatedArtifactDb(bucket),
+      }),
       undefined,
       syncDeps({ now: () => TICK_MS + 24 * 60 * 60 * 1000 }),
     );
@@ -399,7 +416,10 @@ describe("runGithubSignalsSync", () => {
       },
     });
     const result = await runGithubSignalsSync(
-      mockEnv({ GITHUB_SIGNALS_TOKEN: "tok", METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({
+        GITHUB_SIGNALS_TOKEN: "tok",
+        D1_STATE: generatedArtifactDb(bucket),
+      }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub(
@@ -448,7 +468,10 @@ describe("runGithubSignalsSync", () => {
       },
     });
     const result = await runGithubSignalsSync(
-      mockEnv({ GITHUB_SIGNALS_TOKEN: "tok", METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({
+        GITHUB_SIGNALS_TOKEN: "tok",
+        D1_STATE: generatedArtifactDb(bucket),
+      }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub(
@@ -476,7 +499,7 @@ describe("runGithubSignalsSync", () => {
     const result = await runGithubSignalsSync(
       mockEnv({
         GITHUB_SIGNALS_TOKEN: "tok",
-        METAGRAPH_ARCHIVE: throwingBucket,
+        D1_STATE: generatedArtifactDb(throwingBucket),
       }),
       undefined,
       syncDeps(),
@@ -490,7 +513,10 @@ describe("runGithubSignalsSync", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { bucket } = fakeBucket();
     const result = await runGithubSignalsSync(
-      mockEnv({ GITHUB_SIGNALS_TOKEN: "tok", METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({
+        GITHUB_SIGNALS_TOKEN: "tok",
+        D1_STATE: generatedArtifactDb(bucket),
+      }),
       undefined,
       syncDeps({
         fetchImpl: (async () => {
@@ -520,7 +546,8 @@ describe("runGithubSignalsSync", () => {
       { cron: GITHUB_SIGNALS_SYNC_CRON, scheduledTime: Date.now() } as never,
       mockEnv({
         GITHUB_SIGNALS_TOKEN: "tok",
-        METAGRAPH_ARCHIVE: bucket,
+        METAGRAPH_ARCHIVE: { get: bucket.get },
+        D1_STATE: generatedArtifactDb(bucket),
       }) as never,
       { waitUntil: (p: Promise<unknown>) => waited.push(p) } as never,
     )) as { ok: boolean; changed: boolean };

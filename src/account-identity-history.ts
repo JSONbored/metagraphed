@@ -1,4 +1,4 @@
-import { historySha256 } from "./history-sha256.ts";
+import { historyJson, historySha256 } from "./history-sha256.ts";
 // Personal (coldkey) chain identity history diff-tracking (#4326, epic
 // #4301/5.2): detect account_identity changes against the last recorded hash
 // per account. The append-only write itself lives entirely in Postgres now
@@ -27,23 +27,11 @@ import {
   FEED_PAGINATION,
 } from "../workers/request-params.ts";
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(",")}]`;
-  }
-  const record = value as Record<string, unknown>;
-  const keys = Object.keys(record).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
-}
-
 /** Hash of the tracked identity fields only — stable regardless of the row's
  * account/captured_at, which change independently of the identity itself. */
 export async function identityHash(snapshot: unknown): Promise<string | null> {
   if (!snapshot) return null;
-  return historySha256(String(stableStringify(snapshot)));
+  return historySha256(String(historyJson(snapshot)));
 }
 
 const READ_COLUMNS = [

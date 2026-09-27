@@ -1,3 +1,4 @@
+import { generatedArtifactDb } from "./helpers/generated-artifact-db.ts";
 // Worker-side tests for the surface-verification cron (#9096): the daily
 // scheduled branch that sweeps every registry subnet's 90-day uptime history
 // out of the observation store into the probe-evidence snapshot, replacing the
@@ -106,7 +107,7 @@ function syncEnv(overrides: Record<string, unknown> = {}) {
     store,
     env: mockEnv({
       ...pgMockEnv(),
-      METAGRAPH_ARCHIVE: bucket,
+      D1_STATE: generatedArtifactDb(bucket),
       METAGRAPH_CONTROL: fakeKv({ last_run_at: LAST_RUN_AT }),
       ...overrides,
     }),
@@ -403,7 +404,7 @@ describe("runSurfaceVerificationSync", () => {
     assert.equal((deps.readArtifact as Row).mock.calls.length, 0);
   });
 
-  test("no R2 binding: refuses to run LOUDLY", async () => {
+  test("no artifact store: refuses to run LOUDLY", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const deps = syncDeps();
     const result = await runSurfaceVerificationSync(
@@ -414,11 +415,11 @@ describe("runSurfaceVerificationSync", () => {
     assert.deepEqual(result, {
       ok: false,
       skipped: true,
-      reason: "r2_binding_missing",
+      reason: "artifact_store_missing",
     });
     assert.equal(
       (deps.recordException as Row).mock.calls[0][1].errorCode,
-      "surface_verification_bucket_missing",
+      "surface_verification_artifact_store_missing",
     );
   });
 
@@ -585,14 +586,14 @@ describe("runSurfaceVerificationSync", () => {
       mockEnv({
         ...pgMockEnv(),
         METAGRAPH_CONTROL: fakeKv({ last_run_at: LAST_RUN_AT }),
-        METAGRAPH_ARCHIVE: {
+        D1_STATE: generatedArtifactDb({
           get: async () => {
             throw new Error("R2 read failed");
           },
           put: async (key: string, value: string) => {
             puts.push({ key, value });
           },
-        },
+        }),
       }),
       undefined,
       syncDeps(),
@@ -681,7 +682,8 @@ describe("runSurfaceVerificationSync", () => {
       } as never,
       mockEnv({
         ...pgMockEnv(),
-        METAGRAPH_ARCHIVE: bucket,
+        METAGRAPH_ARCHIVE: { get: bucket.get },
+        D1_STATE: generatedArtifactDb(bucket),
         METAGRAPH_CONTROL: fakeKv({ last_run_at: LAST_RUN_AT }),
       }) as never,
       { waitUntil: () => {} } as never,

@@ -1,6 +1,7 @@
+import { generatedArtifactDb } from "./helpers/generated-artifact-db.ts";
 // Worker-side tests for the operational-surfaces cron (#9096): the hourly
 // scheduled branch that derives the prober's input list from the published
-// registry and writes the R2 store, replacing the retired
+// registry and writes the D1 store, replacing the retired
 // sync-operational-surfaces.yml commit-a-file workflow.
 //
 // Same double conventions as tests/github-signals-sync.test.ts — the artifact
@@ -251,7 +252,7 @@ describe("operationalSurfacesContentDigest", () => {
 });
 
 describe("runOperationalSurfacesSync", () => {
-  test("no R2 binding: no-ops LOUDLY — console.error + one exception event — and reads nothing", async () => {
+  test("no artifact store: no-ops LOUDLY — console.error + one exception event — and reads nothing", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const deps = syncDeps();
     const waited: Promise<unknown>[] = [];
@@ -264,13 +265,13 @@ describe("runOperationalSurfacesSync", () => {
     assert.deepEqual(result, {
       ok: false,
       skipped: true,
-      reason: "r2_binding_missing",
+      reason: "artifact_store_missing",
     });
     assert.equal(errorSpy.mock.calls.length, 1);
     assert.equal((deps.recordException as Row).mock.calls.length, 1);
     assert.equal(
       (deps.recordException as Row).mock.calls[0][1].errorCode,
-      "operational_surfaces_bucket_missing",
+      "operational_surfaces_artifact_store_missing",
     );
     // Never reached the registry: refusing to write is the whole no-op.
     assert.equal((deps.readArtifact as Row).mock.calls.length, 0);
@@ -279,17 +280,17 @@ describe("runOperationalSurfacesSync", () => {
   test("a bucket missing put() is treated as unbound too", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: { get: async () => null } }),
+      mockEnv({ D1_STATE: generatedArtifactDb({ get: async () => null }) }),
       undefined,
       syncDeps(),
     );
-    assert.equal(result.reason, "r2_binding_missing");
+    assert.equal(result.reason, "artifact_store_missing");
   });
 
   test("no reader injected is a contained no-op, not a throw", async () => {
     const { bucket } = fakeBucket();
     const result = await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       { readArtifact: undefined },
     );
@@ -299,7 +300,7 @@ describe("runOperationalSurfacesSync", () => {
   test("an unavailable surfaces artifact never wipes the store", async () => {
     const { bucket, puts } = fakeBucket();
     const result = await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub({
@@ -317,7 +318,7 @@ describe("runOperationalSurfacesSync", () => {
   test("a surfaces artifact with zero operational rows never wipes the store", async () => {
     const { bucket, puts } = fakeBucket();
     const result = await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub({
@@ -339,7 +340,7 @@ describe("runOperationalSurfacesSync", () => {
     const { store, puts } = fakeBucket();
     const paths: string[] = [];
     const result = await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: fakeBucketFrom(store, puts) }),
+      mockEnv({ D1_STATE: generatedArtifactDb(fakeBucketFrom(store, puts)) }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub(
@@ -384,7 +385,7 @@ describe("runOperationalSurfacesSync", () => {
   test("a failing published-artifact seed read degrades to null schema_source, not a failed tick", async () => {
     const { bucket, puts } = fakeBucket();
     const result = await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({
         readArtifact: vi.fn(async (_env: unknown, path: string) =>
@@ -411,7 +412,7 @@ describe("runOperationalSurfacesSync", () => {
     });
     const paths: string[] = [];
     await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub(
@@ -438,14 +439,14 @@ describe("runOperationalSurfacesSync", () => {
     const puts: Array<{ key: string; value: string }> = [];
     const result = await runOperationalSurfacesSync(
       mockEnv({
-        METAGRAPH_ARCHIVE: {
+        D1_STATE: generatedArtifactDb({
           get: async () => {
             throw new Error("R2 read failed");
           },
           put: async (key: string, value: string) => {
             puts.push({ key, value });
           },
-        },
+        }),
       }),
       undefined,
       syncDeps(),
@@ -457,13 +458,13 @@ describe("runOperationalSurfacesSync", () => {
   test("skips the write when the content is unchanged (only generated_at moved)", async () => {
     const { bucket, puts } = fakeBucket();
     const first = await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps(),
     );
     assert.equal(first.changed, true);
     const second = await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({ now: () => TICK_MS + 3_600_000 }),
     );
@@ -479,7 +480,7 @@ describe("runOperationalSurfacesSync", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { bucket } = fakeBucket();
     const result = await runOperationalSurfacesSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({
         readArtifact: vi.fn(async () => {
@@ -533,7 +534,10 @@ describe("runOperationalSurfacesSync", () => {
         cron: OPERATIONAL_SURFACES_SYNC_CRON,
         scheduledTime: Date.now(),
       } as never,
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }) as never,
+      mockEnv({
+        METAGRAPH_ARCHIVE: { get: bucket.get },
+        D1_STATE: generatedArtifactDb(bucket),
+      }) as never,
       { waitUntil: () => {} } as never,
     )) as { ok: boolean; changed: boolean };
     assert.equal(result.ok, true);

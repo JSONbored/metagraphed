@@ -1,3 +1,4 @@
+import { generatedArtifactDb } from "./helpers/generated-artifact-db.ts";
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
@@ -1036,12 +1037,13 @@ describe("loadOperationalSurfaces", () => {
     const storeBody = { surfaces: [{ surface_id: "from-store", netuid: 2 }] };
     let requestedKey: string | null = null;
     const env = mockEnv({
-      METAGRAPH_ARCHIVE: {
+      D1_STATE: generatedArtifactDb({
+        put: async () => {},
         get: async (key: string) => {
           requestedKey = key;
-          return { text: async () => JSON.stringify(storeBody) };
+          return { json: async () => storeBody };
         },
-      },
+      }),
       ASSETS: {
         fetch: async () => ({ ok: true, json: async () => surfacesBody }),
       },
@@ -1053,12 +1055,13 @@ describe("loadOperationalSurfaces", () => {
   test("a cold or empty store falls through to the committed seed rather than probing nothing", async () => {
     for (const storeDoc of [null, { surfaces: [] }, { nope: 1 }]) {
       const env = mockEnv({
-        METAGRAPH_ARCHIVE: {
+        D1_STATE: generatedArtifactDb({
+          put: async () => {},
           get: async (key: string) =>
             key === OPERATIONAL_SURFACES_R2_KEY
-              ? storeDoc && { text: async () => JSON.stringify(storeDoc) }
+              ? storeDoc && { json: async () => storeDoc }
               : null,
-        },
+        }),
         ASSETS: {
           fetch: async () => ({ ok: true, json: async () => surfacesBody }),
         },
@@ -1072,11 +1075,12 @@ describe("loadOperationalSurfaces", () => {
 
   test("a throwing store read falls through to the committed seed", async () => {
     const env = mockEnv({
-      METAGRAPH_ARCHIVE: {
+      D1_STATE: generatedArtifactDb({
+        put: async () => {},
         get: async () => {
           throw new Error("store read failed");
         },
-      },
+      }),
       ASSETS: {
         fetch: async () => ({ ok: true, json: async () => surfacesBody }),
       },

@@ -142,9 +142,9 @@ function documentStatements(
     // capture cannot regress the lookup index while its metrics are rejected.
     out.push({
       text: `INSERT INTO ${members}(${fields.join(",")},shard)
-      SELECT ${fields.map((c) => `json_extract(d.payload,'$."'||i.key||'".${c}')`).join(",")},d.shard
+      SELECT ${fields.map((c) => `json_extract(i.value,'$.${c}')`).join(",")},d.shard
       FROM json_each(?) b JOIN ${table} d ON d.netuid=json_extract(b.value,'$.netuid') AND d.day=json_extract(b.value,'$.day') AND d.shard=json_extract(b.value,'$.shard')
-      JOIN json_each(json_extract(b.value,'$.payload')) i WHERE true
+      JOIN json_each(d.payload) i WHERE json_type(b.value,'$.payload."'||i.key||'"') IS NOT NULL
       ON CONFLICT(${conflict}) ${identityUpdates}`,
       values: [value],
     });

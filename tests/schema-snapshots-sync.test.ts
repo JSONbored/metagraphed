@@ -1,3 +1,4 @@
+import { generatedArtifactDb } from "./helpers/generated-artifact-db.ts";
 // Worker-side tests for the schema-snapshots cron (#9096): the daily scheduled
 // branch that promotes the freshly published OpenAPI index into the durable
 // drift-baseline store, replacing the retired sync-schema-snapshots.yml
@@ -307,7 +308,7 @@ describe("schemaIndexContentDigest", () => {
 });
 
 describe("runSchemaSnapshotsSync", () => {
-  test("no R2 binding: no-ops LOUDLY — console.error + one exception event — and reads nothing", async () => {
+  test("no artifact store: no-ops LOUDLY — console.error + one exception event — and reads nothing", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const deps = syncDeps();
     const waited: Promise<unknown>[] = [];
@@ -320,12 +321,12 @@ describe("runSchemaSnapshotsSync", () => {
     assert.deepEqual(result, {
       ok: false,
       skipped: true,
-      reason: "r2_binding_missing",
+      reason: "artifact_store_missing",
     });
     assert.equal(errorSpy.mock.calls.length, 1);
     assert.equal(
       (deps.recordException as Row).mock.calls[0][1].errorCode,
-      "schema_snapshots_bucket_missing",
+      "schema_snapshots_artifact_store_missing",
     );
     assert.equal((deps.readArtifact as Row).mock.calls.length, 0);
   });
@@ -333,7 +334,7 @@ describe("runSchemaSnapshotsSync", () => {
   test("no reader injected is a contained no-op, not a throw", async () => {
     const { bucket } = fakeBucket();
     const result = await runSchemaSnapshotsSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       { readArtifact: undefined },
     );
@@ -343,7 +344,7 @@ describe("runSchemaSnapshotsSync", () => {
   test("an unavailable published index never wipes the baseline", async () => {
     const { bucket, puts } = fakeBucket();
     const result = await runSchemaSnapshotsSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({ readArtifact: readArtifactStub(null) }),
     );
@@ -358,7 +359,7 @@ describe("runSchemaSnapshotsSync", () => {
     const { bucket, puts } = fakeBucket();
     for (const doc of [publishedIndex([]), { schemas: "nope" } as Row]) {
       const result = await runSchemaSnapshotsSync(
-        mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+        mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
         undefined,
         syncDeps({ readArtifact: readArtifactStub(doc) }),
       );
@@ -370,7 +371,7 @@ describe("runSchemaSnapshotsSync", () => {
   test("promotes the published index verbatim, keeping `source` so the build still reuses it", async () => {
     const { bucket, puts } = fakeBucket();
     const result = await runSchemaSnapshotsSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps(),
     );
@@ -398,7 +399,7 @@ describe("runSchemaSnapshotsSync", () => {
       [SCHEMA_INDEX_R2_KEY]: publishedIndex([capturedEntry()]),
     });
     const result = await runSchemaSnapshotsSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub(publishedIndex([missingEntry()])),
@@ -415,14 +416,14 @@ describe("runSchemaSnapshotsSync", () => {
     const puts: Array<{ key: string; value: string }> = [];
     const result = await runSchemaSnapshotsSync(
       mockEnv({
-        METAGRAPH_ARCHIVE: {
+        D1_STATE: generatedArtifactDb({
           get: async () => {
             throw new Error("R2 read failed");
           },
           put: async (key: string, value: string) => {
             puts.push({ key, value });
           },
-        },
+        }),
       }),
       undefined,
       syncDeps(),
@@ -435,7 +436,7 @@ describe("runSchemaSnapshotsSync", () => {
   test("skips the write when only the re-stamped timestamps moved", async () => {
     const { bucket, puts } = fakeBucket();
     const first = await runSchemaSnapshotsSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps(),
     );
@@ -447,7 +448,7 @@ describe("runSchemaSnapshotsSync", () => {
     ]);
     restamped.observed_at = "2026-08-03T05:00:00.000Z";
     const second = await runSchemaSnapshotsSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({
         readArtifact: readArtifactStub(restamped),
@@ -469,7 +470,7 @@ describe("runSchemaSnapshotsSync", () => {
       [SCHEMA_INDEX_R2_KEY]: { schemas: "nope" },
     });
     const result = await runSchemaSnapshotsSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps(),
     );
@@ -481,7 +482,7 @@ describe("runSchemaSnapshotsSync", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { bucket } = fakeBucket();
     const result = await runSchemaSnapshotsSync(
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }),
+      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }),
       undefined,
       syncDeps({
         readArtifact: vi.fn(async () => {
@@ -526,7 +527,10 @@ describe("runSchemaSnapshotsSync", () => {
         cron: SCHEMA_SNAPSHOTS_SYNC_CRON,
         scheduledTime: Date.now(),
       } as never,
-      mockEnv({ METAGRAPH_ARCHIVE: bucket }) as never,
+      mockEnv({
+        METAGRAPH_ARCHIVE: { get: bucket.get },
+        D1_STATE: generatedArtifactDb(bucket),
+      }) as never,
       { waitUntil: () => {} } as never,
     )) as { ok: boolean; changed: boolean };
     assert.equal(result.ok, true);

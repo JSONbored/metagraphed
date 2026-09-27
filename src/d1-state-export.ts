@@ -23,6 +23,7 @@ const RequestSchema = z
     since: z.array(scalar).min(1).max(4).optional(),
     cursor: z.array(scalar).min(1).max(4).optional(),
     revision: z.number().int().nonnegative().safe().optional(),
+    revision_scope: z.literal("day").optional(),
   })
   .strict();
 const BOOLEANS = new Set(
@@ -90,24 +91,27 @@ export async function handleD1StateExport(
     return fail(401, "invalid state export credential");
   if (request.method !== "POST") return fail(405, "state export requires POST");
   const inputBody = await boundedInternalJson(request, 8192).catch(() => null);
-  if (
-    inputBody &&
-    typeof inputBody === "object" &&
-    (inputBody as { kind?: unknown }).kind === "basket"
-  )
-    return handleRootBasketExport(inputBody, env);
-  if (
-    inputBody &&
-    typeof inputBody === "object" &&
-    (inputBody as { kind?: unknown }).kind === "native-history"
-  )
-    return handleNativeHistoryExport(inputBody, env);
+  if (inputBody && typeof inputBody === "object") {
+    const kind = (inputBody as { kind?: unknown }).kind;
+    if (kind === "basket") return handleRootBasketExport(inputBody, env);
+    if (kind === "native-history")
+      return handleNativeHistoryExport(inputBody, env);
+  }
   const parsed = RequestSchema.safeParse(inputBody);
   if (!parsed.success || !Object.hasOwn(D1_EXPORT_TABLES, parsed.data.table))
     return fail(400, "invalid export request");
   const input = parsed.data,
     table = input.table,
     plan = D1_EXPORT_TABLES[table]!;
+  const dayScope = input.revision_scope === "day";
+  if (
+    dayScope &&
+    (!plan.daily ||
+      !input.day ||
+      input.day >= new Date().toISOString().slice(0, 10) ||
+      !["rows", "revision"].includes(input.kind))
+  )
+    return fail(400, "day revisions require a closed daily partition");
   if (env.D1_EXPORT_REVISIONS !== "enabled")
     return fail(503, "state export revisions are not enabled");
   try {
@@ -135,14 +139,27 @@ export async function handleD1StateExport(
     if (!columns.length) throw new Error("export source absent");
     const reply = (value: Record<string, unknown>) =>
       internalJson({ version: 1, ...value });
-    if (input.kind === "schema") return reply({ columns });
     const revisionStatement = db
       .prepare(
-        "SELECT coalesce((SELECT revision FROM archive_export_revisions WHERE table_name=?),0) revision",
+        "SELECT coalesce((SELECT revision FROM archive_export_revisions WHERE table_name=?),0) revision, EXISTS(SELECT 1 FROM archive_export_revisions WHERE table_name='__closed_day_revisions_v1') day_revisions",
       )
-      .bind(table);
+      .bind(dayScope ? `${table}/${input.day}` : table);
+    if (input.kind === "schema")
+      return reply({
+        columns,
+        day_revisions:
+          !!plan.daily &&
+          (await revisionStatement.first<number>("day_revisions")) === 1,
+      });
+    const checkedRevision = (row: ExportRow) => {
+      if (dayScope && row.day_revisions !== 1)
+        throw new Error("Day revisions are not provisioned");
+      return row.revision as number;
+    };
     if (input.kind === "revision") {
-      const revision = await revisionStatement.first<number>("revision");
+      const revision = checkedRevision(
+        (await revisionStatement.first<ExportRow>())!,
+      );
       return input.revision !== undefined && revision !== input.revision
         ? fail(409, "export source changed")
         : reply({ revision });
@@ -207,7 +224,7 @@ export async function handleD1StateExport(
       )
       .bind(...values);
     const results = await db.batch<ExportRow>([revisionStatement, statement]);
-    const revision = (results[0]!.results[0] as { revision: number }).revision;
+    const revision = checkedRevision(results[0]!.results[0]!);
     if (input.revision !== undefined && revision !== input.revision)
       return fail(409, "export source changed");
     const sourceRows = results[1]!.results;
