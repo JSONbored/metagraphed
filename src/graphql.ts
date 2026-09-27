@@ -8119,14 +8119,6 @@ const rootValue = {
       defaultLimit: CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
       maxLimit: CHAIN_AXON_REMOVALS_LIMIT_MAX,
     });
-    const params = new URLSearchParams();
-    params.set("window", requestedWindow);
-    params.set("limit", String(safeLimit));
-    // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-    // the table is dropped in production, so a store query here would always miss
-    // (#6013). Same tryDataApiTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
-    // schema-stable zeroed card contract REST's handleChainAxonRemovals uses,
-    // never a GraphQL error.
     // DERIVED FROM STATE (#10805), the same read REST and MCP make, so the
     // three surfaces cannot drift. A null rollup is "no store", not "no
     // removals" -- the builder keeps its degraded empty for that.
@@ -8136,29 +8128,12 @@ const rootValue = {
           requestedWindow as keyof typeof CHAIN_AXON_REMOVALS_WINDOWS
         ],
     });
-    const data = buildChainAxonRemovals(rollup?.subnets ?? [], {
+    return buildChainAxonRemovals(rollup?.subnets ?? [], {
       window: requestedWindow,
       limit: safeLimit,
       networkDistinct: rollup?.network,
       derivation: rollup?.derivation,
     });
-    return {
-      schema_version: data.schema_version ?? 1,
-      window: data.window ?? requestedWindow,
-      observed_at: data.observed_at ?? null,
-      subnet_count: data.subnet_count ?? 0,
-      network: data.network ?? {
-        distinct_removers: 0,
-        removals: 0,
-        removals_per_remover: null,
-      },
-      intensity_distribution: data.intensity_distribution ?? null,
-      subnets: data.subnets || [],
-      // #9307: AxonInfoRemoved was never emitted, so an empty answer here is
-      // not a measurement. The builder marks it; this projection must carry
-      // the marker through or GraphQL alone keeps publishing a confident 0.
-      degraded: data.degraded ?? null,
-    };
   },
 
   async chain_deregistrations(
