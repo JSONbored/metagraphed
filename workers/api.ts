@@ -1,4 +1,5 @@
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
+import { handleNativeStoreExportRequest } from "../src/native-store-export.ts";
 import { recordMatchedUsageRollup } from "./usage-rollup.ts";
 export { flushUsageRollup, usageRollupBufferSize } from "./usage-rollup.ts";
 import { scheduleExceptionEvent } from "./request-lifecycle.ts";
@@ -5991,6 +5992,12 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       unreadableMessage:
         "The retained blocks tier returned an unreadable response.",
     });
+  }
+  if (url.pathname === "/api/v1/internal/native-store-export") {
+    return (
+      (await internalSyncRateLimited(request, env)) ??
+      handleNativeStoreExportRequest(request, env)
+    );
   }
   if (url.pathname === "/api/v1/internal/state-export") {
     return proxyToDataApi(request, env, {

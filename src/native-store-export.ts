@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { internalJson as reply } from "./internal-json.ts";
+import { boundedInternalJson, internalJson as reply } from "./internal-json.ts";
+import { timingSafeEqual } from "./webhooks.ts";
 
 const asset = z
   .object({
@@ -37,7 +38,26 @@ const schema = z.discriminatedUnion("operation", [
     .strict(),
 ]);
 
-/** Called only behind the state-export credential. No storage writes or R2 fallback. */
+/** Publication control stays outside the data API's serving import graph. */
+export async function handleNativeStoreExportRequest(
+  request: Request,
+  env: unknown,
+): Promise<Response> {
+  const secret = (env as { STATE_EXPORT_SECRET?: string } | null)
+    ?.STATE_EXPORT_SECRET;
+  if (!secret)
+    return reply({ error: "native store export is not provisioned" }, 503);
+  if (!timingSafeEqual(request.headers.get("x-state-export-token"), secret))
+    return reply({ error: "invalid state export credential" }, 401);
+  if (request.method !== "POST")
+    return reply({ error: "native store export requires POST" }, 405);
+  return handleNativeStoreExport(
+    await boundedInternalJson(request, 8192).catch(() => null),
+    env,
+  );
+}
+
+/** Called only behind the export credential; all paths are content addresses. */
 export async function handleNativeStoreExport(
   input: unknown,
   env: unknown,

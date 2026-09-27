@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { handleD1StateExport } from "../src/d1-state-export.ts";
-import { handleNativeStoreExport } from "../src/native-store-export.ts";
+import { handleRequest } from "../workers/api.ts";
+import {
+  handleNativeStoreExport,
+  handleNativeStoreExportRequest,
+} from "../src/native-store-export.ts";
 
 const raw = "immutable native content";
 const sha256 = createHash("sha256").update(raw).digest("hex");
@@ -31,7 +34,7 @@ function fixture(response = () => new Response(raw)) {
   return { fetch, r2, env };
 }
 const request = (body: unknown, token = "producer-secret") =>
-  new Request("https://example.com/api/v1/internal/state-export", {
+  new Request("https://example.com/api/v1/internal/native-store-export", {
     method: "POST",
     headers: { "x-state-export-token": token },
     body: JSON.stringify(body),
@@ -41,10 +44,20 @@ describe("existing private native store readback", () => {
   it("requires the existing export credential before touching the selected binding", async () => {
     const f = fixture();
     expect(
-      (await handleD1StateExport(request(input, "wrong"), f.env)).status,
+      (
+        await handleRequest(
+          request(input, "wrong"),
+          f.env as unknown as Env,
+          {},
+        )
+      ).status,
     ).toBe(401);
     expect(f.fetch).not.toHaveBeenCalled();
-    const response = await handleD1StateExport(request(input), f.env);
+    const response = await handleRequest(
+      request(input),
+      f.env as unknown as Env,
+      {},
+    );
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("content-length")).toBe(String(raw.length));
@@ -57,6 +70,53 @@ describe("existing private native store readback", () => {
     expect(incoming.headers.get("accept-encoding")).toBe("identity");
     expect(incoming.redirect).toBe("error");
     expect(f.r2).not.toHaveBeenCalled();
+  });
+
+  it("keeps the existing internal rate limit before asset reads", async () => {
+    const f = fixture();
+    const response = await handleRequest(
+      request(input),
+      {
+        ...f.env,
+        INTERNAL_SYNC_RATE_LIMITER: { limit: async () => ({ success: false }) },
+      } as unknown as Env,
+      {},
+    );
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("60");
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing credentials, unsupported methods and unbounded or malformed bodies", async () => {
+    const f = fixture();
+    expect(
+      (await handleNativeStoreExportRequest(request(input), undefined)).status,
+    ).toBe(503);
+    expect(
+      (
+        await handleNativeStoreExportRequest(
+          new Request(request(input).url, {
+            headers: { "x-state-export-token": "producer-secret" },
+          }),
+          f.env,
+        )
+      ).status,
+    ).toBe(405);
+    for (const body of ["bad json", "x".repeat(8193)]) {
+      expect(
+        (
+          await handleNativeStoreExportRequest(
+            new Request(request(input).url, {
+              method: "POST",
+              headers: { "x-state-export-token": "producer-secret" },
+              body,
+            }),
+            f.env,
+          )
+        ).status,
+      ).toBe(400);
+    }
+    expect(f.fetch).not.toHaveBeenCalled();
   });
 
   it("reads a publisher manifest by its exact compressed-byte identity", async () => {
