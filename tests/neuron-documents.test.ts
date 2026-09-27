@@ -16,6 +16,7 @@ import {
   NEURONS_COVERAGE_SQL,
   NEURONS_D1_COVERAGE_SQL,
   evaluateNeuronsStaleness,
+  runNeuronsStalenessWatchdog,
 } from "../src/neurons-staleness-watchdog.ts";
 import {
   crossCheckSql,
@@ -810,4 +811,57 @@ test("empty native shards do not count as subnet coverage", async () => {
   const legacy = await store().first(NEURONS_COVERAGE_SQL, [300_000]);
   const native = await coverage(stamp + 901_000);
   assert.deepEqual(native, { ...legacy, uploading: 0 });
+});
+
+test("the production watchdog selects native capture proof and persists its bounded verdict", async () => {
+  const next = stamp + 900_000;
+  await captureNetwork(stamp, 0, 129);
+  await captureNetwork(next, 0, 42);
+  const writes: unknown[][] = [];
+  const errors: string[] = [];
+  const tick = (now: number) =>
+    runNeuronsStalenessWatchdog(
+      { D1_STATE: db, D1_STATE_TABLES: owners },
+      {
+        now: () => now,
+        laneHealthDb: {
+          query: async () => [],
+          run: async (_sql, values = []) => {
+            writes.push(values);
+            return { changes: 1 };
+          },
+        },
+        recordException: async (_env, event) => {
+          errors.push(String(event.error));
+          return true;
+        },
+      },
+    );
+  const uploading = await tick(next + 10_000);
+  assert.equal(uploading.ok, true);
+  assert.equal(uploading.alerted, false);
+  assert.equal(uploading.covered_netuids, 129);
+  assert.equal(errors.length, 0);
+  assert.ok(
+    writes.some(
+      (values) =>
+        values.includes("ok") &&
+        values.some(
+          (v) => typeof v === "string" && v.includes("capture_in_flight=1"),
+        ),
+    ),
+  );
+
+  const expired = await tick(next + 300_001);
+  assert.equal(expired.ok, true);
+  assert.equal(expired.alerted, true);
+  assert.equal(expired.reason, "partial");
+  assert.match(errors[0], /covered only 42 of 129/);
+
+  await captureNetwork(next, 42, 87);
+  const complete = await tick(next + 310_000);
+  assert.equal(complete.ok, true);
+  assert.equal(complete.alerted, false);
+  assert.equal(complete.covered_netuids, 129);
+  assert.equal(errors.length, 1);
 });
