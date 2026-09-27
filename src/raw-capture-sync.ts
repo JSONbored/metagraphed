@@ -26,6 +26,7 @@ import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import { rawCaptureD1 } from "./raw-capture-d1.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import type { WaitUntilLike } from "./pg-sql.ts";
 import {
@@ -314,6 +315,7 @@ export const RAW_CAPTURE_LANES: readonly RawCaptureLane[] = [
 
 interface RawCaptureEnv extends TelemetryEnv, StoreEnv {
   METAGRAPH_ARCHIVE?: { put(key: string, value: string): Promise<unknown> };
+  RAW_CAPTURE_STORAGE?: string;
   RAW_CAPTURE_ENABLED?: string;
   CHAIN_HEAD_RPC_URL?: string;
   TESTNET_CHAIN_HEAD_RPC_URL?: string;
@@ -470,7 +472,23 @@ export async function runRawCaptureSync(
     // Disabled is a deliberate state, not a fault: no capture, no noise.
     return { ok: false, skipped: true, reason: "disabled" };
   }
-  if (!env?.METAGRAPH_ARCHIVE?.put) {
+  if (
+    env.RAW_CAPTURE_STORAGE &&
+    !["r2", "d1"].includes(env.RAW_CAPTURE_STORAGE)
+  ) {
+    return loud(
+      "store_unavailable",
+      "Raw capture storage selection is invalid; refusing an implicit fallback.",
+    );
+  }
+  const d1Capture = env?.RAW_CAPTURE_STORAGE === "d1";
+  if (d1Capture && !env.D1_STATE?.prepare) {
+    return loud(
+      "store_unavailable",
+      "Raw capture D1 storage is not bound; no capture watermark can advance.",
+    );
+  }
+  if (!d1Capture && !env?.METAGRAPH_ARCHIVE?.put) {
     return loud(
       "store_unavailable",
       "METAGRAPH_ARCHIVE is not bound; refusing to run. Captured bytes have nowhere durable to land, and a tick that cannot store is a gap.",
@@ -492,9 +510,11 @@ export async function runRawCaptureSync(
     );
   }
 
-  const store: RawCaptureStore = {
-    put: (key, value) => env.METAGRAPH_ARCHIVE!.put(key, value),
-  };
+  const store: RawCaptureStore = d1Capture
+    ? rawCaptureD1(env.D1_STATE!)
+    : {
+        put: (key, value) => env.METAGRAPH_ARCHIVE!.put(key, value),
+      };
 
   // Each lane is captured independently and IN ORDER, mainnet first.
   //
