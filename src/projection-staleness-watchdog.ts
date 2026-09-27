@@ -1,36 +1,16 @@
-// The alarm for the projection lanes (#9423).
-//
-// This watchdog exists because of what happened WITHOUT one. Two lanes --
-// chain-stake-moves and chain-stake-transfers -- stopped writing on
-// 2026-08-03T09:13 and nothing noticed for 31 hours. The read path degraded
-// exactly as designed: a lane that cannot compute leaves the previous artifact
-// in place, so the routes kept answering 200 off a card whose newest event was
-// 44 hours old, under a `7d` window label, with no degraded marker. Found by
-// reading R2 object timestamps by hand, not by anything going red.
-//
-// LEAVING THE PREVIOUS ARTIFACT IS RIGHT; NOT NOTICING IS NOT. The all-or-
-// nothing write is what stops one failed query from replacing real numbers
-// with a plausible-looking blank. What was missing is the other half: someone
-// asking how long that has been going on.
-//
-// AND THE OPPOSITE SHAPE, which the age check cannot see (#11406's aftermath).
-// A lane that runs on time and computes ZERO rows overwrites the good artifact
-// with an empty one, so `generated_at` never ages and this watchdog reported
-// `ok` every 30 minutes for a day while the site's 24h on-chain volume showed
-// an em-dash. The all-or-nothing contract only covers a FAILED query (`null`);
-// an empty answer (`[]`) is stored, and of the thirteen lanes only
-// computeBlocksSummary declines to store it. So freshness is not coverage, and
-// `evaluateProjectionStaleness` now reads `row_count` as well as the timestamp.
-//
-// Same shape as src/nominator-positions-staleness-watchdog.ts deliberately --
-// a pure rule, a summary rather than a throw, and one exception event per
-// stale tick. Zero alerts is the correct steady state.
+// Monitor the same selected projections that public routes serve. Preserve
+// freshness and nonempty-data checks across D1 and legacy archive ownership.
 
-import { type ArtifactStoreEnv, artifactBucket } from "./projection-store.ts";
+import {
+  type ArtifactStoreEnv,
+  artifactBucket,
+  readArtifactObject,
+} from "./projection-store.ts";
+import { nativeProjectionsEnabled } from "./native-projection-store.ts";
 
 import { ProjectionArtifactEnvelopeSchema } from "../schemas-src/artifacts/projection-envelope.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
-import { DEFAULT_CHAIN_NETWORK, projectionKey } from "./chain-network.ts";
+import { DEFAULT_CHAIN_NETWORK, type ChainNetworkId } from "./chain-network.ts";
 import { PROJECTION_LANES, PROJECTION_NETWORKS } from "./projection-lanes.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
@@ -278,6 +258,7 @@ export interface ProjectionStalenessDeps {
 function watchedLanes(): {
   lane: string;
   key: string;
+  network: ChainNetworkId;
   emptyIsFault: boolean;
 }[] {
   return PROJECTION_NETWORKS.flatMap((network) =>
@@ -286,7 +267,8 @@ function watchedLanes(): {
         network === DEFAULT_CHAIN_NETWORK
           ? lane.name
           : `${lane.name}:${network}`,
-      key: projectionKey(lane.artifactKey, network),
+      key: lane.artifactKey,
+      network,
       // ZERO ROWS IS A FAULT ON MAINNET ONLY, and the difference is not a
       // narrowing to make an alarm quieter -- it is the claim the rule makes.
       //
@@ -326,7 +308,8 @@ export async function runProjectionStalenessWatchdog(
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
   const bucket = artifactBucket(env);
-  if (!bucket) return { ok: false, reason: "r2 binding unavailable" };
+  if (!bucket && !nativeProjectionsEnabled(env))
+    return { ok: false, reason: "r2 binding unavailable" };
 
   const thresholdMs =
     Number(env?.PROJECTION_STALENESS_THRESHOLD_MS) ||
@@ -338,31 +321,17 @@ export async function runProjectionStalenessWatchdog(
     rowCount: number | null;
     emptyIsFault: boolean;
   }[] = [];
-  for (const { lane, key, emptyIsFault } of watchedLanes()) {
-    let generatedAt: string | null;
-    let rowCount: number | null;
-    try {
-      const object = await bucket.get(key);
-      const body = object ? await object.json() : null;
-      // PARSED, not cast (#11194's rule, one boundary further out). The cast
-      // this replaces typed the access without checking a byte of it, and these
-      // bodies come out of R2 written by whatever deploy was live at the time.
-      // Both fields come off ONE parse of the SAME body, so the count and the
-      // timestamp can never describe two different objects, and a malformed
-      // field lands as null through the schema's own `.catch` rather than
-      // through a typeof check restated at each read site.
-      const envelope = ProjectionArtifactEnvelopeSchema.safeParse(body);
-      generatedAt = envelope.success
-        ? (envelope.data.generated_at ?? null)
-        : null;
-      rowCount = envelope.success ? (envelope.data.row_count ?? null) : null;
-    } catch {
-      // An unreadable object is reported as absent rather than skipped: a
-      // watchdog that quietly drops what it could not read is a watchdog that
-      // reports healthy on exactly the lanes worth worrying about.
-      generatedAt = null;
-      rowCount = null;
-    }
+  for (const { lane, key, network, emptyIsFault } of watchedLanes()) {
+    const body = await readArtifactObject(
+      env,
+      key,
+      network,
+      ProjectionArtifactEnvelopeSchema,
+    );
+    // The shared reader validates the selected generation and its bytes.
+    // Invalid or unreadable data remains absent; never fall back to old cards.
+    const generatedAt = body?.generated_at ?? null;
+    const rowCount = body?.row_count ?? null;
     artifacts.push({ lane, generatedAt, rowCount, emptyIsFault });
   }
 
