@@ -322,6 +322,54 @@ describe("analytics (PostHog web analytics)", () => {
       expect(beforeSend(pageview)).toBe(pageview);
     });
 
+    it("filters only the proven stackless synthetic native bridge rejection", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      const { capturePageview } = await import("./analytics");
+      capturePageview("https://metagraph.sh/");
+      await vi.waitFor(() => expect(init).toHaveBeenCalled());
+      const beforeSend = init.mock.calls[0][1].before_send as (e: unknown) => unknown;
+      const value =
+        "Non-Error promise rejection captured with value: Object Not Found Matching Id:2, MethodName:update, ParamCount:4";
+      const bridge = {
+        type: "UnhandledRejection",
+        value,
+        mechanism: { synthetic: true, handled: false },
+      };
+      const event = (exceptions: unknown[], signature: string) => ({
+        event: "$exception",
+        properties: { $exception_list: exceptions, $exception_values: [signature] },
+      });
+      expect(beforeSend(event([bridge], "bridge"))).toBeNull();
+      expect(
+        beforeSend(
+          event(
+            [
+              {
+                ...bridge,
+                value: "Object Not Found Matching Id:7, MethodName:update, ParamCount:4",
+              },
+            ],
+            "raw-bridge",
+          ),
+        ),
+      ).toBeNull();
+      for (const [index, exception] of [
+        { ...bridge, stacktrace: { frames: [{ filename: "https://metagraph.sh/assets/app.js" }] } },
+        { ...bridge, stacktrace: {} },
+        { ...bridge, type: "Error" },
+        { ...bridge, mechanism: { synthetic: false, handled: false } },
+        { ...bridge, mechanism: { synthetic: true, handled: true } },
+        { ...bridge, value: value + " application detail" },
+        { ...bridge, value: value.replace("update", "render") },
+        null,
+      ].entries()) {
+        const candidate = event([exception], `preserve-${index}`);
+        expect(beforeSend(candidate)).toBe(candidate);
+      }
+      const chain = event([bridge, { type: "Error", value: "real failure" }], "chain");
+      expect(beforeSend(chain)).toBe(chain);
+    });
+
     it("admitClientException re-admits a signature once its window elapses, and enforces the page cap (#9451)", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
       const { admitClientException } = await import("./analytics");
