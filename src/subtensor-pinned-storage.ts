@@ -63,6 +63,7 @@ export interface SubtensorPinnedStorageOptions {
 export interface PinnedBlock {
   blockNumber: number;
   blockHash: string;
+  parentHash: string;
 }
 
 export interface SubtensorPinnedStorage {
@@ -106,10 +107,13 @@ export function createSubtensorPinnedStorage(
 
   return {
     async pinHead(): Promise<PinnedBlock> {
-      const header = await call<{ number: string }>("chain_getHeader", []);
+      const blockHash = await call<string>("chain_getBlockHash", []);
+      const header = await call<{ number: string; parentHash: string }>(
+        "chain_getHeader",
+        [blockHash],
+      );
       const blockNumber = Number.parseInt(header.number, 16);
-      const blockHash = await call<string>("chain_getBlockHash", [blockNumber]);
-      return { blockNumber, blockHash };
+      return { blockNumber, blockHash, parentHash: header.parentHash };
     },
     async readNetuidMap(
       itemHash: string,

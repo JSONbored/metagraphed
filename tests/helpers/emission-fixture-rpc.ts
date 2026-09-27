@@ -11,6 +11,7 @@ type HexMap = Record<string, string>;
 const maps = fixture.maps as unknown as Record<string, HexMap>;
 const values = fixture.values as unknown as Record<string, string | null>;
 const itemHashes = fixture.item_hashes as Record<string, string>;
+export const FIXTURE_PARENT_HASH = "0x" + "ab".repeat(32);
 
 export interface RpcCall {
   method: string;
@@ -39,7 +40,10 @@ export function fixtureFetch(
     const overridden = override?.(method, params);
     if (overridden !== undefined) return overridden;
     if (method === "chain_getHeader")
-      return { number: "0x" + fixture.block_number.toString(16) };
+      return {
+        number: "0x" + fixture.block_number.toString(16),
+        parentHash: FIXTURE_PARENT_HASH,
+      };
     if (method === "chain_getBlockHash") return fixture.block_hash;
     if (method === "state_queryStorageAt") {
       const keys = params[0] as string[];

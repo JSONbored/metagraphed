@@ -20,9 +20,9 @@
 // This module reads, reconstructs, and judges. What to DO with a divergence
 // stays with the caller: the script prints and exits non-zero, the cron
 // throws so the scheduled-run scaffolding records the exception. Reads are
-// pinned to one block hash: theta recomputes on the 360-block boundary and
-// the price EMAs move every block, so unpinned reads would mix states that
-// never coexisted and report a capture artefact as chain drift.
+// pinned to one block and its parent: coinbase consumes parent-state inputs
+// before moving prices and extrinsics change them. Outputs and the gate bar
+// recomputed during coinbase belong to the child block.
 
 import {
   DEFAULT_EMISSION_GATE_EXPONENT,
@@ -141,12 +141,26 @@ export async function checkEmissionDrift(
 ): Promise<EmissionDriftResult> {
   const storage = createSubtensorPinnedStorage(options);
 
-  const { blockNumber, blockHash } = await storage.pinHead();
+  const { blockNumber, blockHash, parentHash } = await storage.pinHead();
+  if (
+    !Number.isSafeInteger(blockNumber) ||
+    blockNumber < 1 ||
+    !/^0x[0-9a-f]{64}$/i.test(parentHash ?? "")
+  ) {
+    throw new Error("could not pin emission input parent block");
+  }
 
-  // VALUES first, because the netuid range is one of them now.
+  // Coinbase runs before moving-price updates and extrinsics (v470
+  // coinbase/block_step.rs). Input flags, burn settings and issuance must
+  // therefore come from the parent. The gate bar is updated before gating
+  // on an epoch boundary, so read the bar and emission outputs from the child.
+  // This uses the same 15 RPC calls as the previous same-block comparison.
   const values: Record<string, string | null> = {};
   for (const [name, hash] of Object.entries(VALUES)) {
-    values[name] = await storage.readValue(hash, blockHash);
+    values[name] = await storage.readValue(
+      hash,
+      name === "emission_gate_bar" ? blockHash : parentHash,
+    );
   }
 
   const totalNetworks = decodeLeU16(values.total_networks);
@@ -160,7 +174,13 @@ export async function checkEmissionDrift(
 
   const maps: Record<string, Map<number, string>> = {};
   for (const [name, hash] of Object.entries(MAPS)) {
-    maps[name] = await storage.readNetuidMap(hash, blockHash, netuids);
+    maps[name] = await storage.readNetuidMap(
+      hash,
+      name === "tao_in_emission" || name === "excess_tao"
+        ? blockHash
+        : parentHash,
+      netuids,
+    );
   }
 
   const theta = u64f64U128ToFloat(decodeLeU128(values.emission_gate_bar) ?? 0n);

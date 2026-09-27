@@ -18,7 +18,10 @@ import {
 } from "../src/network-parameters.ts";
 import { blockEmissionForIssuance } from "../src/block-emission.ts";
 
-import { fixtureFetch } from "./helpers/emission-fixture-rpc.ts";
+import {
+  fixtureFetch,
+  FIXTURE_PARENT_HASH,
+} from "./helpers/emission-fixture-rpc.ts";
 
 const maps = fixture.maps as unknown as Record<string, Record<string, string>>;
 const values = fixture.values as unknown as Record<string, string | null>;
@@ -50,16 +53,58 @@ describe("checkEmissionDrift", () => {
     assert.ok(summary.max_share_error >= summary.mean_share_error);
     assert.notEqual(summary.theta_recomputed, null);
 
-    // Every state read is PINNED to the header's block hash: theta recomputes
-    // on the 360-block boundary and the EMAs move every block, so an unpinned
-    // read would mix states that never coexisted.
+    assert.deepEqual(calls.slice(0, 2), [
+      { method: "chain_getBlockHash", params: [] },
+      { method: "chain_getHeader", params: [fixture.block_hash] },
+    ]);
+    const childItems = ["emission_gate_bar", "tao_in_emission", "excess_tao"];
+    const hashes = fixture.item_hashes as Record<string, string>;
     for (const call of calls) {
-      if (call.method === "state_queryStorageAt")
-        assert.equal(call.params[1], fixture.block_hash);
-      if (call.method === "state_getStorage")
-        assert.equal(call.params[1], fixture.block_hash);
+      if (!call.method.startsWith("state_")) continue;
+      const key = String(
+        Array.isArray(call.params[0]) ? call.params[0][0] : call.params[0],
+      );
+      assert.equal(
+        call.params[1],
+        childItems.some((name) => key.includes(hashes[name]))
+          ? fixture.block_hash
+          : FIXTURE_PARENT_HASH,
+      );
     }
   });
+
+  test.each([undefined, "invalid", "0x" + "00".repeat(31)])(
+    "rejects an unusable parent hash (%s) before reading state",
+    async (parentHash) => {
+      const { impl, calls } = fixtureFetch((method) =>
+        method === "chain_getHeader"
+          ? { number: "0x1", parentHash }
+          : undefined,
+      );
+      await assert.rejects(
+        () =>
+          checkEmissionDrift({ rpcUrl: "https://rpc.test", fetchImpl: impl }),
+        /could not pin emission input parent/,
+      );
+      assert.equal(calls.length, 2);
+    },
+  );
+
+  test.each(["0x0", "invalid"])(
+    "rejects a block without a valid height (%s)",
+    async (number) => {
+      const { impl } = fixtureFetch((method) =>
+        method === "chain_getHeader"
+          ? { number, parentHash: FIXTURE_PARENT_HASH }
+          : undefined,
+      );
+      await assert.rejects(
+        () =>
+          checkEmissionDrift({ rpcUrl: "https://rpc.test", fetchImpl: impl }),
+        /could not pin emission input parent/,
+      );
+    },
+  );
 
   test("a set exponent is decoded, not defaulted", async () => {
     // 1.0 in U64F64: integer part 1 in the high 64 bits -> LE u128 hex.
