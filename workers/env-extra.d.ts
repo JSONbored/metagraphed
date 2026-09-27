@@ -38,6 +38,8 @@ interface RuntimeSecretEnv {
   SUBNET_IDENTITY_SYNC_SECRET?: string;
   SUBNET_OWNERSHIP_SYNC_SECRET?: string;
   SELF_STAKE_SYNC_SECRET?: string;
+  /** Existing archive credential also gates private native publication readback. */
+  STATE_EXPORT_SECRET?: string;
   ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN?: string;
   /** #8611: gates the key-level block/unblock/anomaly routes. Its OWN secret --
    * cutting off a paying customer is a higher-privilege act than recording a

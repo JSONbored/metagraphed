@@ -87,6 +87,7 @@ describe("data-api's bundle boundary", () => {
 
   for (const forbidden of [
     "src/mcp-server.ts",
+    "src/native-store-export.ts",
     "src/graphql.ts",
     "generated/graphql/schema.ts",
     "workers/api.ts",
