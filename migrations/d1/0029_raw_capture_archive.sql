@@ -19,8 +19,8 @@ CREATE TABLE raw_capture_archives (
 ) WITHOUT ROWID;
 CREATE INDEX raw_capture_archives_network_block
   ON raw_capture_archives(network,last_block,key) WHERE selected=1;
-CREATE TRIGGER raw_capture_archive_source BEFORE INSERT ON raw_capture_archives BEGIN
-  SELECT CASE WHEN NOT EXISTS (
+CREATE TRIGGER raw_capture_archive_source BEFORE INSERT ON raw_capture_archives
+WHEN NOT EXISTS (
     SELECT 1 FROM raw_capture_batches b
     WHERE b.key=NEW.key AND b.sha256=NEW.sha256 AND b.complete=1
       AND b.network=NEW.network AND b.first_block=NEW.first_block AND b.last_block=NEW.last_block
@@ -29,7 +29,8 @@ CREATE TRIGGER raw_capture_archive_source BEFORE INSERT ON raw_capture_archives 
       AND NEW.parts=(SELECT count(*) FROM raw_capture_chunks c WHERE c.key=b.key AND c.sha256=b.sha256)
       AND NEW.compressed_bytes=(SELECT sum(length(data)) FROM raw_capture_chunks c WHERE c.key=b.key AND c.sha256=b.sha256)
       AND NEW.selected=EXISTS(SELECT 1 FROM raw_capture_selected s WHERE s.key=b.key AND s.sha256=b.sha256)
-  ) THEN RAISE(ABORT,'Raw archive source changed') END;
+) BEGIN
+  SELECT RAISE(ABORT,'Raw archive source changed');
 END;
 -- The archive row, selector transition, chunk deletion and budget release are
 -- one SQLite statement. An uncertain response must be reconciled by reading it.

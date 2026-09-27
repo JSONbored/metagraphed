@@ -8,6 +8,8 @@ const MAX_RAW = 32 * 1024 * 1024;
 const KEY = /^chain\/raw\/(testnet\/)?blocks\/(\d{12})-(\d{12})\.ndjson$/;
 const hash = (bytes: Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
+const SELECTION =
+  "SELECT sha256 FROM (SELECT sha256,captured_at FROM raw_capture_selected WHERE key=? UNION ALL SELECT sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1) ORDER BY captured_at DESC LIMIT 1";
 type Db = Pick<D1Database, "prepare" | "batch">;
 
 /** Keep exact SCALE bytes in bounded D1 chunks; never acknowledge a partial batch. */
@@ -77,9 +79,7 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
         )
           throw new Error("Raw capture archive identity differs");
         const current = await db
-          .prepare(
-            "SELECT sha256 FROM (SELECT sha256,captured_at FROM raw_capture_selected WHERE key=? UNION ALL SELECT sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1) ORDER BY captured_at DESC LIMIT 1",
-          )
+          .prepare(SELECTION)
           .bind(key, key)
           .first<{ sha256: string }>();
         if (current?.sha256 !== digest)
@@ -166,8 +166,8 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
           .bind(key, digest),
       ]);
       const receipt = await db
-        .prepare("SELECT sha256 FROM raw_capture_selected WHERE key=?")
-        .bind(key)
+        .prepare(SELECTION)
+        .bind(key, key)
         .first<{ sha256: string }>();
       if (receipt?.sha256 !== digest)
         throw new Error("Raw capture selection was not acknowledged");

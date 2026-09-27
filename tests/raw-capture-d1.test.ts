@@ -149,6 +149,24 @@ test("archiving atomically releases staging capacity and a lost capture acknowle
   );
 });
 
+test("archiving between selection and acknowledgement still confirms the exact capture", async () => {
+  const f = fixture();
+  let archived = false;
+  f.failWith((text) => {
+    if (text.startsWith("SELECT sha256 FROM (")) {
+      archive(f);
+      archived = true;
+    }
+  });
+  await f.store.put(key(), value());
+  assert(archived);
+  assert.equal(f.selected(), undefined);
+  assert.equal(
+    f.sql.prepare("SELECT bytes FROM raw_capture_budget").get()?.bytes,
+    0,
+  );
+});
+
 test("an older capture cannot displace an archived selection and newer captures retain old history", async () => {
   const f = fixture();
   await f.store.put(key(), value(2000));
@@ -262,7 +280,7 @@ test("a partial write or corrupt readback never replaces the prior selected capt
 test("lost selection acknowledgement can be retried without duplicate reservations", async () => {
   const f = fixture();
   f.failWith((text) => {
-    if (text.startsWith("SELECT sha256 FROM raw_capture_selected"))
+    if (text.startsWith("SELECT sha256 FROM ("))
       throw new Error("lost acknowledgement");
   });
   await assert.rejects(f.store.put(key(), value()));
