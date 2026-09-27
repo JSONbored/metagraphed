@@ -9,6 +9,7 @@
 // same account_events [netuid, hotkey] tuple AxonServed uses — the network-wide companion to the
 // per-subnet /api/v1/subnets/{netuid}/axon-removals.
 
+import { axonObservationIso as toIso } from "./axon-removal-observed-at.ts";
 import { roundDp, median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
@@ -45,24 +46,6 @@ function normalizedNetuid(value: unknown): number | null {
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
-}
-
-// Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
-// envelope's generated_at, the same way account-events does.
-function coerceEpochMs(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
-  // toIso's new Date(n).toISOString() throw a RangeError, which would 500 this
-  // endpoint on a single corrupt observed_at cell. Drop it to null, mirroring the
-  // getTime() range guard chain-stake-flow.ts added in #3016.
-  return Number.isFinite(new Date(n).getTime()) ? n : null;
-}
-
-function toIso(value: unknown): string | null {
-  const n = coerceEpochMs(value);
-  return n == null ? null : new Date(n).toISOString();
 }
 
 // Average AxonInfoRemoved events per distinct hotkey — the subnet's re-teardown intensity (1.0

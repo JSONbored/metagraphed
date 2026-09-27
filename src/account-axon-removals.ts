@@ -13,6 +13,10 @@
 // (axon announcements) — an account announces an axon, then removes it — operational activity
 // orthogonal to /accounts/{ss58}/subnets (registration state).
 
+import {
+  axonObservationEpochMs as coerceEpochMs,
+  axonObservationIso as toIso,
+} from "./axon-removal-observed-at.ts";
 import { roundBelowOne } from "./lib/stats.ts";
 import {
   AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
@@ -53,21 +57,6 @@ function normalizedNetuid(value: unknown): number | null {
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
-}
-
-// Convert an epoch-ms timestamp to a finite epoch, or null when not finite / <= 0. Guards the JS
-// Date range so a finite but out-of-range epoch cannot throw a RangeError on the response.
-function coerceEpochMs(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  const date = new Date(n);
-  return Number.isFinite(date.getTime()) ? n : null;
-}
-
-function toIso(value: unknown): string | null {
-  const n = coerceEpochMs(value);
-  return n == null ? null : new Date(n).toISOString();
 }
 
 export interface AccountAxonRemovalSubnet {
