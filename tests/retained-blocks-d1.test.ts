@@ -9,6 +9,7 @@ import {
 } from "../src/r2-sql-blocks.ts";
 import type { D1StoreBinding } from "../src/d1-store.ts";
 import { encodeCursor } from "../src/cursor.ts";
+import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 const runtime = new Miniflare({
   modules: true,
   script: "export default {fetch(){return new Response('test')}}",
@@ -253,8 +254,22 @@ test("selected invalid, absent, stale or inconsistent receipts decline without w
     { ...state, snapshot: Number("9223372036854775806") },
   ];
   for (const receipt of bad) {
-    const e = { ...env(), D1_RETAINED_BLOCKS: stub(receipt ? [receipt] : []) };
+    const queries: string[] = [];
+    const binding = stub(receipt ? [receipt] : []);
+    const e = {
+      ...env(),
+      D1_RETAINED_BLOCKS: {
+        ...binding,
+        prepare(sql: string) {
+          queries.push(sql);
+          return db.prepare(sql);
+        },
+      },
+    };
     assert.equal(await readRetainedBlockRows(e, [], 10, "mainnet", now), null);
+    assert.deepEqual(queries, [
+      "SELECT * FROM history_block_state WHERE network=?",
+    ]);
   }
   for (const success of [
     [false, true],
@@ -306,6 +321,114 @@ test("selected invalid, absent, stale or inconsistent receipts decline without w
     ),
     null,
   );
+});
+
+test("configured block feeds expose unavailable history instead of successful emptiness", async () => {
+  const { loadBlockFeedColdTier } = await import("../src/blocks-cold-tier.ts");
+  const unavailable = {
+    ...env(),
+    NATIVE_PROJECTIONS: "enabled",
+    D1_RETAINED_BLOCKS: stub([]),
+  };
+  for (const network of ["mainnet", "testnet"] as const) {
+    await assert.rejects(
+      fetchBlockRowsFromR2Sql(unavailable, { limit: 1, offset: 0 }, network),
+      RetainedHistoryUnavailableError,
+    );
+  }
+  await assert.rejects(
+    loadBlockFeedColdTier(unavailable, { limit: 1, offset: 0 }, "testnet"),
+    RetainedHistoryUnavailableError,
+  );
+  assert.deepEqual(
+    (await fetchBlockRowsFromR2Sql(
+      {
+        ...unavailable,
+        D1_RETAINED_BLOCKS: stub(
+          [{ ...state, source_rows: 0, source_files: 0 }],
+          [],
+        ),
+      },
+      { limit: 1, offset: 0 },
+    ))!.rows,
+    [],
+  );
+  let reads = 0;
+  const changed = {
+    ...unavailable,
+    D1_RETAINED_BLOCKS: {
+      prepare: db.prepare.bind(db),
+      async batch() {
+        return ++reads === 1
+          ? [{ success: true, results: [state] }]
+          : [
+              {
+                success: true,
+                results: [{ ...state, generation: "b".repeat(64) }],
+              },
+              { success: true, results: rows },
+            ];
+      },
+    } as unknown as D1StoreBinding,
+  };
+  await assert.rejects(
+    fetchBlockRowsFromR2Sql(changed, { limit: 1, offset: 0 }),
+    RetainedHistoryUnavailableError,
+  );
+});
+
+test("bounded nullable-height partitions preserve the original full ordering for every page", async () => {
+  const extra = [
+    row(101, null, { block_number: null }),
+    row(102, 200, { block_number: null }),
+    row(102, 200, { block_number: null }),
+    row(103, 50, { block_number: null }),
+  ];
+  try {
+    for (const [ordinal, r] of extra.entries())
+      await db
+        .prepare("INSERT INTO history_blocks VALUES(?,?,?,?,?,?,?,?,?,?,?)")
+        .bind(
+          0,
+          1,
+          ordinal + 1000,
+          r.block_number,
+          r.block_hash,
+          r.parent_hash,
+          1,
+          r.extrinsic_count,
+          r.event_count,
+          r.spec_version,
+          r.observed_at,
+        )
+        .run();
+    for (const count of [1, 2, 3, 5, 100]) {
+      for (const where of [
+        [],
+        ["observed_at >= 100"],
+        ["spec_version = 240"],
+        [`author = '${AUTHOR}'`],
+        ["block_number >= 9"],
+      ]) {
+        const expected = await db
+          .prepare(
+            "SELECT block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,observed_at FROM history_block_rows WHERE network=0" +
+              (where.length ? ` AND ${where.join(" AND ")}` : "") +
+              " ORDER BY observed_at DESC NULLS FIRST,block_number DESC NULLS FIRST LIMIT ?",
+          )
+          .bind(count)
+          .all();
+        assert.deepEqual(
+          await readRetainedBlockRows(env(), where, count, "mainnet", now),
+          expected.results,
+        );
+      }
+    }
+  } finally {
+    await db
+      .prepare("DELETE FROM history_blocks WHERE source_id=1 AND ordinal>=1000")
+      .run();
+  }
 });
 
 test("minimum counts use complete cardinalities and reject a snapshot change between the two reads", async () => {
@@ -421,13 +544,20 @@ test("native plans use equality and ordering indexes instead of sorting broad he
     assert.ok(sql.includes(`INDEXED BY history_blocks_${index}`));
     const plan = await db
       .prepare("EXPLAIN QUERY PLAN " + sql)
-      .bind(0, 0, 100)
+      .bind(0, 0, 100, 0, 0, 100, 100)
       .all<{ detail: string }>();
     assert.ok(
       plan.results.some((r) =>
         r.detail.includes(`INDEX history_blocks_${index}`),
       ),
     );
+    if (index === "order") {
+      // The final bounded merge sorts at most 2 * count rows. Neither source
+      // partition may sort the unbounded table to emulate two nullable keys.
+      assert.ok(
+        !plan.results.some((r) => /LAST TERM|RIGHT PART/.test(r.detail)),
+      );
+    }
     if (where.length === 2 && where[1] === "block_number <= 8")
       assert.ok(!sql.includes("999999"));
   }

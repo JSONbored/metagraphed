@@ -112,8 +112,10 @@ export async function readRetainedBlockRows(
       ["extrinsics", minimums.minExtrinsics],
     ] as const;
     const selected = filters.filter(([, minimum]) => minimum != null);
-    let generation: string | undefined;
-    if (selected.length || chooseHeight) {
+    let generation: string;
+    {
+      // Validate even unfiltered reads before touching the large block table.
+      // Keep the second receipt read below to reject a concurrent publication.
       // Complete per-source histograms are combined with snapshot selection.
       // Their cardinalities avoid both an empty-result scan and a sort over a
       // common count range. No request counts millions of block rows.
@@ -173,32 +175,37 @@ export async function readRetainedBlockRows(
       if (counts[0] && counts[0].matches <= 50000)
         index = ` INDEXED BY history_blocks_${counts[0]!.kind}`;
     }
-    // Explicit null placement matches the original PostgreSQL/DataFusion
-    // descending order; SQLite's default places these nulls last instead.
+    // SQLite cannot satisfy two NULLS FIRST keys with the existing index: it
+    // may scan the entire network before returning one row. Partition nullable
+    // heights, use the height index for nulls and the selected index otherwise,
+    // then merge at most twice the requested page. This preserves both null
+    // placements and duplicate source rows without adding another large index.
+    const candidates = (nullable: boolean) =>
+      "SELECT b.source_id,b.ordinal,b.observed_at,b.block_number FROM history_blocks b" +
+      (nullable ? " INDEXED BY history_blocks_height " : `${index} `) +
+      (author ? "JOIN history_block_authors a ON a.id=b.author_id " : "") +
+      `WHERE b.network=? AND b.block_number IS ${nullable ? "" : "NOT "}NULL ` +
+      "AND b.source_id IN (SELECT id FROM history_block_sources WHERE network=? AND active=1)" +
+      (range.clauses.length
+        ? ` AND ${range.clauses.map((clause) => (clause.startsWith("author = ") ? `a.address${clause.slice(6)}` : clause)).join(" AND ")}`
+        : "") +
+      " ORDER BY observed_at DESC NULLS FIRST" +
+      (nullable ? "" : ",block_number DESC") +
+      " LIMIT ?";
     const [receipt, result] = await db.batch([
       stateQuery(),
       db
         .prepare(
-          `WITH candidates AS MATERIALIZED (SELECT b.source_id,b.ordinal FROM history_blocks b${index} ` +
-            (author
-              ? "JOIN history_block_authors a ON a.id=b.author_id "
-              : "") +
-            "WHERE b.network=? " +
-            "AND b.source_id IN (SELECT id FROM history_block_sources WHERE network=? AND active=1)" +
-            (range.clauses.length
-              ? ` AND ${range.clauses.map((clause) => (clause.startsWith("author = ") ? `a.address${clause.slice(6)}` : clause)).join(" AND ")}`
-              : "") +
-            " ORDER BY observed_at DESC NULLS FIRST, block_number DESC NULLS FIRST LIMIT ?) " +
+          `WITH candidates AS MATERIALIZED (SELECT * FROM (${candidates(true)}) UNION ALL SELECT * FROM (${candidates(false)})) ` +
             `SELECT ${BLOCKS_COLUMNS.map((column) => (column === "author" ? "a.address AS author" : `b.${column}`)).join(", ")} ` +
             "FROM candidates c JOIN history_blocks b ON b.source_id=c.source_id AND b.ordinal=c.ordinal " +
-            "LEFT JOIN history_block_authors a ON a.id=b.author_id ORDER BY b.observed_at DESC NULLS FIRST,b.block_number DESC NULLS FIRST",
+            "LEFT JOIN history_block_authors a ON a.id=b.author_id ORDER BY b.observed_at DESC NULLS FIRST,b.block_number DESC NULLS FIRST LIMIT ?",
         )
-        .bind(net, net, count),
+        .bind(net, net, count, net, net, count, count),
     ]);
     if (!receipt!.success || !result!.success) return null;
     const state = checkedState(receipt!.results[0], net, now);
-    if (generation !== undefined && generation !== state.generation)
-      return null;
+    if (generation !== state.generation) return null;
     return BlocksRowSchema.required().array().parse(result!.results);
   } catch {
     return null;

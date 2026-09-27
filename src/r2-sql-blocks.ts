@@ -1,7 +1,10 @@
 // Retained block feeds use D1; details and economics use verified R2 indexes.
 // All rows pass through the canonical public formatters.
 
-import { hasRetainedHistoryStore } from "./retained-history-store.ts";
+import {
+  hasRetainedHistoryStore,
+  requireRetainedHistoryAnswer,
+} from "./retained-history-store.ts";
 import {
   buildBlock,
   buildBlockFeed,
@@ -205,15 +208,13 @@ export async function fetchBlockRowsFromR2Sql(
   // Cursor pages never carry an offset (the cursor already narrows past
   // prior pages), mirroring data-api's `OFFSET only when no cursor`.
   const paged = cursor ? 0 : offset;
-  const selected = await readRetainedBlockRows(
+  const rows = await requireRetainedHistoryAnswer(
     env,
-    where,
-    limit + paged,
-    network,
-    Date.now(),
-    { minEvents: query.minEvents, minExtrinsics: query.minExtrinsics },
+    readRetainedBlockRows(env, where, limit + paged, network, Date.now(), {
+      minEvents: query.minEvents,
+      minExtrinsics: query.minExtrinsics,
+    }),
   );
-  const rows = selected;
   if (rows == null) return null;
 
   const page = paged > 0 ? rows.slice(paged) : rows;
