@@ -28,6 +28,7 @@ import { NavOmnibox } from "./nav-omnibox";
 import { ApiSourceProvider, useApiSourceCtx } from "@/lib/metagraphed/api-source-context";
 import { DEFINITIONS } from "@/lib/metagraphed/definitions";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
+import { observeStickyHeader } from "@/lib/metagraphed/sticky-header";
 
 const LazySourcesLine = lazy(() => import("./app-shell-sources-line"));
 
@@ -144,18 +145,7 @@ export function AppShell({
   useEffect(() => {
     const header = document.querySelector<HTMLElement>("header.mg-header");
     if (!header) return;
-    const publish = () => {
-      const h = header.getBoundingClientRect().height;
-      document.documentElement.style.setProperty("--mg-sticky-offset", `${Math.round(h)}px`);
-    };
-    publish();
-    const ro = new ResizeObserver(publish);
-    ro.observe(header);
-    window.addEventListener("resize", publish);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", publish);
-    };
+    return observeStickyHeader(header);
   }, [pathname]);
 
   // Global ⌘K / Ctrl+K / `/` opens the palette.
