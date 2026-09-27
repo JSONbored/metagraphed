@@ -202,57 +202,53 @@ test.each([false, true])(
   async (validatorsOnly) => {
     const portable = createD1Sql(createD1Store(db));
     for (const netuid of [0, 7, 128, 999]) {
-      {
-        const statements: string[] = [];
-        const binding = {
-          prepare(sql: string) {
-            statements.push(sql);
-            return db.prepare(sql);
-          },
-          batch: db.batch.bind(db),
-        };
-        const expected = await readSubnetNeuronRows(
-          portable,
-          {},
-          netuid,
-          validatorsOnly,
-        );
-        const actual = await readSubnetNeuronRows(
-          unexpectedSql,
-          { D1_STATE: binding, D1_STATE_TABLES: "neurons" },
-          netuid,
-          validatorsOnly,
-        );
-        assert.deepEqual(actual, expected);
-        assert.equal(statements.length, 1);
-        if (netuid === 999) assert.equal(actual.length, 0);
-        else {
-          assert.ok(actual.length > 80);
-          assert.equal(actual.find((row) => row.uid === 0)?.hotkey, "5Changed");
-          assert.ok(actual.every((row) => row.uid !== 8 && row.uid !== 9));
-          if (!validatorsOnly)
-            assert.equal(actual.find((row) => row.uid === 4)?.hotkey, null);
-        }
-        const plan = (
-          await db
-            .prepare(`EXPLAIN QUERY PLAN ${statements[0]}`)
-            .bind(netuid, netuid)
-            .all<{ detail: string }>()
-        ).results.map((row) => row.detail);
-        assert.ok(
-          plan.some((step) =>
-            /SEARCH neurons_documents USING PRIMARY KEY/.test(step),
-          ),
-        );
-        assert.ok(
-          plan.some((step) =>
-            /SEARCH neurons_members USING PRIMARY KEY/.test(step),
-          ),
-        );
-        assert.ok(
-          plan.every((step) => !/VIRTUAL TABLE|TEMP B-TREE/.test(step)),
-        );
+      const statements: string[] = [];
+      const binding = {
+        prepare(sql: string) {
+          statements.push(sql);
+          return db.prepare(sql);
+        },
+        batch: db.batch.bind(db),
+      };
+      const expected = await readSubnetNeuronRows(
+        portable,
+        {},
+        netuid,
+        validatorsOnly,
+      );
+      const actual = await readSubnetNeuronRows(
+        unexpectedSql,
+        { D1_STATE: binding, D1_STATE_TABLES: "neurons" },
+        netuid,
+        validatorsOnly,
+      );
+      assert.deepEqual(actual, expected);
+      assert.equal(statements.length, 1);
+      if (netuid === 999) assert.equal(actual.length, 0);
+      else {
+        assert.ok(actual.length > 80);
+        assert.equal(actual.find((row) => row.uid === 0)?.hotkey, "5Changed");
+        assert.ok(actual.every((row) => row.uid !== 8 && row.uid !== 9));
+        if (!validatorsOnly)
+          assert.equal(actual.find((row) => row.uid === 4)?.hotkey, null);
       }
+      const plan = (
+        await db
+          .prepare(`EXPLAIN QUERY PLAN ${statements[0]}`)
+          .bind(netuid, netuid)
+          .all<{ detail: string }>()
+      ).results.map((row) => row.detail);
+      assert.ok(
+        plan.some((step) =>
+          /SEARCH neurons_documents USING PRIMARY KEY/.test(step),
+        ),
+      );
+      assert.ok(
+        plan.some((step) =>
+          /SEARCH neurons_members USING PRIMARY KEY/.test(step),
+        ),
+      );
+      assert.ok(plan.every((step) => !/VIRTUAL TABLE|TEMP B-TREE/.test(step)));
     }
   },
 );
