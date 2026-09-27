@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 /** Minimal stand-in for `caches.default`, mirroring tests/analytics-edge-cache.test.ts. */
-function mockCaches() {
+function mockCaches(rejectMatch = false) {
   const store = new Map<string, Response>();
   const putKeys: string[] = [];
   const matchKeys: string[] = [];
@@ -41,6 +41,7 @@ function mockCaches() {
         default: {
           async match(request: Request) {
             matchKeys.push(request.url);
+            if (rejectMatch) throw new Error("Network connection lost.");
             const cached = store.get(request.url);
             return cached ? cached.clone() : undefined;
           },
@@ -95,6 +96,41 @@ function producer(response: () => Response) {
 }
 
 describe("chain-detail edge cache (#11001)", () => {
+  test("serves the canonical answer once when the optional cache read fails", async () => {
+    const cache = mockCaches(true);
+    cache.install();
+    const waits: Promise<unknown>[] = [];
+    const handler = producer(() => answer("static"));
+    const response = await withChainDetailEdgeCache(
+      get(),
+      env,
+      url,
+      "mainnet",
+      { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
+      handler.produce,
+    );
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), '{"ok":true}');
+    assert.equal(handler.calls, 1);
+    assert.equal(cache.matchKeys.length, 1);
+    await Promise.all(waits);
+    assert.equal(cache.putKeys.length, 1);
+  });
+
+  test("preserves a real origin failure after a cache read failure", async () => {
+    const cache = mockCaches(true);
+    cache.install();
+    const failure = new Error("canonical source unavailable");
+    await assert.rejects(
+      withChainDetailEdgeCache(get(), env, url, "mainnet", {}, async () => {
+        throw failure;
+      }),
+      (error) => error === failure,
+    );
+    assert.equal(cache.matchKeys.length, 1);
+    assert.equal(cache.putKeys.length, 0);
+  });
+
   test("stores a settled (static) answer and serves the next request from it", async () => {
     const cache = mockCaches();
     cache.install();

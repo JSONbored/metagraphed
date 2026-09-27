@@ -3793,6 +3793,15 @@ function cacheWrite(ctx: Ctx | undefined, write: () => Promise<unknown>): void {
   ctx?.waitUntil?.(write().catch(() => {}));
 }
 
+/** An unavailable optional edge cache must not prevent a canonical read. */
+async function cacheRead(cacheable: { store: Cache; key: Request }) {
+  try {
+    return await cacheable.store.match(cacheable.key);
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Edge-cache TTL for a chain-detail answer the handler has declared immutable
  * (#11001).
@@ -3882,7 +3891,7 @@ export async function withChainDetailEdgeCache(
       : null;
   if (!cacheable) return produce();
 
-  const hit = await cacheable.store.match(cacheable.key);
+  const hit = await cacheRead(cacheable);
   if (hit) {
     // Honour a conditional request against the stored body's weak ETag, so a
     // polling agent gets a 304 off a warm edge rather than the whole payload
@@ -4054,9 +4063,7 @@ export async function handleChainEventsFamily(
     request.method === "GET" || request.method === "HEAD"
       ? cacheableWith(await chainEventsCacheKey(env, url, chain))
       : null;
-  const cacheHit = cacheable
-    ? await cacheable.store.match(cacheable.key)
-    : null;
+  const cacheHit = cacheable ? await cacheRead(cacheable) : null;
   // The tier travels WITH the payload through the cache, so a hit reports the
   // same `meta.source` the miss did rather than guessing one back. PARSED, not
   // cast (#11194) -- see parseCachedColdTierAnswer for why a cache read is a
@@ -9527,9 +9534,7 @@ async function handleApiRequest(
           )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalCacheSearch(url, matched)}`,
         ),
       };
-      const overlayHit = await overlayCacheable.store.match(
-        overlayCacheable.key,
-      );
+      const overlayHit = await cacheRead(overlayCacheable);
       if (overlayHit) {
         if (ifNoneMatchSatisfied(request, overlayHit.headers.get("etag"))) {
           return new Response(null, {
@@ -9542,7 +9547,7 @@ async function handleApiRequest(
     }
   }
   if (edgeCacheable) {
-    const hit = await edgeCacheable.store.match(edgeCacheable.key);
+    const hit = await cacheRead(edgeCacheable);
     if (hit) {
       // Honour conditional requests against the cached body's weak ETag so
       // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
