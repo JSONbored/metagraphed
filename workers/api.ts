@@ -6218,7 +6218,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
 
   // Brand-icon favicon proxy (binary, not a JSON contract route). Implements the
   // icon-proxy contract consumed by metagraphed-ui <BrandIcon>; SSRF-safe (fetches
-  // only fixed favicon services) + R2-cached. See src/icon-proxy.ts.
+  // only fixed favicon services) + D1-cached. See src/icon-proxy.ts.
   if (url.pathname === "/api/v1/icon") {
     return handleIconProxy(request, env, url, { readArtifact });
   }
