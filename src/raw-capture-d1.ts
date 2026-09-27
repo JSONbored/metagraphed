@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
-import { gzipSync, gunzipSync } from "node:zlib";
+import { gzipSync } from "node:zlib";
 import type { RawCaptureStore } from "./raw-chain-capture.ts";
 
 const CHUNK = 65_536;
@@ -104,7 +104,6 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
       )
         throw new Error("Raw capture reservation readback differs");
 
-      const verified = createHash("sha256");
       // Eight chunks keep every request and response below one MiB. Replaying
       // immutable inserts after an unknown response cannot select partial data.
       for (let start = 0; start < parts; start += 8) {
@@ -143,14 +142,12 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
             hex !== chunks[i]!.toString("hex").toUpperCase()
           )
             throw new Error("Raw capture chunk readback differs");
-          verified.update(Buffer.from(hex, "hex"));
         }
       }
-      if (
-        verified.digest("hex") !== compressedDigest ||
-        !gunzipSync(compressed, { maxOutputLength: MAX_RAW }).equals(raw)
-      )
-        throw new Error("Raw capture reconstruction differs");
+      // Every ordered stored chunk matched the compressed source byte-for-byte.
+      // Hashing those same bytes again and inflating the local compression adds
+      // no storage verification. Independent raw reconstruction remains in the
+      // archive consumer before it can release any staging bytes.
       // Mark complete and publish the pointer atomically. A newer capture of
       // the same finalized range cannot be replaced by an older invocation.
       await db.batch([

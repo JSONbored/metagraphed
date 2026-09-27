@@ -38,6 +38,7 @@ function fixture() {
     ),
   );
   let fail: ((text: string, params: unknown[]) => void) | undefined;
+  let readback: ((text: string, result: unknown) => unknown) | undefined;
   const prepared = (text: string, params: unknown[] = []) => ({
     text,
     params,
@@ -51,7 +52,8 @@ function fixture() {
     },
     async first() {
       fail?.(text, params);
-      return sql.prepare(text).get(...(params as never[])) ?? null;
+      const result = sql.prepare(text).get(...(params as never[])) ?? null;
+      return readback ? readback(text, result) : result;
     },
     async run() {
       fail?.(text, params);
@@ -60,9 +62,10 @@ function fixture() {
     },
     async all() {
       fail?.(text, params);
+      const result = sql.prepare(text).all(...(params as never[]));
       return {
         success: true,
-        results: sql.prepare(text).all(...(params as never[])),
+        results: readback ? readback(text, result) : result,
       };
     },
   });
@@ -97,6 +100,9 @@ function fixture() {
     selected,
     failWith(fn?: typeof fail) {
       fail = fn;
+    },
+    readWith(fn?: typeof readback) {
+      readback = fn;
     },
   };
 }
@@ -318,6 +324,8 @@ test("a full staging budget rejects new bytes before any incomplete selection", 
 test("invalid ranges and cross-network key spellings fail before reserving space", async () => {
   const f = fixture();
   for (const [objectKey, raw] of [
+    [key().replace("000000000010.ndjson", "000000000009.ndjson"), value()],
+    [key().replace("000000000010.ndjson", "000000004106.ndjson"), value()],
     [key().replace("000000000010.ndjson", "000000000011.ndjson"), value()],
     [key().replace("chain/raw/", "chain/testnet/raw/"), value()],
     [key(), value().replace('"block_number":10', '"block_number":11')],
@@ -327,6 +335,72 @@ test("invalid ranges and cross-network key spellings fail before reserving space
     f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
     0,
   );
+});
+
+test("missing or mismatched reservation responses cannot publish a capture", async () => {
+  for (const reservation of [null, { raw_bytes: 0 }]) {
+    const f = fixture();
+    f.readWith((text, result) =>
+      text.startsWith("SELECT key,sha256,network") ? reservation : result,
+    );
+    await assert.rejects(
+      f.store.put(key(), value()),
+      /reservation readback differs/,
+    );
+    assert.equal(f.selected(), undefined);
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM raw_capture_chunks").get()?.n,
+      0,
+    );
+  }
+});
+
+test("an incomplete chunk response leaves the prior capture selected and retries safely", async () => {
+  const f = fixture();
+  await f.store.put(key(), value());
+  const prior = f.selected();
+  f.readWith((text, result) =>
+    text.startsWith("SELECT part,hex(data)") ? [] : result,
+  );
+  await assert.rejects(f.store.put(key(), value(2000)), /chunk census differs/);
+  assert.equal(f.selected(), prior);
+  f.readWith();
+  await f.store.put(key(), value(2000));
+  assert.notEqual(f.selected(), prior);
+});
+
+test("corrupt archive receipts cannot acknowledge a raw capture", async () => {
+  const f = fixture();
+  await f.store.put(key(), value());
+  archive(f);
+  f.readWith((text, result) =>
+    text.startsWith("SELECT * FROM raw_capture_archives")
+      ? { ...(result as object), native_sha256: "bad" }
+      : result,
+  );
+  await assert.rejects(f.store.put(key(), value()), /archive identity differs/);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_batches").get()?.n,
+    0,
+  );
+});
+
+test("unknown storage selections cannot silently send captures back to R2", async () => {
+  let writes = 0;
+  const result = await runRawCaptureSync(
+    {
+      RAW_CAPTURE_ENABLED: "true",
+      RAW_CAPTURE_STORAGE: "typo",
+      METAGRAPH_ARCHIVE: {
+        put: async () => {
+          writes++;
+        },
+      },
+    },
+    { recordException: async () => false },
+  );
+  assert.equal(result.ok, false);
+  assert.equal(writes, 0);
 });
 
 test("D1 selection with a missing database cannot fall through to an R2 writer", async () => {
