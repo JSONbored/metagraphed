@@ -44,8 +44,8 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
         capturedAt = Math.max(capturedAt, row.captured_at);
       }
       const compressed = gzipSync(raw, { level: 6 });
-      if (compressed.length > MAX_RAW + CHUNK)
-        throw new Error("Compressed raw capture exceeds its storage budget");
+      // The reservation's compressed_bytes/parts CHECKs enforce the compressed
+      // budget before any chunk is written; the input bound caps compression.
       const digest = hash(raw),
         compressedDigest = hash(compressed);
       const parts = Math.ceil(compressed.length / CHUNK);
