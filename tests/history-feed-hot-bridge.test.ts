@@ -86,6 +86,70 @@ it("reads exactly the unindexed interval and unions overlapping identities once"
     await read(hotAccountPredicate([{ side: "hotkey", account: "absent" }])),
   ).toEqual([]);
 });
+it("bounds broad tail work independently of older rows without displacing account indexes", async () => {
+  await db
+    .prepare(
+      `WITH RECURSIVE items(n) AS (SELECT 0 UNION ALL SELECT n+1 FROM items WHERE n<10000)
+       INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,hotkey,netuid,observed_at)
+       SELECT 1,n,'Transfer','older',64,14000 FROM items`,
+    )
+    .run();
+  const work: { rows: number; plans: string[] }[] = [];
+  const measured = {
+    ...env(),
+    D1_STATE: {
+      prepare(text: string) {
+        return {
+          bind(...values: (string | number | null)[]) {
+            return {
+              async all() {
+                const plan = await db
+                  .prepare(`EXPLAIN QUERY PLAN ${text}`)
+                  .bind(...values)
+                  .all<{ detail: string }>();
+                const result = await db
+                  .prepare(text)
+                  .bind(...values)
+                  .all();
+                work.push({
+                  rows: result.meta.rows_read,
+                  plans: plan.results.map((row) => row.detail),
+                });
+                return result;
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  for (const selectors of [
+    [{ side: "all" as const, account: "*", kind: "Transfer", netuid: 64 }],
+    [{ side: "hotkey" as const, account: "bob" }],
+    [
+      { side: "hotkey" as const, account: "bob" },
+      { side: "all" as const, account: "*" },
+    ],
+  ]) {
+    const rows = await readHotHistoryTail(
+      measured,
+      "account_events",
+      10,
+      13,
+      "mainnet",
+      ACCOUNT_EVENTS_COLUMNS,
+      hotAccountPredicate(selectors),
+      2,
+    );
+    expect(rows?.map((row) => row.block_number)).toEqual([13, 12]);
+  }
+  expect(work[0]!.rows).toBeLessThan(100);
+  expect(work[0]!.plans.join("\n")).toContain("USING PRIMARY KEY");
+  expect(work[1]!.plans.join("\n")).toContain(
+    "idx_chain_detail_account_events_hotkey_observed",
+  );
+  expect(work[2]!.rows).toBeLessThan(100);
+});
 it("preserves peer, kind, subnet, inclusive windows and the exclusive cursor", async () => {
   const rows = await read(
     hotAccountPredicate([
