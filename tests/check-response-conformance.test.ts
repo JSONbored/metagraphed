@@ -14,6 +14,7 @@ import {
   buildValidator,
   driftRefusal,
   evaluateResponse,
+  responseAuditCases,
 } from "../scripts/check-response-conformance.ts";
 
 /**
@@ -245,4 +246,49 @@ describe("a tripwire refusal is drift wearing a 500 (#10987)", () => {
       "a non-string message falls back to the code rather than throwing",
     );
   });
+});
+
+test("audits every declared network alias and explicitly names non-JSON or mutating gaps", () => {
+  const json = {
+    responses: { "200": { content: { "application/json": { schema: {} } } } },
+  };
+  const cases = responseAuditCases(
+    {
+      paths: {
+        "/api/v1/{network}/subnets": {
+          get: {
+            ...json,
+            parameters: [
+              {
+                in: "path",
+                name: "network",
+                schema: { enum: ["mainnet", "finney", "testnet", "test"] },
+              },
+            ],
+          },
+        },
+        "/api/v1/feeds/registry.rss": {
+          get: {
+            responses: { "200": { content: { "application/rss+xml": {} } } },
+          },
+        },
+        "/api/v1/ask": { post: json },
+        "/api/v1/{unknown}": { get: json },
+        "/api/v1/{network}/missing-fixture": { get: json },
+      },
+    },
+    "2026-09-27",
+  );
+  assert.equal(cases.length, 8);
+  assert.deepEqual(
+    cases.slice(0, 4).map((item) => item.network),
+    ["mainnet", "finney", "testnet", "test"],
+  );
+  for (const item of cases.slice(0, 4)) {
+    const url = new URL(item.url!);
+    assert.equal(url.pathname, `/api/v1/${item.network}/subnets`);
+    assert.equal(url.searchParams.get("limit"), "3");
+    assert.equal(url.searchParams.get("sort"), "netuid");
+  }
+  assert.ok(cases.slice(4).every((item) => item.skipped && !item.url));
 });

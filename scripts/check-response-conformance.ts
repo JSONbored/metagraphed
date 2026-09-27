@@ -17,7 +17,6 @@
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import { API_ROUTES } from "../src/contracts.ts";
 import { apiRouteUrl } from "./smoke-live-api.ts";
 import { addAjvFormats } from "./lib/ajv-formats.ts";
 
@@ -167,6 +166,91 @@ export function evaluateResponse({
   return { skipped: null, violations: validator(body) };
 }
 
+interface AuditCase {
+  route: string;
+  method: string;
+  network?: string;
+  url?: string;
+  skipped?: string;
+}
+
+/** Enumerate the published contract, including explicit network aliases. */
+export function responseAuditCases(
+  spec: Record<string, unknown>,
+  date: string,
+): AuditCase[] {
+  const paths = spec.paths as Record<
+    string,
+    Record<
+      string,
+      {
+        parameters?: {
+          name?: string;
+          in?: string;
+          schema?: { enum?: string[] };
+        }[];
+        responses?: Record<string, { content?: Record<string, unknown> }>;
+      }
+    >
+  >;
+  const cases: AuditCase[] = [];
+  for (const [route, operations] of Object.entries(paths)) {
+    for (const [method, operation] of Object.entries(operations)) {
+      if (
+        !["get", "post", "put", "patch", "delete", "head", "options"].includes(
+          method,
+        )
+      )
+        continue;
+      const base = { route, method: method.toUpperCase() };
+      if (
+        method !== "get" ||
+        !operation.responses?.["200"]?.content?.["application/json"]
+      ) {
+        cases.push({
+          ...base,
+          skipped:
+            method === "get"
+              ? "requires feed or stream contract check"
+              : "requires isolated mutation/payment contract check",
+        });
+        continue;
+      }
+      const networks = route.includes("{network}")
+        ? (operation.parameters?.find(
+            (parameter) =>
+              parameter.in === "path" && parameter.name === "network",
+          )?.schema?.enum ?? [])
+        : [undefined];
+      if (!networks.length) {
+        cases.push({
+          ...base,
+          skipped: "network parameter has no declared fixtures",
+        });
+        continue;
+      }
+      for (const network of networks) {
+        const item = { ...base, ...(network ? { network } : {}) };
+        try {
+          // Build queries from the canonical route before restoring its network
+          // prefix, so compare/search/limit fixtures remain identical.
+          const canonical = route.replace("/api/v1/{network}/", "/api/v1/");
+          const url = new URL(apiRouteUrl(canonical, date));
+          if (network)
+            url.pathname = url.pathname.replace(
+              "/api/v1/",
+              `/api/v1/${network}/`,
+            );
+          cases.push({ ...item, url: url.toString() });
+        } catch {
+          cases.push({ ...item, skipped: "unsubstitutable placeholder" });
+        }
+      }
+    }
+  }
+  return cases;
+}
+
 async function main(): Promise<void> {
   const spec = JSON.parse(readFileSync(SPEC_PATH, "utf8")) as Record<
     string,
@@ -178,51 +262,79 @@ async function main(): Promise<void> {
   let checked = 0;
   let skipped = 0;
 
-  for (const route of API_ROUTES) {
-    if (route.method !== "GET") continue;
-
-    let url: string;
-    try {
-      // Reuses the smoke runner's fixture substitutions rather than growing a
-      // second set of sample ids that could drift from it.
-      url = apiRouteUrl(route.path, today);
-    } catch {
-      skipped += 1; // unsubstitutable placeholder (needs a discovered id)
+  let attempted = 0;
+  for (const check of responseAuditCases(spec, today)) {
+    const { route, method, network } = check;
+    const receipt = (data: Record<string, unknown>) =>
+      console.log(
+        `REST_AUDIT ${JSON.stringify({ route, method, ...(network ? { network } : {}), ...data })}`,
+      );
+    if (!check.url) {
+      skipped += 1;
+      receipt({ outcome: "unexercised", reason: check.skipped });
       continue;
     }
-
+    // Pace attempts, including failures. A run of 4xx/5xx must not turn into
+    // an unthrottled burst or manufacture rate-limit failures for later routes.
+    if (attempted > 0 && attempted % 20 === 0)
+      await new Promise((r) => setTimeout(r, 15_000));
+    attempted += 1;
+    const started = Date.now();
+    let elapsedMs: number;
+    let jsonBytes: number;
     let fetched: { status: number; body: unknown };
     try {
-      const response = await fetch(new URL(url, BASE), {
+      const response = await fetch(new URL(check.url, BASE), {
         signal: AbortSignal.timeout(30_000),
       });
       // The body is read whatever the status: a tripwire refusal arrives as a
       // 500 whose envelope names the drift, and discarding it was half of why
       // a fully-broken route reported green. Non-JSON (an edge error page) is
       // still nothing to judge.
-      fetched = {
-        status: response.status,
-        body: await response.json().catch(() => null),
-      };
-    } catch {
-      skipped += 1; // network/timeout: not drift
+      const text = await response.text();
+      elapsedMs = Date.now() - started;
+      jsonBytes = Buffer.byteLength(text, "utf8");
+      let body: unknown = null;
+      try {
+        body = JSON.parse(text);
+      } catch {
+        /* Non-JSON is judged by the response contract. */
+      }
+      fetched = { status: response.status, body };
+    } catch (error) {
+      skipped += 1;
+      receipt({
+        outcome: "transport_error",
+        elapsedMs: Date.now() - started,
+        errorCode: error instanceof Error ? error.name : "TransportError",
+      });
       continue;
     }
 
     const verdict = evaluateResponse({
       ...fetched,
-      validator: buildValidator(spec, route.path),
-      route: route.path,
+      validator: buildValidator(spec, route),
+      route,
     });
     if (verdict.skipped) {
       skipped += 1;
+      receipt({
+        outcome: "unexercised",
+        status: fetched.status,
+        elapsedMs,
+        jsonBytes,
+        reason: verdict.skipped,
+      });
       continue;
     }
+    receipt({
+      outcome: verdict.violations.length ? "schema_violation" : "validated",
+      status: fetched.status,
+      elapsedMs,
+      jsonBytes,
+    });
     checked += 1;
     violations.push(...verdict.violations);
-
-    // Paced under the anonymous rate limit (100 req / 60s per IP).
-    if (checked % 20 === 0) await new Promise((r) => setTimeout(r, 15_000));
   }
 
   console.log(
@@ -233,6 +345,13 @@ async function main(): Promise<void> {
     ),
   );
 
+  if (checked === 0) {
+    console.error(
+      "No route was validated; this is not a successful conformance run.",
+    );
+    process.exitCode = 1;
+    return;
+  }
   if (violations.length === 0) {
     console.log(
       `OK: all ${checked} checked routes match their published schemas.`,
