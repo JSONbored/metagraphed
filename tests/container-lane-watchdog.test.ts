@@ -406,6 +406,24 @@ describe("runContainerLaneWatchdog", () => {
         failed.rows.map((row) => row[1]),
         Array(5).fill("unknown"),
       );
+      const rejected = laneSpy();
+      const rejectedState = {
+        prepare: () => ({
+          bind: () => ({ all: async () => ({ success: false, results: [] }) }),
+        }),
+      } as unknown as D1Database;
+      await runContainerLaneWatchdog(
+        { D1_STATE: rejectedState },
+        {
+          now: () => NOW,
+          laneHealthDb: rejected.db,
+          recordException: async () => true,
+        },
+      );
+      assert.deepEqual(
+        rejected.rows.map((row) => row[1]),
+        Array(5).fill("unknown"),
+      );
     } finally {
       sql.close();
     }
