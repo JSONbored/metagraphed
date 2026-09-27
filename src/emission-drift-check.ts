@@ -41,6 +41,10 @@ import {
   type SubnetPipelineInput,
 } from "./emission-pipeline.ts";
 import { createSubtensorPinnedStorage } from "./subtensor-pinned-storage.ts";
+import {
+  withEmissionFailover,
+  type EmissionFailoverOptions,
+} from "./emission-rpc.ts";
 
 /**
  * Hard ceiling on how many netuids are probed.
@@ -128,6 +132,18 @@ export interface EmissionDriftResult {
   summary: EmissionDriftSummary;
   /** Human-readable divergences; empty means the reconstruction holds. */
   reasons: string[];
+}
+
+/** Restart failed reads on the next archive; a real divergence returns immediately. */
+export function checkEmissionDriftWithFailover(
+  options: Omit<EmissionDriftCheckOptions, "rpcUrl"> &
+    EmissionFailoverOptions = {},
+): Promise<EmissionDriftResult> {
+  return withEmissionFailover(
+    options,
+    (rpcUrl) => checkEmissionDrift({ ...options, rpcUrl }),
+    "emission-drift sample",
+  );
 }
 
 /**

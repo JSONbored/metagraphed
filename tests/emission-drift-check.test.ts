@@ -10,6 +10,7 @@ import { describe, test } from "vitest";
 import fixture from "./fixtures/emission-pipeline.json" with { type: "json" };
 import {
   checkEmissionDrift,
+  checkEmissionDriftWithFailover,
   probedNetuids,
 } from "../src/emission-drift-check.ts";
 import {
@@ -27,6 +28,55 @@ const maps = fixture.maps as unknown as Record<string, Record<string, string>>;
 const values = fixture.values as unknown as Record<string, string | null>;
 
 describe("checkEmissionDrift", () => {
+  test("a failed pinned read restarts the complete sample on the next archive", async () => {
+    const { impl } = fixtureFetch();
+    const visits: { url: string; method: string }[] = [];
+    const result = await checkEmissionDriftWithFailover({
+      urls: ["https://primary.test", "https://secondary.test"],
+      fetchImpl: (async (url, init) => {
+        const { method } = JSON.parse(String(init?.body));
+        visits.push({ url: String(url), method });
+        if (
+          String(url) === "https://primary.test" &&
+          method === "state_getStorage"
+        ) {
+          return new Response("upstream unavailable", { status: 520 });
+        }
+        return impl(url, init);
+      }) as typeof fetch,
+    });
+    assert.deepEqual(result.reasons, []);
+    assert.deepEqual(
+      visits
+        .filter((v) => v.url === "https://primary.test")
+        .map((v) => v.method),
+      ["chain_getBlockHash", "chain_getHeader", "state_getStorage"],
+    );
+    assert.deepEqual(
+      visits
+        .filter((v) => v.url === "https://secondary.test")
+        .slice(0, 2)
+        .map((v) => v.method),
+      ["chain_getBlockHash", "chain_getHeader"],
+    );
+  });
+
+  test("all archives failing remains visible after one attempt per endpoint", async () => {
+    let attempts = 0;
+    await assert.rejects(
+      () =>
+        checkEmissionDriftWithFailover({
+          urls: ["https://primary.test", "https://secondary.test"],
+          fetchImpl: (async () => {
+            attempts += 1;
+            throw new Error(`archive failure ${attempts}`);
+          }) as typeof fetch,
+        }),
+      /archive failure 2/,
+    );
+    assert.equal(attempts, 2);
+  });
+
   test("gives the committed fixture a clean bill of health, reads pinned", async () => {
     const { impl, calls } = fixtureFetch();
     const { summary, reasons } = await checkEmissionDrift({
@@ -150,12 +200,21 @@ describe("checkEmissionDrift", () => {
       void prefix;
       return [{ changes }];
     });
-    const { summary, reasons } = await checkEmissionDrift({
-      rpcUrl: "https://rpc.test",
-      fetchImpl: impl,
+    const seen = new Set<string>();
+    const { summary, reasons } = await checkEmissionDriftWithFailover({
+      urls: ["https://primary.test", "https://secondary.test"],
+      fetchImpl: (async (url, init) => {
+        seen.add(String(url));
+        return impl(url, init);
+      }) as typeof fetch,
     });
     assert.ok(reasons.length > 0);
     assert.ok(summary.identities_failed > 0);
+    assert.deepEqual(
+      seen,
+      new Set(["https://primary.test"]),
+      "real drift is never retried away",
+    );
   });
 
   test("an empty chain read still summarizes instead of dividing by zero", async () => {
