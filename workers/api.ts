@@ -630,7 +630,7 @@ import {
 } from "../src/feeds.ts";
 import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.ts";
-import { handleEntityOgImage, r2CardCache } from "../src/og-entity-card.ts";
+import { handleEntityOgImage, edgeCardCache } from "../src/og-entity-card.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { sampleEmissionGateWithFailover } from "../src/emission-gate-sampler.ts";
@@ -6211,7 +6211,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   {
     const entityCard = await handleEntityOgImage(request, env, url, {
       readArtifact,
-      ...r2CardCache(env),
+      ...edgeCardCache(),
     });
     if (entityCard) return entityCard;
   }
