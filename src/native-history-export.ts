@@ -46,9 +46,7 @@ const inputSchema = z.discriminatedUnion("operation", [
   }),
 ]);
 
-/** Called only after the state-export credential and bounded request parser.
- * Private producers retain original S3 identities without falling back to R2
- * for an object whose static replacement is missing or corrupt. */
+/** Authenticated, bounded native reads preserve identities without R2 fallback. */
 export async function handleNativeHistoryExport(
   input: unknown,
   env: unknown,
@@ -131,9 +129,7 @@ export async function handleNativeHistoryExport(
                 throw new Error("Native verification failed");
               if (value.operation === "footers") {
                 if (!object) throw new Error("Native footer is not migrated");
-                // PyArrow starts with the last 64 KiB. Share immutable index
-                // metadata across up to sixteen such reads, at most 1 MiB,
-                // retaining the existing four-read concurrency ceiling.
+                // Share metadata for up to sixteen 64 KiB tails (1 MiB total).
                 const length = Math.min(65536, object.bytes);
                 const offset = object.bytes - length;
                 const raw = await source.read(
