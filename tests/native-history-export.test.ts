@@ -801,12 +801,12 @@ describe("bounded full-checksum metadata batches", () => {
     expect((await handleNativeHistoryExport(batch([key]), {})).status).toBe(
       200,
     );
-    expect(read).toHaveBeenCalledTimes(count);
+    expect(read).toHaveBeenCalledTimes(16);
     read.mockClear();
     expect(
       (await handleNativeHistoryExport(batch([key, keys[1]]), {})).status,
     ).toBe(502);
-    expect(read).toHaveBeenCalledTimes(count);
+    expect(read).toHaveBeenCalledTimes(16);
     expect(read.mock.calls.every((call) => call[0] === key)).toBe(true);
   });
 });
