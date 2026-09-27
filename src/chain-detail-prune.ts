@@ -1,11 +1,14 @@
 // Retention for the chain-detail hot tier (#9208).
 //
-// THE WINDOW ONLY HAS TO COVER ONE GAP: chain tip minus the decoded seam.
-// Below the seam the lakehouse holds the same rows, verified, at full depth, so
+// THE WINDOW COVERS THE SERVING GAP: chain tip minus the oldest selected index.
+// Below that seam the retained reader holds the same rows at full depth, so
 // a hot row below it is a duplicate that costs D1 space and buys nothing. The
 // decode lane runs HOURLY, so that gap is normally <= 2h (~600 blocks at the
 // chain's 12s cadence). This is not an archive and it is never backfilled --
 // history is the lakehouse's job, and #9208 says so explicitly.
+//
+// Decoded rows alone are insufficient: index publication can still be pending.
+// Legacy environments retain their decode-watermark policy.
 //
 // THE FLOOR IS MEASURED, NOT GUESSED (2026-08-03). Ten real blocks were pulled
 // from the live API across 8,740,000-8,759,000, loaded into THIS migration's
@@ -64,6 +67,31 @@ import {
 import { readStore, type ReadStoreDb, safeIntOrNull } from "./read-store.ts";
 import { CHAIN_DETAIL_HOT_TIER_TABLES } from "./chain-detail-hot-tier.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import { readSelectedHistorySegments } from "./indexed-history-store.ts";
+
+/** Decoding can finish before its serving indexes publish. Retention must
+ * preserve the hot bridge to every selected table, including sparse feeds. */
+async function readableHistorySeam(env: unknown): Promise<number> {
+  if (
+    (env as { NATIVE_PROJECTIONS?: unknown } | null)?.NATIVE_PROJECTIONS !==
+    "enabled"
+  )
+    return resolveBlocksSeam(env);
+
+  const selections = await Promise.all(
+    (["blocks", "extrinsics", "chain_events", "account_events"] as const).map(
+      (table) => readSelectedHistorySegments(env, table),
+    ),
+  );
+  const through = selections.map((segments) => {
+    if (!segments || segments[0].firstBlock !== 0)
+      throw new Error(
+        "Selected history coverage unavailable; retention unchanged",
+      );
+    return segments[segments.length - 1].lastBlock;
+  });
+  return Math.min(...through);
+}
 
 /** ~6h at the chain's 12s cadence: 3x the hourly decode lane's worst-case lag. */
 export const CHAIN_DETAIL_MIN_RETAINED_BLOCKS = 1_800;
@@ -267,7 +295,7 @@ export async function pruneChainDetail(
     if (floor === null || head === null)
       return { ok: true, reason: "no rows", blocks_pruned: 0 };
 
-    const seam = await resolveBlocksSeam(env);
+    const seam = await readableHistorySeam(env);
     const window = chainDetailPruneWindow({ head, seam });
     if (window.keepFrom <= floor)
       return {

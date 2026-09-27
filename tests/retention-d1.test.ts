@@ -126,6 +126,102 @@ test("a late D1 delete failure rolls back every detail table and coverage", asyn
   assert.equal(pg.control.connects, 0);
 });
 
+function selectedHistory(through: Record<string, number>, firstBlock = 0) {
+  return {
+    NATIVE_PROJECTIONS: "enabled",
+    METAGRAPH_ARCHIVE: {
+      get: vi.fn(async (key: string) => {
+        const table = key.split("/").at(-2)!;
+        if (!(table in through)) return null;
+        const generation = "a".repeat(64);
+        const root = `metagraph/indexed-history/v1/mainnet/${table}/generations/${generation}`;
+        return {
+          size: 1024,
+          json: async () => ({
+            version: 1,
+            network: "mainnet",
+            table,
+            generation,
+            firstBlock,
+            lastBlock: through[table],
+            blockManifest: {
+              key: `${root}/block-manifest.json`,
+              etag: "b".repeat(32),
+              bytes: 100,
+            },
+          }),
+        };
+      }),
+    },
+  };
+}
+
+test.each(["blocks", "extrinsics", "chain_events", "account_events"])(
+  "D1 retention follows the slowest published %s index, not the decoded watermark",
+  async (lagging) => {
+    await seed();
+    const selected = selectedHistory({
+      blocks: head,
+      extrinsics: head,
+      chain_events: head,
+      account_events: head,
+      [lagging]: floor - 1,
+    });
+    const before = await Promise.all(tables.map(blocks));
+    const result = await pruneChainDetail({ ...env(), ...selected }, ctx);
+    assert.equal(result.ok, true);
+    assert.equal(result.keep_from, floor);
+    assert.equal(result.blocks_pruned, 0);
+    assert.deepEqual(await Promise.all(tables.map(blocks)), before);
+    assert.equal(selected.METAGRAPH_ARCHIVE.get.mock.calls.length, 4);
+  },
+);
+
+test("caught-up serving indexes retain the normal bounded D1 cleanup", async () => {
+  await seed();
+  const selected = selectedHistory({
+    blocks: head,
+    extrinsics: head,
+    chain_events: head,
+    account_events: head,
+  });
+  const result = await pruneChainDetail({ ...env(), ...selected }, ctx);
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 120);
+  assert.equal(result.retained_blocks, 1800);
+});
+
+test.each(["missing", "partial", "unbound"])(
+  "D1 retention preserves all rows when selected history is %s",
+  async (state) => {
+    await seed();
+    const selected = selectedHistory(
+      {
+        blocks: head,
+        extrinsics: head,
+        chain_events: head,
+        account_events: head,
+      },
+      state === "partial" ? 1 : 0,
+    );
+    if (state === "missing")
+      selected.METAGRAPH_ARCHIVE.get.mockResolvedValue(null);
+    const before = await Promise.all(tables.map(blocks));
+    const result = await pruneChainDetail(
+      {
+        ...env(),
+        ...selected,
+        ...(state === "unbound" ? { METAGRAPH_ARCHIVE: undefined } : {}),
+      },
+      ctx,
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "prune_failed");
+    assert.match(result.detail!, /Selected history coverage unavailable/);
+    assert.deepEqual(await Promise.all(tables.map(blocks)), before);
+  },
+);
+
 test("selected D1 retention refuses a missing binding or mixed family", async () => {
   await assert.rejects(
     pruneChainDetail({ ...env(), D1_STATE: undefined }, ctx),
