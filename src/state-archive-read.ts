@@ -1,3 +1,4 @@
+import { historySha256 } from "./history-sha256.ts";
 import { z } from "zod";
 import {
   AccountIdentityHistoryRowSchema,
@@ -83,13 +84,7 @@ async function sourceGeneration(source: z.infer<typeof Manifest>["source"]) {
     /[\u007f-\uffff]/g,
     (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
   );
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(canonical),
-  );
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
+  return historySha256(canonical);
 }
 
 /** Undefined means unpublished; a broken selected archive never falls back to SQL. */

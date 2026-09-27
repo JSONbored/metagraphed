@@ -1,3 +1,4 @@
+import { historySha256 } from "./history-sha256.ts";
 import {
   decodeExtrinsicPage,
   ExtrinsicFeedRecordSchema,
@@ -91,11 +92,7 @@ async function selectorKey(selector: ExtrinsicFeedSelector): Promise<string> {
           : selector.success !== undefined
             ? ["success", String(selector.success), null]
             : ["all", "*", null];
-  const bytes = new TextEncoder().encode(JSON.stringify(query));
-  return Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
-    (b) => b.toString(16).padStart(2, "0"),
-  ).join("");
+  return historySha256(JSON.stringify(query));
 }
 
 export async function* iterateExtrinsicFeed(

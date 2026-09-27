@@ -1,3 +1,4 @@
+import { historySha256 } from "./history-sha256.ts";
 import { historyAssetSource } from "./history-asset-source.ts";
 import { z } from "zod";
 import { artifactBucket, type ArtifactStoreEnv } from "./projection-store.ts";
@@ -144,16 +145,7 @@ export async function loadNativeAccountWeightSetters(
     const byId = new Map(manifest.entries.map((entry) => [entry.id, entry]));
     const selected = [];
     for (const selector of selectors) {
-      const id = [
-        ...new Uint8Array(
-          await crypto.subtle.digest(
-            "SHA-256",
-            new TextEncoder().encode(selector),
-          ),
-        ),
-      ]
-        .map((n) => n.toString(16).padStart(2, "0"))
-        .join("");
+      const id = historySha256(selector);
       const entry = byId.get(id);
       if (entry) selected.push({ selector, entry });
     }

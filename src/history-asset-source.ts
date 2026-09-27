@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { historySha256 as sha256 } from "./history-sha256.ts";
 import {
   HISTORY_ASSET_OBJECT_KEY,
   HistoryAssetReleaseSchema,
@@ -19,10 +19,6 @@ import {
 const MAX_CACHE_BYTES = 8 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 256;
 const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
-
-function sha256(value: string | Uint8Array): string {
-  return createHash("sha256").update(value).digest("hex");
-}
 
 /** A pinned release relocates immutable feed bytes, preserving their original
  * ETag and exact ranges. An unmapped object retains its ordinary R2 reader. */

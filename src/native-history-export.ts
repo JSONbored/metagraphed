@@ -23,6 +23,7 @@ const inputSchema = z.discriminatedUnion("operation", [
   head.omit({ key: true }).extend({
     operation: z.literal("heads"),
     keys: z.array(head.shape.key).min(1).max(64),
+    verify: z.literal(true).optional(),
   }),
   head.extend({
     operation: z.literal("range"),
@@ -75,41 +76,13 @@ export async function handleNativeHistoryExport(
     if (!source.describe)
       return fail(503, "native history export is not provisioned");
     const describe = source.describe;
-    if (value.operation === "heads") {
-      const keys = value.keys;
-      type NativeObject = NonNullable<Awaited<ReturnType<typeof describe>>>;
-      const objects: (NativeObject | null)[] = new Array(keys.length);
-      let cursor = 0,
-        failed = false;
-      // One authenticated request shares release/shard metadata across its
-      // bounded batch. Stop queued reads on error and drain started work.
-      await Promise.allSettled(
-        Array.from({ length: Math.min(4, keys.length) }, async () => {
-          while (!failed && cursor < keys.length) {
-            const index = cursor++;
-            try {
-              const object = await describe(keys[index]);
-              if (object && !object.sha256)
-                throw new Error("Unqualified native checksum");
-              objects[index] = object ?? null;
-            } catch {
-              failed = true;
-            }
-          }
-        }),
-      );
-      if (failed)
-        return fail(502, "native history static source is unavailable");
-      return reply({ version: 1, objects });
-    }
-    const object = await describe(value.key);
-    if (!object) return fail(404, "native history object is not migrated");
-    if (!object.sha256)
-      return fail(503, "native history source checksum is unavailable");
-    if (value.operation === "verify") {
-      // Verify one immutable original near storage without transferring its
-      // payload to the operator. Hash bounded ranges, never the whole file in
-      // memory; the source retains its metadata, byte and request limits.
+    type NativeObject = NonNullable<Awaited<ReturnType<typeof describe>>>;
+    let verifiedBytes = 0;
+    async function verify(object: NativeObject) {
+      // Hash bounded ranges near storage, sharing the request-scoped reader.
+      verifiedBytes += object.bytes;
+      if (verifiedBytes > 128 * 1024 * 1024)
+        throw new Error("Native verification batch exceeds byte budget");
       const sha = createHash("sha256"),
         md5 = createHash("md5");
       for (let offset = 0; offset < object.bytes; offset += 8 * 1024 * 1024) {
@@ -124,10 +97,48 @@ export async function handleNativeHistoryExport(
         sha.update(bytes);
         md5.update(bytes);
       }
-      if (
-        sha.digest("hex") !== object.sha256 ||
-        md5.digest("hex") !== object.etag
-      )
+      return (
+        sha.digest("hex") === object.sha256 && md5.digest("hex") === object.etag
+      );
+    }
+    if (value.operation === "heads") {
+      const keys = value.keys;
+      const objects: (NativeObject | null)[] = new Array(keys.length);
+      let cursor = 0,
+        failed = false;
+      // One authenticated request shares release/shard metadata across its
+      // bounded batch. Stop queued reads on error and drain started work.
+      await Promise.allSettled(
+        Array.from({ length: Math.min(4, keys.length) }, async () => {
+          while (!failed && cursor < keys.length) {
+            const index = cursor++;
+            try {
+              const object = await describe(keys[index]);
+              if (object && !object.sha256)
+                throw new Error("Unqualified native checksum");
+              if (value.verify && (!object || !(await verify(object))))
+                throw new Error("Native verification failed");
+              objects[index] = object ?? null;
+            } catch {
+              failed = true;
+            }
+          }
+        }),
+      );
+      if (failed)
+        return fail(502, "native history static source is unavailable");
+      return reply({
+        version: 1,
+        objects,
+        ...(value.verify ? { verified: true } : {}),
+      });
+    }
+    const object = await describe(value.key);
+    if (!object) return fail(404, "native history object is not migrated");
+    if (!object.sha256)
+      return fail(503, "native history source checksum is unavailable");
+    if (value.operation === "verify") {
+      if (!(await verify(object)))
         return fail(502, "native history original checksum mismatch");
       return reply({ version: 1, object, verified: true });
     }

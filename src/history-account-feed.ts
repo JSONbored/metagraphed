@@ -1,3 +1,4 @@
+import { historySha256 } from "./history-sha256.ts";
 import { decodeAccountPage } from "./history-account-page.ts";
 import {
   checkFeedNode,
@@ -101,7 +102,7 @@ async function queryKey(selector: AccountFeedSelector): Promise<string> {
       : selector.side === "hotkey"
         ? `${selector.account}:${peer}`
         : `${peer}:${selector.account}`;
-  const bytes = new TextEncoder().encode(
+  return historySha256(
     JSON.stringify([
       side,
       account,
@@ -109,10 +110,6 @@ async function queryKey(selector: AccountFeedSelector): Promise<string> {
       selector.netuid ?? null,
     ]),
   );
-  return Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
-    (b) => b.toString(16).padStart(2, "0"),
-  ).join("");
 }
 
 /** Account-specific row and selector proofs share the packed tree traversal. */
