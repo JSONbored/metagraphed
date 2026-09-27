@@ -117,7 +117,9 @@ describe("bounded native Parquet footer batches", () => {
       .mockReturnValue({ describe, read });
     const response = await handleNativeHistoryExport({ ...footers, keys }, {});
     expect(response.status).toBe(200);
-    const body = await response.json();
+    const body = (await response.json()) as {
+      objects: { key: string; offset: number; data: string }[];
+    };
     expect(body.objects.map((o: { key: string }) => o.key)).toEqual(keys);
     expect(
       body.objects.every(
