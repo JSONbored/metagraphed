@@ -1,3 +1,7 @@
+import {
+  CONTAINER_STATUS_PREFIX,
+  parseContainerStatus,
+} from "./container-status.ts";
 import { d1AdminBatch, d1AdminCredentials } from "./d1-admin.ts";
 import { r2ObjectUrl } from "../r2-rest.ts";
 
@@ -150,42 +154,15 @@ export async function loadMirrorFreshnessEvidence(
   transport: typeof fetch = fetch,
 ): Promise<MirrorFreshnessEvidence> {
   const credentials = d1AdminCredentials();
-  const response = await transport(
-    r2ObjectUrl(
-      credentials.accountId,
-      process.env.R2_ARTIFACTS_BUCKET ?? "metagraphed-artifacts",
-      "metagraph/lakehouse/state-mirror-status.json",
-    ),
-    {
-      headers: { authorization: `Bearer ${credentials.apiToken}` },
-      redirect: "error",
-      signal: AbortSignal.timeout(20_000),
-    },
-  );
-  if (!response.ok || !response.body)
-    throw new Error(`Mirror receipt HTTP ${response.status}`);
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
-  let text = "",
-    bytes = 0;
-  try {
-    for (;;) {
-      const part = await reader.read();
-      if (part.done) break;
-      bytes += part.value.byteLength;
-      if (bytes > 65536) {
-        await reader.cancel();
-        throw new Error("Mirror receipt exceeds 64 KiB");
-      }
-      text += decoder.decode(part.value, { stream: true });
-    }
-    text += decoder.decode();
-  } finally {
-    reader.releaseLock();
-  }
-  const receipt: unknown = JSON.parse(text);
   const results = await d1AdminBatch(
     [
+      {
+        sql: "SELECT payload FROM generated_artifacts WHERE key=?",
+        params: [
+          CONTAINER_STATUS_PREFIX +
+            "metagraph/lakehouse/state-mirror-status.json",
+        ],
+      },
       {
         sql: "SELECT lane, verdict, checked_at FROM lane_health_current WHERE lane IN ('registry-sync', 'registry-resync', 'compute-declarations', 'subnet-ownership', 'neon:subnet-ownership', 'subnet-hyperparams', 'neon:subnet-hyperparams')",
       },
@@ -200,11 +177,50 @@ export async function loadMirrorFreshnessEvidence(
     }),
     transport,
   );
+  let receipt: unknown;
+  if (results[0].results.length) {
+    receipt = parseContainerStatus(results[0].results[0]?.payload);
+  } else {
+    const response = await transport(
+      r2ObjectUrl(
+        credentials.accountId,
+        process.env.R2_ARTIFACTS_BUCKET ?? "metagraphed-artifacts",
+        "metagraph/lakehouse/state-mirror-status.json",
+      ),
+      {
+        headers: { authorization: `Bearer ${credentials.apiToken}` },
+        redirect: "error",
+        signal: AbortSignal.timeout(20_000),
+      },
+    );
+    if (!response.ok || !response.body)
+      throw new Error(`Mirror receipt HTTP ${response.status}`);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+    let text = "",
+      bytes = 0;
+    try {
+      for (;;) {
+        const part = await reader.read();
+        if (part.done) break;
+        bytes += part.value.byteLength;
+        if (bytes > 65536) {
+          await reader.cancel();
+          throw new Error("Mirror receipt exceeds 64 KiB");
+        }
+        text += decoder.decode(part.value, { stream: true });
+      }
+      text += decoder.decode();
+    } finally {
+      reader.releaseLock();
+    }
+    receipt = JSON.parse(text);
+  }
   return {
     receipt,
-    lanes: results[0].results,
-    computeNewest: results[1].results[0]?.newest,
-    ownershipNewest: results[2].results[0]?.newest,
-    hyperparamsNewest: results[3].results[0]?.newest,
+    lanes: results[1].results,
+    computeNewest: results[2].results[0]?.newest,
+    ownershipNewest: results[3].results[0]?.newest,
+    hyperparamsNewest: results[4].results[0]?.newest,
   };
 }

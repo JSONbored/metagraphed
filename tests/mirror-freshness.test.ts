@@ -297,7 +297,7 @@ function credentials() {
   vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", undefined);
   vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "");
 }
-function transport(evidence = fixture()) {
+function transport(evidence = fixture(), stored?: string | null) {
   return vi.fn<typeof fetch>(async (input, init) => {
     const url = new URL(String(input));
     if (url.pathname.includes("/objects/"))
@@ -336,7 +336,7 @@ function transport(evidence = fixture()) {
           ],
         });
       }
-      assert.equal(batch.length, 4);
+      assert.equal(batch.length, 5);
       assert.ok(
         batch.every((statement: { sql: string }) =>
           statement.sql.startsWith("SELECT "),
@@ -345,6 +345,10 @@ function transport(evidence = fixture()) {
       return Response.json({
         success: true,
         result: [
+          {
+            success: true,
+            results: stored === undefined ? [] : [{ payload: stored }],
+          },
           { success: true, results: evidence.lanes },
           { success: true, results: [{ newest: evidence.computeNewest }] },
           { success: true, results: [{ newest: evidence.ownershipNewest }] },
@@ -356,7 +360,7 @@ function transport(evidence = fixture()) {
   });
 }
 
-test("the live reader uses one bounded R2 object and a four-SELECT D1 batch", async () => {
+test("the legacy reader uses a five-SELECT D1 batch and one bounded R2 object", async () => {
   credentials();
   const fetcher = transport();
   assert.deepEqual(await loadMirrorFreshnessEvidence(fetcher), fixture());
@@ -366,7 +370,7 @@ test("the live reader uses one bounded R2 object and a four-SELECT D1 batch", as
   );
 });
 
-test("the workflow uses its D1 credential only for source health queries", async () => {
+test("the workflow uses its D1 credential for status and source health queries", async () => {
   credentials();
   vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", "fixture-d1-reader");
   const fetcher = transport();
@@ -375,8 +379,8 @@ test("the workflow uses its D1 credential only for source health queries", async
     new Headers(init?.headers).get("authorization"),
   );
   assert.deepEqual(headers, [
-    "Bearer fixture-maintenance-reader",
     "Bearer fixture-d1-reader",
+    "Bearer fixture-maintenance-reader",
   ]);
 });
 
@@ -385,20 +389,38 @@ test.each(["http", "missing-body", "oversize", "json", "d1"])(
   async (mode) => {
     credentials();
     const fetcher = transport();
-    fetcher.mockImplementationOnce(async () => {
-      if (mode === "http") return new Response("failed", { status: 503 });
-      if (mode === "missing-body") return new Response(null);
-      if (mode === "oversize") return new Response(" ".repeat(65537));
-      if (mode === "json") return new Response("{");
-      return Response.json(fixture().receipt);
+    const normal = fetcher.getMockImplementation()!;
+    fetcher.mockImplementation(async (input, init) => {
+      if (mode === "d1" && String(input).includes("/d1/database/"))
+        return Response.json({ success: false });
+      if (String(input).includes("/objects/")) {
+        if (mode === "http") return new Response("failed", { status: 503 });
+        if (mode === "missing-body") return new Response(null);
+        if (mode === "oversize") return new Response(" ".repeat(65537));
+        if (mode === "json") return new Response("{");
+      }
+      return normal(input, init);
     });
-    if (mode === "d1")
-      fetcher.mockImplementationOnce(async () =>
-        Response.json({ success: false }),
-      );
     await assert.rejects(loadMirrorFreshnessEvidence(fetcher));
   },
 );
+
+test("a selected D1 mirror receipt never reads its old R2 copy", async () => {
+  credentials();
+  const fetcher = transport(fixture(), JSON.stringify(fixture().receipt));
+  assert.deepEqual(await loadMirrorFreshnessEvidence(fetcher), fixture());
+  assert.equal(fetcher.mock.calls.length, 1);
+  for (const invalid of [
+    null,
+    "{",
+    "[]",
+    JSON.stringify({ detail: "x".repeat(65536) }),
+  ]) {
+    const broken = transport(fixture(), invalid);
+    await assert.rejects(loadMirrorFreshnessEvidence(broken));
+    assert.equal(broken.mock.calls.length, 1);
+  }
+});
 
 test("catalog sweep reconciles quiet tables with source health and preserves testnet checks", async () => {
   credentials();

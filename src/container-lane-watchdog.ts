@@ -1,43 +1,6 @@
-// The alarm for the lanes this repo does not run.
-//
-// ## What went unwatched, and for how long
-//
-// Five lanes run inside metagraphed-infra's decode container, one after another
-// in a single hourly pass: decode, the daily rollup, the state mirror, the
-// account-events rollup, and the account-summary projection. Every one of them
-// publishes a status object to R2. The account summary skips refreshes for
-// twenty hours once its history is complete; the other lanes report hourly.
-//
-// `projection-staleness` cannot: it iterates PROJECTION_LANES, the thirteen
-// lanes this Worker computes, so anything container-written is structurally
-// outside it. A `lane_health` sweep on 2026-08-16 returned zero rows for
-// `%summary%`, `%decode%`, `%rollup%` and `%mirror%` -- not stale rows, NO
-// rows.
-//
-// Measured that day: the account-summary projection had not published a
-// generation since 2026-08-15T06:26:33Z -- 32 hours -- while the four lanes
-// either side of it in the same pass ran normally (decode 14:19:40Z, daily
-// rollup 14:23:58Z, state mirror 14:26:17Z, account-events rollup 14:26:18Z).
-// The cost was not abstract: `readRecent` declines without a generation
-// carrying `recent_limit`, so every account request fell back to an unbounded
-// lakehouse scan and /accounts/{ss58} served 503s and 8-20s responses all day.
-//
-// ## Why this is the systemic fix and not another patch
-//
-// It inverts the default. Today a lane is silent unless somebody wrote a
-// watchdog aimed at it, which is how a lane nobody was thinking about goes
-// dark for 32 hours. After this, any lane in the status namespace that stops
-// advancing produces a `stale` verdict on the next tick, and adding a sixth
-// lane to the container means adding one line here rather than remembering to
-// build an alarm.
-//
-// ## What it deliberately does NOT do
-//
-// It does not read the lakehouse, the Iceberg ledger, or anything the lanes
-// produce. It reads what each lane SAYS ABOUT ITSELF and how long ago it said
-// it. Verifying the output is `lakehouse-seam`'s job for decode and
-// `projection-staleness`'s for the Worker lanes; this answers the prior
-// question those two cannot -- did the producer run at all.
+// Monitor the five sequential container lanes without querying their archives.
+// Producers publish bounded status documents to D1; R2 is read only until each
+// lane has its first D1 publication. Status age and failures remain observable.
 import { type ArtifactStoreEnv, artifactBucket } from "./projection-store.ts";
 
 import { ContainerLaneStatusSchema } from "../schemas-src/artifacts/container-lane-status.ts";
@@ -56,7 +19,7 @@ type ContainerLaneWatchdogEnv = StoreEnv & TelemetryEnv & ArtifactStoreEnv;
 export interface ContainerLane {
   /** The `lane_health` label. Prefixed so a sweep can name the whole family. */
   lane: string;
-  /** The R2 key of its status object. */
+  /** Stable status identity, shared with the container producer. */
   key: string;
   /** Minimum refresh interval after success, in addition to the stall grace. */
   successIntervalMs?: number;
@@ -337,8 +300,33 @@ export async function runContainerLaneWatchdog(
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
   const bucket = artifactBucket(env);
-  if (!bucket) return { ok: false, reason: "r2 binding unavailable" };
+  const state = env?.D1_STATE;
+  if (!bucket && !state?.prepare)
+    return { ok: false, reason: "status storage unavailable" };
   const thresholdMs = deps.thresholdMs ?? CONTAINER_LANE_THRESHOLD_MS;
+
+  // A committed D1 status owns this lane. Failed reads and invalid payloads
+  // must never reveal an older, healthy R2 verdict. Absent rows retain the
+  // legacy owner only while the producer is rolling over to D1.
+  const prefix = "container-status/v1/";
+  const stored = new Map<string, string | null>();
+  let stateFailed = false;
+  if (state?.prepare) {
+    try {
+      const result = await state
+        .prepare(
+          "SELECT key, CASE WHEN length(CAST(payload AS BLOB))<=65536 " +
+            "THEN payload ELSE NULL END AS payload FROM generated_artifacts " +
+            "WHERE key IN (?,?,?,?,?)",
+        )
+        .bind(...CONTAINER_LANES.map(({ key }) => prefix + key))
+        .all<{ key: string; payload: string | null }>();
+      if (!result.success) throw new Error("Container status read failed");
+      for (const row of result.results) stored.set(row.key, row.payload);
+    } catch {
+      stateFailed = true;
+    }
+  }
 
   const statuses: ContainerLaneStatus[] = [];
   for (const { lane, key, successIntervalMs } of CONTAINER_LANES) {
@@ -346,10 +334,17 @@ export async function runContainerLaneWatchdog(
     // here is a value nothing reads (`no-useless-assignment`).
     let body: ContainerLaneStatus["body"];
     try {
-      const object = await bucket.get(key);
-      const parsed = object
-        ? ContainerLaneStatusSchema.safeParse(await object.json())
-        : null;
+      let value: unknown = null;
+      if (!stateFailed) {
+        if (stored.has(prefix + key)) {
+          const payload = stored.get(prefix + key);
+          value = typeof payload === "string" ? JSON.parse(payload) : null;
+        } else {
+          const object = await bucket?.get(key);
+          value = object ? await object.json() : null;
+        }
+      }
+      const parsed = ContainerLaneStatusSchema.safeParse(value);
       body = parsed?.success ? parsed.data : null;
     } catch {
       // Unreadable is reported as absent rather than skipped: a watchdog that
