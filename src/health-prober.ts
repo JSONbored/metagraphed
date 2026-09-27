@@ -395,21 +395,9 @@ export function workerWebSocketConnector(
     });
 }
 
-// Read the prober's input list, newest source first (#9096).
-//
-// Three tiers, in order:
-//   1. The Worker-cron store (generated/operational-surfaces.json) — written
-//      hourly by src/operational-surfaces-sync.ts, which replaced the retired
-//      sync-operational-surfaces.yml bot-PR lane. This is the only copy with a
-//      writer that cannot silently stop without an alarm.
-//   2. The COMMITTED copy via ASSETS. Kept as the cold-start seed exactly as
-//      before: it is always present in the deployed bundle, so a cold store
-//      (first deploy, a store outage) can never leave the prober with nothing to
-//      probe. This is the #1017 SPOF guard, unchanged.
-//   3. The published R2 `latest/` copy, the last resort it always was.
-//
-// Returns the surfaces array (empty on failure — the run then no-ops rather
-// than throwing).
+// Prefer the hourly D1 snapshot, then the committed ASSETS cold-start seed,
+// then the published artifact. Failed or empty snapshot reads must not remove
+// the prober's input list; failure of every tier yields an empty no-op sweep.
 export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
   // Cron store first (freshest; independent of the artifact publish).
   const generated = asJsonObject(
