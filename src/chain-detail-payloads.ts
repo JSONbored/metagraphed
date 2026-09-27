@@ -1,3 +1,4 @@
+import { historySha256 as digest } from "./history-sha256.ts";
 // Large decoded calls retain exact logical bytes in compressed inline values
 // or immutable D1 chunks. R2 references remain readable during retirement.
 import {
@@ -17,12 +18,6 @@ function bucket(env: unknown): R2Bucket {
     ?.METAGRAPH_ARCHIVE;
   if (!binding) throw new Error("Chain detail payload archive is unbound");
   return binding;
-}
-async function digest(bytes: Uint8Array): Promise<string> {
-  return Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
-    (byte) => byte.toString(16).padStart(2, "0"),
-  ).join("");
 }
 function objectKey(hash: string, compressed: boolean): string {
   return `metagraph/d1-chain-payloads/v1/${hash}.json${compressed ? ".gz" : ""}`;

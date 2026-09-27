@@ -506,3 +506,164 @@ describe("bounded native history metadata batches", () => {
     expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
   });
 });
+
+describe("bounded full-checksum metadata batches", () => {
+  const batch = (keys: string[]) => ({
+    kind: "native-history",
+    operation: "heads",
+    verify: true,
+    keys,
+  });
+  const keys = Array.from({ length: 6 }, (_, index) =>
+    key.replace("00000-", `${String(index).padStart(5, "0")}-`),
+  );
+  const digest = createHash("md5").update(raw).digest("hex");
+  const object = (key: string) => ({
+    key,
+    etag: digest,
+    bytes: raw.length,
+    sha256: assetHash(raw),
+  });
+
+  it("verifies multiple published originals through the existing authenticated proxy", async () => {
+    const inputs = keys.slice(0, 3).map((key, index) => {
+      const bytes = raw.slice(index);
+      return {
+        key,
+        bytes,
+        etag: createHash("md5").update(bytes).digest("hex"),
+        chunks: [bytes.slice(0, 2), bytes.slice(2)],
+      };
+    });
+    const f = historyAssetsFixture(inputs);
+    for (const input of inputs)
+      Object.assign(
+        f.shards[assetHash(input.key).slice(0, 2)].objects[
+          assetHash(input.key)
+        ],
+        { sha256: assetHash(input.bytes) },
+      );
+    f.publish();
+    const archive = { get: vi.fn() };
+    const env = {
+      STATE_EXPORT_SECRET: "existing-producer-secret",
+      NATIVE_HISTORY_ASSETS: f.env.HISTORY_ASSETS,
+      NATIVE_HISTORY_ASSET_RELEASE: `${"f".repeat(64)}:100`,
+      METAGRAPH_ARCHIVE: archive,
+    };
+    const input = {
+      ...batch(inputs.map((i) => i.key)),
+      release: f.env.HISTORY_ASSET_RELEASE,
+    };
+    expect(
+      (await handleD1StateExport(request(input, "wrong"), env)).status,
+    ).toBe(401);
+    expect(f.fetch).not.toHaveBeenCalled();
+    const response = await handleRequest(
+      request(input),
+      {
+        DATA_API: { fetch: (req: Request) => handleD1StateExport(req, env) },
+      } as unknown as Env,
+      {},
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      version: 1,
+      verified: true,
+      objects: inputs.map((i) => ({
+        key: i.key,
+        etag: i.etag,
+        bytes: i.bytes.length,
+        sha256: assetHash(i.bytes),
+      })),
+    });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(archive.get).not.toHaveBeenCalled();
+    expect(env.NATIVE_HISTORY_ASSET_RELEASE).toBe(`${"f".repeat(64)}:100`);
+  });
+
+  it("rejects invalid flags, duplicates and missing or corrupt originals without a partial acknowledgment", async () => {
+    const f = fixture(true, digest);
+    for (const input of [
+      { ...batch([key]), verify: false },
+      { ...batch([key]), verify: "true" },
+      batch([key, key]),
+      batch([]),
+    ]) {
+      expect((await handleD1StateExport(request(input), f.env)).status).toBe(
+        400,
+      );
+    }
+    expect(f.fetch).not.toHaveBeenCalled();
+    expect(
+      (await handleD1StateExport(request(batch([key, keys[1]])), f.env)).status,
+    ).toBe(502);
+    const bad = fixture(true, etag);
+    expect(
+      (await handleD1StateExport(request(batch([key])), bad.env)).status,
+    ).toBe(502);
+  });
+
+  it("caps payload concurrency at four, stops queued reads and drains started reads on failure", async () => {
+    const pending = new Map<
+      string,
+      { resolve: (value: ArrayBuffer) => void; reject: (error: Error) => void }
+    >();
+    const read = vi.fn(
+      (key: string) =>
+        new Promise<ArrayBuffer>((resolve, reject) =>
+          pending.set(key, { resolve, reject }),
+        ),
+    );
+    vi.spyOn(assets, "historyAssetSource").mockReturnValue({
+      describe: async (key) => object(key),
+      read,
+    });
+    let completed = false;
+    const response = handleNativeHistoryExport(batch(keys), {}).then((r) => {
+      completed = true;
+      return r;
+    });
+    await vi.waitFor(() => expect(pending.size).toBe(4));
+    pending.get(keys[0])!.reject(new Error("failed payload"));
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(completed).toBe(false);
+    for (const key of keys.slice(1, 4))
+      pending.get(key)!.resolve(raw.slice().buffer);
+    expect((await response).status).toBe(502);
+    expect(read).toHaveBeenCalledTimes(4);
+  });
+
+  it("shares the 128 MiB original-byte budget across the batch before another payload read", async () => {
+    const range = new Uint8Array(8 * 1024 * 1024);
+    const sha = createHash("sha256"),
+      md5 = createHash("md5");
+    for (let i = 0; i < 16; i++) {
+      sha.update(range);
+      md5.update(range);
+    }
+    const large = {
+      key,
+      bytes: 128 * 1024 * 1024,
+      sha256: sha.digest("hex"),
+      etag: md5.digest("hex"),
+    };
+    const read = vi.fn(async (_key: string) => range.buffer);
+    vi.spyOn(assets, "historyAssetSource").mockReturnValue({
+      describe: async (key) => (key === large.key ? large : object(key)),
+      read,
+    });
+    expect((await handleNativeHistoryExport(batch([key]), {})).status).toBe(
+      200,
+    );
+    expect(read).toHaveBeenCalledTimes(16);
+    read.mockClear();
+    expect(
+      (await handleNativeHistoryExport(batch([key, keys[1]]), {})).status,
+    ).toBe(502);
+    expect(read).toHaveBeenCalledTimes(16);
+    expect(read.mock.calls.every((call) => call[0] === key)).toBe(true);
+  });
+});

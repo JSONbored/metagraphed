@@ -1,3 +1,4 @@
+import { historySha256 } from "./history-sha256.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -73,10 +74,7 @@ export function createImmutableHistoryMetadataReader(bucket: object) {
 
     const operation = (async () => {
       const bytes = (await read()).slice(0);
-      const actual = Array.from(
-        new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
-        (byte) => byte.toString(16).padStart(2, "0"),
-      ).join("");
+      const actual = historySha256(new Uint8Array(bytes));
       // Admission cannot turn a legacy/non-content-addressed object into a
       // persistent value. Its existing reader still validates the fresh bytes.
       if (
