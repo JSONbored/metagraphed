@@ -142,54 +142,61 @@ export async function loadAxonRemovalRows(
     const native = selectedD1Store(env, ["neuron_daily"]);
     const db = native ?? readStore(env, ["neuron_daily"]);
     if (!db) return null;
-    if (native) {
-      const indexed = await axonProjectionReady(native.query);
-      const subnets =
-        deps.netuid !== undefined
-          ? [{ netuid: deps.netuid }]
-          : deps.hotkey !== undefined
-            ? await native.query<{ netuid: number }>(
-                "SELECT DISTINCT netuid FROM neuron_daily_members WHERE hotkey=? AND snapshot_date>=? ORDER BY netuid",
-                [deps.hotkey, cutoff],
-              )
-            : await native.query<{ netuid: number }>(
-                "SELECT DISTINCT netuid FROM neuron_daily_documents WHERE day>=? ORDER BY netuid",
-                [cutoff],
-              );
-      const collected: NeuronAxonDayRow[] = [];
-      // Windows partition by (netuid, uid), so grouping whole subnets keeps
-      // exactly the same sequences. Four at a time cuts network-wide request
-      // round trips by 75% while yielding D1 between bounded sorts. Account
-      // reads remain one subnet at a time to preserve their UID narrowing.
-      const groupSize = deps.hotkey === undefined ? 4 : 1;
-      for (let start = 0; start < subnets.length; start += groupSize) {
-        const group = subnets
-          .slice(start, start + groupSize)
-          .map(({ netuid }) => netuid);
-        const statement = candidateSlotsSql(
-          axonSequenceD1Sql(
-            `AND d.netuid IN (${group.map(() => "?").join(",")})` +
-              (deps.hotkey === undefined
-                ? ""
-                : " AND m.uid IN (SELECT uid FROM neuron_daily_members WHERE hotkey=? AND netuid=? AND snapshot_date>=?)"),
-            indexed,
-          ),
-        );
-        collected.push(
-          ...(await native.query<NeuronAxonDayRow>(statement, [
-            cutoff,
-            ...group,
-            ...(deps.hotkey === undefined
-              ? []
-              : [deps.hotkey, group[0], cutoff]),
-          ])),
-        );
-      }
-      rows = collected;
-    } else rows = await db.query(CANDIDATE_SLOTS_SQL, [cutoff]);
+    rows = native
+      ? await loadNativeAxonRemovalRows(native, deps, cutoff)
+      : await db.query(CANDIDATE_SLOTS_SQL, [cutoff]);
   }
 
   return rows as NeuronAxonDayRow[] | null;
+}
+
+/** A configured native source always returns a complete array or throws. */
+async function loadNativeAxonRemovalRows(
+  native: NonNullable<ReturnType<typeof selectedD1Store>>,
+  deps: AxonRemovalsLoadDeps,
+  cutoff: string,
+): Promise<NeuronAxonDayRow[]> {
+  const indexed = await axonProjectionReady(native.query);
+  const subnets =
+    deps.netuid !== undefined
+      ? [{ netuid: deps.netuid }]
+      : deps.hotkey !== undefined
+        ? await native.query<{ netuid: number }>(
+            "SELECT DISTINCT netuid FROM neuron_daily_members WHERE hotkey=? AND snapshot_date>=? ORDER BY netuid",
+            [deps.hotkey, cutoff],
+          )
+        : await native.query<{ netuid: number }>(
+            "SELECT DISTINCT netuid FROM neuron_daily_documents WHERE day>=? ORDER BY netuid",
+            [cutoff],
+          );
+  const collected: NeuronAxonDayRow[] = [];
+  // Windows partition by (netuid, uid), so grouping whole subnets keeps
+  // exactly the same sequences. Four at a time cuts network-wide request
+  // round trips by 75% while yielding D1 between bounded sorts. Account
+  // reads remain one subnet at a time to preserve their UID narrowing.
+  const groupSize = deps.hotkey === undefined ? 4 : 1;
+  for (let start = 0; start < subnets.length; start += groupSize) {
+    const group = subnets
+      .slice(start, start + groupSize)
+      .map(({ netuid }) => netuid);
+    const statement = candidateSlotsSql(
+      axonSequenceD1Sql(
+        `AND d.netuid IN (${group.map(() => "?").join(",")})` +
+          (deps.hotkey === undefined
+            ? ""
+            : " AND m.uid IN (SELECT uid FROM neuron_daily_members WHERE hotkey=? AND netuid=? AND snapshot_date>=?)"),
+        indexed,
+      ),
+    );
+    collected.push(
+      ...(await native.query<NeuronAxonDayRow>(statement, [
+        cutoff,
+        ...group,
+        ...(deps.hotkey === undefined ? [] : [deps.hotkey, group[0], cutoff]),
+      ])),
+    );
+  }
+  return collected;
 }
 
 /** Roll up already classified transitions without scanning neuron history. */
@@ -309,12 +316,12 @@ export async function refreshAxonRemovalProjection(
   env: unknown,
   nowMs = Date.now(),
 ): Promise<void> {
-  if (!selectedD1Store(env, ["neuron_daily"])) return;
-  const rows = await loadAxonRemovalRows(
-    env,
+  const native = selectedD1Store(env, ["neuron_daily"]);
+  if (!native) return;
+  const rows = await loadNativeAxonRemovalRows(
+    native,
     {},
     isoDaysAgo(nowMs, AXON_PROJECTION_LOOKBACK_DAYS),
   );
-  if (rows === null) throw new Error("Axon projection source unavailable");
   await writeAxonRemovalProjection(env, rows, nowMs);
 }
