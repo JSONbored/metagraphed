@@ -9823,6 +9823,26 @@ async function readLimitedJson(request: Request) {
       }
       chunks.push(value);
     }
+  } catch (error) {
+    // A client can disconnect before its JSON body finishes arriving. This
+    // never reached parsing or execution, so classify the incomplete request
+    // as a client error while preserving unexpected stream failures.
+    if (
+      request.signal.aborted ||
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof TypeError &&
+        error.message ===
+          "Can't read from request stream because client disconnected.")
+    ) {
+      return {
+        error: graphqlError(
+          "GraphQL request body was interrupted.",
+          400,
+          "graphql_invalid_json",
+        ),
+      };
+    }
+    throw error;
   } finally {
     reader.releaseLock();
   }

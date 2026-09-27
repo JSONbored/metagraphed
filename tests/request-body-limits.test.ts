@@ -147,3 +147,66 @@ for (const endpoint of endpoints) {
     }
   });
 }
+
+describe("GraphQL interrupted request bodies", () => {
+  function interrupted(error: unknown, aborted = false) {
+    const controller = new AbortController();
+    const stream = new ReadableStream({
+      start(body) {
+        body.enqueue(new TextEncoder().encode('{"query":'));
+        body.error(error);
+      },
+    });
+    if (aborted) controller.abort();
+    return {
+      stream,
+      request: new Request("https://metagraph.sh/api/v1/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: stream,
+        signal: controller.signal,
+        duplex: "half",
+      } as RequestInit),
+    };
+  }
+
+  for (const [name, error, aborted] of [
+    ["request cancellation", new Error("cancelled by client"), true],
+    ["stream abort", new DOMException("Aborted", "AbortError"), false],
+    [
+      "Cloudflare client disconnect",
+      new TypeError(
+        "Can't read from request stream because client disconnected.",
+      ),
+      false,
+    ],
+  ] as const) {
+    test(`${name} returns a client error and releases the body reader`, async () => {
+      const { request, stream } = interrupted(error, aborted);
+      const response = await handleGraphQLRequest(request, {} as Env);
+      assert.equal(response.status, 400);
+      assert.equal(
+        response.headers.get("x-metagraph-error-code"),
+        "graphql_invalid_json",
+      );
+      assert.match(await response.text(), /request body was interrupted/);
+      assert.equal(stream.locked, false);
+    });
+  }
+
+  for (const error of [
+    new Error("unexpected reader failure"),
+    new TypeError("unexpected stream type error"),
+    new DOMException("invalid stream", "InvalidStateError"),
+    "unexpected non-error rejection",
+  ]) {
+    test(`unexpected ${String(error)} still propagates for fault reporting`, async () => {
+      const { request, stream } = interrupted(error);
+      await assert.rejects(
+        handleGraphQLRequest(request, {} as Env),
+        (actual) => actual === error,
+      );
+      assert.equal(stream.locked, false);
+    });
+  }
+});
