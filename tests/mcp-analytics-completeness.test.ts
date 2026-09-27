@@ -47,11 +47,16 @@ function makeDeps(extra: Row = {}) {
   };
 }
 
-async function callTool(name: string, args: Row = {}, extra: Row = {}) {
+async function callTool(
+  name: string,
+  args: Row = {},
+  extra: Row = {},
+  path = "/mcp",
+) {
   const mcp: Row[] = [];
   const missing: Row[] = [];
   const response = await handleMcpRequest(
-    new Request("https://api.metagraph.sh/mcp", {
+    new Request(`https://api.metagraph.sh${path}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -343,6 +348,30 @@ describe("$mcp_missing_capability", () => {
     assert.equal(data.acknowledged, true);
     // It must not imply more tools are coming, or the agent retries forever.
     assert.equal(data.additional_tools_available, false);
+  });
+
+  test("core discovery admits the full catalog and does not invent a capability gap", async () => {
+    const { body, missing, mcp } = await callTool(
+      MCP_MISSING_CAPABILITY_TOOL,
+      {
+        context: "need block and account history tools beyond the starter list",
+      },
+      {},
+      "/mcp/core",
+    );
+    const data = body.result.structuredContent as Row;
+    assert.equal(data.additional_tools_available, true);
+    assert.match(String(data.message), /Request tools\/list at \/mcp /);
+    assert.match(
+      String(data.message),
+      new RegExp(`${listToolDefinitions().length} tools are available`),
+    );
+    assert.deepEqual(missing, []);
+    assert.equal(
+      mcp.length,
+      1,
+      "discovery remains visible as an ordinary tool call",
+    );
   });
 
   test("records the agent's own words as the intent", async () => {

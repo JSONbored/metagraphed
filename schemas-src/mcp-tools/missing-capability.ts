@@ -23,13 +23,13 @@ export type GetMoreToolsInput = z.infer<typeof GetMoreToolsInputSchema>;
 // exactly what validate:unreferenced-exports exists to keep out.
 export const GetMoreToolsOutputSchema = z
   .object({
-    /** Always true -- the gap was recorded. Present so a client can tell a
+    /** Always true -- discovery or gap reporting was acknowledged. A client can tell a
      * successful report from a transport failure without parsing prose. */
     acknowledged: z.boolean(),
-    /** Always false. Named positively rather than as an error so an agent
-     * reads it as a settled answer instead of a retryable fault. */
+    /** True on the core profile, whose starter listing omits available tools.
+     * False when the caller already has the full catalog. */
     additional_tools_available: z.boolean(),
-    /** Plain-language instruction to stop looking. */
+    /** Full-catalog discovery guidance or acknowledgement of a capability gap. */
     message: z.string(),
   })
   .strict();
