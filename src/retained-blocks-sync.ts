@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { boundedInternalJson, internalJson } from "./internal-json.ts";
 import { z } from "zod";
 import type { D1StoreBinding } from "./d1-store.ts";
@@ -56,20 +57,11 @@ interface Source {
   expected_rows: number;
   received_rows: number;
 }
-const response = (status: number, body: unknown) => internalJson(body, status);
-const fail = (status: number, error: string) => response(status, { error });
-
-async function digest(value: unknown): Promise<string> {
-  return Array.from(
-    new Uint8Array(
-      await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(JSON.stringify(value)),
-      ),
-    ),
-    (byte) => byte.toString(16).padStart(2, "0"),
-  ).join("");
+const fail = (status: number, error: string) => internalJson({ error }, status);
+function digest(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
+
 async function begin(
   db: D1StoreBinding,
   input: Extract<Input, { kind: "begin" }>,
@@ -89,7 +81,7 @@ async function begin(
   const stored = result[1]!.results[0]!;
   if (stored.source !== descriptor)
     return fail(409, "source identity conflict");
-  return response(200, {
+  return internalJson({
     received_rows: stored.received_rows,
     expected_rows: stored.expected_rows,
   });
@@ -106,7 +98,7 @@ async function chunk(
   const end = input.start + input.rows.length;
   if (end > source.expected_rows || input.start > source.received_rows)
     return fail(409, "chunk exceeds source or skips rows");
-  const sha = await digest(input.rows);
+  const sha = digest(input.rows);
   const receipt = () =>
     db
       .prepare(
@@ -116,7 +108,7 @@ async function chunk(
   if (input.start < source.received_rows) {
     const prior = await receipt().first<{ rows: number; digest: string }>();
     return prior?.digest === sha && prior.rows === input.rows.length
-      ? response(200, { received_rows: source.received_rows })
+      ? internalJson({ received_rows: source.received_rows })
       : fail(409, "chunk identity conflict");
   }
   const json = JSON.stringify(input.rows),
@@ -175,14 +167,14 @@ async function chunk(
   };
   if (proof.digest !== sha || proof.rows !== input.rows.length)
     return fail(409, "concurrent chunk identity conflict");
-  return response(200, { received_rows: end });
+  return internalJson({ received_rows: end });
 }
 async function publish(
   db: D1StoreBinding,
   input: Extract<Input, { kind: "publish" }>,
   now: number,
 ): Promise<Response> {
-  const generation = await digest(input);
+  const generation = digest(input);
   if (
     new Set(input.sources).size !== input.sources.length ||
     input.generated_at > now ||
@@ -265,7 +257,7 @@ async function publish(
       ?.generation !== generation
   )
     return fail(409, "snapshot publication raced another publisher");
-  return response(200, {
+  return internalJson({
     generation,
     source_rows: input.source_rows,
     source_files: input.sources.length,
@@ -313,7 +305,7 @@ export async function handleRetainedBlocksSync(
       )
         return fail(409, "snapshot changed during status pagination");
       const sources = rows!.results.slice(0, 200) as { id: number }[];
-      return response(200, {
+      return internalJson({
         state: selected ?? null,
         sources,
         next_cursor: rows!.results.length > 200 ? sources[199]!.id : null,

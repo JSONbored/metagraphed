@@ -133,7 +133,7 @@ describe("data-api's bundle boundary", () => {
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
       firstParty < 4_815_000,
-      `first-party source in data-api's bundle is ${(firstParty / 1024).toFixed(0)} KiB; ` +
+      `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
   });

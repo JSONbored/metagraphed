@@ -51,17 +51,18 @@ export async function handleNativeHistoryExport(
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success)
     return fail(400, "invalid native history export request");
+  const value = parsed.data;
   if (
-    parsed.data.operation === "heads" &&
-    new Set(parsed.data.keys).size !== parsed.data.keys.length
+    value.operation === "heads" &&
+    new Set(value.keys).size !== value.keys.length
   )
     return fail(400, "duplicate native history keys");
   try {
     const source = historyAssetSource(
-      parsed.data.release
+      value.release
         ? {
             ...(env as Record<string, unknown>),
-            NATIVE_HISTORY_ASSET_RELEASE: parsed.data.release,
+            NATIVE_HISTORY_ASSET_RELEASE: value.release,
           }
         : env,
       {
@@ -74,8 +75,8 @@ export async function handleNativeHistoryExport(
     if (!source.describe)
       return fail(503, "native history export is not provisioned");
     const describe = source.describe;
-    if (parsed.data.operation === "heads") {
-      const keys = parsed.data.keys;
+    if (value.operation === "heads") {
+      const keys = value.keys;
       type NativeObject = NonNullable<Awaited<ReturnType<typeof describe>>>;
       const objects: (NativeObject | null)[] = new Array(keys.length);
       let cursor = 0,
@@ -102,11 +103,11 @@ export async function handleNativeHistoryExport(
         return fail(502, "native history static source is unavailable");
       return reply({ version: 1, objects });
     }
-    const object = await source.describe(parsed.data.key);
+    const object = await source.describe(value.key);
     if (!object) return fail(404, "native history object is not migrated");
     if (!object.sha256)
       return fail(503, "native history source checksum is unavailable");
-    if (parsed.data.operation === "verify") {
+    if (value.operation === "verify") {
       // Verify one immutable original near storage without transferring its
       // payload to the operator. Hash bounded ranges, never the whole file in
       // memory; the source retains its metadata, byte and request limits.
@@ -131,8 +132,8 @@ export async function handleNativeHistoryExport(
         return fail(502, "native history original checksum mismatch");
       return reply({ version: 1, object, verified: true });
     }
-    if (parsed.data.operation === "head") return reply({ version: 1, object });
-    const { key, etag, offset, length } = parsed.data;
+    if (value.operation === "head") return reply({ version: 1, object });
+    const { key, etag, offset, length } = value;
     if (etag !== object.etag)
       return fail(412, "native history original identity changed");
     if (offset + length > object.bytes)
