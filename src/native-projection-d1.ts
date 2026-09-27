@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const CHUNK_BYTES = 65_536;
 const MAX_BYTES = 32 * 1024 * 1024;
+const Chunk = z.strictObject({ data: z.string().max(87_384) });
 const Descriptor = z.strictObject({
   format: z.literal("gzip-json-v1"),
   bytes: z.number().int().positive().max(MAX_BYTES),
@@ -46,9 +47,7 @@ export function nativeProjectionD1(db: Pick<D1Database, "prepare">) {
           }
           const chunk = await read(`${key}/chunks/${part}`);
           if (!chunk) throw new Error("Projection chunk is missing");
-          const data = (JSON.parse(chunk.payload) as { data: string }).data;
-          if (typeof data !== "string" || data.length > 87_384)
-            throw new Error("Projection chunk exceeds its budget");
+          const { data } = Chunk.parse(JSON.parse(chunk.payload));
           const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
           const expected = Math.min(
             CHUNK_BYTES,
