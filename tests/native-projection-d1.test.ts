@@ -30,6 +30,9 @@ function fixture() {
   );
   const reads: string[] = [];
   const db = {
+    async batch() {
+      throw new Error("Unexpected batch query");
+    },
     prepare(text: string) {
       return {
         bind(key: string) {
@@ -42,7 +45,7 @@ function fixture() {
         },
       };
     },
-  } as unknown as Pick<D1Database, "prepare">;
+  } as unknown as Pick<D1Database, "prepare" | "batch">;
   function put(key: string, value: unknown) {
     sql
       .prepare("INSERT OR REPLACE INTO generated_artifacts VALUES(?,?,?)")
