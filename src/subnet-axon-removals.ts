@@ -8,6 +8,7 @@
 // envelope. Null-safe: a cold store or a subnet with no AxonInfoRemoved events yields the zeroed card.
 
 import { AXON_REMOVALS_DEGRADED_NEVER_EMITTED } from "./uncurated-event-streams.ts";
+import { axonObservationIso as toIso } from "./axon-removal-observed-at.ts";
 import { roundDp } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
@@ -33,17 +34,6 @@ export const DEFAULT_SUBNET_AXON_REMOVALS_WINDOW = "7d";
 function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
-}
-
-// Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
-// envelope's generated_at, the same way account-events does. Guards the JS Date range so a
-// finite but out-of-range epoch cannot throw a RangeError on the response.
-function toIso(value: unknown): string | null {
-  if (value == null) return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  const date = new Date(n);
-  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 // Average AxonInfoRemoved events per distinct remover — the subnet's re-teardown intensity (1.0
