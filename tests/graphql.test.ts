@@ -21964,6 +21964,93 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     } }`;
   }
 
+  test("stored transitions expose their derivation for measured activity and measured zero", async () => {
+    const generatedAt = Date.now();
+    const date = new Date(generatedAt - 86400000).toISOString().slice(0, 10);
+    for (const measured of [true, false]) {
+      const payload = JSON.stringify({
+        version: 1,
+        generatedAt,
+        removals: measured
+          ? [
+              {
+                netuid: 7,
+                uid: 1,
+                hotkey: "fixture-hotkey",
+                removed_on: date,
+                previous_axon: "1.2.3.4:8091",
+                kind: "stopped-announcing",
+                current_axon: null,
+              },
+            ]
+          : [],
+        excluded: measured
+          ? [
+              { kind: "uid-reuse", date },
+              { kind: "pending", date },
+            ]
+          : [],
+      });
+      let reads = 0;
+      const env = {
+        D1_STATE_TABLES: "neuron_daily",
+        D1_STATE: {
+          prepare(sql: string) {
+            assert.equal(
+              sql,
+              "SELECT payload FROM generated_artifacts WHERE key=?",
+            );
+            return {
+              bind(key: string) {
+                assert.equal(key, "derived/axon-removals/v1.json");
+                return {
+                  async all() {
+                    reads += 1;
+                    return { results: [{ payload }] };
+                  },
+                };
+              },
+            };
+          },
+          async batch() {
+            throw new Error("GraphQL must only read the projection");
+          },
+        },
+      };
+      const { body } = await gql(
+        `{ chain_axon_removals {
+        observed_at network { removals distinct_removers }
+        derivation { method lookback_days excluded_uid_reuse pending_confirmation moved_unroutable }
+        degraded { reason }
+      } }`,
+        env,
+      );
+      assert.equal(body.errors, undefined);
+      assert.equal(reads, 1);
+      assert.deepEqual(body.data.chain_axon_removals, {
+        observed_at: measured ? date + "T00:00:00.000Z" : null,
+        network: {
+          removals: measured ? 1 : 0,
+          distinct_removers: measured ? 1 : 0,
+        },
+        derivation: {
+          method: "axon-state-diff",
+          lookback_days: 31,
+          excluded_uid_reuse: measured ? 1 : 0,
+          pending_confirmation: measured ? 1 : 0,
+          moved_unroutable: 0,
+        },
+        degraded: null,
+      });
+    }
+    const { body } = await gql(
+      "{ chain_axon_removals { derivation { method } degraded { reason } } }",
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.chain_axon_removals.derivation, null);
+    assert.ok(body.data.chain_axon_removals.degraded);
+  });
+
   // loadChainAxonRemovals issues the network aggregate (COUNT DISTINCT hotkey /
   // MAX(observed_at), no GROUP BY) and only then the GROUP BY netuid
   // leaderboard, and only when newest_observed is non-null.
