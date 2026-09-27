@@ -203,6 +203,7 @@ function loadPostHog(): Promise<PostHog | null> {
         // pass through untouched.
         before_send: (event) => {
           if (event?.event !== "$exception") return event;
+          if (isNativeBridgeRejection(event.properties)) return null;
           const values = event.properties?.["$exception_values"];
           const signature = Array.isArray(values) ? values.join("|") : String(values ?? "");
           return admitClientException(signature) ? event : null;
@@ -423,6 +424,31 @@ export function captureEvent(name: string, properties?: Record<string, unknown>)
 // consumed a slot on the way in and then met its own throttle again in
 // before_send, where a second signature miss could drop an event that had
 // already been admitted.
+// CefSharp's native object repository emits this exact host-bridge failure:
+// https://github.com/cefsharp/CefSharp/blob/master/CefSharp/Internals/JavascriptObjectRepository.cs
+// The observed event is a synthetic, stackless string rejection. Any stack,
+// additional exception, other method, or application Error remains actionable.
+function isNativeBridgeRejection(properties: Record<string, unknown> | undefined): boolean {
+  const exceptions = properties?.["$exception_list"];
+  if (!Array.isArray(exceptions) || exceptions.length !== 1) return false;
+  const exception = exceptions[0] as {
+    type?: unknown;
+    value?: unknown;
+    stacktrace?: unknown;
+    mechanism?: { synthetic?: unknown; handled?: unknown };
+  } | null;
+  return (
+    exception?.type === "UnhandledRejection" &&
+    exception.mechanism?.synthetic === true &&
+    exception.mechanism.handled === false &&
+    exception.stacktrace == null &&
+    typeof exception.value === "string" &&
+    /^(?:Non-Error promise rejection captured with value: )?Object Not Found Matching Id:\d+, MethodName:update, ParamCount:4$/.test(
+      exception.value,
+    )
+  );
+}
+
 const EXCEPTION_WINDOW_MS = 60_000;
 const EXCEPTION_PAGE_CAP = 20;
 const exceptionLastSentAt = new Map<string, number>();
