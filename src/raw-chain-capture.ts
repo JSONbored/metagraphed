@@ -74,7 +74,7 @@ async function rpc(
   params: unknown[],
   fetchImpl: typeof fetch,
 ): Promise<unknown> {
-  return chainRpc(url, method, params, { fetchImpl });
+  return chainRpc(url, method, params, { fetchImpl, timeoutMs: 10_000 });
 }
 
 /**
@@ -257,7 +257,10 @@ export async function fetchRawBlockChunk(
       params: [SYSTEM_EVENTS_STORAGE_KEY, hash] as unknown[],
     })),
   ];
-  const results = await chainRpcBatch(url, calls, { fetchImpl });
+  const results = await chainRpcBatch(url, calls, {
+    fetchImpl,
+    timeoutMs: 10_000,
+  });
 
   const blocks: RawBlockCapture[] = [];
   for (const [index, { height, hash }] of usable.entries()) {
@@ -451,30 +454,9 @@ export async function captureTick(deps: {
   if (endpoints.length === 0) {
     throw new Error("captureTick: rpcUrls is empty; nothing to read from");
   }
-  // THE GAP IS NOT DIVIDED BY THE ENDPOINT COUNT, and briefly was -- but the
-  // reason given for removing it was wrong, so here is what was measured.
-  //
-  // #9378 concluded the limit was per CLIENT: after exhausting it on one host,
-  // a DIFFERENT host refused too. Re-measured 2026-08-16 against the endpoints
-  // this lane actually reads, that does not hold. Exhausting
-  // archive.chain.opentensor.ai (429 after 79 requests) and then immediately
-  // draining lite.chain.opentensor.ai got a FULL fresh allowance -- 100
-  // requests before its own 429. The buckets are per BACKEND NODE.
-  //
-  // What made the old measurement look client-wide is that the names are not
-  // the nodes. `entrypoint-finney.opentensor.ai` is a CNAME to
-  // `lite.chain.opentensor.ai`, both resolving to 65.109.251.221, while
-  // archive answers from 65.109.254.0 -- so draining "another host" drained
-  // the same machine, and it returned 0 requests. Two of the three mainnet
-  // names in the registry are one node.
-  //
-  // THE DIVISOR STAYS OUT ANYWAY, on a better reason than a wrong ceiling:
-  // there is nothing left to buy. A chunk is two requests whatever its size,
-  // so one node's ~100 requests/minute already funds hundreds of blocks per
-  // minute against a chain producing five. Multiplying an allowance the lane
-  // cannot spend would only add a rotation that has to be right about which
-  // names share a machine -- a fact DNS is free to change under us. The
-  // rotation stays what it is: FAILOVER and archive coverage, not rate.
+  // Keep the combined request budget independent of endpoint count. Several
+  // hostnames can share a backend limit; rotation buys failover and archive
+  // coverage, while batching already exceeds the chain's production rate.
   const chunkGapMs = minGapMs;
   const stored = await deps.watermark.read();
   // An unset watermark starts just below the floor, so the first tick captures
@@ -487,19 +469,45 @@ export async function captureTick(deps: {
   // The head comes from whichever endpoint answers FIRST, not from a fixed one:
   // a tick must not be lost because the preferred host is down when every other
   // host could have served the whole run.
-  let headRaw: { number?: unknown } | null = null;
+  let head: number | null = null;
   let headError: unknown = null;
-  for (const url of endpoints) {
-    try {
-      headRaw = (await rpc(url, "chain_getHeader", [], fetchImpl)) as {
-        number?: unknown;
-      };
-      break;
-    } catch (error) {
-      headError = error;
+  let candidates = endpoints;
+  // Fail over first, then retry transient upstream failures once. Testnet can
+  // have only one archive endpoint; one TLS/proxy blip must not lose a tick.
+  for (let round = 0; round < 2 && head === null; round += 1) {
+    const retry: string[] = [];
+    for (const url of candidates) {
+      try {
+        const value = (await rpc(url, "chain_getHeader", [], fetchImpl)) as {
+          number?: unknown;
+        } | null;
+        const hex = value?.number;
+        const number =
+          typeof hex === "string" && /^0x[0-9a-fA-F]+$/.test(hex)
+            ? Number.parseInt(hex, 16)
+            : NaN;
+        if (!Number.isSafeInteger(number)) {
+          throw new Error("chain_getHeader: unusable head number");
+        }
+        head = number;
+        break;
+      } catch (error) {
+        headError = error;
+        if (
+          error instanceof Error &&
+          (error.name === "TimeoutError" ||
+            /^chain_getHeader: HTTP (502|503|504|520|522|523|524|525)$/.test(
+              error.message,
+            ))
+        )
+          retry.push(url);
+      }
     }
+    if (head !== null || round === 1 || retry.length === 0) break;
+    await sleepFn(2_000);
+    candidates = retry;
   }
-  if (headRaw === null) {
+  if (head === null) {
     const detail = String((headError as Error)?.message ?? headError);
     // One endpoint's failure IS the lane's failure, and its message is already
     // the whole story -- rewrapping it would only bury the cause a caller
@@ -511,12 +519,6 @@ export async function captureTick(deps: {
         : detail,
     );
   }
-  const headHex = headRaw?.number;
-  if (typeof headHex !== "string" || !/^0x[0-9a-fA-F]+$/.test(headHex)) {
-    throw new Error("chain_getHeader: unusable head number");
-  }
-  const head = Number.parseInt(headHex, 16);
-
   const heights = nextCaptureHeights(lastContiguous, head, deps.maxPerTick);
   if (heights.length === 0) {
     return {
