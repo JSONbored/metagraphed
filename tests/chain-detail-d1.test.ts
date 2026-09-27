@@ -18,6 +18,10 @@ import {
 } from "../src/chain-detail-hot-tier.ts";
 import { loadExtrinsicFeedColdTier } from "../src/extrinsics-cold-tier.ts";
 import { loadChainEventsColdTier } from "../src/chain-events-cold-tier.ts";
+import {
+  loadBlockColdTier,
+  loadBlockFeedColdTier,
+} from "../src/blocks-cold-tier.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import worker, { neonOwnsChainDetail } from "../workers/data-api.ts";
 
@@ -171,6 +175,79 @@ test("a bad late family rolls back detail and coverage together", async () => {
   const bounded = await writeChainDetailD1(createD1Store(db), env(), tooMany);
   assert.match(bounded.chain_detail_blocks.reason!, /statement budget/);
   assert.equal(await count("chain_detail_blocks"), 0);
+});
+
+test("block detail and feed read decoded economics and sparse headers from real D1", async () => {
+  const rows = input();
+  Object.assign(rows.blockRows[0], {
+    native_transfer_tao: "1.000000001",
+    stake_flow_tao: "2",
+    economic_activity_tao: "3.000000001",
+    fee_tao: "0.01",
+    tip_tao: "0",
+    issuance_tao: "0.5",
+    subnet_ids: "[19,50]",
+    economics_complete: true,
+  });
+  const result = await mirrorChainDetailToNeon(env(), null, rows, {
+    laneHealthDb,
+  });
+  assert.ok(Object.values(result.results).every((r) => r.ok));
+  for (const [height, observed] of [
+    [9_000_001, stamp],
+    [9_000_002, stamp + 12_000],
+    [9_000_003, Date.now()],
+  ]) {
+    assert.ok(
+      (
+        await mirrorBlocksHeadToNeon(
+          env(),
+          null,
+          {
+            block_number: height,
+            block_hash:
+              height === 9_000_001 ? hash : `0x${height.toString(16)}`,
+            parent_hash: hash,
+            extrinsic_count: 1,
+            event_count: 2,
+            author: null,
+            observed_at: observed,
+          },
+          { laneHealthDb },
+        )
+      ).result?.ok,
+    );
+  }
+  const readerEnv = { ...env(), METAGRAPH_ARCHIVE: undefined };
+  const detail = await loadBlockColdTier(readerEnv, "9000001");
+  assert.ok(detail?.block);
+  assert.equal(detail.block.block_number, 9_000_001);
+  assert.equal(detail.block.event_count, 1);
+  assert.equal(detail.block.spec_version, 291);
+  assert.equal(detail.block.decode_status, "complete");
+  assert.equal(detail.block.native_transfer_tao, 1.000000001);
+  assert.equal(detail.block.stake_flow_tao, 2);
+  assert.equal(detail.block.economic_activity_tao, 3.000000001);
+  assert.equal(detail.block.fee_tao, 0.01);
+  assert.equal(detail.block.tip_tao, 0);
+  assert.equal(detail.block.issuance_tao, 0.5);
+  assert.deepEqual(detail.block.subnet_ids, [19, 50]);
+  assert.deepEqual(
+    (await loadBlockColdTier(readerEnv, hash))?.block,
+    detail.block,
+  );
+  const feed = await loadBlockFeedColdTier(readerEnv, { limit: 3 });
+  assert.ok(feed);
+  assert.deepEqual(
+    feed.blocks.map((b) => b.block_number),
+    [9_000_003, 9_000_002, 9_000_001],
+  );
+  assert.deepEqual(feed.blocks[2], detail.block);
+  assert.equal(feed.blocks[0].decode_status, "pending");
+  assert.equal(feed.blocks[1].decode_status, "unavailable");
+  assert.equal(feed.blocks[1].event_count, 2);
+  assert.equal(feed.blocks[1].native_transfer_tao, null);
+  assert.equal((await loadBlockColdTier(readerEnv, "9000004"))?.block, null);
 });
 
 test("a nine-megabyte call is compressed inline and hydrated without R2", async () => {

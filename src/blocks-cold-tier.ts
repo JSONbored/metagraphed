@@ -38,7 +38,7 @@
 // an incomplete answer is recoverable, a wrong one is not. See
 // `storeCanServe` for the exact predicate.
 
-import { buildBlock, buildBlockFeed } from "./blocks.ts";
+import { buildBlock, buildBlockFeed, declineBlock } from "./blocks.ts";
 import {
   fetchBlockRowsFromR2Sql,
   loadBlockWithEconomicsFromR2Sql,
@@ -89,23 +89,23 @@ const STORE_SELECT =
   // between a block being seen and being decoded -- the window that used to
   // publish null and render "Events 0".
   "COALESCE(c.chain_event_count, b.event_count) AS event_count, " +
-  // to_jsonb(c) keeps this rollout safe before migration 0034 is applied: a
-  // missing key reads null instead of making the whole live-block query fail.
+  // Both current schemas carry these columns. Keep the projection portable:
+  // D1 executes SQLite directly and cannot evaluate Postgres row-to-JSON.
   "CASE " +
   // The cutoff is bound by each caller. Keeping wall-clock arithmetic out of
   // SQL preserves this reader across both supported stores and makes the
   // five-minute pending window deterministic in tests.
   "WHEN c.block_number IS NULL AND b.observed_at >= ? THEN 'pending' " +
   "WHEN c.block_number IS NULL THEN 'unavailable' " +
-  "WHEN to_jsonb(c)->>'economics_complete' = 'true' THEN 'complete' " +
+  "WHEN c.economics_complete = TRUE THEN 'complete' " +
   "ELSE 'unavailable' END AS decode_status, " +
-  "to_jsonb(c)->>'native_transfer_tao' AS native_transfer_tao, " +
-  "to_jsonb(c)->>'stake_flow_tao' AS stake_flow_tao, " +
-  "to_jsonb(c)->>'economic_activity_tao' AS economic_activity_tao, " +
-  "to_jsonb(c)->>'fee_tao' AS fee_tao, " +
-  "to_jsonb(c)->>'tip_tao' AS tip_tao, " +
-  "to_jsonb(c)->>'issuance_tao' AS issuance_tao, " +
-  "to_jsonb(c)->'subnet_ids' AS subnet_ids";
+  "CAST(c.native_transfer_tao AS TEXT) AS native_transfer_tao, " +
+  "CAST(c.stake_flow_tao AS TEXT) AS stake_flow_tao, " +
+  "CAST(c.economic_activity_tao AS TEXT) AS economic_activity_tao, " +
+  "CAST(c.fee_tao AS TEXT) AS fee_tao, " +
+  "CAST(c.tip_tao AS TEXT) AS tip_tao, " +
+  "CAST(c.issuance_tao AS TEXT) AS issuance_tao, " +
+  "c.subnet_ids AS subnet_ids";
 /**
  * What STORE_SELECT returns: a JOIN projection, not either table.
  *
@@ -387,7 +387,10 @@ export async function loadBlockColdTier(
       const row = rows[0];
       if (row) return buildBlock(recordOrNull(row), ref);
     } catch {
-      // Fall through to the lakehouse rather than failing the request.
+      // Only the hot store can answer above the seam. A failed read is not
+      // evidence that the block is absent; keep that distinction observable.
+      if (aboveSeam) return declineBlock(ref);
+      // A hash may still belong to retained history.
     }
   }
 
