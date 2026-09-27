@@ -51,6 +51,7 @@ afterAll(() => rmSync(workdir, { recursive: true, force: true }));
 /** data-api's real module graph, from esbuild rather than from a grep. */
 function inputs(
   entry = "workers/data-api.ts",
+  portable = false,
 ): Record<string, { bytes: number }> {
   execFileSync(
     "npx",
@@ -59,12 +60,12 @@ function inputs(
       entry,
       "--bundle",
       "--format=esm",
-      "--platform=node",
+      portable ? "--platform=browser" : "--platform=node",
       `--metafile=${metafile}`,
       "--outfile=/dev/null",
       "--log-level=error",
       "--external:cloudflare:workers",
-      "--external:node:*",
+      ...(portable ? [] : ["--external:node:*"]),
     ],
     { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
   );
@@ -148,4 +149,9 @@ test("indexed chain windows do not import capture cron wiring or route contracts
     "workers/config.ts",
   ])
     assert.ok(!graph[forbidden], `history reader imports ${forbidden}`);
+});
+
+test("websocket worker bundles without Node compatibility", () => {
+  const graph = inputs("workers/wss-lb.ts", true);
+  assert.ok(graph["workers/wss-lb.ts"]);
 });

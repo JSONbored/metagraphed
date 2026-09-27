@@ -1,3 +1,4 @@
+import { sha256Hex } from "./sha256-hex.ts";
 // #10566: the revenue probe lane's store — the producer half, and the read the
 // serving layer needs.
 //
@@ -306,16 +307,7 @@ export function eligibleRevenueSurfaces(
   return out;
 }
 
-/** sha-256 of the exact bytes a figure was extracted from. */
-export async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
+export { sha256Hex };
 
 /**
  * Fetch one surface, returning the parsed body and the exact text it came from.

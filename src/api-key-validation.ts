@@ -1,3 +1,4 @@
+import { sha256Hex as hashKeyForCache } from "./sha256-hex.ts";
 // KV-cache-fronted API key validation (freemium-API rework, 2026-07-19).
 // Resolves a caller-supplied mg_... key to its Unkey-verified identity
 // with cached provider verification for managed keys -- mirrors this file's
@@ -53,16 +54,6 @@ function bareKeyFrom(value: unknown): string | null {
   const bare = value.startsWith("Bearer ") ? value.slice(7) : value;
   if (!bare.startsWith("mg_") || bare.length < MIN_BARE_KEY_LENGTH) return null;
   return bare;
-}
-
-async function hashKeyForCache(bareKey: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(bareKey),
-  );
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 function cacheKeyFor(hash: string): string {

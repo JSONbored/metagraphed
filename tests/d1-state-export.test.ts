@@ -43,6 +43,7 @@ async function get(body: unknown, overrides: Record<string, unknown> = {}) {
     rows: unknown[][];
     days: { day: string; rows: number }[];
     revision: number;
+    day_revisions?: boolean;
     next_cursor: (string | number)[] | null;
   }>();
 }
@@ -366,6 +367,202 @@ test("keyset pages retain every row and reject a mutation before the next page o
     ).status,
     409,
   );
+});
+
+test("closed-day pages survive live-day writes and still reject corrections before paging or acknowledgement", async () => {
+  const day = "2000-01-01";
+  const store = selectedD1Store(env(), ["subnet_snapshots"])!;
+  await store.run(
+    `WITH RECURSIVE ids(n) AS (SELECT 10000 UNION ALL SELECT n+1 FROM ids WHERE n<12001)
+     INSERT INTO subnet_snapshots(netuid,snapshot_date,captured_at) SELECT n,?,1 FROM ids`,
+    [day],
+  );
+  assert.equal(
+    (await get({ table: "subnet_snapshots", kind: "schema" })).day_revisions,
+    true,
+  );
+  const base = {
+    table: "subnet_snapshots",
+    kind: "rows",
+    day,
+    revision_scope: "day",
+    columns: ["netuid", "captured_at"],
+  };
+  const first = await get(base);
+  assert.equal(first.rows.length, 2000);
+  await store.run(
+    "INSERT INTO subnet_snapshots(netuid,snapshot_date,captured_at) VALUES(10000,?,2)",
+    [new Date().toISOString().slice(0, 10)],
+  );
+  const last = await get({
+    ...base,
+    cursor: first.next_cursor,
+    revision: first.revision,
+  });
+  assert.deepEqual(last.rows, [
+    [12000, 1],
+    [12001, 1],
+  ]);
+  const final = {
+    table: base.table,
+    kind: "revision",
+    day,
+    revision_scope: "day",
+    revision: first.revision,
+  };
+  assert.equal((await get(final)).revision, first.revision);
+  await store.run(
+    "UPDATE subnet_snapshots SET captured_at=3 WHERE netuid=10000 AND snapshot_date=?",
+    [day],
+  );
+  for (const body of [
+    final,
+    { ...base, cursor: first.next_cursor, revision: first.revision },
+  ])
+    assert.equal((await handleD1StateExport(req(body), env())).status, 409);
+  await store.run(
+    "DELETE FROM subnet_snapshots WHERE netuid BETWEEN 10000 AND 12001",
+  );
+});
+
+test("closed-day revisions include every physical projection, moved day and deletion, with no open-day revision writes", async () => {
+  const fixtures = [
+    [
+      "neuron_daily",
+      "neuron_daily_documents",
+      "day",
+      "shard,stamp,payload",
+      "0,1790000000000,jsonb('{}')",
+    ],
+    [
+      "neuron_daily",
+      "neuron_daily_members",
+      "snapshot_date",
+      "uid,shard",
+      "0,0",
+    ],
+    [
+      "account_position_daily",
+      "account_position_daily_documents",
+      "day",
+      "shard,stamp,payload",
+      "0,1790000000000,jsonb('{}')",
+    ],
+    [
+      "account_position_daily",
+      "account_position_daily_members",
+      "snapshot_date",
+      "account,shard",
+      "'fixture',0",
+    ],
+    [
+      "subnet_snapshots",
+      "subnet_snapshots",
+      "snapshot_date",
+      "captured_at",
+      "1",
+    ],
+  ];
+  const revision = async (table: string, day: string) =>
+    (await get({ table, day, kind: "revision", revision_scope: "day" }))
+      .revision;
+  for (const [table, physical, column, extra, values] of fixtures) {
+    const day = "2000-02-01",
+      moved = "2000-02-02";
+    const before = await revision(table!, day);
+    await db
+      .prepare(
+        `INSERT INTO ${physical}(netuid,${column},${extra}) VALUES(60000,?,${values})`,
+      )
+      .bind(day)
+      .run();
+    const inserted = await revision(table!, day);
+    assert.ok(inserted > before);
+    await db
+      .prepare(`UPDATE ${physical} SET ${column}=${column} WHERE netuid=60000`)
+      .run();
+    assert.ok((await revision(table!, day)) > inserted);
+    const old = await revision(table!, day),
+      next = await revision(table!, moved);
+    await db
+      .prepare(`UPDATE ${physical} SET ${column}=? WHERE netuid=60000`)
+      .bind(moved)
+      .run();
+    assert.ok((await revision(table!, day)) > old);
+    assert.ok((await revision(table!, moved)) > next);
+    const changed = await revision(table!, moved);
+    await db.prepare(`DELETE FROM ${physical} WHERE netuid=60000`).run();
+    assert.ok((await revision(table!, moved)) > changed);
+    await db
+      .prepare(
+        `INSERT INTO ${physical}(netuid,${column},${extra}) VALUES(60000,'9999-12-31',${values})`,
+      )
+      .run();
+    await db
+      .prepare(`UPDATE ${physical} SET ${column}=${column} WHERE netuid=60000`)
+      .run();
+    await db.prepare(`DELETE FROM ${physical} WHERE netuid=60000`).run();
+    assert.equal(
+      await db
+        .prepare(
+          "SELECT count(*) n FROM archive_export_revisions WHERE table_name=?",
+        )
+        .bind(`${table}/9999-12-31`)
+        .first("n"),
+      0,
+    );
+  }
+});
+
+test("day-scoped exports require a closed daily selection and a completed migration", async () => {
+  for (const body of [
+    { table: "account_balances", day: "2000-01-01", kind: "revision" },
+    { table: "subnet_snapshots", kind: "revision" },
+    { table: "subnet_snapshots", day: "9999-12-31", kind: "revision" },
+    { table: "subnet_snapshots", day: "2000-01-01", kind: "schema" },
+  ])
+    assert.equal(
+      (
+        await handleD1StateExport(
+          req({ ...body, revision_scope: "day" }),
+          env(),
+        )
+      ).status,
+      400,
+    );
+  await db
+    .prepare(
+      "DELETE FROM archive_export_revisions WHERE table_name='__closed_day_revisions_v1'",
+    )
+    .run();
+  try {
+    assert.equal(
+      (await get({ table: "subnet_snapshots", kind: "schema" })).day_revisions,
+      false,
+    );
+    for (const kind of ["rows", "revision"])
+      assert.equal(
+        (
+          await handleD1StateExport(
+            req({
+              table: "subnet_snapshots",
+              kind,
+              day: "2000-01-01",
+              columns: ["netuid"],
+              revision_scope: "day",
+            }),
+            env(),
+          )
+        ).status,
+        503,
+      );
+  } finally {
+    await db
+      .prepare(
+        "INSERT INTO archive_export_revisions(table_name,revision) VALUES('__closed_day_revisions_v1',1)",
+      )
+      .run();
+  }
 });
 
 test("daily neuron views and composite history watermarks preserve rows without scanning offsets", async () => {

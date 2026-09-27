@@ -1183,6 +1183,42 @@
   },
   {
     "type": "trigger",
+    "name": "account_position_daily_documents_closed_day_delete",
+    "tbl_name": "account_position_daily_documents",
+    "sql": "CREATE TRIGGER account_position_daily_documents_closed_day_delete AFTER DELETE ON account_position_daily_documents\nWHEN OLD.day < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'account_position_daily/' || OLD.day,1 WHERE OLD.day < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "account_position_daily_documents_closed_day_insert",
+    "tbl_name": "account_position_daily_documents",
+    "sql": "CREATE TRIGGER account_position_daily_documents_closed_day_insert AFTER INSERT ON account_position_daily_documents\nWHEN NEW.day < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'account_position_daily/' || NEW.day,1 WHERE NEW.day < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "account_position_daily_documents_closed_day_update",
+    "tbl_name": "account_position_daily_documents",
+    "sql": "CREATE TRIGGER account_position_daily_documents_closed_day_update AFTER UPDATE ON account_position_daily_documents\nWHEN OLD.day < date('now') OR NEW.day < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'account_position_daily/' || OLD.day,1 WHERE OLD.day < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'account_position_daily/' || NEW.day,1 WHERE NEW.day < date('now') AND NEW.day <> OLD.day\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "account_position_daily_members_closed_day_delete",
+    "tbl_name": "account_position_daily_members",
+    "sql": "CREATE TRIGGER account_position_daily_members_closed_day_delete AFTER DELETE ON account_position_daily_members\nWHEN OLD.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'account_position_daily/' || OLD.snapshot_date,1 WHERE OLD.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "account_position_daily_members_closed_day_insert",
+    "tbl_name": "account_position_daily_members",
+    "sql": "CREATE TRIGGER account_position_daily_members_closed_day_insert AFTER INSERT ON account_position_daily_members\nWHEN NEW.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'account_position_daily/' || NEW.snapshot_date,1 WHERE NEW.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "account_position_daily_members_closed_day_update",
+    "tbl_name": "account_position_daily_members",
+    "sql": "CREATE TRIGGER account_position_daily_members_closed_day_update AFTER UPDATE ON account_position_daily_members\nWHEN OLD.snapshot_date < date('now') OR NEW.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'account_position_daily/' || OLD.snapshot_date,1 WHERE OLD.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'account_position_daily/' || NEW.snapshot_date,1 WHERE NEW.snapshot_date < date('now') AND NEW.snapshot_date <> OLD.snapshot_date\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
     "name": "lane_health_clocks_delete",
     "tbl_name": "lane_health",
     "sql": "CREATE TRIGGER lane_health_clocks_delete AFTER DELETE ON lane_health BEGIN\n    UPDATE lane_health_clocks SET occurrences = occurrences - 1 WHERE lane = OLD.lane AND checked_at = OLD.checked_at;\n    DELETE FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at AND occurrences = 0;\n    UPDATE lane_health_clocks SET previous_at =\n        (SELECT MAX(checked_at) FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at < OLD.checked_at)\n    WHERE lane = OLD.lane AND previous_at = OLD.checked_at\n        AND NOT EXISTS (SELECT 1 FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at);\n\n    DELETE FROM lane_health_verdict_latest WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at;\n    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at)\n    SELECT lane, verdict, MAX(checked_at) FROM lane_health WHERE lane = OLD.lane AND verdict = OLD.verdict GROUP BY lane, verdict\n    ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at\n    WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;\nEND"
@@ -1246,6 +1282,42 @@
     "name": "neuron_daily_axon_member_move",
     "tbl_name": "neuron_daily_members",
     "sql": "CREATE TRIGGER neuron_daily_axon_member_move AFTER UPDATE OF netuid,uid,snapshot_date,shard ON neuron_daily_members\nBEGIN\n UPDATE neuron_daily_members SET\n axon_index=(SELECT json_extract(d.payload,'$.\"'||NEW.uid||'\".axon') FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard),\n axon_indexed=CASE WHEN EXISTS(SELECT 1 FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard) THEN 1 ELSE 0 END\n WHERE netuid=NEW.netuid AND uid=NEW.uid AND snapshot_date=NEW.snapshot_date;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_documents_closed_day_delete",
+    "tbl_name": "neuron_daily_documents",
+    "sql": "CREATE TRIGGER neuron_daily_documents_closed_day_delete AFTER DELETE ON neuron_daily_documents\nWHEN OLD.day < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || OLD.day,1 WHERE OLD.day < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_documents_closed_day_insert",
+    "tbl_name": "neuron_daily_documents",
+    "sql": "CREATE TRIGGER neuron_daily_documents_closed_day_insert AFTER INSERT ON neuron_daily_documents\nWHEN NEW.day < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || NEW.day,1 WHERE NEW.day < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_documents_closed_day_update",
+    "tbl_name": "neuron_daily_documents",
+    "sql": "CREATE TRIGGER neuron_daily_documents_closed_day_update AFTER UPDATE ON neuron_daily_documents\nWHEN OLD.day < date('now') OR NEW.day < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || OLD.day,1 WHERE OLD.day < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || NEW.day,1 WHERE NEW.day < date('now') AND NEW.day <> OLD.day\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_members_closed_day_delete",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE TRIGGER neuron_daily_members_closed_day_delete AFTER DELETE ON neuron_daily_members\nWHEN OLD.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || OLD.snapshot_date,1 WHERE OLD.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_members_closed_day_insert",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE TRIGGER neuron_daily_members_closed_day_insert AFTER INSERT ON neuron_daily_members\nWHEN NEW.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || NEW.snapshot_date,1 WHERE NEW.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "neuron_daily_members_closed_day_update",
+    "tbl_name": "neuron_daily_members",
+    "sql": "CREATE TRIGGER neuron_daily_members_closed_day_update AFTER UPDATE ON neuron_daily_members\nWHEN OLD.snapshot_date < date('now') OR NEW.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || OLD.snapshot_date,1 WHERE OLD.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || NEW.snapshot_date,1 WHERE NEW.snapshot_date < date('now') AND NEW.snapshot_date <> OLD.snapshot_date\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
   },
   {
     "type": "trigger",
@@ -1372,6 +1444,24 @@
     "name": "root_basket_targets_immutable_update",
     "tbl_name": "root_basket_targets",
     "sql": "CREATE TRIGGER root_basket_targets_immutable_update BEFORE UPDATE ON root_basket_targets\n WHEN EXISTS (SELECT 1 FROM root_basket_capture_completions WHERE capture_id IN (OLD.capture_id,NEW.capture_id))\n BEGIN SELECT RAISE(ABORT,'completed root basket observation is immutable'); END"
+  },
+  {
+    "type": "trigger",
+    "name": "subnet_snapshots_closed_day_delete",
+    "tbl_name": "subnet_snapshots",
+    "sql": "CREATE TRIGGER subnet_snapshots_closed_day_delete AFTER DELETE ON subnet_snapshots\nWHEN OLD.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'subnet_snapshots/' || OLD.snapshot_date,1 WHERE OLD.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "subnet_snapshots_closed_day_insert",
+    "tbl_name": "subnet_snapshots",
+    "sql": "CREATE TRIGGER subnet_snapshots_closed_day_insert AFTER INSERT ON subnet_snapshots\nWHEN NEW.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'subnet_snapshots/' || NEW.snapshot_date,1 WHERE NEW.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "subnet_snapshots_closed_day_update",
+    "tbl_name": "subnet_snapshots",
+    "sql": "CREATE TRIGGER subnet_snapshots_closed_day_update AFTER UPDATE ON subnet_snapshots\nWHEN OLD.snapshot_date < date('now') OR NEW.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'subnet_snapshots/' || OLD.snapshot_date,1 WHERE OLD.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'subnet_snapshots/' || NEW.snapshot_date,1 WHERE NEW.snapshot_date < date('now') AND NEW.snapshot_date <> OLD.snapshot_date\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
   },
   {
     "type": "trigger",

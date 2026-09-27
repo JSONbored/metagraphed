@@ -1,3 +1,4 @@
+import { historySha256 } from "./history-sha256.ts";
 import { Buffer } from "node:buffer";
 
 /** Preserve transport bytes before acknowledgment, without replay (#12270). */
@@ -18,9 +19,7 @@ export async function preserveSyncDeadLetter(
   if (bytes.length > 128 * 1024)
     throw new Error("Sync dead letter exceeds 128 KiB");
   const encoding = binary ? "base64" : "json";
-  const sha = Buffer.from(
-    await crypto.subtle.digest("SHA-256", bytes),
-  ).toString("hex");
+  const sha = historySha256(bytes);
   const stored = await db
     .prepare(
       `INSERT INTO sync_dead_letters(message_id,body_sha256,encoding,payload,received_at)
