@@ -20,8 +20,8 @@ const MAX_CACHE_BYTES = 8 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 256;
 const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
 
-function sha256(bytes: Uint8Array): string {
-  return createHash("sha256").update(bytes).digest("hex");
+function sha256(value: string | Uint8Array): string {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 /** A pinned release relocates immutable feed bytes, preserving their original
@@ -205,7 +205,7 @@ export function historyAssetSource(
       !root.prefixes.some((prefix) => key.startsWith(prefix))
     )
       return undefined;
-    const identity = sha256(new TextEncoder().encode(key)),
+    const identity = sha256(key),
       prefix = identity.slice(0, root.shardPrefixLength ?? 2),
       reference = root.shards[prefix];
     if (!reference) return undefined;

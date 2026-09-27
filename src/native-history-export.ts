@@ -92,9 +92,8 @@ export async function handleNativeHistoryExport(
               if (object && !object.sha256)
                 throw new Error("Unqualified native checksum");
               objects[index] = object ?? null;
-            } catch (error) {
+            } catch {
               failed = true;
-              throw error;
             }
           }
         }),
@@ -103,7 +102,7 @@ export async function handleNativeHistoryExport(
         return fail(502, "native history static source is unavailable");
       return reply({ version: 1, objects });
     }
-    const object = await source.describe(value.key);
+    const object = await describe(value.key);
     if (!object) return fail(404, "native history object is not migrated");
     if (!object.sha256)
       return fail(503, "native history source checksum is unavailable");
