@@ -1,3 +1,4 @@
+import { boundedInternalJson, internalJson } from "./internal-json.ts";
 // Protected native D1 export protocol for the existing archive jobs (#12184).
 // A revision is committed with every selected family write. Each page's data
 // and revision share one D1 batch, and a final check precedes archive append.
@@ -85,37 +86,12 @@ function logicalType(table: string, name: string, type: string): string {
   if (table === "self_health_daily" && name === "day") return "date";
   return type === "INTEGER" ? "int8" : type === "REAL" ? "float8" : "text";
 }
-async function body(request: Request): Promise<unknown> {
-  if (!request.body) throw new Error("body absent");
-  const reader = request.body.getReader();
-  let text = "",
-    bytes = 0;
-  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
-  try {
-    while (true) {
-      const part = await reader.read();
-      if (part.done) break;
-      bytes += part.value.byteLength;
-      if (bytes > 8192) {
-        await reader.cancel();
-        throw new Error("body too large");
-      }
-      text += decoder.decode(part.value, { stream: true });
-    }
-    return JSON.parse(text + decoder.decode());
-  } finally {
-    reader.releaseLock();
-  }
-}
 export async function handleD1StateExport(
   request: Request,
   env: ExportEnv,
 ): Promise<Response> {
   const fail = (status: number, error: string) =>
-    Response.json(
-      { error },
-      { status, headers: { "cache-control": "no-store" } },
-    );
+    internalJson({ error }, status);
   if (!env.STATE_EXPORT_SECRET)
     return fail(503, "state export is not provisioned");
   if (
@@ -126,7 +102,7 @@ export async function handleD1StateExport(
   )
     return fail(401, "invalid state export credential");
   if (request.method !== "POST") return fail(405, "state export requires POST");
-  const inputBody = await body(request).catch(() => null);
+  const inputBody = await boundedInternalJson(request, 8192).catch(() => null);
   if (
     inputBody &&
     typeof inputBody === "object" &&
@@ -171,10 +147,7 @@ export async function handleD1StateExport(
       }));
     if (!columns.length) throw new Error("export source absent");
     const reply = (value: Record<string, unknown>) =>
-      Response.json(
-        { version: 1, ...value },
-        { headers: { "cache-control": "no-store" } },
-      );
+      internalJson({ version: 1, ...value });
     if (input.kind === "schema") return reply({ columns });
     const revisionStatement = db
       .prepare(

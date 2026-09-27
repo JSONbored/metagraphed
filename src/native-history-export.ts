@@ -1,3 +1,4 @@
+import { internalJson as reply } from "./internal-json.ts";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { NATIVE_HISTORY_ASSET_OBJECT_KEY } from "../schemas-src/artifacts/native-history-assets.ts";
@@ -19,14 +20,10 @@ const head = z
 const inputSchema = z.discriminatedUnion("operation", [
   head,
   head.extend({ operation: z.literal("verify") }),
-  z
-    .object({
-      kind: z.literal("native-history"),
-      operation: z.literal("heads"),
-      keys: z.array(head.shape.key).min(1).max(64),
-      release: head.shape.release,
-    })
-    .strict(),
+  head.omit({ key: true }).extend({
+    operation: z.literal("heads"),
+    keys: z.array(head.shape.key).min(1).max(64),
+  }),
   head.extend({
     operation: z.literal("range"),
     etag: z.string().regex(/^[a-f0-9]{32}$/),
@@ -50,14 +47,7 @@ export async function handleNativeHistoryExport(
   input: unknown,
   env: unknown,
 ): Promise<Response> {
-  const fail = (status: number, error: string) =>
-    Response.json(
-      { error },
-      {
-        status,
-        headers: { "cache-control": "no-store" },
-      },
-    );
+  const fail = (status: number, error: string) => reply({ error }, status);
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success)
     return fail(400, "invalid native history export request");
@@ -110,12 +100,7 @@ export async function handleNativeHistoryExport(
       );
       if (failed)
         return fail(502, "native history static source is unavailable");
-      return Response.json(
-        { version: 1, objects },
-        {
-          headers: { "cache-control": "no-store" },
-        },
-      );
+      return reply({ version: 1, objects });
     }
     const object = await source.describe(parsed.data.key);
     if (!object) return fail(404, "native history object is not migrated");
@@ -128,11 +113,13 @@ export async function handleNativeHistoryExport(
       const sha = createHash("sha256"),
         md5 = createHash("md5");
       for (let offset = 0; offset < object.bytes; offset += 8 * 1024 * 1024) {
-        const bytes = await source.read(
-          object.key,
-          object.etag,
-          offset,
-          Math.min(8 * 1024 * 1024, object.bytes - offset),
+        const bytes = new Uint8Array(
+          await source.read(
+            object.key,
+            object.etag,
+            offset,
+            Math.min(8 * 1024 * 1024, object.bytes - offset),
+          ),
         );
         sha.update(bytes);
         md5.update(bytes);
@@ -142,20 +129,9 @@ export async function handleNativeHistoryExport(
         md5.digest("hex") !== object.etag
       )
         return fail(502, "native history original checksum mismatch");
-      return Response.json(
-        { version: 1, object, verified: true },
-        {
-          headers: { "cache-control": "no-store" },
-        },
-      );
+      return reply({ version: 1, object, verified: true });
     }
-    if (parsed.data.operation === "head")
-      return Response.json(
-        { version: 1, object },
-        {
-          headers: { "cache-control": "no-store" },
-        },
-      );
+    if (parsed.data.operation === "head") return reply({ version: 1, object });
     const { key, etag, offset, length } = parsed.data;
     if (etag !== object.etag)
       return fail(412, "native history original identity changed");

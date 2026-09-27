@@ -331,7 +331,7 @@ describe("immutable release verification without a migration Worker", () => {
     };
     const read = vi.fn(
       async (_key: string, _etag: string, offset: number, length: number) =>
-        bytes.slice(offset, offset + length),
+        bytes.slice(offset, offset + length).buffer,
     );
     vi.spyOn(assets, "historyAssetSource").mockReturnValue({
       describe: async () => object,
@@ -343,7 +343,9 @@ describe("immutable release verification without a migration Worker", () => {
       [8 * 1024 * 1024, 7],
     ]);
     read.mockClear();
-    read.mockImplementationOnce(async () => bytes.slice(0, 8 * 1024 * 1024));
+    read.mockImplementationOnce(
+      async () => bytes.slice(0, 8 * 1024 * 1024).buffer,
+    );
     read.mockRejectedValueOnce(new Error("later chunk unavailable"));
     const failed = await handleNativeHistoryExport(verify, {});
     expect(failed.status).toBe(502);

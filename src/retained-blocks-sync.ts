@@ -1,3 +1,4 @@
+import { boundedInternalJson, internalJson } from "./internal-json.ts";
 import { z } from "zod";
 import type { D1StoreBinding } from "./d1-store.ts";
 import { timingSafeEqual } from "./webhooks.ts";
@@ -55,32 +56,9 @@ interface Source {
   expected_rows: number;
   received_rows: number;
 }
-const response = (status: number, body: unknown) =>
-  Response.json(body, { status, headers: { "cache-control": "no-store" } });
+const response = (status: number, body: unknown) => internalJson(body, status);
 const fail = (status: number, error: string) => response(status, { error });
 
-async function inputBody(request: Request): Promise<unknown> {
-  if (!request.body) return null;
-  const reader = request.body.getReader(),
-    decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
-  let text = "",
-    bytes = 0;
-  try {
-    for (;;) {
-      const part = await reader.read();
-      if (part.done) break;
-      bytes += part.value.byteLength;
-      if (bytes > 1024 * 1024) {
-        await reader.cancel();
-        throw new Error("body budget exceeded");
-      }
-      text += decoder.decode(part.value, { stream: true });
-    }
-    return JSON.parse(text + decoder.decode());
-  } finally {
-    reader.releaseLock();
-  }
-}
 async function digest(value: unknown): Promise<string> {
   return Array.from(
     new Uint8Array(
@@ -309,7 +287,9 @@ export async function handleRetainedBlocksSync(
     return fail(401, "invalid retained blocks sync credential");
   if (request.method !== "POST")
     return fail(405, "retained blocks sync requires POST");
-  const parsed = Input.safeParse(await inputBody(request).catch(() => null));
+  const parsed = Input.safeParse(
+    await boundedInternalJson(request, 1024 * 1024).catch(() => null),
+  );
   if (!parsed.success) return fail(400, "invalid retained blocks sync request");
   try {
     const input = parsed.data,
