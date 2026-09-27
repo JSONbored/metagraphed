@@ -546,6 +546,7 @@ describe("runGithubSignalsSync", () => {
       { cron: GITHUB_SIGNALS_SYNC_CRON, scheduledTime: Date.now() } as never,
       mockEnv({
         GITHUB_SIGNALS_TOKEN: "tok",
+        METAGRAPH_ARCHIVE: { get: bucket.get },
         D1_STATE: generatedArtifactDb(bucket),
       }) as never,
       { waitUntil: (p: Promise<unknown>) => waited.push(p) } as never,

@@ -910,7 +910,10 @@ describe("cron registration", () => {
     const waited: Promise<unknown>[] = [];
     const result = (await worker.scheduled(
       { cron: LINK_STATUS_SYNC_CRON, scheduledTime: TICK_MS } as never,
-      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }) as never,
+      mockEnv({
+        METAGRAPH_ARCHIVE: { get: bucket.get },
+        D1_STATE: generatedArtifactDb(bucket),
+      }) as never,
       { waitUntil: (p: Promise<unknown>) => waited.push(p) } as never,
     )) as { ok: boolean };
     await Promise.all(waited);

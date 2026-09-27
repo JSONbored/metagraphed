@@ -682,6 +682,7 @@ describe("runSurfaceVerificationSync", () => {
       } as never,
       mockEnv({
         ...pgMockEnv(),
+        METAGRAPH_ARCHIVE: { get: bucket.get },
         D1_STATE: generatedArtifactDb(bucket),
         METAGRAPH_CONTROL: fakeKv({ last_run_at: LAST_RUN_AT }),
       }) as never,

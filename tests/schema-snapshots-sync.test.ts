@@ -527,7 +527,10 @@ describe("runSchemaSnapshotsSync", () => {
         cron: SCHEMA_SNAPSHOTS_SYNC_CRON,
         scheduledTime: Date.now(),
       } as never,
-      mockEnv({ D1_STATE: generatedArtifactDb(bucket) }) as never,
+      mockEnv({
+        METAGRAPH_ARCHIVE: { get: bucket.get },
+        D1_STATE: generatedArtifactDb(bucket),
+      }) as never,
       { waitUntil: () => {} } as never,
     )) as { ok: boolean; changed: boolean };
     assert.equal(result.ok, true);
