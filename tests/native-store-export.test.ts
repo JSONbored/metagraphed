@@ -68,7 +68,7 @@ describe("existing private native store readback", () => {
       `https://history-assets.invalid/${sha256}.mgpack`,
     );
     expect(incoming.headers.get("accept-encoding")).toBe("identity");
-    expect(incoming.redirect).toBe("error");
+    expect(incoming.redirect).toBe("manual");
     expect(f.r2).not.toHaveBeenCalled();
   });
 
@@ -205,6 +205,25 @@ describe("existing private native store readback", () => {
       expect(await actual.json()).toEqual({
         error: "native store content is unavailable or changed",
       });
+      expect(f.r2).not.toHaveBeenCalled();
+    }
+  });
+
+  it("rejects asset redirects without following them or accepting their body", async () => {
+    for (const status of [301, 302, 303, 307, 308]) {
+      const cancel = vi.fn();
+      const f = fixture(
+        () =>
+          new Response(new ReadableStream({ cancel }), {
+            status,
+            headers: { location: "https://unexpected.invalid/asset" },
+          }),
+      );
+      const response = await handleNativeStoreExport(input, f.env);
+      expect(response.status).toBe(502);
+      expect(f.fetch).toHaveBeenCalledTimes(1);
+      expect(f.fetch.mock.calls[0][0].redirect).toBe("manual");
+      expect(cancel).toHaveBeenCalledTimes(1);
       expect(f.r2).not.toHaveBeenCalled();
     }
   });

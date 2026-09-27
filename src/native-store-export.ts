@@ -92,7 +92,8 @@ export async function handleNativeStoreExport(
     const response = await binding!.fetch(
       new Request(`https://history-assets.invalid${path}`, {
         headers: { "accept-encoding": "identity" },
-        redirect: "error",
+        // workerd supports manual/follow; status 200 below rejects redirects.
+        redirect: "manual",
         signal,
       }),
     );
