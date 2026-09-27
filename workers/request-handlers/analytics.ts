@@ -107,7 +107,10 @@ import { buildChainServing } from "../../src/chain-serving.ts";
 import { buildChainPrometheus } from "../../src/chain-prometheus.ts";
 import { loadChainPrometheusColdTier } from "../../src/chain-prometheus-loader.ts";
 import { loadChainPrometheusFromArtifact } from "../../src/chain-prometheus-artifact.ts";
-import { buildChainAxonRemovals } from "../../src/chain-axon-removals.ts";
+import {
+  buildChainAxonRemovals,
+  CHAIN_AXON_REMOVALS_WINDOWS,
+} from "../../src/chain-axon-removals.ts";
 import { loadAxonRemovals } from "../../src/axon-removals-loader.ts";
 import { buildChainRegistrations } from "../../src/chain-registrations.ts";
 import { buildChainDeregistrations } from "../../src/chain-deregistrations.ts";
@@ -1924,7 +1927,12 @@ export async function handleChainAxonRemovals(
       // A null rollup means there was no store to read, NOT that nothing was
       // removed, so the builder keeps its schema-stable empty in that case --
       // the same distinction the degraded marker was carrying.
-      const rollup = await loadAxonRemovals(env);
+      const rollup = await loadAxonRemovals(env, {
+        windowDays:
+          CHAIN_AXON_REMOVALS_WINDOWS[
+            label as keyof typeof CHAIN_AXON_REMOVALS_WINDOWS
+          ],
+      });
       const data = buildChainAxonRemovals(rollup?.subnets ?? [], {
         window: label,
         limit,

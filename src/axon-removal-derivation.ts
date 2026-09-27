@@ -205,7 +205,7 @@ function normalize(row: NeuronAxonDayRow): NormalizedDay | null {
  */
 export function deriveAxonRemovals(
   rows: NeuronAxonDayRow[] | null | undefined,
-  { lookbackDays }: { lookbackDays: number },
+  { lookbackDays, sinceDate }: { lookbackDays: number; sinceDate?: string },
 ): DerivedAxonRemovals {
   const bySlot = new Map<string, NormalizedDay[]>();
   for (const row of Array.isArray(rows) ? rows : []) {
@@ -226,6 +226,9 @@ export function deriveAxonRemovals(
     for (let i = 1; i < bucket.length; i += 1) {
       const previous = bucket[i - 1]!;
       const current = bucket[i]!;
+      // Keep older observations as context, but count only transitions in the
+      // requested window. Filtering rows first would hide boundary removals.
+      if (sinceDate !== undefined && current.date < sinceDate) continue;
       // Only a non-null -> null transition is a candidate at all.
       if (previous.axon === null || current.axon !== null) continue;
       // CORRECTION 1: the slot changed hands, so this is a deregistration.

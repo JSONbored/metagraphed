@@ -402,3 +402,25 @@ describe("accountAxonRemovalRows — order independence", () => {
     assert.deepEqual(descending, expected, "descending input");
   });
 });
+
+test("ninety-day account requests read beyond the legacy thirty-day cutoff", async () => {
+  let bound: unknown[] = [];
+  const out = await loadAxonRemovals(
+    {},
+    {
+      now: () => Date.parse("2026-08-16T12:00:00Z"),
+      windowDays: 90,
+      query: async (_sql, params) => {
+        bound = params;
+        return [
+          day("2026-06-01", { axon: "1.2.3.4:8091" }),
+          day("2026-06-02"),
+          day("2026-06-03"),
+        ];
+      },
+    },
+  );
+  assert.deepEqual(bound, ["2026-05-17"]);
+  assert.equal(out?.removals[0]?.removed_on, "2026-06-02");
+  assert.equal(out?.derivation.lookback_days, 91);
+});
