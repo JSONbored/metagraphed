@@ -1,39 +1,13 @@
-// Reading the axon-removal derivation out of `neuron_daily` (#10805).
+// Derive removals from neuron_daily through the shared removal rules (#10805).
+// SQL selects slots that lost a reachable axon; TypeScript distinguishes a
+// confirmed teardown from a missed reading or UID reuse. Keep the transition
+// predicate aligned with the derivation: populated -> empty alone misses moves
+// to unroutable addresses (#11399).
 //
-// ## Why the work is split the way it is
-//
-// The rules that decide what counts as a removal live in ONE place --
-// src/axon-removal-derivation.ts -- and this module does not restate them.
-// That matters more than it looks: the rules are the whole feed. Subtracting
-// UID reuse is the difference between 94 removals and 1,584, and requiring a
-// second absent reading is the difference between a teardown and a missed
-// poll. Two implementations of that, one in SQL and one in TypeScript, is two
-// answers waiting to disagree -- and I had exactly that disagreement while
-// building this (19 vs 14), from measuring with one rule and implementing
-// another.
-//
-// So SQL does only what SQL is for: narrowing. It finds the slots that lost a
-// REACHABLE axon at any point in the window and returns those slots' day
-// series. Everything else -- the hotkey test, the confirmation test, the
-// pending accounting -- happens in the derivation module, on rows it already
-// has tests for.
-//
-// ## The narrowing has to move whenever the rule does
-//
-// It did not, once, and the cost was measurable. #11399 widened the derivation
-// from a populated axon to a reachable one and left this predicate on presence,
-// so a slot that only ever moved routable -> unroutable was never fetched and
-// the widened rule never saw it: 79 of 224 confirmed removals over 30 days, all
-// of them moves, SN126 serving 50 against 128. Both ends now read the predicate
-// out of src/axon-transition.ts, which carries the measurement and the reason.
-//
-// ## The narrowing is what makes this affordable
-//
-// The window holds ~936,000 neuron-days network-wide, which no Worker should
-// pull. Slots that dropped an axon at all are ~1,584 over 30 days, so their
-// series is ~49,000 rows -- measured, not estimated: 47,616 rows for the six
-// subnets used to verify the derivation. The expensive predicate runs in
-// Postgres against the index; the cheap logic runs where it is tested.
+// D1 reads one subnet at a time and account reads first select relevant slots
+// through the hotkey index. Every selected slot retains its whole day series,
+// including other hotkeys, so narrowing cannot manufacture a removal by hiding
+// a replacement operator or a later confirming/recovered reading.
 import {
   deriveAxonRemovals,
   type DerivedAxonRemovals,
@@ -100,6 +74,8 @@ export interface AxonRemovalsLoadDeps {
   now?: () => number;
   /** Subnet cards consume only this subnet, so D1 need not scan the network. */
   netuid?: number;
+  /** Account reads need whole slot histories, including replacement hotkeys. */
+  hotkey?: string;
 }
 
 /** `YYYY-MM-DD`, `days` before `nowMs`. */
@@ -133,24 +109,36 @@ export async function loadAxonRemovals(
     if (native) {
       const indexed = await axonProjectionReady(native.query);
       const subnets =
-        deps.netuid === undefined
-          ? await native.query<{ netuid: number }>(
-              "SELECT DISTINCT netuid FROM neuron_daily_documents WHERE day>=? ORDER BY netuid",
-              [cutoff],
-            )
-          : [{ netuid: deps.netuid }];
+        deps.netuid !== undefined
+          ? [{ netuid: deps.netuid }]
+          : deps.hotkey !== undefined
+            ? await native.query<{ netuid: number }>(
+                "SELECT DISTINCT netuid FROM neuron_daily_members WHERE hotkey=? AND snapshot_date>=? ORDER BY netuid",
+                [deps.hotkey, cutoff],
+              )
+            : await native.query<{ netuid: number }>(
+                "SELECT DISTINCT netuid FROM neuron_daily_documents WHERE day>=? ORDER BY netuid",
+                [cutoff],
+              );
       const collected: NeuronAxonDayRow[] = [];
       // Windows partition by (netuid, uid), so subnet reads are equivalent.
       // Yield D1 between subnets instead of holding its single writer behind
       // one network-wide window sort for tens of seconds.
       const statement = candidateSlotsSql(
-        axonSequenceD1Sql("AND d.netuid=?", indexed),
+        axonSequenceD1Sql(
+          "AND d.netuid=?" +
+            (deps.hotkey === undefined
+              ? ""
+              : " AND m.uid IN (SELECT uid FROM neuron_daily_members WHERE hotkey=? AND netuid=? AND snapshot_date>=?)"),
+          indexed,
+        ),
       );
       for (const { netuid } of subnets)
         collected.push(
           ...(await native.query<NeuronAxonDayRow>(statement, [
             cutoff,
             netuid,
+            ...(deps.hotkey === undefined ? [] : [deps.hotkey, netuid, cutoff]),
           ])),
         );
       rows = collected;

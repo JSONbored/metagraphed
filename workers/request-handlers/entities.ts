@@ -4776,14 +4776,14 @@ export const handleAccountAxonRemovals = makeAccountEventHandler({
   build: buildAccountAxonRemovals,
   urlSuffix: "axon-removals",
   coldTier: async (env, ss58, window) => {
-    const rollup = await loadAxonRemovals(env);
+    const rollup = await loadAxonRemovals(env, { hotkey: ss58 });
+    const rows = accountAxonRemovalRows(rollup, ss58) ?? [];
     return {
-      data: buildAccountAxonRemovals(
-        accountAxonRemovalRows(rollup, ss58) ?? [],
-        ss58,
-        { window },
-      ),
-      generatedAt: rollup?.network.newest_observed ?? null,
+      data: buildAccountAxonRemovals(rows, ss58, { window }),
+      generatedAt: rows.reduce<string | null>((latest, row) => {
+        const observed = String(row.last_observed);
+        return latest === null || observed > latest ? observed : latest;
+      }, null),
     };
   },
 });
