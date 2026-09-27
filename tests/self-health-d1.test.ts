@@ -45,9 +45,12 @@ beforeEach(async () => {
     await db.prepare(`DELETE FROM ${t}`).run();
 });
 test("native probe retries keep tick and daily counts atomic", async () => {
-  await runSelfHealthProbe(env(), null, deps);
+  // Keep these two distinct ticks in one UTC day regardless of CI wall time.
+  const tick = Date.parse("2026-09-26T12:00:00Z");
+  const probeDeps = { ...deps, now: () => tick };
+  await runSelfHealthProbe(env(), null, probeDeps);
   await runSelfHealthProbe(env(), null, {
-    ...deps,
+    ...probeDeps,
     fetch: async () => new Response(null, { status: 503 }),
   });
   assert.equal(
@@ -64,11 +67,14 @@ test("native probe retries keep tick and daily counts atomic", async () => {
     ],
   );
   await runSelfHealthProbe(env(), null, {
-    ...deps,
-    now: () => stamp + 60000,
+    ...probeDeps,
+    now: () => tick + 60000,
     fetch: async () => new Response(null, { status: 503 }),
   });
-  const card = await loadSelfHealthNeon(selfHealthSql(env()));
+  const card = await loadSelfHealthNeon(
+    selfHealthSql(env()),
+    () => tick + 60000,
+  );
   assert.equal(card?.verdict, "outage");
   assert.equal(card?.measured_component_count, 3);
   for (const c of card!.components) {

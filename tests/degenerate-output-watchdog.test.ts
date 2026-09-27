@@ -212,29 +212,60 @@ describe("runDegenerateOutputWatchdog", () => {
     );
   });
 
-  test("A FAILED QUERY DOES NOT STOP THE TICK", async () => {
+  test("a failed query records an incomplete check, and a successful retry clears it", async () => {
     // Migrations here are applied by hand, so a table that does not exist yet
     // is a state this must survive -- and it must not report the lanes it never
     // reached as healthy either, which is why `checked` is counted rather than
     // assumed.
     const seen: unknown[] = [];
+    const written: unknown[][] = [];
+    const health = {
+      query: async () => [],
+      run: async (sql: string, values?: unknown[]) => {
+        if (sql.startsWith("INSERT INTO lane_health "))
+          written.push(values ?? []);
+        return { changes: 1 };
+      },
+    };
     const result = await runDegenerateOutputWatchdog(
       {},
       {
         db: db(new Error("relation does not exist")),
-        laneHealthDb: {
-          query: async () => [],
-          run: async () => ({ changes: 1 }),
-        },
+        laneHealthDb: health,
         recordException: async (_env: unknown, event: unknown) => {
           seen.push(event);
           return true;
         },
       },
     );
-    assert.equal(result.ok, true, "no fault was observed, so none is reported");
+    assert.equal(result.ok, false, "an unchecked lane is not healthy");
+    assert.deepEqual(
+      result.faults,
+      [],
+      "a read failure is not a classification finding",
+    );
     assert.equal(result.checked, 0, "and it does not claim to have checked it");
     assert.equal(seen.length, 1);
+    assert.equal(written[0]?.[1], "stale");
+    assert.match(
+      String(written[0]?.[3]),
+      /1 classifying lane read\(s\) failed; 0 checked/,
+    );
+
+    const recovered = await runDegenerateOutputWatchdog(
+      {},
+      {
+        db: db([{ verdict: "candidates-found", rows: 128, work: 9 }]),
+        laneHealthDb: health,
+      },
+    );
+    assert.equal(recovered.ok, true);
+    assert.equal(recovered.checked, CLASSIFYING_LANES.length);
+    assert.equal(written[1]?.[1], "ok");
+    assert.match(
+      String(written[1]?.[3]),
+      /1 classifying lane\(s\), none degenerate/,
+    );
   });
 
   test("no store bound declines rather than reporting healthy", async () => {
