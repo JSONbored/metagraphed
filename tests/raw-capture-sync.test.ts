@@ -301,6 +301,55 @@ describe("runRawCaptureSync — refusal paths", () => {
 });
 
 describe("runRawCaptureSync — capture", () => {
+  test("explicit D1 selection captures without an R2 binding and advances only its committed watermark", async () => {
+    const { env } = envWith({
+      RAW_CAPTURE_STORAGE: "d1",
+      METAGRAPH_ARCHIVE: undefined,
+      D1_STATE: {
+        prepare: () => {
+          throw new Error("injected writer owns its database");
+        },
+      },
+    });
+    const stored = new Map<string, string>();
+    const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
+      ctx: CTX,
+      now: () => 5000,
+      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
+      d1CaptureStore: {
+        put: async (key, value) => {
+          stored.set(key, value as string);
+        },
+      },
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.captured, 3);
+    assert.equal(result.watermark, RAW_CAPTURE_GENESIS_FLOOR + 2);
+    assert.equal(stored.size, 1);
+    assert.equal([...stored.values()][0]!.trim().split("\n").length, 3);
+    assert.equal(
+      db
+        .prepare(
+          "SELECT last_contiguous_block FROM raw_capture_state WHERE network='mainnet'",
+        )
+        .get()?.last_contiguous_block,
+      result.watermark,
+    );
+  });
+
+  test("a selected D1 binding without its writer cannot silently use the R2 binding", async () => {
+    const { env, puts } = envWith({
+      RAW_CAPTURE_STORAGE: "d1",
+      D1_STATE: { prepare: () => {} },
+    });
+    const result = await runRawCaptureSync(env as never, {
+      recordException: async () => false,
+    });
+    assert.equal(result.reason, "store_unavailable");
+    assert.equal(puts.size, 0);
+  });
+
   test("first tick starts at the genesis floor and persists the watermark", async () => {
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {

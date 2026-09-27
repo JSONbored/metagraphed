@@ -198,6 +198,11 @@ CREATE INDEX neurons_passes_completed_idx ON neurons_passes(completed_at DESC);
 
 CREATE INDEX nominator_positions_coldkey_source_captured_idx ON nominator_positions (coldkey, source, captured_at);
 
+CREATE INDEX raw_capture_archives_network_block
+  ON raw_capture_archives(network,last_block,key) WHERE selected=1;
+
+CREATE INDEX raw_capture_selected_network_block ON raw_capture_selected(network,last_block,key);
+
 CREATE UNIQUE INDEX root_basket_capture_page_cursors ON root_basket_capture_pages (capture_id,coalesce(start_after,''));
 
 CREATE UNIQUE INDEX root_basket_capture_terminal_page ON root_basket_capture_pages (capture_id) WHERE next_after IS NULL;
@@ -689,6 +694,64 @@ CREATE TABLE providers(
  source_commit TEXT NOT NULL,
  updated_at INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec')*1000 AS INTEGER)),
  PRIMARY KEY (id)
+) WITHOUT ROWID;
+
+CREATE TABLE raw_capture_archives (
+  key TEXT NOT NULL,
+  sha256 TEXT NOT NULL CHECK(length(sha256)=64),
+  network TEXT NOT NULL CHECK(network IN ('mainnet','testnet')),
+  first_block INTEGER NOT NULL CHECK(first_block>=0),
+  last_block INTEGER NOT NULL CHECK(last_block>=first_block),
+  raw_bytes INTEGER NOT NULL CHECK(raw_bytes BETWEEN 1 AND 33554432),
+  compressed_bytes INTEGER NOT NULL CHECK(compressed_bytes BETWEEN 1 AND 33619968),
+  compressed_sha256 TEXT NOT NULL CHECK(length(compressed_sha256)=64),
+  parts INTEGER NOT NULL CHECK(parts BETWEEN 1 AND 513),
+  captured_at INTEGER NOT NULL CHECK(captured_at>0),
+  complete INTEGER NOT NULL CHECK(complete=1),
+  selected INTEGER NOT NULL CHECK(selected IN (0,1)),
+  native_key TEXT NOT NULL,
+  native_etag TEXT NOT NULL CHECK(length(native_etag)=32),
+  native_sha256 TEXT NOT NULL CHECK(native_sha256=compressed_sha256),
+  PRIMARY KEY(key,sha256)
+) WITHOUT ROWID;
+
+CREATE TABLE raw_capture_batches (
+  key TEXT NOT NULL,
+  sha256 TEXT NOT NULL CHECK(length(sha256)=64),
+  network TEXT NOT NULL CHECK(network IN ('mainnet','testnet')),
+  first_block INTEGER NOT NULL CHECK(first_block>=0),
+  last_block INTEGER NOT NULL CHECK(last_block>=first_block),
+  raw_bytes INTEGER NOT NULL CHECK(raw_bytes BETWEEN 1 AND 33554432),
+  compressed_bytes INTEGER NOT NULL CHECK(compressed_bytes BETWEEN 1 AND 33619968),
+  compressed_sha256 TEXT NOT NULL CHECK(length(compressed_sha256)=64),
+  parts INTEGER NOT NULL CHECK(parts BETWEEN 1 AND 513),
+  captured_at INTEGER NOT NULL CHECK(captured_at>0),
+  complete INTEGER NOT NULL DEFAULT 0 CHECK(complete IN (0,1)),
+  PRIMARY KEY(key,sha256)
+) WITHOUT ROWID;
+
+CREATE TABLE raw_capture_budget (
+  id INTEGER PRIMARY KEY CHECK(id=1),
+  bytes INTEGER NOT NULL DEFAULT 0 CHECK(bytes BETWEEN 0 AND 536870912),
+  objects INTEGER NOT NULL DEFAULT 0 CHECK(objects BETWEEN 0 AND 16384)
+);
+
+CREATE TABLE raw_capture_chunks (
+  key TEXT NOT NULL,
+  sha256 TEXT NOT NULL,
+  part INTEGER NOT NULL CHECK(part BETWEEN 0 AND 512),
+  data BLOB NOT NULL CHECK(length(data) BETWEEN 1 AND 65536),
+  PRIMARY KEY(key,sha256,part),
+  FOREIGN KEY(key,sha256) REFERENCES raw_capture_batches(key,sha256) ON DELETE CASCADE
+) WITHOUT ROWID;
+
+CREATE TABLE raw_capture_selected (
+  key TEXT PRIMARY KEY NOT NULL,
+  sha256 TEXT NOT NULL,
+  network TEXT NOT NULL CHECK(network IN ('mainnet','testnet')),
+  last_block INTEGER NOT NULL,
+  captured_at INTEGER NOT NULL,
+  FOREIGN KEY(key,sha256) REFERENCES raw_capture_batches(key,sha256)
 ) WITHOUT ROWID;
 
 CREATE TABLE raw_capture_state (
@@ -1435,6 +1498,35 @@ WHEN OLD.snapshot_date < date('now') OR NEW.snapshot_date < date('now') BEGIN
   INSERT INTO archive_export_revisions(table_name,revision)
   SELECT 'neuron_daily/' || NEW.snapshot_date,1 WHERE NEW.snapshot_date < date('now') AND NEW.snapshot_date <> OLD.snapshot_date
   ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;
+END;
+
+CREATE TRIGGER raw_capture_archive_release AFTER INSERT ON raw_capture_archives BEGIN
+  UPDATE raw_capture_archives SET selected=0
+    WHERE key=NEW.key AND sha256<>NEW.sha256 AND NEW.selected=1;
+  DELETE FROM raw_capture_selected WHERE key=NEW.key AND sha256=NEW.sha256;
+  DELETE FROM raw_capture_batches WHERE key=NEW.key AND sha256=NEW.sha256;
+END;
+
+CREATE TRIGGER raw_capture_archive_source BEFORE INSERT ON raw_capture_archives
+WHEN NOT EXISTS (
+    SELECT 1 FROM raw_capture_batches b
+    WHERE b.key=NEW.key AND b.sha256=NEW.sha256 AND b.complete=1
+      AND b.network=NEW.network AND b.first_block=NEW.first_block AND b.last_block=NEW.last_block
+      AND b.raw_bytes=NEW.raw_bytes AND b.compressed_bytes=NEW.compressed_bytes
+      AND b.compressed_sha256=NEW.compressed_sha256 AND b.parts=NEW.parts AND b.captured_at=NEW.captured_at
+      AND NEW.parts=(SELECT count(*) FROM raw_capture_chunks c WHERE c.key=b.key AND c.sha256=b.sha256)
+      AND NEW.compressed_bytes=(SELECT sum(length(data)) FROM raw_capture_chunks c WHERE c.key=b.key AND c.sha256=b.sha256)
+      AND NEW.selected=EXISTS(SELECT 1 FROM raw_capture_selected s WHERE s.key=b.key AND s.sha256=b.sha256)
+) BEGIN
+  SELECT RAISE(ABORT,'Raw archive source changed');
+END;
+
+CREATE TRIGGER raw_capture_release AFTER DELETE ON raw_capture_batches BEGIN
+  UPDATE raw_capture_budget SET bytes=bytes-OLD.compressed_bytes,objects=objects-1 WHERE id=1;
+END;
+
+CREATE TRIGGER raw_capture_reserve AFTER INSERT ON raw_capture_batches BEGIN
+  UPDATE raw_capture_budget SET bytes=bytes+NEW.compressed_bytes,objects=objects+1 WHERE id=1;
 END;
 
 CREATE TRIGGER root_basket_capture_pages_immutable_delete BEFORE DELETE ON root_basket_capture_pages

@@ -40,7 +40,7 @@ import { missedTicksMs, type ProducerLane } from "./producer-cadence.ts";
 // project-derived-floors-go-stale-in-prose is about. Reading the cadence from
 // the cron itself means the sentence cannot outlive the schedule it describes.
 import { RAW_CAPTURE_CRON } from "../workers/config.ts";
-import { cronStepMinutes } from "./raw-capture-sync.ts";
+import { cronStepMinutes } from "./raw-capture-contract.ts";
 
 /** This watchdog's own lane. */
 export const TABLE_FRESHNESS_LANE = "table-freshness";

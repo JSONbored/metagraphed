@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { test, vi } from "vitest";
 const { pg } = await vi.hoisted(async () => ({
   pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
@@ -164,4 +165,76 @@ test("cold-tier lease contract is preserved without a SQL request", async () => 
     fetch.mockRestore();
     clock.mockRestore();
   }
+});
+
+test("D1 lease proof preserves complete presence and absence on both networks without R2", async () => {
+  for (const network of ["mainnet", "testnet"] as const) {
+    const f = fixture(network),
+      sql = new DatabaseSync(":memory:");
+    try {
+      sql.exec(
+        "CREATE TABLE generated_artifacts(key TEXT PRIMARY KEY,payload TEXT)",
+      );
+      const root = `metagraph/lease-presence-native/v1/${network}`;
+      const db = {
+        prepare(text: string) {
+          return {
+            bind(key: string) {
+              return {
+                async first() {
+                  return sql.prepare(text).get(key) ?? null;
+                },
+              };
+            },
+          };
+        },
+      };
+      const write = (key: string, payload: string) =>
+        sql
+          .prepare("INSERT OR REPLACE INTO generated_artifacts VALUES(?,?)")
+          .run(key, payload);
+      const selected = `${root}/current.json`,
+        proof = `${root}/${f.manifest.generation}/manifest.json`;
+      const env = { ...f.env, D1_STATE: db };
+      // An absent D1 owner preserves the transitional legacy proof.
+      assert.equal(await loadNativeLeasePresence(env, network, now), false);
+      assert.equal(f.reads.length, 2);
+      f.reads.length = 0;
+      for (const count of [0, 2]) {
+        f.manifest.counts.SubnetLeaseCreated = count;
+        write(selected, JSON.stringify(f.manifest));
+        write(proof, JSON.stringify(f.manifest));
+        assert.equal(
+          await loadNativeLeasePresence(env, network, now),
+          count > 0,
+        );
+      }
+      assert.deepEqual(f.reads, []);
+      sql.prepare("DELETE FROM generated_artifacts WHERE key=?").run(proof);
+      assert.equal(await loadNativeLeasePresence(env, network, now), null);
+      write(proof, JSON.stringify({ ...f.manifest, sourceRows: 1 }));
+      assert.equal(await loadNativeLeasePresence(env, network, now), null);
+      write(selected, "malformed");
+      assert.equal(await loadNativeLeasePresence(env, network, now), null);
+      write(selected, "x".repeat(65537));
+      assert.equal(await loadNativeLeasePresence(env, network, now), null);
+      assert.deepEqual(f.reads, []);
+    } finally {
+      sql.close();
+    }
+  }
+});
+
+test("a D1 read failure never substitutes an older R2 lease proof", async () => {
+  const f = fixture();
+  const D1_STATE = {
+    prepare() {
+      throw Error("D1 unavailable");
+    },
+  };
+  assert.equal(
+    await loadNativeLeasePresence({ ...f.env, D1_STATE }, "mainnet", now),
+    null,
+  );
+  assert.deepEqual(f.reads, []);
 });
