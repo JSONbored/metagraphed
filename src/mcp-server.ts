@@ -7961,7 +7961,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // three surfaces cannot drift. A null rollup means no store was read,
       // not that nothing was removed -- the builder keeps its degraded empty
       // for that case and only that case.
-      const rollup = await loadAxonRemovals(ctx.env);
+      const rollup = await loadAxonRemovals(ctx.env, {
+        windowDays:
+          CHAIN_AXON_REMOVALS_WINDOWS[
+            window as keyof typeof CHAIN_AXON_REMOVALS_WINDOWS
+          ],
+      });
       return buildChainAxonRemovals(rollup?.subnets ?? [], {
         window,
         limit,
@@ -8762,7 +8767,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       // DERIVED FROM STATE (#10805): the same rollup the chain scope reads,
       // so all three scopes agree. Null means no store, never no removals.
-      const rollup = await loadAxonRemovals(ctx.env, { netuid });
+      const rollup = await loadAxonRemovals(ctx.env, {
+        netuid,
+        windowDays:
+          SUBNET_AXON_REMOVALS_WINDOWS[
+            window as keyof typeof SUBNET_AXON_REMOVALS_WINDOWS
+          ],
+      });
       return buildSubnetAxonRemovals(
         subnetAxonRemovalRow(rollup, netuid),
         netuid,
@@ -11953,7 +11964,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       // DERIVED FROM STATE (#10805): the same rollup the chain scope reads,
       // so all three scopes agree. Null means no store, never no removals.
-      const rollup = await loadAxonRemovals(ctx.env, { hotkey: ss58 });
+      const rollup = await loadAxonRemovals(ctx.env, {
+        hotkey: ss58,
+        windowDays: AXON_REMOVAL_WINDOWS[window],
+      });
       return buildAccountAxonRemovals(
         accountAxonRemovalRows(rollup, ss58) ?? [],
         ss58,

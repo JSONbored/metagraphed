@@ -1924,7 +1924,12 @@ export async function handleChainAxonRemovals(
       // A null rollup means there was no store to read, NOT that nothing was
       // removed, so the builder keeps its schema-stable empty in that case --
       // the same distinction the degraded marker was carrying.
-      const rollup = await loadAxonRemovals(env);
+      const rollup = await loadAxonRemovals(env, {
+        windowDays:
+          CHAIN_AXON_REMOVALS_WINDOWS[
+            label as keyof typeof CHAIN_AXON_REMOVALS_WINDOWS
+          ],
+      });
       const data = buildChainAxonRemovals(rollup?.subnets ?? [], {
         window: label,
         limit,

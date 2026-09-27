@@ -752,3 +752,37 @@ test("axon date overflow stops before expensive classification instead of trunca
   );
   assert.equal(query.mock.calls.length, 1);
 });
+
+test("requested axon windows preserve boundary context and agree across D1 and PostgreSQL", async () => {
+  const at = Date.parse("2026-08-09T12:00:00Z");
+  // Aug 2 is the seven-day boundary. Its Aug 1 predecessor must survive;
+  // otherwise the confirmed removal disappears when filtering the rows.
+  await seed([
+    ...rows,
+    ...rows.map((row) => ({
+      ...row,
+      uid: row.uid + 100,
+      snapshot_date: row.snapshot_date.replace("2026-08-", "2026-07-"),
+    })),
+    ...rows.map((row) => ({
+      ...row,
+      uid: row.uid + 200,
+      snapshot_date: row.snapshot_date.replace("2026-08-", "2026-05-"),
+    })),
+  ]);
+  for (const [windowDays, expected] of [
+    [7, 3],
+    [30, 3],
+    [90, 6],
+  ]) {
+    const deps = { now: () => at, windowDays };
+    const native = await loadAxonRemovals(env(), deps);
+    const postgres = await loadAxonRemovals({}, { ...deps, query });
+    assert.deepEqual(native, postgres);
+    assert.equal(native?.removals.length, expected);
+    assert.equal(native?.derivation.excluded_uid_reuse, expected / 3);
+    assert.equal(native?.derivation.pending_confirmation, expected / 3);
+    assert.equal(native?.derivation.moved_unroutable, (expected / 3) * 2);
+    assert.ok(native?.removals.some((row) => row.removed_on === "2026-08-02"));
+  }
+});

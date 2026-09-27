@@ -21,7 +21,7 @@ import {
 } from "./axon-transition-d1.ts";
 import { selectedD1Store } from "./d1-store.ts";
 
-/** Days of `neuron_daily` to pull. The widest window any route offers. */
+/** Baseline history to retain as transition context for shorter windows. */
 export const AXON_REMOVALS_LOOKBACK_DAYS = 30;
 
 /**
@@ -72,6 +72,8 @@ export interface AxonRemovalsLoadDeps {
   /** Injectable for tests; production reads Neon through `readStore`. */
   query?: (sql: string, params: unknown[]) => Promise<unknown>;
   now?: () => number;
+  /** Validated requested window. Older rows remain transition context only. */
+  windowDays?: number;
   /** Subnet cards consume only this subnet, so D1 need not scan the network. */
   netuid?: number;
   /** Account reads need whole slot histories, including replacement hotkeys. */
@@ -95,17 +97,25 @@ export async function loadAxonRemovals(
   env: unknown,
   deps: AxonRemovalsLoadDeps = {},
 ): Promise<AxonRemovalsRollup | null> {
-  const now = deps.now ?? Date.now;
+  const nowMs = (deps.now ?? Date.now)();
+  // Keep the existing 30-day context for short windows and read wider account
+  // windows in full, plus the preceding daily observation at the boundary.
+  const lookbackDays = Math.max(
+    AXON_REMOVALS_LOOKBACK_DAYS,
+    (deps.windowDays ?? 0) + 1,
+  );
+  const cutoff = isoDaysAgo(nowMs, lookbackDays);
+  const sinceDate =
+    deps.windowDays === undefined
+      ? undefined
+      : isoDaysAgo(nowMs, deps.windowDays);
   let rows: unknown;
   if (deps.query) {
-    rows = await deps.query(CANDIDATE_SLOTS_SQL, [
-      isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS),
-    ]);
+    rows = await deps.query(CANDIDATE_SLOTS_SQL, [cutoff]);
   } else {
     const native = selectedD1Store(env, ["neuron_daily"]);
     const db = native ?? readStore(env, ["neuron_daily"]);
     if (!db) return null;
-    const cutoff = isoDaysAgo(now(), AXON_REMOVALS_LOOKBACK_DAYS);
     if (native) {
       const indexed = await axonProjectionReady(native.query);
       const subnets =
@@ -154,7 +164,8 @@ export async function loadAxonRemovals(
   }
 
   const derived = deriveAxonRemovals(rows as NeuronAxonDayRow[] | null, {
-    lookbackDays: AXON_REMOVALS_LOOKBACK_DAYS,
+    lookbackDays,
+    sinceDate,
   });
 
   // Per subnet: how many removals, and how many DISTINCT hotkeys did them.

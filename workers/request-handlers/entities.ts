@@ -3380,7 +3380,13 @@ export async function handleSubnetAxonRemovals(
     DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
   );
   // DERIVED FROM STATE (#10805), the same rollup MCP and GraphQL read.
-  const removalsRollup = await loadAxonRemovals(env, { netuid });
+  const removalsRollup = await loadAxonRemovals(env, {
+    netuid,
+    windowDays:
+      SUBNET_AXON_REMOVALS_WINDOWS[
+        windowParam as keyof typeof SUBNET_AXON_REMOVALS_WINDOWS
+      ],
+  });
   const data = buildSubnetAxonRemovals(
     subnetAxonRemovalRow(removalsRollup, netuid),
     netuid,
@@ -4776,7 +4782,10 @@ export const handleAccountAxonRemovals = makeAccountEventHandler({
   build: buildAccountAxonRemovals,
   urlSuffix: "axon-removals",
   coldTier: async (env, ss58, window) => {
-    const rollup = await loadAxonRemovals(env, { hotkey: ss58 });
+    const rollup = await loadAxonRemovals(env, {
+      hotkey: ss58,
+      windowDays: AXON_REMOVAL_WINDOWS[window],
+    });
     const rows = accountAxonRemovalRows(rollup, ss58) ?? [];
     return {
       data: buildAccountAxonRemovals(rows, ss58, { window }),

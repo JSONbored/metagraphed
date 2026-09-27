@@ -581,6 +581,7 @@ import {
 import {
   buildAccountAxonRemovals,
   DEFAULT_AXON_REMOVAL_WINDOW,
+  AXON_REMOVAL_WINDOWS,
 } from "./account-axon-removals.ts";
 import {
   buildAccountStakeMoves,
@@ -2829,7 +2830,13 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     // DERIVED FROM STATE (#10805), the same rollup REST and MCP read.
-    const removalsRollup = await loadAxonRemovals(context.env, { netuid });
+    const removalsRollup = await loadAxonRemovals(context.env, {
+      netuid,
+      windowDays:
+        SUBNET_AXON_REMOVALS_WINDOWS[
+          windowParam as keyof typeof SUBNET_AXON_REMOVALS_WINDOWS
+        ],
+    });
     const data = buildSubnetAxonRemovals(
       subnetAxonRemovalRow(removalsRollup, netuid),
       netuid,
@@ -6816,6 +6823,7 @@ const rootValue = {
     // DERIVED FROM STATE (#10805), the same rollup REST and MCP read.
     const removalsRollup = await loadAxonRemovals(context.env, {
       hotkey: ss58,
+      windowDays: AXON_REMOVAL_WINDOWS[windowParam],
     });
     const data = buildAccountAxonRemovals(
       accountAxonRemovalRows(removalsRollup, ss58) ?? [],
@@ -8122,7 +8130,12 @@ const rootValue = {
     // DERIVED FROM STATE (#10805), the same read REST and MCP make, so the
     // three surfaces cannot drift. A null rollup is "no store", not "no
     // removals" -- the builder keeps its degraded empty for that.
-    const rollup = await loadAxonRemovals(context.env);
+    const rollup = await loadAxonRemovals(context.env, {
+      windowDays:
+        CHAIN_AXON_REMOVALS_WINDOWS[
+          requestedWindow as keyof typeof CHAIN_AXON_REMOVALS_WINDOWS
+        ],
+    });
     const data = buildChainAxonRemovals(rollup?.subnets ?? [], {
       window: requestedWindow,
       limit: safeLimit,
