@@ -14,6 +14,11 @@
 //
 // ## COVERAGE IS COUNTED IN NETUIDS HERE, NOT ROWS
 //
+// Native D1 captures now arrive as bounded transactions with a durable pass
+// receipt. The native query below distinguishes an active upload from a
+// completed partial scan; the older single-request explanation describes the
+// retained PostgreSQL query path.
+//
 // #9530 established that `MAX(captured_at)` cannot distinguish a complete pass
 // from a truncated one, after 147,000 account_balances rows -- 48% of the
 // network -- reported `ok | age=0.6h` in production. This lane has the same
@@ -406,7 +411,7 @@ export async function runNeuronsStalenessWatchdog(
         covered: verdict.covered_netuids,
         total: verdict.total_netuids,
         floor: verdict.coverage_floor_netuids,
-        ...(row?.uploading === 1 ? { capture_in_flight: true } : {}),
+        ...(row?.uploading === 1 ? { capture_in_flight: 1 } : {}),
       }),
       checked_at: now(),
     });
