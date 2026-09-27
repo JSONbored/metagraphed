@@ -98,6 +98,7 @@ it("bounds broad tail work independently of older rows without displacing accoun
   const measured = {
     ...env(),
     D1_STATE: {
+      batch: db.batch.bind(db),
       prepare(text: string) {
         return {
           bind(...values: (string | number | null)[]) {
