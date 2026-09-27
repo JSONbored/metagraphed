@@ -48,6 +48,7 @@
 // somebody decided it cannot go stale. The two are different facts and only one
 // of them is safe -- and a new lane added in the private repo is precisely the
 // thing that would otherwise arrive here unwatched.
+import { readContainerStatuses } from "./lib/container-status.ts";
 import { fileURLToPath } from "node:url";
 
 import { r2ApiBaseUrl, r2ObjectUrl } from "./r2-rest.ts";
@@ -399,7 +400,13 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const keys = await listLaneKeys(accountId, apiToken);
+  const statuses = await readContainerStatuses();
+  const keys = [
+    ...new Set([
+      ...(await listLaneKeys(accountId, apiToken)),
+      ...statuses.keys(),
+    ]),
+  ];
   const lanes = laneNamesFrom(keys);
   if (lanes.length === 0) {
     // An empty listing is not "every lane is fine". Something is wrong with the
@@ -422,7 +429,10 @@ async function main(): Promise<void> {
   const lines: string[] = [];
   for (const lane of lanes) {
     const rule = EXPECTED_LANES[lane];
-    const body = rule ? await readLane(accountId, apiToken, lane) : null;
+    const body = rule
+      ? (statuses.get(`${PREFIX}${lane}`) ??
+        (await readLane(accountId, apiToken, lane)))
+      : null;
     const verdict = evaluate({ lane, body, nowMs }, rule);
     lines.push(`${verdict.ok ? "ok   " : "STALE"} ${verdict.detail}`);
     if (!verdict.ok) failures.push(verdict.detail);

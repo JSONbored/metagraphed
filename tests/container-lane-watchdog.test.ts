@@ -4,6 +4,7 @@
 // dead for 32 hours while `lane_health` held not one stale row for it, but NO
 // row at all.
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { describe, test } from "vitest";
 import {
   CONTAINER_LANES,
@@ -256,6 +257,160 @@ describe("the bound", () => {
 });
 
 describe("runContainerLaneWatchdog", () => {
+  test("D1 statuses preserve failures and run without an R2 binding", async () => {
+    const sql = new DatabaseSync(":memory:");
+    try {
+      sql.exec(
+        "CREATE TABLE generated_artifacts(key TEXT PRIMARY KEY, payload TEXT)",
+      );
+      const calls: string[] = [];
+      const state = {
+        prepare(text: string) {
+          calls.push(text);
+          return {
+            bind: (...values: string[]) => ({
+              all: async () => ({
+                success: true,
+                results: sql.prepare(text).all(...values),
+              }),
+            }),
+          };
+        },
+      } as unknown as D1Database;
+      for (const { key, lane } of CONTAINER_LANES) {
+        sql.prepare("INSERT INTO generated_artifacts VALUES(?,?)").run(
+          "container-status/v1/" + key,
+          JSON.stringify(
+            lane === "container:daily-rollup"
+              ? {
+                  checked_at: FRESH,
+                  ok: false,
+                  failures: { table: "missing day" },
+                }
+              : { checked_at: FRESH, ok: true },
+          ),
+        );
+      }
+      const spy = laneSpy();
+      const events: string[] = [];
+      const result = await runContainerLaneWatchdog(
+        { D1_STATE: state },
+        {
+          now: () => NOW,
+          laneHealthDb: spy.db,
+          recordException: async (_env, event) => {
+            events.push(String(event.error));
+            return true;
+          },
+        },
+      );
+      assert.equal(result.stale, true);
+      assert.equal(
+        calls.length,
+        1,
+        "all five primary-key reads share one query",
+      );
+      assert.deepEqual(
+        spy.rows.map((row) => row[1]),
+        ["ok", "stale", "ok", "ok", "ok"],
+      );
+      assert.match(events[0]!, /missing day/);
+
+      // A selected but invalid or oversized D1 document must not expose an
+      // older healthy copy during the producer rollout.
+      for (const payload of [
+        "{",
+        "[]",
+        JSON.stringify({ detail: "x".repeat(65536) }),
+      ]) {
+        sql.prepare("UPDATE generated_artifacts SET payload=?").run(payload);
+        let reads = 0;
+        const broken = laneSpy();
+        await runContainerLaneWatchdog(
+          {
+            D1_STATE: state,
+            ...bucketWith(
+              Object.fromEntries(
+                CONTAINER_LANES.map(({ key }) => [
+                  key,
+                  { ok: true, checked_at: FRESH },
+                ]),
+              ),
+            ),
+            METAGRAPH_ARCHIVE: {
+              get: async () => {
+                reads++;
+                throw new Error("unexpected fallback");
+              },
+            },
+          } as unknown as Parameters<typeof runContainerLaneWatchdog>[0],
+          {
+            now: () => NOW,
+            laneHealthDb: broken.db,
+            recordException: async () => true,
+          },
+        );
+        assert.equal(reads, 0);
+        assert.deepEqual(
+          broken.rows.map((row) => row[1]),
+          Array(5).fill("unknown"),
+        );
+      }
+
+      sql.exec("DELETE FROM generated_artifacts");
+      const legacy = laneSpy();
+      await runContainerLaneWatchdog(
+        {
+          D1_STATE: state,
+          ...bucketWith(
+            Object.fromEntries(
+              CONTAINER_LANES.map(({ key }) => [
+                key,
+                { ok: true, checked_at: FRESH },
+              ]),
+            ),
+          ),
+        },
+        {
+          now: () => NOW,
+          laneHealthDb: legacy.db,
+          recordException: async () => true,
+        },
+      );
+      assert.deepEqual(
+        legacy.rows.map((row) => row[1]),
+        Array(5).fill("ok"),
+      );
+
+      sql.exec("DROP TABLE generated_artifacts");
+      const failed = laneSpy();
+      let reads = 0;
+      await runContainerLaneWatchdog(
+        {
+          D1_STATE: state,
+          METAGRAPH_ARCHIVE: {
+            get: async () => {
+              reads++;
+              throw new Error("unexpected fallback");
+            },
+          },
+        } as unknown as Parameters<typeof runContainerLaneWatchdog>[0],
+        {
+          now: () => NOW,
+          laneHealthDb: failed.db,
+          recordException: async () => true,
+        },
+      );
+      assert.equal(reads, 0);
+      assert.deepEqual(
+        failed.rows.map((row) => row[1]),
+        Array(5).fill("unknown"),
+      );
+    } finally {
+      sql.close();
+    }
+  });
+
   /** A bucket serving the given bodies by key; anything else is absent. */
   function bucketWith(bodies: Record<string, unknown>) {
     return {
@@ -514,7 +669,7 @@ describe("runContainerLaneWatchdog", () => {
       reason?: string;
     };
     assert.equal(result.ok, false);
-    assert.match(result.reason ?? "", /r2 binding unavailable/);
+    assert.match(result.reason ?? "", /status storage unavailable/);
   });
 
   test("a throwing bucket reads as absent rather than taking the tick down", async () => {
