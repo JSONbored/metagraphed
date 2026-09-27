@@ -26,7 +26,9 @@ import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
 import { selectedD1Store } from "./d1-store.ts";
-import { rawCaptureD1 } from "./raw-capture-d1.ts";
+import { cronStepMinutes, watermarkRead } from "./raw-capture-contract.ts";
+export { cronStepMinutes, watermarkRead } from "./raw-capture-contract.ts";
+export type { WatermarkReadDb } from "./raw-capture-contract.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import type { WaitUntilLike } from "./pg-sql.ts";
 import {
@@ -255,13 +257,6 @@ export function pacedLaneBudget(
   };
 }
 
-/** The `*` `/N` minute step of a cron. An unreadable cron falls back to the
- * shipped cadence, narrowing the budget rather than widening it. */
-export function cronStepMinutes(cron: string): number {
-  const step = Number(cron.split(" ")[0]!.replace("*/", ""));
-  return Number.isInteger(step) && step > 0 ? step : 5;
-}
-
 /**
  * The capture lanes, as data.
  *
@@ -319,13 +314,6 @@ interface RawCaptureEnv extends TelemetryEnv, StoreEnv {
   RAW_CAPTURE_ENABLED?: string;
   CHAIN_HEAD_RPC_URL?: string;
   TESTNET_CHAIN_HEAD_RPC_URL?: string;
-}
-
-export interface WatermarkReadDb {
-  first?(
-    text: string,
-    values?: unknown[],
-  ): Promise<Record<string, unknown> | null>;
 }
 
 /**
@@ -398,28 +386,6 @@ export function neonWatermark(
   };
 }
 
-/**
- * The watermark row, read through any `prepare().bind().first()` handle.
- *
- * Read-only on purpose: its one caller is the lakehouse-seam watchdog, which
- * reuses the capture lane's own column names so the two can never disagree
- * about where the watermark lives. Absent row => null, which the capture
- * treats as "start at the floor".
- */
-export function watermarkRead(
-  db: WatermarkReadDb,
-  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
-): () => Promise<number | null> {
-  return async () => {
-    const row = await db.first?.(
-      `SELECT last_contiguous_block FROM raw_capture_state WHERE network = ?`,
-      [network],
-    );
-    const value = row?.last_contiguous_block;
-    return typeof value === "number" ? value : null;
-  };
-}
-
 export interface RawCaptureSyncResult extends Partial<CaptureResult> {
   ok: boolean;
   skipped?: boolean;
@@ -445,6 +411,8 @@ export async function runRawCaptureSync(
     /** Needed to reach Neon: createPgSql returns the pooled connection through
      * waitUntil, so without one the mirror is skipped rather than leaking. */
     ctx?: WaitUntilLike;
+    /** The main Worker owns capture storage; serving bundles need no writer. */
+    d1CaptureStore?: RawCaptureStore;
     /**
      * How the lane discovers the archive endpoints it may read from.
      *
@@ -482,7 +450,7 @@ export async function runRawCaptureSync(
     );
   }
   const d1Capture = env?.RAW_CAPTURE_STORAGE === "d1";
-  if (d1Capture && !env.D1_STATE?.prepare) {
+  if (d1Capture && (!env.D1_STATE?.prepare || !deps.d1CaptureStore)) {
     return loud(
       "store_unavailable",
       "Raw capture D1 storage is not bound; no capture watermark can advance.",
@@ -511,7 +479,7 @@ export async function runRawCaptureSync(
   }
 
   const store: RawCaptureStore = d1Capture
-    ? rawCaptureD1(env.D1_STATE!)
+    ? deps.d1CaptureStore!
     : {
         put: (key, value) => env.METAGRAPH_ARCHIVE!.put(key, value),
       };

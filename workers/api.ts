@@ -689,6 +689,7 @@ import {
 import { runGithubSignalsSync } from "../src/github-signals-sync.ts";
 import { runLinkStatusSync } from "../src/link-status-sync.ts";
 import { runRawCaptureSync } from "../src/raw-capture-sync.ts";
+import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 import {
   captureSubnetBurnHistory,
   SUBNET_BURN_HISTORY_TABLE,
@@ -3289,7 +3290,13 @@ async function dispatchScheduled(
     // the decommissioned indexer box used to produce. Durable-first on
     // purpose: the bytes land before anything decodes them, because decode is
     // re-runnable and a missed block is not. See src/raw-chain-capture.ts.
-    return runRawCaptureSync(env, { ctx });
+    return runRawCaptureSync(env, {
+      ctx,
+      d1CaptureStore:
+        env.RAW_CAPTURE_STORAGE === "d1" && env.D1_STATE
+          ? rawCaptureD1(env.D1_STATE)
+          : undefined,
+    });
   }
   if (cron === GITHUB_SIGNALS_SYNC_CRON) {
     // #233 pattern: daily GitHub dev-signal capture written straight to the

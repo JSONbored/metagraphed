@@ -45,7 +45,7 @@ import {
   resolveDecodeWatermark,
   type DecodeWatermark,
 } from "./decode-watermark.ts";
-import { watermarkRead } from "./raw-capture-sync.ts";
+import { watermarkRead } from "./raw-capture-contract.ts";
 import { readStore } from "./read-store.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 export { DECODE_STALE_MS } from "./decode-freshness.ts";

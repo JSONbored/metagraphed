@@ -553,6 +553,12 @@
   },
   {
     "type": "index",
+    "name": "raw_capture_selected_network_block",
+    "tbl_name": "raw_capture_selected",
+    "sql": "CREATE INDEX raw_capture_selected_network_block ON raw_capture_selected(network,last_block,key)"
+  },
+  {
+    "type": "index",
     "name": "root_basket_capture_page_cursors",
     "tbl_name": "root_basket_capture_pages",
     "sql": "CREATE UNIQUE INDEX root_basket_capture_page_cursors ON root_basket_capture_pages (capture_id,coalesce(start_after,''))"
@@ -967,6 +973,30 @@
   },
   {
     "type": "table",
+    "name": "raw_capture_batches",
+    "tbl_name": "raw_capture_batches",
+    "sql": "CREATE TABLE raw_capture_batches (\n  key TEXT NOT NULL,\n  sha256 TEXT NOT NULL CHECK(length(sha256)=64),\n  network TEXT NOT NULL CHECK(network IN ('mainnet','testnet')),\n  first_block INTEGER NOT NULL CHECK(first_block>=0),\n  last_block INTEGER NOT NULL CHECK(last_block>=first_block),\n  raw_bytes INTEGER NOT NULL CHECK(raw_bytes BETWEEN 1 AND 33554432),\n  compressed_bytes INTEGER NOT NULL CHECK(compressed_bytes BETWEEN 1 AND 33619968),\n  compressed_sha256 TEXT NOT NULL CHECK(length(compressed_sha256)=64),\n  parts INTEGER NOT NULL CHECK(parts BETWEEN 1 AND 513),\n  captured_at INTEGER NOT NULL CHECK(captured_at>0),\n  complete INTEGER NOT NULL DEFAULT 0 CHECK(complete IN (0,1)),\n  PRIMARY KEY(key,sha256)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "raw_capture_budget",
+    "tbl_name": "raw_capture_budget",
+    "sql": "CREATE TABLE raw_capture_budget (\n  id INTEGER PRIMARY KEY CHECK(id=1),\n  bytes INTEGER NOT NULL DEFAULT 0 CHECK(bytes BETWEEN 0 AND 536870912),\n  objects INTEGER NOT NULL DEFAULT 0 CHECK(objects BETWEEN 0 AND 16384)\n)"
+  },
+  {
+    "type": "table",
+    "name": "raw_capture_chunks",
+    "tbl_name": "raw_capture_chunks",
+    "sql": "CREATE TABLE raw_capture_chunks (\n  key TEXT NOT NULL,\n  sha256 TEXT NOT NULL,\n  part INTEGER NOT NULL CHECK(part BETWEEN 0 AND 512),\n  data BLOB NOT NULL CHECK(length(data) BETWEEN 1 AND 65536),\n  PRIMARY KEY(key,sha256,part),\n  FOREIGN KEY(key,sha256) REFERENCES raw_capture_batches(key,sha256) ON DELETE CASCADE\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "raw_capture_selected",
+    "tbl_name": "raw_capture_selected",
+    "sql": "CREATE TABLE raw_capture_selected (\n  key TEXT PRIMARY KEY NOT NULL,\n  sha256 TEXT NOT NULL,\n  network TEXT NOT NULL CHECK(network IN ('mainnet','testnet')),\n  last_block INTEGER NOT NULL,\n  captured_at INTEGER NOT NULL,\n  FOREIGN KEY(key,sha256) REFERENCES raw_capture_batches(key,sha256)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
     "name": "raw_capture_state",
     "tbl_name": "raw_capture_state",
     "sql": "CREATE TABLE raw_capture_state (\n network TEXT PRIMARY KEY NOT NULL,\n last_contiguous_block INTEGER NOT NULL,\n updated_at INTEGER NOT NULL,\n stopped_at INTEGER,\n last_error TEXT\n)"
@@ -1324,6 +1354,18 @@
     "name": "neuron_daily_members_closed_day_update",
     "tbl_name": "neuron_daily_members",
     "sql": "CREATE TRIGGER neuron_daily_members_closed_day_update AFTER UPDATE ON neuron_daily_members\nWHEN OLD.snapshot_date < date('now') OR NEW.snapshot_date < date('now') BEGIN\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || OLD.snapshot_date,1 WHERE OLD.snapshot_date < date('now')\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\n  INSERT INTO archive_export_revisions(table_name,revision)\n  SELECT 'neuron_daily/' || NEW.snapshot_date,1 WHERE NEW.snapshot_date < date('now') AND NEW.snapshot_date <> OLD.snapshot_date\n  ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "raw_capture_release",
+    "tbl_name": "raw_capture_batches",
+    "sql": "CREATE TRIGGER raw_capture_release AFTER DELETE ON raw_capture_batches BEGIN\n  UPDATE raw_capture_budget SET bytes=bytes-OLD.compressed_bytes,objects=objects-1 WHERE id=1;\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "raw_capture_reserve",
+    "tbl_name": "raw_capture_batches",
+    "sql": "CREATE TRIGGER raw_capture_reserve AFTER INSERT ON raw_capture_batches BEGIN\n  UPDATE raw_capture_budget SET bytes=bytes+NEW.compressed_bytes,objects=objects+1 WHERE id=1;\nEND"
   },
   {
     "type": "trigger",

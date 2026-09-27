@@ -296,6 +296,7 @@ interface ChainHeadPollEnv {
 // capturing before the migration that creates its watermark table.
 interface RawCaptureLaneEnv {
   RAW_CAPTURE_ENABLED?: string;
+  RAW_CAPTURE_STORAGE?: string;
 }
 
 // RPC reverse-proxy usage telemetry on Workers Analytics Engine (#9228).
