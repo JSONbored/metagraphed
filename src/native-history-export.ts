@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import { NATIVE_HISTORY_ASSET_OBJECT_KEY } from "../schemas-src/artifacts/native-history-assets.ts";
 import { historyAssetSource } from "./history-asset-source.ts";
 
@@ -7,15 +8,23 @@ const head = z
     kind: z.literal("native-history"),
     operation: z.literal("head"),
     key: z.string().max(1024).regex(NATIVE_HISTORY_ASSET_OBJECT_KEY),
+    release: z
+      .string()
+      .max(71)
+      .regex(/^[a-f0-9]{64}:[1-9]\d{0,5}$/)
+      .refine((value) => Number(value.split(":")[1]) <= 512 * 1024)
+      .optional(),
   })
   .strict();
 const inputSchema = z.discriminatedUnion("operation", [
   head,
+  head.extend({ operation: z.literal("verify") }),
   z
     .object({
       kind: z.literal("native-history"),
       operation: z.literal("heads"),
       keys: z.array(head.shape.key).min(1).max(64),
+      release: head.shape.release,
     })
     .strict(),
   head.extend({
@@ -59,7 +68,12 @@ export async function handleNativeHistoryExport(
     return fail(400, "duplicate native history keys");
   try {
     const source = historyAssetSource(
-      env,
+      parsed.data.release
+        ? {
+            ...(env as Record<string, unknown>),
+            NATIVE_HISTORY_ASSET_RELEASE: parsed.data.release,
+          }
+        : env,
       {
         read: async () => {
           throw new Error("Native export cannot read an unmapped source");
@@ -107,6 +121,34 @@ export async function handleNativeHistoryExport(
     if (!object) return fail(404, "native history object is not migrated");
     if (!object.sha256)
       return fail(503, "native history source checksum is unavailable");
+    if (parsed.data.operation === "verify") {
+      // Verify one immutable original near storage without transferring its
+      // payload to the operator. Hash bounded ranges, never the whole file in
+      // memory; the source retains its metadata, byte and request limits.
+      const sha = createHash("sha256"),
+        md5 = createHash("md5");
+      for (let offset = 0; offset < object.bytes; offset += 8 * 1024 * 1024) {
+        const bytes = await source.read(
+          object.key,
+          object.etag,
+          offset,
+          Math.min(8 * 1024 * 1024, object.bytes - offset),
+        );
+        sha.update(bytes);
+        md5.update(bytes);
+      }
+      if (
+        sha.digest("hex") !== object.sha256 ||
+        md5.digest("hex") !== object.etag
+      )
+        return fail(502, "native history original checksum mismatch");
+      return Response.json(
+        { version: 1, object, verified: true },
+        {
+          headers: { "cache-control": "no-store" },
+        },
+      );
+    }
     if (parsed.data.operation === "head")
       return Response.json(
         { version: 1, object },
