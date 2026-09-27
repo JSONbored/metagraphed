@@ -301,6 +301,7 @@ test("scheduled native ownership never issues SQL, writes artifacts, or hides a 
 test("a failed axon refresh reports failure while existing native lanes remain readable", async () => {
   vi.spyOn(Date, "now").mockReturnValue(now);
   const { env } = fixture();
+  const baseline = await runProjectionLanes(env as unknown as Env);
   const refresh = vi.spyOn(axonProjection, "refreshAxonRemovalProjection");
   const recordException = vi.fn(async () => true);
   for (const failure of [
@@ -312,7 +313,7 @@ test("a failed axon refresh reports failure while existing native lanes remain r
       recordException,
     });
     assert.equal(result.ok, false);
-    assert.ok(Object.values(result.lanes).every((value) => value !== null));
+    assert.deepEqual(result.lanes, baseline.lanes);
     assert.equal(
       recordException.mock.calls.length,
       failure instanceof Error ? 1 : 2,
