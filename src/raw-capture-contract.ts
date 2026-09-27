@@ -1,7 +1,7 @@
 import { DEFAULT_CHAIN_NETWORK, type ChainNetworkId } from "./chain-network.ts";
 
 /** Shared read-only capture contract; no ingestion or storage writer imports. */
-export interface WatermarkReadDb {
+interface WatermarkReadDb {
   first?(
     text: string,
     values?: unknown[],

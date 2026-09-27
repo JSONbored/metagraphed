@@ -28,7 +28,6 @@ import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import { cronStepMinutes, watermarkRead } from "./raw-capture-contract.ts";
 export { cronStepMinutes, watermarkRead } from "./raw-capture-contract.ts";
-export type { WatermarkReadDb } from "./raw-capture-contract.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import type { WaitUntilLike } from "./pg-sql.ts";
 import { CHAIN_RPC_URLS, type ChainNetworkId } from "./chain-network.ts";
