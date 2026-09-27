@@ -611,7 +611,7 @@ test("projection triggers cover both insertion orders, sparse membership moves, 
   );
 });
 
-test("network removals yield between subnet partitions and preserve the complete derivation", async () => {
+test("network removals yield between bounded subnet groups and preserve the complete derivation", async () => {
   const statements: { sql: string; values: unknown[] }[] = [];
   const binding = new Proxy(db, {
     get(target, name) {
@@ -641,7 +641,16 @@ test("network removals yield between subnet partitions and preserve the complete
     (await loadAxonRemovals(bound, { now: () => now }))?.removals.length,
     0,
   );
-  await seed(rows);
+  // Eleven subnets, including reused UIDs and the same hotkeys across subnet
+  // boundaries. The short final group and global distinct counts matter.
+  await seed([
+    ...rows,
+    ...Array.from({ length: 9 }, (_, i) =>
+      rows
+        .filter((row) => row.netuid === 7)
+        .map((row) => ({ ...row, netuid: 9 + i })),
+    ).flat(),
+  ]);
   statements.length = 0;
   const actual = await loadAxonRemovals(bound, { now: () => now });
   assert.deepEqual(
@@ -651,18 +660,23 @@ test("network removals yield between subnet partitions and preserve the complete
   const partitions = statements.filter(({ sql }) =>
     sql.includes("WITH windowed"),
   );
-  assert.equal(partitions.length, 2);
+  assert.equal(partitions.length, 3);
   assert.deepEqual(
-    partitions.map(({ values }) => values[1]),
-    [7, 8],
+    partitions.map(({ values }) => values.slice(1)),
+    [
+      [7, 8, 9, 10],
+      [11, 12, 13, 14],
+      [15, 16, 17],
+    ],
   );
-  assert.ok(partitions.every(({ sql }) => sql.includes("AND d.netuid=?")));
+  assert.ok(partitions.every(({ sql }) => sql.includes("AND d.netuid IN (")));
   statements.length = 0;
   await loadAxonRemovals(bound, { now: () => now, hotkey: "hk1" });
   const accountPartitions = statements.filter(({ sql }) =>
     sql.includes("WITH windowed"),
   );
-  assert.equal(accountPartitions.length, 1);
+  assert.equal(accountPartitions.length, 10);
+  assert.ok(accountPartitions.every(({ values }) => values.length === 5));
   assert.deepEqual(accountPartitions[0].values, [
     "2026-07-05",
     7,

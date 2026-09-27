@@ -4,7 +4,7 @@
 // predicate aligned with the derivation: populated -> empty alone misses moves
 // to unroutable addresses (#11399).
 //
-// D1 reads one subnet at a time and account reads first select relevant slots
+// D1 reads small subnet groups and account reads first select relevant slots
 // through the hotkey index. Every selected slot retains its whole day series,
 // including other hotkeys, so narrowing cannot manufacture a removal by hiding
 // a replacement operator or a later confirming/recovered reading.
@@ -121,26 +121,34 @@ export async function loadAxonRemovals(
                 [cutoff],
               );
       const collected: NeuronAxonDayRow[] = [];
-      // Windows partition by (netuid, uid), so subnet reads are equivalent.
-      // Yield D1 between subnets instead of holding its single writer behind
-      // one network-wide window sort for tens of seconds.
-      const statement = candidateSlotsSql(
-        axonSequenceD1Sql(
-          "AND d.netuid=?" +
-            (deps.hotkey === undefined
-              ? ""
-              : " AND m.uid IN (SELECT uid FROM neuron_daily_members WHERE hotkey=? AND netuid=? AND snapshot_date>=?)"),
-          indexed,
-        ),
-      );
-      for (const { netuid } of subnets)
+      // Windows partition by (netuid, uid), so grouping whole subnets keeps
+      // exactly the same sequences. Four at a time cuts network-wide request
+      // round trips by 75% while yielding D1 between bounded sorts. Account
+      // reads remain one subnet at a time to preserve their UID narrowing.
+      const groupSize = deps.hotkey === undefined ? 4 : 1;
+      for (let start = 0; start < subnets.length; start += groupSize) {
+        const group = subnets
+          .slice(start, start + groupSize)
+          .map(({ netuid }) => netuid);
+        const statement = candidateSlotsSql(
+          axonSequenceD1Sql(
+            `AND d.netuid IN (${group.map(() => "?").join(",")})` +
+              (deps.hotkey === undefined
+                ? ""
+                : " AND m.uid IN (SELECT uid FROM neuron_daily_members WHERE hotkey=? AND netuid=? AND snapshot_date>=?)"),
+            indexed,
+          ),
+        );
         collected.push(
           ...(await native.query<NeuronAxonDayRow>(statement, [
             cutoff,
-            netuid,
-            ...(deps.hotkey === undefined ? [] : [deps.hotkey, netuid, cutoff]),
+            ...group,
+            ...(deps.hotkey === undefined
+              ? []
+              : [deps.hotkey, group[0], cutoff]),
           ])),
         );
+      }
       rows = collected;
     } else rows = await db.query(CANDIDATE_SLOTS_SQL, [cutoff]);
   }
