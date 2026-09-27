@@ -83,56 +83,64 @@ describe("bounded native Parquet footer batches", () => {
     expect(f.env.METAGRAPH_ARCHIVE.get).not.toHaveBeenCalled();
   });
 
-  it("bounds metadata sharing, total bytes, order and concurrency for sixteen large files", async () => {
-    const keys = Array.from({ length: 16 }, (_, i) =>
-      key.replace("00000-", `${String(i).padStart(5, "0")}-`),
-    );
-    let active = 0,
-      maximum = 0;
-    const describe = vi.fn(async (key: string) => ({
-      key,
-      etag,
-      bytes: 100000,
-      sha256: "c".repeat(64),
-    }));
-    const read = vi.fn(
-      async (
-        _key: string,
-        identity: string,
-        offset: number,
-        length: number,
-      ) => {
-        expect(identity).toBe(etag);
-        expect(offset).toBe(34464);
-        expect(length).toBe(65536);
-        active++;
-        maximum = Math.max(maximum, active);
-        await Promise.resolve();
-        active--;
-        return new Uint8Array(length).fill(7).buffer;
-      },
-    );
-    const factory = vi
-      .spyOn(assets, "historyAssetSource")
-      .mockReturnValue({ describe, read });
-    const response = await handleNativeHistoryExport({ ...footers, keys }, {});
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as {
-      objects: { key: string; offset: number; data: string }[];
-    };
-    expect(body.objects.map((o: { key: string }) => o.key)).toEqual(keys);
-    expect(
-      body.objects.every(
-        (o: { offset: number; data: string }) =>
-          o.offset === 34464 &&
-          Buffer.from(o.data, "base64").equals(Buffer.alloc(65536, 7)),
-      ),
-    ).toBe(true);
-    expect(factory).toHaveBeenCalledTimes(1);
-    expect(describe).toHaveBeenCalledTimes(16);
-    expect(read).toHaveBeenCalledTimes(16);
-    expect(maximum).toBeLessThanOrEqual(4);
-  });
+  it.each([undefined, 131072] as const)(
+    "bounds shared metadata, total bytes, order and concurrency with footerBytes=%s",
+    async (footerBytes) => {
+      const tail = footerBytes ?? 65536,
+        count = 1048576 / tail;
+      const keys = Array.from({ length: count }, (_, i) =>
+        key.replace("00000-", `${String(i).padStart(5, "0")}-`),
+      );
+      let active = 0,
+        maximum = 0;
+      const describe = vi.fn(async (key: string) => ({
+        key,
+        etag,
+        bytes: 300000,
+        sha256: "c".repeat(64),
+      }));
+      const read = vi.fn(
+        async (
+          _key: string,
+          identity: string,
+          offset: number,
+          length: number,
+        ) => {
+          expect(identity).toBe(etag);
+          expect(offset).toBe(300000 - tail);
+          expect(length).toBe(tail);
+          active++;
+          maximum = Math.max(maximum, active);
+          await Promise.resolve();
+          active--;
+          return new Uint8Array(length).fill(7).buffer;
+        },
+      );
+      const factory = vi
+        .spyOn(assets, "historyAssetSource")
+        .mockReturnValue({ describe, read });
+      const response = await handleNativeHistoryExport(
+        { ...footers, keys, footerBytes },
+        {},
+      );
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        objects: { key: string; offset: number; data: string }[];
+      };
+      expect(body.objects.map((o: { key: string }) => o.key)).toEqual(keys);
+      expect(
+        body.objects.every(
+          (o: { offset: number; data: string }) =>
+            o.offset === 300000 - tail &&
+            Buffer.from(o.data, "base64").equals(Buffer.alloc(tail, 7)),
+        ),
+      ).toBe(true);
+      expect(factory).toHaveBeenCalledTimes(1);
+      expect(describe).toHaveBeenCalledTimes(count);
+      expect(read).toHaveBeenCalledTimes(count);
+      expect(maximum).toBeLessThanOrEqual(4);
+    },
+  );
 
   it("rejects malformed or duplicate batches before storage access", async () => {
     const f = fixture();
@@ -142,6 +150,16 @@ describe("bounded native Parquet footer batches", () => {
       { ...footers, keys: [key, key] },
       { ...footers, keys: [key.replace(".parquet", ".page-index.json")] },
       { ...footers, verify: true },
+      { ...footers, footerBytes: 0 },
+      { ...footers, footerBytes: 65537 },
+      { ...footers, footerBytes: 262144 },
+      {
+        ...footers,
+        footerBytes: 131072,
+        keys: Array.from({ length: 9 }, (_, i) =>
+          key.replace("00000-", `${String(i).padStart(5, "0")}-`),
+        ),
+      },
     ])
       expect((await handleNativeHistoryExport(input, f.env)).status).toBe(400);
     expect(f.fetch).not.toHaveBeenCalled();

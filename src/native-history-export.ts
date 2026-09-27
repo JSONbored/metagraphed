@@ -29,6 +29,7 @@ const inputSchema = z.discriminatedUnion("operation", [
   head.omit({ key: true }).extend({
     operation: z.literal("footers"),
     keys: z.array(head.shape.key.endsWith(".parquet")).min(1).max(16),
+    footerBytes: z.union([z.literal(65536), z.literal(131072)]).optional(),
   }),
   head.extend({
     operation: z.literal("range"),
@@ -61,6 +62,11 @@ export async function handleNativeHistoryExport(
     new Set(value.keys).size !== value.keys.length
   )
     return fail(400, "duplicate native history keys");
+  if (
+    value.operation === "footers" &&
+    value.keys.length * (value.footerBytes ?? 65536) > 1048576
+  )
+    return fail(400, "native footer batch exceeds byte budget");
   try {
     const source = historyAssetSource(
       value.release
@@ -129,8 +135,10 @@ export async function handleNativeHistoryExport(
                 throw new Error("Native verification failed");
               if (value.operation === "footers") {
                 if (!object) throw new Error("Native footer is not migrated");
-                // Share metadata for up to sixteen 64 KiB tails (1 MiB total).
-                const length = Math.min(65536, object.bytes);
+                const length = Math.min(
+                  value.footerBytes ?? 65536,
+                  object.bytes,
+                );
                 const offset = object.bytes - length;
                 const raw = await source.read(
                   object.key,
