@@ -16,6 +16,7 @@ import {
 } from "../src/r2-sql-blocks.ts";
 import { declineBlock } from "../src/blocks.ts";
 import { CHAIN_EVENTS_LIMIT_MAX } from "../src/route-limits.ts";
+import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 const TOKEN = {
   NATIVE_PROJECTIONS: "enabled",
   NATIVE_HISTORY_FIXTURE: "obsolete-fixture",
@@ -61,9 +62,9 @@ test("block input guards preserve their published bounds", async () => {
     assert.equal(await loadBlockFromR2Sql(TOKEN, ref), null);
 });
 test("missing native ownership never invokes the obsolete transport or manufactures absence", async () => {
-  assert.equal(
-    await loadBlockFeedFromR2Sql(TOKEN, { limit: 1, offset: 0 }),
-    null,
+  await assert.rejects(
+    loadBlockFeedFromR2Sql(TOKEN, { limit: 1, offset: 0 }),
+    RetainedHistoryUnavailableError,
   );
   assert.deepEqual(await loadBlockFromR2Sql(TOKEN, "42"), declineBlock("42"));
   assert.equal(await loadBlockFromR2Sql(null, "42"), null);
