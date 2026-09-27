@@ -94,26 +94,33 @@ export async function apiFetch<T>(
   // sample that renders "down", and dropping it would leave the last good
   // number on screen while nothing works.
   const startedAt = performance.now?.() ?? Date.now();
+  const init: RequestInit = {
+    headers: { Accept: "application/json" },
+    signal: opts.signal,
+    ...opts.init,
+  };
   let res: Response;
+  let text: string;
   try {
-    res = await fetch(url, {
-      headers: { Accept: "application/json" },
-      signal: opts.signal,
-      ...opts.init,
-    });
+    res = await fetch(url, init);
+    // Receiving headers is not a completed request. A dropped connection while
+    // reading the body must follow the same error path as a failed fetch.
+    text = await res.text();
   } catch (err) {
     // An ABORT is not a measurement. React Query cancels in-flight requests on
     // unmount and on every keystroke behind a debounce, and reporting those as
     // "down" would paint the dot red on ordinary navigation.
-    if (!opts.signal?.aborted) recordApiLatency(null);
-    throw new ApiError((err as Error).message || "Network error", {
+    if (init.signal?.aborted || (err instanceof Error && err.name === "AbortError")) {
+      throw err;
+    }
+    recordApiLatency(null);
+    throw new ApiError(err instanceof Error ? err.message || "Network error" : "Network error", {
       status: 0,
       url: redactUrlForError(url),
     });
   }
   recordApiLatency(Math.round((performance.now?.() ?? Date.now()) - startedAt));
 
-  const text = await res.text();
   let body: unknown = null;
   if (text) {
     try {

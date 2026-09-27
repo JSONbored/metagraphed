@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setApiBase, setNetwork } from "./config";
 import { ApiError, apiFetch, applyNetworkPrefix, buildUrl } from "./client";
+import { apiLatencySnapshot, recordApiLatency, resetApiLatency } from "./api-latency";
 
 describe("applyNetworkPrefix", () => {
   beforeEach(() => {
@@ -62,12 +63,14 @@ describe("buildUrl", () => {
 
 describe("apiFetch", () => {
   beforeEach(() => {
+    resetApiLatency();
     setApiBase("https://api.metagraph.sh");
     setNetwork("mainnet");
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    resetApiLatency();
   });
 
   it("unwraps a successful JSON envelope", async () => {
@@ -235,5 +238,106 @@ describe("apiFetch", () => {
       message: "Failed to fetch",
       status: 0,
     });
+    expect(apiLatencySnapshot()?.ms).toBeNull();
+  });
+
+  it("classifies interrupted response bodies as network failures and redacts query parameters", async () => {
+    recordApiLatency(42);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.error(new TypeError("Network connection lost."));
+              },
+            }),
+          ),
+      ),
+    );
+    await expect(
+      apiFetch("/api/v1/subnets", { params: { q: "private search" } }),
+    ).rejects.toMatchObject({
+      name: "ApiError",
+      status: 0,
+      message: "Network connection lost.",
+      url: "https://api.metagraph.sh/api/v1/subnets",
+    });
+    expect(apiLatencySnapshot()?.ms).toBeNull();
+  });
+
+  it.each(["signal", "init"] as const)(
+    "preserves cancellation from %s without publishing a failed latency sample",
+    async (source) => {
+      const controller = new AbortController();
+      const reason = new DOMException("navigation changed", "AbortError");
+      recordApiLatency(42);
+      const sample = apiLatencySnapshot();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (_url, init: RequestInit) => {
+          expect(init.signal).toBe(controller.signal);
+          controller.abort(reason);
+          throw reason;
+        }),
+      );
+      const opts =
+        source === "signal"
+          ? { signal: controller.signal }
+          : { init: { signal: controller.signal } };
+      await expect(apiFetch("/api/v1/subnets", opts)).rejects.toBe(reason);
+      expect(apiLatencySnapshot()).toBe(sample);
+    },
+  );
+
+  it("preserves cancellation while reading the response body", async () => {
+    const controller = new AbortController();
+    const reason = new DOMException("navigation changed", "AbortError");
+    recordApiLatency(42);
+    const sample = apiLatencySnapshot();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream({
+              pull(stream) {
+                controller.abort(reason);
+                stream.error(reason);
+              },
+            }),
+          ),
+      ),
+    );
+    await expect(apiFetch("/api/v1/subnets", { signal: controller.signal })).rejects.toBe(reason);
+    expect(apiLatencySnapshot()).toBe(sample);
+  });
+
+  it("does not mark a response complete until its body arrives", async () => {
+    let body!: ReadableStreamDefaultController;
+    recordApiLatency(42);
+    const sample = apiLatencySnapshot();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                body = controller;
+              },
+            }),
+          ),
+      ),
+    );
+    const request = apiFetch("/api/v1/subnets");
+    await Promise.resolve();
+    expect(apiLatencySnapshot()).toBe(sample);
+    body.enqueue(new TextEncoder().encode('{"ok":true,"data":[],"meta":{}}'));
+    body.close();
+    await expect(request).resolves.toMatchObject({ data: [] });
+    expect(apiLatencySnapshot()).not.toBe(sample);
+    expect(apiLatencySnapshot()?.ms).toEqual(expect.any(Number));
   });
 });
