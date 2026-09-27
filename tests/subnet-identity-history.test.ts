@@ -1,5 +1,6 @@
 import { beforeEach, describe, test, vi } from "vitest";
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 
 // latestBlockNumber reads `blocks_head` through src/read-store.ts, which
 // constructs its own `new Client(...)` -- there is no seam a caller can inject,
@@ -658,10 +659,40 @@ describe("recordSubnetIdentityChanges", () => {
         { profiles: [profiles[0]] },
       );
       assert.equal(result.rows, 0, JSON.stringify(result));
-      // DISTINCT ON (netuid), newest first -- one row per subnet, the shape
-      // the deleted internal endpoint used to return.
-      assert.match(pg.control.queries[0].text, /DISTINCT ON \(netuid\)/);
+      // Newest first within each subnet, with deterministic ties.
+      assert.match(pg.control.queries[0].text, /PARTITION BY netuid/);
       assert.match(pg.control.queries[0].text, /observed_at DESC/);
+    });
+
+    test("executes latest-per-subnet selection with timestamp and id ties on SQLite", async () => {
+      const db = new DatabaseSync(":memory:");
+      try {
+        db.exec(`CREATE TABLE subnet_identity_history (
+          id INTEGER PRIMARY KEY, netuid INTEGER, observed_at INTEGER, identity_hash TEXT
+        ); CREATE TABLE blocks_head (block_number INTEGER);
+        INSERT INTO blocks_head VALUES (100);`);
+        const unchanged = await identityHash(
+          identitySnapshotFromProfile(profiles[0] as Row) as Row,
+        );
+        const insert = db.prepare(
+          "INSERT INTO subnet_identity_history VALUES (?, ?, ?, ?)",
+        );
+        insert.run(1, 7, 100, "older");
+        insert.run(2, 7, 200, "loses-id-tie");
+        insert.run(3, 7, 200, unchanged);
+        insert.run(4, 9, 100, "changed");
+        // A larger id must not beat a newer observation.
+        insert.run(5, 7, 150, "larger-id-but-older");
+        pg.control.db = db;
+        const result = await recordSubnetIdentityChanges(
+          pgMockEnv() as unknown as Env,
+          { profiles },
+        );
+        assert.equal(result.rows, 1, JSON.stringify(result));
+      } finally {
+        pg.control.db = null;
+        db.close();
+      }
     });
 
     test("a subnet whose hash MOVED is still reported changed", async () => {

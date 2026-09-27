@@ -8,6 +8,8 @@
 // what is ORDERED (one rate per candle, so high_usd never falls below
 // close_usd).
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import { TAO_USD_TABLE } from "../src/tao-usd-series.ts";
 import { describe, test } from "vitest";
 import { OHLC_INTERVALS } from "../src/subnet-ohlc.ts";
 import {
@@ -64,22 +66,62 @@ const ohlc = (candles: Record<string, unknown>[]) => ({
 });
 
 describe("the bucketing SQL", () => {
-  test("aligns exactly the way both OHLC tiers bucket", () => {
-    // buildSubnetOhlc computes Math.floor(observedAt / intervalMs) * intervalMs.
-    // If the SQL's integer division disagreed, every rate would land one bucket
-    // off — a silent, uniform, entirely plausible-looking error.
-    const sql = taoUsdBucketSql(HOUR);
-    assert.match(sql, /DISTINCT ON \(observed_at \/ 3600000\)/);
-    assert.match(sql, /\(observed_at \/ 3600000\) \* 3600000 AS bucket_start/);
-  });
-
-  test("prefers a PRICED reading over a later unpriced one in the same bucket", () => {
-    // One `insufficient_pools` row landing at :59 must not mark an hour
-    // unpriced when fifty-nine priced readings preceded it.
-    assert.match(
-      taoUsdBucketSql(HOUR),
-      /ORDER BY observed_at \/ 3600000, \(usd_per_tao IS NOT NULL\) DESC, observed_at DESC/,
-    );
+  test("executes bucket selection on SQLite, preserving priced, unpriced and missing buckets", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(`CREATE TABLE ${TAO_USD_TABLE} (
+        observed_at INTEGER PRIMARY KEY, usd_per_tao REAL,
+        block_number INTEGER, price_basis TEXT
+      )`);
+      const insert = db.prepare(
+        `INSERT INTO ${TAO_USD_TABLE} VALUES (?, ?, ?, ?)`,
+      );
+      insert.run(T0 - 1, 999, 1, "wrapped_onchain_median");
+      insert.run(T0 + 1, 190, 2, "wrapped_onchain_median");
+      insert.run(T0 + HOUR - 2, 191, 3, "wrapped_onchain_median");
+      insert.run(T0 + HOUR - 1, null, 4, "insufficient_pools");
+      insert.run(T0 + HOUR + 1, null, 5, "insufficient_pools");
+      insert.run(T0 + 2 * HOUR - 1, null, 6, "insufficient_pools");
+      // The third bucket has no reading; do not invent a price for it.
+      insert.run(T0 + 3 * HOUR + 1, 193, 7, "wrapped_onchain_median");
+      const rows = db.prepare(taoUsdBucketSql(HOUR)).all(T0);
+      assert.deepEqual(
+        rows.map((row) => ({ ...row })),
+        [
+          {
+            bucket_start: T0,
+            observed_at: T0 + HOUR - 2,
+            usd_per_tao: 191,
+            block_number: 3,
+            price_basis: "wrapped_onchain_median",
+          },
+          {
+            bucket_start: T0 + HOUR,
+            observed_at: T0 + 2 * HOUR - 1,
+            usd_per_tao: null,
+            block_number: 6,
+            price_basis: "insufficient_pools",
+          },
+          {
+            bucket_start: T0 + 3 * HOUR,
+            observed_at: T0 + 3 * HOUR + 1,
+            usd_per_tao: 193,
+            block_number: 7,
+            price_basis: "wrapped_onchain_median",
+          },
+        ],
+      );
+      for (const ms of Object.values(OHLC_INTERVALS)) {
+        for (const row of db.prepare(taoUsdBucketSql(ms)).all(T0)) {
+          assert.equal(
+            row.bucket_start,
+            Math.floor(Number(row.observed_at) / ms) * ms,
+          );
+        }
+      }
+    } finally {
+      db.close();
+    }
   });
 
   test("refuses a bucket size that would misalign every bucket", () => {

@@ -190,13 +190,13 @@ function rowNetuid(value: unknown): number | null {
  * A DIRECT STORE READ, not a restored tier forward -- the move
  * src/health-status-live.ts made for the same reason, and the one
  * `latestBlockNumber` below already makes for `blocks_head`. The table is a
- * Neon table with a live writer since #10740 (the chain-direct poller lane,
- * hourly), it is declared in SUBNET_IDENTITY_HISTORY_TABLES, and reading it
- * needs no flag: `readStore` refuses when the binding is absent, which is the
- * only question a read here actually has.
+ * history table with a live writer since #10740 (the chain-direct poller lane,
+ * hourly), declared in SUBNET_IDENTITY_HISTORY_TABLES. `readStore` chooses
+ * the configured analytics store and refuses when its binding is absent.
  *
- * DISTINCT (netuid) ON, ordered newest-first, so one row per subnet comes back
- * -- the same latest-per-netuid shape the deleted internal endpoint returned.
+ * Rank newest-first within each subnet, including the id tie-breaker. The
+ * window query works on both D1/SQLite and Postgres; DISTINCT ON only works
+ * on Postgres and otherwise silently loses the baseline on every tick.
  *
  * Still degrades to an empty Map rather than throwing: no binding, an
  * undeclared table or an unreadable query all mean "no baseline this tick",
@@ -206,8 +206,11 @@ function rowNetuid(value: unknown): number | null {
 async function latestIdentityHashes(env: Env): Promise<Map<number, unknown>> {
   const rows = await storeAll(
     readStore(env, SUBNET_IDENTITY_HISTORY_TABLES),
-    "SELECT DISTINCT ON (netuid) netuid, identity_hash FROM subnet_identity_history " +
-      "ORDER BY netuid, observed_at DESC, id DESC",
+    "SELECT netuid, identity_hash FROM (" +
+      "SELECT netuid, identity_hash, ROW_NUMBER() OVER (" +
+      "PARTITION BY netuid ORDER BY observed_at DESC, id DESC) AS identity_rank " +
+      "FROM subnet_identity_history) AS ranked " +
+      "WHERE identity_rank = 1 ORDER BY netuid",
     [],
   );
   const byNetuid = new Map<number, unknown>();
