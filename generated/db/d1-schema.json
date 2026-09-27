@@ -847,6 +847,12 @@
   },
   {
     "type": "table",
+    "name": "generated_artifacts",
+    "tbl_name": "generated_artifacts",
+    "sql": "CREATE TABLE generated_artifacts (\n  key TEXT PRIMARY KEY NOT NULL,\n  payload TEXT NOT NULL CHECK(json_valid(payload) AND json_type(payload)='object'),\n  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
     "name": "github_accounts",
     "tbl_name": "github_accounts",
     "sql": "CREATE TABLE github_accounts (\n  id             INTEGER PRIMARY KEY AUTOINCREMENT,\n  github_user_id INTEGER NOT NULL UNIQUE,\n  github_login   TEXT    NOT NULL,\n  tier           TEXT    NOT NULL DEFAULT 'free',\n  created_at     INTEGER NOT NULL,\n  last_login_at  INTEGER\n)"

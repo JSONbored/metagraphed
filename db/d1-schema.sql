@@ -551,6 +551,12 @@ CREATE TABLE emission_gate_param_history (
   predates_capture INTEGER NOT NULL DEFAULT 0 CHECK (predates_capture IN (0, 1))
 );
 
+CREATE TABLE generated_artifacts (
+  key TEXT PRIMARY KEY NOT NULL,
+  payload TEXT NOT NULL CHECK(json_valid(payload) AND json_type(payload)='object'),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+) WITHOUT ROWID;
+
 CREATE TABLE github_accounts (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   github_user_id INTEGER NOT NULL UNIQUE,

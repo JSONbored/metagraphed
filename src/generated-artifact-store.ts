@@ -17,11 +17,11 @@ export function generatedArtifactStore(db?: Pick<D1Database, "prepare">) {
     async put(key: string, payload: string) {
       const stored = await db
         .prepare(
-          `INSERT INTO generated_artifacts(key,payload) VALUES(?,?)
+          `INSERT INTO generated_artifacts(key,payload,updated_at) VALUES(?,?,?)
            ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,
-             updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') RETURNING key`,
+             updated_at=excluded.updated_at RETURNING key`,
         )
-        .bind(key, payload)
+        .bind(key, payload, new Date().toISOString())
         .first<{ key: string }>();
       if (stored?.key !== key)
         throw new Error("Generated artifact write was not acknowledged");
