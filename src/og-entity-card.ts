@@ -24,7 +24,7 @@
 // non-deterministically, and is a property of this Worker's 313 ms baseline
 // rather than of this import.
 //
-// CACHED PER ENTITY IN R2, not rendered per request. The key carries a digest
+// CACHED PER ENTITY AT THE EDGE, not rendered per request. The key carries a digest
 // of the facts and renderer version, so a data or artwork change is a NEW key rather
 // than an invalidation -- there is no moment where a stale card and a fresh one
 // share a name. That is the difference from the landing card, which re-rendered
@@ -52,7 +52,7 @@ import { loadCardFonts } from "./og-card-fonts.ts";
 import { type EntityLogo, fetchLogoBytes } from "./og-entity-logo.ts";
 export { fetchLogoBytes } from "./og-entity-logo.ts";
 
-/** The R2 object is versioned. Public entity URLs remain stable, so social
+/** The cached image is versioned. Public entity URLs remain stable, so social
  * platforms may retain their own image for this bounded response lifetime. */
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
 const DEGRADED_CACHE_CONTROL = "public, max-age=60";
@@ -152,57 +152,35 @@ export function cardKey(kind: string, subject: string, digest: string): string {
   return `cache/og/v${CARD_VERSION}/${kind}/${subject}-${digest}.png`;
 }
 
-/**
- * The R2-backed half of the cache, as a pair of functions the handler can be
- * given or not.
- *
- * HERE RATHER THAN INLINE AT THE DISPATCH SITE, because it is logic: a missing
- * binding, a miss, and a body that has to be read to completion are three
- * different outcomes and each has a right answer. Inline in the router they
- * would be untestable without standing up the whole request path and
- * instantiating the wasm to reach them.
- */
-export function r2CardCache(env: {
-  METAGRAPH_ARCHIVE?: {
-    get?: (key: string) => Promise<{
-      arrayBuffer(): Promise<ArrayBuffer>;
-      customMetadata?: Record<string, string>;
-    } | null>;
-    put?: (
-      key: string,
-      body: ArrayBuffer,
-      options?: {
-        httpMetadata?: { contentType?: string };
-        customMetadata?: Record<string, string>;
-      },
-    ) => Promise<unknown>;
-  };
-}): Pick<EntityCardDeps, "readCard" | "writeCard"> {
+/** Immutable rendered cards are disposable edge cache entries. A miss renders
+ * from the same facts and assets; missing logos are still repaired on demand. */
+export function edgeCardCache(
+  cache: Pick<Cache, "match" | "put"> | null = typeof caches === "undefined"
+    ? null
+    : caches.default,
+): Pick<EntityCardDeps, "readCard" | "writeCard"> {
+  const url = (key: string) => `https://metagraph.sh/.internal/${key}`;
   return {
     readCard: async (key, requiresLogo = false) => {
-      // No binding is a MISS, not an error: the card renders and the run
-      // simply does not get cached. A throw here would take an unfurl down
-      // over a cache that was never configured.
-      const archive = env.METAGRAPH_ARCHIVE;
-      if (!archive?.get) return null;
-      const object = await archive.get(key);
-      // Older objects do not record whether an expected logo loaded. Repair
-      // those on demand; unchanged facts must not pin a transient monogram.
-      // Intentional no-logo cards remain compatible with the existing cache.
+      const response = await cache?.match(url(key));
       if (
         requiresLogo &&
-        object?.customMetadata?.[LOGO_CACHE_METADATA] !== "included"
+        response?.headers.get(LOGO_CACHE_METADATA) !== "included"
       )
         return null;
-      return object ? await object.arrayBuffer() : null;
+      return response ? response.arrayBuffer() : null;
     },
     writeCard: async (key, body, includesLogo = false) => {
-      await env.METAGRAPH_ARCHIVE?.put?.(key, body, {
-        httpMetadata: { contentType: "image/png" },
-        customMetadata: {
-          [LOGO_CACHE_METADATA]: includesLogo ? "included" : "absent",
-        },
-      });
+      await cache?.put(
+        url(key),
+        new Response(body, {
+          headers: {
+            "content-type": "image/png",
+            "cache-control": "public, max-age=604800, immutable",
+            [LOGO_CACHE_METADATA]: includesLogo ? "included" : "absent",
+          },
+        }),
+      );
     },
   };
 }
@@ -235,7 +213,7 @@ type ArtifactReader = (
   path: string,
 ) => Promise<{ ok: boolean; data?: unknown }>;
 
-type R2Writer = (
+type CardWriter = (
   key: string,
   body: ArrayBuffer,
   includesLogo?: boolean,
@@ -250,7 +228,7 @@ export interface EntityCardDeps {
     key: string,
     requiresLogo?: boolean,
   ) => Promise<ArrayBuffer | null>;
-  writeCard?: R2Writer;
+  writeCard?: CardWriter;
   render?: (markup: string) => Promise<ArrayBuffer>;
   assets?: AssetFetcher | null;
 }

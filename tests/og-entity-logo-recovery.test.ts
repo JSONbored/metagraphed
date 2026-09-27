@@ -5,7 +5,7 @@ import {
   cardKey,
   factsDigest,
   handleEntityOgImage,
-  r2CardCache,
+  edgeCardCache,
   subnetFacts,
   type EntityCardDeps,
 } from "../src/og-entity-card.ts";
@@ -48,24 +48,27 @@ function cacheFixture() {
   >();
   let writes = 0;
   let bodyReads = 0;
-  const cache = r2CardCache({
-    METAGRAPH_ARCHIVE: {
-      get: async (key) => {
-        const object = stored.get(key);
-        return object
-          ? {
-              customMetadata: object.metadata,
-              arrayBuffer: async () => {
-                bodyReads++;
-                return object.bytes;
-              },
-            }
-          : null;
-      },
-      put: async (key, bytes, options) => {
-        writes++;
-        stored.set(key, { bytes, metadata: options?.customMetadata });
-      },
+  const cache = edgeCardCache({
+    match: async (url) => {
+      const key = String(url).replace("https://metagraph.sh/.internal/", "");
+      const object = stored.get(key);
+      if (!object) return undefined;
+      const response = new Response(object.bytes, { headers: object.metadata });
+      response.arrayBuffer = async () => {
+        bodyReads++;
+        return object.bytes;
+      };
+      return response;
+    },
+    put: async (url, response) => {
+      const key = String(url).replace("https://metagraph.sh/.internal/", "");
+      writes++;
+      stored.set(key, {
+        bytes: await response.arrayBuffer(),
+        metadata: {
+          entity_logo: response.headers.get("entity_logo")!,
+        },
+      });
     },
   });
   return { stored, cache, writes: () => writes, bodyReads: () => bodyReads };
@@ -73,7 +76,7 @@ function cacheFixture() {
 
 describe("entity logos recover without changing facts or URLs", () => {
   for (const failure of ["miss", "throw", "empty"] as const) {
-    test(`old ambiguous R2 monogram survives a ${failure}, then recovers and caches the logo`, async () => {
+    test(`old ambiguous cached monogram survives a ${failure}, then recovers and caches the logo`, async () => {
       const fixture = cacheFixture();
       const key = cardKey("subnets", "1", factsDigest(subnetFacts(INDEX, 1)!));
       fixture.stored.set(key, { bytes: PNG });
@@ -172,21 +175,22 @@ describe("entity logos recover without changing facts or URLs", () => {
     );
   });
 
-  test("R2 read and write failures leave a complete response and a later retry", async () => {
+  test("Cache read and write failures leave a complete response and a later retry", async () => {
     let attempts = 0;
     let writes = 0;
-    const cache = r2CardCache({
-      METAGRAPH_ARCHIVE: {
-        get: async () => ({
-          customMetadata: { entity_logo: "included" },
-          arrayBuffer: async () => {
-            throw new Error("body temporarily unreadable");
-          },
-        }),
-        put: async () => {
-          writes++;
-          throw new Error("write temporarily unavailable");
-        },
+    const cache = edgeCardCache({
+      match: async () => {
+        const response = new Response(null, {
+          headers: { entity_logo: "included" },
+        });
+        response.arrayBuffer = async () => {
+          throw new Error("body temporarily unreadable");
+        };
+        return response;
+      },
+      put: async () => {
+        writes++;
+        throw new Error("write temporarily unavailable");
       },
     });
     for (let i = 0; i < 2; i++) {

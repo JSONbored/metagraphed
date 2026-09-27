@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { mockEnv } from "./row-type.ts";
 import { CARD_VERSION } from "../src/og-card-style.ts";
@@ -8,7 +8,7 @@ import {
   accountFacts,
   fetchLogoBytes,
   cardText,
-  r2CardCache,
+  edgeCardCache,
   cardKey,
   factsDigest,
   handleEntityOgImage,
@@ -430,49 +430,55 @@ describe("the handler never fails a crawler", () => {
   });
 });
 
-describe("the R2 cache accessors", () => {
-  test("no binding is a MISS, not an error", async () => {
-    // A throw here would take an unfurl down over a cache that was never
-    // configured -- the card should simply render uncached.
-    const { readCard } = r2CardCache({});
-    assert.equal(await readCard!("cache/og/subnets/64-abc.png"), null);
-  });
-
-  test("an absent object is a miss", async () => {
-    const { readCard } = r2CardCache({
-      METAGRAPH_ARCHIVE: { get: async () => null },
+describe("the edge cache accessors", () => {
+  test("production uses the default edge cache without an R2 binding", async () => {
+    const bytes = new Uint8Array([1, 2]).buffer;
+    vi.stubGlobal("caches", {
+      default: {
+        match: async () => new Response(bytes),
+        put: async () => {},
+      },
     });
-    assert.equal(await readCard!("cache/og/subnets/64-abc.png"), null);
+    try {
+      assert.deepEqual(await edgeCardCache().readCard!("card"), bytes);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
-  test("a present object is read to completion", async () => {
+  test("missing cache and absent entries remain renderable misses", async () => {
+    const missing = edgeCardCache(null);
+    assert.equal(await missing.readCard!("cache/og/subnets/64-abc.png"), null);
+    await missing.writeCard!("k", new Uint8Array([1]).buffer);
+    const absent = edgeCardCache({
+      match: async () => undefined,
+      put: async () => {},
+    });
+    assert.equal(await absent.readCard!("cache/og/subnets/64-abc.png"), null);
+  });
+
+  test("cache entries preserve exact bytes, content type, logo completion and expiry", async () => {
+    const entries = new Map<string, Response>();
+    const cache = edgeCardCache({
+      match: async (key) => entries.get(String(key))?.clone(),
+      put: async (key, response) => {
+        entries.set(String(key), response);
+      },
+    });
     const bytes = new Uint8Array([1, 2, 3]).buffer;
-    const { readCard } = r2CardCache({
-      METAGRAPH_ARCHIVE: {
-        get: async () => ({ arrayBuffer: async () => bytes }),
-      },
-    });
-    assert.equal(await readCard!("cache/og/subnets/64-abc.png"), bytes);
-  });
-
-  test("the write carries the content type, so R2 serves it as an image", async () => {
-    const seen: { key?: string; type?: string } = {};
-    const { writeCard } = r2CardCache({
-      METAGRAPH_ARCHIVE: {
-        put: async (key, _body, options) => {
-          seen.key = key;
-          seen.type = options?.httpMetadata?.contentType;
-        },
-      },
-    });
-    await writeCard!("cache/og/subnets/64-abc.png", new Uint8Array([1]).buffer);
-    assert.equal(seen.key, "cache/og/subnets/64-abc.png");
-    assert.equal(seen.type, "image/png");
-  });
-
-  test("writing with no binding is a no-op rather than a throw", async () => {
-    const { writeCard } = r2CardCache({});
-    await writeCard!("k", new Uint8Array([1]).buffer);
+    const key = "cache/og/subnets/64-abc.png";
+    await cache.writeCard!(key, bytes);
+    const stored = entries.get("https://metagraph.sh/.internal/" + key)!;
+    assert.equal(stored.headers.get("content-type"), "image/png");
+    assert.equal(
+      stored.headers.get("cache-control"),
+      "public, max-age=604800, immutable",
+    );
+    assert.equal(stored.headers.get("entity_logo"), "absent");
+    assert.deepEqual(await cache.readCard!(key), bytes);
+    assert.equal(await cache.readCard!(key, true), null);
+    await cache.writeCard!(key, bytes, true);
+    assert.deepEqual(await cache.readCard!(key, true), bytes);
   });
 });
 
