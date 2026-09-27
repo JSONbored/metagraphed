@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import {
   callSubnetSurface,
   matchSchemaOperation,
@@ -1542,6 +1542,79 @@ describe("matchSchemaOperation", () => {
 });
 
 describe("body-read deadline (#8655)", () => {
+  test("a failed response stream returns a bounded tool failure without replay or credential disclosure", async () => {
+    vi.useFakeTimers();
+    try {
+      let calls = 0;
+      const credential = "private-caller-credential";
+      const result = await callSubnetSurface(
+        {
+          url: "https://example.com/api",
+          probe: { method: "POST", timeout_ms: 5000 },
+        },
+        {
+          isUnsafeUrl: SAFE,
+          credential: { location: "query", name: "api_key", value: credential },
+          fetchImpl: async () => {
+            calls++;
+            return new Response(
+              new ReadableStream({
+                start(controller) {
+                  controller.error(
+                    new Error("Network connection lost: " + credential),
+                  );
+                },
+              }),
+              { headers: { "content-type": "application/json" } },
+            );
+          },
+        },
+      );
+      assert.equal(result.ok, false);
+      assert.equal(
+        result.error,
+        "The upstream response body could not be read.",
+      );
+      assert.equal(result.status_code, 200);
+      assert.equal(calls, 1);
+      assert.equal(JSON.stringify(result).includes(credential), false);
+      assert.equal(vi.getTimerCount(), 0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("a deadline cancels the upstream stream after returning its bounded partial content", async () => {
+    let cancelled = 0;
+    const result = await callSubnetSurface(
+      {
+        url: "https://example.com/stream",
+        probe: { method: "GET", timeout_ms: 10 },
+      },
+      {
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode("data: useful\n\n"),
+                );
+              },
+              cancel() {
+                cancelled++;
+              },
+            }),
+            { headers: { "content-type": "text/event-stream" } },
+          ),
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.truncated, true);
+    assert.match(String(result.body), /useful/);
+    assert.equal(cancelled, 1);
+  });
+
   // safetyCheckedFetch's abort timer is cleared in a `finally` that runs when
   // the response HEADERS arrive, so nothing was watching the clock while the
   // body streamed. `sse` is a callable surface kind, so calling one

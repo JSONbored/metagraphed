@@ -395,7 +395,21 @@ export async function callSubnetSurface(
     };
   }
 
-  const raw = await readBodyCapped(response, MAX_RESPONSE_BYTES, timeoutMs);
+  let raw: { text: string; truncated: boolean };
+  try {
+    raw = await readBodyCapped(response, MAX_RESPONSE_BYTES, timeoutMs);
+  } catch {
+    // Headers can arrive before an upstream connection drops. Return the
+    // normal tool failure contract without replaying a possibly billable call
+    // or exposing provider error text that could contain caller credentials.
+    return {
+      ok: false,
+      error: "The upstream response body could not be read.",
+      status_code: response.status,
+      content_type: contentType,
+      latency_ms: latencyMs,
+    };
+  }
   let body: unknown = raw.text;
   let parseError: string | null = null;
   if (kind === "json" && raw.text) {
@@ -469,8 +483,7 @@ async function readBodyCapped(
         new Promise<typeof DEADLINE>((resolve) => {
           timer = setTimeout(() => resolve(DEADLINE), deadline - Date.now());
         }),
-      ]);
-      clearTimeout(timer);
+      ]).finally(() => clearTimeout(timer));
       if (chunk === DEADLINE) {
         truncated = true;
         break;
@@ -490,6 +503,9 @@ async function readBodyCapped(
     }
     text += decoder.decode();
   } finally {
+    // Stop a timed-out or interrupted stream instead of leaving the provider
+    // producing bytes after the bounded tool response has returned.
+    await reader.cancel().catch(() => {});
     reader.releaseLock?.();
   }
   return { text, truncated };
