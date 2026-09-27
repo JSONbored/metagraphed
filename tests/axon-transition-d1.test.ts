@@ -198,6 +198,97 @@ test("native document narrowing matches PostgreSQL and the full derivation inclu
   );
 });
 
+test("account narrowing keeps complete reused-UID histories and matches network results", async () => {
+  await seed(rows);
+  const complete = await loadAxonRemovals(env(), { now: () => now });
+  for (const indexed of [true, false]) {
+    if (!indexed)
+      await db.prepare("UPDATE neuron_daily_members SET axon_indexed=0").run();
+    for (const hotkey of [
+      "hk1",
+      "hk2",
+      "hk3",
+      "old",
+      "new",
+      "hk5",
+      "hk6",
+      "hk7",
+      "hk8",
+      "absent",
+    ]) {
+      const scoped = await loadAxonRemovals(env(), { now: () => now, hotkey });
+      assert.deepEqual(
+        accountAxonRemovalRows(scoped, hotkey),
+        accountAxonRemovalRows(complete, hotkey),
+      );
+      if (hotkey === "old" || hotkey === "new")
+        assert.equal(scoped?.derivation.excluded_uid_reuse, 1);
+    }
+    assert.deepEqual(
+      accountAxonRemovalRows(
+        await loadAxonRemovals(env(), {
+          now: () => now,
+          hotkey: "hk8",
+          netuid: 7,
+        }),
+        "hk8",
+      ),
+      [],
+    );
+  }
+  const plan = await createD1Store(db).query<{ detail: string }>(
+    "EXPLAIN QUERY PLAN SELECT DISTINCT netuid FROM neuron_daily_members WHERE hotkey=? AND snapshot_date>=? ORDER BY netuid",
+    ["hk1", "2026-07-05"],
+  );
+  assert.ok(
+    plan.some(({ detail }) =>
+      /SEARCH.*neuron_daily_members_hotkey_idx/.test(detail),
+    ),
+  );
+});
+
+test("account freshness comes from that account's removals rather than another operator", async () => {
+  const shared = rows.filter((row) => row.hotkey === "hk1");
+  await seed([
+    ...rows,
+    ...shared.map((row) => ({
+      ...row,
+      netuid: 9,
+      snapshot_date: row.snapshot_date.replace("08-0", "07-2"),
+    })),
+    ...shared.map((row, i) => ({
+      ...row,
+      netuid: 10,
+      snapshot_date: `2026-08-0${i + 2}`,
+    })),
+    ...shared.map((row) => ({ ...row, netuid: 11 })),
+    ...shared.map((row, i) => ({
+      ...row,
+      hotkey: "another",
+      netuid: 12,
+      snapshot_date: `2026-08-0${i + 3}`,
+    })),
+  ]);
+  const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+  try {
+    for (const hotkey of ["hk1", "absent"]) {
+      const url = new URL(
+        `https://api.metagraph.sh/api/v1/accounts/${hotkey}/axon-removals?window=30d`,
+      );
+      const body = await jsonBody(
+        await handleAccountAxonRemovals(new Request(url), env(), hotkey, url),
+      );
+      assert.equal(
+        body.meta.generated_at,
+        hotkey === "hk1" ? "2026-08-03" : null,
+      );
+      assert.equal(body.data.total_removals, hotkey === "hk1" ? 4 : 0);
+    }
+  } finally {
+    clock.mockRestore();
+  }
+});
+
 test("D1 classification shares every address boundary and the last-colon split, including escaped text", async () => {
   const axons: (string | null)[] = [
     null,
@@ -566,6 +657,25 @@ test("network removals yield between subnet partitions and preserve the complete
     [7, 8],
   );
   assert.ok(partitions.every(({ sql }) => sql.includes("AND d.netuid=?")));
+  statements.length = 0;
+  await loadAxonRemovals(bound, { now: () => now, hotkey: "hk1" });
+  const accountPartitions = statements.filter(({ sql }) =>
+    sql.includes("WITH windowed"),
+  );
+  assert.equal(accountPartitions.length, 1);
+  assert.deepEqual(accountPartitions[0].values, [
+    "2026-07-05",
+    7,
+    "hk1",
+    7,
+    "2026-07-05",
+  ]);
+  statements.length = 0;
+  await loadAxonRemovals(bound, { now: () => now, hotkey: "absent" });
+  assert.equal(
+    statements.filter(({ sql }) => sql.includes("WITH windowed")).length,
+    0,
+  );
 });
 
 test("day-bounded axon queries preserve complete counts and skip empty document days", async () => {

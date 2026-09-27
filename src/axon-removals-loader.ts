@@ -100,6 +100,8 @@ export interface AxonRemovalsLoadDeps {
   now?: () => number;
   /** Subnet cards consume only this subnet, so D1 need not scan the network. */
   netuid?: number;
+  /** Account reads need whole slot histories, including replacement hotkeys. */
+  hotkey?: string;
 }
 
 /** `YYYY-MM-DD`, `days` before `nowMs`. */
@@ -133,24 +135,36 @@ export async function loadAxonRemovals(
     if (native) {
       const indexed = await axonProjectionReady(native.query);
       const subnets =
-        deps.netuid === undefined
-          ? await native.query<{ netuid: number }>(
-              "SELECT DISTINCT netuid FROM neuron_daily_documents WHERE day>=? ORDER BY netuid",
-              [cutoff],
-            )
-          : [{ netuid: deps.netuid }];
+        deps.netuid !== undefined
+          ? [{ netuid: deps.netuid }]
+          : deps.hotkey !== undefined
+            ? await native.query<{ netuid: number }>(
+                "SELECT DISTINCT netuid FROM neuron_daily_members WHERE hotkey=? AND snapshot_date>=? ORDER BY netuid",
+                [deps.hotkey, cutoff],
+              )
+            : await native.query<{ netuid: number }>(
+                "SELECT DISTINCT netuid FROM neuron_daily_documents WHERE day>=? ORDER BY netuid",
+                [cutoff],
+              );
       const collected: NeuronAxonDayRow[] = [];
       // Windows partition by (netuid, uid), so subnet reads are equivalent.
       // Yield D1 between subnets instead of holding its single writer behind
       // one network-wide window sort for tens of seconds.
       const statement = candidateSlotsSql(
-        axonSequenceD1Sql("AND d.netuid=?", indexed),
+        axonSequenceD1Sql(
+          "AND d.netuid=?" +
+            (deps.hotkey === undefined
+              ? ""
+              : " AND m.uid IN (SELECT uid FROM neuron_daily_members WHERE hotkey=? AND netuid=? AND snapshot_date>=?)"),
+          indexed,
+        ),
       );
       for (const { netuid } of subnets)
         collected.push(
           ...(await native.query<NeuronAxonDayRow>(statement, [
             cutoff,
             netuid,
+            ...(deps.hotkey === undefined ? [] : [deps.hotkey, netuid, cutoff]),
           ])),
         );
       rows = collected;

@@ -6814,7 +6814,9 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     // DERIVED FROM STATE (#10805), the same rollup REST and MCP read.
-    const removalsRollup = await loadAxonRemovals(context.env);
+    const removalsRollup = await loadAxonRemovals(context.env, {
+      hotkey: ss58,
+    });
     const data = buildAccountAxonRemovals(
       accountAxonRemovalRows(removalsRollup, ss58) ?? [],
       ss58,
