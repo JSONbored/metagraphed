@@ -135,18 +135,38 @@ function documentStatements(
           THEN excluded.payload
           ELSE (SELECT jsonb_group_object(i.key,json(i.value)) FROM json_each(excluded.payload) i WHERE ${newer}) END),
         stamp=MAX(${table}.stamp,excluded.stamp)
-      WHERE EXISTS(SELECT 1 FROM json_each(excluded.payload) i WHERE ${newer})`,
+      WHERE (SELECT MIN(json_extract(i.value,'$.captured_at')) FROM json_each(excluded.payload) i) > ${table}.stamp
+        OR EXISTS(SELECT 1 FROM json_each(excluded.payload) i WHERE ${newer})`,
       values: [value],
     });
     // Read accepted identities from the merged document, so a stale incoming
     // capture cannot regress the lookup index while its metrics are rejected.
+    // Only the incoming keys are needed here. Materialize that small key set
+    // as JSONB once per shard, rather than reparsing every full capture for
+    // every accepted member of the document.
     out.push({
-      text: `INSERT INTO ${members}(${fields.join(",")},shard)
+      text: `WITH incoming AS MATERIALIZED (
+        SELECT json_extract(value,'$.netuid') AS netuid,json_extract(value,'$.day') AS day,
+          json_extract(value,'$.shard') AS shard,jsonb_extract(value,'$.keys') AS keys
+        FROM json_each(?)
+      )
+      INSERT INTO ${members}(${fields.join(",")},shard)
       SELECT ${fields.map((c) => `json_extract(i.value,'$.${c}')`).join(",")},d.shard
-      FROM json_each(?) b JOIN ${table} d ON d.netuid=json_extract(b.value,'$.netuid') AND d.day=json_extract(b.value,'$.day') AND d.shard=json_extract(b.value,'$.shard')
-      JOIN json_each(d.payload) i WHERE json_type(b.value,'$.payload."'||i.key||'"') IS NOT NULL
+      FROM incoming b JOIN ${table} d ON d.netuid=b.netuid AND d.day=b.day AND d.shard=b.shard
+      JOIN json_each(d.payload) i WHERE json_type(b.keys,'$."'||i.key||'"') IS NOT NULL
       ON CONFLICT(${conflict}) ${identityUpdates}`,
-      values: [value],
+      values: [
+        JSON.stringify(
+          batch.map(({ netuid, day, shard, payload }) => ({
+            netuid,
+            day,
+            shard,
+            keys: Object.fromEntries(
+              Object.keys(payload).map((key) => [key, 1]),
+            ),
+          })),
+        ),
+      ],
     });
     batch = [];
     bytes = 2;

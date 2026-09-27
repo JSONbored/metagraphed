@@ -200,6 +200,57 @@ test("sparse mixed-age captures index only their accepted members within a popul
     await db.prepare("DROP TABLE attempted_daily_members").run();
   }
 });
+test("full-shard membership updates send only keys and preserve accepted identities in every family", async () => {
+  const initial = Array.from({ length: 256 }, (_, uid) => ({
+    ...rows()[0],
+    uid,
+    hotkey: `key-${uid}`,
+    coldkey: `owner-${uid}`,
+    axon: "x".repeat(512),
+  }));
+  const input = capture(initial);
+  const statements = neuronDocumentStatements(input);
+  for (const family of ["neurons", "neuron_daily", "account_position_daily"]) {
+    const documents = statements.find((s) =>
+      s.text.startsWith(`INSERT INTO ${family}_documents`),
+    )!;
+    const members = statements.find((s) =>
+      s.text.includes(`INSERT INTO ${family}_members`),
+    )!;
+    const payload = String(members.values![0]);
+    assert.ok(payload.length < String(documents.values![0]).length / 10);
+    assert.ok(!payload.includes("captured_at") && !payload.includes("axon"));
+    const plan = (
+      await db
+        .prepare("EXPLAIN QUERY PLAN " + members.text)
+        .bind(...(members.values ?? []))
+        .all<{ detail: string }>()
+    ).results.map((r) => r.detail);
+    assert.ok(plan.some((step) => step.includes("MATERIALIZE incoming")));
+    assert.ok(
+      plan.every((step) => !step.includes("CORRELATED")),
+      plan.join("\n"),
+    );
+  }
+  await writeNeuronDocuments(store(), input);
+  const update = initial.map((row) => ({
+    ...row,
+    captured_at: stamp + 1000,
+    stake_tao: 42,
+  }));
+  await writeNeuronDocuments(store(), capture(update));
+  for (const family of ["neurons", "neuron_daily", "account_position_daily"]) {
+    const actual = await read(family);
+    assert.equal(actual.length, 256);
+    assert.ok(actual.every((row) => row.captured_at === stamp + 1000));
+    assert.ok(
+      actual.every(
+        (row) =>
+          row.hotkey === `key-${row.uid}` || row.account === `key-${row.uid}`,
+      ),
+    );
+  }
+});
 test("pruning is per-netuid, preserves newer captures, and never prunes either daily family", async () => {
   await writeNeuronDocuments(
     store(),
