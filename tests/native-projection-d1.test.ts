@@ -12,6 +12,7 @@ import {
 import { resetModuleState } from "../src/module-state-registry.ts";
 import { readArtifactObject } from "../src/projection-store.ts";
 import { z } from "zod";
+import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watchdog.ts";
 
 const databases: DatabaseSync[] = [];
 beforeEach(() => resetModuleState());
@@ -213,4 +214,93 @@ test("a D1-selected manifest never falls back after missing data or a database e
   sql.exec("DROP TABLE generated_artifacts");
   assert.equal(await loadNativeProjectionManifest(env, "mainnet", true), null);
   assert.equal(r2Reads.length, 1);
+});
+
+for (const failure of [
+  "none",
+  "absent",
+  "corrupt",
+  "empty",
+  "stale",
+] as const) {
+  test(`projection watchdog follows D1 ownership and preserves ${failure} verdict`, async () => {
+    const { db, put, seed, reads } = fixture();
+    const now = Math.max(
+      ...["mainnet", "testnet"].map(
+        (network) =>
+          JSON.parse(objects[currentKey(network)].raw).generatedAt as number,
+      ),
+    );
+    let legacyReads = 0;
+    const env = {
+      D1_STATE: db,
+      NATIVE_PROJECTIONS: "enabled",
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          legacyReads++;
+          throw new Error("Retired R2 projections must not be consulted");
+        },
+      },
+    };
+    for (const network of ["mainnet", "testnet"] as const) {
+      const manifest = JSON.parse(objects[currentKey(network)].raw);
+      if (failure === "stale" && network === "mainnet") {
+        manifest.generatedAt = now - 5 * 3_600_000;
+        for (const source of manifest.sources)
+          source.cutoff = manifest.generatedAt - 90 * 86_400_000;
+      }
+      for (const item of manifest.artifacts) {
+        const body = JSON.parse(objects[item.object.key].raw);
+        body.generated_at = new Date(manifest.generatedAt).toISOString();
+        const target =
+          network === "mainnet" &&
+          item.artifactKey.endsWith("/blocks-summary.json");
+        if (target && failure === "empty") body.row_count = 0;
+        if (target && failure === "absent") continue;
+        const descriptor = seed(
+          item.object.key,
+          Buffer.from(JSON.stringify(body)),
+        );
+        item.object.etag = descriptor.etag;
+        item.object.bytes = descriptor.bytes;
+        if (target && failure === "corrupt")
+          put(`${item.object.key}/chunks/0`, { data: "eA==" });
+      }
+      put(currentKey(network), manifest);
+    }
+    const messages: string[] = [];
+    const result = await runProjectionStalenessWatchdog(env, {
+      now: () => now,
+      laneHealthDb: null,
+      recordException: async (_env, event) => {
+        messages.push(String(event.error));
+        return true;
+      },
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.stale, failure !== "none");
+    assert.equal(messages.length, failure === "none" ? 0 : 1);
+    if (failure !== "none") assert.match(messages[0]!, /blocks-summary/);
+    if (failure === "empty") assert.match(messages[0]!, /fresh, 0 rows/);
+    if (failure === "stale") assert.match(messages[0]!, /5.0 h old/);
+    assert.equal(legacyReads, 0);
+    for (const network of ["mainnet", "testnet"])
+      assert.equal(
+        reads.filter((key) => key === currentKey(network)).length,
+        1,
+      );
+  });
+}
+
+test("native projection watchdog reports absent generations without requiring an R2 binding", async () => {
+  const { db } = fixture();
+  const result = await runProjectionStalenessWatchdog(
+    { D1_STATE: db, NATIVE_PROJECTIONS: "enabled" },
+    {
+      laneHealthDb: null,
+      recordException: async () => true,
+    },
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.stale, true);
 });
