@@ -236,7 +236,7 @@ test("block detail and feed read decoded economics and sparse headers from real 
     (await loadBlockColdTier(readerEnv, hash))?.block,
     detail.block,
   );
-  const feed = await loadBlockFeedColdTier(readerEnv, { limit: 3 });
+  const feed = await loadBlockFeedColdTier(readerEnv, { limit: 3, offset: 0 });
   assert.ok(feed);
   assert.deepEqual(
     feed.blocks.map((b) => b.block_number),
