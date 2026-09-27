@@ -107,7 +107,10 @@ import { buildChainServing } from "../../src/chain-serving.ts";
 import { buildChainPrometheus } from "../../src/chain-prometheus.ts";
 import { loadChainPrometheusColdTier } from "../../src/chain-prometheus-loader.ts";
 import { loadChainPrometheusFromArtifact } from "../../src/chain-prometheus-artifact.ts";
-import { buildChainAxonRemovals } from "../../src/chain-axon-removals.ts";
+import {
+  buildChainAxonRemovals,
+  CHAIN_AXON_REMOVALS_WINDOWS,
+} from "../../src/chain-axon-removals.ts";
 import { loadAxonRemovals } from "../../src/axon-removals-loader.ts";
 import { buildChainRegistrations } from "../../src/chain-registrations.ts";
 import { buildChainDeregistrations } from "../../src/chain-deregistrations.ts";
