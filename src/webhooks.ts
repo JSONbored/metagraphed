@@ -1,3 +1,4 @@
+import { historySha256 } from "./history-sha256.ts";
 // Pure, isomorphic helpers for the metagraph.sh change-feed webhooks.
 //
 // metagraph.sh regenerates its dataset on an event-driven publish (ADR 0007), so the
@@ -480,11 +481,7 @@ function bytesToHex(buffer: ArrayBuffer | Uint8Array): string {
 }
 
 async function sha256Hex(text: unknown): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(String(text)),
-  );
-  return bytesToHex(digest);
+  return historySha256(String(text));
 }
 
 export async function signPayload(

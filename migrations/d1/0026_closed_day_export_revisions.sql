@@ -1,6 +1,5 @@
 -- Closed-day exports ignore live-day traffic but detect corrections and retention.
 -- Track both document contents and member projections; open-day writes add no revision work.
--- statement-breakpoint
 CREATE TRIGGER neuron_daily_documents_closed_day_insert AFTER INSERT ON neuron_daily_documents
 WHEN NEW.day < date('now') BEGIN
   INSERT INTO archive_export_revisions(table_name,revision)

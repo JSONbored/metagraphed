@@ -91,18 +91,12 @@ export async function handleD1StateExport(
     return fail(401, "invalid state export credential");
   if (request.method !== "POST") return fail(405, "state export requires POST");
   const inputBody = await boundedInternalJson(request, 8192).catch(() => null);
-  if (
-    inputBody &&
-    typeof inputBody === "object" &&
-    (inputBody as { kind?: unknown }).kind === "basket"
-  )
-    return handleRootBasketExport(inputBody, env);
-  if (
-    inputBody &&
-    typeof inputBody === "object" &&
-    (inputBody as { kind?: unknown }).kind === "native-history"
-  )
-    return handleNativeHistoryExport(inputBody, env);
+  if (inputBody && typeof inputBody === "object") {
+    const kind = (inputBody as { kind?: unknown }).kind;
+    if (kind === "basket") return handleRootBasketExport(inputBody, env);
+    if (kind === "native-history")
+      return handleNativeHistoryExport(inputBody, env);
+  }
   const parsed = RequestSchema.safeParse(inputBody);
   if (!parsed.success || !Object.hasOwn(D1_EXPORT_TABLES, parsed.data.table))
     return fail(400, "invalid export request");
