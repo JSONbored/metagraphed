@@ -2686,18 +2686,32 @@ function alarmState(setAlarmImpl: () => Promise<void>): DurableObjectState {
   } as unknown as DurableObjectState;
 }
 
-test("alarm: a DO reset during setAlarm does not escape (#11021)", async () => {
-  const hub = new ChainFirehoseHub(
-    alarmState(async () => {
-      throw new Error("Durable Object reset because its code was updated.");
-    }),
-    mockEnv({ CHAIN_HEAD_POLL_ENABLED: "false" }),
-  );
-  // Must not reject: the poll chain is restarted by the 15-minute /poll-start
-  // bootstrap, and letting this escape is what made every deploy an uncaught
-  // exception on ChainFirehoseHub.alarm.
-  await hub.alarm();
-});
+test.each([
+  "Durable Object reset because its code was updated.",
+  "Connection closed: this Durable Object instance is no longer active. Reconnect or retry the request.",
+])(
+  "alarm: a retired instance does not report a scheduling fault: %s",
+  async (message) => {
+    const errors: unknown[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => void errors.push(args);
+    // Must not reject: the poll chain is restarted by the 15-minute /poll-start
+    // bootstrap, and letting this escape is what made every deploy an uncaught
+    // exception on ChainFirehoseHub.alarm.
+    try {
+      const hub = new ChainFirehoseHub(
+        alarmState(async () => {
+          throw new Error(message);
+        }),
+        mockEnv({ CHAIN_HEAD_POLL_ENABLED: "false" }),
+      );
+      await hub.alarm();
+    } finally {
+      console.error = original;
+    }
+    assert.deepEqual(errors, []);
+  },
+);
 
 test("alarm: any OTHER setAlarm failure is still reported (#11021)", async () => {
   const errors: unknown[] = [];

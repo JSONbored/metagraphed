@@ -20,13 +20,18 @@
  * silently swallow real DO failures, and a dead hub that looks healthy is the
  * failure mode #10991's alarm work exists to prevent.
  */
-const DURABLE_OBJECT_RESET_MESSAGE =
-  "Durable Object reset because its code was updated.";
+// The runtime also retires instances without a code update. A pending storage
+// call then reports this second, documented shutdown condition. Both require
+// a fresh instance; neither permits retrying storage on the retired instance.
+const DURABLE_OBJECT_RESET_MESSAGES = new Set([
+  "Durable Object reset because its code was updated.",
+  "Connection closed: this Durable Object instance is no longer active. Reconnect or retry the request.",
+]);
 
 /** True only for the runtime's DO-eviction rejection, never for anything else. */
 export function isDurableObjectReset(error: unknown): boolean {
   return (
-    error instanceof Error && error.message === DURABLE_OBJECT_RESET_MESSAGE
+    error instanceof Error && DURABLE_OBJECT_RESET_MESSAGES.has(error.message)
   );
 }
 
