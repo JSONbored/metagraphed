@@ -876,11 +876,35 @@ async function persistToKv(
   };
 
   await Promise.all([
-    kv.put(KV_HEALTH_CURRENT, JSON.stringify(current)),
-    kv.put(KV_HEALTH_RPC_POOL, JSON.stringify(rpcPool)),
-    kv.put(KV_HEALTH_META, JSON.stringify(meta)),
+    putHealthSnapshot(kv, KV_HEALTH_CURRENT, JSON.stringify(current)),
+    putHealthSnapshot(kv, KV_HEALTH_RPC_POOL, JSON.stringify(rpcPool)),
+    putHealthSnapshot(kv, KV_HEALTH_META, JSON.stringify(meta)),
   ]);
   return current;
+}
+
+/** Reuse the measured snapshot when a KV write has a transient server error.
+ * Successful keys and external probes are never repeated. Waiting at least a
+ * second also respects KV's per-key write interval after an uncertain result. */
+async function putHealthSnapshot(
+  kv: KVNamespace,
+  key: string,
+  value: string,
+): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await kv.put(key, value);
+      return;
+    } catch (error) {
+      if (
+        attempt >= 2 ||
+        !(error instanceof Error) ||
+        !/^KV PUT failed: (?:500|502|503|504)\b/.test(error.message)
+      )
+        throw error;
+      await new Promise((resolve) => setTimeout(resolve, (attempt + 1) * 1000));
+    }
+  }
 }
 
 // UTC day bounds for a given epoch-ms instant: { date: "YYYY-MM-DD", start, end }.

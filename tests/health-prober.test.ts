@@ -1440,6 +1440,100 @@ describe("runHealthProber probe-sweep persistence", () => {
 });
 
 describe("persistToKv via runHealthProber", () => {
+  test("retries only the failed snapshot key without repeating probes or changing its bytes", async () => {
+    vi.useFakeTimers();
+    try {
+      const kv = makeKv();
+      const originalPut = kv.put.bind(kv);
+      const payloads: string[] = [];
+      const put = vi.spyOn(kv, "put").mockImplementation(async (key, value) => {
+        if (key === KV_HEALTH_CURRENT) {
+          assert.equal(typeof value, "string");
+          payloads.push(value as string);
+          if (payloads.length <= 2)
+            throw new Error("KV PUT failed: 500 Internal Server Error");
+        }
+        await originalPut(key, value);
+      });
+      const probe = vi.fn(probeImpl);
+      const run = runHealthProber(mockEnv(), FAKE_CTX, {
+        kv,
+        now: () => 5000,
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probe,
+        probeOptions: {},
+      });
+      await vi.runAllTimersAsync();
+      assert.equal((await run).ok, true);
+      assert.equal(probe.mock.calls.length, SURFACES.length);
+      assert.equal(put.mock.calls.length, 5);
+      assert.equal(payloads.length, 3);
+      assert.equal(new Set(payloads).size, 1);
+      assert.equal(
+        kv.json(KV_HEALTH_CURRENT).generated_at,
+        new Date(5000).toISOString(),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("exhausted KV retries still fail with the original error", async () => {
+    vi.useFakeTimers();
+    try {
+      const kv = makeKv();
+      const error = new Error("KV PUT failed: 503 Service Unavailable");
+      const put = vi.spyOn(kv, "put").mockImplementation(async (key) => {
+        if (key === KV_HEALTH_CURRENT) throw error;
+      });
+      const result = assert.rejects(
+        runHealthProber(mockEnv(), FAKE_CTX, {
+          kv,
+          loadSurfaces: async () => SURFACES,
+          probeSurface: probeImpl,
+          probeOptions: {},
+        }),
+        (caught) => caught === error,
+      );
+      await vi.runAllTimersAsync();
+      await result;
+      assert.equal(
+        put.mock.calls.filter(([key]) => key === KV_HEALTH_CURRENT).length,
+        3,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test.each([
+    new Error("KV PUT failed: 401 Unauthorized"),
+    new Error("KV PUT failed: 429 Too Many Requests"),
+    new Error("unexpected implementation failure"),
+    "KV PUT failed: 500 Internal Server Error",
+  ])(
+    "does not retry unclassified or permanent KV errors: %s",
+    async (error) => {
+      const kv = makeKv();
+      const put = vi.spyOn(kv, "put").mockImplementation(async (key) => {
+        if (key === KV_HEALTH_CURRENT) throw error;
+      });
+      await assert.rejects(
+        runHealthProber(mockEnv(), FAKE_CTX, {
+          kv,
+          loadSurfaces: async () => SURFACES,
+          probeSurface: probeImpl,
+          probeOptions: {},
+        }),
+        (caught) => caught === error,
+      );
+      assert.equal(
+        put.mock.calls.filter(([key]) => key === KV_HEALTH_CURRENT).length,
+        1,
+      );
+    },
+  );
+
   test("names each subnet in the rollup, so sort=name is not inert (#9715)", async () => {
     // /api/v1/health advertises `sort=name` and workers/list-query.ts resolves
     // a sort with a flat row[key] lookup, sinking rows whose value is absent.
