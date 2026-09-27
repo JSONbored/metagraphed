@@ -17,12 +17,14 @@ const Descriptor = z.strictObject({
 
 /** Immutable compressed projections in the existing small-artifact table. */
 export function nativeProjectionD1(db: Pick<D1Database, "prepare">) {
+  const read = (key: string) =>
+    db
+      .prepare("SELECT payload FROM generated_artifacts WHERE key=?")
+      .bind(key)
+      .first<{ payload: string }>();
   return {
     async get(key: string) {
-      const row = await db
-        .prepare("SELECT payload FROM generated_artifacts WHERE key=?")
-        .bind(key)
-        .first<{ payload: string }>();
+      const row = await read(key);
       if (!row) return null;
       if (key.endsWith("/current.json")) {
         return {
@@ -42,10 +44,7 @@ export function nativeProjectionD1(db: Pick<D1Database, "prepare">) {
             controller.close();
             return;
           }
-          const chunk = await db
-            .prepare("SELECT payload FROM generated_artifacts WHERE key=?")
-            .bind(`${key}/chunks/${part}`)
-            .first<{ payload: string }>();
+          const chunk = await read(`${key}/chunks/${part}`);
           if (!chunk) throw new Error("Projection chunk is missing");
           const data = (JSON.parse(chunk.payload) as { data: string }).data;
           if (typeof data !== "string" || data.length > 87_384)
@@ -90,7 +89,9 @@ export function nativeProjectionD1(db: Pick<D1Database, "prepare">) {
         etag: descriptor.etag,
         json: async () =>
           JSON.parse(
-            new TextDecoder("utf-8", { fatal: true }).decode(body),
+            new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(
+              body,
+            ),
           ) as unknown,
       };
     },

@@ -10,6 +10,8 @@ import {
   readNativeProjectionObject,
 } from "../src/native-projection-store.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
+import { readArtifactObject } from "../src/projection-store.ts";
+import { z } from "zod";
 
 const databases: DatabaseSync[] = [];
 beforeEach(() => resetModuleState());
@@ -83,14 +85,7 @@ const currentKey = (network: string) =>
 
 test("both networks retain every native projection through the real D1 schema, without R2 reads", async () => {
   const { db, put, seed } = fixture();
-  const env = {
-    D1_STATE: db,
-    METAGRAPH_ARCHIVE: {
-      get: async () => {
-        throw new Error("R2 must not be read");
-      },
-    },
-  };
+  const env = { D1_STATE: db, NATIVE_PROJECTIONS: "enabled" };
   for (const network of ["mainnet", "testnet"] as const) {
     const expected = JSON.parse(objects[currentKey(network)].raw);
     put(currentKey(network), expected);
@@ -104,6 +99,15 @@ test("both networks retain every native projection through the real D1 schema, w
       const key = `metagraph/projections/${item.artifactKey.split("/").at(-1)}`;
       assert.deepEqual(
         await readNativeProjectionObject(env, key, network),
+        JSON.parse(objects[item.object.key].raw),
+      );
+      assert.deepEqual(
+        await readArtifactObject(
+          env,
+          key,
+          network,
+          z.record(z.string(), z.unknown()),
+        ),
         JSON.parse(objects[item.object.key].raw),
       );
     }
@@ -179,6 +183,18 @@ test("a D1-selected manifest never falls back after missing data or a database e
     },
   };
   const env = { D1_STATE: db, METAGRAPH_ARCHIVE: bucket };
+  for (const unusable of [undefined, null, false, {}, { prepare: false }]) {
+    resetModuleState();
+    assert.deepEqual(
+      await loadNativeProjectionManifest(
+        { ...env, D1_STATE: unusable },
+        "mainnet",
+      ),
+      expected,
+    );
+  }
+  r2Reads.length = 0;
+  resetModuleState();
   // Before this network is published, preserve the existing R2 owner.
   assert.deepEqual(
     await loadNativeProjectionManifest(env, "mainnet"),

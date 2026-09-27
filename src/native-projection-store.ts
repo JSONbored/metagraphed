@@ -141,7 +141,12 @@ export async function loadNativeProjectionManifest(
   fresh = false,
 ): Promise<NativeProjectionManifest | null> {
   const bucket = env?.METAGRAPH_ARCHIVE;
-  const db = env?.D1_STATE;
+  const candidate = env?.D1_STATE as
+    Partial<Pick<D1Database, "prepare">> | undefined;
+  const db =
+    typeof candidate?.prepare === "function"
+      ? (candidate as Pick<D1Database, "prepare">)
+      : undefined;
   const identity = db ?? bucket;
   if (!identity) return null;
   const now = Date.now();
