@@ -1,3 +1,4 @@
+import { historyJson, historySha256 } from "./history-sha256.ts";
 // On-chain subnet identity history (#1647): detect SubnetIdentitiesV3 changes from
 // the hourly profiles artifact and serve a paginated timeline +
 // previously_known_as provenance hints (read side still tiered D1/Postgres,
@@ -37,28 +38,6 @@ type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 export const READ_COLUMNS =
   "id, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash";
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(",")}]`;
-  }
-  const record = value as Row;
-  const keys = Object.keys(record).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
-}
-
-async function sha256Hex(text: unknown): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(String(text)),
-  );
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 export function identitySnapshotFromProfile(
   profile: Row | null | undefined,
 ): Row | null {
@@ -77,7 +56,7 @@ export function identitySnapshotFromProfile(
 
 export async function identityHash(snapshot: unknown): Promise<string | null> {
   if (!snapshot) return null;
-  return sha256Hex(stableStringify(snapshot));
+  return historySha256(String(historyJson(snapshot)));
 }
 
 // Non-negative integer block height, or null for absent/blank/negative cells.
