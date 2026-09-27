@@ -759,4 +759,27 @@ describe("loadBlockColdTier", () => {
     );
     assert.equal(data!.block!.block_number, SEAM);
   });
+
+  test("a failed hot-only read declines instead of claiming the block is absent", async () => {
+    const { db } = runner([], { throws: true });
+    const queries = lakeFetch([]);
+    const data = await loadBlockColdTier(
+      { ...TOKEN, ...db } as never,
+      String(SEAM + 1),
+    );
+    assert.equal(data?.block, null);
+    assert.equal(data?.degraded?.reason, "unavailable");
+    assert.equal(queries.length, 0);
+  });
+
+  test("a failed hash read can still use retained history", async () => {
+    const { db } = runner([], { throws: true });
+    const queries = lakeFetch([{ ...lakeRow(SEAM), block_hash: "0xabcd" }]);
+    const data = await loadBlockColdTier(
+      { ...TOKEN, ...db } as never,
+      "0xabcd",
+    );
+    assert.equal(data?.block?.block_number, SEAM);
+    assert.ok(queries.length > 0);
+  });
 });
