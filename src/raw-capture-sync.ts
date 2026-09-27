@@ -654,6 +654,13 @@ async function runLane(
   } catch (error) {
     const message = String((error as Error)?.message ?? error);
     console.error(`[raw-capture-sync] ${lane.network}`, message);
+    await recordLaneVerdict(laneHealthStore(env), {
+      lane: `raw-capture:${lane.network}`,
+      verdict: "stale",
+      age_ms: null,
+      detail: `capture failed: ${message}`,
+      checked_at: now(),
+    });
     await capture(env, {
       error,
       route: `raw-capture-sync:${lane.network}`,

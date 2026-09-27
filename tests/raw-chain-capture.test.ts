@@ -4,7 +4,7 @@
 // height. A test that only proved the happy path would pass while the module
 // silently skipped blocks.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import {
   captureTick,
   fetchRawBlockChunk,
@@ -1071,6 +1071,152 @@ describe("captureTick — reading across several endpoints", () => {
       fetchImpl: firstHostDead,
     });
     assert.equal(result.captured, 2);
+  });
+
+  test("one transient testnet head failure recovers without skipping blocks", async () => {
+    const { store } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const inner = rpcFetch({ head: 101 });
+    let heads = 0;
+    const sleeps: number[] = [];
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 2,
+      sleepFn: async (ms) => {
+        sleeps.push(ms);
+      },
+      fetchImpl: (async (url, init) => {
+        assert.ok(
+          init?.signal,
+          "head, hash and batch reads all have a deadline",
+        );
+        if (
+          JSON.parse(String(init?.body)).method === "chain_getHeader" &&
+          ++heads === 1
+        ) {
+          return new Response(null, { status: 525 });
+        }
+        return inner(url, init);
+      }) as typeof fetch,
+    });
+    assert.equal(result.captured, 2);
+    assert.equal(get(), 101);
+    assert.equal(heads, 2);
+    assert.deepEqual(sleeps, [2000]);
+  });
+
+  test.each([429, 400, 525])(
+    "persistent HTTP %i leaves the watermark intact and bounds retries",
+    async (status) => {
+      const { store } = memoryStore();
+      const { watermark, get } = memoryWatermark(99);
+      let requests = 0;
+      const sleeps: number[] = [];
+      await assert.rejects(
+        captureTick({
+          rpcUrls: ["https://rpc"],
+          store,
+          watermark,
+          genesisFloor: 0,
+          maxPerTick: 2,
+          sleepFn: async (ms) => {
+            sleeps.push(ms);
+          },
+          fetchImpl: (async () => {
+            requests += 1;
+            return new Response(null, { status });
+          }) as typeof fetch,
+        }),
+        new RegExp(`chain_getHeader: HTTP ${status}`),
+      );
+      assert.equal(requests, status === 525 ? 2 : 1);
+      assert.deepEqual(sleeps, status === 525 ? [2000] : []);
+      assert.equal(get(), 99);
+    },
+  );
+
+  test.each([null, { number: "bad" }, { number: "0x20000000000000" }])(
+    "an invalid head fails over to a usable endpoint",
+    async (invalid) => {
+      const { store } = memoryStore();
+      const { watermark, get } = memoryWatermark(99);
+      const inner = rpcFetch({ head: 101 });
+      let heads = 0;
+      const result = await captureTick({
+        rpcUrls: ["https://bad", "https://good"],
+        store,
+        watermark,
+        genesisFloor: 0,
+        maxPerTick: 2,
+        sleepFn: async () => {
+          assert.fail("failover must precede retry backoff");
+        },
+        fetchImpl: (async (url, init) => {
+          if (JSON.parse(String(init?.body)).method === "chain_getHeader") {
+            heads += 1;
+            if (url === "https://bad")
+              return Response.json({ result: invalid });
+          }
+          return inner(url, init);
+        }) as typeof fetch,
+      });
+      assert.equal(heads, 2);
+      assert.equal(result.captured, 2);
+      assert.equal(get(), 101);
+    },
+  );
+
+  test("a hanging preferred host times out and fails over without a retry", async () => {
+    vi.useFakeTimers();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation((ms) => {
+        assert.equal(ms, 10_000);
+        const controller = new AbortController();
+        setTimeout(
+          () => controller.abort(new DOMException("deadline", "TimeoutError")),
+          ms,
+        );
+        return controller.signal;
+      });
+    try {
+      const { store } = memoryStore();
+      const { watermark } = memoryWatermark(99);
+      const inner = rpcFetch({ head: 101 });
+      const pending = captureTick({
+        rpcUrls: ["https://hung", "https://good"],
+        store,
+        watermark,
+        genesisFloor: 0,
+        maxPerTick: 2,
+        sleepFn: async () => {
+          assert.fail("a healthy alternative needs no retry");
+        },
+        fetchImpl: (async (url, init) => {
+          if (
+            url === "https://hung" &&
+            JSON.parse(String(init?.body)).method === "chain_getHeader"
+          ) {
+            return new Promise<Response>((_resolve, reject) => {
+              init!.signal!.addEventListener(
+                "abort",
+                () => reject(init!.signal!.reason),
+                { once: true },
+              );
+            });
+          }
+          return inner(url, init);
+        }) as typeof fetch,
+      });
+      await vi.advanceTimersByTimeAsync(10_000);
+      assert.equal((await pending).captured, 2);
+    } finally {
+      timeout.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   test("the per-chunk gap does NOT shrink as endpoints are added", async () => {

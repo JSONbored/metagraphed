@@ -475,6 +475,46 @@ describe("runRawCaptureSync — capture", () => {
     assert.equal(result.ok, false);
     assert.equal(result.reason, "string failure");
   });
+
+  test("head failure replaces old healthy status and later success restores it", async () => {
+    const { env } = envWith();
+    const normal = rpcFetch(RAW_CAPTURE_GENESIS_FLOOR);
+    const exceptions: string[] = [];
+    const run = (at: number, fetchImpl: typeof fetch) =>
+      runRawCaptureSync(env as never, {
+        sleepFn: noSleep,
+        ctx: CTX,
+        fetchImpl,
+        now: () => at,
+        recordException: (async (_env: unknown, event: { route: string }) => {
+          exceptions.push(event.route);
+          return true;
+        }) as never,
+      });
+    await run(1, normal);
+    await run(
+      2,
+      (async () => new Response(null, { status: 525 })) as typeof fetch,
+    );
+    const health = (at: number) =>
+      db
+        .prepare(
+          "SELECT verdict, detail FROM lane_health WHERE lane = 'raw-capture:mainnet' AND checked_at = ?",
+        )
+        .get(at);
+    assert.equal(health(1)?.verdict, "ok");
+    assert.equal(health(2)?.verdict, "stale");
+    assert.equal(
+      health(2)?.detail,
+      "capture failed: chain_getHeader: HTTP 525",
+    );
+    assert.deepEqual(exceptions.sort(), [
+      "raw-capture-sync:mainnet",
+      "raw-capture-sync:testnet",
+    ]);
+    await run(3, normal);
+    assert.equal(health(3)?.verdict, "ok");
+  });
 });
 
 // The read half of the watermark, which is all that survives as a standalone
