@@ -5,6 +5,7 @@ import { registryDigest } from "../scripts/registry-kv-store.ts";
 import { registryManifestKey, registryObjectKey } from "../src/registry-kv.ts";
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
@@ -19,6 +20,10 @@ test("offline builds do not perform remote baseline reads", async () => {
 });
 
 test("publication baseline preserves the exact selected JSON without R2 access", async () => {
+  // Baseline integrity does not depend on provider pacing. Advance the request
+  // clock deterministically so this fixture never waits on real CI timers.
+  let clock = Date.now();
+  vi.spyOn(Date, "now").mockImplementation(() => (clock += 500));
   vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "test-account");
   vi.stubEnv("CLOUDFLARE_API_TOKEN", "test-token");
   vi.stubEnv("METAGRAPH_KV_NAMESPACE_ID", "test-namespace");
