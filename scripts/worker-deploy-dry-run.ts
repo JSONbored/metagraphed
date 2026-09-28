@@ -62,11 +62,8 @@ check(
   "R2 latest prefix must default to latest/",
 );
 check(
-  Array.isArray(config.r2_buckets) &&
-    (config.r2_buckets as { binding: string }[]).some(
-      (bucket) => bucket.binding === "METAGRAPH_ARCHIVE",
-    ),
-  "METAGRAPH_ARCHIVE R2 binding is required",
+  config.vars?.ARCHIVE_OBJECT_STORAGE === "native" && !config.r2_buckets,
+  "Native archive storage must be selected without R2 bindings",
 );
 check(config.observability?.enabled === true, "observability must be enabled");
 
