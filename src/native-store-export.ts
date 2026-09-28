@@ -167,9 +167,18 @@ export async function handleNativeStoreExport(
         },
       });
     }
-    // Sequential reads keep memory to one bounded asset. Return small receipts,
-    // avoiding a second transfer of the complete publication through the API.
-    for (const entry of value.assets) await read(entry.sha256, entry.bytes);
+    // Match read-many's four-read bound: at most 2 MiB of asset bodies, with
+    // every checksum verified. Finish the current group on failure before
+    // returning; never start another group after a corrupt or missing asset.
+    for (let start = 0; start < value.assets.length; start += 4) {
+      const results = await Promise.allSettled(
+        value.assets.slice(start, start + 4).map(async (entry) => {
+          await read(entry.sha256, entry.bytes);
+        }),
+      );
+      if (results.some((result) => result.status === "rejected"))
+        throw new Error("Native store verification failed");
+    }
     return reply({
       version: 1,
       partition: value.partition,

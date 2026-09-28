@@ -278,7 +278,7 @@ describe("existing private native store readback", () => {
     }
   });
 
-  it("stops a verification batch on the first failure and cancels its stream", async () => {
+  it("finishes the bounded group on failure and skips later assets", async () => {
     const cancel = vi.fn();
     const f = fixture(
       () =>
@@ -294,26 +294,33 @@ describe("existing private native store readback", () => {
     const actual = await handleNativeStoreExport(
       {
         ...verification,
-        assets: [asset, { ...asset, sha256: "f".repeat(64) }],
+        assets: Array.from({ length: 6 }, (_, index) => ({
+          ...asset,
+          sha256: index.toString(16).padStart(64, "0"),
+        })),
       },
       f.env,
     );
     expect(actual.status).toBe(502);
-    expect(f.fetch).toHaveBeenCalledTimes(1);
-    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(f.fetch).toHaveBeenCalledTimes(4);
+    expect(cancel).toHaveBeenCalledTimes(4);
   });
 
-  it("handles multi-chunk byte streams and reads each asset sequentially", async () => {
-    const second = "second",
-      hash = createHash("sha256").update(second).digest("hex");
+  it("verifies multi-chunk streams with at most four active reads", async () => {
+    const values = Array.from({ length: 9 }, (_, index) => `asset-${index}`);
+    const assets = values.map((value) => ({
+      sha256: createHash("sha256").update(value).digest("hex"),
+      bytes: value.length,
+    }));
     let active = 0,
       peak = 0;
     const fetch = vi.fn(async (r: Request) => {
       active++;
       peak = Math.max(peak, active);
-      const bytes = new TextEncoder().encode(
-        r.url.includes(sha256) ? raw : second,
+      const index = assets.findIndex((entry) =>
+        r.url.endsWith(`/${entry.sha256}.mgpack`),
       );
+      const bytes = new TextEncoder().encode(values[index]);
       return new Response(
         new ReadableStream({
           async start(c) {
@@ -329,12 +336,19 @@ describe("existing private native store readback", () => {
     const response = await handleNativeStoreExport(
       {
         ...verification,
-        assets: [asset, { sha256: hash, bytes: second.length }],
+        assets,
       },
       { NATIVE_HISTORY_ASSETS_a: { fetch } },
     );
     expect(response.status).toBe(200);
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(peak).toBe(1);
+    expect(await response.json()).toEqual({
+      version: 1,
+      partition: "a",
+      verified: true,
+      assets,
+    });
+    expect(fetch).toHaveBeenCalledTimes(9);
+    expect(active).toBe(0);
+    expect(peak).toBe(4);
   });
 });
