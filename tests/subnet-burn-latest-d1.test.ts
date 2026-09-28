@@ -63,8 +63,13 @@ test("indexed latest prices match the full history, with bounded reads", async (
     batch: db.batch.bind(db),
   };
   const env = { D1_STATE: binding, D1_STATE_TABLES: "subnet_burn_history" };
+  const portable = {
+    query() {
+      throw new Error("Native SQL must never reach the portable runner");
+    },
+  };
   for (const netuids of [all, [0, 7, 7, 76, 999], [8], [999], []]) {
-    const actual = await readLatestSubnetBurns(legacy, env, netuids);
+    const actual = await readLatestSubnetBurns(portable, env, netuids);
     assert.deepEqual(
       actual,
       expected.filter((row) => netuids.includes(Number(row.netuid))),
