@@ -17484,6 +17484,7 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
       case "ping":
         return isNotification ? null : rpcResult(id, {});
       case "tools/list": {
+        protocolTelemetry = { record: scheduleMcpToolsListEvent, event: {} };
         // #9648: `cursor` was ACCEPTED AND IGNORED. A caller that paged got the
         // whole catalogue back every time, with no `nextCursor` to terminate
         // on -- whether that loops or merely double-counts is the client's
@@ -17512,31 +17513,29 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
         // relying on behaviour we never had.
         const cursor = (params as Row | undefined)?.cursor;
         if (typeof cursor === "string" && cursor.trim()) {
+          dispatchOk = false;
+          protocolErrorCode = "invalid_params";
+          protocolErrorMessage =
+            "tools/list is not paginated on this server: this " +
+            "endpoint's whole listing is returned in one response and " +
+            "no `nextCursor` is ever issued, so there is no cursor to " +
+            "resume from. Omit `cursor`.";
           return isNotification
             ? null
-            : rpcError(
-                id,
-                RPC_INVALID_PARAMS,
-                "tools/list is not paginated on this server: this " +
-                  "endpoint's whole listing is returned in one response and " +
-                  "no `nextCursor` is ever issued, so there is no cursor to " +
-                  "resume from. Omit `cursor`.",
-              );
+            : rpcError(id, RPC_INVALID_PARAMS, protocolErrorMessage);
         }
         const tools = listToolDefinitions(ctx?.profile);
         // Recorded for a notification too: the discovery happened either way,
         // and dropping it would undercount exactly the crawler traffic this
         // event exists to make visible. `profile` rides along so core-endpoint
         // adoption is measurable against the full listing (#11164).
-        scheduleMcpToolsListEvent(ctx, {
+        protocolTelemetry.event = {
           toolCount: tools.length,
           // The names themselves, per the wire contract: joined against
           // $mcp_tool_call on $session_id they answer "advertised but never
           // called", which the count alone cannot.
           listedToolNames: tools.map((tool) => tool.name),
-          sessionId: ctx?.sessionId,
-          ...mcpAttributionFor(ctx),
-        });
+        };
         return isNotification ? null : rpcResult(id, { tools });
       }
       case "tools/call": {
