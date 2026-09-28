@@ -100,6 +100,7 @@ function documentStatements(
   const members = `${family}_members`;
   const position = family === "account_position_daily";
   const daily = family !== "neurons";
+  const indexedAxon = family === "neuron_daily";
   const fields = position
     ? ["account", "netuid", "snapshot_date"]
     : [
@@ -141,6 +142,8 @@ function documentStatements(
     });
     // Read accepted identities from the merged document, so a stale incoming
     // capture cannot regress the lookup index while its metrics are rejected.
+    // New daily members also take their axon from this accepted row. The
+    // fallback trigger then avoids re-reading and updating every new member.
     // Only the incoming keys are needed here. Materialize that small key set
     // as JSONB once per shard, rather than reparsing every full capture for
     // every accepted member of the document.
@@ -150,8 +153,8 @@ function documentStatements(
           json_extract(value,'$.shard') AS shard,jsonb_extract(value,'$.keys') AS keys
         FROM json_each(?)
       )
-      INSERT INTO ${members}(${fields.join(",")},shard)
-      SELECT ${fields.map((c) => `json_extract(i.value,'$.${c}')`).join(",")},d.shard
+      INSERT INTO ${members}(${fields.join(",")},shard${indexedAxon ? ",axon_index,axon_indexed" : ""})
+      SELECT ${fields.map((c) => `json_extract(i.value,'$.${c}')`).join(",")},d.shard${indexedAxon ? ",json_extract(i.value,'$.axon'),1" : ""}
       FROM incoming b JOIN ${table} d ON d.netuid=b.netuid AND d.day=b.day AND d.shard=b.shard
       JOIN json_each(d.payload) i WHERE json_type(b.keys,'$."'||i.key||'"') IS NOT NULL
       ON CONFLICT(${conflict}) ${identityUpdates}`,

@@ -61,11 +61,17 @@ const capture = (r: Record<string, unknown>[] = rows()) =>
 const empty = () => ({ rows: [], dailyRows: [], positionRows: [] });
 beforeAll(async () => {
   db = await runtime.getD1Database("DB");
-  for (const sql of readFileSync(
-    new URL("../migrations/d1/0007_neuron_documents.sql", import.meta.url),
-    "utf8",
-  ).split("-- statement-breakpoint"))
-    if (sql.trim()) await db.prepare(sql).run();
+  for (const file of [
+    "0007_neuron_documents.sql",
+    "0020_neuron_axon_projection.sql",
+    "0030_neuron_axon_insert_projection.sql",
+  ]) {
+    for (const sql of readFileSync(
+      new URL(`../migrations/d1/${file}`, import.meta.url),
+      "utf8",
+    ).split("-- statement-breakpoint"))
+      if (sql.trim()) await db.prepare(sql).run();
+  }
 });
 afterAll(async () => {
   await runtime.dispose();
@@ -257,6 +263,133 @@ test("full-shard membership updates send only keys and preserve accepted identit
     );
   }
 });
+test("new daily membership indexes axons once and retains legacy writer recovery", async () => {
+  const initial = Array.from({ length: 256 }, (_, uid) => ({
+    ...rows()[0],
+    uid,
+    axon: uid % 2 ? null : "1.2.3.4:8091",
+  }));
+  const input = capture(initial);
+  await db.prepare("CREATE TABLE axon_rewrites(uid INTEGER)").run();
+  await db
+    .prepare(
+      "CREATE TRIGGER count_axon_rewrites AFTER UPDATE OF axon_index ON neuron_daily_members BEGIN INSERT INTO axon_rewrites VALUES(NEW.uid); END",
+    )
+    .run();
+  const projection = async () =>
+    (
+      await db
+        .prepare(
+          "SELECT m.uid,m.axon_index,m.axon_indexed,json_extract(d.payload,'$.\"'||m.uid||'\".axon') AS canonical FROM neuron_daily_members m JOIN neuron_daily_documents d ON d.netuid=m.netuid AND d.day=m.snapshot_date AND d.shard=m.shard ORDER BY m.uid",
+        )
+        .all()
+    ).results;
+  try {
+    // Compare actual old/new triggers over the same accepted capture. Timing
+    // is reported for qualification, not used as a flaky pass/fail threshold.
+    await db.prepare("DROP TRIGGER neuron_daily_axon_member_insert").run();
+    const original = readFileSync(
+      new URL(
+        "../migrations/d1/0020_neuron_axon_projection.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+      .split("-- statement-breakpoint")
+      .find((sql) =>
+        sql.includes("CREATE TRIGGER neuron_daily_axon_member_insert"),
+      )!;
+    await db.prepare(original).run();
+    const before = await db.batch(
+      neuronDocumentStatements(input).map((s) =>
+        db.prepare(s.text).bind(...(s.values ?? [])),
+      ),
+    );
+    const expected = await projection();
+    assert.equal(
+      await db.prepare("SELECT COUNT(*) AS n FROM axon_rewrites").first("n"),
+      256,
+    );
+    for (const family of [
+      "neurons",
+      "neuron_daily",
+      "account_position_daily",
+    ]) {
+      await db.prepare(`DELETE FROM ${family}_members`).run();
+      await db.prepare(`DELETE FROM ${family}_documents`).run();
+    }
+    await db.prepare("DELETE FROM neurons_passes").run();
+    await db.prepare("DELETE FROM axon_rewrites").run();
+    for (const sql of readFileSync(
+      new URL(
+        "../migrations/d1/0030_neuron_axon_insert_projection.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ).split("-- statement-breakpoint"))
+      if (sql.trim()) await db.prepare(sql).run();
+    const after = await db.batch(
+      neuronDocumentStatements(input).map((s) =>
+        db.prepare(s.text).bind(...(s.values ?? [])),
+      ),
+    );
+    assert.deepEqual(await projection(), expected);
+    assert.ok(
+      expected.every(
+        (row) => row.axon_indexed === 1 && row.axon_index === row.canonical,
+      ),
+    );
+    assert.equal(
+      await db.prepare("SELECT COUNT(*) AS n FROM axon_rewrites").first("n"),
+      0,
+    );
+    const measured = (results: D1Result[]) => ({
+      duration: results.reduce((sum, r) => sum + r.meta.duration, 0),
+      writes: results.reduce((sum, r) => sum + r.meta.rows_written, 0),
+    });
+    assert.ok(measured(after).writes < measured(before).writes);
+    console.log("daily-membership qualification", {
+      before: measured(before),
+      after: measured(after),
+    });
+    // A legacy writer that omits the projection still receives the canonical
+    // value, even if it replaces an already indexed member.
+    await db.prepare("DELETE FROM neuron_daily_members WHERE uid=0").run();
+    await db
+      .prepare(
+        "INSERT INTO neuron_daily_members(netuid,uid,snapshot_date,hotkey,coldkey,shard) SELECT netuid,0,day,'5Apha','5Beta',shard FROM neuron_daily_documents WHERE shard=0",
+      )
+      .run();
+    assert.deepEqual(await projection(), expected);
+    assert.equal(
+      await db.prepare("SELECT COUNT(*) AS n FROM axon_rewrites").first("n"),
+      1,
+    );
+    // A newer correction refreshes the derived field; a late older capture
+    // cannot regress either the document or its projected axon.
+    await writeNeuronDocuments(
+      store(),
+      capture(
+        initial.map((row) => ({
+          ...row,
+          captured_at: stamp + 1000,
+          axon: "8.8.8.8:8091",
+        })),
+      ),
+    );
+    await writeNeuronDocuments(store(), capture(initial));
+    assert.ok(
+      (await projection()).every(
+        (row) =>
+          row.axon_index === "8.8.8.8:8091" && row.axon_index === row.canonical,
+      ),
+    );
+  } finally {
+    await db.prepare("DROP TRIGGER count_axon_rewrites").run();
+    await db.prepare("DROP TABLE axon_rewrites").run();
+  }
+});
+
 test("pruning is per-netuid, preserves newer captures, and never prunes either daily family", async () => {
   await writeNeuronDocuments(
     store(),

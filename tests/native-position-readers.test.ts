@@ -119,7 +119,12 @@ const env = (bucket = archive()) => ({
 });
 beforeAll(async () => {
   db = await runtime.getD1Database("DB");
-  for (const file of ["0007_neuron_documents.sql", "0010_ledger_state.sql"]) {
+  for (const file of [
+    "0007_neuron_documents.sql",
+    "0020_neuron_axon_projection.sql",
+    "0030_neuron_axon_insert_projection.sql",
+    "0010_ledger_state.sql",
+  ]) {
     for (const sql of readFileSync(
       new URL(`../migrations/d1/${file}`, import.meta.url),
       "utf8",

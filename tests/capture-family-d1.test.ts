@@ -68,11 +68,17 @@ beforeAll(async () => {
     "utf8",
   ).split("-- statement-breakpoint"))
     if (statement.trim()) await db.prepare(statement).run();
-  for (const statement of readFileSync(
-    new URL("../migrations/d1/0007_neuron_documents.sql", import.meta.url),
-    "utf8",
-  ).split("-- statement-breakpoint"))
-    if (statement.trim()) await db.prepare(statement).run();
+  for (const file of [
+    "0007_neuron_documents.sql",
+    "0020_neuron_axon_projection.sql",
+    "0030_neuron_axon_insert_projection.sql",
+  ]) {
+    for (const statement of readFileSync(
+      new URL(`../migrations/d1/${file}`, import.meta.url),
+      "utf8",
+    ).split("-- statement-breakpoint"))
+      if (statement.trim()) await db.prepare(statement).run();
+  }
   for (const statement of readFileSync(
     new URL(
       "../migrations/d1/0018_lifecycle_invalidations.sql",

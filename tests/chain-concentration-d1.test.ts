@@ -23,6 +23,8 @@ beforeAll(async () => {
   db = await runtime.getD1Database("DB");
   for (const name of [
     "0007_neuron_documents.sql",
+    "0020_neuron_axon_projection.sql",
+    "0030_neuron_axon_insert_projection.sql",
     "0012_neuron_daily_join_index.sql",
     "0022_neuron_document_dates.sql",
   ]) {
