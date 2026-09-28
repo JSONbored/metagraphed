@@ -258,7 +258,13 @@ export async function loadBlockFeedColdTier(
     return buildBlockFeed([], { limit, offset, nextCursor: null });
   }
 
-  const seam = await resolveBlocksSeam(env, {}, network);
+  // A verified historical ceiling cannot intersect the hot store. As with
+  // point lookups, the stable floor also makes a watermark read redundant.
+  const floor = blocksSeamFloor(env);
+  const seam =
+    network === DEFAULT_CHAIN_NETWORK && hi !== null && hi <= floor
+      ? floor
+      : await resolveBlocksSeam(env, {}, network);
   // Cursor pages never carry an offset (the cursor already narrows past prior
   // pages), mirroring data-api. Both legs are asked for the full window and
   // the slice happens once, after they are concatenated, because the rows an
@@ -271,7 +277,9 @@ export async function loadBlockFeedColdTier(
   // chain's feed -- indistinguishable from real ones, since both are just
   // heights and hashes.
   const head =
-    network === DEFAULT_CHAIN_NETWORK && storeCanServe(query)
+    network === DEFAULT_CHAIN_NETWORK &&
+    (hi === null || hi > seam) &&
+    storeCanServe(query)
       ? ((await storeHeadRows(env, query, cursor, seam, want)) ?? [])
       : [];
 
