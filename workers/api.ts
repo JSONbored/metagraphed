@@ -10080,7 +10080,11 @@ async function handleHealthRequest(request: Request, env: Env) {
 
   const bindings = {
     assets: Boolean(env.ASSETS?.fetch),
-    r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
+    archive: Boolean(env.METAGRAPH_ARCHIVE?.get),
+    // The logical archive port also exists after the physical R2 binding retires.
+    r2:
+      env.ARCHIVE_OBJECT_STORAGE !== "native" &&
+      Boolean(env.METAGRAPH_ARCHIVE?.get),
     kv: Boolean(env.METAGRAPH_CONTROL?.get),
     data_api: Boolean(env.DATA_API?.fetch),
     health_db: Boolean(
