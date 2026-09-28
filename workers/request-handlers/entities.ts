@@ -195,6 +195,7 @@ import {
   BURN_HISTORY_WINDOWS,
   buildSubnetBurnHistory,
   loadSubnetBurnHistory,
+  readLatestSubnetBurns,
 } from "../../src/subnet-burn-history.ts";
 import {
   buildSubnetHolders,
@@ -4184,14 +4185,10 @@ export async function buildValidatorEconomicsRankingPayload(
   const latestBurnByNetuid = new Map<number, number>();
   const minChildkeyTakeByNetuid = new Map<number, number>();
   if (db) {
-    // Newest observation per subnet. A window function rather than a
-    // correlated subquery: one pass over the (netuid, observed_at DESC) index.
-    const burnRows = await db.query(
-      `SELECT netuid, burn_tao FROM (
-         SELECT netuid, burn_tao,
-           ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY observed_at DESC) AS rn
-         FROM subnet_burn_history
-       ) WHERE rn = 1`,
+    const burnRows = await readLatestSubnetBurns(
+      db,
+      env,
+      neuronRows.map((row) => Number(row.netuid)),
     );
     for (const row of burnRows as Array<Record<string, unknown>>) {
       // burn_tao is NOT NULL in the table and a genuine 0 is a real price
