@@ -262,8 +262,7 @@ export function archiveObjectStore(env: ArchiveEnv) {
       )
         throw new Error("Archive native chunk census differs");
       const binding = env[`NATIVE_HISTORY_ASSETS_${native.partition}`] as
-        | Pick<Fetcher, "fetch">
-        | undefined;
+        Pick<Fetcher, "fetch"> | undefined;
       if (!binding?.fetch) throw new Error("Archive native binding is missing");
       for (const [i, chunk] of native.chunks.entries()) {
         const start = partOffset + i * chunkSize;
@@ -322,8 +321,7 @@ export function archiveObjectStore(env: ArchiveEnv) {
       storageClass: "Standard",
       httpMetadata,
       customMetadata: object.metadata.Metadata as
-        | Record<string, string>
-        | undefined,
+        Record<string, string> | undefined,
       checksums: {
         toJSON: () => ({
           sha256: Buffer.from(object.sha256, "hex").toString("base64"),

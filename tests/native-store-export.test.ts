@@ -41,6 +41,56 @@ const request = (body: unknown, token = "producer-secret") =>
   });
 
 describe("existing private native store readback", () => {
+  it("reads a bounded batch in caller order and verifies every asset", async () => {
+    const values = [Buffer.from("first"), Buffer.from("second")];
+    const assets = values.map((raw) => ({
+      sha256: createHash("sha256").update(raw).digest("hex"),
+      bytes: raw.length,
+    }));
+    const fetch = vi.fn(async (request: Request) => {
+      const index = assets.findIndex((asset) =>
+        request.url.endsWith(`/${asset.sha256}.mgpack`),
+      );
+      return new Response(values[index]);
+    });
+    const response = await handleNativeStoreExport(
+      { ...verification, operation: "read-many", assets },
+      { NATIVE_HISTORY_ASSETS_a: { fetch } },
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-length")).toBe(
+      String(values.reduce((n, raw) => n + raw.length, 0)),
+    );
+    expect(response.headers.get("x-content-sha256")).toBe(
+      createHash("sha256").update(Buffer.concat(values)).digest("hex"),
+    );
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(
+      Buffer.concat(values),
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
+    for (const assets of [
+      [asset, asset],
+      [{ ...asset, bytes: 512 * 1024 + 1 }],
+    ]) {
+      expect(
+        (
+          await handleNativeStoreExport(
+            { ...verification, operation: "read-many", assets },
+            {},
+          )
+        ).status,
+      ).toBe(400);
+    }
+    expect(
+      (
+        await handleNativeStoreExport(
+          { ...verification, operation: "read-many" },
+          fixture(() => new Response("corrupt")).env,
+        )
+      ).status,
+    ).toBe(502);
+  });
+
   it("requires the existing export credential before touching the selected binding", async () => {
     const f = fixture();
     expect(
