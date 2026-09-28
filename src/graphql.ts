@@ -68,10 +68,7 @@ import {
 import { loadAccountEventsColdTier } from "./events-cold-tier.ts";
 import { loadAccountExtrinsicsColdTier } from "./extrinsics-cold-tier.ts";
 import { loadExtrinsicColdTier } from "./extrinsics-cold-tier.ts";
-import {
-  loadBlockColdTier,
-  loadBlockFeedColdTier,
-} from "./blocks-cold-tier.ts";
+import { answerBlock, answerBlockFeed } from "./blocks-answer.ts";
 import { loadBlockExtrinsicsColdTier } from "./extrinsics-cold-tier.ts";
 import { loadBlockEventsColdTier } from "./events-cold-tier.ts";
 import {
@@ -431,7 +428,6 @@ import {
   buildExtrinsicFeed,
   buildBlockExtrinsics,
 } from "./extrinsics.ts";
-import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import { loadBlockChainEvents } from "./data-api-mcp.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import { loadBlocksSummaryFromArtifact } from "./blocks-summary-artifact.ts";
@@ -5710,57 +5706,25 @@ const rootValue = {
   ) {
     const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
     const safeOffset = clampOffset(offset);
-    const params = new URLSearchParams();
-    params.set("limit", String(safeLimit));
-    params.set("offset", String(safeOffset));
-    if (cursor) params.set("cursor", cursor);
-    // #7870: forward the same optional filters MCP list_blocks / GET /api/v1/blocks
-    // accept, straight through to the Postgres tier (no duplicated filtering logic).
-    // block_start/block_end are block heights and min_* are counts, all within Int
-    // range; from/to are observed_at epoch-ms and overflow GraphQL Int's 32 bits, so
-    // they are String args passed verbatim (mirroring account_history's from/to).
-    if (author) params.set("author", author);
-    if (specVersion != null) params.set("spec_version", String(specVersion));
-    if (blockStart != null) params.set("block_start", String(blockStart));
-    if (blockEnd != null) params.set("block_end", String(blockEnd));
-    if (from != null) params.set("from", from);
-    if (to != null) params.set("to", to);
-    if (minExtrinsics != null)
-      params.set("min_extrinsics", String(minExtrinsics));
-    if (minEvents != null) params.set("min_events", String(minEvents));
-    // #4909: blocks' D1 write path is retired and the table is dropped in
-    // production, so the Postgres tier being cold is the expected steady state —
-    // fall back to the same pure builder REST uses, never a GraphQL error.
-    const data =
-      // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-      // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-      // on every request.
-      // The blocks cold tier REST and MCP both read (#9540). Every filter is
-      // forwarded, so the tier does the filtering -- the empty builder below
-      // ignores them, which is why reaching it silently dropped a filtered
-      // query's meaning as well as its rows.
-      ((await loadBlockFeedColdTier(
-        context.env,
-        {
-          limit: safeLimit,
-          offset: safeOffset,
-          cursor,
-          author,
-          specVersion,
-          blockStart,
-          blockEnd,
-          from,
-          to,
-          minExtrinsics,
-          minEvents,
-        },
-        chainNetworkFromChainName(network),
-      )) as Row | null) ??
-      buildBlockFeed([], {
+    // Epoch-millisecond from/to values remain strings at the GraphQL boundary;
+    // the shared reader validates them without GraphQL Int truncation.
+    const data = await answerBlockFeed(
+      context.env,
+      {
         limit: safeLimit,
         offset: safeOffset,
-        nextCursor: null,
-      });
+        cursor,
+        author,
+        specVersion,
+        blockStart,
+        blockEnd,
+        from,
+        to,
+        minExtrinsics,
+        minEvents,
+      },
+      chainNetworkFromChainName(network),
+    );
     return {
       items: data.blocks || [],
       total: data.block_count ?? 0,
@@ -5851,14 +5815,7 @@ const rootValue = {
 
   async block({ ref, network }: QueryBlockArgs, context: GqlContext) {
     const chain = chainNetworkFromChainName(network);
-    const data =
-      // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-      // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-      // on every request.
-      // The block cold tier REST and MCP both read (#9540), on the SAME chain
-      // as the tier above (#10394).
-      ((await loadBlockColdTier(context.env, ref, chain)) as Row | null) ??
-      buildBlock(undefined, ref);
+    const data = await answerBlock(context.env, ref, chain);
     return {
       // THE PRODUCER (#10786). `loadBlockColdTier` and `buildBlock` both stamp
       // the envelope version, so this never had a second arm to take -- and a
