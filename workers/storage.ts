@@ -1,5 +1,5 @@
-// Storage + IO layer for the API Worker — artifact reads (R2 + static-asset
-// tiers with fallback), the latest-pointer / health-KV reads, request logging,
+// Storage + IO layer for the API Worker — published KV artifacts, legacy R2
+// and static assets, the latest-pointer / health-KV reads, request logging,
 // and the timeout guard that bounds R2 access. Extracted from workers/api.ts
 // (issue #510, de-monolith) as a leaf module: it imports only the artifact-tier
 // contract and a config key, and calls nothing back into api.ts, so handlers
@@ -16,6 +16,7 @@ import {
 } from "../src/artifact-storage.ts";
 import { METAGRAPH_LATEST_KEY } from "./config.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
+import { readRegistryKv, type RegistryKvPointer } from "../src/registry-kv.ts";
 
 const DEFAULT_R2_TIMEOUT_MS = 5000;
 
@@ -40,7 +41,7 @@ export type ArtifactResolution = "manifest" | "prefix" | "fallback";
 export interface StorageReadOk {
   ok: true;
   data: unknown;
-  source: "static-assets" | "r2";
+  source: "static-assets" | "r2" | "kv";
   storage_tier: string;
   resolution?: ArtifactResolution;
 }
@@ -54,14 +55,14 @@ export type StorageReadResult = StorageReadOk | StorageReadError;
 
 export interface R2ObjectReadOk {
   ok: true;
-  object: R2ObjectBody;
-  source: "r2";
+  object: { body: ReadableStream | null; json(): Promise<unknown> };
+  source: "r2" | "kv";
   storage_tier: string;
   resolution?: ArtifactResolution;
 }
 export type R2ObjectReadResult = R2ObjectReadOk | StorageReadError;
 
-export interface LatestPointer {
+export interface LatestPointer extends RegistryKvPointer {
   published_at?: string;
   latest_prefix?: string;
   /**
@@ -286,14 +287,14 @@ export async function readR2(
   return {
     ok: true,
     data: await result.object.json(),
-    source: "r2",
-    storage_tier: storageTier,
+    source: result.source,
+    storage_tier: result.storage_tier,
     resolution: result.resolution,
   };
 }
 
-// Same R2 fetch as readR2 (key resolution, timeout guard, not-found handling),
-// but returns the raw R2Object instead of parsing it as JSON -- for binary
+// Same published-artifact fetch as readR2, but returns a body instead of JSON
+// (the historical function name is retained for existing callers). For binary
 // artifacts (the og-image.png card, see src/og-image.ts) that readR2's
 // .json() would throw on. readR2 above is implemented in terms of this.
 export async function readR2Object(
@@ -301,6 +302,22 @@ export async function readR2Object(
   artifactPath: string,
   storageTier: string,
 ): Promise<R2ObjectReadResult> {
+  const pointer = await latestPointer(env);
+  if (pointer?.registry_manifest_sha256 && env.METAGRAPH_CONTROL) {
+    try {
+      return await withTimeout(
+        readRegistryKv(env.METAGRAPH_CONTROL, pointer, artifactPath),
+        r2TimeoutMs(env),
+      );
+    } catch {
+      return {
+        ok: false,
+        status: 504,
+        code: "registry_timeout",
+        message: "Published registry read timed out.",
+      };
+    }
+  }
   if (!env.METAGRAPH_ARCHIVE?.get) {
     return {
       ok: false,
