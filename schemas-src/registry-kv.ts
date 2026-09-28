@@ -2,7 +2,7 @@
 import { z } from "zod";
 
 export const RegistryDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
-export const RegistryArtifactSchema = z.object({
+const RegistryArtifactSchema = z.object({
   path: z.string().regex(/^\/metagraph\/[A-Za-z0-9_./:-]+$/),
   sha256: RegistryDigestSchema,
   size_bytes: z
@@ -30,4 +30,3 @@ export const RegistryManifestSchema = z
   });
 
 export type RegistryArtifact = z.infer<typeof RegistryArtifactSchema>;
-export type RegistryManifest = z.infer<typeof RegistryManifestSchema>;
