@@ -129,6 +129,44 @@ describe("MCP product events exclude operational traffic", () => {
 });
 
 describe("MCP attribution and outcomes", () => {
+  test("only validated echoes override the transport session in native capture", async () => {
+    for (const conversationId of [
+      undefined,
+      "chat-1",
+      "0198f2d6-abcd-7123-8456-789abcdef012",
+    ]) {
+      for (const conversationIdAccepted of [undefined, false, true]) {
+        const { events, deps } = captures();
+        await recordMcpToolCallEvent(
+          env,
+          {
+            toolName: "get_contracts",
+            isError: false,
+            durationMs: 1,
+            sessionId: " transport-session ",
+            conversationId,
+            conversationIdAccepted,
+          },
+          deps,
+        );
+        const properties = events[0].properties;
+        const accepted =
+          conversationIdAccepted === true && conversationId?.startsWith("0198");
+        if (accepted) {
+          assert.match(properties.$session_id, /^ses_[0-9a-f]{64}$/);
+          assert.equal(
+            properties.$mcp_protocol_session_id,
+            "transport-session",
+          );
+        } else {
+          assert.equal(properties.$session_id, "transport-session");
+          assert.equal(properties.$mcp_protocol_session_id, undefined);
+        }
+        assert.equal(properties.$mcp_conversation_id, conversationId);
+      }
+    }
+  });
+
   test("native model properties preserve provenance and omit unknown claims", async () => {
     for (const source of [
       "client_metadata",

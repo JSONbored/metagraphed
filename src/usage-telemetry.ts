@@ -1,4 +1,5 @@
 import { sha256Hex } from "./sha256-hex.ts";
+import { acceptedMcpConversationId } from "./mcp-conversation.ts";
 // Typed PostHog usage-event wrapper for the Worker backend (#6030 / #366).
 //
 // Single chokepoint for product-usage capture: callers pass an allowlisted
@@ -1413,6 +1414,8 @@ export interface McpToolCallEvent extends McpServerIdentity {
    * never a security boundary.
    */
   conversationId?: string;
+  /** Only echoed UUIDv7 handles anchor the analytics session. */
+  conversationIdAccepted?: boolean;
   clientName?: string;
   clientVersion?: string;
   clientNameSource?: McpClientNameSource;
@@ -1648,17 +1651,7 @@ export async function recordMcpToolCallEvent(
     // picks the tier up here without a separate $identify per session.
     assignMcpPersonProcessing(properties, deps, event.authTier);
 
-    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
-      properties["$session_id"] = event.sessionId.trim();
-    }
-
-    // The logical-conversation label, distinct from $session_id above:
-    // sanitizeLabel's identifier cap is the bound, because this is the one
-    // property here whose value the caller invents outright.
-    const conversationId = sanitizeLabel(event.conversationId);
-    if (conversationId !== undefined) {
-      properties["$mcp_conversation_id"] = conversationId;
-    }
+    await assignMcpConversation(properties, event);
 
     const parameters = boundedMcpPayload(event.parameters);
     if (parameters !== undefined) properties["$mcp_parameters"] = parameters;
@@ -1914,6 +1907,38 @@ export interface McpMissingCapabilityEvent extends McpServerIdentity {
   clientNameSource?: McpClientNameSource;
   authTier?: string;
   sessionId?: string | null;
+  conversationId?: string;
+  conversationIdAccepted?: boolean;
+}
+
+/** Hashing runs in the existing background capture, never the response path. */
+async function assignMcpConversation(
+  properties: Record<string, unknown>,
+  event: Pick<
+    McpToolCallEvent,
+    "sessionId" | "conversationId" | "conversationIdAccepted"
+  >,
+): Promise<void> {
+  const protocolSession = sanitizeLabel(event.sessionId);
+  if (protocolSession !== undefined) {
+    properties["$session_id"] = protocolSession;
+  }
+  const conversationId = sanitizeLabel(event.conversationId);
+  if (conversationId !== undefined) {
+    properties["$mcp_conversation_id"] = conversationId;
+  }
+  const accepted =
+    event.conversationIdAccepted === true
+      ? acceptedMcpConversationId(conversationId)
+      : undefined;
+  if (accepted) {
+    properties["$session_id"] =
+      `ses_${await sha256Hex(`mcp-conversation:${accepted}`)}`;
+    // Retain a join to initialize/discovery on the original transport session.
+    if (protocolSession !== undefined) {
+      properties["$mcp_protocol_session_id"] = protocolSession;
+    }
+  }
 }
 
 /**
@@ -1947,11 +1972,7 @@ export async function recordMcpMissingCapabilityEvent(
 
     assignMcpAttribution(properties, event);
     assignMcpPersonProcessing(properties, deps);
-
-    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
-      properties["$session_id"] = event.sessionId.trim();
-    }
-
+    await assignMcpConversation(properties, event);
     assignDeployment(properties, env);
     return await capturePostHogEvent(
       env,
