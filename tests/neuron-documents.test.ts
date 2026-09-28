@@ -267,6 +267,8 @@ test("new daily membership indexes axons once and retains legacy writer recovery
   const initial = Array.from({ length: 256 }, (_, uid) => ({
     ...rows()[0],
     uid,
+    hotkey: `hotkey-${uid}`,
+    coldkey: `coldkey-${uid}`,
     axon: uid % 2 ? null : "1.2.3.4:8091",
   }));
   const input = capture(initial);
@@ -357,7 +359,7 @@ test("new daily membership indexes axons once and retains legacy writer recovery
     await db.prepare("DELETE FROM neuron_daily_members WHERE uid=0").run();
     await db
       .prepare(
-        "INSERT INTO neuron_daily_members(netuid,uid,snapshot_date,hotkey,coldkey,shard) SELECT netuid,0,day,'5Apha','5Beta',shard FROM neuron_daily_documents WHERE shard=0",
+        "INSERT INTO neuron_daily_members(netuid,uid,snapshot_date,hotkey,coldkey,shard) SELECT netuid,0,day,'hotkey-0','coldkey-0',shard FROM neuron_daily_documents WHERE shard=0",
       )
       .run();
     assert.deepEqual(await projection(), expected);
