@@ -1,4 +1,5 @@
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
+import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { handleNativeStoreExportRequest } from "../src/native-store-export.ts";
 import { recordMatchedUsageRollup } from "./usage-rollup.ts";
 export { flushUsageRollup, usageRollupBufferSize } from "./usage-rollup.ts";
@@ -1777,6 +1778,7 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
+    env = withArchiveObjects(env);
     // THE DEAD-LETTER BRANCH COMES FIRST (metagraphed-infra#354/#363). The DLQ
     // is bound to this same handler, so without it a delivery that a subscriber
     // has already refused eight times would be POSTed at them a ninth. Acked
@@ -2953,6 +2955,7 @@ export async function handleScheduled(
   env: Env,
   ctx: ExecutionContext,
 ) {
+  env = withArchiveObjects(env);
   const startedAt = Date.now();
   const label = cronLabel(controller?.cron || "");
   try {
@@ -5561,6 +5564,7 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
  * unforgettable rather than 40 more places to remember.
  */
 export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
+  env = withArchiveObjects(env);
   return withResponseTiming(async () => {
     try {
       return await dispatchCached(request, env, ctx);

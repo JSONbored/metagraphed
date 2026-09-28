@@ -7,6 +7,7 @@
 // account/API-key state and the TAO/USD index. Read-store adapters preserve
 // compatibility for table families whose configured owner has not moved.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
+import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import {
   readNeuronDailyValidators,
@@ -9277,7 +9278,8 @@ export function decodeBlockHeader(
   payload: unknown,
 ): { blockTag: string; blockNumber: number; timestampSeconds: number } | null {
   const result = (payload as { result?: unknown })?.result as
-    { number?: unknown; timestamp?: unknown } | undefined;
+    | { number?: unknown; timestamp?: unknown }
+    | undefined;
   if (!result) return null;
   const { number: rawNumber, timestamp: rawTimestamp } = result;
   if (typeof rawNumber !== "string" || typeof rawTimestamp !== "string")
@@ -9485,6 +9487,7 @@ export default {
     env: DataApiEnv,
     ctx: ExecutionContext,
   ) {
+    env = withArchiveObjects(env);
     // Declined BEFORE the branches, against the declared set, so an expression
     // nobody handles is refused in one place rather than falling through three
     // comparisons to a default that looks deliberate.
@@ -9533,6 +9536,7 @@ export default {
     env: DataApiEnv,
     ctx: ExecutionContext,
   ): Promise<Response> {
+    env = withArchiveObjects(env);
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span
     // per request -- replaces @sentry/cloudflare's automatic withSentry() HTTP
     // instrumentation. Off by default (POSTHOG_TRACES_SAMPLE_RATE unset --
@@ -9624,6 +9628,7 @@ export default {
     env: DataApiEnv,
     ctx: ExecutionContext,
   ): Promise<void> {
+    env = withArchiveObjects(env);
     // THE DEAD-LETTER BRANCH COMES FIRST (metagraphed-infra#354/#363). The DLQ
     // is bound to this same handler, so without it a message that already
     // failed five attempts would be handed to the writer again -- a sixth
