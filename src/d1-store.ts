@@ -8,9 +8,18 @@
 import type { PgSql } from "./pg-sql.ts";
 import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
 import { D1_EXPORT_TABLES } from "./d1-export-tables.ts";
-import { timed, TIMING_D1 } from "./request-timing.ts";
+import { mark, timed, TIMING_D1, TIMING_D1_SQL } from "./request-timing.ts";
 
 export type D1StoreBinding = Pick<D1Database, "prepare" | "batch">;
+
+/** D1 reports SQL execution separately from binding/network wait. Keep both
+ * measurements: a slow binding call does not establish a slow query. Batch
+ * results each describe one statement, including export revision writes. */
+function markSqlExecution(result: Pick<D1Result, "meta">): void {
+  const ms = result.meta?.timings?.sql_duration_ms ?? result.meta?.duration;
+  if (typeof ms === "number" && Number.isFinite(ms) && ms >= 0)
+    mark(TIMING_D1_SQL, ms);
+}
 
 function d1TableOwners(env: unknown): Set<string> {
   const value =
@@ -67,6 +76,7 @@ export function createD1Store(
     const result = await timed(TIMING_D1, () =>
       prepare({ text, values }).all<Row>(),
     );
+    markSqlExecution(result);
     return result.results;
   };
   const batch = async (statements: readonly ProducerStatement[]) => {
@@ -81,6 +91,7 @@ export function createD1Store(
         }),
       );
     const result = await timed(TIMING_D1, () => db.batch(prepared));
+    result.forEach(markSqlExecution);
     return result.slice(0, statements.length);
   };
   return {
@@ -92,9 +103,14 @@ export function createD1Store(
       return (await query<Row>(text, values))[0] ?? null;
     },
     async run(text: string, values: unknown[] = []) {
-      const result = revisions.length
-        ? (await batch([{ text, values }]))[0]!
-        : await timed(TIMING_D1, () => prepare({ text, values }).run());
+      if (revisions.length) {
+        const result = (await batch([{ text, values }]))[0]!;
+        return { changes: result.meta.changes };
+      }
+      const result = await timed(TIMING_D1, () =>
+        prepare({ text, values }).run(),
+      );
+      markSqlExecution(result);
       return { changes: result.meta.changes };
     },
     async transaction(statements: readonly ProducerStatement[]) {

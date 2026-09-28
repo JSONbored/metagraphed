@@ -15,6 +15,7 @@ import {
   requestTimings,
   serverTimingHeader,
   TIMING_D1,
+  TIMING_D1_SQL,
 } from "../src/request-timing.ts";
 import {
   loadLaneMaxGap,
@@ -79,10 +80,117 @@ describe("D1 implements the existing store contract", () => {
         store.transaction([{ text: "SELECT * FROM absent_table" }]),
       );
       assert.equal(requestTimings()!.get(TIMING_D1)!.count, 7);
-      assert.match(serverTimingHeader()!, /^d1;dur=\d+;desc="7 calls"$/);
+      assert.match(serverTimingHeader()!, /^d1;dur=\d+;desc="7 calls", /);
+      // Five successful statements; failed calls add wall time but cannot
+      // invent database execution metadata. The batch counts both statements.
+      assert.equal(requestTimings()!.get(TIMING_D1_SQL)!.count, 5);
+      assert.equal(serverTimingHeader()!.includes("private-value"), false);
     });
     assert.equal(requestTimings(), null);
     assert.deepEqual(await store.first("SELECT 1 AS value"), { value: 1 });
+  });
+
+  test("SQL timing retains fractional and zero durations without changing results or adding requests", async () => {
+    const metadata = [
+      { timings: { sql_duration_ms: 0 }, duration: 999, changes: 0 },
+      { duration: 1.25, changes: 0 },
+      { timings: { sql_duration_ms: 2.5 }, duration: 999, changes: 3 },
+      { timings: { sql_duration_ms: 3 }, changes: 4 },
+      { duration: 4.5, changes: 5 },
+    ];
+    let calls = 0;
+    const next = () => ({
+      results: [{ value: "preserved" }],
+      meta: metadata.shift(),
+    });
+    const binding = {
+      prepare: () => ({
+        all: async () => {
+          calls++;
+          return next();
+        },
+        run: async () => {
+          calls++;
+          return next();
+        },
+      }),
+      batch: async () => {
+        calls++;
+        return [next(), next()];
+      },
+    } as unknown as D1Database;
+    await withRequestTiming(async () => {
+      const store = createD1Store(binding);
+      assert.deepEqual(await store.query("SELECT value"), [
+        { value: "preserved" },
+      ]);
+      assert.deepEqual(await store.first("SELECT value"), {
+        value: "preserved",
+      });
+      assert.deepEqual(await store.run("UPDATE fixture"), { changes: 3 });
+      assert.deepEqual(
+        await store.transaction([{ text: "A" }, { text: "B" }]),
+        [{ changes: 4 }, { changes: 5 }],
+      );
+      assert.equal(calls, 4);
+      assert.equal(requestTimings()!.get(TIMING_D1)!.count, 4);
+      assert.deepEqual(requestTimings()!.get(TIMING_D1_SQL), {
+        count: 5,
+        durationMs: 11.25,
+      });
+    });
+  });
+
+  test("revision batches count internal SQL once and preserve the caller's changed-row result", async () => {
+    let batches = 0;
+    const binding = {
+      prepare: () => ({ bind: () => ({}) }),
+      batch: async (statements: unknown[]) => {
+        batches++;
+        assert.equal(statements.length, 2);
+        return [
+          { meta: { duration: 1.5, changes: 7 } },
+          { meta: { duration: 0.25, changes: 1 } },
+        ];
+      },
+    } as unknown as D1Database;
+    await withRequestTiming(async () => {
+      assert.deepEqual(
+        await createD1Store(binding, ["neurons"]).run("UPDATE fixture"),
+        { changes: 7 },
+      );
+      assert.equal(batches, 1);
+      assert.equal(requestTimings()!.get(TIMING_D1)!.count, 1);
+      assert.deepEqual(requestTimings()!.get(TIMING_D1_SQL), {
+        count: 2,
+        durationMs: 1.75,
+      });
+    });
+  });
+
+  test("unavailable or invalid SQL metadata never fabricates execution duration", async () => {
+    for (const meta of [
+      undefined,
+      {},
+      { timings: {} },
+      { duration: null },
+      { duration: "5" },
+      { duration: NaN },
+      { duration: Infinity },
+      { duration: -1 },
+    ]) {
+      await withRequestTiming(async () => {
+        const binding = {
+          prepare: () => ({ all: async () => ({ results: [], meta }) }),
+        } as unknown as D1Database;
+        assert.deepEqual(
+          await createD1Store(binding).query("SELECT value"),
+          [],
+        );
+        assert.equal(requestTimings()!.get(TIMING_D1)!.count, 1);
+        assert.equal(requestTimings()!.has(TIMING_D1_SQL), false);
+      });
+    }
   });
   test("preserves bound values, null, large integers and actual changed-row counts", async () => {
     const store = createD1Store(db);
