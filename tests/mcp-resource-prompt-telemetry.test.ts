@@ -210,6 +210,33 @@ describe("resources/read is recorded with a bounded name", () => {
     assert.equal(spy.seen.resourceRead[1].errorCode, "internal_error");
     assert.equal(spy.seen.resourceRead[1].errorMessage, "Internal error.");
   });
+
+  test("an unavailable resource retains its dependency error classification", async () => {
+    const spy = recorders();
+    await call(
+      "resources/read",
+      { uri: "metagraph://registry/summary" },
+      {
+        ...spy.deps,
+        readArtifact: () =>
+          Promise.resolve({ ok: false, code: "artifact_unavailable" }),
+      },
+    );
+    assert.equal(spy.seen.resourceRead[0].errorCode, "artifact_unavailable");
+    await call(
+      "resources/read",
+      { uri: "metagraph://registry/summary" },
+      {
+        ...spy.deps,
+        readArtifact: () => {
+          throw Object.assign(new Error("invalid resource"), {
+            toolError: true,
+          });
+        },
+      },
+    );
+    assert.equal(spy.seen.resourceRead[1].errorCode, "invalid_params");
+  });
 });
 
 describe("prompts/get is recorded with a bounded name", () => {

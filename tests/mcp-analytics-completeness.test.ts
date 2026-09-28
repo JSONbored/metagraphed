@@ -537,7 +537,7 @@ describe("the default recorders, with nothing injected", () => {
     assert.equal(props.$mcp_intent_source, "context_parameter");
   });
 
-  test("a refusal posts $mcp_tool_call through the platform fetch, with no user-agent", async () => {
+  test("a refusal posts mcp_request_refused through the platform fetch, with no user-agent", async () => {
     const scheduled: Promise<unknown>[] = [];
     const posted = await withStubbedFetch(async () => {
       scheduleMcpRefusalEvent(
@@ -557,7 +557,10 @@ describe("the default recorders, with nothing injected", () => {
       await Promise.all(scheduled);
     });
 
-    const call = posted.find((p) => (p.body as Row).event === "$mcp_tool_call");
+    const call = posted.find(
+      (p) => (p.body as Row).event === "mcp_request_refused",
+    );
+    assert.ok(!posted.some((p) => (p.body as Row).event === "$mcp_tool_call"));
     assert.ok(call, "the real recorder should have posted the refusal");
     const props = (call.body as Row).properties as Row;
     assert.equal(props.$mcp_is_error, true);

@@ -17530,9 +17530,6 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
         // adoption is measurable against the full listing (#11164).
         scheduleMcpToolsListEvent(ctx, {
           toolCount: tools.length,
-          // Absent (a hand-built test ctx) reads as the full profile in
-          // analytics; the real dispatcher always sets it.
-          profile: ctx?.profile,
           // The names themselves, per the wire contract: joined against
           // $mcp_tool_call on $session_id they answer "advertised but never
           // called", which the count alone cannot.
@@ -17633,7 +17630,9 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
   } catch (rawError) {
     const error = rowOf(rawError);
     dispatchOk = false;
-    protocolErrorCode = error?.toolError ? "invalid_params" : "internal_error";
+    protocolErrorCode = error?.toolError
+      ? (stringOf(error.code) ?? "invalid_params")
+      : "internal_error";
     // Use the same public-safe text as the response, never raw internals.
     protocolErrorMessage = error?.toolError
       ? errorMessage(rawError)
