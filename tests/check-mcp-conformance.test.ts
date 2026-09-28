@@ -189,16 +189,14 @@ describe("the report is legible on a clean run and on a failing one", () => {
   });
 });
 
-describe("the scheduled workflow that runs it (#9879)", () => {
+describe("the manual workflow that runs it", () => {
   const workflow = readFileSync(
     ".github/workflows/check-mcp-conformance.yml",
     "utf8",
   );
 
-  test("is actually scheduled, which is the whole point of the issue", () => {
-    // The defect being closed is a check that existed and ran nowhere. A test
-    // that only asserted the script works would reproduce it exactly.
-    assert.match(workflow, /^\s+- cron: /m);
+  test("preserves manual qualification without recurring production traffic", () => {
+    assert.doesNotMatch(workflow, /^\s+- cron: /m);
     assert.match(workflow, /workflow_dispatch/);
   });
 

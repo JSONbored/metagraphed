@@ -15,12 +15,8 @@ name: Check operation latency
 # needs production, and a check that cannot run on a pull request should not
 # pretend to.
 on:
-  schedule:
-    # Daily, and LAST of the five: after check-response-conformance (06:41),
-    # check-mcp-conformance (07:17), check-graphql-conformance (07:53) and
-    # check-cross-surface-values (08:31). A sweep measuring latency must not
-    # share the Worker with a sweep generating load, or it times the sibling.
-    - cron: "23 9 * * *"
+  # Manual qualification only: scheduled sweeps polluted product usage and
+  # repeatedly queried production without a release or incident to verify.
   workflow_dispatch: {}
 
 permissions:

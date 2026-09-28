@@ -19,11 +19,8 @@ name: Check GraphQL conformance
 # needs production data, and a check that cannot run on a pull request should
 # not pretend to.
 on:
-  schedule:
-    # Daily, offset from check-mcp-conformance's 07:17 and
-    # check-response-conformance's 06:41 so the three are not sweeping the same
-    # Worker at once.
-    - cron: "53 7 * * *"
+  # Manual qualification only: scheduled sweeps polluted product usage and
+  # repeatedly queried production without a release or incident to verify.
   workflow_dispatch: {}
 
 permissions:

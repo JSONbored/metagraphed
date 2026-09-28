@@ -95,6 +95,7 @@ const A_PROMPT = "integrate_with_subnet";
 describe("resources/list and prompts/list are recorded", () => {
   for (const [method, bucket] of [
     ["resources/list", "resourcesList"],
+    ["resources/templates/list", "resourcesList"],
     ["prompts/list", "promptsList"],
   ] as const) {
     test(`${method} emits exactly one discovery event`, async () => {
@@ -116,6 +117,9 @@ describe("resources/list and prompts/list are recorded", () => {
       // Server identity rides along, so an event can be pinned to a deploy.
       assert.equal(typeof spy.seen[bucket][0].serverName, "string");
       assert.equal(typeof spy.seen[bucket][0].serverVersion, "string");
+      assert.equal(spy.seen[bucket][0].isError, false);
+      assert.equal(spy.seen[bucket][0].parameters.request.method, method);
+      assert.deepEqual(spy.seen[bucket][0].response, payload.result);
     });
 
     test(`${method} records nothing for a notification`, async () => {
@@ -158,18 +162,19 @@ describe("resources/read is recorded with a bounded name", () => {
     assert.equal(event.resourceName, uri);
     // usage_event + $mcp_resource_read, both via waitUntil.
     assert.equal(executionCtx.scheduled.length, 2);
-    // Arguments and result travel for drill-down, as on $mcp_tool_call. The
-    // recorder redacts and size-caps them; that contract is proven in
-    // tests/usage-telemetry.test.ts and is not re-asserted here.
-    assert.deepEqual(event.parameters, { uri });
-    assert.ok(event.response, "the read event should carry its response");
+    assert.deepEqual(event.parameters, {
+      request: { method: "resources/read", params: { uri } },
+    });
+    assert.equal(
+      event.response,
+      undefined,
+      "resource bodies must never be captured",
+    );
+    assert.equal(event.isError, false);
+    assert.equal(typeof event.durationMs, "number");
   });
 
-  test("an unresolvable uri records nothing", async () => {
-    // This is what BOUNDS $mcp_resource_name: readResource throws for a uri
-    // that is neither a live stream nor a resolvable artifact path, and the
-    // event is scheduled after it resolves. So a caller cannot mint dimension
-    // values here the way it could through tools/call before mcpToolLabel.
+  test("an unresolvable uri records a failed read without a response body", async () => {
     const spy = recorders();
 
     await call("resources/read", { uri: "metagraph://not-a-real/thing-92831" });
@@ -179,7 +184,58 @@ describe("resources/read is recorded with a bounded name", () => {
       spy.deps,
     );
 
-    assert.deepEqual(spy.seen.resourceRead, []);
+    assert.equal(spy.seen.resourceRead.length, 1);
+    assert.equal(spy.seen.resourceRead[0].isError, true);
+    assert.equal(spy.seen.resourceRead[0].errorCode, "invalid_params");
+    assert.equal(spy.seen.resourceRead[0].response, undefined);
+  });
+
+  test("a missing uri and a resource loader failure both remain visible", async () => {
+    const spy = recorders();
+    await call("resources/read", {}, spy.deps);
+    assert.equal(spy.seen.resourceRead[0].isError, true);
+    assert.equal(spy.seen.resourceRead[0].resourceName, undefined);
+    await call(
+      "resources/read",
+      { uri: "metagraph://registry/summary" },
+      {
+        ...spy.deps,
+        readArtifact: () => {
+          throw new Error("private backend detail");
+        },
+        recordExceptionEvent: () => true,
+      },
+    );
+    assert.equal(spy.seen.resourceRead[1].isError, true);
+    assert.equal(spy.seen.resourceRead[1].errorCode, "internal_error");
+    assert.equal(spy.seen.resourceRead[1].errorMessage, "Internal error.");
+  });
+
+  test("an unavailable resource retains its dependency error classification", async () => {
+    const spy = recorders();
+    await call(
+      "resources/read",
+      { uri: "metagraph://registry/summary" },
+      {
+        ...spy.deps,
+        readArtifact: () =>
+          Promise.resolve({ ok: false, code: "artifact_unavailable" }),
+      },
+    );
+    assert.equal(spy.seen.resourceRead[0].errorCode, "artifact_unavailable");
+    await call(
+      "resources/read",
+      { uri: "metagraph://registry/summary" },
+      {
+        ...spy.deps,
+        readArtifact: () => {
+          throw Object.assign(new Error("invalid resource"), {
+            toolError: true,
+          });
+        },
+      },
+    );
+    assert.equal(spy.seen.resourceRead[1].errorCode, "invalid_params");
   });
 });
 
@@ -201,10 +257,12 @@ describe("prompts/get is recorded with a bounded name", () => {
     assert.equal(executionCtx.scheduled.length, 2);
   });
 
-  test("an unknown prompt records nothing", async () => {
+  test("an unknown prompt records a failed request", async () => {
     const spy = recorders();
     await call("prompts/get", { name: "no_such_prompt_at_all" }, spy.deps);
-    assert.deepEqual(spy.seen.promptGet, []);
+    assert.equal(spy.seen.promptGet.length, 1);
+    assert.equal(spy.seen.promptGet[0].isError, true);
+    assert.equal(spy.seen.promptGet[0].errorCode, "invalid_params");
   });
 
   test("the recorded name is always one the server advertises", async () => {

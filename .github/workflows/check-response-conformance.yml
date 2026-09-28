@@ -15,10 +15,8 @@ name: Check response conformance
 # Green is the steady state, and the summary prints every run so a healthy run
 # is still legible -- same shape as check-safe-mode.yml / check-emission-drift.yml.
 on:
-  schedule:
-    # Daily. Schema drift arrives with a deploy, not with traffic, so hourly
-    # would add noise without shortening the window that matters.
-    - cron: "41 6 * * *"
+  # Manual qualification only: scheduled sweeps polluted product usage and
+  # repeatedly queried production without a release or incident to verify.
   workflow_dispatch: {}
 
 permissions:
