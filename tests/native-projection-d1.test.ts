@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { gzipSync, gunzipSync } from "node:zlib";
-import { afterEach, beforeEach, test } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 import { nativeProjectionD1 } from "../src/native-projection-d1.ts";
 import {
   loadNativeProjectionManifest,
@@ -17,10 +17,13 @@ import { requestTimings, withRequestTiming } from "../src/request-timing.ts";
 
 const databases: DatabaseSync[] = [];
 beforeEach(() => resetModuleState());
-afterEach(() => databases.splice(0).forEach((db) => db.close()));
+afterEach(() => {
+  vi.restoreAllMocks();
+  databases.splice(0).forEach((db) => db.close());
+});
 const hash = (raw: Buffer, algorithm = "sha256") =>
   createHash(algorithm).update(raw).digest("hex");
-function fixture() {
+function fixture(wait = async () => {}) {
   const sql = new DatabaseSync(":memory:");
   databases.push(sql);
   sql.exec(
@@ -40,6 +43,7 @@ function fixture() {
         bind(...keys: string[]) {
           return {
             async all() {
+              await wait();
               reads.push(...keys);
               queries.push(keys);
               return {
@@ -96,6 +100,120 @@ const objects: Record<string, { raw: string; etag: string; size: number }> =
   );
 const currentKey = (network: string) =>
   `metagraph/native-projections/v1/${network}/current.json`;
+const immutableKey = (generation: number) =>
+  `metagraph/native-projections/v1/mainnet/${generation.toString(16).padStart(64, "0")}/chain-stake-flow.json`;
+
+test("concurrent and repeated immutable reads share verified bytes without sharing mutable JSON", async () => {
+  const { db, seed, store, queries } = fixture();
+  const key = immutableKey(1);
+  const expected = { data: { amount: "18446744073709551615", name: "界🌍" } };
+  seed(key, Buffer.from(JSON.stringify(expected)));
+  const results = await Promise.all(
+    Array.from({ length: 8 }, () => nativeProjectionD1(db).get(key)),
+  );
+  assert.equal(queries.length, 2);
+  for (const result of results)
+    assert.deepEqual(await result!.json(), expected);
+  const changed = (await results[0]!.json()) as typeof expected;
+  changed.data.name = "changed by caller";
+  assert.deepEqual(await (await store.get(key))!.json(), expected);
+  assert.equal(queries.length, 2);
+  seed(immutableKey(2), Buffer.from('{"generation":2}'));
+  assert.deepEqual(await (await store.get(immutableKey(2)))!.json(), {
+    generation: 2,
+  });
+  const other = fixture();
+  other.seed(key, Buffer.from('{"database":"other"}'));
+  assert.deepEqual(await (await other.store.get(key))!.json(), {
+    database: "other",
+  });
+});
+
+test("expiry rechecks storage and absent or damaged immutable reads can recover immediately", async () => {
+  let now = Date.now();
+  vi.spyOn(Date, "now").mockImplementation(() => now);
+  const { seed, store, put, queries } = fixture();
+  const key = immutableKey(1);
+  assert.equal(await store.get(key), null);
+  assert.equal(await store.get(key), null);
+  assert.equal(queries.length, 2);
+  const descriptor = seed(key, Buffer.from('{"generation":1}'));
+  put(key, { ...descriptor, sha256: "0".repeat(64) });
+  await assert.rejects(store.get(key), /identity/);
+  put(key, descriptor);
+  assert.deepEqual(await (await store.get(key))!.json(), { generation: 1 });
+  now += 30_000;
+  put(key, { ...descriptor, sha256: "0".repeat(64) });
+  await assert.rejects(store.get(key), /identity/);
+  put(key, descriptor);
+  assert.deepEqual(await (await store.get(key))!.json(), { generation: 1 });
+  put(currentKey("mainnet"), { generation: 1 });
+  assert.deepEqual(await (await store.get(currentKey("mainnet")))!.json(), {
+    generation: 1,
+  });
+  put(currentKey("mainnet"), { generation: 2 });
+  assert.deepEqual(await (await store.get(currentKey("mainnet")))!.json(), {
+    generation: 2,
+  });
+});
+
+test("retained projection bytes stay within eight MiB and larger answers still work", async () => {
+  const { seed, store, queries } = fixture();
+  const raw = Buffer.from(
+    JSON.stringify({ data: "x".repeat(5 * 1024 * 1024) }),
+  );
+  for (const generation of [1, 2]) {
+    seed(immutableKey(generation), raw);
+    await store.get(immutableKey(generation));
+  }
+  const count = queries.length;
+  await store.get(immutableKey(2));
+  assert.equal(queries.length, count);
+  await store.get(immutableKey(1));
+  assert.equal(queries.length, count + 2);
+  const large = Buffer.from(
+    JSON.stringify({ data: "y".repeat(8 * 1024 * 1024) }),
+  );
+  seed(immutableKey(3), large);
+  for (let i = 0; i < 2; i++) {
+    const before = queries.length;
+    assert.equal((await store.get(immutableKey(3)))!.size, large.length);
+    assert.equal(queries.length, before + 2);
+  }
+});
+
+test("entry pressure uses recent access and bounds concurrent promises without masking failures", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const { seed, store, queries, put } = fixture(() => gate);
+  for (let i = 0; i < 66; i++)
+    seed(immutableKey(i), Buffer.from(`{"generation":${i}}`));
+  put(immutableKey(0), { format: "damaged" });
+  const pending = Array.from({ length: 66 }, (_, i) =>
+    store.get(immutableKey(i)),
+  );
+  const settled = Promise.allSettled(pending);
+  release();
+  const results = await settled;
+  assert.equal(results[0]!.status, "rejected");
+  assert.ok(results.slice(1).every((result) => result.status === "fulfilled"));
+  const before = queries.length;
+  // Touch the oldest retained entry before inserting a new one.
+  await store.get(immutableKey(2));
+  assert.equal(queries.length, before);
+  await store.get(immutableKey(1));
+  assert.equal(queries.length, before + 2);
+  await store.get(immutableKey(2));
+  assert.equal(queries.length, before + 2);
+  await store.get(immutableKey(3));
+  assert.equal(queries.length, before + 4);
+  seed(immutableKey(0), Buffer.from('{"repaired":true}'));
+  assert.deepEqual(await (await store.get(immutableKey(0)))!.json(), {
+    repaired: true,
+  });
+});
 
 test("both networks retain every native projection through the real D1 schema, without R2 reads", async () => {
   const { db, put, seed } = fixture();
