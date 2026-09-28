@@ -49,12 +49,14 @@ function env({
   noWatermark = false,
   noStore = false,
   storeThrows = false,
+  allNetworks = false,
 }: {
   decodedThrough?: number;
   observedAt?: number | null;
   noWatermark?: boolean;
   noStore?: boolean;
   storeThrows?: boolean;
+  allNetworks?: boolean;
 } = {}) {
   pg.control.failNext = storeThrows ? new Error("store cold") : null;
   pg.control.answers = [
@@ -66,7 +68,8 @@ function env({
   return {
     METAGRAPH_ARCHIVE: {
       async get(key: string) {
-        if (key !== DECODE_WATERMARK_KEY || noWatermark) return null;
+        if ((!allNetworks && key !== DECODE_WATERMARK_KEY) || noWatermark)
+          return null;
         return {
           async text() {
             return JSON.stringify({
@@ -82,6 +85,17 @@ function env({
 }
 
 describe("resolveObservedThrough", () => {
+  test("a testnet watermark cannot read the mainnet-only legacy head register", async () => {
+    assert.equal(
+      await resolveObservedThrough(
+        env({ allNetworks: true }),
+        { now: () => NOW },
+        "testnet",
+      ),
+      null,
+    );
+    assert.equal(pg.control.queries.length, 0);
+  });
   test("converts the decode watermark's BLOCK into the instant it was observed", async () => {
     // The whole conversion: the tier knows its ceiling in blocks, the field
     // publishes an instant, and blocks_head is the only thing that maps one to

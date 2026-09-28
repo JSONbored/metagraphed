@@ -3,6 +3,7 @@ import type { D1StoreBinding } from "./d1-store.ts";
 import type { ChainNetworkId } from "./chain-network.ts";
 import { BLOCKS_COLUMNS } from "../generated/lakehouse/types.ts";
 import { BlocksRowSchema } from "../schemas-src/lakehouse.ts";
+import { timed, TIMING_D1 } from "./request-timing.ts";
 
 export interface RetainedBlocksEnv {
   D1_RETAINED_BLOCKS?: D1StoreBinding;
@@ -60,6 +61,50 @@ function checkedState(value: unknown, net: number, now: number) {
   )
     throw new Error("Retained block snapshot receipt is invalid");
   return state;
+}
+
+/** Resolve the exact decoded height in the same selected history the feed uses.
+ * An active-source point lookup avoids making retained responses wait for the
+ * unrelated hot-state database. Receipt and row share one read transaction. */
+export async function readRetainedBlockObservedAt(
+  env: RetainedBlocksEnv | null | undefined,
+  height: number,
+  network: ChainNetworkId,
+  now = Date.now(),
+): Promise<string | null | undefined> {
+  if (!env?.RETAINED_BLOCKS_NETWORKS?.split(",").includes(network))
+    return undefined;
+  try {
+    const db = env.D1_RETAINED_BLOCKS;
+    if (!db) return null;
+    const net = network === "mainnet" ? 0 : 1;
+    const [receipt, block] = await timed(TIMING_D1, () =>
+      db.batch([
+        db
+          .prepare("SELECT * FROM history_block_state WHERE network=?")
+          .bind(net),
+        db
+          .prepare(
+            "SELECT observed_at FROM history_blocks b INDEXED BY history_blocks_height " +
+              "WHERE b.network=? AND b.block_number=? AND b.source_id IN " +
+              "(SELECT id FROM history_block_sources WHERE network=? AND active=1) " +
+              "ORDER BY observed_at DESC LIMIT 1",
+          )
+          .bind(net, height, net),
+      ]),
+    );
+    if (!receipt!.success || !block!.success) return null;
+    checkedState(receipt!.results[0], net, now);
+    const at = z
+      .number()
+      .int()
+      .positive()
+      .safe()
+      .parse(block!.results[0]?.observed_at);
+    return new Date(at).toISOString();
+  } catch {
+    return null;
+  }
 }
 
 /** `where` is constructed only by the existing block-feed input guards.
