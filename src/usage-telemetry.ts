@@ -1403,11 +1403,17 @@ export interface McpInitializeEvent extends McpServerIdentity {
   sessionId?: string | null;
 }
 
-/** Inputs for an MCP `tools/list` analytics event (#8963). Discovery traffic —
- * registry crawlers listing the catalogue — is otherwise invisible: before
- * this event existed, a client that only ever called tools/list produced no
- * record at all. */
-export interface McpToolsListEvent extends McpServerIdentity {
+interface McpProtocolOutcome {
+  durationMs?: number;
+  isError?: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  parameters?: unknown;
+}
+
+/** Discovery metadata, without copying the catalogue's large schemas. */
+export interface McpToolsListEvent
+  extends McpServerIdentity, McpProtocolOutcome {
   /** How many tools the response advertised. */
   toolCount?: number;
   /**
@@ -1421,6 +1427,35 @@ export interface McpToolsListEvent extends McpServerIdentity {
   clientVersion?: string;
   clientNameSource?: McpClientNameSource;
   sessionId?: string | null;
+}
+
+function assignMcpProtocolOutcome(
+  properties: Record<string, unknown>,
+  event: McpProtocolOutcome,
+): void {
+  if (typeof event.isError === "boolean") {
+    properties["$mcp_is_error"] = event.isError;
+  }
+  if (
+    typeof event.durationMs === "number" &&
+    Number.isFinite(event.durationMs) &&
+    event.durationMs > 0
+  ) {
+    properties["$mcp_duration_ms"] = Math.min(
+      Math.round(event.durationMs),
+      86_400_000,
+    );
+  }
+  if (event.isError) {
+    properties["$mcp_error_type"] = classifyMcpErrorType(event.errorCode);
+    const errorCode = sanitizeLabel(event.errorCode);
+    if (errorCode !== undefined) properties["$mcp_error_code"] = errorCode;
+    const errorMessage = trimToLength(event.errorMessage, MAX_MCP_INTENT_CHARS);
+    if (errorMessage !== undefined)
+      properties["$mcp_error_message"] = errorMessage;
+  }
+  const parameters = boundedMcpPayload(event.parameters);
+  if (parameters !== undefined) properties["$mcp_parameters"] = parameters;
 }
 
 /**
@@ -1641,6 +1676,7 @@ export async function recordMcpToolsListEvent(
       if (names.length > 0) properties["$mcp_listed_tool_names"] = names;
     }
 
+    assignMcpProtocolOutcome(properties, event);
     assignMcpAttribution(properties, event);
     assignMcpPersonProcessing(properties, deps);
 
@@ -1676,7 +1712,8 @@ export async function recordMcpToolsListEvent(
 // under one field here rather than being invented separately.
 
 /** Inputs for the resource/prompt MCP analytics events. */
-export interface McpResourceEvent extends McpServerIdentity {
+export interface McpResourceEvent
+  extends McpServerIdentity, McpProtocolOutcome {
   /**
    * The resource URI, or the prompt name. Emitted as `$mcp_resource_name`.
    * Caller-supplied, so it is sanitized to a label like every other dimension
@@ -1688,15 +1725,10 @@ export interface McpResourceEvent extends McpServerIdentity {
   clientNameSource?: McpClientNameSource;
   authTier?: string;
   sessionId?: string | null;
-  durationMs?: number;
-  isError?: boolean;
-  errorCode?: string;
-  errorMessage?: string;
   /**
-   * Protocol arguments and listing envelopes. Resource-read bodies are never
+   * Listing envelopes. Resource-read bodies are never
    * captured, including when a caller accidentally supplies a response here.
    */
-  parameters?: unknown;
   response?: unknown;
 }
 
@@ -1727,40 +1759,13 @@ async function postMcpResourceEvent(
     if (resourceName !== undefined) {
       properties["$mcp_resource_name"] = resourceName;
     }
-    if (typeof event.isError === "boolean") {
-      properties["$mcp_is_error"] = event.isError;
-    }
-    if (
-      typeof event.durationMs === "number" &&
-      Number.isFinite(event.durationMs) &&
-      event.durationMs > 0
-    ) {
-      properties["$mcp_duration_ms"] = Math.min(
-        Math.round(event.durationMs),
-        86_400_000,
-      );
-    }
-    if (event.isError) {
-      properties["$mcp_error_type"] = classifyMcpErrorType(event.errorCode);
-      const errorCode = sanitizeLabel(event.errorCode);
-      if (errorCode !== undefined) properties["$mcp_error_code"] = errorCode;
-      const errorMessage = trimToLength(
-        event.errorMessage,
-        MAX_MCP_INTENT_CHARS,
-      );
-      if (errorMessage !== undefined)
-        properties["$mcp_error_message"] = errorMessage;
-    }
-
+    assignMcpProtocolOutcome(properties, event);
     assignMcpAttribution(properties, event);
     assignMcpPersonProcessing(properties, deps);
 
     if (typeof event.sessionId === "string" && event.sessionId.trim()) {
       properties["$session_id"] = event.sessionId.trim();
     }
-
-    const parameters = boundedMcpPayload(event.parameters);
-    if (parameters !== undefined) properties["$mcp_parameters"] = parameters;
 
     // PostHog's resource-read contract explicitly excludes bodies. Do not
     // even traverse one: it may contain secrets or a multi-megabyte catalogue.
