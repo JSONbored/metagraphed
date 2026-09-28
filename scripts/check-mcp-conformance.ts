@@ -57,9 +57,6 @@ const ENDPOINT =
 // finding). ~1.6s is the measured floor.
 const CALL_SPACING_MS = Number(process.env.MCP_CONFORMANCE_SPACING_MS ?? 1600);
 
-// #11565: the shared secret that makes this sweep's probe marker believable.
-// Optional on purpose -- a local run without the secret still works and simply
-// is not excluded from metrics, which is the right way round.
 const RATE_LIMIT_RETRIES = 4;
 const RATE_LIMIT_BACKOFF_MS = 2000;
 const REQUEST_TIMEOUT_MS = 30000;
