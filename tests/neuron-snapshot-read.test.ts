@@ -127,6 +127,44 @@ test("economic neuron projections preserve every row while expanding documents o
   }
 });
 
+test("packed economics retain SQLite boolean and structured-value semantics", async () => {
+  const original = await db
+    .prepare(
+      "SELECT json(payload) AS payload FROM neurons_documents WHERE netuid=7 AND day='' AND shard=0",
+    )
+    .first<{ payload: string }>();
+  assert(original);
+  try {
+    await db
+      .prepare(
+        `UPDATE neurons_documents SET payload=jsonb_set(payload,
+      '$."0".active',json('true'),'$."1".active',json('false'),
+      '$."0".take',json('{"nested":true}'),'$."1".take',json('[1,null]'))
+      WHERE netuid=7 AND day='' AND shard=0`,
+      )
+      .run();
+    const store = createD1Store(db);
+    const expected = await readNeuronEconomicsRows(store, {}, 7);
+    const actual = await readNeuronEconomicsRows(
+      store,
+      { D1_STATE: db, D1_STATE_TABLES: "neurons" },
+      7,
+    );
+    assert.deepEqual(actual, expected);
+    assert.equal(actual[0].active, 1);
+    assert.equal(actual[1].active, 0);
+    assert.equal(actual[0].take, '{"nested":true}');
+    assert.equal(actual[1].take, "[1,null]");
+  } finally {
+    await db
+      .prepare(
+        "UPDATE neurons_documents SET payload=jsonb(?) WHERE netuid=7 AND day='' AND shard=0",
+      )
+      .bind(original.payload)
+      .run();
+  }
+});
+
 test.each([false, true])(
   "native snapshot is exactly the indexed-view result, validatorsOnly=%s",
   async (validatorsOnly) => {

@@ -6,8 +6,20 @@
 import { selectedD1Store } from "./d1-store.ts";
 import type { PgSql } from "./pg-sql.ts";
 import { NEURON_COLUMNS } from "./metagraph-neurons.ts";
+import { z } from "zod";
 import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
 import type { UntypedRowQuerier } from "./read-store.ts";
+
+const EconomicsValuesSchema = z.array(z.unknown()).length(5);
+
+// A multi-path extraction returns JSON, while individual SQLite columns turn
+// booleans into integers and structured values into JSON text. Restore those
+// same column values when unpacking the compact response.
+function sqliteJsonColumn(value: unknown): unknown {
+  if (typeof value === "boolean") return Number(value);
+  if (value !== null && typeof value === "object") return JSON.stringify(value);
+  return value;
+}
 
 /** Economic rankings need miners and validators, including null hotkeys.
  * Expand each bounded document once instead of re-reading its JSON per UID.
@@ -27,10 +39,14 @@ export async function readNeuronEconomicsRows(
   const scoped = netuid !== undefined;
   const params = scoped ? [netuid] : [];
   const store = selectedD1Store(env, ["neurons"]);
-  if (store)
-    return store.query(
+  if (store) {
+    // Parse each metric object once for all five paths. Packing the values also
+    // avoids repeating five column names for every neuron across the binding.
+    const rows = await store.query<
+      Record<string, unknown> & { metrics_payload: string }
+    >(
       `SELECT ${scoped ? "" : "m.netuid,"}m.uid,m.hotkey,
-        ${metrics.map((column) => `json_extract(j.value,'$.${column}') AS ${column}`).join(",")}
+        json_extract(j.value,${metrics.map((column) => `'$.${column}'`).join(",")}) AS metrics_payload
        FROM neurons_documents d CROSS JOIN json_each(d.payload) j
        CROSS JOIN neurons_members m
        WHERE d.day='' AND ${scoped ? "d.netuid=?" : "d.netuid!=0"}
@@ -38,6 +54,19 @@ export async function readNeuronEconomicsRows(
        ORDER BY m.netuid,m.uid`,
       params,
     );
+    return rows.map(({ metrics_payload, ...identity }) => {
+      const values = EconomicsValuesSchema.parse(JSON.parse(metrics_payload));
+      return {
+        ...identity,
+        ...Object.fromEntries(
+          metrics.map((column, index) => [
+            column,
+            sqliteJsonColumn(values[index]),
+          ]),
+        ),
+      };
+    });
+  }
   return db.query(
     `SELECT ${scoped ? "" : "netuid, "}uid, hotkey, ${metrics.join(", ")} FROM neurons WHERE ${scoped ? "netuid = ?" : "netuid != 0"} ORDER BY ${scoped ? "uid" : "netuid, uid"}`,
     params,
