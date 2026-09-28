@@ -9,6 +9,7 @@ import { NEURON_COLUMNS } from "./metagraph-neurons.ts";
 import { z } from "zod";
 import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
 import type { UntypedRowQuerier } from "./read-store.ts";
+import { readRevisionedNeuronEconomics } from "./neuron-economics-cache.ts";
 
 const EconomicsValuesSchema = z.array(z.unknown()).length(5);
 
@@ -40,32 +41,40 @@ export async function readNeuronEconomicsRows(
   const params = scoped ? [netuid] : [];
   const store = selectedD1Store(env, ["neurons"]);
   if (store) {
-    // Parse each metric object once for all five paths. Packing the values also
-    // avoids repeating five column names for every neuron across the binding.
-    const rows = await store.query<
-      Record<string, unknown> & { metrics_payload: string }
-    >(
-      `SELECT ${scoped ? "" : "m.netuid,"}m.uid,m.hotkey,
+    const read = async () => {
+      // Parse each metric object once for all five paths. Packing the values also
+      // avoids repeating five column names for every neuron across the binding.
+      const rows = await store.query<
+        Record<string, unknown> & { metrics_payload: string }
+      >(
+        `SELECT ${scoped ? "" : "m.netuid,"}m.uid,m.hotkey,
         json_extract(j.value,${metrics.map((column) => `'$.${column}'`).join(",")}) AS metrics_payload
        FROM neurons_documents d CROSS JOIN json_each(d.payload) j
        CROSS JOIN neurons_members m
        WHERE d.day='' AND ${scoped ? "d.netuid=?" : "d.netuid!=0"}
          AND m.netuid=d.netuid AND m.uid=CAST(j.key AS INTEGER) AND m.shard=d.shard
        ORDER BY m.netuid,m.uid`,
-      params,
-    );
-    return rows.map(({ metrics_payload, ...identity }) => {
-      const values = EconomicsValuesSchema.parse(JSON.parse(metrics_payload));
-      return {
-        ...identity,
-        ...Object.fromEntries(
-          metrics.map((column, index) => [
-            column,
-            sqliteJsonColumn(values[index]),
-          ]),
-        ),
-      };
-    });
+        params,
+      );
+      return rows.map(({ metrics_payload, ...identity }) => {
+        const values = EconomicsValuesSchema.parse(JSON.parse(metrics_payload));
+        return {
+          ...identity,
+          ...Object.fromEntries(
+            metrics.map((column, index) => [
+              column,
+              sqliteJsonColumn(values[index]),
+            ]),
+          ),
+        };
+      });
+    };
+    // Scoped reads are already small. Reuse only the full network read and
+    // only where the owned producer has atomic revision tracking enabled.
+    const owned = env as { D1_STATE: object; D1_EXPORT_REVISIONS?: string };
+    return !scoped && owned.D1_EXPORT_REVISIONS === "enabled"
+      ? readRevisionedNeuronEconomics(store, owned.D1_STATE, read)
+      : read();
   }
   return db.query(
     `SELECT ${scoped ? "" : "netuid, "}uid, hotkey, ${metrics.join(", ")} FROM neurons WHERE ${scoped ? "netuid = ?" : "netuid != 0"} ORDER BY ${scoped ? "uid" : "netuid, uid"}`,
