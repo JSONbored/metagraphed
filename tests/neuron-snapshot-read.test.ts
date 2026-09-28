@@ -145,6 +145,7 @@ test("economic neuron projections preserve every row while expanding documents o
 
 test("economics ordering does not depend on aggregate or shard arrival order", async () => {
   const binding = {
+    batch: db.batch.bind(db),
     prepare() {
       return {
         bind() {
