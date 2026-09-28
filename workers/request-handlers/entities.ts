@@ -4169,50 +4169,55 @@ export async function buildValidatorEconomicsRankingPayload(
 
   const db = readStore(env, VALIDATOR_ECONOMICS_RANKING_TABLES) as
     ReadStoreDb | undefined;
-  const neuronRows = db ? await readNeuronEconomicsRows(db, env) : [];
+  const neuronRead = db
+    ? readNeuronEconomicsRows(db, env)
+    : Promise.resolve([]);
+  // Only the burn lookup depends on the accepted neuron identities. Start the
+  // other bulk inputs together, preserving their existing freshness and reads.
+  const [
+    neuronRows,
+    burnRows,
+    hyperRows,
+    { rows: economicsRows, generatedAt },
+    params,
+  ] = await Promise.all([
+    neuronRead,
+    neuronRead.then((rows) =>
+      db
+        ? readLatestSubnetBurns(
+            db,
+            env,
+            rows.map((row) => Number(row.netuid)),
+          )
+        : [],
+    ),
+    db
+      ? db.query(
+          "SELECT netuid, min_childkey_take_ratio FROM subnet_hyperparams",
+        )
+      : [],
+    readEconomics(env),
+    readParams(env),
+  ]);
 
-  // Two bulk reads that make the ranking carry the SAME per-subnet fields the
-  // detail route reports (#9455). Both are one query for every subnet, not one
-  // per subnet -- the thing the original "128 per-subnet round trips" note
-  // rules out. See buildValidatorEconomics's call below for what they feed.
-  //
-  // The burn read is why `permit_entry_cost_tao` / `earning_entry_cost_tao` /
-  // `registration_cost_tao` used to publish null here. That was correct when
-  // the burn existed only as a live per-subnet chain read with no cached tier;
-  // `subnet_burn_history` (#9382) is that tier, refreshed continuously across
-  // every subnet, so the cost argument no longer holds and the fields can carry
-  // their real values instead of being dropped from the row.
   const latestBurnByNetuid = new Map<number, number>();
   const minChildkeyTakeByNetuid = new Map<number, number>();
-  if (db) {
-    const burnRows = await readLatestSubnetBurns(
-      db,
-      env,
-      neuronRows.map((row) => Number(row.netuid)),
-    );
-    for (const row of burnRows as Array<Record<string, unknown>>) {
-      // burn_tao is NOT NULL in the table and a genuine 0 is a real price
-      // (netuid 76 reads a true zero), so this must test for null, never falsy.
-      if (row?.netuid != null && row.burn_tao != null) {
-        latestBurnByNetuid.set(Number(row.netuid), Number(row.burn_tao));
-      }
+  for (const row of burnRows as Array<Record<string, unknown>>) {
+    // Zero is a real registration price, not a missing observation.
+    if (row?.netuid != null && row.burn_tao != null) {
+      latestBurnByNetuid.set(Number(row.netuid), Number(row.burn_tao));
     }
-    const hyperRows = await db.query(
-      "SELECT netuid, min_childkey_take_ratio FROM subnet_hyperparams",
-    );
-    for (const row of hyperRows as Array<Record<string, unknown>>) {
-      // Same rule: 0 is a real ratio, and the detail route reports it as 0.
-      if (row?.netuid != null && row.min_childkey_take_ratio != null) {
-        minChildkeyTakeByNetuid.set(
-          Number(row.netuid),
-          Number(row.min_childkey_take_ratio),
-        );
-      }
+  }
+  for (const row of hyperRows as Array<Record<string, unknown>>) {
+    // Preserve true zero ratios just as the detail route does.
+    if (row?.netuid != null && row.min_childkey_take_ratio != null) {
+      minChildkeyTakeByNetuid.set(
+        Number(row.netuid),
+        Number(row.min_childkey_take_ratio),
+      );
     }
   }
 
-  const { rows: economicsRows, generatedAt } = await readEconomics(env);
-  const params = await readParams(env);
   const economicsByNetuid = new Map<number, Record<string, unknown>>();
   for (const row of economicsRows) {
     economicsByNetuid.set(Number(row?.netuid), row);
