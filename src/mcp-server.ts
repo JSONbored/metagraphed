@@ -16573,7 +16573,8 @@ async function callTool(params: Row | null, ctx: McpCtx) {
   // two chained reads off a bag; every isError result is built by the same
   // two producers (toolError's wrapper and the unknown_tool branch) and both
   // set it, so this is where that gets said once (#10782).
-  const errorCode = rowOf(result.structuredContent.error)?.code;
+  const toolFailure = rowOf(result.structuredContent.error);
+  const errorCode = toolFailure?.code;
   scheduleToolUsageEvent(ctx, {
     mcpTool: toolLabel,
     ok: result.isError !== true,
@@ -16634,7 +16635,9 @@ async function callTool(params: Row | null, ctx: McpCtx) {
     // #8963: the same structuredContent.error.code usage_event already
     // threads above, projected onto PostHog's $mcp_error_type by
     // classifyMcpErrorType inside the recorder. Omitted on success.
-    ...(result.isError ? { errorCode } : {}),
+    ...(result.isError
+      ? { errorCode, errorMessage: toolFailure?.message }
+      : {}),
     ...mcpAttributionFor(ctx),
   });
   // The capability gap, recorded from the same split intent the tool call
@@ -16724,6 +16727,8 @@ function mcpAttributionFor(ctx: McpCtx) {
   return {
     serverName: MCP_SERVER_INFO.name,
     serverVersion: MCP_SERVER_VERSION,
+    profile: ctx.profile,
+    protocolVersion: ctx.protocolVersion,
     // #8967: which side of the access model this call fell on -- "anonymous",
     // or the verified key's tier. Emitted unconditionally rather than only
     // when authenticated, because "anonymous" is the answer the access-model
@@ -17435,6 +17440,10 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
   // success.
   const startedAt = Date.now();
   let dispatchOk = true;
+  let protocolTelemetry:
+    { record: (ctx: McpCtx, event: Row) => void; event: Row } | undefined;
+  let protocolErrorCode: string | undefined;
+  let protocolErrorMessage: string | undefined;
 
   try {
     switch (method) {
@@ -17468,6 +17477,7 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
           sessionId: ctx?.pendingSessionId ?? ctx?.sessionId,
           serverName: MCP_SERVER_INFO.name,
           serverVersion: MCP_SERVER_VERSION,
+          protocolVersion: result.protocolVersion,
         });
         return isNotification ? null : rpcResult(id, result);
       }
@@ -17544,37 +17554,30 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
       // only path that did anything to record.
       case "resources/list": {
         if (isNotification) return null;
+        protocolTelemetry = {
+          record: scheduleMcpResourcesListEvent,
+          event: {},
+        };
         const result = await listResources(params, ctx);
-        scheduleMcpResourcesListEvent(ctx, {
-          sessionId: ctx?.sessionId,
-          ...mcpAttributionFor(ctx),
-        });
+        protocolTelemetry.event.response = result;
         return rpcResult(id, result);
       }
-      case "resources/templates/list":
-        return isNotification
-          ? null
-          : rpcResult(id, { resourceTemplates: MCP_RESOURCE_TEMPLATES });
+      case "resources/templates/list": {
+        if (isNotification) return null;
+        const result = { resourceTemplates: MCP_RESOURCE_TEMPLATES };
+        protocolTelemetry = {
+          record: scheduleMcpResourcesListEvent,
+          event: { response: result },
+        };
+        return rpcResult(id, result);
+      }
       case "resources/read": {
         if (isNotification) return null;
-        // Scheduled AFTER the read resolves, which is also what bounds the
-        // name: readResource throws for a uri that is neither a live-stream nor
-        // a resolvable artifact path, so `$mcp_resource_name` can only ever
-        // carry a uri this server actually serves. A caller cannot mint
-        // dimension values here the way it could through tools/call
-        // (see mcpToolLabel).
+        protocolTelemetry = {
+          record: scheduleMcpResourceReadEvent,
+          event: { resourceName: params?.uri },
+        };
         const result = await readResource(params, ctx);
-        scheduleMcpResourceReadEvent(ctx, {
-          // No `typeof ... : undefined` guard: readResource above THREW unless
-          // `uri` matched a resource this server serves, and every one of those
-          // is a string. The false half was unreachable, and codecov counts an
-          // unreachable branch the same as an untested one.
-          resourceName: String(params?.uri),
-          sessionId: ctx?.sessionId,
-          parameters: params,
-          response: result,
-          ...mcpAttributionFor(ctx),
-        });
         return rpcResult(id, result);
       }
       // #9017: the await stays INSIDE the ternary here, deliberately. A
@@ -17596,26 +17599,19 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
       case "prompts/list": {
         if (isNotification) return null;
         const prompts = listPromptDefinitions();
-        scheduleMcpPromptsListEvent(ctx, {
-          sessionId: ctx?.sessionId,
-          ...mcpAttributionFor(ctx),
-        });
+        protocolTelemetry = {
+          record: scheduleMcpPromptsListEvent,
+          event: { response: { prompts } },
+        };
         return rpcResult(id, { prompts });
       }
       case "prompts/get": {
         if (isNotification) return null;
-        // Same ordering, same reason as resources/read: getPrompt throws for a
-        // name PROMPTS_BY_NAME does not hold, so the recorded name is always
-        // one of this server's own.
+        protocolTelemetry = {
+          record: scheduleMcpPromptGetEvent,
+          event: { resourceName: params?.name },
+        };
         const prompt = getPrompt(params);
-        scheduleMcpPromptGetEvent(ctx, {
-          // Same as resources/read above: getPrompt threw unless the name is
-          // one of PROMPTS_BY_NAME's own keys, all of which are strings.
-          resourceName: String(params?.name),
-          sessionId: ctx?.sessionId,
-          parameters: params,
-          ...mcpAttributionFor(ctx),
-        });
         return rpcResult(id, prompt);
       }
       // #9686. Declared in MCP_CAPABILITIES as `completions`, so a client that
@@ -17637,6 +17633,11 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
   } catch (rawError) {
     const error = rowOf(rawError);
     dispatchOk = false;
+    protocolErrorCode = error?.toolError ? "invalid_params" : "internal_error";
+    // Use the same public-safe text as the response, never raw internals.
+    protocolErrorMessage = error?.toolError
+      ? errorMessage(rawError)
+      : "Internal error.";
     // A toolError thrown by a protocol method (resources/read, prompts/get) is a
     // bad-params condition, not an internal fault — surface it as -32602.
     // Notifications get no reply, but the classification is the same.
@@ -17678,6 +17679,20 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
       ? null
       : rpcError(id, RPC_INTERNAL_ERROR, "Internal error.");
   } finally {
+    // Record outcomes on both success and failure. Capturing only after a
+    // successful read made resource failures disappear from MCP Analytics.
+    if (protocolTelemetry) {
+      protocolTelemetry.record(ctx, {
+        ...protocolTelemetry.event,
+        parameters: { request: { method, params } },
+        durationMs: Date.now() - startedAt,
+        isError: !dispatchOk,
+        errorCode: protocolErrorCode,
+        errorMessage: protocolErrorMessage,
+        sessionId: ctx.sessionId,
+        ...mcpAttributionFor(ctx),
+      });
+    }
     // finally, not per-return: the switch returns from inside every case, so
     // any per-case emission would have to be repeated 14 times and would still
     // miss the next case someone adds.
@@ -18614,31 +18629,17 @@ export function scheduleMcpRefusalEvent(
     ).catch(() => false);
     deps.executionCtx?.waitUntil?.(pending);
 
-    // ...and the same refusal in PostHog's OWN event family.
-    //
-    // Until now a refusal produced a usage_event and nothing else, so every
-    // MCP Analytics error breakdown was computed over dispatched calls only.
-    // A caller being rate-limited, blocked, or rejected as unauthorized is a
-    // failed MCP call by any reading, and it was the one class of failure
-    // invisible on the surface built to show failures -- the error rate looked
-    // best exactly when the gate was refusing the most traffic.
-    //
-    // No `$mcp_tool_name`: the refusal happens in front of the dispatcher, so
-    // there is no registered tool to name, and inventing one would put gate
-    // traffic in a real tool's breakdown. The reason rides on
-    // `$mcp_error_code` instead, which classifyMcpErrorType buckets into
-    // rate_limited / permission / validation / api_5xx -- see the
-    // refusal-vocabulary block in MCP_ERROR_TYPE_BY_CODE.
-    //
-    // Shares admitMcpRefusalCapture's throttle by construction: this is inside
-    // the same `suppressed === null` early return, so a storm cannot double
-    // its own cost by being counted twice.
+    // Preserve the refusal's diagnostic dimensions as mcp_request_refused.
+    // PostHog reserves $mcp_tool_call for tools/call requests; HEAD/GET
+    // refusals and unsupported protocol headers are not tool executions.
+    // Reuse the recorder and storm throttle without adding another capture.
     const recordMcp = (deps.recordMcpToolCallEvent ??
       recordMcpToolCallEvent) as AnyFn;
     const pendingMcp = Promise.resolve(
       recordMcp(
         env,
         {
+          requestStage: "refused",
           isError: true,
           errorCode: reason,
           // The refusal's own status, verbatim -- the one place in the tool
@@ -18667,6 +18668,8 @@ export function scheduleMcpRefusalEvent(
           // so a session id in the path cannot shard the property.
           requestMethod: request.method,
           requestPath: mcpRefusalPath(new URL(request.url).pathname),
+          protocolVersion: request.headers.get("mcp-protocol-version"),
+          probe: mcpProbeName(request, env),
           serverName: MCP_SERVER_INFO.name,
           serverVersion: MCP_SERVER_VERSION,
         },

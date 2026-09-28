@@ -717,6 +717,12 @@ async function capturePostHogEvent(
   // never at a call site. tests/posthog-capture-invariants.test.ts asserts
   // them against all thirteen recorders.
   properties["$process_person_profile"] = isUsagePerson(deps.distinctId);
+  // Keep verified first-party checks observable without including them in
+  // PostHog's native MCP product metrics. This replaces the capture; it does
+  // not emit an additional event or trust a caller's User-Agent.
+  if (eventName.startsWith("$mcp_") && properties["$mcp_probe"]) {
+    eventName = `mcp_probe_${eventName.slice(5)}`;
+  }
   const doFetch = deps.fetch ?? globalThis.fetch;
   const response = await doFetch(
     `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
@@ -1082,12 +1088,8 @@ function assignMcpAttribution(
   // all 242 tools every run, which distorts exactly the per-tool caller counts
   // #11179 requires pricing to be chosen from.
   //
-  // TAGGED, NOT SUPPRESSED, and the choice is deliberate. Suppression would
-  // make the sweep's own traffic unobservable at the moment we most want to
-  // know it ran, and a self-declared "do not count me" that DELETES data is
-  // strictly worse than one that labels it: a caller who mislabels itself is
-  // then invisible rather than merely excluded. Every product-facing query
-  // filters on this property; the rows stay for anyone auditing who claimed it.
+  // Keep the verified label for auditing. capturePostHogEvent routes these
+  // rows to mcp_probe_* so native MCP Analytics excludes our own checks too.
   //
   // A DECLARED HEADER, NOT A USER-AGENT MATCH. Our sweep sets its own UA, but
   // matching on the string would also catch `flowstacks-mcp-conformance` --
@@ -1095,6 +1097,13 @@ function assignMcpAttribution(
   // is real usage and must not be filtered out of our numbers.
   const probe = sanitizeLabel(event.probe);
   if (probe !== undefined) properties["$mcp_probe"] = probe;
+  if (event.profile === "core" || event.profile === "full") {
+    properties["$mcp_profile"] = event.profile;
+  }
+  const protocolVersion = sanitizeLabel(event.protocolVersion);
+  if (protocolVersion !== undefined) {
+    properties["$mcp_protocol_version"] = protocolVersion;
+  }
   // #8967: "anonymous", or the tier of the verified mg_ key. This is the one
   // dimension that makes the MCP access model measurable -- authentication
   // currently buys throughput only, and without this there is no way to ask
@@ -1157,6 +1166,26 @@ const MCP_REDACTED_VALUE = "[redacted]";
 // than a placeholder string.
 const MCP_REDACT_MAX_DEPTH = 8;
 
+function redactMcpUri(value: string): string {
+  try {
+    const uri = new URL(value);
+    if (uri.username) uri.username = MCP_REDACTED_VALUE;
+    if (uri.password) uri.password = MCP_REDACTED_VALUE;
+    for (const key of new Set(uri.searchParams.keys())) {
+      if (MCP_SENSITIVE_KEY_PATTERN.test(key)) {
+        uri.searchParams.set(key, MCP_REDACTED_VALUE);
+      }
+    }
+    // Fragments can carry OAuth credentials and are not sent to a server.
+    uri.hash = "";
+    return uri.href;
+  } catch {
+    // A malformed URI is still useful as a validation failure, but its raw
+    // value is not safe to capture.
+    return "[invalid uri]";
+  }
+}
+
 function redactMcpSensitiveFields(value: unknown, depth = 0): unknown {
   if (depth > MCP_REDACT_MAX_DEPTH) return "[max depth exceeded]";
   if (Array.isArray(value)) {
@@ -1167,9 +1196,23 @@ function redactMcpSensitiveFields(value: unknown, depth = 0): unknown {
     for (const [key, entry] of Object.entries(
       value as Record<string, unknown>,
     )) {
-      redacted[key] = MCP_SENSITIVE_KEY_PATTERN.test(key)
-        ? MCP_REDACTED_VALUE
-        : redactMcpSensitiveFields(entry, depth + 1);
+      if (
+        MCP_SENSITIVE_KEY_PATTERN.test(key) ||
+        key === "blob" ||
+        (key === "data" &&
+          ["image", "audio"].includes(
+            String((value as Record<string, unknown>).type),
+          ))
+      ) {
+        redacted[key] = MCP_REDACTED_VALUE;
+      } else if (
+        (key === "uri" || key === "url") &&
+        typeof entry === "string"
+      ) {
+        redacted[key] = redactMcpUri(entry);
+      } else {
+        redacted[key] = redactMcpSensitiveFields(entry, depth + 1);
+      }
     }
     return redacted;
   }
@@ -1204,6 +1247,8 @@ function boundedMcpPayload(value: unknown): unknown {
 export interface McpServerIdentity {
   serverName?: string;
   serverVersion?: string;
+  profile?: "core" | "full";
+  protocolVersion?: string | null;
   /**
    * A FIRST-PARTY probe that proved itself with the probe token (#11565).
    *
@@ -1216,7 +1261,7 @@ export interface McpServerIdentity {
 }
 
 /** Where a client name came from (#8963). `client_info` is the MCP handshake's
- * own clientInfo.name and is authoritative; `user_agent` is derived from the
+ * self-reported clientInfo.name; `user_agent` is derived from the
  * HTTP User-Agent because this server is stateless and ~80% of production
  * tool calls arrive with no Mcp-Session-Id to link them back to an
  * initialize. Recorded alongside the name so a dashboard can tell an
@@ -1225,6 +1270,8 @@ export type McpClientNameSource = "client_info" | "user_agent";
 
 /** Inputs for a single MCP tool-call analytics event. */
 export interface McpToolCallEvent extends McpServerIdentity {
+  /** Transport refusals are operational events, never tools/call events. */
+  requestStage?: "refused";
   toolName?: string;
   /**
    * The tool's description AT THE MOMENT OF THE CALL, emitted as
@@ -1254,6 +1301,7 @@ export interface McpToolCallEvent extends McpServerIdentity {
    * when isError is true.
    */
   errorCode?: string;
+  errorMessage?: string;
   /**
    * The HTTP status behind the failure, emitted as `$mcp_error_status` — the
    * documented member of this event's property set that PostHog's own
@@ -1459,6 +1507,12 @@ export async function recordMcpToolCallEvent(
       const errorCode = sanitizeLabel(event.errorCode);
       if (errorCode !== undefined) properties["$mcp_error_code"] = errorCode;
       properties["$mcp_error_type"] = classifyMcpErrorType(event.errorCode);
+      const errorMessage = trimToLength(
+        event.errorMessage,
+        MAX_MCP_INTENT_CHARS,
+      );
+      if (errorMessage !== undefined)
+        properties["$mcp_error_message"] = errorMessage;
       // Bounded to real HTTP statuses: this recorder's callers are trusted,
       // but a number outside 100-599 could only be a plumbing mistake, and a
       // dashboard grouping by status must never have to explain a 0 or a NaN.
@@ -1499,7 +1553,14 @@ export async function recordMcpToolCallEvent(
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.
     assignDeployment(properties, env);
-    return await capturePostHogEvent(env, "$mcp_tool_call", properties, deps);
+    return await capturePostHogEvent(
+      env,
+      event.requestStage === "refused"
+        ? "mcp_request_refused"
+        : "$mcp_tool_call",
+      properties,
+      deps,
+    );
   } catch {
     return false;
   }
@@ -1627,10 +1688,13 @@ export interface McpResourceEvent extends McpServerIdentity {
   clientNameSource?: McpClientNameSource;
   authTier?: string;
   sessionId?: string | null;
+  durationMs?: number;
+  isError?: boolean;
+  errorCode?: string;
+  errorMessage?: string;
   /**
-   * The read/get arguments and result. Redacted (redactMcpSensitiveFields) and
-   * size-capped (boundedMcpPayload) by this module before posting, exactly as
-   * on `$mcp_tool_call` -- a resource body can be the whole agent catalogue.
+   * Protocol arguments and listing envelopes. Resource-read bodies are never
+   * captured, including when a caller accidentally supplies a response here.
    */
   parameters?: unknown;
   response?: unknown;
@@ -1654,9 +1718,38 @@ async function postMcpResourceEvent(
 
     const properties: Record<string, unknown> = {};
 
-    const resourceName = sanitizeLabel(event.resourceName);
+    const resourceName = sanitizeLabel(
+      eventName === "$mcp_resource_read" &&
+        typeof event.resourceName === "string"
+        ? redactMcpUri(event.resourceName)
+        : event.resourceName,
+    );
     if (resourceName !== undefined) {
       properties["$mcp_resource_name"] = resourceName;
+    }
+    if (typeof event.isError === "boolean") {
+      properties["$mcp_is_error"] = event.isError;
+    }
+    if (
+      typeof event.durationMs === "number" &&
+      Number.isFinite(event.durationMs) &&
+      event.durationMs > 0
+    ) {
+      properties["$mcp_duration_ms"] = Math.min(
+        Math.round(event.durationMs),
+        86_400_000,
+      );
+    }
+    if (event.isError) {
+      properties["$mcp_error_type"] = classifyMcpErrorType(event.errorCode);
+      const errorCode = sanitizeLabel(event.errorCode);
+      if (errorCode !== undefined) properties["$mcp_error_code"] = errorCode;
+      const errorMessage = trimToLength(
+        event.errorMessage,
+        MAX_MCP_INTENT_CHARS,
+      );
+      if (errorMessage !== undefined)
+        properties["$mcp_error_message"] = errorMessage;
     }
 
     assignMcpAttribution(properties, event);
@@ -1669,8 +1762,13 @@ async function postMcpResourceEvent(
     const parameters = boundedMcpPayload(event.parameters);
     if (parameters !== undefined) properties["$mcp_parameters"] = parameters;
 
-    const responseBody = boundedMcpPayload(event.response);
-    if (responseBody !== undefined) properties["$mcp_response"] = responseBody;
+    // PostHog's resource-read contract explicitly excludes bodies. Do not
+    // even traverse one: it may contain secrets or a multi-megabyte catalogue.
+    if (eventName !== "$mcp_resource_read") {
+      const responseBody = boundedMcpPayload(event.response);
+      if (responseBody !== undefined)
+        properties["$mcp_response"] = responseBody;
+    }
 
     // The deployment dimensions, stamped exactly where this family already
     // stamps its attribution -- see assignMcpAttribution above.

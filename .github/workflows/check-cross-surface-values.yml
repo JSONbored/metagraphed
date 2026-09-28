@@ -13,12 +13,8 @@ name: Check cross-surface values
 # needs production data, and a check that cannot run on a pull request should
 # not pretend to.
 on:
-  schedule:
-    # Daily, offset from check-response-conformance (06:41), check-mcp-
-    # conformance (07:17) and check-graphql-conformance (07:53) so the four are
-    # not sweeping the same Worker at once -- and last, because this one calls
-    # every surface and is the heaviest of the four.
-    - cron: "31 8 * * *"
+  # Manual qualification only: scheduled sweeps polluted product usage and
+  # repeatedly queried production without a release or incident to verify.
   workflow_dispatch: {}
 
 permissions:

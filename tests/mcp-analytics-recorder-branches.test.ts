@@ -108,7 +108,7 @@ describe("$mcp_missing_capability's recorder", () => {
   });
 });
 
-describe("a resource read's payload is bounded and redacted", () => {
+describe("a resource read's parameters are redacted and its body is excluded", () => {
   test("a credential in the parameters never reaches PostHog", async () => {
     const calls: Row[] = [];
     await recordMcpResourceReadEvent(
@@ -128,18 +128,19 @@ describe("a resource read's payload is bounded and redacted", () => {
     );
   });
 
-  test("an oversized response is truncated to a preview, not dropped", async () => {
-    // A resource body can be the whole agent catalogue. Truncating keeps the
-    // event useful; dropping it would make a large read indistinguishable from
-    // one that returned nothing.
+  test("never reads a resource body, even when one is accidentally passed", async () => {
     const calls: Row[] = [];
     await recordMcpResourceReadEvent(
       CONFIGURED as unknown as Env,
-      { resourceName: "metagraph://x", response: { blob: "x".repeat(20_000) } },
+      {
+        resourceName: "metagraph://x",
+        get response() {
+          throw new Error("resource bodies must not even be traversed");
+        },
+      },
       { fetch: fakeFetch({ onCall: (c) => calls.push(c) }) },
     );
-    const body = propsOf(calls).$mcp_response as Row;
-    assert.equal(body.truncated, true);
-    assert.ok(String(body.preview).length > 0, "a preview should survive");
+    assert.equal(calls.length, 1);
+    assert.equal(propsOf(calls).$mcp_response, undefined);
   });
 });

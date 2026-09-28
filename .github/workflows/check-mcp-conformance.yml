@@ -22,12 +22,8 @@ name: Check MCP conformance
 # Green is the steady state, and the summary prints every run so a healthy run
 # is still legible -- same shape as check-response-conformance.yml.
 on:
-  schedule:
-    # Daily, offset from check-response-conformance's 06:41 so the two are not
-    # sweeping the same Worker at once. Schema drift arrives with a deploy, not
-    # with traffic, so hourly would add noise without shortening the window
-    # that matters.
-    - cron: "17 7 * * *"
+  # Manual qualification only: scheduled sweeps polluted product usage and
+  # repeatedly queried production without a release or incident to verify.
   workflow_dispatch: {}
 
 permissions:

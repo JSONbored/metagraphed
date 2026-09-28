@@ -18,12 +18,8 @@ name: Check adversarial surface
 # needs the deployed surface, and a check that cannot run on a pull request
 # should not pretend to.
 on:
-  schedule:
-    # Weekly rather than daily, unlike its siblings. The others measure
-    # something that changes every day (values, freshness, latency); this one
-    # measures whether a class of defect was introduced, which tracks
-    # deploys rather than data. Sunday, after the daily five have finished.
-    - cron: "17 11 * * 0"
+  # Manual qualification only: scheduled sweeps polluted product usage and
+  # repeatedly queried production without a release or incident to verify.
   workflow_dispatch: {}
 
 permissions:

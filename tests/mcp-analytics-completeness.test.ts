@@ -153,7 +153,11 @@ describe("pre-dispatch refusals reach the $mcp_* family", () => {
       scheduleMcpRefusalEvent(
         new Request("https://api.metagraph.sh/mcp", {
           method: "POST",
-          headers: { "user-agent": "probe/1.0", "mcp-session-id": "sess-1" },
+          headers: {
+            "user-agent": "probe/1.0",
+            "mcp-session-id": "sess-1",
+            "mcp-protocol-version": "2026-07-28",
+          },
         }),
         CONFIGURED_ENV as unknown as Env,
         {
@@ -174,6 +178,8 @@ describe("pre-dispatch refusals reach the $mcp_* family", () => {
 
       assert.equal(events.length, 1, `no $mcp_tool_call for ${reason}`);
       assert.equal(events[0].isError, true);
+      assert.equal(events[0].requestStage, "refused");
+      assert.equal(events[0].protocolVersion, "2026-07-28");
       assert.equal(events[0].errorCode, reason);
       // No tool was named -- the gate refused in front of the dispatcher, and
       // attributing gate traffic to a real tool would corrupt its breakdown.
