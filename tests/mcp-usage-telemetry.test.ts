@@ -365,10 +365,16 @@ describe("MCP tool-dispatch usage telemetry", () => {
   });
 
   // The regression the issue asks for: a telemetry failure must never become a
-  // tool failure. Each shape is compared against the untelemetried response, so
-  // this asserts byte-identical behavior rather than merely "not an error".
+  // tool failure. Pin the echoed conversation handle so each failure can be
+  // compared against the complete configured response, including metadata.
   test("a telemetry failure changes nothing about the tool result", async () => {
-    const baseline = await callMcp(toolCall(TOOL), {});
+    const request = toolCall(TOOL, {
+      conversation_id: "0198f2d6-abcd-7123-8456-789abcdef012",
+    });
+    const baseline = await callMcp(request, CONFIGURED_ENV, {
+      recordUsageEvent: () => false,
+      recordMcpToolCallEvent: () => false,
+    });
     assert.equal(baseline.result.isError, false);
 
     const failureModes: Record<string, Row> = {
@@ -415,7 +421,7 @@ describe("MCP tool-dispatch usage telemetry", () => {
     };
 
     for (const [mode, deps] of Object.entries(failureModes)) {
-      const payload = await callMcp(toolCall(TOOL), CONFIGURED_ENV, deps);
+      const payload = await callMcp(request, CONFIGURED_ENV, deps);
       // Flush the fire-and-forget telemetry promises before moving on, so a
       // rejecting recorder's own .catch(() => false) actually runs within
       // this test rather than resolving after it (both are equally safe --
@@ -719,10 +725,11 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
   // through (fixed alongside #7153; it previously only copied
   // recordUsageEvent onto ctx, so this exact injection silently no-opped).
   test("an $exception telemetry failure changes nothing about the tool result", async () => {
-    const baseline = await callMcp(
-      toolCall("semantic_search", { query: "images" }),
-      aiEnv(),
-    );
+    const request = toolCall("semantic_search", {
+      query: "images",
+      conversation_id: "0198f2d6-abcd-7123-8456-789abcdef012",
+    });
+    const baseline = await callMcp(request, aiEnv());
     assert.equal(baseline.result.isError, true);
 
     const failureModes: Record<string, Row> = {
@@ -739,11 +746,7 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
     };
 
     for (const [mode, deps] of Object.entries(failureModes)) {
-      const payload = await callMcp(
-        toolCall("semantic_search", { query: "images" }),
-        aiEnv(),
-        deps,
-      );
+      const payload = await callMcp(request, aiEnv(), deps);
       if (Array.isArray(deps.executionCtx?.scheduled)) {
         await Promise.allSettled(deps.executionCtx.scheduled);
       }
