@@ -20,7 +20,7 @@ const base = z.object({
 const schema = z.discriminatedUnion("operation", [
   base
     .extend({
-      operation: z.literal("verify"),
+      operation: z.enum(["verify", "read-many"]),
       assets: z.array(asset).min(1).max(32),
     })
     .strict(),
@@ -67,7 +67,7 @@ export async function handleNativeStoreExport(
     return reply({ error: "invalid native store request" }, 400);
   const value = parsed.data;
   if (
-    value.operation === "verify" &&
+    value.operation !== "read" &&
     (new Set(value.assets.map((a) => a.sha256)).size !== value.assets.length ||
       value.assets.reduce((n, a) => n + a.bytes, 0) > 8 * 1024 * 1024)
   )
@@ -140,6 +140,30 @@ export async function handleNativeStoreExport(
           "content-type": "application/octet-stream",
           "content-length": String(bytes.byteLength),
           "x-content-sha256": value.sha256,
+        },
+      });
+    }
+    if (value.operation === "read-many") {
+      const output = new Uint8Array(
+        value.assets.reduce((n, entry) => n + entry.bytes, 0),
+      );
+      let offset = 0;
+      for (let start = 0; start < value.assets.length; start += 4) {
+        const batch = value.assets.slice(start, start + 4);
+        const bytes = await Promise.all(
+          batch.map((entry) => read(entry.sha256, entry.bytes)),
+        );
+        for (const part of bytes) {
+          output.set(new Uint8Array(part), offset);
+          offset += part.byteLength;
+        }
+      }
+      return new Response(output, {
+        headers: {
+          "cache-control": "no-store",
+          "content-type": "application/octet-stream",
+          "content-length": String(output.length),
+          "x-content-sha256": createHash("sha256").update(output).digest("hex"),
         },
       });
     }
