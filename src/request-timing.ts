@@ -137,3 +137,6 @@ export const TIMING_NEON = "neon";
 export const TIMING_R2_SQL = "r2sql";
 export const TIMING_R2 = "r2";
 export const TIMING_D1 = "d1";
+// Successful statement execution reported by D1, excluding network time.
+// This is a subset of d1 duration, not additional request time to add to it.
+export const TIMING_D1_SQL = "d1_sql";
