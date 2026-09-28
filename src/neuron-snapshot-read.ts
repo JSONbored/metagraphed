@@ -7,6 +7,42 @@ import { selectedD1Store } from "./d1-store.ts";
 import type { PgSql } from "./pg-sql.ts";
 import { NEURON_COLUMNS } from "./metagraph-neurons.ts";
 import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
+import type { UntypedRowQuerier } from "./read-store.ts";
+
+/** Economic rankings need miners and validators, including null hotkeys.
+ * Expand each bounded document once instead of re-reading its JSON per UID.
+ * stake_tao already includes the weighted root leg; pass it through unchanged. */
+export async function readNeuronEconomicsRows(
+  db: UntypedRowQuerier,
+  env: unknown,
+  netuid?: number,
+): Promise<Record<string, unknown>[]> {
+  const metrics = [
+    "stake_tao",
+    "validator_permit",
+    "dividends",
+    "active",
+    "take",
+  ];
+  const scoped = netuid !== undefined;
+  const params = scoped ? [netuid] : [];
+  const store = selectedD1Store(env, ["neurons"]);
+  if (store)
+    return store.query(
+      `SELECT ${scoped ? "" : "m.netuid,"}m.uid,m.hotkey,
+        ${metrics.map((column) => `json_extract(j.value,'$.${column}') AS ${column}`).join(",")}
+       FROM neurons_documents d CROSS JOIN json_each(d.payload) j
+       CROSS JOIN neurons_members m
+       WHERE d.day='' AND ${scoped ? "d.netuid=?" : "d.netuid!=0"}
+         AND m.netuid=d.netuid AND m.uid=CAST(j.key AS INTEGER) AND m.shard=d.shard
+       ORDER BY m.netuid,m.uid`,
+      params,
+    );
+  return db.query(
+    `SELECT ${scoped ? "" : "netuid, "}uid, hotkey, ${metrics.join(", ")} FROM neurons WHERE ${scoped ? "netuid = ?" : "netuid != 0"} ORDER BY ${scoped ? "uid" : "netuid, uid"}`,
+    params,
+  );
+}
 
 interface SubnetSnapshotPart {
   shard: number;

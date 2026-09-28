@@ -9,6 +9,7 @@ import {
   readNeuronDirectoryRows,
   readDirectoryNominatorCounts,
   readSubnetNeuronRows,
+  readNeuronEconomicsRows,
 } from "../src/neuron-snapshot-read.ts";
 import type { PgSql } from "../src/pg-sql.ts";
 
@@ -65,6 +66,7 @@ beforeAll(async () => {
       axon: uid % 2 ? JSON.stringify({ ip: "1.2.3.4", port: 8080 }) : null,
       active: uid % 2 === 0,
       incentive: uid / 10000,
+      dividends: uid % 3 ? 0.01 : null,
     })),
   );
   await writeNeuronDocuments(createD1Store(db), {
@@ -81,6 +83,49 @@ beforeAll(async () => {
   await db.prepare("UPDATE neurons_members SET shard=99 WHERE uid=9").run();
 });
 afterAll(() => runtime.dispose());
+
+test("economic neuron projections preserve every row while expanding documents once", async () => {
+  const legacy = createD1Store(db);
+  for (const netuid of [undefined, 0, 7, 128, 999]) {
+    const expected = await readNeuronEconomicsRows(legacy, {}, netuid);
+    const statements: string[] = [];
+    const binding = {
+      prepare(sql: string) {
+        statements.push(sql);
+        return db.prepare(sql);
+      },
+      batch: db.batch.bind(db),
+    };
+    const actual = await readNeuronEconomicsRows(
+      legacy,
+      { D1_STATE: binding, D1_STATE_TABLES: "neurons" },
+      netuid,
+    );
+    assert.deepEqual(actual, expected);
+    assert.equal(statements.length, 1);
+    if (netuid !== 999) {
+      assert(actual.some((row) => row.hotkey === null));
+      assert(actual.some((row) => row.validator_permit === 0));
+      assert(actual.some((row) => row.stake_tao === null));
+      assert(actual.some((row) => row.dividends === 0.01));
+      assert(actual.some((row) => row.hotkey === "5Changed"));
+    }
+    const plan = db.prepare(`EXPLAIN QUERY PLAN ${statements[0]}`);
+    const explained = await (
+      netuid === undefined ? plan : plan.bind(netuid)
+    ).all<{ detail: string }>();
+    const details = explained.results.map((row) => row.detail);
+    assert(
+      details.findIndex((x) => /(?:SCAN|SEARCH) d\b/.test(x)) <
+        details.findIndex((x) => /SCAN j\b/.test(x)),
+    );
+    assert(
+      details.findIndex((x) => /SCAN j\b/.test(x)) <
+        details.findIndex((x) => /SEARCH m\b/.test(x)),
+    );
+    assert(!details.some((x) => /CORRELATED/.test(x)));
+  }
+});
 
 test.each([false, true])(
   "native snapshot is exactly the indexed-view result, validatorsOnly=%s",
