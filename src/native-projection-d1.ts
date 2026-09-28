@@ -1,11 +1,12 @@
+import { Buffer } from "node:buffer";
 import { z } from "zod";
 import { timed, TIMING_D1 } from "./request-timing.ts";
 import { markD1SqlExecution } from "./d1-store.ts";
 
 const CHUNK_BYTES = 65_536;
-// Bound each binding response to 512 KiB of compressed bytes. Restore in order
+// Bound each binding response to 1 MiB of compressed bytes. Restore in order
 // without paying one sequential database round trip per 64 KiB chunk.
-const CHUNKS_PER_READ = 8;
+const CHUNKS_PER_READ = 16;
 const MAX_BYTES = 32 * 1024 * 1024;
 const Chunk = z.strictObject({ data: z.string().max(87_384) });
 const Descriptor = z.strictObject({
@@ -69,7 +70,9 @@ export function nativeProjectionD1(db: Pick<D1Database, "prepare">) {
           if (chunk === undefined)
             throw new Error("Projection chunk is missing");
           const { data } = Chunk.parse(JSON.parse(chunk));
-          const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+          // atob retains strict base64 validation; the native byte copy avoids
+          // an allocation/callback iteration for every compressed byte.
+          const bytes = Buffer.from(atob(data), "latin1");
           const expected = Math.min(
             CHUNK_BYTES,
             descriptor.compressedBytes - part * CHUNK_BYTES,
