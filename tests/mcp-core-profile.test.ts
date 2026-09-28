@@ -12,6 +12,7 @@ import {
   MCP_CORE_TOOL_NAMES,
 } from "../src/mcp-server.ts";
 import { isMcpCorePath } from "../src/github-oauth.ts";
+import { resetModuleState } from "../src/module-state-registry.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 const rpc = (url: string, body: unknown) =>
@@ -73,6 +74,51 @@ describe("the endpoint is the profile", () => {
       core < full / 4,
       `core (${core} B) must stay well under full (${full} B)`,
     );
+  });
+
+  test("discovery reuses each profile without allowing cross-request mutation", () => {
+    const full = listToolDefinitions();
+    const core = listToolDefinitions("core");
+    const before = JSON.stringify({ full, core });
+    assert.strictEqual(listToolDefinitions(), full);
+    assert.strictEqual(listToolDefinitions("core"), core);
+    assert.notStrictEqual(full, core);
+
+    for (const definitions of [full, core]) {
+      assert.throws(() => definitions.pop(), TypeError);
+      const first = definitions[0] as Row;
+      assert.throws(() => {
+        first.description = "poisoned";
+      }, TypeError);
+      assert.throws(() => {
+        first.inputSchema.properties.context.type = "number";
+      }, TypeError);
+      assert.throws(() => {
+        first.outputSchema.properties = {};
+      }, TypeError);
+      assert.throws(() => {
+        first.annotations.readOnlyHint = false;
+      }, TypeError);
+    }
+    assert.equal(
+      JSON.stringify({
+        full: listToolDefinitions(),
+        core: listToolDefinitions("core"),
+      }),
+      before,
+    );
+  });
+
+  test("module reset discards cached profiles without changing discovery", () => {
+    const full = listToolDefinitions();
+    const core = listToolDefinitions("core");
+    resetModuleState();
+    const rebuiltCore = listToolDefinitions("core");
+    const rebuiltFull = listToolDefinitions();
+    assert.notStrictEqual(rebuiltCore, core);
+    assert.notStrictEqual(rebuiltFull, full);
+    assert.deepEqual(rebuiltCore, core);
+    assert.deepEqual(rebuiltFull, full);
   });
 });
 
