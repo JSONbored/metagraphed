@@ -2,6 +2,7 @@
 // caller owns the existing publication lock; KV itself is not a transaction lock.
 import { createHash } from "node:crypto";
 import { isUtf8 } from "node:buffer";
+import { setTimeout as sleep } from "node:timers/promises";
 import {
   RegistryManifestSchema,
   type RegistryArtifact,
@@ -34,6 +35,8 @@ interface RegistryKvStore {
   write(objects: RegistryKvObject[]): Promise<void>;
   list(): Promise<RegistryKvListing[]>;
   remove(keys: string[]): Promise<void>;
+  /** Eventual stores can wait before rechecking a completed write. */
+  waitForPropagation?(): Promise<void>;
 }
 
 export const registryDigest = (bytes: Uint8Array): string =>
@@ -88,21 +91,33 @@ async function writeVerified(
   if (!batch.length) return;
   await store.write(batch);
   const text = batch.filter(({ bytes }) => isUtf8(bytes));
-  if (text.length) {
-    const values = await store.readText(text.map(({ key }) => key));
-    for (const item of text) {
-      const value = values[item.key];
-      if (
-        typeof value !== "string" ||
-        !Buffer.from(value).equals(Buffer.from(item.bytes))
-      )
-        throw new Error(`Registry upload readback failed: ${item.key}`);
+  const binary = batch.filter(({ bytes }) => !isUtf8(bytes));
+  async function readback(): Promise<Error | null> {
+    if (text.length) {
+      const values = await store.readText(text.map(({ key }) => key));
+      for (const item of text) {
+        const value = values[item.key];
+        if (
+          typeof value !== "string" ||
+          !Buffer.from(value).equals(Buffer.from(item.bytes))
+        )
+          return new Error(`Registry upload readback failed: ${item.key}`);
+      }
     }
+    for (const item of binary) {
+      const actual = await store.read(item.key);
+      if (!actual || !Buffer.from(actual).equals(Buffer.from(item.bytes)))
+        return new Error(`Registry binary readback failed: ${item.key}`);
+    }
+    return null;
   }
-  for (const item of batch.filter(({ bytes }) => !isUtf8(bytes))) {
-    const actual = await store.read(item.key);
-    if (!actual || !Buffer.from(actual).equals(Buffer.from(item.bytes)))
-      throw new Error(`Registry binary readback failed: ${item.key}`);
+  // A successful KV write can still read its previous cached value. Retry
+  // verification, never the write; fail closed after the bounded grace period.
+  for (let attempt = 0; ; attempt++) {
+    const mismatch = await readback();
+    if (!mismatch) return;
+    if (attempt === 4 || !store.waitForPropagation) throw mismatch;
+    await store.waitForPropagation();
   }
 }
 
@@ -413,6 +428,7 @@ export function cloudflareRegistryKvStore(
     return value;
   }
   return {
+    waitForPropagation: () => sleep(30_000),
     async read(key) {
       const response = await request(`/values/${encodeURIComponent(key)}`);
       if (response.status === 404) {
