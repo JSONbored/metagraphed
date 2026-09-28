@@ -17,6 +17,7 @@ import {
   normalizeMcpLlmModel,
 } from "../src/usage-telemetry.ts";
 import { mockEnv, type Row } from "./row-type.ts";
+import { scheduleMcpRefusalEvent } from "../src/mcp-server.ts";
 
 const env = mockEnv({ [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" });
 function captures() {
@@ -31,6 +32,35 @@ function captures() {
 }
 
 describe("MCP product events exclude operational traffic", () => {
+  test("transport refusals retain the requested profile without becoming tool calls", async () => {
+    for (const profile of ["core", "full"] as const) {
+      const { events, deps } = captures();
+      const pending: Promise<unknown>[] = [];
+      scheduleMcpRefusalEvent(
+        new Request(
+          `https://api.metagraph.sh/mcp${profile === "core" ? "/core" : ""}`,
+        ),
+        mockEnv({
+          [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+          [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "0",
+        }),
+        {
+          recordUsageEvent: async () => true,
+          recordMcpToolCallEvent: (captureEnv, event) =>
+            recordMcpToolCallEvent(captureEnv, event, deps),
+          executionCtx: { waitUntil: (work) => pending.push(work) },
+        },
+        new Response("Method not allowed", { status: 405 }),
+      );
+      await Promise.all(pending);
+      assert.equal(events.length, 1);
+      assert.equal(events[0].event, "mcp_request_refused");
+      assert.equal(events[0].properties.$mcp_profile, profile);
+      assert.equal(events[0].properties.$mcp_tool_name, undefined);
+      assert.equal(events[0].properties.$mcp_error_type, "validation");
+    }
+  });
+
   test("a transport refusal is not a tool call, even with an internal probe marker", async () => {
     for (const probe of [undefined, "manual-release-check"]) {
       const { events, deps } = captures();

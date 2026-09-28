@@ -1574,6 +1574,8 @@ interface McpProtocolOutcome {
 /** Discovery metadata, without copying the catalogue's large schemas. */
 export interface McpToolsListEvent
   extends McpServerIdentity, McpProtocolOutcome {
+  /** The sent discovery envelope, redacted and bounded before capture. */
+  response?: unknown;
   /** How many tools the response advertised. */
   toolCount?: number;
   /**
@@ -1796,6 +1798,8 @@ export async function recordMcpToolsListEvent(
     }
 
     assignMcpProtocolOutcome(properties, event);
+    const responseBody = boundedMcpPayload(event.response);
+    if (responseBody !== undefined) properties["$mcp_response"] = responseBody;
     assignMcpAttribution(properties, event);
     assignMcpPersonProcessing(properties, deps);
 

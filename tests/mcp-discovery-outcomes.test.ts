@@ -63,7 +63,7 @@ describe("MCP discovery outcomes", () => {
       assert.equal(discovery[0].toolCount, body.result.tools.length);
       assert.equal(discovery[0].profile, profile);
       assert.equal(discovery[0].isError, false);
-      assert.equal(discovery[0].response, undefined);
+      assert.deepEqual(discovery[0].response, body.result);
       assert.equal(discovery[0].protocolVersion, "2025-11-25");
       assert.equal(typeof discovery[0].durationMs, "number");
       assert.deepEqual(discovery[0].parameters, {
@@ -115,6 +115,7 @@ describe("MCP discovery outcomes", () => {
         parameters: {
           request: { method: "tools/list", params: { token: "secret" } },
         },
+        response: { tools: [], nextCursor: "next-page", token: "secret" },
       },
       { fetch },
     );
@@ -127,5 +128,26 @@ describe("MCP discovery outcomes", () => {
     assert.equal(properties.$mcp_error_message, "Omit cursor.");
     assert.equal(properties.$mcp_duration_ms, 86_400_000);
     assert.equal(properties.$mcp_parameters.request.params.token, "[redacted]");
+    assert.deepEqual(properties.$mcp_response, {
+      tools: [],
+      nextCursor: "next-page",
+      token: "[redacted]",
+    });
+  });
+
+  test("large discovery capture is bounded without modifying the advertised catalogue", async () => {
+    const events: Row[] = [];
+    const { response, discovery } = await discover("full", {});
+    const body = await response.json();
+    await recordMcpToolsListEvent(env, discovery[0], {
+      fetch: (async (_url, init) => {
+        events.push(JSON.parse(String(init?.body)));
+        return new Response("{}", { status: 200 });
+      }) as typeof fetch,
+    });
+    const captured = events[0].properties.$mcp_response;
+    assert.equal(captured.truncated, true);
+    assert.ok(captured.preview.length <= 4096);
+    assert.deepEqual(discovery[0].response, (body as Row).result);
   });
 });
