@@ -1186,16 +1186,45 @@ function redactMcpUri(value: string): string {
   }
 }
 
-function redactMcpSensitiveFields(value: unknown, depth = 0): unknown {
+interface McpPayloadBudget {
+  characters: number;
+  nodes: number;
+  truncated: boolean;
+}
+
+function redactMcpSensitiveFields(
+  value: unknown,
+  budget: McpPayloadBudget,
+  depth = 0,
+): unknown {
+  budget.nodes -= 1;
   if (depth > MCP_REDACT_MAX_DEPTH) return "[max depth exceeded]";
+  if (typeof value === "string") {
+    const kept = value.slice(0, Math.max(0, budget.characters));
+    budget.characters -= kept.length;
+    if (kept.length < value.length) budget.truncated = true;
+    return kept;
+  }
   if (Array.isArray(value)) {
-    return value.map((entry) => redactMcpSensitiveFields(entry, depth + 1));
+    const redacted: unknown[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      if (budget.characters <= 0 || budget.nodes <= 0) {
+        budget.truncated = true;
+        break;
+      }
+      budget.characters -= 1;
+      redacted.push(redactMcpSensitiveFields(value[index], budget, depth + 1));
+    }
+    return redacted;
   }
   if (value && typeof value === "object") {
-    const redacted: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(
-      value as Record<string, unknown>,
-    )) {
+    const redacted: Array<[string, unknown]> = [];
+    for (const key of Object.keys(value)) {
+      if (key.length + 3 > budget.characters || budget.nodes <= 0) {
+        budget.truncated = true;
+        break;
+      }
+      budget.characters -= key.length + 3;
       if (
         MCP_SENSITIVE_KEY_PATTERN.test(key) ||
         key === "blob" ||
@@ -1204,17 +1233,31 @@ function redactMcpSensitiveFields(value: unknown, depth = 0): unknown {
             String((value as Record<string, unknown>).type),
           ))
       ) {
-        redacted[key] = MCP_REDACTED_VALUE;
-      } else if (
-        (key === "uri" || key === "url") &&
-        typeof entry === "string"
-      ) {
-        redacted[key] = redactMcpUri(entry);
+        redacted.push([key, MCP_REDACTED_VALUE]);
+        budget.characters -= MCP_REDACTED_VALUE.length;
       } else {
-        redacted[key] = redactMcpSensitiveFields(entry, depth + 1);
+        const entry = (value as Record<string, unknown>)[key];
+        if ((key === "uri" || key === "url") && typeof entry === "string") {
+          // Do not parse an unbounded URL or truncate it before redaction:
+          // cutting through userinfo could turn a credential into a hostname.
+          if (entry.length > budget.characters) {
+            redacted.push([key, "[uri exceeds limit]"]);
+            budget.characters = 0;
+            budget.truncated = true;
+          } else {
+            const uri = redactMcpUri(entry);
+            redacted.push([key, uri]);
+            budget.characters -= uri.length;
+          }
+        } else {
+          redacted.push([
+            key,
+            redactMcpSensitiveFields(entry, budget, depth + 1),
+          ]);
+        }
       }
     }
-    return redacted;
+    return Object.fromEntries(redacted);
   }
   return value;
 }
@@ -1226,15 +1269,24 @@ const MCP_PAYLOAD_MAX_CHARS = 4096;
 
 function boundedMcpPayload(value: unknown): unknown {
   if (value === undefined) return undefined;
-  const redacted = redactMcpSensitiveFields(value);
+  // Bound work before copying large results. The serialized cap alone still
+  // traversed every row and allocated a second full response before slicing.
+  const budget = {
+    characters: MCP_PAYLOAD_MAX_CHARS,
+    nodes: 512,
+    truncated: false,
+  };
+  let redacted: unknown;
   let serialized: string | undefined;
   try {
+    redacted = redactMcpSensitiveFields(value, budget);
     serialized = JSON.stringify(redacted);
   } catch {
     return undefined;
   }
   if (typeof serialized !== "string") return undefined;
-  if (serialized.length <= MCP_PAYLOAD_MAX_CHARS) return redacted;
+  if (!budget.truncated && serialized.length <= MCP_PAYLOAD_MAX_CHARS)
+    return redacted;
   return {
     truncated: true,
     preview: serialized.slice(0, MCP_PAYLOAD_MAX_CHARS),
