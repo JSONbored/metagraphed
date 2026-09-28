@@ -1,5 +1,5 @@
 import { pathToFileURL } from "node:url";
-import { r2ApiBaseUrl, requireCloudflareCredentials } from "./r2-rest.ts";
+import { r2ApiBaseUrl } from "./r2-rest.ts";
 
 export interface RegistryObject {
   key: string;
@@ -259,21 +259,9 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  const write = process.argv.includes("--write");
-  if (write && process.env.METAGRAPH_R2_GC_PUBLISH_LOCK !== "1") {
-    throw new Error(
-      "Registry cleanup requires the exclusive publish workflow lock",
-    );
-  }
-  const { accountId, apiToken } = requireCloudflareCredentials();
-  const namespace = process.env.METAGRAPH_KV_NAMESPACE_ID;
-  if (!namespace) throw new Error("METAGRAPH_KV_NAMESPACE_ID is required");
+  // Keep the old deployment step harmless while the remaining R2 originals
+  // are retired by the separately verified migration controllers.
   console.log(
-    JSON.stringify(
-      await collectRegistryHashes(
-        cloudflareRegistryStore(accountId, apiToken, namespace),
-        { write },
-      ),
-    ),
+    JSON.stringify({ mode: "retired", backend: "kv", r2_operations: 0 }),
   );
 }

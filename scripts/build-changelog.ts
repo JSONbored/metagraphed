@@ -1,19 +1,6 @@
-// Publish-time changelog (#1003, ADR-0006).
-//
-// subnets/coverage are R2-only, so there is no committed baseline to diff at
-// BUILD time — the build writes an empty placeholder changelog. This script runs
-// in the PUBLISH job (which has Cloudflare creds), BEFORE r2-upload overwrites
-// `latest/`, and computes the real "what changed since the last publish" diff by
-// fetching the previous publish from R2 and diffing it against the freshly-built
-// (staged) artifacts. It then overwrites the staged changelog.json so r2-upload
-// publishes the real feed and dispatch-webhooks fires on it.
-//
-// BEST-EFFORT BY DESIGN: any failure (no creds, no wrangler, missing baseline,
-// first publish, malformed remote) leaves the build's empty placeholder in place
-// and exits 0. It must NEVER fail the publish — a stale/empty changelog for one
-// run is recoverable on the next; a broken publish is not.
-
-import { spawnSync } from "node:child_process";
+// Compare the staged registry with the last verified KV publication.
+// A configured publisher preserves its live generation if the baseline is unreadable.
+import { readPublishedRegistryJson } from "./registry-kv-context.ts";
 import path from "node:path";
 import { buildChangelog, subnetsOf, type ArtifactEntry } from "./changelog.ts";
 import { artifactFilePath, readJson, repoRoot, writeJson } from "./lib.ts";
@@ -22,36 +9,6 @@ import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 type Row = Record<string, unknown>;
 
 const dryRun = process.argv.includes("--dry-run");
-
-function wranglerBin(): string {
-  return (
-    process.env.METAGRAPH_WRANGLER_BIN ||
-    path.join(
-      repoRoot,
-      "node_modules",
-      ".bin",
-      process.platform === "win32" ? "wrangler.cmd" : "wrangler",
-    )
-  );
-}
-
-// Read a JSON object from R2 `latest/` via the same wrangler call r2-upload uses.
-// Returns null on any failure (missing object, no creds, parse error).
-function getRemoteR2Json(bucketName: string, key: string): Row | null {
-  const result = spawnSync(
-    wranglerBin(),
-    ["r2", "object", "get", `${bucketName}/${key}`, "--remote", "--pipe"],
-    { encoding: "utf8", maxBuffer: 32 * 1024 * 1024, stdio: "pipe" },
-  );
-  if (result.status !== 0) {
-    return null;
-  }
-  try {
-    return JSON.parse(result.stdout);
-  } catch {
-    return null;
-  }
-}
 
 async function readStagedJson(relativePath: string): Promise<Row | null> {
   try {
@@ -99,13 +56,13 @@ async function main(): Promise<void> {
     return;
   }
 
-  const previousSubnets = getRemoteR2Json(bucket, "latest/subnets.json");
-  const previousCoverage = getRemoteR2Json(bucket, "latest/coverage.json");
-  const previousManifest = getRemoteR2Json(bucket, "latest/r2-manifest.json");
+  const previousSubnets = await readPublishedRegistryJson("subnets.json");
+  const previousCoverage = await readPublishedRegistryJson("coverage.json");
+  const previousManifest = await readPublishedRegistryJson("r2-manifest.json");
 
   if (!previousSubnets && !previousCoverage && !previousManifest) {
     console.log(
-      "build-changelog: no previous R2 publish found (first publish or no creds); leaving empty placeholder.",
+      "build-changelog: no previous registry publication found (first publish or no creds); leaving empty placeholder.",
     );
     return;
   }
@@ -129,7 +86,7 @@ async function main(): Promise<void> {
 
   if (dryRun) {
     console.log(
-      "build-changelog (dry-run) — diff vs previous R2 publish:",
+      "build-changelog (dry-run) — diff vs previous registry publication:",
       JSON.stringify(summary, null, 2),
     );
     return;
@@ -144,6 +101,7 @@ async function main(): Promise<void> {
 main().catch((error) => {
   // Never fail the publish over the change feed.
   console.warn(
-    `build-changelog: failed, leaving the placeholder changelog in place: ${(error as Error)?.message ?? error}`,
+    `build-changelog: failed, preserving the current published registry: ${(error as Error)?.message ?? error}`,
   );
+  throw error;
 });

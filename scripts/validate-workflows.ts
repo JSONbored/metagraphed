@@ -352,11 +352,6 @@ for (const workflow of workflows) {
       "publish workflow must pass refreshed artifacts from the isolated refresh job",
     );
     check(
-      content.includes('METAGRAPH_R2_UPLOAD_HISTORY: "1"'),
-      workflow,
-      "publish workflow must upload versioned R2 history objects",
-    );
-    check(
       content.includes("publish_mode:") &&
         content.includes("Use workflow_dispatch publish_mode=dry-run"),
       workflow,
