@@ -311,6 +311,12 @@ export function archiveObjectStore(env: ArchiveEnv) {
       if (typeof object.metadata[source] === "string")
         httpMetadata[target] = object.metadata[source];
     }
+    if (typeof object.metadata.Expires === "string") {
+      const expires = new Date(object.metadata.Expires);
+      if (!Number.isFinite(expires.getTime()))
+        throw new Error("Archive expiry metadata differs");
+      httpMetadata.cacheExpiry = expires;
+    }
     return {
       key: object.key,
       version: object.sha256,
@@ -339,6 +345,8 @@ export function archiveObjectStore(env: ArchiveEnv) {
           const value = httpMetadata[key as keyof typeof names];
           if (value !== undefined) headers.set(header, value);
         }
+        if (httpMetadata.cacheExpiry)
+          headers.set("expires", httpMetadata.cacheExpiry.toUTCString());
       },
     };
   }
@@ -406,6 +414,8 @@ export function archiveObjectStore(env: ArchiveEnv) {
     );
     return {
       ...metadata,
+      writeHttpMetadata: (headers: Headers) =>
+        metadata.writeHttpMetadata(headers),
       ...(options?.range ? { range: { offset, length } } : {}),
       get body() {
         return response.body!;

@@ -107,6 +107,7 @@ describe("shared archive object storage", () => {
       metadata: {
         ContentType: "application/json",
         CacheControl: "max-age=60",
+        Expires: "2026-10-01T12:00:00+00:00",
         Metadata: { source: "original" },
       },
     };
@@ -121,6 +122,7 @@ describe("shared archive object storage", () => {
     object.writeHttpMetadata(headers);
     expect(headers.get("content-type")).toBe("application/json");
     expect(headers.get("cache-control")).toBe("max-age=60");
+    expect(headers.get("expires")).toBe("Thu, 01 Oct 2026 12:00:00 GMT");
     expect(object.checksums.toJSON().sha256).toBe(
       Buffer.from(record.sha256, "hex").toString("base64"),
     );
