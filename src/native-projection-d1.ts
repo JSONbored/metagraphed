@@ -1,6 +1,11 @@
 import { z } from "zod";
+import { timed, TIMING_D1 } from "./request-timing.ts";
+import { markD1SqlExecution } from "./d1-store.ts";
 
 const CHUNK_BYTES = 65_536;
+// Bound each binding response to 512 KiB of compressed bytes. Restore in order
+// without paying one sequential database round trip per 64 KiB chunk.
+const CHUNKS_PER_READ = 8;
 const MAX_BYTES = 32 * 1024 * 1024;
 const Chunk = z.strictObject({ data: z.string().max(87_384) });
 const Descriptor = z.strictObject({
@@ -18,36 +23,52 @@ const Descriptor = z.strictObject({
 
 /** Immutable compressed projections in the existing small-artifact table. */
 export function nativeProjectionD1(db: Pick<D1Database, "prepare">) {
-  const read = (key: string) =>
-    db
-      .prepare("SELECT payload FROM generated_artifacts WHERE key=?")
-      .bind(key)
-      .first<{ payload: string }>();
+  const read = async (keys: string[]) => {
+    const result = await timed(TIMING_D1, () =>
+      db
+        .prepare(
+          `SELECT key,payload FROM generated_artifacts WHERE key IN (${keys.map(() => "?").join(",")})`,
+        )
+        .bind(...keys)
+        .all<{ key: string; payload: string }>(),
+    );
+    markD1SqlExecution(result);
+    return new Map(result.results.map((row) => [row.key, row.payload]));
+  };
   return {
     async get(key: string) {
-      const row = await read(key);
-      if (!row) return null;
+      const payload = (await read([key])).get(key);
+      if (payload === undefined) return null;
       if (key.endsWith("/current.json")) {
         return {
-          size: new TextEncoder().encode(row.payload).byteLength,
-          json: async () => JSON.parse(row.payload) as unknown,
+          size: new TextEncoder().encode(payload).byteLength,
+          json: async () => JSON.parse(payload) as unknown,
         };
       }
-      const descriptor = Descriptor.parse(JSON.parse(row.payload));
+      const descriptor = Descriptor.parse(JSON.parse(payload));
       if (
         descriptor.parts !== Math.ceil(descriptor.compressedBytes / CHUNK_BYTES)
       )
         throw new Error("Projection chunk census differs");
       let part = 0;
+      let chunks = new Map<string, string>();
       const compressed = new ReadableStream<Uint8Array>({
         async pull(controller) {
           if (part === descriptor.parts) {
             controller.close();
             return;
           }
-          const chunk = await read(`${key}/chunks/${part}`);
-          if (!chunk) throw new Error("Projection chunk is missing");
-          const { data } = Chunk.parse(JSON.parse(chunk.payload));
+          if (part % CHUNKS_PER_READ === 0)
+            chunks = await read(
+              Array.from(
+                { length: Math.min(CHUNKS_PER_READ, descriptor.parts - part) },
+                (_, index) => `${key}/chunks/${part + index}`,
+              ),
+            );
+          const chunk = chunks.get(`${key}/chunks/${part}`);
+          if (chunk === undefined)
+            throw new Error("Projection chunk is missing");
+          const { data } = Chunk.parse(JSON.parse(chunk));
           const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
           const expected = Math.min(
             CHUNK_BYTES,

@@ -13,6 +13,7 @@ import { resetModuleState } from "../src/module-state-registry.ts";
 import { readArtifactObject } from "../src/projection-store.ts";
 import { z } from "zod";
 import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watchdog.ts";
+import { requestTimings, withRequestTiming } from "../src/request-timing.ts";
 
 const databases: DatabaseSync[] = [];
 beforeEach(() => resetModuleState());
@@ -29,17 +30,26 @@ function fixture() {
     ),
   );
   const reads: string[] = [];
+  const queries: string[][] = [];
   const db = {
     async batch() {
       throw new Error("Unexpected batch query");
     },
     prepare(text: string) {
       return {
-        bind(key: string) {
+        bind(...keys: string[]) {
           return {
-            async first() {
-              reads.push(key);
-              return sql.prepare(text).get(key) ?? null;
+            async all() {
+              reads.push(...keys);
+              queries.push(keys);
+              return {
+                // A D1 result need not match the requested key order.
+                results: sql
+                  .prepare(text)
+                  .all(...keys)
+                  .reverse(),
+                meta: { timings: { sql_duration_ms: 1 } },
+              };
             },
           };
         },
@@ -70,7 +80,7 @@ function fixture() {
     put(key, descriptor);
     return descriptor;
   }
-  return { sql, db, reads, put, seed, store: nativeProjectionD1(db) };
+  return { sql, db, reads, queries, put, seed, store: nativeProjectionD1(db) };
 }
 
 const objects: Record<string, { raw: string; etag: string; size: number }> =
@@ -133,6 +143,50 @@ test("compressed chunks restore exact multibyte JSON and large integer strings",
   assert.equal(object!.etag, hash(raw, "md5"));
   assert.deepEqual(await object!.json(), expected);
   assert.equal(await store.get("missing"), null);
+});
+
+test("many chunks restore in bounded groups with exact ordering and request timing", async () => {
+  const { seed, store, queries, reads } = fixture();
+  const expected = {
+    amount: "18446744073709551615",
+    name: "界🌍",
+    noise: randomBytes(1_300_000).toString("base64"),
+  };
+  const descriptor = seed("projection", Buffer.from(JSON.stringify(expected)));
+  assert.ok(descriptor.parts > 16);
+  await withRequestTiming(async () => {
+    const object = await store.get("projection");
+    assert.deepEqual(await object!.json(), expected);
+    const calls = 1 + Math.ceil(descriptor.parts / 8);
+    assert.equal(queries.length, calls);
+    assert.equal(requestTimings()!.get("d1")!.count, calls);
+    assert.deepEqual(requestTimings()!.get("d1_sql"), {
+      count: calls,
+      durationMs: calls,
+    });
+  });
+  assert.equal(reads.length, 1 + descriptor.parts);
+  assert.equal(new Set(reads).size, reads.length);
+  assert.ok(queries.every((keys) => keys.length <= 8));
+});
+
+test("missing and damaged later chunk groups cannot acknowledge a restored object", async () => {
+  for (const failure of ["missing", "damaged"] as const) {
+    const { seed, store, sql, put } = fixture();
+    const descriptor = seed(
+      "projection",
+      Buffer.from(
+        JSON.stringify({ noise: randomBytes(650_000).toString("base64") }),
+      ),
+    );
+    assert.ok(descriptor.parts > 8);
+    if (failure === "missing")
+      sql
+        .prepare("DELETE FROM generated_artifacts WHERE key=?")
+        .run("projection/chunks/8");
+    else put("projection/chunks/8", { data: "" });
+    await assert.rejects(store.get("projection"));
+  }
 });
 
 test("corrupt, missing and oversized chunks fail without acknowledging a restored object", async () => {

@@ -15,7 +15,7 @@ export type D1StoreBinding = Pick<D1Database, "prepare" | "batch">;
 /** D1 reports SQL execution separately from binding/network wait. Keep both
  * measurements: a slow binding call does not establish a slow query. Batch
  * results each describe one statement, including export revision writes. */
-function markSqlExecution(result: Pick<D1Result, "meta">): void {
+export function markD1SqlExecution(result: Pick<D1Result, "meta">): void {
   const ms = result.meta?.timings?.sql_duration_ms ?? result.meta?.duration;
   if (typeof ms === "number" && Number.isFinite(ms) && ms >= 0)
     mark(TIMING_D1_SQL, ms);
@@ -76,7 +76,7 @@ export function createD1Store(
     const result = await timed(TIMING_D1, () =>
       prepare({ text, values }).all<Row>(),
     );
-    markSqlExecution(result);
+    markD1SqlExecution(result);
     return result.results;
   };
   const batch = async (statements: readonly ProducerStatement[]) => {
@@ -91,7 +91,7 @@ export function createD1Store(
         }),
       );
     const result = await timed(TIMING_D1, () => db.batch(prepared));
-    result.forEach(markSqlExecution);
+    result.forEach(markD1SqlExecution);
     return result.slice(0, statements.length);
   };
   return {
@@ -110,7 +110,7 @@ export function createD1Store(
       const result = await timed(TIMING_D1, () =>
         prepare({ text, values }).run(),
       );
-      markSqlExecution(result);
+      markD1SqlExecution(result);
       return { changes: result.meta.changes };
     },
     async transaction(statements: readonly ProducerStatement[]) {
