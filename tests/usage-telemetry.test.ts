@@ -410,6 +410,7 @@ describe("recordMcpToolCallEvent", () => {
       $mcp_is_error: false,
       $mcp_duration_ms: 12,
       $mcp_tool_name: "get_subnet",
+      $mcp_resource_name: "get_subnet",
       // The family envelope: the SDK's source marker, and no person profile
       // for a caller with no github: identity.
       $mcp_source: "posthog_mcp_analytics",
