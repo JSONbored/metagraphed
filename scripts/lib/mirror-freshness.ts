@@ -3,7 +3,6 @@ import {
   parseContainerStatus,
 } from "./container-status.ts";
 import { d1AdminBatch, d1AdminCredentials } from "./d1-admin.ts";
-import { r2ObjectUrl } from "../r2-rest.ts";
 
 const HOUR = 60 * 60 * 1000;
 // These sources intentionally leave unchanged archive snapshots alone. Their
@@ -153,11 +152,10 @@ export function evaluateMirrorFreshness(
 export async function loadMirrorFreshnessEvidence(
   transport: typeof fetch = fetch,
 ): Promise<MirrorFreshnessEvidence> {
-  const credentials = d1AdminCredentials();
   const results = await d1AdminBatch(
     [
       {
-        sql: "SELECT payload FROM generated_artifacts WHERE key=?",
+        sql: "SELECT CASE WHEN length(CAST(payload AS BLOB))<=65536 THEN payload ELSE NULL END AS payload FROM generated_artifacts WHERE key=?",
         params: [
           CONTAINER_STATUS_PREFIX +
             "metagraph/lakehouse/state-mirror-status.json",
@@ -173,49 +171,11 @@ export async function loadMirrorFreshnessEvidence(
     d1AdminCredentials({
       ...process.env,
       CLOUDFLARE_API_TOKEN:
-        process.env.CLOUDFLARE_D1_API_TOKEN ?? credentials.apiToken,
+        process.env.CLOUDFLARE_D1_API_TOKEN ?? process.env.CLOUDFLARE_API_TOKEN,
     }),
     transport,
   );
-  let receipt: unknown;
-  if (results[0].results.length) {
-    receipt = parseContainerStatus(results[0].results[0]?.payload);
-  } else {
-    const response = await transport(
-      r2ObjectUrl(
-        credentials.accountId,
-        process.env.R2_ARTIFACTS_BUCKET ?? "metagraphed-artifacts",
-        "metagraph/lakehouse/state-mirror-status.json",
-      ),
-      {
-        headers: { authorization: `Bearer ${credentials.apiToken}` },
-        redirect: "error",
-        signal: AbortSignal.timeout(20_000),
-      },
-    );
-    if (!response.ok || !response.body)
-      throw new Error(`Mirror receipt HTTP ${response.status}`);
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
-    let text = "",
-      bytes = 0;
-    try {
-      for (;;) {
-        const part = await reader.read();
-        if (part.done) break;
-        bytes += part.value.byteLength;
-        if (bytes > 65536) {
-          await reader.cancel();
-          throw new Error("Mirror receipt exceeds 64 KiB");
-        }
-        text += decoder.decode(part.value, { stream: true });
-      }
-      text += decoder.decode();
-    } finally {
-      reader.releaseLock();
-    }
-    receipt = JSON.parse(text);
-  }
+  const receipt = parseContainerStatus(results[0].results[0]?.payload);
   return {
     receipt,
     lanes: results[1].results,

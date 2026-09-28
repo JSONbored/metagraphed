@@ -42,7 +42,7 @@
 //
 // ## Every status object must be CLASSIFIED
 //
-// The bucket is listed and any `*-status.json` missing from `EXPECTED_LANES`
+// The D1 status namespace is read and any `*-status.json` missing from `EXPECTED_LANES`
 // FAILS, exactly as an unclassified table does on the lakehouse side. Absent
 // means nobody has thought about it; `maxAgeMs: null` with a reason means
 // somebody decided it cannot go stale. The two are different facts and only one
@@ -51,9 +51,6 @@
 import { readContainerStatuses } from "./lib/container-status.ts";
 import { fileURLToPath } from "node:url";
 
-import { r2ApiBaseUrl, r2ObjectUrl } from "./r2-rest.ts";
-
-const BUCKET = process.env.R2_ARTIFACTS_BUCKET ?? "metagraphed-artifacts";
 export const PREFIX = "metagraph/lakehouse/";
 
 /** The lane name a verdict line opens with, which every detail string starts with. */
@@ -342,78 +339,16 @@ export function laneNamesFrom(keys: readonly string[]): string[] {
     .sort((a, b) => a.localeCompare(b));
 }
 
-async function listLaneKeys(
-  accountId: string,
-  apiToken: string,
-): Promise<string[]> {
-  const url =
-    `${r2ApiBaseUrl()}/accounts/${accountId}/r2/buckets/${BUCKET}/objects` +
-    `?prefix=${encodeURIComponent(PREFIX)}&per_page=1000`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiToken}` },
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!res.ok) {
-    throw new Error(`listing ${BUCKET}/${PREFIX} failed: HTTP ${res.status}`);
-  }
-  const body = (await res.json()) as {
-    success?: boolean;
-    result?: { key?: string }[];
-  };
-  if (!body.success)
-    throw new Error(`listing ${BUCKET}/${PREFIX} returned success:false`);
-  return (body.result ?? []).map((o) => o.key ?? "").filter(Boolean);
-}
-
-async function readLane(
-  accountId: string,
-  apiToken: string,
-  lane: string,
-): Promise<Record<string, unknown> | null> {
-  try {
-    const res = await fetch(
-      r2ObjectUrl(accountId, BUCKET, `${PREFIX}${lane}`),
-      {
-        headers: { Authorization: `Bearer ${apiToken}` },
-        signal: AbortSignal.timeout(20_000),
-      },
-    );
-    if (!res.ok) return null;
-    const body: unknown = await res.json();
-    return body && typeof body === "object"
-      ? (body as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-async function main(): Promise<void> {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID ?? "";
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN ?? "";
-  if (!accountId || !apiToken) {
-    // Loud, not skipped: a watchdog that quietly passes without credentials is
-    // the "gate that cannot fail" this repo has been bitten by before.
-    process.stderr.write(
-      "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required -- this reads live R2.\n",
-    );
-    process.exit(1);
-  }
-
+export async function checkLaneStatus(): Promise<void> {
   const statuses = await readContainerStatuses();
-  const keys = [
-    ...new Set([
-      ...(await listLaneKeys(accountId, apiToken)),
-      ...statuses.keys(),
-    ]),
-  ];
+  const keys = [...statuses.keys()];
   const lanes = laneNamesFrom(keys);
   if (lanes.length === 0) {
-    // An empty listing is not "every lane is fine". Something is wrong with the
-    // prefix, the bucket or the token, and passing on it would be the same
+    // An empty census is not "every lane is fine". Something is wrong with the
+    // producer, prefix or status store, and passing on it would be the same
     // silent no-op this check exists to end.
     process.stderr.write(
-      `lane-status: NO status objects found under ${PREFIX} -- wrong bucket, prefix or token?\n`,
+      `lane-status: NO D1 status records found under ${PREFIX} -- check the producer and status store.\n`,
     );
     process.exit(1);
   }
@@ -429,16 +364,13 @@ async function main(): Promise<void> {
   const lines: string[] = [];
   for (const lane of lanes) {
     const rule = EXPECTED_LANES[lane];
-    const body = rule
-      ? (statuses.get(`${PREFIX}${lane}`) ??
-        (await readLane(accountId, apiToken, lane)))
-      : null;
+    const body = rule ? (statuses.get(`${PREFIX}${lane}`) ?? null) : null;
     const verdict = evaluate({ lane, body, nowMs }, rule);
     lines.push(`${verdict.ok ? "ok   " : "STALE"} ${verdict.detail}`);
     if (!verdict.ok) failures.push(verdict.detail);
   }
   for (const lane of missing) {
-    const detail = `${lane} is declared in EXPECTED_LANES but no longer exists in the bucket`;
+    const detail = `${lane} is declared in EXPECTED_LANES but no longer exists in the D1 status store`;
     lines.push(`STALE ${detail}`);
     failures.push(detail);
   }
@@ -498,4 +430,4 @@ async function main(): Promise<void> {
   process.exit(1);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await main();
+if (process.argv[1] === fileURLToPath(import.meta.url)) await checkLaneStatus();

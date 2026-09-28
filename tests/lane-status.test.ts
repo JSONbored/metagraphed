@@ -7,14 +7,21 @@
 // quiet for five and a half hours while the route it protects silently went
 // back to scanning 4,374 MB per request.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import {
   EXPECTED_LANES,
   KNOWN_STALE,
   evaluate,
   laneNamesFrom,
   PREFIX,
+  checkLaneStatus,
 } from "../scripts/check-lane-status.ts";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -27,6 +34,55 @@ function at(offsetMs: number): string {
 const COMPLETED = "account-events-rollup-status.json";
 const DECODE = "decode-run-status.json";
 const SUMMARY = "account-summary-status.json";
+
+test("the lane sweep reads D1 once and still fails on missing producers", async () => {
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+  vi.stubEnv("CLOUDFLARE_API_TOKEN", "fixture-reader");
+  vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", "fixture-d1-reader");
+  vi.stubEnv(
+    "CLOUDFLARE_D1_DATABASE_ID",
+    "11111111-1111-1111-1111-111111111111",
+  );
+  vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "");
+  const fetcher = vi.fn<typeof fetch>(async (url, init) => {
+    assert.match(String(url), /\/d1\/database\//);
+    assert.equal(
+      new Headers(init?.headers).get("authorization"),
+      "Bearer fixture-d1-reader",
+    );
+    return Response.json({
+      success: true,
+      result: [
+        {
+          success: true,
+          results: [
+            {
+              key: "container-status/v1/" + PREFIX + DECODE,
+              payload: JSON.stringify({
+                status: "ok",
+                updated_at: new Date().toISOString(),
+              }),
+            },
+          ],
+        },
+      ],
+    });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const output = vi
+    .spyOn(process.stdout, "write")
+    .mockImplementation(() => true);
+  vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+  vi.spyOn(process, "exit").mockImplementation(() => {
+    throw new Error("failed sweep");
+  });
+  await assert.rejects(checkLaneStatus(), /failed sweep/);
+  assert.equal(fetcher.mock.calls.length, 1);
+  assert.match(
+    output.mock.calls.map(([text]) => String(text)).join(""),
+    /no longer exists in the D1 status store/,
+  );
+});
 
 describe("lane status", () => {
   test("an UNCLASSIFIED lane fails -- absent is not exempt", () => {
