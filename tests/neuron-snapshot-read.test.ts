@@ -104,6 +104,21 @@ test("economic neuron projections preserve every row while expanding documents o
     );
     assert.deepEqual(actual, expected);
     assert.equal(statements.length, 1);
+    const transport = db.prepare(statements[0]);
+    const packed = await (
+      netuid === undefined ? transport : transport.bind(netuid)
+    ).all<{ rows_payload: string }>();
+    assert.equal(
+      packed.results.length,
+      netuid === 999 ? 0 : netuid === undefined ? 4 : 2,
+    );
+    assert.equal(
+      packed.results.reduce(
+        (count, row) => count + JSON.parse(row.rows_payload).length,
+        0,
+      ),
+      actual.length,
+    );
     if (netuid !== 999) {
       assert(actual.some((row) => row.hotkey === null));
       assert(actual.some((row) => row.validator_permit === 0));
@@ -126,6 +141,55 @@ test("economic neuron projections preserve every row while expanding documents o
     );
     assert(!details.some((x) => /CORRELATED/.test(x)));
   }
+});
+
+test("economics ordering does not depend on aggregate or shard arrival order", async () => {
+  const binding = {
+    batch: db.batch.bind(db),
+    prepare() {
+      return {
+        bind() {
+          return this;
+        },
+        async all() {
+          return {
+            success: true,
+            results: [
+              {
+                netuid: 128,
+                shard: 1,
+                rows_payload: "[[257,null,[1,0,0,1,null]]]",
+              },
+              {
+                netuid: 7,
+                shard: 0,
+                rows_payload:
+                  '[[10,"5Later",[1,1,0,1,0]],[2,null,[0,0,null,0,null]]]',
+              },
+              {
+                netuid: 128,
+                shard: 0,
+                rows_payload: '[[1,"5Earlier",[1,1,0,1,0]]]',
+              },
+            ],
+          };
+        },
+      };
+    },
+  };
+  const actual = await readNeuronEconomicsRows(createD1Store(db), {
+    D1_STATE: binding,
+    D1_STATE_TABLES: "neurons",
+  });
+  assert.deepEqual(
+    actual.map(({ netuid, uid, hotkey }) => [netuid, uid, hotkey]),
+    [
+      [7, 2, null],
+      [7, 10, "5Later"],
+      [128, 1, "5Earlier"],
+      [128, 257, null],
+    ],
+  );
 });
 
 test("packed economics retain SQLite boolean and structured-value semantics", async () => {

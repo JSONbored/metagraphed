@@ -12,6 +12,9 @@ import type { UntypedRowQuerier } from "./read-store.ts";
 import { readRevisionedNeuronEconomics } from "./neuron-economics-cache.ts";
 
 const EconomicsValuesSchema = z.array(z.unknown()).length(5);
+const EconomicsShardSchema = z.array(
+  z.tuple([z.number(), z.string().nullable(), EconomicsValuesSchema]),
+);
 
 // A multi-path extraction returns JSON, while individual SQLite columns turn
 // booleans into integers and structured values into JSON text. Restore those
@@ -42,32 +45,44 @@ export async function readNeuronEconomicsRows(
   const store = selectedD1Store(env, ["neurons"]);
   if (store) {
     const read = async () => {
-      // Parse each metric object once for all five paths. Packing the values also
-      // avoids repeating five column names for every neuron across the binding.
-      const rows = await store.query<
-        Record<string, unknown> & { metrics_payload: string }
-      >(
-        `SELECT ${scoped ? "" : "m.netuid,"}m.uid,m.hotkey,
-        json_extract(j.value,${metrics.map((column) => `'$.${column}'`).join(",")}) AS metrics_payload
+      // Transport one array per bounded document shard, rather than tens of
+      // thousands of row objects and separately encoded metrics strings. Keep
+      // identities from accepted memberships and parse each metric object once.
+      const shards = await store.query<{
+        netuid: number;
+        shard: number;
+        rows_payload: string;
+      }>(
+        `SELECT d.netuid,d.shard,
+        json_group_array(json_array(m.uid,m.hotkey,
+          json_extract(j.value,${metrics.map((column) => `'$.${column}'`).join(",")}))) AS rows_payload
        FROM neurons_documents d CROSS JOIN json_each(d.payload) j
        CROSS JOIN neurons_members m
        WHERE d.day='' AND ${scoped ? "d.netuid=?" : "d.netuid!=0"}
          AND m.netuid=d.netuid AND m.uid=CAST(j.key AS INTEGER) AND m.shard=d.shard
-       ORDER BY m.netuid,m.uid`,
+       GROUP BY d.netuid,d.shard`,
         params,
       );
-      return rows.map(({ metrics_payload, ...identity }) => {
-        const values = EconomicsValuesSchema.parse(JSON.parse(metrics_payload));
-        return {
-          ...identity,
+      // SQL aggregation does not promise member or shard order. Restore the
+      // public view's exact ordering after unpacking, including scoped reads.
+      return shards
+        .flatMap(({ netuid, rows_payload }) =>
+          EconomicsShardSchema.parse(JSON.parse(rows_payload)).map(
+            (row) => [netuid, ...row] as const,
+          ),
+        )
+        .sort((a, b) => a[0] - b[0] || a[1] - b[1])
+        .map(([netuid, uid, hotkey, values]) => ({
+          ...(!scoped ? { netuid } : {}),
+          uid,
+          hotkey,
           ...Object.fromEntries(
             metrics.map((column, index) => [
               column,
               sqliteJsonColumn(values[index]),
             ]),
           ),
-        };
-      });
+        }));
     };
     // Scoped reads are already small. Reuse only the full network read and
     // only where the owned producer has atomic revision tracking enabled.
