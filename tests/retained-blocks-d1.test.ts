@@ -2,7 +2,21 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { beforeAll, afterAll, test } from "vitest";
 import { Miniflare } from "miniflare";
-import { readRetainedBlockRows } from "../src/retained-blocks-d1.ts";
+import {
+  readRetainedBlockRows,
+  readRetainedBlockObservedAt,
+} from "../src/retained-blocks-d1.ts";
+import {
+  resolveObservedThrough,
+  resetObservedThroughCache,
+} from "../src/lakehouse-observed-through.ts";
+import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
+import {
+  handleBlocks,
+  handleBlock,
+  handleBlocksSummary,
+} from "../workers/request-handlers/entities.ts";
+import { mockEnv } from "./row-type.ts";
 import {
   fetchBlockRowsFromR2Sql,
   type BlockFeedQuery,
@@ -117,6 +131,158 @@ beforeAll(async () => {
       .run();
 });
 afterAll(async () => runtime.dispose());
+test("coverage uses the exact selected height and network, never the hot database", async () => {
+  await db
+    .prepare(
+      "UPDATE history_blocks SET observed_at=300 WHERE network=1 AND block_number=9",
+    )
+    .run();
+  await db
+    .prepare(
+      "UPDATE history_blocks SET observed_at=400 WHERE source_id=3 AND block_number=9",
+    )
+    .run();
+  const e = mockEnv({
+    ...env(),
+    D1_STATE_TABLES: "blocks_head",
+    D1_STATE: {
+      prepare() {
+        throw new Error("hot database must not be queried");
+      },
+      batch() {
+        throw new Error("hot database must not be queried");
+      },
+    },
+    METAGRAPH_ARCHIVE: {
+      async get(key: string) {
+        return key.endsWith("decode-watermark.json")
+          ? {
+              text: async () =>
+                JSON.stringify({
+                  decoded_through: 9,
+                  updated_at: new Date(now).toISOString(),
+                }),
+            }
+          : null;
+      },
+    },
+  });
+  try {
+    for (const [network, observed] of [
+      ["mainnet", 200],
+      ["testnet", 300],
+    ] as const) {
+      resetObservedThroughCache();
+      resetDecodeWatermarkCache();
+      const expected = new Date(observed).toISOString();
+      assert.equal(
+        await readRetainedBlockObservedAt(env(), 9, network),
+        expected,
+      );
+      assert.equal(
+        await resolveObservedThrough(e, { now: () => now }, network),
+        expected,
+      );
+      for (const kind of ["feed", "summary", "detail"] as const) {
+        const url = new URL(
+          "https://api.metagraph.sh/api/v1/blocks?limit=1&block_end=9",
+        );
+        const request = new Request(url);
+        const response =
+          kind === "feed"
+            ? await handleBlocks(request, e, url, network)
+            : kind === "summary"
+              ? await handleBlocksSummary(request, e, url, network)
+              : await handleBlock(request, e, "invalid", network);
+        const body = (await response.json()) as {
+          meta: { observed_through: string };
+        };
+        assert.equal(
+          body.meta.observed_through,
+          expected,
+          network + " " + kind,
+        );
+      }
+    }
+    assert.equal(
+      await readRetainedBlockObservedAt(env(), 8, "mainnet", now),
+      new Date(200).toISOString(),
+    );
+    for (const height of [12, 999])
+      assert.equal(
+        await readRetainedBlockObservedAt(env(), height, "mainnet", now),
+        null,
+      );
+  } finally {
+    await db
+      .prepare("UPDATE history_blocks SET observed_at=200 WHERE block_number=9")
+      .run();
+    resetObservedThroughCache();
+    resetDecodeWatermarkCache();
+  }
+});
+
+test("coverage declines invalid receipts and read failures without inventing a horizon", async () => {
+  for (const e of [
+    undefined,
+    null,
+    {},
+    { RETAINED_BLOCKS_NETWORKS: "testnet" },
+  ])
+    assert.equal(
+      await readRetainedBlockObservedAt(e, 9, "mainnet", now),
+      undefined,
+    );
+  assert.equal(
+    await readRetainedBlockObservedAt(
+      { RETAINED_BLOCKS_NETWORKS: "mainnet" },
+      9,
+      "mainnet",
+      now,
+    ),
+    null,
+  );
+  for (const success of [
+    [false, true],
+    [true, false],
+  ])
+    assert.equal(
+      await readRetainedBlockObservedAt(
+        {
+          ...env(),
+          D1_RETAINED_BLOCKS: stub([state], [{ observed_at: 200 }], success),
+        },
+        9,
+        "mainnet",
+        now,
+      ),
+      null,
+    );
+  for (const receipt of [
+    [],
+    [{ ...state, generated_at: now - 7200001 }],
+    [{ ...state, network: 1 }],
+  ])
+    assert.equal(
+      await readRetainedBlockObservedAt(
+        { ...env(), D1_RETAINED_BLOCKS: stub(receipt, [{ observed_at: 200 }]) },
+        9,
+        "mainnet",
+        now,
+      ),
+      null,
+    );
+  for (const observed_at of [0, -1, "200", null, 8640000000000001])
+    assert.equal(
+      await readRetainedBlockObservedAt(
+        { ...env(), D1_RETAINED_BLOCKS: stub([state], [{ observed_at }]) },
+        9,
+        "mainnet",
+        now,
+      ),
+      null,
+    );
+});
 test("native D1 preserves source duplicates, nulls, exact tuple order and network ownership", async () => {
   const expected = [rows[5], rows[1], rows[2], rows[3], rows[0], rows[4]];
   for (const network of ["mainnet", "testnet"] as const) {

@@ -18,9 +18,10 @@
 // SO IT IS DERIVED FROM THE DECODE WATERMARK, which is the same number the
 // serving path already routes on. `decodedThrough` is defined as the highest
 // block for which ALL FOUR decoded tables hold rows (src/decode-watermark.ts),
-// so it IS `chain.account_events`' ceiling -- in blocks. `blocks_head` maps a
-// block to the instant it was observed, so one indexed point lookup converts
-// the unit the tier knows into the unit the field publishes.
+// so it IS `chain.account_events`' ceiling -- in blocks. The selected retained
+// block maps that exact height to its recorded timestamp. Its network-scoped
+// point lookup avoids waiting on unrelated writes to the hot-state database.
+// Legacy deployments without retained blocks keep the mainnet head lookup.
 //
 // WHY A TIMESTAMP AND NOT THE BLOCK. The field name and semantics are already
 // published on /subnets/{netuid}/ownership-history as an ISO instant, and one
@@ -38,6 +39,10 @@ import { registerModuleStateReset } from "./module-state-registry.ts";
 import { resolveDecodeWatermark } from "./decode-watermark.ts";
 import { readStore } from "./read-store.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import {
+  readRetainedBlockObservedAt,
+  type RetainedBlocksEnv,
+} from "./retained-blocks-d1.ts";
 
 /**
  * How long a resolved horizon is reused.
@@ -78,6 +83,7 @@ export interface ObservedThroughDeps {
 async function readObservedThrough(
   env: unknown,
   network: ChainNetworkId,
+  now: number,
 ): Promise<string | null> {
   const watermark = await resolveDecodeWatermark(env, {}, network).catch(
     () => null,
@@ -90,6 +96,15 @@ async function readObservedThrough(
   ) {
     return null;
   }
+  const retained = await readRetainedBlockObservedAt(
+    env as RetainedBlocksEnv | null | undefined,
+    through,
+    network,
+    now,
+  );
+  if (retained !== undefined) return retained;
+  // The legacy head register has no network column and belongs to mainnet.
+  if (network !== DEFAULT_CHAIN_NETWORK) return null;
   const db = readStore(env, ["blocks_head"]);
   if (!db?.first) return null;
   try {
@@ -123,11 +138,11 @@ export async function resolveObservedThrough(
   deps: ObservedThroughDeps = {},
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<string | null> {
-  if (deps.fresh) return readObservedThrough(env, network);
   const now = (deps.now ?? Date.now)();
+  if (deps.fresh) return readObservedThrough(env, network, now);
   const cached = memo.get(network);
   if (cached && cached.expiresAt > now) return cached.value;
-  const value = readObservedThrough(env, network);
+  const value = readObservedThrough(env, network, now);
   memo.set(network, { expiresAt: now + OBSERVED_THROUGH_TTL_MS, value });
   return value;
 }

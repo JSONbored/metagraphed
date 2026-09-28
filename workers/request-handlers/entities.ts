@@ -4552,6 +4552,7 @@ async function accountMeta(
   env: Env,
   artifactPath: string,
   generatedAt: unknown,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ) {
   // CONCURRENT, not two awaits in an object literal. Object properties evaluate
   // in order, so `await a, await b` there is SERIAL -- it would add the
@@ -4576,7 +4577,7 @@ async function accountMeta(
   // the same absence, which is the exact conflation being fixed. Neither read
   // can reject: both resolve null on every failure.
   const [observedThrough, published] = await Promise.all([
-    resolveObservedThrough(env),
+    resolveObservedThrough(env, {}, network),
     publishedAt(env),
   ]);
   return {
@@ -6796,6 +6797,7 @@ export async function handleBlocks(
         env,
         "/metagraph/blocks.json",
         recordsOrEmpty(data.blocks)[0]?.observed_at ?? null,
+        network,
       ),
     },
     "short",
@@ -6839,6 +6841,7 @@ export async function handleBlocksSummary(
         env,
         "/metagraph/blocks/summary.json",
         data.last_observed_at,
+        network,
       ),
     },
     "short",
@@ -6902,6 +6905,7 @@ export async function handleBlock(
         env,
         `/metagraph/blocks/${ref}.json`,
         data.block?.observed_at ?? null,
+        network,
       ),
     },
     cacheProfile,
