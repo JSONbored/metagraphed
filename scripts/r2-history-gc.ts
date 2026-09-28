@@ -5,7 +5,7 @@ import {
   RuntimeAccountCurationPointerSchema,
   RuntimeAccountCurationSchema,
 } from "../schemas-src/artifacts/runtime-account-curation.ts";
-import { r2ApiBaseUrl, requireCloudflareCredentials } from "./r2-rest.ts";
+import { r2ApiBaseUrl } from "./r2-rest.ts";
 import type { RegistryObject } from "./r2-registry-gc.ts";
 
 export interface HistoryGcStore {
@@ -414,16 +414,9 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  const write = process.argv.includes("--write");
-  if (write && process.env.METAGRAPH_R2_GC_PUBLISH_LOCK !== "1")
-    throw new Error("History collection requires the publish concurrency lock");
-  const { accountId, apiToken } = requireCloudflareCredentials();
+  // Keep the old deployment step harmless while the remaining R2 originals
+  // are retired by the separately verified migration controllers.
   console.log(
-    JSON.stringify(
-      await collectHistoryGenerations(
-        cloudflareHistoryGcStore(accountId, apiToken),
-        { write },
-      ),
-    ),
+    JSON.stringify({ mode: "retired", backend: "kv", r2_operations: 0 }),
   );
 }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFile, execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
@@ -10,11 +10,8 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import http from "node:http";
-import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 import { afterAll, beforeAll, test } from "vitest";
 import {
   artifactDirectoryPath as realArtifactDirectoryPath,
@@ -2247,7 +2244,7 @@ test("R2-only generated artifacts stay out of the public git tree", () => {
   }
 });
 
-// The R2 upload tests below consume the sandbox's STAGING manifest
+// The publication test below consumes the sandbox's STAGING manifest
 // (dist/metagraph-r2/metagraph/r2-manifest.json). They must regenerate it
 // rather than assume it: the llms.txt test earlier in this file runs the real
 // build, which rm's + repopulates the staging dir WITHOUT a manifest (the
@@ -2267,144 +2264,27 @@ function ensureStagingManifest() {
   stagingManifestFresh = true;
 }
 
-test("R2 history upload deduplicates content-addressed objects that already exist", async () => {
-  ensureStagingManifest();
-  const execFileAsync = promisify(execFile);
-  const manifestPath = path.join(r2StagingRoot, "r2-manifest.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  const remoteManifestBody = readFileSync(manifestPath);
-  const putKeys: string[] = [];
-  const headKeys: string[] = [];
-  // Pre-seed one artifact's content-addressed key (by-hash/<sha256>, see
-  // r2-manifest.ts) as already present remotely -- its history PUT must be
-  // skipped (#8208), while every other artifact/control object (none of
-  // which this mock knows about) still gets a real PUT.
-  const preexistingHistoryKey = manifest.artifacts.at(-1).key;
-  const existingKeys = new Set([preexistingHistoryKey]);
-
-  // Mocks the Cloudflare R2 REST API scripts/r2-upload.ts calls directly
-  // (replaced the METAGRAPH_WRANGLER_BIN fake-CLI seam when putObjectOnce/
-  // getRemoteManifest moved from spawning `wrangler` to fetch() -- see that
-  // file's r2ApiBaseUrl comment).
-  const server = http.createServer((req, res) => {
-    const objectsMarker = "/objects/";
-    const markerIndex = req.url?.indexOf(objectsMarker) ?? -1;
-    if (markerIndex === -1) {
-      res.writeHead(404).end();
-      return;
-    }
-    const key = decodeURIComponent(
-      req.url!.slice(markerIndex + objectsMarker.length),
-    );
-    if (req.method === "HEAD") {
-      headKeys.push(key);
-      res.writeHead(existingKeys.has(key) ? 200 : 404).end();
-      return;
-    }
-    if (req.method === "GET") {
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(remoteManifestBody);
-      return;
-    }
-    if (req.method === "PUT") {
-      putKeys.push(key);
-      req.resume();
-      req.on("end", () => res.writeHead(200).end());
-      return;
-    }
-    res.writeHead(405).end();
-  });
-
-  try {
-    await new Promise<void>((resolve) => server.listen(0, resolve));
-    const port = (server.address() as AddressInfo).port;
-
-    // execFile (async), not execFileSync: a sync child-process wait blocks
-    // this process's event loop, starving the in-process mock server above
-    // of any chance to service the child's requests (see tests/r2-upload.test.ts).
-    const { stdout } = await execFileAsync(
-      process.execPath,
-      ["scripts/r2-upload.ts", "--write"],
-      {
-        cwd: sandbox.scriptCwd,
-        encoding: "utf8",
-        env: {
-          ...sandbox.env,
-          CLOUDFLARE_ACCOUNT_ID: "test-account",
-          CLOUDFLARE_API_TOKEN: "test-token",
-          METAGRAPH_ALLOW_R2_UPLOAD: "1",
-          METAGRAPH_R2_API_BASE_URL: `http://127.0.0.1:${port}`,
-          METAGRAPH_R2_UPLOAD_CONCURRENCY: "16",
-          METAGRAPH_R2_UPLOAD_HISTORY: "1",
-          // Lift the shared 3.5 rps production rate gate (#8240/#8261, sized
-          // for Cloudflare's ~1,200-requests/5-minutes client-API ceiling).
-          // This test walks the WHOLE manifest -- ~2.3k artifacts, each a HEAD
-          // dedupe probe plus a PUT, plus the latest/ copies -- so at 3.5 rps
-          // it needs ~22 minutes and can never finish inside the timeout. The
-          // gate is production pacing against a real remote; the mock server
-          // here has no such limit. Same override, for the same reason, that
-          // tests/r2-upload.test.ts already applies to its own upload cases.
-          METAGRAPH_R2_UPLOAD_MAX_RPS: "5000",
-        },
-      },
-    );
-    const summary = JSON.parse(stdout);
-    const totalHistoryObjects =
-      manifest.artifacts.length + summary.uploaded_control_count;
-
-    assert.equal(summary.remote_manifest_status, "found");
-    assert.equal(summary.changed_artifact_count, 0);
-    assert.equal(summary.skipped_artifact_count, manifest.artifacts.length);
-    assert.equal(summary.uploaded_latest_count, 0);
-    assert.equal(summary.uploaded_control_count, 3);
-    assert.equal(summary.deduplicated_history_count, 1);
-    assert.equal(
-      summary.uploaded_history_count,
-      totalHistoryObjects - 1,
-      "the pre-seeded content-addressed object must not count as a fresh upload",
-    );
-    assert.equal(
-      putKeys.length,
-      // putKeys also captures the 3 "control"-kind PUTs (the always-fresh
-      // latest/ copies of the manifest files, separate from their history
-      // copies) -- add those back in alongside the post-dedup history count.
-      totalHistoryObjects - 1 + summary.uploaded_control_count,
-      "the pre-seeded content-addressed object must not be re-uploaded",
-    );
-    assert(
-      !putKeys.includes(preexistingHistoryKey),
-      "a history object that already exists by hash must be skipped, not re-uploaded",
-    );
-    assert(
-      headKeys.includes(preexistingHistoryKey),
-      "every history object must be existence-checked before upload",
-    );
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
-}, 30_000);
-
-test("limited R2 upload dry run skips control manifests", () => {
+test("registry publication staging verifies the complete built artifact set without remote writes", () => {
   ensureStagingManifest();
   const output = execFileSync(
     process.execPath,
-    ["scripts/r2-upload.ts", "--dry-run"],
+    ["scripts/registry-kv-publish.ts", "--stage-only"],
     {
       cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: {
-        ...sandbox.env,
-        METAGRAPH_R2_UPLOAD_LIMIT: "5",
-      },
+      env: sandbox.env,
       stdio: "pipe",
     },
   );
-  const summary = JSON.parse(output);
-
-  assert.equal(summary.limited_artifact_count, 5);
-  assert.equal(summary.control_artifact_count, 0);
-  assert.equal(summary.skipped_control_artifact_count, 3);
-  assert.equal(summary.planned_object_count, 5);
+  const plan = JSON.parse(output);
+  const manifest = JSON.parse(
+    readFileSync(path.join(r2StagingRoot, "r2-manifest.json"), "utf8"),
+  );
+  assert.equal(plan.mode, "staged");
+  assert.equal(plan.backend, "kv");
+  assert.equal(plan.remote_writes, 0);
+  assert.equal(plan.artifacts, manifest.artifacts.length + 3);
+  assert(plan.bytes > 0);
 });
 
 test("enrichment guidance ignores maintainer-excluded candidate IDs", () => {

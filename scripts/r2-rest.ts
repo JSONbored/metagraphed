@@ -9,7 +9,7 @@
 // Pure module — no top-level execution, so it is safe to import from any
 // script (r2-upload.ts itself runs on import and cannot be imported).
 
-export const R2_API_BASE_URL_DEFAULT = "https://api.cloudflare.com/client/v4";
+const R2_API_BASE_URL_DEFAULT = "https://api.cloudflare.com/client/v4";
 
 /**
  * Test-only seam: lets tests point at a local mock HTTP server instead of the
@@ -27,7 +27,7 @@ export function requireCloudflareCredentials(): {
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) {
     throw new Error(
-      "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for R2 access.",
+      "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for Cloudflare storage access.",
     );
   }
   return { accountId, apiToken };
@@ -48,37 +48,6 @@ export function r2ObjectUrl(
   key: string,
 ): string {
   return `${r2ApiBaseUrl()}/accounts/${accountId}/r2/buckets/${bucketName}/objects/${encodeR2Key(key)}`;
-}
-
-/**
- * Does this exact key exist in the bucket? A HEAD, so no body is transferred.
- *
- * Distinguishes "definitely absent" (a clean 404) from "could not tell" (any
- * network/timeout/non-404 failure) rather than collapsing both to false: the
- * readback gate must not fail a publish because R2 was briefly unreachable,
- * and must not pass one because it never got an answer.
- */
-export async function r2ObjectExists(
-  accountId: string,
-  bucketName: string,
-  key: string,
-  apiToken: string,
-  timeoutMs = 15_000,
-): Promise<{ exists: boolean; determinate: boolean; status?: number }> {
-  try {
-    const res = await fetch(r2ObjectUrl(accountId, bucketName, key), {
-      method: "HEAD",
-      headers: { Authorization: `Bearer ${apiToken}` },
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (res.ok) return { exists: true, determinate: true, status: res.status };
-    if (res.status === 404) {
-      return { exists: false, determinate: true, status: 404 };
-    }
-    return { exists: false, determinate: false, status: res.status };
-  } catch {
-    return { exists: false, determinate: false };
-  }
 }
 
 /** Read a small cron snapshot from D1; optional enrichment retains its seed
