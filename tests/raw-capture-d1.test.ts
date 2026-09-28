@@ -385,22 +385,36 @@ test("corrupt archive receipts cannot acknowledge a raw capture", async () => {
   );
 });
 
-test("unknown storage selections cannot silently send captures back to R2", async () => {
-  let writes = 0;
-  const result = await runRawCaptureSync(
-    {
-      RAW_CAPTURE_ENABLED: "true",
-      RAW_CAPTURE_STORAGE: "typo",
-      METAGRAPH_ARCHIVE: {
-        put: async () => {
-          writes++;
+test("missing, retired and unknown storage selections cannot resume capture writes", async () => {
+  for (const storage of [undefined, "r2", "typo"]) {
+    let writes = 0;
+    const result = await runRawCaptureSync(
+      {
+        RAW_CAPTURE_ENABLED: "true",
+        RAW_CAPTURE_STORAGE: storage,
+        D1_STATE: { prepare: () => {} } as unknown as D1Database,
+        METAGRAPH_ARCHIVE: {
+          put: async () => {
+            writes++;
+          },
         },
       },
-    },
-    { recordException: async () => false },
-  );
-  assert.equal(result.ok, false);
-  assert.equal(writes, 0);
+      {
+        recordException: async () => false,
+        d1CaptureStore: {
+          put: async () => {
+            writes++;
+          },
+        },
+        fetchImpl: async () => {
+          throw new Error("capture must refuse before RPC");
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(writes, 0);
+    assert.equal(result.reason, "store_unavailable");
+  }
 });
 
 test("D1 selection with a missing database cannot fall through to an R2 writer", async () => {

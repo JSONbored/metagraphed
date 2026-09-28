@@ -3286,7 +3286,7 @@ async function dispatchScheduled(
     }
   }
   if (cron === RAW_CAPTURE_CRON) {
-    // Gap-free capture of raw extrinsic/event bytes into R2, replacing what
+    // Gap-free capture of raw extrinsic/event bytes into D1, replacing what
     // the decommissioned indexer box used to produce. Durable-first on
     // purpose: the bytes land before anything decodes them, because decode is
     // re-runnable and a missed block is not. See src/raw-chain-capture.ts.
