@@ -271,10 +271,7 @@ import {
   currentDataApiTierFallbackGeneration,
   tryDataApiTier,
 } from "../workers/data-api-tier.ts";
-import {
-  loadBlockColdTier,
-  loadBlockFeedColdTier,
-} from "./blocks-cold-tier.ts";
+import { answerBlock, answerBlockFeed } from "./blocks-answer.ts";
 import {
   loadAccountExtrinsicsColdTier,
   loadBlockExtrinsicsColdTier,
@@ -1580,7 +1577,6 @@ import {
   loadAccountChildren,
   loadAccountParents,
 } from "./child-hotkey-delegation.ts";
-import { buildBlockFeed, buildBlock } from "./blocks.ts";
 import {
   buildExtrinsic,
   buildExtrinsicFeed,
@@ -12428,32 +12424,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const offset = Number.isFinite(args?.offset)
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
-      // Mirrors REST's handleBlocks: try Postgres first, fall back to the
-      // schema-stable empty feed now that blocks' D1 write path is retired
-      // (#4772) and the table is dropped in production.
-      return (
-        // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-        // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-        // on every request.
-        (await loadBlockFeedColdTier(ctx.env, {
-          limit,
-          offset,
-          cursor,
-          author,
-          specVersion,
-          blockStart,
-          blockEnd,
-          from,
-          to,
-          minExtrinsics,
-          minEvents,
-        })) ??
-        buildBlockFeed([], {
-          limit,
-          offset,
-          nextCursor: null,
-        })
-      );
+      return answerBlockFeed(ctx.env, {
+        limit,
+        offset,
+        cursor,
+        author,
+        specVersion,
+        blockStart,
+        blockEnd,
+        from,
+        to,
+        minExtrinsics,
+        minEvents,
+      });
     },
   },
   {
@@ -12467,15 +12450,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetBlockInputSchema),
     async handler(args: z.infer<typeof GetBlockInputSchema>, ctx: McpCtx) {
       const ref = requireString(args, "ref");
-      // Mirrors REST's handleBlock: try Postgres first, fall back to the
-      // schema-stable block:null shape now that blocks' store write path is
-      // retired (#4772) and the table is dropped in production.
-      return (
-        // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-        // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-        // on every request.
-        (await loadBlockColdTier(ctx.env, ref)) ?? buildBlock(undefined, ref)
-      );
+      return answerBlock(ctx.env, ref);
     },
   },
   {

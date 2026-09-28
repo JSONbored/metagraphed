@@ -262,11 +262,7 @@ import { computeStakeQuote } from "../../src/stake-quote.ts";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
 import { loadRuntimeVersionHistoryColdTier } from "../../src/runtime-versions-cold-tier.ts";
 import { loadUpgradeRadar } from "../../src/upgrade-radar.ts";
-import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
-import {
-  loadBlockFeedColdTier,
-  loadBlockColdTier,
-} from "../../src/blocks-cold-tier.ts";
+import { answerBlock, answerBlockFeed } from "../../src/blocks-answer.ts";
 import {
   loadAccountExtrinsicsColdTier,
   loadBlockExtrinsicsColdTier,
@@ -465,7 +461,6 @@ import {
 import { withAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
 import { withUsdAtTx } from "../../src/price-at-tx.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
-import { blockEconomicsUsd } from "../../src/block-economics.ts";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.ts";
 import { loadSubnetStakeFlowFromArtifact } from "../../src/subnet-stake-flow-artifact.ts";
 import {
@@ -6693,16 +6688,6 @@ export async function handleCrowdloan(
 // `blocks` store tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta
 // (source:"chain-events") since the same first-party poller fills this tier.
-function readBlockTaoUsdCurrentKv(
-  env: Env,
-  network: ChainNetworkId | undefined,
-  now: number,
-) {
-  return (network ?? DEFAULT_CHAIN_NETWORK) === DEFAULT_CHAIN_NETWORK
-    ? readTaoUsdCurrentKv(env, now)
-    : Promise.resolve(null);
-}
-
 const LIVE_BLOCK_FEED_CACHE_CONTROL = "public, max-age=10, must-revalidate";
 
 export async function handleBlocks(
@@ -6722,51 +6707,35 @@ export async function handleBlocks(
   // seen since. They meet at a fixed seam, so every block comes from exactly
   // one of them -- see src/blocks-cold-tier.ts. All tiers feed the SAME
   // buildBlockFeed formatter, so the payload is identical whichever answered.
-  const now = Date.now();
-  const [loaded, taoUsd] = await Promise.all([
-    // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-    // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-    // on every request.
-    loadBlockFeedColdTier(
-      env,
-      {
-        limit,
-        offset,
-        cursor: routeText(url, "cursor"),
-        author: routeText(url, "author"),
-        specVersion: routeInt(url, "spec_version"),
-        blockStart: routeInt(url, "block_start"),
-        blockEnd: routeInt(url, "block_end"),
-        // from/to are part of this route's contract too -- a filter the tier
-        // never receives is a filter it silently ignores. `routeInt`, not
-        // `routeText` (#10395): the two are declared `z.int()` like every
-        // sibling bound here, so the parse hands back a NUMBER and the string
-        // accessor answered null on every request -- `routeText`'s own doc
-        // says so ("if a caller reaches for the wrong accessor, the answer is
-        // null rather than a number wearing a string's type"). Measured
-        // against production before the fix: `?to=8000000` and
-        // `?to=1786000000000` both returned the newest blocks unfiltered,
-        // while the same bound on /api/v1/extrinsics -- whose handler forwards
-        // `routeQuery(url)` wholesale rather than per-parameter -- returned an
-        // empty page. A published filter that has never once been applied.
-        from: routeInt(url, "from"),
-        to: routeInt(url, "to"),
-        minExtrinsics: routeInt(url, "min_extrinsics"),
-        minEvents: routeInt(url, "min_events"),
-      },
-      network,
-    ),
-    readBlockTaoUsdCurrentKv(env, network, now),
-  ]);
-  const rawData =
-    loaded ?? buildBlockFeed([], { limit, offset, nextCursor: null });
-  const data = {
-    ...rawData,
-    blocks: rawData.blocks.map((block) => ({
-      ...block,
-      ...blockEconomicsUsd(block.economic_activity_tao, taoUsd, now),
-    })),
-  };
+  const data = await answerBlockFeed(
+    env,
+    {
+      limit,
+      offset,
+      cursor: routeText(url, "cursor"),
+      author: routeText(url, "author"),
+      specVersion: routeInt(url, "spec_version"),
+      blockStart: routeInt(url, "block_start"),
+      blockEnd: routeInt(url, "block_end"),
+      // from/to are part of this route's contract too -- a filter the tier
+      // never receives is a filter it silently ignores. `routeInt`, not
+      // `routeText` (#10395): the two are declared `z.int()` like every
+      // sibling bound here, so the parse hands back a NUMBER and the string
+      // accessor answered null on every request -- `routeText`'s own doc
+      // says so ("if a caller reaches for the wrong accessor, the answer is
+      // null rather than a number wearing a string's type"). Measured
+      // against production before the fix: `?to=8000000` and
+      // `?to=1786000000000` both returned the newest blocks unfiltered,
+      // while the same bound on /api/v1/extrinsics -- whose handler forwards
+      // `routeQuery(url)` wholesale rather than per-parameter -- returned an
+      // empty page. A published filter that has never once been applied.
+      from: routeInt(url, "from"),
+      to: routeInt(url, "to"),
+      minExtrinsics: routeInt(url, "min_extrinsics"),
+      minEvents: routeInt(url, "min_events"),
+    },
+    network,
+  );
   if (csvRequested(url, request)) {
     return csvResponse(
       data.blocks as unknown[],
@@ -6851,28 +6820,7 @@ export async function handleBlock(
   // table is dropped in production, so a store query here would always miss.
   // #9115: same lakehouse fallback as the feed above; buildBlock is shared, so
   // a block served from R2 is byte-identical to one served from Postgres.
-  const now = Date.now();
-  const [loaded, taoUsd] = await Promise.all([
-    // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-    // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-    // on every request.
-    loadBlockColdTier(env, ref, network),
-    readBlockTaoUsdCurrentKv(env, network, now),
-  ]);
-  const rawData = loaded ?? buildBlock(undefined, ref);
-  const data = rawData.block
-    ? {
-        ...rawData,
-        block: {
-          ...rawData.block,
-          ...blockEconomicsUsd(
-            rawData.block.economic_activity_tao,
-            taoUsd,
-            now,
-          ),
-        },
-      }
-    : rawData;
+  const data = await answerBlock(env, ref, network);
   // Complete block totals carry a current-price conversion, so keep those on
   // the short profile rather than freezing one index reading at the edge. A
   // settled block that could not be decoded has no native total or applicable
