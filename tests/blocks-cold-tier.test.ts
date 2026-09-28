@@ -244,6 +244,36 @@ describe("storeCanServe", () => {
 });
 
 describe("loadBlockFeedColdTier", () => {
+  test("historical ceilings bypass hot storage and preserve filtered cursor pages", async () => {
+    for (const ceiling of [SEAM, SEAM - 1, SEAM + 4_000]) {
+      resetDecodeWatermarkCache();
+      const { db, sql } = runner([], { throws: true });
+      const watermarks: string[] = [];
+      const rows = [lakeRow(ceiling), lakeRow(ceiling - 1)];
+      const queries = lakeFetch(rows);
+      const cursor = `${rows[0]!.observed_at + 1}.${ceiling + 1}`;
+      const data = await loadBlockFeedColdTier(
+        {
+          ...TOKEN,
+          ...db,
+          ...archive({ decoded_through: SEAM + 4_000 }, watermarks),
+        } as never,
+        { limit: 2, offset: 25, blockEnd: ceiling, cursor, minExtrinsics: 2 },
+      );
+      assert.deepEqual(sql, [], "a hot-store outage cannot delay this page");
+      assert.equal(watermarks.length, ceiling > SEAM ? 1 : 0);
+      assert.deepEqual(
+        data!.blocks.map((b) => b.block_number),
+        [ceiling, ceiling - 1],
+      );
+      assert.equal(data!.next_cursor, `${rows[1]!.observed_at}.${ceiling - 1}`);
+      const clauses = queries.blockFeed.mock.calls[0]![1].join(" AND ");
+      assert.match(clauses, new RegExp(`block_number <= ${ceiling}`));
+      assert.match(clauses, /extrinsic_count >= 2/);
+      assert.match(clauses, /\(observed_at, block_number\) </);
+    }
+  });
+
   test("serves entirely from D1 when the page fits above the seam", async () => {
     const { db, sql, params } = runner([headRow(SEAM + 3), headRow(SEAM + 2)]);
     const queries = lakeFetch([]);
