@@ -149,6 +149,9 @@ interface RegistryPublishInput {
   // Initial migration must supply an independently inventoried and verified
   // stable-history set. An empty set is an explicit assertion, never inferred.
   bootstrapStable?: RegistryArtifact[];
+  // Bootstrap may stage and independently qualify the immutable generation
+  // before a later invocation re-verifies it and activates the pointer.
+  activate?: boolean;
 }
 
 export async function publishRegistryKv(
@@ -260,6 +263,15 @@ export async function publishRegistryKv(
   await writeVerified(store, manifests);
   if (JSON.stringify(await readPointer(store)) !== JSON.stringify(before))
     throw new Error("Registry pointer changed during publication");
+  if (input.activate === false)
+    return {
+      manifest_sha256: digest,
+      artifacts: manifest.artifacts.length,
+      uploaded,
+      stored_bytes_before: storedBytes,
+      new_bytes: newBytes,
+      activated: false,
+    };
   const previousDigest =
     before.registry_manifest_sha256 === digest
       ? before.registry_previous_manifest_sha256
@@ -278,6 +290,7 @@ export async function publishRegistryKv(
     uploaded,
     stored_bytes_before: storedBytes,
     new_bytes: newBytes,
+    activated: true,
   };
 }
 

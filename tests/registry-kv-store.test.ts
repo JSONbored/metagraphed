@@ -125,6 +125,24 @@ test("preserves binary bytes and verifies them through the binary reader", async
   );
 });
 
+test("bootstrap can stage a complete generation without selecting it", async () => {
+  const { store, pointer } = fixture();
+  const result = await publishRegistryKv(store, {
+    ...input(),
+    activate: false,
+  });
+  assert.equal(result.activated, false);
+  assert.equal(pointer().published_at, "before");
+  assert.deepEqual(
+    (await readRegistryManifest(store, result.manifest_sha256)).artifacts,
+    [hot],
+  );
+  const activated = await publishRegistryKv(store, input());
+  assert.equal(activated.activated, true);
+  assert.equal(activated.uploaded, 0);
+  assert.equal(pointer().registry_manifest_sha256, result.manifest_sha256);
+});
+
 test("carries dated health and previous successful captures forward while removing obsolete ordinary files", async () => {
   const { store, pointer } = fixture();
   const paths = [
