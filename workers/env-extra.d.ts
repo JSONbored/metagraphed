@@ -352,6 +352,13 @@ interface LegacyBufferFixtureEnv {
   NEON_WRITE_BUFFER?: DurableObjectNamespace;
 }
 
+/** Logical object interface installed by withArchiveObjects at each main/data
+ * entrypoint. Native storage keeps the existing consumer API without a physical
+ * R2 binding. Other Workers do not receive this interface. */
+interface ArchiveObjectEnv {
+  METAGRAPH_ARCHIVE: R2Bucket;
+}
+
 // --- Which Worker carries which concern -------------------------------------
 //
 // Declaration merge, not redeclaration: each generated file already declares
@@ -365,6 +372,7 @@ interface LegacyBufferFixtureEnv {
 interface Env
   extends
     RuntimeSecretEnv,
+    ArchiveObjectEnv,
     LegacyStoreFixtureEnv,
     LegacyBufferFixtureEnv,
     ChainHeadPollEnv,
@@ -379,7 +387,11 @@ interface Env
 
 /** data-api serves the authenticated surfaces, so it holds the secrets. */
 interface DataApiEnv
-  extends RuntimeSecretEnv, LegacyStoreFixtureEnv, LegacyBufferFixtureEnv {}
+  extends
+    RuntimeSecretEnv,
+    ArchiveObjectEnv,
+    LegacyStoreFixtureEnv,
+    LegacyBufferFixtureEnv {}
 
 /** The registry sync Worker authenticates its own callers. */
 interface RegistrySyncApiEnv extends RuntimeSecretEnv, LegacyStoreFixtureEnv {}
