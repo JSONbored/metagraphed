@@ -95,13 +95,10 @@ export async function readRetainedBlockObservedAt(
     );
     if (!receipt!.success || !block!.success) return null;
     checkedState(receipt!.results[0], net, now);
-    const at = z
-      .number()
-      .int()
-      .positive()
-      .safe()
-      .parse(block!.results[0]?.observed_at);
-    return new Date(at).toISOString();
+    const row = z
+      .object({ observed_at: z.number().int().positive().safe() })
+      .parse(block!.results[0]);
+    return new Date(row.observed_at).toISOString();
   } catch {
     return null;
   }
