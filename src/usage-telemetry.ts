@@ -1457,6 +1457,92 @@ export interface McpToolCallEvent extends McpServerIdentity {
   response?: unknown;
 }
 
+/** Native context shared by a dispatched call and its existing exception capture. */
+export type McpCallContext = McpServerIdentity & {
+  resourceName?: string;
+  resourceIsUri?: boolean;
+} & Pick<
+    McpToolCallEvent,
+    | "toolName"
+    | "toolDescription"
+    | "llmModel"
+    | "llmModelSource"
+    | "intent"
+    | "intentSource"
+    | "sessionId"
+    | "conversationId"
+    | "conversationIdAccepted"
+    | "clientName"
+    | "clientVersion"
+    | "clientNameSource"
+    | "authTier"
+  >;
+
+function assignMcpCallContext(
+  properties: Record<string, unknown>,
+  event: McpCallContext,
+): void {
+  assignMcpResourceName(properties, event.resourceName, event.resourceIsUri);
+  const toolName = sanitizeLabel(event.toolName);
+  if (toolName !== undefined) {
+    properties["$mcp_tool_name"] = toolName;
+    properties["$mcp_resource_name"] = toolName;
+  }
+
+  const model = normalizeMcpLlmModel(event.llmModel);
+  if (
+    model !== undefined &&
+    (event.llmModelSource === "client_metadata" ||
+      event.llmModelSource === "self_reported")
+  ) {
+    properties["$mcp_llm_model"] = model;
+    properties["$mcp_llm_model_source"] = event.llmModelSource;
+  }
+
+  // Not sanitizeLabel: a tool description is prose, and MAX_LABEL_CHARS is
+  // sized for identifiers. Same reasoning as $mcp_intent below, and the same
+  // ceiling — this is server-authored text, but it still rides on an event
+  // that is never sampled.
+  const toolDescription = trimToLength(
+    event.toolDescription,
+    MAX_MCP_INTENT_CHARS,
+  );
+  if (toolDescription !== undefined) {
+    properties["$mcp_tool_description"] = toolDescription;
+  }
+
+  // Agent intent (#9642). NOT sanitizeLabel: that caps at MAX_LABEL_CHARS,
+  // which is sized for identifiers like a tool or route name, and would
+  // truncate a real sentence into uselessness. This is meant to be prose,
+  // so it gets its own, longer ceiling -- but a ceiling all the same,
+  // because it is model output on an unsampled event.
+  //
+  // $mcp_intent_source is part of the wire contract rather than decoration:
+  // PostHog distinguishes an intent the agent actually stated
+  // ("context_parameter") from one a server inferred on its behalf
+  // ("inferred"). The label travels with the text always, so the fallback's
+  // mechanical strings can never be read as agent speech.
+  const intent = trimToLength(event.intent, MAX_MCP_INTENT_CHARS);
+  if (intent !== undefined) {
+    properties["$mcp_intent"] = intent;
+    properties["$mcp_intent_source"] =
+      event.intentSource === "inferred" ? "inferred" : "context_parameter";
+  }
+}
+
+function assignMcpResourceName(
+  properties: Record<string, unknown>,
+  name: unknown,
+  isUri: boolean | undefined,
+): void {
+  const resourceName = sanitizeLabel(
+    isUri && typeof name === "string" ? redactMcpUri(name) : name,
+  );
+  if (resourceName !== undefined) {
+    properties["$mcp_resource_name"] = resourceName;
+  }
+}
+
 /** Inputs for an MCP initialize-handshake analytics event. */
 export interface McpInitializeEvent extends McpServerIdentity {
   clientName?: string;
@@ -1565,48 +1651,7 @@ export async function recordMcpToolCallEvent(
     const durationMs = Math.min(Math.round(event.durationMs), 86_400_000);
     if (durationMs > 0) properties["$mcp_duration_ms"] = durationMs;
 
-    const toolName = sanitizeLabel(event.toolName);
-    if (toolName !== undefined) properties["$mcp_tool_name"] = toolName;
-
-    const model = normalizeMcpLlmModel(event.llmModel);
-    if (
-      model !== undefined &&
-      (event.llmModelSource === "client_metadata" ||
-        event.llmModelSource === "self_reported")
-    ) {
-      properties["$mcp_llm_model"] = model;
-      properties["$mcp_llm_model_source"] = event.llmModelSource;
-    }
-
-    // Not sanitizeLabel: a tool description is prose, and MAX_LABEL_CHARS is
-    // sized for identifiers. Same reasoning as $mcp_intent below, and the same
-    // ceiling — this is server-authored text, but it still rides on an event
-    // that is never sampled.
-    const toolDescription = trimToLength(
-      event.toolDescription,
-      MAX_MCP_INTENT_CHARS,
-    );
-    if (toolDescription !== undefined) {
-      properties["$mcp_tool_description"] = toolDescription;
-    }
-
-    // Agent intent (#9642). NOT sanitizeLabel: that caps at MAX_LABEL_CHARS,
-    // which is sized for identifiers like a tool or route name, and would
-    // truncate a real sentence into uselessness. This is meant to be prose,
-    // so it gets its own, longer ceiling -- but a ceiling all the same,
-    // because it is model output on an unsampled event.
-    //
-    // $mcp_intent_source is part of the wire contract rather than decoration:
-    // PostHog distinguishes an intent the agent actually stated
-    // ("context_parameter") from one a server inferred on its behalf
-    // ("inferred"). The label travels with the text always, so the fallback's
-    // mechanical strings can never be read as agent speech.
-    const intent = trimToLength(event.intent, MAX_MCP_INTENT_CHARS);
-    if (intent !== undefined) {
-      properties["$mcp_intent"] = intent;
-      properties["$mcp_intent_source"] =
-        event.intentSource === "inferred" ? "inferred" : "context_parameter";
-    }
+    assignMcpCallContext(properties, event);
 
     // What a refusal arrived on (#10810). Only set by scheduleMcpRefusalEvent,
     // so a dispatched call never carries them -- see the doc comment on
@@ -1824,15 +1869,11 @@ async function postMcpResourceEvent(
 
     const properties: Record<string, unknown> = {};
 
-    const resourceName = sanitizeLabel(
-      eventName === "$mcp_resource_read" &&
-        typeof event.resourceName === "string"
-        ? redactMcpUri(event.resourceName)
-        : event.resourceName,
+    assignMcpResourceName(
+      properties,
+      event.resourceName,
+      eventName === "$mcp_resource_read",
     );
-    if (resourceName !== undefined) {
-      properties["$mcp_resource_name"] = resourceName;
-    }
     assignMcpProtocolOutcome(properties, event);
     assignMcpAttribution(properties, event);
     assignMcpPersonProcessing(properties, deps);
@@ -2032,6 +2073,8 @@ const EXCEPTION_PROPERTIES_BUILDER = new ErrorTracking.ErrorPropertiesBuilder(
  * $exception) and double as the fingerprint's grouping key. */
 export interface ExceptionEvent {
   error: unknown;
+  /** Existing MCP faults retain native context without changing their fingerprint. */
+  nativeMcp?: McpCallContext;
   route?: string;
   mcpTool?: string;
   errorCode?: string;
@@ -2538,6 +2581,12 @@ export async function recordExceptionEvent(
     if (queryKind !== undefined) properties.query_kind = queryKind;
     const queryShape = sanitizeLabel(event.queryShape);
     if (queryShape !== undefined) properties.query_shape = queryShape;
+    if (event.nativeMcp) {
+      properties["$exception_level"] = "error";
+      assignMcpAttribution(properties, event.nativeMcp);
+      assignMcpCallContext(properties, event.nativeMcp);
+      await assignMcpConversation(properties, event.nativeMcp);
+    }
     assignDeployment(properties, env);
 
     return await capturePostHogEvent(env, "$exception", properties, deps);

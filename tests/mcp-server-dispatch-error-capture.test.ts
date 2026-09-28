@@ -21,17 +21,31 @@ const { handleMcpRequest } = await import("../src/mcp-server.ts");
 // catch. deps.executionCtx.waitUntil is captured so the fire-and-forget
 // PostHog scheduling (never awaited by the main response path, by design --
 // it must not delay the client) can be awaited explicitly before asserting.
-async function readResourceExpectingDispatchFault(env: Row = {}) {
+async function readResourceExpectingDispatchFault(
+  env: Row = {},
+  method: "resources/read" | "resources/subscribe" = "resources/read",
+) {
   const waited: Promise<unknown>[] = [];
   const response = await handleMcpRequest(
     new Request("https://metagraph.sh/mcp", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "claude-code/2.1.0 (sdk-ts)",
+        "x-anthropic-client": "claude-code",
+        "mcp-protocol-version": "2025-11-25",
+        "mcp-session-id": "11111111-1111-4111-8111-111111111111",
+      },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
-        method: "resources/read",
-        params: { uri: "metagraph://subnet/5" },
+        method,
+        params: {
+          uri:
+            method === "resources/read"
+              ? "metagraph://subnet/5"
+              : "metagraph://chain/stream",
+        },
       }),
     }),
     env as unknown as Env,
@@ -81,11 +95,85 @@ test("a genuine dispatch-level fault reaches PostHog as $exception, tagged mcp-d
       exceptions[0].body.properties.$exception_list[0].value,
       "R2 get failed",
     );
+    const reads = posted.filter((p) => p.body.event === "$mcp_resource_read");
+    assert.equal(reads.length, 1);
+    const exception = exceptions[0].body.properties;
+    for (const key of [
+      "$mcp_source",
+      "$mcp_resource_name",
+      "$mcp_server_name",
+      "$mcp_server_version",
+      "$mcp_client_name",
+      "$mcp_client_version",
+      "$mcp_client_name_source",
+      "$mcp_client_user_agent",
+      "$mcp_vendor_client",
+      "$mcp_protocol_version",
+      "$mcp_profile",
+      "$mcp_auth_tier",
+      "$session_id",
+    ]) {
+      assert.notEqual(reads[0].body.properties[key], undefined, key);
+      assert.equal(exception[key], reads[0].body.properties[key], key);
+    }
+    assert.equal(exception.$mcp_resource_name, "metagraph://subnet/5");
+    assert.equal(exception.$mcp_tool_name, undefined);
+    assert.equal(exception.$mcp_response, undefined);
+    assert.equal(
+      exception.$exception_fingerprint,
+      "mcp-dispatch:resources/read:Error",
+    );
+    assert.equal(exception.$exception_level, "error");
     // ...and the protocol event rode along, recorded as a failure.
     const usage = posted.filter((p) => p.body.event === "usage_event");
     assert.equal(usage.length, 1);
     assert.equal(usage[0].body.properties.route, "mcp:resources/read");
     assert.equal(usage[0].body.properties.ok, false);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("subscription faults retain native caller context without inventing a tool or resource event", async () => {
+  const original = globalThis.fetch;
+  const posted: Row[] = [];
+  globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+    posted.push(JSON.parse(init!.body as string));
+    return { ok: true };
+  }) as typeof fetch;
+  try {
+    const { body } = await readResourceExpectingDispatchFault(
+      {
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+        MCP_SESSION_HUB: {
+          idFromName: () => "test-session-hub",
+          get: () => ({
+            fetch: () => Promise.reject(new Error("hub unavailable")),
+          }),
+        },
+      },
+      "resources/subscribe",
+    );
+    assert.equal(body.error?.message, "Internal error.");
+    const exceptions = posted.filter((event) => event.event === "$exception");
+    assert.equal(exceptions.length, 1);
+    const exception = exceptions[0].properties;
+    assert.equal(
+      exception.$exception_fingerprint,
+      "mcp-dispatch:resources/subscribe:Error",
+    );
+    assert.equal(exception.$mcp_client_name, "claude-code");
+    assert.equal(exception.$session_id, "11111111-1111-4111-8111-111111111111");
+    assert.equal(exception.$mcp_tool_name, undefined);
+    assert.equal(exception.$mcp_resource_name, undefined);
+    assert.equal(
+      posted.some(
+        (event) =>
+          event.event === "$mcp_tool_call" ||
+          event.event === "$mcp_resource_read",
+      ),
+      false,
+    );
   } finally {
     globalThis.fetch = original;
   }
