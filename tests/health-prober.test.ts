@@ -1028,6 +1028,27 @@ describe("workerWebSocketConnector", () => {
 
 describe("loadOperationalSurfaces", () => {
   const surfacesBody = { surfaces: [{ surface_id: "x", netuid: 1 }] };
+  function registry(raw = JSON.stringify(surfacesBody)) {
+    const bytes = new TextEncoder().encode(raw);
+    const values = new Map<string, unknown>([
+      ["metagraph:latest", { registry_manifest_sha256: "a".repeat(64) }],
+      [
+        `registry:v1:manifest:${"a".repeat(64)}`,
+        {
+          version: 1,
+          artifacts: [
+            {
+              path: OPERATIONAL_SURFACES_PATH,
+              sha256: "b".repeat(64),
+              size_bytes: bytes.byteLength,
+            },
+          ],
+        },
+      ],
+      [`registry:v1:object:${"b".repeat(64)}`, bytes.buffer],
+    ]);
+    return { get: vi.fn(async (key: string) => values.get(key) ?? null) };
+  }
 
   // #9096: the hourly cron store is now the FIRST tier, ahead of the committed
   // ASSETS seed. These three cover the tier order itself -- preferring the
@@ -1106,39 +1127,36 @@ describe("loadOperationalSurfaces", () => {
     );
   });
 
-  test("falls back to R2 when ASSETS.fetch throws", async () => {
+  test("falls back to the published KV registry when ASSETS.fetch throws", async () => {
+    const r2 = vi.fn(async () => {
+      throw new Error("R2 is retired");
+    });
     const env = mockEnv({
       ASSETS: {
         fetch: async () => {
           throw new Error("assets down");
         },
       },
-      METAGRAPH_R2_LATEST_PREFIX: "live/",
-      METAGRAPH_ARCHIVE: {
-        get: async (key: string) => {
-          assert.equal(key, "live/operational-surfaces.json");
-          return { text: async () => JSON.stringify(surfacesBody) };
-        },
-      },
+      METAGRAPH_CONTROL: registry(),
+      METAGRAPH_ARCHIVE: { get: r2 },
     });
     const surfaces = await loadOperationalSurfaces(env);
     assert.deepEqual(surfaces, surfacesBody.surfaces);
+    assert.equal(r2.mock.calls.length, 0);
   });
 
-  test("falls back to R2 with the default prefix when none is configured", async () => {
+  test("does not read the retired R2 fallback when KV is absent", async () => {
+    const r2 = vi.fn(async () => {
+      throw new Error("R2 is retired");
+    });
     const env = mockEnv({
-      METAGRAPH_ARCHIVE: {
-        get: async (key: string) => {
-          assert.equal(key, "latest/operational-surfaces.json");
-          return { text: async () => JSON.stringify(surfacesBody) };
-        },
-      },
+      METAGRAPH_ARCHIVE: { get: r2 },
     });
-    const surfaces = await loadOperationalSurfaces(env);
-    assert.deepEqual(surfaces, surfacesBody.surfaces);
+    assert.deepEqual(await loadOperationalSurfaces(env), []);
+    assert.equal(r2.mock.calls.length, 0);
   });
 
-  test("returns [] when ASSETS responds non-ok and there is no R2", async () => {
+  test("returns [] when ASSETS responds non-ok and there is no KV", async () => {
     const env = mockEnv({ ASSETS: { fetch: async () => ({ ok: false }) } });
     assert.deepEqual(await loadOperationalSurfaces(env), []);
   });
@@ -1150,34 +1168,52 @@ describe("loadOperationalSurfaces", () => {
     assert.deepEqual(await loadOperationalSurfaces(env), []);
   });
 
-  test("returns [] when R2 returns a null object", async () => {
-    const env = mockEnv({ METAGRAPH_ARCHIVE: { get: async () => null } });
-    assert.deepEqual(await loadOperationalSurfaces(env), []);
+  test("returns [] when the registry pointer is absent or legacy", async () => {
+    for (const pointer of [null, {}]) {
+      const env = mockEnv({ METAGRAPH_CONTROL: { get: async () => pointer } });
+      assert.deepEqual(await loadOperationalSurfaces(env), []);
+    }
   });
 
-  test("returns [] when R2 .text() yields a body without a surfaces array", async () => {
+  test("returns [] when KV yields a body without a surfaces array", async () => {
     const env = mockEnv({
-      METAGRAPH_ARCHIVE: {
-        get: async () => ({ text: async () => JSON.stringify({ nope: 1 }) }),
-      },
+      METAGRAPH_CONTROL: registry(JSON.stringify({ nope: 1 })),
     });
     assert.deepEqual(await loadOperationalSurfaces(env), []);
   });
 
-  test("returns [] when both ASSETS and R2 throw", async () => {
+  test("returns [] when both ASSETS and KV throw", async () => {
     const env = mockEnv({
       ASSETS: {
         fetch: async () => {
           throw new Error("assets down");
         },
       },
-      METAGRAPH_ARCHIVE: {
+      METAGRAPH_CONTROL: {
         get: async () => {
-          throw new Error("r2 down");
+          throw new Error("kv down");
         },
       },
     });
     assert.deepEqual(await loadOperationalSurfaces(env), []);
+  });
+
+  test("returns [] for an unavailable or malformed registry object", async () => {
+    const missing = registry();
+    const read = missing.get.getMockImplementation()!;
+    missing.get.mockImplementation(async (key) =>
+      key.startsWith("registry:v1:object:") ? null : read(key),
+    );
+    assert.deepEqual(
+      await loadOperationalSurfaces(mockEnv({ METAGRAPH_CONTROL: missing })),
+      [],
+    );
+    assert.deepEqual(
+      await loadOperationalSurfaces(
+        mockEnv({ METAGRAPH_CONTROL: registry("{") }),
+      ),
+      [],
+    );
   });
 
   test("returns [] for an empty env (no bindings present)", async () => {
