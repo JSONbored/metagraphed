@@ -154,7 +154,7 @@ describe("store-neutral SQL", () => {
           "src/neuron-snapshot-read.ts",
           // Latest burn seeks require explicit subnet_burn_history ownership.
           // D1 parity tests reject calls to the portable runner in that branch.
-          "src/subnet-burn-history.ts",
+          "src/subnet-burn-read.ts",
           // The document branch requires explicit neuron_daily D1 ownership;
           // native parity tests also execute the portable rollup branch.
           "src/chain-concentration-rollup.ts",

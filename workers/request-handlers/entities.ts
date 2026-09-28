@@ -191,11 +191,11 @@ import {
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import { loadChainBurn } from "../../src/chain-burn.ts";
+import { readLatestSubnetBurns } from "../../src/subnet-burn-read.ts";
 import {
   BURN_HISTORY_WINDOWS,
   buildSubnetBurnHistory,
   loadSubnetBurnHistory,
-  readLatestSubnetBurns,
 } from "../../src/subnet-burn-history.ts";
 import {
   buildSubnetHolders,

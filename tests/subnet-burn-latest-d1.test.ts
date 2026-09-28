@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, test } from "vitest";
 import { Miniflare } from "miniflare";
 import { createD1Store } from "../src/d1-store.ts";
-import { readLatestSubnetBurns } from "../src/subnet-burn-history.ts";
+import { readLatestSubnetBurns } from "../src/subnet-burn-read.ts";
 
 const runtime = new Miniflare({
   modules: true,
