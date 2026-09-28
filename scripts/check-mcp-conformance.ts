@@ -31,6 +31,7 @@
 // mcp-smoke-sweep.ts, which is a deliberately noisy TRIAGE list where a SUSPECT
 // flag never fails. "The response does not match the schema we publish" needs
 // no judgement to confirm, so it is an error rather than a flag.
+import { mcpProbeRequest } from "./mcp-probe-request.ts";
 import { Ajv2020 } from "ajv/dist/2020.js";
 
 // Live MCP JSON-RPC payloads, read for reporting. Same `Row` precedent as
@@ -59,7 +60,6 @@ const CALL_SPACING_MS = Number(process.env.MCP_CONFORMANCE_SPACING_MS ?? 1600);
 // #11565: the shared secret that makes this sweep's probe marker believable.
 // Optional on purpose -- a local run without the secret still works and simply
 // is not excluded from metrics, which is the right way round.
-const PROBE_TOKEN = process.env.MCP_PROBE_TOKEN?.trim() || "";
 const RATE_LIMIT_RETRIES = 4;
 const RATE_LIMIT_BACKOFF_MS = 2000;
 const REQUEST_TIMEOUT_MS = 30000;
@@ -84,32 +84,7 @@ async function rpc(method: string, params: Row): Promise<Row> {
     try {
       const res = await fetch(ENDPOINT, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json, text/event-stream",
-          // Name this runner in the server's client analytics. Without it the
-          // sweep arrives as Node's default UA and was the single largest
-          // "unidentified client" in the MCP dashboard -- every probe it
-          // makes, including the deliberate error-path ones, showed up as an
-          // anonymous agent failing rather than as our own nightly check.
-          "user-agent": "metagraphed-conformance/1",
-          // #11565: and mark it FIRST-PARTY, so product metrics can exclude it.
-          // The UA above identifies the runner; this says the traffic is ours.
-          // The distinction matters -- a third party's `flowstacks-mcp-
-          // conformance` is also a conformance checker, and its calls are real
-          // usage that must stay in the numbers.
-          //
-          // This sweep touches all 242 tools every night, which is 4,990 tool
-          // calls a month against a surface whose real interactive traffic is
-          // ~1,600 -- so leaving it unlabelled does not merely add noise, it
-          // dominates the per-tool caller counts pricing is chosen from.
-          "x-metagraph-probe": "mcp-conformance",
-          // Proof the marker above is ours. Without it the server ignores the
-          // marker entirely and the sweep counts as ordinary traffic -- which
-          // is the safe failure, and lets the secret and the deploy land in
-          // either order.
-          ...(PROBE_TOKEN ? { "x-metagraph-probe-token": PROBE_TOKEN } : {}),
-        },
+        ...mcpProbeRequest(ENDPOINT, "mcp-conformance"),
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: (rpcId += 1),
@@ -400,6 +375,7 @@ if (
   process.argv[1] &&
   import.meta.url.endsWith(process.argv[1].split("/").pop() ?? "")
 ) {
+  mcpProbeRequest(ENDPOINT, "mcp-conformance");
   const report = await run({
     onResult: (evidence) =>
       console.log(`MCP_AUDIT ${JSON.stringify(evidence)}`),

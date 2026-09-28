@@ -45,6 +45,7 @@
 //
 // Out of band, like its siblings: it needs the deployed surface, and a check
 // that cannot run on a pull request should not pretend to.
+import { mcpProbeRequest } from "./mcp-probe-request.ts";
 import {
   buildSchema,
   isObjectType,
@@ -475,10 +476,7 @@ export async function run(): Promise<AdversarialReport> {
     ] as const) {
       const probed = await fetchJson(MCP_ENDPOINT, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json, text/event-stream",
-        },
+        ...mcpProbeRequest(MCP_ENDPOINT, "adversarial-surface"),
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: (rpcId += 1),
@@ -523,6 +521,7 @@ export function formatReport(report: AdversarialReport): string {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  mcpProbeRequest(MCP_ENDPOINT, "adversarial-surface");
   const report = await run();
   console.log(formatReport(report));
   if (report.findings.length > 0) process.exit(1);
