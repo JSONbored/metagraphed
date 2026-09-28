@@ -1,4 +1,5 @@
 import { loadSubnetStatus } from "./subnet-status-read.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 // Remote MCP (Model Context Protocol) server for metagraphed.
 //
 // Exposes the operational registry to AI agents (Claude Desktop/Code, Cursor,
@@ -15868,6 +15869,9 @@ const TOOL_DEFINITION_CACHE = new Map<
   McpProfile,
   ReturnType<typeof buildToolDefinitions>
 >();
+registerModuleStateReset("src/mcp-server.ts", () => {
+  TOOL_DEFINITION_CACHE.clear();
+});
 
 function freezeCatalogue<T>(value: T): T {
   if (value !== null && typeof value === "object") {

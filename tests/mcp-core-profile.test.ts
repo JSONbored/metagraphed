@@ -12,6 +12,7 @@ import {
   MCP_CORE_TOOL_NAMES,
 } from "../src/mcp-server.ts";
 import { isMcpCorePath } from "../src/github-oauth.ts";
+import { resetModuleState } from "../src/module-state-registry.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 const rpc = (url: string, body: unknown) =>
@@ -106,6 +107,18 @@ describe("the endpoint is the profile", () => {
       }),
       before,
     );
+  });
+
+  test("module reset discards cached profiles without changing discovery", () => {
+    const full = listToolDefinitions();
+    const core = listToolDefinitions("core");
+    resetModuleState();
+    const rebuiltCore = listToolDefinitions("core");
+    const rebuiltFull = listToolDefinitions();
+    assert.notStrictEqual(rebuiltCore, core);
+    assert.notStrictEqual(rebuiltFull, full);
+    assert.deepEqual(rebuiltCore, core);
+    assert.deepEqual(rebuiltFull, full);
   });
 });
 
