@@ -11,6 +11,7 @@ import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { mirrorRawCaptureStateToNeon } from "../src/capture-state-neon-write.ts";
+import type { RawCaptureStore } from "../src/raw-chain-capture.ts";
 
 // The watermark's store is Postgres now (#10179): both halves of it --
 // neonWatermark's read and mirrorRawCaptureStateToNeon's write -- build their
@@ -182,12 +183,25 @@ function rpcFetch(
   });
 }
 
+const captureStores = new WeakMap<object, RawCaptureStore>();
+const captureDependencies = (env: object) => ({
+  d1CaptureStore: captureStores.get(env),
+});
+
 function envWith(over: Record<string, unknown> = {}) {
   const puts = new Map<string, string>();
   const env = {
     RAW_CAPTURE_ENABLED: "true",
+    RAW_CAPTURE_STORAGE: "d1",
+    D1_STATE: {
+      prepare: () => {
+        throw new Error("the injected capture writer owns this database");
+      },
+    },
     METAGRAPH_ARCHIVE: {
-      put: async (k: string, v: string) => void puts.set(k, v),
+      put: async () => {
+        throw new Error("retired R2 capture writer must never run");
+      },
     },
     ...pgMockEnv(),
     // Narrowed to this lane, and stated here rather than left to the helper,
@@ -201,6 +215,9 @@ function envWith(over: Record<string, unknown> = {}) {
     // resume-from-the-watermark test below into a 5-block re-capture.
     ...over,
   };
+  captureStores.set(env, {
+    put: async (key, value) => void puts.set(key, value),
+  });
   return { env, puts };
 }
 
@@ -217,6 +234,7 @@ describe("runRawCaptureSync — refusal paths", () => {
     const captures: unknown[] = [];
     const { env } = envWith({ RAW_CAPTURE_ENABLED: undefined });
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       recordException: (async (...a: unknown[]) => {
@@ -228,10 +246,11 @@ describe("runRawCaptureSync — refusal paths", () => {
     assert.equal(captures.length, 0, "a deliberate off-state is not a fault");
   });
 
-  test("an unbound R2 store refuses LOUDLY rather than dropping bytes", async () => {
+  test("an unbound D1 store refuses LOUDLY rather than dropping bytes", async () => {
     const captures: { route?: string }[] = [];
-    const { env } = envWith({ METAGRAPH_ARCHIVE: undefined });
+    const { env } = envWith({ D1_STATE: undefined });
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       recordException: (async (_e: unknown, ev: { route?: string }) => {
@@ -258,6 +277,7 @@ describe("runRawCaptureSync — refusal paths", () => {
       const captures: unknown[] = [];
       const { env, puts } = envWith(over);
       const result = await runRawCaptureSync(env as never, {
+        ...captureDependencies(env),
         sleepFn: noSleep,
         ctx: CTX,
         fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
@@ -278,6 +298,7 @@ describe("runRawCaptureSync — refusal paths", () => {
     const captures: { route?: string }[] = [];
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: (async () => {
@@ -313,6 +334,7 @@ describe("runRawCaptureSync — capture", () => {
     });
     const stored = new Map<string, string>();
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       now: () => 5000,
@@ -344,6 +366,8 @@ describe("runRawCaptureSync — capture", () => {
       D1_STATE: { prepare: () => {} },
     });
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
+      d1CaptureStore: undefined,
       recordException: async () => false,
     });
     assert.equal(result.reason, "store_unavailable");
@@ -353,6 +377,7 @@ describe("runRawCaptureSync — capture", () => {
   test("first tick starts at the genesis floor and persists the watermark", async () => {
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
@@ -374,12 +399,14 @@ describe("runRawCaptureSync — capture", () => {
   test("a second tick resumes from the persisted watermark, not the floor", async () => {
     const { env, puts } = envWith();
     await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 1),
       now: () => 1,
     });
     const second = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 4),
@@ -393,12 +420,14 @@ describe("runRawCaptureSync — capture", () => {
   test("caught up: no work and no write", async () => {
     const { env, puts } = envWith();
     await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR),
       now: () => 1,
     });
     const again = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR),
@@ -419,6 +448,7 @@ describe("runRawCaptureSync — capture", () => {
   test("reports lag so a backlog is observable rather than inferred", async () => {
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 10_000),
@@ -480,6 +510,7 @@ describe("runRawCaptureSync — capture", () => {
       });
       try {
         const result = await runRawCaptureSync(env as never, {
+          ...captureDependencies(env),
           sleepFn: noSleep,
           ctx: CTX,
           fetchImpl: flaky,
@@ -514,6 +545,7 @@ describe("runRawCaptureSync — capture", () => {
   test("a thrown non-Error still yields a reason instead of 'undefined'", async () => {
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: (async () => {
@@ -531,6 +563,7 @@ describe("runRawCaptureSync — capture", () => {
     const exceptions: string[] = [];
     const run = (at: number, fetchImpl: typeof fetch) =>
       runRawCaptureSync(env as never, {
+        ...captureDependencies(env),
         sleepFn: noSleep,
         ctx: CTX,
         fetchImpl,
@@ -668,6 +701,7 @@ describe("the testnet capture lane", () => {
   test("mainnet's R2 prefix and watermark row are untouched by testnet's", async () => {
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: rpcFetch(
@@ -722,6 +756,7 @@ describe("the testnet capture lane", () => {
     // well-formed blocks — so the only proof is provenance in the payload.
     const { env, puts } = envWith();
     await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: rpcFetch(
@@ -748,6 +783,7 @@ describe("the testnet capture lane", () => {
     // The reason the lanes run in sequence with independent error handling.
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: (async (url: unknown, init?: { body?: string }) => {
@@ -908,6 +944,7 @@ describe("the lanes run concurrently, and stay isolated", () => {
     const { env } = envWith();
     // Only the testnet endpoint fails.
     const result = (await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       now: () => 1,
@@ -941,6 +978,7 @@ describe("the lanes run concurrently, and stay isolated", () => {
     const { env } = envWith();
     const seen = new Set<string>();
     const result = (await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       now: () => 1,
@@ -996,6 +1034,7 @@ describe("the archive endpoints a lane reads from", () => {
     const hosts = new Set<string>();
     const { env } = envWith();
     await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: hostTrackingFetch(hosts),
@@ -1036,6 +1075,7 @@ describe("the archive endpoints a lane reads from", () => {
     const hosts = new Set<string>();
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
       sleepFn: noSleep,
       ctx: CTX,
       fetchImpl: hostTrackingFetch(hosts),
@@ -1096,6 +1136,7 @@ describe("the tick budget against the endpoint count", () => {
     for (const n of [1, 6]) {
       hosts.clear();
       await runRawCaptureSync(env as never, {
+        ...captureDependencies(env),
         ctx: CTX,
         endpointDeps: pool(n),
         // PINNED, because the gap is now a CYCLE time: captureTick subtracts a

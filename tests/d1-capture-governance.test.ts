@@ -51,13 +51,14 @@ test("capture cursor reads its own monotonic writes without Hyperdrive or an exe
     {
       ...env(),
       RAW_CAPTURE_ENABLED: "true",
-      METAGRAPH_ARCHIVE: {
+      RAW_CAPTURE_STORAGE: "d1",
+    },
+    {
+      d1CaptureStore: {
         async put() {
           throw new Error("no capture expected");
         },
       },
-    },
-    {
       fetchImpl: async () => {
         rpcCalls++;
         throw new Error("injected RPC failure");

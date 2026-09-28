@@ -1,7 +1,7 @@
 // Worker-side wiring for the raw chain capture lane (src/raw-chain-capture.ts).
 //
 // The pure capture logic and its no-gap guarantee live in that module; this
-// one binds it to the runtime: the R2 bucket the bytes land in, the store row the
+// one binds it to the runtime: durable D1 staging for captured bytes, the row the
 // watermark lives in, the kill switch, and the loud-failure posture every
 // other cron in this codebase follows.
 //
@@ -435,26 +435,16 @@ export async function runRawCaptureSync(
     // Disabled is a deliberate state, not a fault: no capture, no noise.
     return { ok: false, skipped: true, reason: "disabled" };
   }
-  if (
-    env.RAW_CAPTURE_STORAGE &&
-    !["r2", "d1"].includes(env.RAW_CAPTURE_STORAGE)
-  ) {
+  if (env.RAW_CAPTURE_STORAGE !== "d1") {
     return loud(
       "store_unavailable",
-      "Raw capture storage selection is invalid; refusing an implicit fallback.",
+      "Raw capture requires explicit D1 storage; R2 capture is retired.",
     );
   }
-  const d1Capture = env?.RAW_CAPTURE_STORAGE === "d1";
-  if (d1Capture && (!env.D1_STATE?.prepare || !deps.d1CaptureStore)) {
+  if (!env.D1_STATE?.prepare || !deps.d1CaptureStore) {
     return loud(
       "store_unavailable",
       "Raw capture D1 storage is not bound; no capture watermark can advance.",
-    );
-  }
-  if (!d1Capture && !env?.METAGRAPH_ARCHIVE?.put) {
-    return loud(
-      "store_unavailable",
-      "METAGRAPH_ARCHIVE is not bound; refusing to run. Captured bytes have nowhere durable to land, and a tick that cannot store is a gap.",
     );
   }
   // A watermark this tick can READ AND WRITE (#10158). The refusal stays even
@@ -473,11 +463,7 @@ export async function runRawCaptureSync(
     );
   }
 
-  const store: RawCaptureStore = d1Capture
-    ? deps.d1CaptureStore!
-    : {
-        put: (key, value) => env.METAGRAPH_ARCHIVE!.put(key, value),
-      };
+  const store = deps.d1CaptureStore;
 
   // Each lane is captured independently and IN ORDER, mainnet first.
   //
