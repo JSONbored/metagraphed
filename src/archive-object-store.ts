@@ -180,16 +180,11 @@ export function archiveObjectStore(env: ArchiveEnv) {
     if (value.key !== key) throw new Error("Archive pointer identity differs");
     return { raw, value };
   }
-  async function compressed(object: ArchiveObject) {
-    if ("gzip" in object.body) {
-      const packed = Buffer.from(atob(object.body.gzip), "latin1");
-      if (packed.length > INLINE)
-        throw new Error("Archive inline body exceeds budget");
-      return packed;
-    }
-    if (!("d1" in object.body))
-      throw new Error("Archive body is not compressed D1 data");
-    const item = object.body.d1,
+  async function compressed(
+    body: Exclude<ArchiveObject["body"], { parts: unknown }>,
+  ) {
+    if ("gzip" in body) return Buffer.from(atob(body.gzip), "latin1");
+    const item = body.d1,
       packed = new Uint8Array(item.bytes);
     let offset = 0;
     for (let start = 0; start < item.parts; start += 8) {
@@ -222,7 +217,7 @@ export function archiveObjectStore(env: ArchiveEnv) {
     length: number,
   ): AsyncGenerator<Uint8Array> {
     if (!("parts" in object.body)) {
-      const packed = await compressed(object);
+      const packed = await compressed(object.body);
       const raw = await exact(
         new Response(packed).body!.pipeThrough(new DecompressionStream("gzip")),
         object.bytes,
@@ -450,8 +445,6 @@ export function archiveObjectStore(env: ArchiveEnv) {
     if (raw.length <= 1024 * 1024 && packed.length <= INLINE)
       body = { gzip: Buffer.from(packed).toString("base64") };
     else {
-      if (packed.length > MAX_WRITE + CHUNK)
-        throw new Error("Archive compressed write exceeds budget");
       const parts = Math.ceil(packed.length / CHUNK);
       for (let i = 0; i < parts; i++) {
         const key = `archive-payload/v1/${packedSha}/${i}`;

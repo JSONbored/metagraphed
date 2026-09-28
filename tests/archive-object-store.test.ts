@@ -26,16 +26,19 @@ function fixture() {
     "CREATE TABLE generated_artifacts(key TEXT PRIMARY KEY,payload TEXT,updated_at TEXT)",
   );
   let before: ((text: string, params: unknown[]) => void) | undefined;
+  type Result = { success: boolean; results: unknown[] };
+  let reply: ((result: Result) => Result) | undefined;
   const prepare = (text: string, params: unknown[] = []) => ({
     bind(...values: unknown[]) {
       return prepare(text, values);
     },
     async all() {
       before?.(text, params);
-      return {
+      const result = {
         success: true,
         results: sql.prepare(text).all(...(params as never[])),
       };
+      return reply ? reply(result) : result;
     },
   });
   const legacy = {
@@ -86,6 +89,9 @@ function fixture() {
     fail(callback: typeof before) {
       before = callback;
     },
+    reply(callback: typeof reply) {
+      reply = callback;
+    },
   };
 }
 async function body(
@@ -99,6 +105,236 @@ async function body(
 }
 
 describe("shared archive object storage", () => {
+  it("rejects malformed database responses and oversized or invalid descriptors", async () => {
+    const f = fixture();
+    f.reply(() => ({ success: false, results: [] }));
+    await expect(f.store.head(key)).rejects.toThrow("query failed");
+    for (const results of [
+      [{ key: "unexpected", payload: "{}" }],
+      [1, 2].map(() => ({ key: prefix + key, payload: "{}" })),
+    ]) {
+      f.reply(() => ({ success: true, results }));
+      await expect(f.store.get(key)).rejects.toThrow("row census");
+    }
+    f.reply(undefined);
+    f.set(prefix + key, { padding: "x".repeat(48 * 1024) });
+    await expect(f.store.get(key)).rejects.toThrow("pointer exceeds");
+    f.set(prefix + key, {
+      ...f.record(Buffer.from("data")),
+      metadata: { padding: "x".repeat(4096) },
+    });
+    await expect(f.store.head(key)).rejects.toThrow();
+    f.set(prefix + key, {
+      ...f.record(Buffer.from("data")),
+      metadata: { Expires: "invalid date" },
+    });
+    await expect(f.store.head(key)).rejects.toThrow("expiry");
+  });
+
+  it("preserves stream consumption, metadata-only conditions and absent heads", async () => {
+    const f = fixture(),
+      raw = Buffer.from("payload");
+    expect(await f.store.head(key)).toBeNull();
+    expect(
+      await archiveObjectStore({
+        ...f.env,
+        ARCHIVE_OBJECT_STORAGE: "native",
+      }).head(key),
+    ).toBeNull();
+    f.set(prefix + key, f.record(raw));
+    const headers = new Headers();
+    (await f.store.head(key))!.writeHttpMetadata(headers);
+    expect([...headers]).toEqual([]);
+    expect(Buffer.from(await (await body(f.store)).bytes())).toEqual(raw);
+    expect(await (await (await body(f.store)).blob()).text()).toBe("payload");
+    const stream = await body(f.store);
+    await stream.body.cancel();
+    expect(stream.bodyUsed).toBe(true);
+    for (const onlyIf of [
+      { etagMatches: "*" },
+      { etagDoesNotMatch: "other" },
+      {},
+    ]) {
+      expect(await (await body(f.store, key, { onlyIf })).text()).toBe(
+        "payload",
+      );
+    }
+    for (const etagDoesNotMatch of ["*", hash(raw, "md5")]) {
+      const value = await f.store.get(key, { onlyIf: { etagDoesNotMatch } });
+      expect(value && "body" in value).toBe(false);
+    }
+  });
+
+  it("rejects truncated, oversized and changed reconstructed bodies", async () => {
+    const f = fixture(),
+      raw = Buffer.from("data");
+    for (const bytes of [3, 5]) {
+      f.set(prefix + key, { ...f.record(raw), bytes });
+      await expect((await body(f.store)).text()).rejects.toThrow(
+        /budget|truncated/,
+      );
+    }
+    const packed = gzipSync(raw),
+      sha256 = hash(packed);
+    const partKey = `archive-payload/v1/${sha256}/0`;
+    f.set(prefix + key, {
+      ...f.record(raw),
+      body: { d1: { sha256, bytes: packed.length, parts: 1 } },
+    });
+    for (const data of [packed.subarray(1), Buffer.alloc(packed.length)]) {
+      f.set(partKey, { data: data.toString("base64") });
+      await expect((await body(f.store)).text()).rejects.toThrow(
+        /length|compressed checksum/,
+      );
+    }
+  });
+
+  it("keeps immutable D1 chunks and pointer acknowledgments consistent under races", async () => {
+    const f = fixture();
+    f.fail((sql, params) => {
+      if (
+        sql.startsWith("INSERT") &&
+        String(params[0]).startsWith("archive-payload/")
+      )
+        f.set(String(params[0]), { data: "changed" });
+    });
+    await expect(f.store.put(key, "a".repeat(1024 * 1024 + 1))).rejects.toThrow(
+      "chunk readback",
+    );
+    expect(await f.store.head(key)).toBeNull();
+    f.fail(undefined);
+    f.set(prefix + key, f.record(Buffer.from("existing")));
+    let update = false;
+    f.fail((sql) => {
+      if (sql.startsWith("UPDATE")) update = true;
+      else if (update && sql.startsWith("SELECT"))
+        f.set(prefix + key, f.record(Buffer.from("winner")));
+    });
+    await expect(f.store.put(key, "candidate")).rejects.toThrow(
+      "selection changed",
+    );
+    f.fail(undefined);
+    expect(await (await body(f.store)).text()).toBe("winner");
+  });
+
+  it("validates every native segment, chunk boundary and response before serving", async () => {
+    const f = fixture(),
+      raw = Buffer.from("abcdefgh"),
+      sha256 = hash(raw),
+      etag = hash(raw, "md5");
+    const partKey = `archive-content/v1/${sha256}`,
+      id = `native-object/v1/${bucket}/${partKey}`;
+    const native = {
+      version: 1,
+      bucket,
+      key: partKey,
+      bytes: raw.length,
+      sha256,
+      etag,
+      partition: "a",
+      chunks: [{ sha256, bytes: raw.length }],
+    };
+    f.set(prefix + key, {
+      ...f.record(raw),
+      body: { parts: [{ key: partKey, bytes: raw.length, sha256, etag }] },
+    });
+    await expect((await body(f.store)).text()).rejects.toThrow(
+      "part is missing",
+    );
+    for (const value of [
+      { ...native, etag: "0".repeat(32) },
+      {
+        ...native,
+        chunks: [
+          { sha256, bytes: 3 },
+          { sha256, bytes: 3 },
+        ],
+      },
+      {
+        ...native,
+        chunks: [
+          { sha256, bytes: 3 },
+          { sha256, bytes: 3 },
+          { sha256, bytes: 3 },
+        ],
+      },
+      { ...native, partition: "b" },
+    ]) {
+      f.set(id, value);
+      await expect((await body(f.store)).text()).rejects.toThrow(
+        /identity|census|binding/,
+      );
+    }
+    f.set(id, native);
+    for (const response of [
+      new Response(null),
+      new Response(raw, { headers: { "content-encoding": "gzip" } }),
+      new Response(raw, { headers: { "content-length": "7" } }),
+    ]) {
+      f.fetch.mockImplementationOnce(async () => response);
+      await expect((await body(f.store)).text()).rejects.toThrow(
+        "response differs",
+      );
+    }
+    f.assets.set(`/${sha256}.mgpack`, raw);
+    f.set(prefix + key, {
+      ...f.record(raw),
+      sha256: "0".repeat(64),
+      body: { parts: [{ key: partKey, bytes: raw.length, sha256, etag }] },
+    });
+    await expect((await body(f.store)).text()).rejects.toThrow(
+      "complete checksum",
+    );
+  });
+
+  it("skips untouched segments for cross-segment ranges", async () => {
+    const f = fixture(),
+      first = Buffer.alloc(16 * 1024 * 1024, 65),
+      last = Buffer.from("tail");
+    const raw = Buffer.concat([first, last]);
+    const parts = [first, last].map((raw) => {
+      const sha256 = hash(raw),
+        etag = hash(raw, "md5"),
+        key = `archive-content/v1/${sha256}`;
+      const chunks = [];
+      for (let offset = 0; offset < raw.length; offset += 512 * 1024) {
+        const chunk = raw.subarray(offset, offset + 512 * 1024),
+          digest = hash(chunk);
+        f.assets.set(`/${digest}.mgpack`, chunk);
+        chunks.push({ sha256: digest, bytes: chunk.length });
+      }
+      f.set(`native-object/v1/${bucket}/${key}`, {
+        version: 1,
+        bucket,
+        key,
+        bytes: raw.length,
+        sha256,
+        etag,
+        partition: "a",
+        chunks,
+      });
+      return { key, bytes: raw.length, sha256, etag };
+    });
+    f.set(prefix + key, {
+      ...f.record(Buffer.from("unused")),
+      bytes: raw.length,
+      sha256: hash(raw),
+      etag: hash(raw, "md5"),
+      body: { parts },
+    });
+    expect(
+      await (
+        await body(f.store, key, { range: { offset: first.length } })
+      ).text(),
+    ).toBe("tail");
+    expect(f.fetch).toHaveBeenCalledOnce();
+    expect(
+      await (
+        await body(f.store, key, { range: { offset: 0, length: 1 } })
+      ).text(),
+    ).toBe("A");
+  });
+
   it("preserves Python inline bytes, metadata, ETag, time, conditions and ranges", async () => {
     const f = fixture(),
       raw = Buffer.from('{"height":123,"name":"retained"}');
