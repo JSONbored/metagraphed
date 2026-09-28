@@ -26,7 +26,9 @@ function binding(
     [registryObjectKey(OBJECT), bytes],
   ]),
 ) {
-  const get = vi.fn(async (key: string) => values.get(key) ?? null);
+  const get = vi.fn(
+    async (key: string): Promise<unknown> => values.get(key) ?? null,
+  );
   return { kv: { get } as unknown as KVNamespace, get, values };
 }
 
@@ -47,7 +49,6 @@ test("selected registry serves exact JSON and reports KV without consulting R2",
   } as unknown as Env;
   const result = await readArtifact(env, PATH);
   assert.equal(result.ok, true);
-  if (!result.ok) throw new Error(result.message);
   assert.equal(result.source, "kv");
   assert.equal(result.storage_tier, "kv");
   assert.equal(result.resolution, "manifest");
@@ -90,7 +91,6 @@ test("binary artifacts preserve every byte and need no archive binding", async (
     "r2",
   );
   assert.equal(result.ok, true);
-  if (!result.ok) throw new Error(result.message);
   assert.deepEqual(await new Response(result.object.body).arrayBuffer(), raw);
 });
 
@@ -124,7 +124,6 @@ test.each([null, {}, { version: 2, artifacts: [entry] }])(
       PATH,
     );
     assert.equal(result.ok, true);
-    if (!result.ok) throw new Error(result.message);
     assert.equal(result.resolution, "fallback");
     assert.deepEqual(await result.object.json(), {
       surfaces: ["retained enrichment"],
@@ -149,7 +148,6 @@ test.each([null, new ArrayBuffer(1)])(
       PATH,
     );
     assert.equal(result.ok, true);
-    if (!result.ok) throw new Error(result.message);
     assert.equal(result.resolution, "fallback");
   },
 );
