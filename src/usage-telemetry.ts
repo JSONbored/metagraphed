@@ -1457,9 +1457,11 @@ export interface McpToolCallEvent extends McpServerIdentity {
   response?: unknown;
 }
 
-/** Native context shared by a tool call and its existing exception capture. */
-export type McpCallContext = McpServerIdentity &
-  Pick<
+/** Native context shared by a dispatched call and its existing exception capture. */
+export type McpCallContext = McpServerIdentity & {
+  resourceName?: string;
+  resourceIsUri?: boolean;
+} & Pick<
     McpToolCallEvent,
     | "toolName"
     | "toolDescription"
@@ -1480,8 +1482,12 @@ function assignMcpCallContext(
   properties: Record<string, unknown>,
   event: McpCallContext,
 ): void {
+  assignMcpResourceName(properties, event.resourceName, event.resourceIsUri);
   const toolName = sanitizeLabel(event.toolName);
-  if (toolName !== undefined) properties["$mcp_tool_name"] = toolName;
+  if (toolName !== undefined) {
+    properties["$mcp_tool_name"] = toolName;
+    properties["$mcp_resource_name"] = toolName;
+  }
 
   const model = normalizeMcpLlmModel(event.llmModel);
   if (
@@ -1521,6 +1527,19 @@ function assignMcpCallContext(
     properties["$mcp_intent"] = intent;
     properties["$mcp_intent_source"] =
       event.intentSource === "inferred" ? "inferred" : "context_parameter";
+  }
+}
+
+function assignMcpResourceName(
+  properties: Record<string, unknown>,
+  name: unknown,
+  isUri: boolean | undefined,
+): void {
+  const resourceName = sanitizeLabel(
+    isUri && typeof name === "string" ? redactMcpUri(name) : name,
+  );
+  if (resourceName !== undefined) {
+    properties["$mcp_resource_name"] = resourceName;
   }
 }
 
@@ -1850,15 +1869,11 @@ async function postMcpResourceEvent(
 
     const properties: Record<string, unknown> = {};
 
-    const resourceName = sanitizeLabel(
-      eventName === "$mcp_resource_read" &&
-        typeof event.resourceName === "string"
-        ? redactMcpUri(event.resourceName)
-        : event.resourceName,
+    assignMcpResourceName(
+      properties,
+      event.resourceName,
+      eventName === "$mcp_resource_read",
     );
-    if (resourceName !== undefined) {
-      properties["$mcp_resource_name"] = resourceName;
-    }
     assignMcpProtocolOutcome(properties, event);
     assignMcpAttribution(properties, event);
     assignMcpPersonProcessing(properties, deps);
@@ -2567,6 +2582,7 @@ export async function recordExceptionEvent(
     const queryShape = sanitizeLabel(event.queryShape);
     if (queryShape !== undefined) properties.query_shape = queryShape;
     if (event.nativeMcp) {
+      properties["$exception_level"] = "error";
       assignMcpAttribution(properties, event.nativeMcp);
       assignMcpCallContext(properties, event.nativeMcp);
       await assignMcpConversation(properties, event.nativeMcp);

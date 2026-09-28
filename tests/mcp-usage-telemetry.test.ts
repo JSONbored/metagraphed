@@ -720,6 +720,7 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
       for (const key of [
         "$mcp_source",
         "$mcp_tool_name",
+        "$mcp_resource_name",
         "$mcp_tool_description",
         "$mcp_server_name",
         "$mcp_server_version",
@@ -743,6 +744,7 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
         assert.deepEqual(exception[key], toolPost.body.properties[key], key);
       }
       assert.equal(exception.$exception_fingerprint, "semantic_search:Error");
+      assert.equal(exception.$exception_level, "error");
       assert.equal(exception.$mcp_llm_model, "calling-model");
       assert.equal(exception.$mcp_llm_model_source, "client_metadata");
       assert.equal(exception.$mcp_intent, "Find image generation subnets");

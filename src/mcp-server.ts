@@ -17712,6 +17712,12 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
       // if the default ever starts throwing.
       route: `mcp-dispatch:${mcpMethodLabel(method)}`,
       errorCode: "internal_error",
+      nativeMcp: {
+        ...mcpAttributionFor(ctx),
+        sessionId: ctx.sessionId,
+        resourceName: stringOf(protocolTelemetry?.event.resourceName),
+        resourceIsUri: method === "resources/read",
+      },
     });
     console.error("MCP dispatch failed:", error);
     return isNotification

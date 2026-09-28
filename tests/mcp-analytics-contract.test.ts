@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   POSTHOG_PROJECT_TOKEN_ENV,
+  POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV,
+  recordExceptionEvent,
   recordMcpInitializeEvent,
   recordMcpMissingCapabilityEvent,
   recordMcpPromptGetEvent,
@@ -309,6 +311,30 @@ describe("MCP attribution and outcomes", () => {
 });
 
 describe("MCP analytics payload privacy", () => {
+  test("resource exception context uses the same credential redaction as resource events", async () => {
+    const { events, deps } = captures();
+    const uri =
+      "https://user:password@data.example/path?api_key=credential&netuid=1#access_token=fragment";
+    await recordExceptionEvent(
+      { ...env, [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "0" },
+      {
+        error: new Error("read failed"),
+        route: "mcp-dispatch:resources/read",
+        nativeMcp: { resourceName: uri, resourceIsUri: true },
+      },
+      deps,
+    );
+    await recordMcpResourceReadEvent(env, { resourceName: uri }, deps);
+    assert.equal(events.length, 2);
+    assert.equal(
+      events[0].properties.$mcp_resource_name,
+      events[1].properties.$mcp_resource_name,
+    );
+    const serialized = JSON.stringify(events);
+    for (const secret of ["user:", "password", "credential", "fragment"])
+      assert.ok(!serialized.includes(secret));
+  });
+
   test("removes URI credentials from both resource dimensions and parameters", async () => {
     const { events, deps } = captures();
     const uri =
