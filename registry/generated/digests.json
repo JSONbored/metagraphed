@@ -11132,6 +11132,133 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 82,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn82:hyperparam:9155415:min_burn_tao",
+            "chain:sn82:hyperparam:9155415:max_burn_tao",
+            "chain:sn82:hyperparam:9155415:immunity_period",
+            "chain:sn82:hyperparam:9155415:commit_reveal_enabled",
+            "chain:sn82:hyperparam:9155415:target_regs_per_interval",
+            "chain:sn82:hyperparam:9155415:yuma_version",
+            "chain:sn82:hyperparam:9155415:subnet_is_active"
+          ],
+          "text": "Subnet 82 recorded seven hyperparameter changes on 27 September."
+        },
+        {
+          "citations": [
+            "registry:subnet:82:renamed:2026-09-27T13:06:50.102Z"
+          ],
+          "text": "Subnet 82 recorded one registry change on 27 September."
+        }
+      ],
+      "slug": "2026-w39",
+      "sources": [
+        {
+          "id": "registry:subnet:82:renamed:2026-09-27T13:06:50.102Z",
+          "summary": "Subnet 82 renamed from Compelle to uruz in the registry.",
+          "tags": [
+            "registry",
+            "subnet",
+            "renamed"
+          ],
+          "timestamp": "2026-09-27T13:06:50.102Z",
+          "title": "Subnet 82 renamed — Compelle → uruz",
+          "url": "https://metagraph.sh/subnets/82"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9155415:min_burn_tao",
+          "summary": "Minimum burn changed from 0.0005 to 0.99 at block #9155415.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-09-27T00:06:28.895Z",
+          "title": "Subnet 82: Minimum burn 0.0005 → 0.99",
+          "url": "https://metagraph.sh/blocks/9155415"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9155415:max_burn_tao",
+          "summary": "Maximum burn changed from 100 to 18446700000 at block #9155415.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-09-27T00:06:28.895Z",
+          "title": "Subnet 82: Maximum burn 100 → 18446700000",
+          "url": "https://metagraph.sh/blocks/9155415"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9155415:immunity_period",
+          "summary": "Immunity period changed from 8000 to 65535 at block #9155415.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-09-27T00:06:28.895Z",
+          "title": "Subnet 82: Immunity period 8000 → 65535",
+          "url": "https://metagraph.sh/blocks/9155415"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9155415:commit_reveal_enabled",
+          "summary": "Commit-reveal changed from disabled to enabled at block #9155415.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-09-27T00:06:28.895Z",
+          "title": "Subnet 82: Commit-reveal disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9155415"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9155415:target_regs_per_interval",
+          "summary": "Target registrations per interval changed from 1 to 2 at block #9155415.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-09-27T00:06:28.895Z",
+          "title": "Subnet 82: Target registrations per interval 1 → 2",
+          "url": "https://metagraph.sh/blocks/9155415"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9155415:yuma_version",
+          "summary": "Yuma version changed from 2 to 3 at block #9155415.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-09-27T00:06:28.895Z",
+          "title": "Subnet 82: Yuma version 2 → 3",
+          "url": "https://metagraph.sh/blocks/9155415"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9155415:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9155415.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-09-27T00:06:28.895Z",
+          "title": "Subnet 82: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9155415"
+        }
+      ],
+      "substantive_count": 8,
+      "week": 39,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 83,
       "schema_version": 1,
       "sentences": [
