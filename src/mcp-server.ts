@@ -249,6 +249,7 @@ import {
   anonymousUsageDistinctId,
   normalizeMcpLlmModel,
 } from "./usage-telemetry.ts";
+import { mcpConversationHandle } from "./mcp-conversation.ts";
 import { maskRouteParams } from "./route-label.ts";
 import {
   newSpanId,
@@ -5570,27 +5571,17 @@ const MCP_INTENT_ARG_SCHEMA = {
  * kept verbatim for the same reason `context` was. Verified against every
  * published schema before choosing it: none declares `conversation_id`.
  *
- * Deliberately only HALF of the SDK's feature: the argument is accepted and
- * recorded, but the SDK's other half — minting an id server-side and
- * appending a "[SERVER]: Reuse conversation_id=…" text block to every tool
- * response — is not implemented. That prompt-back rides the response's
- * content array, which consumers surface to end users verbatim (the SDK's
- * own docs call the leak out), and it taxes every response to benefit only
- * the calls where the agent would not cooperate anyway. An agent that wants
- * stitching sends the id; one that does not costs nothing.
+ * A configured deployment returns a compact UUIDv7 handle as a JSON text
+ * block, without instructions or a second copy of the tool payload. Echoes
+ * anchor PostHog sessions across reconnects; arbitrary labels are replaced
+ * rather than merging unrelated calls. Structured output remains unchanged.
  */
 const MCP_CONVERSATION_ARG = "conversation_id";
 const MCP_CONVERSATION_ARG_SCHEMA = {
   type: "string",
-  // Paid once per tool on every tools/list, same budget discipline as the
-  // intent description above (#9696): what to send, that it is optional,
-  // that it changes nothing.
   description:
-    "Optional: stable id for this conversation, same value on every call. Analytics only; does not affect the result.",
-  // The examples gate (tests/mcp-input-schema.test.ts) is right to apply
-  // here too: the useful shape -- opaque, stable, reused -- is easier shown
-  // than described.
-  examples: ["chat-8f3d"],
+    "Reuse the conversation_id returned by this server; omit on the first call. Analytics only.",
+  examples: ["0198f2d6-0000-7000-8000-000000000001"],
 } as const;
 
 const MCP_LLM_MODEL_ARG = "llm_model";
@@ -16659,6 +16650,11 @@ async function callTool(params: Row | null, ctx: McpCtx) {
     llmModel,
     rest: toolParameters,
   } = splitMcpAnalyticsArguments(rowOf(params?.arguments));
+  const conversation =
+    isUsageTelemetryConfigured(ctx.env) &&
+    toolLabel !== UNREGISTERED_MCP_TOOL_LABEL
+      ? mcpConversationHandle(conversationId)
+      : undefined;
   scheduleMcpToolCallEvent(ctx, {
     toolName: toolLabel,
     // $mcp_tool_description: the description the agent actually chose from,
@@ -16690,9 +16686,7 @@ async function callTool(params: Row | null, ctx: McpCtx) {
           intent: `Invoking ${toolLabel}`,
           intentSource: "inferred" as const,
         }),
-    // Only a caller that actually sent one — there is nothing honest to infer
-    // for a conversation label.
-    ...(conversationId ? { conversationId } : {}),
+    ...conversation,
     ...mcpModelAttribution(params, llmModel),
     // #8963: the same structuredContent.error.code usage_event already
     // threads above, projected onto PostHog's $mcp_error_type by
@@ -16718,10 +16712,24 @@ async function callTool(params: Row | null, ctx: McpCtx) {
     scheduleMcpMissingCapabilityEvent(ctx, {
       intent,
       sessionId: ctx?.sessionId,
+      ...conversation,
       ...mcpAttributionFor(ctx),
     });
   }
-  return result;
+  return conversation
+    ? {
+        ...result,
+        content: [
+          ...result.content,
+          {
+            type: "text",
+            text: JSON.stringify({
+              conversation_id: conversation.conversationId,
+            }),
+          },
+        ],
+      }
+    : result;
 }
 
 /**

@@ -5,7 +5,10 @@ import {
   POSTHOG_PROJECT_TOKEN_ENV,
   USAGE_EVENT_DISTINCT_ID,
   admitMcpRefusalCapture,
+  recordMcpToolCallEvent,
+  recordMcpMissingCapabilityEvent,
 } from "../src/usage-telemetry.ts";
+import { acceptedMcpConversationId } from "../src/mcp-conversation.ts";
 import {
   handleMcpRequest,
   listToolDefinitions,
@@ -2023,7 +2026,10 @@ describe("MCP agent intent capture (#9642)", () => {
         method: "tools/call",
         params: {
           name: "get_subnet",
-          arguments: { netuid: 64, conversation_id: "conv-9" },
+          arguments: {
+            netuid: 64,
+            conversation_id: "0198f2d6-abcd-7123-8456-789abcdef012",
+          },
         },
       },
       CONFIGURED_ENV,
@@ -2036,10 +2042,179 @@ describe("MCP agent intent capture (#9642)", () => {
       },
     );
     assert.equal(events.length, 1);
-    assert.equal(events[0]!.conversationId, "conv-9");
+    assert.equal(
+      events[0]!.conversationId,
+      "0198f2d6-abcd-7123-8456-789abcdef012",
+    );
+    assert.equal(events[0]!.conversationIdAccepted, true);
     // Not duplicated inside the parameter blob, and never handed to the
     // handler -- the same lifecycle context already has.
     assert.deepEqual(events[0]!.parameters, { netuid: 64 });
+  });
+});
+
+describe("native MCP conversation continuity", () => {
+  const sessionA = "11111111-1111-4111-8111-111111111111";
+  const sessionB = "22222222-2222-4222-8222-222222222222";
+  const handle = "0198f2d6-abcd-7123-8456-789abcdef012";
+
+  function nativeCaptures() {
+    const events: Row[] = [];
+    const executionCtx = fakeExecutionCtx();
+    const captureDeps = {
+      fetch: (async (_url, init) => {
+        events.push(JSON.parse(String(init?.body)));
+        return new Response("{}", { status: 200 });
+      }) as typeof fetch,
+    };
+    return {
+      events,
+      executionCtx,
+      recordUsageEvent: () => true,
+      recordMcpToolCallEvent: (
+        env: Env,
+        event: Parameters<typeof recordMcpToolCallEvent>[1],
+      ) => recordMcpToolCallEvent(env, event, captureDeps),
+      recordMcpMissingCapabilityEvent: (
+        env: Env,
+        event: Parameters<typeof recordMcpMissingCapabilityEvent>[1],
+      ) => recordMcpMissingCapabilityEvent(env, event, captureDeps),
+    };
+  }
+
+  test("first calls return one handle and preserve both modern and legacy result data", async () => {
+    for (const protocol of ["2025-03-26", "2025-11-25"]) {
+      const deps = nativeCaptures();
+      const headers = {
+        "mcp-protocol-version": protocol,
+        "mcp-session-id": sessionA,
+      };
+      const baseline = await callMcp(
+        toolCall(TOOL),
+        {},
+        { recordUsageEvent: () => true },
+        headers,
+      );
+      const result = await callMcp(
+        toolCall(TOOL),
+        CONFIGURED_ENV,
+        deps,
+        headers,
+      );
+      await Promise.all(deps.executionCtx.scheduled);
+      assert.deepEqual(
+        result.result.structuredContent,
+        baseline.result.structuredContent,
+      );
+      assert.deepEqual(
+        result.result.content.slice(0, -1),
+        baseline.result.content,
+      );
+      const returned = JSON.parse(result.result.content.at(-1).text);
+      assert.deepEqual(Object.keys(returned), ["conversation_id"]);
+      assert.equal(
+        acceptedMcpConversationId(returned.conversation_id),
+        returned.conversation_id,
+      );
+      assert.equal(deps.events.length, 1);
+      const properties = deps.events[0].properties;
+      assert.equal(properties.$mcp_conversation_id, returned.conversation_id);
+      assert.equal(properties.$session_id, sessionA);
+      assert.equal(properties.$mcp_protocol_session_id, undefined);
+      assert.equal(properties.$process_person_profile, false);
+      assert.deepEqual(properties.$mcp_parameters, {});
+      assert.deepEqual(
+        properties.$mcp_response,
+        result.result.structuredContent,
+      );
+    }
+  });
+
+  test("echoed handles correlate across reconnects and requests without protocol sessions", async () => {
+    const sessions: string[] = [];
+    for (const protocolSession of [sessionA, sessionB, undefined]) {
+      const deps = nativeCaptures();
+      const result = await callMcp(
+        toolCall(TOOL, { conversation_id: handle }),
+        CONFIGURED_ENV,
+        deps,
+        protocolSession ? { "mcp-session-id": protocolSession } : {},
+      );
+      await Promise.all(deps.executionCtx.scheduled);
+      assert.equal(result.result.isError, false);
+      assert.deepEqual(JSON.parse(result.result.content.at(-1).text), {
+        conversation_id: handle,
+      });
+      const properties = deps.events[0].properties;
+      assert.equal(properties.$mcp_conversation_id, handle);
+      assert.equal(properties.$mcp_protocol_session_id, protocolSession);
+      assert.deepEqual(properties.$mcp_parameters, {});
+      assert.match(properties.$session_id, /^ses_[0-9a-f]{64}$/);
+      sessions.push(properties.$session_id);
+    }
+    assert.equal(new Set(sessions).size, 1);
+  });
+
+  test("arbitrary legacy labels remain accepted by tools but cannot merge conversations", async () => {
+    const handles: string[] = [];
+    for (let i = 0; i < 2; i++) {
+      const deps = nativeCaptures();
+      const result = await callMcp(
+        toolCall(TOOL, { conversation_id: "chat-1" }),
+        CONFIGURED_ENV,
+        deps,
+      );
+      await Promise.all(deps.executionCtx.scheduled);
+      assert.equal(result.result.isError, false);
+      const id = JSON.parse(result.result.content.at(-1).text).conversation_id;
+      assert.notEqual(id, "chat-1");
+      assert.equal(deps.events[0].properties.$mcp_conversation_id, id);
+      assert.equal(deps.events[0].properties.$session_id, undefined);
+      handles.push(id);
+    }
+    assert.notEqual(handles[0], handles[1]);
+  });
+
+  test("known-tool failures retain correlation while unregistered tools do not issue handles", async () => {
+    for (const [name, args, known] of [
+      ["get_subnet", { netuid: "invalid" }, true],
+      ["unregistered-test-tool", {}, false],
+    ] as const) {
+      const deps = nativeCaptures();
+      const result = await callMcp(toolCall(name, args), CONFIGURED_ENV, deps);
+      await Promise.all(deps.executionCtx.scheduled);
+      assert.equal(result.result.isError, true);
+      const properties = deps.events[0].properties;
+      assert.equal(properties.$mcp_is_error, true);
+      assert.equal(typeof properties.$mcp_conversation_id === "string", known);
+      if (!known) assert.equal(result.result.content.length, 1);
+    }
+  });
+
+  test("missing-capability and tool events use the same conversation session", async () => {
+    const deps = nativeCaptures();
+    await callMcp(
+      toolCall("get_more_tools", {
+        context: "Find an unsupported capability",
+        conversation_id: handle,
+      }),
+      CONFIGURED_ENV,
+      deps,
+      { "mcp-session-id": sessionA },
+    );
+    await Promise.all(deps.executionCtx.scheduled);
+    assert.deepEqual(deps.events.map((event) => event.event).sort(), [
+      "$mcp_missing_capability",
+      "$mcp_tool_call",
+    ]);
+    for (const event of deps.events) {
+      assert.equal(event.properties.$mcp_conversation_id, handle);
+      assert.equal(event.properties.$mcp_protocol_session_id, sessionA);
+    }
+    assert.equal(
+      deps.events[0].properties.$session_id,
+      deps.events[1].properties.$session_id,
+    );
   });
 });
 
