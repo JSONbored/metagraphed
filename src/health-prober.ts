@@ -1,10 +1,12 @@
 import { generatedArtifactStore } from "./generated-artifact-store.ts";
+import { latestPointer } from "../workers/storage.ts";
+import { readRegistryKv } from "./registry-kv.ts";
 import { createD1Sql, selectedD1Store } from "./d1-store.ts";
 import { OBSERVATION_TABLES } from "./observations-neon.ts";
 // Live operational-health cron prober.
 //
 // Runs in the Worker on a 15-minute Cron Trigger (workers/api.ts `scheduled()`):
-// loads the operational-surfaces list (the hourly cron's R2 store first, the
+// loads the operational-surfaces list (the hourly cron's D1 store first, the
 // committed copy as the cold-start seed — see loadOperationalSurfaces), probes each surface with
 // the shared isomorphic core (src/health-probe-core.ts) under bounded
 // concurrency, then writes:
@@ -421,21 +423,19 @@ export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
       }
     }
   } catch {
-    // fall through to R2
+    // fall through to the published registry
   }
   try {
-    if (env.METAGRAPH_ARCHIVE?.get) {
-      const prefix = env.METAGRAPH_R2_LATEST_PREFIX || "latest/";
-      // R2 artifact keys are FLAT under the prefix (latest/<file>.json), NOT
-      // latest/metagraph/<file>.json — the manifest's latest_key is
-      // "latest/operational-surfaces.json". The "/metagraph/" segment is only
-      // the public HTTP path, not the R2 key. This fallback went unexercised
-      // until #1017 made operational-surfaces.json R2-only; the stray
-      // "metagraph/" segment then 404'd every read and silently froze the prober.
-      const key = `${prefix}operational-surfaces.json`;
-      const object = await env.METAGRAPH_ARCHIVE.get(key);
-      if (object) {
-        const body = asJsonObject(JSON.parse(await object.text()));
+    if (env.METAGRAPH_CONTROL) {
+      const pointer = await latestPointer(env);
+      if (!pointer?.registry_manifest_sha256) return [];
+      const result = await readRegistryKv(
+        env.METAGRAPH_CONTROL,
+        pointer,
+        OPERATIONAL_SURFACES_PATH,
+      );
+      if (result.ok) {
+        const body = asJsonObject(await result.object.json());
         if (Array.isArray(body?.surfaces)) return body.surfaces as Row[];
       }
     }
