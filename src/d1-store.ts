@@ -103,10 +103,14 @@ export function createD1Store(
       return (await query<Row>(text, values))[0] ?? null;
     },
     async run(text: string, values: unknown[] = []) {
-      const result = revisions.length
-        ? (await batch([{ text, values }]))[0]!
-        : await timed(TIMING_D1, () => prepare({ text, values }).run());
-      if (!revisions.length) markSqlExecution(result);
+      if (revisions.length) {
+        const result = (await batch([{ text, values }]))[0]!;
+        return { changes: result.meta.changes };
+      }
+      const result = await timed(TIMING_D1, () =>
+        prepare({ text, values }).run(),
+      );
+      markSqlExecution(result);
       return { changes: result.meta.changes };
     },
     async transaction(statements: readonly ProducerStatement[]) {
