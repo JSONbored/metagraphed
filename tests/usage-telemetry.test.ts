@@ -656,6 +656,101 @@ describe("recordMcpToolCallEvent", () => {
     assert.ok(sent.preview.length <= 4096);
   });
 
+  test("stops reading large arrays and wide objects once the capture budget is spent", async () => {
+    for (const payload of [Array(10_000).fill(null), {} as Row]) {
+      let reads = 0;
+      for (let index = 0; index < 1_000; index += 1) {
+        Object.defineProperty(payload, String(index), {
+          enumerable: true,
+          get() {
+            reads += 1;
+            if (index >= 600) throw new Error("uncaptured tail was visited");
+            return {};
+          },
+        });
+      }
+      const calls: Row[] = [];
+      assert.equal(
+        await recordMcpToolCallEvent(
+          CONFIGURED,
+          { isError: false, durationMs: 7, response: payload },
+          { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+        ),
+        true,
+      );
+      assert.ok(reads > 0 && reads <= 512);
+      assert.equal(calls[0].body.properties.$mcp_response.truncated, true);
+      assert.ok(calls[0].body.properties.$mcp_response.preview.length <= 4096);
+      assert.equal(calls[0].body.properties.$mcp_duration_ms, 7);
+    }
+  });
+
+  test("bounds string, key and URL work before reading the rest of a payload", async () => {
+    for (const payload of [
+      ["x".repeat(10_000), "tail"],
+      { escaped: "\n".repeat(3_000) },
+      { ["k".repeat(5_000)]: "unread" },
+      {
+        url: "https://user:" + "private".repeat(1_000) + "@example.com/",
+        tail: "unread",
+      },
+    ]) {
+      const calls: Row[] = [];
+      await recordMcpToolCallEvent(
+        CONFIGURED,
+        { isError: false, durationMs: 1, response: payload },
+        { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+      );
+      const sent = calls[0].body.properties.$mcp_response;
+      assert.equal(sent.truncated, true);
+      assert.ok(sent.preview.length <= 4096);
+      assert.ok(!JSON.stringify(sent).includes("private"));
+      assert.ok(!JSON.stringify(sent).includes("unread"));
+    }
+  });
+
+  test("retains event metrics when reading a malformed payload throws", async () => {
+    const calls: Row[] = [];
+    const response = Object.defineProperty({}, "broken", {
+      enumerable: true,
+      get() {
+        throw new Error("bad accessor");
+      },
+    });
+    assert.equal(
+      await recordMcpToolCallEvent(
+        CONFIGURED,
+        { isError: false, durationMs: 3, response },
+        { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+      ),
+      true,
+    );
+    assert.equal(calls[0].body.properties.$mcp_duration_ms, 3);
+    assert.equal("$mcp_response" in calls[0].body.properties, false);
+  });
+
+  test("redacts sensitive accessors without reading their values and preserves literal keys", async () => {
+    const calls: Row[] = [];
+    const parameters = JSON.parse('{"__proto__":{"public":"value"},"url":42}');
+    Object.defineProperty(parameters, "credential", {
+      enumerable: true,
+      get() {
+        throw new Error("secret accessor must not be read");
+      },
+    });
+    await recordMcpToolCallEvent(
+      CONFIGURED,
+      { isError: false, durationMs: 1, parameters },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.deepEqual(
+      calls[0].body.properties.$mcp_parameters,
+      JSON.parse(
+        '{"__proto__":{"public":"value"},"url":42,"credential":"[redacted]"}',
+      ),
+    );
+  });
+
   // A secret buried past the recursion cap must never reach the payload,
   // even unredacted-by-key-name -- the depth guard drops the whole subtree
   // rather than risk a stack overflow trying to inspect it.
