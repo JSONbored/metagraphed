@@ -631,6 +631,7 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
   function aiEnv(overrides = {}) {
     return {
       ...CONFIGURED_ENV,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "0",
       METAGRAPH_ENABLE_AI: "true",
       AI: {
         run(_model: unknown, input: Row) {
@@ -650,7 +651,7 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
     };
   }
 
-  test("an unexpected internal fault posts a $exception event tagged with the tool name", async () => {
+  test("a classified upstream fault shares native context with its tool event", async () => {
     const original = globalThis.fetch;
     const posted: Row[] = [];
     globalThis.fetch = (async (url: string, init?: RequestInit) => {
@@ -659,10 +660,30 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
     }) as typeof fetch;
     try {
       const executionCtx = fakeExecutionCtx();
+      const conversationId = "0198f2d6-abcd-7123-8456-789abcdef012";
+      const protocolSession = "11111111-1111-4111-8111-111111111111";
+      const request = toolCall("semantic_search", {
+        query: "images",
+        context: "Find image generation subnets",
+        conversation_id: conversationId,
+        llm_model: "caller-fallback",
+      });
       const payload = await callMcp(
-        toolCall("semantic_search", { query: "images" }),
+        {
+          ...request,
+          params: {
+            ...request.params,
+            _meta: { "x-codex-turn-metadata": { model: "calling-model" } },
+          },
+        },
         aiEnv(),
         { executionCtx },
+        {
+          "user-agent": "claude-code/2.1.0 (sdk-ts)",
+          "x-anthropic-client": "claude-code",
+          "mcp-session-id": protocolSession,
+          "mcp-protocol-version": "2025-11-25",
+        },
       );
       await Promise.all(executionCtx.scheduled);
 
@@ -689,6 +710,122 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
         exceptionPost.body.properties.$exception_list[0].value,
         "vectorize exploded",
       );
+      assert.equal(
+        JSON.stringify(payload).includes("vectorize exploded"),
+        false,
+      );
+      const toolPost = posted.find((p) => p.body.event === "$mcp_tool_call");
+      assert.ok(toolPost);
+      const exception = exceptionPost.body.properties;
+      for (const key of [
+        "$mcp_source",
+        "$mcp_tool_name",
+        "$mcp_tool_description",
+        "$mcp_server_name",
+        "$mcp_server_version",
+        "$mcp_profile",
+        "$mcp_protocol_version",
+        "$mcp_auth_tier",
+        "$mcp_client_name",
+        "$mcp_client_version",
+        "$mcp_client_name_source",
+        "$mcp_client_user_agent",
+        "$mcp_vendor_client",
+        "$mcp_llm_model",
+        "$mcp_llm_model_source",
+        "$mcp_intent",
+        "$mcp_intent_source",
+        "$mcp_conversation_id",
+        "$mcp_protocol_session_id",
+        "$session_id",
+      ]) {
+        assert.notEqual(toolPost.body.properties[key], undefined, key);
+        assert.deepEqual(exception[key], toolPost.body.properties[key], key);
+      }
+      assert.equal(exception.$exception_fingerprint, "semantic_search:Error");
+      assert.equal(exception.$mcp_llm_model, "calling-model");
+      assert.equal(exception.$mcp_llm_model_source, "client_metadata");
+      assert.equal(exception.$mcp_intent, "Find image generation subnets");
+      assert.equal(exception.$mcp_conversation_id, conversationId);
+      assert.equal(exception.$mcp_protocol_session_id, protocolSession);
+      assert.match(exception.$session_id, /^ses_[0-9a-f]{64}$/);
+      assert.equal(exception.$process_person_profile, false);
+      assert.equal(exception.$mcp_parameters, undefined);
+      assert.equal(exception.$mcp_response, undefined);
+      assert.equal(
+        posted.filter((p) => p.body.event === "$exception").length,
+        1,
+      );
+      assert.equal(
+        posted.filter((p) => p.body.event === "$mcp_tool_call").length,
+        1,
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("unexpected faults in one batch keep each call's own conversation and model", async () => {
+    const original = globalThis.fetch;
+    const posted: Row[] = [];
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      posted.push(JSON.parse(init!.body as string));
+      return { ok: true };
+    }) as typeof fetch;
+    try {
+      const executionCtx = fakeExecutionCtx();
+      const payload = await callMcp(
+        ["first-model", "second-model"].map((model, index) => ({
+          ...toolCall(TOOL, { llm_model: model }),
+          id: index + 1,
+        })),
+        { ...CONFIGURED_ENV, [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "0" },
+        {
+          executionCtx,
+          readArtifact: () => Promise.reject(new Error("artifact read failed")),
+        },
+      );
+      await Promise.all(executionCtx.scheduled);
+      assert.ok(Array.isArray(payload));
+      assert.equal(payload.length, 2);
+      const exceptions = posted.filter((event) => event.event === "$exception");
+      const calls = posted.filter((event) => event.event === "$mcp_tool_call");
+      assert.equal(exceptions.length, 2);
+      assert.equal(calls.length, 2);
+      const handles: string[] = [];
+      for (const [index, result] of payload.entries()) {
+        assert.deepEqual(result.result.structuredContent, {
+          error: {
+            code: "internal_error",
+            message: "The tool failed to complete.",
+          },
+        });
+        const handle = JSON.parse(
+          result.result.content.at(-1).text,
+        ).conversation_id;
+        assert.equal(acceptedMcpConversationId(handle), handle);
+        handles.push(handle);
+        const exception = exceptions.find(
+          (event) => event.properties.$mcp_conversation_id === handle,
+        )?.properties;
+        const call = calls.find(
+          (event) => event.properties.$mcp_conversation_id === handle,
+        )?.properties;
+        assert.ok(exception);
+        assert.ok(call);
+        assert.equal(
+          exception.$mcp_llm_model,
+          index === 0 ? "first-model" : "second-model",
+        );
+        assert.equal(exception.$mcp_llm_model, call.$mcp_llm_model);
+        assert.equal(exception.$mcp_llm_model_source, "self_reported");
+        assert.equal(exception.$mcp_intent, `Invoking ${TOOL}`);
+        assert.equal(exception.$mcp_intent_source, "inferred");
+        assert.equal(exception.$exception_fingerprint, `${TOOL}:Error`);
+        assert.equal(exception.error_code, "internal_error");
+        assert.equal(exception.$session_id, undefined);
+      }
+      assert.notEqual(handles[0], handles[1]);
     } finally {
       globalThis.fetch = original;
     }

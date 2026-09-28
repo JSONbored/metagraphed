@@ -248,6 +248,7 @@ import {
   USAGE_ACCOUNT_NAMESPACE,
   anonymousUsageDistinctId,
   normalizeMcpLlmModel,
+  type McpCallContext,
 } from "./usage-telemetry.ts";
 import { mcpConversationHandle } from "./mcp-conversation.ts";
 import { maskRouteParams } from "./route-label.ts";
@@ -16615,35 +16616,7 @@ function negotiateProtocol(requested: unknown) {
 // instrument() wrapper here, so no default redaction pipeline either).
 async function callTool(params: Row | null, ctx: McpCtx) {
   const startedAt = Date.now();
-  const result = await dispatchTool(params, ctx);
-  const durationMs = Date.now() - startedAt;
-  // One bucket for both events, so the tool dimension can never disagree
-  // between usage_event and $mcp_tool_call. See mcpToolLabel.
   const toolLabel = mcpToolLabel(params?.name);
-  // The failure code both events report. `structuredContent.error.code` was
-  // two chained reads off a bag; every isError result is built by the same
-  // two producers (toolError's wrapper and the unknown_tool branch) and both
-  // set it, so this is where that gets said once (#10782).
-  const toolFailure = rowOf(result.structuredContent.error);
-  const errorCode = toolFailure?.code;
-  scheduleToolUsageEvent(ctx, {
-    mcpTool: toolLabel,
-    ok: result.isError !== true,
-    durationMs,
-    // metagraphed#7726: every isError result already carries a code from a
-    // small, developer-defined literal set (toolError's own codes, or
-    // "unknown_tool" below) in structuredContent.error.code -- thread it
-    // through so analytics can break failures down by cause, not just count
-    // them. Omitted entirely on success (no `errorCode` key at all), same as
-    // `route`/`mcpTool` being omitted when absent.
-    ...(result.isError ? { errorCode } : {}),
-  });
-  // #9642: `context` is the argument an agent uses to say WHY it called, and
-  // PostHog records it as $mcp_intent; `conversation_id` is the one it uses
-  // to stitch calls together, recorded as $mcp_conversation_id. Split here
-  // rather than read in place so `parameters` below carries the real
-  // arguments only -- each travels as its own property, not as a second copy
-  // inside the parameter blob.
   const {
     intent,
     conversationId,
@@ -16655,46 +16628,39 @@ async function callTool(params: Row | null, ctx: McpCtx) {
     toolLabel !== UNREGISTERED_MCP_TOOL_LABEL
       ? mcpConversationHandle(conversationId)
       : undefined;
-  scheduleMcpToolCallEvent(ctx, {
+  // Resolve once before dispatch so a fault and its tool event carry the same
+  // handle, client and model. Per-call data never mutates the shared batch ctx.
+  const nativeMcp: McpCallContext = {
     toolName: toolLabel,
-    // $mcp_tool_description: the description the agent actually chose from,
-    // which is the ADVERTISED one -- tools/list appends UNTRUSTED_DATA_NOTE,
-    // so the raw registry entry is not the text any caller ever saw. PostHog
-    // defines this property as the description "at the moment of the call"
-    // and their own SDK caches it from tools/list; recording the unadvertised
-    // string would quietly answer a different question than the one the field
-    // is for. Built from the same expression tools/list uses so the two
-    // cannot drift.
-    //
-    // Never from the request, and absent for an unregistered name — there is
-    // no description to report for a tool that does not exist.
     toolDescription: advertisedToolDescription(params?.name),
-    isError: result.isError === true,
-    durationMs,
-    sessionId: ctx?.sessionId,
-    parameters: toolParameters,
-    response: result?.structuredContent,
-    // The agent's own words when it gave any; otherwise the intentFallback
-    // pattern from @posthog/mcp's docs — deterministic, no LLM, no argument
-    // inspection — labelled "inferred" so the intent views can always
-    // separate agent speech from this mechanical floor. What the fallback
-    // buys: an intent-coverage read that means "who is not cooperating"
-    // rather than mixing that with "we did not record".
+    sessionId: ctx.sessionId,
     ...(intent
       ? { intent }
-      : {
-          intent: `Invoking ${toolLabel}`,
-          intentSource: "inferred" as const,
-        }),
+      : { intent: `Invoking ${toolLabel}`, intentSource: "inferred" as const }),
     ...conversation,
     ...mcpModelAttribution(params, llmModel),
-    // #8963: the same structuredContent.error.code usage_event already
-    // threads above, projected onto PostHog's $mcp_error_type by
-    // classifyMcpErrorType inside the recorder. Omitted on success.
+    ...mcpAttributionFor(ctx),
+  };
+  const result = await dispatchTool(params, ctx, nativeMcp);
+  const durationMs = Date.now() - startedAt;
+  const toolFailure = rowOf(result.structuredContent.error);
+  const errorCode = toolFailure?.code;
+  scheduleToolUsageEvent(ctx, {
+    mcpTool: toolLabel,
+    ok: result.isError !== true,
+    durationMs,
+    ...(result.isError ? { errorCode } : {}),
+  });
+  scheduleMcpToolCallEvent(ctx, {
+    ...nativeMcp,
+    isError: result.isError === true,
+    durationMs,
+    // Analytics arguments are never duplicated inside the parameter payload.
+    parameters: toolParameters,
+    response: result.structuredContent,
     ...(result.isError
       ? { errorCode, errorMessage: toolFailure?.message }
       : {}),
-    ...mcpAttributionFor(ctx),
   });
   // The capability gap, recorded from the same split intent the tool call
   // already carries -- not from the handler, which never sees `context`
@@ -17257,6 +17223,7 @@ export function markMcpTierDegraded(
 async function dispatchTool(
   params: Row | null,
   ctx: McpCtx,
+  nativeMcp: McpCallContext,
 ): Promise<{
   content: { type: string; text: string }[];
   structuredContent: Row;
@@ -17404,6 +17371,7 @@ async function dispatchTool(
           // unreachable branch pretending to be caution.
           error: error.cause as Error,
           mcpTool: name,
+          nativeMcp,
           errorCode: error.code,
         });
       }
@@ -17442,6 +17410,7 @@ async function dispatchTool(
     scheduleExceptionEvent(ctx, {
       error,
       mcpTool: name,
+      nativeMcp,
       errorCode: "internal_error",
     });
     console.error("MCP tool handler failed:", error);
