@@ -278,77 +278,118 @@ describe("existing private native store readback", () => {
     }
   });
 
-  it("finishes the bounded group on failure and skips later assets", async () => {
-    const cancel = vi.fn();
-    const f = fixture(
-      () =>
-        new Response(
+  it.each(["verify", "read-many"])(
+    "%s finishes active reads on failure and skips later assets",
+    async (operation) => {
+      const values = Array.from({ length: 6 }, (_, index) => `asset-${index}`);
+      const assets = values.map((value) => ({
+        sha256: createHash("sha256").update(value).digest("hex"),
+        bytes: value.length,
+      }));
+      const finish: Array<() => void> = [];
+      let groupStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        groupStarted = resolve;
+      });
+      const fetch = vi.fn(async (r: Request) => {
+        const index = assets.findIndex((entry) =>
+          r.url.endsWith(`/${entry.sha256}.mgpack`),
+        );
+        if (index === 0) return new Response(null, { status: 404 });
+        return new Response(
           new ReadableStream({
             start(c) {
-              c.enqueue(new TextEncoder().encode(raw + "extra"));
+              finish.push(() => {
+                c.enqueue(new TextEncoder().encode(values[index]));
+                c.close();
+              });
+              if (finish.length === 3) groupStarted();
             },
-            cancel,
           }),
-        ),
-    );
-    const actual = await handleNativeStoreExport(
-      {
-        ...verification,
-        assets: Array.from({ length: 6 }, (_, index) => ({
-          ...asset,
-          sha256: index.toString(16).padStart(64, "0"),
-        })),
-      },
-      f.env,
-    );
-    expect(actual.status).toBe(502);
-    expect(f.fetch).toHaveBeenCalledTimes(4);
-    expect(cancel).toHaveBeenCalledTimes(4);
-  });
+        );
+      });
+      let settled = false;
+      const pending = handleNativeStoreExport(
+        { ...verification, operation, assets },
+        { NATIVE_HISTORY_ASSETS_a: { fetch } },
+      ).then((response) => {
+        settled = true;
+        return response;
+      });
+      await started;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      try {
+        expect(settled).toBe(false);
+        expect(fetch).toHaveBeenCalledTimes(4);
+        expect(fetch.mock.calls.every(([r]) => r.signal.aborted)).toBe(true);
+      } finally {
+        finish.forEach((complete) => complete());
+      }
+      const response = await pending;
+      expect(response.status).toBe(502);
+      expect(fetch).toHaveBeenCalledTimes(4);
+    },
+  );
 
-  it("verifies multi-chunk streams with at most four active reads", async () => {
-    const values = Array.from({ length: 9 }, (_, index) => `asset-${index}`);
-    const assets = values.map((value) => ({
-      sha256: createHash("sha256").update(value).digest("hex"),
-      bytes: value.length,
-    }));
-    let active = 0,
-      peak = 0;
-    const fetch = vi.fn(async (r: Request) => {
-      active++;
-      peak = Math.max(peak, active);
-      const index = assets.findIndex((entry) =>
-        r.url.endsWith(`/${entry.sha256}.mgpack`),
+  it.each(["verify", "read-many"])(
+    "%s validates multi-chunk streams with at most four active reads",
+    async (operation) => {
+      const values = Array.from({ length: 9 }, (_, index) => `asset-${index}`);
+      const assets = values.map((value) => ({
+        sha256: createHash("sha256").update(value).digest("hex"),
+        bytes: value.length,
+      }));
+      let active = 0,
+        peak = 0;
+      const fetch = vi.fn(async (r: Request) => {
+        active++;
+        peak = Math.max(peak, active);
+        const index = assets.findIndex((entry) =>
+          r.url.endsWith(`/${entry.sha256}.mgpack`),
+        );
+        const bytes = new TextEncoder().encode(values[index]);
+        return new Response(
+          new ReadableStream({
+            async start(c) {
+              c.enqueue(bytes.slice(0, 2));
+              await new Promise((resolve) =>
+                setTimeout(resolve, 4 - (index % 4)),
+              );
+              c.enqueue(bytes.slice(2));
+              c.close();
+              active--;
+            },
+          }),
+        );
+      });
+      const response = await handleNativeStoreExport(
+        {
+          ...verification,
+          operation,
+          assets,
+        },
+        { NATIVE_HISTORY_ASSETS_a: { fetch } },
       );
-      const bytes = new TextEncoder().encode(values[index]);
-      return new Response(
-        new ReadableStream({
-          async start(c) {
-            c.enqueue(bytes.slice(0, 2));
-            await new Promise((resolve) => setTimeout(resolve, 1));
-            c.enqueue(bytes.slice(2));
-            c.close();
-            active--;
-          },
-        }),
-      );
-    });
-    const response = await handleNativeStoreExport(
-      {
-        ...verification,
-        assets,
-      },
-      { NATIVE_HISTORY_ASSETS_a: { fetch } },
-    );
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      version: 1,
-      partition: "a",
-      verified: true,
-      assets,
-    });
-    expect(fetch).toHaveBeenCalledTimes(9);
-    expect(active).toBe(0);
-    expect(peak).toBe(4);
-  });
+      expect(response.status).toBe(200);
+      if (operation === "verify") {
+        expect(await response.json()).toEqual({
+          version: 1,
+          partition: "a",
+          verified: true,
+          assets,
+        });
+      } else {
+        expect(await response.text()).toBe(values.join(""));
+        expect(response.headers.get("content-length")).toBe(
+          String(values.join("").length),
+        );
+        expect(response.headers.get("x-content-sha256")).toBe(
+          createHash("sha256").update(values.join("")).digest("hex"),
+        );
+      }
+      expect(fetch).toHaveBeenCalledTimes(9);
+      expect(active).toBe(0);
+      expect(peak).toBe(4);
+    },
+  );
 });

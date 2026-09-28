@@ -79,7 +79,8 @@ export async function handleNativeStoreExport(
   ] as Pick<Fetcher, "fetch"> | undefined;
   if (!binding || typeof binding.fetch !== "function")
     return reply({ error: "native store is not provisioned" }, 503);
-  const signal = AbortSignal.timeout(30_000);
+  const abort = new AbortController();
+  const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(30_000)]);
 
   async function read(
     sha256: string,
@@ -131,6 +132,18 @@ export async function handleNativeStoreExport(
       throw new Error("Native store content identity differs");
     return output.buffer;
   }
+  async function readGroup(entries: Array<z.infer<typeof asset>>) {
+    return Promise.allSettled(
+      entries.map(async (entry) => {
+        try {
+          return await read(entry.sha256, entry.bytes);
+        } catch (error) {
+          abort.abort();
+          throw error;
+        }
+      }),
+    );
+  }
   try {
     if (value.operation === "read") {
       const bytes = await read(value.sha256, value.bytes, value.manifest);
@@ -149,13 +162,12 @@ export async function handleNativeStoreExport(
       );
       let offset = 0;
       for (let start = 0; start < value.assets.length; start += 4) {
-        const batch = value.assets.slice(start, start + 4);
-        const bytes = await Promise.all(
-          batch.map((entry) => read(entry.sha256, entry.bytes)),
-        );
-        for (const part of bytes) {
-          output.set(new Uint8Array(part), offset);
-          offset += part.byteLength;
+        const results = await readGroup(value.assets.slice(start, start + 4));
+        for (const result of results) {
+          if (result.status === "rejected")
+            throw new Error("Native store batch read failed");
+          output.set(new Uint8Array(result.value), offset);
+          offset += result.value.byteLength;
         }
       }
       return new Response(output, {
@@ -171,11 +183,7 @@ export async function handleNativeStoreExport(
     // every checksum verified. Finish the current group on failure before
     // returning; never start another group after a corrupt or missing asset.
     for (let start = 0; start < value.assets.length; start += 4) {
-      const results = await Promise.allSettled(
-        value.assets.slice(start, start + 4).map(async (entry) => {
-          await read(entry.sha256, entry.bytes);
-        }),
-      );
+      const results = await readGroup(value.assets.slice(start, start + 4));
       if (results.some((result) => result.status === "rejected"))
         throw new Error("Native store verification failed");
     }
