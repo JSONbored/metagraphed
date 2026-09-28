@@ -157,7 +157,7 @@ test("many chunks restore in bounded groups with exact ordering and request timi
   await withRequestTiming(async () => {
     const object = await store.get("projection");
     assert.deepEqual(await object!.json(), expected);
-    const calls = 1 + Math.ceil(descriptor.parts / 8);
+    const calls = 1 + Math.ceil(descriptor.parts / 16);
     assert.equal(queries.length, calls);
     assert.equal(requestTimings()!.get("d1")!.count, calls);
     assert.deepEqual(requestTimings()!.get("d1_sql"), {
@@ -167,7 +167,7 @@ test("many chunks restore in bounded groups with exact ordering and request timi
   });
   assert.equal(reads.length, 1 + descriptor.parts);
   assert.equal(new Set(reads).size, reads.length);
-  assert.ok(queries.every((keys) => keys.length <= 8));
+  assert.ok(queries.every((keys) => keys.length <= 16));
 });
 
 test("missing and damaged later chunk groups cannot acknowledge a restored object", async () => {
@@ -176,15 +176,15 @@ test("missing and damaged later chunk groups cannot acknowledge a restored objec
     const descriptor = seed(
       "projection",
       Buffer.from(
-        JSON.stringify({ noise: randomBytes(650_000).toString("base64") }),
+        JSON.stringify({ noise: randomBytes(1_300_000).toString("base64") }),
       ),
     );
-    assert.ok(descriptor.parts > 8);
+    assert.ok(descriptor.parts > 16);
     if (failure === "missing")
       sql
         .prepare("DELETE FROM generated_artifacts WHERE key=?")
-        .run("projection/chunks/8");
-    else put("projection/chunks/8", { data: "" });
+        .run("projection/chunks/16");
+    else put("projection/chunks/16", { data: "" });
     await assert.rejects(store.get("projection"));
   }
 });
