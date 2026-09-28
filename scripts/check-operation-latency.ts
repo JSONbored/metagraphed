@@ -39,6 +39,7 @@
 //
 // Out of band, like its siblings: it needs production, and a check that cannot
 // run on a pull request should not pretend to.
+import { mcpProbeRequest } from "./mcp-probe-request.ts";
 import { buildSchema } from "graphql";
 import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
 import { API_ROUTES, FEED_ROUTES } from "../src/contracts.ts";
@@ -476,10 +477,7 @@ async function timeMcp(name: string, args: Row): Promise<Draw> {
     try {
       const res = await fetch(MCP_ENDPOINT, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json, text/event-stream",
-        },
+        ...mcpProbeRequest(MCP_ENDPOINT, "operation-latency"),
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: (rpcId += 1),
@@ -542,10 +540,7 @@ async function listLiveTools(): Promise<{ name: string; args: Row }[]> {
     try {
       const res = await fetch(MCP_ENDPOINT, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json, text/event-stream",
-        },
+        ...mcpProbeRequest(MCP_ENDPOINT, "operation-latency"),
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: (rpcId += 1),
@@ -883,6 +878,7 @@ export function formatReport(report: LatencyReport): string {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  mcpProbeRequest(MCP_ENDPOINT, "operation-latency");
   const report = await run();
   console.log(formatReport(report));
   if (

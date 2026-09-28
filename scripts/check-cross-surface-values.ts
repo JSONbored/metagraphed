@@ -21,6 +21,7 @@
 // OUT OF BAND, like its three siblings, and for the same reason: it needs
 // production data, and a check that cannot run on a pull request should not
 // pretend to.
+import { mcpProbeRequest } from "./mcp-probe-request.ts";
 import { buildSchema } from "graphql";
 import { SDL } from "../generated/graphql/schema.ts";
 import { MCP_TOOL_ROUTES } from "../src/mcp-route-map.ts";
@@ -224,10 +225,7 @@ async function mcpTool(name: string, args: Row): Promise<Row | null> {
     const answer = await withTimeout(async (signal) => {
       const res = await fetch(MCP_ENDPOINT, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json, text/event-stream",
-        },
+        ...mcpProbeRequest(MCP_ENDPOINT, "cross-surface-values"),
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: (rpcId += 1),
@@ -427,6 +425,7 @@ export function formatReport(report: CrossSurfaceReport): string {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  mcpProbeRequest(MCP_ENDPOINT, "cross-surface-values");
   const report = await run();
   console.log(formatReport(report));
   if (report.declined.length > 0) {
