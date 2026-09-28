@@ -372,7 +372,10 @@ export function archiveObjectStore(env: ArchiveEnv) {
       throw new Error("Archive range exceeds object");
     return { offset, length };
   }
-  async function get(key: string, options?: R2GetOptions) {
+  async function get(
+    key: string,
+    options?: R2GetOptions,
+  ): Promise<R2ObjectBody | R2Object | null> {
     const { value } = await selected(key);
     if (value === undefined) return legacy?.get(key, options) ?? null;
     if ("deleted" in value) return null;
