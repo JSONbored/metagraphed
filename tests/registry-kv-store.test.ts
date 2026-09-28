@@ -238,6 +238,72 @@ test("a corrupt reused object prevents a new publication", async () => {
   assert.deepEqual(pointer(), before);
 });
 
+test("a stale pointer readback converges without repeating the publication write", async () => {
+  const { store, pointer } = fixture();
+  const original = store.readText;
+  const before = JSON.stringify(pointer());
+  let pointerReads = 0;
+  store.readText = vi.fn(async (keys) => {
+    if (keys.includes("metagraph:latest") && pointerReads++ < 2)
+      return { "metagraph:latest": before };
+    return original(keys);
+  });
+  const wait = vi.fn(async () => {});
+  store.waitForPropagation = wait;
+  const result = await publishRegistryKv(store, input());
+  assert.equal(result.activated, true);
+  assert.equal(wait.mock.calls.length, 2);
+  assert.equal(pointerReads, 3);
+  assert.equal(
+    vi
+      .mocked(store.write)
+      .mock.calls.filter(([items]) =>
+        items.some((item) => item.key === "metagraph:latest"),
+      ).length,
+    1,
+  );
+});
+
+test("a permanently stale readback stops at the propagation bound", async () => {
+  const { store, pointer } = fixture();
+  vi.mocked(store.readText).mockResolvedValue({});
+  const wait = vi.fn(async () => {});
+  store.waitForPropagation = wait;
+  await assert.rejects(publishRegistryKv(store, input()), /readback failed/);
+  assert.equal(wait.mock.calls.length, 4);
+  assert.equal(vi.mocked(store.readText).mock.calls.length, 5);
+  assert.equal(vi.mocked(store.write).mock.calls.length, 1);
+  assert.equal(pointer().published_at, "before");
+});
+
+test("binary propagation retries preserve exact bytes and never repeat the write", async () => {
+  const { store } = fixture();
+  const raw = new Uint8Array([0xff, 0xfe, 0x00]);
+  const item = artifact("/metagraph/image.png", raw);
+  const key = registryObjectKey(item.sha256);
+  const original = store.read;
+  let reads = 0;
+  store.read = vi.fn(async (requested) =>
+    requested === key && reads++ === 0 ? null : original(requested),
+  );
+  const wait = vi.fn(async () => {});
+  store.waitForPropagation = wait;
+  await publishRegistryKv(store, {
+    ...input(),
+    artifacts: [item],
+    load: async () => raw,
+  });
+  assert.equal(wait.mock.calls.length, 1);
+  assert.equal(reads, 2);
+  assert.equal(
+    vi
+      .mocked(store.write)
+      .mock.calls.filter(([items]) => items.some((item) => item.key === key))
+      .length,
+    1,
+  );
+});
+
 test("a concurrent pointer change aborts before selecting the prepared publication", async () => {
   const { store, put, pointer } = fixture();
   const original = store.read;
