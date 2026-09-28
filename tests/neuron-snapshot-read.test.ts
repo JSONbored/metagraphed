@@ -27,11 +27,17 @@ const unexpectedSql = {
 } as unknown as PgSql;
 beforeAll(async () => {
   db = await runtime.getD1Database("DB");
-  for (const sql of readFileSync(
-    new URL("../migrations/d1/0007_neuron_documents.sql", import.meta.url),
-    "utf8",
-  ).split("-- statement-breakpoint"))
-    if (sql.trim()) await db.prepare(sql).run();
+  for (const file of [
+    "0007_neuron_documents.sql",
+    "0020_neuron_axon_projection.sql",
+    "0030_neuron_axon_insert_projection.sql",
+  ]) {
+    for (const sql of readFileSync(
+      new URL(`../migrations/d1/${file}`, import.meta.url),
+      "utf8",
+    ).split("-- statement-breakpoint"))
+      if (sql.trim()) await db.prepare(sql).run();
+  }
   for (const sql of readFileSync(
     new URL("../migrations/d1/0010_ledger_state.sql", import.meta.url),
     "utf8",

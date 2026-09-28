@@ -39,6 +39,8 @@ beforeAll(async () => {
     "0001_lane_health.sql",
     "0002_lane_health_current.sql",
     "0007_neuron_documents.sql",
+    "0020_neuron_axon_projection.sql",
+    "0030_neuron_axon_insert_projection.sql",
     "0012_neuron_daily_join_index.sql",
     "0022_neuron_document_dates.sql",
   ]) {
@@ -83,7 +85,7 @@ async function seed(days: number, compact = false) {
               table === "neuron_daily"
                 ? db
                     .prepare(
-                      `INSERT INTO neuron_daily_members VALUES (?, ?, ?, NULL, NULL, ?)`,
+                      `INSERT INTO neuron_daily_members(netuid,uid,snapshot_date,hotkey,coldkey,shard) VALUES (?, ?, ?, NULL, NULL, ?)`,
                     )
                     .bind(netuid, id, day(offset), shard)
                 : db
@@ -127,7 +129,7 @@ test("D1 counts preserve view semantics, gaps, thin days, orphaned members and d
     db.prepare("UPDATE neuron_daily_members SET shard=99 WHERE uid=1"),
     db.prepare("DELETE FROM neuron_daily_members WHERE uid=2"),
     db.prepare(
-      "INSERT INTO neuron_daily_members VALUES (0, 99, '2099-01-01', NULL, NULL, 0)",
+      "INSERT INTO neuron_daily_members(netuid,uid,snapshot_date,hotkey,coldkey,shard) VALUES (0, 99, '2099-01-01', NULL, NULL, 0)",
     ),
     db
       .prepare(
