@@ -32,6 +32,7 @@ beforeAll(async () => {
     "0007_neuron_documents.sql",
     "0020_neuron_axon_projection.sql",
     "0030_neuron_axon_insert_projection.sql",
+    "0016_archive_export_revisions.sql",
   ]) {
     for (const sql of readFileSync(
       new URL(`../migrations/d1/${file}`, import.meta.url),
@@ -162,6 +163,64 @@ test("packed economics retain SQLite boolean and structured-value semantics", as
       )
       .bind(original.payload)
       .run();
+  }
+});
+
+test("tracked neuron writes invalidate a reused full economics snapshot atomically", async () => {
+  const statements: string[] = [];
+  const binding = {
+    prepare(text: string) {
+      statements.push(text);
+      return db.prepare(text);
+    },
+    batch: db.batch.bind(db),
+  };
+  const env = {
+    D1_STATE: binding,
+    D1_STATE_TABLES: "neurons",
+    D1_EXPORT_REVISIONS: "enabled",
+  };
+  const store = createD1Store(db, ["neurons"]);
+  const clear = () =>
+    store.transaction([
+      { text: "DELETE FROM neurons_members WHERE netuid=202" },
+      { text: "DELETE FROM neurons_documents WHERE netuid=202" },
+    ]);
+  await clear();
+  try {
+    const first = await readNeuronEconomicsRows(store, env);
+    const again = await readNeuronEconomicsRows(store, env);
+    assert.deepEqual(again, first);
+    assert.equal(
+      statements.filter((sql) => sql.includes("FROM neurons_documents")).length,
+      1,
+    );
+    await writeNeuronDocuments(store, {
+      ...neuronSnapshotWrite(
+        [
+          {
+            netuid: 202,
+            uid: 0,
+            hotkey: "5New",
+            stake_tao: 123,
+            captured_at: stamp + 9000,
+          },
+        ],
+        stamp + 10000,
+      ),
+      dailyRows: [],
+      positionRows: [],
+    });
+    const changed = await readNeuronEconomicsRows(store, env);
+    assert.equal(changed.length, first.length + 1);
+    assert.equal(changed.at(-1)!.stake_tao, 123);
+    assert.deepEqual(changed, await readNeuronEconomicsRows(store, {}));
+    assert.equal(
+      statements.filter((sql) => sql.includes("FROM neurons_documents")).length,
+      2,
+    );
+  } finally {
+    await clear();
   }
 });
 
