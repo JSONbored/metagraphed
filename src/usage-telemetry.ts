@@ -1127,6 +1127,15 @@ function assignMcpAttribution(
     properties["$mcp_client_version"] = clientVersion;
   }
 
+  // Native harness resolution needs the interface suffix in the original
+  // User-Agent and the vendor header, not only our parsed client label.
+  const clientUserAgent = sanitizeLabel(event.clientUserAgent);
+  if (clientUserAgent !== undefined)
+    properties["$mcp_client_user_agent"] = clientUserAgent;
+  const vendorClient = sanitizeLabel(event.vendorClient);
+  if (vendorClient !== undefined)
+    properties["$mcp_vendor_client"] = vendorClient;
+
   const serverName = sanitizeLabel(event.serverName);
   if (serverName !== undefined) properties["$mcp_server_name"] = serverName;
 
@@ -1301,6 +1310,8 @@ export interface McpServerIdentity {
   serverVersion?: string;
   profile?: "core" | "full";
   protocolVersion?: string | null;
+  clientUserAgent?: string | null;
+  vendorClient?: string | null;
   /**
    * A FIRST-PARTY probe that proved itself with the probe token (#11565).
    *
@@ -1320,11 +1331,19 @@ export interface McpServerIdentity {
  * MCP-declared identity from a transport-level guess. */
 export type McpClientNameSource = "client_info" | "user_agent";
 
+/** Unverified caller metadata, never an authorization or billing identity. */
+export function normalizeMcpLlmModel(value: unknown): string | undefined {
+  const model = sanitizeLabel(value);
+  return model?.toLowerCase() === "unknown" ? undefined : model;
+}
+
 /** Inputs for a single MCP tool-call analytics event. */
 export interface McpToolCallEvent extends McpServerIdentity {
   /** Transport refusals are operational events, never tools/call events. */
   requestStage?: "refused";
   toolName?: string;
+  llmModel?: string;
+  llmModelSource?: "client_metadata" | "self_reported";
   /**
    * The tool's description AT THE MOMENT OF THE CALL, emitted as
    * `$mcp_tool_description` — a documented member of this event's property set
@@ -1545,6 +1564,16 @@ export async function recordMcpToolCallEvent(
 
     const toolName = sanitizeLabel(event.toolName);
     if (toolName !== undefined) properties["$mcp_tool_name"] = toolName;
+
+    const model = normalizeMcpLlmModel(event.llmModel);
+    if (
+      model !== undefined &&
+      (event.llmModelSource === "client_metadata" ||
+        event.llmModelSource === "self_reported")
+    ) {
+      properties["$mcp_llm_model"] = model;
+      properties["$mcp_llm_model_source"] = event.llmModelSource;
+    }
 
     // Not sanitizeLabel: a tool description is prose, and MAX_LABEL_CHARS is
     // sized for identifiers. Same reasoning as $mcp_intent below, and the same

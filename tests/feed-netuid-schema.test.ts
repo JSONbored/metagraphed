@@ -63,7 +63,7 @@ describe("get_feed published inputSchema netuid dependency (#8829)", () => {
     );
     // #9642 adds a universal `context` argument to EVERY tool for agent-intent
     // capture, and `conversation_id` rides the same injection, so the
-    // registered schema is the wrapper's output plus those two properties.
+    // registered schema adds analytics properties, including model capture.
     // Subtracted rather than added to the expectation, so this still
     // asserts the wrapper's full output exactly -- including the `anyOf` that
     // is the whole point of it -- instead of being relaxed into a partial
@@ -72,6 +72,7 @@ describe("get_feed published inputSchema netuid dependency (#8829)", () => {
     const {
       context: _context,
       conversation_id: _conversationId,
+      llm_model: _llmModel,
       ...properties
     } = actual.properties as Row;
     assert.deepEqual({ ...actual, properties }, expected);

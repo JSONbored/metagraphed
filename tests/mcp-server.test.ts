@@ -25429,8 +25429,10 @@ describe("get_coverage_depth MCP tool (#6983)", () => {
     // way -- an argument appearing here by accident still fails.
     assert.deepEqual(
       Object.keys(tool.inputSchema.properties ?? {})
-        // The two universal analytics arguments every tool carries.
-        .filter((key) => key !== "context" && key !== "conversation_id")
+        // Universal analytics arguments are not route parameters.
+        .filter(
+          (key) => !["context", "conversation_id", "llm_model"].includes(key),
+        )
         .sort(),
       [
         "agent_status",
