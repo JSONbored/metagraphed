@@ -476,8 +476,8 @@ export function archiveObjectStore(env: ArchiveEnv) {
             [id, payload],
           )
         : await query(
-            "UPDATE generated_artifacts SET payload=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE key=? AND payload=? RETURNING key",
-            [payload, id, previous.raw],
+            "UPDATE generated_artifacts SET payload=?,updated_at=? WHERE key=? AND payload=? RETURNING key",
+            [payload, object.modified, id, previous.raw],
           );
     if (
       rows.length !== 1 ||
