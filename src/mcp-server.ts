@@ -17576,6 +17576,9 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
           // $mcp_tool_call on $session_id they answer "advertised but never
           // called", which the count alone cannot.
           listedToolNames: tools.map((tool) => tool.name),
+          // Pass the existing catalogue by reference. The recorder bounds its
+          // traversal and capture, so analytics never copies the full schemas.
+          response: { tools },
         };
         return isNotification ? null : rpcResult(id, { tools });
       }
@@ -18717,6 +18720,9 @@ export function scheduleMcpRefusalEvent(
           // so a session id in the path cannot shard the property.
           requestMethod: request.method,
           requestPath: mcpRefusalPath(new URL(request.url).pathname),
+          profile: isMcpCorePath(new URL(request.url).pathname)
+            ? "core"
+            : "full",
           protocolVersion: request.headers.get("mcp-protocol-version"),
           probe: mcpProbeName(request, env),
           serverName: MCP_SERVER_INFO.name,
