@@ -74,6 +74,39 @@ describe("the endpoint is the profile", () => {
       `core (${core} B) must stay well under full (${full} B)`,
     );
   });
+
+  test("discovery reuses each profile without allowing cross-request mutation", () => {
+    const full = listToolDefinitions();
+    const core = listToolDefinitions("core");
+    const before = JSON.stringify({ full, core });
+    assert.strictEqual(listToolDefinitions(), full);
+    assert.strictEqual(listToolDefinitions("core"), core);
+    assert.notStrictEqual(full, core);
+
+    for (const definitions of [full, core]) {
+      assert.throws(() => definitions.pop(), TypeError);
+      const first = definitions[0] as Row;
+      assert.throws(() => {
+        first.description = "poisoned";
+      }, TypeError);
+      assert.throws(() => {
+        first.inputSchema.properties.context.type = "number";
+      }, TypeError);
+      assert.throws(() => {
+        first.outputSchema.properties = {};
+      }, TypeError);
+      assert.throws(() => {
+        first.annotations.readOnlyHint = false;
+      }, TypeError);
+    }
+    assert.equal(
+      JSON.stringify({
+        full: listToolDefinitions(),
+        core: listToolDefinitions("core"),
+      }),
+      before,
+    );
+  });
 });
 
 describe("the load guard", () => {

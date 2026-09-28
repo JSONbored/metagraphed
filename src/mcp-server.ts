@@ -15794,7 +15794,7 @@ const CORE_TOOL_NAME_SET: ReadonlySet<string> = assertCoreNamesRegistered(
   new Set(MCP_TOOLS.map((tool) => tool.name)),
 );
 
-export function listToolDefinitions(profile: McpProfile = "full") {
+function buildToolDefinitions(profile: McpProfile) {
   const tools =
     profile === "core"
       ? MCP_TOOLS.filter((tool) => CORE_TOOL_NAME_SET.has(tool.name))
@@ -15859,6 +15859,32 @@ export function listToolDefinitions(profile: McpProfile = "full") {
         : {}),
     };
   });
+}
+
+// The registry is fixed for this Worker version. Normalize each requested
+// profile once instead of recursively copying every schema on every discovery
+// request. Keep this lazy so a core request never builds the full catalogue.
+const TOOL_DEFINITION_CACHE = new Map<
+  McpProfile,
+  ReturnType<typeof buildToolDefinitions>
+>();
+
+function freezeCatalogue<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    for (const entry of Object.values(value)) freezeCatalogue(entry);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+export function listToolDefinitions(profile: McpProfile = "full") {
+  const cached = TOOL_DEFINITION_CACHE.get(profile);
+  if (cached) return cached;
+  // Deep freezing prevents one consumer from changing another request's
+  // schemas or annotations. It changes no serialized field or dispatch rule.
+  const definitions = freezeCatalogue(buildToolDefinitions(profile));
+  TOOL_DEFINITION_CACHE.set(profile, definitions);
+  return definitions;
 }
 
 // ─── MCP Resources + Prompts (#742) ────────────────────────────────────────
