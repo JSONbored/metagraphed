@@ -7,13 +7,13 @@ import { selectedD1Store } from "./d1-store.ts";
 import type { PgSql } from "./pg-sql.ts";
 import { NEURON_COLUMNS } from "./metagraph-neurons.ts";
 import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
-import type { RowQuerier } from "./read-store.ts";
+import type { UntypedRowQuerier } from "./read-store.ts";
 
 /** Economic rankings need miners and validators, including null hotkeys.
  * Expand each bounded document once instead of re-reading its JSON per UID.
  * stake_tao already includes the weighted root leg; pass it through unchanged. */
 export async function readNeuronEconomicsRows(
-  db: RowQuerier,
+  db: UntypedRowQuerier,
   env: unknown,
   netuid?: number,
 ): Promise<Record<string, unknown>[]> {
