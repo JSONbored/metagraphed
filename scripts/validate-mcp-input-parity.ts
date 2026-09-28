@@ -34,6 +34,7 @@ type Row = Record<string, unknown>;
 const MCP_TRANSPORT_ARGS = new Set([
   "context",
   "conversation_id",
+  "llm_model",
   "cursor",
   "network",
   "fields",

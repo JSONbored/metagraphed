@@ -15,6 +15,7 @@ import {
   splitMcpAnalyticsArguments,
   withAdvertisedRequiredIntent,
   withAnalyticsArguments,
+  mcpModelAttribution,
 } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
@@ -69,12 +70,14 @@ async function callMcp(
   body: unknown,
   env: Row,
   extraDeps: Row = {},
+  headers: Record<string, string> = {},
 ): Promise<Row> {
   const request = new Request("https://api.metagraph.sh/mcp", {
     method: "POST",
     headers: {
       "content-type": "application/json",
       accept: "application/json, text/event-stream",
+      ...headers,
     },
     body: JSON.stringify(body),
   });
@@ -1702,6 +1705,111 @@ describe("MCP agent intent capture (#9642)", () => {
     assert.equal((payload.result as Row).isError, false);
   });
 
+  test("model capture reaches analytics without changing tool arguments or results", async () => {
+    for (const metadata of [
+      undefined,
+      { "x-codex-turn-metadata": { model: "gpt-6" } },
+    ]) {
+      const events: Row[] = [];
+      const payload = await callMcp(
+        {
+          ...toolCall(TOOL),
+          params: {
+            name: TOOL,
+            arguments: { llm_model: "claude-opus-4-1" },
+            _meta: metadata,
+          },
+        },
+        CONFIGURED_ENV,
+        {
+          executionCtx: fakeExecutionCtx(),
+          recordMcpToolCallEvent: (_env: unknown, event: Row) => {
+            events.push(event);
+            return true;
+          },
+        },
+      );
+      assert.equal(payload.result.isError, false);
+      assert.deepEqual(events[0].parameters, {});
+      assert.equal(events[0].llmModel, metadata ? "gpt-6" : "claude-opus-4-1");
+      assert.equal(
+        events[0].llmModelSource,
+        metadata ? "client_metadata" : "self_reported",
+      );
+      assert.equal(events.length, 1);
+    }
+    const schema = listToolDefinitions()[0].inputSchema;
+    assert.equal((schema.properties?.llm_model as Row).type, "string");
+    assert.ok(!schema.required?.includes("llm_model"));
+  });
+
+  test("model metadata falls back only to a usable self-report", () => {
+    for (const params of [
+      null,
+      {},
+      { _meta: null },
+      { _meta: [] },
+      { _meta: { "x-codex-turn-metadata": null } },
+      { _meta: { "x-codex-turn-metadata": { model: " unknown " } } },
+      { _meta: { "x-codex-turn-metadata": { model: 42 } } },
+    ]) {
+      assert.deepEqual(mcpModelAttribution(params, "model-a"), {
+        llmModel: "model-a",
+        llmModelSource: "self_reported",
+      });
+      assert.deepEqual(mcpModelAttribution(params), {});
+    }
+    for (const value of [null, 42, "", " ", "unknown"]) {
+      assert.deepEqual(
+        splitMcpAnalyticsArguments({ llm_model: value, netuid: 1 }),
+        { rest: { netuid: 1 } },
+      );
+    }
+    assert.deepEqual(splitMcpAnalyticsArguments({ llm_model: " model-a " }), {
+      llmModel: "model-a",
+      rest: {},
+    });
+  });
+
+  test("HTTP harness metadata survives initialize, discovery and tool dispatch", async () => {
+    const events: Row[] = [];
+    const capture = (_env: unknown, event: Row) => {
+      events.push(event);
+      return true;
+    };
+    const deps = {
+      executionCtx: fakeExecutionCtx(),
+      recordMcpInitializeEvent: capture,
+      recordMcpToolsListEvent: capture,
+      recordMcpToolCallEvent: capture,
+    };
+    for (const body of [
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          clientInfo: { name: "Claude Code", version: "2.1.0" },
+        },
+      },
+      { jsonrpc: "2.0", id: 2, method: "tools/list" },
+      toolCall(TOOL),
+    ]) {
+      await callMcp(body, CONFIGURED_ENV, deps, {
+        "user-agent": "claude-code/2.1.0 (sdk-ts)",
+        "x-anthropic-client": "claude-code",
+      });
+    }
+    assert.equal(events.length, 3);
+    for (const event of events) {
+      assert.equal(event.clientUserAgent, "claude-code/2.1.0 (sdk-ts)");
+      assert.equal(event.vendorClient, "claude-code");
+    }
+    assert.equal(events[0].clientNameSource, "client_info");
+    assert.equal(events[2].clientNameSource, "user_agent");
+  });
+
   test("intent lands on $mcp_tool_call with its source, and not inside parameters", async () => {
     const events: Row[] = [];
     await callMcp(
@@ -1779,6 +1887,7 @@ describe("MCP agent intent capture (#9642)", () => {
     assert.deepEqual(Object.keys(schema.properties as Row), [
       "context",
       "conversation_id",
+      "llm_model",
     ]);
   });
 
@@ -1802,6 +1911,7 @@ describe("MCP agent intent capture (#9642)", () => {
     assert.deepEqual(Object.keys(schema.properties as Row).sort(), [
       "context",
       "conversation_id",
+      "llm_model",
       "netuid",
     ]);
   });

@@ -247,6 +247,7 @@ import {
   MCP_PERSON_NAMESPACE,
   USAGE_ACCOUNT_NAMESPACE,
   anonymousUsageDistinctId,
+  normalizeMcpLlmModel,
 } from "./usage-telemetry.ts";
 import { maskRouteParams } from "./route-label.ts";
 import {
@@ -2047,6 +2048,8 @@ interface McpCtx {
   // the only client signal a tools/call request carries. Always tagged as
   // `user_agent`-sourced when emitted, never presented as MCP clientInfo.
   clientName?: string;
+  clientUserAgent?: string | null;
+  vendorClient?: string | null;
   /**
    * A FIRST-PARTY probe that declared itself via the probe header (#11565).
    *
@@ -4389,7 +4392,7 @@ function clampServingBounds(tool: ToolArgumentSource, args: Row): Row {
 
 /**
  * Separate the analytics arguments — intent (`context`) and
- * `conversation_id` — from the real tool arguments.
+ * `conversation_id` and `llm_model` — from the real tool arguments.
  *
  * ONE splitter for both readers -- the dispatch path (which must not hand
  * them to a handler) and the telemetry path (which must not duplicate them
@@ -4404,6 +4407,7 @@ function clampServingBounds(tool: ToolArgumentSource, args: Row): Row {
 export function splitMcpAnalyticsArguments(args: Row | null | undefined): {
   intent?: string;
   conversationId?: string;
+  llmModel?: string;
   rest: Row;
 } {
   // The nullable is in the SIGNATURE now: the body has always handled a
@@ -4414,15 +4418,18 @@ export function splitMcpAnalyticsArguments(args: Row | null | undefined): {
     !args ||
     typeof args !== "object" ||
     (!Object.hasOwn(args, MCP_INTENT_ARG) &&
-      !Object.hasOwn(args, MCP_CONVERSATION_ARG))
+      !Object.hasOwn(args, MCP_CONVERSATION_ARG) &&
+      !Object.hasOwn(args, MCP_LLM_MODEL_ARG))
   ) {
     return { rest: args ?? {} };
   }
   const {
     [MCP_INTENT_ARG]: intent,
     [MCP_CONVERSATION_ARG]: conversationId,
+    [MCP_LLM_MODEL_ARG]: llmModel,
     ...rest
   } = args;
+  const model = normalizeMcpLlmModel(llmModel);
   return {
     // A non-string, or a caller sending only whitespace, is not an intent --
     // and the same reading applies to a conversation id.
@@ -4430,8 +4437,23 @@ export function splitMcpAnalyticsArguments(args: Row | null | undefined): {
     ...(typeof conversationId === "string" && conversationId.trim()
       ? { conversationId }
       : {}),
+    ...(model ? { llmModel: model } : {}),
     rest,
   };
+}
+
+/** PostHog's documented model precedence; both sources are caller claims. */
+export function mcpModelAttribution(
+  params: Row | null,
+  fallback?: string,
+): { llmModel?: string; llmModelSource?: "client_metadata" | "self_reported" } {
+  const metadata = rowOf(rowOf(params?._meta)?.["x-codex-turn-metadata"]);
+  const model = normalizeMcpLlmModel(metadata?.model);
+  if (model) return { llmModel: model, llmModelSource: "client_metadata" };
+  const reported = normalizeMcpLlmModel(fallback);
+  return reported
+    ? { llmModel: reported, llmModelSource: "self_reported" }
+    : {};
 }
 
 /**
@@ -5571,8 +5593,15 @@ const MCP_CONVERSATION_ARG_SCHEMA = {
   examples: ["chat-8f3d"],
 } as const;
 
+const MCP_LLM_MODEL_ARG = "llm_model";
+const MCP_LLM_MODEL_ARG_SCHEMA = {
+  type: "string",
+  description: "Your model ID if known; omit otherwise. Analytics only.",
+  examples: ["gpt-6"],
+} as const;
+
 /**
- * Add the analytics arguments — intent (`context`) and `conversation_id` —
+ * Add the analytics arguments — `context`, `conversation_id`, `llm_model` —
  * to one tool's published schema.
  *
  * OPTIONAL, WHERE THE SDK MAKES INTENT REQUIRED. That divergence is deliberate
@@ -5603,6 +5632,7 @@ export function withAnalyticsArguments(
       ...(schema?.properties ?? {}),
       [MCP_INTENT_ARG]: MCP_INTENT_ARG_SCHEMA,
       [MCP_CONVERSATION_ARG]: MCP_CONVERSATION_ARG_SCHEMA,
+      [MCP_LLM_MODEL_ARG]: MCP_LLM_MODEL_ARG_SCHEMA,
     },
   };
   return { ...tool, inputSchema: withAnalytics };
@@ -16626,6 +16656,7 @@ async function callTool(params: Row | null, ctx: McpCtx) {
   const {
     intent,
     conversationId,
+    llmModel,
     rest: toolParameters,
   } = splitMcpAnalyticsArguments(rowOf(params?.arguments));
   scheduleMcpToolCallEvent(ctx, {
@@ -16662,6 +16693,7 @@ async function callTool(params: Row | null, ctx: McpCtx) {
     // Only a caller that actually sent one — there is nothing honest to infer
     // for a conversation label.
     ...(conversationId ? { conversationId } : {}),
+    ...mcpModelAttribution(params, llmModel),
     // #8963: the same structuredContent.error.code usage_event already
     // threads above, projected onto PostHog's $mcp_error_type by
     // classifyMcpErrorType inside the recorder. Omitted on success.
@@ -16759,6 +16791,8 @@ function mcpAttributionFor(ctx: McpCtx) {
     serverVersion: MCP_SERVER_VERSION,
     profile: ctx.profile,
     protocolVersion: ctx.protocolVersion,
+    clientUserAgent: ctx.clientUserAgent,
+    vendorClient: ctx.vendorClient,
     // #8967: which side of the access model this call fell on -- "anonymous",
     // or the verified key's tier. Emitted unconditionally rather than only
     // when authenticated, because "anonymous" is the answer the access-model
@@ -17890,6 +17924,8 @@ async function buildContext(
     clientIp: mcpClientKey(request),
     clientName,
     clientVersion,
+    clientUserAgent: request.headers.get("user-agent"),
+    vendorClient: request.headers.get("x-anthropic-client"),
     probe,
     // #8967: "anonymous" or the resolved key tier, from the gate that already
     // verified the bearer token. Carried on the context so the $mcp_* emission
@@ -18686,6 +18722,8 @@ export function scheduleMcpRefusalEvent(
           // scanner-vs-real-client split this field exists for was
           // unanswerable.
           ...parseUserAgentClient(request.headers.get("user-agent")),
+          clientUserAgent: request.headers.get("user-agent"),
+          vendorClient: request.headers.get("x-anthropic-client"),
           clientNameSource: "user_agent",
           sessionId: request.headers.get("mcp-session-id"),
           // WHAT was refused (#10810). The usage_event above has carried the

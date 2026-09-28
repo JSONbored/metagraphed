@@ -11,6 +11,8 @@ import {
   recordMcpToolCallEvent,
   recordMcpToolsListEvent,
   type McpServerIdentity,
+  type McpToolCallEvent,
+  normalizeMcpLlmModel,
 } from "../src/usage-telemetry.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
@@ -100,18 +102,88 @@ describe("MCP product events exclude operational traffic", () => {
     for (const [name, record] of Object.entries(recorders)) {
       for (const probe of [undefined, "  ", "release-check"]) {
         const { events, deps } = captures();
-        assert.equal(await record({ probe }, deps), true);
+        assert.equal(
+          await record(
+            {
+              probe,
+              clientUserAgent: "claude-code/2.1.0 (sdk-ts)",
+              vendorClient: "claude-code",
+            },
+            deps,
+          ),
+          true,
+        );
         assert.equal(events.length, 1);
         assert.equal(
           events[0].event,
           probe === "release-check" ? `mcp_probe_${name}` : `$mcp_${name}`,
         );
+        assert.equal(
+          events[0].properties.$mcp_client_user_agent,
+          "claude-code/2.1.0 (sdk-ts)",
+        );
+        assert.equal(events[0].properties.$mcp_vendor_client, "claude-code");
       }
     }
   });
 });
 
 describe("MCP attribution and outcomes", () => {
+  test("native model properties preserve provenance and omit unknown claims", async () => {
+    for (const source of [
+      "client_metadata",
+      "self_reported",
+      undefined,
+      "guessed",
+    ]) {
+      for (const model of ["  gpt-6  ", " UNKNOWN ", "", undefined]) {
+        const { events, deps } = captures();
+        await recordMcpToolCallEvent(
+          env,
+          {
+            isError: false,
+            durationMs: 1,
+            llmModel: model,
+            llmModelSource: source as McpToolCallEvent["llmModelSource"],
+          },
+          deps,
+        );
+        const accepted =
+          model === "  gpt-6  " &&
+          (source === "client_metadata" || source === "self_reported");
+        assert.equal(
+          events[0].properties.$mcp_llm_model,
+          accepted ? "gpt-6" : undefined,
+        );
+        assert.equal(
+          events[0].properties.$mcp_llm_model_source,
+          accepted ? source : undefined,
+        );
+        assert.equal(events.length, 1);
+      }
+    }
+    assert.equal(normalizeMcpLlmModel("x".repeat(1000))?.length, 256);
+    for (const invalid of [null, 42, {}, " ", "unknown"])
+      assert.equal(normalizeMcpLlmModel(invalid), undefined);
+  });
+
+  test("native harness labels are bounded and omitted when absent", async () => {
+    for (const raw of [null, undefined, " ", "x".repeat(1000)]) {
+      const { events, deps } = captures();
+      await recordMcpInitializeEvent(
+        env,
+        { clientUserAgent: raw, vendorClient: raw },
+        deps,
+      );
+      for (const key of ["$mcp_client_user_agent", "$mcp_vendor_client"]) {
+        assert.equal(
+          events[0].properties[key],
+          raw?.startsWith("x") ? "x".repeat(256) : undefined,
+        );
+      }
+    }
+  });
+
   test("retains full/core profile and a bounded protocol version", async () => {
     for (const profile of ["core", "full", undefined, "invalid"] as const) {
       const { events, deps } = captures();
