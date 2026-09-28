@@ -227,8 +227,8 @@ async function storeHeadRows(
 }
 
 /**
- * The block feed, stitched across both cold sources. Returns null when neither
- * can answer, so the caller keeps its schema-stable empty.
+ * The block feed, stitched across both sources. A configured history owner
+ * must answer or raise history_unavailable; missing history is not an empty feed.
  */
 export async function loadBlockFeedColdTier(
   env: HistoryReadEnv | null | undefined,
