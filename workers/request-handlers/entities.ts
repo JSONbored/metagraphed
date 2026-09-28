@@ -179,6 +179,7 @@ import {
   loadAccountParents,
 } from "../../src/child-hotkey-delegation.ts";
 import { loadSudoKey } from "../../src/sudo-key.ts";
+import { readNeuronEconomicsRows } from "../../src/neuron-snapshot-read.ts";
 import { H160_PATTERN, loadAddressMapping } from "../../src/address-mapping.ts";
 import { loadNetworkParameters } from "../../src/network-parameters.ts";
 import { loadRandomnessStatus } from "../../src/randomness.ts";
@@ -3757,13 +3758,6 @@ const VALIDATOR_ECONOMICS_FIELD_SOURCES = {
   tao_weight: { kind: "measured", storage: "SubtensorModule.TaoWeight" },
 } as const;
 
-// The per-UID columns the derivation needs, and no more. `stake_tao` is the metagraph's
-// `total_stake` — it ALREADY contains the root leg at tao_weight, so it is passed
-// through untouched; recombining it from legs is the #9331 bug.
-// `hotkey` is here only so the owner-exception path can find the owner's UID.
-const VALIDATOR_ECONOMICS_NEURON_COLUMNS =
-  "uid, hotkey, stake_tao, validator_permit, dividends, active, take";
-
 function toValidatorNeurons(
   rows: Array<Record<string, unknown>>,
 ): ValidatorNeuron[] {
@@ -3816,12 +3810,7 @@ export async function buildSubnetValidatorEconomicsPayload(
   const readEconomicsRow = deps.loadEconomicsRow ?? resolveSubnetEconomicsRow;
   const db = readStore(env, VALIDATOR_ECONOMICS_TABLES) as
     ReadStoreDb | undefined;
-  const rows = db
-    ? await db.query(
-        `SELECT ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
-        [netuid],
-      )
-    : [];
+  const rows = db ? await readNeuronEconomicsRows(db, env, netuid) : [];
 
   const hyperRow = db
     ? await db.first(
@@ -4179,11 +4168,7 @@ export async function buildValidatorEconomicsRankingPayload(
 
   const db = readStore(env, VALIDATOR_ECONOMICS_RANKING_TABLES) as
     ReadStoreDb | undefined;
-  const neuronRows = db
-    ? await db.query(
-        `SELECT netuid, ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid != 0 ORDER BY netuid, uid`,
-      )
-    : [];
+  const neuronRows = db ? await readNeuronEconomicsRows(db, env) : [];
 
   // Two bulk reads that make the ranking carry the SAME per-subnet fields the
   // detail route reports (#9455). Both are one query for every subnet, not one
