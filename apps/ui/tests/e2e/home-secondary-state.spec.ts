@@ -32,7 +32,7 @@ test.describe("homepage secondary analytics", () => {
     const copy = page.locator(".mg-home-mcp-command");
     await expect(copy).toHaveAccessibleName("Copy Install");
     await expect(copy).toContainText(
-      "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core",
+      "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp",
     );
     await copy.click();
     await expect(copy).toHaveAccessibleName("Copied");
