@@ -9,6 +9,37 @@ import {
   type RetainedBlocksEnv,
 } from "./retained-blocks-d1.ts";
 import { RetainedHistoryUnavailableError } from "./retained-history-store.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
+
+export const RETAINED_SEAM_TTL_MS = 5_000;
+type Census = Awaited<ReturnType<typeof readRetainedBlockCensus>>;
+let retainedMemo = new WeakMap<
+  object,
+  { expiresAt: number; value: Promise<Census> }
+>();
+registerModuleStateReset("src/blocks-seam.ts", () => {
+  retainedMemo = new WeakMap();
+});
+
+/** Share in-flight reads and briefly reuse the publication census per binding.
+ * The watchdog uses its own uncached census. Nulls expire too, so a failed
+ * selected owner cannot turn concurrent public requests into a retry storm. */
+function retainedSeamCensus(env: unknown, deps: DecodeWatermarkDeps) {
+  const selected = env as RetainedBlocksEnv | null | undefined;
+  const now = (deps.now ?? Date.now)();
+  const db = selected?.D1_RETAINED_BLOCKS;
+  if (
+    deps.fresh ||
+    !db ||
+    !selected?.RETAINED_BLOCKS_NETWORKS?.split(",").includes("mainnet")
+  )
+    return readRetainedBlockCensus(selected, "mainnet", now);
+  const cached = retainedMemo.get(db);
+  if (cached && cached.expiresAt > now) return cached.value;
+  const value = readRetainedBlockCensus(selected, "mainnet", now);
+  retainedMemo.set(db, { expiresAt: now + RETAINED_SEAM_TTL_MS, value });
+  return value;
+}
 
 /** Floor for the seam, overridable per environment. NOT the seam itself any
  * more: see `resolveBlocksSeam`. */
@@ -90,11 +121,7 @@ export async function resolveBlocksSeam(
   const floor = blocksSeamFloor(env);
   const [watermark, retained] = await Promise.all([
     resolveDecodeWatermark(env, deps, network),
-    readRetainedBlockCensus(
-      env as RetainedBlocksEnv,
-      network,
-      (deps.now ?? Date.now)(),
-    ),
+    retainedSeamCensus(env, deps),
   ]);
   return publishedBlocksSeam(
     floor,

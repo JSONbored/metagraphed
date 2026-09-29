@@ -30,7 +30,10 @@ import {
 } from "../src/blocks-cold-tier.ts";
 import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
-import { publishedBlocksSeam } from "../src/blocks-seam.ts";
+import {
+  publishedBlocksSeam,
+  RETAINED_SEAM_TTL_MS,
+} from "../src/blocks-seam.ts";
 import {
   DECODE_WATERMARK_KEY,
   resetDecodeWatermarkCache,
@@ -166,6 +169,70 @@ function retained(through: number | null, now = Date.now()) {
 }
 
 describe("retained publication bounds block routing", () => {
+  test("concurrent reads share a bounded memo, expire and respect fresh reads and binding selection", async () => {
+    const start = Date.now();
+    let now = start;
+    const selected = {
+      ...archive({ decoded_through: SEAM + 451 }),
+      ...retained(SEAM, start),
+    };
+    const read = vi.spyOn(selected.D1_RETAINED_BLOCKS, "batch");
+    const deps = { now: () => now };
+    assert.deepEqual(
+      await Promise.all([
+        resolveBlocksSeam(selected, deps),
+        resolveBlocksSeam(selected, deps),
+      ]),
+      [SEAM, SEAM],
+    );
+    assert.equal(read.mock.calls.length, 1);
+    now += RETAINED_SEAM_TTL_MS;
+    await resolveBlocksSeam(selected, deps);
+    assert.equal(read.mock.calls.length, 2);
+    await resolveBlocksSeam(selected, { ...deps, fresh: true });
+    assert.equal(read.mock.calls.length, 3);
+    assert.equal(
+      await resolveBlocksSeam(
+        { ...selected, RETAINED_BLOCKS_NETWORKS: "testnet" },
+        deps,
+      ),
+      SEAM + 451,
+    );
+    assert.equal(read.mock.calls.length, 3);
+    assert.equal(
+      await resolveBlocksSeam(
+        { ...selected, ...retained(SEAM + 451, start) },
+        deps,
+      ),
+      SEAM + 451,
+    );
+  });
+
+  test("a failed selected census stays unavailable and retries after its bounded memo", async () => {
+    const start = Date.now();
+    const selected = {
+      ...archive({ decoded_through: SEAM + 451 }),
+      ...retained(null, start),
+    };
+    const read = vi.spyOn(selected.D1_RETAINED_BLOCKS, "batch");
+    for (let i = 0; i < 2; i++)
+      await assert.rejects(
+        resolveBlocksSeam(selected, { now: () => start }),
+        RetainedHistoryUnavailableError,
+      );
+    assert.equal(read.mock.calls.length, 1);
+    read.mockImplementation(
+      retained(SEAM + 451, start).D1_RETAINED_BLOCKS.batch,
+    );
+    assert.equal(
+      await resolveBlocksSeam(selected, {
+        now: () => start + RETAINED_SEAM_TTL_MS,
+      }),
+      SEAM + 451,
+    );
+    assert.equal(read.mock.calls.length, 2);
+  });
+
   test("a decoded block pending retained publication still uses the hot copy", async () => {
     const height = SEAM + 451;
     const { db, sql } = runner([headRow(height)]);
@@ -194,7 +261,7 @@ describe("retained publication bounds block routing", () => {
         ...archive({ decoded_through: SEAM + 451 }),
         ...retained(SEAM),
       } as never,
-      { limit: 1 },
+      { limit: 1, offset: 0 },
     );
     assert.equal(params[0]![1], SEAM);
     assert.equal(
