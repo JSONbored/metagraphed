@@ -4,6 +4,7 @@ import { registerModuleStateReset } from "./module-state-registry.ts";
 
 type Row = Record<string, unknown>;
 type Revision = { table_name: string; revision: number };
+type CacheConfig = { D1_EXPORT_REVISIONS?: string; D1_STATE?: object };
 type Entry = { key: string; until: number; rows: Promise<Row[]> };
 let snapshots = new WeakMap<object, Entry>();
 registerModuleStateReset("src/chain-holders-cache.ts", () => {
@@ -18,9 +19,7 @@ export async function readRevisionedChainHolders(
   capturedAt: number,
   read: () => Promise<Row[]>,
 ): Promise<Row[]> {
-  const config = env as
-    | { D1_EXPORT_REVISIONS?: string; D1_STATE?: object }
-    | undefined;
+  const config = env as CacheConfig | undefined;
   const store =
     config?.D1_EXPORT_REVISIONS === "enabled"
       ? selectedD1Store(env, ALPHA_PRICING_TABLES)
@@ -43,8 +42,8 @@ export async function readRevisionedChainHolders(
     return read();
   }
   const key = JSON.stringify([capturedAt, revisions]);
-  const now = Date.now(),
-    prior = snapshots.get(binding);
+  const now = Date.now();
+  const prior = snapshots.get(binding);
   if (prior && prior.key === key && prior.until > now)
     return (await prior.rows).map((row) => ({ ...row }));
   const entry = { key, until: now + 300_000, rows: read() };
