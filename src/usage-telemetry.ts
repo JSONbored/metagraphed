@@ -1,6 +1,6 @@
 import { sha256Hex } from "./sha256-hex.ts";
 import { acceptedMcpConversationId } from "./mcp-conversation.ts";
-import { TIMING_D1, TIMING_D1_SQL, type TimingMark } from "./request-timing.ts";
+import type { TimingMark } from "./request-timing.ts";
 // Typed PostHog usage-event wrapper for the Worker backend (#6030 / #366).
 //
 // Single chokepoint for product-usage capture: callers pass an allowlisted
@@ -1662,7 +1662,7 @@ export async function recordMcpToolCallEvent(
     // Fixed custom dimensions complement PostHog's native elapsed duration.
     // Never emit arbitrary boundary names or pretend an unmeasured zero is a
     // latency. Counts remain useful even when Workers' clock did not advance.
-    for (const name of [TIMING_D1, TIMING_D1_SQL]) {
+    for (const name of ["d1", "d1_sql"] as const) {
       const timing = event.backendTimings?.get(name);
       if (
         !timing ||
