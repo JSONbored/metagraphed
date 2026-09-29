@@ -1,8 +1,8 @@
 # Agent tool specs (OpenAI + Anthropic)
 
-For MCP-aware clients, use `https://api.metagraph.sh/mcp/core` for bounded
+For MCP-aware clients, use `https://api.metagraph.sh/mcp` for bounded
 discovery and access to every tool. The complete listing remains at
-`https://api.metagraph.sh/mcp` (also available as
+`https://api.metagraph.sh/mcp?catalog=full` (also available as
 `io.github.JSONbored/metagraphed` in the [MCP Registry](mcp-registry.md)). For
 the two largest **non-MCP** agent ecosystems — OpenAI function calling and
 Anthropic tool use — metagraphed publishes paste-ready static tool specs:
@@ -25,8 +25,9 @@ npm, or Python call, use the public workflow guide at
 
 ## Bounded MCP discovery
 
-Connect to `https://api.metagraph.sh/mcp/core` for the starter tools. When a task
-needs another tool, call `search_tools` with keywords or an exact name:
+Connect to `https://api.metagraph.sh/mcp` for discovery and invocation tools.
+`/mcp/core` also exposes common tools directly. Call `search_tools` with keywords
+or an exact name:
 
 ```json
 {
@@ -48,7 +49,7 @@ discovered tool through the advertised bridge:
 
 ```json
 {
-  "name": "invoke_tool",
+  "name": "invoke_read_tool",
   "arguments": {
     "name": "get_networks",
     "arguments": {},
@@ -58,11 +59,13 @@ discovered tool through the advertised bridge:
 ```
 
 The result and errors are the target tool's normal response. Its authentication,
-payment and rate limits still apply. The bridge advertises write-capable
-annotations because some targets mutate data; review the discovered target's
-annotations before calling. Native MCP telemetry records one call under the
-target tool's name. The existing full `/mcp` listing and direct calls remain
-available for clients that prefer the entire catalog.
+payment and rate limits still apply. Use `invoke_read_tool` for targets whose
+annotations declare `readOnlyHint: true`; it refuses mutators and recursive
+bridges. Use `invoke_tool` for other targets after reviewing their permissions.
+Native MCP telemetry records one call under the target tool's name. Clients
+that need every definition advertised up front can connect with `?catalog=full`.
+Every registered name remains directly callable on all profiles. No history,
+response field, schema constraint or authorization rule is removed.
 
 ## Executing a tool call
 

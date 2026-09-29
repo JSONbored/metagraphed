@@ -113,7 +113,7 @@ import {
 import type { Row } from "./row-type.ts";
 import { assertValid } from "./helpers/assert-valid.ts";
 
-const MCP_URL = "https://api.metagraph.sh/mcp";
+const MCP_URL = "https://api.metagraph.sh/mcp?catalog=full";
 
 // `publishedDefaultOf` went with the tests that used it (#10190).
 

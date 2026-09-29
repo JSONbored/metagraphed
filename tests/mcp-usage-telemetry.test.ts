@@ -155,7 +155,10 @@ describe("MCP tool-dispatch usage telemetry", () => {
             const props = event.properties;
             const netuid = props.$mcp_parameters.netuid;
             assert.equal(props.$mcp_is_error, false);
-            assert.equal(props.$mcp_profile, path === "/mcp" ? "full" : "core");
+            assert.equal(
+              props.$mcp_profile,
+              path === "/mcp" ? "discovery" : "core",
+            );
             assert.equal(props.mcp_d1_call_count, 1);
             assert.equal(props.mcp_d1_duration_ms, netuid * 10);
             assert.equal(props.mcp_d1_sql_call_count, 1);

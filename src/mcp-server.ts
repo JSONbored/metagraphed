@@ -2007,7 +2007,7 @@ interface McpCtx {
   env: Env;
   domain?: string;
   /** Which listing profile this request's endpoint serves (#11164): "core"
-   * for /mcp/core, "full" otherwise. Filters listing and discovery guidance -- dispatch,
+   * for /mcp/core, "full" with ?catalog=full, "discovery" by default. Filters listing and guidance -- dispatch,
    * validation, tripwire and analytics are identical on both endpoints. */
   profile?: McpProfile;
   sessionId?: string | null;
@@ -2433,6 +2433,7 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
   // A discovered target may write or call an external service. Clients must
   // apply their write approval policy before sending this generic invocation.
   invoke_tool: PROXY_WRITE_TOOL_ANNOTATIONS,
+  invoke_read_tool: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
 
   // Live POST to the public Finney RPC entrypoint on a KV-cache miss.
   get_account_balance: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
@@ -2521,6 +2522,18 @@ export const AUTH_REQUIRED_TOOL_NAMES = new Set([
 export const OPEN_WORLD_TOOL_NAMES = Object.entries(TOOL_ANNOTATIONS_BY_NAME)
   .filter(([, annotations]) => annotations.openWorldHint === true)
   .map(([name]) => name);
+
+export const MCP_DISCOVERY_INSTRUCTIONS =
+  "Use search_tools to find tools for Bittensor subnets, chain data, accounts, " +
+  "history, economics, RPC access and integrations. Search by task keywords or " +
+  "exact name; each page returns up to three complete definitions. Follow " +
+  "next_cursor for more. Use invoke_read_tool for targets annotated readOnlyHint; " +
+  "use invoke_tool for other targets after reviewing their permissions. Both " +
+  "return complete target results and enforce target validation, authentication, " +
+  "payment and rate limits. Direct tools/call remains available for every name. " +
+  "Connect with ?catalog=full only when your client needs every definition " +
+  "advertised up front. /mcp/core offers common tools directly. " +
+  UNTRUSTED_DATA_NOTE;
 
 export const MCP_INSTRUCTIONS =
   "metagraphed is the operational + integration registry for Bittensor subnets: " +
@@ -4297,7 +4310,8 @@ function callerSuppliedArg(args: Row, name: string) {
   // `?window=` resolves to null and is not applied.
   if (args[name] === undefined || args[name] === null) return false;
   const defaulted = (args as Record<symbol, unknown>)[DEFAULTED_ARGS] as
-    Set<string> | undefined;
+    | Set<string>
+    | undefined;
   return !defaulted?.has(name);
 }
 
@@ -6220,27 +6234,25 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: MCP_MISSING_CAPABILITY_TOOL,
     title: "Find the full catalog or report a missing capability",
     description:
-      "On /mcp/core, call this when the small starter listing does not cover " +
-      "your task: it explains bounded discovery and full catalog access. On /mcp, call " +
-      "this only after checking the full tools/list and finding no suitable " +
-      "tool; describe the missing capability in context to record the gap.",
+      "Get discovery guidance and full catalog access. On ?catalog=full, " +
+      "report a missing capability only after checking every listed tool; " +
+      "describe the unmet task in context.",
     inputSchema: inputJsonSchema(GetMoreToolsInputSchema),
     async handler(_args: GetMoreToolsInput, ctx: McpCtx) {
-      if (ctx.profile === "core") {
+      if (ctx.profile !== "full") {
         return {
           acknowledged: true,
           additional_tools_available: true,
           message:
-            `/mcp/core lists ${MCP_CORE_TOOL_NAMES.length} starter tools; ` +
             `${MCP_TOOLS.length} tools are available. Use search_tools with ` +
             "task keywords or an exact name to retrieve up to three full " +
-            "definitions, then invoke_tool with that name and its arguments. " +
-            "This works even when your client cannot call unlisted names. " +
-            "Request tools/list at " +
-            "/mcp on this same server for their full definitions. All listed " +
-            "tools can also be called through /mcp/core with the same " +
-            "arguments, authentication, and rate limits. This discovery " +
-            "request was not recorded as a missing capability.",
+            "definitions. Use invoke_read_tool for readOnlyHint targets, or " +
+            "invoke_tool for other targets after reviewing their permissions. " +
+            "These work even when your client cannot call unlisted names. " +
+            "Request tools/list at /mcp?catalog=full on this same server for " +
+            "every definition. All tools remain directly callable on /mcp " +
+            "and /mcp/core with unchanged arguments, authentication and limits. " +
+            "This discovery request was not recorded as a missing capability.",
         };
       }
       // Answering honestly matters as much as recording. An agent told
@@ -6265,7 +6277,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "task keywords or an exact tool name. Returns up to three unchanged " +
       "definitions, including input/output schemas, annotations and auth " +
       "requirements. Follow next_cursor with the same query for more matches. " +
-      "Use invoke_tool to call a result through clients that only allow listed tools.",
+      "Use invoke_read_tool for readOnlyHint targets or invoke_tool for other " +
+      "targets through clients that only allow listed tools.",
     inputSchema: inputJsonSchema(SearchToolsInputSchema),
     outputSchema: outputJsonSchema(SearchToolsOutputSchema),
     async handler(args, ctx) {
@@ -6307,6 +6320,24 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       throw toolError(
         "invalid_params",
         "Provide a non-recursive tool name and an arguments object matching its inputSchema.",
+      );
+    },
+  },
+  {
+    name: "invoke_read_tool",
+    title: "Read with a discovered tool",
+    description:
+      "Call a search_tools result annotated readOnlyHint using its exact name " +
+      "and inputSchema. Write-capable targets and recursive bridges are refused. " +
+      "Target validation, authentication, payment and rate limits apply. Returns " +
+      "the complete target result and errors. Reads may contact external services.",
+    inputSchema: inputJsonSchema(InvokeToolInputSchema),
+    outputSchema: outputJsonSchema(InvokeToolOutputSchema),
+    async handler() {
+      throw toolError(
+        "invalid_params",
+        "Provide a non-recursive read-only tool name and matching arguments; " +
+          "use invoke_tool for write-capable targets.",
       );
     },
   },
@@ -10299,7 +10330,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       )) as { ok?: boolean; data?: Record<string, unknown> } | null;
       const entities = artifact?.ok
         ? (artifact.data?.entities as
-            Array<Record<string, unknown>> | undefined)
+            | Array<Record<string, unknown>>
+            | undefined)
         : undefined;
       const wallets = subnetWalletRows(
         netuid,
@@ -10320,7 +10352,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // one would be stating a finding nobody made.
         attribution_search: await loadSweepRecord(
           readStore(ctx.env, ATTRIBUTION_SWEEP_TABLES) as
-            SweepStoreDb | undefined,
+            | SweepStoreDb
+            | undefined,
           netuid,
         ),
         field_sources: SUBNET_WALLETS_FIELD_SOURCES,
@@ -10514,7 +10547,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             ALL_SURFACES_ARTIFACT,
           );
           return allSurfaces?.surfaces as
-            Array<Record<string, unknown>> | undefined;
+            | Array<Record<string, unknown>>
+            | undefined;
         } catch {
           return null;
         }
@@ -15812,37 +15846,13 @@ export function withAdvertisedRequiredIntent(
 }
 
 /**
- * The core profile: the ~25 tools behind /mcp/core (#11164).
+ * Common tools remain directly advertised on /mcp/core. The default /mcp
+ * profile advertises bounded discovery and invocation; ?catalog=full exposes
+ * every definition. Profiles only filter listing, never target dispatch.
+ * All schemas, results, authentication and quota rules share one registry.
  *
- * ## WHY A SECOND ENDPOINT AND NOT A SMALLER CATALOGUE
- *
- * The full tools/list serializes to ~1.6 MB. Context cost depends on which
- * schema fields a client forwards to its model and on the model tokenizer.
- * The wire was never the cost (gzip takes it to ~190 KB); the CONTEXT is, and
- * no encoding reaches that. The only lever that does is listing fewer tools,
- * and removing tools from /mcp would break "Bittensor in a box". So /mcp
- * stays whole and /mcp/core lists this set: the golden path the served skill
- * and llms.txt already teach -- discover, verify, integrate, call, screen --
- * plus the escape hatches (`ask`, `get_more_tools`) that keep a thin session
- * from ever being stranded.
- *
- * ## THE PROFILE FILTERS LISTING, NEVER CALLS
- *
- * A session connected to /mcp/core can still tools/call all 240 tools: the
- * profile is a context diet, not an authorization boundary. Refusing the call
- * would force a reconnect at the exact moment an agent discovered it needed
- * more, and every dispatch-side control (validation, tripwire, analytics,
- * rate limits) is per-tool, not per-profile, so nothing weakens.
- *
- * ## DERIVATION
- *
- * Seeded from the documented golden path (public/skills/bittensor/SKILL.md +
- * llms.txt), which is the commitment the docs already make about what matters.
- * Re-derive from $mcp_tool_call (PostHog) once that access is in-session; the
- * set should track measured use, not taste.
- *
- * Validated at load: a name that stops matching a registered tool throws with
- * the name, so a rename cannot silently shrink the profile.
+ * The core names follow the published discover/verify/integrate/screen flow.
+ * Validate them at load so renaming a tool cannot silently remove it.
  */
 export const MCP_CORE_TOOL_NAMES: readonly string[] = [
   // Discover
@@ -15856,6 +15866,7 @@ export const MCP_CORE_TOOL_NAMES: readonly string[] = [
   "get_more_tools",
   "search_tools",
   "invoke_tool",
+  "invoke_read_tool",
   // Verify
   "get_subnet",
   "get_subnet_health",
@@ -15877,7 +15888,19 @@ export const MCP_CORE_TOOL_NAMES: readonly string[] = [
   "get_tao_usd",
 ];
 
-export type McpProfile = "full" | "core";
+export const MCP_DISCOVERY_TOOL_NAMES: readonly string[] = [
+  "search_tools",
+  "invoke_read_tool",
+  "invoke_tool",
+  "get_more_tools",
+];
+
+export type McpProfile = "full" | "core" | "discovery";
+
+export function mcpProfileForUrl(url: URL): McpProfile {
+  if (url.searchParams.get("catalog") === "full") return "full";
+  return isMcpCorePath(url.pathname) ? "core" : "discovery";
+}
 
 /**
  * Load-validation for the core profile, EXPORTED so its throw arm is provable:
@@ -15907,7 +15930,11 @@ function buildToolDefinitions(profile: McpProfile) {
   const tools =
     profile === "core"
       ? MCP_TOOLS.filter((tool) => CORE_TOOL_NAME_SET.has(tool.name))
-      : MCP_TOOLS;
+      : profile === "discovery"
+        ? MCP_TOOLS.filter((tool) =>
+            MCP_DISCOVERY_TOOL_NAMES.includes(tool.name),
+          )
+        : MCP_TOOLS;
   return tools.map((tool) => {
     // NORMALISED HERE, not at the spread below (#9654). The sentinel is a Zod
     // artifact of `z.int()`, not a property of which side of the call a schema
@@ -16708,11 +16735,19 @@ async function callTool(
   structuredContent: Row;
   isError: boolean;
 }> {
-  if (params?.name === "invoke_tool") {
+  if (params?.name === "invoke_tool" || params?.name === "invoke_read_tool") {
     const raw = rowOf(params.arguments);
     const metadata = splitMcpAnalyticsArguments(raw);
     const parsed = InvokeToolInputSchema.safeParse(metadata.rest);
-    if (parsed.success && parsed.data.name !== "invoke_tool") {
+    if (
+      parsed.success &&
+      parsed.data.name !== "invoke_tool" &&
+      parsed.data.name !== "invoke_read_tool" &&
+      (params.name === "invoke_tool" ||
+        annotationsForTool(
+          TOOLS_BY_NAME.get(parsed.data.name) ?? { name: parsed.data.name },
+        ).readOnlyHint)
+    ) {
       // One transport call is one native tool event, attributed to the actual
       // target. Reuse its entire dispatcher and the same authenticated ctx.
       return callTool(
@@ -16798,7 +16833,7 @@ async function callTool(
     params?.name === MCP_MISSING_CAPABILITY_TOOL &&
     result.isError !== true &&
     intent &&
-    ctx?.profile !== "core"
+    ctx?.profile === "full"
   ) {
     scheduleMcpMissingCapabilityEvent(ctx, {
       intent,
@@ -17617,7 +17652,10 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
           protocolVersion: negotiateProtocol(params?.protocolVersion),
           capabilities: MCP_CAPABILITIES,
           serverInfo: MCP_SERVER_INFO,
-          instructions: MCP_INSTRUCTIONS,
+          instructions:
+            ctx.profile === "discovery"
+              ? MCP_DISCOVERY_INSTRUCTIONS
+              : MCP_INSTRUCTIONS,
           // Registry backlink (sibling of serverInfo, never inside it).
           _meta: MCP_REGISTRY_META,
         };
@@ -17972,18 +18010,16 @@ async function buildContext(
   accountId: string | null = null,
 ) {
   let domain;
-  let profile: McpProfile = "full";
+  let profile: McpProfile = "discovery";
   try {
     const requestUrl = new URL(request.url);
     // An http(s) Request cannot carry an empty host -- the constructor
     // refuses relative and hostless URLs -- so no `|| PRIMARY_DOMAIN` arm
     // here; the catch below is the only real fallback.
     domain = requestUrl.host;
-    // The endpoint IS the profile (#11164): /mcp/core lists the curated core
-    // set, everything else lists the whole catalogue. Derived per request
-    // rather than stored on the session, because a client binds its session
-    // to one endpoint URL anyway and stored state could only disagree.
-    profile = isMcpCorePath(requestUrl.pathname) ? "core" : "full";
+    // Discovery is the default; core and the explicit full catalog use the
+    // same dispatch, permissions and results. No session-local tool registry.
+    profile = mcpProfileForUrl(requestUrl);
   } catch {
     domain = PRIMARY_DOMAIN;
   }
@@ -18843,9 +18879,7 @@ export function scheduleMcpRefusalEvent(
           // so a session id in the path cannot shard the property.
           requestMethod: request.method,
           requestPath: mcpRefusalPath(new URL(request.url).pathname),
-          profile: isMcpCorePath(new URL(request.url).pathname)
-            ? "core"
-            : "full",
+          profile: mcpProfileForUrl(new URL(request.url)),
           protocolVersion: request.headers.get("mcp-protocol-version"),
           probe: mcpProbeName(request, env),
           serverName: MCP_SERVER_INFO.name,
@@ -18919,7 +18953,10 @@ async function serveMcpThroughSdk(
     {
       serverInfo: MCP_SERVER_INFO,
       capabilities: MCP_CAPABILITIES,
-      instructions: MCP_INSTRUCTIONS,
+      instructions:
+        ctx.profile === "discovery"
+          ? MCP_DISCOVERY_INSTRUCTIONS
+          : MCP_INSTRUCTIONS,
       dispatch: async (message) => {
         const response = await dispatchMessage(message, ctx);
         if (!isBatch) single = response;
@@ -19000,7 +19037,7 @@ export function authRequiredToolsIn(body: unknown): string[] {
     if (row?.method !== "tools/call") continue;
     const params = rowOf(row.params);
     const name =
-      params?.name === "invoke_tool"
+      params?.name === "invoke_tool" || params?.name === "invoke_read_tool"
         ? rowOf(params.arguments)?.name
         : params?.name;
     if (typeof name === "string" && AUTH_REQUIRED_TOOL_NAMES.has(name)) {

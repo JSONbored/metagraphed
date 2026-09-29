@@ -51,7 +51,7 @@ async function callTool(
   name: string,
   args: Row = {},
   extra: Row = {},
-  path = "/mcp",
+  path = "/mcp?catalog=full",
 ) {
   const mcp: Row[] = [];
   const missing: Row[] = [];
@@ -367,7 +367,10 @@ describe("$mcp_missing_capability", () => {
     );
     const data = body.result.structuredContent as Row;
     assert.equal(data.additional_tools_available, true);
-    assert.match(String(data.message), /Request tools\/list at \/mcp /);
+    assert.match(
+      String(data.message),
+      /Request tools\/list at \/mcp\?catalog=full /,
+    );
     assert.match(
       String(data.message),
       new RegExp(`${listToolDefinitions().length} tools are available`),
@@ -391,7 +394,7 @@ describe("$mcp_missing_capability", () => {
     assert.equal(typeof missing[0].serverVersion, "string");
   });
 
-  for (const path of ["/mcp", "/mcp/core"]) {
+  for (const path of ["/mcp?catalog=full", "/mcp", "/mcp/core"]) {
     test(`${path} rejects invalid reports without inventing a capability gap`, async () => {
       const { missing, mcp, body } = await callTool(
         MCP_MISSING_CAPABILITY_TOOL,

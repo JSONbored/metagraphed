@@ -143,11 +143,11 @@ describe("the published MCP envelope (#9647)", () => {
     assert.equal(seen.sessionId, null, "only initialize mints a session");
   });
 
-  test("tools/list publishes the whole catalogue", async () => {
+  test("tools/list publishes the default discovery catalogue", async () => {
     const seen = await observe({ jsonrpc: "2.0", id: 3, method: "tools/list" });
     const tools = (seen.body!.result as Row).tools as Row[];
-    assert.equal(tools.length, listToolDefinitions().length);
-    assert.ok(tools.length > 200, `expected 200+, saw ${tools.length}`);
+    assert.deepEqual(tools, listToolDefinitions("discovery"));
+    assert.equal(tools.length, 4);
   });
 
   test("prompts/list and resources/templates/list answer", async () => {
