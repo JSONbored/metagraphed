@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { refreshExistingArtifact } from "../src/projection-store.ts";
+import { refreshExistingArtifact } from "../src/projection-write-store.ts";
 import { runProjectionLane } from "../src/projection-lanes.ts";
 import { TOP_HOLDERS_HOLDINGS_REFRESH_LANE } from "../src/top-holders-holdings-refresh.ts";
 

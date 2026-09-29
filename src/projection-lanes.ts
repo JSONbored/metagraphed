@@ -28,7 +28,7 @@ import {
   loadNativeProjectionManifest,
   nativeProjectionsEnabled,
   NATIVE_PROJECTION_STALE_MS,
-} from "./native-projection-store.ts";
+} from "./native-projection-write-store.ts";
 
 import { CHAIN_OWNERSHIP_PROJECTION_KEY } from "./subnet-ownership-artifact.ts";
 import { fetchOwnershipChangeRows } from "./subnet-ownership-cold-tier.ts";
