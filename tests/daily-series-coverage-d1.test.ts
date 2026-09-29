@@ -43,6 +43,7 @@ beforeAll(async () => {
     "0030_neuron_axon_insert_projection.sql",
     "0012_neuron_daily_join_index.sql",
     "0022_neuron_document_dates.sql",
+    "0032_daily_coverage_covering_indexes.sql",
   ]) {
     const sql = readFileSync(
       new URL(`../migrations/d1/${file}`, import.meta.url),
@@ -169,9 +170,30 @@ test("D1 counts preserve view semantics, gaps, thin days, orphaned members and d
     );
     assert.ok(
       results.some(({ detail }) =>
-        /SEARCH .*members.*snapshot_date=/.test(detail),
+        /SEARCH .*members USING COVERING INDEX .*snapshot_date=/.test(detail),
       ),
-      "each membership query must use an exact date lookup",
+      "each membership query must count directly from its date/shard index",
+    );
+    assert.ok(
+      !results.some(({ detail }) =>
+        /USE TEMP B-TREE FOR GROUP BY/.test(detail),
+      ),
+      "date/shard index order must avoid sorting the complete day's membership",
+    );
+  }
+  for (const sql of new Set(
+    queries.filter((sql) => sql.startsWith("SELECT day")),
+  )) {
+    const { results } = await db
+      .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+      .bind("9999-12-31")
+      .all<{ detail: string }>();
+    assert.ok(
+      results.some(({ detail }) =>
+        /USING COVERING INDEX .*day_idx/.test(detail),
+      ),
+      "date discovery must not scan historical document payloads: " +
+        JSON.stringify(results),
     );
   }
 });

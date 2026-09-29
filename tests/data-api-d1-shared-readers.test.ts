@@ -387,8 +387,10 @@ test("D1 turnover expands boundary documents once and preserves membership and f
     day,
   ]);
   assert.match(JSON.stringify(plan), /neuron_daily_documents_day_idx/);
+  // After the covering-index migration SQLite can prefer the still tighter
+  // primary-key lookup for each expanded UID; both plans bound subnet/date.
   assert.match(
     JSON.stringify(plan),
-    /SEARCH m .*netuid=\? AND snapshot_date=\?/,
+    /SEARCH m .*netuid=\? AND (?:uid=\? AND )?snapshot_date=\?/,
   );
 });
