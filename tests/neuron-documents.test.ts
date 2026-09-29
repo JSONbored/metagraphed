@@ -263,6 +263,78 @@ test("full-shard membership updates send only keys and preserve accepted identit
     );
   }
 });
+test("account membership preserves stale retries and partition identity without reading metric documents", async () => {
+  const account = 'quoted"\\account-\u00e9';
+  const position = (
+    name: string,
+    at = stamp,
+    netuid = 1,
+    snapshot_date = "2026-09-22",
+  ) => ({
+    account: name,
+    netuid,
+    snapshot_date,
+    captured_at: at,
+    stake_tao: at === stamp ? 42 : 1,
+  });
+  const input = {
+    ...empty(),
+    positionRows: [position(account), position("unchanged")],
+  };
+  await writeNeuronDocuments(store(), input);
+  // Repair a missing index row using an older capture, retaining newer metrics.
+  await db
+    .prepare("DELETE FROM account_position_daily_members WHERE account=?")
+    .bind(account)
+    .run();
+  const retry = {
+    ...empty(),
+    positionRows: [
+      position(account, stamp - 1000),
+      position("late", stamp - 1000),
+      position(account, stamp, 2),
+      position(account, stamp, 1, "2026-09-23"),
+    ],
+  };
+  const membership = neuronDocumentStatements(retry).find((s) =>
+    s.text.includes("INSERT INTO account_position_daily_members"),
+  )!;
+  const plan = (
+    await db
+      .prepare("EXPLAIN QUERY PLAN " + membership.text)
+      .bind(...membership.values!)
+      .all<{ detail: string }>()
+  ).results
+    .map((r) => r.detail)
+    .join("\n");
+  assert.match(plan, /MATERIALIZE incoming/);
+  assert.doesNotMatch(plan, /account_position_daily_documents|CORRELATED/);
+  await writeNeuronDocuments(store(), retry);
+  const actual = (
+    await db
+      .prepare(
+        "SELECT account,netuid,snapshot_date,captured_at,stake_tao FROM account_position_daily ORDER BY account,netuid,snapshot_date",
+      )
+      .all()
+  ).results;
+  const expected = [
+    position("late", stamp - 1000),
+    position(account),
+    position(account, stamp, 1, "2026-09-23"),
+    position(account, stamp, 2),
+    position("unchanged"),
+  ];
+  assert.deepEqual(actual, expected);
+  const repeated = await db.batch(
+    neuronDocumentStatements(retry).map((s) =>
+      db.prepare(s.text).bind(...(s.values ?? [])),
+    ),
+  );
+  assert.equal(
+    repeated.reduce((sum, r) => sum + r.meta.changes, 0),
+    0,
+  );
+});
 test("new daily membership indexes axons once and retains legacy writer recovery", async () => {
   const initial = Array.from({ length: 256 }, (_, uid) => ({
     ...rows()[0],

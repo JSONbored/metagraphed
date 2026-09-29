@@ -140,13 +140,11 @@ function documentStatements(
         OR EXISTS(SELECT 1 FROM json_each(excluded.payload) i WHERE ${newer})`,
       values: [value],
     });
-    // Read accepted identities from the merged document, so a stale incoming
-    // capture cannot regress the lookup index while its metrics are rejected.
-    // New daily members also take their axon from this accepted row. The
-    // fallback trigger then avoids re-reading and updating every new member.
-    // Only the incoming keys are needed here. Materialize that small key set
-    // as JSONB once per shard, rather than reparsing every full capture for
-    // every accepted member of the document.
+    // Account/day identity cannot change with its metrics: the document key
+    // encodes that account, and a previously absent key is always accepted.
+    // Neuron identities can change, so resolve those from the merged document
+    // to keep stale captures from regressing them. New daily members also take
+    // their axon from that accepted row without a second trigger read.
     out.push({
       text: `WITH incoming AS MATERIALIZED (
         SELECT json_extract(value,'$.netuid') AS netuid,json_extract(value,'$.day') AS day,
@@ -154,9 +152,13 @@ function documentStatements(
         FROM json_each(?)
       )
       INSERT INTO ${members}(${fields.join(",")},shard${indexedAxon ? ",axon_index,axon_indexed" : ""})
-      SELECT ${fields.map((c) => `json_extract(i.value,'$.${c}')`).join(",")},d.shard${indexedAxon ? ",json_extract(i.value,'$.axon'),1" : ""}
+      ${
+        position
+          ? "SELECT k.value,b.netuid,b.day,b.shard FROM incoming b JOIN json_each(b.keys) k WHERE true"
+          : `SELECT ${fields.map((c) => `json_extract(i.value,'$.${c}')`).join(",")},d.shard${indexedAxon ? ",json_extract(i.value,'$.axon'),1" : ""}
       FROM incoming b JOIN ${table} d ON d.netuid=b.netuid AND d.day=b.day AND d.shard=b.shard
-      JOIN json_each(d.payload) i WHERE json_type(b.keys,'$."'||i.key||'"') IS NOT NULL
+      JOIN json_each(d.payload) i WHERE json_type(b.keys,'$."'||i.key||'"') IS NOT NULL`
+      }
       ON CONFLICT(${conflict}) ${identityUpdates}`,
       values: [
         JSON.stringify(
@@ -164,9 +166,9 @@ function documentStatements(
             netuid,
             day,
             shard,
-            keys: Object.fromEntries(
-              Object.keys(payload).map((key) => [key, 1]),
-            ),
+            keys: position
+              ? Object.values(payload).map((row) => row.account)
+              : Object.fromEntries(Object.keys(payload).map((key) => [key, 1])),
           })),
         ),
       ],
