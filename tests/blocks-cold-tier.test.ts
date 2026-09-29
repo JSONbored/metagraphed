@@ -31,6 +31,10 @@ import {
 import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 import {
+  publishedBlocksSeam,
+  RETAINED_SEAM_TTL_MS,
+} from "../src/blocks-seam.ts";
+import {
   DECODE_WATERMARK_KEY,
   resetDecodeWatermarkCache,
 } from "../src/decode-watermark.ts";
@@ -120,6 +124,187 @@ function archive(body: unknown, reads?: string[]) {
     },
   };
 }
+
+function retained(through: number | null, now = Date.now()) {
+  return {
+    RETAINED_BLOCKS_NETWORKS: "mainnet,testnet",
+    D1_RETAINED_BLOCKS: {
+      prepare: () => ({ bind: () => ({}) }),
+      batch: async () => [
+        {
+          success: true,
+          results: [
+            {
+              network: 0,
+              generation: "a".repeat(64),
+              table_uuid: "019fc234-642e-7f82-b656-ddb8529315ab",
+              snapshot: "123",
+              sequence: 1,
+              generated_at: now,
+              source_rows: through === null ? 0 : through + 1,
+              source_files: through === null ? 0 : 1,
+              coverage: null,
+            },
+          ],
+        },
+        {
+          success: true,
+          results: [
+            {
+              files: through === null ? 0 : 1,
+              rows: through === null ? 0 : through + 1,
+              pending: 0,
+            },
+          ],
+        },
+        {
+          success: true,
+          results: [
+            { first_block: through === null ? null : 0, last_block: through },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+describe("retained publication bounds block routing", () => {
+  test("concurrent reads share a bounded memo, expire and respect fresh reads and binding selection", async () => {
+    const start = Date.now();
+    let now = start;
+    const selected = {
+      ...archive({ decoded_through: SEAM + 451 }),
+      ...retained(SEAM, start),
+    };
+    const read = vi.spyOn(selected.D1_RETAINED_BLOCKS, "batch");
+    const deps = { now: () => now };
+    assert.deepEqual(
+      await Promise.all([
+        resolveBlocksSeam(selected, deps),
+        resolveBlocksSeam(selected, deps),
+      ]),
+      [SEAM, SEAM],
+    );
+    assert.equal(read.mock.calls.length, 1);
+    now += RETAINED_SEAM_TTL_MS;
+    await resolveBlocksSeam(selected, deps);
+    assert.equal(read.mock.calls.length, 2);
+    await resolveBlocksSeam(selected, { ...deps, fresh: true });
+    assert.equal(read.mock.calls.length, 3);
+    assert.equal(
+      await resolveBlocksSeam(
+        { ...selected, RETAINED_BLOCKS_NETWORKS: "testnet" },
+        deps,
+      ),
+      SEAM + 451,
+    );
+    assert.equal(read.mock.calls.length, 3);
+    assert.equal(
+      await resolveBlocksSeam(
+        { ...selected, ...retained(SEAM + 451, start) },
+        deps,
+      ),
+      SEAM + 451,
+    );
+  });
+
+  test("a failed selected census stays unavailable and retries after its bounded memo", async () => {
+    const start = Date.now();
+    const selected = {
+      ...archive({ decoded_through: SEAM + 451 }),
+      ...retained(null, start),
+    };
+    const read = vi.spyOn(selected.D1_RETAINED_BLOCKS, "batch");
+    for (let i = 0; i < 2; i++)
+      await assert.rejects(
+        resolveBlocksSeam(selected, { now: () => start }),
+        RetainedHistoryUnavailableError,
+      );
+    assert.equal(read.mock.calls.length, 1);
+    read.mockImplementation(
+      retained(SEAM + 451, start).D1_RETAINED_BLOCKS.batch,
+    );
+    assert.equal(
+      await resolveBlocksSeam(selected, {
+        now: () => start + RETAINED_SEAM_TTL_MS,
+      }),
+      SEAM + 451,
+    );
+    assert.equal(read.mock.calls.length, 2);
+  });
+
+  test("a decoded block pending retained publication still uses the hot copy", async () => {
+    const height = SEAM + 451;
+    const { db, sql } = runner([headRow(height)]);
+    const queries = lakeFetch([]);
+    const data = await loadBlockColdTier(
+      {
+        ...TOKEN,
+        ...db,
+        ...archive({ decoded_through: height }),
+        ...retained(SEAM),
+      } as never,
+      String(height),
+    );
+    assert.equal(data!.block!.block_number, height);
+    assert.equal(sql.length, 1);
+    assert.equal(queries.block.mock.calls.length, 0);
+  });
+
+  test("feed routing uses the retained boundary until its next committed publication", async () => {
+    const { db, params } = runner([headRow(SEAM + 450)]);
+    lakeFetch([]);
+    await loadBlockFeedColdTier(
+      {
+        ...TOKEN,
+        ...db,
+        ...archive({ decoded_through: SEAM + 451 }),
+        ...retained(SEAM),
+      } as never,
+      { limit: 1, offset: 0 },
+    );
+    assert.equal(params[0]![1], SEAM);
+    assert.equal(
+      await resolveBlocksSeam({
+        ...archive({ decoded_through: SEAM + 451 }),
+        ...retained(SEAM + 451),
+      }),
+      SEAM + 451,
+    );
+  });
+
+  test("missing, empty, expired or regressed selected history cannot trust the decoder", async () => {
+    for (const owner of [
+      { RETAINED_BLOCKS_NETWORKS: "mainnet" },
+      retained(null),
+      retained(SEAM - 1),
+      retained(SEAM, Date.now() - 7_200_001),
+    ]) {
+      await assert.rejects(
+        resolveBlocksSeam({
+          ...archive({ decoded_through: SEAM + 451 }),
+          ...owner,
+        }),
+        RetainedHistoryUnavailableError,
+      );
+    }
+  });
+
+  test("the same rule preserves the verified floor and the non-mainnet source boundary", async () => {
+    assert.equal(publishedBlocksSeam(SEAM, undefined, SEAM + 451), SEAM);
+    assert.equal(publishedBlocksSeam(SEAM, SEAM + 1, SEAM + 451), SEAM + 1);
+    assert.throws(
+      () => publishedBlocksSeam(SEAM, SEAM + 451, NaN),
+      RetainedHistoryUnavailableError,
+    );
+    assert.equal(await resolveBlocksSeam(retained(SEAM), {}, "testnet"), 0);
+    const now = Date.now();
+    assert.equal(
+      await resolveBlocksSeam(retained(SEAM, now), { now: () => now }),
+      SEAM,
+    );
+  });
+});
 
 describe("blocksSeamFloor", () => {
   test("defaults to the verified lakehouse maximum", () => {

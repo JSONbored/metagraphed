@@ -4,27 +4,50 @@ import {
   resolveDecodeWatermark,
   type DecodeWatermarkDeps,
 } from "./decode-watermark.ts";
+import {
+  readRetainedBlockCensus,
+  type RetainedBlocksEnv,
+} from "./retained-blocks-d1.ts";
+import { RetainedHistoryUnavailableError } from "./retained-history-store.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
+
+export const RETAINED_SEAM_TTL_MS = 5_000;
+type Census = Awaited<ReturnType<typeof readRetainedBlockCensus>>;
+let retainedMemo = new WeakMap<
+  object,
+  { expiresAt: number; value: Promise<Census> }
+>();
+registerModuleStateReset("src/blocks-seam.ts", () => {
+  retainedMemo = new WeakMap();
+});
+
+/** Share in-flight reads and briefly reuse the publication census per binding.
+ * The watchdog uses its own uncached census. Nulls expire too, so a failed
+ * selected owner cannot turn concurrent public requests into a retry storm. */
+function retainedSeamCensus(env: unknown, deps: DecodeWatermarkDeps) {
+  const selected = env as RetainedBlocksEnv | null | undefined;
+  const now = (deps.now ?? Date.now)();
+  const db = selected?.D1_RETAINED_BLOCKS;
+  if (
+    deps.fresh ||
+    !db ||
+    !selected?.RETAINED_BLOCKS_NETWORKS?.split(",").includes("mainnet")
+  )
+    return readRetainedBlockCensus(selected, "mainnet", now);
+  const cached = retainedMemo.get(db);
+  if (cached && cached.expiresAt > now) return cached.value;
+  const value = readRetainedBlockCensus(selected, "mainnet", now);
+  retainedMemo.set(db, { expiresAt: now + RETAINED_SEAM_TTL_MS, value });
+  return value;
+}
 
 /** Floor for the seam, overridable per environment. NOT the seam itself any
  * more: see `resolveBlocksSeam`. */
 export const BLOCKS_SEAM_ENV = "ICEBERG_BLOCKS_MAX";
 
-/**
- * The seam FLOOR: history the lakehouse is known to hold regardless of what
- * the decode lane has published since.
- *
- * Measured 2026-08-02 against the live lakehouse (#9161): `min=0,
- * max=8,759,336, count=8,759,337` -- `count == max - min + 1`, so the range is
- * contiguous with no gaps and no duplicates. It is the height of the final
- * export plus the delta loads that followed, and it is the same number the
- * decoder's own `iceberg_r2.py seam` uses when its ledger is empty.
- *
- * As a CEILING this number went stale twice, both times invisibly, because
- * nothing re-measured it between deploys. As a floor it cannot: the published
- * watermark only raises the seam, so a constant that lags reality costs
- * nothing the moment the decoder publishes, and a constant that is somehow
- * ahead of the lakehouse still bounds the damage to the range it always did.
- */
+/** Original contiguous export ceiling (#9161), retained as a fallback floor.
+ * A selected retained owner must independently prove coverage at this height;
+ * this historical measurement alone cannot establish present availability. */
 export const DEFAULT_BLOCKS_SEAM = 8_759_336;
 
 /** The one binding this module still reads directly, independent of the full
@@ -38,24 +61,33 @@ function bindings(env: unknown): ColdTierBindings {
   return (env ?? {}) as ColdTierBindings;
 }
 
+/** A decoded commit is not a serving publication. Keep the hot bridge until
+ * the selected retained copy contains the new height. An unavailable selected
+ * owner cannot fall back to a watermark that would route reads into a gap. */
+export function publishedBlocksSeam(
+  floor: number,
+  decodedThrough: number | undefined,
+  retainedThrough: number | null | undefined,
+): number {
+  const decoded = Math.max(floor, decodedThrough ?? floor);
+  if (retainedThrough === undefined) return decoded;
+  if (
+    retainedThrough === null ||
+    !Number.isSafeInteger(retainedThrough) ||
+    retainedThrough < floor
+  )
+    throw new RetainedHistoryUnavailableError();
+  return Math.min(decoded, retainedThrough);
+}
+
 /** The configured floor: the env override when it parses, else the constant. */
 export function blocksSeamFloor(env: unknown): number {
   const parsed = safeBlockNumber(bindings(env)[BLOCKS_SEAM_ENV]);
   return parsed ?? DEFAULT_BLOCKS_SEAM;
 }
 
-/**
- * The seam this request routes on: the published decode watermark when it is
- * ahead of the configured floor, the floor otherwise.
- *
- * `Math.max` is the whole fail-safe. A missing, unreadable, malformed or
- * REGRESSED watermark cannot lower the seam, so the worst case is the
- * behaviour this module had before the watermark existed. A watermark that is
- * ahead is trusted because the decoder writes its ledger property in the SAME
- * Iceberg commit as the rows -- there is no window in which it can claim a
- * height whose data is not yet visible -- and because it is the `min` across
- * all four decoded tables, so it never runs ahead of the slowest one.
- */
+/** Route on the decoded height bounded by the independently published retained
+ * copy. Unselected environments keep their existing watermark policy. */
 export async function resolveBlocksSeam(
   env: unknown,
   deps: DecodeWatermarkDeps = {},
@@ -68,8 +100,15 @@ export async function resolveBlocksSeam(
   // says exactly that: nothing is above the seam.
   if (network !== DEFAULT_CHAIN_NETWORK) return 0;
   const floor = blocksSeamFloor(env);
-  const watermark = await resolveDecodeWatermark(env, deps, network);
-  return Math.max(floor, watermark?.decodedThrough ?? floor);
+  const [watermark, retained] = await Promise.all([
+    resolveDecodeWatermark(env, deps, network),
+    retainedSeamCensus(env, deps),
+  ]);
+  return publishedBlocksSeam(
+    floor,
+    watermark?.decodedThrough,
+    retained === undefined ? undefined : (retained?.hi ?? null),
+  );
 }
 
 /**
