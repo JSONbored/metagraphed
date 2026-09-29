@@ -238,8 +238,8 @@ export async function readHistoryPointers(
       hydrated.set(`${fileId}:${ordinals[index]}`, row),
     );
   }
-  return pointers.map(
-    (pointer) => hydrated.get(`${pointer.fileId}:${pointer.row}`)!,
+  return pointers.map((pointer) =>
+    hydrated.get(`${pointer.fileId}:${pointer.row}`)!,
   );
 }
 
