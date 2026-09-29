@@ -8,15 +8,15 @@ the live metagraphed registry, not training-data guesses.
 The fastest path is the MCP server (one line, no key):
 
 ```
-claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core
+claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 ```
 
-The **core** profile lists common tools directly and can call every tool: the
-profile filters the tool _listing_, never dispatch. Use `search_tools` to find
-complete definitions and `invoke_read_tool` or `invoke_tool` to call them.
-`https://api.metagraph.sh/mcp` starts with just those discovery/invocation tools
-and `get_more_tools`. Use `https://api.metagraph.sh/mcp?catalog=full` when your
-client needs every definition advertised up front.
+The default starts with four discovery and invocation tools. Use `search_tools`
+to retrieve complete definitions, then `invoke_read_tool` or `invoke_tool` to
+call them. Every capability remains available: the profile filters the tool
+_listing_, never dispatch. `https://api.metagraph.sh/mcp/core` also lists common
+tools directly. Use `https://api.metagraph.sh/mcp?catalog=full` when your client
+needs every definition advertised up front.
 
 No MCP host? Everything is also a plain `GET`/`POST` over HTTPS — see "REST
 fallback" at the bottom. For copyable REST/npm/Python/MCP examples, use

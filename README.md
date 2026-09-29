@@ -80,7 +80,7 @@ Add an MCP server with url `https://api.metagraph.sh/mcp` and transport `streama
 | 👛 **Wallets**      | `get_account` · `get_account_events` · `get_account_subnets` · `get_account_portfolio`       | what one account does across the network      |
 | 💬 **Grounded Q&A** | `ask`                                                                                        | a cited answer over the whole registry        |
 
-<sub>200+ tools total — the full list is in the [server card](https://api.metagraph.sh/.well-known/mcp/server-card.json), and a curated 23-tool core profile is available for context-limited agents.</sub>
+<sub>All tools remain available through a four-tool discovery catalog. The [server card](https://api.metagraph.sh/.well-known/mcp/server-card.json) links the complete capabilities; common-tool and full-catalog profiles are also available.</sub>
 
 #### 📦 Typed client
 
