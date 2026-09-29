@@ -175,7 +175,9 @@ test("D1 counts preserve view semantics, gaps, thin days, orphaned members and d
       "each membership query must count directly from its date/shard index",
     );
     assert.ok(
-      !results.some(({ detail }) => /USE TEMP B-TREE FOR GROUP BY/.test(detail)),
+      !results.some(({ detail }) =>
+        /USE TEMP B-TREE FOR GROUP BY/.test(detail),
+      ),
       "date/shard index order must avoid sorting the complete day's membership",
     );
   }
@@ -187,7 +189,9 @@ test("D1 counts preserve view semantics, gaps, thin days, orphaned members and d
       .bind("9999-12-31")
       .all<{ detail: string }>();
     assert.ok(
-      results.some(({ detail }) => /USING COVERING INDEX .*day_idx/.test(detail)),
+      results.some(({ detail }) =>
+        /USING COVERING INDEX .*day_idx/.test(detail),
+      ),
       "date discovery must not scan historical document payloads: " +
         JSON.stringify(results),
     );
