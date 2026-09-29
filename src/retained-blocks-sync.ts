@@ -28,6 +28,13 @@ const Input = z.discriminatedUnion("kind", [
   }),
   z.strictObject({ kind: z.literal("begin"), identity: hash, source }),
   z.strictObject({
+    kind: z.literal("recover-range"),
+    network,
+    generation: hash,
+    firstBlock: integer.max(0xffffffff),
+    lastBlock: integer.max(0xffffffff),
+  }),
+  z.strictObject({
     kind: z.literal("chunk"),
     identity: hash,
     start: integer,
@@ -58,6 +65,65 @@ interface Source {
   received_rows: number;
 }
 const fail = (status: number, error: string) => internalJson({ error }, status);
+
+/** Read surviving block values for checksum-qualified immutable recovery.
+ * The selected receipt and rows share a transaction. Duplicate captures or a
+ * gap reject the range; recovery must never silently choose or invent a row.
+ */
+async function recoverRange(
+  db: D1StoreBinding,
+  input: Extract<Input, { kind: "recover-range" }>,
+): Promise<Response> {
+  const count = input.lastBlock - input.firstBlock + 1;
+  if (count < 1 || count > 512)
+    return fail(400, "recovery range exceeds 512 blocks");
+  const net = input.network === "mainnet" ? 0 : 1;
+  const [state, selected] = await db.batch([
+    db
+      .prepare("SELECT generation FROM history_block_state WHERE network=?")
+      .bind(net),
+    db
+      .prepare(
+        "SELECT json_array(b.block_number,b.block_hash,b.parent_hash,a.address," +
+          "b.extrinsic_count,b.event_count,b.spec_version,b.observed_at) AS row " +
+          "FROM history_blocks b INDEXED BY history_blocks_height " +
+          "LEFT JOIN history_block_authors a ON a.id=b.author_id " +
+          "WHERE b.network=? AND b.block_number BETWEEN ? AND ? AND b.source_id IN " +
+          "(SELECT id FROM history_block_sources WHERE network=? AND active=1 AND received_rows=expected_rows) " +
+          "ORDER BY b.block_number,b.observed_at DESC,b.source_id,b.ordinal LIMIT 513",
+      )
+      .bind(net, input.firstBlock, input.lastBlock, net),
+  ]);
+  if (!state!.success || !selected!.success)
+    return fail(503, "retained recovery read failed");
+  if (
+    (state!.results[0] as { generation?: string } | undefined)?.generation !==
+    input.generation
+  )
+    return fail(409, "retained recovery snapshot changed");
+  const rows = selected!.results.map((value) =>
+    row.parse(JSON.parse((value as { row: string }).row)),
+  );
+  if (
+    rows.length !== count ||
+    rows.some((value, index) => value[0] !== input.firstBlock + index)
+  )
+    return fail(409, "retained recovery range is incomplete or ambiguous");
+  const body = JSON.stringify({
+    generation: input.generation,
+    firstBlock: input.firstBlock,
+    lastBlock: input.lastBlock,
+    rows,
+  });
+  if (new TextEncoder().encode(body).length > 1024 * 1024)
+    return fail(413, "retained recovery response exceeds byte budget");
+  return new Response(body, {
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+    },
+  });
+}
 function digest(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
@@ -313,6 +379,7 @@ export async function handleRetainedBlocksSync(
     }
     if (input.kind === "begin") return await begin(db, input);
     if (input.kind === "chunk") return await chunk(db, input);
+    if (input.kind === "recover-range") return await recoverRange(db, input);
     return await publish(db, input, now);
   } catch {
     return fail(

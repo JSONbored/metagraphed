@@ -541,3 +541,124 @@ test("status pages identify the exact selected snapshot and fence concurrent cha
   assert.equal(data.next_cursor, 200);
   assert.equal(data.sources.length, 200);
 });
+
+async function recoveryFixture(values: unknown[][], network = "mainnet") {
+  await ok({
+    kind: "begin",
+    identity,
+    source: { ...source, network, rows: values.length },
+  });
+  for (let start = 0; start < values.length; start += 8)
+    await ok({
+      kind: "chunk",
+      identity,
+      start,
+      rows: values.slice(start, start + 8),
+    });
+  const result = await ok(publication({ network, source_rows: values.length }));
+  return {
+    kind: "recover-range",
+    network,
+    generation: result.generation,
+    firstBlock: values[0]![0],
+    lastBlock: values[values.length - 1]![0],
+  };
+}
+
+test("bounded recovery preserves every block field, network and selected receipt without writes", async () => {
+  const values = [
+    [10, "0xAbC", "0xdef", "Unicode λ 雪", 0, null, 241, 9007199254740991],
+    [11, null, null, null, null, 0, null, null],
+  ];
+  const input = await recoveryFixture(values, "testnet");
+  const before = await db.prepare("SELECT * FROM history_block_state").all();
+  assert.deepEqual(await ok(input), {
+    generation: input.generation,
+    firstBlock: 10,
+    lastBlock: 11,
+    rows: values,
+  });
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM history_block_state").all()).results,
+    before.results,
+  );
+  assert.equal((await call({ ...input, network: "mainnet" })).status, 409);
+  assert.equal(
+    (await call({ ...input, generation: "c".repeat(64) })).status,
+    409,
+  );
+  for (const invalid of [
+    { firstBlock: 12, lastBlock: 11 },
+    { firstBlock: 0, lastBlock: 512 },
+    { firstBlock: -1 },
+    { lastBlock: 0x100000000 },
+  ])
+    assert.equal((await call({ ...input, ...invalid })).status, 400);
+  assert.equal(
+    (await handleRetainedBlocksSync(request(input, "wrong"), env())).status,
+    401,
+  );
+  assert.equal((await call({ ...input, lastBlock: 12 })).status, 409);
+});
+
+test("recovery rejects gaps, duplicates and incomplete imported sources instead of choosing rows", async () => {
+  const input = await recoveryFixture(
+    [row, row, tail].map((r, i) => [i === 1 ? 10 : 10 + i, ...r.slice(1)]),
+  );
+  assert.equal((await call(input)).status, 409); // Three rows, but height eleven is absent.
+  await db
+    .prepare("UPDATE history_blocks SET block_number=11 WHERE ordinal=1")
+    .run();
+  assert.equal((await call(input)).status, 200);
+  await db.prepare("UPDATE history_block_sources SET received_rows=2").run();
+  assert.equal((await call(input)).status, 409);
+  await db.prepare("UPDATE history_block_sources SET received_rows=3").run();
+  await db
+    .prepare(
+      "UPDATE history_blocks SET observed_at=9007199254740992 WHERE ordinal=0",
+    )
+    .run();
+  assert.equal((await call(input)).status, 503);
+});
+
+test("recovery accepts its 512-block ceiling and fails closed on either D1 batch failure", async () => {
+  const values = Array.from({ length: 512 }, (_, i) => [i, ...row.slice(1)]);
+  const input = await recoveryFixture(values);
+  assert.deepEqual((await ok(input)).rows, values);
+  for (const failed of [0, 1]) {
+    const broken = {
+      prepare: db.prepare.bind(db),
+      async batch(statements: D1PreparedStatement[]) {
+        const results = await db.batch(statements);
+        results[failed] = { ...results[failed]!, success: false };
+        return results;
+      },
+    } as unknown as D1StoreBinding;
+    assert.equal(
+      (
+        await handleRetainedBlocksSync(request(input), {
+          ...env(),
+          D1_RETAINED_BLOCKS: broken,
+        })
+      ).status,
+      503,
+    );
+  }
+});
+
+test("recovery enforces its UTF-8 response budget even when source chunks were individually bounded", async () => {
+  const long = "雪".repeat(8192);
+  const values = Array.from({ length: 24 }, (_, i) => [
+    i,
+    long,
+    long,
+    long,
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const input = await recoveryFixture(values);
+  assert.equal((await call(input)).status, 413);
+  assert.deepEqual((await ok({ ...input, lastBlock: 0 })).rows, [values[0]]);
+});
