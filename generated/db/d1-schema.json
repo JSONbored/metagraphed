@@ -1311,19 +1311,19 @@
     "type": "trigger",
     "name": "neuron_daily_axon_document_insert",
     "tbl_name": "neuron_daily_documents",
-    "sql": "CREATE TRIGGER neuron_daily_axon_document_insert AFTER INSERT ON neuron_daily_documents\nBEGIN\n UPDATE neuron_daily_members SET axon_index=json_extract(NEW.payload,'$.\"'||uid||'\".axon'),axon_indexed=1\n WHERE netuid=NEW.netuid AND snapshot_date=NEW.day AND shard=NEW.shard;\nEND"
+    "sql": "CREATE TRIGGER neuron_daily_axon_document_insert AFTER INSERT ON neuron_daily_documents\nBEGIN\n UPDATE neuron_daily_members SET axon_index=accepted.axon,axon_indexed=1\n FROM (\n  WITH payload AS MATERIALIZED (\n   SELECT key,CASE WHEN type='object' THEN json_extract(value,'$.axon') END AS axon,\n     MIN(id) AS first_id\n   FROM json_each(NEW.payload) WHERE typeof(key)='text' GROUP BY key\n  )\n  SELECT m.netuid,m.uid,m.snapshot_date,p.axon\n  FROM neuron_daily_members m LEFT JOIN payload p ON p.key=CAST(m.uid AS TEXT)\n  WHERE m.netuid=NEW.netuid AND m.snapshot_date=NEW.day AND m.shard=NEW.shard\n ) AS accepted\n WHERE neuron_daily_members.netuid=accepted.netuid\n   AND neuron_daily_members.uid=accepted.uid\n   AND neuron_daily_members.snapshot_date=accepted.snapshot_date;\nEND"
   },
   {
     "type": "trigger",
     "name": "neuron_daily_axon_document_update",
     "tbl_name": "neuron_daily_documents",
-    "sql": "CREATE TRIGGER neuron_daily_axon_document_update AFTER UPDATE OF payload ON neuron_daily_documents\nBEGIN\n UPDATE neuron_daily_members SET axon_index=json_extract(NEW.payload,'$.\"'||uid||'\".axon'),axon_indexed=1\n WHERE netuid=NEW.netuid AND snapshot_date=NEW.day AND shard=NEW.shard\n AND (axon_indexed=0 OR axon_index IS NOT json_extract(NEW.payload,'$.\"'||uid||'\".axon'));\nEND"
+    "sql": "CREATE TRIGGER neuron_daily_axon_document_update AFTER UPDATE OF payload ON neuron_daily_documents\nBEGIN\n UPDATE neuron_daily_members SET axon_index=accepted.axon,axon_indexed=1\n FROM (\n  WITH payload AS MATERIALIZED (\n   SELECT key,CASE WHEN type='object' THEN json_extract(value,'$.axon') END AS axon,\n     MIN(id) AS first_id\n   FROM json_each(NEW.payload) WHERE typeof(key)='text' GROUP BY key\n  )\n  SELECT m.netuid,m.uid,m.snapshot_date,p.axon\n  FROM neuron_daily_members m LEFT JOIN payload p ON p.key=CAST(m.uid AS TEXT)\n  WHERE m.netuid=NEW.netuid AND m.snapshot_date=NEW.day AND m.shard=NEW.shard\n ) AS accepted\n WHERE neuron_daily_members.netuid=accepted.netuid\n   AND neuron_daily_members.uid=accepted.uid\n   AND neuron_daily_members.snapshot_date=accepted.snapshot_date\n   AND (neuron_daily_members.axon_indexed=0\n        OR neuron_daily_members.axon_index IS NOT accepted.axon);\nEND"
   },
   {
     "type": "trigger",
     "name": "neuron_daily_axon_member_insert",
     "tbl_name": "neuron_daily_members",
-    "sql": "CREATE TRIGGER neuron_daily_axon_member_insert AFTER INSERT ON neuron_daily_members\nBEGIN\n UPDATE neuron_daily_members SET\n axon_index=(SELECT json_extract(d.payload,'$.\"'||NEW.uid||'\".axon') FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard),\n axon_indexed=1\n WHERE netuid=NEW.netuid AND uid=NEW.uid AND snapshot_date=NEW.snapshot_date\n AND EXISTS(SELECT 1 FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard);\nEND"
+    "sql": "CREATE TRIGGER neuron_daily_axon_member_insert AFTER INSERT ON neuron_daily_members\nWHEN NEW.axon_indexed=0\nBEGIN\n UPDATE neuron_daily_members SET\n axon_index=(SELECT json_extract(d.payload,'$.\"'||NEW.uid||'\".axon') FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard),\n axon_indexed=1\n WHERE netuid=NEW.netuid AND uid=NEW.uid AND snapshot_date=NEW.snapshot_date\n AND EXISTS(SELECT 1 FROM neuron_daily_documents d WHERE d.netuid=NEW.netuid AND d.day=NEW.snapshot_date AND d.shard=NEW.shard);\nEND"
   },
   {
     "type": "trigger",
