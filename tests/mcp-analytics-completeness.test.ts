@@ -391,6 +391,26 @@ describe("$mcp_missing_capability", () => {
     assert.equal(typeof missing[0].serverVersion, "string");
   });
 
+  for (const path of ["/mcp", "/mcp/core"]) {
+    test(`${path} rejects invalid reports without inventing a capability gap`, async () => {
+      const { missing, mcp, body } = await callTool(
+        MCP_MISSING_CAPABILITY_TOOL,
+        {
+          context: "wanted per-validator slippage curves",
+          unsupported: true,
+        },
+        {},
+        path,
+      );
+      assert.equal(body.result.isError, true);
+      assert.deepEqual(missing, []);
+      assert.equal(mcp.length, 1);
+      assert.equal(mcp[0].isError, true);
+      assert.equal(classifyMcpErrorType(mcp[0].errorCode), "validation");
+      assert.equal(mcp[0].intent, "wanted per-validator slippage curves");
+    });
+  }
+
   test("a report with no reasoning is not counted", async () => {
     // An empty gap report names no gap. Counting it would inflate the tally of
     // unmet asks with calls that asked for nothing.
