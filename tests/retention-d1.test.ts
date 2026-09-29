@@ -126,6 +126,62 @@ test("a late D1 delete failure rolls back every detail table and coverage", asyn
   assert.equal(pg.control.connects, 0);
 });
 
+test("an account-event backlog is bounded from its own floor", async () => {
+  await seed();
+  const old = accountFloor - 10_000;
+  for (const block of [old, old + 119, old + 120, accountFloor - 1])
+    await db
+      .prepare(
+        "INSERT OR IGNORE INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)",
+      )
+      .bind(block)
+      .run();
+  const result = await pruneChainDetail(env(), ctx);
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 120);
+  assert.deepEqual(await blocks("chain_detail_account_events"), [
+    old + 120,
+    accountFloor - 1,
+    accountFloor,
+    floor,
+    floor + 119,
+    floor + 120,
+    head,
+  ]);
+});
+
+test("a later D1 chunk failure leaves a complete pruned prefix", async () => {
+  await seed();
+  await db
+    .prepare(
+      `CREATE TRIGGER reject_prune BEFORE DELETE ON chain_detail_blocks
+       WHEN OLD.block_number >= ${floor + 10}
+       BEGIN SELECT RAISE(ABORT,'later chunk rejected'); END`,
+    )
+    .run();
+  const result = await pruneChainDetail(env(), ctx);
+  assert.equal(result.ok, false);
+  assert.equal(result.blocks_pruned, undefined);
+  assert.match(result.detail!, /later chunk rejected/);
+  for (const table of tables)
+    assert.deepEqual(
+      await blocks(table),
+      table === "chain_detail_account_events"
+        ? [accountFloor, floor, floor + 119, floor + 120, head]
+        : [floor + 119, floor + 120, head],
+    );
+});
+
+test("an empty account-event table does not prevent bounded coverage cleanup", async () => {
+  await seed();
+  await db.prepare("DELETE FROM chain_detail_account_events").run();
+  const result = await pruneChainDetail(env(), ctx);
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 120);
+  assert.deepEqual(await blocks("chain_detail_account_events"), []);
+  assert.deepEqual(await blocks("chain_detail_blocks"), [floor + 120, head]);
+});
+
 function selectedHistory(through: Record<string, number>, firstBlock = 0) {
   return {
     NATIVE_PROJECTIONS: "enabled",
@@ -189,6 +245,30 @@ test("caught-up serving indexes retain the normal bounded D1 cleanup", async () 
   assert.equal(result.ok, true);
   assert.equal(result.blocks_pruned, 120);
   assert.equal(result.retained_blocks, 1800);
+});
+
+test("a native publication outage cannot age unserved rows past the retention ceiling", async () => {
+  await seed();
+  const old = head - 15_000;
+  await db
+    .prepare(
+      "INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'old',0,0,0,1,1)",
+    )
+    .bind(old)
+    .run();
+  const selected = selectedHistory({
+    blocks: head,
+    extrinsics: old - 1,
+    chain_events: head,
+    account_events: head,
+  });
+  const before = await Promise.all(tables.map(blocks));
+  const result = await pruneChainDetail({ ...env(), ...selected }, ctx);
+  assert.equal(result.ok, true);
+  assert.equal(result.keep_from, old);
+  assert.equal(result.retained_blocks, 15_001);
+  assert.equal(result.blocks_pruned, 0);
+  assert.deepEqual(await Promise.all(tables.map(blocks)), before);
 });
 
 test.each(["missing", "partial", "unbound"])(
