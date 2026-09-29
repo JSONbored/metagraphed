@@ -46,7 +46,10 @@ import {
   handleMcpRequest,
   markMcpTierDegraded,
 } from "../src/mcp-server.ts";
-import { currentDataApiTierFallbackGeneration } from "../workers/data-api-tier.ts";
+import {
+  currentDataApiTierFallbackGeneration,
+  tryDataApiTier,
+} from "../workers/data-api-tier.ts";
 import {
   decodeWatermarkKey,
   resetDecodeWatermarkCache,
@@ -12190,6 +12193,60 @@ describe("MCP economics + metagraph data tools", () => {
         },
       };
       assert.deepEqual(markMcpTierDegraded(specific, stale), specific);
+    });
+
+    test("concurrent tools in one batch cannot share a degraded marker", async () => {
+      const tool = MCP_TOOLS.find(
+        (tool) => tool.name === "get_subnet_metagraph",
+      );
+      assert.ok(tool);
+      let release!: () => void;
+      const failedRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const handler = vi
+        .spyOn(tool, "handler")
+        .mockImplementation(async (args) => {
+          if (args.netuid === 7) await failedRead;
+          else {
+            await tryDataApiTier(
+              { METAGRAPH_NEURONS_SOURCE: "data-api" } as Env,
+              new Request("https://api.metagraph.sh/api/v1/subnets/8/neurons"),
+              "METAGRAPH_NEURONS_SOURCE",
+            );
+            release();
+          }
+          return {
+            schema_version: 1,
+            netuid: args.netuid,
+            neuron_count: 1,
+            neurons: [{ uid: 0, hotkey: "5Hot", coldkey: "5Cold" }],
+          };
+        });
+      try {
+        const response = await rpc(
+          [7, 8].map((netuid) => ({
+            jsonrpc: "2.0",
+            id: netuid,
+            method: "tools/call",
+            params: { name: "get_subnet_metagraph", arguments: { netuid } },
+          })),
+        );
+        const results = response.body as unknown as Row[];
+        const healthy = results.find((r) => r.id === 7)!.result;
+        const failed = results.find((r) => r.id === 8)!.result;
+        assert.equal(healthy.isError, false);
+        assert.equal(healthy.structuredContent.neuron_count, 1);
+        assert.equal(healthy.structuredContent.degraded, undefined);
+        assert.equal(failed.isError, false);
+        assert.equal(
+          failed.structuredContent.degraded.reason,
+          "tier_unavailable",
+        );
+      } finally {
+        handler.mockRestore();
+        release();
+      }
     });
 
     test("the SAME tool with a healthy tier is NOT marked", async () => {

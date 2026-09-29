@@ -41,11 +41,8 @@
 // through forty call sites -- the exact cost src/tracing.ts's header cites as
 // its reason for NOT nesting spans.
 //
-// The alternative in this repo is `degradedSnapshot`'s module-global
-// counter-and-diff, which documents that a concurrent request can label this
-// one. That trade is defensible for a boolean that errs safe; it is not
-// defensible for a number, where cross-request bleed does not degrade the
-// answer, it invents one.
+// Failure deltas use the same request isolation principle in request-counters.ts.
+// MCP batches additionally isolate each tool call inside the HTTP request.
 //
 // ## Cost when nobody is looking
 //

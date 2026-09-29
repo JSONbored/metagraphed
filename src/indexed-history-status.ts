@@ -1,16 +1,13 @@
-import { registerModuleStateReset } from "./module-state-registry.ts";
+import { createRequestCounter } from "./request-counters.ts";
 
 // Keep failure accounting independent of the Parquet reader so shared cache
 // helpers do not pull historical decoding into the data Worker's bundle.
-let failures = 0;
-registerModuleStateReset("src/indexed-history-status.ts", () => {
-  failures = 0;
-});
+const failures = createRequestCounter("src/indexed-history-status.ts");
 
 export function recordIndexedHistoryFailure(): void {
-  failures += 1;
+  failures.increment();
 }
 
 export function currentIndexedHistoryFailureGeneration(): number {
-  return failures;
+  return failures.current();
 }

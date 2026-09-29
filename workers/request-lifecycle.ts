@@ -1,3 +1,4 @@
+import { withRequestCounters } from "../src/request-counters.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import {
   withRequestTiming,
@@ -554,31 +555,33 @@ export async function auditRouteResponse(
 export async function withResponseTiming<T extends Response>(
   handle: () => Promise<T>,
 ): Promise<T> {
-  return withRequestTiming(async () => {
-    const before = degradedSnapshot();
-    const response = await handle();
-    labelDegradedResponse(response, before);
-    // WHERE THE MILLISECONDS WENT, as the standard header a browser's devtools
-    // panel already renders. Set here for the same reason the degraded label is
-    // -- one point every route passes -- and built from marks collected at the
-    // three storage boundaries rather than by instrumenting handlers, so a
-    // route written next year is covered without its author doing anything.
-    //
-    // IN PLACE, swallowing an immutable-headers throw, exactly as
-    // `labelDegradedResponse` documents. The one response class with immutable
-    // headers is a body read back out of the edge cache, whose timings belong
-    // to the request that STORED it -- losing the header there is correct,
-    // because this request spent none of that time.
-    const timing = serverTimingHeader();
-    if (timing !== null) {
-      try {
-        response.headers.set("server-timing", timing);
-      } catch {
-        // A cached body; see above.
+  return withRequestCounters(() =>
+    withRequestTiming(async () => {
+      const before = degradedSnapshot();
+      const response = await handle();
+      labelDegradedResponse(response, before);
+      // WHERE THE MILLISECONDS WENT, as the standard header a browser's devtools
+      // panel already renders. Set here for the same reason the degraded label is
+      // -- one point every route passes -- and built from marks collected at the
+      // three storage boundaries rather than by instrumenting handlers, so a
+      // route written next year is covered without its author doing anything.
+      //
+      // IN PLACE, swallowing an immutable-headers throw, exactly as
+      // `labelDegradedResponse` documents. The one response class with immutable
+      // headers is a body read back out of the edge cache, whose timings belong
+      // to the request that STORED it -- losing the header there is correct,
+      // because this request spent none of that time.
+      const timing = serverTimingHeader();
+      if (timing !== null) {
+        try {
+          response.headers.set("server-timing", timing);
+        } catch {
+          // A cached body; see above.
+        }
       }
-    }
-    return response;
-  });
+      return response;
+    }),
+  );
 }
 
 registerModuleStateReset("workers/request-lifecycle.ts", () => {

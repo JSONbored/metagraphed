@@ -34,7 +34,7 @@ import {
 } from "../workers/config.ts";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
-import { registerModuleStateReset } from "./module-state-registry.ts";
+import { createRequestCounter } from "./request-counters.ts";
 
 export { composeCompareData };
 export const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
@@ -67,14 +67,12 @@ export interface ObservationsReadDb {
 // Postgres tier enforces via its own fallback generation
 // (workers/data-api-tier.ts). Handlers snapshot this before a loader call
 // and treat a changed generation as a fallback.
-let storeReadFailureGeneration = 0;
-
-registerModuleStateReset("src/analytics-live.ts", () => {
-  storeReadFailureGeneration = 0;
-});
+const storeReadFailureGeneration = createRequestCounter(
+  "src/analytics-live.ts",
+);
 
 export function currentStoreReadFailureGeneration(): number {
-  return storeReadFailureGeneration;
+  return storeReadFailureGeneration.current();
 }
 
 // Contained store read: any failure (no binding, bad SQL against a drifted
@@ -93,7 +91,7 @@ export async function storeAll(
     // with the emulators (#10909): query() answers rows, full stop.
     return await db.query(sql, params);
   } catch (error) {
-    storeReadFailureGeneration += 1;
+    storeReadFailureGeneration.increment();
     console.error("[analytics-store]", String((error as Error)?.message));
     return [];
   }
