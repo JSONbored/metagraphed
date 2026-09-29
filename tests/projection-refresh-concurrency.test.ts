@@ -13,6 +13,7 @@ function fixture() {
     etag: selected.etag,
     json: async () => selected.body,
   }));
+  const head = vi.fn(async (_key: string) => ({ etag: selected.etag }));
   const put = vi.fn(
     async (
       _key: string,
@@ -25,8 +26,9 @@ function fixture() {
     },
   );
   return {
-    env: { METAGRAPH_ARCHIVE: { get, put } },
+    env: { METAGRAPH_ARCHIVE: { get, put, head } },
     get,
+    head,
     put,
     replace() {
       selected = {
@@ -81,7 +83,8 @@ describe("conditional projection refresh", () => {
       await refreshExistingArtifact(f.env, "testnet/" + key, compute),
     ).toEqual({ generated_at: "new-flow", row_count: 2 });
     expect(compute).toHaveBeenCalledTimes(2);
-    expect(f.get.mock.calls).toEqual([["testnet/" + key], ["testnet/" + key]]);
+    expect(f.head.mock.calls).toEqual([["testnet/" + key], ["testnet/" + key]]);
+    expect(f.get).not.toHaveBeenCalled();
     expect(f.put.mock.calls.every((call) => call[0] === "testnet/" + key)).toBe(
       true,
     );
@@ -92,7 +95,13 @@ describe("conditional projection refresh", () => {
     const put = vi.fn();
     expect(
       await refreshExistingArtifact(
-        { METAGRAPH_ARCHIVE: { get: async () => null, put } },
+        {
+          METAGRAPH_ARCHIVE: {
+            get: async () => null,
+            head: async () => null,
+            put,
+          },
+        },
         key,
         compute,
       ),
@@ -108,19 +117,21 @@ describe("conditional projection refresh", () => {
     const compute = vi.fn(async () => ({}));
     for (const METAGRAPH_ARCHIVE of [
       {},
-      { get: async () => null },
+      { get: async () => null, head: async () => null },
+      { get: async () => null, put: async () => ({}) },
       { put: async () => ({}) },
     ]) {
       await expect(
         refreshExistingArtifact({ METAGRAPH_ARCHIVE }, key, compute),
       ).rejects.toThrow("read and write");
     }
-    for (const etag of [undefined, ""]) {
+    for (const etag of [undefined as unknown as string, ""]) {
       await expect(
         refreshExistingArtifact(
           {
             METAGRAPH_ARCHIVE: {
               get: async () => ({ etag, json: async () => ({}) }),
+              head: async () => ({ etag }),
               put: async () => ({}),
             },
           },

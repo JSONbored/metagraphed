@@ -12,6 +12,7 @@ import {
 
 /** Structural projection read port, shared by D1 and archive adapters. */
 export interface ArtifactObjectStore {
+  head?(key: string): Promise<{ etag: string } | null>;
   get(
     key: string,
   ): Promise<{ json(): Promise<unknown>; etag?: string; size?: number } | null>;
@@ -73,10 +74,10 @@ export async function refreshExistingArtifact(
 ): Promise<Record<string, unknown> | null> {
   const reader = artifactBucket(env),
     writer = artifactWriteBucket(env);
-  if (!reader || !writer)
+  if (!reader?.head || !writer)
     throw new Error("Artifact refresh requires read and write storage");
   for (let attempt = 0; attempt < 3; attempt++) {
-    const previous = await reader.get(key);
+    const previous = await reader.head(key);
     if (!previous) return null;
     if (typeof previous.etag !== "string" || previous.etag.length === 0)
       throw new Error("Artifact refresh requires a source ETag");
