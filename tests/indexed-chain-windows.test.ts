@@ -277,6 +277,56 @@ it("native windows preserve full payloads, physical captures, page order and fil
     }
   }
 });
+it("small pages skip strictly older Parquet files while tied captures and complete statistics remain exact", async () => {
+  for (const network of ["mainnet", "testnet"] as const) {
+    const a = archive(network),
+      last = a.ceiling.through,
+      first = last - 19;
+    const files = a.segments.map((segment) => {
+      const manifest = JSON.parse(
+        a.objects.get(segment.blockManifest.key)!.raw.toString(),
+      ) as { files: { key: string }[] };
+      expect(manifest.files).toHaveLength(2);
+      return manifest.files.flatMap((file) => {
+        const source = JSON.parse(a.objects.get(file.key)!.raw.toString()) as {
+          parts: { key: string }[];
+        };
+        return source.parts.map((part) => part.key);
+      });
+    });
+    const page = await loadIndexedChainWindow(
+      a.env,
+      { first, last, limit: 5 },
+      network,
+    );
+    expect(page).toEqual(expected(network, first, last).slice(0, 5));
+    const readFiles = () =>
+      new Set(
+        a.reads.filter((r) => r.key.endsWith(".parquet")).map((r) => r.key),
+      );
+    expect(readFiles()).toEqual(new Set(files[1]));
+    // Both source files cover the winning block; each has two repacked parts.
+    expect(files[1]).toHaveLength(4);
+    a.reads.length = 0;
+    await loadIndexedChainWindowStats(a.env, first, last, network);
+    expect(readFiles()).toEqual(new Set(files.flat()));
+
+    const older = archive(network),
+      cursor = [1000, last - 12, 0];
+    expect(
+      await loadIndexedChainWindow(
+        older.env,
+        { first, last, limit: 5, cursor },
+        network,
+      ),
+    ).toEqual(
+      expected(network, first, last, undefined, undefined, cursor).slice(0, 5),
+    );
+    expect(
+      files[0].every((key) => older.reads.some((r) => r.key === key)),
+    ).toBe(true);
+  }
+});
 it("native stats count every capture across shards and generations, use deterministic ties, and cap the published groups", async () => {
   for (const network of ["mainnet", "testnet"] as const) {
     const a = archive(network),

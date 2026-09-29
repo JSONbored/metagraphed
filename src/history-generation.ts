@@ -161,8 +161,7 @@ export async function readHistoryBlockCensus(
   };
 }
 
-/** Translate a physical source row through its verified repacking manifest.
- * The same budget covers manifests, page indexes, and compressed column data. */
+/** Verify repacked rows; share one manifest, index and column-read budget. */
 export async function readHistoryRow(
   source: ParquetRangeSource,
   input: unknown,
@@ -189,8 +188,7 @@ export interface HistoryPhysicalPointer {
   row: number;
 }
 
-/** Hydrate a page of verified physical pointers with one manifest per file.
- * Sort/coalesce adjacent rows, then restore the requested feed ordering. */
+/** Coalesce verified pointers per file, then restore requested page order. */
 export async function readHistoryPointers(
   source: ParquetRangeSource,
   input: unknown,
@@ -243,8 +241,7 @@ export async function readHistoryPointers(
   );
 }
 
-/** Read every physical run with one file-manifest read and shared page indexes.
- * No partial result escapes if any run fails identity or budget checks. */
+/** Share manifests/indexes across runs; identity or budget failures abort. */
 async function readFileRanges(
   source: ParquetRangeSource,
   generation: Generation,
@@ -328,9 +325,8 @@ async function readFileRanges(
       throw new Error("History page index does not identify its bounded part");
     validateParquetPageIndex(index);
 
-    // Sparse runs in the same single-page group already read/decode the same
-    // columns. Share that work, then discard gap rows and restore run order.
-    // Keep multi-page pruning and streaming projection memory bounds intact.
+    // Share single-page decoding, discard gaps, then restore run order.
+    // Preserve multi-page pruning and streaming memory bounds.
     const batches: {
       start: number;
       end: number;
@@ -355,9 +351,8 @@ async function readFileRanges(
       } else batches.push({ ...selection, selections: [selection] });
     }
     for (const { start, end, selections } of batches) {
-      // A streaming projection releases each bounded part before reading the
-      // next. Keep the operation's cumulative I/O quota, but bound decoded
-      // memory per live batch instead of treating released rows as resident.
+      // Streaming releases each part: bound resident batches separately
+      // from the cumulative I/O quota.
       const partBudget = projection
         ? { ...budget, decodedBytes: 0, values: 0 }
         : budget;
@@ -387,8 +382,7 @@ async function readFileRanges(
   return rows.flat();
 }
 
-/** Block indexes retain all captures; route-specific logical deduplication
- * happens after this complete, verified physical read. */
+/** Verify all physical captures before route-specific logical deduplication. */
 export async function readHistoryBlock(
   source: ParquetRangeSource,
   input: unknown,
@@ -446,8 +440,7 @@ export async function readHistoryBlock(
   return result;
 }
 
-/** Project bounded block windows without retaining complete payloads or rows.
- * Each decoded row is checked against its physical run before it is consumed. */
+/** Stream projected block windows, checking every decoded row's physical run. */
 export async function scanHistoryBlockRange(
   source: ParquetRangeSource,
   input: unknown,
@@ -460,6 +453,7 @@ export async function scanHistoryBlockRange(
     row: Record<string, unknown>,
     pointer: HistoryPhysicalPointer,
   ) => void,
+  page?: { minimumBlock: () => number | undefined },
 ): Promise<void> {
   const generation = validateHistoryBlockGeneration(input, scope);
   const index = await readJson(
@@ -483,7 +477,15 @@ export async function scanHistoryBlockRange(
     files.set(run.fileId, group);
   }
   const projection = [...new Set(["block_number", "observed_at", ...columns])];
-  for (const [fileId, group] of files) {
+  const ordered = [...files].map(([fileId, group]) => ({
+    fileId,
+    group,
+    lastBlock: group.reduce((last, run) => Math.max(last, run.block), -1),
+  }));
+  if (page) ordered.sort((a, b) => b.lastBlock - a.lastBlock);
+  for (const { fileId, group, lastBlock } of ordered) {
+    // Only a strictly older file can be excluded: ties may contain a later
+    // event index or another capture needed for the same page.
     group.sort((a, b) => a.rowStart - b.rowStart);
     const ranges: { start: number; end: number }[] = [];
     for (const run of group) {
@@ -493,6 +495,8 @@ export async function scanHistoryBlockRange(
       if (previous && run.rowStart === previous.end) previous.end += run.rows;
       else ranges.push({ start: run.rowStart, end: run.rowStart + run.rows });
     }
+    const minimum = page?.minimumBlock();
+    if (minimum !== undefined && lastBlock < minimum) continue;
     let cursor = 0;
     await readFileRanges(
       source,

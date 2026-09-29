@@ -55,8 +55,8 @@ function compare(a: Candidate, b: Candidate): number {
   );
 }
 
-/** A bounded max heap retains only the requested page while every selected
- * physical row is checked. Payload columns are read only after page selection. */
+/** A bounded max heap retains the requested page. Older files can be excluded
+ * only after the page fills; payload columns are read after page selection. */
 function retain(heap: Candidate[], value: Candidate, limit: number): void {
   if (heap.length === limit && compare(value, heap[0]) >= 0) return;
   let index: number;
@@ -204,7 +204,7 @@ export async function loadIndexedChainWindow(
     if (!context) return undefined;
     const { source, budget, generations } = context,
       candidates: Candidate[] = [];
-    for (const generation of generations) {
+    for (const generation of [...generations].reverse()) {
       await scanHistoryBlockRange(
         source,
         generation,
@@ -230,6 +230,12 @@ export async function loadIndexedChainWindow(
             { ...pointer, generation: generation.generation, filter: row },
             query.limit,
           );
+        },
+        {
+          minimumBlock: () =>
+            candidates.length === query.limit
+              ? candidates[0].filter.block_number!
+              : undefined,
         },
       );
     }
