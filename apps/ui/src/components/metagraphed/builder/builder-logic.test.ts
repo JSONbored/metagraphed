@@ -191,20 +191,43 @@ describe("filterTools", () => {
 });
 
 describe("connectSnippets", () => {
-  it("points every harness at the CORE endpoint", () => {
-    // 23 of 243 tools listed at a ninth of the token cost, and it still CALLS
-    // all 243 — so it is the endpoint an agent should be given.
+  it("points every harness at the recommended discovery endpoint", () => {
     const snippets = connectSnippets({
       core_endpoint: "https://api.metagraph.sh/mcp/core",
       endpoint: "https://api.metagraph.sh/mcp",
-      install: "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core",
+      recommended_endpoint: "https://api.metagraph.sh/mcp",
+      install: "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp",
     });
     expect(snippets).toHaveLength(3);
     for (const snippet of snippets) {
-      expect(snippet.code, `${snippet.value} does not name the core endpoint`).toContain(
-        "/mcp/core",
-      );
-      expect(snippet.code).not.toMatch(/mcp['"\s]*$/);
+      expect(snippet.code).toContain("https://api.metagraph.sh/mcp");
+      expect(snippet.code).not.toContain("/mcp/core");
+    }
+  });
+
+  it("uses the recommendation ahead of alternate endpoint metadata", () => {
+    for (const snippet of connectSnippets({
+      recommended_endpoint: "https://recommended.example/mcp",
+      endpoint: "https://alternate.example/mcp",
+      core_endpoint: "https://alternate.example/mcp/core",
+    })) {
+      expect(snippet.code).toContain("https://recommended.example/mcp");
+      expect(snippet.code).not.toContain("alternate.example");
+    }
+  });
+
+  it("keeps usable endpoints when recommendation metadata is absent", () => {
+    for (const [mcp, expected] of [
+      [
+        {
+          endpoint: "https://endpoint.example/mcp",
+          core_endpoint: "https://core.example/mcp/core",
+        },
+        "https://endpoint.example/mcp",
+      ],
+      [{ core_endpoint: "https://core.example/mcp/core" }, "https://core.example/mcp/core"],
+    ] as const) {
+      expect(connectSnippets(mcp).every((snippet) => snippet.code.includes(expected))).toBe(true);
     }
   });
 
@@ -217,7 +240,9 @@ describe("connectSnippets", () => {
   it("still produces a usable snippet when the server publishes nothing", () => {
     const snippets = connectSnippets(null);
     expect(snippets).toHaveLength(3);
-    expect(snippets[0]!.code).toContain("https://api.metagraph.sh/mcp/core");
+    expect(snippets[0]!.code).toBe(
+      "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp",
+    );
   });
 
   it("gives every snippet a hint saying what to do with it", () => {

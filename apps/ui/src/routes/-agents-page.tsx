@@ -48,7 +48,7 @@ function AgentConnectionSkeleton() {
         <div className="mg-agent-connection-identity">
           <span className="mg-agent-connection-stamp" aria-hidden="true">
             <span>MCP</span>
-            <span>/core</span>
+            <span>/mcp</span>
           </span>
           <div>
             <p className="mg-agent-connection-eyebrow">Metagraphed MCP · Bittensor in a box</p>
@@ -107,7 +107,7 @@ export function AgentsPage() {
       : mcp?.transport
         ? mcp.transport.replaceAll("-", " ")
         : null;
-  const hasCoreEndpoint = Boolean(mcp?.recommended_endpoint ?? mcp?.core_endpoint);
+  const hasRecommendedEndpoint = Boolean(mcp?.recommended_endpoint);
   const heroCells: FactCells | undefined = resources.isPending
     ? [
         { label: "MCP tools", value: "—", loading: true },
@@ -134,7 +134,16 @@ export function AgentsPage() {
       ? [{ label: "mcp (core)", value: mcp.core_endpoint, href: mcp.core_endpoint }]
       : []),
     ...(mcp?.endpoint
-      ? [{ label: "mcp (all tools)", value: mcp.endpoint, href: mcp.endpoint }]
+      ? [{ label: "mcp (discovery)", value: mcp.endpoint, href: mcp.endpoint }]
+      : []),
+    ...(mcp?.endpoint
+      ? [
+          {
+            label: "mcp (full catalog)",
+            value: `${mcp.endpoint}?catalog=full`,
+            href: `${mcp.endpoint}?catalog=full`,
+          },
+        ]
       : []),
     ...(mcp?.server_card
       ? [{ label: "server card", value: mcp.server_card, href: mcp.server_card }]
@@ -199,14 +208,14 @@ export function AgentsPage() {
                 <div className="mg-agent-connection-identity">
                   <span className="mg-agent-connection-stamp" aria-hidden="true">
                     <span>MCP</span>
-                    <span>/core</span>
+                    <span>/mcp</span>
                   </span>
                   <div>
                     <p className="mg-agent-connection-eyebrow">
                       Metagraphed MCP · Bittensor in a box
                     </p>
                     <p className="mg-agent-connection-title">
-                      {hasCoreEndpoint ? "Recommended core endpoint" : "MCP connection"}
+                      {hasRecommendedEndpoint ? "Recommended endpoint" : "MCP connection"}
                     </p>
                   </div>
                 </div>
@@ -225,23 +234,20 @@ export function AgentsPage() {
               />
               <div className="mg-agent-connection-meta" aria-label="Connection properties">
                 {transport ? <span>{transport}</span> : null}
-                {hasCoreEndpoint ? <span>Core discovery</span> : null}
+                <span>Tool discovery</span>
                 <span>Full registry callable</span>
               </div>
             </div>
           ) : null
         }
-        // `/mcp/core` and not `/mcp`: the core listing is 23 of the 243 tools
-        // at a ninth of the token cost and still CALLS all 243, so it is the
-        // endpoint an agent should be given. The full one is a `Raw` row for
-        // the caller who wants every tool listed up front.
+        // Every harness follows the recommendation; alternate listings stay in Raw.
         footnote={
           resources.isPending
             ? "Loading MCP connection details · server card"
             : resources.isError
               ? "MCP connection details are unavailable · server card"
               : snippet
-                ? `${snippet.hint} · core endpoint · server card`
+                ? `${snippet.hint} · server card`
                 : "server card"
         }
       />

@@ -70,7 +70,7 @@ const EMISSION_WINDOWS = [
 const HERO_BLOCK_RAIL_MEDIA_QUERY = "(min-width: 640px)";
 const HERO_BLOCK_REFETCH_INTERVAL_MS = 12_000;
 const MCP_INSTALL_COMMAND =
-  "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core";
+  "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp";
 
 /**
  * The live block rail is intentionally absent from the compact phone hero.

@@ -358,7 +358,7 @@ export function CopySection() {
           <CopyableCode label="api" value="https://api.metagraph.sh/api/v1/subnets/19" />
           <CopyableCode
             truncate={false}
-            value="claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core"
+            value="claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp"
           />
         </div>
       }

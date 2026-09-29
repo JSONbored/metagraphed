@@ -2,18 +2,18 @@ import { describe, expect, it } from "vitest";
 import { normalizeAgentResources } from "./queries";
 
 describe("normalizeAgentResources", () => {
-  it("keeps the server's recommended core endpoint for a connection UI", () => {
+  it("keeps the server's recommended discovery endpoint for a connection UI", () => {
     const res = normalizeAgentResources({
       mcp: {
         core_endpoint: "https://api.metagraph.sh/mcp/core",
         endpoint: "https://api.metagraph.sh/mcp",
-        recommended_endpoint: "https://api.metagraph.sh/mcp/core",
+        recommended_endpoint: "https://api.metagraph.sh/mcp",
       },
     });
 
     expect(res.mcp).toMatchObject({
       core_endpoint: "https://api.metagraph.sh/mcp/core",
-      recommended_endpoint: "https://api.metagraph.sh/mcp/core",
+      recommended_endpoint: "https://api.metagraph.sh/mcp",
     });
   });
 
