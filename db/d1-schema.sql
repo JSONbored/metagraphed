@@ -74,6 +74,9 @@ CREATE INDEX idx_chain_detail_account_events_extrinsic ON chain_detail_account_e
 
 CREATE INDEX idx_chain_detail_account_events_hotkey_observed ON chain_detail_account_events (hotkey, observed_at DESC);
 
+CREATE INDEX idx_chain_detail_account_events_netuid_block
+ON chain_detail_account_events(netuid,block_number,event_kind);
+
 CREATE INDEX idx_chain_detail_account_events_observed ON chain_detail_account_events (observed_at);
 
 CREATE INDEX idx_chain_detail_blocks_hash ON chain_detail_blocks (block_hash);
