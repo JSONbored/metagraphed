@@ -83,10 +83,20 @@ export function mcpBatchCostUnits(body: unknown): number {
   const messages = Array.isArray(body) ? body : [body];
   let total = 0;
   for (const message of messages) {
-    const row = message as { method?: unknown; params?: { name?: unknown } };
+    const row = message as {
+      method?: unknown;
+      params?: { name?: unknown; arguments?: { name?: unknown } };
+    };
+    // The advertised bridge dispatches exactly one target. Charge that same
+    // target before dispatch, including in legacy batches; the generic name
+    // must not turn a 25-unit AI call or 5-unit history read into one unit.
+    const name =
+      row?.params?.name === "invoke_tool"
+        ? row.params.arguments?.name
+        : row?.params?.name;
     total +=
       row?.method === "tools/call"
-        ? mcpToolCostUnits(row?.params?.name)
+        ? mcpToolCostUnits(name)
         : DEFAULT_ROUTE_COST_WEIGHT;
   }
   return Math.max(DEFAULT_ROUTE_COST_WEIGHT, total);
