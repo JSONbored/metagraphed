@@ -105,9 +105,7 @@ export function persistProbesD1(
   return execute(store, statements);
 }
 function ranked(): string {
-  // The day window is reused by identity resolution and latency ranking.
-  // Explicit materialization prevents a repeated scan/CTE plan from exceeding
-  // D1's CPU budget while preserving stable-key alias selection.
+  // Avoid repeated scans.
   return `WITH windowed AS MATERIALIZED(
  SELECT surface_id,COALESCE(surface_key,surface_id) AS surface_key,netuid,ok,latency_ms,checked_at FROM surface_checks WHERE checked_at>=? AND checked_at<?
  ), latest_candidates AS(
@@ -132,7 +130,12 @@ export function rollupUptimeD1(
   return execute(
     store,
     days.flatMap(({ date, start, end }) => [
-      { text: "DELETE FROM surface_uptime_daily WHERE day=?", values: [date] },
+      {
+        // No raw input is not evidence to replace retained history.
+        text: `DELETE FROM surface_uptime_daily WHERE day=? AND EXISTS
+          (SELECT 1 FROM surface_checks WHERE checked_at>=? AND checked_at<?)`,
+        values: [date, start, end],
+      },
       {
         text: `${ranked()} INSERT INTO surface_uptime_daily(surface_id,surface_key,netuid,day,samples,ok_count,uptime_ratio,latency_samples,avg_latency_ms,p50_latency_ms,p95_latency_ms,p99_latency_ms,status,updated_at)
  SELECT MAX(surface_id),surface_key,netuid,?,COUNT(*),COUNT(*) FILTER(WHERE ok),
