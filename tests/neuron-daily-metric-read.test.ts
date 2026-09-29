@@ -41,7 +41,9 @@ beforeAll(async () => {
           }),
         );
         await db
-          .prepare("INSERT INTO neuron_daily_documents VALUES(?,?,?,?,jsonb(?))")
+          .prepare(
+            "INSERT INTO neuron_daily_documents VALUES(?,?,?,?,jsonb(?))",
+          )
           .bind(netuid, day, shard, 1790090000000, JSON.stringify(payload))
           .run();
         await db.batch(
@@ -104,11 +106,14 @@ test("bounded shard expansion preserves every selected view row and scalar type"
     "uid, hotkey, stake_tao",
     10,
   );
-  assert.deepEqual(missing.find((row) => row.uid === 2), {
-    uid: 2,
-    hotkey: "member-2",
-    stake_tao: null,
-  });
+  assert.deepEqual(
+    missing.find((row) => row.uid === 2),
+    {
+      uid: 2,
+      hotkey: "member-2",
+      stake_tao: null,
+    },
+  );
 });
 
 test("history reads materialize each required shard expansion without correlated scans", async () => {
