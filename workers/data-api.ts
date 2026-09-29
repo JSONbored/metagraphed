@@ -16,6 +16,7 @@ import {
   readNeuronDirectoryRows,
   readDirectoryNominatorCounts,
   readSubnetNeuronRows,
+  readNewestNeuronCapture,
 } from "../src/neuron-snapshot-read.ts";
 import { COMPUTE_DECLARATIONS_TABLES } from "../src/read-store-tables.ts";
 import { handleRootBasketCaptureSync } from "../src/root-basket-capture-sync.ts";
@@ -7140,9 +7141,7 @@ export async function refreshExplorerDirectoryMaterialization(
     const sql = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
     if (!sql) return false;
     const latest = await latestCompletedNeuronSnapshot(sql);
-    const newestRows = await sql<{ captured_at: number | string | null }>`
-      SELECT MAX(captured_at) AS captured_at FROM neurons`;
-    const newestCapturedAt = Number(newestRows[0]?.captured_at);
+    const newestCapturedAt = await readNewestNeuronCapture(sql, env);
     if (
       latest !== capturedAt ||
       !Number.isSafeInteger(newestCapturedAt) ||
@@ -7169,9 +7168,7 @@ export async function refreshExplorerDirectoryMaterialization(
 
     // Refuse publication if a newer in-place pass began during the fold.
     const finalLatest = await latestCompletedNeuronSnapshot(sql);
-    const finalRows = await sql<{ captured_at: number | string | null }>`
-      SELECT MAX(captured_at) AS captured_at FROM neurons`;
-    const finalCapturedAt = Number(finalRows[0]?.captured_at);
+    const finalCapturedAt = await readNewestNeuronCapture(sql, env);
     if (finalLatest !== capturedAt || finalCapturedAt !== capturedAt) {
       return false;
     }
