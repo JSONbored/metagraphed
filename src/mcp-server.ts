@@ -1,3 +1,4 @@
+import { withRequestCounters } from "./request-counters.ts";
 import { loadSubnetStatus } from "./subnet-status-read.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 // Remote MCP (Model Context Protocol) server for metagraphed.
@@ -16641,7 +16642,9 @@ async function callTool(params: Row | null, ctx: McpCtx) {
     ...mcpModelAttribution(params, llmModel),
     ...mcpAttributionFor(ctx),
   };
-  const result = await dispatchTool(params, ctx, nativeMcp);
+  const result = await withRequestCounters(() =>
+    dispatchTool(params, ctx, nativeMcp),
+  );
   const durationMs = Date.now() - startedAt;
   const toolFailure = rowOf(result.structuredContent.error);
   const errorCode = toolFailure?.code;
@@ -17091,10 +17094,8 @@ function scheduleTraceSpan(
  * nowhere to put it without changing its published shape, and none of the
  * tier-backed tools do.
  *
- * The counter is module-global, so a CONCURRENT call degrading can label this
- * one too. Inherited from #9114 along with the seam, and it errs the same safe
- * way -- a false "degraded" makes good data look suspect, where the bug it
- * replaces made missing data look measured.
+ * Each tools/call has its own failure scope, including calls in the same
+ * JSON-RPC batch. A different request cannot mark this result degraded.
  */
 
 /**

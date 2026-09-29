@@ -1,6 +1,6 @@
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { maskRouteParams } from "../src/route-label.ts";
-import { registerModuleStateReset } from "../src/module-state-registry.ts";
+import { createRequestCounter } from "../src/request-counters.ts";
 
 // Store-backed requests forward through the existing DATA_API service binding.
 // D1_STATE_TABLES selects the native D1 owner inside that Worker. The legacy
@@ -11,19 +11,17 @@ import { registerModuleStateReset } from "../src/module-state-registry.ts";
 // Binding, HTTP and payload failures are captured before returning null to the
 // caller's schema-stable degraded response. The generation counter keeps that
 // degradation out of the edge cache. REST and MCP share this same gate.
-let postgresTierFallbackGeneration = 0;
-
-registerModuleStateReset("workers/data-api-tier.ts", () => {
-  postgresTierFallbackGeneration = 0;
-});
+const postgresTierFallbackGeneration = createRequestCounter(
+  "workers/data-api-tier.ts",
+);
 
 function markDataApiTierFallback(): null {
-  postgresTierFallbackGeneration += 1;
+  postgresTierFallbackGeneration.increment();
   return null;
 }
 
 export function currentDataApiTierFallbackGeneration(): number {
-  return postgresTierFallbackGeneration;
+  return postgresTierFallbackGeneration.current();
 }
 
 // PostHog $exception capture for a Postgres-tier degradation -- same

@@ -1,4 +1,4 @@
-import { registerModuleStateReset } from "./module-state-registry.ts";
+import { createRequestCounter } from "./request-counters.ts";
 
 /**
  * How deep an emulated OFFSET may go. Past this the over-fetch stops being a
@@ -57,14 +57,12 @@ export const OFFSET_EMULATION_CAP = 250;
  * same way for the whole TTL, so the answer stays cacheable and merely stops
  * claiming to be measured. See `degradedSince` for that split.
  */
-let offsetCapDeclineGeneration = 0;
-
-registerModuleStateReset("src/cold-tier-offset.ts", () => {
-  offsetCapDeclineGeneration = 0;
-});
+const offsetCapDeclineGeneration = createRequestCounter(
+  "src/cold-tier-offset.ts",
+);
 
 export function currentOffsetCapDeclineGeneration(): number {
-  return offsetCapDeclineGeneration;
+  return offsetCapDeclineGeneration.current();
 }
 
 /**
@@ -79,6 +77,6 @@ export function currentOffsetCapDeclineGeneration(): number {
  */
 export function offsetBeyondEmulationCap(offset: number): boolean {
   if (offset <= OFFSET_EMULATION_CAP) return false;
-  offsetCapDeclineGeneration += 1;
+  offsetCapDeclineGeneration.increment();
   return true;
 }

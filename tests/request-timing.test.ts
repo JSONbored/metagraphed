@@ -21,11 +21,7 @@ import {
 
 describe("request timing", () => {
   test("MARKS FROM CONCURRENT REQUESTS DO NOT MIX", async () => {
-    // The property that decides the whole design. The repo's other
-    // collect-from-deep mechanism (`degradedSnapshot`) is a module global and
-    // documents that a concurrent request can label this one -- defensible for
-    // a boolean that errs safe, indefensible for a number, where bleed does not
-    // degrade the answer, it invents one.
+    // Concurrent requests must never inherit each other's measurements.
     const seen: (string | null)[] = [];
     await Promise.all([
       withRequestTiming(async () => {

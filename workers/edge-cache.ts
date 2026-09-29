@@ -1,15 +1,19 @@
+import { registerModuleStateReset } from "../src/module-state-registry.ts";
 // Shared edge-cache and degradation handling, without analytics route startup.
 import {
   type ChainNetworkId,
   DEFAULT_CHAIN_NETWORK,
 } from "../src/chain-network.ts";
-import { registerModuleStateReset } from "../src/module-state-registry.ts";
+import { createRequestCounter } from "../src/request-counters.ts";
 import { ifNoneMatchSatisfied, withCacheStatus } from "./http.ts";
 import { contractVersion } from "./responses.ts";
 import { currentDataApiTierFallbackGeneration } from "./data-api-tier.ts";
 import { currentOffsetCapDeclineGeneration } from "../src/cold-tier-offset.ts";
 import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
-const DATA_API_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
+let DATA_API_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
+registerModuleStateReset("workers/edge-cache.ts", () => {
+  DATA_API_TIER_FALLBACK_RESPONSES = new WeakSet();
+});
 
 /**
  * The header a degraded response carries (#9110).
@@ -60,14 +64,12 @@ export const DEGRADED_TIER_UNAVAILABLE = "tier_unavailable";
  * configuration production actually runs -- 9 of 12 answered `ok: true` with
  * zeros and no header at all.
  */
-let unmeasuredGeneration = 0;
-
-registerModuleStateReset("workers/edge-cache.ts:unmeasured", () => {
-  unmeasuredGeneration = 0;
-});
+const unmeasuredGeneration = createRequestCounter(
+  "workers/edge-cache.ts:unmeasured",
+);
 
 export function unmeasured<T>(stub: T): T {
-  unmeasuredGeneration += 1;
+  unmeasuredGeneration.increment();
   return stub;
 }
 
@@ -135,7 +137,7 @@ export function degradedSnapshot(): DegradedSnapshot {
   return {
     postgresTier: currentDataApiTierFallbackGeneration(),
     indexedHistory: currentIndexedHistoryFailureGeneration(),
-    unmeasured: unmeasuredGeneration,
+    unmeasured: unmeasuredGeneration.current(),
     offsetCapDeclined: currentOffsetCapDeclineGeneration(),
   };
 }
@@ -345,10 +347,8 @@ export async function withStampedEdgeCache(
   // exactly the thing the 22nd handler will forget. Every one of them already
   // goes through this function.
   //
-  // The counter is module-global, so a CONCURRENT request degrading can label
-  // this one too. That is the same trade the cache-suppression below already
-  // makes, and it errs the safe way: a false "degraded" makes good data look
-  // suspect, where the bug it replaces made missing data look measured.
+  // Failure deltas are scoped to this HTTP response. A concurrent reader
+  // failing must not disable caching or label this request degraded.
   //
   // #10270: the r2-sql counter joined the two this used to read by name. It
   // was declared for exactly this comparison and had no reader -- see

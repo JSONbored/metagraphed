@@ -1,3 +1,4 @@
+import { withRequestCounters } from "../src/request-counters.ts";
 // metagraphed data Worker — store-backed serving, kept SEPARATE from the main
 // api.ts Worker (which is near its bundle budget); the main Worker routes the
 // relevant paths in via a service binding (DATA_API).
@@ -9569,7 +9570,9 @@ export default {
     const route = maskedDataApiRoute(request);
     let ok = true;
     try {
-      const response = await dispatchDataApiRequest(request, env, ctx);
+      const response = await withRequestCounters(() =>
+        dispatchDataApiRequest(request, env, ctx),
+      );
       ok = response.status < 500;
       return response;
     } catch (error) {
