@@ -17,9 +17,63 @@ import {
   TIMING_R2,
   TIMING_R2_SQL,
   withRequestTiming,
+  withOperationTiming,
 } from "../src/request-timing.ts";
 
 describe("request timing", () => {
+  test("concurrent operations retain independent marks and aggregate into HTTP timing", async () => {
+    await withRequestTiming(async () => {
+      mark("d1", 3);
+      const snapshots = await Promise.all(
+        [10, 20].map((duration) =>
+          withOperationTiming(async () => {
+            mark("d1", duration);
+            await Promise.resolve();
+            await withRequestTiming(async () => mark("d1_sql", duration / 10));
+            return requestTimings();
+          }),
+        ),
+      );
+      assert.deepEqual(
+        snapshots.map((m) => m?.get("d1")),
+        [
+          { durationMs: 10, count: 1 },
+          { durationMs: 20, count: 1 },
+        ],
+      );
+      assert.deepEqual(requestTimings()?.get("d1"), {
+        durationMs: 33,
+        count: 3,
+      });
+      assert.deepEqual(requestTimings()?.get("d1_sql"), {
+        durationMs: 3,
+        count: 2,
+      });
+      mark("d1", 7);
+      assert.deepEqual(snapshots[0]?.get("d1"), { durationMs: 10, count: 1 });
+    });
+    assert.equal(requestTimings(), null);
+  });
+
+  test("isolated failures retain parent timing and work without a parent scope", async () => {
+    await withRequestTiming(async () => {
+      const failure = new Error("storage timeout");
+      await assert.rejects(
+        withOperationTiming(async () => {
+          mark("d1", 15);
+          throw failure;
+        }),
+        (error) => error === failure,
+      );
+      assert.deepEqual(requestTimings()?.get("d1"), {
+        durationMs: 15,
+        count: 1,
+      });
+    });
+    assert.equal(await withOperationTiming(async () => 42), 42);
+    assert.equal(requestTimings(), null);
+  });
+
   test("MARKS FROM CONCURRENT REQUESTS DO NOT MIX", async () => {
     // Concurrent requests must never inherit each other's measurements.
     const seen: (string | null)[] = [];

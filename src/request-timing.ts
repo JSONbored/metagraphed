@@ -72,6 +72,30 @@ export function withRequestTiming<T>(fn: () => Promise<T>): Promise<T> {
   return store.run(new Map(), fn);
 }
 
+/**
+ * Isolate one operation within a concurrent request, then retain its marks in
+ * the HTTP total. The child's map stays independent after it is reported.
+ */
+export function withOperationTiming<T>(fn: () => Promise<T>): Promise<T> {
+  const parent = store.getStore();
+  const operation = new Map<string, TimingMark>();
+  return store.run(operation, async () => {
+    try {
+      return await fn();
+    } finally {
+      if (parent) {
+        for (const [name, value] of operation) {
+          const previous = parent.get(name);
+          parent.set(name, {
+            durationMs: (previous?.durationMs ?? 0) + value.durationMs,
+            count: (previous?.count ?? 0) + value.count,
+          });
+        }
+      }
+    }
+  });
+}
+
 /** Add `ms` to a boundary's tally. A no-op outside a request scope. */
 export function mark(name: string, ms: number): void {
   const marks = store.getStore();
