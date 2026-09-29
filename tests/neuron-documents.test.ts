@@ -65,6 +65,7 @@ beforeAll(async () => {
     "0007_neuron_documents.sql",
     "0020_neuron_axon_projection.sql",
     "0030_neuron_axon_insert_projection.sql",
+    "0031_neuron_axon_document_projection.sql",
   ]) {
     for (const sql of readFileSync(
       new URL(`../migrations/d1/${file}`, import.meta.url),
