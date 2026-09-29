@@ -1099,7 +1099,11 @@ function assignMcpAttribution(
   // is real usage and must not be filtered out of our numbers.
   const probe = sanitizeLabel(event.probe);
   if (probe !== undefined) properties["$mcp_probe"] = probe;
-  if (event.profile === "core" || event.profile === "full") {
+  if (
+    event.profile === "core" ||
+    event.profile === "full" ||
+    event.profile === "discovery"
+  ) {
     properties["$mcp_profile"] = event.profile;
   }
   const protocolVersion = sanitizeLabel(event.protocolVersion);
@@ -1310,7 +1314,7 @@ function boundedMcpPayload(value: unknown): unknown {
 export interface McpServerIdentity {
   serverName?: string;
   serverVersion?: string;
-  profile?: "core" | "full";
+  profile?: "core" | "full" | "discovery";
   protocolVersion?: string | null;
   clientUserAgent?: string | null;
   vendorClient?: string | null;

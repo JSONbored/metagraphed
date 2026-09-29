@@ -155,7 +155,10 @@ describe("MCP tool-dispatch usage telemetry", () => {
             const props = event.properties;
             const netuid = props.$mcp_parameters.netuid;
             assert.equal(props.$mcp_is_error, false);
-            assert.equal(props.$mcp_profile, path === "/mcp" ? "full" : "core");
+            assert.equal(
+              props.$mcp_profile,
+              path === "/mcp" ? "discovery" : "core",
+            );
             assert.equal(props.mcp_d1_call_count, 1);
             assert.equal(props.mcp_d1_duration_ms, netuid * 10);
             assert.equal(props.mcp_d1_sql_call_count, 1);
@@ -2199,7 +2202,10 @@ describe("MCP agent intent capture (#9642)", () => {
     // The names ARE the advertised catalogue — same length as the count the
     // event has always carried, so the two cannot tell different stories.
     assert.equal(names.length, events[0]!.toolCount);
-    assert.ok(names.includes("get_subnet"));
+    assert.deepEqual(
+      names,
+      listToolDefinitions("discovery").map((tool) => tool.name),
+    );
   });
 
   // ── conversation_id: the stitching label, same lifecycle as the intent ──
@@ -2423,6 +2429,7 @@ describe("native MCP conversation continuity", () => {
       CONFIGURED_ENV,
       deps,
       { "mcp-session-id": sessionA },
+      "/mcp?catalog=full",
     );
     await Promise.all(deps.executionCtx.scheduled);
     assert.deepEqual(deps.events.map((event) => event.event).sort(), [

@@ -108,8 +108,8 @@ describe("MCP tool annotations", () => {
     // same catalogued third-party surfaces the merged tool already did, and
     // both are open-world for that reason. The count moved because one tool
     // became two, not because the set of things we touch grew.
-    // The discovered invocation bridge inherits the broadest target effects.
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 25);
+    // Both discovery bridges may contact external services; only invoke_tool permits writes.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 26);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,

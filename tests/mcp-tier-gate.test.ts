@@ -169,7 +169,7 @@ describe("the boundary, through a real dispatch", () => {
 describe("depth is gated; visibility is not", () => {
   test("the gated tool is still listed to an anonymous caller", async () => {
     const res = await handleMcpRequest(
-      new Request("https://api.metagraph.sh/mcp", {
+      new Request("https://api.metagraph.sh/mcp?catalog=full", {
         method: "POST",
         headers: {
           "content-type": "application/json",

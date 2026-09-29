@@ -173,7 +173,7 @@ describe("bounded tool discovery", () => {
   });
 
   test("both profiles advertise the callable bridge with conservative annotations", () => {
-    for (const profile of ["full", "core"] as const) {
+    for (const profile of ["full", "core", "discovery"] as const) {
       const tools = listToolDefinitions(profile);
       assert.ok(tools.some((tool) => tool.name === "search_tools"));
       assert.deepEqual(
@@ -228,7 +228,7 @@ describe("bounded tool discovery", () => {
 
 describe("discovered invocation preserves the target dispatcher", () => {
   test("modern and legacy results equal direct calls on both profiles", async () => {
-    for (const profile of ["/mcp", "/mcp/core"]) {
+    for (const profile of ["/mcp", "/mcp/core", "/mcp?catalog=full"]) {
       for (const protocol of ["2025-06-18", "2025-03-26"]) {
         const direct = await call("get_networks", {}, profile, protocol);
         const bridge = await call(
@@ -241,6 +241,102 @@ describe("discovered invocation preserves the target dispatcher", () => {
         assert.equal(bridge.events.length, 1);
         assert.equal(bridge.events[0].toolName, "get_networks");
       }
+    }
+  });
+
+  test("read bridge preserves results and one target event across profiles", async () => {
+    for (const path of ["/mcp", "/mcp/core", "/mcp?catalog=full"]) {
+      for (const protocol of ["2025-06-18", "2025-03-26"]) {
+        const direct = await call("get_networks", {}, path, protocol);
+        const bridge = await call(
+          "invoke_read_tool",
+          { name: "get_networks", arguments: {} },
+          path,
+          protocol,
+        );
+        assert.deepEqual(bridge.body.result, direct.body.result);
+        assert.equal(bridge.events.length, 1);
+        assert.equal(bridge.events[0].toolName, "get_networks");
+      }
+    }
+    const definition = listToolDefinitions("discovery").find(
+      (t) => t.name === "invoke_read_tool",
+    );
+    assert.deepEqual(definition?.annotations, {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
+  });
+
+  test("read bridge cannot call mutators or recursively cross another bridge", async () => {
+    for (const bridge of ["invoke_read_tool", "invoke_tool"]) {
+      for (const name of ["invoke_tool", "invoke_read_tool"]) {
+        const { body } = await call(bridge, {
+          name,
+          arguments: { name: "write_subnet_surface", arguments: {} },
+        });
+        assert.equal(body.result.isError, true);
+        assert.equal(
+          body.result.structuredContent.error.code,
+          "invalid_params",
+        );
+      }
+    }
+    for (const name of [
+      "write_subnet_surface",
+      "store_surface_credential",
+      "delete_surface_credential",
+    ]) {
+      const { body, events } = await call(
+        "invoke_read_tool",
+        { name, arguments: {} },
+        "/mcp",
+        "2025-06-18",
+        { accountId: 7 },
+      );
+      assert.equal(body.result.isError, true);
+      assert.equal(body.result.structuredContent.error.code, "invalid_params");
+      assert.equal(events.length, 1);
+      assert.equal(events[0].toolName, "invoke_read_tool");
+    }
+    for (const argumentsValue of [
+      {},
+      { name: "get_networks" },
+      { name: "get_networks", arguments: null },
+    ]) {
+      const { body } = await call("invoke_read_tool", argumentsValue);
+      assert.equal(body.result.isError, true);
+    }
+    const unknown = await call("invoke_read_tool", {
+      name: "unknown_tool",
+      arguments: {},
+    });
+    assert.equal(
+      unknown.body.result.structuredContent.error.code,
+      "unknown_tool",
+    );
+    assert.deepEqual(
+      authRequiredToolsIn({
+        method: "tools/call",
+        params: {
+          name: "invoke_read_tool",
+          arguments: { name: "list_surface_credentials", arguments: {} },
+        },
+      }),
+      ["list_surface_credentials"],
+    );
+  });
+
+  test("every full definition remains discoverable without field projection", () => {
+    const full = listToolDefinitions();
+    for (const definition of full) {
+      assert.deepEqual(
+        searchToolDefinitions(full, { query: definition.name }, "current")
+          .tools,
+        [definition],
+      );
     }
   });
 
@@ -366,31 +462,33 @@ describe("discovered invocation preserves the target dispatcher", () => {
   });
 
   test("protected targets issue the same transport challenge, including legacy batches", async () => {
-    const name = "list_surface_credentials";
-    const direct = await call(name, {});
-    const bridge = await call("invoke_tool", { name, arguments: {} });
-    assert.equal(direct.response.status, 401);
-    assert.equal(bridge.response.status, 401);
-    assert.equal(
-      bridge.response.headers.get("www-authenticate"),
-      direct.response.headers.get("www-authenticate"),
-    );
-    assert.deepEqual(bridge.body, direct.body);
-    assert.equal(bridge.events.length, 1);
-    assert.equal(direct.events.length, 1);
-    assert.equal(bridge.events[0].requestStage, "refused");
-    assert.equal(bridge.events[0].errorStatus, 401);
-    assert.equal(bridge.events[0].toolName, undefined);
-    assert.deepEqual(
-      authRequiredToolsIn([
-        { method: "ping" },
-        {
-          method: "tools/call",
-          params: { name: "invoke_tool", arguments: { name, arguments: {} } },
-        },
-        { method: "tools/call", params: { name: "invoke_tool" } },
-      ]),
-      [name],
-    );
+    for (const bridgeName of ["invoke_tool", "invoke_read_tool"]) {
+      const name = "list_surface_credentials";
+      const direct = await call(name, {});
+      const bridge = await call(bridgeName, { name, arguments: {} });
+      assert.equal(direct.response.status, 401);
+      assert.equal(bridge.response.status, 401);
+      assert.equal(
+        bridge.response.headers.get("www-authenticate"),
+        direct.response.headers.get("www-authenticate"),
+      );
+      assert.deepEqual(bridge.body, direct.body);
+      assert.equal(bridge.events.length, 1);
+      assert.equal(direct.events.length, 1);
+      assert.equal(bridge.events[0].requestStage, "refused");
+      assert.equal(bridge.events[0].errorStatus, 401);
+      assert.equal(bridge.events[0].toolName, undefined);
+      assert.deepEqual(
+        authRequiredToolsIn([
+          { method: "ping" },
+          {
+            method: "tools/call",
+            params: { name: bridgeName, arguments: { name, arguments: {} } },
+          },
+          { method: "tools/call", params: { name: bridgeName } },
+        ]),
+        [name],
+      );
+    }
   });
 });

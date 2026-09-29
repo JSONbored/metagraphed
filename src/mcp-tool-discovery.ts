@@ -83,7 +83,9 @@ export const InvokeToolInputSchema = z
     name: z
       .string()
       .regex(/^[a-z][a-z0-9_]{0,127}$/)
-      .describe("Exact discovered tool name. invoke_tool cannot invoke itself.")
+      .describe(
+        "Exact discovered tool name. Invocation bridges cannot invoke each other.",
+      )
       .meta({ examples: ["get_more_tools"] }),
     arguments: z
       .record(z.string(), z.unknown())

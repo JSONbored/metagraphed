@@ -473,7 +473,7 @@ export async function mcpServerCardResponse(
     // The core profile (#11164): the same server, listing only the curated
     // ~23-tool golden path -- a context diet for clients that hold tool
     // definitions in the prompt. Calls are unrestricted on both endpoints;
-    // every count on this card describes /mcp, the full listing.
+    // counts describe all callable tools, including those discovered on demand.
     core_endpoint: `${base}/mcp/core`,
     websiteUrl: "https://metagraph.sh",
     // PRIMITIVES ARE DELIBERATELY NOT EMBEDDED (#11170). The card used to
@@ -494,7 +494,7 @@ export async function mcpServerCardResponse(
       resource_templates: MCP_RESOURCE_TEMPLATES.length,
     },
     primitive_definitions: {
-      mcp: `${base}/mcp (tools/list, prompts/list, resources/templates/list)`,
+      mcp: `${base}/mcp?catalog=full (tools/list, prompts/list, resources/templates/list)`,
       index: `${base}/.well-known/agent-tools/index.json`,
       openai: `${base}/.well-known/agent-tools/openai.json`,
       anthropic: `${base}/.well-known/agent-tools/anthropic.json`,

@@ -33,10 +33,11 @@ Cursor / other clients: add an MCP server with url
 `https://api.metagraph.sh/mcp/core`, transport `streamable-http`. Server
 descriptor: `https://api.metagraph.sh/.well-known/mcp/server-card.json`.
 
-`/mcp/core` lists the 23 tools of the workflow below (~45k tokens); `/mcp`
-lists all 243 (~400k). Either endpoint can **call** all 243 — the profile
-filters listing, never dispatch — so start with core and reach for
-`get_more_tools` when the workflow below runs out.
+`/mcp/core` lists common tools directly; `/mcp` starts with bounded discovery.
+Either endpoint can call every tool — the profile filters listing, never dispatch.
+Use `search_tools` to retrieve complete definitions, then `invoke_read_tool` for
+read-only targets or `invoke_tool` for other targets after reviewing permissions.
+`/mcp?catalog=full` explicitly advertises every definition up front.
 
 ## The workflow
 

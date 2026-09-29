@@ -113,7 +113,7 @@ import {
 import type { Row } from "./row-type.ts";
 import { assertValid } from "./helpers/assert-valid.ts";
 
-const MCP_URL = "https://api.metagraph.sh/mcp";
+const MCP_URL = "https://api.metagraph.sh/mcp?catalog=full";
 
 // `publishedDefaultOf` went with the tests that used it (#10190).
 
@@ -25917,7 +25917,7 @@ describe("the MCP endpoint tolerates a trailing slash", () => {
 describe("tools/list cursor handling (#9648)", () => {
   const call = async (params?: Row) => {
     const res = await handleMcpRequest(
-      new Request("https://api.metagraph.sh/mcp", {
+      new Request("https://api.metagraph.sh/mcp?catalog=full", {
         method: "POST",
         headers: {
           "content-type": "application/json",

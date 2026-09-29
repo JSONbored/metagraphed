@@ -10,7 +10,7 @@ import { mockEnv, type Row } from "./row-type.ts";
 const env = mockEnv({ [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" });
 
 async function discover(
-  profile: "core" | "full",
+  profile: "core" | "full" | "discovery",
   params: Row,
   notification = false,
 ) {
@@ -19,7 +19,7 @@ async function discover(
   const scheduled: Promise<unknown>[] = [];
   const response = await handleMcpRequest(
     new Request(
-      `https://api.metagraph.sh/mcp${profile === "core" ? "/core" : ""}`,
+      `https://api.metagraph.sh/mcp${profile === "core" ? "/core" : profile === "full" ? "?catalog=full" : ""}`,
       {
         method: "POST",
         headers: {
@@ -50,7 +50,7 @@ async function discover(
 }
 
 describe("MCP discovery outcomes", () => {
-  for (const profile of ["core", "full"] as const) {
+  for (const profile of ["core", "full", "discovery"] as const) {
     test(`${profile} records the actual advertised catalogue without copying its schemas`, async () => {
       const { response, discovery, usage } = await discover(profile, {});
       const body = (await response.json()) as Row;

@@ -82,33 +82,38 @@ describe("MCP tool cost table", () => {
   });
 
   test("the discovery bridge preserves target costs in single calls and mixed batches", () => {
-    const bridge = (name: unknown) => ({
-      method: "tools/call",
-      params: { name: "invoke_tool", arguments: { name, arguments: {} } },
-    });
-    for (const name of [...Object.keys(MCP_TOOL_COST_PATHS), "get_subnet"]) {
-      assert.equal(mcpBatchCostUnits(bridge(name)), mcpToolCostUnits(name));
-    }
-    assert.equal(
-      mcpBatchCostUnits([
-        bridge("ask"),
-        bridge("list_chain_events"),
-        { method: "tools/call", params: { name: "get_subnet" } },
-      ]),
-      31,
-    );
-    // Invalid/self-recursive bridges do not dispatch a target and never run
-    // recursively through this pricing path.
-    for (const name of [undefined, null, {}, "invoke_tool", "unknown_tool"]) {
-      assert.equal(mcpBatchCostUnits(bridge(name)), DEFAULT_ROUTE_COST_WEIGHT);
-    }
-    assert.equal(
-      mcpBatchCostUnits({
+    for (const bridgeName of ["invoke_tool", "invoke_read_tool"]) {
+      const bridge = (name: unknown) => ({
         method: "tools/call",
-        params: { name: "invoke_tool" },
-      }),
-      DEFAULT_ROUTE_COST_WEIGHT,
-    );
+        params: { name: bridgeName, arguments: { name, arguments: {} } },
+      });
+      for (const name of [...Object.keys(MCP_TOOL_COST_PATHS), "get_subnet"]) {
+        assert.equal(mcpBatchCostUnits(bridge(name)), mcpToolCostUnits(name));
+      }
+      assert.equal(
+        mcpBatchCostUnits([
+          bridge("ask"),
+          bridge("list_chain_events"),
+          { method: "tools/call", params: { name: "get_subnet" } },
+        ]),
+        31,
+      );
+      // Invalid/self-recursive bridges do not dispatch a target and never run
+      // recursively through this pricing path.
+      for (const name of [undefined, null, {}, "invoke_tool", "unknown_tool"]) {
+        assert.equal(
+          mcpBatchCostUnits(bridge(name)),
+          DEFAULT_ROUTE_COST_WEIGHT,
+        );
+      }
+      assert.equal(
+        mcpBatchCostUnits({
+          method: "tools/call",
+          params: { name: bridgeName },
+        }),
+        DEFAULT_ROUTE_COST_WEIGHT,
+      );
+    }
   });
 
   test("a batch costs the sum of its parts, not one flat unit", () => {

@@ -11,11 +11,12 @@ The fastest path is the MCP server (one line, no key):
 claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core
 ```
 
-That is the **core** profile: it lists 23 tools (~45k tokens) instead of 243
-(~400k), and can still call all 243 — the profile filters the tool _listing_,
-never dispatch, and `get_more_tools` reaches the rest. Use
-`https://api.metagraph.sh/mcp` instead only if you want every tool enumerated
-up front.
+The **core** profile lists common tools directly and can call every tool: the
+profile filters the tool _listing_, never dispatch. Use `search_tools` to find
+complete definitions and `invoke_read_tool` or `invoke_tool` to call them.
+`https://api.metagraph.sh/mcp` starts with just those discovery/invocation tools
+and `get_more_tools`. Use `https://api.metagraph.sh/mcp?catalog=full` when your
+client needs every definition advertised up front.
 
 No MCP host? Everything is also a plain `GET`/`POST` over HTTPS — see "REST
 fallback" at the bottom. For copyable REST/npm/Python/MCP examples, use

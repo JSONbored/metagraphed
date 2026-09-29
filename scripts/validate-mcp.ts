@@ -152,6 +152,7 @@ function declaredObjectCollections(schema: Row | undefined): string[] {
 }
 
 interface McpCallOptions {
+  url?: string;
   method?: string;
   headers?: Record<string, string>;
   envOverride?: Row;
@@ -159,9 +160,14 @@ interface McpCallOptions {
 
 async function mcp(
   payload: unknown,
-  { method = "POST", headers = {}, envOverride = env }: McpCallOptions = {},
+  {
+    url = MCP_URL,
+    method = "POST",
+    headers = {},
+    envOverride = env,
+  }: McpCallOptions = {},
 ): Promise<Row> {
-  const response = await mcpRaw(payload, { method, headers, envOverride });
+  const response = await mcpRaw(payload, { url, method, headers, envOverride });
   const text = await response.text();
   return {
     status: response.status,
@@ -175,9 +181,14 @@ async function mcp(
 // 204/405, no body to parse).
 async function mcpRaw(
   payload: unknown,
-  { method = "POST", headers = {}, envOverride = env }: McpCallOptions = {},
+  {
+    url = MCP_URL,
+    method = "POST",
+    headers = {},
+    envOverride = env,
+  }: McpCallOptions = {},
 ) {
-  const request = new Request(MCP_URL, {
+  const request = new Request(url, {
     method,
     headers: { "content-type": "application/json", ...headers },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
@@ -457,7 +468,15 @@ assert.ok(
   "must advertise tools capability",
 );
 
-const listed = await mcp({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+const discovered = await mcp({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+assert.deepEqual(
+  discovered.body.result.tools,
+  listToolDefinitions("discovery"),
+);
+const listed = await mcp(
+  { jsonrpc: "2.0", id: 2, method: "tools/list" },
+  { url: `${MCP_URL}?catalog=full` },
+);
 const tools = listed.body.result.tools as Row[];
 assert.equal(
   tools.length,

@@ -87,6 +87,11 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
     reason:
       "Forwards one discovered MCP invocation through the target's existing dispatcher.",
   },
+  invoke_read_tool: {
+    operation: null,
+    reason:
+      "Forwards one read-only discovered MCP invocation through its existing dispatcher.",
+  },
   get_network_health: { operation: "health" },
   get_health_history: { operation: "health-history" },
   get_subnet_health: { operation: "subnet-health" },

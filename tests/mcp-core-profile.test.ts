@@ -10,6 +10,10 @@ import {
   handleMcpRequest,
   listToolDefinitions,
   MCP_CORE_TOOL_NAMES,
+  MCP_DISCOVERY_TOOL_NAMES,
+  MCP_DISCOVERY_INSTRUCTIONS,
+  MCP_INSTRUCTIONS,
+  mcpProfileForUrl,
 } from "../src/mcp-server.ts";
 import { isMcpCorePath } from "../src/github-oauth.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
@@ -50,17 +54,61 @@ describe("the endpoint is the profile", () => {
     assert.equal(isMcpCorePath("/mcp/corex"), false);
   });
 
-  test("/mcp/core lists exactly the declared set; /mcp lists everything", async () => {
+  test("core lists its declared set; explicit full catalog preserves every definition", async () => {
     const core = await listedNames("https://api.metagraph.sh/mcp/core");
     assert.deepEqual(
       [...core].sort(),
       [...MCP_CORE_TOOL_NAMES].sort(),
       "the core listing is the declaration, nothing more or less",
     );
-    const full = await listedNames("https://api.metagraph.sh/mcp");
+    const full = await listedNames("https://api.metagraph.sh/mcp?catalog=full");
     assert.ok(full.length > 200, `full listing stays whole (${full.length})`);
     for (const name of core) {
       assert.ok(full.includes(name), `${name} is a subset of full`);
+    }
+  });
+
+  test("default discovery has a fixed small catalog with complete on-demand access", async () => {
+    for (const path of ["/mcp", "/mcp/", "/mcp?catalog=unknown"]) {
+      const url = new URL(`https://api.metagraph.sh${path}`);
+      assert.equal(mcpProfileForUrl(url), "discovery");
+      const names = await listedNames(url.href);
+      assert.deepEqual([...names].sort(), [...MCP_DISCOVERY_TOOL_NAMES].sort());
+    }
+    assert.equal(
+      mcpProfileForUrl(new URL("https://api.metagraph.sh/mcp/core")),
+      "core",
+    );
+    assert.equal(
+      mcpProfileForUrl(
+        new URL("https://api.metagraph.sh/mcp/core?catalog=full"),
+      ),
+      "full",
+    );
+    const bytes = (value: unknown) =>
+      new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    const small = bytes(listToolDefinitions("discovery"));
+    const full = bytes(listToolDefinitions());
+    assert.ok(small < 20000, `default catalog exceeded 20 kB: ${small}`);
+    assert.ok(small < full / 50);
+    console.log(
+      JSON.stringify({ defaultCatalogBytes: small, fullCatalogBytes: full }),
+    );
+    for (const [path, instructions] of [
+      ["/mcp", MCP_DISCOVERY_INSTRUCTIONS],
+      ["/mcp?catalog=full", MCP_INSTRUCTIONS],
+      ["/mcp/core", MCP_INSTRUCTIONS],
+    ]) {
+      for (const protocol of ["2025-06-18", "2025-03-26"]) {
+        const response = await rpc(`https://api.metagraph.sh${path}`, {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: { protocolVersion: protocol },
+        });
+        const body = (await response.json()) as Row;
+        assert.equal(body.result.instructions, instructions);
+      }
     }
   });
 
@@ -79,6 +127,8 @@ describe("the endpoint is the profile", () => {
   test("discovery reuses each profile without allowing cross-request mutation", () => {
     const full = listToolDefinitions();
     const core = listToolDefinitions("core");
+    const discovery = listToolDefinitions("discovery");
+    assert.strictEqual(listToolDefinitions("discovery"), discovery);
     const before = JSON.stringify({ full, core });
     assert.strictEqual(listToolDefinitions(), full);
     assert.strictEqual(listToolDefinitions("core"), core);

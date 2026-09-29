@@ -91,7 +91,8 @@ export function mcpBatchCostUnits(body: unknown): number {
     // target before dispatch, including in legacy batches; the generic name
     // must not turn a 25-unit AI call or 5-unit history read into one unit.
     const name =
-      row?.params?.name === "invoke_tool"
+      row?.params?.name === "invoke_tool" ||
+      row?.params?.name === "invoke_read_tool"
         ? row.params.arguments?.name
         : row?.params?.name;
     total +=
