@@ -80,7 +80,7 @@ test("bounded shard expansion preserves every selected view row and scalar type"
   const store = createD1Store(db);
   const env = { D1_STATE: db, D1_STATE_TABLES: "neuron_daily" };
   for (const netuid of [7, 99])
-    for (const cutoff of ["2026-09-20", "2026-09-21", "2099-01-01"])
+    for (const cutoff of ["2026-09-20", "2026-09-21", "2099-01-01", null])
       for (const limit of [1, 200, 1000])
         for (const columns of projections) {
           const expected = await store.query(
@@ -120,6 +120,7 @@ test("history reads materialize each required shard expansion without correlated
   let captured = "";
   let parameters: unknown[] = [];
   const binding = {
+    batch: db.batch.bind(db),
     prepare(text: string) {
       captured = text;
       return {

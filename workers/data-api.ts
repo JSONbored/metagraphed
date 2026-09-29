@@ -3678,77 +3678,25 @@ function normalizeDeliveryRow(row: ChainAlertDeliveries): Row {
   return { ...row, success: rowBool(row.success) };
 }
 
-/**
- * The tables each user-state helper touches, named so the runner choice is a
- * property of the DATA rather than of the helper.
- *
- * `userStateRunner` below requires EVERY table in the group to be listed in
- * NEON_SOLE_STORE_TABLES before it hands out a Postgres runner. That is the
- * same all-or-nothing rule the read gate used to apply per route (deleted in
- * #10051), and for the same reason: one runner serves the whole callback, so a
- * half-listed group would send a statement to a store where its table does not
- * exist. Naming the tables is what makes that impossible to get wrong by
- * accident -- a table added to one of these groups cannot move until someone
- * puts its name in the flag.
- */
-/**
- * The three tables one neurons snapshot writes.
- *
- * All or nothing, the same rule every other group in this file follows: the
- * pass writes them from ONE derivation, so a half-listed group would leave
- * neuron_daily in the store while its parent moved and the two would never agree
- * again.
- */
+/** One snapshot derives all three tables; ownership must move them together. */
 export const NEURONS_SNAPSHOT_TABLES = [
   "neurons",
   "neuron_daily",
   "account_position_daily",
 ] as const;
 
-/**
- * Whether Neon is the ONLY store behind a neurons snapshot on this deployment.
- *
- * When true the store write is skipped outright and the Neon write becomes
- * authoritative -- its failure is the request's failure, where during
- * dual-write it was only a lane verdict. That inversion is the point: while D1
- * still served reads, a Neon failure had to cost a mirror and not the pass;
- * once Neon is the store, a pass that did not reach it did not happen.
- */
+/** The selected store owns both snapshot rows and the completeness ledger.
+ * The historical function name also covers D1 ownership. */
 export function neonOwnsNeuronsSnapshot(env: DataApiEnv): boolean {
   if (selectedD1Store(env, [...NEURONS_SNAPSHOT_TABLES, "neurons_passes"]))
     return true;
-  // the ownership term collapsed with the flag (#10051): Neon is the only
-  // store, so durability is the binding question alone.
+  // Without a D1 selection, the Postgres binding determines availability.
   return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
-/**
- * Whether Neon is the ONLY store behind one hyperparams/identity family.
- *
- * BOTH tables of the family, never one. The sync derives its history rows by
- * reading the CURRENT latest hash out of the history table and diffing -- so a
- * family split across stores would diff against the wrong store's history and
- * append revisions that already exist, or miss ones that do not. The pair moves
- * together or not at all.
- */
-/** Whether Neon solely owns the nominator-positions pair. Shared by BOTH of
- * this lane's writers -- #9728 was a single unmirrored writer leaving the table
- * 92 rows short while the count looked nearly right. The pass ledger moves with
- * the rows: a tally in one store describing rows in the other answers a
- * question about nothing. */
-/**
- * Whether Neon solely owns a ledger lane's table AND its pass ledger.
- *
- * BOTH, because a completeness tally in one store describing rows in the other
- * answers a question about nothing (#10056). Lanes with no pass table pass a
- * single-element list and behave as before.
- *
- * This existed as a FLAG before it existed as a code path: #10098 named
- * validator_nominator_counts sole-store while both its writers still wrote D1,
- * so the flag claimed a cutover that had not happened. Inert rather than
- * dangerous -- D1 kept its rows and the mirror kept Neon's -- but a flag that
- * lies about which store owns a table is how the next change gets it wrong.
- */
+/** Resolve the lane and its pass ledger together, including nominator rows
+ * for hotkey-alpha. Shared writers must use the same store (#9728, #10056).
+ * Lanes without a pass table select only their data table. */
 export function neonOwnsLedger(env: DataApiEnv, lane: string): boolean {
   const tables = [LEDGER_MIRROR_PLANS[lane]?.table, PASS_TABLES[lane]].filter(
     (t): t is string => Boolean(t),

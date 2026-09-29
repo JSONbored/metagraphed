@@ -372,7 +372,7 @@ export async function readNeuronDailyMetricRows<Row>(
   db: Pick<ReadStoreDb, "query">,
   env: unknown,
   netuid: number,
-  cutoff: string,
+  cutoff: string | null,
   columns: string,
   limit: number,
 ): Promise<Row[]> {
@@ -388,8 +388,7 @@ export async function readNeuronDailyMetricRows<Row>(
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (!store)
     return db.query<Row>(
-      `SELECT ${names.join(", ")} FROM neuron_daily
-       WHERE netuid = ? AND snapshot_date >= ?
+      `SELECT ${names.join(", ")} FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ?
        ORDER BY snapshot_date DESC, uid LIMIT ?`,
       [netuid, cutoff, limit],
     );
