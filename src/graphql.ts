@@ -3056,6 +3056,7 @@ const rootValue = {
     }
     const read = await loadChainHolders(
       readStore(context.env, ALPHA_PRICING_TABLES),
+      context.env,
     );
     return buildChainHolders(read, {
       sort: sort ?? DEFAULT_CHAIN_HOLDERS_SORT,

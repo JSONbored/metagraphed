@@ -6288,7 +6288,10 @@ export async function handleChainHolders(request: Request, env: Env, url: URL) {
   }
   const limit = pageLimit(url);
 
-  const read = await loadChainHolders(readStore(env, ALPHA_PRICING_TABLES));
+  const read = await loadChainHolders(
+    readStore(env, ALPHA_PRICING_TABLES),
+    env,
+  );
   const data = buildChainHolders(read, { sort, limit: limit });
   return envelopeResponse(
     request,
