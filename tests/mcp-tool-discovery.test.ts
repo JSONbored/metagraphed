@@ -17,6 +17,11 @@ async function call(
   args: unknown,
   profile = "/mcp/core",
   protocol = "2025-06-18",
+  options: {
+    env?: Record<string, unknown>;
+    accountId?: number;
+    meta?: Row;
+  } = {},
 ) {
   const events: Row[] = [];
   const response = await handleMcpRequest(
@@ -31,6 +36,7 @@ async function call(
         id: 1,
         method: "tools/call",
         params: {
+          ...(options.meta ? { _meta: options.meta } : {}),
           name,
           arguments:
             args && typeof args === "object" && !Array.isArray(args)
@@ -42,9 +48,14 @@ async function call(
         },
       }),
     }),
-    mockEnv({ [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" }),
+    mockEnv({ [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token", ...options.env }),
     {
-      executionCtx: { waitUntil() {} },
+      executionCtx: {
+        waitUntil() {},
+        ...(options.accountId
+          ? { props: { accountId: options.accountId } }
+          : {}),
+      },
       recordMcpToolCallEvent: (_env, event) => {
         events.push(event);
         return true;
@@ -175,6 +186,22 @@ describe("bounded tool discovery", () => {
     }
   });
 
+  test("continuations carry the deployed Worker identity", async () => {
+    const { body } = await call(
+      "search_tools",
+      { query: "account" },
+      "/mcp/core",
+      "2025-06-18",
+      {
+        env: { CF_VERSION_METADATA: { id: "deployment-a" } },
+      },
+    );
+    assert.equal(
+      body.result.structuredContent.next_cursor.version,
+      "deployment-a",
+    );
+  });
+
   test("invalid discovery requests fail without data reads", async () => {
     for (const args of [
       {},
@@ -227,8 +254,64 @@ describe("discovered invocation preserves the target dispatcher", () => {
     assert.equal(events.length, 1);
     assert.equal(events[0].intent, "need retained history");
     assert.equal(events[0].toolName, "get_more_tools");
+    assert.equal(events[0].llmModel, "test-model");
     assert.deepEqual(events[0].parameters, {});
     assert.match(JSON.stringify(body.result.content), /conversation_id/);
+  });
+
+  test("client model metadata survives forwarding", async () => {
+    const { events } = await call(
+      "invoke_tool",
+      { name: "get_more_tools", arguments: {} },
+      "/mcp/core",
+      "2025-06-18",
+      { meta: { "x-codex-turn-metadata": { model: "metadata-model" } } },
+    );
+    assert.equal(events[0].llmModel, "metadata-model");
+    assert.equal(events[0].llmModelSource, "client_metadata");
+  });
+
+  test("authenticated calls retain the same account scope and complete response", async () => {
+    const prefixes: string[] = [];
+    const options = {
+      accountId: 7,
+      env: {
+        MCP_SURFACE_CREDENTIAL_SECRET: "test-secret",
+        METAGRAPH_CONTROL: {
+          get: async () => null,
+          put: async () => {},
+          delete: async () => {},
+          list: async ({ prefix }: { prefix: string }) => {
+            prefixes.push(prefix);
+            return { keys: [], list_complete: true };
+          },
+        },
+      },
+    };
+    const direct = await call(
+      "list_surface_credentials",
+      {},
+      "/mcp/core",
+      "2025-06-18",
+      options,
+    );
+    const bridge = await call(
+      "invoke_tool",
+      { name: "list_surface_credentials", arguments: {} },
+      "/mcp/core",
+      "2025-06-18",
+      options,
+    );
+    assert.equal(direct.body.result.isError, false);
+    assert.deepEqual(bridge.body.result, direct.body.result);
+    assert.deepEqual(bridge.body.result.structuredContent, {
+      credentials: [],
+      count: 0,
+    });
+    assert.equal(prefixes.length, 2);
+    assert.equal(prefixes[0], prefixes[1]);
+    assert.equal(bridge.events.length, 1);
+    assert.equal(bridge.events[0].toolName, "list_surface_credentials");
   });
 
   test("target errors and unknown names match direct invocation", async () => {
