@@ -238,8 +238,8 @@ export async function readHistoryPointers(
       hydrated.set(`${fileId}:${ordinals[index]}`, row),
     );
   }
-  return pointers.map((pointer) =>
-    hydrated.get(`${pointer.fileId}:${pointer.row}`)!,
+  return pointers.map(
+    (pointer) => hydrated.get(`${pointer.fileId}:${pointer.row}`)!,
   );
 }
 
@@ -460,6 +460,7 @@ export async function scanHistoryBlockRange(
     row: Record<string, unknown>,
     pointer: HistoryPhysicalPointer,
   ) => void,
+  page?: { minimumBlock: () => number | undefined },
 ): Promise<void> {
   const generation = validateHistoryBlockGeneration(input, scope);
   const index = await readJson(
@@ -483,7 +484,15 @@ export async function scanHistoryBlockRange(
     files.set(run.fileId, group);
   }
   const projection = [...new Set(["block_number", "observed_at", ...columns])];
-  for (const [fileId, group] of files) {
+  const ordered = [...files].map(([fileId, group]) => ({
+    fileId,
+    group,
+    lastBlock: group.reduce((last, run) => Math.max(last, run.block), -1),
+  }));
+  if (page) ordered.sort((a, b) => b.lastBlock - a.lastBlock);
+  for (const { fileId, group, lastBlock } of ordered) {
+    // Only a strictly older file can be excluded: ties may contain a later
+    // event index or another capture needed for the same page.
     group.sort((a, b) => a.rowStart - b.rowStart);
     const ranges: { start: number; end: number }[] = [];
     for (const run of group) {
@@ -493,6 +502,8 @@ export async function scanHistoryBlockRange(
       if (previous && run.rowStart === previous.end) previous.end += run.rows;
       else ranges.push({ start: run.rowStart, end: run.rowStart + run.rows });
     }
+    const minimum = page?.minimumBlock();
+    if (minimum !== undefined && lastBlock < minimum) continue;
     let cursor = 0;
     await readFileRanges(
       source,

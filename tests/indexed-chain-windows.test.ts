@@ -277,6 +277,50 @@ it("native windows preserve full payloads, physical captures, page order and fil
     }
   }
 });
+it("small pages skip strictly older Parquet files while tied captures and complete statistics remain exact", async () => {
+  for (const network of ["mainnet", "testnet"] as const) {
+    const a = archive(network),
+      last = a.ceiling.through,
+      first = last - 19;
+    const files = a.segments.map((segment) => {
+      const manifest = JSON.parse(
+        a.objects.get(segment.blockManifest.key)!.raw.toString(),
+      ) as { files: { key: string }[] };
+      return manifest.files.map((file) => file.key);
+    });
+    const page = await loadIndexedChainWindow(
+      a.env,
+      { first, last, limit: 5 },
+      network,
+    );
+    expect(page).toEqual(expected(network, first, last).slice(0, 5));
+    const readFiles = () =>
+      new Set(
+        a.reads.filter((r) => r.key.endsWith(".parquet")).map((r) => r.key),
+      );
+    expect(readFiles()).toEqual(new Set(files[1]));
+    // Both files cover the winning block. Neither may be excluded on a tie.
+    expect(files[1]).toHaveLength(2);
+    a.reads.length = 0;
+    await loadIndexedChainWindowStats(a.env, first, last, network);
+    expect(readFiles()).toEqual(new Set(files.flat()));
+
+    const older = archive(network),
+      cursor = [1000, last - 12, 0];
+    expect(
+      await loadIndexedChainWindow(
+        older.env,
+        { first, last, limit: 5, cursor },
+        network,
+      ),
+    ).toEqual(
+      expected(network, first, last, undefined, undefined, cursor).slice(0, 5),
+    );
+    expect(
+      files[0].every((key) => older.reads.some((r) => r.key === key)),
+    ).toBe(true);
+  }
+});
 it("native stats count every capture across shards and generations, use deterministic ties, and cap the published groups", async () => {
   for (const network of ["mainnet", "testnet"] as const) {
     const a = archive(network),
