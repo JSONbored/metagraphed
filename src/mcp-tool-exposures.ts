@@ -78,6 +78,15 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
       "REST equivalent, because the caller is an MCP agent telling us what " +
       "the catalogue is missing rather than asking for anything.",
   },
+  search_tools: {
+    operation: null,
+    reason: "Discovers existing MCP tool definitions; no REST data operation.",
+  },
+  invoke_tool: {
+    operation: null,
+    reason:
+      "Forwards one discovered MCP invocation through the target's existing dispatcher.",
+  },
   get_network_health: { operation: "health" },
   get_health_history: { operation: "health-history" },
   get_subnet_health: { operation: "subnet-health" },

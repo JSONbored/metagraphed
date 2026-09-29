@@ -2,6 +2,13 @@ import { withRequestCounters } from "./request-counters.ts";
 import { requestTimings, withOperationTiming } from "./request-timing.ts";
 import { loadSubnetStatus } from "./subnet-status-read.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import {
+  InvokeToolInputSchema,
+  InvokeToolOutputSchema,
+  SearchToolsInputSchema,
+  SearchToolsOutputSchema,
+  searchToolDefinitions,
+} from "./mcp-tool-discovery.ts";
 // Remote MCP (Model Context Protocol) server for metagraphed.
 //
 // Exposes the operational registry to AI agents (Claude Desktop/Code, Cursor,
@@ -2423,6 +2430,9 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
   // Everything that can change a third-party system moved to the sibling.
   call_subnet_surface: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   write_subnet_surface: PROXY_WRITE_TOOL_ANNOTATIONS,
+  // A discovered target may write or call an external service. Clients must
+  // apply their write approval policy before sending this generic invocation.
+  invoke_tool: PROXY_WRITE_TOOL_ANNOTATIONS,
 
   // Live POST to the public Finney RPC entrypoint on a KV-cache miss.
   get_account_balance: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
@@ -6211,7 +6221,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Find the full catalog or report a missing capability",
     description:
       "On /mcp/core, call this when the small starter listing does not cover " +
-      "your task: it explains how to access the full catalog. On /mcp, call " +
+      "your task: it explains bounded discovery and full catalog access. On /mcp, call " +
       "this only after checking the full tools/list and finding no suitable " +
       "tool; describe the missing capability in context to record the gap.",
     inputSchema: inputJsonSchema(GetMoreToolsInputSchema),
@@ -6222,7 +6232,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           additional_tools_available: true,
           message:
             `/mcp/core lists ${MCP_CORE_TOOL_NAMES.length} starter tools; ` +
-            `${MCP_TOOLS.length} tools are available. Request tools/list at ` +
+            `${MCP_TOOLS.length} tools are available. Use search_tools with ` +
+            "task keywords or an exact name to retrieve up to three full " +
+            "definitions, then invoke_tool with that name and its arguments. " +
+            "This works even when your client cannot call unlisted names. " +
+            "Request tools/list at " +
             "/mcp on this same server for their full definitions. All listed " +
             "tools can also be called through /mcp/core with the same " +
             "arguments, authentication, and rate limits. This discovery " +
@@ -6241,6 +6255,59 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           "Do not retry -- use the closest available tool, or tell the user " +
           "this is not supported.",
       };
+    },
+  },
+  {
+    name: "search_tools",
+    title: "Discover tools for a task",
+    description:
+      "Search the full tool catalog without loading it into context. Supply " +
+      "task keywords or an exact tool name. Returns up to three unchanged " +
+      "definitions, including input/output schemas, annotations and auth " +
+      "requirements. Follow next_cursor with the same query for more matches. " +
+      "Use invoke_tool to call a result through clients that only allow listed tools.",
+    inputSchema: inputJsonSchema(SearchToolsInputSchema),
+    outputSchema: outputJsonSchema(SearchToolsOutputSchema),
+    async handler(args, ctx) {
+      const parsed = SearchToolsInputSchema.safeParse(args);
+      if (!parsed.success) {
+        throw toolError(
+          "invalid_params",
+          "Provide query (1-200 characters) and an unchanged next_cursor when continuing.",
+        );
+      }
+      try {
+        return searchToolDefinitions(
+          listToolDefinitions(),
+          parsed.data,
+          ctx.env.CF_VERSION_METADATA?.id ?? MCP_SERVER_VERSION,
+        );
+      } catch {
+        throw toolError(
+          "invalid_params",
+          "Tool catalog or query changed; restart search_tools without cursor.",
+        );
+      }
+    },
+  },
+  {
+    name: "invoke_tool",
+    title: "Invoke a discovered tool",
+    description:
+      "Call one tool returned by search_tools using its exact name and " +
+      "inputSchema. The target's validation, authentication, payment and " +
+      "rate limits apply. Returns the target's complete result and errors " +
+      "without a wrapper. Some targets write data or call external services; " +
+      "review the discovered annotations before invoking. Recursive invocation is refused.",
+    inputSchema: inputJsonSchema(InvokeToolInputSchema),
+    outputSchema: outputJsonSchema(InvokeToolOutputSchema),
+    async handler() {
+      // Valid invocations are unwrapped before callTool's timing/telemetry.
+      // Invalid envelopes stay on the ordinary validation-error path.
+      throw toolError(
+        "invalid_params",
+        "Provide a non-recursive tool name and an arguments object matching its inputSchema.",
+      );
     },
   },
   {
@@ -15787,6 +15854,8 @@ export const MCP_CORE_TOOL_NAMES: readonly string[] = [
   // Ask (the whole-question shortcut, and the stranded-session escape hatch)
   "ask",
   "get_more_tools",
+  "search_tools",
+  "invoke_tool",
   // Verify
   "get_subnet",
   "get_subnet_health",
@@ -16631,7 +16700,38 @@ function negotiateProtocol(requested: unknown) {
 // but only after recordMcpToolCallEvent (src/usage-telemetry.ts) redacts and
 // size-caps them; see that module's header comment for why (no SDK
 // instrument() wrapper here, so no default redaction pipeline either).
-async function callTool(params: Row | null, ctx: McpCtx) {
+async function callTool(
+  params: Row | null,
+  ctx: McpCtx,
+): Promise<{
+  content: { type: string; text: string }[];
+  structuredContent: Row;
+  isError: boolean;
+}> {
+  if (params?.name === "invoke_tool") {
+    const raw = rowOf(params.arguments);
+    const metadata = splitMcpAnalyticsArguments(raw);
+    const parsed = InvokeToolInputSchema.safeParse(metadata.rest);
+    if (parsed.success && parsed.data.name !== "invoke_tool") {
+      // One transport call is one native tool event, attributed to the actual
+      // target. Reuse its entire dispatcher and the same authenticated ctx.
+      return callTool(
+        {
+          ...params,
+          name: parsed.data.name,
+          arguments: {
+            ...parsed.data.arguments,
+            ...(metadata.intent ? { context: metadata.intent } : {}),
+            ...(metadata.conversationId
+              ? { conversation_id: metadata.conversationId }
+              : {}),
+            ...(metadata.llmModel ? { llm_model: metadata.llmModel } : {}),
+          },
+        },
+        ctx,
+      );
+    }
+  }
   const startedAt = Date.now();
   const toolLabel = mcpToolLabel(params?.name);
   const {
@@ -18898,7 +18998,11 @@ export function authRequiredToolsIn(body: unknown): string[] {
   for (const message of messages) {
     const row = rowOf(message);
     if (row?.method !== "tools/call") continue;
-    const name = rowOf(row.params)?.name;
+    const params = rowOf(row.params);
+    const name =
+      params?.name === "invoke_tool"
+        ? rowOf(params.arguments)?.name
+        : params?.name;
     if (typeof name === "string" && AUTH_REQUIRED_TOOL_NAMES.has(name)) {
       names.push(name);
     }

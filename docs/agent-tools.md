@@ -21,6 +21,47 @@ For the end-to-end path from "find a callable subnet" to a working REST, MCP,
 npm, or Python call, use the public workflow guide at
 `https://api.metagraph.sh/agent-workflows.md`.
 
+## Bounded MCP discovery
+
+Connect to `https://api.metagraph.sh/mcp/core` for the starter tools. When a task
+needs another tool, call `search_tools` with keywords or an exact name:
+
+```json
+{
+  "name": "search_tools",
+  "arguments": {
+    "query": "get_networks",
+    "context": "Discover network support"
+  }
+}
+```
+
+Each page contains at most three complete tool definitions. Their schemas,
+annotations and authentication requirements are identical to the full catalog.
+Continue a broad search by passing its `next_cursor` unchanged with the same
+query. If the catalog deployment changes, restart the search without a cursor.
+
+Clients that only permit calls to their initially listed tools can invoke the
+discovered tool through the advertised bridge:
+
+```json
+{
+  "name": "invoke_tool",
+  "arguments": {
+    "name": "get_networks",
+    "arguments": {},
+    "context": "Read network support"
+  }
+}
+```
+
+The result and errors are the target tool's normal response. Its authentication,
+payment and rate limits still apply. The bridge advertises write-capable
+annotations because some targets mutate data; review the discovered target's
+annotations before calling. Native MCP telemetry records one call under the
+target tool's name. The existing full `/mcp` listing and direct calls remain
+available for clients that prefer the entire catalog.
+
 ## Executing a tool call
 
 The specs declare the tool _shape_; execution is uniform — forward the model's
