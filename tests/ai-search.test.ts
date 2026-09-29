@@ -2240,7 +2240,7 @@ describe("AI request telemetry runs in the Worker background lifetime", () => {
               readHealthKv: async () => null,
             },
           );
-          const body = await response.json();
+          const body = (await response.json()) as Row;
           assert.equal(body.result.isError, false);
           const embedding = calls.find((c) => c.event === "$ai_embedding");
           assert.ok(embedding, "semantic embedding must remain instrumented");
