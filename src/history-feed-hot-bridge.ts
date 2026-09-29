@@ -11,7 +11,7 @@ export interface HotHistoryPredicate {
   netuids?: readonly number[];
 }
 
-/** Bind values; column names are internal. */
+/** Bind caller values. */
 export function hotHistoryPredicate(
   range: FeedRange,
   index: "event_index" | "extrinsic_index",
@@ -170,7 +170,7 @@ export async function readHotHistoryTail(
   return result.slice(0, maximum).map((item) => JSON.parse(item.record!));
 }
 
-/** Convert D1 decimal text to catalog numbers. */
+/** Parse catalog numbers. */
 export function hotHistoryNumbers(
   row: Record<string, unknown>,
   columns: readonly string[],
