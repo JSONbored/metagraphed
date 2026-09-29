@@ -179,7 +179,10 @@ import {
   loadAccountParents,
 } from "../../src/child-hotkey-delegation.ts";
 import { loadSudoKey } from "../../src/sudo-key.ts";
-import { readNeuronEconomicsRows } from "../../src/neuron-snapshot-read.ts";
+import {
+  readNeuronEconomicsRows,
+  readNeuronDailyMetricRows,
+} from "../../src/neuron-snapshot-read.ts";
 import { H160_PATTERN, loadAddressMapping } from "../../src/address-mapping.ts";
 import { loadNetworkParameters } from "../../src/network-parameters.ts";
 import { loadRandomnessStatus } from "../../src/randomness.ts";
@@ -4026,13 +4029,15 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
     ReadStoreDb | undefined;
 
   const neuronRows = db
-    ? await db.query<HistoryRow>(
+    ? await readNeuronDailyMetricRows<HistoryRow>(
+        db,
+        env,
+        netuid,
+        cutoff,
         // `hotkey` is selected only so the owner's unconditional permit can be kept
         // out of the observed floor.
-        "SELECT snapshot_date, hotkey, stake_tao, validator_permit, dividends, active " +
-          "FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? " +
-          "ORDER BY snapshot_date DESC LIMIT ?",
-        [netuid, cutoff, VALIDATOR_ECONOMICS_HISTORY_ROW_CAP],
+        "snapshot_date, hotkey, stake_tao, validator_permit, dividends, active",
+        VALIDATOR_ECONOMICS_HISTORY_ROW_CAP,
       )
     : [];
 
