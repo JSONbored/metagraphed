@@ -342,6 +342,7 @@ describe("MCP tool registry", () => {
       // tests/mcp-tool-annotations.test.ts.
       if (
         ![
+          "invoke_tool",
           "write_subnet_surface",
           "store_surface_credential",
           "delete_surface_credential",

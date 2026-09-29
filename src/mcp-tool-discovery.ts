@@ -34,15 +34,45 @@ export const SearchToolsInputSchema = z
         "Exact tool name or words describing the task, for example account history.",
       )
       .meta({ examples: ["get_account_history"] }),
-    cursor: CursorSchema.optional().describe(
-      "Unchanged next_cursor from the previous page; omit to start a search.",
-    ),
+    cursor: CursorSchema.optional()
+      .describe(
+        "Unchanged next_cursor from the previous page; omit to start a search.",
+      )
+      .meta({
+        examples: [
+          { version: "current-deployment-id", query: "account", offset: 3 },
+        ],
+      }),
+  })
+  .strict();
+
+const JsonDocumentSchema = z.record(z.string(), z.json());
+const ToolDefinitionSchema = z
+  .object({
+    name: z.string(),
+    title: z.string(),
+    description: z.string(),
+    inputSchema: JsonDocumentSchema,
+    outputSchema: JsonDocumentSchema.optional(),
+    annotations: z
+      .object({
+        readOnlyHint: z.boolean(),
+        destructiveHint: z.boolean(),
+        idempotentHint: z.boolean(),
+        openWorldHint: z.boolean(),
+      })
+      .strict(),
+    execution: z.object({ taskSupport: z.literal("forbidden") }).strict(),
+    _meta: z
+      .object({ "metagraph.sh/auth_required": z.boolean() })
+      .strict()
+      .optional(),
   })
   .strict();
 
 export const SearchToolsOutputSchema = z
   .object({
-    tools: z.array(z.record(z.string(), z.unknown())).max(3),
+    tools: z.array(ToolDefinitionSchema).max(3),
     total: z.int().min(0),
     next_cursor: CursorSchema.nullable(),
   })
@@ -66,7 +96,7 @@ export const InvokeToolInputSchema = z
 
 // The result is the target tool's complete structuredContent, described by the
 // exact outputSchema returned by search_tools. No target fields are projected.
-export const InvokeToolOutputSchema = z.record(z.string(), z.unknown());
+export const InvokeToolOutputSchema = JsonDocumentSchema;
 
 export function searchToolDefinitions<
   T extends { name: string; title: string; description: string },

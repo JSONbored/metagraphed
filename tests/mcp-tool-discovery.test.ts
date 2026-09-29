@@ -77,14 +77,16 @@ describe("bounded tool discovery", () => {
       total: 1,
       next_cursor: null,
     });
-    const selected = JSON.stringify(body.result.structuredContent).length;
-    const whole = JSON.stringify(full).length;
+    const bytes = (value: unknown) =>
+      new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    const selected = bytes(body.result.structuredContent);
+    const whole = bytes(full);
     assert.ok(selected < whole / 20);
     console.log(
       JSON.stringify({
         catalogBytes: whole,
         selectedDefinitionBytes: selected,
-        coreBytes: JSON.stringify(listToolDefinitions("core")).length,
+        coreBytes: bytes(listToolDefinitions("core")),
       }),
     );
   });
@@ -374,7 +376,11 @@ describe("discovered invocation preserves the target dispatcher", () => {
       direct.response.headers.get("www-authenticate"),
     );
     assert.deepEqual(bridge.body, direct.body);
-    assert.deepEqual(bridge.events, []);
+    assert.equal(bridge.events.length, 1);
+    assert.equal(direct.events.length, 1);
+    assert.equal(bridge.events[0].requestStage, "refused");
+    assert.equal(bridge.events[0].errorStatus, 401);
+    assert.equal(bridge.events[0].toolName, undefined);
     assert.deepEqual(
       authRequiredToolsIn([
         { method: "ping" },
