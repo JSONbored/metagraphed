@@ -126,6 +126,62 @@ test("a late D1 delete failure rolls back every detail table and coverage", asyn
   assert.equal(pg.control.connects, 0);
 });
 
+test("an account-event backlog is bounded from its own floor", async () => {
+  await seed();
+  const old = accountFloor - 10_000;
+  for (const block of [old, old + 119, old + 120, accountFloor - 1])
+    await db
+      .prepare(
+        "INSERT OR IGNORE INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)",
+      )
+      .bind(block)
+      .run();
+  const result = await pruneChainDetail(env(), ctx);
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 120);
+  assert.deepEqual(await blocks("chain_detail_account_events"), [
+    old + 120,
+    accountFloor - 1,
+    accountFloor,
+    floor,
+    floor + 119,
+    floor + 120,
+    head,
+  ]);
+});
+
+test("a later D1 chunk failure leaves a complete pruned prefix", async () => {
+  await seed();
+  await db
+    .prepare(
+      `CREATE TRIGGER reject_prune BEFORE DELETE ON chain_detail_blocks
+       WHEN OLD.block_number >= ${floor + 10}
+       BEGIN SELECT RAISE(ABORT,'later chunk rejected'); END`,
+    )
+    .run();
+  const result = await pruneChainDetail(env(), ctx);
+  assert.equal(result.ok, false);
+  assert.equal(result.blocks_pruned, undefined);
+  assert.match(result.detail!, /later chunk rejected/);
+  for (const table of tables)
+    assert.deepEqual(
+      await blocks(table),
+      table === "chain_detail_account_events"
+        ? [accountFloor, floor, floor + 119, floor + 120, head]
+        : [floor + 119, floor + 120, head],
+    );
+});
+
+test("an empty account-event table does not prevent bounded coverage cleanup", async () => {
+  await seed();
+  await db.prepare("DELETE FROM chain_detail_account_events").run();
+  const result = await pruneChainDetail(env(), ctx);
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 120);
+  assert.deepEqual(await blocks("chain_detail_account_events"), []);
+  assert.deepEqual(await blocks("chain_detail_blocks"), [floor + 120, head]);
+});
+
 function selectedHistory(through: Record<string, number>, firstBlock = 0) {
   return {
     NATIVE_PROJECTIONS: "enabled",

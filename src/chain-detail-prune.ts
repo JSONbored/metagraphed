@@ -150,6 +150,8 @@ export const ACCOUNT_EVENTS_MIN_RETAINED_BLOCKS = 9_000;
  * maintenance job turns into an outage.
  */
 export const CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN = 120;
+/** Keep each D1 transaction short enough for ordinary ingestion and readers. */
+const D1_PRUNE_BLOCKS_PER_TRANSACTION = 10;
 
 /**
  * The four tables, with the COVERAGE REGISTER deleted last -- the mirror image
@@ -250,7 +252,7 @@ export interface ChainDetailPruneResult {
    * runner. */
   neon_pruned?: boolean;
   neon_detail?: string;
-  /** The selected D1 owner committed all four deletes atomically. */
+  /** The selected D1 owner committed each bounded group of four deletes atomically. */
   d1_pruned?: boolean;
 }
 
@@ -324,18 +326,40 @@ export async function pruneChainDetail(
       "d1_pruned" | "neon_pruned" | "neon_detail"
     >;
     if (d1) {
-      // Coverage and detail disappear in one transaction. A failed delete
-      // must preserve the previous window and report a failed prune.
-      await d1.transaction(
-        PRUNE_TABLES.map((table) => ({
-          text: `DELETE FROM ${table} WHERE block_number < ?`,
-          values: [
-            table === "chain_detail_account_events"
-              ? accountEventsDeletedBelow
-              : deletedBelow,
-          ],
-        })),
+      // Account events retain a deeper window, so their oldest row can be
+      // thousands of blocks below the coverage register's floor. Starting
+      // their cap at that register made one nominally bounded delete take
+      // 54.7 seconds. Bound this table from its own indexed minimum instead.
+      const accountBounds = await d1.first<{ floor: unknown }>(
+        "SELECT MIN(block_number) AS floor FROM chain_detail_account_events",
       );
+      const accountFloor =
+        safeIntOrNull(accountBounds!.floor) ?? accountEventsDeletedBelow;
+      for (
+        let offset = 0;
+        offset < deletedBelow - floor;
+        offset += D1_PRUNE_BLOCKS_PER_TRANSACTION
+      ) {
+        // Each completed prefix is safe: its detail and coverage disappear
+        // together. A later failure preserves its entire chunk and reports
+        // failure without claiming that the whole requested window finished.
+        await d1.transaction(
+          PRUNE_TABLES.map((table) => {
+            const account = table === "chain_detail_account_events";
+            const first = (account ? accountFloor : floor) + offset;
+            return {
+              text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?`,
+              values: [
+                first,
+                Math.min(
+                  account ? accountEventsDeletedBelow : deletedBelow,
+                  first + D1_PRUNE_BLOCKS_PER_TRANSACTION,
+                ),
+              ],
+            };
+          }),
+        );
+      }
       outcome = { d1_pruned: true };
     } else {
       outcome = await pruneChainDetailNeon(
