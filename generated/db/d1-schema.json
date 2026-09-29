@@ -457,6 +457,12 @@
   },
   {
     "type": "index",
+    "name": "idx_surface_uptime_day",
+    "tbl_name": "surface_uptime_daily",
+    "sql": "CREATE INDEX idx_surface_uptime_day ON surface_uptime_daily(day)"
+  },
+  {
+    "type": "index",
     "name": "idx_surface_uptime_key_day",
     "tbl_name": "surface_uptime_daily",
     "sql": "CREATE UNIQUE INDEX idx_surface_uptime_key_day ON surface_uptime_daily(surface_key,day) WHERE surface_key IS NOT NULL"

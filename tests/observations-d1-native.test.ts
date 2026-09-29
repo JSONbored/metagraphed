@@ -65,11 +65,15 @@ const status = (id: string) =>
     .first();
 beforeAll(async () => {
   db = await runtime.getD1Database("DB");
-  for (const s of readFileSync(
-    new URL("../migrations/d1/0008_observations.sql", import.meta.url),
-    "utf8",
-  ).split("-- statement-breakpoint"))
-    if (s.trim()) await db.prepare(s).run();
+  for (const file of [
+    "0008_observations.sql",
+    "0034_uptime_daily_day_index.sql",
+  ])
+    for (const s of readFileSync(
+      new URL(`../migrations/d1/${file}`, import.meta.url),
+      "utf8",
+    ).split("-- statement-breakpoint"))
+      if (s.trim()) await db.prepare(s).run();
 });
 afterAll(async () => runtime.dispose());
 beforeEach(async () => {
@@ -393,6 +397,55 @@ test("rollups retain displaced aliases and use the latest subnet identity", asyn
   assert.equal(current?.p95_latency_ms, null);
 });
 
+test("an empty raw day preserves its retained summary while another day refreshes", async () => {
+  const next = {
+    date: "2026-09-23",
+    start: day.end,
+    end: day.end + 86_400_000,
+  };
+  await persistProbesToNeon(sql(), [probe("kept", "kept-key", day.start)], now);
+  await persistProbesToNeon(
+    sql(),
+    [probe("fresh", "fresh-key", next.start)],
+    now,
+  );
+  assert.equal(
+    (await rollupUptimeDailyToNeon(sql(), [day, next], now)).ok,
+    true,
+  );
+  const readDay = (date: string) =>
+    db
+      .prepare(
+        "SELECT * FROM surface_uptime_daily WHERE day=? ORDER BY surface_id",
+      )
+      .bind(date)
+      .all();
+  const original = (await readDay(day.date)).results;
+  await db
+    .prepare("DELETE FROM surface_checks WHERE checked_at<?")
+    .bind(next.start)
+    .run();
+  await persistProbesToNeon(
+    sql(),
+    [probe("fresh", "fresh-key", next.start + 1)],
+    now,
+  );
+  assert.equal(
+    (await rollupUptimeDailyToNeon(sql(), [day, next], now + 1)).ok,
+    true,
+  );
+  assert.deepEqual((await readDay(day.date)).results, original);
+  assert.equal((await readDay(next.date)).results[0]?.samples, 2);
+  const refreshed = (await readDay(next.date)).results;
+  await db.prepare("DELETE FROM surface_checks").run();
+  assert.equal(
+    (await rollupUptimeDailyToNeon(sql(), [day, next], now + 2)).ok,
+    true,
+  );
+  assert.deepEqual((await readDay(day.date)).results, original);
+  assert.deepEqual((await readDay(next.date)).results, refreshed);
+});
+
 test("bounded day and identity materialization preserves scaled rollup rows and avoids recomputation", async () => {
   await db
     .prepare(
@@ -424,6 +477,24 @@ test("bounded day and identity materialization preserves scaled rollup rows and 
     true,
   );
   const query = statements[1]!;
+  const replacement = statements[0]!;
+  const replacementPlan = (
+    await db
+      .prepare("EXPLAIN QUERY PLAN " + replacement.text)
+      .bind(...replacement.values!)
+      .all<{ detail: string }>()
+  ).results
+    .map((row) => row.detail)
+    .join("\n");
+  assert.match(
+    replacementPlan,
+    /SEARCH surface_uptime_daily USING INDEX idx_surface_uptime_day \(day=\?\)/,
+  );
+  assert.match(
+    replacementPlan,
+    /SEARCH surface_checks USING COVERING INDEX idx_surface_checks_time/,
+  );
+  assert.doesNotMatch(replacementPlan, /SCAN surface_uptime_daily/);
   const plan = (
     await db
       .prepare("EXPLAIN QUERY PLAN " + query.text)

@@ -168,6 +168,8 @@ CREATE UNIQUE INDEX idx_surface_status_key ON surface_status(surface_key) WHERE 
 
 CREATE INDEX idx_surface_status_netuid ON surface_status(netuid);
 
+CREATE INDEX idx_surface_uptime_day ON surface_uptime_daily(day);
+
 CREATE UNIQUE INDEX idx_surface_uptime_key_day ON surface_uptime_daily(surface_key,day) WHERE surface_key IS NOT NULL;
 
 CREATE INDEX idx_surface_uptime_netuid_day ON surface_uptime_daily(netuid,day DESC);
