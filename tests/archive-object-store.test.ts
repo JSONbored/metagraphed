@@ -487,6 +487,49 @@ describe("shared archive object storage", () => {
     expect(await (await body(f.store)).text()).toBe("concurrent");
   });
 
+  it("conditionally refreshes only an unchanged existing source", async () => {
+    const f = fixture();
+    const source = f.record(Buffer.from("existing"));
+    const options = { onlyIf: { etagMatches: source.etag } };
+    expect(await f.store.put(key, "next", options)).toBeNull();
+    f.set(prefix + key, { version: 1, bucket, key, deleted: true });
+    expect(await f.store.put(key, "next", options)).toBeNull();
+    f.set(prefix + key, source);
+    expect(
+      await f.store.put(key, "next", { onlyIf: { etagMatches: "stale" } }),
+    ).toBeNull();
+    expect(await (await body(f.store)).text()).toBe("existing");
+    expect((await f.store.put(key, "next", options))?.etag).toBe(
+      hash(Buffer.from("next"), "md5"),
+    );
+    expect(await (await body(f.store)).text()).toBe("next");
+  });
+
+  it("returns a conditional conflict for either CAS loss or post-write supersession", async () => {
+    for (const phase of ["before", "after"]) {
+      const f = fixture();
+      const source = f.record(Buffer.from("existing"));
+      f.set(prefix + key, source);
+      let updated = false;
+      f.fail((sql) => {
+        if (sql.startsWith("UPDATE")) {
+          updated = true;
+          if (phase === "before")
+            f.set(prefix + key, f.record(Buffer.from("winner")));
+        } else if (phase === "after" && updated && sql.startsWith("SELECT")) {
+          f.set(prefix + key, f.record(Buffer.from("winner")));
+        }
+      });
+      expect(
+        await f.store.put(key, "candidate", {
+          onlyIf: { etagMatches: source.etag },
+        }),
+      ).toBeNull();
+      f.fail(undefined);
+      expect(await (await body(f.store)).text()).toBe("winner");
+    }
+  });
+
   it("bounds keys, descriptors, write sizes, ranges and unsupported options", async () => {
     const f = fixture();
     for (const key of ["../escape", "/absolute", "p//x", "", "a".repeat(1025)])

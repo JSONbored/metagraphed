@@ -219,5 +219,6 @@ export async function computeTopHoldersHoldingsRefresh(
 export const TOP_HOLDERS_HOLDINGS_REFRESH_LANE: ProjectionLane = {
   name: "top-holders-holdings-refresh",
   artifactKey: TOP_HOLDERS_FLOW_PROJECTION_KEY,
+  refreshExisting: true,
   compute: computeTopHoldersHoldingsRefresh,
 };
