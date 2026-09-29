@@ -24,6 +24,7 @@ import {
   AI_GATEWAY_CACHE_TTL_SECONDS,
 } from "../src/ai-search.ts";
 import { handleRequest, handleScheduled } from "../workers/api.ts";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { overlayCatalogIndex } from "../src/health-serving.ts";
 import {
@@ -2038,4 +2039,217 @@ describe("AI Gateway on the embedding path (metagraphed-infra#362)", () => {
     const embed = ai.calls.find((c) => c.model === EMBED_MODEL);
     assert.equal(embed?.options, undefined);
   });
+});
+
+// A stalled analytics receiver must not stall a user response. Hold actual
+// capture fetches open, then drain the registered lifetime after the assertion.
+// This exercises delivery as well as the absence of a response dependency.
+describe("AI request telemetry runs in the Worker background lifetime", () => {
+  async function withDeferredCaptures(
+    run: (
+      calls: Row[],
+      ctx: { waitUntil: (pending: Promise<unknown>) => void },
+    ) => Promise<void>,
+  ) {
+    const original = globalThis.fetch;
+    const calls: Row[] = [];
+    const background: Promise<unknown>[] = [];
+    let release!: () => void;
+    const receiver = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    globalThis.fetch = (async (_url: unknown, init: Row) => {
+      calls.push(JSON.parse(init.body));
+      await receiver;
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    const work = run(calls, {
+      waitUntil(pending) {
+        background.push(pending);
+      },
+    });
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        work,
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(
+            () => reject(new Error("response waited for PostHog delivery")),
+            2000,
+          );
+        }),
+      ]);
+      assert.ok(background.length > 0, "capture lifetime must be retained");
+    } finally {
+      clearTimeout(timeout);
+      release();
+      await work.catch(() => {});
+      await Promise.all(background);
+      globalThis.fetch = original;
+    }
+  }
+
+  function observedEnv(overrides: Row = {}) {
+    return mockEnv(
+      aiWorkerEnv({ [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test", ...overrides }),
+    );
+  }
+
+  test("ask returns its answer while both correlated captures are pending", async () => {
+    await withDeferredCaptures(async (calls, executionCtx) => {
+      const out = await askQuestion(
+        observedEnv(),
+        "images",
+        {},
+        {
+          distinctId: "github:example",
+          executionCtx,
+        },
+      );
+      assert.equal(out.answer, "Subnet 1 does images [1].");
+      const [embedding, generation] = calls;
+      assert.equal(embedding.event, "$ai_embedding");
+      assert.equal(generation.event, "$ai_generation");
+      assert.equal(calls.length, 2, "no duplicate analytics events");
+      assert.equal(embedding.distinct_id, "github:example");
+      assert.equal(generation.distinct_id, "github:example");
+      assert.equal(
+        embedding.properties.$ai_trace_id,
+        generation.properties.$ai_trace_id,
+      );
+      assert.equal(generation.properties.$ai_input_tokens, 120);
+      assert.equal(generation.properties.$ai_output_tokens, 40);
+      assert.ok(generation.properties.$ai_total_cost_usd > 0);
+    });
+  });
+
+  for (const failure of ["embedding", "malformed", "generation"]) {
+    test(`${failure} failure is returned while its capture is pending`, async () => {
+      await withDeferredCaptures(async (calls, executionCtx) => {
+        const normal = stubAi();
+        const env = observedEnv({
+          AI: {
+            run(model: string, input: Row) {
+              if (failure === "malformed") return Promise.resolve({ data: [] });
+              if ((model === EMBED_MODEL) === (failure === "embedding")) {
+                return Promise.reject(new Error(`${failure} unavailable`));
+              }
+              return normal.run(model, input);
+            },
+          },
+        });
+        await assert.rejects(
+          askQuestion(env, "images", {}, { executionCtx }),
+          failure === "malformed" ? /no vector/ : /unavailable/,
+        );
+        assert.equal(calls.length, failure === "generation" ? 2 : 1);
+        assert.equal(calls.at(-1)?.properties.$ai_is_error, true);
+      });
+    });
+  }
+
+  test("rate-limit refusal does not wait for its degraded event", async () => {
+    await withDeferredCaptures(async (calls, executionCtx) => {
+      const allowed = await withinRateLimit(
+        observedEnv({
+          AI_RATE_LIMITER: { limit: async () => ({ success: false }) },
+        }),
+        "caller",
+        "ask",
+        { distinctId: "ip:example", executionCtx },
+      );
+      assert.equal(allowed, false);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].distinct_id, "ip:example");
+      assert.equal(calls[0].properties.$process_person_profile, false);
+    });
+  });
+
+  for (const endpoint of ["semantic", "ask"]) {
+    for (const fails of [false, true]) {
+      test(`REST ${endpoint} preserves ${fails ? 502 : 200} without waiting for telemetry`, async () => {
+        await withDeferredCaptures(async (calls, ctx) => {
+          const env = observedEnv(
+            fails
+              ? {
+                  AI: {
+                    run: async () => {
+                      throw new Error("model down");
+                    },
+                  },
+                }
+              : {},
+          );
+          const request =
+            endpoint === "semantic"
+              ? new Request(`${SEMANTIC_URL}?q=images`)
+              : new Request(ASK_URL, {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ question: "images" }),
+                });
+          const response = await handleRequest(request, env, ctx);
+          assert.equal(response.status, fails ? 502 : 200);
+          assert.equal(
+            calls.filter((c) => c.event === "$ai_embedding").length,
+            1,
+          );
+          assert.equal(
+            calls.filter((c) => c.event === "$exception").length,
+            fails ? 1 : 0,
+          );
+        });
+      });
+    }
+  }
+
+  for (const path of ["/mcp", "/mcp/core"]) {
+    for (const tool of ["semantic_search", "ask", "find_subnet_for_task"]) {
+      test(`${path} ${tool} retains caller attribution without waiting for captures`, async () => {
+        await withDeferredCaptures(async (calls, ctx) => {
+          const response = await handleMcpRequest(
+            new Request(`https://api.metagraph.sh${path}`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                id: 1,
+                method: "tools/call",
+                params: {
+                  name: tool,
+                  arguments:
+                    tool === "ask"
+                      ? { question: "images" }
+                      : tool === "semantic_search"
+                        ? { q: "images" }
+                        : { task: "images" },
+                },
+              }),
+            }),
+            observedEnv(),
+            {
+              executionCtx: { ...ctx, props: { githubLogin: "example" } },
+              readArtifact: async (_env, path) => ({
+                ok: true,
+                data: path.includes("agent-catalog")
+                  ? { subnets: [{ netuid: 1, name: "One", callable_count: 1 }] }
+                  : { documents: [] },
+                source: "test",
+                storage_tier: "git",
+              }),
+              readHealthKv: async () => null,
+            },
+          );
+          const body = (await response.json()) as Row;
+          assert.equal(body.result.isError, false);
+          const embedding = calls.find((c) => c.event === "$ai_embedding");
+          assert.ok(embedding, "semantic embedding must remain instrumented");
+          assert.equal(embedding.distinct_id, "github:example");
+          if (tool === "find_subnet_for_task") {
+            assert.equal(body.result.structuredContent.discovery, "semantic");
+          }
+        });
+      });
+    }
+  }
 });
