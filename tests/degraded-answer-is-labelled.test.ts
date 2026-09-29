@@ -21,13 +21,13 @@ import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 // the answer was still a 200, that 200 must say so.
 import assert from "node:assert/strict";
 import { visibleInWindow } from "./helpers/scan-window.ts";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import {
   degradedSnapshot,
   labelDegradedResponse,
 } from "../workers/request-handlers/analytics.ts";
-import { currentIndexedHistoryFailureGeneration } from "../src/indexed-history-status.ts";
+import * as indexedHistoryStatus from "../src/indexed-history-status.ts";
 import { OFFSET_EMULATION_CAP } from "../src/r2-sql-blocks.ts";
 import { API_ROUTES, FEED_ROUTES } from "../src/contracts.ts";
 import { concretePath } from "./concrete-path.ts";
@@ -270,29 +270,37 @@ describe("no registered route serves an unlabelled decline (#10270)", () => {
     const unlabelled: string[] = [];
     const threw: string[] = [];
 
-    await withFetch(refusingLakehouse, async () => {
-      for (const route of EVERY_ROUTE) {
-        const before = currentIndexedHistoryFailureGeneration();
-        let res: Response;
-        try {
-          res = (await handleRequest(
-            apiRequest(concretePath(route.path)),
-            LAKEHOUSE_ENV,
-            {},
-          )) as Response;
-        } catch (error) {
-          threw.push(`${route.path}: ${(error as Error).message}`);
-          continue;
+    const failures = vi.spyOn(
+      indexedHistoryStatus,
+      "recordIndexedHistoryFailure",
+    );
+    try {
+      await withFetch(refusingLakehouse, async () => {
+        for (const route of EVERY_ROUTE) {
+          const before = failures.mock.calls.length;
+          let res: Response;
+          try {
+            res = (await handleRequest(
+              apiRequest(concretePath(route.path)),
+              LAKEHOUSE_ENV,
+              {},
+            )) as Response;
+          } catch (error) {
+            threw.push(`${route.path}: ${(error as Error).message}`);
+            continue;
+          }
+          // Observe actual read failures; their counters now belong to each
+          // HTTP request and deliberately cannot be inspected from outside it.
+          if (failures.mock.calls.length === before) continue;
+          exercised.push(route.path);
+          if (res.status === 200 && !res.headers.get(DEGRADED_HEADER)) {
+            unlabelled.push(route.path);
+          }
         }
-        // The counter is the whole discriminator: a route that never asked the
-        // lakehouse has nothing to declare, and needs no exemption entry here.
-        if (currentIndexedHistoryFailureGeneration() === before) continue;
-        exercised.push(route.path);
-        if (res.status === 200 && !res.headers.get(DEGRADED_HEADER)) {
-          unlabelled.push(route.path);
-        }
-      }
-    });
+      });
+    } finally {
+      failures.mockRestore();
+    }
 
     assert.deepEqual(
       threw,
