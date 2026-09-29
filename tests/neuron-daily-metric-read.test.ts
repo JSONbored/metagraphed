@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, test } from "vitest";
 import { Miniflare } from "miniflare";
 import { createD1Store } from "../src/d1-store.ts";
-import { readNeuronDailyMetricRows } from "../src/neuron-snapshot-read.ts";
+import {
+  readNeuronDailyMetricRows,
+  readNeuronPerformanceRows,
+} from "../src/neuron-snapshot-read.ts";
+import {
+  buildChainPerformance,
+  CHAIN_PERFORMANCE_READ_COLUMNS,
+} from "../src/chain-performance.ts";
 
 const runtime = new Miniflare({
   modules: true,
@@ -35,6 +42,10 @@ beforeAll(async () => {
                 dividends: uid / 1000,
                 emission_tao: uid / 10000,
                 incentive: uid / 200,
+                trust: uid / 300,
+                consensus: uid / 400,
+                validator_trust: uid % 2 ? null : uid / 500,
+                captured_at: 1790090000000 + netuid,
                 axon: { port: 80 },
               },
             ];
@@ -66,6 +77,17 @@ beforeAll(async () => {
        WHERE shard=0`,
     )
     .run();
+  await db.batch([
+    db.prepare(`INSERT INTO neurons_documents
+      SELECT netuid,'',shard,stamp,payload FROM neuron_daily_documents
+      WHERE day='2026-09-21'`),
+    db.prepare(`INSERT INTO neurons_members
+      SELECT netuid,uid,hotkey,coldkey,shard FROM neuron_daily_members
+      WHERE snapshot_date='2026-09-21'`),
+    db.prepare(`INSERT INTO neurons_documents
+      SELECT netuid,'ignored',shard,stamp,jsonb('{"0":{"incentive":999}}')
+      FROM neuron_daily_documents WHERE day='2026-09-21'`),
+  ]);
 });
 afterAll(() => runtime.dispose());
 
@@ -182,4 +204,38 @@ test("fallback preserves the bounded query and malformed projections never reach
     ),
     /Selected D1 store is unbound/,
   );
+});
+
+test("network performance expands each live shard once with exact view and artifact parity", async () => {
+  const store = createD1Store(db);
+  const expected = await store.query(
+    `SELECT ${CHAIN_PERFORMANCE_READ_COLUMNS} FROM neurons ORDER BY netuid,uid`,
+  );
+  let captured = "";
+  const binding = {
+    batch: db.batch.bind(db),
+    prepare(text: string) {
+      captured = text;
+      return db.prepare(text);
+    },
+  };
+  const env = { D1_STATE: binding, D1_STATE_TABLES: "neurons" };
+  const actual = await readNeuronPerformanceRows(store, env);
+  assert.deepEqual(actual, expected);
+  assert.equal(actual.length, 252);
+  assert.deepEqual(
+    buildChainPerformance(actual),
+    buildChainPerformance(expected),
+  );
+  assert.deepEqual(await readNeuronPerformanceRows(store, {}), expected);
+  const plan = (
+    await db.prepare(`EXPLAIN QUERY PLAN ${captured}`).all<{ detail: string }>()
+  ).results
+    .map((row) => row.detail)
+    .join("\n");
+  assert.match(plan, /MATERIALIZE metrics/);
+  assert.match(plan, /SCAN j VIRTUAL TABLE/);
+  assert.doesNotMatch(plan, /CORRELATED/);
+  await db.prepare("DELETE FROM neurons_members").run();
+  assert.deepEqual(await readNeuronPerformanceRows(store, env), []);
 });
