@@ -10,6 +10,10 @@ import {
   readDirectoryNominatorCounts,
   readSubnetNeuronRows,
   readNeuronEconomicsRows,
+  readNeuronAggregates,
+  readNewestNeuronCapture,
+  NEURON_DOCUMENT_AGGREGATE_QUERY,
+  NEWEST_NEURON_CAPTURE_QUERY,
 } from "../src/neuron-snapshot-read.ts";
 import type { PgSql } from "../src/pg-sql.ts";
 
@@ -17,7 +21,7 @@ const runtime = new Miniflare({
   modules: true,
   script: "export default {fetch(){return new Response('test')}}",
   compatibilityDate: "2026-06-06",
-  d1Databases: ["DB"],
+  d1Databases: ["DB", "AGG"],
 });
 let db: D1Database;
 const stamp = 1790090000000;
@@ -84,6 +88,103 @@ beforeAll(async () => {
   await db.prepare("UPDATE neurons_members SET shard=99 WHERE uid=9").run();
 });
 afterAll(() => runtime.dispose());
+
+test("neuron aggregate and freshness scans preserve the membership view", async () => {
+  const binding = await runtime.getD1Database("AGG");
+  for (const statement of readFileSync(
+    new URL("../migrations/d1/0007_neuron_documents.sql", import.meta.url),
+    "utf8",
+  ).split("-- statement-breakpoint"))
+    if (statement.trim()) await binding.prepare(statement).run();
+  const store = createD1Store(binding);
+  const sql = createD1Sql(store);
+  const env = { D1_STATE: binding, D1_STATE_TABLES: "neurons" };
+  const compare = async () => {
+    assert.deepEqual(
+      await readNeuronAggregates(store, env),
+      await readNeuronAggregates(store, {}),
+    );
+    assert.equal(
+      await readNewestNeuronCapture(unexpectedSql, env),
+      await readNewestNeuronCapture(sql, {}),
+    );
+  };
+  await compare();
+  assert.equal(await readNewestNeuronCapture(unexpectedSql, env), 0);
+  for (const netuid of [0, 7, 128]) {
+    await binding
+      .prepare("INSERT INTO neurons_documents VALUES (?,'',0,?,jsonb(?))")
+      .bind(
+        netuid,
+        stamp,
+        JSON.stringify({
+          "0": { stake_tao: 12, validator_permit: 1, captured_at: stamp },
+          "1": { stake_tao: null, validator_permit: 0, captured_at: null },
+          "2": { stake_tao: 3, validator_permit: 2, captured_at: stamp + 1 },
+          "9": { stake_tao: 999, validator_permit: 1, captured_at: stamp + 99 },
+          "00": {
+            stake_tao: 999,
+            validator_permit: 1,
+            captured_at: stamp + 99,
+          },
+        }),
+      )
+      .run();
+    for (const [uid, shard] of [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [3, 0],
+      [9, 1],
+    ])
+      await binding
+        .prepare("INSERT INTO neurons_members VALUES (?,?,NULL,NULL,?)")
+        .bind(netuid, uid, shard)
+        .run();
+  }
+  // Metrics without a membership, missing metrics, mismatched shards, root
+  // subnet and non-boolean SQLite truth values must retain the same meaning.
+  await compare();
+  assert.deepEqual((await readNeuronAggregates(store, env))[0], {
+    netuid: 0,
+    uid_count: 4,
+    validator_count: 2,
+    total_stake_alpha: 15,
+    max_stake_alpha: 12,
+  });
+  assert.equal(await readNewestNeuronCapture(unexpectedSql, env), stamp + 1);
+  await binding
+    .prepare("UPDATE neurons_documents SET payload=jsonb('{}')")
+    .run();
+  await compare();
+  assert.deepEqual((await readNeuronAggregates(store, env))[0], {
+    netuid: 0,
+    uid_count: 4,
+    validator_count: 0,
+    total_stake_alpha: null,
+    max_stake_alpha: null,
+  });
+  for (const query of [
+    NEURON_DOCUMENT_AGGREGATE_QUERY,
+    NEWEST_NEURON_CAPTURE_QUERY,
+  ]) {
+    const plan = await binding
+      .prepare(`EXPLAIN QUERY PLAN ${query}`)
+      .all<{ detail: string }>();
+    const steps = plan.results.map((row) => row.detail);
+    const expansion = steps.findIndex((step) =>
+      /(?:SCAN|SEARCH) j VIRTUAL TABLE/.test(step),
+    );
+    assert(expansion >= 0, steps.join("\n"));
+    assert(
+      steps
+        .slice(expansion + 1)
+        .some((step) => /SEARCH m USING PRIMARY KEY/.test(step)),
+    );
+  }
+  const empty = { unsafe: async () => [] } as unknown as PgSql;
+  assert(Number.isNaN(await readNewestNeuronCapture(empty, {})));
+});
 
 test("economic neuron projections preserve every row while expanding documents once", async () => {
   const legacy = createD1Store(db);

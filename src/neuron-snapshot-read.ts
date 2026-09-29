@@ -16,6 +16,69 @@ const EconomicsShardSchema = z.array(
   z.tuple([z.number(), z.string().nullable(), EconomicsValuesSchema]),
 );
 
+// stake_tao contains per-UID ALPHA stake despite its historical name (#8945).
+export const NEURON_AGGREGATE_QUERY =
+  "SELECT netuid, COUNT(*) AS uid_count, " +
+  "SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count, " +
+  "SUM(stake_tao) AS total_stake_alpha, MAX(stake_tao) AS max_stake_alpha " +
+  "FROM neurons GROUP BY netuid";
+
+// Count accepted memberships separately: a member with absent metrics still
+// exists in the public view. Expand each document once for the metric fold,
+// excluding orphan entries and memberships pointing at another shard.
+export const NEURON_DOCUMENT_AGGREGATE_QUERY = `
+  WITH members AS MATERIALIZED (
+    SELECT m.netuid,COUNT(*) AS uid_count
+    FROM neurons_documents d CROSS JOIN neurons_members m
+    WHERE d.day='' AND m.netuid=d.netuid AND m.shard=d.shard
+    GROUP BY m.netuid
+  ), metrics AS (
+    SELECT d.netuid,
+      SUM(CASE WHEN json_extract(j.value,'$.validator_permit') THEN 1 ELSE 0 END) AS validator_count,
+      SUM(json_extract(j.value,'$.stake_tao')) AS total_stake_alpha,
+      MAX(json_extract(j.value,'$.stake_tao')) AS max_stake_alpha
+    FROM neurons_documents d CROSS JOIN json_each(d.payload) j
+    CROSS JOIN neurons_members m
+    WHERE d.day='' AND m.netuid=d.netuid
+      AND m.uid=CAST(j.key AS INTEGER) AND j.key=CAST(m.uid AS TEXT)
+      AND m.shard=d.shard
+    GROUP BY d.netuid
+  )
+  SELECT m.netuid,m.uid_count,COALESCE(v.validator_count,0) AS validator_count,
+    v.total_stake_alpha,v.max_stake_alpha
+  FROM members m LEFT JOIN metrics v ON v.netuid=m.netuid`;
+
+export async function readNeuronAggregates(
+  db: UntypedRowQuerier,
+  env: unknown,
+): Promise<Record<string, unknown>[]> {
+  const store = selectedD1Store(env, ["neurons"]);
+  return store
+    ? store.query(NEURON_DOCUMENT_AGGREGATE_QUERY)
+    : db.query(NEURON_AGGREGATE_QUERY);
+}
+
+export const NEWEST_NEURON_CAPTURE_QUERY = `
+  SELECT MAX(json_extract(j.value,'$.captured_at')) AS captured_at
+  FROM neurons_documents d CROSS JOIN json_each(d.payload) j
+  CROSS JOIN neurons_members m
+  WHERE d.day='' AND m.netuid=d.netuid
+    AND m.uid=CAST(j.key AS INTEGER) AND j.key=CAST(m.uid AS TEXT)
+    AND m.shard=d.shard`;
+
+export async function readNewestNeuronCapture(
+  sql: PgSql,
+  env: unknown,
+): Promise<number> {
+  const store = selectedD1Store(env, ["neurons"]);
+  const rows = store
+    ? await store.query(NEWEST_NEURON_CAPTURE_QUERY)
+    : await sql.unsafe<{ captured_at: number | string | null }>(
+        "SELECT MAX(captured_at) AS captured_at FROM neurons",
+      );
+  return Number(rows[0]?.captured_at);
+}
+
 // A multi-path extraction returns JSON, while individual SQLite columns turn
 // booleans into integers and structured values into JSON text. Restore those
 // same column values when unpacking the compact response.

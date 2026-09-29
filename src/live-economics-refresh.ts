@@ -47,6 +47,8 @@
 // nobody can read.
 
 import { buildEconomicsArtifact } from "../scripts/lib/economics-artifacts.ts";
+import { readNeuronAggregates } from "./neuron-snapshot-read.ts";
+export { NEURON_AGGREGATE_QUERY } from "./neuron-snapshot-read.ts";
 import { shouldPublishEconomics } from "../scripts/economics-floor.ts";
 import { alphaPriceHistoryQuery } from "../scripts/lib/load-alpha-price-history.ts";
 import { indexAlphaPriceHistoryByNetuid } from "./alpha-price-change.ts";
@@ -292,23 +294,6 @@ export interface NeuronAggregate {
   max_stake_alpha: number | null;
 }
 
-/**
- * The per-UID half of the row, aggregated in SQL rather than pulled row by
- * row: `neurons` is latest-only and holds ~33k rows across the network, and
- * the four numbers this lane needs are a GROUP BY.
- *
- * `stake_tao` is the per-UID ALPHA stake despite the column name (the
- * repo-wide `*_tao`-holds-alpha naming, #8945) -- which is what makes it the
- * right source for `total_stake_alpha` / `max_stake_alpha`. Verified against
- * the live tier: netuid 64 aggregated to 3,895,629.026 / 2,114,915.958 against
- * a served 3,895,631.261 / 2,114,916.231 minutes apart.
- */
-export const NEURON_AGGREGATE_QUERY =
-  "SELECT netuid, COUNT(*) AS uid_count, " +
-  "SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count, " +
-  "SUM(stake_tao) AS total_stake_alpha, MAX(stake_tao) AS max_stake_alpha " +
-  "FROM neurons GROUP BY netuid";
-
 /** SQLite returns NULL for SUM/MAX over an empty group. `Number(null)` is a
  * perfectly finite 0, so the null check has to come FIRST -- otherwise "we
  * measured nothing" is published as "we measured zero stake". */
@@ -535,7 +520,7 @@ export async function refreshLiveEconomics(
       values[name] = await storage.readValue(hash, blockHash);
     }
 
-    const neuronRows = await db.query(NEURON_AGGREGATE_QUERY);
+    const neuronRows = await readNeuronAggregates(db, env);
     const neurons = indexNeuronAggregates(neuronRows);
     // `now` threaded, not defaulted: every other timestamp in this tick comes
     // from the injected clock, and a cutoff read off Date.now would put the
