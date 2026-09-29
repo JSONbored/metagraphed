@@ -33,7 +33,10 @@ import {
 import { CHAIN_OWNERSHIP_PROJECTION_KEY } from "./subnet-ownership-artifact.ts";
 import { fetchOwnershipChangeRows } from "./subnet-ownership-cold-tier.ts";
 
-import { artifactWriteBucket } from "./projection-store.ts";
+import {
+  artifactWriteBucket,
+  refreshExistingArtifact,
+} from "./projection-write-store.ts";
 
 import {
   type ChainNetworkId,
@@ -183,6 +186,8 @@ export interface ProjectionLane {
    * artifact reader gets — imported FROM the reader module so the writer and
    * reader cannot drift apart. */
   artifactKey: string;
+  /** One existing artifact is read and conditionally replaced; conflicts recompute. */
+  refreshExisting?: boolean;
   /** Reserved: a lane that needs its own cadence declares it and gets its own
    * dispatch branch. Every current lane runs on the shared
    * PROJECTION_LANES_CRON tick, so none sets this yet. */
@@ -1713,7 +1718,15 @@ export async function runProjectionLane(
     };
   }
   try {
-    const body = await lane.compute(env, network);
+    if (lane.refreshExisting && lane.split)
+      throw new Error("An artifact refresh cannot split its conditional write");
+    const body = lane.refreshExisting
+      ? await refreshExistingArtifact(
+          env,
+          projectionKey(lane.artifactKey, network),
+          () => lane.compute(env, network),
+        )
+      : await lane.compute(env, network);
     if (body === null) {
       console.error(
         `[projection:${label}] compute declined; previous artifact left in place`,
@@ -1742,9 +1755,11 @@ export async function runProjectionLane(
         reason: "compute_declined",
       };
     }
-    const objects = lane.split
-      ? lane.split(body)
-      : { [lane.artifactKey]: body };
+    const objects = lane.refreshExisting
+      ? {}
+      : lane.split
+        ? lane.split(body)
+        : { [lane.artifactKey]: body };
     for (const [key, value] of Object.entries(objects)) {
       await bucket.put(projectionKey(key, network), JSON.stringify(value));
     }

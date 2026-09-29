@@ -428,12 +428,33 @@ export function archiveObjectStore(env: ArchiveEnv) {
       blob: () => response.blob(),
     } satisfies R2ObjectBody;
   }
-  async function put(key: string, value: string) {
+  async function put(
+    key: string,
+    value: string,
+  ): Promise<ReturnType<typeof head>>;
+  async function put(
+    key: string,
+    value: string,
+    options: { onlyIf: { etagMatches: string } },
+  ): Promise<ReturnType<typeof head> | null>;
+  async function put(
+    key: string,
+    value: string,
+    options?: { onlyIf: { etagMatches: string } },
+  ) {
     keySchema.parse(key);
     if (typeof value !== "string" || Buffer.byteLength(value) > MAX_WRITE)
       throw new Error("Archive writer requires bounded text");
-    const previous = await selected(key),
-      raw = new TextEncoder().encode(value);
+    const previous = await selected(key);
+    const expected = options?.onlyIf.etagMatches;
+    if (
+      expected !== undefined &&
+      (!previous.value ||
+        "deleted" in previous.value ||
+        previous.value.etag !== expected)
+    )
+      return null;
+    const raw = new TextEncoder().encode(value);
     const packed = new Uint8Array(
       await new Response(
         new Response(raw).body!.pipeThrough(new CompressionStream("gzip")),
@@ -485,12 +506,13 @@ export function archiveObjectStore(env: ArchiveEnv) {
             "UPDATE generated_artifacts SET payload=?,updated_at=? WHERE key=? AND payload=? RETURNING key",
             [payload, object.modified, id, previous.raw],
           );
-    if (
-      rows.length !== 1 ||
-      rows[0].key !== id ||
-      (await selected(key)).raw !== payload
-    )
+    if (rows.length === 0 && expected !== undefined) return null;
+    if (rows.length !== 1 || rows[0].key !== id)
       throw new Error("Archive selection changed during write");
+    if ((await selected(key)).raw !== payload) {
+      if (expected !== undefined) return null;
+      throw new Error("Archive selection changed during write");
+    }
     return head(object);
   }
   return {

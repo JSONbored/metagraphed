@@ -498,6 +498,9 @@ describe("the lane and its cron", () => {
       { cron: TOP_HOLDERS_HOLDINGS_REFRESH_CRON } as never,
       {
         METAGRAPH_ARCHIVE: {
+          async head() {
+            return null;
+          },
           async get() {
             return null;
           },

@@ -37,29 +37,6 @@ export function artifactBucket(
   return isReadable(bucket) ? bucket : null;
 }
 
-/** Separate write port: read-only callers cannot acquire writes. */
-export interface ArtifactWriteStore {
-  put(key: string, value: string): Promise<unknown>;
-}
-
-export interface ArtifactWriteEnv {
-  METAGRAPH_ARCHIVE?: Partial<ArtifactWriteStore>;
-}
-
-function isWritable(
-  bucket: Partial<ArtifactWriteStore> | null | undefined,
-): bucket is ArtifactWriteStore {
-  return typeof bucket?.put === "function";
-}
-
-/** The archive bucket for writing, or null when nothing usable is bound. */
-export function artifactWriteBucket(
-  env: ArtifactWriteEnv | null | undefined,
-): ArtifactWriteStore | null {
-  const bucket = env?.METAGRAPH_ARCHIVE;
-  return isWritable(bucket) ? bucket : null;
-}
-
 /** Read the selected owner and validate its payload; failures decline the tier. */
 export async function readArtifactObject<T>(
   env: ArtifactStoreEnv | null | undefined,
