@@ -172,6 +172,22 @@ export const AI_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
   keyPrefix: "ai",
 };
 
+interface AiRequestDeps {
+  distinctId?: string;
+  executionCtx?: { waitUntil?: (pending: Promise<unknown>) => void };
+}
+
+// Preserve delivery through the request lifecycle without making PostHog a
+// prerequisite for search, answers or rate-limit refusals. Non-Worker callers
+// still await delivery because they have no background lifetime guarantee.
+async function finishAiCapture(
+  pending: Promise<boolean>,
+  ctx?: AiRequestDeps["executionCtx"],
+): Promise<void> {
+  if (ctx?.waitUntil) ctx.waitUntil(pending);
+  else await pending;
+}
+
 // Optional native Workers rate limiter. Absent in local/CI (and when the
 // binding is not configured) -> allow. Never throws. Still used by the MCP AI
 // tool path (src/mcp-server.ts); the REST AI endpoints now use the tiered
@@ -180,6 +196,7 @@ export async function withinRateLimit(
   env: Env,
   key: string,
   surface?: string,
+  deps: AiRequestDeps = {},
 ): Promise<boolean> {
   if (!env?.AI_RATE_LIMITER?.limit) return true;
   try {
@@ -190,7 +207,10 @@ export async function withinRateLimit(
     // failed $ai_generation, because no model call happened and folding it into
     // the generation error rate would misreport both errors and cost.
     if (!allowed) {
-      await recordAiDegradedEvent(env, { reason: "rate_limited", surface });
+      await finishAiCapture(
+        recordAiDegradedEvent(env, { reason: "rate_limited", surface }, deps),
+        deps.executionCtx,
+      );
     }
     return allowed;
   } catch {
@@ -508,7 +528,7 @@ export async function runEmbeddingSync(
 async function embedQuery(
   env: Env,
   text: string,
-  telemetry: { traceId?: string; traceName?: string; distinctId?: string } = {},
+  telemetry: AiRequestDeps & { traceId?: string; traceName?: string } = {},
 ): Promise<number[]> {
   const startedAt = Date.now();
   const record = (isError: boolean, error?: unknown) =>
@@ -535,7 +555,7 @@ async function embedQuery(
     { text: [text] },
     ...(gateway ? [gateway] : []),
   ).catch(async (error: unknown) => {
-    await record(true, error);
+    await finishAiCapture(record(true, error), telemetry.executionCtx);
     throw error;
   });
   const vector = response?.data?.[0];
@@ -543,10 +563,10 @@ async function embedQuery(
     const error = new Error("embedding model returned no vector");
     // A malformed response is a failed embedding, not a successful one — the
     // caller throws either way, and the event must agree.
-    await record(true, error);
+    await finishAiCapture(record(true, error), telemetry.executionCtx);
     throw error;
   }
-  await record(false);
+  await finishAiCapture(record(false), telemetry.executionCtx);
   return vector;
 }
 
@@ -663,6 +683,7 @@ export async function semanticSearch(
   env: Env,
   query: unknown,
   options: { limit?: unknown; type?: unknown } = {},
+  deps: AiRequestDeps = {},
 ): Promise<SemanticSearchResult> {
   const q = typeof query === "string" ? query.trim() : "";
   if (!q) throw aiInputError("Query parameter `q` is required.");
@@ -678,6 +699,7 @@ export async function semanticSearch(
   const types = normalizeSemanticTypes(options.type);
   const vector = await embedQuery(env, q, {
     traceName: SEMANTIC_TRACE_NAME,
+    ...deps,
   });
   const matches = await retrieveMatches(env, vector, limit, types);
   const results = matches.map(mapMatch);
@@ -724,7 +746,7 @@ export function formatAskContextBlock(
     .join("\n");
 }
 
-interface AskDeps {
+interface AskDeps extends AiRequestDeps {
   readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
   liveHealth?: unknown;
   /**
@@ -839,6 +861,7 @@ export async function askQuestion(
     traceId,
     traceName: ASK_TRACE_NAME,
     distinctId: deps.distinctId,
+    executionCtx: deps.executionCtx,
   });
   const matches = await retrieveMatches(env, vector, topK, types);
   const citations: AskCitation[] = matches.map((match, i) => {
@@ -872,7 +895,31 @@ export async function askQuestion(
     messages,
     max_tokens: ASK_MAX_TOKENS,
   }).catch(async (error) => {
-    await recordAiGenerationEvent(
+    await finishAiCapture(
+      recordAiGenerationEvent(
+        env,
+        {
+          provider: ASK_PROVIDER,
+          model: ASK_MODEL,
+          traceId,
+          traceName: ASK_TRACE_NAME,
+          latencyMs: Date.now() - generationStart,
+          isError: true,
+          error,
+          modelParameters,
+          input: messages,
+        },
+        { distinctId: deps.distinctId },
+      ),
+      deps.executionCtx,
+    );
+    throw error;
+  });
+  const inputTokens = completion?.usage?.prompt_tokens;
+  const outputTokens = completion?.usage?.completion_tokens;
+  const answer = (completion?.response || "").trim();
+  await finishAiCapture(
+    recordAiGenerationEvent(
       env,
       {
         provider: ASK_PROVIDER,
@@ -880,36 +927,18 @@ export async function askQuestion(
         traceId,
         traceName: ASK_TRACE_NAME,
         latencyMs: Date.now() - generationStart,
-        isError: true,
-        error,
+        isError: false,
+        inputTokens,
+        outputTokens,
+        inputCostUsd: costUsd(inputTokens, ASK_MODEL_INPUT_USD_PER_MILLION),
+        outputCostUsd: costUsd(outputTokens, ASK_MODEL_OUTPUT_USD_PER_MILLION),
         modelParameters,
         input: messages,
+        outputChoices: [{ role: "assistant", content: answer }],
       },
       { distinctId: deps.distinctId },
-    );
-    throw error;
-  });
-  const inputTokens = completion?.usage?.prompt_tokens;
-  const outputTokens = completion?.usage?.completion_tokens;
-  const answer = (completion?.response || "").trim();
-  await recordAiGenerationEvent(
-    env,
-    {
-      provider: ASK_PROVIDER,
-      model: ASK_MODEL,
-      traceId,
-      traceName: ASK_TRACE_NAME,
-      latencyMs: Date.now() - generationStart,
-      isError: false,
-      inputTokens,
-      outputTokens,
-      inputCostUsd: costUsd(inputTokens, ASK_MODEL_INPUT_USD_PER_MILLION),
-      outputCostUsd: costUsd(outputTokens, ASK_MODEL_OUTPUT_USD_PER_MILLION),
-      modelParameters,
-      input: messages,
-      outputChoices: [{ role: "assistant", content: answer }],
-    },
-    { distinctId: deps.distinctId },
+    ),
+    deps.executionCtx,
   );
   return {
     question: q,

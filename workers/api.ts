@@ -10605,15 +10605,20 @@ async function handleEventsRequest(request: Request, env: Env) {
 // are the only two places in this file that catch a real (non-caller-input)
 // failure and swallow it into a clean 502; every other catch block either
 // handles an expected condition inline or re-throws to the top-level wrap.
-// metagraphed#7766: Sentry fully removed (D1 fully eliminated 2026-07-17;
-// Sentry decommissioned once PostHog $exception parity was proven) -- awaited
-// (not waitUntil) because both call sites are already deep in the catch of
-// an async route handler about to return an error response; there's no
-// separate ExecutionContext threaded down to this helper the way
-// mcp-server.ts's schedulers have. The cost is a little latency on an
-// already-failing request, not silent event loss.
-async function captureAiRouteError(error: unknown, route: string, env: Env) {
-  await recordExceptionEvent(env, { error, route, errorCode: "ai_error" });
+// The request context keeps error capture alive after a 502 response too.
+async function captureAiRouteError(
+  error: unknown,
+  route: string,
+  env: Env,
+  ctx?: Ctx,
+) {
+  const pending = recordExceptionEvent(env, {
+    error,
+    route,
+    errorCode: "ai_error",
+  });
+  if (ctx?.waitUntil) ctx.waitUntil(pending);
+  else await pending;
 }
 
 function aiUnavailableResponse() {
@@ -10684,10 +10689,15 @@ async function handleSemanticSearchRequest(
     // kinds. getAll returns [] when absent, which normalizeSemanticTypes reads as
     // "no scope", so an empty list is equivalent to omitting the param.
     const types = url.searchParams.getAll("type");
-    const data = await semanticSearch(env, routeText(url, "q"), {
-      limit: routeQuery(url).limit,
-      type: types.length ? types : undefined,
-    });
+    const data = await semanticSearch(
+      env,
+      routeText(url, "q"),
+      {
+        limit: routeQuery(url).limit,
+        type: types.length ? types : undefined,
+      },
+      { executionCtx: ctx },
+    );
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {
     if (rowOf(error)?.aiInput) {
@@ -10696,7 +10706,7 @@ async function handleSemanticSearchRequest(
     logEvent(env, "error", "semantic_search_failed", {
       message: errorMessage(error),
     });
-    await captureAiRouteError(error, "semantic_search", env);
+    await captureAiRouteError(error, "semantic_search", env, ctx);
     return errorResponse(
       "ai_error",
       "Semantic search failed. Please retry shortly.",
@@ -10768,6 +10778,7 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
         readArtifact,
         liveHealth,
         overlayCatalogIndex,
+        executionCtx: ctx,
       },
     );
     return dataResponse(env, data, 200, { source: "ai-live" });
@@ -10776,7 +10787,7 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
       return errorResponse("invalid_request", errorMessage(error), 400);
     }
     logEvent(env, "error", "ask_failed", { message: errorMessage(error) });
-    await captureAiRouteError(error, "ask", env);
+    await captureAiRouteError(error, "ask", env, ctx);
     return errorResponse(
       "ai_error",
       "The answer service failed. Please retry shortly.",

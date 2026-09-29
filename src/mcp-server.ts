@@ -3964,7 +3964,13 @@ function mcpAiClientKey(ctx: McpCtx, scope: string) {
 async function requireAiRateLimit(ctx: McpCtx, scope: string) {
   // #8965: `scope` doubles as the degraded-path surface label, so a
   // rate-limited caller is attributable to the tool that refused them.
-  if (await withinRateLimit(ctx.env, mcpAiClientKey(ctx, scope), scope)) return;
+  if (
+    await withinRateLimit(ctx.env, mcpAiClientKey(ctx, scope), scope, {
+      distinctId: ctx.distinctId,
+      executionCtx: ctx.executionCtx,
+    })
+  )
+    return;
   throw toolError(
     "rate_limited",
     "Too many AI requests. Please retry shortly.",
@@ -4104,9 +4110,12 @@ async function rankSubnetsForTask(
   const isCallable = (netuid: number) => callableByNetuid.has(netuid);
   if (aiEnabled(ctx.env)) {
     try {
-      const out = await semanticSearch(ctx.env, task, {
-        limit: Math.min(poolSize, 20),
-      });
+      const out = await semanticSearch(
+        ctx.env,
+        task,
+        { limit: Math.min(poolSize, 20) },
+        { distinctId: ctx.distinctId, executionCtx: ctx.executionCtx },
+      );
       // `SemanticMatch.netuid` is declared `unknown`, so the integer check is
       // what produces the number -- and hoisting it out of the filter is what
       // lets the map below carry that number instead of re-reading the bag
@@ -14860,10 +14869,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const query = requireEitherString(args, "q", "query");
       await requireAiRateLimit(ctx, "semantic");
       return runAi(() =>
-        semanticSearch(ctx.env, query, {
-          limit: args?.limit,
-          type: args?.type,
-        }),
+        semanticSearch(
+          ctx.env,
+          query,
+          { limit: args?.limit, type: args?.type },
+          { distinctId: ctx.distinctId, executionCtx: ctx.executionCtx },
+        ),
       );
     },
   },
@@ -14886,7 +14897,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           ctx.env,
           question,
           { type: args?.type },
-          { readArtifact: ctx.readArtifact, distinctId: ctx.distinctId },
+          {
+            readArtifact: ctx.readArtifact,
+            distinctId: ctx.distinctId,
+            executionCtx: ctx.executionCtx,
+          },
         ),
       );
     },
