@@ -33,12 +33,12 @@ function captures() {
 
 describe("MCP product events exclude operational traffic", () => {
   test("transport refusals retain the requested profile without becoming tool calls", async () => {
-    for (const profile of ["core", "full"] as const) {
+    for (const profile of ["core", "full", "discovery"] as const) {
       const { events, deps } = captures();
       const pending: Promise<unknown>[] = [];
       scheduleMcpRefusalEvent(
         new Request(
-          `https://api.metagraph.sh/mcp${profile === "core" ? "/core" : ""}`,
+          `https://api.metagraph.sh/mcp${profile === "core" ? "/core" : profile === "full" ? "?catalog=full" : ""}`,
         ),
         mockEnv({
           [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
@@ -254,8 +254,14 @@ describe("MCP attribution and outcomes", () => {
     }
   });
 
-  test("retains full/core profile and a bounded protocol version", async () => {
-    for (const profile of ["core", "full", undefined, "invalid"] as const) {
+  test("retains each advertised profile and a bounded protocol version", async () => {
+    for (const profile of [
+      "core",
+      "full",
+      "discovery",
+      undefined,
+      "invalid",
+    ] as const) {
       const { events, deps } = captures();
       await recordMcpInitializeEvent(
         env,

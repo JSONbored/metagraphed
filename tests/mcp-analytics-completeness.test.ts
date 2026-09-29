@@ -527,7 +527,7 @@ describe("the default recorders, with nothing injected", () => {
     const scheduled: Promise<unknown>[] = [];
     const posted = await withStubbedFetch(async () => {
       await handleMcpRequest(
-        new Request("https://api.metagraph.sh/mcp", {
+        new Request("https://api.metagraph.sh/mcp?catalog=full", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({

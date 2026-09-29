@@ -25917,7 +25917,7 @@ describe("the MCP endpoint tolerates a trailing slash", () => {
 describe("tools/list cursor handling (#9648)", () => {
   const call = async (params?: Row) => {
     const res = await handleMcpRequest(
-      new Request("https://api.metagraph.sh/mcp", {
+      new Request("https://api.metagraph.sh/mcp?catalog=full", {
         method: "POST",
         headers: {
           "content-type": "application/json",

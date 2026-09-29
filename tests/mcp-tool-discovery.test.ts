@@ -462,31 +462,33 @@ describe("discovered invocation preserves the target dispatcher", () => {
   });
 
   test("protected targets issue the same transport challenge, including legacy batches", async () => {
-    const name = "list_surface_credentials";
-    const direct = await call(name, {});
-    const bridge = await call("invoke_tool", { name, arguments: {} });
-    assert.equal(direct.response.status, 401);
-    assert.equal(bridge.response.status, 401);
-    assert.equal(
-      bridge.response.headers.get("www-authenticate"),
-      direct.response.headers.get("www-authenticate"),
-    );
-    assert.deepEqual(bridge.body, direct.body);
-    assert.equal(bridge.events.length, 1);
-    assert.equal(direct.events.length, 1);
-    assert.equal(bridge.events[0].requestStage, "refused");
-    assert.equal(bridge.events[0].errorStatus, 401);
-    assert.equal(bridge.events[0].toolName, undefined);
-    assert.deepEqual(
-      authRequiredToolsIn([
-        { method: "ping" },
-        {
-          method: "tools/call",
-          params: { name: "invoke_tool", arguments: { name, arguments: {} } },
-        },
-        { method: "tools/call", params: { name: "invoke_tool" } },
-      ]),
-      [name],
-    );
+    for (const bridgeName of ["invoke_tool", "invoke_read_tool"]) {
+      const name = "list_surface_credentials";
+      const direct = await call(name, {});
+      const bridge = await call(bridgeName, { name, arguments: {} });
+      assert.equal(direct.response.status, 401);
+      assert.equal(bridge.response.status, 401);
+      assert.equal(
+        bridge.response.headers.get("www-authenticate"),
+        direct.response.headers.get("www-authenticate"),
+      );
+      assert.deepEqual(bridge.body, direct.body);
+      assert.equal(bridge.events.length, 1);
+      assert.equal(direct.events.length, 1);
+      assert.equal(bridge.events[0].requestStage, "refused");
+      assert.equal(bridge.events[0].errorStatus, 401);
+      assert.equal(bridge.events[0].toolName, undefined);
+      assert.deepEqual(
+        authRequiredToolsIn([
+          { method: "ping" },
+          {
+            method: "tools/call",
+            params: { name: bridgeName, arguments: { name, arguments: {} } },
+          },
+          { method: "tools/call", params: { name: bridgeName } },
+        ]),
+        [name],
+      );
+    }
   });
 });
