@@ -173,9 +173,9 @@ test("neuron aggregate and freshness scans preserve the membership view", async 
       .all<{ detail: string }>();
     const steps = plan.results.map((row) => row.detail);
     const expansion = steps.findIndex((step) =>
-      /SCAN j VIRTUAL TABLE/.test(step),
+      /(?:SCAN|SEARCH) j VIRTUAL TABLE/.test(step),
     );
-    assert(expansion >= 0);
+    assert(expansion >= 0, steps.join("\n"));
     assert(
       steps
         .slice(expansion + 1)
