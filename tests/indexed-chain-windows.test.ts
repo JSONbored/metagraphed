@@ -286,7 +286,13 @@ it("small pages skip strictly older Parquet files while tied captures and comple
       const manifest = JSON.parse(
         a.objects.get(segment.blockManifest.key)!.raw.toString(),
       ) as { files: { key: string }[] };
-      return manifest.files.map((file) => file.key);
+      expect(manifest.files).toHaveLength(2);
+      return manifest.files.flatMap((file) => {
+        const source = JSON.parse(a.objects.get(file.key)!.raw.toString()) as {
+          parts: { key: string }[];
+        };
+        return source.parts.map((part) => part.key);
+      });
     });
     const page = await loadIndexedChainWindow(
       a.env,
@@ -299,8 +305,8 @@ it("small pages skip strictly older Parquet files while tied captures and comple
         a.reads.filter((r) => r.key.endsWith(".parquet")).map((r) => r.key),
       );
     expect(readFiles()).toEqual(new Set(files[1]));
-    // Both files cover the winning block. Neither may be excluded on a tie.
-    expect(files[1]).toHaveLength(2);
+    // Both source files cover the winning block; each has two repacked parts.
+    expect(files[1]).toHaveLength(4);
     a.reads.length = 0;
     await loadIndexedChainWindowStats(a.env, first, last, network);
     expect(readFiles()).toEqual(new Set(files.flat()));
