@@ -74,7 +74,7 @@ check(
     ((config.assets as Row).run_worker_first as string[]).includes(
       "/metagraph/*",
     ),
-  "Metagraph artifact routes must run Worker first for CORS, cache headers, and R2 fallback",
+  "Metagraph artifact routes must run Worker first for CORS, cache headers, and archive reads",
 );
 check(
   assetsIgnore.includes(".DS_Store") && assetsIgnore.includes("Thumbs.db"),
@@ -94,16 +94,28 @@ check(
   (config.observability as Row | undefined)?.enabled === true,
   "observability must be enabled",
 );
-check(
-  Array.isArray(config.r2_buckets) &&
-    (config.r2_buckets as Row[]).some(
-      (bucket) => bucket.binding === "METAGRAPH_ARCHIVE",
-    ),
-  "METAGRAPH_ARCHIVE R2 binding is required",
+const dataConfig: Row = JSON.parse(
+  stripJsonComments(
+    await fs.readFile(path.join(repoRoot, "wrangler.data.jsonc"), "utf8"),
+  ),
 );
+for (const archiveConfig of [config, dataConfig]) {
+  check(
+    (archiveConfig.vars as Row | undefined)?.ARCHIVE_OBJECT_STORAGE ===
+      "native" && !archiveConfig.r2_buckets,
+    `${archiveConfig.name} must use native archive storage without R2 bindings`,
+  );
+  check(
+    Array.isArray(archiveConfig.d1_databases) &&
+      (archiveConfig.d1_databases as Row[]).some(
+        (database) => database.binding === "D1_STATE",
+      ),
+    `${archiveConfig.name} native archive storage requires D1_STATE`,
+  );
+}
 check(
   manifest.bucket_binding === "METAGRAPH_ARCHIVE",
-  "R2 manifest bucket binding must match Worker binding",
+  "Archive manifest must name the logical object interface",
 );
 check(
   manifest.artifact_count === (manifest.artifacts as unknown[]).length,
@@ -132,7 +144,7 @@ if (!kvBinding && requireKvBinding) {
   );
 } else if (!kvBinding) {
   warnings.push(
-    "METAGRAPH_CONTROL KV binding is not configured in wrangler.jsonc; Worker will still serve static assets and R2 fallback can use METAGRAPH_R2_LATEST_PREFIX.",
+    "METAGRAPH_CONTROL KV binding is not configured in wrangler.jsonc; Worker will still serve static assets and archive reads can use METAGRAPH_R2_LATEST_PREFIX.",
   );
 }
 if (

@@ -1033,6 +1033,7 @@ describe("Worker runtime", () => {
     assert.equal(body.status, "ok");
     assert.equal(body.service, "metagraphed");
     assert.equal(body.bindings.assets, true);
+    assert.equal(typeof body.bindings.archive, "boolean");
     assert.equal(typeof body.bindings.r2, "boolean");
     assert.equal(typeof body.bindings.kv, "boolean");
 
@@ -1049,6 +1050,35 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(post.status, 405);
+  });
+
+  test("native archive readiness does not claim an R2 dependency", async () => {
+    for (const mode of ["native", "native-read-legacy", "r2"]) {
+      const statement = {
+        bind() {
+          return this;
+        },
+        async all() {
+          return { success: true, results: [] };
+        },
+        async first() {
+          return null;
+        },
+      };
+      const response = await handleRequest(
+        new Request("https://metagraph.sh/health"),
+        {
+          ...env,
+          ARCHIVE_OBJECT_STORAGE: mode,
+          D1_STATE: { prepare: () => statement },
+        } as unknown as Env,
+        {},
+      );
+      assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.equal(body.bindings.archive, true);
+      assert.equal(body.bindings.r2, mode !== "native");
+    }
   });
 
   test("returns 504 when an R2 read exceeds the timeout", async () => {

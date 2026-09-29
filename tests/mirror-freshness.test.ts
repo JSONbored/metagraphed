@@ -297,11 +297,12 @@ function credentials() {
   vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", undefined);
   vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "");
 }
-function transport(evidence = fixture(), stored?: string | null) {
+function transport(
+  evidence = fixture(),
+  stored: string | null = JSON.stringify(evidence.receipt),
+) {
   return vi.fn<typeof fetch>(async (input, init) => {
     const url = new URL(String(input));
-    if (url.pathname.includes("/objects/"))
-      return Response.json(evidence.receipt);
     if (url.pathname.includes("/d1/database/")) {
       assert.equal(init?.method, "POST");
       const { batch } = JSON.parse(String(init?.body));
@@ -347,7 +348,7 @@ function transport(evidence = fixture(), stored?: string | null) {
         result: [
           {
             success: true,
-            results: stored === undefined ? [] : [{ payload: stored }],
+            results: stored === null ? [] : [{ payload: stored }],
           },
           { success: true, results: evidence.lanes },
           { success: true, results: [{ newest: evidence.computeNewest }] },
@@ -360,13 +361,13 @@ function transport(evidence = fixture(), stored?: string | null) {
   });
 }
 
-test("the legacy reader uses a five-SELECT D1 batch and one bounded R2 object", async () => {
+test("the reader uses one five-SELECT D1 batch and no R2 requests", async () => {
   credentials();
   const fetcher = transport();
   assert.deepEqual(await loadMirrorFreshnessEvidence(fetcher), fixture());
-  assert.equal(fetcher.mock.calls.length, 2);
+  assert.equal(fetcher.mock.calls.length, 1);
   assert.ok(
-    fetcher.mock.calls.every(([url]) => !String(url).includes("/r2-sql/")),
+    fetcher.mock.calls.every(([url]) => String(url).includes("/d1/database/")),
   );
 });
 
@@ -378,30 +379,21 @@ test("the workflow uses its D1 credential for status and source health queries",
   const headers = fetcher.mock.calls.map(([, init]) =>
     new Headers(init?.headers).get("authorization"),
   );
-  assert.deepEqual(headers, [
-    "Bearer fixture-d1-reader",
-    "Bearer fixture-maintenance-reader",
-  ]);
+  assert.deepEqual(headers, ["Bearer fixture-d1-reader"]);
 });
 
-test.each(["http", "missing-body", "oversize", "json", "d1"])(
-  "unreadable mirror evidence fails closed: %s",
+test.each(["http", "missing-body", "json", "d1"])(
+  "unreadable D1 mirror evidence fails closed: %s",
   async (mode) => {
     credentials();
-    const fetcher = transport();
-    const normal = fetcher.getMockImplementation()!;
-    fetcher.mockImplementation(async (input, init) => {
-      if (mode === "d1" && String(input).includes("/d1/database/"))
-        return Response.json({ success: false });
-      if (String(input).includes("/objects/")) {
-        if (mode === "http") return new Response("failed", { status: 503 });
-        if (mode === "missing-body") return new Response(null);
-        if (mode === "oversize") return new Response(" ".repeat(65537));
-        if (mode === "json") return new Response("{");
-      }
-      return normal(input, init);
+    const fetcher = vi.fn<typeof fetch>(async () => {
+      if (mode === "http") return new Response("failed", { status: 503 });
+      if (mode === "missing-body") return new Response(null);
+      if (mode === "json") return new Response("{");
+      return Response.json({ success: false });
     });
     await assert.rejects(loadMirrorFreshnessEvidence(fetcher));
+    assert.equal(fetcher.mock.calls.length, 1);
   },
 );
 
@@ -431,7 +423,7 @@ test("catalog sweep reconciles quiet tables with source health and preserves tes
     .spyOn(process.stdout, "write")
     .mockImplementation(() => true);
   await checkLakehouseFreshness();
-  assert.equal(fetcher.mock.calls.length, 3);
+  assert.equal(fetcher.mock.calls.length, 2);
   assert.ok(
     fetcher.mock.calls.every(
       ([url]) => !String(url).includes("catalog.cloudflarestorage.com"),
@@ -451,13 +443,7 @@ test("a catalog sweep cannot use recent snapshots to hide missing source evidenc
   vi.spyOn(process, "exit").mockImplementation(() => {
     throw Error("failed sweep");
   });
-  const fetcher = transport();
-  vi.stubGlobal(
-    "fetch",
-    async (input: string | URL | Request, init?: RequestInit) =>
-      String(input).includes("/objects/")
-        ? new Response("unavailable", { status: 503 })
-        : fetcher(input, init),
-  );
+  const fetcher = transport(fixture(), null);
+  vi.stubGlobal("fetch", fetcher);
   await assert.rejects(checkLakehouseFreshness(), /failed sweep/);
 });
