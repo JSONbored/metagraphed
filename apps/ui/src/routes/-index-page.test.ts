@@ -35,7 +35,7 @@ describe("homepage masthead", () => {
     expect(masthead).not.toContain("truncate={false}");
     expect(masthead).toContain("Bittensor in a box");
     expect(homepage).toContain(
-      '"claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core"',
+      '"claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp"',
     );
     expect(masthead.indexOf("<SearchBox")).toBeLessThan(
       masthead.indexOf('className="mg-home-mcp-install"'),

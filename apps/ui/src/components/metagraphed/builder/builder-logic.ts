@@ -237,30 +237,30 @@ export interface Snippet {
   hint: string;
 }
 
-/**
- * One line per harness, all pointing at the same endpoint.
- *
- * `/mcp/core` and not `/mcp`: the core listing is 23 of the 243 tools at a
- * ninth of the token cost and still CALLS all 243, so it is the endpoint an
- * agent should be given. The full endpoint is a `Raw` row for the caller who
- * wants every tool listed up front.
- */
+/** One line per harness, using the server's recommendation or bounded discovery. */
 export function connectSnippets(
-  mcp: { install?: string; core_endpoint?: string; endpoint?: string } | null | undefined,
+  mcp:
+    | { install?: string; core_endpoint?: string; endpoint?: string; recommended_endpoint?: string }
+    | null
+    | undefined,
 ): Snippet[] {
-  const core = str(mcp?.core_endpoint) ?? str(mcp?.endpoint) ?? "https://api.metagraph.sh/mcp/core";
+  const endpoint =
+    str(mcp?.recommended_endpoint) ??
+    str(mcp?.endpoint) ??
+    str(mcp?.core_endpoint) ??
+    "https://api.metagraph.sh/mcp";
   return [
     {
       value: "claude",
       label: "Claude Code",
-      code: str(mcp?.install) ?? `claude mcp add --transport http metagraphed ${core}`,
+      code: str(mcp?.install) ?? `claude mcp add --transport http metagraphed ${endpoint}`,
       hint: "Run it once; the tools appear in every session.",
     },
     {
       value: "cursor",
       label: "Cursor",
       code: JSON.stringify(
-        { mcpServers: { metagraphed: { url: core, transport: "http" } } },
+        { mcpServers: { metagraphed: { url: endpoint, transport: "http" } } },
         null,
         2,
       ),
@@ -269,7 +269,7 @@ export function connectSnippets(
     {
       value: "curl",
       label: "curl",
-      code: `curl -sS -X POST ${core} \\\n  -H 'content-type: application/json' \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
+      code: `curl -sS -X POST ${endpoint} \\\n  -H 'content-type: application/json' \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
       hint: "No client needed — the server speaks plain JSON-RPC over HTTP.",
     },
   ];

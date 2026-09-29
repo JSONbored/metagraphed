@@ -14,11 +14,13 @@ describe("agents connection surface", () => {
     expect(connect).not.toContain("<RawCode");
   });
 
-  it("identifies the MCP core handoff and its live transport", () => {
+  it("identifies the MCP discovery handoff and its live transport", () => {
     expect(page).toContain('name="MCP"');
     expect(connect).toContain("Bittensor in a box");
-    expect(connect).toContain("Recommended core endpoint");
+    expect(connect).toContain("Recommended endpoint");
     expect(connect).toContain("Full registry callable");
+    expect(connect).toContain("Tool discovery");
+    expect(page).toContain("?catalog=full");
     expect(page).toContain('mcp?.transport === "streamable-http"');
     expect(page).toContain('"Streamable HTTP"');
   });
