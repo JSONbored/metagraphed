@@ -187,6 +187,12 @@
   },
   {
     "type": "index",
+    "name": "idx_chain_detail_account_events_netuid_block",
+    "tbl_name": "chain_detail_account_events",
+    "sql": "CREATE INDEX idx_chain_detail_account_events_netuid_block\nON chain_detail_account_events(netuid,block_number,event_kind)"
+  },
+  {
+    "type": "index",
     "name": "idx_chain_detail_account_events_observed",
     "tbl_name": "chain_detail_account_events",
     "sql": "CREATE INDEX idx_chain_detail_account_events_observed ON chain_detail_account_events (observed_at)"
