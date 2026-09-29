@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { loadIndexedBlockCensus } from "../src/indexed-block-census.ts";
 import * as generations from "../src/history-generation.ts";
+import * as retained from "../src/retained-blocks-d1.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
 import { runLakehouseSeamWatchdog } from "../src/lakehouse-seam-watchdog.ts";
 
@@ -139,6 +140,20 @@ function fixture(
 }
 beforeEach(() => resetModuleState());
 afterEach(() => vi.restoreAllMocks());
+
+test("selected D1 census replaces the retired index and never masks D1 failure", async () => {
+  const f = fixture();
+  const census = vi.spyOn(retained, "readRetainedBlockCensus");
+  census.mockResolvedValue({ lo: 0, hi: 100, n: 99 });
+  assert.deepEqual(await loadIndexedBlockCensus(f.env), {
+    lo: 0,
+    hi: 100,
+    n: 99,
+  });
+  census.mockResolvedValue(null);
+  assert.equal(await loadIndexedBlockCensus(f.env), null);
+  assert.equal(f.get.mock.calls.length, 0);
+});
 
 test("native index census matches SQL physical counts and actual bounds across segments", async () => {
   for (const blocks of [

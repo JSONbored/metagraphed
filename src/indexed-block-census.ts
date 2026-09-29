@@ -4,10 +4,16 @@ import { readSelectedHistorySegments } from "./indexed-history-store.ts";
 import { readHistoryBlockCensus } from "./history-generation.ts";
 import { parquetReadBudget, r2ParquetSource } from "./indexed-parquet.ts";
 import { recordIndexedHistoryFailure } from "./indexed-history-status.ts";
+import {
+  readRetainedBlockCensus,
+  type RetainedBlocksEnv,
+} from "./retained-blocks-d1.ts";
 
 /** Fence the whole census against decoder movement, including empty segments. */
 export async function loadIndexedBlockCensus(env: unknown) {
   try {
+    const retained = await readRetainedBlockCensus(env as RetainedBlocksEnv);
+    if (retained !== undefined) return retained;
     const segments = await readSelectedHistorySegments(env, "blocks");
     if (!segments) return undefined;
     const bucket = (env as { METAGRAPH_ARCHIVE: Pick<R2Bucket, "get"> })

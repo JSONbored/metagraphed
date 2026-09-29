@@ -5,6 +5,8 @@ import { Miniflare } from "miniflare";
 import {
   readRetainedBlockRows,
   readRetainedBlockObservedAt,
+  readRetainedBlockCensus,
+  type RetainedBlocksEnv,
 } from "../src/retained-blocks-d1.ts";
 import {
   resolveObservedThrough,
@@ -131,6 +133,117 @@ beforeAll(async () => {
       .run();
 });
 afterAll(async () => runtime.dispose());
+test("retained census preserves physical duplicates and exact selected height bounds", async () => {
+  assert.deepEqual(await readRetainedBlockCensus(env(), "mainnet", now), {
+    lo: 8,
+    hi: 12,
+    n: 6,
+  });
+  assert.deepEqual(await readRetainedBlockCensus(env(), "testnet", now), {
+    lo: 8,
+    hi: 12,
+    n: 6,
+  });
+});
+
+test("retained census rejects incomplete membership, inconsistent bounds and failed reads", async () => {
+  const valid = () => [
+    { success: true, results: [state] },
+    { success: true, results: [{ files: 1, rows: 6, pending: 0 }] },
+    { success: true, results: [{ first_block: 8, last_block: 12 }] },
+  ];
+  const fake = (result: unknown, fails = false): RetainedBlocksEnv => ({
+    RETAINED_BLOCKS_NETWORKS: "mainnet",
+    D1_RETAINED_BLOCKS: {
+      prepare: () => ({ bind: () => ({}) }),
+      batch: async () => {
+        if (fails) throw Error("unavailable");
+        return result;
+      },
+    } as unknown as D1StoreBinding,
+  });
+  assert.equal(await readRetainedBlockCensus(undefined), undefined);
+  assert.equal(await readRetainedBlockCensus(null), undefined);
+  assert.equal(await readRetainedBlockCensus({}), undefined);
+  assert.equal(
+    await readRetainedBlockCensus(fake(valid()), "testnet", now),
+    undefined,
+  );
+  assert.equal(
+    await readRetainedBlockCensus({ RETAINED_BLOCKS_NETWORKS: "mainnet" }),
+    null,
+  );
+  assert.equal(await readRetainedBlockCensus(fake(valid(), true)), null);
+  assert.deepEqual(await readRetainedBlockCensus(fake(valid())), {
+    lo: 8,
+    hi: 12,
+    n: 6,
+  });
+  for (const i of [0, 1, 2]) {
+    const results = valid();
+    results[i]!.success = false;
+    assert.equal(await readRetainedBlockCensus(fake(results)), null);
+  }
+  const response = (receipt: unknown, sources: unknown, bounds: unknown) =>
+    [receipt, sources, bounds].map((value) => ({
+      success: true,
+      results: [value],
+    }));
+  const counts = { files: 1, rows: 6, pending: 0 };
+  const bounds = { first_block: 8, last_block: 12 };
+  for (const changed of [
+    { ...counts, pending: 1 },
+    { ...counts, files: 2 },
+    { ...counts, rows: 5 },
+    { ...counts, rows: -1 },
+  ])
+    assert.equal(
+      await readRetainedBlockCensus(
+        fake(response(state, changed, bounds)),
+        "mainnet",
+        now,
+      ),
+      null,
+    );
+  for (const changed of [
+    { first_block: null, last_block: 12 },
+    { first_block: 8, last_block: null },
+    { first_block: 12, last_block: 8 },
+  ])
+    assert.equal(
+      await readRetainedBlockCensus(
+        fake(response(state, counts, changed)),
+        "mainnet",
+        now,
+      ),
+      null,
+    );
+  assert.equal(
+    await readRetainedBlockCensus(
+      fake(response({ ...state, generated_at: now - 7200001 }, counts, bounds)),
+      "mainnet",
+      now,
+    ),
+    null,
+  );
+  const empty = { ...state, source_rows: 0, source_files: 0 };
+  const emptyCounts = { files: 0, rows: 0, pending: 0 };
+  assert.deepEqual(
+    await readRetainedBlockCensus(
+      fake(
+        response(empty, emptyCounts, { first_block: null, last_block: null }),
+      ),
+    ),
+    { lo: null, hi: null, n: 0 },
+  );
+  for (const changed of [bounds, { first_block: null, last_block: 12 }])
+    assert.equal(
+      await readRetainedBlockCensus(
+        fake(response(empty, emptyCounts, changed)),
+      ),
+      null,
+    );
+});
 test("coverage uses the exact selected height and network, never the hot database", async () => {
   await db
     .prepare(
