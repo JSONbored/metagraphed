@@ -73,7 +73,9 @@ export async function readNewestNeuronCapture(
   const store = selectedD1Store(env, ["neurons"]);
   const rows = store
     ? await store.query(NEWEST_NEURON_CAPTURE_QUERY)
-    : await sql.unsafe("SELECT MAX(captured_at) AS captured_at FROM neurons");
+    : await sql.unsafe<{ captured_at: number | string | null }>(
+        "SELECT MAX(captured_at) AS captured_at FROM neurons",
+      );
   return Number(rows[0]?.captured_at);
 }
 
