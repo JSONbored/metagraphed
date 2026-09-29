@@ -1,7 +1,9 @@
 # Agent tool specs (OpenAI + Anthropic)
 
-For MCP-aware clients, point them at `https://api.metagraph.sh/mcp` (or resolve
-`io.github.JSONbored/metagraphed` from the [MCP Registry](mcp-registry.md)). For
+For MCP-aware clients, use `https://api.metagraph.sh/mcp/core` for bounded
+discovery and access to every tool. The complete listing remains at
+`https://api.metagraph.sh/mcp` (also available as
+`io.github.JSONbored/metagraphed` in the [MCP Registry](mcp-registry.md)). For
 the two largest **non-MCP** agent ecosystems — OpenAI function calling and
 Anthropic tool use — metagraphed publishes paste-ready static tool specs:
 

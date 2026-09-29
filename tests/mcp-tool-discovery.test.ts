@@ -271,6 +271,24 @@ describe("discovered invocation preserves the target dispatcher", () => {
     assert.equal(events[0].llmModelSource, "client_metadata");
   });
 
+  test("target analytics metadata survives when the outer invocation supplies none", async () => {
+    const { events } = await call("invoke_tool", {
+      name: "get_more_tools",
+      conversation_id: null,
+      arguments: {
+        context: "target intent",
+        llm_model: "target-model",
+        conversation_id: "019ff522-3838-7662-a07c-c3b66fd871fb",
+      },
+    });
+    assert.equal(events[0].intent, "target intent");
+    assert.equal(events[0].llmModel, "target-model");
+    assert.equal(
+      events[0].conversationId,
+      "019ff522-3838-7662-a07c-c3b66fd871fb",
+    );
+  });
+
   test("authenticated calls retain the same account scope and complete response", async () => {
     const prefixes: string[] = [];
     const options = {
