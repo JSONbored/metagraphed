@@ -40,6 +40,8 @@ import {
   type LaneHealthRecord,
 } from "./lane-health.ts";
 import { blocksSeamFloor } from "./blocks-cold-tier.ts";
+import { publishedBlocksSeam } from "./blocks-seam.ts";
+import type { RetainedBlocksEnv } from "./retained-blocks-d1.ts";
 import {
   DECODE_WATERMARK_KEY,
   resolveDecodeWatermark,
@@ -116,6 +118,8 @@ export interface SeamInput {
   floor: number;
   /** What the decoder published, or null when nothing could be read. */
   watermark: DecodeWatermark | null;
+  /** Exact serving boundary when the retained copy publishes separately. */
+  servingSeam?: number;
   /** raw_capture_state.last_contiguous_block, or null when unreadable. */
   capturedThrough: number | null;
   /**
@@ -147,6 +151,7 @@ const hours = (ms: number) => (ms / 3_600_000).toFixed(1);
 export function evaluateDecodeSeam({
   floor,
   watermark,
+  servingSeam,
   capturedThrough,
   chainHead,
   lo,
@@ -157,7 +162,8 @@ export function evaluateDecodeSeam({
   const reasons: string[] = [];
   // Exactly what the serving path computes, so this watchdog is judging the
   // number requests actually route on rather than a reconstruction of it.
-  const seam = Math.max(floor, watermark?.decodedThrough ?? floor);
+  const seam =
+    servingSeam ?? Math.max(floor, watermark?.decodedThrough ?? floor);
   const age =
     watermark && watermark.updatedAt !== null
       ? now - watermark.updatedAt
@@ -368,16 +374,7 @@ export async function runLakehouseSeamWatchdog(
       ...verdict,
       checked_at: (deps.now ?? Date.now)(),
     });
-  const census = await loadIndexedBlockCensus(env);
-  const rows = census == null ? null : [census];
-  // r2SqlQuery returns null when the lakehouse is UNCONFIGURED as well as when
-  // a query fails. Unconfigured is not a fault -- self-hosters and CI have no
-  // lakehouse -- so it is reported as skipped rather than as drift.
-  if (rows === null) {
-    // ...but it is equally not a MEASUREMENT, and `unknown` is the vocabulary's
-    // own word for that. Recording it is what distinguishes a lakehouse this
-    // watchdog cannot reach from a seam it checked and found correct -- before
-    // this, both produced exactly nothing.
+  const unavailable = async () => {
     await recordVerdict({
       verdict: "unknown",
       age_ms: null,
@@ -389,15 +386,42 @@ export async function runLakehouseSeamWatchdog(
       reason: "lakehouse_unavailable",
       seam: blocksSeamFloor(env),
     };
+  };
+  const census = await loadIndexedBlockCensus(env);
+  const rows = census == null ? null : [census];
+  // r2SqlQuery returns null when the lakehouse is UNCONFIGURED as well as when
+  // a query fails. Unconfigured is not a fault -- self-hosters and CI have no
+  // lakehouse -- so it is reported as skipped rather than as drift.
+  if (rows === null) {
+    // ...but it is equally not a MEASUREMENT, and `unknown` is the vocabulary's
+    // own word for that. Recording it is what distinguishes a lakehouse this
+    // watchdog cannot reach from a seam it checked and found correct -- before
+    // this, both produced exactly nothing.
+    return unavailable();
   }
 
   const row = rows[0];
   // `fresh` deliberately bypasses the serving memo: staleness is the thing
   // being measured, and a value up to a TTL old would understate it.
   const watermark = await resolveDecodeWatermark(env, { fresh: true });
+  let servingSeam: number;
+  try {
+    servingSeam = publishedBlocksSeam(
+      blocksSeamFloor(env),
+      watermark?.decodedThrough,
+      (env as RetainedBlocksEnv | undefined)?.RETAINED_BLOCKS_NETWORKS?.split(
+        ",",
+      ).includes("mainnet")
+        ? num(row?.hi)
+        : undefined,
+    );
+  } catch {
+    return unavailable();
+  }
   const { reasons, summary } = evaluateDecodeSeam({
     floor: blocksSeamFloor(env),
     watermark,
+    servingSeam,
     capturedThrough: await capturedThrough(env),
     chainHead: await chainHead(env),
     lo: num(row?.lo),

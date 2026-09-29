@@ -450,6 +450,65 @@ const measured =
     [{ lo: 0, hi, n: hi + 1 }] as Record<string, unknown>[];
 
 describe("the watchdog tick", () => {
+  test("measures the serving boundary while decoded rows await retained publication", async () => {
+    const result = await runLakehouseSeamWatchdog(
+      {
+        ...env({
+          body: {
+            decoded_through: HI + 451,
+            updated_at: "2026-08-03T11:40:00Z",
+          },
+          captured: HI + 500,
+          head: HI + 530,
+        }),
+        RETAINED_BLOCKS_NETWORKS: "mainnet,testnet",
+      } as never,
+      { query: measured(), now: () => NOW },
+    );
+    assert.equal(result.seam, HI);
+    assert.equal(result.watermark_decoded_through, HI + 451);
+    assert.equal(result.capture_lag, 500);
+    assert.equal(result.drifted, false);
+    assert.deepEqual(result.reasons, []);
+  });
+
+  test("retained publication lag still trips the unchanged capture-lag threshold", async () => {
+    const through = HI + DECODE_LAG_BLOCKS + 1;
+    const result = await runLakehouseSeamWatchdog(
+      {
+        ...env({
+          body: {
+            decoded_through: through,
+            updated_at: "2026-08-03T11:40:00Z",
+          },
+          captured: through,
+          head: through + 30,
+        }),
+        RETAINED_BLOCKS_NETWORKS: "mainnet",
+      } as never,
+      { query: measured(), now: () => NOW },
+    );
+    assert.equal(result.seam, HI);
+    assert.equal(result.drifted, true);
+    assert.equal(result.capture_lag, DECODE_LAG_BLOCKS + 1);
+  });
+
+  test("an empty or regressed selected retained copy remains an unknown fault", async () => {
+    for (const hi of [null, DEFAULT_BLOCKS_SEAM - 1]) {
+      const result = await runLakehouseSeamWatchdog(
+        {
+          ...env({
+            body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
+          }),
+          RETAINED_BLOCKS_NETWORKS: "mainnet",
+        } as never,
+        { query: async () => [{ lo: 0, hi, n: 0 }], now: () => NOW },
+      );
+      assert.equal(result.ok, false);
+      assert.equal(result.reason, "lakehouse_unavailable");
+    }
+  });
+
   test("an unconfigured lakehouse is SKIPPED, not reported as drift", async () => {
     // r2SqlQuery returns null both when a query fails and when the lakehouse is
     // simply not configured -- self-hosters and CI have none. Calling that

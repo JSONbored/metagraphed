@@ -4,6 +4,11 @@ import {
   resolveDecodeWatermark,
   type DecodeWatermarkDeps,
 } from "./decode-watermark.ts";
+import {
+  readRetainedBlockCensus,
+  type RetainedBlocksEnv,
+} from "./retained-blocks-d1.ts";
+import { RetainedHistoryUnavailableError } from "./retained-history-store.ts";
 
 /** Floor for the seam, overridable per environment. NOT the seam itself any
  * more: see `resolveBlocksSeam`. */
@@ -38,6 +43,25 @@ function bindings(env: unknown): ColdTierBindings {
   return (env ?? {}) as ColdTierBindings;
 }
 
+/** A decoded commit is not a serving publication. Keep the hot bridge until
+ * the selected retained copy contains the new height. An unavailable selected
+ * owner cannot fall back to a watermark that would route reads into a gap. */
+export function publishedBlocksSeam(
+  floor: number,
+  decodedThrough: number | undefined,
+  retainedThrough: number | null | undefined,
+): number {
+  const decoded = Math.max(floor, decodedThrough ?? floor);
+  if (retainedThrough === undefined) return decoded;
+  if (
+    retainedThrough === null ||
+    !Number.isSafeInteger(retainedThrough) ||
+    retainedThrough < floor
+  )
+    throw new RetainedHistoryUnavailableError();
+  return Math.min(decoded, retainedThrough);
+}
+
 /** The configured floor: the env override when it parses, else the constant. */
 export function blocksSeamFloor(env: unknown): number {
   const parsed = safeBlockNumber(bindings(env)[BLOCKS_SEAM_ENV]);
@@ -48,13 +72,9 @@ export function blocksSeamFloor(env: unknown): number {
  * The seam this request routes on: the published decode watermark when it is
  * ahead of the configured floor, the floor otherwise.
  *
- * `Math.max` is the whole fail-safe. A missing, unreadable, malformed or
- * REGRESSED watermark cannot lower the seam, so the worst case is the
- * behaviour this module had before the watermark existed. A watermark that is
- * ahead is trusted because the decoder writes its ledger property in the SAME
- * Iceberg commit as the rows -- there is no window in which it can claim a
- * height whose data is not yet visible -- and because it is the `min` across
- * all four decoded tables, so it never runs ahead of the slowest one.
+ * The selected retained-D1 copy publishes independently of the decoder. Its
+ * committed height bounds the seam even when all decoded tables have advanced.
+ * Environments without that selected owner retain the decode-watermark policy.
  */
 export async function resolveBlocksSeam(
   env: unknown,
@@ -68,8 +88,19 @@ export async function resolveBlocksSeam(
   // says exactly that: nothing is above the seam.
   if (network !== DEFAULT_CHAIN_NETWORK) return 0;
   const floor = blocksSeamFloor(env);
-  const watermark = await resolveDecodeWatermark(env, deps, network);
-  return Math.max(floor, watermark?.decodedThrough ?? floor);
+  const [watermark, retained] = await Promise.all([
+    resolveDecodeWatermark(env, deps, network),
+    readRetainedBlockCensus(
+      env as RetainedBlocksEnv,
+      network,
+      (deps.now ?? Date.now)(),
+    ),
+  ]);
+  return publishedBlocksSeam(
+    floor,
+    watermark?.decodedThrough,
+    retained === undefined ? undefined : (retained?.hi ?? null),
+  );
 }
 
 /**
