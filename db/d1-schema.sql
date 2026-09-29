@@ -154,7 +154,8 @@ CREATE INDEX idx_subnets_source ON subnets (source);
 
 CREATE INDEX idx_surface_checks_netuid_time ON surface_checks(netuid,checked_at DESC);
 
-CREATE INDEX idx_surface_checks_time ON surface_checks(checked_at DESC);
+CREATE INDEX idx_surface_checks_rollup
+ON surface_checks(checked_at DESC,surface_key,netuid,ok,latency_ms,kind,classification);
 
 CREATE INDEX idx_surface_failure_day ON surface_failure_daily(day DESC,netuid);
 

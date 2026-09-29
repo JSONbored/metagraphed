@@ -1,4 +1,3 @@
-// Native SQLite observation writes; selected only for the whole family.
 import { latencyStatColumns, OK_LATENCY } from "./health-sql.ts";
 import type { ObservationWrite } from "./observations-neon.ts";
 import type { ProducerStore, ProducerStatement } from "./producer-store.ts";
@@ -105,16 +104,18 @@ export function persistProbesD1(
   return execute(store, statements);
 }
 function ranked(): string {
-  // Avoid repeated scans.
   return `WITH windowed AS MATERIALIZED(
  SELECT surface_id,COALESCE(surface_key,surface_id) AS surface_key,netuid,ok,latency_ms,checked_at FROM surface_checks WHERE checked_at>=? AND checked_at<?
  ), latest_candidates AS(
- SELECT c.surface_key,c.netuid,COALESCE(s.surface_id,c.surface_id) AS alias,s.surface_id IS NOT NULL AS current_alias,c.checked_at,
+ SELECT c.surface_key,c.netuid,c.surface_id,c.checked_at,
  ROW_NUMBER() OVER(PARTITION BY c.surface_key ORDER BY c.checked_at DESC,c.surface_id DESC) AS latest_rank
- FROM windowed c LEFT JOIN surface_status s ON s.surface_key=c.surface_key
+ FROM windowed c
+ ), latest_aliases AS(
+ SELECT c.surface_key,c.netuid,COALESCE(s.surface_id,c.surface_id) AS alias,s.surface_id IS NOT NULL AS current_alias,c.checked_at
+ FROM latest_candidates c LEFT JOIN surface_status s ON s.surface_key=c.surface_key WHERE latest_rank=1
  ), identities AS MATERIALIZED(
  SELECT surface_key,netuid,CASE WHEN ROW_NUMBER() OVER(PARTITION BY alias ORDER BY current_alias DESC,checked_at DESC,surface_key)=1 THEN alias ELSE 'history:'||surface_key END AS surface_id
- FROM latest_candidates WHERE latest_rank=1
+ FROM latest_aliases
  ), ranked AS(
  SELECT i.surface_id,c.surface_key,i.netuid,ok,latency_ms,
  CASE WHEN ${OK_LATENCY} THEN ROW_NUMBER() OVER(PARTITION BY c.surface_key,CASE WHEN ${OK_LATENCY} THEN 0 ELSE 1 END ORDER BY latency_ms) END AS rn,
@@ -131,7 +132,7 @@ export function rollupUptimeD1(
     store,
     days.flatMap(({ date, start, end }) => [
       {
-        // No raw input is not evidence to replace retained history.
+        // Preserve history when raw input is empty.
         text: `DELETE FROM surface_uptime_daily WHERE day=? AND EXISTS
           (SELECT 1 FROM surface_checks WHERE checked_at>=? AND checked_at<?)`,
         values: [date, start, end],
