@@ -96,6 +96,7 @@ const projections = [
   "snapshot_date, validator_permit, stake_tao, emission_tao",
   "snapshot_date, incentive, dividends, trust, consensus, validator_trust, active, validator_permit",
   "snapshot_date, uid, coldkey, axon",
+  "snapshot_date, uid, coldkey, emission_tao, validator_permit",
 ];
 
 test("bounded shard expansion preserves every selected view row and scalar type", async () => {

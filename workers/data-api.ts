@@ -7982,18 +7982,20 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       )
         .toISOString()
         .slice(0, 10);
-      const fairnessRows = await sql<{
+      const fairnessRows = await readNeuronDailyMetricRows<{
         snapshot_date: NeuronDaily["snapshot_date"];
         uid: NeuronDaily["uid"];
         coldkey: NeuronDaily["coldkey"];
         emission_tao: NeuronDaily["emission_tao"];
         validator_permit: NeuronDaily["validator_permit"];
-      }>`
-        SELECT snapshot_date, uid, coldkey, emission_tao, validator_permit
-        FROM neuron_daily
-        WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
-        ORDER BY snapshot_date DESC
-        LIMIT ${MINER_FAIRNESS_ROW_CAP}`;
+      }>(
+        { query: sql.unsafe },
+        env,
+        netuid,
+        cutoff,
+        "snapshot_date, uid, coldkey, emission_tao, validator_permit",
+        MINER_FAIRNESS_ROW_CAP,
+      );
       return json(
         buildSubnetCostToParticipate(rows, netuid, {
           minerFairness: buildSubnetMinerFairness(fairnessRows, netuid, {
