@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import {
+  mark,
+  requestTimings,
+  withRequestTiming,
+} from "../src/request-timing.ts";
 import {
   POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV,
   POSTHOG_PROJECT_TOKEN_ENV,
@@ -11,6 +16,7 @@ import {
 import { acceptedMcpConversationId } from "../src/mcp-conversation.ts";
 import {
   handleMcpRequest,
+  MCP_TOOLS,
   listToolDefinitions,
   mcpDistinctId,
   mcpRefusalReason,
@@ -74,8 +80,9 @@ async function callMcp(
   env: Row,
   extraDeps: Row = {},
   headers: Record<string, string> = {},
+  path = "/mcp",
 ): Promise<Row> {
-  const request = new Request("https://api.metagraph.sh/mcp", {
+  const request = new Request(`https://api.metagraph.sh${path}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -93,6 +100,79 @@ async function callMcp(
 }
 
 describe("MCP tool-dispatch usage telemetry", () => {
+  for (const path of ["/mcp", "/mcp/core"]) {
+    test(`${path} attributes backend timing per concurrent tool on native events`, async () => {
+      const tool = MCP_TOOLS.find(
+        (entry) => entry.name === "get_subnet_economics",
+      );
+      assert.ok(tool);
+      let release!: () => void;
+      const overlap = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const handler = vi
+        .spyOn(tool, "handler")
+        .mockImplementation(async (args) => {
+          const value = Number(args.netuid);
+          mark("d1", value * 10);
+          if (value === 7) await overlap;
+          else release();
+          mark("d1_sql", value / 10);
+          return { netuid: value };
+        });
+      const events: Row[] = [];
+      const executionCtx = fakeExecutionCtx();
+      try {
+        await withRequestTiming(async () => {
+          mark("d1", 1000);
+          await callMcp(
+            [7, 8].map((netuid) => ({
+              ...toolCall("get_subnet_economics", { netuid }),
+              id: netuid,
+            })),
+            CONFIGURED_ENV,
+            {
+              executionCtx,
+              recordUsageEvent: () => true,
+              recordMcpToolCallEvent: (
+                env: Env,
+                event: Parameters<typeof recordMcpToolCallEvent>[1],
+              ) =>
+                recordMcpToolCallEvent(env, event, {
+                  fetch: (async (_url, init) => {
+                    events.push(JSON.parse(String(init?.body)));
+                    return new Response("{}", { status: 200 });
+                  }) as typeof fetch,
+                }),
+            },
+            {},
+            path,
+          );
+          await Promise.all(executionCtx.scheduled);
+          assert.equal(events.length, 2);
+          for (const event of events) {
+            assert.equal(event.event, "$mcp_tool_call");
+            const props = event.properties;
+            const netuid = props.$mcp_parameters.netuid;
+            assert.equal(props.$mcp_is_error, false);
+            assert.equal(props.$mcp_profile, path === "/mcp" ? "full" : "core");
+            assert.equal(props.mcp_d1_call_count, 1);
+            assert.equal(props.mcp_d1_duration_ms, netuid * 10);
+            assert.equal(props.mcp_d1_sql_call_count, 1);
+            assert.equal(props.mcp_d1_sql_duration_ms, netuid / 10);
+          }
+          assert.deepEqual(requestTimings()?.get("d1"), {
+            count: 3,
+            durationMs: 1150,
+          });
+        });
+      } finally {
+        handler.mockRestore();
+        release();
+      }
+    });
+  }
+
   test("records exactly one event per tool call, keyed by tool name", async () => {
     const spy = recorder();
     const executionCtx = fakeExecutionCtx();

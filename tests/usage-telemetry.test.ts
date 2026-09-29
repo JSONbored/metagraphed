@@ -392,6 +392,70 @@ describe("recordMcpToolCallEvent", () => {
     [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
   } as unknown as Env;
 
+  test("D1 timings add bounded dimensions to the same native tool event", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED,
+      {
+        isError: false,
+        durationMs: 20,
+        backendTimings: new Map([
+          ["d1", { count: 3, durationMs: 27 }],
+          ["d1_sql", { count: 3, durationMs: 0.1234 }],
+          ["caller-controlled", { count: 1, durationMs: 123 }],
+        ]),
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].body.event, "$mcp_tool_call");
+    const props = calls[0].body.properties;
+    assert.equal(props.$mcp_duration_ms, 20);
+    assert.equal(props.mcp_d1_call_count, 3);
+    assert.equal(props.mcp_d1_duration_ms, 27);
+    assert.equal(props.mcp_d1_sql_call_count, 3);
+    assert.equal(props.mcp_d1_sql_duration_ms, 0.1234);
+    assert.equal(JSON.stringify(props).includes("caller-controlled"), false);
+  });
+
+  test("D1 timing rejects invalid measurements and does not invent zero latency", async () => {
+    for (const timing of [
+      { count: 0, durationMs: 1 },
+      { count: -1, durationMs: 1 },
+      { count: 1.5, durationMs: 1 },
+      { count: Infinity, durationMs: 1 },
+      { count: 1, durationMs: NaN },
+      { count: 1, durationMs: Infinity },
+      { count: 1, durationMs: -1 },
+      { count: 1, durationMs: 0 },
+      { count: 2_000_000, durationMs: 100_000_000 },
+    ]) {
+      const calls: Row[] = [];
+      await recordMcpToolCallEvent(
+        CONFIGURED,
+        {
+          isError: true,
+          durationMs: 0,
+          backendTimings: new Map([["d1", timing]]),
+        },
+        { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+      );
+      assert.equal(calls.length, 1);
+      const props = calls[0].body.properties;
+      if (timing.durationMs === 0) {
+        assert.equal(props.mcp_d1_call_count, 1);
+        assert.equal(props.mcp_d1_duration_ms, undefined);
+      } else if (timing.count === 2_000_000) {
+        assert.equal(props.mcp_d1_call_count, 1_000_000);
+        assert.equal(props.mcp_d1_duration_ms, 86_400_000);
+      } else {
+        assert.equal(props.mcp_d1_call_count, undefined);
+        assert.equal(props.mcp_d1_duration_ms, undefined);
+      }
+      assert.equal(props.$mcp_duration_ms, undefined);
+    }
+  });
+
   test("posts $mcp_tool_call with tool name / error flag / duration / session id", async () => {
     const calls: Row[] = [];
     const recorded = await recordMcpToolCallEvent(

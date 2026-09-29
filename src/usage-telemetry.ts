@@ -1,5 +1,6 @@
 import { sha256Hex } from "./sha256-hex.ts";
 import { acceptedMcpConversationId } from "./mcp-conversation.ts";
+import type { TimingMark } from "./request-timing.ts";
 // Typed PostHog usage-event wrapper for the Worker backend (#6030 / #366).
 //
 // Single chokepoint for product-usage capture: callers pass an allowlisted
@@ -1340,6 +1341,11 @@ export function normalizeMcpLlmModel(value: unknown): string | undefined {
 
 /** Inputs for a single MCP tool-call analytics event. */
 export interface McpToolCallEvent extends McpServerIdentity {
+  /**
+   * Operation-local D1 measurements on the existing native event. Durations
+   * sum boundary calls, which may overlap; SQL time is a subset of D1 time.
+   */
+  backendTimings?: ReadonlyMap<string, TimingMark> | null;
   /** Transport refusals are operational events, never tools/call events. */
   requestStage?: "refused";
   toolName?: string;
@@ -1652,6 +1658,29 @@ export async function recordMcpToolCallEvent(
     // durationMs doc comment on McpToolCallEvent.
     const durationMs = Math.min(Math.round(event.durationMs), 86_400_000);
     if (durationMs > 0) properties["$mcp_duration_ms"] = durationMs;
+
+    // Fixed custom dimensions complement PostHog's native elapsed duration.
+    // Never emit arbitrary boundary names or pretend an unmeasured zero is a
+    // latency. Counts remain useful even when Workers' clock did not advance.
+    for (const name of ["d1", "d1_sql"] as const) {
+      const timing = event.backendTimings?.get(name);
+      if (
+        !timing ||
+        !Number.isInteger(timing.count) ||
+        timing.count <= 0 ||
+        !Number.isFinite(timing.durationMs) ||
+        timing.durationMs < 0
+      ) {
+        continue;
+      }
+      properties[`mcp_${name}_call_count`] = Math.min(timing.count, 1_000_000);
+      if (timing.durationMs > 0) {
+        properties[`mcp_${name}_duration_ms`] = Math.min(
+          timing.durationMs,
+          86_400_000,
+        );
+      }
+    }
 
     assignMcpCallContext(properties, event);
 
