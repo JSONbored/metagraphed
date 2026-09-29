@@ -16689,12 +16689,14 @@ async function callTool(params: Row | null, ctx: McpCtx) {
   // already carries -- not from the handler, which never sees `context`
   // (validateToolArguments strips it before dispatch, by design).
   //
-  // Only when the agent actually said something. A bare `get_more_tools()`
+  // Only successful reports count as capability gaps; validation failures stay
+  // visible in tool-call analytics. A bare `get_more_tools()`
   // with no context reports nothing, because an empty gap report is not a
   // data point -- it would inflate the count of unmet asks with calls that
   // name no ask.
   if (
     params?.name === MCP_MISSING_CAPABILITY_TOOL &&
+    result.isError !== true &&
     intent &&
     ctx?.profile !== "core"
   ) {
