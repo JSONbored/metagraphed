@@ -63,6 +63,75 @@ function checkedState(value: unknown, net: number, now: number) {
   return state;
 }
 
+/** Census of the same committed sources used by retained block reads.
+ * Import counters advance with physical rows and source activation is atomic
+ * with the snapshot receipt. Count those bounded source receipts, not millions
+ * of blocks; read actual height bounds through the existing height index.
+ */
+export async function readRetainedBlockCensus(
+  env: RetainedBlocksEnv | null | undefined,
+  network: ChainNetworkId = "mainnet",
+  now = Date.now(),
+): Promise<
+  { lo: number | null; hi: number | null; n: number } | null | undefined
+> {
+  if (!env?.RETAINED_BLOCKS_NETWORKS?.split(",").includes(network))
+    return undefined;
+  try {
+    const db = env.D1_RETAINED_BLOCKS;
+    if (!db) return null;
+    const net = network === "mainnet" ? 0 : 1;
+    const end = (direction: "ASC" | "DESC") =>
+      "SELECT block_number FROM history_blocks b INDEXED BY history_blocks_height " +
+      "WHERE b.network=? AND block_number IS NOT NULL AND b.source_id IN " +
+      "(SELECT id FROM history_block_sources WHERE network=? AND active=1) " +
+      `ORDER BY block_number ${direction} LIMIT 1`;
+    const [receipt, sources, heights] = await timed(TIMING_D1, () =>
+      db.batch([
+        db
+          .prepare("SELECT * FROM history_block_state WHERE network=?")
+          .bind(net),
+        db
+          .prepare(
+            "SELECT COUNT(*) AS files,COALESCE(SUM(received_rows),0) AS rows," +
+              "COALESCE(SUM(expected_rows-received_rows),0) AS pending " +
+              "FROM history_block_sources WHERE network=? AND active=1",
+          )
+          .bind(net),
+        db
+          .prepare(
+            `SELECT (${end("ASC")}) AS first_block,(${end("DESC")}) AS last_block`,
+          )
+          .bind(net, net, net, net),
+      ]),
+    );
+    if (![receipt, sources, heights].every((r) => r!.success)) return null;
+    const state = checkedState(receipt!.results[0], net, now);
+    const counts = z
+      .object({ files: integer, rows: integer, pending: integer })
+      .parse(sources!.results[0]);
+    const bounds = HeightBounds.parse(heights!.results[0]);
+    if (
+      counts.pending !== 0 ||
+      counts.files !== state.source_files ||
+      counts.rows !== state.source_rows
+    )
+      return null;
+    if (counts.rows === 0) {
+      if (bounds.first_block !== null || bounds.last_block !== null)
+        return null;
+    } else if (
+      bounds.first_block === null ||
+      bounds.last_block === null ||
+      bounds.first_block > bounds.last_block
+    )
+      return null;
+    return { lo: bounds.first_block, hi: bounds.last_block, n: counts.rows };
+  } catch {
+    return null;
+  }
+}
+
 /** Resolve the exact decoded height in the same selected history the feed uses.
  * An active-source point lookup avoids making retained responses wait for the
  * unrelated hot-state database. Receipt and row share one read transaction. */
