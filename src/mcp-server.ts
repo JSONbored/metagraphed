@@ -10858,6 +10858,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       const read = await loadChainHolders(
         readStore(ctx.env, ALPHA_PRICING_TABLES),
+        ctx.env,
       );
       return buildChainHolders(read, { sort, limit });
     },

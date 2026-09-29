@@ -42,6 +42,7 @@ import {
 } from "./route-limits.ts";
 import { median } from "./lib/stats.ts";
 import { round9 } from "./lib/rao.ts";
+import { readRevisionedChainHolders } from "./chain-holders-cache.ts";
 
 export { CHAIN_HOLDERS_LIMIT_DEFAULT, CHAIN_HOLDERS_LIMIT_MAX };
 
@@ -118,6 +119,7 @@ export function chainHoldersSql(alphaCapturedAt: number): string {
 /** Every subnet's holder concentration, or a decline. Never throws. */
 export async function loadChainHolders(
   db: ChainHoldersDb | null | undefined,
+  env?: unknown,
 ): Promise<ChainHoldersRead> {
   const declined = (decline: ChainHoldersDecline): ChainHoldersRead => ({
     rows: [],
@@ -133,7 +135,9 @@ export async function loadChainHolders(
     );
   }
   try {
-    const rows = await db.query<Row>(chainHoldersSql(alpha.capturedAt));
+    const rows = await readRevisionedChainHolders(env, alpha.capturedAt, () =>
+      db.query!<Row>(chainHoldersSql(alpha.capturedAt)),
+    );
     return {
       rows,
       capturedAt: alpha.capturedAt,
