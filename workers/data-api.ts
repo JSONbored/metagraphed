@@ -3779,21 +3779,8 @@ export const ACCOUNT_STATE_TABLES = [
   "api_usage_rollup",
 ] as const;
 
-/**
- * The runner for a user-state group: Postgres once Neon solely owns every
- * table in it, D1 until then.
- *
- * `PgSql` and `PgSql` are structurally identical -- a tagged template plus
- * `unsafe(text, values)`, both resolving to `Record<string, unknown>[]` -- so
- * this returns one type and the ~17 callbacks below are untouched by the move.
- * That is the whole reason the user-state tier can change stores without
- * changing a single statement: every one of its writes is already ordinary SQL
- * (`INSERT ... ON CONFLICT DO UPDATE ... RETURNING`), which means the same
- * text on either side.
- *
- * Returns null when neither store is available, which the callers turn into
- * the 503 they already returned for a missing store binding.
- */
+/** Select the configured owner of the whole user-state group. Both runners
+ * retain the tagged-SQL contract; null keeps the caller's unavailable response. */
 export function userStateRunner(
   env: DataApiEnv,
   ctx: ExecutionContext,

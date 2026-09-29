@@ -1,7 +1,5 @@
 import { boundedInternalJson, internalJson } from "./internal-json.ts";
-// Protected native D1 export protocol for the existing archive jobs (#12184).
-// A revision is committed with every selected family write. Each page's data
-// and revision share one D1 batch, and a final check precedes archive append.
+// Revision and page data share one batch; archive append checks it again.
 import { z } from "zod";
 import { timingSafeEqual } from "./webhooks.ts";
 import { D1_EXPORT_TABLES } from "./d1-export-tables.ts";
@@ -49,8 +47,7 @@ interface ExportEnv {
   D1_STATE?: D1StoreBinding;
   D1_STATE_TABLES?: string;
 }
-// The fixed export tables expose SQLite scalar columns, including JSON and
-// exact decimal values as TEXT. No blob column is part of this protocol.
+// JSON and exact decimals are TEXT; exports contain no blobs.
 interface ExportRow {
   [column: string]: string | number | null;
 }
@@ -123,8 +120,7 @@ export async function handleD1StateExport(
         .prepare(`PRAGMA table_info(${quote(table)})`)
         .all<{ name: string; type: string }>()
     ).results;
-    // Storage migrations do not implicitly grant archive disclosure access.
-    // Unexpected public columns require an explicit policy review first.
+    // Storage migrations cannot authorize new disclosure fields.
     const approved = new Set(D1_EXPORT_COLUMNS[table]!.split(" "));
     if (
       schema.some((row) => !row.name.startsWith("_") && !approved.has(row.name))
@@ -218,11 +214,27 @@ export async function handleD1StateExport(
       where.push(`(${keys.join(",")}) > (${cursor.map(() => "?").join(",")})`);
       values.push(...cursor);
     }
-    const statement = db
-      .prepare(
-        `SELECT ${fields.map(quote).join(",")},json_array(${plan.keys.join(",")}) AS _cursor FROM ${quote(table)} ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY ${plan.keys.join(",")} LIMIT 2001`,
-      )
-      .bind(...values);
+    // Extract one member's metrics once per bounded page, before projecting
+    // wide rows. The array also preserves non-object/missing metric values.
+    const text =
+      table === "neurons"
+        ? `WITH page AS MATERIALIZED (
+         SELECT m.netuid,m.uid,m.hotkey,m.coldkey,
+           jsonb_array(jsonb_extract(d.payload,'$."'||m.uid||'"')) AS metrics
+         FROM neurons_members m CROSS JOIN neurons_documents d
+         ON d.netuid=m.netuid AND d.day='' AND d.shard=m.shard
+         ${input.cursor ? "WHERE (m.netuid,m.uid) > (?,?)" : ""}
+         ORDER BY m.netuid,m.uid LIMIT 2001)
+         SELECT ${fields
+           .map((field) =>
+             ["netuid", "uid", "hotkey", "coldkey"].includes(field)
+               ? quote(field)
+               : `json_extract(metrics,'$[0].${field}') AS ${quote(field)}`,
+           )
+           .join(",")},
+         json_array(netuid,uid) AS _cursor FROM page ORDER BY netuid,uid`
+        : `SELECT ${fields.map(quote).join(",")},json_array(${plan.keys.join(",")}) AS _cursor FROM ${quote(table)} ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY ${plan.keys.join(",")} LIMIT 2001`;
+    const statement = db.prepare(text).bind(...values);
     const results = await db.batch<ExportRow>([revisionStatement, statement]);
     const revision = checkedRevision(results[0]!.results[0]!);
     if (input.revision !== undefined && revision !== input.revision)

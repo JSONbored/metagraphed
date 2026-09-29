@@ -196,6 +196,126 @@ test("document-backed exports declare numeric contracts even when JSON rows mix 
   }
 });
 
+test("wide neuron export pages preserve view values, membership, cursors and revisions", async () => {
+  const fields = D1_EXPORT_COLUMNS.neurons!.split(" ");
+  const documents = new Map<string, Record<string, unknown>>();
+  const members: (number | string | null)[][] = [];
+  for (let index = 0; index < 2065; index++) {
+    const netuid = index < 2055 ? 32000 : 32001;
+    const uid = index < 2055 ? index : index - 2055;
+    const shard = Math.floor(uid / 256);
+    const key = `${netuid}/${shard}`;
+    const payload = documents.get(key) ?? {};
+    payload[uid] = {
+      hotkey: "unaccepted-payload-identity",
+      active: true,
+      validator_permit: false,
+      rank: uid % 2 ? "0.125" : 0.25,
+      trust: null,
+      validator_trust: 0,
+      consensus: 0.75,
+      incentive: 0.5,
+      dividends: 0.25,
+      emission_tao: "1.25",
+      stake_tao: 2,
+      registered_at_block: 9000000,
+      is_immunity_period: true,
+      axon: uid % 2 ? "[2001:db8::1]:80" : { ip: "1.2.3.4", port: 80 },
+      block_number: "9175000",
+      captured_at: 1790090000000,
+      take: 0,
+    };
+    documents.set(key, payload);
+    members.push([netuid, uid, uid % 2 ? `h${uid}` : null, `c${uid}`, shard]);
+  }
+  const first = documents.get("32000/0")!;
+  delete first[0];
+  for (const [index, value] of [null, "plain", 42, true, [], {}].entries())
+    first[index + 1] = value;
+  members[8]![4] = 1; // A member displaced from its old metrics stays null.
+  first[9999] = { active: true }; // A metric without membership is not a row.
+  members.push([32002, 0, "missing-document", null, 0]);
+  try {
+    await db.batch([
+      ...[...documents].map(([key, payload]) => {
+        const [netuid, shard] = key.split("/").map(Number);
+        return db
+          .prepare(
+            "INSERT INTO neurons_documents VALUES(?,'',?,1790090000000,jsonb(?))",
+          )
+          .bind(netuid, shard, JSON.stringify(payload));
+      }),
+      db
+        .prepare(
+          "INSERT INTO neurons_members SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]'),json_extract(value,'$[2]'),json_extract(value,'$[3]'),json_extract(value,'$[4]') FROM json_each(?)",
+        )
+        .bind(JSON.stringify(members)),
+    ]);
+    const baseline = (
+      await db
+        .prepare(
+          `SELECT ${fields.map((field) => `"${field}"`).join(",")} FROM neurons ORDER BY netuid,uid`,
+        )
+        .all<Record<string, unknown>>()
+    ).results;
+    assert.equal(baseline.length, 2065);
+    const firstPage = await get({
+      table: "neurons",
+      kind: "rows",
+      columns: fields,
+    });
+    assert.equal(firstPage.rows.length, 2000);
+    assert.deepEqual(firstPage.next_cursor, [32000, 1999]);
+    const secondPage = await get({
+      table: "neurons",
+      kind: "rows",
+      columns: fields,
+      cursor: firstPage.next_cursor,
+      revision: firstPage.revision,
+    });
+    assert.equal(secondPage.next_cursor, null);
+    assert.deepEqual(
+      [...firstPage.rows, ...secondPage.rows],
+      baseline.map((row) => fields.map((field) => row[field])),
+    );
+    const narrow = await get({
+      table: "neurons",
+      kind: "rows",
+      columns: ["hotkey", "rank"],
+      cursor: [32001, 8],
+      revision: firstPage.revision,
+    });
+    assert.deepEqual(narrow.rows, [["h9", "0.125"]]);
+    assert.equal(narrow.next_cursor, null);
+    await db
+      .prepare(
+        "INSERT INTO archive_export_revisions(table_name,revision) VALUES('neurons',?) ON CONFLICT(table_name) DO UPDATE SET revision=excluded.revision",
+      )
+      .bind(firstPage.revision + 1)
+      .run();
+    assert.equal(
+      (
+        await handleD1StateExport(
+          req({
+            table: "neurons",
+            kind: "rows",
+            columns: fields,
+            cursor: firstPage.next_cursor,
+            revision: firstPage.revision,
+          }),
+          env(),
+        )
+      ).status,
+      409,
+    );
+  } finally {
+    await db.batch([
+      db.prepare("DELETE FROM neurons_members WHERE netuid>=32000"),
+      db.prepare("DELETE FROM neurons_documents WHERE netuid>=32000"),
+    ]);
+  }
+});
+
 test("a later storage migration cannot authorize an unapproved archive column", async () => {
   await db
     .prepare("ALTER TABLE account_balances ADD COLUMN internal_credential TEXT")
