@@ -530,6 +530,25 @@ describe("shared archive object storage", () => {
     }
   });
 
+  it("does not treat a malformed conditional write acknowledgment as contention", async () => {
+    for (const results of [
+      [{ key: "wrong" }],
+      [{ key: prefix + key }, { key: prefix + key }],
+    ]) {
+      const f = fixture();
+      const source = f.record(Buffer.from("existing"));
+      f.set(prefix + key, source);
+      let updating = false;
+      f.fail((sql) => {
+        updating = sql.startsWith("UPDATE");
+      });
+      f.reply((result) => (updating ? { success: true, results } : result));
+      await expect(
+        f.store.put(key, "candidate", { onlyIf: { etagMatches: source.etag } }),
+      ).rejects.toThrow("selection changed");
+    }
+  });
+
   it("bounds keys, descriptors, write sizes, ranges and unsupported options", async () => {
     const f = fixture();
     for (const key of ["../escape", "/absolute", "p//x", "", "a".repeat(1025)])
