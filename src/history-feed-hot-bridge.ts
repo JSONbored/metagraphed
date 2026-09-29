@@ -8,9 +8,10 @@ export interface HotHistoryPredicate {
   text: string;
   values: unknown[];
   blockRange?: boolean;
+  netuids?: readonly number[];
 }
 
-/** Bind every caller value; only the internal column vocabulary enters SQL. */
+/** Bind caller values. */
 export function hotHistoryPredicate(
   range: FeedRange,
   index: "event_index" | "extrinsic_index",
@@ -62,10 +63,15 @@ export function hotAccountPredicate(
       netuid: selector.netuid,
     }),
   );
+  const blockRange = predicates.some((predicate) => predicate.blockRange);
   return {
     text: predicates.map((predicate) => `(${predicate.text})`).join(" OR "),
     values: predicates.flatMap((predicate) => predicate.values),
-    blockRange: predicates.some((predicate) => predicate.blockRange),
+    blockRange,
+    netuids:
+      blockRange && selectors.every((selector) => selector.netuid !== undefined)
+        ? [...new Set(selectors.map((selector) => selector.netuid!))]
+        : undefined,
   };
 }
 
@@ -78,11 +84,8 @@ export function hotExtrinsicPredicate(selector: ExtrinsicFeedSelector) {
   });
 }
 
-/** Read the unindexed tail and its complete block census in ONE SQLite
- * snapshot. The caller brackets this with the uncached source-ceiling reads.
- * A normal decode can advance that ceiling before publishing its index;
- * contiguous hot coverage keeps the existing complete answer available.
- * Testnet cannot borrow mainnet's D1 rows. */
+/** Read tail rows and block coverage in one snapshot, bracketed by the caller's
+ * source-ceiling reads. Only contiguous mainnet D1 coverage can bridge a tail. */
 export async function readHotHistoryTail(
   env: unknown,
   table: "account_events" | "extrinsics" | "chain_events",
@@ -108,14 +111,17 @@ export async function readHotHistoryTail(
     table === "chain_events"
       ? "height DESC, item DESC"
       : "stamp DESC, height DESC, item DESC";
-  // Aggregates must consume the whole bounded selection; a page may stop once
-  // it has enough candidates. One sentinel row distinguishes those outcomes.
+  // A sentinel detects truncated aggregates; pages may stop at their limit.
   const maximum = pageSize ?? 50_000;
-  // Broad filters must scan only the bounded tail, not the entire timestamp
-  // index to satisfy ORDER BY. Account/signer/module lookups retain their
-  // selective indexes. These WITHOUT ROWID tables use the block-leading PK.
-  const access = predicate.blockRange
-    ? ` INDEXED BY sqlite_autoindex_${hotTable}_1`
+  // Bound broad scans by subnet/block, preserving selective account indexes.
+  const netuids = table === "account_events" ? predicate.netuids : undefined;
+  const access = netuids
+    ? " INDEXED BY idx_chain_detail_account_events_netuid_block"
+    : predicate.blockRange
+      ? ` INDEXED BY sqlite_autoindex_${hotTable}_1`
+      : "";
+  const subnet = netuids
+    ? ` AND netuid IN (${netuids.map(() => "?").join(",")})`
     : "";
   const result = await store.query<{
     first: number | null;
@@ -128,7 +134,7 @@ export async function readHotHistoryTail(
        FROM chain_detail_blocks WHERE block_number > ? AND block_number <= ?
      ), matching AS (
        SELECT ${groupBy ? `${groupBy.join(",")}, COUNT(*) AS count` : columns.join(",")} FROM ${hotTable}${access}
-       WHERE block_number > ? AND block_number <= ? AND (${predicate.text})
+       WHERE block_number > ? AND block_number <= ?${subnet} AND (${predicate.text})
        ${groupBy ? `GROUP BY ${groupBy.join(",")} ORDER BY count DESC` : `ORDER BY ${order}`} LIMIT ?
      )
      SELECT 0 AS sequence, first, last, rows, NULL AS record,
@@ -137,7 +143,15 @@ export async function readHotHistoryTail(
      SELECT 1, NULL, NULL, NULL, json_object(${columns.map((column) => `'${column}',${column}`).join(",")}),
        ${groupBy ? "NULL, NULL, NULL" : `observed_at, block_number, ${index}`} FROM matching
      ORDER BY sequence, ${outerOrder}`,
-    [through, last, through, last, ...predicate.values, maximum + 1],
+    [
+      through,
+      last,
+      through,
+      last,
+      ...(netuids ?? []),
+      ...predicate.values,
+      maximum + 1,
+    ],
   );
   const coverage = result.shift();
   if (
@@ -156,7 +170,7 @@ export async function readHotHistoryTail(
   return result.slice(0, maximum).map((item) => JSON.parse(item.record!));
 }
 
-/** D1 stores exact decimal text; the retained catalog exposes numeric cells. */
+/** Parse catalog numbers. */
 export function hotHistoryNumbers(
   row: Record<string, unknown>,
   columns: readonly string[],

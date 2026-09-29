@@ -40,11 +40,15 @@ const read = (predicate = all(), pageSize?: number) =>
   );
 beforeAll(async () => {
   db = await runtime.getD1Database("DB");
-  for (const sql of readFileSync(
-    new URL("../migrations/d1/0014_recent_chain_state.sql", import.meta.url),
-    "utf8",
-  ).split("-- statement-breakpoint"))
-    if (sql.trim()) await db.prepare(sql).run();
+  for (const file of [
+    "0014_recent_chain_state.sql",
+    "0033_account_event_subnet_tail_index.sql",
+  ])
+    for (const sql of readFileSync(
+      new URL(`../migrations/d1/${file}`, import.meta.url),
+      "utf8",
+    ).split("-- statement-breakpoint"))
+      if (sql.trim()) await db.prepare(sql).run();
 });
 afterAll(async () => runtime.dispose());
 beforeEach(async () => {
@@ -145,11 +149,94 @@ it("bounds broad tail work independently of older rows without displacing accoun
     expect(rows?.map((row) => row.block_number)).toEqual([13, 12]);
   }
   expect(work[0]!.rows).toBeLessThan(100);
-  expect(work[0]!.plans.join("\n")).toContain("USING PRIMARY KEY");
+  expect(work[0]!.plans.join("\n")).toContain(
+    "idx_chain_detail_account_events_netuid_block (netuid=? AND block_number>? AND block_number<?)",
+  );
   expect(work[1]!.plans.join("\n")).toContain(
     "idx_chain_detail_account_events_hotkey_observed",
   );
   expect(work[2]!.rows).toBeLessThan(100);
+});
+it("bounds subnet-filtered work inside a busy tail and preserves OR deduplication and cursors", async () => {
+  await db
+    .prepare(
+      `WITH RECURSIVE items(n) AS
+    (SELECT 1 UNION ALL SELECT n+1 FROM items WHERE n<10001)
+    INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,hotkey,netuid,observed_at)
+    SELECT 12,n,'Transfer','other-subnet',99,12000 FROM items`,
+    )
+    .run();
+  await db
+    .prepare(
+      `INSERT INTO chain_detail_account_events
+    (block_number,event_index,event_kind,hotkey,netuid,observed_at)
+    VALUES (12,10002,'StakeAdded','alice',65,12000)`,
+    )
+    .run();
+  let reads = 0;
+  const measured = {
+    ...env(),
+    D1_STATE: {
+      batch: db.batch.bind(db),
+      prepare(text: string) {
+        return {
+          bind(...values: (string | number | null)[]) {
+            return {
+              async all() {
+                const result = await db
+                  .prepare(text)
+                  .bind(...values)
+                  .all();
+                reads = result.meta.rows_read;
+                return result;
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const predicate = hotAccountPredicate([
+    {
+      side: "all",
+      account: "*",
+      netuid: 64,
+      kind: "Transfer",
+      cursor: [13000, 13, 0],
+    },
+    { side: "all", account: "*", netuid: 65, kind: "StakeAdded" },
+    { side: "hotkey", account: "bob", netuid: 64, cursor: [13000, 13, 0] },
+  ]);
+  expect(predicate.netuids).toEqual([64, 65]);
+  const rows = await readHotHistoryTail(
+    measured,
+    "account_events",
+    10,
+    13,
+    "mainnet",
+    ACCOUNT_EVENTS_COLUMNS,
+    predicate,
+    10,
+  );
+  expect(reads).toBeLessThan(100);
+  const reference = await read({ ...predicate, netuids: undefined }, 10);
+  expect(rows).toEqual(reference);
+  expect(rows?.map((row) => [row.block_number, row.event_index])).toEqual([
+    [12, 10002],
+    [12, 0],
+    [11, 0],
+  ]);
+  expect(hotAccountPredicate([]).netuids).toBeUndefined();
+  expect(
+    hotAccountPredicate([{ side: "hotkey", account: "bob", netuid: 64 }])
+      .netuids,
+  ).toBeUndefined();
+  expect(
+    hotAccountPredicate([
+      { side: "all", account: "*", netuid: 64 },
+      { side: "all", account: "*" },
+    ]).netuids,
+  ).toBeUndefined();
 });
 it("preserves peer, kind, subnet, inclusive windows and the exclusive cursor", async () => {
   const rows = await read(
