@@ -13,6 +13,7 @@ import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import {
   readNeuronDailyValidators,
   readNeuronDailyTotals,
+  readNeuronDailyMetricRows,
   readSubnetDailyHistory,
   readNeuronDirectoryRows,
   readDirectoryNominatorCounts,
@@ -7653,19 +7654,20 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/performance\/history$/,
   );
   if (performanceHistoryMatch) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(performanceHistoryMatch[1]);
       const cutoff = windowCutoffDate(
         url,
         PERFORMANCE_HISTORY_WINDOWS,
         DEFAULT_PERFORMANCE_HISTORY_WINDOW,
       );
-      const rows = await sql.unsafe<PerformanceHistoryRow>(
-        `SELECT ${PERFORMANCE_HISTORY_READ_COLUMNS}
-        FROM neuron_daily
-        WHERE netuid = ? AND snapshot_date >= ?
-        ORDER BY snapshot_date DESC LIMIT ?`,
-        [netuid, cutoff, PERFORMANCE_HISTORY_ROW_CAP],
+      const rows = await readNeuronDailyMetricRows<PerformanceHistoryRow>(
+        { query: sql.unsafe },
+        env,
+        netuid,
+        cutoff,
+        PERFORMANCE_HISTORY_READ_COLUMNS,
+        PERFORMANCE_HISTORY_ROW_CAP,
       );
       return json(
         buildSubnetPerformanceHistory(rows, netuid, {
@@ -8187,23 +8189,26 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/yield\/history$/,
   );
   if (yieldHistoryMatch) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(yieldHistoryMatch[1]);
       const cutoff = windowCutoffDate(
         url,
         YIELD_HISTORY_WINDOWS,
         DEFAULT_YIELD_HISTORY_WINDOW,
       );
-      const rows = await sql<{
+      const rows = await readNeuronDailyMetricRows<{
         snapshot_date: NeuronDaily["snapshot_date"];
         validator_permit: NeuronDaily["validator_permit"];
         stake_tao: NeuronDaily["stake_tao"];
         emission_tao: NeuronDaily["emission_tao"];
-      }>`
-        SELECT snapshot_date, validator_permit, stake_tao, emission_tao
-        FROM neuron_daily
-        WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
-        ORDER BY snapshot_date DESC LIMIT ${YIELD_HISTORY_ROW_CAP}`;
+      }>(
+        { query: sql.unsafe },
+        env,
+        netuid,
+        cutoff,
+        "snapshot_date, validator_permit, stake_tao, emission_tao",
+        YIELD_HISTORY_ROW_CAP,
+      );
       return json(
         buildSubnetYieldHistory(rows, netuid, {
           window: windowLabelFor(

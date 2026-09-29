@@ -8,7 +8,7 @@ import type { PgSql } from "./pg-sql.ts";
 import { NEURON_COLUMNS } from "./metagraph-neurons.ts";
 import { z } from "zod";
 import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
-import type { UntypedRowQuerier } from "./read-store.ts";
+import type { ReadStoreDb, UntypedRowQuerier } from "./read-store.ts";
 import { readRevisionedNeuronEconomics } from "./neuron-economics-cache.ts";
 
 const EconomicsValuesSchema = z.array(z.unknown()).length(5);
@@ -364,6 +364,61 @@ interface NeuronDailyRollup extends Record<string, unknown> {
   validator_count: string | number;
   total_stake_tao: string | number | null;
   total_emission_tao: string | number | null;
+}
+
+/** Bound the accepted membership first, then expand each selected shard once.
+ * Missing metric entries remain null rows, just as in the membership view. */
+export async function readNeuronDailyMetricRows<Row>(
+  db: Pick<ReadStoreDb, "query">,
+  env: unknown,
+  netuid: number,
+  cutoff: string,
+  columns: string,
+  limit: number,
+): Promise<Row[]> {
+  const names = columns.split(",").map((column) => column.trim());
+  const allowed = new Set(["snapshot_date", ...NEURON_COLUMNS.split(", ")]);
+  if (
+    names.some((name) => !allowed.has(name)) ||
+    new Set(names).size !== names.length ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1
+  )
+    throw new Error("Invalid bounded neuron history projection");
+  const store = selectedD1Store(env, ["neuron_daily"]);
+  if (!store)
+    return db.query<Row>(
+      `SELECT ${names.join(", ")} FROM neuron_daily
+       WHERE netuid = ? AND snapshot_date >= ?
+       ORDER BY snapshot_date DESC, uid LIMIT ?`,
+      [netuid, cutoff, limit],
+    );
+  const identities = new Set(["snapshot_date", "uid", "hotkey", "coldkey"]);
+  const projection = names
+    .map((name) =>
+      identities.has(name)
+        ? `s.${name} AS ${name}`
+        : `json_extract(v.value,'$.${name}') AS ${name}`,
+    )
+    .join(",");
+  return store.query<Row>(
+    `WITH selected AS MATERIALIZED (
+       SELECT m.snapshot_date,m.uid,m.hotkey,m.coldkey,m.shard
+       FROM neuron_daily_members m JOIN neuron_daily_documents d
+         ON d.netuid=m.netuid AND d.day=m.snapshot_date AND d.shard=m.shard
+       WHERE m.netuid=? AND m.snapshot_date>=?
+       ORDER BY m.snapshot_date DESC,m.uid LIMIT ?
+     ), metric_rows AS MATERIALIZED (
+       SELECT d.day,d.shard,j.key,j.value
+       FROM (SELECT DISTINCT snapshot_date,shard FROM selected) shards
+       CROSS JOIN neuron_daily_documents d CROSS JOIN json_each(d.payload) j
+       WHERE d.netuid=? AND d.day=shards.snapshot_date AND d.shard=shards.shard
+     )
+     SELECT ${projection} FROM selected s LEFT JOIN metric_rows v
+       ON v.day=s.snapshot_date AND v.shard=s.shard AND v.key=CAST(s.uid AS TEXT)
+     ORDER BY s.snapshot_date DESC,s.uid`,
+    [netuid, cutoff, limit, netuid],
+  );
 }
 
 const DAILY_DOCUMENT_TOTALS = `COUNT(*) AS neuron_count,
