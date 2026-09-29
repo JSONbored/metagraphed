@@ -11,7 +11,7 @@ export interface HotHistoryPredicate {
   netuids?: readonly number[];
 }
 
-/** Bind every caller value; only the internal column vocabulary enters SQL. */
+/** Bind values; column names are internal. */
 export function hotHistoryPredicate(
   range: FeedRange,
   index: "event_index" | "extrinsic_index",
@@ -84,11 +84,8 @@ export function hotExtrinsicPredicate(selector: ExtrinsicFeedSelector) {
   });
 }
 
-/** Read the unindexed tail and its complete block census in ONE SQLite
- * snapshot. The caller brackets this with the uncached source-ceiling reads.
- * A normal decode can advance that ceiling before publishing its index;
- * contiguous hot coverage keeps the existing complete answer available.
- * Testnet cannot borrow mainnet's D1 rows. */
+/** Read tail rows and block coverage in one snapshot, bracketed by the caller's
+ * source-ceiling reads. Only contiguous mainnet D1 coverage can bridge a tail. */
 export async function readHotHistoryTail(
   env: unknown,
   table: "account_events" | "extrinsics" | "chain_events",
@@ -114,13 +111,9 @@ export async function readHotHistoryTail(
     table === "chain_events"
       ? "height DESC, item DESC"
       : "stamp DESC, height DESC, item DESC";
-  // Aggregates must consume the whole bounded selection; a page may stop once
-  // it has enough candidates. One sentinel row distinguishes those outcomes.
+  // A sentinel detects truncated aggregates; pages may stop at their limit.
   const maximum = pageSize ?? 50_000;
-  // Broad filters must scan only the bounded tail, not the entire timestamp
-  // index to satisfy ORDER BY. Account/signer/module lookups retain their
-  // selective indexes. Subnet-only filters seek each selected subnet's tail;
-  // unrestricted filters use the block-leading primary key.
+  // Bound broad scans by subnet/block, preserving selective account indexes.
   const netuids = table === "account_events" ? predicate.netuids : undefined;
   const access = netuids
     ? " INDEXED BY idx_chain_detail_account_events_netuid_block"
@@ -177,7 +170,7 @@ export async function readHotHistoryTail(
   return result.slice(0, maximum).map((item) => JSON.parse(item.record!));
 }
 
-/** D1 stores exact decimal text; the retained catalog exposes numeric cells. */
+/** Convert D1 decimal text to catalog numbers. */
 export function hotHistoryNumbers(
   row: Record<string, unknown>,
   columns: readonly string[],
