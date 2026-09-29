@@ -12,7 +12,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://api.metagraph.sh/mcp/core"
+      "url": "https://api.metagraph.sh/mcp"
     }
   ]
 }

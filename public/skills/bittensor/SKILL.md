@@ -26,14 +26,15 @@ them live from metagraphed.
 ## Connect (one line)
 
 ```
-claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core
+claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 ```
 
 Cursor / other clients: add an MCP server with url
-`https://api.metagraph.sh/mcp/core`, transport `streamable-http`. Server
+`https://api.metagraph.sh/mcp`, transport `streamable-http`. Server
 descriptor: `https://api.metagraph.sh/.well-known/mcp/server-card.json`.
 
-`/mcp/core` lists common tools directly; `/mcp` starts with bounded discovery.
+`/mcp` starts with four discovery and invocation tools; `/mcp/core` also lists
+common tools directly.
 Either endpoint can call every tool — the profile filters listing, never dispatch.
 Use `search_tools` to retrieve complete definitions, then `invoke_read_tool` for
 read-only targets or `invoke_tool` for other targets after reviewing permissions.

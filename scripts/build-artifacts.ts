@@ -2126,19 +2126,7 @@ await writeJson(artifactFile("coverage-depth.json"), coverageDepthArtifact);
 // public/ root (and /.well-known) by the ASSETS handler at api.metagraph.sh.
 const llmsApiBase = `https://${PRIMARY_DOMAIN}`;
 const mcpEndpoint = `${llmsApiBase}/mcp`;
-/**
- * The core listing profile, and the one an agent should install (#11164).
- *
- * MEASURED against production on 2026-08-22: `/mcp` lists 243 tools at
- * ~396,000 tokens; `/mcp/core` lists 23 at ~44,500. Most clients hold tool
- * definitions in model context, so the full list costs a caller nine tenths
- * of a large context window BEFORE they ask anything.
- *
- * Recommending core is not a reduction. The profile filters `tools/list` and
- * NEVER dispatch -- a core session can `tools/call` all 243, and carries
- * `ask` and `get_more_tools` as escape hatches -- so the only thing a caller
- * gives up is paying to read a catalogue they mostly will not use.
- */
+// Keep the common-tool profile available; new installs use bounded discovery.
 const mcpCoreEndpoint = `${llmsApiBase}/mcp/core`;
 const llmsHeader = [
   "# metagraphed",
@@ -2155,7 +2143,7 @@ const llmsHeader = [
   `- [Coverage depth scorecard](${llmsApiBase}/api/v1/coverage-depth): one ranked view of which subnets are machine-usable, what is missing, and which enrichment actions should happen next`,
   `- [Copyable AI agent](${llmsApiBase}/agent.md): paste-ready system prompt that turns any agent into a metagraphed-powered Bittensor integration agent. Every AI resource indexed at [/api/v1/agent-resources](${llmsApiBase}/api/v1/agent-resources).`,
   `- [Agent workflows](${llmsApiBase}/agent-workflows.md): task-oriented REST, MCP, npm, and Python examples for finding and calling subnets`,
-  `- [MCP server](${mcpCoreEndpoint}): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${mcpCoreEndpoint}\`. The core profile lists common tools directly and can call every tool — the profile filters listing, never dispatch. [${mcpEndpoint}](${mcpEndpoint}) starts with bounded discovery via search_tools and invocation bridges. Use [the full catalog](${mcpEndpoint}?catalog=full) when your client needs every definition up front.`,
+  `- [MCP server](${mcpEndpoint}): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${mcpEndpoint}\`. The default starts with bounded discovery via search_tools and invocation bridges. Every tool remains callable — the profile filters listing, never dispatch. [Common tools](${mcpCoreEndpoint}) are also available directly. Use [the full catalog](${mcpEndpoint}?catalog=full) when your client needs every definition up front.`,
   `- [MCP server card](${llmsApiBase}/.well-known/mcp/server-card.json): machine-readable server descriptor (tools, transport, protocol versions)`,
   `- [Content feeds](${llmsApiBase}/api/v1/feeds/registry): RSS 2.0 / Atom 1.0 / JSON Feed 1.1 of registry changes + incidents (per-subnet at /api/v1/feeds/subnets/{netuid}; ranked coverage gaps at /api/v1/feeds/gaps). Content-negotiated via Accept, or append .rss/.atom/.json.`,
   `- Embeddable badges: \`${llmsApiBase}/api/v1/subnets/{netuid}/badge.svg\` and \`/api/v1/providers/{slug}/badge.svg\` — SVG badges for READMEs (\`?metric=readiness\` default, \`?metric=completeness\` for coverage score, \`?metric=uptime\` for reliability).`,
@@ -2379,14 +2367,12 @@ const agentResourcesContent = {
       "Paste-ready system prompt that turns any agent (Claude, Cursor, …) into a metagraphed-powered Bittensor integration agent.",
   },
   mcp: {
-    // `endpoint` stays the full profile: it is the identity of the server and
-    // what every existing consumer resolved. What changes is which one is
-    // RECOMMENDED, which is what `install` and `core_endpoint` now say.
+    // New clients start with bounded discovery; all capabilities remain callable.
     endpoint: mcpEndpoint,
     core_endpoint: mcpCoreEndpoint,
-    recommended_endpoint: mcpCoreEndpoint,
+    recommended_endpoint: mcpEndpoint,
     transport: "streamable-http",
-    install: `claude mcp add --transport http metagraphed ${mcpCoreEndpoint}`,
+    install: `claude mcp add --transport http metagraphed ${mcpEndpoint}`,
     server_card: `${llmsApiBase}/.well-known/mcp/server-card.json`,
     tools: listToolDefinitions().map((tool) => ({
       name: tool.name,
