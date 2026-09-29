@@ -2202,7 +2202,10 @@ describe("MCP agent intent capture (#9642)", () => {
     // The names ARE the advertised catalogue — same length as the count the
     // event has always carried, so the two cannot tell different stories.
     assert.equal(names.length, events[0]!.toolCount);
-    assert.ok(names.includes("get_subnet"));
+    assert.deepEqual(
+      names,
+      listToolDefinitions("discovery").map((tool) => tool.name),
+    );
   });
 
   // ── conversation_id: the stitching label, same lifecycle as the intent ──
@@ -2426,6 +2429,7 @@ describe("native MCP conversation continuity", () => {
       CONFIGURED_ENV,
       deps,
       { "mcp-session-id": sessionA },
+      "/mcp?catalog=full",
     );
     await Promise.all(deps.executionCtx.scheduled);
     assert.deepEqual(deps.events.map((event) => event.event).sort(), [
