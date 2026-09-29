@@ -209,6 +209,8 @@ export interface PruneWindow {
 export function chainDetailPruneWindow(input: {
   head: number;
   seam: number;
+  /** A native serving index must cover a row before its hot copy is removed. */
+  preserveUnpublished?: boolean;
 }): PruneWindow {
   const { head, seam } = input;
   // How far back the lakehouse has NOT reached. One block of overlap at the
@@ -217,7 +219,7 @@ export function chainDetailPruneWindow(input: {
   // neither would decline a block both tiers could answer.
   const uncovered = head - seam;
   const retainedBlocks = Math.min(
-    CHAIN_DETAIL_MAX_RETAINED_BLOCKS,
+    input.preserveUnpublished ? Infinity : CHAIN_DETAIL_MAX_RETAINED_BLOCKS,
     Math.max(CHAIN_DETAIL_MIN_RETAINED_BLOCKS, uncovered),
   );
   const keepFrom = head - retainedBlocks + 1;
@@ -298,7 +300,13 @@ export async function pruneChainDetail(
       return { ok: true, reason: "no rows", blocks_pruned: 0 };
 
     const seam = await readableHistorySeam(env);
-    const window = chainDetailPruneWindow({ head, seam });
+    const window = chainDetailPruneWindow({
+      head,
+      seam,
+      preserveUnpublished:
+        (env as { NATIVE_PROJECTIONS?: unknown } | null)?.NATIVE_PROJECTIONS ===
+        "enabled",
+    });
     if (window.keepFrom <= floor)
       return {
         ok: true,

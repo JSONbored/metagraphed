@@ -247,6 +247,30 @@ test("caught-up serving indexes retain the normal bounded D1 cleanup", async () 
   assert.equal(result.retained_blocks, 1800);
 });
 
+test("a native publication outage cannot age unserved rows past the retention ceiling", async () => {
+  await seed();
+  const old = head - 15_000;
+  await db
+    .prepare(
+      "INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'old',0,0,0,1,1)",
+    )
+    .bind(old)
+    .run();
+  const selected = selectedHistory({
+    blocks: head,
+    extrinsics: old - 1,
+    chain_events: head,
+    account_events: head,
+  });
+  const before = await Promise.all(tables.map(blocks));
+  const result = await pruneChainDetail({ ...env(), ...selected }, ctx);
+  assert.equal(result.ok, true);
+  assert.equal(result.keep_from, old);
+  assert.equal(result.retained_blocks, 15_001);
+  assert.equal(result.blocks_pruned, 0);
+  assert.deepEqual(await Promise.all(tables.map(blocks)), before);
+});
+
 test.each(["missing", "partial", "unbound"])(
   "D1 retention preserves all rows when selected history is %s",
   async (state) => {
