@@ -14,6 +14,7 @@ import {
   readNeuronDailyValidators,
   readNeuronDailyTotals,
   readNeuronDailyMetricRows,
+  readNeuronPerformanceRows,
   readSubnetDailyHistory,
   readNeuronDirectoryRows,
   readDirectoryNominatorCounts,
@@ -7740,20 +7741,8 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
 
   // GET /api/v1/chain/performance
   if (url.pathname === "/api/v1/chain/performance") {
-    return async (sql) => {
-      const rows = await sql<{
-        incentive: Neurons["incentive"];
-        dividends: Neurons["dividends"];
-        trust: Neurons["trust"];
-        consensus: Neurons["consensus"];
-        validator_trust: Neurons["validator_trust"];
-        active: Neurons["active"];
-        validator_permit: Neurons["validator_permit"];
-        netuid: Neurons["netuid"];
-        captured_at: Neurons["captured_at"];
-      }>`
-        SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, netuid, captured_at
-        FROM neurons`;
+    return async (sql, env) => {
+      const rows = await readNeuronPerformanceRows({ query: sql.unsafe }, env);
       return json(buildChainPerformance(rows));
     };
   }

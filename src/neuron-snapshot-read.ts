@@ -10,6 +10,7 @@ import { z } from "zod";
 import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
 import type { ReadStoreDb, UntypedRowQuerier } from "./read-store.ts";
 import { readRevisionedNeuronEconomics } from "./neuron-economics-cache.ts";
+import { CHAIN_PERFORMANCE_READ_COLUMNS } from "./chain-performance.ts";
 
 const EconomicsValuesSchema = z.array(z.unknown()).length(5);
 const EconomicsShardSchema = z.array(
@@ -364,6 +365,32 @@ interface NeuronDailyRollup extends Record<string, unknown> {
   validator_count: string | number;
   total_stake_tao: string | number | null;
   total_emission_tao: string | number | null;
+}
+
+/** Preserve accepted members with missing metrics while expanding each shard once. */
+export async function readNeuronPerformanceRows(
+  db: Pick<ReadStoreDb, "query">,
+  env: unknown,
+): Promise<Record<string, unknown>[]> {
+  const store = selectedD1Store(env, ["neurons"]);
+  if (!store)
+    return db.query(`SELECT ${CHAIN_PERFORMANCE_READ_COLUMNS} FROM neurons`);
+  const projection = CHAIN_PERFORMANCE_READ_COLUMNS.split(", ")
+    .map((name) =>
+      name === "netuid"
+        ? "m.netuid AS netuid"
+        : `json_extract(v.value,'$.${name}') AS ${name}`,
+    )
+    .join(",");
+  return store.query(`WITH metrics AS MATERIALIZED (
+    SELECT d.netuid,d.shard,j.key,j.value FROM neurons_documents d
+    CROSS JOIN json_each(d.payload) j WHERE d.day=''
+  )
+  SELECT ${projection} FROM neurons_members m JOIN neurons_documents d
+    ON d.netuid=m.netuid AND d.day='' AND d.shard=m.shard
+  LEFT JOIN metrics v ON v.netuid=m.netuid AND v.shard=m.shard
+    AND v.key=CAST(m.uid AS TEXT)
+  ORDER BY m.netuid,m.uid`);
 }
 
 /** Bound the accepted membership first, then expand each selected shard once.
