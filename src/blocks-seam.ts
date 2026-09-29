@@ -45,22 +45,9 @@ function retainedSeamCensus(env: unknown, deps: DecodeWatermarkDeps) {
  * more: see `resolveBlocksSeam`. */
 export const BLOCKS_SEAM_ENV = "ICEBERG_BLOCKS_MAX";
 
-/**
- * The seam FLOOR: history the lakehouse is known to hold regardless of what
- * the decode lane has published since.
- *
- * Measured 2026-08-02 against the live lakehouse (#9161): `min=0,
- * max=8,759,336, count=8,759,337` -- `count == max - min + 1`, so the range is
- * contiguous with no gaps and no duplicates. It is the height of the final
- * export plus the delta loads that followed, and it is the same number the
- * decoder's own `iceberg_r2.py seam` uses when its ledger is empty.
- *
- * As a CEILING this number went stale twice, both times invisibly, because
- * nothing re-measured it between deploys. As a floor it cannot: the published
- * watermark only raises the seam, so a constant that lags reality costs
- * nothing the moment the decoder publishes, and a constant that is somehow
- * ahead of the lakehouse still bounds the damage to the range it always did.
- */
+/** Original contiguous export ceiling (#9161), retained as a fallback floor.
+ * A selected retained owner must independently prove coverage at this height;
+ * this historical measurement alone cannot establish present availability. */
 export const DEFAULT_BLOCKS_SEAM = 8_759_336;
 
 /** The one binding this module still reads directly, independent of the full
@@ -99,14 +86,8 @@ export function blocksSeamFloor(env: unknown): number {
   return parsed ?? DEFAULT_BLOCKS_SEAM;
 }
 
-/**
- * The seam this request routes on: the published decode watermark when it is
- * ahead of the configured floor, the floor otherwise.
- *
- * The selected retained-D1 copy publishes independently of the decoder. Its
- * committed height bounds the seam even when all decoded tables have advanced.
- * Environments without that selected owner retain the decode-watermark policy.
- */
+/** Route on the decoded height bounded by the independently published retained
+ * copy. Unselected environments keep their existing watermark policy. */
 export async function resolveBlocksSeam(
   env: unknown,
   deps: DecodeWatermarkDeps = {},
