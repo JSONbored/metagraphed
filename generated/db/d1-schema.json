@@ -13,15 +13,21 @@
   },
   {
     "type": "index",
+    "name": "account_position_daily_documents_day_idx",
+    "tbl_name": "account_position_daily_documents",
+    "sql": "CREATE INDEX account_position_daily_documents_day_idx\nON account_position_daily_documents(day,netuid,shard)"
+  },
+  {
+    "type": "index",
     "name": "account_position_daily_members_account_snapshot_date_idx",
     "tbl_name": "account_position_daily_members",
     "sql": "CREATE INDEX account_position_daily_members_account_snapshot_date_idx ON account_position_daily_members(account,snapshot_date)"
   },
   {
     "type": "index",
-    "name": "account_position_daily_members_snapshot_date_netuid_idx",
+    "name": "account_position_daily_members_date_shard_idx",
     "tbl_name": "account_position_daily_members",
-    "sql": "CREATE INDEX account_position_daily_members_snapshot_date_netuid_idx ON account_position_daily_members(snapshot_date,netuid)"
+    "sql": "CREATE INDEX account_position_daily_members_date_shard_idx\nON account_position_daily_members(snapshot_date,netuid,shard)"
   },
   {
     "type": "index",
@@ -511,15 +517,15 @@
   },
   {
     "type": "index",
-    "name": "neuron_daily_members_hotkey_idx",
+    "name": "neuron_daily_members_date_shard_idx",
     "tbl_name": "neuron_daily_members",
-    "sql": "CREATE INDEX neuron_daily_members_hotkey_idx ON neuron_daily_members(hotkey)"
+    "sql": "CREATE INDEX neuron_daily_members_date_shard_idx\nON neuron_daily_members(snapshot_date,netuid,shard)"
   },
   {
     "type": "index",
-    "name": "neuron_daily_members_snapshot_date_netuid_idx",
+    "name": "neuron_daily_members_hotkey_idx",
     "tbl_name": "neuron_daily_members",
-    "sql": "CREATE INDEX neuron_daily_members_snapshot_date_netuid_idx ON neuron_daily_members(snapshot_date,netuid)"
+    "sql": "CREATE INDEX neuron_daily_members_hotkey_idx ON neuron_daily_members(hotkey)"
   },
   {
     "type": "index",

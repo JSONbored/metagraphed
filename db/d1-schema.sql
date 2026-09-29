@@ -2,9 +2,13 @@ CREATE INDEX _audit_neuron_coldkey_20260922 ON _audit_neuron_members_20260922(co
 
 CREATE INDEX _audit_neuron_hotkey_20260922 ON _audit_neuron_members_20260922(hotkey);
 
+CREATE INDEX account_position_daily_documents_day_idx
+ON account_position_daily_documents(day,netuid,shard);
+
 CREATE INDEX account_position_daily_members_account_snapshot_date_idx ON account_position_daily_members(account,snapshot_date);
 
-CREATE INDEX account_position_daily_members_snapshot_date_netuid_idx ON account_position_daily_members(snapshot_date,netuid);
+CREATE INDEX account_position_daily_members_date_shard_idx
+ON account_position_daily_members(snapshot_date,netuid,shard);
 
 CREATE INDEX emission_flow_watch_item_observed_idx
   ON emission_flow_watch (item, observed_at DESC);
@@ -184,9 +188,10 @@ CREATE INDEX neuron_daily_documents_day_idx ON neuron_daily_documents(day,netuid
 
 CREATE INDEX neuron_daily_members_coldkey_idx ON neuron_daily_members(coldkey);
 
-CREATE INDEX neuron_daily_members_hotkey_idx ON neuron_daily_members(hotkey);
+CREATE INDEX neuron_daily_members_date_shard_idx
+ON neuron_daily_members(snapshot_date,netuid,shard);
 
-CREATE INDEX neuron_daily_members_snapshot_date_netuid_idx ON neuron_daily_members(snapshot_date,netuid);
+CREATE INDEX neuron_daily_members_hotkey_idx ON neuron_daily_members(hotkey);
 
 CREATE INDEX neuron_daily_members_subnet_day_shard_idx ON neuron_daily_members(netuid,snapshot_date DESC,shard,uid,hotkey,coldkey);
 
