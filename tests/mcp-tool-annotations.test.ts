@@ -108,7 +108,8 @@ describe("MCP tool annotations", () => {
     // same catalogued third-party surfaces the merged tool already did, and
     // both are open-world for that reason. The count moved because one tool
     // became two, not because the set of things we touch grew.
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 24);
+    // The discovered invocation bridge inherits the broadest target effects.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 25);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,
@@ -140,6 +141,7 @@ describe("MCP tool annotations", () => {
       )
       .map((def) => def.name);
     assert.deepEqual(mutating, [
+      "invoke_tool",
       // #11568: the write half of the surface-call split. Its read sibling is
       // deliberately absent from this list now -- that is the split working.
       "write_subnet_surface",

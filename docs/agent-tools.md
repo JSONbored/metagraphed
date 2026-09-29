@@ -1,7 +1,9 @@
 # Agent tool specs (OpenAI + Anthropic)
 
-For MCP-aware clients, point them at `https://api.metagraph.sh/mcp` (or resolve
-`io.github.JSONbored/metagraphed` from the [MCP Registry](mcp-registry.md)). For
+For MCP-aware clients, use `https://api.metagraph.sh/mcp/core` for bounded
+discovery and access to every tool. The complete listing remains at
+`https://api.metagraph.sh/mcp` (also available as
+`io.github.JSONbored/metagraphed` in the [MCP Registry](mcp-registry.md)). For
 the two largest **non-MCP** agent ecosystems — OpenAI function calling and
 Anthropic tool use — metagraphed publishes paste-ready static tool specs:
 
@@ -20,6 +22,47 @@ respective SDK's `tools` parameter.
 For the end-to-end path from "find a callable subnet" to a working REST, MCP,
 npm, or Python call, use the public workflow guide at
 `https://api.metagraph.sh/agent-workflows.md`.
+
+## Bounded MCP discovery
+
+Connect to `https://api.metagraph.sh/mcp/core` for the starter tools. When a task
+needs another tool, call `search_tools` with keywords or an exact name:
+
+```json
+{
+  "name": "search_tools",
+  "arguments": {
+    "query": "get_networks",
+    "context": "Discover network support"
+  }
+}
+```
+
+Each page contains at most three complete tool definitions. Their schemas,
+annotations and authentication requirements are identical to the full catalog.
+Continue a broad search by passing its `next_cursor` unchanged with the same
+query. If the catalog deployment changes, restart the search without a cursor.
+
+Clients that only permit calls to their initially listed tools can invoke the
+discovered tool through the advertised bridge:
+
+```json
+{
+  "name": "invoke_tool",
+  "arguments": {
+    "name": "get_networks",
+    "arguments": {},
+    "context": "Read network support"
+  }
+}
+```
+
+The result and errors are the target tool's normal response. Its authentication,
+payment and rate limits still apply. The bridge advertises write-capable
+annotations because some targets mutate data; review the discovered target's
+annotations before calling. Native MCP telemetry records one call under the
+target tool's name. The existing full `/mcp` listing and direct calls remain
+available for clients that prefer the entire catalog.
 
 ## Executing a tool call
 
