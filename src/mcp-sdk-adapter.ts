@@ -167,6 +167,8 @@ export function unwrapDispatchResponse(response: Row | null): Row {
 }
 
 export interface SdkServeOptions {
+  /** Already normalized JSON, when the caller has consumed the request body. */
+  parsedBody?: unknown;
   /** The server identity the SDK reports; ours, not restated here. */
   serverInfo: { name: string; version: string } & Row;
   /** What assertRequestHandlerCapability checks registrations against. */
@@ -180,7 +182,13 @@ export interface SdkServeOptions {
 /** Answer one MCP request through the SDK, dispatching every method to `dispatch`. */
 export async function serveWithSdk(
   request: Request,
-  { serverInfo, capabilities, instructions, dispatch }: SdkServeOptions,
+  {
+    serverInfo,
+    capabilities,
+    instructions,
+    dispatch,
+    parsedBody,
+  }: SdkServeOptions,
 ): Promise<Response> {
   // The handshake constants are passed through even though our own dispatch is
   // what answers `initialize`: `capabilities` is what the SDK's
@@ -252,7 +260,7 @@ export async function serveWithSdk(
 
   try {
     await server.connect(transport);
-    const response = await transport.handleRequest(request);
+    const response = await transport.handleRequest(request, { parsedBody });
     // Drain the fire-and-forget notification handlers before answering (see
     // pendingNotifications above). allSettled, not all: a telemetry write that
     // rejects must not become the caller's response.
