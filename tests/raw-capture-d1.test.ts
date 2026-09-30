@@ -3,12 +3,15 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { gunzipSync } from "node:zlib";
-import { afterEach, test } from "vitest";
+import { afterEach, test, vi } from "vitest";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 import { runRawCaptureSync } from "../src/raw-capture-sync.ts";
 
 const databases: DatabaseSync[] = [];
-afterEach(() => databases.splice(0).forEach((db) => db.close()));
+afterEach(() => {
+  databases.splice(0).forEach((db) => db.close());
+  vi.useRealTimers();
+});
 const key = (testnet = false) =>
   `chain/raw/${testnet ? "testnet/" : ""}blocks/000000000010-000000000010.ndjson`;
 const value = (at = 1000, extrinsics = ["0x00"]) =>
@@ -38,6 +41,7 @@ function fixture() {
     ),
   );
   let fail: ((text: string, params: unknown[]) => void) | undefined;
+  let afterWrite: typeof fail;
   let readback: ((text: string, result: unknown) => unknown) | undefined;
   const prepared = (text: string, params: unknown[] = []) => ({
     text,
@@ -58,6 +62,7 @@ function fixture() {
     async run() {
       fail?.(text, params);
       sql.prepare(text).run(...(params as never[]));
+      afterWrite?.(text, params);
       return { success: true };
     },
     async all() {
@@ -73,8 +78,9 @@ function fixture() {
     prepare: prepared,
     async batch(statements: ReturnType<typeof prepared>[]) {
       sql.exec("BEGIN");
+      let result;
       try {
-        const result = statements.map(({ text, params }) => {
+        result = statements.map(({ text, params }) => {
           fail?.(text, params);
           return {
             success: true,
@@ -82,11 +88,15 @@ function fixture() {
           };
         });
         sql.exec("COMMIT");
-        return result;
       } catch (error) {
         sql.exec("ROLLBACK");
         throw error;
       }
+      afterWrite?.(
+        statements.map(({ text }) => text).join("\n"),
+        statements.flatMap(({ params }) => params),
+      );
+      return result;
     },
   } as unknown as Pick<D1Database, "prepare" | "batch">;
   const selected = (objectKey = key()) =>
@@ -100,6 +110,9 @@ function fixture() {
     selected,
     failWith(fn?: typeof fail) {
       fail = fn;
+    },
+    failAfterWriteWith(fn?: typeof fail) {
+      afterWrite = fn;
     },
     readWith(fn?: typeof readback) {
       readback = fn;
@@ -121,6 +134,165 @@ function archive(f: ReturnType<typeof fixture>, objectKey = key()) {
     .run(nativeKey, "a".repeat(32), objectKey, row.sha256!);
   return row;
 }
+
+test.each([
+  "SELECT * FROM raw_capture_archives",
+  "INSERT INTO raw_capture_batches",
+  "SELECT key,sha256,network",
+  "INSERT INTO raw_capture_chunks",
+  "SELECT part,hex(data)",
+  "UPDATE raw_capture_batches",
+  "SELECT sha256 FROM (",
+])(
+  "one connection failure at %s retries the same exact capture",
+  async (phase) => {
+    vi.useFakeTimers();
+    const f = fixture();
+    let calls = 0;
+    f.failWith((text) => {
+      if (text.startsWith(phase) && ++calls === 1)
+        throw new Error("D1_ERROR: Network connection lost.");
+    });
+    const pending = f.store.put(key(), value());
+    await vi.runAllTimersAsync();
+    await pending;
+    assert.equal(calls, 2);
+    assert.equal(
+      f.selected(),
+      createHash("sha256").update(value()).digest("hex"),
+    );
+    assert.equal(
+      f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+      1,
+    );
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM raw_capture_chunks").get()?.n,
+      1,
+    );
+  },
+);
+
+test.each([
+  "INSERT INTO raw_capture_batches",
+  "INSERT INTO raw_capture_chunks",
+  "UPDATE raw_capture_batches",
+])(
+  "a lost committed %s reply does not duplicate bytes or reservation",
+  async (phase) => {
+    vi.useFakeTimers();
+    const f = fixture();
+    let calls = 0;
+    f.failAfterWriteWith((text) => {
+      if (text.startsWith(phase) && ++calls === 1)
+        throw new Error("Network connection lost.");
+    });
+    const pending = f.store.put(key(), value());
+    await vi.runAllTimersAsync();
+    await pending;
+    assert.equal(calls, 2);
+    assert.equal(
+      f.selected(),
+      createHash("sha256").update(value()).digest("hex"),
+    );
+    assert.equal(
+      f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+      1,
+    );
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM raw_capture_chunks").get()?.n,
+      1,
+    );
+  },
+);
+
+test("an archived capture acknowledgement can recover a connection failure", async () => {
+  const f = fixture();
+  await f.store.put(key(), value());
+  archive(f);
+  vi.useFakeTimers();
+  let calls = 0;
+  f.failWith((text) => {
+    if (text.startsWith("SELECT sha256 FROM (") && ++calls === 1)
+      throw new Error("D1_ERROR: Network connection lost.");
+  });
+  const pending = f.store.put(key(), value());
+  await vi.runAllTimersAsync();
+  await pending;
+  assert.equal(calls, 2);
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+});
+
+test("the single connection retry budget is shared across capture operations", async () => {
+  vi.useFakeTimers();
+  const f = fixture();
+  let failedReservation = false,
+    failedChunk = false;
+  f.failWith((text) => {
+    if (
+      text.startsWith("INSERT INTO raw_capture_batches") &&
+      !failedReservation
+    ) {
+      failedReservation = true;
+      throw new Error("D1_ERROR: Network connection lost.");
+    }
+    if (text.startsWith("INSERT INTO raw_capture_chunks")) {
+      failedChunk = true;
+      throw new Error("D1_ERROR: Network connection lost.");
+    }
+  });
+  const rejected = assert.rejects(
+    f.store.put(key(), value()),
+    /Network connection lost/,
+  );
+  await vi.runAllTimersAsync();
+  await rejected;
+  assert(failedReservation && failedChunk);
+  assert.equal(f.selected(), undefined);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_chunks").get()?.n,
+    0,
+  );
+});
+
+test.each([
+  new Error("D1_ERROR: Network connection lost."),
+  new Error("D1_ERROR: overloaded"),
+  "D1_ERROR: Network connection lost.",
+])(
+  "persistent and non-connection failures cannot acknowledge partial capture: %s",
+  async (error) => {
+    vi.useFakeTimers();
+    const f = fixture();
+    let calls = 0;
+    f.failWith((text) => {
+      if (text.startsWith("INSERT INTO raw_capture_batches")) {
+        calls++;
+        throw error;
+      }
+    });
+    const rejected = assert.rejects(
+      f.store.put(key(), value()),
+      (actual) => actual === error,
+    );
+    await vi.runAllTimersAsync();
+    await rejected;
+    assert.equal(
+      calls,
+      error instanceof Error &&
+        error.message.includes("Network connection lost")
+        ? 2
+        : 1,
+    );
+    assert.equal(f.selected(), undefined);
+    assert.equal(
+      f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+      0,
+    );
+  },
+);
 
 test("archiving atomically releases staging capacity and a lost capture acknowledgement remains retryable", async () => {
   const f = fixture();

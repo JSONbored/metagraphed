@@ -63,10 +63,33 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
         captured_at: capturedAt,
       };
       const values = Object.values(descriptor);
-      const archived = await db
-        .prepare("SELECT * FROM raw_capture_archives WHERE key=? AND sha256=?")
-        .bind(key, digest)
-        .first<Record<string, string | number>>();
+      // Reads and immutable writes replay the same pinned capture. Allow one
+      // delayed connection retry per object; every existing readback still
+      // has to pass before the caller can advance its watermark.
+      let retried = false;
+      const retry = async <T>(operation: () => Promise<T>): Promise<T> => {
+        try {
+          return await operation();
+        } catch (error) {
+          if (
+            retried ||
+            !(error instanceof Error) ||
+            !/^(?:D1_ERROR: )?Network connection lost\.$/.test(error.message)
+          )
+            throw error;
+          retried = true;
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          return operation();
+        }
+      };
+      const archived = await retry(() =>
+        db
+          .prepare(
+            "SELECT * FROM raw_capture_archives WHERE key=? AND sha256=?",
+          )
+          .bind(key, digest)
+          .first<Record<string, string | number>>(),
+      );
       if (archived) {
         // The archive consumer records this identity only after independent
         // native-byte verification, atomically releasing the staging chunks.
@@ -78,26 +101,29 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
             `chain/raw/native/v1/${network}/${digest}/${compressedDigest}.gz`
         )
           throw new Error("Raw capture archive identity differs");
-        const current = await db
-          .prepare(SELECTION)
-          .bind(key, key)
-          .first<{ sha256: string }>();
+        const current = await retry(() =>
+          db.prepare(SELECTION).bind(key, key).first<{ sha256: string }>(),
+        );
         if (current?.sha256 !== digest)
           throw new Error("Raw capture selection was not acknowledged");
         return;
       }
-      await db
-        .prepare(
-          "INSERT INTO raw_capture_batches(key,sha256,network,first_block,last_block,raw_bytes,compressed_bytes,compressed_sha256,parts,captured_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(key,sha256) DO NOTHING",
-        )
-        .bind(...values)
-        .run();
-      const selected = await db
-        .prepare(
-          "SELECT key,sha256,network,first_block,last_block,raw_bytes,compressed_bytes,compressed_sha256,parts,captured_at FROM raw_capture_batches WHERE key=? AND sha256=?",
-        )
-        .bind(key, digest)
-        .first<Record<string, string | number>>();
+      await retry(() =>
+        db
+          .prepare(
+            "INSERT INTO raw_capture_batches(key,sha256,network,first_block,last_block,raw_bytes,compressed_bytes,compressed_sha256,parts,captured_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(key,sha256) DO NOTHING",
+          )
+          .bind(...values)
+          .run(),
+      );
+      const selected = await retry(() =>
+        db
+          .prepare(
+            "SELECT key,sha256,network,first_block,last_block,raw_bytes,compressed_bytes,compressed_sha256,parts,captured_at FROM raw_capture_batches WHERE key=? AND sha256=?",
+          )
+          .bind(key, digest)
+          .first<Record<string, string | number>>(),
+      );
       if (
         !selected ||
         Object.entries(descriptor).some(([k, v]) => selected[k] !== v)
@@ -111,27 +137,31 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
         const chunks = Array.from({ length: count }, (_, i) =>
           compressed.subarray((start + i) * CHUNK, (start + i + 1) * CHUNK),
         );
-        await db
-          .prepare(
-            "INSERT INTO raw_capture_chunks(key,sha256,part,data) VALUES " +
-              chunks.map(() => "(?,?,?,?)").join(",") +
-              " ON CONFLICT(key,sha256,part) DO NOTHING",
-          )
-          .bind(
-            ...chunks.flatMap((chunk, i) => [
-              key,
-              digest,
-              start + i,
-              Uint8Array.from(chunk).buffer,
-            ]),
-          )
-          .run();
-        const readback = await db
-          .prepare(
-            "SELECT part,hex(data) AS data FROM raw_capture_chunks WHERE key=? AND sha256=? AND part>=? AND part<? ORDER BY part",
-          )
-          .bind(key, digest, start, start + count)
-          .all<{ part: number; data: string }>();
+        await retry(() =>
+          db
+            .prepare(
+              "INSERT INTO raw_capture_chunks(key,sha256,part,data) VALUES " +
+                chunks.map(() => "(?,?,?,?)").join(",") +
+                " ON CONFLICT(key,sha256,part) DO NOTHING",
+            )
+            .bind(
+              ...chunks.flatMap((chunk, i) => [
+                key,
+                digest,
+                start + i,
+                Uint8Array.from(chunk).buffer,
+              ]),
+            )
+            .run(),
+        );
+        const readback = await retry(() =>
+          db
+            .prepare(
+              "SELECT part,hex(data) AS data FROM raw_capture_chunks WHERE key=? AND sha256=? AND part>=? AND part<? ORDER BY part",
+            )
+            .bind(key, digest, start, start + count)
+            .all<{ part: number; data: string }>(),
+        );
         if (readback.results.length !== chunks.length)
           throw new Error("Raw capture chunk census differs");
         for (let i = 0; i < chunks.length; i++) {
@@ -150,22 +180,23 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
       // archive consumer before it can release any staging bytes.
       // Mark complete and publish the pointer atomically. A newer capture of
       // the same finalized range cannot be replaced by an older invocation.
-      await db.batch([
-        db
-          .prepare(
-            "UPDATE raw_capture_batches SET complete=1 WHERE key=? AND sha256=? AND parts=(SELECT count(*) FROM raw_capture_chunks WHERE key=? AND sha256=?) AND compressed_bytes=(SELECT sum(length(data)) FROM raw_capture_chunks WHERE key=? AND sha256=?)",
-          )
-          .bind(key, digest, key, digest, key, digest),
-        db
-          .prepare(
-            "INSERT INTO raw_capture_selected(key,sha256,network,last_block,captured_at) SELECT key,sha256,network,last_block,captured_at FROM raw_capture_batches b WHERE key=? AND sha256=? AND complete=1 AND NOT EXISTS(SELECT 1 FROM raw_capture_archives a WHERE a.key=b.key AND a.selected=1 AND a.sha256<>b.sha256 AND a.captured_at>=b.captured_at) ON CONFLICT(key) DO UPDATE SET sha256=excluded.sha256,network=excluded.network,last_block=excluded.last_block,captured_at=excluded.captured_at WHERE raw_capture_selected.captured_at<excluded.captured_at OR raw_capture_selected.sha256=excluded.sha256",
-          )
-          .bind(key, digest),
-      ]);
-      const receipt = await db
-        .prepare(SELECTION)
-        .bind(key, key)
-        .first<{ sha256: string }>();
+      await retry(() =>
+        db.batch([
+          db
+            .prepare(
+              "UPDATE raw_capture_batches SET complete=1 WHERE key=? AND sha256=? AND parts=(SELECT count(*) FROM raw_capture_chunks WHERE key=? AND sha256=?) AND compressed_bytes=(SELECT sum(length(data)) FROM raw_capture_chunks WHERE key=? AND sha256=?)",
+            )
+            .bind(key, digest, key, digest, key, digest),
+          db
+            .prepare(
+              "INSERT INTO raw_capture_selected(key,sha256,network,last_block,captured_at) SELECT key,sha256,network,last_block,captured_at FROM raw_capture_batches b WHERE key=? AND sha256=? AND complete=1 AND NOT EXISTS(SELECT 1 FROM raw_capture_archives a WHERE a.key=b.key AND a.selected=1 AND a.sha256<>b.sha256 AND a.captured_at>=b.captured_at) ON CONFLICT(key) DO UPDATE SET sha256=excluded.sha256,network=excluded.network,last_block=excluded.last_block,captured_at=excluded.captured_at WHERE raw_capture_selected.captured_at<excluded.captured_at OR raw_capture_selected.sha256=excluded.sha256",
+            )
+            .bind(key, digest),
+        ]),
+      );
+      const receipt = await retry(() =>
+        db.prepare(SELECTION).bind(key, key).first<{ sha256: string }>(),
+      );
       if (receipt?.sha256 !== digest)
         throw new Error("Raw capture selection was not acknowledged");
     },
