@@ -17999,6 +17999,31 @@ export function mcpDistinctId(
   return undefined;
 }
 
+/** Resolve caller attribution without hashing an address a verified identity outranks. */
+export async function resolveMcpRequestDistinctId(
+  request: Request,
+  salt: string | undefined,
+  githubLogin: unknown,
+  sessionId: string | null | undefined,
+  accountId: unknown,
+): Promise<string | undefined> {
+  // Leave the session out of this first lookup: a salted IP id still outranks
+  // it for anonymous callers, including clients reconnecting with a new session.
+  const authenticatedId = mcpDistinctId(githubLogin, null, { accountId });
+  if (authenticatedId !== undefined) return authenticatedId;
+
+  // Use the shared REST helper and preserve the anonymous-bucket fallback.
+  const clientIp = resolveClientIp(request);
+  const anonymousId = await anonymousUsageDistinctId(
+    salt,
+    clientIp === ANONYMOUS_CLIENT_KEY ? undefined : clientIp,
+  );
+  return mcpDistinctId(githubLogin, sessionId, {
+    accountId,
+    ...(anonymousId ? { anonymousId } : {}),
+  });
+}
+
 async function buildContext(
   request: Request,
   env: Env,
@@ -18040,15 +18065,13 @@ async function buildContext(
   // unresolvable address (no cf-connecting-ip, which resolveClientIp collapses
   // to a single fixed bucket) yields undefined rather than one shared
   // confident-looking id, and the session below takes over.
-  const clientIp = resolveClientIp(request);
-  const anonymousId = await anonymousUsageDistinctId(
+  const distinctId = await resolveMcpRequestDistinctId(
+    request,
     env.USAGE_DISTINCT_ID_SALT,
-    clientIp === ANONYMOUS_CLIENT_KEY ? undefined : clientIp,
-  );
-  const distinctId = mcpDistinctId(githubLogin, sessionId, {
+    githubLogin,
+    sessionId,
     accountId,
-    ...(anonymousId ? { anonymousId } : {}),
-  });
+  );
   const { clientName, clientVersion } = parseUserAgentClient(
     request.headers.get("user-agent"),
   );
