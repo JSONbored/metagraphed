@@ -11,7 +11,7 @@ import path from "node:path";
 import { describe, test } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
-import { repoRoot, loadSubnets } from "../scripts/lib.ts";
+import { artifactFilePath, repoRoot, loadSubnets } from "../scripts/lib.ts";
 import { PRIMARY_DOMAIN } from "../src/contracts.ts";
 import { MCP_REGISTRY_NAME, MCP_SERVER_INFO } from "../src/mcp-server.ts";
 import { mcpServerCardResponse } from "../workers/request-handlers/discovery.ts";
@@ -45,7 +45,9 @@ describe("Discovery artifacts", () => {
       /## Legacy query compatibility\n- \[Legacy GraphQL compatibility\]\(https:\/\/api\.metagraph\.sh\/api\/v1\/graphql\)/,
     );
     assert.match(full, /## All API routes/);
-    const resources = await readJson("metagraph/agent-resources.json");
+    const resources = JSON.parse(
+      await fs.readFile(artifactFilePath("agent-resources.json"), "utf8"),
+    );
     assert.deepEqual(
       resources.resources.find((resource: Row) => resource.id === "graphql"),
       {
