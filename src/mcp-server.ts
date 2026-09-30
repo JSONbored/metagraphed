@@ -16197,17 +16197,24 @@ function resourceEntry(
   return { uri, name, title, description, mimeType };
 }
 
-// Build the full ordered resource list from the registry indexes — the same
-// artifacts the tools read, so resources never drift from tools. A missing index
-// degrades gracefully (that section is omitted rather than erroring the list).
-async function listAllResources(ctx: McpCtx) {
+// Build ordered page candidates from the same indexes the tools read. A missing
+// index omits that section. Once an entry beyond this page already proves there
+// is another page, the trailing schema index cannot affect this response.
+async function listResourceCandidates(ctx: McpCtx, pageEnd: number) {
   const out = FIXED_RESOURCES.map((r) =>
     resourceEntry(r.uri, r.name, r.title, r.description, r.mimeType),
   );
-  const [subnets, providers, schemas] = await Promise.all([
+  // Keep cold requests for later cursors parallel. Only the initial page can
+  // avoid this read; a short registry still loads schemas to fill that page.
+  const schemaRead =
+    pageEnd === RESOURCE_PAGE_SIZE
+      ? null
+      : loadArtifactData(ctx, "/metagraph/schemas/index.json").catch(
+          () => null,
+        );
+  const [subnets, providers] = await Promise.all([
     loadArtifactData(ctx, "/metagraph/subnets.json").catch(() => null),
     loadArtifactData(ctx, "/metagraph/providers.json").catch(() => null),
-    loadArtifactData(ctx, "/metagraph/schemas/index.json").catch(() => null),
   ]);
   for (const s of subnets?.subnets || []) {
     if (typeof s.netuid !== "number") continue;
@@ -16245,6 +16252,9 @@ async function listAllResources(ctx: McpCtx) {
       ),
     );
   }
+  if (out.length > pageEnd && schemaRead === null) return out;
+  const schemas = await (schemaRead ??
+    loadArtifactData(ctx, "/metagraph/schemas/index.json").catch(() => null));
   for (const sc of schemas?.schemas || []) {
     const id = sc.surface_id || sc.id;
     if (!id) continue;
@@ -16375,10 +16385,10 @@ function decodeResourceCursor(cursor: unknown) {
 }
 
 async function listResources(params: Row | null, ctx: McpCtx) {
-  const all = await listAllResources(ctx);
   const start = decodeResourceCursor(params?.cursor);
-  const page = all.slice(start, start + RESOURCE_PAGE_SIZE);
   const next = start + RESOURCE_PAGE_SIZE;
+  const all = await listResourceCandidates(ctx, next);
+  const page = all.slice(start, next);
   const result: Row = { resources: page };
   if (next < all.length) result.nextCursor = String(next);
   return result;
