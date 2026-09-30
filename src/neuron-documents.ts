@@ -7,6 +7,10 @@ import {
   type NeuronMirrorInput,
 } from "./neurons-neon-write.ts";
 import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
+import {
+  neuronPassWrite,
+  retryNeuronCapture,
+} from "./neuron-capture-receipt.ts";
 
 type Row = Record<string, unknown>;
 type Family = "neurons" | "neuron_daily" | "account_position_daily";
@@ -189,9 +193,7 @@ function documentStatements(
 }
 
 /** One transaction includes all three families, pruning and the pass tally. */
-export function neuronDocumentStatements(
-  input: NeuronMirrorInput,
-): ProducerStatement[] {
+function neuronDocumentWrite(input: NeuronMirrorInput) {
   const statements = [
     ...documentStatements(
       "neurons",
@@ -235,35 +237,29 @@ export function neuronDocumentStatements(
       values: [value, value, value],
     });
   }
-  if (input.pass) {
-    const p = input.pass;
-    statements.push({
-      text: `INSERT INTO neurons_passes(captured_at,expected_rows,received_rows,completed_at)
-      VALUES (?,?,?,CASE WHEN ? >= ? THEN ? ELSE NULL END)
-      ON CONFLICT(captured_at) DO UPDATE SET expected_rows=excluded.expected_rows,
-      received_rows=neurons_passes.received_rows+excluded.received_rows,
-      completed_at=COALESCE(neurons_passes.completed_at,CASE WHEN neurons_passes.received_rows+excluded.received_rows >= excluded.expected_rows THEN ? ELSE NULL END)`,
-      values: [
-        p.capturedAt,
-        p.expectedRows,
-        p.receivedRows,
-        p.receivedRows,
-        p.expectedRows,
-        p.nowMs,
-        p.nowMs,
-      ],
-    });
-  }
+  const passWrite = input.pass
+    ? neuronPassWrite(input.pass, input.rows)
+    : undefined;
+  if (passWrite) statements.push(...passWrite.statements);
   if (statements.length > 900)
     throw new RangeError("Neuron capture exceeds atomic statement budget");
-  return statements;
+  return { statements, passWrite };
+}
+
+export function neuronDocumentStatements(
+  input: NeuronMirrorInput,
+): ProducerStatement[] {
+  return neuronDocumentWrite(input).statements;
 }
 
 export async function writeNeuronDocuments(
   store: ProducerStore,
   input: NeuronMirrorInput,
 ): Promise<number> {
-  const statements = neuronDocumentStatements(input);
-  await store.transaction(statements);
+  const { statements, passWrite } = neuronDocumentWrite(input);
+  await retryNeuronCapture(async () => {
+    await store.transaction(statements);
+    if (passWrite) await passWrite.acknowledge(store);
+  });
   return statements.length;
 }

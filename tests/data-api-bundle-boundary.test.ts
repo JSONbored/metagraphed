@@ -136,11 +136,13 @@ describe("data-api's bundle boundary", () => {
     // Receipt-guarded usage flushes bring the measured graph to 4,819,172
     // bytes. Their leaf helper adds no router, ingestion, GraphQL or MCP
     // dependency; the named boundaries remain mandatory above.
+    // The native neuron receipt adds 5,165 source bytes to that measured
+    // graph (4,824,337 total), without adding any forbidden module.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_821_000,
+      firstParty < 4_826_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

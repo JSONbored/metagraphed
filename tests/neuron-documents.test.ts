@@ -66,6 +66,7 @@ beforeAll(async () => {
     "0020_neuron_axon_projection.sql",
     "0030_neuron_axon_insert_projection.sql",
     "0031_neuron_axon_document_projection.sql",
+    "0037_neuron_capture_batch_receipts.sql",
   ]) {
     for (const sql of readFileSync(
       new URL(`../migrations/d1/${file}`, import.meta.url),
@@ -83,6 +84,7 @@ beforeEach(async () => {
     await db.prepare(`DELETE FROM ${family}_documents`).run();
   }
   await db.prepare("DELETE FROM neurons_passes").run();
+  await db.prepare("DELETE FROM neurons_capture_batches").run();
 });
 const store = () => createD1Store(db);
 const read = async (table = "neurons") =>
