@@ -2150,7 +2150,6 @@ const llmsHeader = [
   `- [Bittensor skill](${llmsApiBase}/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"`,
   `- [Semantic search](${llmsApiBase}/api/v1/search/semantic?q=): natural-language vector search over subnets/surfaces`,
   `- [Ask](${llmsApiBase}/api/v1/ask): POST { question } for a grounded, cited answer over the registry`,
-  `- [GraphQL](${llmsApiBase}/api/v1/graphql): POST a shaped query to fetch a subnet with its health, surfaces, endpoints, and economics — plus a provider with its subnets and the economic opportunity boards — in one request. GET returns the SDL; introspection is enabled.`,
   `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
   `- [Registry summary](${llmsApiBase}/api/v1/registry/summary): coverage + completeness leaderboard`,
   `- [Bulk datasets](${llmsApiBase}/datasets/index.json): whole-registry CSV exports (subnets, surfaces, providers)`,
@@ -2182,7 +2181,8 @@ const llmsHeader = [
   "- `testnet` (alias `test`): native chain registry only — subnet identity from the testnet chain, no curated services/health. Testnet netuids are independent of mainnet. e.g. `GET /api/v1/testnet/subnets`, `GET /api/v1/testnet/subnets/{netuid}`.",
   "- `local`: a per-developer subtensor metagraphed can't host — `GET /api/v1/local` returns setup guidance (point your SDK/RPC at your own local subtensor node).",
 ].join("\n");
-const llmsShort = `${llmsHeader}\n\n## Optional\n- [llms-full.txt](${llmsApiBase}/llms-full.txt): expanded index with every subnet + route\n`;
+const legacyGraphqlLink = `- [Legacy GraphQL compatibility](${llmsApiBase}/api/v1/graphql): retained for existing clients and MCP query_graphql. Use MCP tools or REST/OpenAPI for new integrations.`;
+const llmsShort = `${llmsHeader}\n\n## Optional\n- [llms-full.txt](${llmsApiBase}/llms-full.txt): expanded index with every subnet + route\n${legacyGraphqlLink}\n`;
 const llmsSubnetLines = mergedSubnets
   .map((subnet) => {
     const idx = agentCatalogIndex.find((e) => e.netuid === subnet.netuid);
@@ -2202,7 +2202,7 @@ const llmsSubnetLines = mergedSubnets
 const llmsRouteLines = API_ROUTES.map(
   (entry) => `- \`${entry.method} ${entry.path}\` — ${entry.description}`,
 ).join("\n");
-const llmsFull = `${llmsHeader}\n\n## Subnets\n${llmsSubnetLines}\n\n## All API routes\n${llmsRouteLines}\n`;
+const llmsFull = `${llmsHeader}\n\n## Legacy query compatibility\n${legacyGraphqlLink}\n\n## Subnets\n${llmsSubnetLines}\n\n## All API routes\n${llmsRouteLines}\n`;
 await fs.writeFile(path.join(repoRoot, "public/llms.txt"), llmsShort, "utf8");
 await fs.writeFile(
   path.join(repoRoot, "public/llms-full.txt"),
@@ -2443,7 +2443,7 @@ const agentResourcesContent = {
     },
     {
       id: "graphql",
-      title: "GraphQL (shaped registry queries)",
+      title: "Legacy query compatibility (GraphQL)",
       kind: "api",
       url: `${llmsApiBase}/api/v1/graphql`,
     },
