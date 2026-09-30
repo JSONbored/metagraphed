@@ -121,6 +121,9 @@ CREATE INDEX idx_lane_health_time ON lane_health (checked_at, lane, verdict);
 
 CREATE INDEX idx_lane_health_verdict ON lane_health (lane, verdict, checked_at);
 
+CREATE INDEX idx_neurons_capture_batches_capture
+  ON neurons_capture_batches (captured_at,batch_id);
+
 CREATE INDEX idx_nominator_positions_capture_pool ON nominator_positions(captured_at, hotkey, netuid);
 
 CREATE INDEX idx_nominator_positions_hotkey ON nominator_positions (hotkey, netuid);
@@ -662,6 +665,13 @@ CREATE TABLE neuron_daily_documents (
 ) WITHOUT ROWID;
 
 CREATE TABLE neuron_daily_members (netuid INTEGER NOT NULL,uid INTEGER NOT NULL,snapshot_date TEXT NOT NULL,hotkey TEXT,coldkey TEXT,shard INTEGER NOT NULL, axon_index BLOB, axon_indexed INTEGER NOT NULL DEFAULT 0 CHECK(axon_indexed IN (0,1)),PRIMARY KEY(netuid,uid,snapshot_date)) WITHOUT ROWID;
+
+CREATE TABLE neurons_capture_batches (
+  batch_id TEXT NOT NULL PRIMARY KEY CHECK (length(batch_id) = 64),
+  captured_at INTEGER NOT NULL,
+  sha256 TEXT NOT NULL CHECK (length(sha256) = 64),
+  applied INTEGER NOT NULL DEFAULT 0 CHECK (applied IN (0, 1))
+);
 
 CREATE TABLE neurons_documents (
  netuid INTEGER NOT NULL, day TEXT NOT NULL, shard INTEGER NOT NULL,
