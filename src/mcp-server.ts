@@ -6292,21 +6292,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       try {
         const matches = searchToolDefinitions(
-          MCP_TOOLS.map((tool) => ({
-            tool,
-            name: tool.name,
-            title: tool.title,
-            description: `${tool.description} ${UNTRUSTED_DATA_NOTE}`,
-          })),
+          MCP_TOOLS,
           parsed.data,
           ctx.env.CF_VERSION_METADATA?.id ?? MCP_SERVER_VERSION,
           ctx.searchPageSize,
+          ` ${UNTRUSTED_DATA_NOTE}`,
         );
         return {
           ...matches,
-          tools: matches.tools.map(({ tool }) =>
-            cataloguedToolDefinition(tool),
-          ),
+          tools: matches.tools.map(cataloguedToolDefinition),
         };
       } catch {
         throw toolError(

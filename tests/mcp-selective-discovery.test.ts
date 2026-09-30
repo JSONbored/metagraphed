@@ -285,6 +285,27 @@ describe("select tools before normalizing their complete definitions", () => {
           samples.push(performance.now() - started);
         }
       }
+      const warmEagerMs: number[] = [];
+      const warmSelectedMs: number[] = [];
+      for (const [handler, samples] of [
+        [eagerHandler, warmEagerMs],
+        [selectedHandler, warmSelectedMs],
+      ] as const) {
+        reset();
+        searchTool.handler = handler;
+        await search({ query });
+        const initialCalls = work.calls;
+        for (let i = 0; i < 9; i++) {
+          const started = performance.now();
+          assert.equal((await search({ query })).bytes, selected.bytes);
+          samples.push(performance.now() - started);
+        }
+        assert.equal(
+          work.calls,
+          initialCalls,
+          "warm searches do no normalization",
+        );
+      }
       work.measureBytes = true;
       const median = (values: number[]) =>
         [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
@@ -295,6 +316,8 @@ describe("select tools before normalizing their complete definitions", () => {
         responseBytes: Buffer.byteLength(selected.bytes),
         eagerMedianMs: median(eagerMs),
         selectedMedianMs: median(selectedMs),
+        warmEagerMedianMs: median(warmEagerMs),
+        warmSelectedMedianMs: median(warmSelectedMs),
         samples: 9,
       });
     }
