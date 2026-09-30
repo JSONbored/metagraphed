@@ -297,6 +297,79 @@ describe("handleAuthorizeRequest", () => {
     assert.equal(location.searchParams.get("state"), nonce);
   });
 
+  test("IPv6 consent with prototype-named scopes preserves the pending request and GitHub handoff", async () => {
+    const kv = createFakeKv();
+    const env = baseEnv({ OAUTH_KV: kv });
+    const scopes = [
+      "profile",
+      "constructor",
+      "__proto__",
+      "toString",
+      "hasOwnProperty",
+    ];
+    const authRequest = {
+      ...FAKE_AUTH_REQUEST,
+      redirectUri: "http://[::1]:3118/callback",
+      scope: scopes,
+      codeChallenge: "fixture-s256-challenge",
+      codeChallengeMethod: "S256",
+      resource: "https://api.metagraph.sh/mcp",
+    };
+    const deps = {
+      getHelpers: async () =>
+        fakeHelpers({
+          parseAuthRequest: async () => authRequest,
+          lookupClient: async () => ({
+            clientId: authRequest.clientId,
+            clientName: "Local fixture client",
+            redirectUris: [authRequest.redirectUri],
+          }),
+        }),
+    };
+    const res = await handleAuthorizeRequest(
+      new Request("https://api.metagraph.sh/authorize"),
+      env,
+      deps,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    const html = await res.text();
+    assert.match(html, /runs on your own machine/);
+    for (const scope of scopes.slice(1)) {
+      assert.ok(html.includes(`<li><code>${scope}</code></li>`));
+    }
+    const nonce = /name="consent_nonce" value="([^"]+)"/.exec(html)?.[1];
+    assert.ok(nonce);
+    const pending = kv._store.get(`oauth-pending:${nonce}`);
+    assert.deepEqual(JSON.parse(pending.value), authRequest);
+    assert.deepEqual(pending.opts, {
+      expirationTtl: OAUTH_PENDING_TTL_SECONDS,
+    });
+
+    const approved = await handleAuthorizeConsent(
+      new Request("https://api.metagraph.sh/authorize", {
+        method: "POST",
+        body: new URLSearchParams({ consent_nonce: nonce, approve: "yes" }),
+      }),
+      env,
+    );
+    assert.equal(approved.status, 302);
+    const location = new URL(approved.headers.get("location")!);
+    assert.equal(location.origin, "https://github.com");
+    assert.equal(location.pathname, "/login/oauth/authorize");
+    assert.equal(location.searchParams.get("client_id"), "client-id");
+    assert.equal(location.searchParams.get("state"), nonce);
+    assert.equal(location.searchParams.get("scope"), "read:user");
+    assert.equal(
+      location.searchParams.get("redirect_uri"),
+      "https://api.metagraph.sh/oauth/callback/github",
+    );
+    assert.deepEqual(
+      JSON.parse(kv._store.get(`oauth-pending:${nonce}`).value),
+      authRequest,
+    );
+  });
+
   test("consent renders for a client that registered nothing but an id", async () => {
     // A DCR client may carry no name and no redirectUris array at all. The
     // page still has to render -- a missing field is not a reason to fail an

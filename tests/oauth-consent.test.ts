@@ -76,6 +76,31 @@ describe("isLoopbackOnly", () => {
     assert.equal(isLoopbackOnly([]), false);
   });
 
+  test.each([
+    "http://[::1]/callback",
+    "http://[::1]:3118/callback",
+    "https://[0:0:0:0:0:0:0:1]:443/callback",
+  ])("recognises the IPv6 loopback redirect %s", (uri) => {
+    assert.equal(isLoopbackOnly([uri]), true);
+    assert.equal(
+      isLoopbackOnly([uri, "http://127.0.0.1/callback", "http://localhost/cb"]),
+      true,
+    );
+  });
+
+  test.each([
+    "http://[::]/callback",
+    "http://[2001:db8::1]:3118/callback",
+    "http://[::ffff:127.0.0.1]/callback",
+    "https://claude.ai/callback",
+  ])(
+    "does not classify a non-loopback IPv6 or mixed redirect set as local: %s",
+    (uri) => {
+      assert.equal(isLoopbackOnly([uri]), false);
+      assert.equal(isLoopbackOnly(["http://[::1]:3118/callback", uri]), false);
+    },
+  );
+
   test("a malformed uri does not make the set look local", () => {
     assert.equal(isLoopbackOnly(["::::"]), false);
   });
@@ -155,6 +180,27 @@ describe("renderConsentPage", () => {
     assert.doesNotMatch(html, /runs on your own machine/);
   });
 
+  test("warns for IPv6-only clients, but not when a remote redirect is registered", () => {
+    const local = {
+      ...base,
+      redirectUri: "http://[::1]:3118/callback",
+      registeredRedirectUris: ["http://[0:0:0:0:0:0:0:1]:3118/callback"],
+    };
+    const html = renderConsentPage(local);
+    assert.match(html, /runs on your own machine/);
+    assert.match(html, /<dd><code>\[::1\]:3118<\/code><\/dd>/);
+    assert.doesNotMatch(
+      renderConsentPage({
+        ...local,
+        registeredRedirectUris: [
+          ...local.registeredRedirectUris,
+          base.redirectUri,
+        ],
+      }),
+      /runs on your own machine/,
+    );
+  });
+
   test("states what each scope actually permits, not just its name", () => {
     // A scope name is jargon. The decision the page asks for is only
     // meaningful if the reader is told what it grants.
@@ -172,6 +218,26 @@ describe("renderConsentPage", () => {
     const html = renderConsentPage({ ...base, scopes: ["future:scope"] });
     assert.match(html, /future:scope/);
   });
+
+  test.each([
+    "constructor",
+    "__proto__",
+    "toString",
+    "hasOwnProperty",
+    "valueOf",
+  ])(
+    "renders the unknown scope %s as plain text alongside known scope descriptions",
+    (scope) => {
+      const html = renderConsentPage({
+        ...base,
+        scopes: ["profile", scope, "offline_access"],
+      });
+      assert.ok(html.includes(`<li><code>${scope}</code></li>`));
+      assert.match(html, /Read your GitHub username/);
+      assert.match(html, /Stay signed in/);
+      assert.doesNotMatch(html, /\[native code\]/);
+    },
+  );
 
   test("shows where the code will be sent, by host", () => {
     assert.match(renderConsentPage(base), /claude\.ai/);

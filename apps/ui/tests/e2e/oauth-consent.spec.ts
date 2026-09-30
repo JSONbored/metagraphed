@@ -129,3 +129,42 @@ test("MCP consent reflows long claimed names, scopes, and loopback warnings on a
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.getByRole("button", { name: "Continue to GitHub" })).toBeVisible();
 });
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`MCP consent handles IPv6 and prototype-named scopes in ${colorScheme} mode`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.emulateMedia({ colorScheme });
+    const scopes = ["constructor", "__proto__", "toString", "hasOwnProperty", "valueOf"];
+    const requests = await openConsent(page, {
+      ...view,
+      clientId: "opaque-dcr-client",
+      clientName: "Local fixture client",
+      redirectUri: "http://[::1]:3118/callback",
+      registeredRedirectUris: ["http://[0:0:0:0:0:0:0:1]:3118/callback"],
+      scopes: ["profile", ...scopes],
+    });
+    await expect(page.locator(".warn")).toContainText("This client runs on your own machine.");
+    await expect(page.locator(".connection-details dd").last()).toHaveText("[::1]:3118");
+    await expect(page.locator(".permissions li").first()).toContainText(
+      "Read your GitHub username",
+    );
+    for (const scope of scopes) {
+      await expect(page.locator(".permissions li", { hasText: scope })).toHaveText(scope);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    expect(requests).toEqual([URL]);
+    const submitted = page.waitForRequest(
+      (request) => request.url() === URL && request.method() === "POST",
+    );
+    await page.getByRole("button", { name: "Continue to GitHub" }).click();
+    const form = new URLSearchParams((await submitted).postData()!);
+    expect([...form.entries()]).toEqual([
+      ["consent_nonce", view.nonce],
+      ["approve", "yes"],
+    ]);
+  });
+}

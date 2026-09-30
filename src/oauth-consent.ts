@@ -86,7 +86,8 @@ export function isLoopbackOnly(redirectUris: readonly string[]): boolean {
       return (
         hostname === "localhost" ||
         hostname === "127.0.0.1" ||
-        hostname === "::1"
+        // WHATWG URL.hostname retains the brackets around an IPv6 address.
+        hostname === "[::1]"
       );
     } catch {
       return false;
@@ -116,7 +117,10 @@ const SCOPE_DESCRIPTIONS: Record<string, string> = {
 };
 
 function scopeRow(scope: string): string {
-  const described = SCOPE_DESCRIPTIONS[scope];
+  // Requested scope names must not resolve to inherited Object properties.
+  const described = Object.hasOwn(SCOPE_DESCRIPTIONS, scope)
+    ? SCOPE_DESCRIPTIONS[scope]
+    : undefined;
   return `<li><code>${escapeHtml(scope)}</code>${
     described ? ` — ${escapeHtml(described)}` : ""
   }</li>`;
