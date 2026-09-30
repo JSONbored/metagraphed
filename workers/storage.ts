@@ -531,10 +531,9 @@ export async function latestPointer(
   if (existing) return existing;
   const pending = (async () => {
     try {
-      const value = await control.get<LatestPointer>(
-        METAGRAPH_LATEST_KEY,
-        { type: "json" },
-      );
+      const value = await control.get<LatestPointer>(METAGRAPH_LATEST_KEY, {
+        type: "json",
+      });
       pointerMemo = { env, value, expiresAt: now + POINTER_MEMO_TTL_MS };
       return value;
     } catch {
