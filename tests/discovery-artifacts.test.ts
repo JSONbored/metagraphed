@@ -24,6 +24,35 @@ const readJson = async (rel: string) =>
   JSON.parse(await fs.readFile(path.join(publicDir, rel), "utf8"));
 
 describe("Discovery artifacts", () => {
+  test("new integrations discover MCP and REST while legacy query compatibility stays reachable", async () => {
+    const short = await fs.readFile(path.join(publicDir, "llms.txt"), "utf8");
+    const full = await fs.readFile(
+      path.join(publicDir, "llms-full.txt"),
+      "utf8",
+    );
+    const entrypoints = short
+      .split("## Machine entrypoints")[1]
+      .split("## Site pages")[0];
+    assert.match(entrypoints, /\[MCP server\]/);
+    assert.match(entrypoints, /\[OpenAPI 3\.1\]/);
+    assert.doesNotMatch(entrypoints, /GraphQL|\/api\/v1\/graphql/);
+    assert.match(
+      short.split("## Optional")[1],
+      /\[Legacy GraphQL compatibility\]\(https:\/\/api\.metagraph\.sh\/api\/v1\/graphql\)/,
+    );
+    assert.match(full, /POST \/api\/v1\/graphql/);
+    const resources = await readJson("metagraph/agent-resources.json");
+    assert.deepEqual(
+      resources.resources.find((resource: Row) => resource.id === "graphql"),
+      {
+        id: "graphql",
+        title: "Legacy query compatibility (GraphQL)",
+        kind: "api",
+        url: "https://api.metagraph.sh/api/v1/graphql",
+      },
+    );
+  });
+
   test("MCP server card exposes the SEP-1649 serverInfo block", async () => {
     // Card is now worker-computed; test via the handler (no committed file).
     const res = await mcpServerCardResponse(
