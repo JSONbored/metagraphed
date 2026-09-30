@@ -18928,8 +18928,8 @@ async function serveMcpThroughSdk(
   const isBatch = Array.isArray(body);
 
   const sdkResponse = await serveWithSdk(
-    // REBUILT, not forwarded: readLimitedMcpBody has already consumed the
-    // original stream, so the transport would find an empty body on it.
+    // readLimitedMcpBody consumed the original stream. The SDK's parsedBody
+    // option avoids encoding another stream only to read and decode it again.
     new Request(request.url, {
       method: "POST",
       headers: {
@@ -18945,9 +18945,12 @@ async function serveMcpThroughSdk(
         accept: "application/json, text/event-stream",
         "content-type": "application/json",
       },
-      body: JSON.stringify(body),
     }),
     {
+      // Keep the existing JSON normalization: -0 becomes 0 and overflowing
+      // numbers become null, including inside params and batches. Passing body
+      // directly would change what handlers and the SDK's validators receive.
+      parsedBody: JSON.parse(JSON.stringify(body)),
       serverInfo: MCP_SERVER_INFO,
       capabilities: MCP_CAPABILITIES,
       instructions:
