@@ -6,7 +6,12 @@
 // the client_id URL -- not `client_name` -- as the relying party. A client can
 // call itself anything; it cannot choose which host serves its metadata.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
+import {
+  CONSENT_FONT_DATA_URL,
+  CONSENT_WORDMARK_SVG,
+} from "../src/oauth-consent-assets.ts";
 import {
   escapeHtml,
   isLoopbackOnly,
@@ -190,5 +195,76 @@ describe("renderConsentPage", () => {
 
   test("asks search engines not to index it", () => {
     assert.match(renderConsentPage(base), /noindex/);
+  });
+
+  test("the inline font and adaptive wordmark match the current website assets", () => {
+    assert.deepEqual(
+      Buffer.from(CONSENT_FONT_DATA_URL.split(",")[1], "base64"),
+      readFileSync(
+        new URL(
+          "../packages/ui-kit/src/fonts/Geist-latin-variable.woff2",
+          import.meta.url,
+        ),
+      ),
+    );
+    const wordmark = readFileSync(
+      new URL(
+        "../packages/ui-kit/src/components/metagraphed/wordmark.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    const svg = wordmark
+      .match(/<svg\b[\s\S]*?<\/svg>/)![0]
+      .replace(/\s+className=\{className\}/, "")
+      .replace(/\s+/g, " ");
+    assert.equal(CONSENT_WORDMARK_SVG, svg);
+    const html = renderConsentPage(base);
+    assert.ok(html.includes(CONSENT_FONT_DATA_URL));
+    assert.ok(html.includes(CONSENT_WORDMARK_SVG));
+  });
+
+  test("light and dark colors and geometry stay on the website token system", () => {
+    const css = readFileSync(
+      new URL("../packages/ui-kit/src/styles.css", import.meta.url),
+      "utf8",
+    );
+    const style = renderConsentPage(base).match(
+      /<style>([\s\S]*?)<\/style>/,
+    )![1];
+    const declarations = (source: string) =>
+      Object.fromEntries(
+        [...source.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((match) => [
+          match[1],
+          match[2],
+        ]),
+      );
+    const canonicalLight = declarations(
+      css.slice(css.indexOf(":root {"), css.indexOf(".dark {")),
+    );
+    const canonicalDark = declarations(
+      css.match(/\.dark \{([\s\S]*?)\n\}/)![1],
+    );
+    const [light, rest] = style.split("@media (prefers-color-scheme: dark)");
+    const dark = rest.slice(0, rest.indexOf("\n      *"));
+    for (const [name, value] of Object.entries(declarations(light)))
+      assert.equal(value, canonicalLight[name], `light ${name}`);
+    for (const [name, value] of Object.entries(declarations(dark)))
+      assert.equal(value, canonicalDark[name], `dark ${name}`);
+    assert.match(
+      style,
+      /font: 13px\/1\.5 "Geist", ui-sans-serif, system-ui, sans-serif/,
+    );
+    assert.doesNotMatch(style, /(?:animation|transition)\s*:/);
+    assert.match(style, /:focus-visible/);
+  });
+
+  test("approval stays an explicit POST, with an unchanged nonce and Cancel destination", () => {
+    const html = renderConsentPage(base);
+    assert.match(html, /<form method="POST" action="\/authorize">/);
+    assert.match(html, /type="submit" name="approve" value="yes"/);
+    assert.match(html, /<a class="button secondary" href="\/">Cancel<\/a>/);
+    assert.doesNotMatch(html, /<meta[^>]+http-equiv="refresh"/i);
+    assert.doesNotMatch(html, /(?:src|href)="https?:\/\//i);
   });
 });

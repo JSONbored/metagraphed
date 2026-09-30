@@ -32,6 +32,11 @@
 // Every caller-supplied value is escaped on the way in. These strings arrive in
 // a query parameter from an unauthenticated request and land in HTML.
 
+import {
+  CONSENT_FONT_DATA_URL,
+  CONSENT_WORDMARK_SVG,
+} from "./oauth-consent-assets.ts";
+
 /** The one place caller-supplied text becomes markup. */
 export function escapeHtml(value: string): string {
   return value
@@ -120,12 +125,9 @@ function scopeRow(scope: string): string {
 /**
  * Render the consent screen.
  *
- * The style block is the one apps/ui/src/lib/error-page.ts and
- * rate-limited-response.ts already share, verbatim where it applies -- same
- * type stack, ground, greys, radii and .primary/.secondary buttons. A consent
- * screen inventing its own palette would look like a different product at the
- * exact moment a user is deciding whether to trust this one. The additions
- * (the definition list, the warning box) follow the same scale.
+ * Mirrors packages/ui-kit/src/styles.css: Geist, paper/graphite, the 4px
+ * radius, green focus and the violet agent accent. Tests pin token and asset
+ * parity so this Worker-rendered page stays part of the same product.
  *
  * Self-contained: no external stylesheet, no script, no font host. This page is
  * where a user hands over an identity, and a third-party request in it is both
@@ -157,50 +159,96 @@ export function renderConsentPage(view: ConsentView): string {
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Authorize access</title>
+    <title>Connect to Metagraphed</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="light dark" />
     <style>
-      body { font: 15px/1.5 system-ui, -apple-system, sans-serif; background: #fafafa; color: #111; display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1.5rem; }
-      .card { max-width: 28rem; width: 100%; padding: 2rem; }
-      h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
-      p { color: #4b5563; margin: 0 0 1.5rem; }
-      .host { color: #111; font-weight: 600; word-break: break-all; }
-      .claimed { color: #6b7280; font-weight: 400; }
-      dl { margin: 0 0 1.5rem; padding: 1rem; background: #fff; border: 1px solid #d1d5db; border-radius: 0.375rem; }
-      dt { font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; margin-bottom: 0.15rem; }
-      dd { margin: 0 0 0.85rem; color: #111; word-break: break-all; }
-      dd:last-child { margin-bottom: 0; }
-      ul { margin: 0.25rem 0 0; padding-left: 1.1rem; color: #4b5563; }
-      li { margin-bottom: 0.25rem; }
-      code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: #f3f4f6; padding: 0.1rem 0.3rem; border-radius: 0.25rem; color: #111; }
-      .warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 0.375rem; padding: 0.75rem 1rem; margin: 0 0 1.5rem; }
-      .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-      a, button { padding: 0.5rem 1rem; border-radius: 0.375rem; font: inherit; cursor: pointer; text-decoration: none; border: 1px solid transparent; }
-      .primary { background: #111; color: #fff; }
-      .secondary { background: #fff; color: #111; border-color: #d1d5db; }
-      footer { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 0.85rem; }
-      footer a { padding: 0; border: 0; color: #111; text-decoration: underline; }
+      @font-face { font-family: "Geist"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("${CONSENT_FONT_DATA_URL}") format("woff2"); }
+      :root {
+        --canvas: #f8f8f5; --surface-card: #ffffff; --layer: #f0f0ec;
+        --ink-strong: #161616; --ink: #4a4a47; --ink-muted: #6b6b67;
+        --rule: rgba(22, 22, 22, 0.11); --rule-strong: rgba(22, 22, 22, 0.24);
+        --accent: #0f8f66; --accent-foreground: #ffffff; --focus: #0f8f66;
+        --agent: #6946d7; --warn: #a86a00; --radius: 4px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --canvas: #161616; --surface-card: #1f1f1f; --layer: #1f1f1f;
+          --ink-strong: #f2f2f2; --ink: #d4d4d4; --ink-muted: #a3a3a3;
+          --rule: rgba(255, 255, 255, 0.11); --rule-strong: rgba(255, 255, 255, 0.24);
+          --accent: #3ddc97; --accent-foreground: #161616; --focus: #3ddc97;
+          --agent: #b49cff; --warn: #e9b84a;
+        }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 13px/1.5 "Geist", ui-sans-serif, system-ui, sans-serif; background: var(--canvas); color: var(--ink); }
+      .brand-header { min-height: 60px; border-bottom: 1px solid var(--rule); display: flex; align-items: center; padding: 16px 24px; }
+      .wordmark { color: var(--ink-strong); display: flex; width: 180px; }
+      .wordmark svg { display: block; width: 100%; height: auto; }
+      .page { min-height: calc(100svh - 60px); display: grid; align-content: center; justify-items: center; padding: 48px 24px; }
+      .card { width: 100%; max-width: 560px; padding: 32px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface-card); }
+      .connection-icon { width: 44px; height: 44px; padding: 10px; border: 1px solid var(--rule); border-radius: var(--radius); color: var(--agent); margin-bottom: 24px; }
+      h1 { font-size: 28px; line-height: 1.25; font-weight: 600; color: var(--ink-strong); margin: 0 0 12px; }
+      h2 { font-size: 16px; line-height: 1.55; font-weight: 600; color: var(--ink-strong); margin: 0 0 12px; }
+      p { margin: 0; }
+      .intro { font-size: 16px; line-height: 1.55; margin-bottom: 24px; }
+      .host { color: var(--ink-strong); font-weight: 600; overflow-wrap: anywhere; }
+      .claimed { color: var(--ink-muted); font-size: 13px; }
+      .connection-details { margin: 0 0 24px; padding: 16px 0; border-block: 1px solid var(--rule); display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px 16px; }
+      dt { color: var(--ink-muted); }
+      dd { margin: 0; color: var(--ink-strong); overflow-wrap: anywhere; }
+      .permissions { margin-bottom: 24px; }
+      ul { margin: 0; padding-left: 20px; }
+      li { padding-left: 4px; margin-bottom: 8px; overflow-wrap: anywhere; }
+      li:last-child { margin-bottom: 0; }
+      code { font: inherit; font-weight: 500; color: var(--ink-strong); overflow-wrap: anywhere; }
+      .warn { border-left: 2px solid var(--warn); background: color-mix(in oklab, var(--warn) 8%, transparent); padding: 12px 16px; margin-bottom: 24px; }
+      .warn strong { display: block; color: var(--ink-strong); margin-bottom: 4px; }
+      .actions { display: flex; gap: 12px; }
+      .button { min-height: 44px; display: inline-flex; justify-content: center; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--radius); font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; border: 1px solid transparent; }
+      .button svg { width: 18px; height: 18px; flex-shrink: 0; }
+      .primary { flex: 1; background: var(--accent); color: var(--accent-foreground); }
+      .primary:hover { background: color-mix(in oklab, var(--accent) 90%, var(--ink-strong)); }
+      .secondary { background: transparent; color: var(--ink-strong); border-color: var(--rule-strong); }
+      .secondary:hover { background: var(--layer); }
+      a:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+      footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--rule); color: var(--ink-muted); }
+      footer a { color: var(--ink-strong); text-underline-offset: 3px; }
+      .return-note { max-width: 560px; margin-top: 16px; color: var(--ink-muted); text-align: center; }
+      @media (max-width: 480px) {
+        .brand-header { padding-inline: 20px; }
+        .page { padding: 24px 16px; align-content: start; }
+        .card { padding: 24px; }
+        .connection-details { grid-template-columns: 1fr; gap: 4px; }
+        .connection-details dd + dt { margin-top: 12px; }
+        .actions { flex-direction: column; }
+      }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>Authorize access</h1>
-      <p>${identity} is asking to connect to your metagraphed account.</p>
+    <header class="brand-header"><div class="wordmark">${CONSENT_WORDMARK_SVG}</div></header>
+    <main class="page">
+    <section class="card" aria-labelledby="connect-title">
+      <svg class="connection-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m8 12 4 4m0-8 4 4M7 7l-2 2a4 4 0 0 0 0 6l1 1a4 4 0 0 0 6 0l2-2m-4-4 2-2a4 4 0 0 1 6 0l1 1a4 4 0 0 1 0 6l-2 2" /></svg>
+      <h1 id="connect-title">Connect your MCP client</h1>
+      <p class="intro">${identity} is asking to connect to your metagraphed account.</p>
       ${loopbackWarning}
-      <dl>
+      <dl class="connection-details">
         <dt>Signing in with</dt>
         <dd>Your GitHub account</dd>
         <dt>Returns you to</dt>
         <dd><code>${escapeHtml(redirectHost)}</code></dd>
-        <dt>It will be able to</dt>
-        <dd><ul>${view.scopes.map(scopeRow).join("")}</ul></dd>
       </dl>
+      <section class="permissions" aria-labelledby="permissions-title">
+        <h2 id="permissions-title">Requested access</h2>
+        <ul>${view.scopes.map(scopeRow).join("")}</ul>
+      </section>
       <form method="POST" action="/authorize">
         <input type="hidden" name="consent_nonce" value="${escapeHtml(view.nonce)}" />
         <div class="actions">
-          <button class="primary" type="submit" name="approve" value="yes">Continue to GitHub</button>
-          <a class="secondary" href="/">Cancel</a>
+          <button class="button primary" type="submit" name="approve" value="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 19c-4 1-4-2-6-2m12 4v-4a3.5 3.5 0 0 0-1-3c3 0 6-2 6-5a5 5 0 0 0-1-3c0-1 0-2-1-3-2 0-3 1-3 1a11 11 0 0 0-6 0S8 3 6 3c-1 1-1 2-1 3a5 5 0 0 0-1 3c0 3 3 5 6 5a3.5 3.5 0 0 0-1 3v4" /></svg>Continue to GitHub</button>
+          <a class="button secondary" href="/">Cancel</a>
         </div>
       </form>
       <footer>
@@ -208,7 +256,9 @@ export function renderConsentPage(view: ConsentView): string {
         revoked at any time. See <a href="/auth.md">auth.md</a> for what
         authenticating changes.
       </footer>
-    </div>
+    </section>
+    <p class="return-note">After signing in, you’ll return to your MCP client.</p>
+    </main>
   </body>
 </html>`;
 }
