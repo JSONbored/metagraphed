@@ -16204,6 +16204,14 @@ async function listResourceCandidates(ctx: McpCtx, pageEnd: number) {
   const out = FIXED_RESOURCES.map((r) =>
     resourceEntry(r.uri, r.name, r.title, r.description, r.mimeType),
   );
+  // Keep cold requests for later cursors parallel. Only the initial page can
+  // avoid this read; a short registry still loads schemas to fill that page.
+  const schemaRead =
+    pageEnd === RESOURCE_PAGE_SIZE
+      ? null
+      : loadArtifactData(ctx, "/metagraph/schemas/index.json").catch(
+          () => null,
+        );
   const [subnets, providers] = await Promise.all([
     loadArtifactData(ctx, "/metagraph/subnets.json").catch(() => null),
     loadArtifactData(ctx, "/metagraph/providers.json").catch(() => null),
@@ -16244,11 +16252,9 @@ async function listResourceCandidates(ctx: McpCtx, pageEnd: number) {
       ),
     );
   }
-  if (out.length > pageEnd) return out;
-  const schemas = await loadArtifactData(
-    ctx,
-    "/metagraph/schemas/index.json",
-  ).catch(() => null);
+  if (out.length > pageEnd && schemaRead === null) return out;
+  const schemas = await (schemaRead ??
+    loadArtifactData(ctx, "/metagraph/schemas/index.json").catch(() => null));
   for (const sc of schemas?.schemas || []) {
     const id = sc.surface_id || sc.id;
     if (!id) continue;

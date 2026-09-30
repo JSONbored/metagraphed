@@ -150,7 +150,7 @@ test("real MCP resource discovery coalesces pointer reads and preserves every pr
     assert.ok(uris.has(`metagraph://schema/${surface_id}`));
   assert.ok(uris.has("metagraph://registry/schemas"));
   assert.equal(pointerReads, 1);
-  assert.deepEqual(schemaReadsByPage, [0, 0, 1]);
+  assert.deepEqual(schemaReadsByPage, [0, 1, 1]);
   assert.deepEqual(pageBytes, [20628, 20468, 15503]);
   console.log(
     "MCP_RESOURCE_POINTER_FIXTURE",

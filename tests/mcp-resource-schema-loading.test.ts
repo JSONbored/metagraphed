@@ -7,6 +7,11 @@ function fixture(prefixCount: number, schemas: Row[] = []) {
   const reads: string[] = [];
   let schemaFailure = false;
   let registryFailure = false;
+  let registryGate: Promise<void> | undefined;
+  let announceRegistry!: () => void;
+  const registryStarted = new Promise<void>((resolve) => {
+    announceRegistry = resolve;
+  });
   const subnets = Array.from({ length: 46 }, (_, netuid) => ({ netuid }));
   // Five fixed resources and 92 subnet resources; provider rows fill the rest.
   const providers = Array.from({ length: prefixCount - 97 }, (_, i) => ({
@@ -18,6 +23,8 @@ function fixture(prefixCount: number, schemas: Row[] = []) {
       if (schemaFailure) throw new Error("schema index unavailable");
       return { ok: true, data: { schemas } };
     }
+    announceRegistry();
+    await registryGate;
     if (registryFailure) return { ok: false, code: "artifact_not_found" };
     return {
       ok: true,
@@ -55,6 +62,14 @@ function fixture(prefixCount: number, schemas: Row[] = []) {
     reads,
     subnets,
     providers,
+    registryStarted,
+    pauseRegistry() {
+      let release!: () => void;
+      registryGate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return release;
+    },
     failSchemas() {
       schemaFailure = true;
     },
@@ -78,6 +93,23 @@ test("one slot before the boundary still loads schemas and returns the first sch
     ["metagraph://schema/second"],
   );
   assert.equal(Object.hasOwn(second.result, "nextCursor"), false);
+});
+
+test("cold later cursors start schema and registry reads concurrently", async () => {
+  const f = fixture(265, [{ surface_id: "last" }]);
+  const release = f.pauseRegistry();
+  const response = f.page("100");
+  await f.registryStarted;
+  try {
+    assert.equal(
+      f.schemaReads(),
+      1,
+      "schema lookup starts before registry reads finish",
+    );
+  } finally {
+    release();
+  }
+  assert.equal((await response).result.resources.length, 100);
 });
 
 test("an exactly full page loads schemas to distinguish the final page from a continuation", async () => {
