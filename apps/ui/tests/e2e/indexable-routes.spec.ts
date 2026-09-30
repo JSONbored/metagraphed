@@ -1045,3 +1045,29 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
     });
   }
 });
+
+// The setup guide must keep clients on the bounded catalog rather than the
+// former eager/core recommendation, which consumes unnecessary chat context.
+test("MCP setup guide recommends discovery and retains every compatibility profile", async ({
+  page,
+}) => {
+  await gotoThroughRestart(page, "/docs/mcp");
+  await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+  await expect(page.locator("h1")).toHaveText("MCP");
+  const text = await page.locator("main").innerText();
+  expect(text).toContain("Default to /mcp.");
+  expect(text).toContain("/mcp/core");
+  expect(text).toContain("/mcp?catalog=full");
+  expect(text).toContain("search_tools");
+  expect(text).toContain("invoke_read_tool");
+  expect(text).toContain("next_cursor");
+  expect(text).toContain("search_page_size=1");
+  expect(text).not.toMatch(/406K|43K|23-tool|full catalog · 240/);
+  const snippets = await page.locator("pre").allTextContents();
+  const setup = snippets.filter((snippet) => snippet.includes("https://api.metagraph.sh/mcp"));
+  expect(setup.length).toBe(5);
+  for (const snippet of setup) {
+    expect(snippet).not.toContain("/mcp/core");
+    expect(snippet).not.toContain("catalog=full");
+  }
+});

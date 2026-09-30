@@ -1,43 +1,45 @@
 ---
 title: MCP
-description: Bittensor in a box — the whole registry as Model Context Protocol tools over one streamable-HTTP endpoint, with a curated 23-tool core profile for context-limited agents. No API key required.
+description: Connect an AI client through four discovery tools, then load complete schemas only for the task you need. All MCP capabilities remain available.
 ---
 
 Point any MCP client at the registry and it gets metagraphed as callable tools: subnet discovery and comparison, per-subnet health and economics, OpenAPI schemas for every registered subnet API (callable through the registry itself), chain blocks/extrinsics/events, account lookup, and grounded question-answering — the same data every REST route serves, shaped for agents. Bittensor in a box: one connect, no key, no account, no local install.
 
-```
-https://api.metagraph.sh/mcp
-full catalog · 240 tools
-
-https://api.metagraph.sh/mcp/core
-core profile · 23 tools
-```
-
 ## Which endpoint
 
-**Default to `/mcp/core`.** The full `/mcp` tool list serializes to ~406K tokens of tool schemas — more than most model context windows — and a client that holds tool definitions in context pays that on every session. `/mcp/core` lists the curated golden path (discover → verify → integrate → call → screen economically) at ~43K tokens.
+**Default to `/mcp`.** It advertises four discovery tools: `search_tools`, `invoke_read_tool`,
+`invoke_tool`, and `get_more_tools`. Your client loads complete tool definitions as needed instead
+of putting the full catalog into chat context at connection time.
 
-|                      | `/mcp`                                        | `/mcp/core`                            |
-| -------------------- | --------------------------------------------- | -------------------------------------- |
-| Tools listed         | 240                                           | 23 (the curated golden path)           |
-| `tools/list` context | ~406K tokens                                  | ~43K tokens                            |
-| Tools callable       | all 240                                       | all 240 — listing filters, calls don't |
-| Pick it when         | context is cheap (subagents, offline tooling) | context is model context — most agents |
+| Endpoint            | Initial listing                      | Choose it when                                          |
+| ------------------- | ------------------------------------ | ------------------------------------------------------- |
+| `/mcp`              | Four discovery and invocation tools  | You want a small initial catalog and task-based search. |
+| `/mcp/core`         | Common tools, directly advertised    | Your client needs the common tools listed up front.     |
+| `/mcp?catalog=full` | Every tool with its complete schemas | Your integration requires an eager catalog.             |
 
-<Callout title="A context diet, not an authorization boundary">
-  A session connected to `/mcp/core` can still `tools/call` every one of the 240 tools — listing
-  filters, calls don't. When a thin session needs one the core profile never listed, it calls it by
-  name, and `ask` answers whole questions without any further tools at all — a core session is never
-  stranded.
-</Callout>
+Every profile can call every tool with the same authentication, permissions, and limits.
+Selecting a smaller listing does not change an individual tool's schema or result.
 
-`get_more_tools` is not part of that: it reports a capability this server lacks. Call it when nothing
-in the catalogue does what you need, and describe the goal in `context` — it records the gap and
-returns an acknowledgement, not data or additional tools.
+`search_tools` accepts task keywords or an exact tool name and returns up to three complete
+matching definitions. Each includes the input and output schemas, annotations, and authentication
+requirements. Follow `next_cursor` with the same query to see more matches. Search by exact name
+when you already know the tool you need, so unrelated schemas do not enter the conversation.
+
+For a tighter per-response budget, configure `https://api.metagraph.sh/mcp?search_page_size=1`
+(or `2`). This optional setting keeps the initial catalog unchanged and returns at most one
+(or two) complete matching definitions per search page. The default remains three. Following
+all pages can require more requests; individual schemas and target results stay complete.
+
+Clients that only allow advertised tools can use `invoke_read_tool` for a discovered tool with
+`readOnlyHint: true`, or `invoke_tool` for other targets. Both validate the target's arguments and
+apply its permissions. If a definition says authentication is required, sign in before calling it.
+
+`get_more_tools` records a missing capability. Use it only when the catalog cannot do what you
+need and describe the goal in `context`; it acknowledges the gap rather than returning extra tools.
 
 ## Authentication
 
-Optional. Anonymous access works on both endpoints at 100 requests/60s per client IP. Clients that support MCP authorization prompt an OAuth sign-in (GitHub) on first connect; an `Authorization: Bearer mg_…` [API key](/settings) header works too. Authenticating raises rate limits (500 requests/60s per account, higher on paid tiers) — it does not unlock additional tools or surfaces.
+Optional. Anonymous access works on every profile at 100 requests/60s per client IP. Clients that support MCP authorization prompt an OAuth sign-in (GitHub) on first connect; an `Authorization: Bearer mg_…` [API key](/settings) header works too. Authenticating raises rate limits (500 requests/60s per account, higher on paid tiers) — it does not unlock additional tools or surfaces.
 
 ## Connect a client
 
@@ -46,18 +48,18 @@ Optional. Anonymous access works on both endpoints at 100 requests/60s per clien
 One CLI command, no config file to hand-edit:
 
 ```bash
-claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp/core
+claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 ```
 
 ### Claude Desktop & claude.ai
 
-Both take the endpoint as a custom connector: **Settings → Connectors → Add custom connector**, then paste `https://api.metagraph.sh/mcp/core`. Claude Desktop also accepts a config-file entry:
+Both take the endpoint as a custom connector: **Settings → Connectors → Add custom connector**, then paste `https://api.metagraph.sh/mcp`. Claude Desktop also accepts a config-file entry:
 
 ```json title="claude_desktop_config.json"
 {
   "mcpServers": {
     "metagraphed": {
-      "transport": { "type": "http", "url": "https://api.metagraph.sh/mcp/core" }
+      "transport": { "type": "http", "url": "https://api.metagraph.sh/mcp" }
     }
   }
 }
@@ -68,7 +70,7 @@ Both take the endpoint as a custom connector: **Settings → Connectors → Add 
 ```json title=".cursor/mcp.json"
 {
   "mcpServers": {
-    "metagraphed": { "url": "https://api.metagraph.sh/mcp/core" }
+    "metagraphed": { "url": "https://api.metagraph.sh/mcp" }
   }
 }
 ```
@@ -78,7 +80,7 @@ Both take the endpoint as a custom connector: **Settings → Connectors → Add 
 ```json title=".vscode/mcp.json"
 {
   "servers": {
-    "metagraphed": { "type": "http", "url": "https://api.metagraph.sh/mcp/core" }
+    "metagraphed": { "type": "http", "url": "https://api.metagraph.sh/mcp" }
   }
 }
 ```
@@ -90,19 +92,24 @@ Any client that speaks streamable-HTTP MCP connects directly — no install, no 
 ```json title="Generic streamable-HTTP entry"
 {
   "type": "streamable-http",
-  "url": "https://api.metagraph.sh/mcp/core"
+  "url": "https://api.metagraph.sh/mcp"
 }
 ```
 
 ## First calls to try
 
-All three are in the core profile:
+Start with discovery, then invoke the selected tool using the complete arguments its schema requires:
 
-| Tool                  | Try                                                      | What it shows                                                                    |
-| --------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `search_subnets`      | `{"query": "inference"}`                                 | Keyword discovery across every subnet's curated profile.                         |
-| `ask`                 | `{"question": "which subnets expose an inference API?"}` | A grounded natural-language answer with citations — the whole-question shortcut. |
-| `call_subnet_surface` | a surface id from `list_subnet_apis`                     | Calling a subnet's own registered API through the registry, schema-checked.      |
+| Goal                             | `search_tools` query  | Next step                                                                             |
+| -------------------------------- | --------------------- | ------------------------------------------------------------------------------------- |
+| Find inference subnets           | `search_subnets`      | Pass the search query to the discovered read-only tool through `invoke_read_tool`.    |
+| Ask a grounded registry question | `ask`                 | Follow the returned schema to ask the question through `invoke_read_tool`.            |
+| Call a subnet's registered API   | `call_subnet_surface` | Discover the API and required arguments, then choose the bridge from its annotations. |
+
+Keep tool discovery specific to the current task. A broad query can match many tools; load another
+page only when the current definitions do not cover what you need. API schemas and tool responses
+remain complete, so select supported filters and bounded pagination instead of asking for every
+record at once.
 
 Every tool mirrors a documented REST route — the [API reference](/docs/api-reference) covers the request/response shapes behind them, and [For agents](/agents) has the rest of the machine surface: playbooks, `llms.txt`, the served skill, and prompt-ready links.
 
