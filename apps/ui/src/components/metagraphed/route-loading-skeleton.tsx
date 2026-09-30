@@ -63,7 +63,7 @@ export function routeLoadingArchetype(pathname: string): RouteLoadingArchetype {
   }
   if (path === "/compare") return "compare";
   if (path === "/settings" || path === "/portfolio") return "settings";
-  if (path === "/agents" || path === "/graphql/explorer") return "settings";
+  if (path === "/agents") return "settings";
   if (
     path === "/chain" ||
     path === "/health" ||

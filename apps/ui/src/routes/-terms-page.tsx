@@ -21,8 +21,7 @@ const BODIES: Record<TermsSection, ReactNode> = {
         them.
       </p>
       <p>
-        The REST API, GraphQL endpoint, and MCP server are public and read-only. Most of the surface
-        needs no account.
+        The REST API and MCP server are public and read-only. Most of the surface needs no account.
       </p>
     </>
   ),

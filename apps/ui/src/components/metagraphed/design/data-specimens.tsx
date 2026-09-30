@@ -295,7 +295,7 @@ export function CompareSection() {
 
 /* ------------------------------------------------------------------ filters */
 
-const FILTER_KINDS = ["REST", "GraphQL", "SSE", "MCP"];
+const FILTER_KINDS = ["REST", "SSE", "MCP"];
 
 export function FiltersSection() {
   const [query, setQuery] = useState("");

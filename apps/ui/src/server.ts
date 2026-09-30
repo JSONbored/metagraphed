@@ -125,7 +125,6 @@ const SITEMAP_STATIC_PATHS = [
   "/contribute",
   "/about",
   "/agents",
-  "/graphql/explorer",
   "/settings",
   "/privacy",
   "/terms",
@@ -775,11 +774,6 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
   "/docs": {
     title: "Docs",
     subtitle: "API reference, guides and machine-readable contracts",
-    eyebrow: "Developers",
-  },
-  "/graphql/explorer": {
-    title: "GraphQL explorer",
-    subtitle: "Query the registry interactively over GraphQL",
     eyebrow: "Developers",
   },
   "/tools/ss58": {

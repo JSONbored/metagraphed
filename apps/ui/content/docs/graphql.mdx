@@ -1,7 +1,13 @@
 ---
-title: GraphQL
-description: Shape one request across the registry — a subnet with health, surfaces, endpoints, and economics, a provider with its subnets, or the economic opportunity boards. No API key.
+title: Legacy query compatibility
+description: Compatibility reference for existing GraphQL API and MCP query consumers. Use REST or MCP discovery for new integrations.
 ---
+
+<Callout type="info" title="Website editor retired">
+  The GraphQL website editor has been retired. Use the [REST API reference](/docs/api-reference) or
+  [MCP](/docs/mcp) for new integrations. Existing API queries, subscriptions, and the MCP
+  `query_graphql` tool remain available; their compatibility limits are documented below.
+</Callout>
 
 ## Endpoint
 
@@ -44,14 +50,6 @@ req = Request(
 with urlopen(req) as res:
     data = json.load(res)["data"]
 ```
-
-## Explorer
-
-<Card
-  title="Open the GraphQL Explorer"
-  description="Interactive GraphiQL IDE, full height, on its own page — schema-aware autocomplete, docs, and history against the live endpoint."
-  href="/graphql/explorer"
-/>
 
 ## Schema
 

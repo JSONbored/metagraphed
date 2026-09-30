@@ -102,6 +102,8 @@ const MUST_BE_200 = [
  */
 const MUST_BE_301: ReadonlyArray<readonly [from: string, to: string, carries?: string]> = [
   ["/explorer", "/chain"],
+  ["/graphql", "/docs/api-reference"],
+  ["/graphql/explorer", "/docs/api-reference"],
   ["/blocks", "/chain/blocks"],
   ["/events", "/chain/events"],
   ["/extrinsics", "/chain/extrinsics"],
@@ -140,6 +142,49 @@ const MUST_BE_301: ReadonlyArray<readonly [from: string, to: string, carries?: s
   ["/chain/governance", "/chain", "#governance"],
   ["/chain/runtime", "/chain", "#governance"],
 ];
+
+for (const route of ["/", "/graphql/explorer"]) {
+  test(`retired GraphiQL editor is absent from the cold ${route} visit graph`, async ({ page }) => {
+    const assets: Promise<{ url: string; bytes: number; gzipBytes: number; editor: boolean }>[] =
+      [];
+    page.on("response", (response) => {
+      if (!/\.(?:js|css)(?:[?#]|$)/.test(response.url())) return;
+      assets.push(
+        (async () => {
+          const body = await response.body();
+          return {
+            url: new URL(response.url()).pathname,
+            bytes: body.byteLength,
+            gzipBytes: gzipSync(body).byteLength,
+            editor: /graphiql-container|graphiql:editorFlex|GraphiQLProvider|CodeMirror-lint/.test(
+              body.toString("utf8"),
+            ),
+          };
+        })(),
+      );
+    });
+    await gotoThroughRestart(page, route);
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    if (route !== "/") expect(new URL(page.url()).pathname).toBe("/docs/api-reference");
+    await expect(page.locator("h1")).toBeVisible();
+    const loaded = await Promise.all(assets);
+    expect(loaded.length).toBeGreaterThan(0);
+    expect(
+      loaded.filter((asset) => asset.editor || /graphiql|codemirror/i.test(asset.url)),
+    ).toEqual([]);
+    console.log(
+      "GRAPHQL_RETIRED_ASSET_FIXTURE",
+      JSON.stringify({
+        route,
+        destination: new URL(page.url()).pathname,
+        assets: loaded.length,
+        bytes: loaded.reduce((sum, asset) => sum + asset.bytes, 0),
+        gzipBytes: loaded.reduce((sum, asset) => sum + asset.gzipBytes, 0),
+        editorAssets: 0,
+      }),
+    );
+  });
+}
 
 test.describe("#11204 indexable routes answer, retired routes redirect permanently", () => {
   for (const path of MUST_BE_200) {
@@ -651,7 +696,6 @@ test.describe("sitewide payload and entry-bundle ratchets", () => {
     "/docs/api-reference/subnets/subnets-by-network": 430,
     "/news": 540,
     "/news/sn19/2026-w17": 340,
-    "/graphql/explorer": 80,
   } as const;
 
   for (const [path, ceiling] of Object.entries(ROUTE_FAMILY_HTML_KIB)) {
@@ -898,7 +942,6 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
     "/about",
     "/privacy",
     "/terms",
-    "/graphql/explorer",
     "/docs",
     "/docs/",
     "/docs/feeds",
@@ -969,7 +1012,7 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
       const canonical = `https://metagraph.sh${new URL(finalRoute, "https://metagraph.sh").pathname}`;
       expect(head.canonicals).toEqual([canonical]);
       expect(values("og:url")).toEqual([canonical]);
-      if (/^\/(?:about|privacy|terms|settings|compare|graphql\/explorer)(?:[?/#]|$)/.test(route)) {
+      if (/^\/(?:about|privacy|terms|settings|compare)(?:[?/#]|$)/.test(route)) {
         expect(values("og:title")).toEqual(head.titles);
         expect(values("og:description")).toEqual(values("description"));
       }

@@ -1,13 +1,14 @@
-import { pageMeta } from "@/lib/metagraphed/seo-meta";
-import { createFileRoute } from "@tanstack/react-router";
-import { GraphqlExplorerPage } from "./-graphql-explorer-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// The website editor is retired. Existing API/MCP GraphQL consumers retain
+// their handler; old editor links lead directly to the REST API reference.
 export const Route = createFileRoute("/graphql/explorer")({
-  head: () => ({
-    meta: pageMeta(
-      "GraphQL Explorer — Metagraphed",
-      "Explore the public Metagraphed GraphQL API with schema-aware autocomplete, docs, live queries, and chainEvents subscriptions. No API key.",
-    ),
-  }),
-  component: GraphqlExplorerPage,
+  beforeLoad: () => {
+    throw redirect({
+      to: "/docs/$",
+      params: { _splat: "api-reference" },
+      replace: true,
+      statusCode: 301,
+    });
+  },
 });
