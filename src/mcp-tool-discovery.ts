@@ -115,6 +115,7 @@ export function searchToolDefinitions<
   input: z.infer<typeof SearchToolsInputSchema>,
   version: string,
   pageSize: SearchToolsPageSize = 3,
+  descriptionSuffix = "",
 ) {
   const query = input.query.toLowerCase();
   if (
@@ -132,7 +133,7 @@ export function searchToolDefinitions<
     ? exact
     : tools.filter((tool) => {
         const text =
-          `${tool.name} ${tool.title} ${tool.description}`.toLowerCase();
+          `${tool.name} ${tool.title} ${tool.description}${descriptionSuffix}`.toLowerCase();
         return terms.every((term) => text.includes(term));
       });
   const page = matches.slice(offset, offset + pageSize);
