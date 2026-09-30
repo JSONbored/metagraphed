@@ -40,7 +40,11 @@ describe("Discovery artifacts", () => {
       short.split("## Optional")[1],
       /\[Legacy GraphQL compatibility\]\(https:\/\/api\.metagraph\.sh\/api\/v1\/graphql\)/,
     );
-    assert.match(full, /POST \/api\/v1\/graphql/);
+    assert.match(
+      full,
+      /## Legacy query compatibility\n- \[Legacy GraphQL compatibility\]\(https:\/\/api\.metagraph\.sh\/api\/v1\/graphql\)/,
+    );
+    assert.match(full, /## All API routes/);
     const resources = await readJson("metagraph/agent-resources.json");
     assert.deepEqual(
       resources.resources.find((resource: Row) => resource.id === "graphql"),
