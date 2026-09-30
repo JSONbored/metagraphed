@@ -40,6 +40,9 @@ function fixture() {
   databases.push(db);
   for (const file of [
     "0007_neuron_documents.sql",
+    "0020_neuron_axon_projection.sql",
+    "0030_neuron_axon_insert_projection.sql",
+    "0031_neuron_axon_document_projection.sql",
     "0037_neuron_capture_batch_receipts.sql",
   ])
     db.exec(
@@ -100,8 +103,14 @@ function fixture() {
   };
 }
 async function finish(promise: Promise<unknown>) {
+  const settled = promise.then(
+    (value) => ({ value }),
+    (error) => ({ error }),
+  );
   await vi.runAllTimersAsync();
-  return promise;
+  const result = await settled;
+  if ("error" in result) throw result.error;
+  return result.value;
 }
 const transient = [
   "D1_ERROR: Network connection lost.",
