@@ -23,7 +23,7 @@ let db: D1Database;
 let tables: string;
 const stamp = 1_790_090_000_000;
 const account = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-const ctx = { waitUntil() {} } as ExecutionContext;
+const ctx = { waitUntil() {} } as unknown as ExecutionContext;
 
 beforeAll(async () => {
   db = await runtime.getD1Database("DB");
