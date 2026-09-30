@@ -506,30 +506,46 @@ let pointerMemo: {
   value: LatestPointer | null;
   expiresAt: number;
 } = { env: null, value: null, expiresAt: 0 };
+// Parallel artifact reads share the same outstanding pointer lookup. The
+// completed memo keeps its existing TTL; failures leave no pending entry.
+let pointerPending = new WeakMap<ArtifactEnv, Promise<LatestPointer | null>>();
 
 registerModuleStateReset("workers/storage.ts", () => {
   pointerMemo = { env: null, value: null, expiresAt: 0 };
+  pointerPending = new WeakMap();
 });
 
 export async function latestPointer(
   env: ArtifactEnv,
 ): Promise<LatestPointer | null> {
-  if (!env.METAGRAPH_CONTROL?.get) {
+  const control = env.METAGRAPH_CONTROL;
+  if (!control?.get) {
     return null;
   }
   const now = Date.now();
   if (pointerMemo.env === env && now < pointerMemo.expiresAt) {
     return pointerMemo.value;
   }
+  const pendingReads = pointerPending;
+  const existing = pendingReads.get(env);
+  if (existing) return existing;
+  const pending = (async () => {
+    try {
+      const value = await control.get<LatestPointer>(
+        METAGRAPH_LATEST_KEY,
+        { type: "json" },
+      );
+      pointerMemo = { env, value, expiresAt: now + POINTER_MEMO_TTL_MS };
+      return value;
+    } catch {
+      return null;
+    }
+  })();
+  pendingReads.set(env, pending);
   try {
-    const value = await env.METAGRAPH_CONTROL.get<LatestPointer>(
-      METAGRAPH_LATEST_KEY,
-      { type: "json" },
-    );
-    pointerMemo = { env, value, expiresAt: now + POINTER_MEMO_TTL_MS };
-    return value;
-  } catch {
-    return null;
+    return await pending;
+  } finally {
+    pendingReads.delete(env);
   }
 }
 
