@@ -137,6 +137,63 @@ describe("resolveCaptureEndpoints", () => {
     );
   });
 
+  test("retains the registered static testnet candidates without a mainnet health observation", async () => {
+    const urls = [
+      "https://test.finney.opentensor.ai",
+      "https://test.chain.opentensor.ai:443/",
+    ];
+    const rows = urls.map((url) =>
+      endpoint({
+        url,
+        archive_support: false,
+        health_source: "not-monitored",
+        status: "unknown",
+        health_stale: true,
+      }),
+    );
+    assert.deepEqual(
+      await resolveCaptureEndpoints(
+        ENV,
+        "testnet",
+        deps(artifact(rows, "test-rpc"), { endpoints: [] }),
+      ),
+      urls,
+    );
+    assert.deepEqual(
+      await resolveCaptureEndpoints(ENV, "mainnet", deps(artifact(rows))),
+      [],
+    );
+  });
+
+  test("static failover never admits unregistered, disabled or monitored non-archive endpoints", async () => {
+    const base = endpoint({
+      url: "https://test.chain.opentensor.ai",
+      archive_support: false,
+      health_source: "not-monitored",
+      status: "unknown",
+    });
+    const rows = [
+      { ...base, url: "https://other.example" },
+      { ...base, url: "https://test.chain.opentensor.ai/other" },
+      { ...base, url: "https://test.chain.opentensor.ai:8443" },
+      { ...base, url: "wss://test.chain.opentensor.ai" },
+      { ...base, url: null },
+      { ...base, pool_eligible: false },
+      { ...base, health_source: "probe", status: "ok" },
+      { ...base, archive_support: null },
+      base,
+      base,
+    ];
+    assert.deepEqual(
+      await resolveCaptureEndpoints(
+        ENV,
+        "testnet",
+        deps(artifact(rows, "test-rpc")),
+      ),
+      [base.url],
+    );
+  });
+
   test("the LIVE overlay decides, not the baked build", async () => {
     // The exact production bug this lane would otherwise inherit: /rpc/pools
     // served archive_support FALSE for two real archives on 2026-08-16 while
@@ -213,6 +270,28 @@ describe("resolveCaptureEndpoints", () => {
 });
 
 describe("captureEndpointList", () => {
+  test("equivalent HTTPS default ports and root paths occupy one rotation slot", () => {
+    assert.deepEqual(
+      captureEndpointList("https://test.finney.opentensor.ai:443", [
+        "https://test.finney.opentensor.ai",
+        "https://test.finney.opentensor.ai/",
+        "https://test.chain.opentensor.ai",
+      ]),
+      [
+        "https://test.finney.opentensor.ai:443",
+        "https://test.chain.opentensor.ai",
+      ],
+    );
+    assert.deepEqual(captureEndpointList("unparseable", ["unparseable"]), [
+      "unparseable",
+    ]);
+    assert.deepEqual(
+      captureEndpointList("https://archive.example/a", [
+        "https://archive.example/b",
+      ]),
+      ["https://archive.example/a", "https://archive.example/b"],
+    );
+  });
   test("the configured default is always present, and always first", async () => {
     // It is the host whose behaviour under this exact call pattern was
     // measured, and the only one guaranteed to exist when the pool cannot be
