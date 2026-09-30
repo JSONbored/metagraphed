@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
 
 test.describe("MCP documentation connection summary", () => {
-  test("keeps both published endpoints readable without horizontal code scrolling on mobile", async ({
+  test("keeps discovery setup readable and compatibility choices available on mobile", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
@@ -10,7 +10,10 @@ test.describe("MCP documentation connection summary", () => {
 
     const endpoints = page.locator(".mg-prose pre").first();
     await expect(endpoints).toContainText("https://api.metagraph.sh/mcp");
-    await expect(endpoints).toContainText("https://api.metagraph.sh/mcp/core");
+    await expect(endpoints).not.toContainText("/mcp/core");
+    const profiles = page.locator(".mg-prose table").first();
+    await expect(profiles).toContainText("/mcp/core");
+    await expect(profiles).toContainText("/mcp?catalog=full");
 
     const dimensions = await endpoints.evaluate((element) => ({
       client: element.clientWidth,
