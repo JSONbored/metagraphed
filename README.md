@@ -82,6 +82,14 @@ Add an MCP server with url `https://api.metagraph.sh/mcp` and transport `streama
 
 <sub>All tools remain available through a four-tool discovery catalog. The [server card](https://api.metagraph.sh/.well-known/mcp/server-card.json) links the complete capabilities; common-tool and full-catalog profiles are also available.</sub>
 
+For a tighter chat-context budget, configure the endpoint as
+`https://api.metagraph.sh/mcp?search_page_size=1` (or `2`). `search_tools` then returns at most
+one (or two) complete definitions per page, instead of the default three. Follow `next_cursor`
+with the same query to reach every match. Smaller pages trade additional discovery calls for
+less context per response; they do not shrink individual schemas or tool results. Exact-name
+search returns just the requested definition. The default catalog remains four tools, and
+`/mcp/core` and `/mcp?catalog=full` retain their existing listings and capabilities.
+
 #### 📦 Typed client
 
 Generated from the OpenAPI contract, published with provenance.
