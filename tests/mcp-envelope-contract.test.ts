@@ -398,6 +398,48 @@ describe("a notification's dispatch completes before the response (#9647)", () =
   });
 });
 
+describe("the SDK response survives teardown as UTF-8 bytes", () => {
+  test.each(["full", "core", "discovery"] as const)(
+    "%s catalogue keeps every tool and schema",
+    async (profile) => {
+      const result = { tools: listToolDefinitions(profile) };
+      const response = await serveWithSdk(
+        post({ jsonrpc: "2.0", id: 17, method: "tools/list" }),
+        {
+          serverInfo: { name: "catalogue", version: "1" },
+          capabilities: { tools: {} },
+          dispatch: async () => ({ jsonrpc: "2.0", id: 17, result }),
+        },
+      );
+      assert.equal(response.status, 200);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const expected = new TextEncoder().encode(
+        JSON.stringify({ result, jsonrpc: "2.0", id: 17 }),
+      );
+      assert.deepEqual(bytes, expected);
+    },
+  );
+
+  test("multibyte text and JSON escapes retain their exact wire bytes", async () => {
+    const result = { text: 'TAO τ · 日本語 🧠\n\u0000"\\' };
+    const response = await serveWithSdk(
+      post({ jsonrpc: "2.0", id: "unicode", method: "ping" }),
+      {
+        serverInfo: { name: "unicode", version: "1" },
+        capabilities: { tools: {} },
+        dispatch: async () => ({ jsonrpc: "2.0", id: "unicode", result }),
+      },
+    );
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    assert.deepEqual(
+      bytes,
+      new TextEncoder().encode(
+        JSON.stringify({ result, jsonrpc: "2.0", id: "unicode" }),
+      ),
+    );
+  });
+});
+
 // A method the SDK still owns is a method dispatchMessage never sees, and so a
 // method that silently stops being counted -- initialize most of all, which
 // carries the client attribution (#8994) and the session identity (#9054).
