@@ -100,12 +100,21 @@ export const InvokeToolInputSchema = z
 // exact outputSchema returned by search_tools. No target fields are projected.
 export const InvokeToolOutputSchema = JsonDocumentSchema;
 
+export type SearchToolsPageSize = 1 | 2 | 3;
+
+// Opt-in endpoint configuration leaves tool schemas and existing clients intact.
+export function searchToolsPageSizeForUrl(url: URL): SearchToolsPageSize {
+  const size = url.searchParams.get("search_page_size");
+  return size === "1" ? 1 : size === "2" ? 2 : 3;
+}
+
 export function searchToolDefinitions<
   T extends { name: string; title: string; description: string },
 >(
   tools: readonly T[],
   input: z.infer<typeof SearchToolsInputSchema>,
   version: string,
+  pageSize: SearchToolsPageSize = 3,
 ) {
   const query = input.query.toLowerCase();
   if (
@@ -126,7 +135,7 @@ export function searchToolDefinitions<
           `${tool.name} ${tool.title} ${tool.description}`.toLowerCase();
         return terms.every((term) => text.includes(term));
       });
-  const page = matches.slice(offset, offset + 3);
+  const page = matches.slice(offset, offset + pageSize);
   const next = offset + page.length;
   return {
     tools: page,

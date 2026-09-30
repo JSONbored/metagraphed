@@ -8,6 +8,8 @@ import {
   SearchToolsInputSchema,
   SearchToolsOutputSchema,
   searchToolDefinitions,
+  searchToolsPageSizeForUrl,
+  type SearchToolsPageSize,
 } from "./mcp-tool-discovery.ts";
 // Remote MCP (Model Context Protocol) server for metagraphed.
 //
@@ -2009,6 +2011,7 @@ interface McpCtx {
    * for /mcp/core, "full" with ?catalog=full, "discovery" by default. Filters listing and guidance -- dispatch,
    * validation, tripwire and analytics are identical on both endpoints. */
   profile?: McpProfile;
+  searchPageSize?: SearchToolsPageSize;
   sessionId?: string | null;
   // #9789: the protocol revision THIS request declared, which decides whether
   // a tool result still needs the compatibility text block. Optional because
@@ -6292,6 +6295,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           listToolDefinitions(),
           parsed.data,
           ctx.env.CF_VERSION_METADATA?.id ?? MCP_SERVER_VERSION,
+          ctx.searchPageSize,
         );
       } catch {
         throw toolError(
@@ -18036,6 +18040,7 @@ async function buildContext(
 ) {
   let domain;
   let profile: McpProfile = "discovery";
+  let searchPageSize: SearchToolsPageSize = 3;
   try {
     const requestUrl = new URL(request.url);
     // An http(s) Request cannot carry an empty host -- the constructor
@@ -18045,6 +18050,7 @@ async function buildContext(
     // Discovery is the default; core and the explicit full catalog use the
     // same dispatch, permissions and results. No session-local tool registry.
     profile = mcpProfileForUrl(requestUrl);
+    searchPageSize = searchToolsPageSizeForUrl(requestUrl);
   } catch {
     domain = PRIMARY_DOMAIN;
   }
@@ -18085,6 +18091,7 @@ async function buildContext(
     env,
     domain,
     profile,
+    searchPageSize,
     sessionId,
     // Already validated by handleMcpRequest, so this is either a version we
     // support or absent (#9789).
