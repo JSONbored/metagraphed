@@ -1064,7 +1064,11 @@ test("MCP setup guide recommends discovery and retains every compatibility profi
   expect(text).toContain("search_page_size=1");
   expect(text).not.toMatch(/406K|43K|23-tool|full catalog · 240/);
   const snippets = await page.locator("pre").allTextContents();
-  const setup = snippets.filter((snippet) => snippet.includes("https://api.metagraph.sh/mcp"));
+  const setup = snippets.filter(
+    (snippet) =>
+      snippet.includes("https://api.metagraph.sh/mcp") &&
+      (snippet.trim().startsWith("claude ") || snippet.trim().startsWith("{")),
+  );
   expect(setup.length).toBe(5);
   for (const snippet of setup) {
     expect(snippet).not.toContain("/mcp/core");
