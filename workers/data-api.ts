@@ -11,6 +11,10 @@ import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import {
+  writeUsageRollupD1,
+  type UsageRollupBucket,
+} from "../src/usage-rollup-d1.ts";
+import {
   readNeuronDailyValidators,
   readNeuronDailyTotals,
   readNeuronDailyMetricRows,
@@ -5860,8 +5864,9 @@ async function handleApiQuotaSpend(
 // N upserts contending on one row. The caller now buffers observations in the
 // isolate (USAGE_ROLLUP_FLUSH_COUNT / _AGE_MS) and folds the whole batch, so a
 // burst arrives here as one POST carrying one bucket per (day, family, shape).
-// Every bucket in a batch is still upserted individually inside one
-// withAccountsSql call, so one Postgres client serves the whole batch.
+// D1 applies every valid bucket in one receipt-guarded transaction, so a lost
+// reply can replay the batch without adding the observations twice. The
+// compatibility Postgres path retains its per-bucket writes on one client.
 // Fire-and-forget from the caller's side, so this always returns 200 even on a
 // swallowed write error -- a usage-rollup miss must never affect the request
 // that triggered it, and there is nothing for the caller to react to either
@@ -5890,6 +5895,8 @@ async function handleUsageRollupIncrement(
   if (buckets.length === 0) return writeJson({ ok: true, applied: 0 });
   try {
     await withAccountsSql(env, ctx, async (sql) => {
+      const d1 = selectedD1Store(env, ["api_usage_rollup"]);
+      const nativeBuckets: UsageRollupBucket[] = [];
       for (const bucket of buckets as Row[]) {
         const day = typeof bucket?.day === "string" ? bucket.day : null;
         const family =
@@ -5907,8 +5914,19 @@ async function handleUsageRollupIncrement(
           !family ||
           !shape ||
           !Number.isFinite(count) ||
+          !Number.isFinite(keyed) ||
           count <= 0
         ) {
+          continue;
+        }
+        if (d1) {
+          nativeBuckets.push({
+            day,
+            family,
+            cost_shape: shape,
+            request_count: count,
+            keyed_count: keyed,
+          });
           continue;
         }
         await sql<never>`
@@ -5920,6 +5938,7 @@ async function handleUsageRollupIncrement(
             request_count = api_usage_rollup.request_count + EXCLUDED.request_count,
             keyed_count = api_usage_rollup.keyed_count + EXCLUDED.keyed_count`;
       }
+      if (d1) await writeUsageRollupD1(d1, nativeBuckets);
     });
   } catch {
     // Best-effort counter -- see header.
@@ -9207,7 +9226,8 @@ export function decodeBlockHeader(
   payload: unknown,
 ): { blockTag: string; blockNumber: number; timestampSeconds: number } | null {
   const result = (payload as { result?: unknown })?.result as
-    { number?: unknown; timestamp?: unknown } | undefined;
+    | { number?: unknown; timestamp?: unknown }
+    | undefined;
   if (!result) return null;
   const { number: rawNumber, timestamp: rawTimestamp } = result;
   if (typeof rawNumber !== "string" || typeof rawTimestamp !== "string")
