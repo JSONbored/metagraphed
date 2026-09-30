@@ -6291,12 +6291,23 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       try {
-        return searchToolDefinitions(
-          listToolDefinitions(),
+        const matches = searchToolDefinitions(
+          MCP_TOOLS.map((tool) => ({
+            tool,
+            name: tool.name,
+            title: tool.title,
+            description: `${tool.description} ${UNTRUSTED_DATA_NOTE}`,
+          })),
           parsed.data,
           ctx.env.CF_VERSION_METADATA?.id ?? MCP_SERVER_VERSION,
           ctx.searchPageSize,
         );
+        return {
+          ...matches,
+          tools: matches.tools.map(({ tool }) =>
+            cataloguedToolDefinition(tool),
+          ),
+        };
       } catch {
         throw toolError(
           "invalid_params",
@@ -15930,6 +15941,67 @@ const CORE_TOOL_NAME_SET: ReadonlySet<string> = assertCoreNamesRegistered(
   new Set(MCP_TOOLS.map((tool) => tool.name)),
 );
 
+function buildToolDefinition(tool: McpToolDefinition) {
+  // NORMALISED HERE, not at the spread below (#9654). The sentinel is a Zod
+  // artifact of `z.int()`, not a property of which side of the call a schema
+  // describes, so it landed on 1,083 of 1,083 output integer fields while
+  // inputs were clean -- `total`, `count`, `limit`, `next_cursor`, every
+  // block height. The spec says clients SHOULD validate structured results
+  // against this schema, so it is read, and it was telling them a row count
+  // is bounded by 2^53 because nobody chose anything.
+  //
+  // Not a loosening: stripSentinelIntegerBounds removes only values EQUAL to
+  // the safe-integer sentinels, so a deliberate `.max()` survives. It also
+  // passes a non-object straight through, which is what keeps the
+  // absent-schema case below unchanged rather than adding a branch to it.
+  const outputSchema = stripSentinelIntegerBounds(
+    tool.outputSchema || TOOL_OUTPUT_SCHEMAS[tool.name],
+  );
+  return {
+    name: tool.name,
+    title: tool.title,
+    description: `${tool.description} ${UNTRUSTED_DATA_NOTE}`,
+    // drop Zod's implicit safe-integer bounds. They are not constraints
+    // anyone chose, and while they were emitted a real `maximum` could not be told
+    // apart from `z.int()`'s default — see src/mcp-input-schema.ts.
+    inputSchema: withAdvertisedRequiredIntent(
+      stripSentinelIntegerBounds(tool.inputSchema),
+    ),
+    // outputSchema (optional) lets a client validate the structuredContent the
+    // tool returns; included only when the tool declares one.
+    //
+    ...(outputSchema ? { outputSchema } : {}),
+    // Behaviour hints (#8964): closed-world read-only by default; the 20
+    // tools that leave our infrastructure are named in
+    // TOOL_ANNOTATIONS_BY_NAME, and a tool may still override inline.
+    annotations: annotationsForTool(tool as { name: string }),
+    // Tool.execution.taskSupport (MCP 2025-11-25). Declared on every tool
+    // because the honest answer is the same for all of them and silence is
+    // not that answer: absent, a client is left to discover by attempting a
+    // task-augmented call and having it fail. This server registers no task
+    // store, so a `task` parameter cannot be honoured -- "forbidden" says so
+    // once, at discovery time.
+    //
+    // Emitted uniformly here rather than per tool for the reason #9642's
+    // intent argument is: a field every tool must carry is a field the next
+    // tool should carry without anyone remembering, and the gate in
+    // tests/mcp-contract-completeness.test.ts asserts exactly that.
+    execution: { taskSupport: "forbidden" },
+    // #9070: which tools need an authenticated caller. Published because
+    // otherwise the ONLY way to discover it is to call one and be refused --
+    // and an agent that has to fail to learn a precondition will usually
+    // just stop rather than go and authenticate.
+    //
+    // `_meta` rather than `annotations`, because `annotations` is the MCP
+    // spec's own fixed vocabulary (readOnlyHint/destructiveHint/…) and a
+    // custom key inside it would be a claim the spec does not define.
+    // `_meta` is the sanctioned extension point.
+    ...(AUTH_REQUIRED_TOOL_NAMES.has(tool.name as string)
+      ? { _meta: { "metagraph.sh/auth_required": true } }
+      : {}),
+  };
+}
+
 function buildToolDefinitions(profile: McpProfile) {
   const tools =
     profile === "core"
@@ -15939,66 +16011,7 @@ function buildToolDefinitions(profile: McpProfile) {
             MCP_DISCOVERY_TOOL_NAMES.includes(tool.name),
           )
         : MCP_TOOLS;
-  return tools.map((tool) => {
-    // NORMALISED HERE, not at the spread below (#9654). The sentinel is a Zod
-    // artifact of `z.int()`, not a property of which side of the call a schema
-    // describes, so it landed on 1,083 of 1,083 output integer fields while
-    // inputs were clean -- `total`, `count`, `limit`, `next_cursor`, every
-    // block height. The spec says clients SHOULD validate structured results
-    // against this schema, so it is read, and it was telling them a row count
-    // is bounded by 2^53 because nobody chose anything.
-    //
-    // Not a loosening: stripSentinelIntegerBounds removes only values EQUAL to
-    // the safe-integer sentinels, so a deliberate `.max()` survives. It also
-    // passes a non-object straight through, which is what keeps the
-    // absent-schema case below unchanged rather than adding a branch to it.
-    const outputSchema = stripSentinelIntegerBounds(
-      tool.outputSchema || TOOL_OUTPUT_SCHEMAS[tool.name],
-    );
-    return {
-      name: tool.name,
-      title: tool.title,
-      description: `${tool.description} ${UNTRUSTED_DATA_NOTE}`,
-      // drop Zod's implicit safe-integer bounds. They are not constraints
-      // anyone chose, and while they were emitted a real `maximum` could not be told
-      // apart from `z.int()`'s default — see src/mcp-input-schema.ts.
-      inputSchema: withAdvertisedRequiredIntent(
-        stripSentinelIntegerBounds(tool.inputSchema),
-      ),
-      // outputSchema (optional) lets a client validate the structuredContent the
-      // tool returns; included only when the tool declares one.
-      //
-      ...(outputSchema ? { outputSchema } : {}),
-      // Behaviour hints (#8964): closed-world read-only by default; the 20
-      // tools that leave our infrastructure are named in
-      // TOOL_ANNOTATIONS_BY_NAME, and a tool may still override inline.
-      annotations: annotationsForTool(tool as { name: string }),
-      // Tool.execution.taskSupport (MCP 2025-11-25). Declared on every tool
-      // because the honest answer is the same for all of them and silence is
-      // not that answer: absent, a client is left to discover by attempting a
-      // task-augmented call and having it fail. This server registers no task
-      // store, so a `task` parameter cannot be honoured -- "forbidden" says so
-      // once, at discovery time.
-      //
-      // Emitted uniformly here rather than per tool for the reason #9642's
-      // intent argument is: a field every tool must carry is a field the next
-      // tool should carry without anyone remembering, and the gate in
-      // tests/mcp-contract-completeness.test.ts asserts exactly that.
-      execution: { taskSupport: "forbidden" },
-      // #9070: which tools need an authenticated caller. Published because
-      // otherwise the ONLY way to discover it is to call one and be refused --
-      // and an agent that has to fail to learn a precondition will usually
-      // just stop rather than go and authenticate.
-      //
-      // `_meta` rather than `annotations`, because `annotations` is the MCP
-      // spec's own fixed vocabulary (readOnlyHint/destructiveHint/…) and a
-      // custom key inside it would be a claim the spec does not define.
-      // `_meta` is the sanctioned extension point.
-      ...(AUTH_REQUIRED_TOOL_NAMES.has(tool.name as string)
-        ? { _meta: { "metagraph.sh/auth_required": true } }
-        : {}),
-    };
-  });
+  return tools.map(cataloguedToolDefinition);
 }
 
 // The registry is fixed for this Worker version. Normalize each requested
@@ -16010,6 +16023,7 @@ const TOOL_DEFINITION_CACHE = new Map<
 >();
 registerModuleStateReset("src/mcp-server.ts", () => {
   TOOL_DEFINITION_CACHE.clear();
+  NORMALIZED_TOOL_DEFINITIONS = new WeakMap();
 });
 
 function freezeCatalogue<T>(value: T): T {
@@ -16020,12 +16034,29 @@ function freezeCatalogue<T>(value: T): T {
   return value;
 }
 
+// Schemas and annotations are immutable for this Worker version. Search only
+// needs the selected definitions; share those complete, frozen definitions
+// with later searches and profile listings instead of rebuilding the catalog.
+let NORMALIZED_TOOL_DEFINITIONS = new WeakMap<
+  McpToolDefinition,
+  ReturnType<typeof buildToolDefinition>
+>();
+
+function cataloguedToolDefinition(tool: McpToolDefinition) {
+  const cached = NORMALIZED_TOOL_DEFINITIONS.get(tool);
+  if (cached) return cached;
+  const definition = freezeCatalogue(buildToolDefinition(tool));
+  NORMALIZED_TOOL_DEFINITIONS.set(tool, definition);
+  return definition;
+}
+
 export function listToolDefinitions(profile: McpProfile = "full") {
   const cached = TOOL_DEFINITION_CACHE.get(profile);
   if (cached) return cached;
   // Deep freezing prevents one consumer from changing another request's
   // schemas or annotations. It changes no serialized field or dispatch rule.
-  const definitions = freezeCatalogue(buildToolDefinitions(profile));
+  const definitions = buildToolDefinitions(profile);
+  Object.freeze(definitions);
   TOOL_DEFINITION_CACHE.set(profile, definitions);
   return definitions;
 }
