@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { beforeAll, beforeEach, afterAll, test } from "vitest";
 import { Miniflare } from "miniflare";
 import { createD1Store } from "../src/d1-store.ts";
-import { rollupUptimeD1 } from "../src/observations-d1.ts";
+import { rollupUptimeD1, rollupFailuresD1 } from "../src/observations-d1.ts";
 import type { ProducerStatement } from "../src/producer-store.ts";
 import {
   persistProbesToNeon,
@@ -68,6 +68,7 @@ beforeAll(async () => {
   for (const file of [
     "0008_observations.sql",
     "0034_uptime_daily_day_index.sql",
+    "0035_health_rollup_covering_index.sql",
   ])
     for (const s of readFileSync(
       new URL(`../migrations/d1/${file}`, import.meta.url),
@@ -492,7 +493,7 @@ test("bounded day and identity materialization preserves scaled rollup rows and 
   );
   assert.match(
     replacementPlan,
-    /SEARCH surface_checks USING COVERING INDEX idx_surface_checks_time/,
+    /SEARCH surface_checks USING COVERING INDEX idx_surface_checks_rollup/,
   );
   assert.doesNotMatch(replacementPlan, /SCAN surface_uptime_daily/);
   const plan = (
@@ -505,6 +506,10 @@ test("bounded day and identity materialization preserves scaled rollup rows and 
     .join("\n");
   assert.match(plan, /MATERIALIZE windowed/);
   assert.match(plan, /MATERIALIZE identities/);
+  assert.match(
+    plan,
+    /SEARCH surface_checks USING COVERING INDEX idx_surface_checks_rollup/,
+  );
   const actual = (
     await db
       .prepare("SELECT * FROM surface_uptime_daily ORDER BY surface_id")
@@ -534,5 +539,47 @@ test("bounded day and identity materialization preserves scaled rollup rows and 
         .all()
     ).results,
     actual,
+  );
+  const failures: ProducerStatement[] = [];
+  assert.equal(
+    (
+      await rollupFailuresD1(
+        {
+          ...native,
+          transaction: async (rows) => {
+            failures.push(...rows);
+            return native.transaction(rows);
+          },
+        },
+        [day],
+        now,
+      )
+    ).ok,
+    true,
+  );
+  const failurePlan = (
+    await db
+      .prepare("EXPLAIN QUERY PLAN " + failures[0]!.text)
+      .bind(...failures[0]!.values!)
+      .all<{ detail: string }>()
+  ).results
+    .map((row) => row.detail)
+    .join("\n");
+  assert.match(
+    failurePlan,
+    /SEARCH surface_checks USING COVERING INDEX idx_surface_checks_rollup/,
+  );
+  assert.deepEqual(
+    (
+      await db
+        .prepare(
+          "SELECT classification,checks FROM surface_failure_daily ORDER BY classification",
+        )
+        .all()
+    ).results,
+    [
+      { classification: "ok", checks: 9600 },
+      { classification: "timeout", checks: 2400 },
+    ],
   );
 });

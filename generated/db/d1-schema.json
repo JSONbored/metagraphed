@@ -415,9 +415,9 @@
   },
   {
     "type": "index",
-    "name": "idx_surface_checks_time",
+    "name": "idx_surface_checks_rollup",
     "tbl_name": "surface_checks",
-    "sql": "CREATE INDEX idx_surface_checks_time ON surface_checks(checked_at DESC)"
+    "sql": "CREATE INDEX idx_surface_checks_rollup\nON surface_checks(checked_at DESC,surface_key,netuid,ok,latency_ms,kind,classification)"
   },
   {
     "type": "index",
