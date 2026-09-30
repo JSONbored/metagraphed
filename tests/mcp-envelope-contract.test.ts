@@ -421,7 +421,7 @@ describe("the SDK response survives teardown as UTF-8 bytes", () => {
   );
 
   test("multibyte text and JSON escapes retain their exact wire bytes", async () => {
-    const result = { text: "TAO τ · 日本語 🧠\n\u0000\"\\" };
+    const result = { text: 'TAO τ · 日本語 🧠\n\u0000"\\' };
     const response = await serveWithSdk(
       post({ jsonrpc: "2.0", id: "unicode", method: "ping" }),
       {
