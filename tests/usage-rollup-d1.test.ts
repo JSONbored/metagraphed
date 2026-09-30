@@ -82,8 +82,7 @@ function fixture() {
     ),
   );
   let beforeStatement:
-    | ((statement: ProducerStatement, index: number) => void)
-    | undefined;
+    ((statement: ProducerStatement, index: number) => void) | undefined;
   let afterCommit: (() => void) | undefined;
   let beforeRead: (() => void) | undefined;
   let readback: ((row: unknown) => unknown) | undefined;

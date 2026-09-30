@@ -103,6 +103,12 @@
   },
   {
     "type": "index",
+    "name": "idx_api_usage_rollup_batches_expiry",
+    "tbl_name": "api_usage_rollup_batches",
+    "sql": "CREATE INDEX idx_api_usage_rollup_batches_expiry\n  ON api_usage_rollup_batches (expires_at)"
+  },
+  {
+    "type": "index",
     "name": "idx_api_usage_rollup_day",
     "tbl_name": "api_usage_rollup",
     "sql": "CREATE INDEX idx_api_usage_rollup_day\n  ON api_usage_rollup (day DESC, request_count DESC)"
@@ -778,6 +784,12 @@
     "name": "api_usage_rollup",
     "tbl_name": "api_usage_rollup",
     "sql": "CREATE TABLE api_usage_rollup (\n  day           TEXT    NOT NULL,\n  route_family  TEXT    NOT NULL,\n  cost_shape    TEXT    NOT NULL,\n  request_count INTEGER NOT NULL DEFAULT 0,\n  keyed_count   INTEGER NOT NULL DEFAULT 0,\n  PRIMARY KEY (day, route_family, cost_shape)\n)"
+  },
+  {
+    "type": "table",
+    "name": "api_usage_rollup_batches",
+    "tbl_name": "api_usage_rollup_batches",
+    "sql": "CREATE TABLE api_usage_rollup_batches (\n  batch_id TEXT NOT NULL PRIMARY KEY,\n  sha256 TEXT NOT NULL CHECK (length(sha256) = 64),\n  expires_at INTEGER NOT NULL,\n  applied INTEGER NOT NULL DEFAULT 0 CHECK (applied IN (0, 1))\n)"
   },
   {
     "type": "table",
