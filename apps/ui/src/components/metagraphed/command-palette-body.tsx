@@ -14,7 +14,6 @@ import {
   Activity,
   ArrowRightLeft,
   Bot,
-  Braces,
   BookOpen,
   Code2,
   Compass,
@@ -101,7 +100,6 @@ interface RouteEntry {
 // leaving a page out of this map never hides it from the palette (see
 // docsRoutes below), it just renders with the default icon.
 const DOCS_ICON_OVERRIDES: Record<string, typeof Compass> = {
-  "/docs/graphql": Braces,
   "/docs/mcp": Plug,
   "/docs/rpc": Zap,
   "/docs/feeds": Rss,

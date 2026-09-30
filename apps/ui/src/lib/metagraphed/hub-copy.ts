@@ -88,7 +88,7 @@ export const HUB_COPY = {
       sections: [
         {
           heading: "Why a registry and not just an explorer",
-          body: "Chain explorers show state: stake, emission, blocks. They cannot tell you whether a subnet's API is reachable, what schema it speaks, or where its documentation lives — that is application-layer information, and it lives off-chain. Metagraphed catalogues it, verifies it against the operator's own sources, and serves the result as JSON, GraphQL, MCP tools and CSV as well as these pages.",
+          body: "Chain explorers show state: stake, emission, blocks. They cannot tell you whether a subnet's API is reachable, what schema it speaks, or where its documentation lives — that is application-layer information, and it lives off-chain. Metagraphed catalogues it, verifies it against the operator's own sources, and serves the result as JSON, MCP tools and CSV as well as these pages.",
         },
         {
           heading: "What you can rely on",
@@ -162,7 +162,7 @@ export const HUB_COPY = {
         },
         {
           heading: "Calling one",
-          body: "Where a subnet publishes a machine-readable schema we serve it alongside the endpoint, so an agent can go from discovery to a typed request without leaving the registry. The same catalogue is available as REST, GraphQL and MCP tools for callers that would rather not scrape a page.",
+          body: "Where a subnet publishes a machine-readable schema we serve it alongside the endpoint, so an agent can go from discovery to a typed request without leaving the registry. The same catalogue is available as REST and MCP tools for callers that would rather not scrape a page.",
         },
       ],
     },

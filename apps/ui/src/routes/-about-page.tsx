@@ -98,7 +98,6 @@ export function AboutPage() {
 
   const rawRows: RawRow[] = [
     { label: "REST", value: `${API_BASE}/api/v1`, href: `${API_BASE}/api/v1` },
-    { label: "GraphQL", value: `${API_BASE}/api/v1/graphql` },
     { label: "MCP", value: `${API_BASE}/mcp` },
     {
       label: "OpenAPI",
@@ -148,8 +147,8 @@ export function AboutPage() {
               proves it and the curation gaps still to fill.
             </p>
             <p>
-              Everything is served over REST, GraphQL and MCP, and published as static JSON
-              artifacts, so a human, a script and an agent all read the same numbers.
+              Everything is served over REST and MCP, and published as static JSON artifacts, so a
+              human, a script and an agent all read the same numbers.
             </p>
           </div>
         }

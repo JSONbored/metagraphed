@@ -96,9 +96,6 @@ export const ROUTES = [
   "/docs/api-reference/subnets/subnets-by-network",
   "/news",
   "/news/sn19/2026-w17",
-  // The remaining canonical interactive route. /graphql itself is a 301 and
-  // is covered by the redirect suite; this is the page a reader receives.
-  "/graphql/explorer",
   // The provider detail template. `lium` is a real provider with 156
   // endpoints, so the widths this stresses are a real operator page's rather
   // than a one-row stub's.

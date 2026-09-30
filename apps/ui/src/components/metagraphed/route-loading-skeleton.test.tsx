@@ -33,7 +33,6 @@ describe("routeLoadingArchetype", () => {
     ["/compare", "compare"],
     ["/settings", "settings"],
     ["/agents", "settings"],
-    ["/graphql/explorer", "settings"],
     ["/about", "reading"],
     ["/privacy", "reading"],
     ["/terms", "reading"],
