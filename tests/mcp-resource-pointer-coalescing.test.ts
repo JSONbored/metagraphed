@@ -112,7 +112,7 @@ test("real MCP resource discovery coalesces pointer reads and preserves every pr
   releasePointer({ registry_manifest_sha256: digest });
   const initial = await first;
   assert.equal(objectReads, 2, "both immutable artifacts are still read");
-  assert.equal(assetReads, 1, "the schema asset is still read");
+  assert.equal(assetReads, 0, "the first page does not need schema entries");
   for (const path of ["/mcp/core", "/mcp?catalog=full"]) {
     assert.equal(
       (await page(path)).bytes,
@@ -122,11 +122,15 @@ test("real MCP resource discovery coalesces pointer reads and preserves every pr
   }
   const resources: Row[] = [];
   const pageBytes: number[] = [];
+  const schemaReadsByPage: number[] = [];
+  let priorAssetReads = 0;
   let current = initial;
   for (;;) {
     assert.ok(current.result.resources.length <= 100);
     resources.push(...current.result.resources);
     pageBytes.push(Buffer.byteLength(current.bytes));
+    schemaReadsByPage.push(assetReads - priorAssetReads);
+    priorAssetReads = assetReads;
     if (!current.result.nextCursor) break;
     current = await page("/mcp", current.result.nextCursor);
   }
@@ -146,6 +150,8 @@ test("real MCP resource discovery coalesces pointer reads and preserves every pr
     assert.ok(uris.has(`metagraph://schema/${surface_id}`));
   assert.ok(uris.has("metagraph://registry/schemas"));
   assert.equal(pointerReads, 1);
+  assert.deepEqual(schemaReadsByPage, [0, 0, 1]);
+  assert.deepEqual(pageBytes, [20628, 20468, 15503]);
   console.log(
     "MCP_RESOURCE_POINTER_FIXTURE",
     JSON.stringify({
@@ -155,7 +161,9 @@ test("real MCP resource discovery coalesces pointer reads and preserves every pr
       baseline:
         "two parallel published artifact reads in prior source and native traces",
       immutableArtifactReadsPerPage: 2,
-      schemaAssetReadsPerPage: 1,
+      schemaAssetReadsByPageBefore: [1, 1, 1],
+      schemaAssetReadsByPageAfter: schemaReadsByPage,
+      schemaIndexResponseBytes: Buffer.byteLength(JSON.stringify({ schemas })),
       resources: resources.length,
       pages: pageBytes.length,
       pageBytes,
