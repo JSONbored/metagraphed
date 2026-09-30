@@ -1006,6 +1006,208 @@ describe("the lanes run concurrently, and stay isolated", () => {
  * the single-endpoint lane this was before.
  */
 describe("the archive endpoints a lane reads from", () => {
+  const staticTestnetPool = {
+    readArtifact: async () => ({
+      ok: true,
+      data: {
+        pools: [
+          {
+            id: "test-rpc",
+            endpoints: [
+              "https://test.finney.opentensor.ai",
+              "https://test.chain.opentensor.ai",
+            ].map((url) => ({
+              url,
+              pool_eligible: true,
+              archive_support: false,
+              health_source: "not-monitored",
+              status: "unknown",
+            })),
+          },
+        ],
+      },
+    }),
+    readHealthKv: async () => ({ endpoints: [] }),
+  };
+
+  for (const failure of ["head-timeout", "pruned-events"] as const) {
+    test(`the static testnet fallback captures complete bytes after ${failure}`, async () => {
+      const { env, puts } = envWith();
+      const asked: string[] = [];
+      const result = await runRawCaptureSync(env as never, {
+        ...captureDependencies(env),
+        ctx: CTX,
+        sleepFn: noSleep,
+        endpointDeps: staticTestnetPool,
+        now: () => 1_000,
+        fetchImpl: jsonRpcNode((method, params, url) => {
+          const isTestnet = new URL(url).hostname.startsWith("test.");
+          asked.push(new URL(url).hostname + ":" + method);
+          if (
+            failure === "head-timeout" &&
+            url.includes("test.finney") &&
+            method === "chain_getHeader"
+          ) {
+            const error = new Error("The operation was aborted due to timeout");
+            error.name = "TimeoutError";
+            throw error;
+          }
+          if (method === "chain_getHeader")
+            return {
+              result: {
+                number: `0x${(isTestnet ? TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1 : RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`,
+              },
+            };
+          if (method === "chain_getBlockHash") return hashList(params, "t");
+          if (method === "chain_getBlock")
+            return {
+              result: {
+                block: {
+                  header: { parentHash: "0xtp" },
+                  extrinsics: ["0xaa"],
+                },
+              },
+            };
+          return { result: url.includes("test.finney") ? null : "0x00" };
+        }),
+      });
+      const testnet = result.lanes?.find((lane) => lane.network === "testnet");
+      assert.equal(testnet?.ok, true);
+      assert.equal(testnet?.captured, 2);
+      assert.equal(testnet?.watermark, TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1);
+      assert.equal(testnet?.behind, 0);
+      assert.equal(puts.size, 1);
+      const [key, bytes] = [...puts][0]!;
+      assert.ok(key.startsWith("chain/raw/testnet/blocks/"));
+      const rows = bytes
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      assert.deepEqual(
+        rows.map((row) => [row.block_number, row.events, row.extrinsics]),
+        [
+          [TESTNET_RAW_CAPTURE_GENESIS_FLOOR, "0x00", ["0xaa"]],
+          [TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1, "0x00", ["0xaa"]],
+        ],
+      );
+      assert.equal(
+        await watermarkRead(runner() as never, "testnet")(),
+        TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
+      );
+      assert.equal(
+        asked.filter(
+          (call) => call === "test.finney.opentensor.ai:chain_getHeader",
+        ).length,
+        1,
+      );
+      assert.ok(asked.includes("test.chain.opentensor.ai:state_getStorage"));
+    });
+  }
+
+  test("a partial capture stops before missing events and the next tick resumes at exactly that height", async () => {
+    const { env, puts } = envWith();
+    const fetchImpl = jsonRpcNode((method, params, url) => {
+      const isTestnet = new URL(url).hostname.startsWith("test.");
+      if (method === "chain_getHeader")
+        return {
+          result: {
+            number: `0x${(isTestnet ? TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1 : RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`,
+          },
+        };
+      if (method === "chain_getBlockHash") return hashList(params, "t");
+      if (method === "chain_getBlock")
+        return {
+          result: {
+            block: { header: { parentHash: "0xtp" }, extrinsics: ["0xaa"] },
+          },
+        };
+      return {
+        result:
+          url.includes("test.chain") ||
+          params[1] === `0xth${TESTNET_RAW_CAPTURE_GENESIS_FLOOR}`
+            ? "0x00"
+            : null,
+      };
+    });
+    const options = {
+      ...captureDependencies(env),
+      ctx: CTX,
+      sleepFn: noSleep,
+      endpointDeps: staticTestnetPool,
+      fetchImpl,
+    };
+    const first = (await runRawCaptureSync(env as never, options)).lanes?.find(
+      (lane) => lane.network === "testnet",
+    );
+    assert.equal(first?.captured, 1);
+    assert.equal(first?.watermark, TESTNET_RAW_CAPTURE_GENESIS_FLOOR);
+    assert.equal(first?.stoppedAt, TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1);
+    const second = (await runRawCaptureSync(env as never, options)).lanes?.find(
+      (lane) => lane.network === "testnet",
+    );
+    assert.equal(second?.captured, 1);
+    assert.equal(second?.watermark, TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1);
+    assert.equal(second?.behind, 0);
+    assert.equal(puts.size, 2);
+    const rows = [...puts.values()].flatMap((bytes) =>
+      bytes
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line)),
+    );
+    assert.deepEqual(
+      rows.map((row) => [row.block_number, row.events]),
+      [
+        [TESTNET_RAW_CAPTURE_GENESIS_FLOOR, "0x00"],
+        [TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1, "0x00"],
+      ],
+    );
+    assert.equal(
+      await watermarkRead(runner() as never, "testnet")(),
+      TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
+    );
+  });
+
+  test("two candidates with unavailable event storage cannot write bytes or advance the watermark", async () => {
+    const { env, puts } = envWith();
+    const hosts = new Set<string>();
+    const result = await runRawCaptureSync(env as never, {
+      ...captureDependencies(env),
+      ctx: CTX,
+      sleepFn: noSleep,
+      endpointDeps: staticTestnetPool,
+      fetchImpl: jsonRpcNode((method, params, url) => {
+        const isTestnet = new URL(url).hostname.startsWith("test.");
+        if (isTestnet) hosts.add(new URL(url).hostname);
+        if (method === "chain_getHeader")
+          return {
+            result: {
+              number: `0x${(isTestnet ? TESTNET_RAW_CAPTURE_GENESIS_FLOOR : RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`,
+            },
+          };
+        if (method === "chain_getBlockHash") return hashList(params, "t");
+        if (method === "chain_getBlock")
+          return {
+            result: {
+              block: { header: { parentHash: "0xtp" }, extrinsics: ["0xaa"] },
+            },
+          };
+        return { result: null };
+      }),
+    });
+    const testnet = result.lanes?.find((lane) => lane.network === "testnet");
+    assert.equal(testnet?.captured, 0);
+    assert.equal(testnet?.watermark, TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1);
+    assert.equal(testnet?.stoppedAt, TESTNET_RAW_CAPTURE_GENESIS_FLOOR);
+    assert.match(testnet?.reason ?? "", /events unavailable/);
+    assert.equal(puts.size, 0);
+    assert.equal(await watermarkRead(runner() as never, "testnet")(), null);
+    assert.deepEqual([...hosts].sort(), [
+      "test.chain.opentensor.ai",
+      "test.finney.opentensor.ai",
+    ]);
+  });
+
   /** Answers RPC for any host, recording which hosts were asked. */
   function hostTrackingFetch(hosts: Set<string>) {
     return jsonRpcNode((method, params, url) => {

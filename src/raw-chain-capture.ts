@@ -211,6 +211,7 @@ export async function fetchRawBlockChunk(
   heights: number[],
   fetchImpl: typeof fetch = fetch,
   now: () => number = Date.now,
+  requireEvents = false,
 ): Promise<RawBlockChunk> {
   if (heights.length === 0) return { blocks: [], stopped: null };
 
@@ -276,6 +277,13 @@ export async function fetchRawBlockChunk(
     }
     if (!events.ok) {
       stopped = { at: height, reason: events.error };
+      break;
+    }
+    if (requireEvents && events.result === null) {
+      stopped = {
+        at: height,
+        reason: `events unavailable at height ${height}`,
+      };
       break;
     }
     const assembled = assembleRawBlock(
@@ -393,6 +401,9 @@ export async function captureTick(deps: {
    * which behaves exactly as the single-URL form did.
    */
   rpcUrls: readonly string[];
+  /** The production decoder needs event bytes. A pruned candidate returning
+   * null cannot advance its durable capture watermark. */
+  requireEvents?: boolean;
   store: RawCaptureStore;
   watermark: WatermarkStore;
   genesisFloor: number;
@@ -575,7 +586,13 @@ export async function captureTick(deps: {
     for (let attempt = 0; attempt < endpoints.length; attempt += 1) {
       const url = endpoints[(chunkIndex + attempt) % endpoints.length]!;
       try {
-        const got = await fetchRawBlockChunk(url, chunkHeights, fetchImpl, now);
+        const got = await fetchRawBlockChunk(
+          url,
+          chunkHeights,
+          fetchImpl,
+          now,
+          deps.requireEvents,
+        );
         chunk = got;
         if (got.blocks.length > 0) break;
         // Captured NOTHING: this host cannot serve the very next height, which

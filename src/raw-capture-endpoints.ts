@@ -22,10 +22,10 @@
 // to the eject/half-open state of unrelated user requests. The filtering rules
 // this needs are the pool's own published fields, so it reads them directly.
 //
-// THE FALLBACK IS THE POINT, exactly as it is for the account-summary
-// projection: an unreadable artifact, an empty overlay, or a pool with no
-// archive-capable member all yield the caller's configured default. This can
-// make the lane faster, never blind.
+// Static testnet members have no archive probe. The two registered Opentensor
+// testnet URLs may still serve the requested range; captureTick checks every
+// block body and event value before committing a contiguous prefix. They are
+// failover candidates, with no change to the shared request allowance.
 
 import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";
 import { overlayRpcPoolEligibility } from "./health-serving.ts";
@@ -92,9 +92,19 @@ function usableArchiveEndpoint(row: Row): boolean {
   );
 }
 
+function usableStaticTestnetEndpoint(row: Row): boolean {
+  return (
+    row.pool_eligible === true &&
+    row.archive_support === false &&
+    row.health_source === "not-monitored" &&
+    typeof row.url === "string" &&
+    /^https:\/\/test\.(finney|chain)\.opentensor\.ai(?::443)?\/?$/.test(row.url)
+  );
+}
+
 /**
- * The archive endpoints for `network`, best first, or `[]` when the pool cannot
- * answer.
+ * Archive-qualified endpoints and the narrowly registered static testnet
+ * candidates, best first, or `[]` when the pool cannot answer.
  *
  * Ordering is the pool's own: it is published already sorted by the comparator
  * `overlayRpcPoolEligibility` applies after refreshing score and reliability, so
@@ -126,6 +136,15 @@ export async function resolveCaptureEndpoints(
   const wanted = RPC_POOL_ID[network];
   const found = parsed.pools.find((p) => p.id === wanted);
   if (!found) return [];
+  if (!Array.isArray(found.endpoints)) return [];
+  // The live health overlay is mainnet-only. Do not let its absence of
+  // testnet observations erase the separately registered static candidates.
+  const staticTestnet =
+    network === "testnet"
+      ? (found.endpoints as Row[])
+          .filter(usableStaticTestnetEndpoint)
+          .map((row) => row.url as string)
+      : [];
 
   // The same live overlay the REST route and the MCP mirror apply, so this
   // cannot select on a day-old `pool_eligible` or a day-old `archive_support`.
@@ -150,7 +169,7 @@ export async function resolveCaptureEndpoints(
   for (const row of pool.endpoints as Row[]) {
     if (usableArchiveEndpoint(row)) urls.push(row.url as string);
   }
-  return urls;
+  return [...new Set([...urls, ...staticTestnet])];
 }
 
 /**
@@ -166,11 +185,19 @@ export function captureEndpointList(
   configuredDefault: string,
   fromPool: readonly string[],
 ): string[] {
-  const seen = new Set<string>([configuredDefault]);
+  const identity = (url: string) => {
+    try {
+      return new URL(url).href;
+    } catch {
+      return url;
+    }
+  };
+  const seen = new Set<string>([identity(configuredDefault)]);
   const urls = [configuredDefault];
   for (const url of fromPool) {
-    if (seen.has(url)) continue;
-    seen.add(url);
+    const key = identity(url);
+    if (seen.has(key)) continue;
+    seen.add(key);
     urls.push(url);
   }
   return urls;

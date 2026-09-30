@@ -562,6 +562,9 @@ async function runLane(
     );
     const result = await captureTick({
       rpcUrls,
+      // Null storage cannot tell an unmonitored candidate's pruned state from
+      // missing event bytes. Keep the cursor pinned until a host supplies them.
+      requireEvents: true,
       store,
       // THE TABLE IS THE WATERMARK, so this store is the whole write path.
       watermark: neonWatermark(ctx.env, ctx.waitUntil, lane.network, now),
