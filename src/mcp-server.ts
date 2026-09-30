@@ -350,7 +350,6 @@ import {
   handleRpcProxyRequest,
   graphqlRateLimited,
 } from "../workers/request-handlers/rpc-proxy.ts";
-import { handleGraphQLRequest } from "./graphql.ts";
 import {
   isValidSubscriptionId,
   subscriptionStorageKey,
@@ -14641,6 +14640,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           "Too many GraphQL requests from this client; slow down.",
         );
       }
+      // The GraphQL schema is built at module evaluation. Ordinary MCP
+      // discovery and tools do not need it; load it only after this query
+      // passes the rate limiter, matching the REST route's deferred import.
+      const { handleGraphQLRequest } = await import("./graphql.ts");
       const response = await handleGraphQLRequest(gqlRequest, ctx.env);
       // The POST path of handleGraphQLRequest always returns a JSON body -- the
       // execution result on success, or an errors[] envelope on a parse /
