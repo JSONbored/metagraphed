@@ -1970,6 +1970,37 @@ test("usage rollup: a bucket with no keyed_count counts as fully keyless", async
   assert.ok(call!.values.includes(0), "keyed_count defaulted to 0");
 });
 
+test("usage rollup: infinite keyed counts do not discard other valid buckets", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const result = await fetchRoute(
+    rollupReq({
+      buckets: [
+        {
+          day: "2026-09-30",
+          family: "invalid",
+          cost_shape: "edge",
+          request_count: 5,
+          keyed_count: "Infinity",
+        },
+        {
+          day: "2026-09-30",
+          family: "valid",
+          cost_shape: "edge",
+          request_count: 7,
+          keyed_count: 2,
+        },
+      ],
+    }),
+    env,
+  );
+  assert.equal(result.status, 200);
+  const writes = sqlCalls.filter((call) =>
+    /INSERT INTO api_usage_rollup/.test(call.text),
+  );
+  assert.equal(writes.length, 1);
+  assert.ok(writes[0]!.values.includes("valid"));
+});
+
 test("usage rollup READ: 503 when no user-state store is bound", async () => {
   const env = baseEnv({
     API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN,

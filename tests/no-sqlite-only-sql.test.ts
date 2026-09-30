@@ -163,6 +163,9 @@ describe("store-neutral SQL", () => {
           "src/capture-family-d1.ts",
           "src/ledger-d1.ts",
           "src/registry-sync-d1.ts",
+          // The caller requires explicit api_usage_rollup D1 ownership;
+          // native receipt tests cover rollback and committed-reply replay.
+          "src/usage-rollup-d1.ts",
           "src/root-basket-capture-d1.ts",
           "src/d1-state-export.ts",
           "src/d1-store.ts",

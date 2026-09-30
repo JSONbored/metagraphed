@@ -133,11 +133,14 @@ describe("data-api's bundle boundary", () => {
     // The separately owned retained-block reader/receiver adds 12,873 source
     // bytes, 7,852 minified bytes and 2,106 gzip bytes over 3b7c504a1. Its
     // source graph is 4,806,255 bytes; none of the forbidden imports changes.
+    // Receipt-guarded usage flushes bring the measured graph to 4,819,172
+    // bytes. Their leaf helper adds no router, ingestion, GraphQL or MCP
+    // dependency; the named boundaries remain mandatory above.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_815_000,
+      firstParty < 4_821_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

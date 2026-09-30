@@ -62,6 +62,14 @@ beforeAll(async () => {
     "utf8",
   ).split("-- statement-breakpoint"))
     if (statement.trim()) await db.prepare(statement).run();
+  for (const statement of readFileSync(
+    new URL(
+      "../migrations/d1/0036_usage_rollup_batch_receipts.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ).split("-- statement-breakpoint"))
+    if (statement.trim()) await db.prepare(statement).run();
   await db
     .prepare(
       "INSERT INTO rpc_accounts(id,ss58,created_at) VALUES (42,'test-public-account',?)",
@@ -204,6 +212,13 @@ test("usage counters accumulate with account-kind isolation and preserve rollup 
           buckets: [
             {
               day: "2026-09-22",
+              family: "malformed",
+              cost_shape: "lookup",
+              request_count: 100,
+              keyed_count: "Infinity",
+            },
+            {
+              day: "2026-09-22",
               family: "/api/v1/blocks",
               cost_shape: "lookup",
               request_count,
@@ -219,6 +234,16 @@ test("usage counters accumulate with account-kind isolation and preserve rollup 
       .prepare("SELECT request_count,keyed_count FROM api_usage_rollup")
       .first(),
     { request_count: 16, keyed_count: 4 },
+  );
+  assert.equal(
+    (
+      await db
+        .prepare(
+          "SELECT count(*) n FROM api_usage_rollup_batches WHERE applied=1",
+        )
+        .first()
+    )?.n,
+    2,
   );
 });
 

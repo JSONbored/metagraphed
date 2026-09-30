@@ -40,6 +40,9 @@ CREATE INDEX idx_api_keys_prefix ON api_keys (prefix);
 CREATE UNIQUE INDEX idx_api_keys_unkey_key_id
   ON api_keys (unkey_key_id) WHERE unkey_key_id IS NOT NULL;
 
+CREATE INDEX idx_api_usage_rollup_batches_expiry
+  ON api_usage_rollup_batches (expires_at);
+
 CREATE INDEX idx_api_usage_rollup_day
   ON api_usage_rollup (day DESC, request_count DESC);
 
@@ -367,6 +370,13 @@ CREATE TABLE api_usage_rollup (
   request_count INTEGER NOT NULL DEFAULT 0,
   keyed_count   INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, route_family, cost_shape)
+);
+
+CREATE TABLE api_usage_rollup_batches (
+  batch_id TEXT NOT NULL PRIMARY KEY,
+  sha256 TEXT NOT NULL CHECK (length(sha256) = 64),
+  expires_at INTEGER NOT NULL,
+  applied INTEGER NOT NULL DEFAULT 0 CHECK (applied IN (0, 1))
 );
 
 CREATE TABLE archive_export_revisions (
