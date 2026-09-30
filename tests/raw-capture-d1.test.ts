@@ -135,23 +135,35 @@ function archive(f: ReturnType<typeof fixture>, objectKey = key()) {
   return row;
 }
 
-test.each([
-  "SELECT * FROM raw_capture_archives",
-  "INSERT INTO raw_capture_batches",
-  "SELECT key,sha256,network",
-  "INSERT INTO raw_capture_chunks",
-  "SELECT part,hex(data)",
-  "UPDATE raw_capture_batches",
-  "SELECT sha256 FROM (",
-])(
-  "one connection failure at %s retries the same exact capture",
-  async (phase) => {
+const transientStorageErrors = [
+  "D1_ERROR: Network connection lost.",
+  "Network connection lost.",
+  "D1_ERROR: Replica disconnected from primary.",
+  "D1_ERROR: D1 DB reset because its code was updated.",
+  "D1_ERROR: Internal error while starting up D1 DB storage caused object to be reset.",
+  "D1_ERROR: Internal error in D1 DB storage caused object to be reset.",
+  "D1_ERROR: Cannot resolve D1 DB due to transient issue on remote node.",
+  "D1_ERROR: internal error; reference = e_Gz3hrU_b7228883de2448ffa0730ff0aa3ce9d7",
+];
+
+test.each(
+  [
+    "SELECT * FROM raw_capture_archives",
+    "INSERT INTO raw_capture_batches",
+    "SELECT key,sha256,network",
+    "INSERT INTO raw_capture_chunks",
+    "SELECT part,hex(data)",
+    "UPDATE raw_capture_batches",
+    "SELECT sha256 FROM (",
+  ].flatMap((phase) => transientStorageErrors.map((error) => [phase, error])),
+)(
+  "one storage failure at %s retries the same exact capture: %s",
+  async (phase, error) => {
     vi.useFakeTimers();
     const f = fixture();
     let calls = 0;
     f.failWith((text) => {
-      if (text.startsWith(phase) && ++calls === 1)
-        throw new Error("D1_ERROR: Network connection lost.");
+      if (text.startsWith(phase) && ++calls === 1) throw new Error(error);
     });
     const pending = f.store.put(key(), value());
     await vi.runAllTimersAsync();
@@ -172,19 +184,20 @@ test.each([
   },
 );
 
-test.each([
-  "INSERT INTO raw_capture_batches",
-  "INSERT INTO raw_capture_chunks",
-  "UPDATE raw_capture_batches",
-])(
-  "a lost committed %s reply does not duplicate bytes or reservation",
-  async (phase) => {
+test.each(
+  [
+    "INSERT INTO raw_capture_batches",
+    "INSERT INTO raw_capture_chunks",
+    "UPDATE raw_capture_batches",
+  ].flatMap((phase) => transientStorageErrors.map((error) => [phase, error])),
+)(
+  "a lost committed %s reply does not duplicate bytes or reservation: %s",
+  async (phase, error) => {
     vi.useFakeTimers();
     const f = fixture();
     let calls = 0;
     f.failAfterWriteWith((text) => {
-      if (text.startsWith(phase) && ++calls === 1)
-        throw new Error("Network connection lost.");
+      if (text.startsWith(phase) && ++calls === 1) throw new Error(error);
     });
     const pending = f.store.put(key(), value());
     await vi.runAllTimersAsync();
@@ -205,27 +218,30 @@ test.each([
   },
 );
 
-test("an archived capture acknowledgement can recover a connection failure", async () => {
-  const f = fixture();
-  await f.store.put(key(), value());
-  archive(f);
-  vi.useFakeTimers();
-  let calls = 0;
-  f.failWith((text) => {
-    if (text.startsWith("SELECT sha256 FROM (") && ++calls === 1)
-      throw new Error("D1_ERROR: Network connection lost.");
-  });
-  const pending = f.store.put(key(), value());
-  await vi.runAllTimersAsync();
-  await pending;
-  assert.equal(calls, 2);
-  assert.equal(
-    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
-    0,
-  );
-});
+test.each(transientStorageErrors)(
+  "an archived capture acknowledgement can recover %s",
+  async (error) => {
+    const f = fixture();
+    await f.store.put(key(), value());
+    archive(f);
+    vi.useFakeTimers();
+    let calls = 0;
+    f.failWith((text) => {
+      if (text.startsWith("SELECT sha256 FROM (") && ++calls === 1)
+        throw new Error(error);
+    });
+    const pending = f.store.put(key(), value());
+    await vi.runAllTimersAsync();
+    await pending;
+    assert.equal(calls, 2);
+    assert.equal(
+      f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+      0,
+    );
+  },
+);
 
-test("the single connection retry budget is shared across capture operations", async () => {
+test("the single retry budget is shared across storage operations and error types", async () => {
   vi.useFakeTimers();
   const f = fixture();
   let failedReservation = false,
@@ -236,7 +252,7 @@ test("the single connection retry budget is shared across capture operations", a
       !failedReservation
     ) {
       failedReservation = true;
-      throw new Error("D1_ERROR: Network connection lost.");
+      throw new Error("D1_ERROR: internal error; reference = e_provider_reset");
     }
     if (text.startsWith("INSERT INTO raw_capture_chunks")) {
       failedChunk = true;
@@ -258,11 +274,16 @@ test("the single connection retry budget is shared across capture operations", a
 });
 
 test.each([
-  new Error("D1_ERROR: Network connection lost."),
+  ...transientStorageErrors.map((message) => new Error(message)),
   new Error("D1_ERROR: overloaded"),
+  new Error("D1_ERROR: internal error"),
+  new Error("D1_ERROR: internal error; reference = "),
+  new Error("D1_ERROR: internal error; reference = e_reset; exceeded capacity"),
+  new Error("D1_ERROR: D1 DB exceeded its CPU time limit and was reset."),
+  new Error("Raw capture reservation readback differs"),
   "D1_ERROR: Network connection lost.",
 ])(
-  "persistent and non-connection failures cannot acknowledge partial capture: %s",
+  "persistent and non-transient failures cannot acknowledge partial capture: %s",
   async (error) => {
     vi.useFakeTimers();
     const f = fixture();
@@ -281,8 +302,7 @@ test.each([
     await rejected;
     assert.equal(
       calls,
-      error instanceof Error &&
-        error.message.includes("Network connection lost")
+      error instanceof Error && transientStorageErrors.includes(error.message)
         ? 2
         : 1,
     );

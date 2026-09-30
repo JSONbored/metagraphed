@@ -64,7 +64,7 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
       };
       const values = Object.values(descriptor);
       // Reads and immutable writes replay the same pinned capture. Allow one
-      // delayed connection retry per object; every existing readback still
+      // delayed transient-storage retry per object; every existing readback still
       // has to pass before the caller can advance its watermark.
       let retried = false;
       const retry = async <T>(operation: () => Promise<T>): Promise<T> => {
@@ -74,11 +74,15 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
           if (
             retried ||
             !(error instanceof Error) ||
-            !/^(?:D1_ERROR: )?Network connection lost\.$/.test(error.message)
+            !/^(?:D1_ERROR: )?(?:Network connection lost\.|Replica disconnected from primary\.|D1 DB reset because its code was updated\.|Internal error (?:while starting up|in) D1 DB storage caused object to be reset\.|Cannot resolve D1 DB due to transient issue on remote node\.|internal error; reference = e_[A-Za-z0-9_-]+)$/.test(
+              error.message,
+            )
           )
             throw error;
           retried = true;
-          await new Promise((resolve) => setTimeout(resolve, 250));
+          await new Promise((resolve) =>
+            setTimeout(resolve, 250 + Math.floor(Math.random() * 250)),
+          );
           return operation();
         }
       };
