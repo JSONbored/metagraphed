@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type Response } from "@playwright/test";
 import { gzipSync } from "node:zlib";
 
 import { SUBNET_SLOT_CAP } from "../../src/lib/metagraphed/bittensor";
@@ -145,29 +145,35 @@ const MUST_BE_301: ReadonlyArray<readonly [from: string, to: string, carries?: s
 
 for (const route of ["/", "/graphql/explorer"]) {
   test(`retired GraphiQL editor is absent from the cold ${route} visit graph`, async ({ page }) => {
-    const assets: Promise<{ url: string; bytes: number; gzipBytes: number; editor: boolean }>[] =
-      [];
-    page.on("response", (response) => {
-      if (!/\.(?:js|css)(?:[?#]|$)/.test(response.url())) return;
-      assets.push(
-        (async () => {
-          const body = await response.body();
-          return {
-            url: new URL(response.url()).pathname,
-            bytes: body.byteLength,
-            gzipBytes: gzipSync(body).byteLength,
-            editor: /graphiql-container|graphiql:editorFlex|GraphiQLProvider|CodeMirror-lint/.test(
-              body.toString("utf8"),
-            ),
-          };
-        })(),
-      );
-    });
-    await gotoThroughRestart(page, route);
-    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
-    if (route !== "/") expect(new URL(page.url()).pathname).toBe("/docs/api-reference");
-    await expect(page.locator("h1")).toBeVisible();
-    const loaded = await Promise.all(assets);
+    const assets: Response[] = [];
+    const captureAsset = (response: Response) => {
+      if (/\.(?:js|css)(?:[?#]|$)/.test(response.url())) assets.push(response);
+    };
+    page.on("response", captureAsset);
+    try {
+      await gotoThroughRestart(page, route);
+      await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+      if (route !== "/") expect(new URL(page.url()).pathname).toBe("/docs/api-reference");
+      await expect(page.locator("h1")).toBeVisible();
+      await page.waitForLoadState("networkidle");
+    } finally {
+      // Freeze the observed visit before reading bodies. The response listener
+      // must not start unobserved work after Promise.all takes its snapshot.
+      page.off("response", captureAsset);
+    }
+    const loaded = await Promise.all(
+      assets.map(async (response) => {
+        const body = await response.body();
+        return {
+          url: new URL(response.url()).pathname,
+          bytes: body.byteLength,
+          gzipBytes: gzipSync(body).byteLength,
+          editor: /graphiql-container|graphiql:editorFlex|GraphiQLProvider|CodeMirror-lint/.test(
+            body.toString("utf8"),
+          ),
+        };
+      }),
+    );
     expect(loaded.length).toBeGreaterThan(0);
     expect(
       loaded.filter((asset) => asset.editor || /graphiql|codemirror/i.test(asset.url)),
