@@ -263,8 +263,10 @@ export async function serveWithSdk(
     // "Unexpected end of JSON input" -- how this was found. Reading to
     // completion here makes the payload independent of the objects that
     // produced it.
-    const body = await response.text();
-    return new Response(body || null, {
+    // Keep the transport's UTF-8 bytes: decoding a full catalogue to text
+    // here would immediately encode that same payload again in Response.
+    const body = await response.arrayBuffer();
+    return new Response(body.byteLength ? body : null, {
       status: response.status,
       headers: response.headers,
     });
