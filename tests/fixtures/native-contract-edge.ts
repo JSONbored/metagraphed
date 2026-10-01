@@ -3,11 +3,19 @@
 import { TypeRegistry } from "@polkadot/types/create";
 import { nativeCompact, nativeHex } from "../../src/native-runtime-values.ts";
 
-export function nativeContractEdgeFixture(large = false, extraApis: {
-  name: string;
-  methods: { name: string; inputs: { name: string; type: number }[]; output: number; docs: never[] }[];
-  docs: never[];
-}[] = []) {
+export function nativeContractEdgeFixture(
+  large = false,
+  extraApis: {
+    name: string;
+    methods: {
+      name: string;
+      inputs: { name: string; type: number }[];
+      output: number;
+      docs: never[];
+    }[];
+    docs: never[];
+  }[] = [],
+) {
   const registry = new TypeRegistry();
   const field = (name: string | null, type: number) => ({
     name,

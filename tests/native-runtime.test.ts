@@ -53,32 +53,84 @@ function fixture(overrides: Record<string, unknown> = {}) {
 }
 test("consensus and EVM reads are usable while mixed API write methods never reach state_call", async () => {
   const pairs = [
-    ["AuraApi", "slot_duration", "authorities"],
-    ["BabeApi", "current_epoch", "submit_report_equivocation_unsigned_extrinsic"],
-    ["GrandpaApi", "current_set_id", "submit_report_equivocation_unsigned_extrinsic"],
+    ["AuraApi", "slot_duration", "unknown_future_method"],
+    [
+      "BabeApi",
+      "current_epoch",
+      "submit_report_equivocation_unsigned_extrinsic",
+    ],
+    [
+      "GrandpaApi",
+      "current_set_id",
+      "submit_report_equivocation_unsigned_extrinsic",
+    ],
     ["SessionKeys", "decode_session_keys", "generate_session_keys"],
     ["GenesisBuilder", "get_preset", "build_state"],
     ["EthereumRuntimeRPCApi", "account_basic", "pending_block"],
-    ["ConvertTransactionRuntimeApi", "convert_transaction", "unknown_future_method"],
+    [
+      "ConvertTransactionRuntimeApi",
+      "convert_transaction",
+      "unknown_future_method",
+    ],
     ["Metadata", "metadata_versions", "unknown_future_method"],
   ];
-  const { wrapped } = nativeContractEdgeFixture(false, pairs.map(([name, read, write]) => ({
-    name: name!, docs: [], methods: [read!, write!].map((member) => ({
-      name: member, inputs: [{ name: "fixture", type: 0 }], output: 0, docs: [],
+  const { wrapped } = nativeContractEdgeFixture(
+    false,
+    pairs.map(([name, read, write]) => ({
+      name: name!,
+      docs: [],
+      methods: [read!, write!].map((member) => ({
+        name: member,
+        inputs: [{ name: "fixture", type: 0 }],
+        output: 0,
+        docs: [],
+      })),
     })),
-  })));
+  );
   const source = fixture({
     Metadata_metadata_at_version: wrapped,
-    ...Object.fromEntries(pairs.map(([api, member]) => [`${api}_${member}`, "0x2a"])),
+    ...Object.fromEntries(
+      pairs.map(([api, member]) => [`${api}_${member}`, "0x2a"]),
+    ),
   });
   for (const [api, read, write] of pairs) {
-    const discovery = await queryNativeRuntime({ operations: [{ kind: "describe", api }] }, source.rpc);
-    assert.deepEqual((discovery.results[0]!.value as { member: string }[]).map((row) => row.member), [read]);
-    const result = await queryNativeRuntime({ operations: [{ kind: "runtime", api, member: read, args: [7] }] }, source.rpc);
+    const discovery = await queryNativeRuntime(
+      { operations: [{ kind: "describe", api }] },
+      source.rpc,
+    );
+    assert.deepEqual(
+      (discovery.results[0]!.value as { member: string }[]).map(
+        (row) => row.member,
+      ),
+      [read],
+    );
+    const result = await queryNativeRuntime(
+      { operations: [{ kind: "runtime", api, member: read, args: [7] }] },
+      source.rpc,
+    );
     assert.equal(result.results[0]!.value, "42");
-    assert.ok(source.calls.some((call) => call.method === "state_call" && call.params[0] === `${api}_${read}` && call.params[1] === "0x07" && call.params[2] === hash));
-    await assert.rejects(queryNativeRuntime({ operations: [{ kind: "runtime", api, member: write, args: [7] }] }, source.rpc), /audited read/);
-    assert.ok(!source.calls.some((call) => call.method === "state_call" && call.params[0] === `${api}_${write}`));
+    assert.ok(
+      source.calls.some(
+        (call) =>
+          call.method === "state_call" &&
+          call.params[0] === `${api}_${read}` &&
+          call.params[1] === "0x07" &&
+          call.params[2] === hash,
+      ),
+    );
+    await assert.rejects(
+      queryNativeRuntime(
+        { operations: [{ kind: "runtime", api, member: write, args: [7] }] },
+        source.rpc,
+      ),
+      /audited read/,
+    );
+    assert.ok(
+      !source.calls.some(
+        (call) =>
+          call.method === "state_call" && call.params[0] === `${api}_${write}`,
+      ),
+    );
   }
 });
 test("portable API discovery, bit and tuple contracts and empty pallets remain usable", async () => {

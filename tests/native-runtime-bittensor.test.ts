@@ -13,7 +13,10 @@ import type { BasketRpc } from "../src/root-basket-runtime.ts";
 
 test("v470 mechanism, collateral, dynamic hyperparameter and lock contracts decode independently encoded bytes", async () => {
   const { metadata, wrapped, registry } = bittensorNativeFixture();
-  const reference = new Metadata(registry, Buffer.from(metadata.slice(2), "hex"));
+  const reference = new Metadata(
+    registry,
+    Buffer.from(metadata.slice(2), "hex"),
+  );
   const model = decodeNativeMetadata(metadata);
   assert.equal(reference.asV15.pallets[0]!.name.toString(), "SubtensorModule");
   const account = `0x${"12".repeat(32)}`,

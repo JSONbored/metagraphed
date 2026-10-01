@@ -70,9 +70,20 @@ Mixed API families do not admit new methods implicitly. EVM execution previews u
 the existing EVM RPC surface. `prepare` encodes a native method from its declared
 argument types, including runtime-specific enum and composite arguments. It
 returns method bytes and signed-extension types for explicit wallet review;
-these are distinct from a signed extrinsic. No server-side signature or
-submission occurs. The website's existing signing flows use separate connections
-for the selected mainnet or testnet endpoint.
+these are distinct from a signed extrinsic. The native page can review any
+prepared call through a connected wallet, showing its decoded arguments, exact
+amounts, current fee estimate, spendable balance and pending nonce. An explicit
+sign-and-submit action sends it directly through the selected network's official
+endpoint. Mainnet and testnet have separate connections.
+
+Before the wallet prompt, and again when the signature returns, the flow checks
+the account, network, API origin, canonical finalized source, runtime code and
+transaction version, method bytes, nonce and fee estimate. Frozen funds are
+excluded from spendable balance, including the older fee/misc-freeze layouts.
+Native signatures use a mortal era and the reviewed nonce. Transaction and block
+hashes, chain dispatch failures and finalization status remain visible. No
+server-side signature or submission occurs; a fee estimate does not guarantee
+execution or cap the fee ultimately charged by the chain.
 
 ## Finality, bounds and reuse
 

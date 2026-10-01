@@ -7059,7 +7059,7 @@
           "data": {
             "results": [
               {
-                "contract": null,
+                "contract": "example",
                 "kind": "storage"
               }
             ],
@@ -14416,103 +14416,6 @@
       }
     },
     "schemas": {
-      "__shared": {
-        "$defs": {
-          "schema0": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "items": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema0"
-                },
-                "type": "array"
-              },
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema0"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              }
-            ]
-          },
-          "schema1": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "items": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema1"
-                },
-                "type": "array"
-              },
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema1"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              }
-            ]
-          },
-          "schema2": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "items": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema2"
-                },
-                "type": "array"
-              },
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema2"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              }
-            ]
-          }
-        }
-      },
       "AccountAxonRemovalsArtifact": {
         "additionalProperties": false,
         "properties": {
@@ -39360,6 +39263,37 @@
         ],
         "type": "object"
       },
+      "NativeJsonValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "items": {
+              "$ref": "#/components/schemas/NativeJsonValue"
+            },
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/NativeJsonValue"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        ]
+      },
       "NativePortableType": {
         "additionalProperties": false,
         "properties": {
@@ -39403,7 +39337,7 @@
                   "type": "string"
                 },
                 "contract": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema2"
+                  "$ref": "#/components/schemas/NativeJsonValue"
                 },
                 "is_default": {
                   "type": "boolean"
@@ -39434,7 +39368,7 @@
                   "type": "string"
                 },
                 "value": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema1"
+                  "$ref": "#/components/schemas/NativeJsonValue"
                 }
               },
               "required": [
@@ -39478,7 +39412,7 @@
               "args": {
                 "default": [],
                 "items": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema0"
+                  "$ref": "#/components/schemas/NativeJsonValue"
                 },
                 "maxItems": 64,
                 "type": "array"
@@ -39512,7 +39446,7 @@
               "args": {
                 "default": [],
                 "items": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema0"
+                  "$ref": "#/components/schemas/NativeJsonValue"
                 },
                 "maxItems": 64,
                 "type": "array"
@@ -39588,7 +39522,7 @@
               "args": {
                 "default": [],
                 "items": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema0"
+                  "$ref": "#/components/schemas/NativeJsonValue"
                 },
                 "maxItems": 64,
                 "type": "array"
@@ -39617,7 +39551,7 @@
               "args": {
                 "default": [],
                 "items": {
-                  "$ref": "#/components/schemas/__shared#/$defs/schema0"
+                  "$ref": "#/components/schemas/NativeJsonValue"
                 },
                 "maxItems": 64,
                 "type": "array"

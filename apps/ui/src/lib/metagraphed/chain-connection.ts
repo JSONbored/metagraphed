@@ -109,7 +109,7 @@ interface BigIntCodec {
   toBigInt(): bigint;
 }
 interface AccountInfoCodec {
-  data: { free: BigIntCodec };
+  data: { free: BigIntCodec; [field: string]: unknown };
 }
 interface NumberCodec {
   toNumber(): number;
@@ -191,7 +191,23 @@ export async function getFreeBalance(api: ApiPromise, coldkeySs58: string): Prom
   if (!isAccountInfoCodec(account)) {
     throw new Error("system.account did not return an AccountInfo with a free balance");
   }
-  return asRao(account.data.free.toBigInt());
+  const free = account.data.free.toBigInt();
+  // Current AccountData has frozen; older metadata exposes separate fee/misc
+  // freezes. They overlap rather than add, and reserved/held funds are already
+  // excluded from free. Never offer frozen funds to Max or a fee review.
+  let frozen = 0n;
+  for (const field of ["frozen", "feeFrozen", "miscFrozen"]) {
+    const value = account.data[field];
+    if (value === undefined) continue;
+    if (typeof value !== "object" || value === null ||
+        !("toBigInt" in value) || typeof value.toBigInt !== "function")
+      throw new Error(`system.account returned an invalid ${field} balance`);
+    const amount: unknown = value.toBigInt();
+    if (typeof amount !== "bigint" || amount < 0n)
+      throw new Error(`system.account returned an invalid ${field} balance`);
+    if (amount > frozen) frozen = amount;
+  }
+  return asRao(free > frozen ? free - frozen : 0n);
 }
 
 /**

@@ -238,6 +238,8 @@ test("metadata-discovered calls use their declared arguments and pinned contract
   await page.getByLabel("Arguments (JSON array)").fill('["9007199254740993"]');
   await page.getByRole("button", { name: "Prepare unsigned call" }).click();
   await expect(page.getByRole("cell", { name: "0x0754010203", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Native wallet review" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign and submit reviewed call" })).toHaveCount(0);
   expect(requests[1]).toEqual({
     as_of: hash,
     operations: [

@@ -242,7 +242,7 @@ export function AccountDetailPage() {
           ss58={ss58}
           window={window}
           onWindow={(next: FlowWindow) =>
-            void navigate({ search: (prev) => ({ ...prev, window: next }), replace: true })
+            void navigate({ to: ".", search: (prev) => ({ ...prev, window: next }), replace: true })
           }
           nameOf={nameOf}
         />

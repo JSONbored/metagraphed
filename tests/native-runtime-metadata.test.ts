@@ -28,9 +28,9 @@ function bare(value: string) {
 test("native SCALE strings preserve an initial Unicode BOM as data", () => {
   const text = "\uFEFFnative";
   const bytes = Buffer.from(text, "utf8");
-  const reader = new NativeScaleReader(nativeHex(Buffer.concat([
-    nativeCompact(BigInt(bytes.length)), bytes,
-  ])));
+  const reader = new NativeScaleReader(
+    nativeHex(Buffer.concat([nativeCompact(BigInt(bytes.length)), bytes])),
+  );
   assert.equal(reader.finish(reader.text()), text);
 });
 for (const [version, fixture] of [

@@ -187,7 +187,7 @@ export function ExplorerPage() {
   const governanceError = runtime.error ?? sudo.error ?? config.error;
 
   const setWindow = (next: ChainWindowValue) => {
-    navigate({ search: (prev) => ({ ...prev, window: next }), replace: true });
+    navigate({ to: ".", search: (prev) => ({ ...prev, window: next }), replace: true });
   };
 
   // The head block and the block time were chips AND cells -- and at two

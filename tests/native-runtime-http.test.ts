@@ -75,7 +75,7 @@ test("REST and MCP validate native requests once and preserve canonical defaults
     assert.equal(response.status, 200);
     assert.equal(parse.mock.calls.length, 1);
     const rest = NativeRuntimeArtifactSchema.parse(
-      (await response.json() as { data: unknown }).data,
+      ((await response.json()) as { data: unknown }).data,
     );
     parse.mockClear();
     safe.mockClear();

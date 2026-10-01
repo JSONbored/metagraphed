@@ -5401,19 +5401,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        __shared: {
-            $defs: {
-                schema0: string | number | boolean | null | components["schemas"]["__shared"][] | {
-                    [key: string]: components["schemas"]["__shared"];
-                };
-                schema1: string | number | boolean | null | components["schemas"]["__shared"][] | {
-                    [key: string]: components["schemas"]["__shared"];
-                };
-                schema2: string | number | boolean | null | components["schemas"]["__shared"][] | {
-                    [key: string]: components["schemas"]["__shared"];
-                };
-            };
-        };
         AccountAxonRemovalsArtifact: {
             address: string;
             concentration: number | null;
@@ -9608,6 +9595,9 @@ export interface components {
             name: string | null;
             type: number;
         };
+        NativeJsonValue: string | number | boolean | null | components["schemas"]["NativeJsonValue"][] | {
+            [key: string]: components["schemas"]["NativeJsonValue"];
+        };
         NativePortableType: {
             definition: components["schemas"]["NativeDefinition"];
             id: number;
@@ -9618,14 +9608,14 @@ export interface components {
             results: {
                 api?: string;
                 call_data?: string;
-                contract: components["schemas"]["__shared"];
+                contract: components["schemas"]["NativeJsonValue"];
                 is_default?: boolean;
                 /** @enum {string} */
                 kind: "storage" | "entries" | "constant" | "runtime" | "prepare" | "describe";
                 member?: string;
                 pallet?: string;
                 storage_key?: string;
-                value?: components["schemas"]["__shared"];
+                value?: components["schemas"]["NativeJsonValue"];
             }[];
             /** @constant */
             schema_version: 1;
@@ -9634,14 +9624,14 @@ export interface components {
         };
         NativeRuntimeOperation: {
             /** @default [] */
-            args: components["schemas"]["__shared"][];
+            args: components["schemas"]["NativeJsonValue"][];
             /** @constant */
             kind: "storage";
             member: string;
             pallet: string;
         } | {
             /** @default [] */
-            args: components["schemas"]["__shared"][];
+            args: components["schemas"]["NativeJsonValue"][];
             cursor?: string;
             /** @constant */
             kind: "entries";
@@ -9657,13 +9647,13 @@ export interface components {
         } | {
             api: string;
             /** @default [] */
-            args: components["schemas"]["__shared"][];
+            args: components["schemas"]["NativeJsonValue"][];
             /** @constant */
             kind: "runtime";
             member: string;
         } | {
             /** @default [] */
-            args: components["schemas"]["__shared"][];
+            args: components["schemas"]["NativeJsonValue"][];
             /** @constant */
             kind: "prepare";
             member: string;
@@ -20572,7 +20562,7 @@ export interface operations {
                      *       "data": {
                      *         "results": [
                      *           {
-                     *             "contract": null,
+                     *             "contract": "example",
                      *             "kind": "storage"
                      *           }
                      *         ],
@@ -39410,7 +39400,7 @@ export interface operations {
                      *       "data": {
                      *         "results": [
                      *           {
-                     *             "contract": null,
+                     *             "contract": "example",
                      *             "kind": "storage"
                      *           }
                      *         ],

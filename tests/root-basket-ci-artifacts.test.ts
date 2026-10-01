@@ -28,4 +28,11 @@ test("retain remote generated contracts and formatted edits for review",async()=
   console.log("ROOT_BASKET_GENERATED_ARTIFACTS",JSON.stringify(Object.keys(files)));
   const encoded=zipped.toString("base64");
   for(let offset=0;offset<encoded.length;offset+=16000)console.log(`ROOT_BASKET_HANDOFF ${offset/16000} ${encoded.slice(offset,offset+16000)}`);
+  // Diagnose UI types and wallet regressions against fresh remote-generated
+  // contracts even while the independent UI job is waiting for their commit.
+  const options={stdio:"pipe" as const,encoding:"utf8" as const,timeout:60000,env:{...process.env,NODE_V8_COVERAGE:undefined}};
+  for(const args of [["run","typecheck","--workspace=apps/ui"],["run","test","--workspace=apps/ui","--","src/lib/metagraphed/native-call-wallet.test.ts","src/lib/metagraphed/chain-connection.test.ts","src/lib/metagraphed/broadcast.test.ts","src/lib/metagraphed/transaction-subscriptions.test.ts"]]){
+    try{console.log("NATIVE_UI_REMOTE_DIAGNOSTIC",execFileSync("npm",args,options));}
+    catch(error){console.log("NATIVE_UI_REMOTE_DIAGNOSTIC_ERROR",String((error as {stdout?:unknown}).stdout));}
+  }
 },180_000);

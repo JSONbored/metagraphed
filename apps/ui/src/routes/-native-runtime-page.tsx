@@ -3,6 +3,7 @@ import { Route } from "./apis.native";
 import { DataTable, EntityHero, FactSentence, type DataTableColumn } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
+import { NativeCallWallet } from "@/components/metagraphed/native-call-wallet";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { useNetwork } from "@/hooks/use-api-base";
 import { getApiBase, onApiBaseChange } from "@/lib/metagraphed/config";
@@ -463,6 +464,9 @@ function NativeRuntimeExplorer({
               caption="Exact native runtime results"
             />
           )}
+          {result?.results.map((item, index) => item.kind === "prepare" && (
+            <NativeCallWallet key={`${result.source.finalized_block_hash}:${item.call_data}:${index}`} artifact={result} index={index} />
+          ))}
           <details>
             <summary className="cursor-pointer text-13 text-ink-muted">
               Complete response and shared type contract
