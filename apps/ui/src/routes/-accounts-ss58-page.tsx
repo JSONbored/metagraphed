@@ -242,7 +242,11 @@ export function AccountDetailPage() {
           ss58={ss58}
           window={window}
           onWindow={(next: FlowWindow) =>
-            void navigate({ to: Route.to, search: (prev: SearchParams) => ({ ...prev, window: next }), replace: true })
+            void navigate({
+              to: Route.to,
+              search: (prev: SearchParams) => ({ ...prev, window: next }),
+              replace: true,
+            })
           }
           nameOf={nameOf}
         />

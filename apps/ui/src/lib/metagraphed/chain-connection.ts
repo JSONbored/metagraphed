@@ -43,6 +43,17 @@ export type StakeCallParams =
 export const DEFAULT_RPC_ENDPOINT = "wss://entrypoint-finney.opentensor.ai";
 
 const cachedApis = new Map<string, Promise<ApiPromise>>();
+let sdkModule: Promise<typeof import("@polkadot/api")> | null = null;
+
+// Share first-time SDK loading across endpoint connections. A failed chunk
+// load remains retryable, just like a failed connection.
+function loadSdk() {
+  sdkModule ??= import("@polkadot/api").catch((error) => {
+    sdkModule = null;
+    throw error;
+  });
+  return sdkModule;
+}
 
 /** Official network entrypoints, matching the public native endpoint registry. */
 export function rpcEndpointForNetwork(network: string): string {
@@ -65,7 +76,7 @@ export async function getApi(endpoint: string = DEFAULT_RPC_ENDPOINT): Promise<A
   let pending = cachedApis.get(endpoint);
   if (!pending) {
     pending = (async () => {
-      const { ApiPromise, WsProvider } = await import("@polkadot/api");
+      const { ApiPromise, WsProvider } = await loadSdk();
       const provider = new WsProvider(endpoint);
       let expired = false;
       let timer: ReturnType<typeof setTimeout> | undefined;

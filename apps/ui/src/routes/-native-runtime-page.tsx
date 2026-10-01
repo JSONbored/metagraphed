@@ -257,16 +257,24 @@ function NativeRuntimeExplorer({
             selected runtime.
           </p>
         </div>
-        <button className={button} disabled={busy} onClick={() => {
-          setApi(true);
-          setNamespace("EthereumRuntimeRPCApi");
-          setDescription(null);
-          discover(0, {api: true, name: "EthereumRuntimeRPCApi"});
-        }}>Explore EVM execution</button>
-        {api && namespace === "EthereumRuntimeRPCApi" && <p className="text-13 text-ink-muted">
-          Call and create simulate execution at a finalized block. Supply a positive gas_limit;
-          each request can use up to 1,000,000 gas. Return data and reverts are preserved.
-        </p>}
+        <button
+          className={button}
+          disabled={busy}
+          onClick={() => {
+            setApi(true);
+            setNamespace("EthereumRuntimeRPCApi");
+            setDescription(null);
+            discover(0, { api: true, name: "EthereumRuntimeRPCApi" });
+          }}
+        >
+          Explore EVM execution
+        </button>
+        {api && namespace === "EthereumRuntimeRPCApi" && (
+          <p className="text-13 text-ink-muted">
+            Call and create simulate execution at a finalized block. Supply a positive gas_limit;
+            each request can use up to 1,000,000 gas. Return data and reverts are preserved.
+          </p>
+        )}
         <form
           className="flex flex-wrap items-end gap-3"
           onSubmit={(event) => {

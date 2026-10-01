@@ -261,16 +261,28 @@ function plan(
     if (operation.args.length !== method.inputs.length)
       throw new Error("Native runtime argument arity mismatch");
     let simulationGas = 0n;
-    if (operation.api === "EthereumRuntimeRPCApi" &&
-        (operation.member === "call" || operation.member === "create")) {
-      const gasFields = method.inputs.flatMap((field, index) => field.name === "gas_limit" ? [index] : []);
-      if (gasFields.length !== 1) throw new Error("EVM simulation requires a declared gas_limit");
+    if (
+      operation.api === "EthereumRuntimeRPCApi" &&
+      (operation.member === "call" || operation.member === "create")
+    ) {
+      const gasFields = method.inputs.flatMap((field, index) =>
+        field.name === "gas_limit" ? [index] : [],
+      );
+      if (gasFields.length !== 1)
+        throw new Error("EVM simulation requires a declared gas_limit");
       const gas = operation.args[gasFields[0]!]!;
-      if (!((typeof gas === "string" && /^(0|[1-9]\d*)$/.test(gas)) ||
-            (typeof gas === "number" && Number.isSafeInteger(gas) && gas >= 0)))
-        throw new Error("EVM simulation gas must be an exact nonnegative integer");
+      if (!(
+        (typeof gas === "string" && /^(0|[1-9]\d*)$/.test(gas)) ||
+        (typeof gas === "number" && Number.isSafeInteger(gas) && gas >= 0)
+      ))
+        throw new Error(
+          "EVM simulation gas must be an exact nonnegative integer",
+        );
       simulationGas = BigInt(gas);
-      if (simulationGas === 0n || simulationGas > NATIVE_EVM_SIMULATION_GAS_BUDGET)
+      if (
+        simulationGas === 0n ||
+        simulationGas > NATIVE_EVM_SIMULATION_GAS_BUDGET
+      )
         throw new Error("EVM simulation exceeds its gas budget");
     }
     const input = Buffer.concat(
@@ -490,10 +502,14 @@ export async function readNativeRuntime(
     const call = { method: row.call.method, params: [...row.call.params, at] };
     const key = JSON.stringify(call);
     unique.set(key, call);
-    if ("simulationGas" in row && row.simulationGas) executionGas.set(key, row.simulationGas);
+    if ("simulationGas" in row && row.simulationGas)
+      executionGas.set(key, row.simulationGas);
     return key;
   });
-  if ([...executionGas.values()].reduce((total, gas) => total + gas, 0n) > NATIVE_EVM_SIMULATION_GAS_BUDGET)
+  if (
+    [...executionGas.values()].reduce((total, gas) => total + gas, 0n) >
+    NATIVE_EVM_SIMULATION_GAS_BUDGET
+  )
     throw new Error("EVM simulations exceed the aggregate gas budget");
   const calls = [...unique.entries()];
   const values =

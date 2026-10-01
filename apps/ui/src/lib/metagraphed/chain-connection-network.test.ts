@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { Socket } from "node:net";
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   providers: [] as { endpoint: string; disconnect: ReturnType<typeof vi.fn> }[],
@@ -15,6 +16,11 @@ vi.mock("@polkadot/api", () => ({
   ApiPromise: { create: mocks.create },
 }));
 beforeEach(() => {
+  // Trap even an accidentally unmocked SDK provider before any real socket
+  // opens. This suite qualifies fixtures exclusively.
+  vi.spyOn(Socket.prototype, "connect").mockImplementation(() => {
+    throw new Error("Network access is forbidden in wallet fixtures");
+  });
   vi.resetModules();
   mocks.create.mockReset();
   mocks.providers.length = 0;
@@ -23,6 +29,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 test("wallet connections stay partitioned by the requested network and share concurrent setup", async () => {
   const { getApi, rpcEndpointForNetwork } = await import("./chain-connection");
