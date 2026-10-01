@@ -14,7 +14,7 @@ import { RootBasketCaptureSchema } from "../schemas-src/root-basket-capture.ts";
 
 class ScaleReader {
   private offset = 0;
-  private readonly bytes: Uint8Array;
+  private readonly bytes: Buffer;
   constructor(hex: unknown) {
     if (
       typeof hex !== "string" ||
@@ -26,7 +26,7 @@ class ScaleReader {
     // entry for every byte in the response.
     this.bytes = Buffer.from(hex.slice(2), "hex");
   }
-  take(size: number): Uint8Array {
+  take(size: number): Buffer {
     if (size > this.bytes.length - this.offset)
       throw new Error("Truncated basket SCALE response");
     const result = this.bytes.subarray(this.offset, this.offset + size);
@@ -55,7 +55,7 @@ class ScaleReader {
     return value === 1;
   }
   account(): string {
-    return `0x${Array.from(this.take(32), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+    return `0x${this.take(32).toString("hex")}`;
   }
   vector<T>(maximum: number, read: () => T): T[] {
     const first = this.take(1)[0]!;

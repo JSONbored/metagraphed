@@ -16,14 +16,30 @@ test("retain remote generated contract artifacts for review", async () => {
   execFileSync("npm", ["run", "build", "--workspace=packages/client"], {
     stdio: "pipe",
   });
+  execFileSync("node", ["scripts/generate-openapi-docs.ts"], {
+    cwd: path.resolve("apps/ui"),
+    stdio: "pipe",
+  });
   const changed = execFileSync("git", ["diff", "--name-only"], {
     encoding: "utf8",
   })
     .trim()
     .split("\n");
-  const paths = changed.filter(
+  const freshDocs = execFileSync(
+    "git",
+    [
+      "ls-files",
+      "--others",
+      "--exclude-standard",
+      "apps/ui/content/docs/api-reference",
+    ],
+    { encoding: "utf8" },
+  )
+    .trim()
+    .split("\n");
+  const paths = [...changed, ...freshDocs].filter(
     (path) =>
-      /^(public\/|generated\/|packages\/contract\/|packages\/client\/dist\/|docs\/reference\/)/.test(
+      /^(public\/|generated\/|packages\/contract\/|packages\/client\/dist\/|docs\/reference\/|apps\/ui\/content\/docs\/api-reference\/)/.test(
         path,
       ) &&
       ![

@@ -12,6 +12,7 @@ import { CONCRETE_PATH_SS58 } from "./concrete-path.ts";
 import { handleRequest } from "../workers/api.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { apiEnv } from "../scripts/lib/worker-env.ts";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -129,7 +130,7 @@ function stubNetwork() {
   return fixture;
 }
 
-test("admitted REST reads use the selected network's existing rate-limit bucket", async () => {
+test("admitted REST and MCP reads use the selected network's existing rate-limit bucket", async () => {
   stubNetwork();
   const keys: string[] = [];
   const env = {
@@ -156,11 +157,25 @@ test("admitted REST reads use the selected network's existing rate-limit bucket"
   }
   assert.match(keys[0]!, /^root-baskets:/);
   assert.match(keys[1]!, /^testnet:root-baskets:/);
+  for (const [tool, args] of [
+    ["get_root_baskets", { network: "test" }],
+    ["get_account_root_baskets", { network: "test", ss58: CONCRETE_PATH_SS58 }],
+  ] as const) {
+    const result = await MCP_TOOLS.find((item) => item.name === tool)!.handler(
+      args,
+      { env: env as Env, clientIp: "192.0.2.1" },
+    );
+    assert.equal(RootBasketsArtifactSchema.parse(result).status, "available");
+  }
+  assert.deepEqual(keys.slice(2), [
+    "testnet:root-baskets:192.0.2.1",
+    "testnet:root-baskets:192.0.2.1",
+  ]);
 });
 
 test("REST and MCP share exact data, limits and network selection", async () => {
   const fixture = stubNetwork();
-  const env = createLocalArtifactEnv() as Env;
+  const env = apiEnv(createLocalArtifactEnv());
   for (const [path, tool, args] of [
     ["/api/v1/root-baskets", "get_root_baskets", {}],
     [
@@ -197,7 +212,7 @@ test("REST and MCP share exact data, limits and network selection", async () => 
 
 test("REST and MCP reject malformed input and throttling without chain work", async () => {
   const fixture = stubNetwork();
-  const env = createLocalArtifactEnv() as Env;
+  const env = apiEnv(createLocalArtifactEnv());
   for (const path of [
     "/api/v1/root-baskets?cursor=invalid",
     `/api/v1/root-baskets?cursor=${BASKET_FIXTURE_HOTKEY}`,
