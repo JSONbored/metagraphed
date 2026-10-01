@@ -50,7 +50,7 @@ test("collection follows empty nonterminal pages and emits one complete finalize
   assert.equal(RootBasketCaptureSchema.safeParse(observation).success, false);
   const empty = await collectRootBasketObservation(
     basketRuntimeFixture({ get_all_beta_pricing: "0x0000" }).rpc,
-    "testnet",
+    "test",
   );
   assert.deepEqual(empty.funds, []);
   assert.equal(empty.pages.length, 1);

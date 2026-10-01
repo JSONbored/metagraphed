@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { McpNetworkSchema } from "../shared.ts";
 import { ss58Schema } from "../query-params.ts";
 import {

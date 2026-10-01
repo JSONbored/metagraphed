@@ -163,7 +163,7 @@ test("REST and MCP share exact data, limits and network selection", async () => 
   const result = await MCP_TOOLS.find(
     (item) => item.name === "get_root_baskets",
   )!.handler({ network: "test" }, { env });
-  assert.equal(RootBasketsArtifactSchema.parse(result).network, "testnet");
+  assert.equal(RootBasketsArtifactSchema.parse(result).network, "test");
 });
 
 test("REST and MCP reject malformed input and throttling without chain work", async () => {

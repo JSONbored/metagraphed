@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, DataTable, Raw, type DataTableColumn } from "@jsonbored/ui-kit";
 import { useNearViewport } from "@/hooks/use-near-viewport";
+import { useNetwork } from "@/hooks/use-api-base";
+import { DEFAULT_API_BASE, getApiBase, onApiBaseChange } from "@/lib/metagraphed/config";
 import {
   accountRootBasketsQuery,
   rootBasketsQuery,
@@ -13,6 +15,18 @@ import {
 } from "@/lib/metagraphed/root-baskets";
 
 export function RootBasketsSection({
+  selected,
+  onSelect,
+}: {
+  selected: string;
+  onSelect: (hotkey: string) => void;
+}) {
+  const { network } = useNetwork();
+  const base = useSyncExternalStore(onApiBaseChange, getApiBase, () => DEFAULT_API_BASE);
+  return <RootBasketsView key={`${base}:${network.id}`} selected={selected} onSelect={onSelect} />;
+}
+
+function RootBasketsView({
   selected,
   onSelect,
 }: {
@@ -53,7 +67,7 @@ export function RootBasketsSection({
     { key: "nav", label: "Spot NAV", value: (row) => basketTao(row.spot_nav_rao) },
     {
       key: "price",
-      label: "Display price (TAO/β)",
+      label: "Display price (TAO/β, 4 d.p.)",
       value: (row) => basketIndex(row.display_price_q64_bits),
     },
     {
@@ -185,7 +199,7 @@ export function RootBasketsSection({
                 </>
               ) : (
                 <p className="text-13 text-ink-muted">
-                  {basketReadState(fundResult, detail.isError)}
+                  {hash === undefined ? state : basketReadState(fundResult, detail.isError)}
                 </p>
               )}
               {detail.isError || fundResult?.status === "unavailable" ? (
@@ -206,6 +220,12 @@ export function RootBasketsSection({
 }
 
 export function AccountRootBasketsSection({ ss58 }: { ss58: string }) {
+  const { network } = useNetwork();
+  const base = useSyncExternalStore(onApiBaseChange, getApiBase, () => DEFAULT_API_BASE);
+  return <AccountRootBasketsView key={`${base}:${network.id}:${ss58}`} ss58={ss58} />;
+}
+
+function AccountRootBasketsView({ ss58 }: { ss58: string }) {
   const { ref, nearViewport } = useNearViewport("0px 0px");
   const [page, setPage] = useState<{ offset?: number; as_of?: string }>({});
   const query = useQuery({ ...accountRootBasketsQuery(ss58, page), enabled: nearViewport });

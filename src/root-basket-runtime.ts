@@ -170,9 +170,12 @@ export async function openRootBasketRuntime(
         throw new Error("Duplicate basket pricing fund");
       return {
         ...page,
-        response_sha256: `0x${createHash("sha256")
-          .update(Buffer.from((raw as string).slice(2), "hex"))
-          .digest("hex")}`,
+        // Public pages omit this receipt. Hash only when the collector reads it.
+        get response_sha256() {
+          return `0x${createHash("sha256")
+            .update(Buffer.from((raw as string).slice(2), "hex"))
+            .digest("hex")}`;
+        },
       };
     },
     async pricing(hotkey: string) {

@@ -5,7 +5,12 @@ import {
   RootBasketsArtifactSchema,
 } from "../schemas-src/routes/root-baskets.ts";
 import { ROOT_BASKET_READ_LIMITS } from "../schemas-src/root-basket-runtime.ts";
-import { DEFAULT_CHAIN_NETWORK, type ChainNetworkId } from "./chain-network.ts";
+import {
+  DEFAULT_CHAIN_NETWORK,
+  CHAIN_NAME_BY_NETWORK,
+  type ChainNetworkId,
+} from "./chain-network.ts";
+import { BittensorNetworkSchema } from "../schemas-src/shared.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
 import { decodeSs58 } from "./ss58.ts";
 import { bytesToHex } from "./twox-storage-key.ts";
@@ -53,8 +58,9 @@ export async function loadRootBaskets(
   validateRootBasketPage(parsed);
   if (ss58 !== undefined && !isFinneySs58Address(ss58))
     throw new Error("Invalid finney SS58 account");
+  const chain = BittensorNetworkSchema.parse(CHAIN_NAME_BY_NETWORK[network]);
   try {
-    const runtime = await openRootBasketRuntime(rpc, network, parsed.as_of);
+    const runtime = await openRootBasketRuntime(rpc, chain, parsed.as_of);
     let data: z.infer<typeof RootBasketsArtifactSchema> & {
       status: "available";
     };
@@ -69,7 +75,7 @@ export async function loadRootBaskets(
       );
       data = {
         schema_version: 1,
-        network,
+        network: chain,
         status: "available",
         source: runtime.source,
         data: { kind: "account", ss58, ...page, offset, limit },
@@ -85,7 +91,7 @@ export async function loadRootBaskets(
         ]);
         data = {
           schema_version: 1,
-          network,
+          network: chain,
           status: "available",
           source: runtime.source,
           data: { kind: "fund", pricing, summary, trading, baseline },
@@ -95,7 +101,7 @@ export async function loadRootBaskets(
         const page = await runtime.pricingPage(query.cursor ?? null, limit);
         data = {
           schema_version: 1,
-          network,
+          network: chain,
           status: "available",
           source: runtime.source,
           data: {
@@ -111,7 +117,7 @@ export async function loadRootBaskets(
   } catch (cause) {
     return {
       schema_version: 1,
-      network,
+      network: chain,
       status:
         cause instanceof UnsupportedBasketRuntimeError
           ? "unsupported"

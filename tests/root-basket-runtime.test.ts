@@ -10,16 +10,17 @@ import {
   BASKET_FIXTURE_COLDKEY,
   BASKET_FIXTURE_GENESIS,
   BASKET_FIXTURE_HOTKEY,
-  BASKET_FIXTURE_INDEX,
   BASKET_FIXTURE_POSITION,
   BASKET_FIXTURE_PRICING,
-  BASKET_FIXTURE_SUMMARY,
-  BASKET_FIXTURE_TRADING,
   pricingPage,
   basketRuntimeFixture,
 } from "./fixtures/root-basket-runtime.ts";
 
 const source = basketRuntimeFixture;
+
+test("runtime API identity matches the independent Blake2b-64 trait-name golden", () => {
+  assert.equal(BASKET_RUNTIME_API_ID, "0x43580abff6baab45");
+});
 
 test("all modern basket views share one finalized runtime and encoded account identity", async () => {
   const fixture = source();

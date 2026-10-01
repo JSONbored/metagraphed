@@ -17457,7 +17457,8 @@ export function completeDegradedBlock(
     return data;
   }
   const declared = (outputSchema?.properties as Row | undefined)?.degraded as
-    Row | undefined;
+    | Row
+    | undefined;
   // A nullable object is published as anyOf[{object}, {null}], so the required
   // list can sit on a branch rather than at the top.
   const branches = [
@@ -17771,7 +17772,8 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
   const startedAt = Date.now();
   let dispatchOk = true;
   let protocolTelemetry:
-    { record: (ctx: McpCtx, event: Row) => void; event: Row } | undefined;
+    | { record: (ctx: McpCtx, event: Row) => void; event: Row }
+    | undefined;
   let protocolErrorCode: string | undefined;
   let protocolErrorMessage: string | undefined;
 

@@ -17,7 +17,7 @@ describe("native basket display units", () => {
     expect(basketReadState(undefined, true)).toMatch(/unavailable/);
     expect(
       basketReadState(
-        { schema_version: 1, status: "unsupported", network: "testnet", source: null, data: null },
+        { schema_version: 1, status: "unsupported", network: "test", source: null, data: null },
         false,
       ),
     ).toMatch(/not supported/);

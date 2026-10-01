@@ -17,18 +17,21 @@ const asOf = RootBasketSourceSchema.shape.finalized_block_hash
   .optional()
   .describe(
     "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
-  );
+  )
+  .meta({ examples: [`0x${"11".repeat(32)}`] });
 export const RootBasketsQuerySchema = z.object({
   hotkey: account
     .optional()
     .describe(
       "Optional AccountId32 hex fund key; selects one fund's detail instead of directory pricing.",
-    ),
+    )
+    .meta({ examples: [`0x${"22".repeat(32)}`] }),
   cursor: account
     .optional()
     .describe(
-      "Opaque upstream AccountId32 continuation. Empty pricing pages can still carry this cursor.",
-    ),
+      "Opaque upstream AccountId32 continuation. Pass it back verbatim with as_of. Empty pricing pages can still carry this cursor.",
+    )
+    .meta({ examples: [`0x${"22".repeat(32)}`] }),
   as_of: asOf,
   limit: limitSchema(
     ROOT_BASKET_READ_LIMITS.page,
@@ -44,7 +47,8 @@ export const AccountRootBasketsQuerySchema = z.object({
     .optional()
     .describe(
       "Relationship offset at the pinned block, default 0. Includes confirmed non-basket relationships so no position is silently skipped.",
-    ),
+    )
+    .meta({ examples: [16] }),
   limit: limitSchema(
     ROOT_BASKET_READ_LIMITS.accountPage,
     ROOT_BASKET_READ_LIMITS.accountPage,
@@ -133,6 +137,7 @@ export const RootBasketsArtifactSchema = z
       })
       .strict(),
   ])
+  .meta({ type: "object" })
   .describe(
     "Finalized native Root basket state from the audited node-subtensor v469/API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.",
   );
