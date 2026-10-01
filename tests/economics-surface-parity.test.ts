@@ -68,7 +68,7 @@ function makeEnv() {
   const reads: string[] = [];
   return {
     reads,
-    env: {
+    env: withMcpAccount({
       METAGRAPH_CONTRACT_VERSION: "test-contract",
       METAGRAPH_CONTROL: {
         async get(key: string) {
@@ -79,7 +79,7 @@ function makeEnv() {
       // R2 must answer for the committed fallback path; returning nothing forces the
       // live KV tier to be the one under test.
       METAGRAPH_ARCHIVE: { get: async () => null },
-    } as unknown as Env,
+    }),
   };
 }
 
@@ -107,7 +107,7 @@ async function mcpEconomics(env: Env) {
         params: { name: "get_economics", arguments: { limit: 1 } },
       }),
     }),
-    withMcpAccount(env),
+    env,
     {
       ...mcpAccountContext,
       passThroughOnException() {},
@@ -157,11 +157,11 @@ describe("economics: REST and MCP resolve one snapshot", () => {
   test("a cold KV tier degrades both surfaces the same way", async () => {
     // The failure that matters is not "both broken" but "one broken": if only one
     // surface falls back, an agent comparing them cannot tell which is right.
-    const env = {
+    const env = withMcpAccount({
       METAGRAPH_CONTRACT_VERSION: "test-contract",
       METAGRAPH_CONTROL: { get: async () => null },
       METAGRAPH_ARCHIVE: { get: async () => null },
-    } as unknown as Env;
+    });
     const rest = await restEconomics(env);
     const mcp = await mcpEconomics(env).catch((error) => ({
       error: String(error),
