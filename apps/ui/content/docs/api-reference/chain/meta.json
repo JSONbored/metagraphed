@@ -60,6 +60,8 @@
     "emission-gate-changes",
     "export-chain-events",
     "export-chain-events-by-network",
-    "indexer-lag"
+    "indexer-lag",
+    "root-baskets",
+    "root-baskets-by-network"
   ]
 }

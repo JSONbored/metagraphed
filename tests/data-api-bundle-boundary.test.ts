@@ -140,9 +140,9 @@ describe("data-api's bundle boundary", () => {
     // dependency; the named boundaries remain mandatory above.
     // The native neuron receipt adds 5,165 source bytes to that measured
     // graph (4,824,337 total), without adding any forbidden module.
-    // Native basket route/query contracts add 10,499 source bytes against
+    // Native basket route/query contracts add 11,489 source bytes against
     // fcec0582 after isolating the observation-only schema. The CI fixture
-    // emits 6,073 additional minified bytes / 1,776 gzip bytes, without any
+    // emits 6,687 additional minified bytes / 1,970 gzip bytes, without any
     // router, codec, collector, GraphQL or MCP import. Keep the collector and
     // its observation schema outside this graph, as named above.
     const firstParty = Object.entries(graph)
