@@ -39646,6 +39646,9 @@
         "description": "Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. All operations share one finalized source. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or state mutation occurs.",
         "properties": {
           "as_of": {
+            "examples": [
+              "0x3333333333333333333333333333333333333333333333333333333333333333"
+            ],
             "pattern": "^0x[0-9a-f]{64}$",
             "type": "string"
           },
@@ -39661,6 +39664,15 @@
             "type": "string"
           },
           "operations": {
+            "examples": [
+              [
+                {
+                  "kind": "describe",
+                  "limit": 16,
+                  "pallet": "SubtensorModule"
+                }
+              ]
+            ],
             "items": {
               "$ref": "#/components/schemas/NativeRuntimeOperation"
             },

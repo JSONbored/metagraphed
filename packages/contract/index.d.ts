@@ -9961,6 +9961,7 @@ export interface components {
         };
     /** @description Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. All operations share one finalized source. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or state mutation occurs. */
     NativeRuntimeRequest: {
+      /** @example 0x3333333333333333333333333333333333333333333333333333333333333333 */
       as_of?: string;
       /**
        * @description Which Bittensor chain to read: `finney` is mainnet (the default when omitted), `test` is testnet. They are separate chains — a netuid on one is unrelated to the same netuid on the other.
@@ -9968,6 +9969,15 @@ export interface components {
        * @enum {string}
        */
       network?: "finney" | "test";
+      /**
+       * @example [
+       *       {
+       *         "kind": "describe",
+       *         "limit": 16,
+       *         "pallet": "SubtensorModule"
+       *       }
+       *     ]
+       */
       operations: components["schemas"]["NativeRuntimeOperation"][];
     };
     NativeRuntimeSource: {

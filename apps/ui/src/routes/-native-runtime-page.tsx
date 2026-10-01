@@ -17,20 +17,20 @@ const columns: DataTableColumn<NativeValueRow>[] = [
 
 /** User-initiated reads only. Remount on network/origin change, aborting the
  * previous request so its source and call bytes cannot cross partitions. */
-export function NativeRuntimePage() {
+export function NativeRuntimePage({initialNetuid,initialColdkey}:{initialNetuid:string;initialColdkey:string}) {
   const { network } = useNetwork();
   useRegisterApiSource(["/api/v1/native-runtime"], []);
   return <AppShell>
     <EntityHero className="mg-hero--directory" name="Native chain" sentence={<FactSentence>Read current Bittensor state and prepare calls from the chain’s own contract.</FactSentence>} />
     <ApiNavigation />
-    <NativeRuntimeExplorer key={`${getApiBase()}:${network.id}`} network={network.label} />
+    <NativeRuntimeExplorer key={`${getApiBase()}:${network.id}:${initialNetuid}:${initialColdkey}`} network={network.label} initialNetuid={initialNetuid} initialColdkey={initialColdkey}/>
   </AppShell>;
 }
 
-function NativeRuntimeExplorer({ network }: { network: string }) {
+function NativeRuntimeExplorer({ network,initialNetuid,initialColdkey }: { network: string;initialNetuid:string;initialColdkey:string }) {
   const [feature, setFeature] = useState<NativeFeature>("mechanisms");
-  const [netuid, setNetuid] = useState("19");
-  const [coldkey, setColdkey] = useState("");
+  const [netuid, setNetuid] = useState(initialNetuid);
+  const [coldkey, setColdkey] = useState(initialColdkey);
   const [hotkey, setHotkey] = useState("");
   const [namespace, setNamespace] = useState("SubtensorModule");
   const [api, setApi] = useState(false);
@@ -77,8 +77,8 @@ function NativeRuntimeExplorer({ network }: { network: string }) {
           {NATIVE_FEATURES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
         </select></label>
         <label className="space-y-1 text-13">Subnet<input className={control} inputMode="numeric" value={netuid} onChange={(event) => setNetuid(event.target.value)} /></label>
-        {selected.account && <label className="space-y-1 text-13">Coldkey public key (hex)<input className={control} value={coldkey} onChange={(event) => setColdkey(event.target.value)} placeholder="0x… (32 bytes)" /></label>}
-        {selected.hotkey && <label className="space-y-1 text-13">Hotkey public key (hex)<input className={control} value={hotkey} onChange={(event) => setHotkey(event.target.value)} placeholder="0x… (32 bytes)" /></label>}
+        {selected.account && <label className="space-y-1 text-13">Coldkey<input className={control} value={coldkey} onChange={(event) => setColdkey(event.target.value)} placeholder="SS58 address or 0x…" /></label>}
+        {selected.hotkey && <label className="space-y-1 text-13">Hotkey<input className={control} value={hotkey} onChange={(event) => setHotkey(event.target.value)} placeholder="SS58 address or 0x…" /></label>}
         <div className="flex items-end"><button className={button} disabled={busy} type="submit">Read state</button></div>
       </form>
     </section>

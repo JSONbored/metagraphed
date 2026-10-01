@@ -88,8 +88,16 @@ describe("MCP tool annotations", () => {
     assert.deepEqual(declaredOpenWorld, [...OPEN_WORLD_TOOL_NAMES].sort());
   });
   test("native call preparation remains a read and cannot sign or submit", () => {
-    const annotations = byName.get("get_native_runtime")?.annotations as Record<string,unknown>;
-    assert.deepEqual(annotations,{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true});
+    const annotations = byName.get("get_native_runtime")?.annotations as Record<
+      string,
+      unknown
+    >;
+    assert.deepEqual(annotations, {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
   });
 
   // Pins the #8964 audit's finding: 20 of 207 tools leave our infrastructure.

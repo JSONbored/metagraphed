@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { describedMembers, featureOperations, memberOperation, nativeTypeLabel, nativeValueRows, nativePageOffset, type NativeArtifact } from "./native-runtime";
+import { encodeSs58 } from "./ss58";
 
 const key=`0x${"12".repeat(32)}`;
 const artifact:NativeArtifact={schema_version:1,source:{network:"finney",network_genesis_hash:key,finalized_block_hash:key,finalized_block:"500",runtime_spec_version:470,runtime_transaction_version:1,metadata_version:15,metadata_sha256:key},types:[{id:0,path:[],definition:{kind:"primitive",primitive:6}},{id:1,path:["NetUid"],definition:{kind:"composite",fields:[{name:null,type:0}]}},{id:2,path:[],definition:{kind:"tuple",types:[0,1]}}],results:[]};
@@ -11,6 +12,8 @@ test("feature inputs preserve upstream key order and exact values",()=>{
   expect(featureOperations("auto-stake","19",key)[0]).toMatchObject({args:[key,19]});
   expect(featureOperations("pending-children","19","",key)[0]).toMatchObject({args:[19,key]});
   expect(featureOperations("miner-collateral","19",key,key)[0]).toMatchObject({args:[19,key,key]});
+  const address=encodeSs58(new Uint8Array(32).fill(18))!;
+  expect(featureOperations("lock","19",` ${address} `)[0]).toMatchObject({args:[key,19]});
   for(const netuid of ["","-1","01","65536","1.5","1e3"])
     expect(()=>featureOperations("mechanisms",netuid)).toThrow(/subnet number/);
   expect(()=>featureOperations("lock","0","invalid")).toThrow(/public key/);

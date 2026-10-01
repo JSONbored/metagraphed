@@ -184,6 +184,7 @@ export function AccountDetailPage() {
 
   const rawRows: RawRow[] = [
     { label: "ss58", value: ss58 },
+    { label: "Current protocol state", value: "Locks, auto stake and collateral", href: `/apis/native?coldkey=${encodeURIComponent(ss58)}` },
     ...(identity.data?.data.name ? [{ label: "Identity", value: identity.data.data.name }] : []),
     ...(identity.data?.data.url
       ? [{ label: "Identity URL", value: identity.data.data.url, href: identity.data.data.url }]

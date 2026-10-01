@@ -88,7 +88,11 @@ function contract(
     if (def.kind === "composite")
       pending.push(...def.fields.map((field) => field.type));
     else if (def.kind === "variant")
-      pending.push(...def.variants.flatMap((variant) => variant.fields.map((field) => field.type)));
+      pending.push(
+        ...def.variants.flatMap((variant) =>
+          variant.fields.map((field) => field.type),
+        ),
+      );
     else if (def.kind === "tuple") pending.push(...def.types);
     else if (def.kind === "bits") {
       pending.push(def.store, def.order);
@@ -175,14 +179,24 @@ function plan(
           )
           .map((row) => ({ kind: "api", name: row.name })),
       ];
-    const page = items.slice(operation.offset, operation.offset + operation.limit);
+    const page = items.slice(
+      operation.offset,
+      operation.offset + operation.limit,
+    );
     for (const item of page) {
-      if (item === null || typeof item !== "object" || Array.isArray(item)) continue;
+      if (item === null || typeof item !== "object" || Array.isArray(item))
+        continue;
       for (const key of ["key_type", "value_type"])
-        if (typeof item[key] === "number") contract(metadata, item[key], needed);
+        if (typeof item[key] === "number")
+          contract(metadata, item[key], needed);
       if (Array.isArray(item.args))
         for (const field of item.args)
-          if (field !== null && typeof field === "object" && !Array.isArray(field) && typeof field.type === "number")
+          if (
+            field !== null &&
+            typeof field === "object" &&
+            !Array.isArray(field) &&
+            typeof field.type === "number"
+          )
             contract(metadata, field.type, needed);
     }
     return {

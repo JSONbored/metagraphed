@@ -36,6 +36,7 @@ import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.in
 import { Route as ApiSearchRouteImport } from './routes/api.search'
 import { Route as ApisIndexRouteImport } from './routes/apis.index'
 import { Route as ApisEndpointsRouteImport } from './routes/apis.endpoints'
+import { Route as ApisNativeRouteImport } from './routes/apis.native'
 import { Route as ApisProvidersRouteImport } from './routes/apis.providers'
 import { Route as ApisSchemasRouteImport } from './routes/apis.schemas'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
@@ -209,6 +210,11 @@ const ApisIndexRoute = ApisIndexRouteImport.update({
 const ApisEndpointsRoute = ApisEndpointsRouteImport.update({
   id: '/endpoints',
   path: '/endpoints',
+  getParentRoute: () => ApisRoute,
+} as any)
+const ApisNativeRoute = ApisNativeRouteImport.update({
+  id: '/native',
+  path: '/native',
   getParentRoute: () => ApisRoute,
 } as any)
 const ApisProvidersRoute = ApisProvidersRouteImport.update({
@@ -432,6 +438,7 @@ export interface FileRoutesByFullPath {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/apis/endpoints': typeof ApisEndpointsRoute
+  '/apis/native': typeof ApisNativeRoute
   '/apis/providers': typeof ApisProvidersRoute
   '/apis/schemas': typeof ApisSchemasRoute
   '/blocks/$ref': typeof BlocksRefRoute
@@ -498,6 +505,7 @@ export interface FileRoutesByTo {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/apis/endpoints': typeof ApisEndpointsRoute
+  '/apis/native': typeof ApisNativeRoute
   '/apis/providers': typeof ApisProvidersRoute
   '/apis/schemas': typeof ApisSchemasRoute
   '/blocks/$ref': typeof BlocksRefRoute
@@ -567,6 +575,7 @@ export interface FileRoutesById {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/apis/endpoints': typeof ApisEndpointsRoute
+  '/apis/native': typeof ApisNativeRoute
   '/apis/providers': typeof ApisProvidersRoute
   '/apis/schemas': typeof ApisSchemasRoute
   '/blocks/$ref': typeof BlocksRefRoute
@@ -637,6 +646,7 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/apis/endpoints'
+    | '/apis/native'
     | '/apis/providers'
     | '/apis/schemas'
     | '/blocks/$ref'
@@ -703,6 +713,7 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/apis/endpoints'
+    | '/apis/native'
     | '/apis/providers'
     | '/apis/schemas'
     | '/blocks/$ref'
@@ -771,6 +782,7 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/apis/endpoints'
+    | '/apis/native'
     | '/apis/providers'
     | '/apis/schemas'
     | '/blocks/$ref'
@@ -1063,6 +1075,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApisEndpointsRouteImport
       parentRoute: typeof ApisRoute
     }
+    '/apis/native': {
+      id: '/apis/native'
+      path: '/native'
+      fullPath: '/apis/native'
+      preLoaderRoute: typeof ApisNativeRouteImport
+      parentRoute: typeof ApisRoute
+    }
     '/apis/providers': {
       id: '/apis/providers'
       path: '/providers'
@@ -1341,6 +1360,7 @@ declare module '@tanstack/react-router' {
 
 interface ApisRouteChildren {
   ApisEndpointsRoute: typeof ApisEndpointsRoute
+  ApisNativeRoute: typeof ApisNativeRoute
   ApisProvidersRoute: typeof ApisProvidersRoute
   ApisSchemasRoute: typeof ApisSchemasRoute
   ApisIndexRoute: typeof ApisIndexRoute
@@ -1348,6 +1368,7 @@ interface ApisRouteChildren {
 
 const ApisRouteChildren: ApisRouteChildren = {
   ApisEndpointsRoute: ApisEndpointsRoute,
+  ApisNativeRoute: ApisNativeRoute,
   ApisProvidersRoute: ApisProvidersRoute,
   ApisSchemasRoute: ApisSchemasRoute,
   ApisIndexRoute: ApisIndexRoute,
@@ -1438,13 +1459,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

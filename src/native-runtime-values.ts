@@ -342,7 +342,9 @@ export function encodeNativeValue(
           if (typeof input !== "string")
             throw new Error("Invalid native string");
           if (!input.isWellFormed())
-            throw new Error("Native strings must contain valid Unicode scalar values");
+            throw new Error(
+              "Native strings must contain valid Unicode scalar values",
+            );
           const bytes = new TextEncoder().encode(input);
           if (bytes.length > NATIVE_RUNTIME_LIMITS.text)
             throw new Error("Native text exceeds work budget");

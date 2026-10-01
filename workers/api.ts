@@ -5746,8 +5746,18 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   }
 
   if (networkRoute.url.pathname === "/api/v1/native-runtime") {
-    if (networkRoute.network.id === "local") return errorResponse("network_unavailable", "Local chain data is not hosted by Metagraphed.", 404, { network: "local" });
-    return handleNativeRuntime(request, env, networkRoute.explicit ? networkRoute.network.id : undefined);
+    if (networkRoute.network.id === "local")
+      return errorResponse(
+        "network_unavailable",
+        "Local chain data is not hosted by Metagraphed.",
+        404,
+        { network: "local" },
+      );
+    return handleNativeRuntime(
+      request,
+      env,
+      networkRoute.explicit ? networkRoute.network.id : undefined,
+    );
   }
 
   if (networkRoute.explicit) {
@@ -10987,7 +10997,10 @@ function allowedMethodsForPath(pathname: string): string {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/rpc/")) {
     methods = "POST, OPTIONS";
-  } else if (resolveNetworkPrefix(new URL(url.pathname, "https://api.metagraph.sh")).url.pathname === "/api/v1/native-runtime") {
+  } else if (
+    resolveNetworkPrefix(new URL(url.pathname, "https://api.metagraph.sh")).url
+      .pathname === "/api/v1/native-runtime"
+  ) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";

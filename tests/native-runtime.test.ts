@@ -94,27 +94,85 @@ test("native reads, constants and unsigned calls use one finalized contract and 
 test("typed runtime reads encode the declared input and retain exact return values", async () => {
   const source = fixture({ AccountNonceApi_account_nonce: "0x05000000" });
   const account = `0x${"12".repeat(32)}`;
-  const result = await queryNativeRuntime({ operations: [
-    { kind: "runtime", api: "AccountNonceApi", member: "account_nonce", args: [account] },
-    { kind: "runtime", api: "AccountNonceApi", member: "account_nonce", args: [account] },
-    { kind: "describe", api: "AccountNonceApi" },
-  ] }, source.rpc);
+  const result = await queryNativeRuntime(
+    {
+      operations: [
+        {
+          kind: "runtime",
+          api: "AccountNonceApi",
+          member: "account_nonce",
+          args: [account],
+        },
+        {
+          kind: "runtime",
+          api: "AccountNonceApi",
+          member: "account_nonce",
+          args: [account],
+        },
+        { kind: "describe", api: "AccountNonceApi" },
+      ],
+    },
+    source.rpc,
+  );
   assert.equal(result.results[0]!.value, "5");
   assert.deepEqual(result.results[0], result.results[1]);
-  assert.deepEqual(source.calls.filter((call) => call.params[0] === "AccountNonceApi_account_nonce"), [{method:"state_call",params:["AccountNonceApi_account_nonce",account,hash]}]);
-  assert.ok(result.types.some((type) => type.definition.kind === "array" && type.definition.length === 32));
+  assert.deepEqual(
+    source.calls.filter(
+      (call) => call.params[0] === "AccountNonceApi_account_nonce",
+    ),
+    [
+      {
+        method: "state_call",
+        params: ["AccountNonceApi_account_nonce", account, hash],
+      },
+    ],
+  );
+  assert.ok(
+    result.types.some(
+      (type) =>
+        type.definition.kind === "array" && type.definition.length === 32,
+    ),
+  );
 });
 test("sharing one finalized contract saves the actual repeated result registry bytes", async () => {
-  const operation = { kind: "storage" as const, pallet: "System", member: "Number", args: [] };
+  const operation = {
+    kind: "storage" as const,
+    pallet: "System",
+    member: "Number",
+    args: [],
+  };
   const source = fixture();
-  const batched = await queryNativeRuntime({ operations: Array(16).fill(operation) }, source.rpc);
-  const single = await queryNativeRuntime({ operations: [operation] }, fixture().rpc);
-  assert.equal(JSON.stringify(batched.results), JSON.stringify(Array(16).fill(single.results[0])));
+  const batched = await queryNativeRuntime(
+    { operations: Array(16).fill(operation) },
+    source.rpc,
+  );
+  const single = await queryNativeRuntime(
+    { operations: [operation] },
+    fixture().rpc,
+  );
+  assert.equal(
+    JSON.stringify(batched.results),
+    JSON.stringify(Array(16).fill(single.results[0])),
+  );
   const sharedBytes = Buffer.byteLength(JSON.stringify(batched.types));
   const repeatedBytes = 16 * Buffer.byteLength(JSON.stringify(single.types));
-  console.log("NATIVE_RUNTIME_SHARED_CONTRACT_FIXTURE", JSON.stringify({ operations:16, shared_type_bytes:sharedBytes, repeat_type_bytes:repeatedBytes, saved_type_bytes:repeatedBytes-sharedBytes, duplicate_storage_reads_removed:15, fixture:true, production:false }));
-  assert.equal(source.calls.filter((call) => call.method === "state_getStorage").length, 1);
-  assert.equal(repeatedBytes,16*sharedBytes);
+  console.log(
+    "NATIVE_RUNTIME_SHARED_CONTRACT_FIXTURE",
+    JSON.stringify({
+      operations: 16,
+      shared_type_bytes: sharedBytes,
+      repeat_type_bytes: repeatedBytes,
+      saved_type_bytes: repeatedBytes - sharedBytes,
+      duplicate_storage_reads_removed: 15,
+      fixture: true,
+      production: false,
+    }),
+  );
+  assert.equal(
+    source.calls.filter((call) => call.method === "state_getStorage").length,
+    1,
+  );
+  assert.equal(repeatedBytes, 16 * sharedBytes);
 });
 test("metadata declarations retain optional absence and exact declared defaults", async () => {
   const meta = decodeNativeMetadata(unwrapNativeMetadata(metadata15)!);

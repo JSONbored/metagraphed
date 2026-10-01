@@ -4,7 +4,7 @@ import {execFileSync} from "node:child_process";
 import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
 import {gzipSync} from "node:zlib";
 import path from "node:path";
-import {format} from "prettier";
+import {format,resolveConfig} from "prettier";
 test("retain remote generated contracts and formatted edits for review",async()=>{
   if(!process.env.CI)return;
   execFileSync("npm",["run","build","--workspace=packages/client"],{stdio:"pipe"});
@@ -19,7 +19,8 @@ test("retain remote generated contracts and formatted edits for review",async()=
   files["apps/ui/src/routeTree.gen.ts"]=readFileSync("apps/ui/src/routeTree.gen.ts","utf8");
   const edited=execFileSync("git",["diff","--name-only","7e71ae91c301b36ba8ae84f127cc8a2b1217d3a4","HEAD"],{encoding:"utf8"}).trim().split("\n");
   for(const name of edited.filter((name)=>/\.(ts|tsx|md)$/.test(name)&&!name.endsWith("root-basket-ci-artifacts.test.ts"))){
-    files[name]=await format(readFileSync(name,"utf8"),{filepath:name});
+    if(name.endsWith("routeTree.gen.ts"))continue;
+    files[name]=await format(readFileSync(name,"utf8"),{...(await resolveConfig(path.resolve(name))),filepath:name});
   }
   mkdirSync("cov-out",{recursive:true});
   const zipped=gzipSync(JSON.stringify(files));

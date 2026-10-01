@@ -75,8 +75,16 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
 export const NativeRuntimeRequestSchema = z
   .object({
     network: McpNetworkSchema.optional(),
-    as_of: hash.meta({examples:[`0x${"33".repeat(32)}`]}).optional(),
-    operations: z.array(NativeRuntimeOperationSchema).min(1).max(16).meta({examples:[[{kind:"describe",pallet:"SubtensorModule",limit:16}]]}),
+    as_of: hash.meta({ examples: [`0x${"33".repeat(32)}`] }).optional().describe("Canonical finalized block hash to read; omitted selects the current finalized head. Reuse the response's source hash for a consistent multi-request view."),
+    operations: z
+      .array(NativeRuntimeOperationSchema)
+      .min(1)
+      .max(16)
+      .meta({
+        examples: [
+          [{ kind: "describe", pallet: "SubtensorModule", limit: 16 }],
+        ],
+      }).describe("One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; prepare produces unsigned call method bytes."),
   })
   .strict()
   .describe(

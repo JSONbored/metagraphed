@@ -1,4 +1,5 @@
 import type { ApiSchema } from "@jsonbored/metagraphed";
+import { decodeSs58 } from "./ss58";
 
 export type NativeArtifact = ApiSchema<"NativeRuntimeArtifact">;
 export type NativeRequest = ApiSchema<"NativeRuntimeRequest">;
@@ -17,8 +18,11 @@ export const NATIVE_FEATURES = [
 export type NativeFeature = (typeof NATIVE_FEATURES)[number]["id"];
 
 function accountHex(value: string): string {
-  if (!/^0x[0-9a-fA-F]{64}$/.test(value)) throw new Error("Enter a 32-byte account public key.");
-  return value.toLowerCase();
+  const trimmed=value.trim();
+  if (/^0x[0-9a-fA-F]{64}$/.test(trimmed)) return trimmed.toLowerCase();
+  const account=decodeSs58(trimmed);
+  if (!account?.checksumValid || !account.pubkey) throw new Error("Enter a valid SS58 address or 32-byte account public key.");
+  return `0x${Array.from(account.pubkey,(byte)=>byte.toString(16).padStart(2,"0")).join("")}`;
 }
 export function featureOperations(feature: NativeFeature, netuidText: string, coldkey = "", hotkey = ""): NativeOperation[] {
   if (!/^(0|[1-9]\d*)$/.test(netuidText) || Number(netuidText) > 65535)
