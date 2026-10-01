@@ -30,6 +30,7 @@ import {
   ChainRpcBatchSchema,
   ChainRpcEnvelopeSchema,
 } from "../schemas-src/chain-rpc-envelope.ts";
+import { boundedInternalJson } from "./internal-json.ts";
 
 /**
  * An RPC error rendered for a human, preferring `.message` when the node sent
@@ -102,6 +103,8 @@ export function describeRpcError(error: unknown): string {
 }
 
 export interface ChainRpcOptions {
+  /** Optional streamed response budget; existing callers keep their behavior. */
+  maxResponseBytes?: number;
   /** Injected for tests and for callers that wrap fetch. */
   fetchImpl?: typeof fetch;
   /**
@@ -160,7 +163,10 @@ export async function chainRpc(
   // than reading `undefined` off a string.
   let parsedBody: unknown;
   try {
-    parsedBody = await res.json();
+    parsedBody =
+      options.maxResponseBytes === undefined
+        ? await res.json()
+        : await boundedInternalJson(res, options.maxResponseBytes);
   } catch (cause) {
     throw new Error(`${method}: response body was not JSON`, { cause });
   }
@@ -192,7 +198,8 @@ export interface ChainRpcBatchCall {
  * progress and a stall.
  */
 export type ChainRpcBatchResult =
-  { ok: true; result: unknown } | { ok: false; error: string };
+  | { ok: true; result: unknown }
+  | { ok: false; error: string };
 
 /**
  * Call many methods in ONE HTTP request; results align to `calls` by index.
@@ -248,7 +255,10 @@ export async function chainRpcBatch(
 
   let parsedBody: unknown;
   try {
-    parsedBody = await res.json();
+    parsedBody =
+      options.maxResponseBytes === undefined
+        ? await res.json()
+        : await boundedInternalJson(res, options.maxResponseBytes);
   } catch (cause) {
     throw new Error(`${label}: response body was not JSON`, { cause });
   }

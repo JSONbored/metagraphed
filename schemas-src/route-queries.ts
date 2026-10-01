@@ -1,3 +1,7 @@
+import {
+  RootBasketsQuerySchema,
+  AccountRootBasketsQuerySchema,
+} from "./routes/root-baskets.ts";
 import { lazySchemaMap } from "./lazy-schema-map.ts";
 // What every route accepts as a query parameter, in ONE place (#10062).
 //
@@ -408,6 +412,8 @@ export const FEED_QUERY_SCHEMAS = {
 } as const;
 
 export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
+  "/api/v1/root-baskets": () => RootBasketsQuerySchema,
+  "/api/v1/accounts/{ss58}/root-baskets": () => AccountRootBasketsQuerySchema,
   // #10600: the two composite subnet routes. They took NO parameters until
   // now -- not for want of size (272,825 B and 202,948 B) but because the
   // ordinary lever does not fit: a query collection pages ONE data_key, and

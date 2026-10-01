@@ -1252,6 +1252,22 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/root-baskets",
+    (body) => {
+      assert.ok(
+        ["available", "unsupported", "unavailable"].includes(body.data.status),
+      );
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/root-baskets",
+    (body) => {
+      assert.ok(
+        ["available", "unsupported", "unavailable"].includes(body.data.status),
+      );
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/root-claim",
     (body) => {
       assert.equal(

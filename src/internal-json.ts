@@ -1,7 +1,7 @@
 /** Internal protocols count streamed bytes before parsing, including requests
  * without Content-Length. Fatal decoding rejects truncated or invalid UTF-8. */
 export async function boundedInternalJson(
-  request: Request,
+  request: Request | Response,
   maxBytes: number,
 ): Promise<unknown> {
   if (!request.body) return null;

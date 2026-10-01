@@ -1,3 +1,4 @@
+import { handleRootBaskets } from "./request-handlers/root-baskets.ts";
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { handleNativeStoreExportRequest } from "../src/native-store-export.ts";
@@ -8332,6 +8333,12 @@ async function dispatchLiveChainRoute(
   if (accountBalanceMatch) {
     return handleAccountBalance(request, env, accountBalanceMatch[1], chain);
   }
+  if (pathname === "/api/v1/root-baskets")
+    return handleRootBaskets(request, env, url, chain);
+  const rootBasketsAccount =
+    /^\/api\/v1\/accounts\/([^/]+)\/root-baskets$/.exec(pathname);
+  if (rootBasketsAccount)
+    return handleRootBaskets(request, env, url, chain, rootBasketsAccount[1]);
   const accountRootClaimMatch = ACCOUNT_ROOT_CLAIM_PATH_PATTERN.exec(pathname);
   if (accountRootClaimMatch) {
     return handleAccountRootClaim(

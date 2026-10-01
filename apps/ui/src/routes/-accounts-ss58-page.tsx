@@ -1,3 +1,4 @@
+import { AccountRootBasketsSection } from "@/components/metagraphed/root-baskets";
 import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
@@ -51,6 +52,7 @@ import { Route } from "./accounts.$ss58";
  */
 const SECTIONS = [
   { id: "positions", name: "Positions" },
+  { id: "root-baskets", name: "Native Root positions" },
   { id: "flow", name: "Flow" },
   { id: "counterparties", name: "Counterparties" },
   { id: "activity", name: "Activity" },
@@ -230,6 +232,7 @@ export function AccountDetailPage() {
         }
       >
         <PositionsSection ss58={ss58} nameOf={nameOf} />
+        <AccountRootBasketsSection key={ss58} ss58={ss58} />
         <FlowSection
           ss58={ss58}
           window={window}

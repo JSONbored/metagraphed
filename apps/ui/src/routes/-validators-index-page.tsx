@@ -1,3 +1,4 @@
+import { RootBasketsSection } from "@/components/metagraphed/root-baskets";
 import { useMemo } from "react";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
@@ -29,6 +30,7 @@ import { Route } from "./validators.index";
 
 const SECTIONS = [
   { id: "operators", name: "Operators" },
+  { id: "baskets", name: "Root baskets" },
   { id: "concentration", name: "Data scope" },
   { id: "cost", name: "Cost to validate" },
 ] as const;
@@ -107,6 +109,7 @@ export function ValidatorsPage() {
           visual={<OperatorDirectory operators={operators} search={search} onSearch={setSearch} />}
           footnote={`${formatNumber(listed.data.hotkey_count)} validator hotkeys · chain-direct`}
         />
+        <RootBasketsSection selected={search.basket} onSelect={(basket) => setSearch({ basket })} />
         <AnalyticsSection
           id="concentration"
           name="Data scope"

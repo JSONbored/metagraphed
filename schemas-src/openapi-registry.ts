@@ -1,3 +1,20 @@
+import {
+  RootBasketsArtifactSchema,
+  RootBasketBaselineSchema,
+  RootBasketAccountEntrySchema,
+  RootBasketDirectorySchema,
+  RootBasketDetailSchema,
+  RootBasketAccountPageSchema,
+  RootBasketReadDataSchema,
+} from "./routes/root-baskets.ts";
+import {
+  RootBasketSourceSchema,
+  RootBasketPricingSchema,
+  RootBasketSummarySchema,
+  RootBasketTradingStatusSchema,
+  RootBasketPositionSchema,
+  RootBasketClaimPreviewSchema,
+} from "./root-basket-runtime.ts";
 // Component-name registry for the OpenAPI generator (types-epic B, #7860).
 //
 // Each entry here becomes a NAMED entry in public/metagraph/openapi.json's
@@ -780,6 +797,19 @@ register(
   "AccountPositionHistoryArtifact",
 );
 register(AccountRootClaimArtifactSchema, "AccountRootClaimArtifact");
+register(RootBasketsArtifactSchema, "RootBasketsArtifact");
+register(RootBasketBaselineSchema, "RootBasketBaseline");
+register(RootBasketAccountEntrySchema, "RootBasketAccountEntry");
+register(RootBasketDirectorySchema, "RootBasketDirectory");
+register(RootBasketDetailSchema, "RootBasketDetail");
+register(RootBasketAccountPageSchema, "RootBasketAccountPage");
+register(RootBasketReadDataSchema, "RootBasketReadData");
+register(RootBasketSourceSchema, "RootBasketSource");
+register(RootBasketPricingSchema, "RootBasketPricing");
+register(RootBasketSummarySchema, "RootBasketSummary");
+register(RootBasketTradingStatusSchema, "RootBasketTradingStatus");
+register(RootBasketPositionSchema, "RootBasketPosition");
+register(RootBasketClaimPreviewSchema, "RootBasketClaimPreview");
 register(AccountServingArtifactSchema, "AccountServingArtifact");
 register(AccountPrometheusArtifactSchema, "AccountPrometheusArtifact");
 register(AccountStakeMovesArtifactSchema, "AccountStakeMovesArtifact");
@@ -1235,6 +1265,19 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "AccountPositionsArtifact",
   "AccountPositionHistoryArtifact",
   "AccountRootClaimArtifact",
+  "RootBasketsArtifact",
+  "RootBasketBaseline",
+  "RootBasketAccountEntry",
+  "RootBasketDirectory",
+  "RootBasketDetail",
+  "RootBasketAccountPage",
+  "RootBasketReadData",
+  "RootBasketSource",
+  "RootBasketPricing",
+  "RootBasketSummary",
+  "RootBasketTradingStatus",
+  "RootBasketPosition",
+  "RootBasketClaimPreview",
   "AccountServingArtifact",
   "AccountPrometheusArtifact",
   "AccountStakeMovesArtifact",

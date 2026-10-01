@@ -259,6 +259,8 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_account_entities: { operation: "account-entities" },
   get_account_balance: { operation: "account-balance" },
   get_account_root_claim: { operation: "account-root-claim" },
+  get_root_baskets: { operation: "root-baskets" },
+  get_account_root_baskets: { operation: "account-root-baskets" },
   get_account_children: { operation: "account-children" },
   get_account_parents: { operation: "account-parents" },
   get_account_events: { operation: "account-events" },

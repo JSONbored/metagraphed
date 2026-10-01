@@ -1,3 +1,13 @@
+import {
+  GetRootBasketsInputSchema,
+  GetAccountRootBasketsInputSchema,
+  GetRootBasketsOutputSchema,
+} from "../schemas-src/mcp-tools/root-baskets.ts";
+import {
+  loadRootBaskets,
+  validateRootBasketPage,
+} from "./root-baskets-read.ts";
+import { networkKvKey as basketNetworkKey } from "./chain-network.ts";
 import { withRequestCounters } from "./request-counters.ts";
 import { requestTimings, withOperationTiming } from "./request-timing.ts";
 import { loadSubnetStatus } from "./subnet-status-read.ts";
@@ -4318,7 +4328,8 @@ function callerSuppliedArg(args: Row, name: string) {
   // `?window=` resolves to null and is not applied.
   if (args[name] === undefined || args[name] === null) return false;
   const defaulted = (args as Record<symbol, unknown>)[DEFAULTED_ARGS] as
-    Set<string> | undefined;
+    | Set<string>
+    | undefined;
   return !defaulted?.has(name);
 }
 
@@ -10343,7 +10354,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       )) as { ok?: boolean; data?: Record<string, unknown> } | null;
       const entities = artifact?.ok
         ? (artifact.data?.entities as
-            Array<Record<string, unknown>> | undefined)
+            | Array<Record<string, unknown>>
+            | undefined)
         : undefined;
       const wallets = subnetWalletRows(
         netuid,
@@ -10364,7 +10376,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // one would be stating a finding nobody made.
         attribution_search: await loadSweepRecord(
           readStore(ctx.env, ATTRIBUTION_SWEEP_TABLES) as
-            SweepStoreDb | undefined,
+            | SweepStoreDb
+            | undefined,
           netuid,
         ),
         field_sources: SUBNET_WALLETS_FIELD_SOURCES,
@@ -10558,7 +10571,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             ALL_SURFACES_ARTIFACT,
           );
           return allSurfaces?.surfaces as
-            Array<Record<string, unknown>> | undefined;
+            | Array<Record<string, unknown>>
+            | undefined;
         } catch {
           return null;
         }
@@ -11508,6 +11522,77 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           optionalEnum(args, "network", MCP_NETWORK_VALUES),
         ),
       );
+    },
+  },
+  {
+    name: "get_root_baskets",
+    title: "Read native Root baskets",
+    description:
+      "Read bounded finalized Root basket pricing, or one fund's holdings, baseline and trading status with hotkey=AccountId32 hex. Exact atomic quantities stay decimal strings. Reuse source.finalized_block_hash as as_of with next_after; empty pages may be nonterminal. Audited v469/API 5 only. Read-only; never submits trades or claims. Mirrors GET /api/v1/root-baskets.",
+    inputSchema: inputJsonSchema(GetRootBasketsInputSchema),
+    async handler(args, ctx) {
+      const parsed = GetRootBasketsInputSchema.safeParse(args);
+      if (!parsed.success)
+        throw toolError("invalid_params", parsed.error.message);
+      const { network: networkName, ...params } = parsed.data;
+      try {
+        validateRootBasketPage(params);
+      } catch (cause) {
+        throw toolError("invalid_params", (cause as Error).message);
+      }
+      const network = chainNetworkFromChainName(networkName);
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: basketNetworkKey(
+            `root-baskets:${ctx.clientIp ?? "anon"}`,
+            network,
+          ),
+        });
+        if (!success)
+          throw toolError(
+            "rate_limited",
+            "Too many live basket requests; slow down.",
+          );
+      }
+      return loadRootBaskets(params, network);
+    },
+  },
+  {
+    name: "get_account_root_baskets",
+    title: "Get native Root basket account positions",
+    description:
+      "Read native Root basket positions and dust-aware claim previews for at most 16 staking relationships. Reuse source.finalized_block_hash as as_of with next_offset to resume. Includes null entries for confirmed non-basket relationships; never silently drops positions above upstream's 256-relationship shortcut. Audited v469/API 5 only. Read-only; never claims or signs. Mirrors GET /api/v1/accounts/{ss58}/root-baskets.",
+    inputSchema: inputJsonSchema(GetAccountRootBasketsInputSchema),
+    async handler(args, ctx) {
+      const parsed = GetAccountRootBasketsInputSchema.safeParse(args);
+      if (!parsed.success)
+        throw toolError("invalid_params", parsed.error.message);
+      const { network: networkName, ss58, ...params } = parsed.data;
+      try {
+        validateRootBasketPage(params);
+      } catch (cause) {
+        throw toolError("invalid_params", (cause as Error).message);
+      }
+      if (!isFinneySs58Address(ss58))
+        throw toolError(
+          "invalid_params",
+          "ss58 must be a valid finney SS58 account.",
+        );
+      const network = chainNetworkFromChainName(networkName);
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: basketNetworkKey(
+            `root-baskets:${ctx.clientIp ?? "anon"}`,
+            network,
+          ),
+        });
+        if (!success)
+          throw toolError(
+            "rate_limited",
+            "Too many live basket requests; slow down.",
+          );
+      }
+      return loadRootBaskets(params, network, ss58);
     },
   },
   {
@@ -15678,6 +15763,8 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_account: () => outputJsonSchema(GetAccountOutputSchema),
   get_account_entities: () => outputJsonSchema(GetAccountEntitiesOutputSchema),
   get_account_balance: () => outputJsonSchema(GetAccountBalanceOutputSchema),
+  get_root_baskets: () => outputJsonSchema(GetRootBasketsOutputSchema),
+  get_account_root_baskets: () => outputJsonSchema(GetRootBasketsOutputSchema),
   get_account_root_claim: () =>
     outputJsonSchema(GetAccountRootClaimOutputSchema),
   get_account_children: () => outputJsonSchema(GetAccountChildrenOutputSchema),
