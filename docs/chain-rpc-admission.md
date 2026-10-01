@@ -48,3 +48,8 @@ functions, 300-second cache lifetime and 90-day retention value are retained,
 including compatibility
 exports. The real data-API module-graph regression rejects those six producer
 modules and retains its existing source-size limit.
+
+The checksum helper has one private caller. That caller verifies the 35-byte
+decoded length before invoking it; removing the duplicate, unreachable inner
+length check preserves the original address acceptance and fail-fast behavior.
+Malformed-length regressions exercise the retained public check.

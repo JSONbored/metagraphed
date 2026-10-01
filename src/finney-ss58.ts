@@ -39,7 +39,6 @@ function decodeBase58(value: string): Uint8Array | null {
 }
 
 function verifyFinneySs58Checksum(decoded: Uint8Array): boolean {
-  if (decoded.length !== FINNEY_SS58_DECODED_LENGTH) return false;
   const body = decoded.subarray(
     0,
     decoded.length - FINNEY_SS58_CHECKSUM_LENGTH,
