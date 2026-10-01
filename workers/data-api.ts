@@ -60,6 +60,7 @@ import {
   rowFromBatch,
   type TaoUsdIndexRow,
 } from "../src/tao-usd-ingest.ts";
+import { writeTaoUsdIndexD1 } from "../src/tao-usd-write-d1.ts";
 import { TABLE_FRESHNESS_CRON, TAO_USD_INDEX_CRON } from "./config.ts";
 import {
   buildConcentration,
@@ -9277,14 +9278,16 @@ export async function writeTaoUsdIndexRow(
   // PostgreSQL requires ctx to return its pooled connection through waitUntil.
   // Selected D1 uses its native binding and needs no deferred connection work.
   const d1 = selectedD1Store(env, ["tao_usd_index"]);
-  const sql = d1
-    ? { unsafe: d1.run }
-    : neonWriteRunner(
-        env,
-        ctx ?? null,
-        TAO_USD_INDEX_NEON_LANE,
-        env.HYPERDRIVE,
-      );
+  if (d1) {
+    await writeTaoUsdIndexD1(d1, row);
+    return { written: true };
+  }
+  const sql = neonWriteRunner(
+    env,
+    ctx ?? null,
+    TAO_USD_INDEX_NEON_LANE,
+    env.HYPERDRIVE,
+  );
   if (!sql) {
     return { written: false, skipped: true, reason: "no store bound" };
   }
