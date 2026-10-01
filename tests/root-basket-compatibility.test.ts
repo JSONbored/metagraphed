@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { z } from "zod";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import addFormatsPlugin from "ajv-formats";
 import {
   ROOT_BASKET_RUNTIME_ADAPTERS,
   rootBasketCapabilities,
@@ -14,6 +14,7 @@ import {
   openRootBasketRuntime,
 } from "../src/root-basket-runtime.ts";
 import { loadRootBaskets } from "../src/root-baskets-read.ts";
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 import { collectRootBasketObservation } from "../src/root-basket-observation.ts";
 import {
   decodeBasketSummaries,

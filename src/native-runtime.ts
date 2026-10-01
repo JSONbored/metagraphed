@@ -57,15 +57,38 @@ const READ_APIS = new Set([
   "TransactionPaymentApi",
   "TransactionPaymentCallApi",
 ]);
+// Audited against Subtensor v470's runtime implementations. These APIs mix
+// reads with block execution, unsigned submission or local keystore writes,
+// so admission is per method. Ethereum execution previews remain on the EVM
+// RPC surface; these methods expose its exact account and finalized results.
+const READ_API_METHODS: Readonly<Record<string, readonly string[]>> = {
+  Core: ["version"],
+  Metadata: ["metadata", "metadata_at_version", "metadata_versions"],
+  AuraApi: ["slot_duration", "authorities"],
+  BabeApi: [
+    "configuration", "current_epoch_start", "current_epoch", "next_epoch",
+    "generate_key_ownership_proof",
+  ],
+  GrandpaApi: [
+    "grandpa_authorities", "current_set_id", "generate_key_ownership_proof",
+  ],
+  SessionKeys: ["decode_session_keys"],
+  GenesisBuilder: ["get_preset", "preset_names"],
+  EthereumRuntimeRPCApi: [
+    "chain_id", "account_basic", "gas_price", "account_code_at", "author",
+    "storage_at", "current_transaction_statuses", "current_block",
+    "current_receipts", "current_all", "extrinsic_filter", "elasticity",
+    "gas_limit_multiplier_support",
+  ],
+  ConvertTransactionRuntimeApi: ["convert_transaction"],
+  ContractsApi: ["get_storage"],
+  ShieldApi: ["try_decode_shielded_tx", "is_shielded_using_current_key"],
+};
 function readApiMethod(api: string, member: string) {
   return (
     READ_APIS.has(api) ||
-    (api === "Core" && member === "version") ||
-    (api === "ContractsApi" && member === "get_storage") ||
-    (api === "ShieldApi" &&
-      ["try_decode_shielded_tx", "is_shielded_using_current_key"].includes(
-        member,
-      ))
+    (Object.hasOwn(READ_API_METHODS, api) &&
+      READ_API_METHODS[api]!.includes(member))
   );
 }
 
@@ -190,7 +213,7 @@ function plan(
       operation.offset + operation.limit,
     );
     for (const item of page) {
-      for (const key of ["key_type", "value_type"])
+      for (const key of ["key_type", "value_type"] as const)
         if (typeof item[key] === "number")
           contract(metadata, item[key], needed);
       for (const field of item.args ?? [])

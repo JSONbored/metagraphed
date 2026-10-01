@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearch } from "@tanstack/react-router";
+import { Route } from "./apis.native";
 import { DataTable, EntityHero, FactSentence, type DataTableColumn } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
@@ -35,7 +35,7 @@ const columns: DataTableColumn<NativeValueRow>[] = [
 /** User-initiated reads only. Remount on network/origin change, aborting the
  * previous request so its source and call bytes cannot cross partitions. */
 export function NativeRuntimeRoutePage() {
-  const search = useSearch({ from: "/apis/native" });
+  const search = Route.useSearch();
   return (
     <NativeRuntimePage initialNetuid={search.netuid || "19"} initialColdkey={search.coldkey} />
   );

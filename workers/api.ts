@@ -5756,7 +5756,9 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
     return handleNativeRuntime(
       request,
       env,
-      networkRoute.explicit ? networkRoute.network.id : undefined,
+      networkRoute.explicit
+        ? chainNetworkId(networkRoute.network.id)
+        : undefined,
     );
   }
 

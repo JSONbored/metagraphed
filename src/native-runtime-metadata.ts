@@ -86,7 +86,7 @@ export class NativeScaleReader {
     return read();
   }
   text() {
-    return new TextDecoder("utf-8", { fatal: true }).decode(
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
       this.take(this.count(NATIVE_RUNTIME_LIMITS.text)),
     );
   }

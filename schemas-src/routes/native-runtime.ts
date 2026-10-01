@@ -53,7 +53,10 @@ export const NativePortableTypeSchema = z
   })
   .strict();
 const common = { pallet: name, member: name };
-const args = z.array(z.json()).max(64).default([]);
+// One named recursive value contract keeps OpenAPI references anchored to a
+// real component instead of Zod's anonymous __shared definitions container.
+export const NativeJsonValueSchema = z.json();
+const args = z.array(NativeJsonValueSchema).max(64).default([]);
 export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("storage"), ...common, args }).strict(),
   z
@@ -149,12 +152,12 @@ export const NativeRuntimeArtifactSchema = z
               .regex(/^0x(?:[0-9a-f]{2})*$/)
               .optional(),
             is_default: z.boolean().optional(),
-            value: z.json().optional(),
+            value: NativeJsonValueSchema.optional(),
             call_data: z
               .string()
               .regex(/^0x(?:[0-9a-f]{2})+$/)
               .optional(),
-            contract: z.json(),
+            contract: NativeJsonValueSchema,
           })
           .strict(),
       )

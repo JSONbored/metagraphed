@@ -78,7 +78,7 @@ for (const [specVersion, decoderVersion] of [
       BASKET_FIXTURE_HOTKEY,
     );
     assert.equal(
-      (await runtime.summary(BASKET_FIXTURE_HOTKEY)).shares_atomic,
+      (await runtime.summary(BASKET_FIXTURE_HOTKEY))!.shares_atomic,
       "17",
     );
     assert.equal(

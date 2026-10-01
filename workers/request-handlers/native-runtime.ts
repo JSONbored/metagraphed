@@ -29,7 +29,7 @@ export async function handleNativeRuntime(
       "Native runtime parameters belong in the JSON request body.",
       400,
     );
-  let input;
+  let input: Parameters<typeof readNativeRuntime>[0];
   try {
     input = NativeRuntimeRequestSchema.parse(
       await boundedInternalJson(request, 32_768),

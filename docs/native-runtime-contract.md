@@ -62,7 +62,12 @@ without that source. All seven Substrate storage hashers are supported.
 
 `constant` reads a declared pallet constant. `runtime` invokes a metadata-declared
 method in an audited read API family. Node-internal block execution and keystore
-generation are excluded. `prepare` encodes a native method from its declared
+generation are excluded. Consensus authorities, epoch state and ownership proofs,
+session-key decoding, genesis presets, and EVM accounts, code, storage and finalized
+receipts are available through individually audited methods from the
+[v470 runtime implementation](https://github.com/RaoFoundation/subtensor/blob/923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d/runtime/src/lib.rs).
+Mixed API families do not admit new methods implicitly. EVM execution previews use
+the existing EVM RPC surface. `prepare` encodes a native method from its declared
 argument types, including runtime-specific enum and composite arguments. It
 returns method bytes and signed-extension types for explicit wallet review;
 these are distinct from a signed extrinsic. No server-side signature or

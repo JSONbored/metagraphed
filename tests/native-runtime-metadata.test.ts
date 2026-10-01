@@ -25,6 +25,14 @@ import {
 function bare(value: string) {
   return value.startsWith("0x6d657461") ? value : unwrapNativeMetadata(value)!;
 }
+test("native SCALE strings preserve an initial Unicode BOM as data", () => {
+  const text = "\uFEFFnative";
+  const bytes = Buffer.from(text, "utf8");
+  const reader = new NativeScaleReader(nativeHex(Buffer.concat([
+    nativeCompact(BigInt(bytes.length)), bytes,
+  ])));
+  assert.equal(reader.finish(reader.text()), text);
+});
 for (const [version, fixture] of [
   [14, metadata14],
   [15, metadata15],
@@ -33,7 +41,7 @@ for (const [version, fixture] of [
     const hex = bare(fixture);
     const ours = decodeNativeMetadata(hex);
     const registry = new TypeRegistry();
-    const reference = new Metadata(registry, hex);
+    const reference = new Metadata(registry, Buffer.from(hex.slice(2), "hex"));
     registry.setMetadata(reference);
     assert.equal(ours.version, version);
     assert.equal(ours.types.size, reference.asLatest.lookup.types.length);
@@ -238,7 +246,6 @@ test("malformed, ambiguous, oversized and recursive values are rejected", () => 
   ] as [number, NativeValue][])
     assert.throws(
       () => encodeNativeValue(meta, id, value),
-      undefined,
       `${id}:${typeof value}`,
     );
   let recursive: NativeValue = [];
