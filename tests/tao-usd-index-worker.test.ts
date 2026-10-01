@@ -165,6 +165,49 @@ describe("writeTaoUsdIndexRow", () => {
     response: LIVE_BATCH,
   })!;
 
+  it("uses the selected native D1 writer without opening Neon or requiring deferred connection work", async () => {
+    const batch = vi.fn(async (statements: unknown[]) =>
+      statements.map(() => ({
+        meta: { changes: 1, duration: 0 },
+        results: [],
+        success: true,
+      })),
+    );
+    const d1Env = {
+      ...env,
+      D1_STATE_TABLES: "tao_usd_index",
+      D1_EXPORT_REVISIONS: "enabled",
+      D1_STATE: {
+        prepare: (text: string) => ({
+          bind: (...values: unknown[]) => ({ text, values }),
+        }),
+        batch,
+      },
+    } as unknown as typeof env;
+    await expect(writeTaoUsdIndexRow(d1Env, row)).resolves.toEqual({
+      written: true,
+    });
+    expect(sqlCalls).toHaveLength(0);
+    expect(batch).toHaveBeenCalledTimes(1);
+    const statements = batch.mock.calls[0]![0] as {
+      text: string;
+      values: unknown[];
+    }[];
+    expect(statements[0]!.text).toContain("INSERT INTO tao_usd_index");
+    expect(statements[0]!.values).toEqual([
+      row.block_number,
+      row.observed_at,
+      row.usd_per_tao,
+      row.price_basis,
+      row.eth_usd,
+      row.pool_count,
+      JSON.stringify(row.pools),
+    ]);
+    expect(statements[1]!.text).toContain(
+      "INSERT INTO archive_export_revisions",
+    );
+  });
+
   it("writes the provenance as JSON text into the pools column", () => {
     // The `pools` column is TEXT holding JSON -- the writer stringifies, and
     // the bound value must be the parseable JSON text itself.
