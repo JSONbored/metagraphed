@@ -15799,7 +15799,8 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_feed: () => GET_FEED_OUTPUT_SCHEMA,
   get_build: () => GET_BUILD_OUTPUT_SCHEMA,
   get_self_health: () => GET_SELF_HEALTH_OUTPUT_SCHEMA,
-  [MCP_MISSING_CAPABILITY_TOOL]: () => outputJsonSchema(GetMoreToolsOutputSchema),
+  [MCP_MISSING_CAPABILITY_TOOL]: () =>
+    outputJsonSchema(GetMoreToolsOutputSchema),
   get_adapter: () => GET_ADAPTER_OUTPUT_SCHEMA,
   get_agent_catalog: () => outputJsonSchema(GetAgentCatalogOutputSchema),
   get_agent_resources: () => GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
