@@ -8325,22 +8325,22 @@
             "data": {
               "kind": "directory",
               "limit": 1,
-              "next_after": "example",
+              "next_after": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
               "pricing": [
                 {
-                  "bag_index_q64_bits": "example",
-                  "display_price_q64_bits": "example",
-                  "display_shares_q64_bits": "example",
-                  "first_block": "example",
-                  "hotkey": "example",
-                  "pending_entitlement_q64_bits": "example",
+                  "bag_index_q64_bits": "1000",
+                  "display_price_q64_bits": "1000",
+                  "display_shares_q64_bits": "1000",
+                  "first_block": "1000",
+                  "hotkey": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                  "pending_entitlement_q64_bits": "1000",
                   "provisional": false,
-                  "raw_spot_price_q64_bits": "example",
-                  "shares_atomic": "example",
-                  "spot_nav_rao": "example",
-                  "stake_index_q64_bits": "example",
-                  "stake_price_q64_bits": "example",
-                  "staker_twr_q64_bits": "example"
+                  "raw_spot_price_q64_bits": "1000",
+                  "shares_atomic": "1000",
+                  "spot_nav_rao": "1000",
+                  "stake_index_q64_bits": "1000",
+                  "stake_price_q64_bits": "1000",
+                  "staker_twr_q64_bits": "1000"
                 }
               ]
             },
@@ -8348,11 +8348,11 @@
             "schema_version": 1,
             "source": {
               "decoder_version": "subtensor-v469-370bac46-v1",
-              "finalized_block": "example",
-              "finalized_block_hash": "example",
-              "metadata_sha256": "example",
+              "finalized_block": "1000",
+              "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
               "network": "finney",
-              "network_genesis_hash": "example",
+              "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
               "runtime_api_version": 5,
               "runtime_spec_version": 469
             },
