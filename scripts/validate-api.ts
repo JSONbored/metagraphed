@@ -23,7 +23,7 @@ import { taoToRao } from "../src/emission-decomposition.ts";
 import {} from "../workers/request-params.ts";
 import { apiEnv } from "./lib/worker-env.ts";
 import { addAjvFormats } from "./lib/ajv-formats.ts";
-import { basketRuntimeFixture } from "../tests/fixtures/root-basket-runtime.ts";
+import { withBasketRuntimeFixture } from "../tests/fixtures/root-basket-runtime.ts";
 
 // OpenAPI document + Worker response bodies are dynamic JSON read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
@@ -3073,26 +3073,9 @@ assert.equal(
 async function checkedRequest(request: Request) {
   if (!new URL(request.url).pathname.endsWith("/root-baskets"))
     return handleRequest(request, apiEnv(env), {});
-  const previousFetch = globalThis.fetch;
-  const fixture = basketRuntimeFixture();
-  globalThis.fetch = async (_input, init) => {
-    const body = JSON.parse(String(init?.body));
-    const answer = async (row: {
-      id: number;
-      method: string;
-      params: unknown[];
-    }) => ({ id: row.id, result: await fixture.rpc(row.method, row.params) });
-    return Response.json(
-      Array.isArray(body)
-        ? await Promise.all(body.map(answer))
-        : await answer(body),
-    );
-  };
-  try {
-    return await handleRequest(request, apiEnv(env), {});
-  } finally {
-    globalThis.fetch = previousFetch;
-  }
+  return withBasketRuntimeFixture(() =>
+    handleRequest(request, apiEnv(env), {}),
+  );
 }
 
 for (const [route, assertion, options = {}] of checks) {

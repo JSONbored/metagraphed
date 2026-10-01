@@ -99,3 +99,27 @@ export function basketRuntimeFixture(overrides: Record<string, unknown> = {}) {
   };
   return { rpc, calls };
 }
+
+/** Scope sequential contract-validator RPC reads to the independent fixture. */
+export async function withBasketRuntimeFixture<T>(action: () => Promise<T>) {
+  const previousFetch = globalThis.fetch;
+  const fixture = basketRuntimeFixture();
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body));
+    const answer = async (row: {
+      id: number;
+      method: string;
+      params: unknown[];
+    }) => ({ id: row.id, result: await fixture.rpc(row.method, row.params) });
+    return Response.json(
+      Array.isArray(body)
+        ? await Promise.all(body.map(answer))
+        : await answer(body),
+    );
+  };
+  try {
+    return await action();
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+}

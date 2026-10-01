@@ -2,8 +2,8 @@ import { z } from "zod";
 import {
   RootBasketsQuerySchema,
   AccountRootBasketsQuerySchema,
-  RootBasketsArtifactSchema,
-} from "../schemas-src/routes/root-baskets.ts";
+} from "../schemas-src/route-queries.ts";
+import { RootBasketsArtifactSchema } from "../schemas-src/routes/root-baskets.ts";
 import { ROOT_BASKET_READ_LIMITS } from "../schemas-src/root-basket-runtime.ts";
 import {
   DEFAULT_CHAIN_NETWORK,

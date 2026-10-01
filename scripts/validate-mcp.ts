@@ -6,6 +6,10 @@
 // MCP endpoint is not artifact-backed and must not enter the
 // `checks.length === API_ROUTES.length` invariant.
 import assert from "node:assert/strict";
+import {
+  withBasketRuntimeFixture,
+  BASKET_FIXTURE_WIDE,
+} from "../tests/fixtures/root-basket-runtime.ts";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
@@ -225,12 +229,16 @@ async function getJson(path: string): Promise<Row> {
 }
 
 async function call(name: string, args: unknown): Promise<Row> {
-  const res = await mcp({
+  const payload = {
     jsonrpc: "2.0",
     id: 1,
     method: "tools/call",
     params: { name, arguments: args },
-  });
+  };
+  const res =
+    name === "get_root_baskets" || name === "get_account_root_baskets"
+      ? await withBasketRuntimeFixture(() => mcp(payload))
+      : await mcp(payload);
   assert.equal(res.status, 200, `${name}: expected HTTP 200`);
   const result = res.body?.result;
   assert.ok(result, `${name}: missing JSON-RPC result`);
@@ -1319,6 +1327,16 @@ assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
 // Account tools are store-backed too; the cold env degrades each to its
 // schema-stable empty payload (validated against the declared outputSchema).
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const basketDirectory = await callOk("get_root_baskets", {});
+assert.equal(basketDirectory.status, "available");
+assert.equal(basketDirectory.data.kind, "directory");
+assert.equal(basketDirectory.data.pricing[0].spot_nav_rao, BASKET_FIXTURE_WIDE);
+const basketAccount = await callOk("get_account_root_baskets", { ss58: SS58 });
+assert.equal(basketAccount.status, "available");
+assert.equal(basketAccount.data.kind, "account");
+assert.equal(basketAccount.data.entries.length, 1);
+assert.ok(basketAccount.data.entries[0].position);
+assert.ok(basketAccount.data.entries[0].claim);
 const account = await callOk("get_account", { ss58: SS58 });
 assert.ok(
   Array.isArray(account.registrations) && Array.isArray(account.recent_events),

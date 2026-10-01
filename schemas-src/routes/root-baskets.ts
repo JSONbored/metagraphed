@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { BittensorNetworkSchema } from "../shared.ts";
-import { limitSchema } from "../query-params.ts";
 import { RootBasketCaptureSchema } from "../root-basket-capture.ts";
 import {
   ROOT_BASKET_READ_LIMITS,
@@ -13,47 +12,6 @@ import {
 } from "../root-basket-runtime.ts";
 
 const account = RootBasketCaptureSchema.shape.funds.element.shape.hotkey;
-const asOf = RootBasketSourceSchema.shape.finalized_block_hash
-  .optional()
-  .describe(
-    "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
-  )
-  .meta({ examples: [`0x${"11".repeat(32)}`] });
-export const RootBasketsQuerySchema = z.object({
-  hotkey: account
-    .optional()
-    .describe(
-      "Optional AccountId32 hex fund key; selects one fund's detail instead of directory pricing.",
-    )
-    .meta({ examples: [`0x${"22".repeat(32)}`] }),
-  cursor: account
-    .optional()
-    .describe(
-      "Opaque upstream AccountId32 continuation. Pass it back verbatim with as_of. Empty pricing pages can still carry this cursor.",
-    )
-    .meta({ examples: [`0x${"22".repeat(32)}`] }),
-  as_of: asOf,
-  limit: limitSchema(
-    ROOT_BASKET_READ_LIMITS.page,
-    ROOT_BASKET_READ_LIMITS.page,
-  ).optional(),
-});
-export const AccountRootBasketsQuerySchema = z.object({
-  as_of: asOf,
-  offset: z
-    .int()
-    .min(0)
-    .max(ROOT_BASKET_READ_LIMITS.relationships)
-    .optional()
-    .describe(
-      "Relationship offset at the pinned block, default 0. Includes confirmed non-basket relationships so no position is silently skipped.",
-    )
-    .meta({ examples: [16] }),
-  limit: limitSchema(
-    ROOT_BASKET_READ_LIMITS.accountPage,
-    ROOT_BASKET_READ_LIMITS.accountPage,
-  ).optional(),
-});
 export const RootBasketBaselineSchema = z.lazy(
   () => RootBasketCaptureSchema.shape.funds.element.shape.baseline,
 );
