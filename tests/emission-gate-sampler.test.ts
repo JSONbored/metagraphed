@@ -399,16 +399,19 @@ describe("sampleEmissionGate", () => {
     assert.deepEqual(sample.current_ema, [[7, null]]);
   });
 
-  test("a null or page-less batch result degrades rather than throwing", async () => {
+  test("an unavailable or malformed batch cannot masquerade as unset storage", async () => {
     for (const result of [null, [], [{}]]) {
       const { impl } = rpcFetch((m, p) =>
         m === "state_queryStorageAt" ? result : healthyAnswer(m, p),
       );
-      const sample = await sampleEmissionGate({
-        rpcUrl: "https://rpc.test",
-        fetchImpl: impl,
-      });
-      assert.equal(sample.current.emission_gate_bar, null);
+      await assert.rejects(
+        () =>
+          sampleEmissionGate({
+            rpcUrl: "https://rpc.test",
+            fetchImpl: impl,
+          }),
+        /state_queryStorageAt:/,
+      );
     }
   });
 
@@ -427,6 +430,130 @@ describe("sampleEmissionGate", () => {
 });
 
 describe("rotating the archive pool", () => {
+  test("a consistency restart discards every field of the earlier pinned sample", async () => {
+    const secondHash = "0x" + "bc".repeat(32);
+    const urls = ["https://primary.test", "https://secondary.test"];
+    const calls: {
+      url: string;
+      attempt: number;
+      method: string;
+      params: unknown[];
+    }[] = [];
+    const attempts = new Map<string, number>();
+    let waits = 0;
+    const impl = (async (url, init) => {
+      const href = String(url);
+      const { method, params } = JSON.parse(String(init?.body)) as RpcCall;
+      if (method === "chain_getFinalizedHead")
+        attempts.set(href, (attempts.get(href) ?? 0) + 1);
+      const attempt = attempts.get(href)!;
+      calls.push({ url: href, attempt, method, params });
+      if (href === urls[1] && method === "chain_getHeader")
+        return new Response(JSON.stringify({ result: null }));
+      if (
+        href === urls[0] &&
+        attempt === 1 &&
+        method === "state_getKeysPaged"
+      ) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              message: "UnknownBlock: Header was not found in the database",
+            },
+          }),
+        );
+      }
+      let result = healthyAnswer(method, params);
+      if (method === "chain_getFinalizedHead" && attempt === 2)
+        result = secondHash;
+      if (method === "chain_getHeader" && attempt === 2)
+        result = { number: "0x85a1c9" };
+      if (method === "state_queryStorageAt") {
+        const bar =
+          "0x" +
+          "00".repeat(8) +
+          (attempt === 1 ? "01" : "02") +
+          "00".repeat(7);
+        result = answerWith({ [EMISSION_GATE_BAR_STORAGE_KEY]: bar })(
+          method,
+          params,
+        );
+      }
+      return new Response(JSON.stringify({ result }));
+    }) as typeof fetch;
+    const sample = await sampleEmissionGateWithFailover({
+      urls,
+      offset: 0,
+      fetchImpl: impl,
+      now: () => 123,
+      waitForRetry: async () => {
+        waits++;
+      },
+    });
+    assert.equal(waits, 1);
+    assert.equal(sample.block_number, 0x85a1c9);
+    assert.equal(
+      sample.current.emission_gate_bar,
+      2,
+      "the earlier block's bar must not survive",
+    );
+    assert.deepEqual(sample.current_enabled, [[7, false]]);
+    assert.deepEqual(sample.current_ema, [[7, null]]);
+    assert.deepEqual(
+      sample.flow_observations.map((o) => o.item),
+      Object.keys(FLOW_PARAM_ITEMS),
+    );
+    const restarted = calls.filter((c) => c.url === urls[0] && c.attempt === 2);
+    assert.equal(restarted[0]?.method, "chain_getFinalizedHead");
+    assert.deepEqual(restarted[1]?.params, [secondHash]);
+    for (const call of restarted.filter((c) => c.method.startsWith("state_"))) {
+      assert.equal(
+        call.params[call.method === "state_getKeysPaged" ? 3 : 1],
+        secondHash,
+      );
+    }
+  });
+
+  test("persistent null headers exhaust a bounded whole-sample budget without reading storage", async () => {
+    const methods: string[] = [];
+    await assert.rejects(
+      () =>
+        sampleEmissionGateWithFailover({
+          urls: ["https://primary.test", "https://secondary.test"],
+          waitForRetry: async () => {},
+          fetchImpl: (async (_url, init) => {
+            const { method } = JSON.parse(String(init?.body));
+            methods.push(method);
+            return new Response(
+              JSON.stringify({
+                result:
+                  method === "chain_getFinalizedHead" ? FINALIZED_HASH : null,
+              }),
+            );
+          }) as typeof fetch,
+        }),
+      /chain_getHeader: pinned block unavailable/,
+    );
+    assert.equal(methods.filter((m) => m === "chain_getHeader").length, 4);
+    assert.ok(methods.every((m) => !m.startsWith("state_")));
+  });
+
+  test("an invalid finalized hash never reaches the header or a retry", async () => {
+    let calls = 0;
+    await assert.rejects(
+      () =>
+        sampleEmissionGateWithFailover({
+          urls: ["https://rpc.test"],
+          fetchImpl: (async () => {
+            calls++;
+            return new Response(JSON.stringify({ result: null }));
+          }) as typeof fetch,
+        }),
+      /chain_getFinalizedHead: response was not a block hash/,
+    );
+    assert.equal(calls, 1);
+  });
+
   test("both declared endpoints serve ARCHIVE state", () => {
     // The lite and entrypoint endpoints prune, and a pruned node cannot answer
     // a finalized-block read that is more than a few blocks old.
