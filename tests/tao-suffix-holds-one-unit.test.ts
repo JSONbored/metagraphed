@@ -133,7 +133,7 @@ describe("the `_tao` suffix means one unit within a payload (#10514)", () => {
   test("the scan resolves $ref, not just inline shapes", () => {
     // Every real payload nests through a $ref. A scanner that only walked
     // inline objects would report NOTHING and look exactly like a clean spec.
-    const name = Object.keys(components)[0]!;
+    const name = "AccountBalanceArtifact";
     assert.ok(
       Object.keys(properties({ $ref: `#/components/schemas/${name}` })).length >
         0,

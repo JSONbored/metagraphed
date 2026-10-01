@@ -1238,6 +1238,9 @@ var QUERY_PARAMETER_ENUMS = {
   "/api/v1/{network}/extrinsics/{hash}": {
     "network": ["finney", "mainnet", "test", "testnet"]
   },
+  "/api/v1/{network}/native-runtime": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
   "/api/v1/{network}/network/parameters": {
     "network": ["finney", "mainnet", "test", "testnet"]
   },

@@ -1,4 +1,4 @@
-import {handleNativeRuntime} from "./request-handlers/native-runtime.ts";
+import { handleNativeRuntime } from "./request-handlers/native-runtime.ts";
 import { handleRootBaskets } from "./request-handlers/root-baskets.ts";
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
@@ -5745,6 +5745,11 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
     );
   }
 
+  if (networkRoute.url.pathname === "/api/v1/native-runtime") {
+    if (networkRoute.network.id === "local") return errorResponse("network_unavailable", "Local chain data is not hosted by Metagraphed.", 404, { network: "local" });
+    return handleNativeRuntime(request, env, networkRoute.explicit ? networkRoute.network.id : undefined);
+  }
+
   if (networkRoute.explicit) {
     if (networkRoute.network.isDefault) {
       url = networkRoute.url;
@@ -5903,8 +5908,6 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       executionCtx: ctx,
     });
   }
-
-  if(url.pathname === "/api/v1/native-runtime") return handleNativeRuntime(request,env);
 
   // Grounded RAG answer endpoint (POST). Runs before the read-only method gate
   // and degrades to 503 when the AI bindings/kill-switch are absent.
@@ -10983,6 +10986,8 @@ function allowedMethodsForPath(pathname: string): string {
   if (url.pathname === A2A_ENDPOINT_PATH) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/rpc/")) {
+    methods = "POST, OPTIONS";
+  } else if (resolveNetworkPrefix(new URL(url.pathname, "https://api.metagraph.sh")).url.pathname === "/api/v1/native-runtime") {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";

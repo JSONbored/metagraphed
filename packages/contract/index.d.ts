@@ -676,6 +676,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/{network}/native-runtime": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Network-scoped form of /api/v1/native-runtime — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
+    post: operations["nativeRuntimeByNetwork"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/{network}/network/parameters": {
     parameters: {
       query?: never;
@@ -1185,7 +1202,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Read native basket positions and dust-aware claim previews for at most 16 staking relationships at one finalized block. Reuse source.finalized_block_hash as as_of with next_offset to resume. Confirmed non-basket relationships retain null position/claim; a small returned portfolio is never treated as proof of completeness. Audited v469/API 5 only, read-only. */
+    /** @description Read native basket positions and dust-aware claim previews for at most 16 staking relationships at one finalized block. Reuse source.finalized_block_hash as as_of with next_offset to resume. Confirmed non-basket relationships retain null position/claim; a small returned portfolio is never treated as proof of completeness. Audited official releases v441–v470; account entitlements, beta positions and claim previews follow their actual API generation. Read-only. */
     get: operations["accountRootBaskets"];
     put?: never;
     post?: never;
@@ -3449,6 +3466,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/native-runtime": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata. Up to 16 operations share one source. Descriptions are paginated; exact integers are decimal strings and byte vectors are hex. Returned type identities cover the requested values once per batch. Call method bytes require an explicit wallet signature before execution. No transaction is submitted. */
+    post: operations["nativeRuntime"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/network/parameters": {
     parameters: {
       query?: never;
@@ -3762,7 +3796,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex. Exact atomic values remain strings. Reuse source.finalized_block_hash as as_of when following next_after; an empty page with a cursor is nonterminal. Audited v469/API 5 only; unsupported and unavailable states contain no data. Read-only, no trade or claim submission. */
+    /** @description Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex. Exact atomic values remain strings. Reuse source.finalized_block_hash as as_of when following next_after; an empty page with a cursor is nonterminal. Audited official releases v441–v470; API-1 directories contain exact summaries and weights. Unsupported and unavailable states contain no data. Read-only, no trade or claim submission. */
     get: operations["rootBaskets"];
     put?: never;
     post?: never;
@@ -5367,6 +5401,37 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    __shared: {
+      $defs: {
+        schema0:
+          | string
+          | number
+          | boolean
+          | null
+          | components["schemas"]["__shared"][]
+          | {
+              [key: string]: components["schemas"]["__shared"];
+            };
+        schema1:
+          | string
+          | number
+          | boolean
+          | null
+          | components["schemas"]["__shared"][]
+          | {
+              [key: string]: components["schemas"]["__shared"];
+            };
+        schema2:
+          | string
+          | number
+          | boolean
+          | null
+          | components["schemas"]["__shared"][]
+          | {
+              [key: string]: components["schemas"]["__shared"];
+            };
+      };
+    };
     AccountAxonRemovalsArtifact: {
       address: string;
       concentration: number | null;
@@ -9780,6 +9845,146 @@ export interface components {
       source_network: string;
       target_network: string;
       testnet_only_count?: number;
+    };
+    NativeDefinition:
+      | {
+          fields: components["schemas"]["NativeField"][];
+          /** @constant */
+          kind: "composite";
+        }
+      | {
+          /** @constant */
+          kind: "variant";
+          variants: components["schemas"]["NativeVariant"][];
+        }
+      | {
+          /** @constant */
+          kind: "sequence";
+          type: number;
+        }
+      | {
+          /** @constant */
+          kind: "array";
+          length: number;
+          type: number;
+        }
+      | {
+          /** @constant */
+          kind: "tuple";
+          types: number[];
+        }
+      | {
+          /** @constant */
+          kind: "primitive";
+          primitive: number;
+        }
+      | {
+          /** @constant */
+          kind: "compact";
+          type: number;
+        }
+      | {
+          /** @constant */
+          kind: "bits";
+          order: number;
+          store: number;
+        };
+    NativeField: {
+      name: string | null;
+      type: number;
+    };
+    NativePortableType: {
+      definition: components["schemas"]["NativeDefinition"];
+      id: number;
+      path: string[];
+    };
+    /** @description Native results decoded and encoded against this finalized block's portable metadata, including newly introduced fields and operations. contract carries the relevant runtime type identities. Raw fixed-point values retain their bits. Prepared call_data is the method bytes only, not a signed extrinsic or an execution receipt. This read does not establish retained history coverage. */
+    NativeRuntimeArtifact: {
+      results: {
+        api?: string;
+        call_data?: string;
+        contract: components["schemas"]["__shared"];
+        is_default?: boolean;
+        /** @enum {string} */
+        kind: "storage" | "constant" | "runtime" | "prepare" | "describe";
+        member?: string;
+        pallet?: string;
+        storage_key?: string;
+        value?: components["schemas"]["__shared"];
+      }[];
+      /** @constant */
+      schema_version: 1;
+      source: components["schemas"]["NativeRuntimeSource"];
+      types: components["schemas"]["NativePortableType"][];
+    };
+    NativeRuntimeOperation:
+      | {
+          /** @default [] */
+          args: components["schemas"]["__shared"][];
+          /** @constant */
+          kind: "storage";
+          member: string;
+          pallet: string;
+        }
+      | {
+          /** @constant */
+          kind: "constant";
+          member: string;
+          pallet: string;
+        }
+      | {
+          api: string;
+          /** @default [] */
+          args: components["schemas"]["__shared"][];
+          /** @constant */
+          kind: "runtime";
+          member: string;
+        }
+      | {
+          /** @default [] */
+          args: components["schemas"]["__shared"][];
+          /** @constant */
+          kind: "prepare";
+          member: string;
+          pallet: string;
+        }
+      | {
+          api?: string;
+          /** @constant */
+          kind: "describe";
+          /** @default 32 */
+          limit: number;
+          /** @default 0 */
+          offset: number;
+          pallet?: string;
+          type_id?: number;
+        };
+    /** @description Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. All operations share one finalized source. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or state mutation occurs. */
+    NativeRuntimeRequest: {
+      as_of?: string;
+      /**
+       * @description Which Bittensor chain to read: `finney` is mainnet (the default when omitted), `test` is testnet. They are separate chains — a netuid on one is unrelated to the same netuid on the other.
+       * @example finney
+       * @enum {string}
+       */
+      network?: "finney" | "test";
+      operations: components["schemas"]["NativeRuntimeOperation"][];
+    };
+    NativeRuntimeSource: {
+      finalized_block: string;
+      finalized_block_hash: string;
+      metadata_sha256: string;
+      /** @enum {number} */
+      metadata_version: 14 | 15;
+      network: components["schemas"]["BittensorNetwork"];
+      network_genesis_hash: string;
+      runtime_spec_version: number;
+      runtime_transaction_version: number;
+    };
+    NativeVariant: {
+      fields: components["schemas"]["NativeField"][];
+      index: number;
+      name: string;
     };
     NetworkCapabilitiesArtifact: {
       default_network: string;
@@ -20951,6 +21156,146 @@ export interface operations {
       };
       /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
       402: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Artifact or API route was not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description HTTP method is not supported. */
+      405: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unexpected backend error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  nativeRuntimeByNetwork: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+        network: "finney" | "mainnet" | "test" | "testnet";
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NativeRuntimeRequest"];
+      };
+    };
+    responses: {
+      /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+      200: {
+        headers: {
+          "cache-control": components["headers"]["CacheControl"];
+          etag: components["headers"]["ETag"];
+          "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "data": {
+           *         "results": [
+           *           {
+           *             "contract": null,
+           *             "kind": "storage"
+           *           }
+           *         ],
+           *         "schema_version": 1,
+           *         "source": {
+           *           "finalized_block": "1000",
+           *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+           *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+           *           "metadata_version": 14,
+           *           "network": "finney",
+           *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+           *           "runtime_spec_version": 1,
+           *           "runtime_transaction_version": 1
+           *         },
+           *         "types": [
+           *           {
+           *             "definition": {
+           *               "fields": [
+           *                 {
+           *                   "name": "Example Subnet",
+           *                   "type": 1
+           *                 }
+           *               ],
+           *               "kind": "composite"
+           *             },
+           *             "id": 1,
+           *             "path": [
+           *               "example"
+           *             ]
+           *           }
+           *         ]
+           *       },
+           *       "meta": {
+           *         "artifact_path": "example",
+           *         "cache": "short",
+           *         "contract_version": "2026-06-29.1",
+           *         "generated_at": "2026-06-01T00:00:00.000Z",
+           *         "observed_through": "2026-06-01T00:00:00.000Z",
+           *         "pagination": {
+           *           "collection": "example",
+           *           "cursor": 1,
+           *           "limit": 1,
+           *           "next_cursor": 1,
+           *           "order": "asc",
+           *           "returned": 1,
+           *           "sort": "example",
+           *           "total": 1
+           *         },
+           *         "published_at": "2026-06-01T00:00:00.000Z",
+           *         "source": "live-cron-prober",
+           *         "stale_contract": {
+           *           "built_under": "example",
+           *           "live": "example"
+           *         }
+           *       },
+           *       "ok": true,
+           *       "schema_version": 1
+           *     }
+           */
+          "application/json": components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["NativeRuntimeArtifact"];
+          };
+        };
+      };
+      /** @description ETag matched and the cached response is still valid. */
+      304: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Query parameters were malformed or unsupported. */
+      400: {
         headers: {
           [name: string]: unknown;
         };
@@ -39913,6 +40258,143 @@ export interface operations {
            */
           "application/json": components["schemas"]["SuccessEnvelope"] & {
             data?: components["schemas"]["LineageArtifact"];
+          };
+        };
+      };
+      /** @description ETag matched and the cached response is still valid. */
+      304: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Query parameters were malformed or unsupported. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Artifact or API route was not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description HTTP method is not supported. */
+      405: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unexpected backend error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  nativeRuntime: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NativeRuntimeRequest"];
+      };
+    };
+    responses: {
+      /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+      200: {
+        headers: {
+          "cache-control": components["headers"]["CacheControl"];
+          etag: components["headers"]["ETag"];
+          "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "data": {
+           *         "results": [
+           *           {
+           *             "contract": null,
+           *             "kind": "storage"
+           *           }
+           *         ],
+           *         "schema_version": 1,
+           *         "source": {
+           *           "finalized_block": "1000",
+           *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+           *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+           *           "metadata_version": 14,
+           *           "network": "finney",
+           *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+           *           "runtime_spec_version": 1,
+           *           "runtime_transaction_version": 1
+           *         },
+           *         "types": [
+           *           {
+           *             "definition": {
+           *               "fields": [
+           *                 {
+           *                   "name": "Example Subnet",
+           *                   "type": 1
+           *                 }
+           *               ],
+           *               "kind": "composite"
+           *             },
+           *             "id": 1,
+           *             "path": [
+           *               "example"
+           *             ]
+           *           }
+           *         ]
+           *       },
+           *       "meta": {
+           *         "artifact_path": "example",
+           *         "cache": "short",
+           *         "contract_version": "2026-06-29.1",
+           *         "generated_at": "2026-06-01T00:00:00.000Z",
+           *         "observed_through": "2026-06-01T00:00:00.000Z",
+           *         "pagination": {
+           *           "collection": "example",
+           *           "cursor": 1,
+           *           "limit": 1,
+           *           "next_cursor": 1,
+           *           "order": "asc",
+           *           "returned": 1,
+           *           "sort": "example",
+           *           "total": 1
+           *         },
+           *         "published_at": "2026-06-01T00:00:00.000Z",
+           *         "source": "live-cron-prober",
+           *         "stale_contract": {
+           *           "built_under": "example",
+           *           "live": "example"
+           *         }
+           *       },
+           *       "ok": true,
+           *       "schema_version": 1
+           *     }
+           */
+          "application/json": components["schemas"]["SuccessEnvelope"] & {
+            data?: components["schemas"]["NativeRuntimeArtifact"];
           };
         };
       };

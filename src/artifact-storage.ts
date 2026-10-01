@@ -249,6 +249,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Live root-claim current state (#7229): computed from RPC at request time,
   // never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/root-claim\.json$/,
+  /^native-runtime\.json$/,
   /^root-baskets\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/root-baskets\.json$/,
   // Live child-hotkey delegation graph (#6723): computed from RPC at request

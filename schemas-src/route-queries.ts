@@ -296,6 +296,7 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1/agent-catalog/{netuid}",
   "/api/v1/providers/{slug}",
   "/api/v1/coverage",
+  "/api/v1/native-runtime",
   "/api/v1/ask",
   "/api/v1/webhooks/subscriptions/{id}",
   "/api/v1/alerts/triggers/{id}",

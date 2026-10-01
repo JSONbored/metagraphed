@@ -1,4 +1,13 @@
-import {NativeRuntimeRequestSchema,NativeRuntimeArtifactSchema,NativeRuntimeSourceSchema,NativePortableTypeSchema,NativeFieldSchema,NativeVariantSchema,NativeDefinitionSchema,NativeRuntimeOperationSchema} from "./routes/native-runtime.ts";
+import {
+  NativeRuntimeRequestSchema,
+  NativeRuntimeArtifactSchema,
+  NativeRuntimeSourceSchema,
+  NativePortableTypeSchema,
+  NativeFieldSchema,
+  NativeVariantSchema,
+  NativeDefinitionSchema,
+  NativeRuntimeOperationSchema,
+} from "./routes/native-runtime.ts";
 import {
   RootBasketsArtifactSchema,
   RootBasketBaselineSchema,
@@ -800,14 +809,14 @@ register(
   "AccountPositionHistoryArtifact",
 );
 register(AccountRootClaimArtifactSchema, "AccountRootClaimArtifact");
-register(NativeRuntimeRequestSchema,"NativeRuntimeRequest");
-register(NativeRuntimeArtifactSchema,"NativeRuntimeArtifact");
-register(NativeRuntimeSourceSchema,"NativeRuntimeSource");
-register(NativePortableTypeSchema,"NativePortableType");
-register(NativeFieldSchema,"NativeField");
-register(NativeVariantSchema,"NativeVariant");
-register(NativeDefinitionSchema,"NativeDefinition");
-register(NativeRuntimeOperationSchema,"NativeRuntimeOperation");
+register(NativeRuntimeRequestSchema, "NativeRuntimeRequest");
+register(NativeRuntimeArtifactSchema, "NativeRuntimeArtifact");
+register(NativeRuntimeSourceSchema, "NativeRuntimeSource");
+register(NativePortableTypeSchema, "NativePortableType");
+register(NativeFieldSchema, "NativeField");
+register(NativeVariantSchema, "NativeVariant");
+register(NativeDefinitionSchema, "NativeDefinition");
+register(NativeRuntimeOperationSchema, "NativeRuntimeOperation");
 register(RootBasketsArtifactSchema, "RootBasketsArtifact");
 register(RootBasketBaselineSchema, "RootBasketBaseline");
 register(RootBasketAccountEntrySchema, "RootBasketAccountEntry");

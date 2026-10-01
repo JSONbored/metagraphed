@@ -87,6 +87,10 @@ describe("MCP tool annotations", () => {
       .sort();
     assert.deepEqual(declaredOpenWorld, [...OPEN_WORLD_TOOL_NAMES].sort());
   });
+  test("native call preparation remains a read and cannot sign or submit", () => {
+    const annotations = byName.get("get_native_runtime")?.annotations as Record<string,unknown>;
+    assert.deepEqual(annotations,{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true});
+  });
 
   // Pins the #8964 audit's finding: 20 of 207 tools leave our infrastructure.
   // Not a style rule — an accidental widening of the open-world set is how the
@@ -109,7 +113,8 @@ describe("MCP tool annotations", () => {
     // both are open-world for that reason. The count moved because one tool
     // became two, not because the set of things we touch grew.
     // Both discovery bridges may contact external services; only invoke_tool permits writes.
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 26);
+    // Native metadata reads use the same external chain RPC as Root baskets.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 27);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,
