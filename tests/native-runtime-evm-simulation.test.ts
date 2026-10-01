@@ -210,7 +210,7 @@ function fixture(gasFields?: string[]) {
     registry,
     rpc,
     calls,
-    setOutput: (value: string) => {
+    setOutput: (value: `0x${string}`) => {
       output = value;
     },
   };

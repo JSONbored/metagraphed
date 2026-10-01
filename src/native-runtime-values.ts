@@ -450,7 +450,7 @@ export function nativeStorageEntryKeys(
         : [];
   if (keys.length !== item.hashers.length)
     throw new Error("Native multi-map key arity mismatch");
-  const parts = keys.map<NativeValue>((type, index) => {
+  const parts = keys.map((type, index): NativeValue => {
     const hasher = item.hashers[index]!;
     const lengths = [16, 32, 16, 16, 32, 8, 0];
     const length = lengths[hasher];

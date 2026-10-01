@@ -81,10 +81,9 @@ for (const [specVersion, decoderVersion] of [
       (await runtime.summary(BASKET_FIXTURE_HOTKEY))!.shares_atomic,
       "17",
     );
-    assert.equal(
-      (await runtime.tradingStatus(BASKET_FIXTURE_HOTKEY)).enabled,
-      true,
-    );
+    const trading = await runtime.tradingStatus(BASKET_FIXTURE_HOTKEY);
+    assert.ok(trading);
+    assert.equal(trading.enabled, true);
     assert.equal(
       (await runtime.position(BASKET_FIXTURE_HOTKEY, BASKET_FIXTURE_COLDKEY))!
         .beta_atomic,
