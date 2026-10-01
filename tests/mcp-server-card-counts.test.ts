@@ -125,8 +125,12 @@ test("remote fixture quantifies removed cold catalog construction with identical
       assert.deepEqual(response, expected);
       return elapsed;
     };
-    const prior_ms = await run(true);
-    const optimized_ms = await run(false);
+    // Alternate order so one path does not always receive the warmer CPU.
+    const pair =
+      i % 2 === 0
+        ? [await run(true), await run(false)]
+        : [await run(false), await run(true)];
+    const [prior_ms, optimized_ms] = i % 2 === 0 ? pair : pair.toReversed();
     samples.push({ prior_ms, optimized_ms });
   }
   // Timing is evidence, not a flaky elapsed-time CI gate. Operation removal
