@@ -74,6 +74,7 @@ export const ROUTES = [
   "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
   "/apis/providers",
   "/apis",
+  "/apis/native",
   // #11628: the three routes that read no API at all, so they need no HAR
   // fixture -- the sweep skips replay for a route with nothing to replay. They
   // were outside the design gate purely because the gate required a fixture,
@@ -109,6 +110,9 @@ export const ROUTES = [
  * generated artifact.
  */
 export const NO_API_ROUTES = new Set([
+  // Native reads and simulations are user-initiated. The initial page has no
+  // API data to replay; native-runtime.spec.ts covers the interactive states.
+  "/apis/native",
   "/privacy",
   "/terms",
   "/design/primitives",

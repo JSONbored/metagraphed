@@ -110,6 +110,7 @@ const SITEMAP_STATIC_PATHS = [
   "/apis/providers",
   "/apis",
   "/apis/endpoints",
+  "/apis/native",
   "/chain",
   "/chain/blocks",
   "/chain/extrinsics",
@@ -670,6 +671,11 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
   "/apis/schemas": {
     title: "Schemas",
     subtitle: "Machine-readable schemas for every catalogued interface",
+    eyebrow: "Interfaces",
+  },
+  "/apis/native": {
+    title: "Native Bittensor",
+    subtitle: "Finalized protocol state, typed calls and EVM simulations",
     eyebrow: "Interfaces",
   },
   "/providers": {
