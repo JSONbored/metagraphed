@@ -38,6 +38,7 @@
 // eventually consistent; these TTLs bound local reuse, not global visibility.
 
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "./api-key-validation.ts";
+import { recordOrNull } from "./read-store.ts";
 import {
   authLookupCacheWrite,
   readAuthLookupCache,
@@ -60,6 +61,12 @@ export interface OAuthAccountTierRecord {
   tier?: unknown;
 }
 
+/** Only an explicit upstream rejection establishes that the account is gone.
+ * Older negative cache entries and lookup failures remain retryable. */
+export interface OAuthAccountTierResolution extends OAuthAccountTierRecord {
+  accountMissing?: true;
+}
+
 function cacheKeyFor(accountId: number): string {
   return `oauth-account-tier:v2:${accountId}`;
 }
@@ -69,7 +76,7 @@ function cacheKeyFor(accountId: number): string {
  *
  * The OAuth provider stores props as JSON, so an id that went in as a number
  * can come back as a string -- and a grant minted by an older build may carry
- * neither. Everything that is not a positive integer resolves to null, which
+ * neither. Everything that is not a positive safe integer resolves to null, which
  * the caller treats as "anonymous", never as a permissive default. This is the
  * same direction applyTieredRateLimit already takes for an unrecognised tier
  * and `tierClears` takes for an unknown one: an id we cannot read is not
@@ -77,8 +84,11 @@ function cacheKeyFor(accountId: number): string {
  */
 export function oauthAccountIdFrom(value: unknown): number | null {
   if (typeof value !== "number" && typeof value !== "string") return null;
+  // Number("9007199254740991.1") rounds to an integer. Validate the string
+  // representation before conversion so a fractional ID cannot name one.
+  if (typeof value === "string" && !/^\d+$/.test(value)) return null;
   const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? id : null;
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 // Calls the data-api Worker's internal tier route over the service binding --
@@ -89,7 +99,7 @@ export function oauthAccountIdFrom(value: unknown): number | null {
 async function lookupViaDataApi(
   env: Env,
   accountId: number,
-): Promise<OAuthAccountTierRecord> {
+): Promise<OAuthAccountTierResolution> {
   if (!env?.DATA_API?.fetch || !env?.API_KEY_LOOKUP_INTERNAL_TOKEN) {
     return { found: false };
   }
@@ -108,12 +118,15 @@ async function lookupViaDataApi(
       ),
     );
     if (!upstream.ok) return { found: false };
-    const record: Record<string, unknown> = await upstream.json();
+    const record = recordOrNull(await upstream.json());
     // `found` mirrors the route's own answer rather than being inferred from
     // the presence of `tier`, so "account exists, tier is null" stays
     // distinguishable from "no such account".
-    return record.found
-      ? { found: true, tier: record.tier ?? null }
+    if (record?.found === true) {
+      return { found: true, tier: record.tier ?? null };
+    }
+    return record?.found === false
+      ? { found: false, accountMissing: true }
       : { found: false };
   } catch {
     return { found: false };
@@ -131,9 +144,21 @@ export async function resolveOAuthAccountTier(
   env: Env,
   rawAccountId: unknown,
 ): Promise<OAuthAccountTierRecord> {
+  const resolved = await resolveOAuthAccountTierWithStatus(env, rawAccountId);
+  const record = { ...resolved };
+  delete record.accountMissing;
+  return record;
+}
+
+/** Resolve once, retaining an authoritative missing-account answer for MCP's
+ * transport-level challenge. Failure and legacy cache records never imply it. */
+export async function resolveOAuthAccountTierWithStatus(
+  env: Env,
+  rawAccountId: unknown,
+): Promise<OAuthAccountTierResolution> {
   const accountId = oauthAccountIdFrom(rawAccountId);
   if (accountId === null) return { found: false };
-
+  if (typeof env !== "object" || env === null) return { found: false };
   const kv = env?.METAGRAPH_CONTROL;
   const cacheKey = cacheKeyFor(accountId);
   if (kv?.get) {
@@ -142,7 +167,16 @@ export async function resolveOAuthAccountTier(
         await kv.get(cacheKey, { type: "json" }),
         CACHE_POLICY,
       );
-      if (cached) return cached;
+      if (cached) {
+        if (cached.found) {
+          const record: OAuthAccountTierResolution = { ...cached };
+          delete record.accountMissing;
+          return record;
+        }
+        return cached.accountMissing === true
+          ? { found: false, accountMissing: true }
+          : { found: false };
+      }
     } catch {
       // KV read failure is non-fatal -- fall through to the live lookup.
     }

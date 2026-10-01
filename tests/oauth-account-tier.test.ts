@@ -10,6 +10,7 @@ import {
   OAUTH_ACCOUNT_TIER_NEGATIVE_KV_TTL,
   oauthAccountIdFrom,
   resolveOAuthAccountTier,
+  resolveOAuthAccountTierWithStatus,
 } from "../src/oauth-account-tier.ts";
 import type { Row } from "./row-type.ts";
 
@@ -43,7 +44,7 @@ function createFakeKv(seed: Row = {}) {
 }
 
 function envWith(
-  body: Row | null,
+  body: unknown,
   overrides: Row = {},
   status = 200,
 ): { env: Env; requests: Request[] } {
@@ -68,6 +69,14 @@ describe("oauthAccountIdFrom", () => {
   test("accepts a positive integer, as a number or a JSON-roundtripped string", () => {
     assert.equal(oauthAccountIdFrom(7), 7);
     assert.equal(oauthAccountIdFrom("7"), 7);
+    assert.equal(
+      oauthAccountIdFrom(Number.MAX_SAFE_INTEGER),
+      Number.MAX_SAFE_INTEGER,
+    );
+    assert.equal(
+      oauthAccountIdFrom(String(Number.MAX_SAFE_INTEGER)),
+      Number.MAX_SAFE_INTEGER,
+    );
   });
 
   test("rejects everything that is not a positive integer", () => {
@@ -88,9 +97,140 @@ describe("oauthAccountIdFrom", () => {
       -1,
       Number.NaN,
       Number.POSITIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 1,
+      "9007199254740993",
+      "9007199254740991.1",
+      "7.0000000000000001",
+      "7e0",
+      "0x7",
+      " 7 ",
+      "+7",
+      "7.0",
+      "1e100",
     ]) {
       assert.equal(oauthAccountIdFrom(value), null, String(value));
     }
+  });
+});
+
+describe("OAuth account lookup failure classification", () => {
+  test.each([undefined, null, 1])(
+    "an absent or invalid environment stays unavailable (%j)",
+    async (env) => {
+      assert.deepEqual(
+        await resolveOAuthAccountTierWithStatus(env as unknown as Env, 41),
+        { found: false },
+      );
+    },
+  );
+
+  test("only an explicit missing account is retained across the negative cache", async () => {
+    const { env, requests } = envWith({ found: false });
+    assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
+      found: false,
+      accountMissing: true,
+    });
+    assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, "42"), {
+      found: false,
+      accountMissing: true,
+    });
+    assert.deepEqual(await resolveOAuthAccountTier(env, 42), { found: false });
+    assert.equal(
+      requests.length,
+      1,
+      "classification does not repeat the lookup",
+    );
+  });
+
+  test.each(
+    [
+      null,
+      {},
+      [],
+      { found: "true", tier: "paid" },
+      { found: "false" },
+      { found: 1, tier: "paid" },
+      { found: 0 },
+    ].map((body) => ({ body })),
+  )(
+    "malformed successful replies remain unavailable ($body)",
+    async ({ body }) => {
+      const { env } = envWith(body);
+      assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
+        found: false,
+      });
+      assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
+        found: false,
+      });
+    },
+  );
+
+  test("a non-success reply cannot establish a missing account", async () => {
+    const { env } = envWith({ found: false }, {}, 503);
+    assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
+      found: false,
+    });
+    assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
+      found: false,
+    });
+  });
+
+  test.each([undefined, "true"])(
+    "legacy and malformed negative cache markers stay retryable (%j)",
+    async (accountMissing) => {
+      const kv = createFakeKv({
+        "oauth-account-tier:v2:42": JSON.parse(
+          authLookupCacheWrite(
+            { found: false, accountMissing },
+            { positiveTtlSeconds: 300, negativeTtlSeconds: 30 },
+          ).value,
+        ),
+      });
+      const { env, requests } = envWith(
+        { found: true, tier: "paid" },
+        { METAGRAPH_CONTROL: kv },
+      );
+      assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
+        found: false,
+      });
+      assert.equal(
+        requests.length,
+        0,
+        "the existing cache lifetime is retained",
+      );
+    },
+  );
+
+  test("positive cached tiers cannot be marked missing", async () => {
+    const kv = createFakeKv({
+      "oauth-account-tier:v2:42": JSON.parse(
+        authLookupCacheWrite(
+          { found: true, tier: "paid", accountMissing: true },
+          { positiveTtlSeconds: 300, negativeTtlSeconds: 30 },
+        ).value,
+      ),
+    });
+    const { env } = envWith({ found: false }, { METAGRAPH_CONTROL: kv });
+    assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
+      found: true,
+      tier: "paid",
+    });
+  });
+
+  test("a positive cache with no tier retains the legacy record shape", async () => {
+    const kv = createFakeKv({
+      "oauth-account-tier:v2:42": JSON.parse(
+        authLookupCacheWrite(
+          { found: true },
+          { positiveTtlSeconds: 300, negativeTtlSeconds: 30 },
+        ).value,
+      ),
+    });
+    const { env } = envWith({ found: false }, { METAGRAPH_CONTROL: kv });
+    assert.deepEqual(await resolveOAuthAccountTier(env, 42), { found: true });
+    assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
+      found: true,
+    });
   });
 });
 
