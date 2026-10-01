@@ -63,7 +63,7 @@ export function ValidatorsPage() {
     [listed.data.operators],
   );
   const setSearch = (next: Partial<typeof search>) => {
-    navigate({ to: ".", search: (prev) => ({ ...prev, ...next }), replace: true });
+    navigate({ to: Route.to, search: (prev: typeof search) => ({ ...prev, ...next }), replace: true });
   };
 
   const costRows = (economics.data?.data.rows ?? [])

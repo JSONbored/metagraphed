@@ -70,9 +70,12 @@ export async function getApi(endpoint: string = DEFAULT_RPC_ENDPOINT): Promise<A
       let expired = false;
       let timer: ReturnType<typeof setTimeout> | undefined;
       const connecting = ApiPromise.create({ provider, throwOnConnect: true });
-      void connecting.then((connected) => {
-        if (expired) void connected.disconnect().catch(() => {});
-      }, () => {});
+      void connecting.then(
+        (connected) => {
+          if (expired) void connected.disconnect().catch(() => {});
+        },
+        () => {},
+      );
       try {
         return await Promise.race([
           connecting,
@@ -215,8 +218,12 @@ export async function getFreeBalance(api: ApiPromise, coldkeySs58: string): Prom
   for (const field of ["frozen", "feeFrozen", "miscFrozen"]) {
     const value = account.data[field];
     if (value === undefined) continue;
-    if (typeof value !== "object" || value === null ||
-        !("toBigInt" in value) || typeof value.toBigInt !== "function")
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      !("toBigInt" in value) ||
+      typeof value.toBigInt !== "function"
+    )
       throw new Error(`system.account returned an invalid ${field} balance`);
     const amount: unknown = value.toBigInt();
     if (typeof amount !== "bigint" || amount < 0n)

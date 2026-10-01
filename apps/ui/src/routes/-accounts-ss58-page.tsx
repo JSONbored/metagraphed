@@ -39,7 +39,7 @@ import {
 import { formatNumber } from "@/lib/metagraphed/format";
 import { useRelativeTime } from "@/hooks/use-time-format";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { Route } from "./accounts.$ss58";
+import { Route, type SearchParams } from "./accounts.$ss58";
 
 /**
  * Five sections, and Counterparties stands where the issue drafted History.
@@ -242,7 +242,7 @@ export function AccountDetailPage() {
           ss58={ss58}
           window={window}
           onWindow={(next: FlowWindow) =>
-            void navigate({ to: ".", search: (prev) => ({ ...prev, window: next }), replace: true })
+            void navigate({ to: Route.to, search: (prev: SearchParams) => ({ ...prev, window: next }), replace: true })
           }
           nameOf={nameOf}
         />

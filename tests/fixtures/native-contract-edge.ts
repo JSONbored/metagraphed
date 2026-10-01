@@ -15,6 +15,7 @@ export function nativeContractEdgeFixture(
     }[];
     docs: never[];
   }[] = [],
+  extraTypes: unknown[] = [],
 ) {
   const registry = new TypeRegistry();
   const field = (name: string | null, type: number) => ({
@@ -55,7 +56,7 @@ export function nativeContractEdgeFixture(
       Buffer.from("6d6574610f", "hex"),
       registry
         .createType("MetadataV15", {
-          lookup: { types },
+          lookup: { types: [...types, ...extraTypes] },
           pallets: [
             {
               name: "Fixture",

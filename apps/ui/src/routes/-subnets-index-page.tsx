@@ -216,7 +216,7 @@ export function SubnetsPage() {
   );
 
   const setSearch = (next: Partial<SubnetsSearch>) => {
-    navigate({ to: ".", search: (prev) => ({ ...prev, ...next }), replace: true });
+    navigate({ to: Route.to, search: (prev: SubnetsSearch) => ({ ...prev, ...next }), replace: true });
   };
 
   return (

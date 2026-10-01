@@ -33,6 +33,6 @@ test("retain remote generated contracts and formatted edits for review",async()=
   const options={stdio:"pipe" as const,encoding:"utf8" as const,timeout:60000,env:{...process.env,NODE_V8_COVERAGE:undefined}};
   for(const args of [["run","typecheck","--workspace=apps/ui"],["run","test","--workspace=apps/ui","--","src/lib/metagraphed/native-call-wallet.test.ts","src/lib/metagraphed/chain-connection.test.ts","src/lib/metagraphed/chain-connection-network.test.ts","src/lib/metagraphed/broadcast.test.ts","src/lib/metagraphed/transaction-subscriptions.test.ts"]]){
     try{console.log("NATIVE_UI_REMOTE_DIAGNOSTIC",execFileSync("npm",args,options));}
-    catch(error){console.log("NATIVE_UI_REMOTE_DIAGNOSTIC_ERROR",String((error as {stdout?:unknown}).stdout));}
+    catch(error){console.log("NATIVE_UI_REMOTE_DIAGNOSTIC_ERROR",String((error as {stdout?:unknown}).stdout), String((error as {stderr?:unknown}).stderr));}
   }
 },180_000);

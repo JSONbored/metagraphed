@@ -66,8 +66,15 @@ generation are excluded. Consensus authorities, epoch state and ownership proofs
 session-key decoding, genesis presets, and EVM accounts, code, storage and finalized
 receipts are available through individually audited methods from the
 [v470 runtime implementation](https://github.com/RaoFoundation/subtensor/blob/923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d/runtime/src/lib.rs).
-Mixed API families do not admit new methods implicitly. EVM execution previews use
-the existing EVM RPC surface. `prepare` encodes a native method from its declared
+Mixed API families do not admit new methods implicitly. EVM `call` and `create`
+simulate contract or precompile execution using the official runtime’s non-transactional
+runner at the selected finalized block. Both use their metadata-declared argument and
+return types, including access and authorization lists when the runtime declares them.
+The caller must supply an exact positive `gas_limit`; each request has an aggregate
+one-million-gas budget, in addition to the input, output and timeout bounds. Reverts,
+return bytes, gas consumption and runtime dispatch errors retain the declared result
+structure. Simulations do not create execution receipts or persist chain state.
+`prepare` encodes a native method from its declared
 argument types, including runtime-specific enum and composite arguments. It
 returns method bytes and signed-extension types for explicit wallet review;
 these are distinct from a signed extrinsic. The native page can review any

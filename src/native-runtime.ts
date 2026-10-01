@@ -59,8 +59,9 @@ const READ_APIS = new Set([
 ]);
 // Audited against Subtensor v470's runtime implementations. These APIs mix
 // reads with block execution, unsigned submission or local keystore writes,
-// so admission is per method. Ethereum execution previews remain on the EVM
-// RPC surface; these methods expose its exact account and finalized results.
+// so admission is per method. Ethereum call/create use the official runtime
+// Runner with is_transactional=false, at one finalized state, with an aggregate
+// gas budget. They simulate execution and never submit a transaction.
 const READ_API_METHODS: Readonly<Record<string, readonly string[]>> = {
   Core: ["version"],
   Metadata: ["metadata", "metadata_at_version", "metadata_versions"],
@@ -86,6 +87,8 @@ const READ_API_METHODS: Readonly<Record<string, readonly string[]>> = {
     "account_code_at",
     "author",
     "storage_at",
+    "call",
+    "create",
     "current_transaction_statuses",
     "current_block",
     "current_receipts",
@@ -98,6 +101,8 @@ const READ_API_METHODS: Readonly<Record<string, readonly string[]>> = {
   ContractsApi: ["get_storage"],
   ShieldApi: ["try_decode_shielded_tx", "is_shielded_using_current_key"],
 };
+export const NATIVE_EVM_SIMULATION_GAS_BUDGET = 1_000_000n;
+
 function readApiMethod(api: string, member: string) {
   return (
     READ_APIS.has(api) ||
@@ -255,6 +260,19 @@ function plan(
     if (!method) throw new Error("Unknown native runtime method");
     if (operation.args.length !== method.inputs.length)
       throw new Error("Native runtime argument arity mismatch");
+    let simulationGas = 0n;
+    if (operation.api === "EthereumRuntimeRPCApi" &&
+        (operation.member === "call" || operation.member === "create")) {
+      const gasFields = method.inputs.flatMap((field, index) => field.name === "gas_limit" ? [index] : []);
+      if (gasFields.length !== 1) throw new Error("EVM simulation requires a declared gas_limit");
+      const gas = operation.args[gasFields[0]!]!;
+      if (!((typeof gas === "string" && /^(0|[1-9]\d*)$/.test(gas)) ||
+            (typeof gas === "number" && Number.isSafeInteger(gas) && gas >= 0)))
+        throw new Error("EVM simulation gas must be an exact nonnegative integer");
+      simulationGas = BigInt(gas);
+      if (simulationGas === 0n || simulationGas > NATIVE_EVM_SIMULATION_GAS_BUDGET)
+        throw new Error("EVM simulation exceeds its gas budget");
+    }
     const input = Buffer.concat(
       method.inputs.map((field, index) =>
         encodeNativeValue(metadata, field.type, operation.args[index]!),
@@ -274,6 +292,7 @@ function plan(
         contract: contract(metadata, method.output, needed),
       },
       output: method.output,
+      simulationGas,
     };
   }
   const pallet = metadata.pallets.find((row) => row.name === operation.pallet);
@@ -465,13 +484,17 @@ export async function readNativeRuntime(
     plan(metadata, operation, needed),
   );
   const unique = new Map<string, { method: string; params: unknown[] }>();
+  const executionGas = new Map<string, bigint>();
   const callKeys = plans.map((row) => {
     if (!("call" in row) || !row.call) return null;
     const call = { method: row.call.method, params: [...row.call.params, at] };
     const key = JSON.stringify(call);
     unique.set(key, call);
+    if ("simulationGas" in row && row.simulationGas) executionGas.set(key, row.simulationGas);
     return key;
   });
+  if ([...executionGas.values()].reduce((total, gas) => total + gas, 0n) > NATIVE_EVM_SIMULATION_GAS_BUDGET)
+    throw new Error("EVM simulations exceed the aggregate gas budget");
   const calls = [...unique.entries()];
   const values =
     calls.length === 0

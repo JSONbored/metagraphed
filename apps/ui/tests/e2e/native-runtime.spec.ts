@@ -277,3 +277,28 @@ test("failed native reads do not leave a prior response presented as the new sta
   await expect(page.getByRole("alert")).toContainText("The finalized read failed.");
   await expect(page.getByRole("cell", { name: "123456", exact: true })).toHaveCount(0);
 });
+
+test("EVM execution is discovered and simulated using the displayed finalized contract", async ({page}) => {
+  const requests: unknown[] = [];
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON(); requests.push(body);
+    const discovery = body.operations[0].kind === "describe";
+    await route.fulfill({json:{ok:true,data:{schema_version:1,source,
+      types:[{id:1,path:["U256"],definition:{kind:"primitive",primitive:8}}],
+      results:discovery?[{kind:"describe",value:[{kind:"runtime",api:"EthereumRuntimeRPCApi",member:"call",args:[{name:"gas_limit",type:1}]}],contract:{next_offset:null}}]:
+      [{kind:"runtime",api:"EthereumRuntimeRPCApi",member:"call",value:{variant:"Ok",fields:{exit_reason:{variant:"Revert",fields:{}},value:"0xdeadbeef",used_gas:"22000"}},contract:{root_type:1}}],
+    }}});
+  });
+  await gotoThroughRestart(page,"/apis/native");
+  expect(requests).toHaveLength(0);
+  await page.getByRole("button",{name:"Explore EVM execution"}).click();
+  await expect(page.getByText("each request can use up to 1,000,000 gas.",{exact:false})).toBeVisible();
+  await page.getByLabel("Arguments (JSON array)").fill('["500000"]');
+  await page.getByRole("button",{name:"Read operation"}).click();
+  await expect(page.getByRole("cell",{name:"0xdeadbeef",exact:true})).toBeVisible();
+  await expect(page.getByRole("region",{name:"Native wallet review"})).toHaveCount(0);
+  expect(requests).toEqual([
+    {operations:[{kind:"describe",api:"EthereumRuntimeRPCApi",offset:0,limit:32}]},
+    {as_of:hash,operations:[{kind:"runtime",api:"EthereumRuntimeRPCApi",member:"call",args:["500000"]}]},
+  ]);
+});
