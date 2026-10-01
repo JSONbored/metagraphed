@@ -141,14 +141,6 @@ describe("Discovery artifacts", () => {
       const expected = createHash("sha256").update(body).digest("hex");
       assert.equal(skill.digest, `sha256:${expected}`, skill.name);
     }
-    console.log(
-      "MCP_SKILL_INDEX_ARTIFACT " +
-        Buffer.from(
-          await fs.readFile(
-            path.join(publicDir, ".well-known/agent-skills/index.json"),
-          ),
-        ).toString("base64"),
-    );
   });
 
   test("agent entrypoints and API landing page explain required free MCP authentication", async () => {
@@ -266,11 +258,6 @@ describe("Discovery artifacts", () => {
       await fs.readFile(path.join(publicDir, ".well-known/auth.md"), "utf8"),
       authMd,
       "both served authentication guides are the same generated document",
-    );
-    // Retain the small, public generated artifact in remote CI evidence so
-    // it can be committed without running the build on a developer laptop.
-    console.log(
-      "MCP_AUTH_GUIDE_ARTIFACT " + Buffer.from(authMd).toString("base64"),
     );
   });
 
