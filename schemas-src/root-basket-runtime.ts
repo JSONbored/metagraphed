@@ -29,10 +29,11 @@ export const ROOT_BASKET_READ_LIMITS = {
   funds: 2_048,
 } as const;
 
+export const RootBasketFinalizedHashSchema = capture.finalized_block_hash;
 const sourceIdentity = {
   network: capture.network,
   network_genesis_hash: capture.network_genesis_hash,
-  finalized_block_hash: capture.finalized_block_hash,
+  finalized_block_hash: RootBasketFinalizedHashSchema,
   finalized_block: u64,
 };
 

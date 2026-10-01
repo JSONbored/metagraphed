@@ -1,6 +1,6 @@
 import { RootBasketCaptureSchema } from "./root-basket-capture.ts";
 import {
-  RootBasketSourceSchema,
+  RootBasketFinalizedHashSchema,
   ROOT_BASKET_READ_LIMITS,
 } from "./root-basket-runtime.ts";
 import { lazySchemaMap } from "./lazy-schema-map.ts";
@@ -414,8 +414,7 @@ export const FEED_QUERY_SCHEMAS = {
 
 const rootBasketAccount =
   RootBasketCaptureSchema.shape.funds.element.shape.hotkey;
-const rootBasketAsOf = RootBasketSourceSchema.shape.finalized_block_hash
-  .optional()
+const rootBasketAsOf = RootBasketFinalizedHashSchema.optional()
   .describe(
     "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
   )
