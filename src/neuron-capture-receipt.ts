@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isD1ConnectionError } from "./d1-connection-error.ts";
 import { NEURON_INSERT_COLUMNS } from "./metagraph-neurons.ts";
 import type { PassTallyInput } from "./pass-completeness.ts";
 import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
@@ -112,13 +113,7 @@ export async function retryNeuronCapture(
   try {
     await apply();
   } catch (error) {
-    if (
-      !(error instanceof Error) ||
-      !/^(?:D1_ERROR: )?(?:Network connection lost\.|Replica disconnected from primary\.|D1 DB reset because its code was updated\.|Internal error (?:while starting up|in) D1 DB storage caused object to be reset\.|Cannot resolve D1 DB due to transient issue on remote node\.|internal error; reference = e_[A-Za-z0-9_-]+)$/.test(
-        error.message,
-      )
-    )
-      throw error;
+    if (!isD1ConnectionError(error)) throw error;
     await new Promise((resolve) =>
       setTimeout(resolve, 250 + Math.floor(Math.random() * 250)),
     );

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { ProducerStore } from "./producer-store.ts";
+import { isD1ConnectionError } from "./d1-connection-error.ts";
 
 export interface UsageRollupBucket {
   day: string;
@@ -69,13 +70,7 @@ export async function writeUsageRollupD1(
   } catch (error) {
     // Only this receipt-guarded transaction may be replayed. Generic SQL
     // .all() also executes additive writes and must never retry blindly.
-    if (
-      !(error instanceof Error) ||
-      !/^(?:D1_ERROR: )?(?:Network connection lost\.|Replica disconnected from primary\.|D1 DB reset because its code was updated\.|Internal error (?:while starting up|in) D1 DB storage caused object to be reset\.|Cannot resolve D1 DB due to transient issue on remote node\.|internal error; reference = e_[A-Za-z0-9_-]+)$/.test(
-        error.message,
-      )
-    )
-      throw error;
+    if (!isD1ConnectionError(error)) throw error;
     await new Promise((resolve) =>
       setTimeout(resolve, 250 + Math.floor(Math.random() * 250)),
     );
