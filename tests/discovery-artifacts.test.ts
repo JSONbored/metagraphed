@@ -222,6 +222,16 @@ describe("Discovery artifacts", () => {
     assert.doesNotMatch(authMd, /Protected resources: none/i);
     assert.doesNotMatch(authMd, /not applicable \(no protected resources/i);
     assert.doesNotMatch(authMd, /treated identically/i);
+    assert.equal(
+      await fs.readFile(path.join(publicDir, ".well-known/auth.md"), "utf8"),
+      authMd,
+      "both served authentication guides are the same generated document",
+    );
+    // Retain the small, public generated artifact in remote CI evidence so
+    // it can be committed without running the build on a developer laptop.
+    console.log(
+      "MCP_AUTH_GUIDE_ARTIFACT " + Buffer.from(authMd).toString("base64"),
+    );
   });
 
   test("security.txt follows RFC 9116 (contact, expires, canonical)", async () => {
