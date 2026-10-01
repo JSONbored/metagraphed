@@ -13,13 +13,8 @@ export const rootBasketsQuery = (
   params: { cursor?: string; as_of?: string; hotkey?: string } = {},
 ) =>
   queryOptions({
-    queryKey: metagraphedQueryKey(
-      "root-baskets",
-      { apiBase: getApiBase() },
-      params,
-    ),
-    queryFn: ({ signal }) =>
-      apiFetch<RootBasketResult>("/api/v1/root-baskets", { params, signal }),
+    queryKey: metagraphedQueryKey("root-baskets", { apiBase: getApiBase() }, params),
+    queryFn: ({ signal }) => apiFetch<RootBasketResult>("/api/v1/root-baskets", { params, signal }),
     staleTime: 30_000,
     retry: 0,
   });
@@ -29,20 +24,12 @@ export const accountRootBasketsQuery = (
   params: { offset?: number; as_of?: string } = {},
 ) =>
   queryOptions({
-    queryKey: metagraphedQueryKey(
-      "account-root-baskets",
-      { apiBase: getApiBase() },
-      ss58,
-      params,
-    ),
+    queryKey: metagraphedQueryKey("account-root-baskets", { apiBase: getApiBase() }, ss58, params),
     queryFn: ({ signal }) =>
-      apiFetch<RootBasketResult>(
-        `/api/v1/accounts/${encodeURIComponent(ss58)}/root-baskets`,
-        {
-          params,
-          signal,
-        },
-      ),
+      apiFetch<RootBasketResult>(`/api/v1/accounts/${encodeURIComponent(ss58)}/root-baskets`, {
+        params,
+        signal,
+      }),
     staleTime: 30_000,
     retry: 0,
   });
@@ -51,10 +38,7 @@ export const accountRootBasketsQuery = (
 export function basketTao(rao: string | null | undefined): string {
   if (rao == null) return "—";
   const value = BigInt(rao);
-  const fraction = (value % 1_000_000_000n)
-    .toString()
-    .padStart(9, "0")
-    .replace(/0+$/, "");
+  const fraction = (value % 1_000_000_000n).toString().padStart(9, "0").replace(/0+$/, "");
   return `${value / 1_000_000_000n}${fraction ? `.${fraction}` : ""} TAO`;
 }
 

@@ -93,6 +93,8 @@ test("v470 mechanism, collateral, dynamic hyperparameter and lock contracts deco
       case "state_getStorage":
         assert.ok(storage.has(String(params[0])));
         return storage.get(String(params[0]));
+      case "state_getStorageHash":
+        return null;
       case "state_call":
         if (params[0] === "Metadata_metadata_at_version") return wrapped;
         if (params[0] === "SubnetInfoRuntimeApi_get_subnet_hyperparams_v3") {
@@ -101,7 +103,9 @@ test("v470 mechanism, collateral, dynamic hyperparameter and lock contracts deco
         }
         if (params[0] === "StakeInfoRuntimeApi_get_coldkey_lock") {
           assert.equal(params[1], account + "1300");
-          return nativeHex(registry.createType("Option<LockState>", lock).toU8a());
+          return nativeHex(
+            registry.createType("Option<LockState>", lock).toU8a(),
+          );
         }
         throw new Error("Unexpected runtime call");
       default:

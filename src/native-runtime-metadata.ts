@@ -154,10 +154,9 @@ export interface NativeMetadata {
 /** Drop documentation while reading it: it must not inflate tool context or
  * leave the cursor at a guessed offset. Type names and indices remain exact. */
 export function decodeNativeMetadata(hex: unknown): NativeMetadata {
-  const reader = new NativeScaleReader(
-    hex,
-    NATIVE_RUNTIME_LIMITS.metadataBytes,
-  );
+  const reader = hex instanceof NativeScaleReader ? hex : new NativeScaleReader(hex, NATIVE_RUNTIME_LIMITS.metadataBytes);
+  if (reader.offset !== 0 || reader.bytes.length > NATIVE_RUNTIME_LIMITS.metadataBytes)
+    throw new Error("Invalid or oversized native metadata reader");
   if (Buffer.from(reader.take(4)).toString("hex") !== "6d657461")
     throw new Error("Invalid native metadata magic");
   const version = reader.byte();

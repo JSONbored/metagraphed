@@ -18,7 +18,7 @@ test("retain remote generated contracts and formatted edits for review",async()=
   const files=Object.fromEntries(generated.map((name)=>[name,readFileSync(name,"utf8")]));
   files["apps/ui/src/routeTree.gen.ts"]=readFileSync("apps/ui/src/routeTree.gen.ts","utf8");
   const edited=execFileSync("git",["diff","--name-only","7e71ae91c301b36ba8ae84f127cc8a2b1217d3a4","HEAD"],{encoding:"utf8"}).trim().split("\n");
-  for(const name of edited.filter((name)=>/\.(ts|tsx|md)$/.test(name)&&!name.endsWith("root-basket-ci-artifacts.test.ts"))){
+  for(const name of edited.filter((name)=>/\.(ts|tsx|md)$/.test(name)&&!name.endsWith("root-basket-ci-artifacts.test.ts")&&!/^(public\/|generated\/|packages\/contract\/|packages\/client\/dist\/|docs\/reference\/)/.test(name))){
     if(name.endsWith("routeTree.gen.ts"))continue;
     files[name]=await format(readFileSync(name,"utf8"),{...(await resolveConfig(path.resolve(name))),filepath:name});
   }

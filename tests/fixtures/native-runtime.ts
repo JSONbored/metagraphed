@@ -38,6 +38,9 @@ export async function withNativeRuntimeFixture<T>(
         case "state_getStorage":
           result = "0xf4010000";
           break;
+        case "state_getStorageHash":
+          result = null;
+          break;
         default:
           throw new Error("Unexpected native fixture RPC method");
       }

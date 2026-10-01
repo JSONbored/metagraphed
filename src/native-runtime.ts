@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
   NativeRuntimeRequestSchema,
@@ -6,21 +5,21 @@ import {
   NativeRuntimeSourceSchema,
 } from "../schemas-src/routes/native-runtime.ts";
 import {
-  decodeNativeMetadata,
-  unwrapNativeMetadata,
-  NativeScaleReader,
   NATIVE_RUNTIME_LIMITS,
   type NativeMetadata,
   type NativeType,
+  type NativeField,
 } from "./native-runtime-metadata.ts";
 import {
   decodeNativeValue,
   encodeNativeValue,
   nativeStorageKey,
   nativeHex,
+  nativeStorageEntryKeys,
   type NativeValue,
 } from "./native-runtime-values.ts";
-import { rootBasketRpc } from "./root-basket-rpc.ts";
+import { nativeRuntimeRpc } from "./native-runtime-rpc.ts";
+import { loadNativeContract } from "./native-runtime-contract.ts";
 import { basketReadBatch, type BasketRpc } from "./root-basket-runtime.ts";
 import {
   CHAIN_NAME_BY_NETWORK,
@@ -79,8 +78,6 @@ function contract(
   while (pending.length) {
     const id = pending.pop()!;
     if (needed.has(id)) continue;
-    if (needed.size >= NATIVE_RUNTIME_LIMITS.types)
-      throw new Error("Native contract exceeds work budget");
     const type = metadata.types.get(id);
     if (!type) throw new Error("Missing native portable type");
     needed.set(id, type);
@@ -121,16 +118,13 @@ function plan(
           contract: contract(metadata, operation.type_id, needed),
         },
       };
-    let items: NativeValue[];
+    let items: {kind:string;name?:string;pallet?:string;api?:string;member?:string;key_type?:number|null;key_parts?:number;value_type?:number;optional?:boolean;args?:NativeField[]}[];
     if (operation.pallet !== undefined) {
       const pallet = metadata.pallets.find(
         (row) => row.name === operation.pallet,
       );
       if (!pallet) throw new Error("Unknown native pallet");
-      const calls =
-        pallet.calls === null
-          ? []
-          : metadata.types.get(pallet.calls)?.definition;
+      const calls = pallet.calls === null ? undefined : metadata.types.get(pallet.calls)?.definition;
       items = [
         ...pallet.storage.map((item) => ({
           kind: "storage",
@@ -147,9 +141,7 @@ function plan(
           member: item.name,
           value_type: item.type,
         })),
-        ...(Array.isArray(calls)
-          ? []
-          : calls?.kind === "variant"
+        ...(calls?.kind === "variant"
             ? calls.variants.map((call) => ({
                 kind: "prepare",
                 pallet: pallet.name,
@@ -184,20 +176,10 @@ function plan(
       operation.offset + operation.limit,
     );
     for (const item of page) {
-      if (item === null || typeof item !== "object" || Array.isArray(item))
-        continue;
       for (const key of ["key_type", "value_type"])
         if (typeof item[key] === "number")
           contract(metadata, item[key], needed);
-      if (Array.isArray(item.args))
-        for (const field of item.args)
-          if (
-            field !== null &&
-            typeof field === "object" &&
-            !Array.isArray(field) &&
-            typeof field.type === "number"
-          )
-            contract(metadata, field.type, needed);
+      for (const field of item.args??[]) contract(metadata, field.type, needed);
     }
     return {
       result: {
@@ -300,6 +282,20 @@ function plan(
   }
   const item = pallet.storage.find((row) => row.name === operation.member);
   if (!item) throw new Error("Unknown native storage item");
+  if(operation.kind==="entries"){
+    if(item.key===null)throw new Error("Native entries require a storage map");
+    const prefix=nativeStorageKey(metadata,pallet.prefix,item,operation.args,true);
+    if(operation.cursor!==undefined){
+      if(!operation.cursor.startsWith(prefix))throw new Error("Native entries cursor must belong to this map prefix");
+      nativeStorageEntryKeys(metadata,pallet.prefix,item,operation.cursor);
+    }
+    contract(metadata,item.key,needed);
+    return {
+      call:{method:"state_getKeysPaged",params:[prefix,operation.limit+1,operation.cursor??null]},
+      entry:{prefix,palletPrefix:pallet.prefix,item,limit:operation.limit,cursor:operation.cursor},
+      result:{kind:"entries" as const,pallet:pallet.name,member:item.name,contract:{...contract(metadata,item.value,needed),key_type:item.key,hashers:item.hashers,prefix}},
+    };
+  }
   const key = nativeStorageKey(metadata, pallet.prefix, item, operation.args);
   return {
     call: { method: "state_getStorage", params: [key] },
@@ -321,8 +317,10 @@ export async function queryNativeRuntime(raw: unknown, rpc?: BasketRpc) {
   const input = NativeRuntimeRequestSchema.parse(raw);
   if (Buffer.byteLength(JSON.stringify(input)) > 32_768)
     throw new Error("Native request exceeds byte budget");
+  if(input.operations.reduce((total,op)=>total+(op.kind==="entries"?op.limit:0),0)>64)throw new Error("Native entries exceed the aggregate page budget");
+  if(input.operations.some((op)=>op.kind==="entries"&&op.cursor!==undefined)&&input.as_of===undefined)throw new Error("Native entries continuation requires its finalized as_of hash");
   const network: ChainNetworkId = chainNetworkFromChainName(input.network);
-  const read = rpc ?? rootBasketRpc(network);
+  const read = rpc ?? nativeRuntimeRpc(network);
   const finalized = blockHash.parse(await read("chain_getFinalizedHead", []));
   const at = input.as_of ?? finalized;
   const [rawHeader, rawVersion, genesis] = await basketReadBatch(read, [
@@ -343,27 +341,7 @@ export async function queryNativeRuntime(raw: unknown, rpc?: BasketRpc) {
     )
       throw new Error("Native as_of must be a canonical finalized ancestor");
   }
-  let metadataHex: string | null;
-  try {
-    metadataHex = unwrapNativeMetadata(
-      await read("state_call", [
-        "Metadata_metadata_at_version",
-        "0x0f000000",
-        at,
-      ]),
-    );
-  } catch {
-    metadataHex = null;
-  }
-  if (metadataHex === null) {
-    const fallback = await read("state_getMetadata", [at]);
-    const reader = new NativeScaleReader(
-      fallback,
-      NATIVE_RUNTIME_LIMITS.metadataBytes,
-    );
-    metadataHex = nativeHex(reader.bytes);
-  }
-  const metadata = decodeNativeMetadata(metadataHex);
+  const {metadata,sha256,codeHash} = await loadNativeContract(read,at,blockHash.parse(genesis),runtime.specVersion,runtime.transactionVersion);
   const source = NativeRuntimeSourceSchema.parse({
     network: CHAIN_NAME_BY_NETWORK[network],
     network_genesis_hash: genesis,
@@ -372,9 +350,8 @@ export async function queryNativeRuntime(raw: unknown, rpc?: BasketRpc) {
     runtime_spec_version: runtime.specVersion,
     runtime_transaction_version: runtime.transactionVersion,
     metadata_version: metadata.version,
-    metadata_sha256: `0x${createHash("sha256")
-      .update(Buffer.from(metadataHex.slice(2), "hex"))
-      .digest("hex")}`,
+    metadata_sha256: sha256,
+    runtime_code_hash: codeHash,
   });
   const needed = new Map<number, NativeType>();
   const plans = input.operations.map((operation) =>
@@ -397,7 +374,38 @@ export async function queryNativeRuntime(raw: unknown, rpc?: BasketRpc) {
           calls.map(([, call]) => call),
         );
   const responses = new Map(calls.map(([key], index) => [key, values[index]]));
+  const pages=new Map<number,{keys:string[];decoded:Map<string,NativeValue[]>;next:string|null}>();
+  const extra=new Map<string,{method:string;params:unknown[]}>();
+  plans.forEach((row,index)=>{
+    if(!("entry" in row)||!row.entry)return;
+    const page=responses.get(callKeys[index]!);
+    if(!Array.isArray(page)||page.length>row.entry.limit+1)throw new Error("Invalid native entries page");
+    let previous=row.entry.cursor??"";
+    const decoded=new Map<string,NativeValue[]>();
+    for(const key of page){
+      if(typeof key!=="string"||!/^0x(?:[0-9a-f]{2})+$/.test(key)||!key.startsWith(row.entry.prefix)||key<=previous||key.length>8194)throw new Error("Invalid native entries key order or prefix");
+      decoded.set(key,nativeStorageEntryKeys(metadata,row.entry.palletPrefix,row.entry.item,key));
+      previous=key;
+    }
+    const keys=page.slice(0,row.entry.limit) as string[];
+    pages.set(index,{keys,decoded,next:page.length>row.entry.limit?keys.at(-1)!:null});
+    for(const key of keys){const call={method:"state_getStorage",params:[key,at]};const id=JSON.stringify(call);if(!responses.has(id))extra.set(id,call);}
+  });
+  const entryReads=[...extra.entries()];
+  for(let offset=0;offset<entryReads.length;offset+=16){
+    const chunk=entryReads.slice(offset,offset+16);
+    const readValues=await basketReadBatch(read,chunk.map(([,call])=>call));
+    chunk.forEach(([key],index)=>responses.set(key,readValues[index]));
+  }
   const results = plans.map((row, index) => {
+    if("entry" in row&&row.entry){
+      const entry=row.entry,page=pages.get(index)!;
+      return {...row.result,contract:{...row.result.contract,next_cursor:page.next},value:page.keys.map((key)=>{
+        const value=responses.get(JSON.stringify({method:"state_getStorage",params:[key,at]}));
+        if(value===null||value===undefined)throw new Error("Native enumerated storage value is absent");
+        return {storage_key:key,keys:page.decoded.get(key)!,value:decodeNativeValue(metadata,entry.item.value,value)};
+      })};
+    }
     const key = callKeys[index];
     if (key === null || key === undefined) return row.result;
     let value = responses.get(key),

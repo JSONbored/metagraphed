@@ -243,7 +243,11 @@ export function SubnetDetailPage() {
 
   const rawRows: RawRow[] = [
     { label: "netuid", value: String(netuid) },
-    { label: "Current protocol state", value: `SN${netuid} native runtime`, href: `/apis/native?netuid=${netuid}` },
+    {
+      label: "Current protocol state",
+      value: `SN${netuid} native runtime`,
+      href: `/apis/native?netuid=${netuid}`,
+    },
     { label: "slug", value: profile.slug ?? `sn-${netuid}` },
     ...(row?.owner_coldkey ? [{ label: "Owner coldkey", value: String(row.owner_coldkey) }] : []),
     ...(row?.owner_hotkey ? [{ label: "Owner hotkey", value: String(row.owner_hotkey) }] : []),

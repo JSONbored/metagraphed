@@ -1,18 +1,9 @@
 import { useState, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  AnalyticsSection,
-  DataTable,
-  Raw,
-  type DataTableColumn,
-} from "@jsonbored/ui-kit";
+import { AnalyticsSection, DataTable, Raw, type DataTableColumn } from "@jsonbored/ui-kit";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { useNetwork } from "@/hooks/use-api-base";
-import {
-  DEFAULT_API_BASE,
-  getApiBase,
-  onApiBaseChange,
-} from "@/lib/metagraphed/config";
+import { DEFAULT_API_BASE, getApiBase, onApiBaseChange } from "@/lib/metagraphed/config";
 import {
   accountRootBasketsQuery,
   rootBasketsQuery,
@@ -32,18 +23,8 @@ export function RootBasketsSection({
   onSelect: (hotkey: string) => void;
 }) {
   const { network } = useNetwork();
-  const base = useSyncExternalStore(
-    onApiBaseChange,
-    getApiBase,
-    () => DEFAULT_API_BASE,
-  );
-  return (
-    <RootBasketsView
-      key={`${base}:${network.id}`}
-      selected={selected}
-      onSelect={onSelect}
-    />
-  );
+  const base = useSyncExternalStore(onApiBaseChange, getApiBase, () => DEFAULT_API_BASE);
+  return <RootBasketsView key={`${base}:${network.id}`} selected={selected} onSelect={onSelect} />;
 }
 
 function RootBasketsView({
@@ -62,29 +43,19 @@ function RootBasketsView({
   });
   const result = query.data?.data;
   const directory =
-    result?.status === "available" && result.data.kind === "directory"
-      ? result.data
-      : null;
+    result?.status === "available" && result.data.kind === "directory" ? result.data : null;
   const legacyDirectory =
-    result?.status === "available" && result.data.kind === "legacy-directory"
-      ? result.data
-      : null;
-  const capabilities =
-    result?.status === "available" ? result.source.capabilities : null;
+    result?.status === "available" && result.data.kind === "legacy-directory" ? result.data : null;
+  const capabilities = result?.status === "available" ? result.source.capabilities : null;
   const nextAfter = directory?.next_after ?? legacyDirectory?.next_after;
-  const hash =
-    result?.status === "available"
-      ? result.source.finalized_block_hash
-      : undefined;
+  const hash = result?.status === "available" ? result.source.finalized_block_hash : undefined;
   const detail = useQuery({
     ...rootBasketsQuery({ hotkey: selected, as_of: hash }),
     enabled: Boolean(selected) && hash !== undefined,
   });
   const fundResult = detail.data?.data;
   const fund =
-    fundResult?.status === "available" && fundResult.data.kind === "fund"
-      ? fundResult.data
-      : null;
+    fundResult?.status === "available" && fundResult.data.kind === "fund" ? fundResult.data : null;
   const columns: DataTableColumn<BasketPricing | BasketSummary>[] = [
     {
       key: "hotkey",
@@ -113,9 +84,7 @@ function RootBasketsView({
             key: "price",
             label: "Display price (TAO/β, 4 d.p.)",
             value: (row: BasketPricing | BasketSummary) =>
-              "display_price_q64_bits" in row
-                ? basketIndex(row.display_price_q64_bits)
-                : null,
+              "display_price_q64_bits" in row ? basketIndex(row.display_price_q64_bits) : null,
           },
           {
             key: "provisional",
@@ -165,8 +134,8 @@ function RootBasketsView({
           )}
           {capabilities && !capabilities.pricing ? (
             <p className="text-13 text-ink-muted">
-              This runtime publishes holdings and owed shares. Display pricing
-              and beta indexes were introduced in a later runtime.
+              This runtime publishes holdings and owed shares. Display pricing and beta indexes were
+              introduced in a later runtime.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-4">
@@ -260,14 +229,11 @@ function RootBasketsView({
                       },
                       {
                         label: "display price Q64 bits",
-                        value:
-                          fund.pricing?.display_price_q64_bits ??
-                          "No outstanding shares",
+                        value: fund.pricing?.display_price_q64_bits ?? "No outstanding shares",
                       },
                       {
                         label: "staker TWR Q64 bits",
-                        value:
-                          fund.pricing?.staker_twr_q64_bits ?? "Unavailable",
+                        value: fund.pricing?.staker_twr_q64_bits ?? "Unavailable",
                       },
                     ]}
                   />
@@ -303,14 +269,12 @@ function RootBasketsView({
                       {
                         key: "netuid",
                         label: "Subnet",
-                        value: (row) =>
-                          row.netuid === 0 ? "Root cash" : `SN${row.netuid}`,
+                        value: (row) => (row.netuid === 0 ? "Root cash" : `SN${row.netuid}`),
                       },
                       {
                         key: "quantity",
                         label: "Exact quantity",
-                        value: (row) =>
-                          `${row.quantity_atomic} ${row.quantity_unit}`,
+                        value: (row) => `${row.quantity_atomic} ${row.quantity_unit}`,
                       },
                       {
                         key: "spot",
@@ -325,17 +289,14 @@ function RootBasketsView({
                     ]}
                   />
                   <p className="text-13 text-ink-muted">
-                    Holdings describe balances at the finalized source. Stored
-                    target weights are shown only when the runtime publishes
-                    them. Historical return windows require separate snapshot
-                    coverage.
+                    Holdings describe balances at the finalized source. Stored target weights are
+                    shown only when the runtime publishes them. Historical return windows require
+                    separate snapshot coverage.
                   </p>
                 </>
               ) : (
                 <p className="text-13 text-ink-muted">
-                  {hash === undefined
-                    ? state
-                    : basketReadState(fundResult, detail.isError)}
+                  {hash === undefined ? state : basketReadState(fundResult, detail.isError)}
                 </p>
               )}
               {detail.isError || fundResult?.status === "unavailable" ? (
@@ -357,14 +318,8 @@ function RootBasketsView({
 
 export function AccountRootBasketsSection({ ss58 }: { ss58: string }) {
   const { network } = useNetwork();
-  const base = useSyncExternalStore(
-    onApiBaseChange,
-    getApiBase,
-    () => DEFAULT_API_BASE,
-  );
-  return (
-    <AccountRootBasketsView key={`${base}:${network.id}:${ss58}`} ss58={ss58} />
-  );
+  const base = useSyncExternalStore(onApiBaseChange, getApiBase, () => DEFAULT_API_BASE);
+  return <AccountRootBasketsView key={`${base}:${network.id}:${ss58}`} ss58={ss58} />;
 }
 
 function AccountRootBasketsView({ ss58 }: { ss58: string }) {
@@ -377,26 +332,19 @@ function AccountRootBasketsView({ ss58 }: { ss58: string }) {
   });
   const result = query.data?.data;
   const account =
-    result?.status === "available" && result.data.kind === "account"
-      ? result.data
-      : null;
+    result?.status === "available" && result.data.kind === "account" ? result.data : null;
   const positions =
     account?.entries.filter(
-      (entry) =>
-        entry.position !== null ||
-        entry.claim !== null ||
-        entry.entitlement != null,
+      (entry) => entry.position !== null || entry.claim !== null || entry.entitlement != null,
     ) ?? [];
-  const capabilities =
-    result?.status === "available" ? result.source.capabilities : null;
+  const capabilities = result?.status === "available" ? result.source.capabilities : null;
   const columns: DataTableColumn<BasketEntry>[] = [
     {
       key: "hotkey",
       label: "Fund hotkey",
       kind: "link",
       value: (row) => row.hotkey,
-      href: (row) =>
-        `/validators?basket=${encodeURIComponent(row.hotkey)}#baskets`,
+      href: (row) => `/validators?basket=${encodeURIComponent(row.hotkey)}#baskets`,
     },
     ...(capabilities?.beta_positions !== false
       ? [
@@ -408,14 +356,12 @@ function AccountRootBasketsView({ ss58 }: { ss58: string }) {
           {
             key: "spot",
             label: "Spot value",
-            value: (row: BasketEntry) =>
-              basketTao(row.position?.spot_value_rao),
+            value: (row: BasketEntry) => basketTao(row.position?.spot_value_rao),
           },
           {
             key: "realizable",
             label: "Realizable value",
-            value: (row: BasketEntry) =>
-              basketTao(row.position?.realizable_value_rao),
+            value: (row: BasketEntry) => basketTao(row.position?.realizable_value_rao),
           },
         ]
       : []),
@@ -438,8 +384,7 @@ function AccountRootBasketsView({ ss58 }: { ss58: string }) {
           {
             key: "owed",
             label: "Exact owed shares",
-            value: (row: BasketEntry) =>
-              row.entitlement?.owed_shares_atomic ?? "—",
+            value: (row: BasketEntry) => row.entitlement?.owed_shares_atomic ?? "—",
           },
           {
             key: "marked-payout",
@@ -482,8 +427,8 @@ function AccountRootBasketsView({ ss58 }: { ss58: string }) {
           )}
           {capabilities && !capabilities.claim_preview ? (
             <p className="text-13 text-ink-muted">
-              This runtime does not publish dust-aware claim previews. Marked
-              values are not execution quotes.
+              This runtime does not publish dust-aware claim previews. Marked values are not
+              execution quotes.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-4">

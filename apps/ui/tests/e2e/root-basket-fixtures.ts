@@ -4,8 +4,7 @@ import type { ApiSchema } from "@jsonbored/metagraphed";
 export const BASKET_KEY = `0x${"11".repeat(32)}`;
 export const BASKET_CURSOR = `0x${"22".repeat(32)}`;
 export const BASKET_HASH = `0x${"33".repeat(32)}`;
-export const BASKET_ACCOUNT =
-  "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9";
+export const BASKET_ACCOUNT = "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9";
 const q64 = "18446744073709551616";
 export const BASKET_PRICING: ApiSchema<"RootBasketPricing"> = {
   hotkey: BASKET_KEY,

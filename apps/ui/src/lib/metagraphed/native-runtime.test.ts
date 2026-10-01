@@ -1,9 +1,20 @@
 import { expect, test } from "vitest";
-import { describedMembers, featureOperations, memberOperation, nativeTypeLabel, nativeValueRows, nativePageOffset, type NativeArtifact } from "./native-runtime";
+import { describedMembers, featureOperations, memberOperation, nativeTypeLabel, nativeValueRows, nativePageOffset, entryOperation, nativePageCursor, type NativeArtifact } from "./native-runtime";
 import { encodeSs58 } from "./ss58";
 
 const key=`0x${"12".repeat(32)}`;
-const artifact:NativeArtifact={schema_version:1,source:{network:"finney",network_genesis_hash:key,finalized_block_hash:key,finalized_block:"500",runtime_spec_version:470,runtime_transaction_version:1,metadata_version:15,metadata_sha256:key},types:[{id:0,path:[],definition:{kind:"primitive",primitive:6}},{id:1,path:["NetUid"],definition:{kind:"composite",fields:[{name:null,type:0}]}},{id:2,path:[],definition:{kind:"tuple",types:[0,1]}}],results:[]};
+const artifact:NativeArtifact={schema_version:1,source:{network:"finney",network_genesis_hash:key,finalized_block_hash:key,finalized_block:"500",runtime_spec_version:470,runtime_transaction_version:1,runtime_code_hash:null,metadata_version:15,metadata_sha256:key},types:[{id:0,path:[],definition:{kind:"primitive",primitive:6}},{id:1,path:["NetUid"],definition:{kind:"composite",fields:[{name:null,type:0}]}},{id:2,path:[],definition:{kind:"tuple",types:[0,1]}}],results:[]};
+test("map browsing accepts leading keys and preserves exact cursor context",()=>{
+  const member={kind:"storage" as const,pallet:"SubtensorModule",member:"MinerCollateral",args:[{name:"netuid",type:0},{name:"hotkey",type:1}]};
+  expect(entryOperation(member,"[]")).toMatchObject({kind:"entries",args:[],limit:16});
+  expect(entryOperation(member,'["9007199254740993"]',key)).toMatchObject({args:["9007199254740993"],cursor:key});
+  expect(()=>entryOperation(member,"[1,2,3]")).toThrow(/leading keys/);
+  expect(()=>entryOperation(member,"[9007199254740993]")).toThrow(/decimal strings/);
+  expect(()=>entryOperation({...member,args:[]},"[]")).toThrow(/map/);
+  expect(()=>entryOperation({...member,kind:"prepare"},"[]")).toThrow(/map/);
+  expect(nativePageCursor({...artifact,results:[{kind:"entries",contract:{next_cursor:key},value:[]}]})).toBe(key);
+  expect(nativePageCursor({...artifact,results:[{kind:"entries",contract:{next_cursor:null},value:[]}]})).toBeNull();
+});
 test("feature inputs preserve upstream key order and exact values",()=>{
   expect(featureOperations("mechanisms","19").map((row)=>"member" in row?row.member:null)).toEqual(["MechanismCountCurrent","MechanismEmissionSplit"]);
   expect(featureOperations("collateral","19").map((row)=>"member" in row?row.member:null)).toEqual(["CollateralLockShare","CollateralDrainRatio"]);
