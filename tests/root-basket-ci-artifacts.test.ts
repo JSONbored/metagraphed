@@ -11,6 +11,11 @@ import { format } from "prettier";
 
 test("retain remote generated contract artifacts for review", async () => {
   if (!process.env.CI) return;
+  // The UI drift gate builds this package independently. Retain those same
+  // normal build outputs through the existing coverage artifact as well.
+  execFileSync("npm", ["run", "build", "--workspace=packages/client"], {
+    stdio: "pipe",
+  });
   const changed = execFileSync("git", ["diff", "--name-only"], {
     encoding: "utf8",
   })

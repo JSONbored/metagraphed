@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import type { ApiSchema } from "@jsonbored/metagraphed";
 import { apiFetch } from "./client";
 import { metagraphedQueryKey } from "./queries";
+import { getApiBase } from "./config";
 
 export type RootBasketResult = ApiSchema<"RootBasketsArtifact">;
 export type BasketPricing = ApiSchema<"RootBasketPricing">;
@@ -11,7 +12,7 @@ export const rootBasketsQuery = (
   params: { cursor?: string; as_of?: string; hotkey?: string } = {},
 ) =>
   queryOptions({
-    queryKey: metagraphedQueryKey("root-baskets", params),
+    queryKey: metagraphedQueryKey("root-baskets", { apiBase: getApiBase() }, params),
     queryFn: ({ signal }) => apiFetch<RootBasketResult>("/api/v1/root-baskets", { params, signal }),
     staleTime: 30_000,
     retry: 0,
@@ -22,7 +23,7 @@ export const accountRootBasketsQuery = (
   params: { offset?: number; as_of?: string } = {},
 ) =>
   queryOptions({
-    queryKey: metagraphedQueryKey("account-root-baskets", ss58, params),
+    queryKey: metagraphedQueryKey("account-root-baskets", { apiBase: getApiBase() }, ss58, params),
     queryFn: ({ signal }) =>
       apiFetch<RootBasketResult>(`/api/v1/accounts/${encodeURIComponent(ss58)}/root-baskets`, {
         params,

@@ -1,5 +1,33 @@
-import { describe, it, expect } from "vitest";
-import { basketTao, basketIndex, basketReadState } from "./root-baskets";
+import { afterEach, describe, it, expect } from "vitest";
+import {
+  basketTao,
+  basketIndex,
+  basketReadState,
+  rootBasketsQuery,
+  accountRootBasketsQuery,
+} from "./root-baskets";
+import { setApiBase, setNetwork, DEFAULT_API_BASE } from "./config";
+
+afterEach(() => {
+  setApiBase(DEFAULT_API_BASE);
+  setNetwork("mainnet");
+});
+
+it("isolates basket caches by network, API origin, account and pinned page", () => {
+  const main = rootBasketsQuery().queryKey;
+  setNetwork("testnet");
+  const test = rootBasketsQuery().queryKey;
+  expect(test).not.toEqual(main);
+  setApiBase("https://reader.example");
+  expect(rootBasketsQuery().queryKey).not.toEqual(test);
+  const hash = `0x${"11".repeat(32)}`;
+  const first = accountRootBasketsQuery("account-a").queryKey;
+  expect(accountRootBasketsQuery("account-b").queryKey).not.toEqual(first);
+  expect(accountRootBasketsQuery("account-a", { offset: 16, as_of: hash }).queryKey).not.toEqual(
+    first,
+  );
+  expect(rootBasketsQuery({ cursor: hash, as_of: hash }).retry).toBe(0);
+});
 
 describe("native basket display units", () => {
   it("keeps TAO exact beyond the JavaScript integer range", () => {

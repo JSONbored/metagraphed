@@ -23,6 +23,7 @@ import { taoToRao } from "../src/emission-decomposition.ts";
 import {} from "../workers/request-params.ts";
 import { apiEnv } from "./lib/worker-env.ts";
 import { addAjvFormats } from "./lib/ajv-formats.ts";
+import { basketRuntimeFixture } from "../tests/fixtures/root-basket-runtime.ts";
 
 // OpenAPI document + Worker response bodies are dynamic JSON read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
@@ -3066,9 +3067,37 @@ assert.equal(
   "API validation checks must cover every configured API route",
 );
 
+// New native basket contract checks are offline. The existing harness invokes
+// the real Worker router, so intercept only these checks' outgoing RPC reads
+// and restore fetch before continuing the sequential route catalogue.
+async function checkedRequest(request: Request) {
+  if (!new URL(request.url).pathname.endsWith("/root-baskets"))
+    return handleRequest(request, apiEnv(env), {});
+  const previousFetch = globalThis.fetch;
+  const fixture = basketRuntimeFixture();
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body));
+    const answer = async (row: {
+      id: number;
+      method: string;
+      params: unknown[];
+    }) => ({ id: row.id, result: await fixture.rpc(row.method, row.params) });
+    return Response.json(
+      Array.isArray(body)
+        ? await Promise.all(body.map(answer))
+        : await answer(body),
+    );
+  };
+  try {
+    return await handleRequest(request, apiEnv(env), {});
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+}
+
 for (const [route, assertion, options = {}] of checks) {
   const expectStatus = options.expect_status ?? 200;
-  const response = await handleRequest(
+  const response = await checkedRequest(
     new Request(
       `https://metagraph.sh${route}`,
       options.body === undefined
@@ -3079,8 +3108,6 @@ for (const [route, assertion, options = {}] of checks) {
             body: JSON.stringify(options.body),
           },
     ),
-    apiEnv(env),
-    {},
   );
   assert.equal(
     response.status,

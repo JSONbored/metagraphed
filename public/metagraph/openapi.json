@@ -8333,7 +8333,7 @@
                   "display_shares_q64_bits": "example",
                   "first_block": "example",
                   "hotkey": "example",
-                  "pending_entitlement_q64_bits": "Example Subnet",
+                  "pending_entitlement_q64_bits": "example",
                   "provisional": false,
                   "raw_spot_price_q64_bits": "example",
                   "shares_atomic": "example",
@@ -44031,6 +44031,11 @@
         "additionalProperties": false,
         "properties": {
           "accrued_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "dust_rows": {
@@ -44044,6 +44049,11 @@
             "type": "integer"
           },
           "forfeited_estimate_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "hotkey": {
@@ -44051,9 +44061,19 @@
             "type": "string"
           },
           "owed_shares_atomic": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "redeemable_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "rows": {
@@ -44165,12 +44185,25 @@
         "additionalProperties": false,
         "properties": {
           "beta_atomic": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "display_beta_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "display_price_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "hotkey": {
@@ -44181,9 +44214,19 @@
             "type": "boolean"
           },
           "realizable_value_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "spot_value_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           }
         },
@@ -44202,15 +44245,32 @@
         "additionalProperties": false,
         "properties": {
           "bag_index_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "display_price_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "display_shares_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "first_block": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "hotkey": {
@@ -44218,27 +44278,57 @@
             "type": "string"
           },
           "pending_entitlement_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "provisional": {
             "type": "boolean"
           },
           "raw_spot_price_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "shares_atomic": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "spot_nav_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "stake_index_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "stake_price_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "staker_twr_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           }
         },
@@ -44274,6 +44364,29 @@
       },
       "RootBasketsArtifact": {
         "description": "Finalized native Root basket state from the audited node-subtensor v469/API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.",
+        "examples": [
+          {
+            "data": {
+              "kind": "directory",
+              "limit": 64,
+              "next_after": null,
+              "pricing": []
+            },
+            "network": "finney",
+            "schema_version": 1,
+            "source": {
+              "decoder_version": "subtensor-v469-370bac46-v1",
+              "finalized_block": "500",
+              "finalized_block_hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+              "metadata_sha256": "0x5555555555555555555555555555555555555555555555555555555555555555",
+              "network": "finney",
+              "network_genesis_hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+              "runtime_api_version": 5,
+              "runtime_spec_version": 469
+            },
+            "status": "available"
+          }
+        ],
         "oneOf": [
           {
             "additionalProperties": false,
@@ -44376,6 +44489,11 @@
             "type": "string"
           },
           "finalized_block": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "finalized_block_hash": {
@@ -44418,6 +44536,11 @@
         "additionalProperties": false,
         "properties": {
           "deposited_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "holdings": {
@@ -44430,6 +44553,11 @@
                   "type": "integer"
                 },
                 "quantity_atomic": {
+                  "examples": [
+                    "9007199254740993"
+                  ],
+                  "maxLength": 20,
+                  "pattern": "^(0|[1-9]\\d*)$",
                   "type": "string"
                 },
                 "quantity_unit": {
@@ -44440,9 +44568,19 @@
                   "type": "string"
                 },
                 "realizable_value_rao": {
+                  "examples": [
+                    "9007199254740993"
+                  ],
+                  "maxLength": 20,
+                  "pattern": "^(0|[1-9]\\d*)$",
                   "type": "string"
                 },
                 "spot_value_rao": {
+                  "examples": [
+                    "9007199254740993"
+                  ],
+                  "maxLength": 20,
+                  "pattern": "^(0|[1-9]\\d*)$",
                   "type": "string"
                 }
               },
@@ -44463,15 +44601,35 @@
             "type": "string"
           },
           "realizable_nav_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "redeemed_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "shares_atomic": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "spot_nav_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           }
         },
@@ -44490,9 +44648,19 @@
         "additionalProperties": false,
         "properties": {
           "available_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "budget_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           },
           "enabled": {
@@ -44502,6 +44670,11 @@
             "type": "boolean"
           },
           "refill_blocks": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
             "type": "string"
           }
         },

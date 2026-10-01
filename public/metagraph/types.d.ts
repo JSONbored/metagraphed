@@ -10497,12 +10497,16 @@ export interface components {
             tr_splice_q64_bits: string;
         };
         RootBasketClaimPreview: {
+            /** @example 9007199254740993 */
             accrued_rao: string;
             dust_rows: number;
             flushed_credits: number;
+            /** @example 9007199254740993 */
             forfeited_estimate_rao: string;
             hotkey: string;
+            /** @example 9007199254740993 */
             owed_shares_atomic: string;
+            /** @example 9007199254740993 */
             redeemable_rao: string;
             rows: number;
             rows_to_sell: number;
@@ -10524,31 +10528,70 @@ export interface components {
             pricing: components["schemas"]["RootBasketPricing"][];
         };
         RootBasketPosition: {
+            /** @example 9007199254740993 */
             beta_atomic: string;
+            /** @example 18446744073709551616 */
             display_beta_q64_bits: string;
+            /** @example 18446744073709551616 */
             display_price_q64_bits: string;
             hotkey: string;
             provisional: boolean;
+            /** @example 9007199254740993 */
             realizable_value_rao: string;
+            /** @example 9007199254740993 */
             spot_value_rao: string;
         };
         RootBasketPricing: {
+            /** @example 18446744073709551616 */
             bag_index_q64_bits: string;
+            /** @example 18446744073709551616 */
             display_price_q64_bits: string;
+            /** @example 18446744073709551616 */
             display_shares_q64_bits: string;
+            /** @example 9007199254740993 */
             first_block: string;
             hotkey: string;
+            /** @example 18446744073709551616 */
             pending_entitlement_q64_bits: string;
             provisional: boolean;
+            /** @example 18446744073709551616 */
             raw_spot_price_q64_bits: string;
+            /** @example 9007199254740993 */
             shares_atomic: string;
+            /** @example 9007199254740993 */
             spot_nav_rao: string;
+            /** @example 18446744073709551616 */
             stake_index_q64_bits: string;
+            /** @example 18446744073709551616 */
             stake_price_q64_bits: string;
+            /** @example 18446744073709551616 */
             staker_twr_q64_bits: string;
         };
         RootBasketReadData: components["schemas"]["RootBasketDirectory"] | components["schemas"]["RootBasketDetail"] | components["schemas"]["RootBasketAccountPage"];
-        /** @description Finalized native Root basket state from the audited node-subtensor v469/API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route. */
+        /**
+         * @description Finalized native Root basket state from the audited node-subtensor v469/API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.
+         * @example {
+         *       "data": {
+         *         "kind": "directory",
+         *         "limit": 64,
+         *         "next_after": null,
+         *         "pricing": []
+         *       },
+         *       "network": "finney",
+         *       "schema_version": 1,
+         *       "source": {
+         *         "decoder_version": "subtensor-v469-370bac46-v1",
+         *         "finalized_block": "500",
+         *         "finalized_block_hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+         *         "metadata_sha256": "0x5555555555555555555555555555555555555555555555555555555555555555",
+         *         "network": "finney",
+         *         "network_genesis_hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+         *         "runtime_api_version": 5,
+         *         "runtime_spec_version": 469
+         *       },
+         *       "status": "available"
+         *     }
+         */
         RootBasketsArtifact: {
             data: components["schemas"]["RootBasketReadData"];
             network: components["schemas"]["BittensorNetwork"];
@@ -10577,6 +10620,7 @@ export interface components {
         RootBasketSource: {
             /** @constant */
             decoder_version: "subtensor-v469-370bac46-v1";
+            /** @example 9007199254740993 */
             finalized_block: string;
             finalized_block_hash: string;
             metadata_sha256: string;
@@ -10588,26 +10632,37 @@ export interface components {
             runtime_spec_version: 469;
         };
         RootBasketSummary: {
+            /** @example 9007199254740993 */
             deposited_rao: string;
             holdings: {
                 netuid: number;
+                /** @example 9007199254740993 */
                 quantity_atomic: string;
                 /** @enum {string} */
                 quantity_unit: "rao" | "alpha_atomic";
+                /** @example 9007199254740993 */
                 realizable_value_rao: string;
+                /** @example 9007199254740993 */
                 spot_value_rao: string;
             }[];
             hotkey: string;
+            /** @example 9007199254740993 */
             realizable_nav_rao: string;
+            /** @example 9007199254740993 */
             redeemed_rao: string;
+            /** @example 9007199254740993 */
             shares_atomic: string;
+            /** @example 9007199254740993 */
             spot_nav_rao: string;
         };
         RootBasketTradingStatus: {
+            /** @example 9007199254740993 */
             available_rao: string;
+            /** @example 9007199254740993 */
             budget_rao: string;
             enabled: boolean;
             frozen: boolean;
+            /** @example 9007199254740993 */
             refill_blocks: string;
         };
         RpcEndpointsArtifact: {
@@ -15105,7 +15160,7 @@ export interface operations {
                      *               "display_shares_q64_bits": "example",
                      *               "first_block": "example",
                      *               "hotkey": "example",
-                     *               "pending_entitlement_q64_bits": "Example Subnet",
+                     *               "pending_entitlement_q64_bits": "example",
                      *               "provisional": false,
                      *               "raw_spot_price_q64_bits": "example",
                      *               "shares_atomic": "example",
@@ -20501,7 +20556,7 @@ export interface operations {
                      *               "display_shares_q64_bits": "example",
                      *               "first_block": "example",
                      *               "hotkey": "example",
-                     *               "pending_entitlement_q64_bits": "Example Subnet",
+                     *               "pending_entitlement_q64_bits": "example",
                      *               "provisional": false,
                      *               "raw_spot_price_q64_bits": "example",
                      *               "shares_atomic": "example",
@@ -24204,7 +24259,7 @@ export interface operations {
                      *               "display_shares_q64_bits": "example",
                      *               "first_block": "example",
                      *               "hotkey": "example",
-                     *               "pending_entitlement_q64_bits": "Example Subnet",
+                     *               "pending_entitlement_q64_bits": "example",
                      *               "provisional": false,
                      *               "raw_spot_price_q64_bits": "example",
                      *               "shares_atomic": "example",
@@ -41692,7 +41747,7 @@ export interface operations {
                      *               "display_shares_q64_bits": "example",
                      *               "first_block": "example",
                      *               "hotkey": "example",
-                     *               "pending_entitlement_q64_bits": "Example Subnet",
+                     *               "pending_entitlement_q64_bits": "example",
                      *               "provisional": false,
                      *               "raw_spot_price_q64_bits": "example",
                      *               "shares_atomic": "example",

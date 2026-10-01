@@ -160,7 +160,7 @@ test("admitted REST reads use the selected network's existing rate-limit bucket"
 
 test("REST and MCP share exact data, limits and network selection", async () => {
   const fixture = stubNetwork();
-  const env = createLocalArtifactEnv();
+  const env = createLocalArtifactEnv() as Env;
   for (const [path, tool, args] of [
     ["/api/v1/root-baskets", "get_root_baskets", {}],
     [
@@ -197,7 +197,7 @@ test("REST and MCP share exact data, limits and network selection", async () => 
 
 test("REST and MCP reject malformed input and throttling without chain work", async () => {
   const fixture = stubNetwork();
-  const env = createLocalArtifactEnv();
+  const env = createLocalArtifactEnv() as Env;
   for (const path of [
     "/api/v1/root-baskets?cursor=invalid",
     `/api/v1/root-baskets?cursor=${BASKET_FIXTURE_HOTKEY}`,
