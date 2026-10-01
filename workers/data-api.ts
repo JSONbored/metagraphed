@@ -7098,9 +7098,11 @@ export async function refreshExplorerDirectoryMaterialization(
     const sql = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
     if (!sql) return false;
     const latest = await latestCompletedNeuronSnapshot(sql);
+    // Every producer chunk requests a refresh. Decline incomplete or obsolete
+    // passes before scanning the full metric snapshot for its boundary stamp.
+    if (latest !== capturedAt) return false;
     const newestCapturedAt = await readNewestNeuronCapture(sql, env);
     if (
-      latest !== capturedAt ||
       !Number.isSafeInteger(newestCapturedAt) ||
       newestCapturedAt !== capturedAt
     ) {
