@@ -71,6 +71,7 @@ type Row = Record<string, any>;
 // rather than something discovered after deploy.
 // Represent an account already validated by the OAuth provider, while still
 // exercising the public router's entitlement gate. Other KV reads remain cold.
+const accountCtx = { waitUntil() {}, props: { accountId: 7 } };
 const accountKv = {
   async get(key: string) {
     return key === "oauth-account-tier:v2:7"
@@ -211,9 +212,7 @@ async function mcpRaw(
     headers: { "content-type": "application/json", ...headers },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
-  return handleRequest(request, apiEnv(envOverride), {
-    props: { accountId: 7 },
-  });
+  return handleRequest(request, apiEnv(envOverride), accountCtx);
 }
 
 async function getJson(path: string): Promise<Row> {
