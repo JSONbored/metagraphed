@@ -151,7 +151,9 @@ describe("checkEmissionDrift", () => {
       await assert.rejects(
         () =>
           checkEmissionDrift({ rpcUrl: "https://rpc.test", fetchImpl: impl }),
-        /could not pin emission input parent/,
+        number === "0x0"
+          ? /could not pin emission input parent/
+          : /chain_getHeader: response had no hexadecimal block number/,
       );
     },
   );
@@ -217,11 +219,11 @@ describe("checkEmissionDrift", () => {
     );
   });
 
-  test("an empty chain read still summarizes instead of dividing by zero", async () => {
+  test("valid unset storage still summarizes instead of dividing by zero", async () => {
     // A node answering no map entries at all: nothing eligible, nothing
     // observed -- the mean/max error paths must degrade to zero, not NaN.
     const { impl } = fixtureFetch((m) =>
-      m === "state_queryStorageAt" ? [] : undefined,
+      m === "state_queryStorageAt" ? [{ changes: [] }] : undefined,
     );
     const { summary } = await checkEmissionDrift({
       rpcUrl: "https://rpc.test",

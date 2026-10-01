@@ -38,6 +38,12 @@ import {
 import type { GateParamReading } from "./emission-gate-history.ts";
 import { blockEmissionForIssuance } from "./block-emission.ts";
 import { chainRpc } from "./chain-rpc.ts";
+import {
+  chainBlockHash,
+  chainHeaderNumber,
+  chainStorageChanges,
+  chainStorageKeys,
+} from "./chain-rpc-read.ts";
 
 export const SUBNET_EMISSION_ENABLED_PREFIX =
   "0x658faa385070e074c85bf6b568cf0555c97bb5c5631e5f593b5bd2da84a5fa16";
@@ -58,7 +64,10 @@ export const SUBNET_EMA_TAO_FLOW_PREFIX =
  * the load spreading without ever splitting a sample's reads.
  */
 export { EMISSION_SAMPLER_ARCHIVE_URLS } from "./emission-rpc.ts";
-import { withEmissionFailover } from "./emission-rpc.ts";
+import {
+  withEmissionFailover,
+  type EmissionFailoverOptions,
+} from "./emission-rpc.ts";
 
 export interface EmissionGateSamplerOptions {
   rpcUrl: string;
@@ -144,13 +153,15 @@ export async function sampleEmissionGate(
       // BEFORE all of them: `state_getKeysPaged` returns keys strictly greater
       // than startKey, which is exactly the full set. It is the one value that
       // is both a legal key-shaped argument and guaranteed to skip nothing.
-      const page = await rpc<string[]>("state_getKeysPaged", [
-        prefix,
-        500,
-        startKey ?? prefix,
-        at,
-      ]);
-      if (!page?.length) break;
+      const page = chainStorageKeys(
+        await rpc<unknown>("state_getKeysPaged", [
+          prefix,
+          500,
+          startKey ?? prefix,
+          at,
+        ]),
+      );
+      if (!page.length) break;
       keys.push(...page);
       if (page.length < 500) break;
       startKey = page[page.length - 1];
@@ -179,14 +190,9 @@ export async function sampleEmissionGate(
     const values = new Map<string, string | null>();
     for (let i = 0; i < keys.length; i += STORAGE_BATCH_SIZE) {
       const chunk = keys.slice(i, i + STORAGE_BATCH_SIZE);
-      const pages = await rpc<{ changes?: [string, string | null][] }[] | null>(
-        "state_queryStorageAt",
-        [chunk, at],
-      );
-      for (const page of pages ?? []) {
-        for (const [key, value] of page?.changes ?? []) {
-          values.set(key, value ?? null);
-        }
+      const pages = await rpc<unknown>("state_queryStorageAt", [chunk, at]);
+      for (const [key, value] of chainStorageChanges(pages, at)) {
+        values.set(key, value);
       }
     }
     // A key the node simply omits is UNSET, which is a real reading, not a
@@ -222,10 +228,15 @@ export async function sampleEmissionGate(
   // "UnknownBlock: Header was not found in the database" -- which is exactly
   // what production was throwing (#10742). FINALIZED rather than best head is
   // what makes the hash safe to hand to any node in the pool: a finalized block
-  // does not reorg and every node has it.
-  const at = await rpc<string>("chain_getFinalizedHead", []);
-  const header = await rpc<{ number: string }>("chain_getHeader", [at]);
-  const blockNumber = parseInt(header.number, 16);
+  // does not reorg. A provider's internal backends can still lag; explicit
+  // unavailability restarts the WHOLE sample, never individual storage reads.
+  const at = chainBlockHash(
+    await rpc<unknown>("chain_getFinalizedHead", []),
+    "chain_getFinalizedHead",
+  );
+  const blockNumber = chainHeaderNumber(
+    await rpc<unknown>("chain_getHeader", [at]),
+  );
   const observedAt = now();
 
   const paramValues = await queryStorage(
@@ -312,11 +323,8 @@ export async function sampleEmissionGate(
  * node completed against another is the split this lane just stopped doing.
  */
 export async function sampleEmissionGateWithFailover(
-  options: Omit<EmissionGateSamplerOptions, "rpcUrl"> & {
-    urls?: readonly string[];
-    /** Which endpoint to start from; any integer, including a tick counter. */
-    offset?: number;
-  } = {},
+  options: Omit<EmissionGateSamplerOptions, "rpcUrl"> &
+    EmissionFailoverOptions = {},
 ): Promise<EmissionGateSample> {
   return withEmissionFailover(
     options,
