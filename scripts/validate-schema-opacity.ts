@@ -17,6 +17,7 @@
 // other entry is a decision, and a reviewer should be able to disagree with it.
 // Same idea as scripts/validate-mcp.ts's RESPONSE_UNVALIDATED_REASONS.
 import path from "node:path";
+import { openSites } from "./lib/schema-opacity.ts";
 import { listToolDefinitions } from "../src/mcp-server.ts";
 import { readJson, repoRoot } from "./lib.ts";
 
@@ -157,55 +158,6 @@ const MCP_OPEN_SITES: Record<string, string> = {
 };
 
 // ---- the walk --------------------------------------------------------------
-
-function openSites(root: unknown, name: string): string[] {
-  const found: string[] = [];
-  const walk = (node: unknown, at: string): void => {
-    if (Array.isArray(node)) {
-      for (const entry of node) walk(entry, at);
-      return;
-    }
-    if (!node || typeof node !== "object") return;
-    const row = node as Row;
-    if (row.type === "object" || row.properties !== undefined) {
-      const properties = row.properties as Row | undefined;
-      const hasProperties = properties && Object.keys(properties).length > 0;
-      const additional = row.additionalProperties;
-      const typedRecord =
-        additional &&
-        typeof additional === "object" &&
-        Object.keys(additional as Row).length > 0;
-      if (!hasProperties && !typedRecord) found.push(at);
-    }
-    for (const [key, value] of Object.entries(row)) {
-      // Annotations, not shape.
-      if (["examples", "enum", "description", "default", "title"].includes(key))
-        continue;
-      if (key === "properties") {
-        for (const [name, child] of Object.entries(value as Row))
-          walk(child, `${at}.${name}`);
-        continue;
-      }
-      if (key === "items") {
-        walk(value, `${at}[]`);
-        continue;
-      }
-      if (key === "additionalProperties") {
-        walk(value, `${at}{}`);
-        continue;
-      }
-      // A union branch is the SAME site: which branch an open object landed in
-      // is an implementation detail of how the schema was written.
-      if (["anyOf", "oneOf", "allOf"].includes(key)) {
-        for (const branch of value as unknown[]) walk(branch, at);
-        continue;
-      }
-      if (value && typeof value === "object") walk(value, at);
-    }
-  };
-  walk(root, name);
-  return [...new Set(found)];
-}
 
 // ---- the check -------------------------------------------------------------
 
