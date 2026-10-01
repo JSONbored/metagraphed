@@ -27,8 +27,8 @@ const BODIES: Record<PrivacySection, ReactNode> = {
     <>
       <p>
         Public REST API reads remain available without an account. MCP access requires free sign-in
-        through OAuth or an API key. We do not sell data, we do not run advertising,
-        and we do not build profiles of individuals.
+        through OAuth or an API key. We do not sell data, we do not run advertising, and we do not
+        build profiles of individuals.
       </p>
       <p>
         What we do keep is operational: enough to run the service, bill the accounts that have one,
