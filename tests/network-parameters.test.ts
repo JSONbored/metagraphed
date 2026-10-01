@@ -8,9 +8,15 @@ import {
   loadNetworkParameters,
   readCachedNetworkParametersSnapshot,
 } from "../src/network-parameters.ts";
+import { NETWORK_PARAMETERS_KV_TTL as leafNetworkParametersTtl } from "../src/network-parameters-cache.ts";
 import { handleRequest } from "../workers/api.ts";
 import { mockEnv } from "./row-type.ts";
 import type { Row, AnyFn } from "./row-type.ts";
+
+test("serving and capture retain the same 300-second network parameter cache lifetime", () => {
+  assert.equal(NETWORK_PARAMETERS_KV_TTL, leafNetworkParametersTtl);
+  assert.equal(leafNetworkParametersTtl, 300);
+});
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);

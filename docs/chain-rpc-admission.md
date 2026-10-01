@@ -38,3 +38,13 @@ The regressions model the provider's rolling operation allowance. HTTP-only
 pacing stalls before its first durable write; operation admission captures three
 whole chunks with all original fields. A provider that remains unavailable still
 leaves storage and the watermark unchanged.
+
+Pure Finney address validation, network-parameter cache lifetime and the
+burn-history retention policy live in leaf
+modules. The data API reaches them without importing account-balance, network
+parameter or burn
+capture, their RPC transports or admission state. The original validation
+functions, 300-second cache lifetime and 90-day retention value are retained,
+including compatibility
+exports. The real data-API module-graph regression rejects those six producer
+modules and retains its existing source-size limit.

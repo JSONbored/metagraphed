@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import {
-  admitChainRpcRequest,
-  createChainRpcAdmission,
-} from "../src/chain-rpc-admission.ts";
+import { createChainRpcAdmission } from "../src/chain-rpc-admission.ts";
 import { chainRpc, chainRpcBatch } from "../src/chain-rpc.ts";
 
 const URL = "https://bittensor-finney.api.onfinality.io/public";
@@ -122,8 +119,9 @@ describe("public Finney response-unit admission", () => {
   test("production defaults use the monotonic clock and timer", async () => {
     vi.useFakeTimers({ toFake: ["performance", "setTimeout"] });
     try {
-      await admitChainRpcRequest(URL, 50);
-      const next = admitChainRpcRequest(URL, 1);
+      const admit = createChainRpcAdmission();
+      await admit(URL, 50);
+      const next = admit(URL, 1);
       await vi.advanceTimersByTimeAsync(1_000);
       await next;
       assert.equal(performance.now(), 1_000);

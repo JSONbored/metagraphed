@@ -18,6 +18,7 @@ import {
   loadSubnetBurnHistory,
   type BurnHistoryDb,
 } from "../src/subnet-burn-history.ts";
+import { BURN_HISTORY_RETENTION_MS as leafBurnRetentionMs } from "../src/subnet-burn-history-retention.ts";
 import { SubnetBurnHistoryArtifactSchema } from "../schemas-src/routes/subnet-registration-cost.ts";
 
 type Row = Record<string, unknown>;
@@ -53,6 +54,11 @@ function fakeDb({ failBatch = false, failSweep = false } = {}) {
 function card(subnets: Array<{ netuid: number; burn_tao: number }>) {
   return async () => ({ schema_version: 1, subnets }) as Row;
 }
+
+test("capture and pruning share the unchanged 90-day retention policy", () => {
+  assert.equal(BURN_HISTORY_RETENTION_MS, leafBurnRetentionMs);
+  assert.equal(leafBurnRetentionMs, 90 * 24 * 60 * 60 * 1000);
+});
 
 describe("captureSubnetBurnHistory", () => {
   test("writes one row per subnet, all sharing the tick's stamp", async () => {

@@ -12,6 +12,8 @@
 import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { chainRpc } from "./chain-rpc.ts";
+import { accountIdFromSs58 } from "./finney-ss58.ts";
+export { isFinneySs58Address } from "./finney-ss58.ts";
 import type { FieldSources } from "./field-provenance.ts";
 import { RAO_PER_TAO } from "./lib/rao.ts";
 import {
@@ -20,17 +22,6 @@ import {
   rpcUrlForNetwork,
 } from "./chain-network.ts";
 
-const SS58_BASE58_ALPHABET =
-  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const SS58_BASE58_INDEX = new Map(
-  [...SS58_BASE58_ALPHABET].map((char, index) => [char, index]),
-);
-const FINNEY_SS58_PREFIX = 42;
-const FINNEY_SS58_MIN_LENGTH = 47;
-const FINNEY_SS58_MAX_LENGTH = 48;
-const FINNEY_SS58_DECODED_LENGTH = 35;
-const FINNEY_SS58_CHECKSUM_LENGTH = 2; // prefix < 64 → 2-byte SS58 checksum
-const SS58_PREIMAGE = new TextEncoder().encode("SS58PRE");
 export const BALANCE_KV_TTL = 60; // seconds
 // Logical retry seconds; physical KV expiration is at least 60 seconds.
 export const BALANCE_NEGATIVE_KV_TTL = 10;
@@ -40,11 +31,10 @@ export const BALANCE_RPC_TIMEOUT_MS = 5000;
 // Hard-coded: both halves are fixed runtime constants (the pallet/storage names
 // never change), and computing them would need an xxhash dependency this repo
 // doesn't carry — whereas blake2_128Concat below reuses the @noble/hashes blake2b
-// already imported for the SS58 checksum. Verified against a live finney
+// used for the SS58 checksum in finney-ss58.ts. Verified against a live finney
 // state_getStorage response.
 const SYSTEM_ACCOUNT_STORAGE_PREFIX =
   "26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9";
-const ACCOUNT_ID_LENGTH = 32;
 // SCALE AccountInfo: nonce/consumers/providers/sufficients (u32 LE each = 16
 // bytes), then AccountData. subtensor's Balance type is u64, so a live finney
 // blob is 56 bytes: free u64@16, reserved u64@24, frozen u64@32, flags u128@40
@@ -64,61 +54,6 @@ const ACCOUNT_INFO_U128_MIN_LENGTH = ACCOUNT_INFO_HEADER_BYTES + 2 * U128_BYTES;
 // header + free/reserved/frozen/flags (u128 each) — a full u128 AccountData.
 const ACCOUNT_INFO_U128_FULL_LENGTH =
   ACCOUNT_INFO_HEADER_BYTES + 4 * U128_BYTES; // 80
-function decodeBase58(value: string): Uint8Array | null {
-  const bytes = [0];
-  for (const char of value) {
-    const carryStart = SS58_BASE58_INDEX.get(char);
-    if (carryStart == null) return null;
-    let carry = carryStart;
-    for (let index = 0; index < bytes.length; index += 1) {
-      carry += bytes[index] * 58;
-      bytes[index] = carry & 0xff;
-      carry >>= 8;
-    }
-    while (carry > 0) {
-      bytes.push(carry & 0xff);
-      carry >>= 8;
-    }
-  }
-  for (const char of value) {
-    if (char !== "1") break;
-    bytes.push(0);
-  }
-  return Uint8Array.from(bytes.reverse());
-}
-
-function verifyFinneySs58Checksum(decoded: Uint8Array): boolean {
-  if (decoded.length !== FINNEY_SS58_DECODED_LENGTH) return false;
-  const body = decoded.subarray(
-    0,
-    decoded.length - FINNEY_SS58_CHECKSUM_LENGTH,
-  );
-  const checksum = decoded.subarray(
-    decoded.length - FINNEY_SS58_CHECKSUM_LENGTH,
-  );
-  const preimage = new Uint8Array(SS58_PREIMAGE.length + body.length);
-  preimage.set(SS58_PREIMAGE, 0);
-  preimage.set(body, SS58_PREIMAGE.length);
-  const hash = blake2b(preimage, { dkLen: 64 });
-  return hash[0] === checksum[0] && hash[1] === checksum[1];
-}
-
-export function isFinneySs58Address(value: string): boolean {
-  if (
-    value.length < FINNEY_SS58_MIN_LENGTH ||
-    value.length > FINNEY_SS58_MAX_LENGTH
-  ) {
-    return false;
-  }
-
-  const decoded = decodeBase58(value);
-  return (
-    decoded?.length === FINNEY_SS58_DECODED_LENGTH &&
-    decoded[0] === FINNEY_SS58_PREFIX &&
-    verifyFinneySs58Checksum(decoded)
-  );
-}
-
 function toHex(bytes: Uint8Array): string {
   let out = "";
   for (const byte of bytes) out += byte.toString(16).padStart(2, "0");
@@ -143,14 +78,6 @@ function readUintLe(bytes: Uint8Array, offset: number, width: number): bigint {
     value = (value << 8n) | BigInt(bytes[offset + index]);
   }
   return value;
-}
-
-// The 32-byte AccountId inside a finney SS58 (prefix byte, then AccountId32, then
-// the 2-byte checksum). Callers shape-check the address with isFinneySs58Address.
-function accountIdFromSs58(ss58: string): Uint8Array | null {
-  const decoded = decodeBase58(ss58);
-  if (decoded?.length !== FINNEY_SS58_DECODED_LENGTH) return null;
-  return decoded.subarray(1, 1 + ACCOUNT_ID_LENGTH);
 }
 
 // System::Account(accountId) = twox128("System") ++ twox128("Account")

@@ -39,7 +39,7 @@
 import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { encodeAccountId32 } from "./ss58.ts";
-import { isFinneySs58Address } from "./account-balance.ts";
+import { isFinneySs58Address } from "./finney-ss58.ts";
 import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
 import type { FieldSources } from "./field-provenance.ts";
 import {

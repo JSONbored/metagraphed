@@ -12,6 +12,8 @@
 // here. There is no second decoder to keep in step.
 
 import { loadChainBurn } from "./chain-burn.ts";
+import { BURN_HISTORY_RETENTION_MS } from "./subnet-burn-history-retention.ts";
+export { BURN_HISTORY_RETENTION_MS } from "./subnet-burn-history-retention.ts";
 import type { ChainNetworkId } from "./chain-network.ts";
 import { round9 } from "./lib/rao.ts";
 
@@ -28,17 +30,6 @@ export interface BurnHistoryDb {
 }
 
 export const SUBNET_BURN_HISTORY_TABLE = "subnet_burn_history";
-
-/**
- * How long a captured price is kept.
- *
- * 90 days matches the window the health surfaces already report over, so an operator
- * comparing a burn series against uptime is looking at the same span. The table grows
- * by one row per subnet per tick, so at 129 subnets on a 15-minute cadence that is
- * ~1.1M rows at steady state -- small, but unbounded growth with no policy is how a
- * table becomes someone's problem years later.
- */
-export const BURN_HISTORY_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
 /** Windows the serving route accepts, and the default. */
 export const BURN_HISTORY_WINDOWS: Record<string, number> = {
