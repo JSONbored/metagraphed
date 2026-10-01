@@ -28,6 +28,16 @@ const maps = fixture.maps as unknown as Record<string, Record<string, string>>;
 const values = fixture.values as unknown as Record<string, string | null>;
 
 describe("checkEmissionDrift", () => {
+  test("an unavailable changeset cannot become a zero-divergence summary", async () => {
+    const { impl } = fixtureFetch((method) =>
+      method === "state_queryStorageAt" ? [] : undefined,
+    );
+    await assert.rejects(
+      () => checkEmissionDrift({ rpcUrl: "https://rpc.test", fetchImpl: impl }),
+      /state_queryStorageAt: pinned block unavailable/,
+    );
+  });
+
   test("a failed pinned read restarts the complete sample on the next archive", async () => {
     const { impl } = fixtureFetch();
     const visits: { url: string; method: string }[] = [];
@@ -151,7 +161,9 @@ describe("checkEmissionDrift", () => {
       await assert.rejects(
         () =>
           checkEmissionDrift({ rpcUrl: "https://rpc.test", fetchImpl: impl }),
-        /could not pin emission input parent/,
+        number === "0x0"
+          ? /could not pin emission input parent/
+          : /chain_getHeader: response had no hexadecimal block number/,
       );
     },
   );
@@ -217,11 +229,11 @@ describe("checkEmissionDrift", () => {
     );
   });
 
-  test("an empty chain read still summarizes instead of dividing by zero", async () => {
+  test("valid unset storage still summarizes instead of dividing by zero", async () => {
     // A node answering no map entries at all: nothing eligible, nothing
     // observed -- the mean/max error paths must degrade to zero, not NaN.
     const { impl } = fixtureFetch((m) =>
-      m === "state_queryStorageAt" ? [] : undefined,
+      m === "state_queryStorageAt" ? [{ changes: [] }] : undefined,
     );
     const { summary } = await checkEmissionDrift({
       rpcUrl: "https://rpc.test",

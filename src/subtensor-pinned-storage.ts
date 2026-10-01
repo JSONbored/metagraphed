@@ -20,6 +20,11 @@
 // is the exact failure the pinning exists to prevent.
 
 import { chainRpc } from "./chain-rpc.ts";
+import {
+  chainBlockHash,
+  chainHeaderNumber,
+  chainStorageChanges,
+} from "./chain-rpc-read.ts";
 
 /** twox128("SubtensorModule") -- the pallet half of every key here. */
 const SUBTENSOR_PALLET_PREFIX = "658faa385070e074c85bf6b568cf0555";
@@ -107,12 +112,15 @@ export function createSubtensorPinnedStorage(
 
   return {
     async pinHead(): Promise<PinnedBlock> {
-      const blockHash = await call<string>("chain_getBlockHash", []);
+      const blockHash = chainBlockHash(
+        await call<unknown>("chain_getBlockHash", []),
+        "chain_getBlockHash",
+      );
       const header = await call<{ number: string; parentHash: string }>(
         "chain_getHeader",
         [blockHash],
       );
-      const blockNumber = Number.parseInt(header.number, 16);
+      const blockNumber = chainHeaderNumber(header);
       return { blockNumber, blockHash, parentHash: header.parentHash };
     },
     async readNetuidMap(
@@ -121,12 +129,12 @@ export function createSubtensorPinnedStorage(
       netuids: number[],
     ): Promise<Map<number, string>> {
       const keys = netuids.map((netuid) => netuidStorageKey(itemHash, netuid));
-      const result = await call<{ changes: [string, string | null][] }[]>(
-        "state_queryStorageAt",
-        [keys, blockHash],
-      );
+      const result = await call<unknown>("state_queryStorageAt", [
+        keys,
+        blockHash,
+      ]);
       const out = new Map<number, string>();
-      for (const [key, value] of result[0]?.changes ?? []) {
+      for (const [key, value] of chainStorageChanges(result, blockHash)) {
         if (value === null) continue;
         out.set(netuidFromStorageKey(key), value);
       }
