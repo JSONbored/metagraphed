@@ -60,7 +60,10 @@ import {
   rowFromBatch,
   type TaoUsdIndexRow,
 } from "../src/tao-usd-ingest.ts";
-import { writeTaoUsdIndexD1 } from "../src/tao-usd-write-d1.ts";
+import {
+  taoUsdIndexStatement,
+  writeTaoUsdIndexD1,
+} from "../src/tao-usd-write-d1.ts";
 import { TABLE_FRESHNESS_CRON, TAO_USD_INDEX_CRON } from "./config.ts";
 import {
   buildConcentration,
@@ -9257,26 +9260,11 @@ export async function writeTaoUsdIndexRow(
   row: TaoUsdIndexRow,
   ctx?: ExecutionContext,
 ): Promise<{ written: boolean; skipped?: boolean; reason?: string }> {
-  // The provenance array is stringified into the JSON-holding TEXT `pools`
-  // column.
-  //
-  // NO `RETURNING`, AND THAT IS THE POINT (#10677). This used to return the
-  // written block_number and report `inserted: written.length > 0`, which made
-  // it the one Neon writer whose result the caller consumed -- and therefore
-  // the one writer that could not be deferred through the write-behind buffer
-  // (src/neon-write-buffer.ts refuses a RETURNING statement rather than hand
-  // back an empty result that reads as "already present"). Since this fires
-  // every 60s it was also the single lane most able to keep the compute awake
-  // on its own, so the asymmetry cost the whole buffer its saving.
-  //
-  // Losing the inserted/duplicate distinction costs nothing real: the Workers
-  // runtime discards a scheduled() return value, so the only consumer was this
-  // repo's own tests, and `ON CONFLICT DO NOTHING` already makes a re-run of
-  // one height a genuine no-op. Whether heights are actually landing is
-  // measured where it belongs -- src/tao-usd-index-watchdog.ts reads the table.
-  //
-  // PostgreSQL requires ctx to return its pooled connection through waitUntil.
-  // Selected D1 uses its native binding and needs no deferred connection work.
+  // Both stores use the same observation, JSON provenance and conflict key.
+  // D1 first acknowledges any existing commit after a lost reply; Neon retains
+  // its deferred write-behind path and requires ctx to return its connection.
+  // No RETURNING (#10677): `written` reports the issued write, including a
+  // duplicate. The unchanged watchdog measures actual durable freshness.
   const d1 = selectedD1Store(env, ["tao_usd_index"]);
   if (d1) {
     await writeTaoUsdIndexD1(d1, row);
@@ -9291,21 +9279,8 @@ export async function writeTaoUsdIndexRow(
   if (!sql) {
     return { written: false, skipped: true, reason: "no store bound" };
   }
-  await sql.unsafe(
-    `INSERT INTO tao_usd_index
-      (block_number, observed_at, usd_per_tao, price_basis, eth_usd, pool_count, pools)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (block_number, observed_at) DO NOTHING`,
-    [
-      row.block_number,
-      row.observed_at,
-      row.usd_per_tao,
-      row.price_basis,
-      row.eth_usd,
-      row.pool_count,
-      JSON.stringify(row.pools),
-    ],
-  );
+  const { text, values } = taoUsdIndexStatement(row);
+  await sql.unsafe(text, values);
   return { written: true };
 }
 
