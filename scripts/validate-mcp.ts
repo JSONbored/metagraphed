@@ -2104,8 +2104,7 @@ for (const [toolName, directory] of Object.entries(SLUG_REGISTRIES)) {
   const def = listToolDefinitions().find((entry) => entry.name === toolName);
   if (!def) continue;
   const slug = ((def.inputSchema as Row)?.properties as Row)?.slug as
-    | Row
-    | undefined;
+    Row | undefined;
   const examples = (slug?.examples ?? []) as unknown[];
   if (examples.length === 0) continue;
   const available = new Set(
