@@ -1,3 +1,4 @@
+import {withNativeRuntimeFixture} from "../tests/fixtures/native-runtime.ts";
 // Contract validator for the remote MCP server at POST /mcp.
 //
 // Exercises the JSON-RPC lifecycle (initialize + tools/list) and a tools/call
@@ -236,6 +237,7 @@ async function call(name: string, args: unknown): Promise<Row> {
     params: { name, arguments: args },
   };
   const res =
+    name === "get_native_runtime" ? await withNativeRuntimeFixture(() => mcp(payload)) :
     name === "get_root_baskets" || name === "get_account_root_baskets"
       ? await withBasketRuntimeFixture(() => mcp(payload))
       : await mcp(payload);
@@ -1327,6 +1329,9 @@ assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
 // Account tools are store-backed too; the cold env degrades each to its
 // schema-stable empty payload (validated against the declared outputSchema).
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const nativeRuntime = await callOk("get_native_runtime", {operations:[{kind:"storage",pallet:"System",member:"Number"},{kind:"prepare",pallet:"System",member:"remark",args:["0x010203"]}]});
+assert.equal(nativeRuntime.results[0].value,"500");
+assert.equal(nativeRuntime.results[1].call_data,"0x00000c010203");
 const basketDirectory = await callOk("get_root_baskets", {});
 assert.equal(basketDirectory.status, "available");
 assert.equal(basketDirectory.data.kind, "directory");

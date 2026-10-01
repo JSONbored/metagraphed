@@ -5,7 +5,6 @@ import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
 import {gzipSync} from "node:zlib";
 import path from "node:path";
 import {format} from "prettier";
-import {build} from "esbuild";
 test("retain remote generated contracts and formatted edits for review",async()=>{
   if(!process.env.CI)return;
   execFileSync("npm",["run","build","--workspace=packages/client"],{stdio:"pipe"});
@@ -18,13 +17,10 @@ test("retain remote generated contracts and formatted edits for review",async()=
   for(const name of edited.filter((name)=>/\.(ts|tsx|md)$/.test(name)&&!name.endsWith("root-basket-ci-artifacts.test.ts"))){
     files[name]=await format(readFileSync(name,"utf8"),{filepath:name});
   }
-  const probe=await build({stdin:{contents:'import {TypeRegistry} from "@polkadot/types/create"; import {Metadata} from "@polkadot/types/metadata"; export const open=(hex)=>{const registry=new TypeRegistry();const metadata=new Metadata(registry,hex);registry.setMetadata(metadata);return {registry,metadata};};',resolveDir:process.cwd(),sourcefile:"native-runtime-probe.ts"},bundle:true,write:false,format:"esm",platform:"neutral",mainFields:["module","main"],minify:true});
-  const probeBytes=probe.outputFiles[0].contents;
-  console.log("NATIVE_METADATA_LIBRARY_BUNDLE",JSON.stringify({minified_bytes:probeBytes.length,gzip_bytes:gzipSync(probeBytes).length,fixture:true,production:false}));
   mkdirSync("cov-out",{recursive:true});
   const zipped=gzipSync(JSON.stringify(files));
   writeFileSync("cov-out/root-basket-contract-artifacts.json.gz",zipped);
   console.log("ROOT_BASKET_GENERATED_ARTIFACTS",JSON.stringify(Object.keys(files)));
   const encoded=zipped.toString("base64");
   for(let offset=0;offset<encoded.length;offset+=16000)console.log(`ROOT_BASKET_HANDOFF ${offset/16000} ${encoded.slice(offset,offset+16000)}`);
-});
+},180_000);

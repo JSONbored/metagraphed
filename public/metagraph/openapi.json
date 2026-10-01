@@ -8355,11 +8355,6 @@
                 "trading_status": false
               },
               "decoder_version": "subtensor-v441-8b9d55c7-v1",
-              "finalized_block": "1000",
-              "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-              "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-              "network": "finney",
-              "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
               "runtime_api_version": 1,
               "runtime_spec_version": 441
             },
@@ -44593,1538 +44588,435 @@
         "type": "object"
       },
       "RootBasketSource": {
-        "oneOf": [
+        "additionalProperties": false,
+        "allOf": [
           {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
+            "oneOf": [
+              {
                 "properties": {
-                  "beta_positions": {
-                    "const": false,
-                    "type": "boolean"
+                  "decoder_version": {
+                    "const": "subtensor-v441-8b9d55c7-v1"
                   },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
+                  "runtime_api_version": {
+                    "const": 1
                   },
-                  "pricing": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
+                  "runtime_spec_version": {
+                    "const": 441
                   }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
+                }
               },
-              "decoder_version": {
-                "const": "subtensor-v441-8b9d55c7-v1",
-                "type": "string"
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v442-ec112cb0-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 442
+                  }
+                }
               },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v443-c02a376e-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 443
+                  }
+                }
               },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v445-d3f40e44-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 445
+                  }
+                }
               },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v446-52d7e7cf-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 446
+                  }
+                }
               },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v447-1f090af8-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 447
+                  }
+                }
               },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v448-e18ca67f-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 448
+                  }
+                }
               },
-              "runtime_api_version": {
-                "const": 1,
-                "type": "number"
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v450-9540b3af-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 450
+                  }
+                }
               },
-              "runtime_spec_version": {
-                "const": 441,
-                "type": "number"
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v452-da06f033-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 452
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v453-823bdcbc-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 453
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v454-14cde641-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 454
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v459-70378404-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 459
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v464-5cd66b85-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 4
+                  },
+                  "runtime_spec_version": {
+                    "const": 464
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v466-cdffbe2f-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 4
+                  },
+                  "runtime_spec_version": {
+                    "const": 466
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v467-c6bcb4a7-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 4
+                  },
+                  "runtime_spec_version": {
+                    "const": 467
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v468-30c70d90-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 5
+                  },
+                  "runtime_spec_version": {
+                    "const": 468
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v469-370bac46-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 5
+                  },
+                  "runtime_spec_version": {
+                    "const": 469
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v470-923fd1fa-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 5
+                  },
+                  "runtime_spec_version": {
+                    "const": 470
+                  }
+                }
               }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
+            ]
           },
           {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
+            "oneOf": [
+              {
                 "properties": {
-                  "beta_positions": {
-                    "const": false,
-                    "type": "boolean"
+                  "capabilities": {
+                    "const": {
+                      "beta_positions": false,
+                      "claim_preview": false,
+                      "pricing": false,
+                      "target_weights": true,
+                      "trading_status": false
+                    }
                   },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
+                  "runtime_api_version": {
+                    "const": 1
                   }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
+                }
               },
-              "decoder_version": {
-                "const": "subtensor-v442-ec112cb0-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 1,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 442,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
+              {
                 "properties": {
-                  "beta_positions": {
-                    "const": false,
-                    "type": "boolean"
+                  "capabilities": {
+                    "const": {
+                      "beta_positions": true,
+                      "claim_preview": false,
+                      "pricing": true,
+                      "target_weights": true,
+                      "trading_status": false
+                    }
                   },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
+                  "runtime_api_version": {
+                    "const": 3
                   }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
+                }
               },
-              "decoder_version": {
-                "const": "subtensor-v443-c02a376e-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 1,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 443,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
+              {
                 "properties": {
-                  "beta_positions": {
-                    "const": false,
-                    "type": "boolean"
+                  "capabilities": {
+                    "const": {
+                      "beta_positions": true,
+                      "claim_preview": false,
+                      "pricing": true,
+                      "target_weights": false,
+                      "trading_status": true
+                    }
                   },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
+                  "runtime_api_version": {
+                    "const": 4
                   }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
+                }
               },
-              "decoder_version": {
-                "const": "subtensor-v445-d3f40e44-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 1,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 445,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
+              {
                 "properties": {
-                  "beta_positions": {
-                    "const": false,
-                    "type": "boolean"
+                  "capabilities": {
+                    "const": {
+                      "beta_positions": true,
+                      "claim_preview": true,
+                      "pricing": true,
+                      "target_weights": false,
+                      "trading_status": true
+                    }
                   },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
+                  "runtime_api_version": {
+                    "const": 5
                   }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v446-52d7e7cf-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 1,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 446,
-                "type": "number"
+                }
               }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v447-1f090af8-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 1,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 447,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v448-e18ca67f-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 1,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 448,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v450-9540b3af-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 3,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 450,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v452-da06f033-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 3,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 452,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v453-823bdcbc-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 3,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 453,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v454-14cde641-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 3,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 454,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": false,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v459-70378404-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 3,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 459,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": true,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v464-5cd66b85-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 4,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 464,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": true,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v466-cdffbe2f-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 4,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 466,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": true,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v467-c6bcb4a7-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 4,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 467,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": true,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v468-30c70d90-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 5,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 468,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": true,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v469-370bac46-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 5,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 469,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
-          },
-          {
-            "additionalProperties": false,
-            "properties": {
-              "capabilities": {
-                "additionalProperties": false,
-                "properties": {
-                  "beta_positions": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "claim_preview": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "pricing": {
-                    "const": true,
-                    "type": "boolean"
-                  },
-                  "target_weights": {
-                    "const": false,
-                    "type": "boolean"
-                  },
-                  "trading_status": {
-                    "const": true,
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pricing",
-                  "beta_positions",
-                  "target_weights",
-                  "trading_status",
-                  "claim_preview"
-                ],
-                "type": "object"
-              },
-              "decoder_version": {
-                "const": "subtensor-v470-923fd1fa-v1",
-                "type": "string"
-              },
-              "finalized_block": {
-                "examples": [
-                  "9007199254740993"
-                ],
-                "maxLength": 20,
-                "pattern": "^(0|[1-9]\\d*)$",
-                "type": "string"
-              },
-              "finalized_block_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "metadata_sha256": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "network_genesis_hash": {
-                "pattern": "^0x[0-9a-f]{64}$",
-                "type": "string"
-              },
-              "runtime_api_version": {
-                "const": 5,
-                "type": "number"
-              },
-              "runtime_spec_version": {
-                "const": 470,
-                "type": "number"
-              }
-            },
-            "required": [
-              "network",
-              "network_genesis_hash",
-              "finalized_block_hash",
-              "finalized_block",
-              "runtime_spec_version",
-              "runtime_api_version",
-              "decoder_version",
-              "metadata_sha256",
-              "capabilities"
-            ],
-            "type": "object"
+            ]
           }
-        ]
+        ],
+        "properties": {
+          "capabilities": {
+            "additionalProperties": false,
+            "properties": {
+              "beta_positions": {
+                "type": "boolean"
+              },
+              "claim_preview": {
+                "type": "boolean"
+              },
+              "pricing": {
+                "type": "boolean"
+              },
+              "target_weights": {
+                "type": "boolean"
+              },
+              "trading_status": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "pricing",
+              "beta_positions",
+              "target_weights",
+              "trading_status",
+              "claim_preview"
+            ],
+            "type": "object"
+          },
+          "decoder_version": {
+            "enum": [
+              "subtensor-v441-8b9d55c7-v1",
+              "subtensor-v442-ec112cb0-v1",
+              "subtensor-v443-c02a376e-v1",
+              "subtensor-v445-d3f40e44-v1",
+              "subtensor-v446-52d7e7cf-v1",
+              "subtensor-v447-1f090af8-v1",
+              "subtensor-v448-e18ca67f-v1",
+              "subtensor-v450-9540b3af-v1",
+              "subtensor-v452-da06f033-v1",
+              "subtensor-v453-823bdcbc-v1",
+              "subtensor-v454-14cde641-v1",
+              "subtensor-v459-70378404-v1",
+              "subtensor-v464-5cd66b85-v1",
+              "subtensor-v466-cdffbe2f-v1",
+              "subtensor-v467-c6bcb4a7-v1",
+              "subtensor-v468-30c70d90-v1",
+              "subtensor-v469-370bac46-v1",
+              "subtensor-v470-923fd1fa-v1"
+            ],
+            "type": "string"
+          },
+          "finalized_block": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "finalized_block_hash": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "metadata_sha256": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "network": {
+            "$ref": "#/components/schemas/BittensorNetwork"
+          },
+          "network_genesis_hash": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "runtime_api_version": {
+            "enum": [
+              1,
+              3,
+              4,
+              5
+            ],
+            "type": "number"
+          },
+          "runtime_spec_version": {
+            "enum": [
+              441,
+              442,
+              443,
+              445,
+              446,
+              447,
+              448,
+              450,
+              452,
+              453,
+              454,
+              459,
+              464,
+              466,
+              467,
+              468,
+              469,
+              470
+            ],
+            "type": "number"
+          }
+        },
+        "required": [
+          "network",
+          "network_genesis_hash",
+          "finalized_block_hash",
+          "finalized_block",
+          "runtime_spec_version",
+          "runtime_api_version",
+          "decoder_version",
+          "metadata_sha256",
+          "capabilities"
+        ],
+        "type": "object"
       },
       "RootBasketSummary": {
         "additionalProperties": false,

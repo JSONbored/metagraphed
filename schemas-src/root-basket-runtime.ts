@@ -45,26 +45,42 @@ const sourceIdentity = {
 export const RootBasketSourceSchema = z
   .object({
     ...sourceIdentity,
-    runtime_spec_version: z.literal(ROOT_BASKET_RUNTIME_ADAPTERS.map((row) => row.spec)),
+    runtime_spec_version: z.literal(
+      ROOT_BASKET_RUNTIME_ADAPTERS.map((row) => row.spec),
+    ),
     runtime_api_version: z.literal([1, 3, 4, 5]),
-    decoder_version: z.literal(ROOT_BASKET_RUNTIME_ADAPTERS.map((row) => row.decoder)),
+    decoder_version: z.literal(
+      ROOT_BASKET_RUNTIME_ADAPTERS.map((row) => row.decoder),
+    ),
     metadata_sha256: capture.metadata_sha256,
-    capabilities: z.object({
-      pricing: z.boolean(),
-      beta_positions: z.boolean(),
-      target_weights: z.boolean(),
-      trading_status: z.boolean(),
-      claim_preview: z.boolean(),
-    }).strict(),
+    capabilities: z
+      .object({
+        pricing: z.boolean(),
+        beta_positions: z.boolean(),
+        target_weights: z.boolean(),
+        trading_status: z.boolean(),
+        claim_preview: z.boolean(),
+      })
+      .strict(),
   })
   .strict()
   .superRefine((source, ctx) => {
     // The literal spec set above proves this lookup exists.
-    const adapter = ROOT_BASKET_RUNTIME_ADAPTERS.find((row) => row.spec === source.runtime_spec_version)!;
+    const adapter = ROOT_BASKET_RUNTIME_ADAPTERS.find(
+      (row) => row.spec === source.runtime_spec_version,
+    )!;
     if (source.runtime_api_version !== adapter.api)
-      ctx.addIssue({code:"custom",path:["runtime_api_version"],message:"Runtime/API pairing mismatch"});
+      ctx.addIssue({
+        code: "custom",
+        path: ["runtime_api_version"],
+        message: "Runtime/API pairing mismatch",
+      });
     if (source.decoder_version !== adapter.decoder)
-      ctx.addIssue({code:"custom",path:["decoder_version"],message:"Runtime/decoder pairing mismatch"});
+      ctx.addIssue({
+        code: "custom",
+        path: ["decoder_version"],
+        message: "Runtime/decoder pairing mismatch",
+      });
     const expected = rootBasketCapabilities(adapter.api);
     if (
       source.capabilities.pricing !== expected.pricing ||
@@ -72,23 +88,32 @@ export const RootBasketSourceSchema = z
       source.capabilities.target_weights !== expected.target_weights ||
       source.capabilities.trading_status !== expected.trading_status ||
       source.capabilities.claim_preview !== expected.claim_preview
-    ) ctx.addIssue({code:"custom",path:["capabilities"],message:"Runtime capabilities mismatch"});
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["capabilities"],
+        message: "Runtime capabilities mismatch",
+      });
   })
   .meta({
     allOf: [
-      {oneOf: ROOT_BASKET_RUNTIME_ADAPTERS.map((row) => ({
-        properties:{
-          runtime_spec_version:{const:row.spec},
-          runtime_api_version:{const:row.api},
-          decoder_version:{const:row.decoder},
-        },
-      }))},
-      {oneOf: ([1,3,4,5] as const).map((api) => ({
-        properties:{
-          runtime_api_version:{const:api},
-          capabilities:{const:rootBasketCapabilities(api)},
-        },
-      }))},
+      {
+        oneOf: ROOT_BASKET_RUNTIME_ADAPTERS.map((row) => ({
+          properties: {
+            runtime_spec_version: { const: row.spec },
+            runtime_api_version: { const: row.api },
+            decoder_version: { const: row.decoder },
+          },
+        })),
+      },
+      {
+        oneOf: ([1, 3, 4, 5] as const).map((api) => ({
+          properties: {
+            runtime_api_version: { const: api },
+            capabilities: { const: rootBasketCapabilities(api) },
+          },
+        })),
+      },
     ],
   });
 

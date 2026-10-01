@@ -3,7 +3,10 @@ import { test } from "vitest";
 import { z } from "zod";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { ROOT_BASKET_RUNTIME_ADAPTERS, rootBasketCapabilities } from "../schemas-src/root-basket-compatibility.ts";
+import {
+  ROOT_BASKET_RUNTIME_ADAPTERS,
+  rootBasketCapabilities,
+} from "../schemas-src/root-basket-compatibility.ts";
 import { RootBasketSourceSchema } from "../schemas-src/root-basket-runtime.ts";
 import { RootBasketRuntimeObservationSchema } from "../schemas-src/root-basket-observation.ts";
 import {
@@ -92,39 +95,61 @@ test("one compact generated contract preserves every runtime coupling with less 
       ...shared,
       properties: {
         ...schema.properties,
-        runtime_spec_version: {type:"number",const:row.spec},
-        runtime_api_version: {type:"number",const:row.api},
-        decoder_version: {type:"string",const:row.decoder},
-        capabilities: {type:"object",const:rootBasketCapabilities(row.api)},
+        runtime_spec_version: { type: "number", const: row.spec },
+        runtime_api_version: { type: "number", const: row.api },
+        decoder_version: { type: "string", const: row.decoder },
+        capabilities: {
+          type: "object",
+          const: rootBasketCapabilities(row.api),
+        },
       },
     })),
   };
-  const ajv = new Ajv2020({strict:false,allErrors:true});
+  const ajv = new Ajv2020({ strict: false, allErrors: true });
   addFormats(ajv);
   const compactValid = ajv.compile(schema);
   const expandedValid = ajv.compile(expanded);
-  for (const [spec,api] of generations) {
-    const source = (await openRootBasketRuntime(fixture(spec,api).rpc,"local")).source;
-    assert.equal(compactValid(source),true,JSON.stringify(compactValid.errors));
-    assert.equal(expandedValid(source),true);
+  for (const [spec, api] of generations) {
+    const source = (
+      await openRootBasketRuntime(fixture(spec, api).rpc, "local")
+    ).source;
+    assert.equal(
+      compactValid(source),
+      true,
+      JSON.stringify(compactValid.errors),
+    );
+    assert.equal(expandedValid(source), true);
     for (const bad of [
-      {...source,runtime_api_version:api === 5 ? 4 : 5},
-      {...source,decoder_version:"subtensor-v470-923fd1fa-v1",runtime_spec_version:441},
-      ...Object.entries(source.capabilities).map(([name,value]) => ({...source,capabilities:{...source.capabilities,[name]:!value}})),
+      { ...source, runtime_api_version: api === 5 ? 4 : 5 },
+      {
+        ...source,
+        decoder_version: "subtensor-v470-923fd1fa-v1",
+        runtime_spec_version: 441,
+      },
+      ...Object.entries(source.capabilities).map(([name, value]) => ({
+        ...source,
+        capabilities: { ...source.capabilities, [name]: !value },
+      })),
     ]) {
-      assert.equal(compactValid(bad),false);
-      assert.equal(expandedValid(bad),false);
-      assert.equal(RootBasketSourceSchema.safeParse(bad).success,false);
+      assert.equal(compactValid(bad), false);
+      assert.equal(expandedValid(bad), false);
+      assert.equal(RootBasketSourceSchema.safeParse(bad).success, false);
     }
   }
   const compactBytes = Buffer.byteLength(JSON.stringify(schema));
   const expandedBytes = Buffer.byteLength(JSON.stringify(expanded));
   assert.ok(compactBytes < expandedBytes * 0.5);
-  console.log("ROOT_BASKET_COMPATIBILITY_SCHEMA_BYTES",JSON.stringify({
-    compact:compactBytes,expanded:expandedBytes,saved:expandedBytes-compactBytes,
-    reduction_percent:(expandedBytes-compactBytes)*100/expandedBytes,
-    fixture:true,production:false,
-  }));
+  console.log(
+    "ROOT_BASKET_COMPATIBILITY_SCHEMA_BYTES",
+    JSON.stringify({
+      compact: compactBytes,
+      expanded: expandedBytes,
+      saved: expandedBytes - compactBytes,
+      reduction_percent: ((expandedBytes - compactBytes) * 100) / expandedBytes,
+      fixture: true,
+      production: false,
+    }),
+  );
 });
 
 for (const [spec, api] of generations) {

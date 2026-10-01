@@ -1,3 +1,5 @@
+import {NativeRuntimeRequestSchema,NativeRuntimeArtifactSchema} from "../schemas-src/routes/native-runtime.ts";
+import {queryNativeRuntime} from "./native-runtime.ts";
 import {
   GetRootBasketsInputSchema,
   GetAccountRootBasketsInputSchema,
@@ -2457,6 +2459,7 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
   get_account_balance: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_account_children: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_account_parents: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_native_runtime: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_account_root_claim: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_account_snapshot: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_evm_address_mapping: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
@@ -11521,6 +11524,22 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name:"get_native_runtime",
+    title:"Read native chain features and prepare unsigned calls",
+    description:"Use the finalized runtime metadata to read any native storage item, constant or declared runtime API, including current collateral, locks, pending delegation, mechanism state and hyperparameters. Start with describe for a pallet/API, then request its exact operation. At most 16 operations share one source and type registry; identical reads are coalesced. Integers are exact decimal strings, bytes are hex, enums are {variant,fields}. prepare returns call method bytes for explicit wallet review and signature; it submits nothing. Mirrors POST /api/v1/native-runtime.",
+    inputSchema:inputJsonSchema(NativeRuntimeRequestSchema),
+    async handler(args,ctx){
+      const parsed=NativeRuntimeRequestSchema.safeParse(args);
+      if(!parsed.success)throw toolError("invalid_params",parsed.error.message);
+      const network=chainNetworkFromChainName(parsed.data.network);
+      if(ctx.env.RPC_RATE_LIMITER?.limit){
+        const {success}=await ctx.env.RPC_RATE_LIMITER.limit({key:basketNetworkKey(`native-runtime:${ctx.clientIp??"anon"}`,network)});
+        if(!success)throw toolError("rate_limited","Too many native runtime requests; slow down.");
+      }
+      return queryNativeRuntime(parsed.data);
+    },
+  },
+  {
     name: "get_root_baskets",
     title: "Read native Root baskets",
     description:
@@ -15759,6 +15778,7 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_account: () => outputJsonSchema(GetAccountOutputSchema),
   get_account_entities: () => outputJsonSchema(GetAccountEntitiesOutputSchema),
   get_account_balance: () => outputJsonSchema(GetAccountBalanceOutputSchema),
+  get_native_runtime: () => outputJsonSchema(NativeRuntimeArtifactSchema),
   get_root_baskets: () => outputJsonSchema(GetRootBasketsOutputSchema),
   get_account_root_baskets: () => outputJsonSchema(GetRootBasketsOutputSchema),
   get_account_root_claim: () =>

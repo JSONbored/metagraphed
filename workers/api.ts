@@ -1,3 +1,4 @@
+import {handleNativeRuntime} from "./request-handlers/native-runtime.ts";
 import { handleRootBaskets } from "./request-handlers/root-baskets.ts";
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
@@ -5902,6 +5903,8 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       executionCtx: ctx,
     });
   }
+
+  if(url.pathname === "/api/v1/native-runtime") return handleNativeRuntime(request,env);
 
   // Grounded RAG answer endpoint (POST). Runs before the read-only method gate
   // and degrades to 503 when the AI bindings/kill-switch are absent.
