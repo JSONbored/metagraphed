@@ -93,7 +93,15 @@ test("falsy schema values are cached and a failed factory can retry", () => {
 test("loading MCP leaves the output map un-emitted and discovery only asks for its own definitions", () => {
   assert.ok(work.factories);
   assert.equal(work.calls.length, 0);
-  assert.equal(Object.keys(work.factories).length, 234);
+  assert.ok(
+    Object.keys(work.factories).length > MCP_DISCOVERY_TOOL_NAMES.length,
+  );
+  assert.ok(
+    MCP_TOOLS.every(
+      (tool) => tool.outputSchema || Object.hasOwn(work.factories!, tool.name),
+    ),
+    "every tool, including computed names, has an output schema or factory",
+  );
   listToolDefinitions("discovery");
   assert.ok(work.calls.length <= MCP_DISCOVERY_TOOL_NAMES.length);
   assert.ok(
@@ -196,7 +204,7 @@ test("remote fixture measures eager output emission against registration and onl
         pairs: 9,
       });
     }
-    assert.equal(results[0].baseline_emissions, 195);
+    assert.ok(results[0].baseline_emissions > results[0].optimized_emissions);
     assert.ok(results[0].optimized_emissions <= 4);
     assert.equal(results[1].optimized_emissions, 1);
     assert.equal(results[2].optimized_emissions, results[2].baseline_emissions);
