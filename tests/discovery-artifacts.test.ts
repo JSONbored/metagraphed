@@ -166,18 +166,25 @@ describe("Discovery artifacts", () => {
   // concluded there is no way to raise their rate limit, and an OAuth-aware MCP
   // client author that there is nothing to discover.
   //
-  // So the assertions now pin the two facts an agent actually acts on -- auth
-  // is NOT required, and it IS available -- rather than a slogan.
-  test("auth.md states auth is optional, not absent", async () => {
+  // The public REST and MCP access policies are different and must be explicit.
+  test("auth.md distinguishes required free MCP auth from public REST access", async () => {
     const authMd = await fs.readFile(path.join(publicDir, "auth.md"), "utf8");
     assert.match(authMd, /public by default and\s+read-only/i);
-    // Anonymous access still works: the thing that must never silently change.
+    // Public REST access remains available; MCP requires free sign-in.
     // Emphasis-agnostic: prettier normalizes *required* to _required_, and the
     // claim is what matters, not which marker markdown ends up with.
-    assert.match(authMd, /No authentication is [*_]required[*_]/i);
-    assert.match(authMd, /callable anonymously/i);
+    assert.match(authMd, /MCP authentication is required\. Sign-in is free/i);
+    assert.match(authMd, /Authentication is optional for public REST reads/i);
+    assert.match(
+      authMd,
+      /OAuth metadata, client registration and the MCP server card remain public/i,
+    );
     // ...and the optional half is discoverable rather than denied.
-    assert.match(authMd, /optional and additive/i);
+    assert.match(authMd, /full tool\s+catalog/i);
+    assert.doesNotMatch(
+      authMd,
+      /every tool and\s+route is callable anonymously/i,
+    );
     assert.match(authMd, /oauth-protected-resource/i);
     assert.match(authMd, /Bearer mg_/);
     // #11566: the two facts that were WRONG, now derived rather than restated.

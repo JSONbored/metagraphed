@@ -37,7 +37,7 @@ Three ways to use Metagraphed. Pick one.
 
 #### 🤖 AI agent (MCP)
 
-Agent-native, public, read-only, Streamable-HTTP. 200+ tools to explore the chain, discover a subnet, check if it's up, read its economics and metagraph, trace what a wallet does across the network, and learn how to call it.
+Agent-native, account-authenticated, Streamable-HTTP. Sign-in is free. 200+ tools to explore the chain, discover a subnet, check if it's up, read its economics and metagraph, trace what a wallet does across the network, and learn how to call it.
 
 ```bash
 claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
@@ -46,7 +46,7 @@ claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 <details>
 <summary><b>Other clients</b> — Cursor, VS Code, Windsurf, Zed, ChatGPT, or anything speaking MCP</summary>
 
-Add an MCP server with url `https://api.metagraph.sh/mcp` and transport `streamable-http`. No API key, no account, read-only.
+Add an MCP server with url `https://api.metagraph.sh/mcp` and transport `streamable-http`, then complete the client's OAuth sign-in prompt. For automation or clients without OAuth support, send `Authorization: Bearer <mg_api_key>` using an issued API key. Missing or invalid credentials receive a `401` with the sign-in metadata. OAuth metadata, registration and the server card remain public.
 
 ```json
 {

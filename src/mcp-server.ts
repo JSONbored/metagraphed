@@ -2137,7 +2137,11 @@ type McpDeps = Partial<
     | "recordExceptionEvent"
     | "recordAiDegradedEvent"
   >
->;
+> & {
+  /** The public HTTP router requires an account. In-process composers can
+   * retain their own access policy without changing tool dispatch or schemas. */
+  requireAuthentication?: boolean;
+};
 
 interface JsonSchemaLike {
   type?: string | string[];
@@ -19146,14 +19150,19 @@ export function authRequiredToolsIn(body: unknown): string[] {
  * `scope` is stated so the consent prompt asks for what the protected tools
  * actually need, rather than everything the resource advertises.
  */
-export function mcpAuthChallenge(request: Request, tools: string[]): Response {
+export function mcpAuthChallenge(
+  request: Request,
+  tools: string[] = [],
+): Response {
   const url = new URL(request.url);
   const metadata = `${url.origin}/.well-known/oauth-protected-resource${url.pathname}`;
   return new Response(
     JSON.stringify({
       error: "invalid_token",
       error_description:
-        `Authentication required for: ${tools.join(", ")}. ` +
+        (tools.length
+          ? `Authentication required for: ${tools.join(", ")}. `
+          : "Authentication required to use Metagraphed MCP. ") +
         "Sign in, or send an Authorization: Bearer header with an mg_ API key.",
     }),
     {
@@ -19162,7 +19171,7 @@ export function mcpAuthChallenge(request: Request, tools: string[]): Response {
         ...MCP_HEADERS,
         "www-authenticate":
           `Bearer error="invalid_token", ` +
-          `error_description="Authentication required for this tool", ` +
+          `error_description="${tools.length ? "Authentication required for this tool" : "Authentication required for MCP access"}", ` +
           `resource_metadata="${metadata}", ` +
           `scope="profile"`,
         [MCP_REFUSAL_HEADER]: "auth_required",
@@ -19179,6 +19188,26 @@ async function dispatchMcpRequest(
   const { rejection, authTier, accountId, quotaPending } =
     await enforceMcpRateLimit(request, env, deps.executionCtx);
   if (rejection) return rejection;
+
+  // Reuse the gate's verified identity: a header or session id is not proof
+  // of an account, and repeating verification would add another lookup.
+  if (deps.requireAuthentication && accountId === null) {
+    if (oauthAccountIdFrom(deps.executionCtx?.props?.accountId) !== null) {
+      // OAuth has verified the credential, but the account tier could not be
+      // resolved. Refuse work without downgrading it to anonymous access or
+      // asking the user to sign in again during an entitlement outage.
+      return jsonResponse(
+        rpcError(
+          null,
+          RPC_INTERNAL_ERROR,
+          "Account access could not be verified. Retry shortly.",
+        ),
+        503,
+        { "retry-after": "30", [MCP_REFUSAL_HEADER]: "account_unavailable" },
+      );
+    }
+    return mcpAuthChallenge(request);
+  }
 
   if (request.method !== "POST") {
     if (request.method === "GET") {

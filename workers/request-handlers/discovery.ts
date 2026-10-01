@@ -434,18 +434,14 @@ export async function mcpServerCardResponse(
     // property of the endpoint AND hid the thing that makes Claude/ChatGPT-
     // class clients authenticate natively rather than paste keys.
     //
-    // "optional" rather than a structured value: this field has been a string
+    // Keep the field a string: it has been a string
     // in every card ever served, and a consumer doing an equality check should
     // fail loudly on a changed string rather than silently on a changed TYPE.
     // The structure goes in the sibling field below.
-    authentication: "optional",
+    authentication: "required",
     authentication_detail: {
-      // Anonymous access is deliberate, not an oversight -- registry crawlers
-      // and probes are the discovery funnel, and losing them would cost more
-      // than the access control gains. See ADR 0027.
       anonymous: {
-        supported: true,
-        rate_limit: "100 requests / 60s per client IP",
+        supported: false,
       },
       oauth2: {
         supported: true,
@@ -459,11 +455,8 @@ export async function mcpServerCardResponse(
         prefix: "mg_",
         rate_limit: "500 requests / 60s per account, higher on paid tiers",
       },
-      // Stated plainly because it is the honest answer today and a consumer
-      // deciding whether to implement auth deserves it: authenticating buys
-      // throughput, not reach. Every tool is callable anonymously.
       effect:
-        "Authentication raises rate limits. It does not currently unlock additional tools or surfaces.",
+        "Authentication is required for MCP access. Sign-in is free; account quotas and permissions apply.",
     },
     capabilities: MCP_CAPABILITIES,
     _meta: MCP_REGISTRY_META,
