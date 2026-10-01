@@ -98,8 +98,8 @@ function fixture(tier = "free") {
     loseTier() {
       tierAvailable = false;
     },
-    identitylessKey() {
-      accountId = null;
+    identitylessKey(value: string | null = null) {
+      accountId = value;
     },
     exhaustQuota() {
       quotaAllowed = false;
@@ -190,20 +190,23 @@ describe("required authentication at the public MCP router", () => {
     );
   });
 
-  test("a verified key without an account is challenged", async () => {
-    const f = fixture();
-    f.identitylessKey();
-    const req = request(initialize, "/mcp", {
-      authorization: `Bearer ${API_KEY}`,
-    });
-    assert.equal(
-      (await handleMcpRequest(req, f.env, { requireAuthentication: true }))
-        .status,
-      401,
-    );
-    assert.equal(req.bodyUsed, false);
-    assert.equal(f.paths.filter((p) => p.endsWith("/quota")).length, 0);
-  });
+  test.each([null, "", " "])(
+    "a verified key without an account (%j) is challenged",
+    async (account) => {
+      const f = fixture();
+      f.identitylessKey(account);
+      const req = request(initialize, "/mcp", {
+        authorization: `Bearer ${API_KEY}`,
+      });
+      assert.equal(
+        (await handleMcpRequest(req, f.env, { requireAuthentication: true }))
+          .status,
+        401,
+      );
+      assert.equal(req.bodyUsed, false);
+      assert.equal(f.paths.filter((p) => p.endsWith("/quota")).length, 0);
+    },
+  );
 
   test("managed API keys retain live revocation checks without a second verification", async () => {
     const f = fixture();

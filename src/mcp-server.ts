@@ -19192,7 +19192,10 @@ async function dispatchMcpRequest(
 
   // Reuse the gate's verified identity: a header or session id is not proof
   // of an account, and repeating verification would add another lookup.
-  if (deps.requireAuthentication && accountId === null) {
+  if (
+    deps.requireAuthentication &&
+    (accountId === null || accountId.trim() === "")
+  ) {
     if (oauthAccountIdFrom(deps.executionCtx?.props?.accountId) !== null) {
       // OAuth has verified the credential, but the account tier could not be
       // resolved. Refuse work without downgrading it to anonymous access or
