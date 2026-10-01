@@ -1,3 +1,7 @@
+import {
+  mcpAccountContext,
+  withMcpAccount,
+} from "./helpers/mcp-account-fixture.ts";
 import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
 installNativeSurfaceFixtures();
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
@@ -8969,7 +8973,11 @@ describe("MCP end-to-end through the Worker dispatch", () => {
         params: { name: "list_subnet_apis", arguments: { netuid: 7 } },
       }),
     });
-    const response = await handleRequest(request, env as unknown as Env, {});
+    const response = await handleRequest(
+      request,
+      withMcpAccount(env),
+      mcpAccountContext,
+    );
     assert.equal(response.status, 200);
     const body = (await response.json()) as Row;
     assert.ok(body.result.structuredContent.service_count >= 1);
@@ -25878,9 +25886,9 @@ describe("the MCP endpoint tolerates a trailing slash", () => {
           params: {},
         }),
       }),
-      {} as unknown as Env,
+      withMcpAccount({}),
       {
-        waitUntil() {},
+        ...mcpAccountContext,
         passThroughOnException() {},
       } as unknown as ExecutionContext,
     );

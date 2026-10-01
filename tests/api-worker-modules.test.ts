@@ -190,7 +190,9 @@ test("public OAuth discovery, registration, server card and preflight remain ava
   const metadata = await runtime.dispatchFetch(
     "https://api.metagraph.sh/.well-known/oauth-authorization-server",
   );
-  const { registration_endpoint } = await metadata.json();
+  const { registration_endpoint } = (await metadata.json()) as {
+    registration_endpoint: string;
+  };
   const registration = await runtime.dispatchFetch(registration_endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -200,7 +202,9 @@ test("public OAuth discovery, registration, server card and preflight remain ava
     }),
   });
   expect(registration.status).toBe(201);
-  expect((await registration.json()).client_id).toBeTypeOf("string");
+  expect(
+    ((await registration.json()) as { client_id: string }).client_id,
+  ).toBeTypeOf("string");
   const preflight = await runtime.dispatchFetch(
     "https://api.metagraph.sh/mcp",
     {

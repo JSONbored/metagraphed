@@ -26,7 +26,7 @@ function request(body: unknown, path = "/mcp", headers: Row = {}) {
   });
 }
 
-function fixture() {
+function fixture(tier = "free") {
   const store = new Map<string, string>();
   const paths: string[] = [];
   let state = "active";
@@ -48,6 +48,7 @@ function fixture() {
     METAGRAPH_CONTROL: kv,
     MCP_RATE_LIMITER: { limit: anonymous },
     MCP_RATE_LIMITER_KEYED: { limit: keyed },
+    MCP_RATE_LIMITER_PAID: { limit: keyed },
     API_KEY_LOOKUP_INTERNAL_TOKEN: "synthetic-lookup-token",
     DATA_API: {
       fetch: async (req: Request) => {
@@ -55,14 +56,14 @@ function fixture() {
         paths.push(path);
         if (path.endsWith("/github/tier"))
           return Response.json(
-            tierAvailable ? { found: true, tier: "free" } : { found: false },
+            tierAvailable ? { found: true, tier } : { found: false },
           );
         if (path.endsWith("/keys/verify"))
           return Response.json({
             valid: true,
             keyId: "key_required_auth",
             managed: true,
-            tier: "free",
+            tier,
             accountId,
           });
         if (path.endsWith("/keys/state")) return Response.json({ state });
@@ -213,12 +214,12 @@ describe("required authentication at the public MCP router", () => {
     assert.equal((await handleRequest(post(), f.env, {})).status, 200);
     assert.equal(f.paths.filter((p) => p.endsWith("/verify")).length, 1);
     assert.equal(f.paths.filter((p) => p.endsWith("/state")).length, 1);
-    assert.equal(f.paths.filter((p) => p.endsWith("/quota")).length, 2);
+    assert.equal(f.paths.filter((p) => p.endsWith("/quota")).length, 0);
     f.setState("revoked");
     const req = post();
     assert.equal((await handleRequest(req, f.env, {})).status, 401);
     assert.equal(req.bodyUsed, false);
-    assert.equal(f.paths.filter((p) => p.endsWith("/quota")).length, 2);
+    assert.equal(f.paths.filter((p) => p.endsWith("/quota")).length, 0);
   });
 
   test("rate-limit rejection stays ahead of auth and account quotas remain enforced", async () => {
@@ -228,7 +229,7 @@ describe("required authentication at the public MCP router", () => {
     assert.equal((await handleRequest(req, f.env, {})).status, 429);
     assert.equal(req.bodyUsed, false);
     assert.deepEqual(f.paths, []);
-    const keyed = fixture();
+    const keyed = fixture("paid");
     keyed.exhaustQuota();
     const res = await handleMcpRequest(
       request(initialize),
@@ -284,12 +285,16 @@ describe("required authentication at the public MCP router", () => {
         { jsonrpc: "2.0", id: 5, method: "missing_method" },
       ]) {
         const f = fixture();
-        const baseline = await handleMcpRequest(request(body, path), f.env, {
-          ...f.deps,
-          requireAuthentication: false,
-        });
+        const baseline = await handleMcpRequest(
+          request(body, path, { "mcp-protocol-version": "2025-03-26" }),
+          f.env,
+          {
+            ...f.deps,
+            requireAuthentication: false,
+          },
+        );
         const actual = await handleMcpRequest(
-          request(body, path),
+          request(body, path, { "mcp-protocol-version": "2025-03-26" }),
           f.env,
           f.deps,
         );

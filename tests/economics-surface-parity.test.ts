@@ -1,3 +1,7 @@
+import {
+  mcpAccountContext,
+  withMcpAccount,
+} from "./helpers/mcp-account-fixture.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
@@ -103,9 +107,9 @@ async function mcpEconomics(env: Env) {
         params: { name: "get_economics", arguments: { limit: 1 } },
       }),
     }),
-    env,
+    withMcpAccount(env),
     {
-      waitUntil() {},
+      ...mcpAccountContext,
       passThroughOnException() {},
     } as unknown as ExecutionContext,
   );
