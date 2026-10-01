@@ -3176,13 +3176,13 @@ describe("handleScheduled EMISSION_DRIFT_CHECK_CRON", () => {
   });
 
   test("a divergence posts the alert webhook and then throws", async () => {
-    // An empty chain read is a real divergence shape (observed emission sums
+    // Valid unset storage is a real divergence shape (observed emission sums
     // to zero); the webhook must carry the block, and the throw must land in
     // the scheduled-run scaffolding regardless.
     const { fixtureFetch } = await import("./helpers/emission-fixture-rpc.ts");
     const webhookBodies: string[] = [];
     const rpc = fixtureFetch((m) =>
-      m === "state_queryStorageAt" ? [] : undefined,
+      m === "state_queryStorageAt" ? [{ changes: [] }] : undefined,
     ).impl;
     const realFetch = globalThis.fetch;
     globalThis.fetch = (async (url: string, init: RequestInit) => {
@@ -3220,7 +3220,7 @@ describe("handleScheduled EMISSION_DRIFT_CHECK_CRON", () => {
     const { fixtureFetch } = await import("./helpers/emission-fixture-rpc.ts");
     const realFetch = globalThis.fetch;
     globalThis.fetch = fixtureFetch((m) =>
-      m === "state_queryStorageAt" ? [] : undefined,
+      m === "state_queryStorageAt" ? [{ changes: [] }] : undefined,
     ).impl;
     try {
       await assert.rejects(
@@ -3320,20 +3320,52 @@ describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
     pg.control.failNext = null;
     pg.control.onQuery = null;
     const realFetch = globalThis.fetch;
+    let unavailable = true;
     globalThis.fetch = (async (_u: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body)) as {
         method: string;
         params: unknown[];
       };
       let result: unknown = null;
-      if (body.method === "chain_getHeader") result = { number: "0x85a1c8" };
+      if (body.method === "chain_getFinalizedHead")
+        result = "0x" + "ab".repeat(32);
+      else if (body.method === "chain_getHeader")
+        result = { number: "0x85a1c8" };
       else if (body.method === "state_getKeysPaged") result = [];
+      else if (body.method === "state_queryStorageAt" && !unavailable)
+        result = [
+          { changes: (body.params[0] as string[]).map((key) => [key, null]) },
+        ];
       return {
         ok: true,
         json: async () => ({ result }),
       } as unknown as Response;
     }) as unknown as typeof fetch;
     try {
+      await assert.rejects(
+        () =>
+          handleScheduled(
+            {
+              cron: workerConfig.EMISSION_GATE_SAMPLE_CRON,
+            } as unknown as ScheduledController,
+            {
+              EMISSION_GATE_SYNC_SECRET: "cron-test-secret",
+              ...pgMockEnv(),
+            } as unknown as Env,
+            {} as unknown as ExecutionContext,
+          ),
+        /state_queryStorageAt: pinned block unavailable/,
+      );
+      assert.equal(
+        (
+          await db.query<{ n: number }>(
+            "SELECT count(*) AS n FROM emission_gate_param_history",
+          )
+        ).rows[0]?.n,
+        0,
+        "an unavailable sample must not write history through the real handler",
+      );
+      unavailable = false;
       const result = (await handleScheduled(
         {
           cron: workerConfig.EMISSION_GATE_SAMPLE_CRON,
