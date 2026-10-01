@@ -22,7 +22,7 @@ import {
   okLatencyMs,
 } from "./health-probe-core.ts";
 import { spotPriceTao } from "./stake-quote.ts";
-import { NETWORK_PARAMETERS_KV_TTL } from "./network-parameters.ts";
+import { NETWORK_PARAMETERS_KV_TTL } from "./network-parameters-cache.ts";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.ts";
 
 import {

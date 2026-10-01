@@ -5,6 +5,7 @@
 // silently skipped blocks.
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
+import { createChainRpcAdmission } from "../src/chain-rpc-admission.ts";
 import {
   captureTick,
   fetchRawBlockChunk,
@@ -146,6 +147,135 @@ function memoryWatermark(initial: number | null = null) {
   };
   return { watermark, get: () => value };
 }
+
+describe("fallback response-unit burst recovery", () => {
+  const url = "https://bittensor-finney.api.onfinality.io/public";
+  function rateLimitedNode(head: number) {
+    let at = 0;
+    let rejected = 0;
+    let inWindow: { at: number; units: number }[] = [];
+    const requests: { at: number; units: number }[] = [];
+    const ordinary = rpcFetch({ head });
+    const fetchImpl = (async (input: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      const units = Array.isArray(body) ? body.length : 1;
+      inWindow = inWindow.filter((request) => at - request.at < 1_000);
+      requests.push({ at, units });
+      if (
+        inWindow.reduce((sum, request) => sum + request.units, 0) + units >
+        50
+      ) {
+        rejected += 1;
+        return new Response("rate limit", { status: 429 });
+      }
+      inWindow.push({ at, units });
+      return ordinary(input as RequestInfo, init);
+    }) as typeof fetch;
+    const now = () => at;
+    const sleep = async (ms: number) => void (at += ms);
+    return { fetchImpl, now, sleep, requests, rejected: () => rejected };
+  }
+
+  test("the former HTTP-only pacing stalls a full chunk at its original watermark", async () => {
+    const node = rateLimitedNode(25);
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(0);
+    const result = await captureTick({
+      rpcUrls: [url],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 25,
+      fetchImpl: node.fetchImpl,
+      now: node.now,
+      sleepFn: node.sleep,
+      admission: async () => undefined,
+      requireEvents: true,
+    });
+    assert.equal(result.captured, 0);
+    assert.equal(result.stoppedAt, 1);
+    assert.equal(result.reason, "batch(50): HTTP 429");
+    assert.equal(get(), 0);
+    assert.equal(puts.size, 0);
+    assert.equal(node.rejected(), 1);
+  });
+
+  test("operation admission captures full chunks and every original field without retries", async () => {
+    const node = rateLimitedNode(51);
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(0);
+    const result = await captureTick({
+      rpcUrls: [url],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 51,
+      fetchImpl: node.fetchImpl,
+      now: node.now,
+      sleepFn: node.sleep,
+      admission: createChainRpcAdmission(node.now, node.sleep),
+      requireEvents: true,
+    });
+    assert.equal(result.captured, 51);
+    assert.equal(result.behind, 0);
+    assert.equal(get(), 51);
+    assert.equal(node.rejected(), 0);
+    assert.deepEqual(
+      node.requests.map(({ units }) => units),
+      [1, 1, 50, 1, 50, 1, 2],
+    );
+    const blocks = [...puts.values()].flatMap((value) =>
+      value
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line)),
+    );
+    assert.equal(blocks.length, 51);
+    for (const [index, block] of blocks.entries()) {
+      const height = index + 1;
+      assert.deepEqual(block, {
+        block_number: height,
+        block_hash: `0xh${height}`,
+        parent_hash: `0xh${height - 1}`,
+        header: {
+          parentHash: `0xh${height - 1}`,
+          number: `0x${height.toString(16)}`,
+        },
+        extrinsics: [`0xext${height}a`, `0xext${height}b`],
+        events: `0xev${height}`,
+        captured_at: height <= 25 ? 1_000 : height <= 50 ? 3_000 : 4_000,
+      });
+    }
+  });
+
+  test("external rejection still stops without advancing or retrying the failed chunk", async () => {
+    const node = rateLimitedNode(25);
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(0);
+    const fetchImpl = (async (input: unknown, init?: RequestInit) => {
+      if (Array.isArray(JSON.parse(String(init?.body))))
+        return new Response("shared capacity exhausted", { status: 429 });
+      return node.fetchImpl(input as RequestInfo, init);
+    }) as typeof fetch;
+    const result = await captureTick({
+      rpcUrls: [url],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 25,
+      fetchImpl,
+      now: node.now,
+      sleepFn: node.sleep,
+      admission: createChainRpcAdmission(node.now, node.sleep),
+      requireEvents: true,
+    });
+    assert.equal(result.captured, 0);
+    assert.equal(result.reason, "batch(50): HTTP 429");
+    assert.equal(get(), 0);
+    assert.equal(puts.size, 0);
+    assert.equal(node.requests.length, 2);
+  });
+});
 
 describe("nextCaptureHeights", () => {
   test("returns the contiguous run from the watermark, never a jump to head", () => {

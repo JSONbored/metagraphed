@@ -30,6 +30,10 @@ import {
   ChainRpcBatchSchema,
   ChainRpcEnvelopeSchema,
 } from "../schemas-src/chain-rpc-envelope.ts";
+import {
+  admitChainRpcRequest,
+  type ChainRpcAdmission,
+} from "./chain-rpc-admission.ts";
 
 /**
  * An RPC error rendered for a human, preferring `.message` when the node sent
@@ -104,6 +108,8 @@ export function describeRpcError(error: unknown): string {
 export interface ChainRpcOptions {
   /** Injected for tests and for callers that wrap fetch. */
   fetchImpl?: typeof fetch;
+  /** Shared operation admission; injected clocks keep scheduling testable. */
+  admission?: ChainRpcAdmission;
   /**
    * The JSON-RPC request id.
    *
@@ -139,6 +145,7 @@ export async function chainRpc(
   options: ChainRpcOptions = {},
 ): Promise<unknown> {
   const doFetch = options.fetchImpl ?? fetch;
+  await (options.admission ?? admitChainRpcRequest)(url, 1);
   const res = await doFetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -229,6 +236,7 @@ export async function chainRpcBatch(
   if (calls.length === 0) return [];
   const doFetch = options.fetchImpl ?? fetch;
   const label = `batch(${calls.length})`;
+  await (options.admission ?? admitChainRpcRequest)(url, calls.length);
   const res = await doFetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },

@@ -33,7 +33,7 @@ import {
   UPTIME_WINDOW_DAYS,
 } from "../workers/config.ts";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.ts";
-import { isFinneySs58Address } from "./account-balance.ts";
+import { isFinneySs58Address } from "./finney-ss58.ts";
 import { createRequestCounter } from "./request-counters.ts";
 
 export { composeCompareData };

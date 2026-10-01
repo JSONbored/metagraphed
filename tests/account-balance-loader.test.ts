@@ -9,6 +9,11 @@ import {
   systemAccountStorageKey,
   ACCOUNT_BALANCE_FIELD_SOURCES,
 } from "../src/account-balance.ts";
+import {
+  accountIdFromSs58,
+  isFinneySs58Address as leafSs58Validator,
+} from "../src/finney-ss58.ts";
+import { encodeAccountId32 } from "../src/ss58.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -63,6 +68,34 @@ const REAL_FINNEY_BLOB =
 const REAL_FINNEY_TOTAL_RAO = 1_850_761_846n + 126_000_000n;
 
 describe("isFinneySs58Address", () => {
+  test("the compatibility export retains the pure serving validator", () => {
+    assert.equal(isFinneySs58Address, leafSs58Validator);
+  });
+
+  test("the extracted decoder preserves captured AccountId bytes", () => {
+    // Captured Sudo::Key fixture, also qualified in tests/ss58.test.ts.
+    const address = "5DcSqBNqCmfdJZRGFSwwcRb2dZdJHZuKK8Tb1Gx8gbmF5E8s";
+    assert.equal(leafSs58Validator(address), true);
+    assert.equal(
+      Buffer.from(accountIdFromSs58(address)!).toString("hex"),
+      "4471816662ea3cfadc9868e5f083e26a3be6706b8d8dad7fbef565983afb3556",
+    );
+  });
+
+  test("the pure validator rejects malformed length, alphabet, prefix and checksum", () => {
+    for (const value of [
+      "",
+      SS58 + SS58,
+      `0${SS58.slice(1)}`,
+      "1".repeat(47),
+      encodeAccountId32(new Uint8Array(32).fill(255), 43)!,
+      `${SS58.slice(0, -3)}${SS58.at(-3) === "1" ? "2" : "1"}${SS58.slice(-2)}`,
+    ])
+      assert.equal(leafSs58Validator(value), false, value);
+    assert.equal(accountIdFromSs58("invalid"), null);
+    assert.equal(accountIdFromSs58("1".repeat(47)), null);
+  });
+
   test("accepts a valid finney address", () => {
     assert.equal(isFinneySs58Address(SS58), true);
   });
