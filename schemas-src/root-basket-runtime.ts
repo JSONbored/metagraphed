@@ -40,44 +40,57 @@ const sourceIdentity = {
   finalized_block: u64,
 };
 
-// Keep the audited runtime and decoder paired in both validation and OpenAPI.
-function sourceSchema<const A extends (typeof ROOT_BASKET_RUNTIME_ADAPTERS)[number]>(adapter: A) {
-  const capabilities = rootBasketCapabilities(adapter.api);
-  return z.object({
+// One shared field contract; compact conditional constraints retain the exact
+// runtime/API/decoder/capability pairing in generated JSON Schema as well.
+export const RootBasketSourceSchema = z
+  .object({
     ...sourceIdentity,
-    runtime_spec_version: z.literal(adapter.spec),
-    runtime_api_version: z.literal(adapter.api),
-    decoder_version: z.literal(adapter.decoder),
+    runtime_spec_version: z.literal(ROOT_BASKET_RUNTIME_ADAPTERS.map((row) => row.spec)),
+    runtime_api_version: z.literal([1, 3, 4, 5]),
+    decoder_version: z.literal(ROOT_BASKET_RUNTIME_ADAPTERS.map((row) => row.decoder)),
     metadata_sha256: capture.metadata_sha256,
     capabilities: z.object({
-      pricing: z.literal(capabilities.pricing),
-      beta_positions: z.literal(capabilities.beta_positions),
-      target_weights: z.literal(capabilities.target_weights),
-      trading_status: z.literal(capabilities.trading_status),
-      claim_preview: z.literal(capabilities.claim_preview),
+      pricing: z.boolean(),
+      beta_positions: z.boolean(),
+      target_weights: z.boolean(),
+      trading_status: z.boolean(),
+      claim_preview: z.boolean(),
     }).strict(),
-  }).strict();
-}
-export const RootBasketSourceSchema = z.discriminatedUnion("runtime_spec_version", [
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[0]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[1]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[2]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[3]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[4]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[5]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[6]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[7]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[8]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[9]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[10]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[11]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[12]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[13]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[14]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[15]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[16]),
-  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[17]),
-]);
+  })
+  .strict()
+  .superRefine((source, ctx) => {
+    // The literal spec set above proves this lookup exists.
+    const adapter = ROOT_BASKET_RUNTIME_ADAPTERS.find((row) => row.spec === source.runtime_spec_version)!;
+    if (source.runtime_api_version !== adapter.api)
+      ctx.addIssue({code:"custom",path:["runtime_api_version"],message:"Runtime/API pairing mismatch"});
+    if (source.decoder_version !== adapter.decoder)
+      ctx.addIssue({code:"custom",path:["decoder_version"],message:"Runtime/decoder pairing mismatch"});
+    const expected = rootBasketCapabilities(adapter.api);
+    if (
+      source.capabilities.pricing !== expected.pricing ||
+      source.capabilities.beta_positions !== expected.beta_positions ||
+      source.capabilities.target_weights !== expected.target_weights ||
+      source.capabilities.trading_status !== expected.trading_status ||
+      source.capabilities.claim_preview !== expected.claim_preview
+    ) ctx.addIssue({code:"custom",path:["capabilities"],message:"Runtime capabilities mismatch"});
+  })
+  .meta({
+    allOf: [
+      {oneOf: ROOT_BASKET_RUNTIME_ADAPTERS.map((row) => ({
+        properties:{
+          runtime_spec_version:{const:row.spec},
+          runtime_api_version:{const:row.api},
+          decoder_version:{const:row.decoder},
+        },
+      }))},
+      {oneOf: ([1,3,4,5] as const).map((api) => ({
+        properties:{
+          runtime_api_version:{const:api},
+          capabilities:{const:rootBasketCapabilities(api)},
+        },
+      }))},
+    ],
+  });
 
 export const BasketRuntimeHeaderSchema = z.object({
   number: z
@@ -124,10 +137,17 @@ export const RootBasketSummarySchema = z
     shares_atomic: u64,
     deposited_rao: u64,
     redeemed_rao: u64,
-    target_weights: z.array(z.object({
-      netuid: z.int().min(0).max(65_535),
-      weight_u16: z.int().min(0).max(65_535),
-    }).strict()).max(ROOT_BASKET_READ_LIMITS.holdings).optional(),
+    target_weights: z
+      .array(
+        z
+          .object({
+            netuid: z.int().min(0).max(65_535),
+            weight_u16: z.int().min(0).max(65_535),
+          })
+          .strict(),
+      )
+      .max(ROOT_BASKET_READ_LIMITS.holdings)
+      .optional(),
     holdings: z
       .array(
         fund.holdings.element.safeExtend({
@@ -154,11 +174,13 @@ export const RootBasketPositionSchema = z
 
 // API 1 publishes owed shares and a marked payout, without display pricing or
 // dust-aware execution preview. Preserve that narrower meaning.
-export const RootBasketEntitlementSchema = z.object({
-  hotkey: fund.hotkey,
-  owed_shares_atomic: u64,
-  payout_rao: u64,
-}).strict();
+export const RootBasketEntitlementSchema = z
+  .object({
+    hotkey: fund.hotkey,
+    owed_shares_atomic: u64,
+    payout_rao: u64,
+  })
+  .strict();
 
 export const RootBasketTradingStatusSchema = z
   .object({

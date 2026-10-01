@@ -4,7 +4,8 @@ import type { ApiSchema } from "@jsonbored/metagraphed";
 export const BASKET_KEY = `0x${"11".repeat(32)}`;
 export const BASKET_CURSOR = `0x${"22".repeat(32)}`;
 export const BASKET_HASH = `0x${"33".repeat(32)}`;
-export const BASKET_ACCOUNT = "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9";
+export const BASKET_ACCOUNT =
+  "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9";
 const q64 = "18446744073709551616";
 export const BASKET_PRICING: ApiSchema<"RootBasketPricing"> = {
   hotkey: BASKET_KEY,
@@ -21,17 +22,49 @@ export const BASKET_PRICING: ApiSchema<"RootBasketPricing"> = {
   shares_atomic: "11",
   display_shares_q64_bits: q64,
 };
-export function basketResponse(data: ApiSchema<"RootBasketReadData">, generation: "modern" | "weighted" | "legacy" = "modern") {
-  const runtime = generation === "legacy" ? {
-    runtime_spec_version: 441, runtime_api_version: 1, decoder_version: "subtensor-v441-8b9d55c7-v1",
-    capabilities: {pricing:false,beta_positions:false,target_weights:true,trading_status:false,claim_preview:false},
-  } as const : generation === "weighted" ? {
-    runtime_spec_version: 454, runtime_api_version: 3, decoder_version: "subtensor-v454-14cde641-v1",
-    capabilities: {pricing:true,beta_positions:true,target_weights:true,trading_status:false,claim_preview:false},
-  } as const : {
-    runtime_spec_version: 470, runtime_api_version: 5, decoder_version: "subtensor-v470-923fd1fa-v1",
-    capabilities: {pricing:true,beta_positions:true,target_weights:false,trading_status:true,claim_preview:true},
-  } as const;
+export function basketResponse(
+  data: ApiSchema<"RootBasketReadData">,
+  generation: "modern" | "weighted" | "legacy" = "modern",
+) {
+  const runtime =
+    generation === "legacy"
+      ? ({
+          runtime_spec_version: 441,
+          runtime_api_version: 1,
+          decoder_version: "subtensor-v441-8b9d55c7-v1",
+          capabilities: {
+            pricing: false,
+            beta_positions: false,
+            target_weights: true,
+            trading_status: false,
+            claim_preview: false,
+          },
+        } as const)
+      : generation === "weighted"
+        ? ({
+            runtime_spec_version: 454,
+            runtime_api_version: 3,
+            decoder_version: "subtensor-v454-14cde641-v1",
+            capabilities: {
+              pricing: true,
+              beta_positions: true,
+              target_weights: true,
+              trading_status: false,
+              claim_preview: false,
+            },
+          } as const)
+        : ({
+            runtime_spec_version: 470,
+            runtime_api_version: 5,
+            decoder_version: "subtensor-v470-923fd1fa-v1",
+            capabilities: {
+              pricing: true,
+              beta_positions: true,
+              target_weights: false,
+              trading_status: true,
+              claim_preview: true,
+            },
+          } as const);
   return {
     ok: true,
     data: {

@@ -32,12 +32,16 @@ export const RootBasketDirectorySchema = z
     limit: z.int().min(1).max(ROOT_BASKET_READ_LIMITS.page),
   })
   .strict();
-export const RootBasketLegacyDirectorySchema = z.object({
-  kind: z.literal("legacy-directory"),
-  summaries: z.array(RootBasketSummarySchema).max(ROOT_BASKET_READ_LIMITS.page),
-  next_after: account.nullable(),
-  limit: z.int().min(1).max(ROOT_BASKET_READ_LIMITS.page),
-}).strict();
+export const RootBasketLegacyDirectorySchema = z
+  .object({
+    kind: z.literal("legacy-directory"),
+    summaries: z
+      .array(RootBasketSummarySchema)
+      .max(ROOT_BASKET_READ_LIMITS.page),
+    next_after: account.nullable(),
+    limit: z.int().min(1).max(ROOT_BASKET_READ_LIMITS.page),
+  })
+  .strict();
 export const RootBasketDetailSchema = z
   .object({
     kind: z.literal("fund"),
@@ -120,7 +124,13 @@ export const RootBasketsArtifactSchema = z
           runtime_api_version: 5,
           decoder_version: "subtensor-v470-923fd1fa-v1",
           metadata_sha256: `0x${"55".repeat(32)}`,
-          capabilities: { pricing: true, beta_positions: true, target_weights: false, trading_status: true, claim_preview: true },
+          capabilities: {
+            pricing: true,
+            beta_positions: true,
+            target_weights: false,
+            trading_status: true,
+            claim_preview: true,
+          },
         },
         data: { kind: "directory", pricing: [], next_after: null, limit: 64 },
       },

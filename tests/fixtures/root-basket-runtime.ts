@@ -49,7 +49,9 @@ const holding =
 export const BASKET_FIXTURE_SUMMARY =
   hotkey + ["5", "7", "17", "19", "23"].map(u64).join("") + "08" + holding;
 export const BASKET_FIXTURE_WEIGHTED_SUMMARY =
-  BASKET_FIXTURE_SUMMARY.slice(0, 144) + "081300ff7f00000000" + BASKET_FIXTURE_SUMMARY.slice(144);
+  BASKET_FIXTURE_SUMMARY.slice(0, 144) +
+  "081300ff7f00000000" +
+  BASKET_FIXTURE_SUMMARY.slice(144);
 export const BASKET_FIXTURE_ENTITLEMENT = hotkey + u64("11") + u64("9");
 
 export function pricingPage(

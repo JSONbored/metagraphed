@@ -120,7 +120,7 @@ test("unsupported layouts and failed reads remain distinct from confirmed empty"
   const old = basketRuntimeFixture({
     state_getRuntimeVersion: {
       specName: "node-subtensor",
-      specVersion: 454,
+      specVersion: 455,
       apis: [[BASKET_RUNTIME_API_ID, 3]],
     },
   });

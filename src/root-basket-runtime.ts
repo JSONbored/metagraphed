@@ -8,7 +8,10 @@ import {
   BasketRuntimeVersionSchema as version,
 } from "../schemas-src/root-basket-runtime.ts";
 import { RootBasketCaptureSchema } from "../schemas-src/root-basket-capture.ts";
-import { ROOT_BASKET_RUNTIME_ADAPTERS, rootBasketCapabilities } from "../schemas-src/root-basket-compatibility.ts";
+import {
+  ROOT_BASKET_RUNTIME_ADAPTERS,
+  rootBasketCapabilities,
+} from "../schemas-src/root-basket-compatibility.ts";
 import { bytesToHex, storageMapPrefix } from "./twox-storage-key.ts";
 import {
   decodeBasketClaimPreview,
@@ -80,7 +83,9 @@ export async function openRootBasketRuntime(
   const matching = runtime.apis.filter(
     ([id]) => id.toLowerCase() === BASKET_RUNTIME_API_ID,
   );
-  const adapter = ROOT_BASKET_RUNTIME_ADAPTERS.find((candidate) => candidate.spec === runtime.specVersion);
+  const adapter = ROOT_BASKET_RUNTIME_ADAPTERS.find(
+    (candidate) => candidate.spec === runtime.specVersion,
+  );
   if (
     runtime.specName !== "node-subtensor" ||
     adapter === undefined ||
@@ -150,25 +155,37 @@ export async function openRootBasketRuntime(
   };
   return {
     source,
-    async summaryPage(startAfter: string | null, limit: number = ROOT_BASKET_READ_LIMITS.page) {
+    async summaryPage(
+      startAfter: string | null,
+      limit: number = ROOT_BASKET_READ_LIMITS.page,
+    ) {
       z.number().int().min(1).max(ROOT_BASKET_READ_LIMITS.page).parse(limit);
       if (startAfter !== null) oneAccount(startAfter);
-      const summaries = decodeBasketSummaries(await call("get_all_validator_baskets"), source.capabilities.target_weights);
+      const summaries = decodeBasketSummaries(
+        await call("get_all_validator_baskets"),
+        source.capabilities.target_weights,
+      );
       if (new Set(summaries.map((row) => row.hotkey)).size !== summaries.length)
         throw new Error("Duplicate basket summary fund");
-      summaries.sort((a, b) => a.hotkey < b.hotkey ? -1 : 1);
-      const remaining = summaries.filter((row) => startAfter === null || row.hotkey > startAfter);
+      summaries.sort((a, b) => (a.hotkey < b.hotkey ? -1 : 1));
+      const remaining = summaries.filter(
+        (row) => startAfter === null || row.hotkey > startAfter,
+      );
       const page = remaining.slice(0, limit);
       return {
         summaries: page,
-        next_after: remaining.length > limit ? page[page.length - 1]!.hotkey : null,
+        next_after:
+          remaining.length > limit ? page[page.length - 1]!.hotkey : null,
       };
     },
     async pricingPage(
       startAfter: string | null,
       limit: number = ROOT_BASKET_READ_LIMITS.page,
     ) {
-      if (!source.capabilities.pricing) throw new UnsupportedBasketRuntimeError("Basket pricing is not published by this runtime");
+      if (!source.capabilities.pricing)
+        throw new UnsupportedBasketRuntimeError(
+          "Basket pricing is not published by this runtime",
+        );
       z.number().int().min(1).max(ROOT_BASKET_READ_LIMITS.page).parse(limit);
       const cursor =
         startAfter === null ? "00" : `01${oneAccount(startAfter).slice(2)}`;
@@ -230,7 +247,10 @@ export async function openRootBasketRuntime(
       );
     },
     async portfolio(coldkey: string) {
-      if (!source.capabilities.beta_positions) throw new UnsupportedBasketRuntimeError("Display beta positions are not published by this runtime");
+      if (!source.capabilities.beta_positions)
+        throw new UnsupportedBasketRuntimeError(
+          "Display beta positions are not published by this runtime",
+        );
       // The official method silently visits at most 256 relationships. Verify
       // that ceiling against pinned storage before describing it as complete.
       const hotkeys = await stakingHotkeys(coldkey);
@@ -253,7 +273,10 @@ export async function openRootBasketRuntime(
       );
     },
     async claimPreviews(coldkey: string) {
-      if (!source.capabilities.claim_preview) throw new UnsupportedBasketRuntimeError("Dust-aware claim previews are not published by this runtime");
+      if (!source.capabilities.claim_preview)
+        throw new UnsupportedBasketRuntimeError(
+          "Dust-aware claim previews are not published by this runtime",
+        );
       const hotkeys = await stakingHotkeys(coldkey);
       if (hotkeys.length > ROOT_BASKET_READ_LIMITS.accountPage)
         throw new Error(
@@ -285,19 +308,31 @@ export async function openRootBasketRuntime(
       if (offset > hotkeys.length)
         throw new Error("Invalid basket account page offset");
       const selected = hotkeys.slice(offset, offset + limit);
-      if (selected.length === 0) return { entries: [], total_relationships: hotkeys.length, next_offset: null };
+      if (selected.length === 0)
+        return {
+          entries: [],
+          total_relationships: hotkeys.length,
+          next_offset: null,
+        };
       if (!source.capabilities.beta_positions) {
         // API 1 publishes a complete owed-share listing, without display beta
         // or execution previews. Validate membership before paging locally.
         const entitlements = relationshipRows(
-          decodeBasketEntitlements(await call("get_root_basket_positions", oneAccount(coldkey))),
+          decodeBasketEntitlements(
+            await call("get_root_basket_positions", oneAccount(coldkey)),
+          ),
           hotkeys,
         );
-        const byHotkey = new Map(entitlements.map((entry) => [entry.hotkey, entry]));
+        const byHotkey = new Map(
+          entitlements.map((entry) => [entry.hotkey, entry]),
+        );
         const next = offset + selected.length;
         return {
           entries: selected.map((hotkey) => ({
-            hotkey, position: null, claim: null, entitlement: byHotkey.get(hotkey) ?? null,
+            hotkey,
+            position: null,
+            claim: null,
+            entitlement: byHotkey.get(hotkey) ?? null,
           })),
           total_relationships: hotkeys.length,
           next_offset: next === hotkeys.length ? null : next,
@@ -306,25 +341,38 @@ export async function openRootBasketRuntime(
       // One bounded batch, correlated by id at the RPC boundary. No unbounded
       // coldkey-wide preview and no HTTP round trip per position/claim pair.
       const values = await basketReadBatch(
-              rpc,
-              selected.flatMap((hotkey) => [
+        rpc,
+        selected.flatMap((hotkey) => [
+          {
+            method: "state_call",
+            params: [
+              `${API_NAME}_get_beta_position`,
+              pair(hotkey, coldkey),
+              blockHash,
+            ],
+          },
+          ...(source.capabilities.claim_preview
+            ? [
                 {
                   method: "state_call",
                   params: [
-                    `${API_NAME}_get_beta_position`,
+                    `${API_NAME}_get_basket_claim_preview`,
                     pair(hotkey, coldkey),
                     blockHash,
                   ],
                 },
-                ...(source.capabilities.claim_preview ? [{
-                  method: "state_call",
-                  params: [`${API_NAME}_get_basket_claim_preview`, pair(hotkey, coldkey), blockHash],
-                }] : []),
-              ]),
-            );
+              ]
+            : []),
+        ]),
+      );
       const entries = selected.map((hotkey, i) => ({
         hotkey,
-        position: belongsTo(decodeBasketPosition(values[i * (source.capabilities.claim_preview ? 2 : 1)]), hotkey),
+        position: belongsTo(
+          decodeBasketPosition(
+            values[i * (source.capabilities.claim_preview ? 2 : 1)],
+          ),
+          hotkey,
+        ),
         claim: source.capabilities.claim_preview
           ? belongsTo(decodeBasketClaimPreview(values[i * 2 + 1]), hotkey)
           : null,
@@ -337,16 +385,25 @@ export async function openRootBasketRuntime(
       };
     },
     async index() {
-      if (!source.capabilities.pricing) throw new UnsupportedBasketRuntimeError("Basket indexes are not published by this runtime");
+      if (!source.capabilities.pricing)
+        throw new UnsupportedBasketRuntimeError(
+          "Basket indexes are not published by this runtime",
+        );
       return decodeBasketIndex(await call("get_beta_index"));
     },
     stakingHotkeys,
     async baseline(hotkey: string) {
-      if (!source.capabilities.pricing) throw new UnsupportedBasketRuntimeError("Basket baselines are not published by this runtime");
+      if (!source.capabilities.pricing)
+        throw new UnsupportedBasketRuntimeError(
+          "Basket baselines are not published by this runtime",
+        );
       return decodeBasketBaseline(await storage("BetaBaseline", hotkey));
     },
     async indexSnapshot() {
-      if (!source.capabilities.pricing) throw new UnsupportedBasketRuntimeError("Basket indexes are not published by this runtime");
+      if (!source.capabilities.pricing)
+        throw new UnsupportedBasketRuntimeError(
+          "Basket indexes are not published by this runtime",
+        );
       return decodeBasketIndexSnapshot(await storage("BetaIndexSnapshot"));
     },
   };

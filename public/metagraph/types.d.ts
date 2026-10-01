@@ -10467,6 +10467,7 @@ export interface components {
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
         RootBasketAccountEntry: {
             claim: components["schemas"]["RootBasketClaimPreview"] | null;
+            entitlement?: components["schemas"]["RootBasketEntitlement"] | null;
             hotkey: string;
             position: components["schemas"]["RootBasketPosition"] | null;
         };
@@ -10513,12 +10514,12 @@ export interface components {
             swept_rows: number;
         };
         RootBasketDetail: {
-            baseline: components["schemas"]["RootBasketBaseline"];
+            baseline: components["schemas"]["RootBasketBaseline"] | null;
             /** @constant */
             kind: "fund";
             pricing: components["schemas"]["RootBasketPricing"] | null;
             summary: components["schemas"]["RootBasketSummary"];
-            trading: components["schemas"]["RootBasketTradingStatus"];
+            trading: components["schemas"]["RootBasketTradingStatus"] | null;
         };
         RootBasketDirectory: {
             /** @constant */
@@ -10526,6 +10527,20 @@ export interface components {
             limit: number;
             next_after: string | null;
             pricing: components["schemas"]["RootBasketPricing"][];
+        };
+        RootBasketEntitlement: {
+            hotkey: string;
+            /** @example 9007199254740993 */
+            owed_shares_atomic: string;
+            /** @example 9007199254740993 */
+            payout_rao: string;
+        };
+        RootBasketLegacyDirectory: {
+            /** @constant */
+            kind: "legacy-directory";
+            limit: number;
+            next_after: string | null;
+            summaries: components["schemas"]["RootBasketSummary"][];
         };
         RootBasketPosition: {
             /** @example 9007199254740993 */
@@ -10567,9 +10582,9 @@ export interface components {
             /** @example 18446744073709551616 */
             staker_twr_q64_bits: string;
         };
-        RootBasketReadData: components["schemas"]["RootBasketDirectory"] | components["schemas"]["RootBasketDetail"] | components["schemas"]["RootBasketAccountPage"];
+        RootBasketReadData: components["schemas"]["RootBasketDirectory"] | components["schemas"]["RootBasketLegacyDirectory"] | components["schemas"]["RootBasketDetail"] | components["schemas"]["RootBasketAccountPage"];
         /**
-         * @description Finalized native Root basket state from the audited node-subtensor v469/v470 API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.
+         * @description Finalized native Root basket state across explicitly audited official releases v441–v470. source.capabilities identifies published operations: API 1 exposes holdings, stored target weights and owed-share entitlements; API 3 adds display beta and pricing; API 4 removes target weights and adds trading status; API 5 adds dust-aware claim previews. Absent methods are never called or replaced with invented prices or zero claims. Unknown layouts and failed reads return no data. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. Historical block reads require an archive source and do not establish retained snapshot coverage.
          * @example {
          *       "data": {
          *         "kind": "directory",
@@ -10580,6 +10595,13 @@ export interface components {
          *       "network": "finney",
          *       "schema_version": 1,
          *       "source": {
+         *         "capabilities": {
+         *           "beta_positions": true,
+         *           "claim_preview": true,
+         *           "pricing": true,
+         *           "target_weights": false,
+         *           "trading_status": true
+         *         },
          *         "decoder_version": "subtensor-v470-923fd1fa-v1",
          *         "finalized_block": "500",
          *         "finalized_block_hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
@@ -10618,6 +10640,418 @@ export interface components {
             status: "unavailable";
         };
         RootBasketSource: {
+            capabilities: {
+                /** @constant */
+                beta_positions: false;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: false;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v441-8b9d55c7-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 1;
+            /** @constant */
+            runtime_spec_version: 441;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: false;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: false;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v442-ec112cb0-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 1;
+            /** @constant */
+            runtime_spec_version: 442;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: false;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: false;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v443-c02a376e-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 1;
+            /** @constant */
+            runtime_spec_version: 443;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: false;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: false;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v445-d3f40e44-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 1;
+            /** @constant */
+            runtime_spec_version: 445;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: false;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: false;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v446-52d7e7cf-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 1;
+            /** @constant */
+            runtime_spec_version: 446;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: false;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: false;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v447-1f090af8-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 1;
+            /** @constant */
+            runtime_spec_version: 447;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: false;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: false;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v448-e18ca67f-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 1;
+            /** @constant */
+            runtime_spec_version: 448;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v450-9540b3af-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 3;
+            /** @constant */
+            runtime_spec_version: 450;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v452-da06f033-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 3;
+            /** @constant */
+            runtime_spec_version: 452;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v453-823bdcbc-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 3;
+            /** @constant */
+            runtime_spec_version: 453;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v454-14cde641-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 3;
+            /** @constant */
+            runtime_spec_version: 454;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: true;
+                /** @constant */
+                trading_status: false;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v459-70378404-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 3;
+            /** @constant */
+            runtime_spec_version: 459;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: false;
+                /** @constant */
+                trading_status: true;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v464-5cd66b85-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 4;
+            /** @constant */
+            runtime_spec_version: 464;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: false;
+                /** @constant */
+                trading_status: true;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v466-cdffbe2f-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 4;
+            /** @constant */
+            runtime_spec_version: 466;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: false;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: false;
+                /** @constant */
+                trading_status: true;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v467-c6bcb4a7-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 4;
+            /** @constant */
+            runtime_spec_version: 467;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: true;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: false;
+                /** @constant */
+                trading_status: true;
+            };
+            /** @constant */
+            decoder_version: "subtensor-v468-30c70d90-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 5;
+            /** @constant */
+            runtime_spec_version: 468;
+        } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: true;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: false;
+                /** @constant */
+                trading_status: true;
+            };
             /** @constant */
             decoder_version: "subtensor-v469-370bac46-v1";
             /** @example 9007199254740993 */
@@ -10631,6 +11065,18 @@ export interface components {
             /** @constant */
             runtime_spec_version: 469;
         } | {
+            capabilities: {
+                /** @constant */
+                beta_positions: true;
+                /** @constant */
+                claim_preview: true;
+                /** @constant */
+                pricing: true;
+                /** @constant */
+                target_weights: false;
+                /** @constant */
+                trading_status: true;
+            };
             /** @constant */
             decoder_version: "subtensor-v470-923fd1fa-v1";
             /** @example 9007199254740993 */
@@ -10667,6 +11113,10 @@ export interface components {
             shares_atomic: string;
             /** @example 9007199254740993 */
             spot_nav_rao: string;
+            target_weights?: {
+                netuid: number;
+                weight_u16: number;
+            }[];
         };
         RootBasketTradingStatus: {
             /** @example 9007199254740993 */
@@ -15187,14 +15637,21 @@ export interface operations {
                      *         "network": "finney",
                      *         "schema_version": 1,
                      *         "source": {
-                     *           "decoder_version": "subtensor-v469-370bac46-v1",
+                     *           "capabilities": {
+                     *             "beta_positions": false,
+                     *             "claim_preview": false,
+                     *             "pricing": false,
+                     *             "target_weights": true,
+                     *             "trading_status": false
+                     *           },
+                     *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
                      *           "finalized_block": "1000",
                      *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "network": "finney",
                      *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *           "runtime_api_version": 5,
-                     *           "runtime_spec_version": 469
+                     *           "runtime_api_version": 1,
+                     *           "runtime_spec_version": 441
                      *         },
                      *         "status": "available"
                      *       },
@@ -20583,14 +21040,21 @@ export interface operations {
                      *         "network": "finney",
                      *         "schema_version": 1,
                      *         "source": {
-                     *           "decoder_version": "subtensor-v469-370bac46-v1",
+                     *           "capabilities": {
+                     *             "beta_positions": false,
+                     *             "claim_preview": false,
+                     *             "pricing": false,
+                     *             "target_weights": true,
+                     *             "trading_status": false
+                     *           },
+                     *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
                      *           "finalized_block": "1000",
                      *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "network": "finney",
                      *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *           "runtime_api_version": 5,
-                     *           "runtime_spec_version": 469
+                     *           "runtime_api_version": 1,
+                     *           "runtime_spec_version": 441
                      *         },
                      *         "status": "available"
                      *       },
@@ -24286,14 +24750,21 @@ export interface operations {
                      *         "network": "finney",
                      *         "schema_version": 1,
                      *         "source": {
-                     *           "decoder_version": "subtensor-v469-370bac46-v1",
+                     *           "capabilities": {
+                     *             "beta_positions": false,
+                     *             "claim_preview": false,
+                     *             "pricing": false,
+                     *             "target_weights": true,
+                     *             "trading_status": false
+                     *           },
+                     *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
                      *           "finalized_block": "1000",
                      *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "network": "finney",
                      *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *           "runtime_api_version": 5,
-                     *           "runtime_spec_version": 469
+                     *           "runtime_api_version": 1,
+                     *           "runtime_spec_version": 441
                      *         },
                      *         "status": "available"
                      *       },
@@ -41774,14 +42245,21 @@ export interface operations {
                      *         "network": "finney",
                      *         "schema_version": 1,
                      *         "source": {
-                     *           "decoder_version": "subtensor-v469-370bac46-v1",
+                     *           "capabilities": {
+                     *             "beta_positions": false,
+                     *             "claim_preview": false,
+                     *             "pricing": false,
+                     *             "target_weights": true,
+                     *             "trading_status": false
+                     *           },
+                     *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
                      *           "finalized_block": "1000",
                      *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "network": "finney",
                      *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *           "runtime_api_version": 5,
-                     *           "runtime_spec_version": 469
+                     *           "runtime_api_version": 1,
+                     *           "runtime_spec_version": 441
                      *         },
                      *         "status": "available"
                      *       },

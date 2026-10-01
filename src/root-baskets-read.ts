@@ -87,7 +87,9 @@ export async function loadRootBaskets(
           runtime.pricing(query.hotkey),
           runtime.summary(query.hotkey),
           runtime.tradingStatus(query.hotkey),
-          runtime.source.capabilities.pricing ? runtime.baseline(query.hotkey) : Promise.resolve(null),
+          runtime.source.capabilities.pricing
+            ? runtime.baseline(query.hotkey)
+            : Promise.resolve(null),
         ]);
         data = {
           schema_version: 1,
