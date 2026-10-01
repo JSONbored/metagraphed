@@ -2,6 +2,7 @@
 // cloudflare:workers, WASM and deferred ESM chunks must all resolve together.
 // Source-only handler tests cannot catch a broken deployed module graph.
 import { Miniflare } from "miniflare";
+import { createHash } from "node:crypto";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -137,7 +138,7 @@ test("the GraphQL chunk loads and executes in workerd", async () => {
   expect(await response.json()).toEqual({ data: { __typename: "Query" } });
 });
 
-test("the MCP chunk loads and anonymous initialization remains available", async () => {
+test("the public MCP entry challenges anonymous initialization", async () => {
   const response = await runtime.dispatchFetch("https://api.metagraph.sh/mcp", {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
@@ -152,12 +153,11 @@ test("the MCP chunk loads and anonymous initialization remains available", async
       },
     }),
   });
-  expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({
-    jsonrpc: "2.0",
-    id: 1,
-    result: { protocolVersion: "2025-11-25" },
-  });
+  expect(response.status).toBe(401);
+  expect(response.headers.get("www-authenticate")).toContain(
+    'resource_metadata="https://api.metagraph.sh/.well-known/oauth-protected-resource/mcp"',
+  );
+  expect(await response.json()).toMatchObject({ error: "invalid_token" });
 });
 
 test("the OAuth provider still owns bearer-token authentication", async () => {
@@ -166,4 +166,79 @@ test("the OAuth provider still owns bearer-token authentication", async () => {
     headers: { authorization: "Bearer invalid" },
   });
   expect(response.status).toBe(401);
+});
+
+test("public OAuth discovery, registration, server card and preflight remain available", async () => {
+  for (const path of [
+    "/.well-known/oauth-protected-resource/mcp",
+    "/.well-known/oauth-protected-resource/mcp/core",
+    "/.well-known/oauth-authorization-server",
+    "/.well-known/mcp/server-card.json",
+  ]) {
+    const response = await runtime.dispatchFetch(
+      `https://api.metagraph.sh${path}`,
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    if (path.endsWith("server-card.json")) {
+      expect(body).toMatchObject({
+        authentication: "required",
+        authentication_detail: { anonymous: { supported: false } },
+      });
+    }
+  }
+  const metadata = await runtime.dispatchFetch(
+    "https://api.metagraph.sh/.well-known/oauth-authorization-server",
+  );
+  const { registration_endpoint } = (await metadata.json()) as {
+    registration_endpoint: string;
+  };
+  const registration = await runtime.dispatchFetch(registration_endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      client_name: "Required auth fixture",
+      redirect_uris: ["https://client.example/callback"],
+    }),
+  });
+  expect(registration.status).toBe(201);
+  expect(
+    ((await registration.json()) as { client_id: string }).client_id,
+  ).toBeTypeOf("string");
+  const preflight = await runtime.dispatchFetch(
+    "https://api.metagraph.sh/mcp",
+    {
+      method: "OPTIONS",
+      headers: {
+        origin: "https://client.example",
+        "access-control-request-method": "POST",
+      },
+    },
+  );
+  expect(preflight.status).toBe(204);
+  expect(preflight.headers.get("access-control-allow-headers")).toContain(
+    "authorization",
+  );
+});
+
+test("an expired OAuth token is refused by the compiled provider", async () => {
+  // Use the pinned provider's token-key format. Expiry is checked before
+  // encrypted grant properties are read; this is not a valid-token fixture.
+  const token = "expiry-fixture:grant-fixture:synthetic-secret";
+  const hash = createHash("sha256").update(token).digest("hex");
+  const kv = await runtime.getKVNamespace("OAUTH_KV");
+  await kv.put(
+    `token:expiry-fixture:grant-fixture:${hash}`,
+    JSON.stringify({ expiresAt: 1 }),
+  );
+  const response = await runtime.dispatchFetch("https://api.metagraph.sh/mcp", {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}` },
+    body: "not JSON",
+  });
+  expect(response.status).toBe(401);
+  expect(response.headers.get("www-authenticate")).toContain(
+    'error="invalid_token"',
+  );
+  expect(await response.text()).toContain("Access token expired");
 });

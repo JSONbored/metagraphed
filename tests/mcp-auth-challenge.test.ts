@@ -129,14 +129,13 @@ describe("handleMcpRequest — the gate end to end", () => {
   });
 
   test("an anonymous PUBLIC call is still served", async () => {
-    // The server stays "an OAuth 2.1 protected resource that permits anonymous
-    // access" (ADR 0027). This narrows the challenge to protected calls; it
-    // does not gate the surface.
+    // The in-process composer leaves access policy to its caller. The public
+    // HTTP router always enables requireAuthentication (covered separately).
     const res = await handleMcpRequest(post(rpc(PUBLIC)), env(), {});
     assert.equal(res.status, 200);
   });
 
-  test("initialize and tools/list are never challenged", async () => {
+  test("an in-process composer can supply its own initialization access policy", async () => {
     for (const method of ["initialize", "tools/list"]) {
       const res = await handleMcpRequest(
         post({ jsonrpc: "2.0", id: 1, method, params: {} }),

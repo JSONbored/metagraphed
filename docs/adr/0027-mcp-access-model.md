@@ -1,11 +1,43 @@
-# ADR 0027 — MCP access model: public by default, authentication buys throughput
+# ADR 0027 — MCP access model: authenticated free access
 
-- **Status:** Accepted · partially implemented (#8967)
+- **Status:** Accepted · amended 2026-09-30
 - **Date:** 2026-08-02
 - **Relates to:** #8967 (this ADR), #8608 / #8611 / #8812 (the tiered ceilings,
   blocklist and daily quota that landed on `/mcp` before this was written),
   #7151 / #7153 (the OAuth provider and its GitHub identity), ADR 0020 (API-key
   issuance and storage), ADR 0022 (the deferred paid-tier decision this feeds)
+
+## Current decision — 2026-09-30
+
+The maintainer has approved requiring an account for all public MCP access,
+with free sign-in and no new billing requirement. This supersedes the anonymous
+MCP policy recorded below. Public REST access retains its existing policy.
+
+- Every MCP mount and catalog profile requires either an OAuth access token or
+  a verified `mg_` API key. Missing credentials return HTTP 401 with a
+  path-specific RFC 9728 metadata pointer before body parsing or tool dispatch.
+- OAuth metadata, client registration and the server card remain public so
+  clients can discover the server and complete sign-in. Browser preflight
+  requests remain available.
+- Authentication reuses the existing rate-limit gate's verified account.
+  Session IDs, client names and unverified headers do not establish identity.
+  A validated OAuth grant whose account cannot be resolved returns HTTP 503
+  with `Retry-After`, rather than proceeding anonymously or requesting consent
+  again. Key revocation, account blocks and account quotas retain their checks.
+- Free accounts retain the full tool catalog. Existing permissions, paid history
+  depth and tier limits still apply; requiring authentication does not introduce
+  a subscription purchase or remove a tool.
+- The public HTTP router always enables this policy. In-process MCP composers
+  may supply their own access policy; their dispatch and schemas are unchanged.
+
+The server card, README and generated authentication guide must state this
+policy together. Registration and metadata replace anonymous MCP initialization
+as the public discovery path.
+
+## Historical rationale — 2026-08-02
+
+The following records the earlier decision and its evidence at that date. Its
+anonymous MCP access clauses are superseded by the current decision above.
 
 ## Context
 

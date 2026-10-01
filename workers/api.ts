@@ -5887,6 +5887,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
     // executionCtx is what lets tool-dispatch telemetry (#6031) drain its
     // capture through waitUntil instead of stranding it on isolate exit.
     return handleMcpRequest(request, env, {
+      requireAuthentication: true,
       readArtifact,
       // `economics:current` reads go through the SAME memo the REST routes use
       // (readEconomicsCurrentKv), not a second, independently-timed read of the same

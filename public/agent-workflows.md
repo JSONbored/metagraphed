@@ -4,7 +4,8 @@ This is the practical path from "I want to build on a Bittensor subnet" to a
 working call. Use this when you need task-oriented guidance instead of a raw
 endpoint list.
 
-Everything below is public, read-only, and served from
+Public REST reads need no authentication. MCP authentication is required and
+sign-in is free through OAuth or an `mg_` API key. All examples use
 `https://api.metagraph.sh`. REST responses use the envelope
 `{ ok, schema_version, data, meta }`; read `data`.
 
@@ -13,13 +14,18 @@ Everything below is public, read-only, and served from
 Use the interface that matches your environment:
 
 - MCP: best for Claude, Cursor, ChatGPT Apps, and agent frameworks that can call
-  tools. Connect `https://api.metagraph.sh/mcp`.
+  tools. Connect `https://api.metagraph.sh/mcp` and complete OAuth sign-in.
 - REST: best for shell scripts, browser apps, and quick inspection.
 - npm: best for TypeScript apps that want typed API paths.
 - Python: best for notebooks, crawlers, and backend jobs.
 
 All four paths read the same registry truth. MCP gives the most guided workflow;
 REST and SDKs give you the same data directly.
+
+For the MCP curl examples, set `METAGRAPHED_API_KEY` in your shell to your own
+`mg_` API key. The double-quoted authorization header expands that variable;
+keep its value out of agent prompts and committed files. See
+`https://api.metagraph.sh/auth.md` for authentication setup.
 
 ## 1. Find callable subnet candidates
 
@@ -36,6 +42,7 @@ MCP:
 
 ```bash
 curl -sS 'https://api.metagraph.sh/mcp' \
+  -H "Authorization: Bearer ${METAGRAPHED_API_KEY}" \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_subnet_for_task","arguments":{"task":"bitcoin yield or routing API","limit":5}}}'
 ```
@@ -99,6 +106,7 @@ MCP:
 
 ```bash
 curl -sS 'https://api.metagraph.sh/mcp' \
+  -H "Authorization: Bearer ${METAGRAPHED_API_KEY}" \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"how_do_i_call","arguments":{"netuid":7}}}'
 ```
@@ -166,6 +174,7 @@ MCP equivalent:
 
 ```bash
 curl -sS 'https://api.metagraph.sh/mcp' \
+  -H "Authorization: Bearer ${METAGRAPHED_API_KEY}" \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"verify_integration","arguments":{"surface_id":"allways-api-health"}}}'
 ```
@@ -195,10 +204,12 @@ needs one with a captured no-auth sample.
 
 ```bash
 curl -sS 'https://api.metagraph.sh/mcp' \
+  -H "Authorization: Bearer ${METAGRAPHED_API_KEY}" \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_api_schema","arguments":{"surface_id":"sn-1-apex-orchestrator-openapi"}}}'
 
 curl -sS 'https://api.metagraph.sh/mcp' \
+  -H "Authorization: Bearer ${METAGRAPHED_API_KEY}" \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_fixture","arguments":{"surface_id":"allways-api-health"}}}'
 ```
@@ -298,6 +309,7 @@ MCP clients can call the same queue directly:
 
 ```bash
 curl -sS 'https://api.metagraph.sh/mcp' \
+  -H "Authorization: Bearer ${METAGRAPHED_API_KEY}" \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_enrichment_targets","arguments":{"gap_code":"missing-fixture","limit":5}}}'
 ```

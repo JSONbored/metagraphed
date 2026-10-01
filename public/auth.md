@@ -1,22 +1,20 @@
 # Authentication
 
-The metagraphed API at `api.metagraph.sh` is **public by default and
-read-only**. No authentication is _required_ for any endpoint — every tool and
-route is callable anonymously.
+The public, read-only REST API at `api.metagraph.sh` remains **public by default and
+read-only**. Authentication is optional for public REST reads and
+raises their limits or unlocks existing history depth.
 
-Authentication is **optional and additive**. It raises rate limits, and it
-unlocks depth. History windows longer than 90 days need a
-paid tier, and a small number of tools need an identity at all (see below). Every
-tool stays listed and callable at every tier — what a tier buys is how far back
-you may read, not what you may see.
+**MCP authentication is required. Sign-in is free.** All MCP mounts and catalog
+profiles require OAuth 2.1 or an API key. Authentication does not introduce a
+subscription purchase: free accounts can discover and invoke the full tool
+catalog, subject to existing quotas, permissions and history-depth limits.
 
-- Auth scheme: none required; `Authorization: Bearer` accepted
-- Registration: not required, but self-serve keys are available
-- Protected resources: `POST /mcp` is an OAuth 2.1 protected resource that
-  permits anonymous access
-- OAuth / OIDC: supported for MCP clients (see below)
+- MCP auth scheme: `Authorization: Bearer` with OAuth or an `mg_` API key
+- REST auth scheme: optional `Authorization: Bearer`
+- Protected resources: `/mcp` and `/mcp/core`, including full catalog mode
+- OAuth metadata, client registration and the MCP server card remain public
 
-## Optional credentials
+## Credentials
 
 **API key.** A self-serve `mg_...` key sent as `Authorization: Bearer mg_...`
 raises the rate limits below. Keys are minted by wallet-signature login.
@@ -32,15 +30,20 @@ authorization with no manual configuration:
 A Bearer token that cannot be validated gets `401` with a
 `WWW-Authenticate` challenge pointing at the metadata above.
 
-An anonymous request is **served, not challenged** — with one exception. Calling
-a tool that needs an identity returns `401` with the same challenge, so a
-spec-compliant client can offer to sign in and retry. Those tools are:
+An unauthenticated MCP request returns **HTTP 401** with a
+`WWW-Authenticate` challenge before parsing the request body. A session ID is
+not a credential. MCP clients should follow the metadata to sign in and retry
+with a token. If an already-validated OAuth account cannot be resolved, the
+server returns HTTP 503 with `Retry-After`; retry rather than re-consent.
+
+These account-bound credential-store tools additionally bind stored secrets to
+the authenticated account:
 
 - `delete_surface_credential`
 - `list_surface_credentials`
 - `store_surface_credential`
 
-They bind a stored secret to an account, which an anonymous request has none of.
+They store, list or delete surface credentials (see `/credential-store.md`).
 
 ## What a tier buys
 
@@ -50,16 +53,18 @@ They bind a stored secret to an account, which an anonymous request has none of.
 - **Rate.** See below.
 - **Identity.** The credential store above.
 
-Nothing is hidden from an anonymous caller: a refused call says what it needs.
+MCP authentication is required regardless of tier. Free accounts see the full
+catalog; existing depth gates govern how much history they may read.
 
 ## Rate limits
 
-Anonymous limits apply per client IP; a valid key raises them per account.
-Each entry below is anonymous → keyed.
+Public REST anonymous limits apply per client IP; authenticated limits are per
+account. Unauthenticated MCP requests are refused before dispatch and are
+still rate-limited. The other entries below are anonymous → keyed.
 
 - REST + artifact reads: unmetered either way (cached at the edge)
 - RPC proxy (`/rpc/v1/*`): 100 / 60s → higher, per tier
-- MCP endpoint (`POST /mcp`): 100 / 60s → 500 / 60s, higher on paid tiers
+- MCP endpoint (`POST /mcp`): authentication required; free accounts 500 / 60s, higher on paid tiers
 - AI routes (`/api/v1/ask`, `/api/v1/search/semantic`): 20 / 60s → higher, per tier
 
 Keyed accounts are also subject to a cost-weighted daily quota.
