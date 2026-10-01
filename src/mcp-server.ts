@@ -18222,8 +18222,9 @@ export { parseUserAgentClient };
  * label an event would be an odd trade.
  *
  * #8967: `authTier` is the dimension that makes the access model measurable.
- * Authentication on /mcp currently buys THROUGHPUT ONLY (anonymous 100/60s vs
- * keyed 500/60s and per-tier policies above), and until now nothing recorded
+ * The historical access model used anonymous 100/60s vs
+ * keyed 500/60s and per-tier policies above. The public router now requires
+ * an account; this gate also supports in-process composers. Nothing recorded
  * which side of that line a request fell on -- so "how much MCP traffic is
  * authenticated" was unanswerable, and therefore so was any question about
  * whether the tier system is worth extending.
