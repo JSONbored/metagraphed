@@ -26,8 +26,8 @@ const BODIES: Record<PrivacySection, ReactNode> = {
   "The short version": (
     <>
       <p>
-        The API and MCP server are public and read-only. You can use nearly all of it without an
-        account, and without telling us who you are. We do not sell data, we do not run advertising,
+        Public REST API reads remain available without an account. MCP access requires free sign-in
+        through OAuth or an API key. We do not sell data, we do not run advertising,
         and we do not build profiles of individuals.
       </p>
       <p>
@@ -151,7 +151,7 @@ const BODIES: Record<PrivacySection, ReactNode> = {
   "Your choices": (
     <>
       <ul>
-        <li>Use the API and MCP server anonymously — most of it needs no account at all.</li>
+        <li>Use public REST API reads anonymously, or sign in for free to use MCP.</li>
         <li>
           Omit the optional context argument on MCP tool calls if you would rather not send it.
         </li>

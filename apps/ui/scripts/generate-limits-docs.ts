@@ -111,7 +111,7 @@ function dailyTable(): string {
 function body(): string {
   return `All numbers on this page are generated from the configuration that enforces them. If a ceiling here disagrees with what you observe, that is a bug — please [open an issue](https://github.com/JSONbored/metagraphed/issues/new).
 
-Most of the API needs no key at all. A key raises your per-minute ceiling; a tier above \`free\` raises it further.
+Public REST API reads retain their existing access policy. MCP requires free sign-in through OAuth or an API key. The MCP \`No key\` ceiling below limits unauthenticated attempts; those requests receive HTTP 401 before tool dispatch. An authenticated free account can use the full catalog, subject to existing permissions and history-depth limits. A tier above \`free\` raises the per-minute ceiling further.
 
 ## Per-minute ceilings
 
