@@ -65,9 +65,7 @@ export function describeUnstakeMaxState(
 export function formatQuoteHint(quote: SubnetStakeQuote | null): string | null {
   if (!quote) return null;
   const outUnit = quote.expected_out_unit === "tao" ? "τ" : "α";
-  const impact = quote.is_root
-    ? "root subnet · 1:1"
-    : `${formatDecimal(quote.price_impact_pct, 2)}% price impact`;
+  const impact = `${formatDecimal(quote.price_impact_pct, 2)}% price impact`;
   return `≈ ${joinAmountUnit(formatNumber(quote.expected_out), outUnit)} · ${impact}`;
 }
 

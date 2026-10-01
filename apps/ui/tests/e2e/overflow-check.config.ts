@@ -110,9 +110,6 @@ export const ROUTES = [
  * generated artifact.
  */
 export const NO_API_ROUTES = new Set([
-  // Native reads and simulations are user-initiated. The initial page has no
-  // API data to replay; native-runtime.spec.ts covers the interactive states.
-  "/apis/native",
   "/privacy",
   "/terms",
   "/design/primitives",

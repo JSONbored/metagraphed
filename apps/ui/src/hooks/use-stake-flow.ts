@@ -8,16 +8,16 @@
 // Scope: stake and unstake only. No move/swap here (see stake-extrinsics.ts's
 // header comment on why a cross-subnet move_stake isn't a single safe call).
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "./use-wallet";
 import { useTxStatus, type TxUiStatus, type UseTxStatusResult } from "./use-tx-status";
 import { useFlowSession, useFeeEstimate } from "./use-flow-session";
-import {
-  subnetStakeQuoteQuery,
-  economicsQuery,
-  accountPositionsQuery,
-} from "@/lib/metagraphed/queries";
+import { nativeStakeHoldingQuery, nativeUnstakeMax } from "@/lib/metagraphed/native-stake-holding";
+import { nativeStakeInput, nativeStakeParams, nativeStakeQuoteQuery, prepareNativeStakeCall, type NativeStakeQuote } from "@/lib/metagraphed/native-stake-quote";
+import { guardNativeSigner, previewNativeCall, revalidateNativeCall } from "@/lib/metagraphed/native-call-wallet";
+import { getApiBase, getNetwork } from "@/lib/metagraphed/config";
+import { getConnectedWallet } from "@/lib/metagraphed/wallet";
 import type { SubnetStakeQuote, AccountPosition } from "@/lib/metagraphed/types";
 import { taoToRao, raoToTao, alphaToRawAlpha, asRao, type Rao } from "@/lib/metagraphed/units";
 import {
@@ -33,8 +33,6 @@ import {
 import {
   getMinStake,
   getFreeBalance,
-  getNextNonce,
-  buildExtrinsic,
 } from "@/lib/metagraphed/chain-connection";
 import { getSigner } from "@/lib/metagraphed/wallet-injected";
 import { computeIdempotencyKey } from "@/lib/metagraphed/broadcast";
@@ -57,6 +55,11 @@ export const DEFAULT_STAKE_BUFFER_RAO: Rao = taoToRao("0.02");
 
 /** #5233's positions endpoint has zero root coverage (see AccountPositions' doc comment, types.ts). */
 export const MAX_UNSTAKE_UNAVAILABLE_ROOT_MESSAGE = "Max isn't available for root stake yet.";
+
+export function stakeWalletContext(): string {
+  const wallet = getConnectedWallet();
+  return `${getApiBase()}:${getNetwork().id}:${wallet?.address}:${wallet?.source}`;
+}
 
 /**
  * Derives the flow's phase purely from the wallet/tx-status state this hook
@@ -279,21 +282,46 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   const [amountInput, setAmountInput] = useState("");
   const [tolerancePct, setTolerancePct] = useState(DEFAULT_TOLERANCE_PCT);
   const [confirmed, setConfirmed] = useState(false);
+  const [reviewed, setReviewed] = useState<{
+    params: AddStakeLimitParams | RemoveStakeLimitParams;
+    quote: NativeStakeQuote;
+    address: string;
+    source: string;
+    sessionId: string;
+    context: string;
+  } | null>(null);
 
   // Shared across all three stake/take flows -- see use-flow-session.ts.
   const { sessionId, api } = useFlowSession(wallet.status);
 
-  const [freeBalanceRao, setFreeBalanceRao] = useState<Rao | null>(null);
-  const [minStakeRao, setMinStakeRao] = useState<Rao | null>(null);
+  const [balances, setBalances] = useState<{
+    api: NonNullable<typeof api>;
+    address: string;
+    free: Rao;
+    minimum: Rao;
+  } | null>(null);
   const coldkeyAddress = wallet.wallet?.address ?? null;
+  const freeBalanceRao = balances?.api === api && balances.address === coldkeyAddress ? balances.free : null;
+  const minStakeRao = balances?.api === api && balances.address === coldkeyAddress ? balances.minimum : null;
+  const active = useRef(true);
+  const working = useRef(false);
   useEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
+  useEffect(() => {
+    setConfirmed(false);
+    setReviewed(null);
+    txStatus.reset();
+  }, [coldkeyAddress, wallet.wallet?.source, api, sessionId, hotkey, netuid, txStatus.reset]);
+  useEffect(() => {
+    setBalances(null);
     if (!api || !coldkeyAddress) return;
     let cancelled = false;
     Promise.all([getFreeBalance(api, coldkeyAddress), getMinStake(api)])
       .then(([free, min]) => {
         if (!cancelled) {
-          setFreeBalanceRao(free);
-          setMinStakeRao(min);
+          setBalances({ api, address: coldkeyAddress, free, minimum: min });
         }
       })
       .catch(() => {
@@ -304,72 +332,30 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     };
   }, [api, coldkeyAddress]);
 
-  const economicsQ = useQuery(economicsQuery({ fields: "detail" }));
-  const bootstrapSpotPriceTao =
-    economicsQ.data?.data.find((row) => row.netuid === netuid)?.alpha_price_tao ?? null;
+  const inputAtomic = nativeStakeInput(amountInput);
+  const quoteQ = useQuery({ ...nativeStakeQuoteQuery(netuid, inputAtomic, action, unit), enabled: inputAtomic !== null && !confirmed });
+  const liveQuote = quoteQ.data ?? null;
+  const quote = confirmed && reviewed ? reviewed.quote : liveQuote;
+  const spotPriceTao = quote?.spot_price_tao ?? null;
 
-  // Holds steady across a query-key change mid-flight (tanstack query resets
-  // `data` to undefined for a brand-new key), so the unstake+TAO-mode
-  // candidate doesn't bounce back to the bootstrap price and re-derive a
-  // different candidate on every refetch -- see this hook's own header
-  // comment on the fund-safety cost of that class of bug.
-  const [lastKnownSpotPriceTao, setLastKnownSpotPriceTao] = useState<number | null>(null);
-
-  const hasValidAmountInput =
-    amountInput.trim() !== "" && Number.isFinite(Number(amountInput)) && Number(amountInput) > 0;
-
-  const priorSpotPriceTao = lastKnownSpotPriceTao ?? bootstrapSpotPriceTao ?? 1;
-  const quoteAmount =
-    action === "stake"
-      ? hasValidAmountInput
-        ? Number(amountInput)
-        : 0
-      : hasValidAmountInput
-        ? Number(
-            unit === "alpha"
-              ? amountInput
-              : computeUnstakeAlphaCandidate(amountInput, priorSpotPriceTao),
-          )
-        : 0;
-
-  const quoteQ = useQuery(subnetStakeQuoteQuery(netuid, quoteAmount, action));
-  const quote = quoteQ.data?.data ?? null;
-
-  useEffect(() => {
-    if (quote?.spot_price_tao != null) setLastKnownSpotPriceTao(quote.spot_price_tao);
-  }, [quote?.spot_price_tao]);
-
-  const spotPriceTao = quote?.spot_price_tao ?? lastKnownSpotPriceTao ?? bootstrapSpotPriceTao;
-
-  const positionsQ = useQuery({
-    ...accountPositionsQuery(coldkeyAddress ?? ""),
+  const holdingQ = useQuery({
+    ...nativeStakeHoldingQuery(hotkey, coldkeyAddress, netuid),
     enabled: !!coldkeyAddress && action === "unstake",
   });
-  const position =
-    positionsQ.data?.data.positions.find((p) => p.hotkey === hotkey && p.netuid === netuid) ?? null;
 
-  const params = useMemo(
-    () =>
-      spotPriceTao != null
-        ? buildStakeCallParams({
-            action,
-            hotkey,
-            netuid,
-            amountInput,
-            unit,
-            spotPriceTao,
-            tolerancePct,
-          })
-        : null,
-    [action, hotkey, netuid, amountInput, unit, spotPriceTao, tolerancePct],
-  );
+  const liveParams = useMemo(() => {
+    if (!liveQuote) return null;
+    try { return nativeStakeParams(liveQuote, hotkey, tolerancePct); }
+    catch { return null; }
+  }, [liveQuote, hotkey, tolerancePct]);
+  const params = confirmed && reviewed ? reviewed.params : liveParams;
 
   const validationIssues = useMemo(() => {
     if (!params || minStakeRao == null) return [];
     const amountRao =
       params.call === "add_stake_limit"
         ? params.amountStaked
-        : resolveUnstakeValidationAmountRao(quote?.expected_out ?? 0);
+        : asRao(quote?.outputAtomic ?? 0n);
     return validateStakeInputs({
       hotkey,
       netuid,
@@ -382,7 +368,7 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
       minStakeRao,
       availableBalanceRao: action === "stake" ? (freeBalanceRao ?? undefined) : undefined,
     });
-  }, [params, minStakeRao, hotkey, netuid, quote?.expected_out, action, freeBalanceRao]);
+  }, [params, minStakeRao, hotkey, netuid, quote?.outputAtomic, action, freeBalanceRao]);
 
   const validationMessages = useMemo(
     () => validationIssues.map(describeStakeValidationIssue),
@@ -390,13 +376,12 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   );
 
   const canConfirm =
-    params != null && validationIssues.length === 0 && quoteQ.isSuccess && !quoteQ.isFetching;
+    api != null && wallet.wallet != null && minStakeRao != null && freeBalanceRao != null &&
+    liveParams != null && validationIssues.length === 0 && quoteQ.isSuccess && !quoteQ.isFetching;
 
   const maxStakeRao = freeBalanceRao != null ? resolveStakeMaxRao(freeBalanceRao) : null;
-  const maxUnstakeUnavailable = isMaxUnavailableForNetuid(netuid);
-  const maxUnstakeAmountInput = maxUnstakeUnavailable
-    ? null
-    : resolveUnstakeMaxAmountInput(position, unit, spotPriceTao ?? 1);
+  const maxUnstakeUnavailable = false;
+  const maxUnstakeAmountInput = nativeUnstakeMax(holdingQ.data ?? null, unit);
 
   // Fee dry-run for the PreSignConfirmation screen -- only ever fetched once
   // the user has reached "confirm" with a resolved, idle tx, so an amount
@@ -411,30 +396,59 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     if (maxUnstakeAmountInput != null) setAmountInput(maxUnstakeAmountInput);
   }, [maxUnstakeAmountInput]);
 
-  const confirm = useCallback(() => setConfirmed(true), []);
+  const confirm = useCallback(() => {
+    if (!canConfirm || !liveParams || !liveQuote || !wallet.wallet) return;
+    setReviewed({ params: { ...liveParams }, quote: { ...liveQuote, source: { ...liveQuote.source } }, address: wallet.wallet.address, source: wallet.wallet.source, sessionId, context: stakeWalletContext() });
+    setConfirmed(true);
+  }, [canConfirm, liveParams, liveQuote, wallet.wallet, sessionId]);
   const editAmount = useCallback(() => {
     setConfirmed(false);
+    setReviewed(null);
     txStatus.reset();
   }, [txStatus]);
 
   const close = useCallback(() => {
     txStatus.reset();
     setConfirmed(false);
+    setReviewed(null);
     setAmountInput("");
   }, [txStatus]);
 
   const submit = useCallback(async () => {
-    if (!api || !wallet.wallet || !params) return;
-    const nonce = await getNextNonce(api, wallet.wallet.address);
-    const idempotencyKey = computeIdempotencyKey(params, nonce, sessionId);
-    const extrinsic = buildExtrinsic(api, params);
-    const signer = await getSigner(wallet.wallet.source);
-    await txStatus.submit(api, extrinsic, {
-      signerAddress: wallet.wallet.address,
-      signer,
-      idempotencyKey,
-    });
-  }, [api, wallet.wallet, params, sessionId, txStatus]);
+    if (working.current || !api || !reviewed || feeRao === null) return;
+    working.current = true;
+    const assertCurrent = () => {
+      if (!active.current || stakeWalletContext() !== reviewed.context)
+        throw new Error("The account, network or API changed. Review this stake again.");
+    };
+    try {
+      assertCurrent();
+      const artifact = await prepareNativeStakeCall(reviewed.quote, reviewed.params);
+      assertCurrent();
+      const preview = await previewNativeCall(api, artifact, 0, reviewed.address);
+      assertCurrent();
+      if (preview.feeRao > feeRao + (feeRao + 9n) / 10n)
+        throw new Error("The transaction fee changed. Review this stake again.");
+      if (reviewed.params.call === "add_stake_limit" && preview.balanceRao < reviewed.params.amountStaked + preview.maxFeeRao)
+        throw new Error("The spendable balance cannot cover this stake and its fee.");
+      const connected = await getSigner(reviewed.source);
+      assertCurrent();
+      const recheck = async () => {
+        await revalidateNativeCall(api, preview);
+        if (reviewed.params.call === "add_stake_limit" && await getFreeBalance(api, reviewed.address) < reviewed.params.amountStaked + preview.maxFeeRao)
+          throw new Error("The spendable balance changed. Review this stake again.");
+      };
+      await recheck();
+      assertCurrent();
+      const signer = guardNativeSigner(connected, preview, assertCurrent, recheck);
+      await txStatus.submit(api, preview.extrinsic, {
+        signerAddress: reviewed.address,
+        signer,
+        nonce: preview.nonce,
+        idempotencyKey: computeIdempotencyKey({ callData: preview.callData, address: reviewed.address, genesisHash: preview.source.network_genesis_hash }, preview.nonce, reviewed.sessionId),
+      });
+    } finally { working.current = false; }
+  }, [api, reviewed, feeRao, txStatus]);
 
   const phase = deriveStakeFlowPhase(wallet.status, confirmed, txStatus.status);
 
@@ -461,7 +475,7 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     maxStakeRao,
     maxUnstakeAmountInput,
     maxUnstakeUnavailable,
-    positionCapturedAt: positionsQ.data?.data.captured_at ?? null,
+    positionCapturedAt: null,
     applyMaxStake,
     applyMaxUnstake,
     params,

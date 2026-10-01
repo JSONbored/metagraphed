@@ -17,7 +17,7 @@ export const NATIVE_FEATURES = [
 ] as const;
 export type NativeFeature = (typeof NATIVE_FEATURES)[number]["id"];
 
-function accountHex(value: string): string {
+export function accountHex(value: string): string {
   const trimmed = value.trim();
   if (/^0x[0-9a-fA-F]{64}$/.test(trimmed)) return trimmed.toLowerCase();
   const account = decodeSs58(trimmed);
