@@ -1274,6 +1274,7 @@ import {
   resolveOAuthAccountTierWithStatus,
 } from "./oauth-account-tier.ts";
 import { mcpRequestBodyBytes } from "./mcp-request-body.ts";
+import { lazyOutputSchemas } from "./mcp-output-schema-map.ts";
 import type { AccountKind } from "./account-kind.ts";
 import {
   DEREGISTRATION_UNAVAILABLE_CODE,
@@ -15506,331 +15507,329 @@ const TOOLS_BY_NAME = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
 // literal type cannot answer -- so both wrote `(TOOL_OUTPUT_SCHEMAS as Row)`
 // and got back an `any` where a `JsonSchemaLike | undefined` was wanted
 // (#10782).
-const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
-  search_subnets: outputJsonSchema(SearchSubnetsOutputSchema),
-  list_subnets: outputJsonSchema(ListSubnetsOutputSchema),
-  find_subnets_by_capability: outputJsonSchema(
-    FindSubnetsByCapabilityOutputSchema,
-  ),
-  get_subnet: outputJsonSchema(GetSubnetOutputSchema),
-  get_subnet_detail: outputJsonSchema(GetSubnetDetailOutputSchema),
-  get_subnet_snapshot: outputJsonSchema(GetSubnetSnapshotOutputSchema),
-  get_subnet_health: outputJsonSchema(GetSubnetHealthOutputSchema),
-  get_subnet_health_trends: outputJsonSchema(GetSubnetHealthTrendsOutputSchema),
-  get_health_trends: outputJsonSchema(GetHealthTrendsOutputSchema),
-  get_subnet_health_percentiles: outputJsonSchema(
-    GetSubnetHealthPercentilesOutputSchema,
-  ),
-  get_subnet_health_incidents: outputJsonSchema(
-    GetSubnetHealthIncidentsOutputSchema,
-  ),
-  get_subnet_economics: outputJsonSchema(GetSubnetEconomicsOutputSchema),
-  get_subnet_stake_quote: outputJsonSchema(GetSubnetStakeQuoteOutputSchema),
-  get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
-  get_network_health: GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
-  list_profiles: LIST_PROFILES_OUTPUT_SCHEMA,
-  get_subnet_profile: GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
-  get_health_history: GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
-  get_subnet_trajectory: outputJsonSchema(GetSubnetTrajectoryOutputSchema),
-  get_economics_trends: outputJsonSchema(GetEconomicsTrendsOutputSchema),
-  get_emission_pipeline: outputJsonSchema(GetEmissionPipelineOutputSchema),
-  get_deregistration_ranking: outputJsonSchema(
-    GetDeregistrationRankingOutputSchema,
-  ),
-  get_subnet_concentration: outputJsonSchema(
-    GetSubnetConcentrationOutputSchema,
-  ),
-  get_subnet_performance: outputJsonSchema(GetSubnetPerformanceOutputSchema),
-  get_subnet_idle_stake: outputJsonSchema(GetSubnetIdleStakeOutputSchema),
-  get_chain_concentration: outputJsonSchema(GetChainConcentrationOutputSchema),
-  get_chain_concentration_subnets: outputJsonSchema(
-    GetChainConcentrationSubnetsOutputSchema,
-  ),
-  get_chain_performance: outputJsonSchema(GetChainPerformanceOutputSchema),
-  get_chain_idle_stake: outputJsonSchema(GetChainIdleStakeOutputSchema),
-  get_chain_identity_history: outputJsonSchema(
-    GetChainIdentityHistoryOutputSchema,
-  ),
-  get_chain_yield: outputJsonSchema(GetChainYieldOutputSchema),
-  get_chain_turnover: outputJsonSchema(GetChainTurnoverOutputSchema),
-  get_chain_stake_flow: outputJsonSchema(GetChainStakeFlowOutputSchema),
-  get_chain_alpha_volume: outputJsonSchema(GetChainAlphaVolumeOutputSchema),
-  get_chain_weights: outputJsonSchema(GetChainWeightsOutputSchema),
-  get_chain_weight_setters: outputJsonSchema(GetChainWeightSettersOutputSchema),
-  get_chain_stake_moves: outputJsonSchema(GetChainStakeMovesOutputSchema),
-  get_chain_stake_transfers: outputJsonSchema(
-    GetChainStakeTransfersOutputSchema,
-  ),
-  get_chain_axon_removals: outputJsonSchema(GetChainAxonRemovalsOutputSchema),
-  get_chain_serving: outputJsonSchema(GetChainServingOutputSchema),
-  get_chain_prometheus: outputJsonSchema(GetChainPrometheusOutputSchema),
-  get_blocks_summary: outputJsonSchema(GetBlocksSummaryOutputSchema),
-  get_subnet_concentration_history: outputJsonSchema(
-    GetSubnetConcentrationHistoryOutputSchema,
-  ),
-  get_subnet_yield: outputJsonSchema(GetSubnetYieldOutputSchema),
-  get_subnet_yield_history: outputJsonSchema(GetSubnetYieldHistoryOutputSchema),
-  get_subnet_emission_split_history: outputJsonSchema(
-    GetSubnetEmissionSplitHistoryOutputSchema,
-  ),
-  get_subnet_owner_capture: outputJsonSchema(GetSubnetOwnerCaptureOutputSchema),
-  get_subnet_treasury: outputJsonSchema(GetSubnetTreasuryOutputSchema),
-  get_subnet_cost_to_participate: outputJsonSchema(
-    GetSubnetCostToParticipateOutputSchema,
-  ),
-  get_subnet_miner_fairness: outputJsonSchema(
-    GetSubnetMinerFairnessOutputSchema,
-  ),
-  get_subnet_stake_flow: outputJsonSchema(GetSubnetStakeFlowOutputSchema),
-  get_subnet_event_summary: outputJsonSchema(GetSubnetEventSummaryOutputSchema),
-  get_subnet_stake_moves: outputJsonSchema(GetSubnetStakeMovesOutputSchema),
-  get_subnet_stake_transfers: outputJsonSchema(
-    GetSubnetStakeTransfersOutputSchema,
-  ),
-  get_subnet_registrations: outputJsonSchema(
-    GetSubnetRegistrationsOutputSchema,
-  ),
-  get_subnet_weights: outputJsonSchema(GetSubnetWeightsOutputSchema),
-  get_subnet_weight_setters: outputJsonSchema(
-    GetSubnetWeightSettersOutputSchema,
-  ),
-  get_subnet_axon_removals: outputJsonSchema(GetSubnetAxonRemovalsOutputSchema),
-  get_subnet_serving: outputJsonSchema(GetSubnetServingOutputSchema),
-  get_subnet_prometheus: outputJsonSchema(GetSubnetPrometheusOutputSchema),
-  get_subnet_deregistrations: outputJsonSchema(
-    GetSubnetDeregistrationsOutputSchema,
-  ),
-  get_subnet_performance_history: outputJsonSchema(
-    GetSubnetPerformanceHistoryOutputSchema,
-  ),
-  get_subnet_movers: outputJsonSchema(GetSubnetMoversOutputSchema),
-  get_subnet_turnover: outputJsonSchema(GetSubnetTurnoverOutputSchema),
-  get_subnet_uptime: outputJsonSchema(GetSubnetUptimeOutputSchema),
-  get_registry_leaderboards: outputJsonSchema(
-    GetRegistryLeaderboardsOutputSchema,
-  ),
-  get_domain_summary: outputJsonSchema(GetDomainSummaryOutputSchema),
-  compare_subnets: outputJsonSchema(CompareSubnetsOutputSchema),
-  get_global_incidents: outputJsonSchema(GetGlobalIncidentsOutputSchema),
-  get_subnet_metagraph: outputJsonSchema(GetSubnetMetagraphOutputSchema),
-  list_subnet_validators: outputJsonSchema(ListSubnetValidatorsOutputSchema),
-  list_global_validators: outputJsonSchema(ListGlobalValidatorsOutputSchema),
-  get_validator_detail: outputJsonSchema(GetValidatorDetailOutputSchema),
-  compare_validators: outputJsonSchema(CompareValidatorsOutputSchema),
-  get_webhook_subscription: outputJsonSchema(
-    GetWebhookSubscriptionOutputSchema,
-  ),
-  get_alert_trigger: outputJsonSchema(GetAlertTriggerOutputSchema),
-  get_validator_nominators: outputJsonSchema(
-    GetValidatorNominatorsOutputSchema,
-  ),
-  get_validator_history: outputJsonSchema(GetValidatorHistoryOutputSchema),
-  get_neuron: outputJsonSchema(GetNeuronOutputSchema),
-  get_subnet_history: outputJsonSchema(GetSubnetHistoryOutputSchema),
-  get_subnet_identity_history: outputJsonSchema(
-    GetSubnetIdentityHistoryOutputSchema,
-  ),
-  get_subnet_hyperparams: outputJsonSchema(GetSubnetHyperparamsOutputSchema),
-  get_subnet_lifecycle: outputJsonSchema(GetSubnetLifecycleOutputSchema),
-  get_chain_subnet_lifecycle: outputJsonSchema(
-    GetChainSubnetLifecycleOutputSchema,
-  ),
-  get_subnet_hyperparams_history: outputJsonSchema(
-    GetSubnetHyperparamsHistoryOutputSchema,
-  ),
-  get_subnet_volume: outputJsonSchema(GetSubnetVolumeOutputSchema),
-  get_subnet_ohlc: outputJsonSchema(GetSubnetOhlcOutputSchema),
-  get_subnet_ownership_history: outputJsonSchema(
-    GetSubnetOwnershipHistoryOutputSchema,
-  ),
-  get_subnet_conviction: outputJsonSchema(GetSubnetConvictionOutputSchema),
-  get_subnet_recycled: outputJsonSchema(GetSubnetRecycledOutputSchema),
-  get_subnet_wallets: outputJsonSchema(GetSubnetWalletsOutputSchema),
-  get_subnet_owner_cut: outputJsonSchema(GetSubnetOwnerCutOutputSchema),
-  get_subnet_revenue: outputJsonSchema(GetSubnetRevenueOutputSchema),
-  list_revenue_coverage: outputJsonSchema(ListRevenueCoverageOutputSchema),
-  get_subnet_burn_history: outputJsonSchema(GetSubnetBurnHistoryOutputSchema),
-  get_subnet_holders: outputJsonSchema(GetSubnetHoldersOutputSchema),
-  get_chain_holders: outputJsonSchema(GetChainHoldersOutputSchema),
-  get_chain_concentration_history: outputJsonSchema(
-    GetChainConcentrationHistoryOutputSchema,
-  ),
-  get_emission_pipeline_history: outputJsonSchema(
-    GetPipelineHistoryOutputSchema,
-  ),
-  get_deregistration_ranking_history: outputJsonSchema(
-    GetDeregistrationHistoryOutputSchema,
-  ),
-  list_review_attribution_candidates: outputJsonSchema(
-    ListReviewAttributionCandidatesOutputSchema,
-  ),
-  get_emission_changes: outputJsonSchema(GetEmissionChangesOutputSchema),
-  get_failure_reasons: outputJsonSchema(GetFailureReasonsOutputSchema),
-  get_indexer_lag: outputJsonSchema(GetIndexerLagOutputSchema),
-  get_tao_usd: outputJsonSchema(GetTaoUsdOutputSchema),
-  get_subnet_surface_history: outputJsonSchema(
-    GetSubnetSurfaceHistoryOutputSchema,
-  ),
-  get_chain_burn: outputJsonSchema(GetChainBurnOutputSchema),
-  get_subnet_burn: outputJsonSchema(GetSubnetBurnOutputSchema),
-  list_crowdloans: outputJsonSchema(ListCrowdloansOutputSchema),
-  get_crowdloan: outputJsonSchema(GetCrowdloanOutputSchema),
-  get_subnet_lease: outputJsonSchema(GetSubnetLeaseOutputSchema),
-  get_subnet_lease_history: outputJsonSchema(GetSubnetLeaseHistoryOutputSchema),
-  get_neuron_history: outputJsonSchema(GetNeuronHistoryOutputSchema),
-  get_subnet_events: outputJsonSchema(GetSubnetEventsOutputSchema),
-  get_account: outputJsonSchema(GetAccountOutputSchema),
-  get_account_entities: outputJsonSchema(GetAccountEntitiesOutputSchema),
-  get_account_balance: outputJsonSchema(GetAccountBalanceOutputSchema),
-  get_account_root_claim: outputJsonSchema(GetAccountRootClaimOutputSchema),
-  get_account_children: outputJsonSchema(GetAccountChildrenOutputSchema),
-  get_account_parents: outputJsonSchema(GetAccountParentsOutputSchema),
-  get_account_portfolio: outputJsonSchema(GetAccountPortfolioOutputSchema),
-  get_account_positions: outputJsonSchema(GetAccountPositionsOutputSchema),
-  get_account_snapshot: outputJsonSchema(GetAccountSnapshotOutputSchema),
-  get_account_identity: outputJsonSchema(GetAccountIdentityOutputSchema),
-  get_account_identity_history: outputJsonSchema(
-    GetAccountIdentityHistoryOutputSchema,
-  ),
-  get_account_position_history: outputJsonSchema(
-    GetAccountPositionHistoryOutputSchema,
-  ),
-  get_account_events: outputJsonSchema(GetAccountEventsOutputSchema),
-  get_account_subnets: outputJsonSchema(GetAccountSubnetsOutputSchema),
-  get_account_stake_flow: outputJsonSchema(GetAccountStakeFlowOutputSchema),
-  get_account_stake_moves: outputJsonSchema(GetAccountStakeMovesOutputSchema),
-  get_account_axon_removals: outputJsonSchema(
-    GetAccountAxonRemovalsOutputSchema,
-  ),
-  get_account_prometheus: outputJsonSchema(GetAccountPrometheusOutputSchema),
-  get_account_registrations: outputJsonSchema(
-    GetAccountRegistrationsOutputSchema,
-  ),
-  get_account_weight_setters: outputJsonSchema(
-    GetAccountWeightSettersOutputSchema,
-  ),
-  get_account_serving: outputJsonSchema(GetAccountServingOutputSchema),
-  get_account_deregistrations: outputJsonSchema(
-    GetAccountDeregistrationsOutputSchema,
-  ),
-  get_account_history: outputJsonSchema(GetAccountHistoryOutputSchema),
-  get_account_extrinsics: outputJsonSchema(GetAccountExtrinsicsOutputSchema),
-  get_account_transfers: outputJsonSchema(GetAccountTransfersOutputSchema),
-  get_account_counterparties: outputJsonSchema(
-    GetAccountCounterpartiesOutputSchema,
-  ),
-  list_blocks: outputJsonSchema(ListBlocksOutputSchema),
-  get_block: outputJsonSchema(GetBlockOutputSchema),
-  list_block_extrinsics: outputJsonSchema(ListBlockExtrinsicsOutputSchema),
-  get_block_events: outputJsonSchema(GetBlockEventsOutputSchema),
-  list_extrinsics: outputJsonSchema(ListExtrinsicsOutputSchema),
-  get_extrinsic: outputJsonSchema(GetExtrinsicOutputSchema),
-  get_sudo: outputJsonSchema(GetSudoOutputSchema),
-  get_sudo_key: outputJsonSchema(GetSudoKeyOutputSchema),
-  get_network_parameters: outputJsonSchema(GetNetworkParametersOutputSchema),
-  get_randomness_status: outputJsonSchema(GetRandomnessStatusOutputSchema),
-  get_governance_config_changes: outputJsonSchema(
-    GetGovernanceConfigChangesOutputSchema,
-  ),
-  get_networks: outputJsonSchema(GetNetworksOutputSchema),
-  get_runtime: outputJsonSchema(GetRuntimeOutputSchema),
-  list_accounts: outputJsonSchema(ListAccountsOutputSchema),
-  get_top_holders: outputJsonSchema(GetTopHoldersOutputSchema),
-  get_block_chain_events: outputJsonSchema(GetBlockChainEventsOutputSchema),
-  get_extrinsic_chain_events: outputJsonSchema(
-    GetExtrinsicChainEventsOutputSchema,
-  ),
-  get_chain_activity: outputJsonSchema(GetChainActivityOutputSchema),
-  list_chain_events: outputJsonSchema(ListChainEventsOutputSchema),
-  get_chain_calls: outputJsonSchema(GetChainCallsOutputSchema),
-  get_chain_signers: outputJsonSchema(GetChainSignersOutputSchema),
-  get_chain_fees: outputJsonSchema(GetChainFeesOutputSchema),
-  get_chain_registrations: outputJsonSchema(GetChainRegistrationsOutputSchema),
-  get_chain_deregistrations: outputJsonSchema(
-    GetChainDeregistrationsOutputSchema,
-  ),
-  get_chain_transfers: outputJsonSchema(GetChainTransfersOutputSchema),
-  get_chain_transfer_pairs: outputJsonSchema(GetChainTransferPairsOutputSchema),
-  get_network_activity: outputJsonSchema(GetNetworkActivityOutputSchema),
-  get_rpc_usage: outputJsonSchema(GetRpcUsageOutputSchema),
-  list_subnet_apis: outputJsonSchema(ListSubnetApisOutputSchema),
-  get_api_schema: outputJsonSchema(GetApiSchemaOutputSchema),
-  get_fixture: outputJsonSchema(GetFixtureOutputSchema),
-  get_provider_detail: outputJsonSchema(GetProviderDetailOutputSchema),
-  list_providers: LIST_PROVIDERS_OUTPUT_SCHEMA,
-  list_surfaces: LIST_SURFACES_OUTPUT_SCHEMA,
-  list_candidates: LIST_CANDIDATES_OUTPUT_SCHEMA,
-  list_endpoints: outputJsonSchema(ListEndpointsOutputSchema),
-  get_subnet_surfaces: outputJsonSchema(GetSubnetSurfacesOutputSchema),
-  get_subnet_evidence: outputJsonSchema(GetSubnetEvidenceOutputSchema),
-  list_subnet_evidence: LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA,
-  get_subnet_candidates: outputJsonSchema(GetSubnetCandidatesOutputSchema),
-  list_subnet_candidates: LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA,
-  get_subnet_endpoints: outputJsonSchema(GetSubnetEndpointsOutputSchema),
-  list_subnet_endpoints: LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA,
-  list_subnet_surfaces: LIST_SUBNET_SURFACES_OUTPUT_SCHEMA,
-  list_subnet_health: LIST_SUBNET_HEALTH_OUTPUT_SCHEMA,
-  list_rpc_pools: LIST_RPC_POOLS_OUTPUT_SCHEMA,
-  list_profile_completeness: LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
-  list_source_snapshots: LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
-  list_rpc_endpoints: LIST_RPC_ENDPOINTS_OUTPUT_SCHEMA,
-  list_evidence: LIST_EVIDENCE_OUTPUT_SCHEMA,
-  list_fixtures: outputJsonSchema(ListFixturesOutputSchema),
-  list_schemas: outputJsonSchema(ListSchemasOutputSchema),
-  list_search_index: LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
-  list_search: LIST_SEARCH_OUTPUT_SCHEMA,
-  list_curation: LIST_CURATION_OUTPUT_SCHEMA,
-  list_gaps: LIST_GAPS_OUTPUT_SCHEMA,
-  list_enrichment_queue: LIST_ENRICHMENT_QUEUE_OUTPUT_SCHEMA,
-  list_adapter_candidates: LIST_ADAPTER_CANDIDATES_OUTPUT_SCHEMA,
-  list_enrichment_evidence: LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA,
-  list_review_gaps: LIST_REVIEW_GAPS_OUTPUT_SCHEMA,
-  list_review_enrichment_targets: LIST_REVIEW_ENRICHMENT_TARGETS_OUTPUT_SCHEMA,
-  list_endpoint_pools: LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
-  list_endpoint_incidents: LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
-  list_provider_endpoints: LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA,
-  get_lineage: outputJsonSchema(GetLineageOutputSchema),
-  get_freshness: outputJsonSchema(GetFreshnessOutputSchema),
-  get_contracts: GET_CONTRACTS_OUTPUT_SCHEMA,
-  get_source_health: outputJsonSchema(GetSourceHealthOutputSchema),
-  get_changelog: GET_CHANGELOG_OUTPUT_SCHEMA,
-  get_feed: GET_FEED_OUTPUT_SCHEMA,
-  get_build: GET_BUILD_OUTPUT_SCHEMA,
-  get_self_health: GET_SELF_HEALTH_OUTPUT_SCHEMA,
+const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
+  search_subnets: () => outputJsonSchema(SearchSubnetsOutputSchema),
+  list_subnets: () => outputJsonSchema(ListSubnetsOutputSchema),
+  find_subnets_by_capability: () =>
+    outputJsonSchema(FindSubnetsByCapabilityOutputSchema),
+  get_subnet: () => outputJsonSchema(GetSubnetOutputSchema),
+  get_subnet_detail: () => outputJsonSchema(GetSubnetDetailOutputSchema),
+  get_subnet_snapshot: () => outputJsonSchema(GetSubnetSnapshotOutputSchema),
+  get_subnet_health: () => outputJsonSchema(GetSubnetHealthOutputSchema),
+  get_subnet_health_trends: () =>
+    outputJsonSchema(GetSubnetHealthTrendsOutputSchema),
+  get_health_trends: () => outputJsonSchema(GetHealthTrendsOutputSchema),
+  get_subnet_health_percentiles: () =>
+    outputJsonSchema(GetSubnetHealthPercentilesOutputSchema),
+  get_subnet_health_incidents: () =>
+    outputJsonSchema(GetSubnetHealthIncidentsOutputSchema),
+  get_subnet_economics: () => outputJsonSchema(GetSubnetEconomicsOutputSchema),
+  get_subnet_stake_quote: () =>
+    outputJsonSchema(GetSubnetStakeQuoteOutputSchema),
+  get_economics: () => GET_ECONOMICS_OUTPUT_SCHEMA,
+  get_network_health: () => GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
+  list_profiles: () => LIST_PROFILES_OUTPUT_SCHEMA,
+  get_subnet_profile: () => GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
+  get_health_history: () => GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
+  get_subnet_trajectory: () =>
+    outputJsonSchema(GetSubnetTrajectoryOutputSchema),
+  get_economics_trends: () => outputJsonSchema(GetEconomicsTrendsOutputSchema),
+  get_emission_pipeline: () =>
+    outputJsonSchema(GetEmissionPipelineOutputSchema),
+  get_deregistration_ranking: () =>
+    outputJsonSchema(GetDeregistrationRankingOutputSchema),
+  get_subnet_concentration: () =>
+    outputJsonSchema(GetSubnetConcentrationOutputSchema),
+  get_subnet_performance: () =>
+    outputJsonSchema(GetSubnetPerformanceOutputSchema),
+  get_subnet_idle_stake: () => outputJsonSchema(GetSubnetIdleStakeOutputSchema),
+  get_chain_concentration: () =>
+    outputJsonSchema(GetChainConcentrationOutputSchema),
+  get_chain_concentration_subnets: () =>
+    outputJsonSchema(GetChainConcentrationSubnetsOutputSchema),
+  get_chain_performance: () =>
+    outputJsonSchema(GetChainPerformanceOutputSchema),
+  get_chain_idle_stake: () => outputJsonSchema(GetChainIdleStakeOutputSchema),
+  get_chain_identity_history: () =>
+    outputJsonSchema(GetChainIdentityHistoryOutputSchema),
+  get_chain_yield: () => outputJsonSchema(GetChainYieldOutputSchema),
+  get_chain_turnover: () => outputJsonSchema(GetChainTurnoverOutputSchema),
+  get_chain_stake_flow: () => outputJsonSchema(GetChainStakeFlowOutputSchema),
+  get_chain_alpha_volume: () =>
+    outputJsonSchema(GetChainAlphaVolumeOutputSchema),
+  get_chain_weights: () => outputJsonSchema(GetChainWeightsOutputSchema),
+  get_chain_weight_setters: () =>
+    outputJsonSchema(GetChainWeightSettersOutputSchema),
+  get_chain_stake_moves: () => outputJsonSchema(GetChainStakeMovesOutputSchema),
+  get_chain_stake_transfers: () =>
+    outputJsonSchema(GetChainStakeTransfersOutputSchema),
+  get_chain_axon_removals: () =>
+    outputJsonSchema(GetChainAxonRemovalsOutputSchema),
+  get_chain_serving: () => outputJsonSchema(GetChainServingOutputSchema),
+  get_chain_prometheus: () => outputJsonSchema(GetChainPrometheusOutputSchema),
+  get_blocks_summary: () => outputJsonSchema(GetBlocksSummaryOutputSchema),
+  get_subnet_concentration_history: () =>
+    outputJsonSchema(GetSubnetConcentrationHistoryOutputSchema),
+  get_subnet_yield: () => outputJsonSchema(GetSubnetYieldOutputSchema),
+  get_subnet_yield_history: () =>
+    outputJsonSchema(GetSubnetYieldHistoryOutputSchema),
+  get_subnet_emission_split_history: () =>
+    outputJsonSchema(GetSubnetEmissionSplitHistoryOutputSchema),
+  get_subnet_owner_capture: () =>
+    outputJsonSchema(GetSubnetOwnerCaptureOutputSchema),
+  get_subnet_treasury: () => outputJsonSchema(GetSubnetTreasuryOutputSchema),
+  get_subnet_cost_to_participate: () =>
+    outputJsonSchema(GetSubnetCostToParticipateOutputSchema),
+  get_subnet_miner_fairness: () =>
+    outputJsonSchema(GetSubnetMinerFairnessOutputSchema),
+  get_subnet_stake_flow: () => outputJsonSchema(GetSubnetStakeFlowOutputSchema),
+  get_subnet_event_summary: () =>
+    outputJsonSchema(GetSubnetEventSummaryOutputSchema),
+  get_subnet_stake_moves: () =>
+    outputJsonSchema(GetSubnetStakeMovesOutputSchema),
+  get_subnet_stake_transfers: () =>
+    outputJsonSchema(GetSubnetStakeTransfersOutputSchema),
+  get_subnet_registrations: () =>
+    outputJsonSchema(GetSubnetRegistrationsOutputSchema),
+  get_subnet_weights: () => outputJsonSchema(GetSubnetWeightsOutputSchema),
+  get_subnet_weight_setters: () =>
+    outputJsonSchema(GetSubnetWeightSettersOutputSchema),
+  get_subnet_axon_removals: () =>
+    outputJsonSchema(GetSubnetAxonRemovalsOutputSchema),
+  get_subnet_serving: () => outputJsonSchema(GetSubnetServingOutputSchema),
+  get_subnet_prometheus: () =>
+    outputJsonSchema(GetSubnetPrometheusOutputSchema),
+  get_subnet_deregistrations: () =>
+    outputJsonSchema(GetSubnetDeregistrationsOutputSchema),
+  get_subnet_performance_history: () =>
+    outputJsonSchema(GetSubnetPerformanceHistoryOutputSchema),
+  get_subnet_movers: () => outputJsonSchema(GetSubnetMoversOutputSchema),
+  get_subnet_turnover: () => outputJsonSchema(GetSubnetTurnoverOutputSchema),
+  get_subnet_uptime: () => outputJsonSchema(GetSubnetUptimeOutputSchema),
+  get_registry_leaderboards: () =>
+    outputJsonSchema(GetRegistryLeaderboardsOutputSchema),
+  get_domain_summary: () => outputJsonSchema(GetDomainSummaryOutputSchema),
+  compare_subnets: () => outputJsonSchema(CompareSubnetsOutputSchema),
+  get_global_incidents: () => outputJsonSchema(GetGlobalIncidentsOutputSchema),
+  get_subnet_metagraph: () => outputJsonSchema(GetSubnetMetagraphOutputSchema),
+  list_subnet_validators: () =>
+    outputJsonSchema(ListSubnetValidatorsOutputSchema),
+  list_global_validators: () =>
+    outputJsonSchema(ListGlobalValidatorsOutputSchema),
+  get_validator_detail: () => outputJsonSchema(GetValidatorDetailOutputSchema),
+  compare_validators: () => outputJsonSchema(CompareValidatorsOutputSchema),
+  get_webhook_subscription: () =>
+    outputJsonSchema(GetWebhookSubscriptionOutputSchema),
+  get_alert_trigger: () => outputJsonSchema(GetAlertTriggerOutputSchema),
+  get_validator_nominators: () =>
+    outputJsonSchema(GetValidatorNominatorsOutputSchema),
+  get_validator_history: () =>
+    outputJsonSchema(GetValidatorHistoryOutputSchema),
+  get_neuron: () => outputJsonSchema(GetNeuronOutputSchema),
+  get_subnet_history: () => outputJsonSchema(GetSubnetHistoryOutputSchema),
+  get_subnet_identity_history: () =>
+    outputJsonSchema(GetSubnetIdentityHistoryOutputSchema),
+  get_subnet_hyperparams: () =>
+    outputJsonSchema(GetSubnetHyperparamsOutputSchema),
+  get_subnet_lifecycle: () => outputJsonSchema(GetSubnetLifecycleOutputSchema),
+  get_chain_subnet_lifecycle: () =>
+    outputJsonSchema(GetChainSubnetLifecycleOutputSchema),
+  get_subnet_hyperparams_history: () =>
+    outputJsonSchema(GetSubnetHyperparamsHistoryOutputSchema),
+  get_subnet_volume: () => outputJsonSchema(GetSubnetVolumeOutputSchema),
+  get_subnet_ohlc: () => outputJsonSchema(GetSubnetOhlcOutputSchema),
+  get_subnet_ownership_history: () =>
+    outputJsonSchema(GetSubnetOwnershipHistoryOutputSchema),
+  get_subnet_conviction: () =>
+    outputJsonSchema(GetSubnetConvictionOutputSchema),
+  get_subnet_recycled: () => outputJsonSchema(GetSubnetRecycledOutputSchema),
+  get_subnet_wallets: () => outputJsonSchema(GetSubnetWalletsOutputSchema),
+  get_subnet_owner_cut: () => outputJsonSchema(GetSubnetOwnerCutOutputSchema),
+  get_subnet_revenue: () => outputJsonSchema(GetSubnetRevenueOutputSchema),
+  list_revenue_coverage: () =>
+    outputJsonSchema(ListRevenueCoverageOutputSchema),
+  get_subnet_burn_history: () =>
+    outputJsonSchema(GetSubnetBurnHistoryOutputSchema),
+  get_subnet_holders: () => outputJsonSchema(GetSubnetHoldersOutputSchema),
+  get_chain_holders: () => outputJsonSchema(GetChainHoldersOutputSchema),
+  get_chain_concentration_history: () =>
+    outputJsonSchema(GetChainConcentrationHistoryOutputSchema),
+  get_emission_pipeline_history: () =>
+    outputJsonSchema(GetPipelineHistoryOutputSchema),
+  get_deregistration_ranking_history: () =>
+    outputJsonSchema(GetDeregistrationHistoryOutputSchema),
+  list_review_attribution_candidates: () =>
+    outputJsonSchema(ListReviewAttributionCandidatesOutputSchema),
+  get_emission_changes: () => outputJsonSchema(GetEmissionChangesOutputSchema),
+  get_failure_reasons: () => outputJsonSchema(GetFailureReasonsOutputSchema),
+  get_indexer_lag: () => outputJsonSchema(GetIndexerLagOutputSchema),
+  get_tao_usd: () => outputJsonSchema(GetTaoUsdOutputSchema),
+  get_subnet_surface_history: () =>
+    outputJsonSchema(GetSubnetSurfaceHistoryOutputSchema),
+  get_chain_burn: () => outputJsonSchema(GetChainBurnOutputSchema),
+  get_subnet_burn: () => outputJsonSchema(GetSubnetBurnOutputSchema),
+  list_crowdloans: () => outputJsonSchema(ListCrowdloansOutputSchema),
+  get_crowdloan: () => outputJsonSchema(GetCrowdloanOutputSchema),
+  get_subnet_lease: () => outputJsonSchema(GetSubnetLeaseOutputSchema),
+  get_subnet_lease_history: () =>
+    outputJsonSchema(GetSubnetLeaseHistoryOutputSchema),
+  get_neuron_history: () => outputJsonSchema(GetNeuronHistoryOutputSchema),
+  get_subnet_events: () => outputJsonSchema(GetSubnetEventsOutputSchema),
+  get_account: () => outputJsonSchema(GetAccountOutputSchema),
+  get_account_entities: () => outputJsonSchema(GetAccountEntitiesOutputSchema),
+  get_account_balance: () => outputJsonSchema(GetAccountBalanceOutputSchema),
+  get_account_root_claim: () =>
+    outputJsonSchema(GetAccountRootClaimOutputSchema),
+  get_account_children: () => outputJsonSchema(GetAccountChildrenOutputSchema),
+  get_account_parents: () => outputJsonSchema(GetAccountParentsOutputSchema),
+  get_account_portfolio: () =>
+    outputJsonSchema(GetAccountPortfolioOutputSchema),
+  get_account_positions: () =>
+    outputJsonSchema(GetAccountPositionsOutputSchema),
+  get_account_snapshot: () => outputJsonSchema(GetAccountSnapshotOutputSchema),
+  get_account_identity: () => outputJsonSchema(GetAccountIdentityOutputSchema),
+  get_account_identity_history: () =>
+    outputJsonSchema(GetAccountIdentityHistoryOutputSchema),
+  get_account_position_history: () =>
+    outputJsonSchema(GetAccountPositionHistoryOutputSchema),
+  get_account_events: () => outputJsonSchema(GetAccountEventsOutputSchema),
+  get_account_subnets: () => outputJsonSchema(GetAccountSubnetsOutputSchema),
+  get_account_stake_flow: () =>
+    outputJsonSchema(GetAccountStakeFlowOutputSchema),
+  get_account_stake_moves: () =>
+    outputJsonSchema(GetAccountStakeMovesOutputSchema),
+  get_account_axon_removals: () =>
+    outputJsonSchema(GetAccountAxonRemovalsOutputSchema),
+  get_account_prometheus: () =>
+    outputJsonSchema(GetAccountPrometheusOutputSchema),
+  get_account_registrations: () =>
+    outputJsonSchema(GetAccountRegistrationsOutputSchema),
+  get_account_weight_setters: () =>
+    outputJsonSchema(GetAccountWeightSettersOutputSchema),
+  get_account_serving: () => outputJsonSchema(GetAccountServingOutputSchema),
+  get_account_deregistrations: () =>
+    outputJsonSchema(GetAccountDeregistrationsOutputSchema),
+  get_account_history: () => outputJsonSchema(GetAccountHistoryOutputSchema),
+  get_account_extrinsics: () =>
+    outputJsonSchema(GetAccountExtrinsicsOutputSchema),
+  get_account_transfers: () =>
+    outputJsonSchema(GetAccountTransfersOutputSchema),
+  get_account_counterparties: () =>
+    outputJsonSchema(GetAccountCounterpartiesOutputSchema),
+  list_blocks: () => outputJsonSchema(ListBlocksOutputSchema),
+  get_block: () => outputJsonSchema(GetBlockOutputSchema),
+  list_block_extrinsics: () =>
+    outputJsonSchema(ListBlockExtrinsicsOutputSchema),
+  get_block_events: () => outputJsonSchema(GetBlockEventsOutputSchema),
+  list_extrinsics: () => outputJsonSchema(ListExtrinsicsOutputSchema),
+  get_extrinsic: () => outputJsonSchema(GetExtrinsicOutputSchema),
+  get_sudo: () => outputJsonSchema(GetSudoOutputSchema),
+  get_sudo_key: () => outputJsonSchema(GetSudoKeyOutputSchema),
+  get_network_parameters: () =>
+    outputJsonSchema(GetNetworkParametersOutputSchema),
+  get_randomness_status: () =>
+    outputJsonSchema(GetRandomnessStatusOutputSchema),
+  get_governance_config_changes: () =>
+    outputJsonSchema(GetGovernanceConfigChangesOutputSchema),
+  get_networks: () => outputJsonSchema(GetNetworksOutputSchema),
+  get_runtime: () => outputJsonSchema(GetRuntimeOutputSchema),
+  list_accounts: () => outputJsonSchema(ListAccountsOutputSchema),
+  get_top_holders: () => outputJsonSchema(GetTopHoldersOutputSchema),
+  get_block_chain_events: () =>
+    outputJsonSchema(GetBlockChainEventsOutputSchema),
+  get_extrinsic_chain_events: () =>
+    outputJsonSchema(GetExtrinsicChainEventsOutputSchema),
+  get_chain_activity: () => outputJsonSchema(GetChainActivityOutputSchema),
+  list_chain_events: () => outputJsonSchema(ListChainEventsOutputSchema),
+  get_chain_calls: () => outputJsonSchema(GetChainCallsOutputSchema),
+  get_chain_signers: () => outputJsonSchema(GetChainSignersOutputSchema),
+  get_chain_fees: () => outputJsonSchema(GetChainFeesOutputSchema),
+  get_chain_registrations: () =>
+    outputJsonSchema(GetChainRegistrationsOutputSchema),
+  get_chain_deregistrations: () =>
+    outputJsonSchema(GetChainDeregistrationsOutputSchema),
+  get_chain_transfers: () => outputJsonSchema(GetChainTransfersOutputSchema),
+  get_chain_transfer_pairs: () =>
+    outputJsonSchema(GetChainTransferPairsOutputSchema),
+  get_network_activity: () => outputJsonSchema(GetNetworkActivityOutputSchema),
+  get_rpc_usage: () => outputJsonSchema(GetRpcUsageOutputSchema),
+  list_subnet_apis: () => outputJsonSchema(ListSubnetApisOutputSchema),
+  get_api_schema: () => outputJsonSchema(GetApiSchemaOutputSchema),
+  get_fixture: () => outputJsonSchema(GetFixtureOutputSchema),
+  get_provider_detail: () => outputJsonSchema(GetProviderDetailOutputSchema),
+  list_providers: () => LIST_PROVIDERS_OUTPUT_SCHEMA,
+  list_surfaces: () => LIST_SURFACES_OUTPUT_SCHEMA,
+  list_candidates: () => LIST_CANDIDATES_OUTPUT_SCHEMA,
+  list_endpoints: () => outputJsonSchema(ListEndpointsOutputSchema),
+  get_subnet_surfaces: () => outputJsonSchema(GetSubnetSurfacesOutputSchema),
+  get_subnet_evidence: () => outputJsonSchema(GetSubnetEvidenceOutputSchema),
+  list_subnet_evidence: () => LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA,
+  get_subnet_candidates: () =>
+    outputJsonSchema(GetSubnetCandidatesOutputSchema),
+  list_subnet_candidates: () => LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA,
+  get_subnet_endpoints: () => outputJsonSchema(GetSubnetEndpointsOutputSchema),
+  list_subnet_endpoints: () => LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA,
+  list_subnet_surfaces: () => LIST_SUBNET_SURFACES_OUTPUT_SCHEMA,
+  list_subnet_health: () => LIST_SUBNET_HEALTH_OUTPUT_SCHEMA,
+  list_rpc_pools: () => LIST_RPC_POOLS_OUTPUT_SCHEMA,
+  list_profile_completeness: () => LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
+  list_source_snapshots: () => LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
+  list_rpc_endpoints: () => LIST_RPC_ENDPOINTS_OUTPUT_SCHEMA,
+  list_evidence: () => LIST_EVIDENCE_OUTPUT_SCHEMA,
+  list_fixtures: () => outputJsonSchema(ListFixturesOutputSchema),
+  list_schemas: () => outputJsonSchema(ListSchemasOutputSchema),
+  list_search_index: () => LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
+  list_search: () => LIST_SEARCH_OUTPUT_SCHEMA,
+  list_curation: () => LIST_CURATION_OUTPUT_SCHEMA,
+  list_gaps: () => LIST_GAPS_OUTPUT_SCHEMA,
+  list_enrichment_queue: () => LIST_ENRICHMENT_QUEUE_OUTPUT_SCHEMA,
+  list_adapter_candidates: () => LIST_ADAPTER_CANDIDATES_OUTPUT_SCHEMA,
+  list_enrichment_evidence: () => LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA,
+  list_review_gaps: () => LIST_REVIEW_GAPS_OUTPUT_SCHEMA,
+  list_review_enrichment_targets: () =>
+    LIST_REVIEW_ENRICHMENT_TARGETS_OUTPUT_SCHEMA,
+  list_endpoint_pools: () => LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
+  list_endpoint_incidents: () => LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
+  list_provider_endpoints: () => LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA,
+  get_lineage: () => outputJsonSchema(GetLineageOutputSchema),
+  get_freshness: () => outputJsonSchema(GetFreshnessOutputSchema),
+  get_contracts: () => GET_CONTRACTS_OUTPUT_SCHEMA,
+  get_source_health: () => outputJsonSchema(GetSourceHealthOutputSchema),
+  get_changelog: () => GET_CHANGELOG_OUTPUT_SCHEMA,
+  get_feed: () => GET_FEED_OUTPUT_SCHEMA,
+  get_build: () => GET_BUILD_OUTPUT_SCHEMA,
+  get_self_health: () => GET_SELF_HEALTH_OUTPUT_SCHEMA,
   [MCP_MISSING_CAPABILITY_TOOL]: outputJsonSchema(GetMoreToolsOutputSchema),
-  get_adapter: GET_ADAPTER_OUTPUT_SCHEMA,
-  get_agent_catalog: outputJsonSchema(GetAgentCatalogOutputSchema),
-  get_agent_resources: GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
-  get_best_rpc_endpoint: outputJsonSchema(GetBestRpcEndpointOutputSchema),
-  call_rpc: outputJsonSchema(CallRpcOutputSchema),
-  registry_summary: outputJsonSchema(RegistrySummaryOutputSchema),
-  get_coverage: GET_COVERAGE_OUTPUT_SCHEMA,
-  get_coverage_depth: outputJsonSchema(GetCoverageDepthOutputSchema),
-  list_enrichment_targets: outputJsonSchema(ListEnrichmentTargetsOutputSchema),
-  get_subnet_gaps: outputJsonSchema(GetSubnetGapsOutputSchema),
-  list_subnet_gaps: LIST_SUBNET_GAPS_OUTPUT_SCHEMA,
-  find_subnet_for_task: outputJsonSchema(FindSubnetForTaskOutputSchema),
-  how_do_i_call: outputJsonSchema(HowDoICallOutputSchema),
-  find_subnet_opportunities: outputJsonSchema(
-    FindSubnetOpportunitiesOutputSchema,
-  ),
-  semantic_search: outputJsonSchema(SemanticSearchOutputSchema),
-  ask: outputJsonSchema(AskOutputSchema),
-  verify_integration: outputJsonSchema(VerifyIntegrationOutputSchema),
-  call_subnet_surface: outputJsonSchema(CallSubnetSurfaceOutputSchema),
+  get_adapter: () => GET_ADAPTER_OUTPUT_SCHEMA,
+  get_agent_catalog: () => outputJsonSchema(GetAgentCatalogOutputSchema),
+  get_agent_resources: () => GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
+  get_best_rpc_endpoint: () => outputJsonSchema(GetBestRpcEndpointOutputSchema),
+  call_rpc: () => outputJsonSchema(CallRpcOutputSchema),
+  registry_summary: () => outputJsonSchema(RegistrySummaryOutputSchema),
+  get_coverage: () => GET_COVERAGE_OUTPUT_SCHEMA,
+  get_coverage_depth: () => outputJsonSchema(GetCoverageDepthOutputSchema),
+  list_enrichment_targets: () =>
+    outputJsonSchema(ListEnrichmentTargetsOutputSchema),
+  get_subnet_gaps: () => outputJsonSchema(GetSubnetGapsOutputSchema),
+  list_subnet_gaps: () => LIST_SUBNET_GAPS_OUTPUT_SCHEMA,
+  find_subnet_for_task: () => outputJsonSchema(FindSubnetForTaskOutputSchema),
+  how_do_i_call: () => outputJsonSchema(HowDoICallOutputSchema),
+  find_subnet_opportunities: () =>
+    outputJsonSchema(FindSubnetOpportunitiesOutputSchema),
+  semantic_search: () => outputJsonSchema(SemanticSearchOutputSchema),
+  ask: () => outputJsonSchema(AskOutputSchema),
+  verify_integration: () => outputJsonSchema(VerifyIntegrationOutputSchema),
+  call_subnet_surface: () => outputJsonSchema(CallSubnetSurfaceOutputSchema),
   // Same envelope: the split is about which verbs a tool will issue, not about
   // what a surface answers with.
-  write_subnet_surface: outputJsonSchema(CallSubnetSurfaceOutputSchema),
-  store_surface_credential: outputJsonSchema(
-    StoreSurfaceCredentialOutputSchema,
-  ),
-  list_surface_credentials: outputJsonSchema(
-    ListSurfaceCredentialsOutputSchema,
-  ),
-  delete_surface_credential: outputJsonSchema(
-    DeleteSurfaceCredentialOutputSchema,
-  ),
-};
+  write_subnet_surface: () => outputJsonSchema(CallSubnetSurfaceOutputSchema),
+  store_surface_credential: () =>
+    outputJsonSchema(StoreSurfaceCredentialOutputSchema),
+  list_surface_credentials: () =>
+    outputJsonSchema(ListSurfaceCredentialsOutputSchema),
+  delete_surface_credential: () =>
+    outputJsonSchema(DeleteSurfaceCredentialOutputSchema),
+});
 
 /**
  * Advertise the intent argument as REQUIRED, on the advertised schema only.
