@@ -99,6 +99,13 @@ describe("oauthAccountIdFrom", () => {
       Number.POSITIVE_INFINITY,
       Number.MAX_SAFE_INTEGER + 1,
       "9007199254740993",
+      "9007199254740991.1",
+      "7.0000000000000001",
+      "7e0",
+      "0x7",
+      " 7 ",
+      "+7",
+      "7.0",
       "1e100",
     ]) {
       assert.equal(oauthAccountIdFrom(value), null, String(value));
@@ -207,6 +214,22 @@ describe("OAuth account lookup failure classification", () => {
     assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
       found: true,
       tier: "paid",
+    });
+  });
+
+  test("a positive cache with no tier retains the legacy record shape", async () => {
+    const kv = createFakeKv({
+      "oauth-account-tier:v2:42": JSON.parse(
+        authLookupCacheWrite(
+          { found: true },
+          { positiveTtlSeconds: 300, negativeTtlSeconds: 30 },
+        ).value,
+      ),
+    });
+    const { env } = envWith({ found: false }, { METAGRAPH_CONTROL: kv });
+    assert.deepEqual(await resolveOAuthAccountTier(env, 42), { found: true });
+    assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {
+      found: true,
     });
   });
 });

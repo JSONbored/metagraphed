@@ -84,6 +84,9 @@ function cacheKeyFor(accountId: number): string {
  */
 export function oauthAccountIdFrom(value: unknown): number | null {
   if (typeof value !== "number" && typeof value !== "string") return null;
+  // Number("9007199254740991.1") rounds to an integer. Validate the string
+  // representation before conversion so a fractional ID cannot name one.
+  if (typeof value === "string" && !/^\d+$/.test(value)) return null;
   const id = Number(value);
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
@@ -142,9 +145,9 @@ export async function resolveOAuthAccountTier(
   rawAccountId: unknown,
 ): Promise<OAuthAccountTierRecord> {
   const resolved = await resolveOAuthAccountTierWithStatus(env, rawAccountId);
-  return resolved.found
-    ? { found: true, tier: resolved.tier }
-    : { found: false };
+  const record = { ...resolved };
+  delete record.accountMissing;
+  return record;
 }
 
 /** Resolve once, retaining an authoritative missing-account answer for MCP's
@@ -165,7 +168,11 @@ export async function resolveOAuthAccountTierWithStatus(
         CACHE_POLICY,
       );
       if (cached) {
-        if (cached.found) return { found: true, tier: cached.tier };
+        if (cached.found) {
+          const record: OAuthAccountTierResolution = { ...cached };
+          delete record.accountMissing;
+          return record;
+        }
         return cached.accountMissing === true
           ? { found: false, accountMissing: true }
           : { found: false };
