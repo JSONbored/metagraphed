@@ -21,7 +21,8 @@ const BODIES: Record<TermsSection, ReactNode> = {
         them.
       </p>
       <p>
-        The REST API and MCP server are public and read-only. Most of the surface needs no account.
+        Public REST API reads remain available without an account. MCP access requires free sign-in
+        through OAuth or an API key.
       </p>
     </>
   ),

@@ -3,7 +3,7 @@ title: MCP
 description: Connect an AI client through four discovery tools, then load complete schemas only for the task you need. All MCP capabilities remain available.
 ---
 
-Point any MCP client at the registry and it gets metagraphed as callable tools: subnet discovery and comparison, per-subnet health and economics, OpenAPI schemas for every registered subnet API (callable through the registry itself), chain blocks/extrinsics/events, account lookup, and grounded question-answering — the same data every REST route serves, shaped for agents. Bittensor in a box: one connect, no key, no account, no local install.
+Point any MCP client at the registry and it gets metagraphed as callable tools: subnet discovery and comparison, per-subnet health and economics, OpenAPI schemas for every registered subnet API (callable through the registry itself), chain blocks/extrinsics/events, account lookup, and grounded question-answering — the same data every REST route serves, shaped for agents. Bittensor in a box: connect, sign in for free, and use the full catalog without a local install.
 
 ```
 https://api.metagraph.sh/mcp
@@ -36,14 +36,18 @@ all pages can require more requests; individual schemas and target results stay 
 
 Clients that only allow advertised tools can use `invoke_read_tool` for a discovered tool with
 `readOnlyHint: true`, or `invoke_tool` for other targets. Both validate the target's arguments and
-apply its permissions. If a definition says authentication is required, sign in before calling it.
+apply its permissions. Sign in before calling MCP; individual tools retain their existing account permissions.
 
 `get_more_tools` records a missing capability. Use it only when the catalog cannot do what you
 need and describe the goal in `context`; it acknowledges the gap rather than returning extra tools.
 
 ## Authentication
 
-Optional. Anonymous access works on every profile at 100 requests/60s per client IP. Clients that support MCP authorization prompt an OAuth sign-in (GitHub) on first connect; an `Authorization: Bearer mg_…` [API key](/settings) header works too. Authenticating raises rate limits (500 requests/60s per account, higher on paid tiers) — it does not unlock additional tools or surfaces.
+**Authentication is required; sign-in is free.** Every MCP profile requires an account. Clients that support MCP authorization follow the server's `401` challenge to the existing OAuth sign-in (GitHub), then retry with an access token. For automation, send an `Authorization: Bearer mg_…` [API key](/settings) header.
+
+Free accounts can discover and invoke the full tool catalog, subject to existing permissions and history-depth limits. The free per-minute ceiling is 500 requests/60s per account; higher tiers retain their current limits. A session ID is not an authentication credential.
+
+OAuth metadata, client registration and the [MCP server card](https://api.metagraph.sh/.well-known/mcp/server-card.json) remain public. Public REST API reads retain their existing access policy. If an already-validated OAuth account cannot be resolved, a `503` response with `Retry-After` asks the client to retry rather than request consent again.
 
 ## Connect a client
 
@@ -91,7 +95,7 @@ Both take the endpoint as a custom connector: **Settings → Connectors → Add 
 
 ### Any other client
 
-Any client that speaks streamable-HTTP MCP connects directly — no install, no key:
+Any client that speaks Streamable HTTP MCP and supports OAuth can connect directly, then sign in:
 
 ```json title="Generic streamable-HTTP entry"
 {

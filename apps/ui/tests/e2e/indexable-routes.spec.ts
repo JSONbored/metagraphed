@@ -1111,6 +1111,10 @@ test("MCP setup guide recommends discovery and retains every compatibility profi
   expect(text).toContain("invoke_read_tool");
   expect(text).toContain("next_cursor");
   expect(text).toContain("search_page_size=1");
+  expect(text).toContain("Authentication is required; sign-in is free.");
+  expect(text).toContain("OAuth metadata, client registration");
+  expect(text).not.toContain("Anonymous access works");
+  expect(text).not.toContain("no key, no account");
   expect(text).not.toMatch(/406K|43K|23-tool|full catalog · 240/);
   const snippets = await page.locator("pre").allTextContents();
   const setup = snippets.filter(
