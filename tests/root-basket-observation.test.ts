@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { collectRootBasketObservation } from "../src/root-basket-observation.ts";
-import { RootBasketRuntimeObservationSchema } from "../schemas-src/root-basket-runtime.ts";
+import { RootBasketRuntimeObservationSchema } from "../schemas-src/root-basket-observation.ts";
 import { RootBasketCaptureSchema } from "../schemas-src/root-basket-capture.ts";
 import { bytesToHex, storageMapPrefix } from "../src/twox-storage-key.ts";
 import {

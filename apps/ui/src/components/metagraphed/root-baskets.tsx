@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnalyticsSection, DataTable, Raw, type DataTableColumn } from "@jsonbored/ui-kit";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { useNetwork } from "@/hooks/use-api-base";
@@ -33,6 +33,7 @@ function RootBasketsView({
   selected: string;
   onSelect: (hotkey: string) => void;
 }) {
+  const queryClient = useQueryClient();
   const { ref, nearViewport } = useNearViewport("0px 0px");
   const [page, setPage] = useState<{ cursor?: string; as_of?: string }>({});
   const query = useQuery({ ...rootBasketsQuery(page), enabled: nearViewport || Boolean(selected) });
@@ -123,7 +124,17 @@ function RootBasketsView({
               </button>
             ) : null}
             {page.cursor ? (
-              <button type="button" className="mg-section-more" onClick={() => setPage({})}>
+              <button
+                type="button"
+                className="mg-section-more"
+                onClick={() => {
+                  setPage({});
+                  void queryClient.invalidateQueries({
+                    queryKey: rootBasketsQuery().queryKey,
+                    exact: true,
+                  });
+                }}
+              >
                 Latest first page
               </button>
             ) : null}
@@ -226,6 +237,7 @@ export function AccountRootBasketsSection({ ss58 }: { ss58: string }) {
 }
 
 function AccountRootBasketsView({ ss58 }: { ss58: string }) {
+  const queryClient = useQueryClient();
   const { ref, nearViewport } = useNearViewport("0px 0px");
   const [page, setPage] = useState<{ offset?: number; as_of?: string }>({});
   const query = useQuery({ ...accountRootBasketsQuery(ss58, page), enabled: nearViewport });
@@ -235,7 +247,13 @@ function AccountRootBasketsView({ ss58 }: { ss58: string }) {
   const positions =
     account?.entries.filter((entry) => entry.position !== null || entry.claim !== null) ?? [];
   const columns: DataTableColumn<BasketEntry>[] = [
-    { key: "hotkey", label: "Fund hotkey", kind: "identifier", value: (row) => row.hotkey },
+    {
+      key: "hotkey",
+      label: "Fund hotkey",
+      kind: "link",
+      value: (row) => row.hotkey,
+      href: (row) => `/validators?basket=${encodeURIComponent(row.hotkey)}#baskets`,
+    },
     { key: "beta", label: "Exact β atoms", value: (row) => row.position?.beta_atomic ?? "—" },
     { key: "spot", label: "Spot value", value: (row) => basketTao(row.position?.spot_value_rao) },
     {
@@ -302,7 +320,17 @@ function AccountRootBasketsView({ ss58 }: { ss58: string }) {
               </button>
             ) : null}
             {page.offset ? (
-              <button type="button" className="mg-section-more" onClick={() => setPage({})}>
+              <button
+                type="button"
+                className="mg-section-more"
+                onClick={() => {
+                  setPage({});
+                  void queryClient.invalidateQueries({
+                    queryKey: accountRootBasketsQuery(ss58).queryKey,
+                    exact: true,
+                  });
+                }}
+              >
                 Latest first page
               </button>
             ) : null}

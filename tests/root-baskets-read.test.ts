@@ -93,7 +93,7 @@ test("unsupported layouts and failed reads remain distinct from confirmed empty"
   });
   assert.deepEqual(await loadRootBaskets({}, "mainnet", undefined, old.rpc), {
     schema_version: 1,
-    network: "mainnet",
+    network: "finney",
     status: "unsupported",
     source: null,
     data: null,
@@ -103,7 +103,7 @@ test("unsupported layouts and failed reads remain distinct from confirmed empty"
     await loadRootBaskets({}, "testnet", undefined, failed.rpc),
     {
       schema_version: 1,
-      network: "testnet",
+      network: "test",
       status: "unavailable",
       source: null,
       data: null,

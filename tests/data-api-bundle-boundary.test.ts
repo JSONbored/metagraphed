@@ -91,6 +91,8 @@ describe("data-api's bundle boundary", () => {
     "src/native-store-export.ts",
     "src/raw-capture-d1.ts",
     "src/raw-capture-sync.ts",
+    "src/root-basket-observation.ts",
+    "schemas-src/root-basket-observation.ts",
     "src/graphql.ts",
     "generated/graphql/schema.ts",
     "workers/api.ts",
@@ -138,11 +140,16 @@ describe("data-api's bundle boundary", () => {
     // dependency; the named boundaries remain mandatory above.
     // The native neuron receipt adds 5,165 source bytes to that measured
     // graph (4,824,337 total), without adding any forbidden module.
+    // Native basket route/query contracts add 13,364 source bytes against
+    // fcec0582 before isolating the observation-only schema. The CI fixture
+    // emits 7,453 additional minified bytes / 2,267 gzip bytes, without any
+    // router, codec, collector, GraphQL or MCP import. Keep the collector and
+    // its observation schema outside this graph, as named above.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_826_000,
+      firstParty < 4_840_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

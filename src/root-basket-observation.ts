@@ -1,10 +1,10 @@
 // Collection only: no persistence, publication, RPC endpoint, or scheduler.
 // All RPC work is supplied by the caller and pinned to one finalized source.
+import { RootBasketRuntimeObservationSchema } from "../schemas-src/root-basket-observation.ts";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
   ROOT_BASKET_READ_LIMITS,
-  RootBasketRuntimeObservationSchema,
   RootBasketSourceSchema,
 } from "../schemas-src/root-basket-runtime.ts";
 import {
