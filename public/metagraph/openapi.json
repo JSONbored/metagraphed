@@ -44363,7 +44363,7 @@
         ]
       },
       "RootBasketsArtifact": {
-        "description": "Finalized native Root basket state from the audited node-subtensor v469/API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.",
+        "description": "Finalized native Root basket state from the audited node-subtensor v469/v470 API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.",
         "examples": [
           {
             "data": {
@@ -44375,14 +44375,14 @@
             "network": "finney",
             "schema_version": 1,
             "source": {
-              "decoder_version": "subtensor-v469-370bac46-v1",
+              "decoder_version": "subtensor-v470-923fd1fa-v1",
               "finalized_block": "500",
               "finalized_block_hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
               "metadata_sha256": "0x5555555555555555555555555555555555555555555555555555555555555555",
               "network": "finney",
               "network_genesis_hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
               "runtime_api_version": 5,
-              "runtime_spec_version": 469
+              "runtime_spec_version": 470
             },
             "status": "available"
           }
@@ -44482,55 +44482,110 @@
         "type": "object"
       },
       "RootBasketSource": {
-        "additionalProperties": false,
-        "properties": {
-          "decoder_version": {
-            "const": "subtensor-v469-370bac46-v1",
-            "type": "string"
-          },
-          "finalized_block": {
-            "examples": [
-              "9007199254740993"
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "decoder_version": {
+                "const": "subtensor-v469-370bac46-v1",
+                "type": "string"
+              },
+              "finalized_block": {
+                "examples": [
+                  "9007199254740993"
+                ],
+                "maxLength": 20,
+                "pattern": "^(0|[1-9]\\d*)$",
+                "type": "string"
+              },
+              "finalized_block_hash": {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "metadata_sha256": {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "network": {
+                "$ref": "#/components/schemas/BittensorNetwork"
+              },
+              "network_genesis_hash": {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "runtime_api_version": {
+                "const": 5,
+                "type": "number"
+              },
+              "runtime_spec_version": {
+                "const": 469,
+                "type": "number"
+              }
+            },
+            "required": [
+              "network",
+              "network_genesis_hash",
+              "finalized_block_hash",
+              "finalized_block",
+              "runtime_spec_version",
+              "runtime_api_version",
+              "decoder_version",
+              "metadata_sha256"
             ],
-            "maxLength": 20,
-            "pattern": "^(0|[1-9]\\d*)$",
-            "type": "string"
+            "type": "object"
           },
-          "finalized_block_hash": {
-            "pattern": "^0x[0-9a-f]{64}$",
-            "type": "string"
-          },
-          "metadata_sha256": {
-            "pattern": "^0x[0-9a-f]{64}$",
-            "type": "string"
-          },
-          "network": {
-            "$ref": "#/components/schemas/BittensorNetwork"
-          },
-          "network_genesis_hash": {
-            "pattern": "^0x[0-9a-f]{64}$",
-            "type": "string"
-          },
-          "runtime_api_version": {
-            "const": 5,
-            "type": "number"
-          },
-          "runtime_spec_version": {
-            "const": 469,
-            "type": "number"
+          {
+            "additionalProperties": false,
+            "properties": {
+              "decoder_version": {
+                "const": "subtensor-v470-923fd1fa-v1",
+                "type": "string"
+              },
+              "finalized_block": {
+                "examples": [
+                  "9007199254740993"
+                ],
+                "maxLength": 20,
+                "pattern": "^(0|[1-9]\\d*)$",
+                "type": "string"
+              },
+              "finalized_block_hash": {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "metadata_sha256": {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "network": {
+                "$ref": "#/components/schemas/BittensorNetwork"
+              },
+              "network_genesis_hash": {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "runtime_api_version": {
+                "const": 5,
+                "type": "number"
+              },
+              "runtime_spec_version": {
+                "const": 470,
+                "type": "number"
+              }
+            },
+            "required": [
+              "network",
+              "network_genesis_hash",
+              "finalized_block_hash",
+              "finalized_block",
+              "runtime_spec_version",
+              "runtime_api_version",
+              "decoder_version",
+              "metadata_sha256"
+            ],
+            "type": "object"
           }
-        },
-        "required": [
-          "network",
-          "network_genesis_hash",
-          "finalized_block_hash",
-          "finalized_block",
-          "runtime_spec_version",
-          "runtime_api_version",
-          "decoder_version",
-          "metadata_sha256"
-        ],
-        "type": "object"
+        ]
       },
       "RootBasketSummary": {
         "additionalProperties": false,

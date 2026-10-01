@@ -10569,7 +10569,7 @@ export interface components {
         };
         RootBasketReadData: components["schemas"]["RootBasketDirectory"] | components["schemas"]["RootBasketDetail"] | components["schemas"]["RootBasketAccountPage"];
         /**
-         * @description Finalized native Root basket state from the audited node-subtensor v469/API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.
+         * @description Finalized native Root basket state from the audited node-subtensor v469/v470 API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.
          * @example {
          *       "data": {
          *         "kind": "directory",
@@ -10580,14 +10580,14 @@ export interface components {
          *       "network": "finney",
          *       "schema_version": 1,
          *       "source": {
-         *         "decoder_version": "subtensor-v469-370bac46-v1",
+         *         "decoder_version": "subtensor-v470-923fd1fa-v1",
          *         "finalized_block": "500",
          *         "finalized_block_hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
          *         "metadata_sha256": "0x5555555555555555555555555555555555555555555555555555555555555555",
          *         "network": "finney",
          *         "network_genesis_hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
          *         "runtime_api_version": 5,
-         *         "runtime_spec_version": 469
+         *         "runtime_spec_version": 470
          *       },
          *       "status": "available"
          *     }
@@ -10630,6 +10630,19 @@ export interface components {
             runtime_api_version: 5;
             /** @constant */
             runtime_spec_version: 469;
+        } | {
+            /** @constant */
+            decoder_version: "subtensor-v470-923fd1fa-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @constant */
+            runtime_api_version: 5;
+            /** @constant */
+            runtime_spec_version: 470;
         };
         RootBasketSummary: {
             /** @example 9007199254740993 */

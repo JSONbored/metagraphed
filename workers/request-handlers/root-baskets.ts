@@ -3,7 +3,7 @@ import {
   validateRootBasketPage,
 } from "../../src/root-baskets-read.ts";
 import { routeQuery } from "../../src/route-query.ts";
-import { isFinneySs58Address } from "../../src/account-balance.ts";
+import { isFinneySs58Address } from "../../src/finney-ss58.ts";
 import { type ChainNetworkId, networkKvKey } from "../../src/chain-network.ts";
 import { resolveClientIp } from "../config.ts";
 import { errorResponse } from "../http.ts";

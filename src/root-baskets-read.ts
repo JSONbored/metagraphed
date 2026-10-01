@@ -11,7 +11,7 @@ import {
   type ChainNetworkId,
 } from "./chain-network.ts";
 import { BittensorNetworkSchema } from "../schemas-src/shared.ts";
-import { isFinneySs58Address } from "./account-balance.ts";
+import { isFinneySs58Address } from "./finney-ss58.ts";
 import { decodeSs58 } from "./ss58.ts";
 import { bytesToHex } from "./twox-storage-key.ts";
 import { rootBasketRpc } from "./root-basket-rpc.ts";
