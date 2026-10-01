@@ -36,6 +36,7 @@ import {
   chainRpcBatch,
   type ChainRpcBatchCall,
 } from "./chain-rpc.ts";
+import type { ChainRpcAdmission } from "./chain-rpc-admission.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
 // DERIVED once in twox-storage-key.ts, beside the vectors that prove it.
@@ -73,8 +74,13 @@ async function rpc(
   method: string,
   params: unknown[],
   fetchImpl: typeof fetch,
+  admission?: ChainRpcAdmission,
 ): Promise<unknown> {
-  return chainRpc(url, method, params, { fetchImpl, timeoutMs: 10_000 });
+  return chainRpc(url, method, params, {
+    fetchImpl,
+    timeoutMs: 10_000,
+    admission,
+  });
 }
 
 /**
@@ -212,11 +218,18 @@ export async function fetchRawBlockChunk(
   fetchImpl: typeof fetch = fetch,
   now: () => number = Date.now,
   requireEvents = false,
+  admission?: ChainRpcAdmission,
 ): Promise<RawBlockChunk> {
   if (heights.length === 0) return { blocks: [], stopped: null };
 
   // Request 1: every hash in one call.
-  const hashesRaw = await rpc(url, "chain_getBlockHash", [heights], fetchImpl);
+  const hashesRaw = await rpc(
+    url,
+    "chain_getBlockHash",
+    [heights],
+    fetchImpl,
+    admission,
+  );
   // `ListOrValue` answers a list for a list, which is what we always send. A
   // node that answers a bare value to a list request has not understood the
   // request, and reading it as one hash for many heights would assign every
@@ -261,6 +274,7 @@ export async function fetchRawBlockChunk(
   const results = await chainRpcBatch(url, calls, {
     fetchImpl,
     timeoutMs: 10_000,
+    admission,
   });
 
   const blocks: RawBlockCapture[] = [];
@@ -440,6 +454,7 @@ export async function captureTick(deps: {
    */
   flushEvery?: number;
   fetchImpl?: typeof fetch;
+  admission?: ChainRpcAdmission;
   now?: () => number;
   /** Injectable so a test asserts the PACING without waiting for it. A real
    * timer is not dependable under the shared-registry pass (#9123). */
@@ -489,7 +504,13 @@ export async function captureTick(deps: {
     const retry: string[] = [];
     for (const url of candidates) {
       try {
-        const value = (await rpc(url, "chain_getHeader", [], fetchImpl)) as {
+        const value = (await rpc(
+          url,
+          "chain_getHeader",
+          [],
+          fetchImpl,
+          deps.admission,
+        )) as {
           number?: unknown;
         } | null;
         const hex = value?.number;
@@ -592,6 +613,7 @@ export async function captureTick(deps: {
           fetchImpl,
           now,
           deps.requireEvents,
+          deps.admission,
         );
         chunk = got;
         if (got.blocks.length > 0) break;
