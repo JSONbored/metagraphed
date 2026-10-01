@@ -38,6 +38,7 @@
 // eventually consistent; these TTLs bound local reuse, not global visibility.
 
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "./api-key-validation.ts";
+import { recordOrNull } from "./read-store.ts";
 import {
   authLookupCacheWrite,
   readAuthLookupCache,
@@ -58,6 +59,12 @@ const CACHE_POLICY = {
 export interface OAuthAccountTierRecord {
   found: boolean;
   tier?: unknown;
+}
+
+/** Only an explicit upstream rejection establishes that the account is gone.
+ * Older negative cache entries and lookup failures remain retryable. */
+export interface OAuthAccountTierResolution extends OAuthAccountTierRecord {
+  accountMissing?: true;
 }
 
 function cacheKeyFor(accountId: number): string {
@@ -89,7 +96,7 @@ export function oauthAccountIdFrom(value: unknown): number | null {
 async function lookupViaDataApi(
   env: Env,
   accountId: number,
-): Promise<OAuthAccountTierRecord> {
+): Promise<OAuthAccountTierResolution> {
   if (!env?.DATA_API?.fetch || !env?.API_KEY_LOOKUP_INTERNAL_TOKEN) {
     return { found: false };
   }
@@ -108,12 +115,15 @@ async function lookupViaDataApi(
       ),
     );
     if (!upstream.ok) return { found: false };
-    const record: Record<string, unknown> = await upstream.json();
+    const record = recordOrNull(await upstream.json());
     // `found` mirrors the route's own answer rather than being inferred from
     // the presence of `tier`, so "account exists, tier is null" stays
     // distinguishable from "no such account".
-    return record.found
-      ? { found: true, tier: record.tier ?? null }
+    if (record?.found === true) {
+      return { found: true, tier: record.tier ?? null };
+    }
+    return record?.found === false
+      ? { found: false, accountMissing: true }
       : { found: false };
   } catch {
     return { found: false };
@@ -131,6 +141,18 @@ export async function resolveOAuthAccountTier(
   env: Env,
   rawAccountId: unknown,
 ): Promise<OAuthAccountTierRecord> {
+  const resolved = await resolveOAuthAccountTierWithStatus(env, rawAccountId);
+  return resolved.found
+    ? { found: true, tier: resolved.tier }
+    : { found: false };
+}
+
+/** Resolve once, retaining an authoritative missing-account answer for MCP's
+ * transport-level challenge. Failure and legacy cache records never imply it. */
+export async function resolveOAuthAccountTierWithStatus(
+  env: Env,
+  rawAccountId: unknown,
+): Promise<OAuthAccountTierResolution> {
   const accountId = oauthAccountIdFrom(rawAccountId);
   if (accountId === null) return { found: false };
 
@@ -142,7 +164,12 @@ export async function resolveOAuthAccountTier(
         await kv.get(cacheKey, { type: "json" }),
         CACHE_POLICY,
       );
-      if (cached) return cached;
+      if (cached) {
+        if (cached.found) return { found: true, tier: cached.tier };
+        return cached.accountMissing === true
+          ? { found: false, accountMissing: true }
+          : { found: false };
+      }
     } catch {
       // KV read failure is non-fatal -- fall through to the live lookup.
     }

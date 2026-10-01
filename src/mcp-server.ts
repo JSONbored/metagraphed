@@ -1271,7 +1271,7 @@ import {
 import { timingSafeEqual } from "./webhooks.ts";
 import {
   oauthAccountIdFrom,
-  resolveOAuthAccountTier,
+  resolveOAuthAccountTierWithStatus,
 } from "./oauth-account-tier.ts";
 import type { AccountKind } from "./account-kind.ts";
 import {
@@ -18243,6 +18243,7 @@ async function enforceMcpRateLimit(
   rejection: Response | null;
   authTier: string;
   accountId: string | null;
+  oauthAccountMissing: boolean;
   quotaPending?: {
     accountId: string;
     accountKind: AccountKind;
@@ -18273,8 +18274,13 @@ async function enforceMcpRateLimit(
   // for an unrecognised tier.
   const oauthAccountId = oauthAccountIdFrom(ctx?.props?.accountId);
   let oauthIdentity: { accountId: number; tier: string } | null = null;
+  let oauthAccountMissing = false;
   if (oauthAccountId !== null) {
-    const resolved = await resolveOAuthAccountTier(env, oauthAccountId);
+    const resolved = await resolveOAuthAccountTierWithStatus(
+      env,
+      oauthAccountId,
+    );
+    oauthAccountMissing = resolved.accountMissing === true;
     if (resolved.found && typeof resolved.tier === "string" && resolved.tier) {
       oauthIdentity = { accountId: oauthAccountId, tier: resolved.tier };
     }
@@ -18329,6 +18335,7 @@ async function enforceMcpRateLimit(
     return {
       authTier,
       accountId,
+      oauthAccountMissing,
       rejection: jsonResponse(
         rpcError(null, RPC_INVALID_REQUEST, rejection.message),
         rejection.status,
@@ -18340,6 +18347,7 @@ async function enforceMcpRateLimit(
     rejection: null,
     authTier,
     accountId,
+    oauthAccountMissing,
     quotaPending: rateLimit.quotaPending,
   };
 }
@@ -19186,7 +19194,7 @@ async function dispatchMcpRequest(
   env: Env,
   deps: McpDeps = {},
 ) {
-  const { rejection, authTier, accountId, quotaPending } =
+  const { rejection, authTier, accountId, quotaPending, oauthAccountMissing } =
     await enforceMcpRateLimit(request, env, deps.executionCtx);
   if (rejection) return rejection;
 
@@ -19196,7 +19204,10 @@ async function dispatchMcpRequest(
     deps.requireAuthentication &&
     (accountId === null || accountId.trim() === "")
   ) {
-    if (oauthAccountIdFrom(deps.executionCtx?.props?.accountId) !== null) {
+    if (
+      !oauthAccountMissing &&
+      oauthAccountIdFrom(deps.executionCtx?.props?.accountId) !== null
+    ) {
       // OAuth has verified the credential, but the account tier could not be
       // resolved. Refuse work without downgrading it to anonymous access or
       // asking the user to sign in again during an entitlement outage.

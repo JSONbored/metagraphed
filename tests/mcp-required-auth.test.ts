@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { authLookupCacheWrite } from "../src/auth-lookup-cache.ts";
-import { handleMcpRequest } from "../src/mcp-server.ts";
+import { handleMcpRequest, mcpAuthChallenge } from "../src/mcp-server.ts";
 import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
@@ -30,7 +30,8 @@ function fixture(tier = "free") {
   const store = new Map<string, string>();
   const paths: string[] = [];
   let state = "active";
-  let tierAvailable = true;
+  let tierStatus = 200;
+  let tierBody: unknown = { found: true, tier };
   let accountId: string | null = String(ACCOUNT);
   let quotaAllowed = true;
   const anonymous = vi.fn(async () => ({ success: true }));
@@ -55,9 +56,7 @@ function fixture(tier = "free") {
         const path = new URL(req.url).pathname;
         paths.push(path);
         if (path.endsWith("/github/tier"))
-          return Response.json(
-            tierAvailable ? { found: true, tier } : { found: false },
-          );
+          return Response.json(tierBody, { status: tierStatus });
         if (path.endsWith("/keys/verify"))
           return Response.json({
             valid: true,
@@ -96,7 +95,10 @@ function fixture(tier = "free") {
       state = value;
     },
     loseTier() {
-      tierAvailable = false;
+      tierStatus = 503;
+    },
+    tierResponse(body: unknown) {
+      tierBody = body;
     },
     identitylessKey(value: string | null = null) {
       accountId = value;
@@ -188,6 +190,81 @@ describe("required authentication at the public MCP router", () => {
       (await handleMcpRequest(request(initialize), f.env, f.deps)).status,
       200,
     );
+  });
+
+  test("a deleted OAuth account receives the existing challenge before dispatch", async () => {
+    const f = fixture();
+    f.tierResponse({ found: false });
+    for (const path of ["/mcp", "/mcp/core/", "/mcp?catalog=full"]) {
+      for (const body of [
+        initialize,
+        [initialize],
+        "invalid JSON",
+        {
+          jsonrpc: "2.0",
+          method: "notifications/initialized",
+        },
+      ]) {
+        const req = request(body, path);
+        const res = await handleMcpRequest(req, f.env, f.deps);
+        const challenge = mcpAuthChallenge(req);
+        assert.equal(res.status, 401);
+        assert.equal(req.bodyUsed, false);
+        assert.equal(res.headers.get("retry-after"), null);
+        assert.deepEqual([...res.headers], [...challenge.headers]);
+        assert.equal(await res.text(), await challenge.text());
+      }
+    }
+    for (const method of ["GET", "DELETE"]) {
+      const req = new Request("https://api.metagraph.sh/mcp", {
+        method,
+        headers: { "mcp-session-id": "mcp_0123456789abcdef0123456789abcdef" },
+      });
+      assert.equal((await handleMcpRequest(req, f.env, f.deps)).status, 401);
+    }
+    assert.deepEqual(f.paths, ["/api/v1/internal/accounts/github/tier"]);
+    assert.equal(f.keyed.mock.calls.length, 0);
+  });
+
+  test.each(
+    [
+      null,
+      {},
+      [],
+      { found: "true", tier: "paid" },
+      { found: true, tier: null },
+      { found: true, tier: "" },
+    ].map((body) => ({ body })),
+  )(
+    "unusable account lookup replies remain retryable ($body)",
+    async ({ body }) => {
+      const f = fixture();
+      f.tierResponse(body);
+      const req = request(initialize);
+      const res = await handleMcpRequest(req, f.env, f.deps);
+      assert.equal(res.status, 503);
+      assert.equal(res.headers.get("www-authenticate"), null);
+      assert.equal(res.headers.get("retry-after"), "30");
+      assert.equal(req.bodyUsed, false);
+      assert.deepEqual(f.paths, ["/api/v1/internal/accounts/github/tier"]);
+    },
+  );
+
+  test("an old negative cache does not falsely challenge a verified OAuth token", async () => {
+    const f = fixture();
+    f.store.set(
+      "oauth-account-tier:v2:7",
+      authLookupCacheWrite(
+        { found: false },
+        { positiveTtlSeconds: 300, negativeTtlSeconds: 30 },
+      ).value,
+    );
+    const req = request(initialize);
+    const res = await handleMcpRequest(req, f.env, f.deps);
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get("www-authenticate"), null);
+    assert.equal(req.bodyUsed, false);
+    assert.deepEqual(f.paths, []);
   });
 
   test.each([null, "", " "])(

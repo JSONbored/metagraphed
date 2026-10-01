@@ -18,6 +18,15 @@ remain unchanged. A KV read failure falls through to the service
 binding; a write failure retains that lookup's result. Lookup failures use
 the existing negative result and retry policy.
 
+OAuth tier lookups retain an `accountMissing: true` marker only when a
+successful internal response explicitly contains `found: false`. Public MCP
+requests use that answer to return the normal 401 sign-in challenge, before
+body parsing or quota spending. Upstream failures, malformed answers and older
+negative records without the marker retain the retryable 503 response. The
+rate-limit gate carries the classification forward without a second lookup.
+The legacy `resolveOAuthAccountTier` helper still returns its original record
+shape; neither cache namespaces nor lifetimes change.
+
 The envelope is written under `api-key-lookup:v3:<sha256>` or
 `oauth-account-tier:v2:<account-id>`. API keys remain locally SHA-256 hashed
 in storage keys; raw credentials are never included in these cache values.
