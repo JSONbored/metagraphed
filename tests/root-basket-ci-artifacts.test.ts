@@ -74,7 +74,7 @@ test("retain remote generated contract artifacts for review", async () => {
 
 test("retain remote data-api bundle comparison against the verified base", async () => {
   if (!process.env.CI) return;
-  const base = "fcec0582cf3b1e7a230782fab769b28a05912b01";
+  const base = "7d2231a3f1ad503f1cfda2e836fd1cffe6b63d20";
   const touched = new Set(
     execFileSync("git", ["diff", "--name-only", base, "HEAD"], {
       encoding: "utf8",

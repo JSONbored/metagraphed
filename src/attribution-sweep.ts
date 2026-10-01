@@ -17,7 +17,7 @@
 // statement about a subnet, the other about us. Collapsing them would turn our
 // own outage into a finding about somebody else — the same conflation
 // #10566 let stand for two months.
-import { isFinneySs58Address } from "./account-balance.ts";
+import { isFinneySs58Address } from "./finney-ss58.ts";
 import {
   consumeBatch,
   enqueueAll,

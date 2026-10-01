@@ -647,7 +647,7 @@ import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watc
 import { runContainerLaneWatchdog } from "../src/container-lane-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { runAccountBalancesStalenessWatchdog } from "../src/account-balances-staleness-watchdog.ts";
-import { isFinneySs58Address } from "../src/account-balance.ts";
+import { isFinneySs58Address } from "../src/finney-ss58.ts";
 import { runHotkeyAlphaStalenessWatchdog } from "../src/hotkey-alpha-staleness-watchdog.ts";
 import { runSubnetBurnCoverageWatchdog } from "../src/subnet-burn-coverage-watchdog.ts";
 import {

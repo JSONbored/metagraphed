@@ -28,6 +28,8 @@
 
 import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { chainRpcResult } from "./chain-rpc.ts";
+import { NETWORK_PARAMETERS_KV_TTL } from "./network-parameters-cache.ts";
+export { NETWORK_PARAMETERS_KV_TTL } from "./network-parameters-cache.ts";
 
 import { blockEmissionForIssuance } from "./block-emission.ts";
 import type { FieldSources } from "./field-provenance.ts";
@@ -37,7 +39,6 @@ import {
   rpcUrlForNetwork,
 } from "./chain-network.ts";
 
-export const NETWORK_PARAMETERS_KV_TTL = 300; // seconds -- governance-adjustable, changes rarely but not never
 // Logical retry seconds; physical KV expiration is at least 60 seconds.
 export const NETWORK_PARAMETERS_NEGATIVE_KV_TTL = 10;
 export const NETWORK_PARAMETERS_RPC_TIMEOUT_MS = 5000;
