@@ -51,6 +51,7 @@ import {
   repoRoot,
 } from "./lib.ts";
 import { apiEnv } from "./lib/worker-env.ts";
+import { authLookupCacheWrite } from "../src/auth-lookup-cache.ts";
 import type {
   ChainFirehoseHubState,
   McpSessionHubState,
@@ -68,7 +69,24 @@ type Row = Record<string, any>;
 // itself, on the degraded and cold-tier answers production does not show you
 // when you ask (#10786). A tripwire false-positive is then a loud CI failure
 // rather than something discovered after deploy.
-const env = createLocalArtifactEnv({ METAGRAPH_VALIDATE_RESPONSES: "true" });
+// Represent an account already validated by the OAuth provider, while still
+// exercising the public router's entitlement gate. Other KV reads remain cold.
+const accountKv = {
+  async get(key: string) {
+    return key === "oauth-account-tier:v2:7"
+      ? JSON.parse(
+          authLookupCacheWrite(
+            { found: true, tier: "free" },
+            { positiveTtlSeconds: 300, negativeTtlSeconds: 30 },
+          ).value,
+        )
+      : null;
+  },
+};
+const env = createLocalArtifactEnv({
+  METAGRAPH_VALIDATE_RESPONSES: "true",
+  METAGRAPH_CONTROL: accountKv,
+});
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
 // Compile each tool's declared outputSchema once; callOk asserts every
@@ -193,7 +211,9 @@ async function mcpRaw(
     headers: { "content-type": "application/json", ...headers },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
-  return handleRequest(request, apiEnv(envOverride), {});
+  return handleRequest(request, apiEnv(envOverride), {
+    props: { accountId: 7 },
+  });
 }
 
 async function getJson(path: string): Promise<Row> {
@@ -377,12 +397,31 @@ const subnetStatusHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
     ),
 );
 const lifecycleEnv = createLocalArtifactEnv({
+  METAGRAPH_CONTROL: accountKv,
   MCP_SESSION_HUB: mcpSessionHubNS,
   CHAIN_FIREHOSE_HUB: chainFirehoseHubNS,
   SUBNET_STATUS_HUB: subnetStatusHubNS,
 });
 
 // --- Lifecycle -------------------------------------------------------------
+
+const anonymousRequest = new Request(MCP_URL, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: "not JSON",
+});
+const challenge = await handleRequest(anonymousRequest, apiEnv(env), {});
+assert.equal(challenge.status, 401, "anonymous MCP access must be challenged");
+assert.equal(
+  anonymousRequest.bodyUsed,
+  false,
+  "auth must precede body parsing",
+);
+assert.ok(
+  challenge.headers
+    .get("www-authenticate")
+    ?.includes("oauth-protected-resource/mcp"),
+);
 
 const init = await mcp({
   jsonrpc: "2.0",
@@ -1998,15 +2037,15 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
   ],
   [
     "store_surface_credential",
-    "the surface-credential store is authenticated-callers-only, and this gate holds no credential (auth_required)",
+    "the harness has an authenticated account but no credential-store encryption secret",
   ],
   [
     "list_surface_credentials",
-    "the surface-credential store is authenticated-callers-only, and this gate holds no credential (auth_required)",
+    "the harness has an authenticated account but no credential-store encryption secret",
   ],
   [
     "delete_surface_credential",
-    "the surface-credential store is authenticated-callers-only, and this gate holds no credential (auth_required)",
+    "the harness has an authenticated account but no credential-store encryption secret",
   ],
   [
     "verify_integration",
@@ -2065,7 +2104,8 @@ for (const [toolName, directory] of Object.entries(SLUG_REGISTRIES)) {
   const def = listToolDefinitions().find((entry) => entry.name === toolName);
   if (!def) continue;
   const slug = ((def.inputSchema as Row)?.properties as Row)?.slug as
-    Row | undefined;
+    | Row
+    | undefined;
   const examples = (slug?.examples ?? []) as unknown[];
   if (examples.length === 0) continue;
   const available = new Set(
