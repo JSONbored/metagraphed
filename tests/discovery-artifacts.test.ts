@@ -14,7 +14,10 @@ import addFormatsPlugin from "ajv-formats";
 import { artifactFilePath, repoRoot, loadSubnets } from "../scripts/lib.ts";
 import { PRIMARY_DOMAIN } from "../src/contracts.ts";
 import { MCP_REGISTRY_NAME, MCP_SERVER_INFO } from "../src/mcp-server.ts";
-import { mcpServerCardResponse } from "../workers/request-handlers/discovery.ts";
+import {
+  homepageResponse,
+  mcpServerCardResponse,
+} from "../workers/request-handlers/discovery.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
@@ -138,6 +141,43 @@ describe("Discovery artifacts", () => {
       const expected = createHash("sha256").update(body).digest("hex");
       assert.equal(skill.digest, `sha256:${expected}`, skill.name);
     }
+    console.log(
+      "MCP_SKILL_INDEX_ARTIFACT " +
+        Buffer.from(
+          await fs.readFile(
+            path.join(publicDir, ".well-known/agent-skills/index.json"),
+          ),
+        ).toString("base64"),
+    );
+  });
+
+  test("agent entrypoints and API landing page explain required free MCP authentication", async () => {
+    for (const file of [
+      "agent.md",
+      "agent-workflows.md",
+      "skills/bittensor/SKILL.md",
+    ]) {
+      const guide = await fs.readFile(path.join(publicDir, file), "utf8");
+      assert.match(guide, /MCP authentication is required/i, file);
+      assert.match(guide, /sign-in is free|free OAuth sign-in/i, file);
+      assert.match(
+        guide,
+        /Public REST reads[^.]*?(?:no authentication|without\s+authentication)/i,
+        file,
+      );
+      assert.doesNotMatch(
+        guide,
+        /one line, no key|Everything below is public/i,
+        file,
+      );
+    }
+    const response = await homepageResponse(
+      new Request("https://api.metagraph.sh/"),
+    );
+    const html = await response.text();
+    assert.match(html, /Public REST reads need no authentication/);
+    assert.match(html, /MCP authentication is required and sign-in is free/);
+    assert.doesNotMatch(html, /All endpoints are public/);
   });
 
   test("agent-skills index validates against its self-hosted schema", async () => {

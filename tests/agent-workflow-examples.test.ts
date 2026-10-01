@@ -26,13 +26,17 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { handleMcpRequest, listToolDefinitions } from "../src/mcp-server.ts";
+import { listToolDefinitions } from "../src/mcp-server.ts";
 import { handleRequest } from "../workers/api.ts";
+import {
+  mcpAccountContext,
+  withMcpAccount,
+} from "./helpers/mcp-account-fixture.ts";
 import type { Row } from "./row-type.ts";
 
 const DOC_PATH = "public/agent-workflows.md";
 const doc = readFileSync(DOC_PATH, "utf8");
-const env = createLocalArtifactEnv() as unknown as Env;
+const env = withMcpAccount(createLocalArtifactEnv());
 const TOOL_NAMES = new Set(
   listToolDefinitions().map((tool) => tool.name as string),
 );
@@ -111,7 +115,7 @@ function documentedCalls(markdown: string): DocumentedCall[] {
       const url = trimmed.match(/curl[^']*'([^']+)'/)?.[1];
       if (!url) continue;
       const headers: Record<string, string> = {};
-      for (const [, header] of trimmed.matchAll(/-H '([^']+)'/g)) {
+      for (const [, , header] of trimmed.matchAll(/-H (['"])(.*?)\1/g)) {
         const [name, ...rest] = header.split(":");
         headers[name.trim().toLowerCase()] = rest.join(":").trim();
       }
@@ -202,6 +206,11 @@ describe(`the examples in ${DOC_PATH} are executed, not assumed (#9091)`, () => 
           "application/json",
           "a documented MCP call must send content-type: application/json",
         );
+        assert.equal(
+          call.headers.authorization,
+          "Bearer ${METAGRAPHED_API_KEY}",
+          "each MCP example must expand the caller's API key in its header",
+        );
         // Deterministic, from the committed registry -- this is the half the
         // dispatch below cannot check, because a binding-less environment
         // reports a missing surface and a missing artifact identically.
@@ -222,14 +231,16 @@ describe(`the examples in ${DOC_PATH} are executed, not assumed (#9091)`, () => 
             );
           }
         }
-        const response = await handleMcpRequest(
+        // Model the verified account after the client expands its credential;
+        // keep the real public router's access gate in the execution path.
+        const response = await handleRequest(
           new Request(call.url, {
             method: "POST",
-            headers: { "content-type": "application/json" },
+            headers: call.headers,
             body: call.body as string,
           }),
           env,
-          {},
+          mcpAccountContext,
         );
         const body = (await response.json()) as Row;
         // A transport-level error means the method or the envelope is wrong,

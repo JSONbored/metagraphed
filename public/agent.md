@@ -5,11 +5,16 @@ or any framework) to turn it into a Bittensor subnet integration agent. It can
 answer "what subnet does X", "is it up", and "how do I call it" — grounded in
 the live metagraphed registry, not training-data guesses.
 
-The fastest path is the MCP server (one line, no key):
+The fastest path is the MCP server. Add it, then complete free OAuth sign-in
+when your client prompts:
 
 ```
 claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 ```
+
+MCP authentication is required for every profile. Automation can use an `mg_`
+API key instead; see `https://api.metagraph.sh/auth.md`. Public REST reads remain
+available without authentication.
 
 The default starts with four discovery and invocation tools. Use `search_tools`
 to retrieve complete definitions, then `invoke_read_tool` or `invoke_tool` to

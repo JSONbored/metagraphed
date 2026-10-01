@@ -33,6 +33,11 @@ Cursor / other clients: add an MCP server with url
 `https://api.metagraph.sh/mcp`, transport `streamable-http`. Server
 descriptor: `https://api.metagraph.sh/.well-known/mcp/server-card.json`.
 
+MCP authentication is required and sign-in is free. Complete the client's OAuth
+flow, or use your own `mg_` API key for automation. Authentication setup:
+`https://api.metagraph.sh/auth.md`. Public REST reads remain available without
+authentication.
+
 `/mcp` starts with four discovery and invocation tools; `/mcp/core` also lists
 common tools directly.
 Either endpoint can call every tool — the profile filters listing, never dispatch.

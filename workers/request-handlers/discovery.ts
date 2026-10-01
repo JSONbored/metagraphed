@@ -217,7 +217,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 <body>
 <main>
 <h1>metagraphed API</h1>
-<p>The operational + integration registry for Bittensor subnets — what each subnet exposes (APIs, docs, schemas), whether it's healthy, and how to call it. All endpoints are public, read-only JSON. No authentication.</p>
+<p>The operational + integration registry for Bittensor subnets — what each subnet exposes (APIs, docs, schemas), whether it's healthy, and how to call it. Public REST reads need no authentication. MCP authentication is required and sign-in is free; use OAuth or an API key.</p>
 <ul>
 <li><a href="/llms.txt">llms.txt</a> — LLM/agent discovery index</li>
 <li><a href="/agent.md">agent.md</a> — copyable agent system prompt</li>
