@@ -118,7 +118,12 @@ export function decodeNativeValue(
 ): NativeValue {
   const partial = hex instanceof NativeScaleReader;
   const reader = partial ? hex : new NativeScaleReader(hex);
-  if (reader.bytes.length > NATIVE_RUNTIME_LIMITS.valueBytes || !Number.isSafeInteger(reader.offset) || reader.offset < 0 || reader.offset > reader.bytes.length)
+  if (
+    reader.bytes.length > NATIVE_RUNTIME_LIMITS.valueBytes ||
+    !Number.isSafeInteger(reader.offset) ||
+    reader.offset < 0 ||
+    reader.offset > reader.bytes.length
+  )
     throw new Error("Invalid or oversized native value reader");
   let work = 0;
   const read = (typeId: number, depth = 0): NativeValue => {
@@ -391,9 +396,12 @@ export function nativeStorageKey(
               throw new Error("Native multi-map key must be a tuple");
             return type.types;
           })();
-  if (keys.length !== item.hashers.length || (partial ? args.length > keys.length : args.length !== keys.length))
+  if (
+    keys.length !== item.hashers.length ||
+    (partial ? args.length > keys.length : args.length !== keys.length)
+  )
     throw new Error("Native storage key arity mismatch");
-  const parts = keys.slice(0,args.length).map((key, index) => {
+  const parts = keys.slice(0, args.length).map((key, index) => {
     const encoded = encodeNativeValue(metadata, key, args[index]!);
     switch (item.hashers[index]) {
       case 0:
@@ -421,27 +429,47 @@ export function nativeStorageKey(
 
 /** Recover keys for reversible hashers. Hash-only components remain their
  * exact digest: an irreversible hash must never be presented as an account. */
-export function nativeStorageEntryKeys(metadata:NativeMetadata,prefix:string,item:NativeStorage,key:string):NativeValue[]{
-  if(item.key===null)throw new Error("Native entries require a storage map");
-  const base=nativeStorageKey(metadata,prefix,item,[],true);
-  if(!key.startsWith(base))throw new Error("Native storage entry has the wrong prefix");
-  const reader=new NativeScaleReader(`0x${key.slice(base.length)}`);
-  const definition=getType(metadata,item.key);
-  const keys=item.hashers.length===1?[item.key]:definition.kind==="tuple"?definition.types:[];
-  if(keys.length!==item.hashers.length)throw new Error("Native multi-map key arity mismatch");
-  const parts=keys.map((type,index)=>{
-    const hasher=item.hashers[index]!;
-    const lengths=[16,32,16,16,32,8,0];
-    const length=lengths[hasher];
-    if(length===undefined)throw new Error("Invalid native storage hasher");
-    const digest=reader.take(length);
-    if([0,1,3,4].includes(hasher))return {hash:nativeHex(digest),hasher};
-    const offset=reader.offset;
-    const value=decodeNativeValue(metadata,type,reader);
-    const encoded=reader.bytes.subarray(offset,reader.offset);
-    const expected=hasher===2?blake2b(encoded,{dkLen:16}):hasher===5?twox64Concat(encoded).subarray(0,8):digest;
-    if(nativeHex(expected)!==nativeHex(digest))throw new Error("Native storage key digest mismatch");
-    return {value};
+export function nativeStorageEntryKeys(
+  metadata: NativeMetadata,
+  prefix: string,
+  item: NativeStorage,
+  key: string,
+): NativeValue[] {
+  if (item.key === null)
+    throw new Error("Native entries require a storage map");
+  const base = nativeHex(storageMapPrefix(prefix, item.name));
+  if (!key.startsWith(base))
+    throw new Error("Native storage entry has the wrong prefix");
+  const reader = new NativeScaleReader(`0x${key.slice(base.length)}`);
+  const definition = getType(metadata, item.key);
+  const keys =
+    item.hashers.length === 1
+      ? [item.key]
+      : definition.kind === "tuple"
+        ? definition.types
+        : [];
+  if (keys.length !== item.hashers.length)
+    throw new Error("Native multi-map key arity mismatch");
+  const parts = keys.map((type, index) => {
+    const hasher = item.hashers[index]!;
+    const lengths = [16, 32, 16, 16, 32, 8, 0];
+    const length = lengths[hasher];
+    if (length === undefined) throw new Error("Invalid native storage hasher");
+    const digest = reader.take(length);
+    if ([0, 1, 3, 4].includes(hasher))
+      return { hash: nativeHex(digest), hasher };
+    const offset = reader.offset;
+    const value = decodeNativeValue(metadata, type, reader);
+    const encoded = reader.bytes.subarray(offset, reader.offset);
+    const expected =
+      hasher === 2
+        ? blake2b(encoded, { dkLen: 16 })
+        : hasher === 5
+          ? twox64Concat(encoded).subarray(0, 8)
+          : digest;
+    if (nativeHex(expected) !== nativeHex(digest))
+      throw new Error("Native storage key digest mismatch");
+    return { value };
   });
   return reader.finish(parts);
 }

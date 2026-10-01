@@ -7071,6 +7071,7 @@
               "metadata_version": 14,
               "network": "finney",
               "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "runtime_code_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
               "runtime_spec_version": 1,
               "runtime_transaction_version": 1
             },
@@ -39410,6 +39411,7 @@
                 "kind": {
                   "enum": [
                     "storage",
+                    "entries",
                     "constant",
                     "runtime",
                     "prepare",
@@ -39501,6 +39503,52 @@
               "pallet",
               "member",
               "args"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "args": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/__shared#/$defs/schema0"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "cursor": {
+                "maxLength": 8194,
+                "pattern": "^0x(?:[0-9a-f]{2})+$",
+                "type": "string"
+              },
+              "kind": {
+                "const": "entries",
+                "type": "string"
+              },
+              "limit": {
+                "default": 16,
+                "maximum": 32,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "member": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "pallet": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "pallet",
+              "member",
+              "args",
+              "limit"
             ],
             "type": "object"
           },
@@ -39646,6 +39694,7 @@
         "description": "Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. All operations share one finalized source. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or state mutation occurs.",
         "properties": {
           "as_of": {
+            "description": "Canonical finalized block hash to read; omitted selects the current finalized head. Reuse the response's source hash for a consistent multi-request view.",
             "examples": [
               "0x3333333333333333333333333333333333333333333333333333333333333333"
             ],
@@ -39664,6 +39713,7 @@
             "type": "string"
           },
           "operations": {
+            "description": "One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.",
             "examples": [
               [
                 {
@@ -39715,6 +39765,17 @@
             "pattern": "^0x[0-9a-f]{64}$",
             "type": "string"
           },
+          "runtime_code_hash": {
+            "anyOf": [
+              {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "runtime_spec_version": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -39733,6 +39794,7 @@
           "finalized_block",
           "runtime_spec_version",
           "runtime_transaction_version",
+          "runtime_code_hash",
           "metadata_version",
           "metadata_sha256"
         ],

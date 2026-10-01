@@ -56,10 +56,19 @@ const common = { pallet: name, member: name };
 const args = z.array(z.json()).max(64).default([]);
 export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("storage"), ...common, args }).strict(),
-  z.object({ kind: z.literal("entries"), ...common, args,
-    limit: z.int().min(1).max(32).default(16),
-    cursor: z.string().regex(/^0x(?:[0-9a-f]{2})+$/).max(8194).optional(),
-  }).strict(),
+  z
+    .object({
+      kind: z.literal("entries"),
+      ...common,
+      args,
+      limit: z.int().min(1).max(32).default(16),
+      cursor: z
+        .string()
+        .regex(/^0x(?:[0-9a-f]{2})+$/)
+        .max(8194)
+        .optional(),
+    })
+    .strict(),
   z.object({ kind: z.literal("constant"), ...common }).strict(),
   z
     .object({ kind: z.literal("runtime"), api: name, member: name, args })
@@ -79,7 +88,12 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
 export const NativeRuntimeRequestSchema = z
   .object({
     network: McpNetworkSchema.optional(),
-    as_of: hash.meta({ examples: [`0x${"33".repeat(32)}`] }).optional().describe("Canonical finalized block hash to read; omitted selects the current finalized head. Reuse the response's source hash for a consistent multi-request view."),
+    as_of: hash
+      .meta({ examples: [`0x${"33".repeat(32)}`] })
+      .optional()
+      .describe(
+        "Canonical finalized block hash to read; omitted selects the current finalized head. Reuse the response's source hash for a consistent multi-request view.",
+      ),
     operations: z
       .array(NativeRuntimeOperationSchema)
       .min(1)
@@ -88,7 +102,10 @@ export const NativeRuntimeRequestSchema = z
         examples: [
           [{ kind: "describe", pallet: "SubtensorModule", limit: 16 }],
         ],
-      }).describe("One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash."),
+      })
+      .describe(
+        "One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.",
+      ),
   })
   .strict()
   .describe(

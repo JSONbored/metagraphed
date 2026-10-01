@@ -4,7 +4,7 @@ import metadata14 from "./fixtures/native-metadata-v14.ts";
 import metadata15 from "./fixtures/native-metadata-v15.ts";
 import { queryNativeRuntime } from "../src/native-runtime.ts";
 import { type BasketRpc } from "../src/root-basket-runtime.ts";
-import {nativeContractEdgeFixture} from "./fixtures/native-contract-edge.ts";
+import { nativeContractEdgeFixture } from "./fixtures/native-contract-edge.ts";
 import {
   decodeNativeMetadata,
   unwrapNativeMetadata,
@@ -51,29 +51,96 @@ function fixture(overrides: Record<string, unknown> = {}) {
     Promise.all(rows.map((row) => rpc(row.method, row.params)));
   return { rpc, calls };
 }
-test("portable API discovery, bit and tuple contracts and empty pallets remain usable",async()=>{
-  const {wrapped}=nativeContractEdgeFixture();
-  const source=fixture({Metadata_metadata_at_version:wrapped,ShieldApi_is_shielded_using_current_key:"0x01",ContractsApi_get_storage:"0x02"});
-  const out=await queryNativeRuntime({operations:[{kind:"describe",limit:64},{kind:"describe",pallet:"NoCalls"},{kind:"describe",pallet:"Fixture"},{kind:"describe",api:"SwapRuntimeApi"},{kind:"describe",type_id:4},{kind:"describe",type_id:5},{kind:"runtime",api:"ShieldApi",member:"is_shielded_using_current_key"},{kind:"runtime",api:"ContractsApi",member:"get_storage"}]},source.rpc);
-  assert.deepEqual(out.results[1]!.value,[]);
-  assert.ok(out.types.some((row)=>row.definition.kind==="bits"));
-  assert.ok(out.types.some((row)=>row.definition.kind==="tuple"));
-  assert.equal(out.results[6]!.value,"1");assert.equal(out.results[7]!.value,"2");
-  await assert.rejects(queryNativeRuntime({operations:[{kind:"prepare",pallet:"NoCalls",member:"none"}]},source.rpc),/extrinsic/);
-  await assert.rejects(queryNativeRuntime({operations:[{kind:"entries",pallet:"Fixture",member:"Amounts"}]},source.rpc),/storage map/);
+test("portable API discovery, bit and tuple contracts and empty pallets remain usable", async () => {
+  const { wrapped } = nativeContractEdgeFixture();
+  const source = fixture({
+    Metadata_metadata_at_version: wrapped,
+    ShieldApi_is_shielded_using_current_key: "0x01",
+    ContractsApi_get_storage: "0x02",
+  });
+  const out = await queryNativeRuntime(
+    {
+      operations: [
+        { kind: "describe", limit: 64 },
+        { kind: "describe", pallet: "NoCalls" },
+        { kind: "describe", pallet: "Fixture" },
+        { kind: "describe", api: "SwapRuntimeApi" },
+        { kind: "describe", type_id: 4 },
+        { kind: "describe", type_id: 5 },
+        {
+          kind: "runtime",
+          api: "ShieldApi",
+          member: "is_shielded_using_current_key",
+        },
+        { kind: "runtime", api: "ContractsApi", member: "get_storage" },
+      ],
+    },
+    source.rpc,
+  );
+  assert.deepEqual(out.results[1]!.value, []);
+  assert.ok(out.types.some((row) => row.definition.kind === "bits"));
+  assert.ok(out.types.some((row) => row.definition.kind === "tuple"));
+  assert.equal(out.results[6]!.value, "1");
+  assert.equal(out.results[7]!.value, "2");
+  await assert.rejects(
+    queryNativeRuntime(
+      { operations: [{ kind: "prepare", pallet: "NoCalls", member: "none" }] },
+      source.rpc,
+    ),
+    /extrinsic/,
+  );
+  await assert.rejects(
+    queryNativeRuntime(
+      {
+        operations: [{ kind: "entries", pallet: "Fixture", member: "Amounts" }],
+      },
+      source.rpc,
+    ),
+    /storage map/,
+  );
 });
-test("aggregate native inputs and expanded result context have independent byte budgets",async()=>{
-  const {wrapped,registry}=nativeContractEdgeFixture();
-  for(const operation of [
-    {kind:"runtime",api:"SwapRuntimeApi",member:"fixture",args:[Array(8191).fill(1),1]},
-    {kind:"prepare",pallet:"Fixture",member:"large_call",args:[Array(8191).fill(1),1]},
-  ]){
-    const source=fixture({Metadata_metadata_at_version:wrapped});
-    await assert.rejects(queryNativeRuntime({operations:[operation]},source.rpc),/input exceeds|call exceeds/);
-    assert.equal(source.calls.filter((row)=>row.method==="state_call").length,1);
+test("aggregate native inputs and expanded result context have independent byte budgets", async () => {
+  const { wrapped, registry } = nativeContractEdgeFixture();
+  for (const operation of [
+    {
+      kind: "runtime",
+      api: "SwapRuntimeApi",
+      member: "fixture",
+      args: [Array(8191).fill(1), 1],
+    },
+    {
+      kind: "prepare",
+      pallet: "Fixture",
+      member: "large_call",
+      args: [Array(8191).fill(1), 1],
+    },
+  ]) {
+    const source = fixture({ Metadata_metadata_at_version: wrapped });
+    await assert.rejects(
+      queryNativeRuntime({ operations: [operation] }, source.rpc),
+      /input exceeds|call exceeds/,
+    );
+    assert.equal(
+      source.calls.filter((row) => row.method === "state_call").length,
+      1,
+    );
   }
-  const source=fixture({Metadata_metadata_at_version:wrapped,state_getStorage:`0x${Buffer.concat([registry.createType("Compact<u32>",6000).toU8a(),Buffer.alloc(32*6000,255)]).toString("hex")}`});
-  await assert.rejects(queryNativeRuntime({operations:[{kind:"storage",pallet:"Fixture",member:"Amounts"},{kind:"storage",pallet:"Fixture",member:"Amounts"}]},source.rpc),/response exceeds/);
+  const source = fixture({
+    Metadata_metadata_at_version: wrapped,
+    state_getStorage: `0x${Buffer.concat([registry.createType("Compact<u32>", 6000).toU8a(), Buffer.alloc(32 * 6000, 255)]).toString("hex")}`,
+  });
+  await assert.rejects(
+    queryNativeRuntime(
+      {
+        operations: [
+          { kind: "storage", pallet: "Fixture", member: "Amounts" },
+          { kind: "storage", pallet: "Fixture", member: "Amounts" },
+        ],
+      },
+      source.rpc,
+    ),
+    /response exceeds/,
+  );
 });
 test("native reads, constants and unsigned calls use one finalized contract and coalesce repeated work", async () => {
   const source = fixture();

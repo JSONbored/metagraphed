@@ -14,34 +14,123 @@ const source = {
   metadata_sha256: `0x${"55".repeat(32)}`,
 };
 test.use({ serviceWorkers: "block" });
-test("map records use leading keys and preserve source while advancing the cursor",async({page})=>{
-  const requests:unknown[]=[];
-  let reads=0;
-  await page.route("**/api/v1/native-runtime",async(route)=>{
-    const body=route.request().postDataJSON();requests.push(body);
-    const discovery=body.operations[0].kind==="describe";
-    await route.fulfill({json:{ok:true,data:{schema_version:1,source,types:[{id:0,path:["NetUid"],definition:{kind:"primitive",primitive:4}}],results:discovery?[{kind:"describe",value:[{kind:"storage",pallet:"SubtensorModule",member:"MinerCollateral",key_type:0,key_parts:1}],contract:{next_offset:null}}]:[{kind:"entries",pallet:"SubtensorModule",member:"MinerCollateral",value:++reads===1?[{storage_key:"0x1122",keys:[{value:"19"}],value:{locked:"9007199254740993"}}]:[],contract:{next_cursor:reads===1?"0x1122":null}}]}}});
+test("map records use leading keys and preserve source while advancing the cursor", async ({
+  page,
+}) => {
+  const requests: unknown[] = [];
+  let reads = 0;
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body);
+    const discovery = body.operations[0].kind === "describe";
+    await route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          schema_version: 1,
+          source,
+          types: [{ id: 0, path: ["NetUid"], definition: { kind: "primitive", primitive: 4 } }],
+          results: discovery
+            ? [
+                {
+                  kind: "describe",
+                  value: [
+                    {
+                      kind: "storage",
+                      pallet: "SubtensorModule",
+                      member: "MinerCollateral",
+                      key_type: 0,
+                      key_parts: 1,
+                    },
+                  ],
+                  contract: { next_offset: null },
+                },
+              ]
+            : [
+                {
+                  kind: "entries",
+                  pallet: "SubtensorModule",
+                  member: "MinerCollateral",
+                  value:
+                    ++reads === 1
+                      ? [
+                          {
+                            storage_key: "0x1122",
+                            keys: [{ value: "19" }],
+                            value: { locked: "9007199254740993" },
+                          },
+                        ]
+                      : [],
+                  contract: { next_cursor: reads === 1 ? "0x1122" : null },
+                },
+              ],
+        },
+      },
+    });
   });
-  await gotoThroughRestart(page,"/apis/native");
-  await page.getByRole("button",{name:"Inspect contract"}).click();
-  await page.getByRole("button",{name:"Browse records"}).click();
-  await expect(page.getByRole("cell",{name:"9007199254740993",exact:true})).toBeVisible();
-  await page.getByRole("button",{name:"Next records"}).click();
-  await expect(page.getByRole("button",{name:"Next records"})).toHaveCount(0);
+  await gotoThroughRestart(page, "/apis/native");
+  await page.getByRole("button", { name: "Inspect contract" }).click();
+  await page.getByRole("button", { name: "Browse records" }).click();
+  await expect(page.getByRole("cell", { name: "9007199254740993", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next records" }).click();
+  await expect(page.getByRole("button", { name: "Next records" })).toHaveCount(0);
   expect(requests.slice(1)).toEqual([
-    {as_of:hash,operations:[{kind:"entries",pallet:"SubtensorModule",member:"MinerCollateral",args:[],limit:16}]},
-    {as_of:hash,operations:[{kind:"entries",pallet:"SubtensorModule",member:"MinerCollateral",args:[],limit:16,cursor:"0x1122"}]},
+    {
+      as_of: hash,
+      operations: [
+        {
+          kind: "entries",
+          pallet: "SubtensorModule",
+          member: "MinerCollateral",
+          args: [],
+          limit: 16,
+        },
+      ],
+    },
+    {
+      as_of: hash,
+      operations: [
+        {
+          kind: "entries",
+          pallet: "SubtensorModule",
+          member: "MinerCollateral",
+          args: [],
+          limit: 16,
+          cursor: "0x1122",
+        },
+      ],
+    },
   ]);
 });
-test("in-flight native reads cannot be relabeled by changing their inputs",async({page})=>{
-  let release!:()=>void;const gate=new Promise<void>((resolve)=>{release=resolve;});
-  await page.route("**/api/v1/native-runtime",async(route)=>{await gate;await route.fulfill({json:{ok:true,data:{schema_version:1,source,types:[],results:[{kind:"storage",pallet:"P",member:"C",value:"2",contract:{}}]}}});});
-  await gotoThroughRestart(page,"/apis/native");
-  await page.getByRole("button",{name:"Read state",exact:true}).click();
-  try{await expect(page.getByLabel("Feature",{exact:true})).toBeDisabled();await expect(page.getByLabel("Subnet",{exact:true})).toBeDisabled();}
-  finally{release();}
-  await expect(page.getByRole("cell",{name:"2",exact:true})).toBeVisible();
-  await expect(page.getByLabel("Feature",{exact:true})).toBeEnabled();
+test("in-flight native reads cannot be relabeled by changing their inputs", async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    await gate;
+    await route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          schema_version: 1,
+          source,
+          types: [],
+          results: [{ kind: "storage", pallet: "P", member: "C", value: "2", contract: {} }],
+        },
+      },
+    });
+  });
+  await gotoThroughRestart(page, "/apis/native");
+  await page.getByRole("button", { name: "Read state", exact: true }).click();
+  try {
+    await expect(page.getByLabel("Feature", { exact: true })).toBeDisabled();
+    await expect(page.getByLabel("Subnet", { exact: true })).toBeDisabled();
+  } finally {
+    release();
+  }
+  await expect(page.getByRole("cell", { name: "2", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Feature", { exact: true })).toBeEnabled();
 });
 test("native feature reads are explicit, exact and usable at phone width", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });

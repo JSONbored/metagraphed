@@ -188,10 +188,22 @@ export interface NativeValueRow {
   field: string;
   value: string;
 }
+function nativeIdentifier(value:Json):string|null{
+  if(typeof value!=="string"||!/^0x(?:[0-9a-f]{2}){1,128}$/i.test(value))return null;
+  try{
+    const bytes=Uint8Array.from(value.slice(2).match(/../g)!,part=>Number.parseInt(part,16));
+    const name=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+    return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)?name:null;
+  }catch{return null;}
+}
 export function nativeValueRows(artifact: NativeArtifact): NativeValueRow[] {
   const rows: NativeValueRow[] = [];
   const visit = (field: string, value: Json): void => {
     if (value !== null && typeof value === "object") {
+      if(!Array.isArray(value)&&Object.keys(value).length===2&&Object.hasOwn(value,"name")&&Object.hasOwn(value,"value")){
+        const name=nativeIdentifier(value.name!);
+        if(name!==null){visit(`${field}.${name}`,value.value!);return;}
+      }
       const entries = Object.entries(value);
       if (entries.length) {
         for (const [key, child] of entries) visit(`${field}.${key}`, child);

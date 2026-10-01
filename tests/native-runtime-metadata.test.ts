@@ -138,7 +138,10 @@ test("metadata reuse cannot bypass the wire budget or consume an already advance
   const reader = new NativeScaleReader(bare(metadata14), 2_097_152);
   reader.take(1);
   assert.throws(() => decodeNativeMetadata(reader), /metadata reader/);
-  const oversized = new NativeScaleReader(`0x${"00".repeat(2_097_153)}`, 2_097_153);
+  const oversized = new NativeScaleReader(
+    `0x${"00".repeat(2_097_153)}`,
+    2_097_153,
+  );
   assert.throws(() => decodeNativeMetadata(oversized), /metadata reader/);
 });
 test("all portable value families retain exact values and canonical bytes", () => {
@@ -287,8 +290,12 @@ test("all seven native storage hashers and multi-map keys use canonical SCALE in
       fallback: "0x",
     };
     const key = nativeStorageKey(meta, "SubtensorModule", item, [65535]);
-    const decoded=nativeStorageEntryKeys(meta,"SubtensorModule",item,key);
-    assert.deepEqual(decoded,[...([2,5,6].includes(hasher)?[{value:"65535"}]:[{hash:`0x${key.slice(66)}`,hasher}])]);
+    const decoded = nativeStorageEntryKeys(meta, "SubtensorModule", item, key);
+    assert.deepEqual(decoded, [
+      ...([2, 5, 6].includes(hasher)
+        ? [{ value: "65535" }]
+        : [{ hash: `0x${key.slice(66)}`, hasher }]),
+    ]);
     assert.equal(
       (key.length - 2) / 2,
       32 + [16, 32, 18, 16, 32, 10, 2][hasher]!,
@@ -311,12 +318,36 @@ test("all seven native storage hashers and multi-map keys use canonical SCALE in
     32,
   );
   const map = { ...plain, key: 17, hashers: [5, 6] };
-  const mapKey=nativeStorageKey(meta,"SubtensorModule",map,["1","abc"]);
-  assert.deepEqual(nativeStorageEntryKeys(meta,"SubtensorModule",map,mapKey),[{value:"1"},{value:"abc"}]);
-  assert.throws(()=>nativeStorageEntryKeys(meta,"P",plain,"0x00"),/storage map/);
-  assert.throws(()=>nativeStorageEntryKeys(meta,"P",map,mapKey),/prefix/);
-  assert.throws(()=>nativeStorageEntryKeys(meta,"SubtensorModule",{...map,key:4},mapKey),/arity/);
-  assert.throws(()=>nativeStorageEntryKeys(meta,"SubtensorModule",{...map,hashers:[7,6]},mapKey),/hasher/);
+  const mapKey = nativeStorageKey(meta, "SubtensorModule", map, ["1", "abc"]);
+  assert.deepEqual(
+    nativeStorageEntryKeys(meta, "SubtensorModule", map, mapKey),
+    [{ value: "1" }, { value: "abc" }],
+  );
+  assert.throws(
+    () => nativeStorageEntryKeys(meta, "P", plain, "0x00"),
+    /storage map/,
+  );
+  assert.throws(() => nativeStorageEntryKeys(meta, "P", map, mapKey), /prefix/);
+  assert.throws(
+    () =>
+      nativeStorageEntryKeys(
+        meta,
+        "SubtensorModule",
+        { ...map, key: 4 },
+        mapKey,
+      ),
+    /arity/,
+  );
+  assert.throws(
+    () =>
+      nativeStorageEntryKeys(
+        meta,
+        "SubtensorModule",
+        { ...map, hashers: [7, 6] },
+        mapKey,
+      ),
+    /hasher/,
+  );
   assert.match(
     nativeStorageKey(meta, "SubtensorModule", map, ["1", "abc"]),
     /^0x/,
@@ -336,34 +367,62 @@ test("all seven native storage hashers and multi-map keys use canonical SCALE in
   );
 });
 
-test("portable metadata rejects malformed definitions and storage shapes at their actual wire boundary",()=>{
-  const wire=(bytes:number[])=>nativeHex(Buffer.from([0x6d,0x65,0x74,0x61,15,...bytes]));
-  for(const [tail,message] of [
-    [[4,0,0,0,5,15],/primitive/],
-    [[4,0,0,0,8],/definition/],
-    [[8,0,0,0,5,0,0,0,0,0,5,0,0],/Duplicate/],
-  ] as const)assert.throws(()=>decodeNativeMetadata(wire([...tail])),message);
+test("portable metadata rejects malformed definitions and storage shapes at their actual wire boundary", () => {
+  const wire = (bytes: number[]) =>
+    nativeHex(Buffer.from([0x6d, 0x65, 0x74, 0x61, 15, ...bytes]));
+  for (const [tail, message] of [
+    [[4, 0, 0, 0, 5, 15], /primitive/],
+    [[4, 0, 0, 0, 8], /definition/],
+    [[8, 0, 0, 0, 5, 0, 0, 0, 0, 0, 5, 0, 0], /Duplicate/],
+  ] as const)
+    assert.throws(() => decodeNativeMetadata(wire([...tail])), message);
   // Empty lookup; one pallet P, a storage prefix P, and one member M.
-  const storage=[0,4,4,80,1,4,80,4,4,77];
-  for(const [tail,message] of [
-    [[2],/modifier/],[[1,2],/storage type/],[[1,1,4,7],/hasher/],[[1,1,0],/Empty/],
-  ] as const)assert.throws(()=>decodeNativeMetadata(wire([...storage,...tail])),message);
-  assert.throws(()=>new NativeScaleReader("0x77").compact(),/u256/);
+  const storage = [0, 4, 4, 80, 1, 4, 80, 4, 4, 77];
+  for (const [tail, message] of [
+    [[2], /modifier/],
+    [[1, 2], /storage type/],
+    [[1, 1, 4, 7], /hasher/],
+    [[1, 1, 0], /Empty/],
+  ] as const)
+    assert.throws(
+      () => decodeNativeMetadata(wire([...storage, ...tail])),
+      message,
+    );
+  assert.throws(() => new NativeScaleReader("0x77").compact(), /u256/);
 });
-test("reader budgets, recursive compact types and aggregate encoding limits cannot be bypassed",()=>{
-  const metadata=model();
-  metadata.types.set(33,{id:33,path:[],definition:{kind:"composite",fields:[{name:null,type:33}]}});
-  metadata.types.set(34,{id:34,path:[],definition:{kind:"compact",type:33}});
-  assert.throws(()=>decodeNativeValue(metadata,34,"0x04"),/recursion/);
-  assert.throws(()=>encodeNativeValue(metadata,34,"1"),/recursion/);
-  metadata.types.set(35,{id:35,path:[],definition:{kind:"sequence",type:8}});
-  assert.throws(()=>encodeNativeValue(metadata,35,Array(8193).fill("1")),/byte budget/);
-  assert.equal(decodeNativeValue(metadata,9,"0x00"),"0");
-  assert.equal(nativeHex(encodeNativeValue(metadata,9,"1")),"0x01");
-  const oversized=new NativeScaleReader(`0x${"00".repeat(262145)}`,262145);
-  assert.throws(()=>decodeNativeValue(metadata,3,oversized),/value reader/);
-  for(const offset of [-1,0.5,1]){
-    const reader=new NativeScaleReader("0x");reader.offset=offset;
-    assert.throws(()=>decodeNativeValue(metadata,3,reader),/value reader/);
+test("reader budgets, recursive compact types and aggregate encoding limits cannot be bypassed", () => {
+  const metadata = model();
+  metadata.types.set(33, {
+    id: 33,
+    path: [],
+    definition: { kind: "composite", fields: [{ name: null, type: 33 }] },
+  });
+  metadata.types.set(34, {
+    id: 34,
+    path: [],
+    definition: { kind: "compact", type: 33 },
+  });
+  assert.throws(() => decodeNativeValue(metadata, 34, "0x04"), /recursion/);
+  assert.throws(() => encodeNativeValue(metadata, 34, "1"), /recursion/);
+  metadata.types.set(35, {
+    id: 35,
+    path: [],
+    definition: { kind: "sequence", type: 8 },
+  });
+  assert.throws(
+    () => encodeNativeValue(metadata, 35, Array(8193).fill("1")),
+    /byte budget/,
+  );
+  assert.equal(decodeNativeValue(metadata, 9, "0x00"), "0");
+  assert.equal(nativeHex(encodeNativeValue(metadata, 9, "1")), "0x01");
+  const oversized = new NativeScaleReader(`0x${"00".repeat(262145)}`, 262145);
+  assert.throws(
+    () => decodeNativeValue(metadata, 3, oversized),
+    /value reader/,
+  );
+  for (const offset of [-1, 0.5, 1]) {
+    const reader = new NativeScaleReader("0x");
+    reader.offset = offset;
+    assert.throws(() => decodeNativeValue(metadata, 3, reader), /value reader/);
   }
 });

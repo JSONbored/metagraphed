@@ -172,7 +172,7 @@ function NativeRuntimeExplorer({
           <label className="space-y-1 text-13">
             Feature
             <select
-            disabled={busy}
+              disabled={busy}
               className={control}
               value={feature}
               onChange={(event) => {
@@ -190,21 +190,27 @@ function NativeRuntimeExplorer({
           <label className="space-y-1 text-13">
             Subnet
             <input
-            disabled={busy}
+              disabled={busy}
               className={control}
               inputMode="numeric"
               value={netuid}
-              onChange={(event) => { setNetuid(event.target.value); setResult(null); }}
+              onChange={(event) => {
+                setNetuid(event.target.value);
+                setResult(null);
+              }}
             />
           </label>
           {selected.account && (
             <label className="space-y-1 text-13">
               Coldkey
               <input
-            disabled={busy}
+                disabled={busy}
                 className={control}
                 value={coldkey}
-                onChange={(event) => { setColdkey(event.target.value); setResult(null); }}
+                onChange={(event) => {
+                  setColdkey(event.target.value);
+                  setResult(null);
+                }}
                 placeholder="SS58 address or 0x…"
               />
             </label>
@@ -213,10 +219,13 @@ function NativeRuntimeExplorer({
             <label className="space-y-1 text-13">
               Hotkey
               <input
-            disabled={busy}
+                disabled={busy}
                 className={control}
                 value={hotkey}
-                onChange={(event) => { setHotkey(event.target.value); setResult(null); }}
+                onChange={(event) => {
+                  setHotkey(event.target.value);
+                  setResult(null);
+                }}
                 placeholder="SS58 address or 0x…"
               />
             </label>
@@ -249,7 +258,7 @@ function NativeRuntimeExplorer({
           <label className="space-y-1 text-13">
             Contract
             <select
-            disabled={busy}
+              disabled={busy}
               className={control}
               value={api ? "api" : "pallet"}
               onChange={(event) => {
@@ -264,7 +273,7 @@ function NativeRuntimeExplorer({
           <label className="min-w-0 flex-1 space-y-1 text-13">
             Name
             <input
-            disabled={busy}
+              disabled={busy}
               className={control}
               value={namespace}
               onChange={(event) => {
@@ -284,7 +293,7 @@ function NativeRuntimeExplorer({
               <label className="min-w-0 flex-1 space-y-1 text-13">
                 Operation
                 <select
-            disabled={busy}
+                  disabled={busy}
                   className={control}
                   value={memberIndex}
                   onChange={(event) => {
@@ -341,7 +350,7 @@ function NativeRuntimeExplorer({
                 <label className="block space-y-1 text-13">
                   Arguments (JSON array)
                   <textarea
-            disabled={busy}
+                    disabled={busy}
                     className={`${control} font-mono`}
                     rows={3}
                     value={args}
@@ -358,13 +367,44 @@ function NativeRuntimeExplorer({
                 <button className={button} disabled={busy} type="submit">
                   {member.kind === "prepare" ? "Prepare unsigned call" : "Read operation"}
                 </button>
-                {member.kind==="storage"&&member.args.length>0&&<div className="space-y-2">
-                  <p className="text-13 text-ink-muted">Browse records with [] for all keys, or supply leading keys to narrow the map. Each page stays at the same finalized block.</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button className={button} disabled={busy} type="button" onClick={()=>action(()=>[entryOperation(member,args)],description.source.finalized_block_hash)}>Browse records</button>
-                    {result?.results[0]?.kind==="entries"&&nativePageCursor(result)&&<button className={button} disabled={busy} type="button" onClick={()=>action(()=>[entryOperation(member,args,nativePageCursor(result)!)],result.source.finalized_block_hash)}>Next records</button>}
+                {member.kind === "storage" && member.args.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-13 text-ink-muted">
+                      Browse records with [] for all keys, or supply leading keys to narrow the map.
+                      Each page stays at the same finalized block.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        className={button}
+                        disabled={busy}
+                        type="button"
+                        onClick={() =>
+                          action(
+                            () => [entryOperation(member, args)],
+                            description.source.finalized_block_hash,
+                          )
+                        }
+                      >
+                        Browse records
+                      </button>
+                      {result?.results[0]?.kind === "entries" && nativePageCursor(result) && (
+                        <button
+                          className={button}
+                          disabled={busy}
+                          type="button"
+                          onClick={() =>
+                            action(
+                              () => [entryOperation(member, args, nativePageCursor(result)!)],
+                              result.source.finalized_block_hash,
+                            )
+                          }
+                        >
+                          Next records
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>}
+                )}
               </form>
             )}
           </div>

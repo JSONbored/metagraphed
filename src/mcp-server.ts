@@ -11530,7 +11530,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_native_runtime",
     title: "Read native chain features and prepare unsigned calls",
     description:
-      "Use finalized runtime metadata to read native storage items, constants and audited read runtime APIs, including current collateral, locks, pending delegation, mechanism state and hyperparameters. Start with describe for a pallet/API, then request its exact operation. At most 16 operations share one source and type registry; identical reads are coalesced. Integers are exact decimal strings, bytes are hex, enums are {variant,fields}. prepare returns call method bytes for explicit wallet review and signature; it submits nothing. Mirrors POST /api/v1/native-runtime.",
+      "Use finalized runtime metadata to read native storage items, map records, constants and audited read runtime APIs, including collateral, locks, pending delegation, mechanisms and hyperparameters. Start with describe for a pallet/API. entries accepts leading keys and returns next_cursor; continue with the same source as_of hash. At most 16 operations share one source and type registry; identical reads are coalesced. Integers are exact decimal strings, bytes are hex, enums are {variant,fields}. prepare returns call method bytes for explicit wallet review and signature; it submits nothing. Mirrors POST /api/v1/native-runtime.",
     inputSchema: inputJsonSchema(NativeRuntimeRequestSchema),
     async handler(args, ctx) {
       const parsed = NativeRuntimeRequestSchema.safeParse(args);

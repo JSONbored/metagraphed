@@ -4,6 +4,16 @@ import { encodeSs58 } from "./ss58";
 
 const key=`0x${"12".repeat(32)}`;
 const artifact:NativeArtifact={schema_version:1,source:{network:"finney",network_genesis_hash:key,finalized_block_hash:key,finalized_block:"500",runtime_spec_version:470,runtime_transaction_version:1,runtime_code_hash:null,metadata_version:15,metadata_sha256:key},types:[{id:0,path:[],definition:{kind:"primitive",primitive:6}},{id:1,path:["NetUid"],definition:{kind:"composite",fields:[{name:null,type:0}]}},{id:2,path:[],definition:{kind:"tuple",types:[0,1]}}],results:[]};
+test("new hyperparameter identifiers become readable labels without rounding values or discarding opaque names",()=>{
+  const value=[{name:"0x6675747572655f6669656c64",value:{variant:"U128",fields:"340282366920938463463374607431768211455"}},{name:"0xff",value:true},{name:"0x00",value:false}];
+  const data={...artifact,results:[{kind:"runtime" as const,api:"SubnetInfoRuntimeApi",member:"get_subnet_hyperparams_v3",contract:{},value}]};
+  const original=JSON.stringify(data);
+  const rows=nativeValueRows(data);
+  expect(rows).toContainEqual(expect.objectContaining({field:expect.stringContaining("future_field.fields"),value:"340282366920938463463374607431768211455"}));
+  expect(rows).toContainEqual(expect.objectContaining({value:"0xff"}));
+  expect(rows).toContainEqual(expect.objectContaining({value:"0x00"}));
+  expect(JSON.stringify(data)).toBe(original);
+});
 test("map browsing accepts leading keys and preserves exact cursor context",()=>{
   const member={kind:"storage" as const,pallet:"SubtensorModule",member:"MinerCollateral",args:[{name:"netuid",type:0},{name:"hotkey",type:1}]};
   expect(entryOperation(member,"[]")).toMatchObject({kind:"entries",args:[],limit:16});
