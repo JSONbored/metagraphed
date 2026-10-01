@@ -449,7 +449,11 @@ export function ValidatorDetailPage() {
               options={WINDOWS}
               value={window}
               onChange={(next: ValidatorWindow) =>
-                void navigate({ to: ".", search: (prev) => ({ ...prev, window: next }), replace: true })
+                void navigate({
+                  to: ".",
+                  search: (prev) => ({ ...prev, window: next }),
+                  replace: true,
+                })
               }
             />
           }

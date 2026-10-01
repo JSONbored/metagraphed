@@ -464,9 +464,16 @@ function NativeRuntimeExplorer({
               caption="Exact native runtime results"
             />
           )}
-          {result?.results.map((item, index) => item.kind === "prepare" && (
-            <NativeCallWallet key={`${result.source.finalized_block_hash}:${item.call_data}:${index}`} artifact={result} index={index} />
-          ))}
+          {result?.results.map(
+            (item, index) =>
+              item.kind === "prepare" && (
+                <NativeCallWallet
+                  key={`${result.source.finalized_block_hash}:${item.call_data}:${index}`}
+                  artifact={result}
+                  index={index}
+                />
+              ),
+          )}
           <details>
             <summary className="cursor-pointer text-13 text-ink-muted">
               Complete response and shared type contract

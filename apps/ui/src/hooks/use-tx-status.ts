@@ -33,7 +33,7 @@ export interface UseTxStatusResult {
   submit: (
     api: ApiPromise,
     extrinsic: SubmittableExtrinsic<"promise">,
-    options: { signerAddress: string; signer: Signer; idempotencyKey: string },
+    options: { signerAddress: string; signer: Signer; idempotencyKey: string; nonce?: string },
   ) => Promise<void>;
   reset: () => void;
 }

@@ -20,7 +20,7 @@ beforeEach(() => {
   mocks.providers.length = 0;
   vi.stubGlobal("window", {});
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 test("wallet connections stay partitioned by the requested network and share concurrent setup", async () => {
   const { getApi, rpcEndpointForNetwork } = await import("./chain-connection");
   mocks.create.mockImplementation(async ({ provider }) => ({ endpoint: provider.endpoint }));
@@ -44,4 +44,20 @@ test("failed connection attempts disconnect their provider and permit a clean re
   await expect(getApi()).resolves.toEqual({ ready: true });
   expect(mocks.providers).toHaveLength(2);
   expect(mocks.providers[1].disconnect).not.toHaveBeenCalled();
+});
+test("a stalled connection has a bounded retry and releases any API that resolves too late", async () => {
+  vi.useFakeTimers();
+  const { getApi } = await import("./chain-connection");
+  let resolve!: (api: unknown) => void;
+  mocks.create.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
+  const pending = getApi();
+  const failed = expect(pending).rejects.toThrow(/timed out/);
+  await vi.advanceTimersByTimeAsync(30_000); await failed;
+  expect(mocks.providers[0].disconnect).toHaveBeenCalledOnce();
+  const late = { disconnect: vi.fn(async () => {}) };
+  resolve(late); await vi.advanceTimersByTimeAsync(0);
+  expect(late.disconnect).toHaveBeenCalledOnce();
+  mocks.create.mockResolvedValueOnce({ ready: true });
+  await expect(getApi()).resolves.toEqual({ ready: true });
+  expect(mocks.create).toHaveBeenCalledTimes(2);
 });

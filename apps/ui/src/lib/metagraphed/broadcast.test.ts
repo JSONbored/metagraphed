@@ -132,13 +132,24 @@ describe("submitStakeExtrinsic", () => {
   it("pins the reviewed native nonce and partitions duplicate protection by account and genesis", async () => {
     const intent = { callData: "0x0700", address: HOTKEY, genesisHash: "0x1111" };
     const key = computeIdempotencyKey(intent, "4294967295", "native-review");
-    expect(key).not.toBe(computeIdempotencyKey({ ...intent, address: "other-account" }, "4294967295", "native-review"));
-    expect(key).not.toBe(computeIdempotencyKey({ ...intent, genesisHash: "0x2222" }, "4294967295", "native-review"));
+    expect(key).not.toBe(
+      computeIdempotencyKey({ ...intent, address: "other-account" }, "4294967295", "native-review"),
+    );
+    expect(key).not.toBe(
+      computeIdempotencyKey({ ...intent, genesisHash: "0x2222" }, "4294967295", "native-review"),
+    );
     const { extrinsic, getCapturedOptions } = makeFakeExtrinsic();
     await submitStakeExtrinsic(fakeApi, extrinsic, {
-      signerAddress: HOTKEY, signer: fakeSigner, idempotencyKey: key, nonce: "4294967295",
+      signerAddress: HOTKEY,
+      signer: fakeSigner,
+      idempotencyKey: key,
+      nonce: "4294967295",
     });
-    expect(getCapturedOptions()).toEqual({ signer: fakeSigner, era: DEFAULT_MORTALITY_BLOCKS, nonce: "4294967295" });
+    expect(getCapturedOptions()).toEqual({
+      signer: fakeSigner,
+      era: DEFAULT_MORTALITY_BLOCKS,
+      nonce: "4294967295",
+    });
   });
 
   it("marks the idempotency key as used and refuses a second submission with the same key", async () => {

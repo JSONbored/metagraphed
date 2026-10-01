@@ -67,11 +67,27 @@ export async function getApi(endpoint: string = DEFAULT_RPC_ENDPOINT): Promise<A
     pending = (async () => {
       const { ApiPromise, WsProvider } = await import("@polkadot/api");
       const provider = new WsProvider(endpoint);
+      let expired = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const connecting = ApiPromise.create({ provider, throwOnConnect: true });
+      void connecting.then((connected) => {
+        if (expired) void connected.disconnect().catch(() => {});
+      }, () => {});
       try {
-        return await ApiPromise.create({ provider });
+        return await Promise.race([
+          connecting,
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => {
+              expired = true;
+              reject(new Error("The wallet connection timed out. Retry to reconnect."));
+            }, 30_000);
+          }),
+        ]);
       } catch (error) {
-        await provider.disconnect();
+        await provider.disconnect().catch(() => {});
         throw error;
+      } finally {
+        clearTimeout(timer);
       }
     })();
     cachedApis.set(endpoint, pending);

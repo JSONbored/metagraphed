@@ -7,7 +7,7 @@ import path from "node:path";
 import {format,resolveConfig} from "prettier";
 test("retain remote generated contracts and formatted edits for review",async()=>{
   if(!process.env.CI)return;
-  execFileSync("npm",["run","build","--workspace=packages/client"],{stdio:"pipe"});
+  for(const workspace of ["packages/client","packages/chain-summaries","packages/ui-kit"])execFileSync("npm",["run","build",`--workspace=${workspace}`],{stdio:"pipe"});
   execFileSync("node",["scripts/generate-openapi-docs.ts"],{cwd:path.resolve("apps/ui"),stdio:"pipe"});
   const {Generator,getConfig}=await import("@tanstack/router-generator");
   const uiRoot=path.resolve("apps/ui");
@@ -31,7 +31,7 @@ test("retain remote generated contracts and formatted edits for review",async()=
   // Diagnose UI types and wallet regressions against fresh remote-generated
   // contracts even while the independent UI job is waiting for their commit.
   const options={stdio:"pipe" as const,encoding:"utf8" as const,timeout:60000,env:{...process.env,NODE_V8_COVERAGE:undefined}};
-  for(const args of [["run","typecheck","--workspace=apps/ui"],["run","test","--workspace=apps/ui","--","src/lib/metagraphed/native-call-wallet.test.ts","src/lib/metagraphed/chain-connection.test.ts","src/lib/metagraphed/broadcast.test.ts","src/lib/metagraphed/transaction-subscriptions.test.ts"]]){
+  for(const args of [["run","typecheck","--workspace=apps/ui"],["run","test","--workspace=apps/ui","--","src/lib/metagraphed/native-call-wallet.test.ts","src/lib/metagraphed/chain-connection.test.ts","src/lib/metagraphed/chain-connection-network.test.ts","src/lib/metagraphed/broadcast.test.ts","src/lib/metagraphed/transaction-subscriptions.test.ts"]]){
     try{console.log("NATIVE_UI_REMOTE_DIAGNOSTIC",execFileSync("npm",args,options));}
     catch(error){console.log("NATIVE_UI_REMOTE_DIAGNOSTIC_ERROR",String((error as {stdout?:unknown}).stdout));}
   }

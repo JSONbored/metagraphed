@@ -240,11 +240,15 @@ describe("live delegate-take bounds/rate-limit queries", () => {
       [100n, { frozen: codec(200n) }, 0n],
       [100n, {}, 100n],
     ] as const) {
-      const api = { query: { system: { account: async () => ({ data: { free: codec(free), ...extra } }) } } } as unknown as ApiPromise;
+      const api = {
+        query: { system: { account: async () => ({ data: { free: codec(free), ...extra } }) } },
+      } as unknown as ApiPromise;
       await expect(getFreeBalance(api, "account")).resolves.toBe(expected);
     }
     for (const frozen of [{}, { toBigInt: () => "100" }, { toBigInt: () => -1n }]) {
-      const api = { query: { system: { account: async () => ({ data: { free: codec(1000n), frozen } }) } } } as unknown as ApiPromise;
+      const api = {
+        query: { system: { account: async () => ({ data: { free: codec(1000n), frozen } }) } },
+      } as unknown as ApiPromise;
       await expect(getFreeBalance(api, "account")).rejects.toThrow(/invalid frozen/);
     }
   });
