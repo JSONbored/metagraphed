@@ -384,19 +384,18 @@ export async function mcpServerCardResponse(
   env: Env,
 ): Promise<Response> {
   // IMPORTED HERE, NOT AT MODULE SCOPE (#10424). src/mcp-server.ts is ~12.5k
-  // lines; these eight bindings are the only things this module uses from it,
-  // and six of them are plain constants. A static import made every consumer
+  // lines; these registries and constants are all this handler uses from it.
+  // A static import made every consumer
   // of discovery.ts -- which is most of the request-handler graph -- load the
   // whole MCP server: 19 of the module-mocking tests that reach a heavy module
   // reached it through THIS edge, paying ~1.8s of import each because those
   // tests cannot share a module registry (#8922).
   //
-  // Deferred rather than split into a leaf constants module: listToolDefinitions
-  // genuinely needs the tool registry, so extracting only the constants would
-  // leave the expensive edge in place for a smaller win and two files.
+  // Count the raw registries. Building complete tool schemas just to count
+  // them would normalize and freeze the entire catalog on a cold card read.
   const {
-    listToolDefinitions,
-    listPromptDefinitions,
+    MCP_TOOLS,
+    MCP_PROMPTS,
     MCP_SERVER_INFO,
     MCP_INSTRUCTIONS,
     MCP_PROTOCOL_VERSIONS,
@@ -482,8 +481,8 @@ export async function mcpServerCardResponse(
     // the MCP list operations for protocol clients, and the agent-tools
     // documents for OpenAI/Anthropic-style runtimes.
     primitive_counts: {
-      tools: listToolDefinitions().length,
-      prompts: listPromptDefinitions().length,
+      tools: MCP_TOOLS.length,
+      prompts: MCP_PROMPTS.length,
       resource_templates: MCP_RESOURCE_TEMPLATES.length,
     },
     primitive_definitions: {
