@@ -1273,6 +1273,7 @@ import {
   oauthAccountIdFrom,
   resolveOAuthAccountTierWithStatus,
 } from "./oauth-account-tier.ts";
+import { mcpRequestBodyBytes } from "./mcp-request-body.ts";
 import type { AccountKind } from "./account-kind.ts";
 import {
   DEREGISTRATION_UNAVAILABLE_CODE,
@@ -18408,9 +18409,8 @@ function bodyTooLargeResponse() {
 // Streams the request body with an early-abort byte counter instead of
 // buffering it whole via request.text() first -- a missing, chunked, or
 // simply untruthful Content-Length header bypasses a pre-read
-// `contentLength > MAX_MCP_BODY_BYTES` check entirely (this endpoint is
-// public and unauthenticated, rate-limited by IP only -- rate limiting
-// throttles request COUNT, not a single request's body size), so the
+// `contentLength > MAX_MCP_BODY_BYTES` check entirely (rate limiting
+// throttles request COUNT, not a single authenticated request's body size), so the
 // declared length can only ever be a fast-path optimization, never the
 // actual enforcement. Mirrors src/graphql.ts's readLimitedJson (same
 // vulnerability class, already fixed there) -- kept as its own copy rather
@@ -18453,12 +18453,7 @@ async function readLimitedMcpBody(request: Request) {
     }
   }
 
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
+  const bytes = mcpRequestBodyBytes(chunks, total);
 
   try {
     return { value: JSON.parse(new TextDecoder().decode(bytes)) };
@@ -18682,6 +18677,9 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
 // optional; supporting it lets a well-behaved client release its
 // McpSessionHub promptly instead of waiting out MCP_SESSION_IDLE_TTL_MS).
 async function handleMcpTerminateRequest(request: Request, env: Env) {
+  const versionError = validateMcpProtocolVersionHeader(request);
+  if (versionError) return versionError;
+
   const rawSessionId = request.headers.get("mcp-session-id");
   if (!isValidMcpSessionId(rawSessionId)) {
     return jsonResponse(

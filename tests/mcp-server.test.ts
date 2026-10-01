@@ -2050,6 +2050,55 @@ describe("MCP transport handling", () => {
   });
 
   describe("DELETE /mcp — explicit session termination (#4983 MCP half)", () => {
+    test("an unsupported protocol version is refused before terminating the session", async () => {
+      const hub = fakeMcpSessionHubBinding();
+      const env = { MCP_SESSION_HUB: hub } as unknown as Env;
+      const snapshots = [];
+      for (const method of ["GET", "DELETE"]) {
+        const response = await handleMcpRequest(
+          new Request(MCP_URL, {
+            method,
+            headers: {
+              "mcp-session-id": A_SESSION_ID,
+              "mcp-protocol-version": "1999-01-01",
+            },
+          }),
+          env,
+        );
+        assert.equal(response.status, 400);
+        snapshots.push({
+          headers: [...response.headers],
+          body: await response.text(),
+        });
+      }
+      assert.deepEqual(snapshots[1], snapshots[0]);
+      assert.equal(hub.calls.length, 0);
+      assert.match(snapshots[0].body, /Unsupported MCP-Protocol-Version/);
+    });
+
+    test.each([null, "", ...MCP_PROTOCOL_VERSIONS])(
+      "supported and absent protocol versions retain DELETE behavior (%j)",
+      async (version) => {
+        const hub = fakeMcpSessionHubBinding();
+        const headers: Record<string, string> = {
+          "mcp-session-id": A_SESSION_ID,
+        };
+        if (version !== null) headers["mcp-protocol-version"] = version;
+        const response = await handleMcpRequest(
+          new Request(MCP_URL, {
+            method: "DELETE",
+            headers,
+          }),
+          { MCP_SESSION_HUB: hub } as unknown as Env,
+        );
+        assert.equal(response.status, 204);
+        assert.equal(hub.calls.length, 1);
+        assert.deepEqual(JSON.parse(hub.calls[0].init.body), {
+          sessionId: A_SESSION_ID,
+        });
+      },
+    );
+
     test("without an Mcp-Session-Id header, rejects with 400", async () => {
       const res = await rpc(null, { method: "DELETE" });
       assert.equal(res.status, 400);

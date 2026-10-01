@@ -69,6 +69,14 @@ describe("oauthAccountIdFrom", () => {
   test("accepts a positive integer, as a number or a JSON-roundtripped string", () => {
     assert.equal(oauthAccountIdFrom(7), 7);
     assert.equal(oauthAccountIdFrom("7"), 7);
+    assert.equal(
+      oauthAccountIdFrom(Number.MAX_SAFE_INTEGER),
+      Number.MAX_SAFE_INTEGER,
+    );
+    assert.equal(
+      oauthAccountIdFrom(String(Number.MAX_SAFE_INTEGER)),
+      Number.MAX_SAFE_INTEGER,
+    );
   });
 
   test("rejects everything that is not a positive integer", () => {
@@ -89,6 +97,9 @@ describe("oauthAccountIdFrom", () => {
       -1,
       Number.NaN,
       Number.POSITIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 1,
+      "9007199254740993",
+      "1e100",
     ]) {
       assert.equal(oauthAccountIdFrom(value), null, String(value));
     }
@@ -96,6 +107,16 @@ describe("oauthAccountIdFrom", () => {
 });
 
 describe("OAuth account lookup failure classification", () => {
+  test.each([undefined, null, 1])(
+    "an absent or invalid environment stays unavailable (%j)",
+    async (env) => {
+      assert.deepEqual(
+        await resolveOAuthAccountTierWithStatus(env as unknown as Env, 41),
+        { found: false },
+      );
+    },
+  );
+
   test("only an explicit missing account is retained across the negative cache", async () => {
     const { env, requests } = envWith({ found: false });
     assert.deepEqual(await resolveOAuthAccountTierWithStatus(env, 42), {

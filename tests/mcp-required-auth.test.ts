@@ -320,6 +320,38 @@ describe("required authentication at the public MCP router", () => {
     assert.equal(res.headers.get("x-ratelimit-scope"), "daily-quota");
   });
 
+  test("concurrent OAuth requests retain independent lookups and quota enforcement", async () => {
+    const f = fixture("paid");
+    f.exhaustQuota();
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, (_, id) =>
+        handleMcpRequest(
+          request({
+            jsonrpc: "2.0",
+            id,
+            method: "tools/call",
+            params: {
+              name: "get_subnet",
+              arguments: { netuid: 19 },
+            },
+          }),
+          f.env,
+          f.deps,
+        ),
+      ),
+    );
+    assert.deepEqual(
+      responses.map((response) => response.status),
+      Array(8).fill(429),
+    );
+    assert.equal(
+      f.paths.filter((path) => path.endsWith("/github/tier")).length,
+      8,
+    );
+    assert.equal(f.paths.filter((path) => path.endsWith("/quota")).length, 8);
+    assert.equal(f.keyed.mock.calls.length, 8);
+  });
+
   test("account blocks still refuse before body parsing and quota spending", async () => {
     const f = fixture();
     f.store.set(

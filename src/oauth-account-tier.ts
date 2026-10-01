@@ -76,7 +76,7 @@ function cacheKeyFor(accountId: number): string {
  *
  * The OAuth provider stores props as JSON, so an id that went in as a number
  * can come back as a string -- and a grant minted by an older build may carry
- * neither. Everything that is not a positive integer resolves to null, which
+ * neither. Everything that is not a positive safe integer resolves to null, which
  * the caller treats as "anonymous", never as a permissive default. This is the
  * same direction applyTieredRateLimit already takes for an unrecognised tier
  * and `tierClears` takes for an unknown one: an id we cannot read is not
@@ -85,7 +85,7 @@ function cacheKeyFor(accountId: number): string {
 export function oauthAccountIdFrom(value: unknown): number | null {
   if (typeof value !== "number" && typeof value !== "string") return null;
   const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? id : null;
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 // Calls the data-api Worker's internal tier route over the service binding --
@@ -155,7 +155,7 @@ export async function resolveOAuthAccountTierWithStatus(
 ): Promise<OAuthAccountTierResolution> {
   const accountId = oauthAccountIdFrom(rawAccountId);
   if (accountId === null) return { found: false };
-
+  if (typeof env !== "object" || env === null) return { found: false };
   const kv = env?.METAGRAPH_CONTROL;
   const cacheKey = cacheKeyFor(accountId);
   if (kv?.get) {
