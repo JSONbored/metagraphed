@@ -137,7 +137,27 @@ export const RootBasketsArtifactSchema = z
       })
       .strict(),
   ])
-  .meta({ type: "object" })
+  .meta({
+    type: "object",
+    examples: [
+      {
+        schema_version: 1,
+        network: "finney",
+        status: "available",
+        source: {
+          network: "finney",
+          network_genesis_hash: `0x${"44".repeat(32)}`,
+          finalized_block_hash: `0x${"33".repeat(32)}`,
+          finalized_block: "500",
+          runtime_spec_version: 469,
+          runtime_api_version: 5,
+          decoder_version: "subtensor-v469-370bac46-v1",
+          metadata_sha256: `0x${"55".repeat(32)}`,
+        },
+        data: { kind: "directory", pricing: [], next_after: null, limit: 64 },
+      },
+    ],
+  })
   .describe(
     "Finalized native Root basket state from the audited node-subtensor v469/API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.",
   );

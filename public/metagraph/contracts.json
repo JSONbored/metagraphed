@@ -1467,6 +1467,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Bounded finalized native Root basket pricing or one fund's detail. Audited v469/API 5 only; no static artifact or claim submission.",
+      "id": "root-baskets",
+      "path": "/metagraph/root-baskets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/RootBasketsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Bounded native basket positions and dust-aware claim previews, at one finalized block. Relationship pagination prevents silent omission; no static artifact.",
+      "id": "account-root-baskets",
+      "path": "/metagraph/accounts/{ss58}/root-baskets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/RootBasketsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Deprecated per-subnet Root-claim compatibility read at a finalized block. The audited node-subtensor v440 adapter supplies legacy values; v441+ is unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys stay null unless supported. Runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits claim_root.",
       "id": "account-root-claim",
       "path": "/metagraph/accounts/{ss58}/root-claim.json",

@@ -99,7 +99,7 @@ function RootBasketsView({
               rows={directory?.pricing ?? []}
               columns={columns}
               rowKey={(row) => row.hotkey}
-              paginate={false}
+              pageSize={16}
               source="root-baskets"
               empty="No active funds on this page."
             />
@@ -153,13 +153,9 @@ function RootBasketsView({
                         label: "realizable NAV",
                         value: basketTao(fund.summary.realizable_nav_rao),
                       },
-                      {
-                        label: "trading",
-                        value:
-                          fund.trading.enabled && !fund.trading.frozen
-                            ? "Enabled"
-                            : "Disabled or frozen",
-                      },
+                      { label: "trading enabled", value: fund.trading.enabled ? "Yes" : "No" },
+                      { label: "trading frozen", value: fund.trading.frozen ? "Yes" : "No" },
+                      { label: "refill blocks", value: fund.trading.refill_blocks },
                       { label: "turnover available", value: basketTao(fund.trading.available_rao) },
                       { label: "turnover budget", value: basketTao(fund.trading.budget_rao) },
                       {
@@ -182,7 +178,7 @@ function RootBasketsView({
                     caption="Fund holdings"
                     rows={fund.summary.holdings}
                     rowKey={(row) => String(row.netuid)}
-                    paginate={false}
+                    pageSize={16}
                     source="root-basket-holdings"
                     columns={[
                       {
@@ -207,6 +203,10 @@ function RootBasketsView({
                       },
                     ]}
                   />
+                  <p className="text-13 text-ink-muted">
+                    Holdings describe current balances. Target allocations and historical return
+                    windows are not supplied by this view.
+                  </p>
                 </>
               ) : (
                 <p className="text-13 text-ink-muted">

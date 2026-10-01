@@ -198,8 +198,7 @@ export interface ChainRpcBatchCall {
  * progress and a stall.
  */
 export type ChainRpcBatchResult =
-  | { ok: true; result: unknown }
-  | { ok: false; error: string };
+  { ok: true; result: unknown } | { ok: false; error: string };
 
 /**
  * Call many methods in ONE HTTP request; results align to `calls` by index.

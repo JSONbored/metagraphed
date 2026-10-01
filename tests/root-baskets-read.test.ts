@@ -129,6 +129,35 @@ function stubNetwork() {
   return fixture;
 }
 
+test("admitted REST reads use the selected network's existing rate-limit bucket", async () => {
+  stubNetwork();
+  const keys: string[] = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    RPC_RATE_LIMITER: {
+      limit: async ({ key }: { key: string }) => {
+        keys.push(key);
+        return { success: true };
+      },
+    },
+  };
+  for (const path of ["/api/v1/root-baskets", "/api/v1/testnet/root-baskets"]) {
+    const response = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      env as Env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const result = RootBasketsArtifactSchema.parse(
+      (await response.json()).data,
+    );
+    assert.equal(result.status, "available");
+    assert.equal(result.network, path.includes("testnet") ? "test" : "finney");
+  }
+  assert.match(keys[0]!, /^root-baskets:/);
+  assert.match(keys[1]!, /^testnet:root-baskets:/);
+});
+
 test("REST and MCP share exact data, limits and network selection", async () => {
   const fixture = stubNetwork();
   const env = createLocalArtifactEnv();

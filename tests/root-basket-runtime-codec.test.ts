@@ -68,6 +68,39 @@ test("frozen pricing layout preserves exact quantities and distinct marks", () =
   );
 });
 
+test("validated hex decoding removes per-byte temporary strings with identical bytes", () => {
+  const hex = pricingPage(Array(64).fill(BASKET_FIXTURE_PRICING)).slice(2);
+  const previous = () =>
+    Uint8Array.from(hex.match(/../g) ?? [], (part) =>
+      Number.parseInt(part, 16),
+    );
+  const current = () => Buffer.from(hex, "hex");
+  assert.deepEqual([...current()], [...previous()]);
+  const measure = (convert: () => Uint8Array) => {
+    for (let i = 0; i < 10; i++) convert();
+    const samples: number[] = [];
+    for (let pass = 0; pass < 5; pass++) {
+      const start = performance.now();
+      for (let i = 0; i < 100; i++) convert();
+      samples.push((performance.now() - start) / 100);
+    }
+    return samples.sort((a, b) => a - b)[2]!;
+  };
+  console.log(
+    "ROOT_BASKET_FIXTURE_HEX",
+    JSON.stringify({
+      decoded_bytes: hex.length / 2,
+      removed_temporary_byte_strings: hex.length / 2,
+      iterations_per_sample: 100,
+      samples: 5,
+      previous_median_ms: measure(previous),
+      direct_median_ms: measure(current),
+      bytes_equal: true,
+      production_observation: false,
+    }),
+  );
+});
+
 test("summary distinguishes root cash, subnet alpha and realizable valuation", () => {
   assert.deepEqual(decodeBasketSummary(`0x${BASKET_FIXTURE_SUMMARY}`), {
     hotkey: BASKET_FIXTURE_HOTKEY,

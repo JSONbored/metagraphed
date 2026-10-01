@@ -6,8 +6,16 @@ import { RootBasketCaptureSchema } from "./root-basket-capture.ts";
 
 const capture = RootBasketCaptureSchema.shape;
 const fund = capture.funds.element.shape;
-const u64 = fund.spot_nav_rao;
-const q64 = fund.raw_spot_price_q64_bits;
+// Preserve the input pipeline's decimal grammar in the published output schema.
+const u64 = fund.spot_nav_rao.meta({
+  pattern: "^(0|[1-9]\\d*)$",
+  maxLength: 20,
+  examples: ["9007199254740993"],
+});
+const q64 = fund.raw_spot_price_q64_bits.meta({
+  pattern: "^(0|[1-9]\\d*)$",
+  examples: ["18446744073709551616"],
+});
 const count = capture.expected_funds;
 export const ROOT_BASKET_READ_LIMITS = {
   page: 64,
@@ -25,7 +33,7 @@ export const RootBasketSourceSchema = z
     network: capture.network,
     network_genesis_hash: capture.network_genesis_hash,
     finalized_block_hash: capture.finalized_block_hash,
-    finalized_block: capture.finalized_block,
+    finalized_block: u64,
     runtime_spec_version: z.literal(469),
     runtime_api_version: z.literal(5),
     decoder_version: z.literal("subtensor-v469-370bac46-v1"),
@@ -78,7 +86,15 @@ export const RootBasketSummarySchema = z
     shares_atomic: u64,
     deposited_rao: u64,
     redeemed_rao: u64,
-    holdings: fund.holdings.max(ROOT_BASKET_READ_LIMITS.holdings),
+    holdings: z
+      .array(
+        fund.holdings.element.safeExtend({
+          quantity_atomic: u64,
+          spot_value_rao: u64,
+          realizable_value_rao: u64,
+        }),
+      )
+      .max(ROOT_BASKET_READ_LIMITS.holdings),
   })
   .strict();
 

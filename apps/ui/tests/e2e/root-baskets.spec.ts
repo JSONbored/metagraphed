@@ -13,6 +13,59 @@ import {
 
 test.use({ serviceWorkers: "block" });
 
+for (const width of [375, 768, 1280]) {
+  for (const theme of ["light", "dark"]) {
+    test(`native basket values remain readable at ${width}px in ${theme}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript((value) => window.localStorage.setItem("mg-theme", value), theme);
+      await page.route("**/api/v1/root-baskets*", (route) =>
+        route.fulfill({
+          json: new URL(route.request().url()).searchParams.has("hotkey")
+            ? BASKET_DETAIL
+            : basketResponse({
+                kind: "directory",
+                pricing: [BASKET_PRICING],
+                next_after: null,
+                limit: 64,
+              }),
+        }),
+      );
+      await gotoThroughRestart(page, `/validators?basket=${BASKET_KEY}`);
+      const section = page.locator("section#baskets");
+      await section.scrollIntoViewIfNeeded();
+      await expect(section.getByText("3 alpha_atomic", { exact: true })).toBeVisible();
+      await expect(section.getByText("9007199.254740993 TAO", { exact: true })).toHaveCount(2);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await page.route(`**/api/v1/accounts/${BASKET_ACCOUNT}/root-baskets*`, (route) =>
+        route.fulfill({
+          json: basketResponse({
+            kind: "account",
+            ss58: BASKET_ACCOUNT,
+            entries: [BASKET_RETAINED_CLAIM],
+            total_relationships: 1,
+            next_offset: null,
+            offset: 0,
+            limit: 16,
+          }),
+        }),
+      );
+      await gotoThroughRestart(page, `/accounts/${BASKET_ACCOUNT}`);
+      const account = page.locator("section#root-baskets");
+      await account.scrollIntoViewIfNeeded();
+      await expect(account.getByText("9007199.254740993 TAO", { exact: true })).toBeVisible();
+      await expect(account.getByRole("link", { name: BASKET_KEY })).toHaveAttribute(
+        "href",
+        `/validators?basket=${BASKET_KEY}#baskets`,
+      );
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+    });
+  }
+}
+
 test("basket discovery is lazy, follows empty pages and loads only the chosen fund", async ({
   page,
 }) => {

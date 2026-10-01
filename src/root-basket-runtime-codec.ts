@@ -22,9 +22,9 @@ class ScaleReader {
       !/^0x(?:[0-9a-fA-F]{2})*$/.test(hex)
     )
       throw new Error("Invalid or oversized basket SCALE response");
-    this.bytes = Uint8Array.from(hex.slice(2).match(/../g) ?? [], (part) =>
-      Number.parseInt(part, 16),
-    );
+    // Syntax is already validated. Decode directly without a string/array
+    // entry for every byte in the response.
+    this.bytes = Buffer.from(hex.slice(2), "hex");
   }
   take(size: number): Uint8Array {
     if (size > this.bytes.length - this.offset)

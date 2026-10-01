@@ -8319,6 +8319,72 @@
           "schema_version": 1
         }
       },
+      "RootBasketsArtifactResponse": {
+        "value": {
+          "data": {
+            "data": {
+              "kind": "directory",
+              "limit": 1,
+              "next_after": "example",
+              "pricing": [
+                {
+                  "bag_index_q64_bits": "example",
+                  "display_price_q64_bits": "example",
+                  "display_shares_q64_bits": "example",
+                  "first_block": "example",
+                  "hotkey": "example",
+                  "pending_entitlement_q64_bits": "Example Subnet",
+                  "provisional": false,
+                  "raw_spot_price_q64_bits": "example",
+                  "shares_atomic": "example",
+                  "spot_nav_rao": "example",
+                  "stake_index_q64_bits": "example",
+                  "stake_price_q64_bits": "example",
+                  "staker_twr_q64_bits": "example"
+                }
+              ]
+            },
+            "network": "finney",
+            "schema_version": 1,
+            "source": {
+              "decoder_version": "subtensor-v469-370bac46-v1",
+              "finalized_block": "example",
+              "finalized_block_hash": "example",
+              "metadata_sha256": "example",
+              "network": "finney",
+              "network_genesis_hash": "example",
+              "runtime_api_version": 5,
+              "runtime_spec_version": 469
+            },
+            "status": "available"
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "RpcEndpointsArtifactResponse": {
         "value": {
           "data": {
@@ -43807,6 +43873,647 @@
         ],
         "type": "string"
       },
+      "RootBasketAccountEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "claim": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootBasketClaimPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootBasketPosition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "hotkey",
+          "position",
+          "claim"
+        ],
+        "type": "object"
+      },
+      "RootBasketAccountPage": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/RootBasketAccountEntry"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "kind": {
+            "const": "account",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 16,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "maximum": 4096,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offset": {
+            "maximum": 4096,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "total_relationships": {
+            "maximum": 4096,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "ss58",
+          "entries",
+          "total_relationships",
+          "next_offset",
+          "offset",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "RootBasketBaseline": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "first_block": {
+                "const": "0",
+                "type": "string"
+              },
+              "price_divisor_q64_bits": {
+                "type": "null"
+              },
+              "provisional": {
+                "const": true,
+                "type": "boolean"
+              },
+              "rate0_q32_bits": {
+                "type": "null"
+              },
+              "tr_splice_q64_bits": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "provisional",
+              "first_block",
+              "price_divisor_q64_bits",
+              "rate0_q32_bits",
+              "tr_splice_q64_bits"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "first_block": {
+                "type": "string"
+              },
+              "price_divisor_q64_bits": {
+                "type": "string"
+              },
+              "provisional": {
+                "const": false,
+                "type": "boolean"
+              },
+              "rate0_q32_bits": {
+                "type": "string"
+              },
+              "tr_splice_q64_bits": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "provisional",
+              "first_block",
+              "price_divisor_q64_bits",
+              "rate0_q32_bits",
+              "tr_splice_q64_bits"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "RootBasketClaimPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "accrued_rao": {
+            "type": "string"
+          },
+          "dust_rows": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "flushed_credits": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "forfeited_estimate_rao": {
+            "type": "string"
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "owed_shares_atomic": {
+            "type": "string"
+          },
+          "redeemable_rao": {
+            "type": "string"
+          },
+          "rows": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rows_to_sell": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "swept_rows": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hotkey",
+          "owed_shares_atomic",
+          "accrued_rao",
+          "redeemable_rao",
+          "forfeited_estimate_rao",
+          "rows",
+          "rows_to_sell",
+          "dust_rows",
+          "swept_rows",
+          "flushed_credits"
+        ],
+        "type": "object"
+      },
+      "RootBasketDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline": {
+            "$ref": "#/components/schemas/RootBasketBaseline"
+          },
+          "kind": {
+            "const": "fund",
+            "type": "string"
+          },
+          "pricing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootBasketPricing"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "$ref": "#/components/schemas/RootBasketSummary"
+          },
+          "trading": {
+            "$ref": "#/components/schemas/RootBasketTradingStatus"
+          }
+        },
+        "required": [
+          "kind",
+          "pricing",
+          "summary",
+          "trading",
+          "baseline"
+        ],
+        "type": "object"
+      },
+      "RootBasketDirectory": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "directory",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "next_after": {
+            "anyOf": [
+              {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pricing": {
+            "items": {
+              "$ref": "#/components/schemas/RootBasketPricing"
+            },
+            "maxItems": 64,
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "pricing",
+          "next_after",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "RootBasketPosition": {
+        "additionalProperties": false,
+        "properties": {
+          "beta_atomic": {
+            "type": "string"
+          },
+          "display_beta_q64_bits": {
+            "type": "string"
+          },
+          "display_price_q64_bits": {
+            "type": "string"
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "realizable_value_rao": {
+            "type": "string"
+          },
+          "spot_value_rao": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hotkey",
+          "beta_atomic",
+          "display_beta_q64_bits",
+          "display_price_q64_bits",
+          "realizable_value_rao",
+          "spot_value_rao",
+          "provisional"
+        ],
+        "type": "object"
+      },
+      "RootBasketPricing": {
+        "additionalProperties": false,
+        "properties": {
+          "bag_index_q64_bits": {
+            "type": "string"
+          },
+          "display_price_q64_bits": {
+            "type": "string"
+          },
+          "display_shares_q64_bits": {
+            "type": "string"
+          },
+          "first_block": {
+            "type": "string"
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "pending_entitlement_q64_bits": {
+            "type": "string"
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "raw_spot_price_q64_bits": {
+            "type": "string"
+          },
+          "shares_atomic": {
+            "type": "string"
+          },
+          "spot_nav_rao": {
+            "type": "string"
+          },
+          "stake_index_q64_bits": {
+            "type": "string"
+          },
+          "stake_price_q64_bits": {
+            "type": "string"
+          },
+          "staker_twr_q64_bits": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hotkey",
+          "raw_spot_price_q64_bits",
+          "display_price_q64_bits",
+          "stake_price_q64_bits",
+          "pending_entitlement_q64_bits",
+          "staker_twr_q64_bits",
+          "bag_index_q64_bits",
+          "stake_index_q64_bits",
+          "first_block",
+          "provisional",
+          "spot_nav_rao",
+          "shares_atomic",
+          "display_shares_q64_bits"
+        ],
+        "type": "object"
+      },
+      "RootBasketReadData": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RootBasketDirectory"
+          },
+          {
+            "$ref": "#/components/schemas/RootBasketDetail"
+          },
+          {
+            "$ref": "#/components/schemas/RootBasketAccountPage"
+          }
+        ]
+      },
+      "RootBasketsArtifact": {
+        "description": "Finalized native Root basket state from the audited node-subtensor v469/API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/RootBasketReadData"
+              },
+              "network": {
+                "$ref": "#/components/schemas/BittensorNetwork"
+              },
+              "schema_version": {
+                "const": 1,
+                "type": "number"
+              },
+              "source": {
+                "$ref": "#/components/schemas/RootBasketSource"
+              },
+              "status": {
+                "const": "available",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "network",
+              "status",
+              "source",
+              "data"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "type": "null"
+              },
+              "network": {
+                "$ref": "#/components/schemas/BittensorNetwork"
+              },
+              "schema_version": {
+                "const": 1,
+                "type": "number"
+              },
+              "source": {
+                "type": "null"
+              },
+              "status": {
+                "const": "unsupported",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "network",
+              "status",
+              "source",
+              "data"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "type": "null"
+              },
+              "network": {
+                "$ref": "#/components/schemas/BittensorNetwork"
+              },
+              "schema_version": {
+                "const": 1,
+                "type": "number"
+              },
+              "source": {
+                "type": "null"
+              },
+              "status": {
+                "const": "unavailable",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "network",
+              "status",
+              "source",
+              "data"
+            ],
+            "type": "object"
+          }
+        ],
+        "type": "object"
+      },
+      "RootBasketSource": {
+        "additionalProperties": false,
+        "properties": {
+          "decoder_version": {
+            "const": "subtensor-v469-370bac46-v1",
+            "type": "string"
+          },
+          "finalized_block": {
+            "type": "string"
+          },
+          "finalized_block_hash": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "metadata_sha256": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "network": {
+            "$ref": "#/components/schemas/BittensorNetwork"
+          },
+          "network_genesis_hash": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "runtime_api_version": {
+            "const": 5,
+            "type": "number"
+          },
+          "runtime_spec_version": {
+            "const": 469,
+            "type": "number"
+          }
+        },
+        "required": [
+          "network",
+          "network_genesis_hash",
+          "finalized_block_hash",
+          "finalized_block",
+          "runtime_spec_version",
+          "runtime_api_version",
+          "decoder_version",
+          "metadata_sha256"
+        ],
+        "type": "object"
+      },
+      "RootBasketSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "deposited_rao": {
+            "type": "string"
+          },
+          "holdings": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "netuid": {
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "quantity_atomic": {
+                  "type": "string"
+                },
+                "quantity_unit": {
+                  "enum": [
+                    "rao",
+                    "alpha_atomic"
+                  ],
+                  "type": "string"
+                },
+                "realizable_value_rao": {
+                  "type": "string"
+                },
+                "spot_value_rao": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "netuid",
+                "quantity_atomic",
+                "quantity_unit",
+                "spot_value_rao",
+                "realizable_value_rao"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1024,
+            "type": "array"
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "realizable_nav_rao": {
+            "type": "string"
+          },
+          "redeemed_rao": {
+            "type": "string"
+          },
+          "shares_atomic": {
+            "type": "string"
+          },
+          "spot_nav_rao": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hotkey",
+          "realizable_nav_rao",
+          "spot_nav_rao",
+          "shares_atomic",
+          "deposited_rao",
+          "redeemed_rao",
+          "holdings"
+        ],
+        "type": "object"
+      },
+      "RootBasketTradingStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "available_rao": {
+            "type": "string"
+          },
+          "budget_rao": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "frozen": {
+            "type": "boolean"
+          },
+          "refill_blocks": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "frozen",
+          "refill_blocks",
+          "available_rao",
+          "budget_rao"
+        ],
+        "type": "object"
+      },
       "RpcEndpointsArtifact": {
         "additionalProperties": false,
         "properties": {
@@ -66430,6 +67137,165 @@
         ]
       }
     },
+    "/api/v1/{network}/accounts/{ss58}/root-baskets": {
+      "get": {
+        "description": "Network-scoped form of /api/v1/accounts/{ss58}/root-baskets — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "accountRootBasketsByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "maximum": 4096,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 16). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 16.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 16,
+              "maximum": 16,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RootBasketsArtifactResponse": {
+                    "$ref": "#/components/examples/RootBasketsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RootBasketsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "accounts"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
     "/api/v1/{network}/accounts/{ss58}/root-claim": {
       "get": {
         "description": "Network-scoped form of /api/v1/accounts/{ss58}/root-claim — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
@@ -72443,6 +73309,164 @@
         ]
       }
     },
+    "/api/v1/{network}/root-baskets": {
+      "get": {
+        "description": "Network-scoped form of /api/v1/root-baskets — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "rootBasketsByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional AccountId32 hex fund key; selects one fund's detail instead of directory pricing.",
+            "in": "query",
+            "name": "hotkey",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque upstream AccountId32 continuation. Pass it back verbatim with as_of. Empty pricing pages can still carry this cursor.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 64). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 64.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 64,
+              "maximum": 64,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RootBasketsArtifactResponse": {
+                    "$ref": "#/components/examples/RootBasketsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RootBasketsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "chain"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
     "/api/v1/{network}/search/resolve": {
       "get": {
         "description": "Network-scoped form of /api/v1/search/resolve — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
@@ -76138,6 +77162,150 @@
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
           "mainnet"
+        ]
+      }
+    },
+    "/api/v1/accounts/{ss58}/root-baskets": {
+      "get": {
+        "description": "Read native basket positions and dust-aware claim previews for at most 16 staking relationships at one finalized block. Reuse source.finalized_block_hash as as_of with next_offset to resume. Confirmed non-basket relationships retain null position/claim; a small returned portfolio is never treated as proof of completeness. Audited v469/API 5 only, read-only.",
+        "operationId": "accountRootBaskets",
+        "parameters": [
+          {
+            "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "maximum": 4096,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 16). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 16.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 16,
+              "maximum": 16,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RootBasketsArtifactResponse": {
+                    "$ref": "#/components/examples/RootBasketsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RootBasketsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "accounts"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },
@@ -96321,6 +97489,149 @@
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
           "mainnet"
+        ]
+      }
+    },
+    "/api/v1/root-baskets": {
+      "get": {
+        "description": "Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex. Exact atomic values remain strings. Reuse source.finalized_block_hash as as_of when following next_after; an empty page with a cursor is nonterminal. Audited v469/API 5 only; unsupported and unavailable states contain no data. Read-only, no trade or claim submission.",
+        "operationId": "rootBaskets",
+        "parameters": [
+          {
+            "description": "Optional AccountId32 hex fund key; selects one fund's detail instead of directory pricing.",
+            "in": "query",
+            "name": "hotkey",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque upstream AccountId32 continuation. Pass it back verbatim with as_of. Empty pricing pages can still carry this cursor.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 64). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 64.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 64,
+              "maximum": 64,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RootBasketsArtifactResponse": {
+                    "$ref": "#/components/examples/RootBasketsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RootBasketsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "chain"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },
