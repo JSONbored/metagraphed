@@ -8,6 +8,7 @@ import {
   BasketRuntimeVersionSchema as version,
 } from "../schemas-src/root-basket-runtime.ts";
 import { RootBasketCaptureSchema } from "../schemas-src/root-basket-capture.ts";
+import { ROOT_BASKET_RUNTIME_ADAPTERS, rootBasketCapabilities } from "../schemas-src/root-basket-compatibility.ts";
 import { bytesToHex, storageMapPrefix } from "./twox-storage-key.ts";
 import {
   decodeBasketClaimPreview,
@@ -18,6 +19,8 @@ import {
   decodeBasketPricing,
   decodeBasketPricingPage,
   decodeBasketSummary,
+  decodeBasketSummaries,
+  decodeBasketEntitlements,
   decodeBasketTradingStatus,
   decodeBasketStakingHotkeys,
   decodeBasketBaseline,
@@ -77,17 +80,12 @@ export async function openRootBasketRuntime(
   const matching = runtime.apis.filter(
     ([id]) => id.toLowerCase() === BASKET_RUNTIME_API_ID,
   );
-  const decoderVersion =
-    runtime.specVersion === 469
-      ? "subtensor-v469-370bac46-v1"
-      : runtime.specVersion === 470
-        ? "subtensor-v470-923fd1fa-v1"
-        : null;
+  const adapter = ROOT_BASKET_RUNTIME_ADAPTERS.find((candidate) => candidate.spec === runtime.specVersion);
   if (
     runtime.specName !== "node-subtensor" ||
-    decoderVersion === null ||
+    adapter === undefined ||
     matching.length !== 1 ||
-    matching[0]![1] !== 5
+    matching[0]![1] !== adapter.api
   )
     throw new UnsupportedBasketRuntimeError(
       "Unsupported basket runtime layout",
@@ -106,7 +104,8 @@ export async function openRootBasketRuntime(
     finalized_block: height.toString(),
     runtime_spec_version: runtime.specVersion,
     runtime_api_version: matching[0]![1],
-    decoder_version: decoderVersion,
+    decoder_version: adapter.decoder,
+    capabilities: rootBasketCapabilities(adapter.api),
     metadata_sha256: `0x${createHash("sha256")
       .update(Buffer.from(metadata.slice(2), "hex"))
       .digest("hex")}`,
@@ -151,10 +150,25 @@ export async function openRootBasketRuntime(
   };
   return {
     source,
+    async summaryPage(startAfter: string | null, limit: number = ROOT_BASKET_READ_LIMITS.page) {
+      z.number().int().min(1).max(ROOT_BASKET_READ_LIMITS.page).parse(limit);
+      if (startAfter !== null) oneAccount(startAfter);
+      const summaries = decodeBasketSummaries(await call("get_all_validator_baskets"), source.capabilities.target_weights);
+      if (new Set(summaries.map((row) => row.hotkey)).size !== summaries.length)
+        throw new Error("Duplicate basket summary fund");
+      summaries.sort((a, b) => a.hotkey < b.hotkey ? -1 : 1);
+      const remaining = summaries.filter((row) => startAfter === null || row.hotkey > startAfter);
+      const page = remaining.slice(0, limit);
+      return {
+        summaries: page,
+        next_after: remaining.length > limit ? page[page.length - 1]!.hotkey : null,
+      };
+    },
     async pricingPage(
       startAfter: string | null,
       limit: number = ROOT_BASKET_READ_LIMITS.page,
     ) {
+      if (!source.capabilities.pricing) throw new UnsupportedBasketRuntimeError("Basket pricing is not published by this runtime");
       z.number().int().min(1).max(ROOT_BASKET_READ_LIMITS.page).parse(limit);
       const cursor =
         startAfter === null ? "00" : `01${oneAccount(startAfter).slice(2)}`;
@@ -185,6 +199,7 @@ export async function openRootBasketRuntime(
       };
     },
     async pricing(hotkey: string) {
+      if (!source.capabilities.pricing) return null;
       return belongsTo(
         decodeBasketPricing(await call("get_beta_pricing", oneAccount(hotkey))),
         hotkey,
@@ -193,17 +208,20 @@ export async function openRootBasketRuntime(
     async summary(hotkey: string) {
       const summary = decodeBasketSummary(
         await call("get_validator_basket_summary", oneAccount(hotkey)),
+        source.capabilities.target_weights,
       );
       if (summary.hotkey !== hotkey)
         throw new Error("Basket summary belongs to another fund");
       return summary;
     },
     async tradingStatus(hotkey: string) {
+      if (!source.capabilities.trading_status) return null;
       return decodeBasketTradingStatus(
         await call("get_basket_trading_status", oneAccount(hotkey)),
       );
     },
     async position(hotkey: string, coldkey: string) {
+      if (!source.capabilities.beta_positions) return null;
       return belongsTo(
         decodeBasketPosition(
           await call("get_beta_position", pair(hotkey, coldkey)),
@@ -212,6 +230,7 @@ export async function openRootBasketRuntime(
       );
     },
     async portfolio(coldkey: string) {
+      if (!source.capabilities.beta_positions) throw new UnsupportedBasketRuntimeError("Display beta positions are not published by this runtime");
       // The official method silently visits at most 256 relationships. Verify
       // that ceiling against pinned storage before describing it as complete.
       const hotkeys = await stakingHotkeys(coldkey);
@@ -225,6 +244,7 @@ export async function openRootBasketRuntime(
       );
     },
     async claimPreview(hotkey: string, coldkey: string) {
+      if (!source.capabilities.claim_preview) return null;
       return belongsTo(
         decodeBasketClaimPreview(
           await call("get_basket_claim_preview", pair(hotkey, coldkey)),
@@ -233,6 +253,7 @@ export async function openRootBasketRuntime(
       );
     },
     async claimPreviews(coldkey: string) {
+      if (!source.capabilities.claim_preview) throw new UnsupportedBasketRuntimeError("Dust-aware claim previews are not published by this runtime");
       const hotkeys = await stakingHotkeys(coldkey);
       if (hotkeys.length > ROOT_BASKET_READ_LIMITS.accountPage)
         throw new Error(
@@ -264,12 +285,27 @@ export async function openRootBasketRuntime(
       if (offset > hotkeys.length)
         throw new Error("Invalid basket account page offset");
       const selected = hotkeys.slice(offset, offset + limit);
+      if (selected.length === 0) return { entries: [], total_relationships: hotkeys.length, next_offset: null };
+      if (!source.capabilities.beta_positions) {
+        // API 1 publishes a complete owed-share listing, without display beta
+        // or execution previews. Validate membership before paging locally.
+        const entitlements = relationshipRows(
+          decodeBasketEntitlements(await call("get_root_basket_positions", oneAccount(coldkey))),
+          hotkeys,
+        );
+        const byHotkey = new Map(entitlements.map((entry) => [entry.hotkey, entry]));
+        const next = offset + selected.length;
+        return {
+          entries: selected.map((hotkey) => ({
+            hotkey, position: null, claim: null, entitlement: byHotkey.get(hotkey) ?? null,
+          })),
+          total_relationships: hotkeys.length,
+          next_offset: next === hotkeys.length ? null : next,
+        };
+      }
       // One bounded batch, correlated by id at the RPC boundary. No unbounded
       // coldkey-wide preview and no HTTP round trip per position/claim pair.
-      const values =
-        selected.length === 0
-          ? []
-          : await basketReadBatch(
+      const values = await basketReadBatch(
               rpc,
               selected.flatMap((hotkey) => [
                 {
@@ -280,20 +316,18 @@ export async function openRootBasketRuntime(
                     blockHash,
                   ],
                 },
-                {
+                ...(source.capabilities.claim_preview ? [{
                   method: "state_call",
-                  params: [
-                    `${API_NAME}_get_basket_claim_preview`,
-                    pair(hotkey, coldkey),
-                    blockHash,
-                  ],
-                },
+                  params: [`${API_NAME}_get_basket_claim_preview`, pair(hotkey, coldkey), blockHash],
+                }] : []),
               ]),
             );
       const entries = selected.map((hotkey, i) => ({
         hotkey,
-        position: belongsTo(decodeBasketPosition(values[i * 2]), hotkey),
-        claim: belongsTo(decodeBasketClaimPreview(values[i * 2 + 1]), hotkey),
+        position: belongsTo(decodeBasketPosition(values[i * (source.capabilities.claim_preview ? 2 : 1)]), hotkey),
+        claim: source.capabilities.claim_preview
+          ? belongsTo(decodeBasketClaimPreview(values[i * 2 + 1]), hotkey)
+          : null,
       }));
       const next = offset + selected.length;
       return {
@@ -303,13 +337,16 @@ export async function openRootBasketRuntime(
       };
     },
     async index() {
+      if (!source.capabilities.pricing) throw new UnsupportedBasketRuntimeError("Basket indexes are not published by this runtime");
       return decodeBasketIndex(await call("get_beta_index"));
     },
     stakingHotkeys,
     async baseline(hotkey: string) {
+      if (!source.capabilities.pricing) throw new UnsupportedBasketRuntimeError("Basket baselines are not published by this runtime");
       return decodeBasketBaseline(await storage("BetaBaseline", hotkey));
     },
     async indexSnapshot() {
+      if (!source.capabilities.pricing) throw new UnsupportedBasketRuntimeError("Basket indexes are not published by this runtime");
       return decodeBasketIndexSnapshot(await storage("BetaIndexSnapshot"));
     },
   };

@@ -1,9 +1,12 @@
-// Audited SCALE contracts: v469 370bac46fa8cf602c4f8283a0635b3a8b4675394 and
-// v470 923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d. The basket read layouts match.
-// Basket API 5 adds dust-aware claim previews; composition has no target weights.
+// Audited release identities and API generations are in root-basket-compatibility.
+// Older summaries include weights; API 3 adds pricing, 4 trading and 5 previews.
 // Reuse the historical capture's exact quantity vocabulary without widening it.
 import { z } from "zod";
 import { RootBasketCaptureSchema } from "./root-basket-capture.ts";
+import {
+  ROOT_BASKET_RUNTIME_ADAPTERS,
+  rootBasketCapabilities,
+} from "./root-basket-compatibility.ts";
 
 const capture = RootBasketCaptureSchema.shape;
 const fund = capture.funds.element.shape;
@@ -38,29 +41,43 @@ const sourceIdentity = {
 };
 
 // Keep the audited runtime and decoder paired in both validation and OpenAPI.
-export const RootBasketSourceSchema = z.discriminatedUnion(
-  "runtime_spec_version",
-  [
-    z
-      .object({
-        ...sourceIdentity,
-        runtime_spec_version: z.literal(469),
-        runtime_api_version: z.literal(5),
-        decoder_version: z.literal("subtensor-v469-370bac46-v1"),
-        metadata_sha256: capture.metadata_sha256,
-      })
-      .strict(),
-    z
-      .object({
-        ...sourceIdentity,
-        runtime_spec_version: z.literal(470),
-        runtime_api_version: z.literal(5),
-        decoder_version: z.literal("subtensor-v470-923fd1fa-v1"),
-        metadata_sha256: capture.metadata_sha256,
-      })
-      .strict(),
-  ],
-);
+function sourceSchema<const A extends (typeof ROOT_BASKET_RUNTIME_ADAPTERS)[number]>(adapter: A) {
+  const capabilities = rootBasketCapabilities(adapter.api);
+  return z.object({
+    ...sourceIdentity,
+    runtime_spec_version: z.literal(adapter.spec),
+    runtime_api_version: z.literal(adapter.api),
+    decoder_version: z.literal(adapter.decoder),
+    metadata_sha256: capture.metadata_sha256,
+    capabilities: z.object({
+      pricing: z.literal(capabilities.pricing),
+      beta_positions: z.literal(capabilities.beta_positions),
+      target_weights: z.literal(capabilities.target_weights),
+      trading_status: z.literal(capabilities.trading_status),
+      claim_preview: z.literal(capabilities.claim_preview),
+    }).strict(),
+  }).strict();
+}
+export const RootBasketSourceSchema = z.discriminatedUnion("runtime_spec_version", [
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[0]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[1]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[2]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[3]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[4]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[5]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[6]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[7]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[8]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[9]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[10]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[11]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[12]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[13]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[14]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[15]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[16]),
+  sourceSchema(ROOT_BASKET_RUNTIME_ADAPTERS[17]),
+]);
 
 export const BasketRuntimeHeaderSchema = z.object({
   number: z
@@ -107,6 +124,10 @@ export const RootBasketSummarySchema = z
     shares_atomic: u64,
     deposited_rao: u64,
     redeemed_rao: u64,
+    target_weights: z.array(z.object({
+      netuid: z.int().min(0).max(65_535),
+      weight_u16: z.int().min(0).max(65_535),
+    }).strict()).max(ROOT_BASKET_READ_LIMITS.holdings).optional(),
     holdings: z
       .array(
         fund.holdings.element.safeExtend({
@@ -130,6 +151,14 @@ export const RootBasketPositionSchema = z
     provisional: z.boolean(),
   })
   .strict();
+
+// API 1 publishes owed shares and a marked payout, without display pricing or
+// dust-aware execution preview. Preserve that narrower meaning.
+export const RootBasketEntitlementSchema = z.object({
+  hotkey: fund.hotkey,
+  owed_shares_atomic: u64,
+  payout_rao: u64,
+}).strict();
 
 export const RootBasketTradingStatusSchema = z
   .object({

@@ -50,6 +50,7 @@ for (const [specVersion, decoderVersion] of [
       "runtime_api_version",
       "decoder_version",
       "metadata_sha256",
+      "capabilities",
     ]);
     const otherDecoder =
       specVersion === 469
@@ -148,7 +149,7 @@ test("unsupported or ambiguous runtime APIs fail before metadata or basket work"
     },
     {
       specName: "node-subtensor",
-      specVersion: 454,
+      specVersion: 455,
       apis: [[BASKET_RUNTIME_API_ID, 3]],
     },
     { specName: "node-subtensor", specVersion: 469, apis: [] },

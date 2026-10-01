@@ -11,6 +11,7 @@ import {
   basketIndex,
   basketReadState,
   type BasketPricing,
+  type BasketSummary,
   type BasketEntry,
 } from "@/lib/metagraphed/root-baskets";
 
@@ -40,6 +41,10 @@ function RootBasketsView({
   const result = query.data?.data;
   const directory =
     result?.status === "available" && result.data.kind === "directory" ? result.data : null;
+  const legacyDirectory =
+    result?.status === "available" && result.data.kind === "legacy-directory" ? result.data : null;
+  const capabilities = result?.status === "available" ? result.source.capabilities : null;
+  const nextAfter = directory?.next_after ?? legacyDirectory?.next_after;
   const hash = result?.status === "available" ? result.source.finalized_block_hash : undefined;
   const detail = useQuery({
     ...rootBasketsQuery({ hotkey: selected, as_of: hash }),
@@ -48,7 +53,7 @@ function RootBasketsView({
   const fundResult = detail.data?.data;
   const fund =
     fundResult?.status === "available" && fundResult.data.kind === "fund" ? fundResult.data : null;
-  const columns: DataTableColumn<BasketPricing>[] = [
+  const columns: DataTableColumn<BasketPricing | BasketSummary>[] = [
     {
       key: "hotkey",
       label: "Fund hotkey",
@@ -66,16 +71,20 @@ function RootBasketsView({
       ),
     },
     { key: "nav", label: "Spot NAV", value: (row) => basketTao(row.spot_nav_rao) },
-    {
+    ...(capabilities?.pricing ? [{
       key: "price",
       label: "Display price (TAO/β, 4 d.p.)",
-      value: (row) => basketIndex(row.display_price_q64_bits),
+      value: (row: BasketPricing | BasketSummary) => "display_price_q64_bits" in row ? basketIndex(row.display_price_q64_bits) : null,
     },
     {
       key: "provisional",
       label: "Baseline",
-      value: (row) => (row.provisional ? "Provisional" : `Since block ${row.first_block}`),
-    },
+      value: (row: BasketPricing | BasketSummary) => "provisional" in row ? (row.provisional ? "Provisional" : `Since block ${row.first_block}`) : null,
+    }] : [{
+      key: "shares",
+      label: "Exact fund-share supply",
+      value: (row: BasketPricing | BasketSummary) => row.shares_atomic,
+    }]),
   ];
   const state = basketReadState(result, query.isError);
   return (
@@ -86,7 +95,7 @@ function RootBasketsView({
       visualRef={ref}
       footnote={
         result?.status === "available"
-          ? `${result.network} · finalized block ${result.source.finalized_block} · one page, storage order`
+          ? `${result.network} · finalized block ${result.source.finalized_block} · one page, ${capabilities?.pricing ? "storage" : "account"} order`
           : "Current state · no historical return window"
       }
       visual={
@@ -96,7 +105,7 @@ function RootBasketsView({
           ) : (
             <DataTable
               caption="Native Root baskets"
-              rows={directory?.pricing ?? []}
+              rows={directory?.pricing ?? legacyDirectory?.summaries ?? []}
               columns={columns}
               rowKey={(row) => row.hotkey}
               pageSize={16}
@@ -104,6 +113,9 @@ function RootBasketsView({
               empty="No active funds on this page."
             />
           )}
+          {capabilities && !capabilities.pricing ? (
+            <p className="text-13 text-ink-muted">This runtime publishes holdings and owed shares. Display pricing and beta indexes were introduced in a later runtime.</p>
+          ) : null}
           <div className="flex flex-wrap gap-4">
             {query.isError || result?.status === "unavailable" ? (
               <button
@@ -114,11 +126,11 @@ function RootBasketsView({
                 Retry baskets
               </button>
             ) : null}
-            {directory?.next_after && hash ? (
+            {nextAfter && hash ? (
               <button
                 type="button"
                 className="mg-section-more"
-                onClick={() => setPage({ cursor: directory.next_after!, as_of: hash })}
+                onClick={() => setPage({ cursor: nextAfter, as_of: hash })}
               >
                 Next basket page
               </button>
@@ -153,14 +165,14 @@ function RootBasketsView({
                         label: "realizable NAV",
                         value: basketTao(fund.summary.realizable_nav_rao),
                       },
-                      { label: "trading enabled", value: fund.trading.enabled ? "Yes" : "No" },
-                      { label: "trading frozen", value: fund.trading.frozen ? "Yes" : "No" },
-                      { label: "refill blocks", value: fund.trading.refill_blocks },
-                      { label: "turnover available", value: basketTao(fund.trading.available_rao) },
-                      { label: "turnover budget", value: basketTao(fund.trading.budget_rao) },
+                      { label: "trading enabled", value: fund.trading ? (fund.trading.enabled ? "Yes" : "No") : "Not published by this runtime" },
+                      { label: "trading frozen", value: fund.trading ? (fund.trading.frozen ? "Yes" : "No") : "Not published by this runtime" },
+                      { label: "refill blocks", value: fund.trading?.refill_blocks ?? "—" },
+                      { label: "turnover available", value: basketTao(fund.trading?.available_rao) },
+                      { label: "turnover budget", value: basketTao(fund.trading?.budget_rao) },
                       {
                         label: "baseline",
-                        value: fund.baseline.provisional
+                        value: fund.baseline === null ? "Not published by this runtime" : fund.baseline.provisional
                           ? "Provisional"
                           : `Block ${fund.baseline.first_block}`,
                       },
@@ -174,6 +186,20 @@ function RootBasketsView({
                       },
                     ]}
                   />
+                  {fund.summary.target_weights ? (
+                    <DataTable
+                      caption="Stored Root target weights"
+                      rows={fund.summary.target_weights}
+                      rowKey={(row) => String(row.netuid)}
+                      pageSize={16}
+                      source="root-basket-target-weights"
+                      columns={[
+                        { key: "netuid", label: "Subnet", value: (row) => `SN${row.netuid}` },
+                        { key: "weight", label: "Exact u16 weight", value: (row) => row.weight_u16 },
+                      ]}
+                      empty="No stored target weights."
+                    />
+                  ) : null}
                   <DataTable
                     caption="Fund holdings"
                     rows={fund.summary.holdings}
@@ -204,8 +230,9 @@ function RootBasketsView({
                     ]}
                   />
                   <p className="text-13 text-ink-muted">
-                    Holdings describe current balances. Target allocations and historical return
-                    windows are not supplied by this view.
+                    Holdings describe balances at the finalized source. Stored target weights are
+                    shown only when the runtime publishes them. Historical return windows require
+                    separate snapshot coverage.
                   </p>
                 </>
               ) : (
@@ -245,7 +272,8 @@ function AccountRootBasketsView({ ss58 }: { ss58: string }) {
   const account =
     result?.status === "available" && result.data.kind === "account" ? result.data : null;
   const positions =
-    account?.entries.filter((entry) => entry.position !== null || entry.claim !== null) ?? [];
+    account?.entries.filter((entry) => entry.position !== null || entry.claim !== null || entry.entitlement != null) ?? [];
+  const capabilities = result?.status === "available" ? result.source.capabilities : null;
   const columns: DataTableColumn<BasketEntry>[] = [
     {
       key: "hotkey",
@@ -254,15 +282,23 @@ function AccountRootBasketsView({ ss58 }: { ss58: string }) {
       value: (row) => row.hotkey,
       href: (row) => `/validators?basket=${encodeURIComponent(row.hotkey)}#baskets`,
     },
-    { key: "beta", label: "Exact β atoms", value: (row) => row.position?.beta_atomic ?? "—" },
-    { key: "spot", label: "Spot value", value: (row) => basketTao(row.position?.spot_value_rao) },
+    ...(capabilities?.beta_positions !== false ? [
+    { key: "beta", label: "Exact β atoms", value: (row: BasketEntry) => row.position?.beta_atomic ?? "—" },
+    { key: "spot", label: "Spot value", value: (row: BasketEntry) => basketTao(row.position?.spot_value_rao) },
     {
       key: "realizable",
       label: "Realizable value",
-      value: (row) => basketTao(row.position?.realizable_value_rao),
+      value: (row: BasketEntry) => basketTao(row.position?.realizable_value_rao),
     },
-    { key: "claim", label: "Claim estimate", value: (row) => basketTao(row.claim?.redeemable_rao) },
-    { key: "dust", label: "Skipped dust rows", value: (row) => row.claim?.dust_rows ?? null },
+    ] : []),
+    ...(capabilities?.claim_preview ? [
+      { key: "claim", label: "Claim estimate", value: (row: BasketEntry) => basketTao(row.claim?.redeemable_rao) },
+      { key: "dust", label: "Skipped dust rows", value: (row: BasketEntry) => row.claim?.dust_rows ?? null },
+    ] : []),
+    ...(!capabilities?.beta_positions ? [
+      { key: "owed", label: "Exact owed shares", value: (row: BasketEntry) => row.entitlement?.owed_shares_atomic ?? "—" },
+      { key: "marked-payout", label: "Marked payout", value: (row: BasketEntry) => basketTao(row.entitlement?.payout_rao) },
+    ] : []),
   ];
   const state = basketReadState(result, query.isError);
   return (
@@ -295,6 +331,9 @@ function AccountRootBasketsView({ ss58 }: { ss58: string }) {
               }
             />
           )}
+          {capabilities && !capabilities.claim_preview ? (
+            <p className="text-13 text-ink-muted">This runtime does not publish dust-aware claim previews. Marked values are not execution quotes.</p>
+          ) : null}
           <div className="flex flex-wrap gap-4">
             {query.isError || result?.status === "unavailable" ? (
               <button

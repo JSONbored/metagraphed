@@ -87,7 +87,7 @@ export async function loadRootBaskets(
           runtime.pricing(query.hotkey),
           runtime.summary(query.hotkey),
           runtime.tradingStatus(query.hotkey),
-          runtime.baseline(query.hotkey),
+          runtime.source.capabilities.pricing ? runtime.baseline(query.hotkey) : Promise.resolve(null),
         ]);
         data = {
           schema_version: 1,
@@ -98,6 +98,16 @@ export async function loadRootBaskets(
         };
       } else {
         const limit = query.limit ?? ROOT_BASKET_READ_LIMITS.page;
+        if (!runtime.source.capabilities.pricing) {
+          const page = await runtime.summaryPage(query.cursor ?? null, limit);
+          return RootBasketsArtifactSchema.parse({
+            schema_version: 1,
+            network: chain,
+            status: "available",
+            source: runtime.source,
+            data: { kind: "legacy-directory", ...page, limit },
+          });
+        }
         const page = await runtime.pricingPage(query.cursor ?? null, limit);
         data = {
           schema_version: 1,

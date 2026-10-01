@@ -11524,7 +11524,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_root_baskets",
     title: "Read native Root baskets",
     description:
-      "Read bounded finalized Root basket pricing, or one fund's holdings, baseline and trading status with hotkey=AccountId32 hex. Exact atomic quantities stay decimal strings. Reuse source.finalized_block_hash as as_of with next_after; empty pages may be nonterminal. Audited v469/API 5 only. Read-only; never submits trades or claims. Mirrors GET /api/v1/root-baskets.",
+      "Read finalized Root baskets across audited official releases v441–v470. source.capabilities declares pricing, stored target weights and trading-status availability. API-1 directories contain summaries; later directories contain pricing. Exact quantities are decimal strings. Resume next_after using source.finalized_block_hash as as_of; empty pricing pages may be nonterminal. Read-only. Mirrors GET /api/v1/root-baskets.",
     inputSchema: inputJsonSchema(GetRootBasketsInputSchema),
     async handler(args, ctx) {
       const parsed = GetRootBasketsInputSchema.safeParse(args);
@@ -11557,7 +11557,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_account_root_baskets",
     title: "Get native Root basket account positions",
     description:
-      "Read native Root basket positions and dust-aware claim previews for at most 16 staking relationships. Reuse source.finalized_block_hash as as_of with next_offset to resume. Includes null entries for confirmed non-basket relationships; never silently drops positions above upstream's 256-relationship shortcut. Audited v469/API 5 only. Read-only; never claims or signs. Mirrors GET /api/v1/accounts/{ss58}/root-baskets.",
+      "Read at most 16 native Root basket relationships across audited releases v441–v470. source.capabilities distinguishes API-1 owed-share entitlements, API-3 display beta positions and API-5 dust-aware claim previews. Marked payout is not an execution quote. Resume next_offset using source.finalized_block_hash as as_of. Confirmed non-basket relationships remain null; no silent 256-entry truncation. Read-only. Mirrors GET /api/v1/accounts/{ss58}/root-baskets.",
     inputSchema: inputJsonSchema(GetAccountRootBasketsInputSchema),
     async handler(args, ctx) {
       const parsed = GetAccountRootBasketsInputSchema.safeParse(args);

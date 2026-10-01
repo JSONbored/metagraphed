@@ -6,6 +6,7 @@ import { getApiBase } from "./config";
 
 export type RootBasketResult = ApiSchema<"RootBasketsArtifact">;
 export type BasketPricing = ApiSchema<"RootBasketPricing">;
+export type BasketSummary = ApiSchema<"RootBasketSummary">;
 export type BasketEntry = ApiSchema<"RootBasketAccountEntry">;
 
 export const rootBasketsQuery = (

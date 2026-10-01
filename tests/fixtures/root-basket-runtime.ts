@@ -48,6 +48,9 @@ const holding =
   ["3", "6", "4"].map(u64).join("");
 export const BASKET_FIXTURE_SUMMARY =
   hotkey + ["5", "7", "17", "19", "23"].map(u64).join("") + "08" + holding;
+export const BASKET_FIXTURE_WEIGHTED_SUMMARY =
+  BASKET_FIXTURE_SUMMARY.slice(0, 144) + "081300ff7f00000000" + BASKET_FIXTURE_SUMMARY.slice(144);
+export const BASKET_FIXTURE_ENTITLEMENT = hotkey + u64("11") + u64("9");
 
 export function pricingPage(
   rows: string[] = [BASKET_FIXTURE_PRICING],
@@ -86,6 +89,8 @@ export function basketRuntimeFixture(overrides: Record<string, unknown> = {}) {
     get_root_basket_claim_previews: `0x04${BASKET_FIXTURE_CLAIM}`,
     get_basket_trading_status: `0x${BASKET_FIXTURE_TRADING}`,
     get_beta_index: `0x${BASKET_FIXTURE_INDEX}`,
+    get_all_validator_baskets: `0x04${BASKET_FIXTURE_SUMMARY}`,
+    get_root_basket_positions: `0x04${BASKET_FIXTURE_ENTITLEMENT}`,
     ...overrides,
   };
   const rpc: BasketRpc = async (method, params) => {

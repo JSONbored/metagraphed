@@ -3,6 +3,7 @@ import {
   RootBasketBaselineSchema,
   RootBasketAccountEntrySchema,
   RootBasketDirectorySchema,
+  RootBasketLegacyDirectorySchema,
   RootBasketDetailSchema,
   RootBasketAccountPageSchema,
   RootBasketReadDataSchema,
@@ -14,6 +15,7 @@ import {
   RootBasketTradingStatusSchema,
   RootBasketPositionSchema,
   RootBasketClaimPreviewSchema,
+  RootBasketEntitlementSchema,
 } from "./root-basket-runtime.ts";
 // Component-name registry for the OpenAPI generator (types-epic B, #7860).
 //
@@ -801,6 +803,7 @@ register(RootBasketsArtifactSchema, "RootBasketsArtifact");
 register(RootBasketBaselineSchema, "RootBasketBaseline");
 register(RootBasketAccountEntrySchema, "RootBasketAccountEntry");
 register(RootBasketDirectorySchema, "RootBasketDirectory");
+register(RootBasketLegacyDirectorySchema, "RootBasketLegacyDirectory");
 register(RootBasketDetailSchema, "RootBasketDetail");
 register(RootBasketAccountPageSchema, "RootBasketAccountPage");
 register(RootBasketReadDataSchema, "RootBasketReadData");
@@ -810,6 +813,7 @@ register(RootBasketSummarySchema, "RootBasketSummary");
 register(RootBasketTradingStatusSchema, "RootBasketTradingStatus");
 register(RootBasketPositionSchema, "RootBasketPosition");
 register(RootBasketClaimPreviewSchema, "RootBasketClaimPreview");
+register(RootBasketEntitlementSchema, "RootBasketEntitlement");
 register(AccountServingArtifactSchema, "AccountServingArtifact");
 register(AccountPrometheusArtifactSchema, "AccountPrometheusArtifact");
 register(AccountStakeMovesArtifactSchema, "AccountStakeMovesArtifact");

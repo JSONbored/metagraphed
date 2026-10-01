@@ -3,6 +3,7 @@
 import {
   ROOT_BASKET_READ_LIMITS,
   RootBasketClaimPreviewSchema,
+  RootBasketEntitlementSchema,
   RootBasketIndexSchema,
   RootBasketPositionSchema,
   RootBasketPricingPageSchema,
@@ -151,16 +152,20 @@ export function decodeBasketPricing(hex: unknown) {
   );
 }
 
-export function decodeBasketSummary(hex: unknown) {
-  const reader = new ScaleReader(hex);
-  return RootBasketSummarySchema.parse(
-    reader.finish({
+function summary(reader: ScaleReader, targetWeights: boolean) {
+  return RootBasketSummarySchema.parse({
       hotkey: reader.account(),
       realizable_nav_rao: reader.u64(),
       spot_nav_rao: reader.u64(),
       shares_atomic: reader.u64(),
       deposited_rao: reader.u64(),
       redeemed_rao: reader.u64(),
+      ...(targetWeights ? {
+        target_weights: reader.vector(ROOT_BASKET_READ_LIMITS.holdings, () => ({
+          netuid: Number(reader.integer(2)),
+          weight_u16: Number(reader.integer(2)),
+        })),
+      } : {}),
       holdings: reader.vector(ROOT_BASKET_READ_LIMITS.holdings, () => {
         const netuid = Number(reader.integer(2));
         return {
@@ -171,8 +176,28 @@ export function decodeBasketSummary(hex: unknown) {
           realizable_value_rao: reader.u64(),
         };
       }),
+    });
+}
+
+export function decodeBasketSummary(hex: unknown, targetWeights = false) {
+  const reader = new ScaleReader(hex);
+  return reader.finish(summary(reader, targetWeights));
+}
+
+export function decodeBasketSummaries(hex: unknown, targetWeights = true) {
+  const reader = new ScaleReader(hex);
+  return reader.finish(reader.vector(ROOT_BASKET_READ_LIMITS.funds, () => summary(reader, targetWeights)));
+}
+
+export function decodeBasketEntitlements(hex: unknown) {
+  const reader = new ScaleReader(hex);
+  return reader.finish(reader.vector(ROOT_BASKET_READ_LIMITS.relationships, () =>
+    RootBasketEntitlementSchema.parse({
+      hotkey: reader.account(),
+      owed_shares_atomic: reader.u64(),
+      payout_rao: reader.u64(),
     }),
-  );
+  ));
 }
 
 export function decodeBasketPosition(hex: unknown) {

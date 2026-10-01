@@ -9,6 +9,7 @@ import {
   RootBasketTradingStatusSchema,
   RootBasketPositionSchema,
   RootBasketClaimPreviewSchema,
+  RootBasketEntitlementSchema,
 } from "../root-basket-runtime.ts";
 
 const account = RootBasketCaptureSchema.shape.funds.element.shape.hotkey;
@@ -20,6 +21,7 @@ export const RootBasketAccountEntrySchema = z
     hotkey: account,
     position: RootBasketPositionSchema.nullable(),
     claim: RootBasketClaimPreviewSchema.nullable(),
+    entitlement: RootBasketEntitlementSchema.nullable().optional(),
   })
   .strict();
 export const RootBasketDirectorySchema = z
@@ -30,13 +32,19 @@ export const RootBasketDirectorySchema = z
     limit: z.int().min(1).max(ROOT_BASKET_READ_LIMITS.page),
   })
   .strict();
+export const RootBasketLegacyDirectorySchema = z.object({
+  kind: z.literal("legacy-directory"),
+  summaries: z.array(RootBasketSummarySchema).max(ROOT_BASKET_READ_LIMITS.page),
+  next_after: account.nullable(),
+  limit: z.int().min(1).max(ROOT_BASKET_READ_LIMITS.page),
+}).strict();
 export const RootBasketDetailSchema = z
   .object({
     kind: z.literal("fund"),
     pricing: RootBasketPricingSchema.nullable(),
     summary: RootBasketSummarySchema,
-    trading: RootBasketTradingStatusSchema,
-    baseline: RootBasketBaselineSchema,
+    trading: RootBasketTradingStatusSchema.nullable(),
+    baseline: RootBasketBaselineSchema.nullable(),
   })
   .strict();
 export const RootBasketAccountPageSchema = z
@@ -61,6 +69,7 @@ export const RootBasketAccountPageSchema = z
   .strict();
 export const RootBasketReadDataSchema = z.discriminatedUnion("kind", [
   RootBasketDirectorySchema,
+  RootBasketLegacyDirectorySchema,
   RootBasketDetailSchema,
   RootBasketAccountPageSchema,
 ]);
@@ -111,11 +120,12 @@ export const RootBasketsArtifactSchema = z
           runtime_api_version: 5,
           decoder_version: "subtensor-v470-923fd1fa-v1",
           metadata_sha256: `0x${"55".repeat(32)}`,
+          capabilities: { pricing: true, beta_positions: true, target_weights: false, trading_status: true, claim_preview: true },
         },
         data: { kind: "directory", pricing: [], next_after: null, limit: 64 },
       },
     ],
   })
   .describe(
-    "Finalized native Root basket state from the audited node-subtensor v469/v470 API-5 adapter. Unsupported layouts and failed reads return no data, never invented zero balances. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. This current-state view is separate from historical collection and the deprecated v440 Root-claim compatibility route.",
+    "Finalized native Root basket state across explicitly audited official releases v441–v470. source.capabilities identifies published operations: API 1 exposes holdings, stored target weights and owed-share entitlements; API 3 adds display beta and pricing; API 4 removes target weights and adds trading status; API 5 adds dust-aware claim previews. Absent methods are never called or replaced with invented prices or zero claims. Unknown layouts and failed reads return no data. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. Historical block reads require an archive source and do not establish retained snapshot coverage.",
   );

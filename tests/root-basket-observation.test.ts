@@ -28,7 +28,7 @@ test("collection follows empty nonterminal pages and emits one complete finalize
   assert.equal(observation.pages[1]!.next_after, null);
   assert.equal(observation.funds.length, 1);
   assert.equal(observation.funds[0]!.page_index, 1);
-  assert.equal(observation.funds[0]!.trading.enabled, true);
+  assert.equal(observation.funds[0]!.trading!.enabled, true);
   assert.equal(observation.index.status, "not_published");
   assert.equal(observation.source.finalized_block_hash, BASKET_FIXTURE_BLOCK);
   assert.ok(

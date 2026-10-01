@@ -19,6 +19,8 @@ export async function collectRootBasketObservation(
 ) {
   const started = Date.now().toString();
   const runtime = await openRootBasketRuntime(rpc, network, asOf);
+  if (!runtime.source.capabilities.pricing)
+    throw new Error("Basket observation requires runtime pricing");
   const index = await runtime.indexSnapshot();
   if (
     index.completed_block !== null &&

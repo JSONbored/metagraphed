@@ -21,7 +21,17 @@ export const BASKET_PRICING: ApiSchema<"RootBasketPricing"> = {
   shares_atomic: "11",
   display_shares_q64_bits: q64,
 };
-export function basketResponse(data: ApiSchema<"RootBasketReadData">) {
+export function basketResponse(data: ApiSchema<"RootBasketReadData">, generation: "modern" | "weighted" | "legacy" = "modern") {
+  const runtime = generation === "legacy" ? {
+    runtime_spec_version: 441, runtime_api_version: 1, decoder_version: "subtensor-v441-8b9d55c7-v1",
+    capabilities: {pricing:false,beta_positions:false,target_weights:true,trading_status:false,claim_preview:false},
+  } as const : generation === "weighted" ? {
+    runtime_spec_version: 454, runtime_api_version: 3, decoder_version: "subtensor-v454-14cde641-v1",
+    capabilities: {pricing:true,beta_positions:true,target_weights:true,trading_status:false,claim_preview:false},
+  } as const : {
+    runtime_spec_version: 470, runtime_api_version: 5, decoder_version: "subtensor-v470-923fd1fa-v1",
+    capabilities: {pricing:true,beta_positions:true,target_weights:false,trading_status:true,claim_preview:true},
+  } as const;
   return {
     ok: true,
     data: {
@@ -33,10 +43,8 @@ export function basketResponse(data: ApiSchema<"RootBasketReadData">) {
         network_genesis_hash: `0x${"44".repeat(32)}`,
         finalized_block_hash: BASKET_HASH,
         finalized_block: "500",
-        runtime_spec_version: 470,
-        runtime_api_version: 5,
-        decoder_version: "subtensor-v470-923fd1fa-v1",
         metadata_sha256: `0x${"55".repeat(32)}`,
+        ...runtime,
       },
       data,
     } satisfies ApiSchema<"RootBasketsArtifact">,

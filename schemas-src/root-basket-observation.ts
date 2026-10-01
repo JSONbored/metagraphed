@@ -30,7 +30,7 @@ export const RootBasketRuntimeObservationSchema = z
             page_index: count,
             pricing: RootBasketPricingSchema,
             summary: RootBasketSummarySchema,
-            trading: RootBasketTradingStatusSchema,
+            trading: RootBasketTradingStatusSchema.nullable(),
             baseline: fund.baseline,
           })
           .strict(),
@@ -41,6 +41,7 @@ export const RootBasketRuntimeObservationSchema = z
   .superRefine((observation, ctx) => {
     const issue = (message: string) =>
       ctx.addIssue({ code: "custom", message });
+    if (!observation.source.capabilities.pricing) issue("Observation requires runtime pricing");
     const started = capture.started_at_ms.safeParse(observation.started_at_ms);
     const finished = capture.finished_at_ms.safeParse(
       observation.finished_at_ms,
@@ -55,6 +56,8 @@ export const RootBasketRuntimeObservationSchema = z
     const seenCursors = new Set<string>();
     const counts = new Map<number, number>();
     for (const row of observation.funds) {
+      if (observation.source.capabilities.trading_status !== (row.trading !== null))
+        issue("Trading status must match runtime capability");
       if (
         row.summary.hotkey !== row.pricing.hotkey ||
         seenFunds.has(row.pricing.hotkey)
