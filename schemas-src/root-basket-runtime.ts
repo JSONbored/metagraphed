@@ -1,4 +1,5 @@
-// Audited SCALE contract: subtensor v469, 370bac46fa8cf602c4f8283a0635b3a8b4675394.
+// Audited SCALE contracts: v469 370bac46fa8cf602c4f8283a0635b3a8b4675394 and
+// v470 923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d. The basket read layouts match.
 // Basket API 5 adds dust-aware claim previews; composition has no target weights.
 // Reuse the historical capture's exact quantity vocabulary without widening it.
 import { z } from "zod";
@@ -28,18 +29,37 @@ export const ROOT_BASKET_READ_LIMITS = {
   funds: 2_048,
 } as const;
 
-export const RootBasketSourceSchema = z
-  .object({
-    network: capture.network,
-    network_genesis_hash: capture.network_genesis_hash,
-    finalized_block_hash: capture.finalized_block_hash,
-    finalized_block: u64,
-    runtime_spec_version: z.literal(469),
-    runtime_api_version: z.literal(5),
-    decoder_version: z.literal("subtensor-v469-370bac46-v1"),
-    metadata_sha256: capture.metadata_sha256,
-  })
-  .strict();
+const sourceIdentity = {
+  network: capture.network,
+  network_genesis_hash: capture.network_genesis_hash,
+  finalized_block_hash: capture.finalized_block_hash,
+  finalized_block: u64,
+};
+
+// Keep the audited runtime and decoder paired in both validation and OpenAPI.
+export const RootBasketSourceSchema = z.discriminatedUnion(
+  "runtime_spec_version",
+  [
+    z
+      .object({
+        ...sourceIdentity,
+        runtime_spec_version: z.literal(469),
+        runtime_api_version: z.literal(5),
+        decoder_version: z.literal("subtensor-v469-370bac46-v1"),
+        metadata_sha256: capture.metadata_sha256,
+      })
+      .strict(),
+    z
+      .object({
+        ...sourceIdentity,
+        runtime_spec_version: z.literal(470),
+        runtime_api_version: z.literal(5),
+        decoder_version: z.literal("subtensor-v470-923fd1fa-v1"),
+        metadata_sha256: capture.metadata_sha256,
+      })
+      .strict(),
+  ],
+);
 
 export const BasketRuntimeHeaderSchema = z.object({
   number: z

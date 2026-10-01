@@ -16,6 +16,38 @@ import { apiEnv } from "../scripts/lib/worker-env.ts";
 
 afterEach(() => vi.restoreAllMocks());
 
+test("v470 preserves v469 payload bytes and pinned read work for all three views", async () => {
+  for (const [params, ss58] of [
+    [{}, undefined],
+    [{ hotkey: BASKET_FIXTURE_HOTKEY }, undefined],
+    [{ limit: 1 }, CONCRETE_PATH_SS58],
+  ] as const) {
+    const previous = basketRuntimeFixture({
+      state_getRuntimeVersion: {
+        specName: "node-subtensor",
+        specVersion: 469,
+        apis: [[BASKET_RUNTIME_API_ID, 5]],
+      },
+    });
+    const current = basketRuntimeFixture();
+    const oldView = await loadRootBaskets(
+      params,
+      "mainnet",
+      ss58,
+      previous.rpc,
+    );
+    const newView = await loadRootBaskets(params, "mainnet", ss58, current.rpc);
+    assert.equal(oldView.status, "available");
+    assert.equal(newView.status, "available");
+    assert.equal(JSON.stringify(newView.data), JSON.stringify(oldView.data));
+    assert.deepEqual(current.calls, previous.calls);
+    assert.equal(oldView.source?.runtime_spec_version, 469);
+    assert.equal(newView.source?.runtime_spec_version, 470);
+    assert.equal(newView.source?.decoder_version, "subtensor-v470-923fd1fa-v1");
+    assert.equal(RootBasketsArtifactSchema.safeParse(newView).success, true);
+  }
+});
+
 test("the shared reader returns bounded directory, fund and native account views", async () => {
   for (const [params, ss58, kind] of [
     [{}, undefined, "directory"],

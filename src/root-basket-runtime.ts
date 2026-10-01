@@ -77,9 +77,15 @@ export async function openRootBasketRuntime(
   const matching = runtime.apis.filter(
     ([id]) => id.toLowerCase() === BASKET_RUNTIME_API_ID,
   );
+  const decoderVersion =
+    runtime.specVersion === 469
+      ? "subtensor-v469-370bac46-v1"
+      : runtime.specVersion === 470
+        ? "subtensor-v470-923fd1fa-v1"
+        : null;
   if (
     runtime.specName !== "node-subtensor" ||
-    runtime.specVersion !== 469 ||
+    decoderVersion === null ||
     matching.length !== 1 ||
     matching[0]![1] !== 5
   )
@@ -100,7 +106,7 @@ export async function openRootBasketRuntime(
     finalized_block: height.toString(),
     runtime_spec_version: runtime.specVersion,
     runtime_api_version: matching[0]![1],
-    decoder_version: "subtensor-v469-370bac46-v1",
+    decoder_version: decoderVersion,
     metadata_sha256: `0x${createHash("sha256")
       .update(Buffer.from(metadata.slice(2), "hex"))
       .digest("hex")}`,

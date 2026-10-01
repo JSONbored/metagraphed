@@ -3,7 +3,7 @@ import {
   type BasketRpc,
 } from "../../src/root-basket-runtime.ts";
 import { bytesToHex, storageMapPrefix } from "../../src/twox-storage-key.ts";
-// Synthetic SCALE values in the field order of the v469 frozen Rust structs.
+// Synthetic SCALE values in the identical v469/v470 frozen Rust field order.
 // This is offline regression evidence, not an observed chain snapshot.
 export const BASKET_FIXTURE_HOTKEY = `0x${"11".repeat(32)}`;
 export const BASKET_FIXTURE_COLDKEY = `0x${"22".repeat(32)}`;
@@ -67,7 +67,7 @@ export function basketRuntimeFixture(overrides: Record<string, unknown> = {}) {
     chain_getBlockHash: BASKET_FIXTURE_GENESIS,
     state_getRuntimeVersion: {
       specName: "node-subtensor",
-      specVersion: 469,
+      specVersion: 470,
       apis: [[BASKET_RUNTIME_API_ID, 5]],
     },
     state_getMetadata: "0x010203",

@@ -1,4 +1,4 @@
-// SCALE layouts audited against v469 rpc_info/basket_info.rs. Exact atomic
+// SCALE layouts audited against v469/v470 rpc_info/basket_info.rs. Exact atomic
 // values and fixed-point bits stay decimal strings, including u64 > 2^53.
 import {
   ROOT_BASKET_READ_LIMITS,

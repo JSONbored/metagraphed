@@ -4,6 +4,7 @@ import {
   openRootBasketRuntime,
   BASKET_RUNTIME_API_ID,
 } from "../src/root-basket-runtime.ts";
+import { RootBasketSourceSchema } from "../schemas-src/root-basket-runtime.ts";
 import {
   BASKET_FIXTURE_BLOCK,
   BASKET_FIXTURE_CLAIM,
@@ -22,85 +23,127 @@ test("runtime API identity matches the independent Blake2b-64 trait-name golden"
   assert.equal(BASKET_RUNTIME_API_ID, "0x43580abff6baab45");
 });
 
-test("all modern basket views share one finalized runtime and encoded account identity", async () => {
-  const fixture = source();
-  const runtime = await openRootBasketRuntime(fixture.rpc, "local");
-  assert.equal(runtime.source.finalized_block, "500");
-  assert.equal(runtime.source.network_genesis_hash, BASKET_FIXTURE_GENESIS);
-  assert.equal(runtime.source.runtime_api_version, 5);
-  assert.equal(runtime.source.decoder_version, "subtensor-v469-370bac46-v1");
-  assert.match(runtime.source.metadata_sha256, /^0x[0-9a-f]{64}$/);
-  assert.equal((await runtime.pricingPage(null)).pricing.length, 1);
-  assert.equal(
-    (await runtime.pricingPage(BASKET_FIXTURE_COLDKEY, 1)).pricing.length,
-    1,
-  );
-  assert.equal(
-    (await runtime.pricing(BASKET_FIXTURE_HOTKEY))!.hotkey,
-    BASKET_FIXTURE_HOTKEY,
-  );
-  assert.equal(
-    (await runtime.summary(BASKET_FIXTURE_HOTKEY)).shares_atomic,
-    "17",
-  );
-  assert.equal(
-    (await runtime.tradingStatus(BASKET_FIXTURE_HOTKEY)).enabled,
-    true,
-  );
-  assert.equal(
-    (await runtime.position(BASKET_FIXTURE_HOTKEY, BASKET_FIXTURE_COLDKEY))!
-      .beta_atomic,
-    "11",
-  );
-  assert.equal((await runtime.portfolio(BASKET_FIXTURE_COLDKEY)).length, 1);
-  assert.equal(
-    (await runtime.claimPreview(BASKET_FIXTURE_HOTKEY, BASKET_FIXTURE_COLDKEY))!
-      .redeemable_rao,
-    "9",
-  );
-  assert.equal((await runtime.claimPreviews(BASKET_FIXTURE_COLDKEY)).length, 1);
-  assert.equal((await runtime.index()).stake_index_q64_bits, "8");
-  assert.equal(
-    (await runtime.baseline(BASKET_FIXTURE_HOTKEY)).provisional,
-    true,
-  );
-  assert.equal((await runtime.indexSnapshot()).status, "not_published");
-  assert.deepEqual(await runtime.stakingHotkeys(BASKET_FIXTURE_COLDKEY), [
-    BASKET_FIXTURE_HOTKEY,
-  ]);
-  const reads = fixture.calls.filter((call) => call.method === "state_call");
-  assert.equal(reads.length, 10);
-  assert.ok(reads.every((call) => call.params[2] === BASKET_FIXTURE_BLOCK));
-  assert.deepEqual(reads[0]!.params.slice(0, 2), [
-    "BetaBasketRuntimeApi_get_all_beta_pricing",
-    "0x0040000000",
-  ]);
-  assert.equal(
-    reads[1]!.params[1],
-    `0x01${BASKET_FIXTURE_COLDKEY.slice(2)}01000000`,
-  );
-  assert.equal(
-    reads[5]!.params[1],
-    BASKET_FIXTURE_HOTKEY + BASKET_FIXTURE_COLDKEY.slice(2),
-  );
-  assert.ok(
-    fixture.calls
-      .filter((call) => call.method === "state_getStorage")
-      .every((call) => call.params[1] === BASKET_FIXTURE_BLOCK),
-  );
-  assert.ok(
-    fixture.calls.every(
-      (call) => !/submit|author_|extrinsic/.test(call.method),
-    ),
-  );
-});
+for (const [specVersion, decoderVersion] of [
+  [469, "subtensor-v469-370bac46-v1"],
+  [470, "subtensor-v470-923fd1fa-v1"],
+] as const) {
+  test(`v${specVersion} basket views share one finalized runtime and encoded account identity`, async () => {
+    const fixture = source({
+      state_getRuntimeVersion: {
+        specName: "node-subtensor",
+        specVersion,
+        apis: [[BASKET_RUNTIME_API_ID, 5]],
+      },
+    });
+    const runtime = await openRootBasketRuntime(fixture.rpc, "local");
+    assert.equal(runtime.source.finalized_block, "500");
+    assert.equal(runtime.source.network_genesis_hash, BASKET_FIXTURE_GENESIS);
+    assert.equal(runtime.source.runtime_api_version, 5);
+    assert.equal(runtime.source.runtime_spec_version, specVersion);
+    assert.equal(runtime.source.decoder_version, decoderVersion);
+    assert.deepEqual(Object.keys(runtime.source), [
+      "network",
+      "network_genesis_hash",
+      "finalized_block_hash",
+      "finalized_block",
+      "runtime_spec_version",
+      "runtime_api_version",
+      "decoder_version",
+      "metadata_sha256",
+    ]);
+    const otherDecoder =
+      specVersion === 469
+        ? "subtensor-v470-923fd1fa-v1"
+        : "subtensor-v469-370bac46-v1";
+    for (const wrong of [
+      { decoder_version: otherDecoder },
+      { runtime_spec_version: 471 },
+      { runtime_api_version: 4 },
+      { unexpected: true },
+    ])
+      assert.equal(
+        RootBasketSourceSchema.safeParse({ ...runtime.source, ...wrong })
+          .success,
+        false,
+      );
+    assert.match(runtime.source.metadata_sha256, /^0x[0-9a-f]{64}$/);
+    assert.equal((await runtime.pricingPage(null)).pricing.length, 1);
+    assert.equal(
+      (await runtime.pricingPage(BASKET_FIXTURE_COLDKEY, 1)).pricing.length,
+      1,
+    );
+    assert.equal(
+      (await runtime.pricing(BASKET_FIXTURE_HOTKEY))!.hotkey,
+      BASKET_FIXTURE_HOTKEY,
+    );
+    assert.equal(
+      (await runtime.summary(BASKET_FIXTURE_HOTKEY)).shares_atomic,
+      "17",
+    );
+    assert.equal(
+      (await runtime.tradingStatus(BASKET_FIXTURE_HOTKEY)).enabled,
+      true,
+    );
+    assert.equal(
+      (await runtime.position(BASKET_FIXTURE_HOTKEY, BASKET_FIXTURE_COLDKEY))!
+        .beta_atomic,
+      "11",
+    );
+    assert.equal((await runtime.portfolio(BASKET_FIXTURE_COLDKEY)).length, 1);
+    assert.equal(
+      (await runtime.claimPreview(
+        BASKET_FIXTURE_HOTKEY,
+        BASKET_FIXTURE_COLDKEY,
+      ))!.redeemable_rao,
+      "9",
+    );
+    assert.equal(
+      (await runtime.claimPreviews(BASKET_FIXTURE_COLDKEY)).length,
+      1,
+    );
+    assert.equal((await runtime.index()).stake_index_q64_bits, "8");
+    assert.equal(
+      (await runtime.baseline(BASKET_FIXTURE_HOTKEY)).provisional,
+      true,
+    );
+    assert.equal((await runtime.indexSnapshot()).status, "not_published");
+    assert.deepEqual(await runtime.stakingHotkeys(BASKET_FIXTURE_COLDKEY), [
+      BASKET_FIXTURE_HOTKEY,
+    ]);
+    const reads = fixture.calls.filter((call) => call.method === "state_call");
+    assert.equal(reads.length, 10);
+    assert.ok(reads.every((call) => call.params[2] === BASKET_FIXTURE_BLOCK));
+    assert.deepEqual(reads[0]!.params.slice(0, 2), [
+      "BetaBasketRuntimeApi_get_all_beta_pricing",
+      "0x0040000000",
+    ]);
+    assert.equal(
+      reads[1]!.params[1],
+      `0x01${BASKET_FIXTURE_COLDKEY.slice(2)}01000000`,
+    );
+    assert.equal(
+      reads[5]!.params[1],
+      BASKET_FIXTURE_HOTKEY + BASKET_FIXTURE_COLDKEY.slice(2),
+    );
+    assert.ok(
+      fixture.calls
+        .filter((call) => call.method === "state_getStorage")
+        .every((call) => call.params[1] === BASKET_FIXTURE_BLOCK),
+    );
+    assert.ok(
+      fixture.calls.every(
+        (call) => !/submit|author_|extrinsic/.test(call.method),
+      ),
+    );
+  });
+}
 
 test("unsupported or ambiguous runtime APIs fail before metadata or basket work", async () => {
   for (const runtime of [
     { specName: "other", specVersion: 469, apis: [[BASKET_RUNTIME_API_ID, 5]] },
     {
       specName: "node-subtensor",
-      specVersion: 470,
+      specVersion: 471,
       apis: [[BASKET_RUNTIME_API_ID, 5]],
     },
     {
@@ -109,6 +152,11 @@ test("unsupported or ambiguous runtime APIs fail before metadata or basket work"
       apis: [[BASKET_RUNTIME_API_ID, 3]],
     },
     { specName: "node-subtensor", specVersion: 469, apis: [] },
+    {
+      specName: "node-subtensor",
+      specVersion: 470,
+      apis: [[BASKET_RUNTIME_API_ID, 4]],
+    },
     {
       specName: "node-subtensor",
       specVersion: 469,
