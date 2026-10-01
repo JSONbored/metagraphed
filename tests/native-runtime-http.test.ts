@@ -5,7 +5,10 @@ import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { handleNativeRuntime } from "../workers/request-handlers/native-runtime.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { apiEnv } from "../scripts/lib/worker-env.ts";
-import { NativeRuntimeArtifactSchema } from "../schemas-src/routes/native-runtime.ts";
+import {
+  NativeRuntimeArtifactSchema,
+  NativeRuntimeRequestSchema,
+} from "../schemas-src/routes/native-runtime.ts";
 import { withNativeRuntimeFixture } from "./fixtures/native-runtime.ts";
 
 afterEach(() => vi.restoreAllMocks());
@@ -62,6 +65,35 @@ test("native REST and MCP share bytes, network source and the existing limiter",
   assert.ok(
     keys.slice(4).every((key) => key === "testnet:native-runtime:192.0.2.1"),
   );
+});
+test("REST and MCP validate native requests once and preserve canonical defaults and result bytes", async () => {
+  const parse = vi.spyOn(NativeRuntimeRequestSchema, "parse");
+  const safe = vi.spyOn(NativeRuntimeRequestSchema, "safeParse");
+  const env = apiEnv(createLocalArtifactEnv());
+  await withNativeRuntimeFixture(async () => {
+    const response = await handleNativeRuntime(request(), env);
+    assert.equal(response.status, 200);
+    assert.equal(parse.mock.calls.length, 1);
+    const rest = (await response.json()).data;
+    parse.mockClear();
+    safe.mockClear();
+    const tool = await MCP_TOOLS.find(
+      (row) => row.name === "get_native_runtime",
+    )!.handler({ operations }, { env, clientIp: "192.0.2.1" });
+    assert.equal(parse.mock.calls.length, 0);
+    assert.equal(safe.mock.calls.length, 1);
+    assert.equal(JSON.stringify(tool), JSON.stringify(rest));
+    console.log(
+      "NATIVE_RUNTIME_VALIDATION_FIXTURE",
+      JSON.stringify({
+        rest_schema_traversals: 1,
+        mcp_schema_traversals: 1,
+        redundant_traversals_removed_per_request: 1,
+        fixture: true,
+        production: false,
+      }),
+    );
+  });
 });
 test("native preflight permits the real POST on every explicit network path", async () => {
   for (const path of [

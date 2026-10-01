@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { NativeRuntimePage } from "./-native-runtime-page";
+import { NativeRuntimeRoutePage } from "./-native-runtime-page";
 import {
   defineSearchSchema,
   stringSearch,
@@ -22,12 +22,5 @@ export const Route = createFileRoute("/apis/native")({
       { property: "og:description", content: description },
     ],
   }),
-  component: Page,
+  component: NativeRuntimeRoutePage,
 });
-
-function Page() {
-  const search = Route.useSearch();
-  return (
-    <NativeRuntimePage initialNetuid={search.netuid || "19"} initialColdkey={search.coldkey} />
-  );
-}

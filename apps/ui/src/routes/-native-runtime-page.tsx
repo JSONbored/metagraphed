@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { DataTable, EntityHero, FactSentence, type DataTableColumn } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
@@ -33,6 +34,13 @@ const columns: DataTableColumn<NativeValueRow>[] = [
 
 /** User-initiated reads only. Remount on network/origin change, aborting the
  * previous request so its source and call bytes cannot cross partitions. */
+export function NativeRuntimeRoutePage() {
+  const search = useSearch({ from: "/apis/native" });
+  return (
+    <NativeRuntimePage initialNetuid={search.netuid || "19"} initialColdkey={search.coldkey} />
+  );
+}
+
 export function NativeRuntimePage({
   initialNetuid,
   initialColdkey,
@@ -264,6 +272,7 @@ function NativeRuntimeExplorer({
               onChange={(event) => {
                 setApi(event.target.value === "api");
                 setDescription(null);
+                setResult(null);
               }}
             >
               <option value="pallet">Pallet</option>
@@ -279,6 +288,7 @@ function NativeRuntimeExplorer({
               onChange={(event) => {
                 setNamespace(event.target.value);
                 setDescription(null);
+                setResult(null);
               }}
               placeholder={api ? "SubnetInfoRuntimeApi" : "SubtensorModule"}
             />
@@ -354,7 +364,10 @@ function NativeRuntimeExplorer({
                     className={`${control} font-mono`}
                     rows={3}
                     value={args}
-                    onChange={(event) => setArgs(event.target.value)}
+                    onChange={(event) => {
+                      setArgs(event.target.value);
+                      setResult(null);
+                    }}
                     spellCheck={false}
                   />
                 </label>

@@ -356,7 +356,15 @@ function plan(
 /** One finalized context for a bounded batch; validate every operation before
  * issuing state reads. Identical calls are coalesced, then restored in order. */
 export async function queryNativeRuntime(raw: unknown, rpc?: BasketRpc) {
-  const input = NativeRuntimeRequestSchema.parse(raw);
+  return readNativeRuntime(NativeRuntimeRequestSchema.parse(raw), rpc);
+}
+
+/** Internal entrypoint for callers that have already validated the canonical
+ * request at their REST or MCP boundary. Do not clone and walk it a second time. */
+export async function readNativeRuntime(
+  input: z.infer<typeof NativeRuntimeRequestSchema>,
+  rpc?: BasketRpc,
+) {
   if (Buffer.byteLength(JSON.stringify(input)) > 32_768)
     throw new Error("Native request exceeds byte budget");
   if (

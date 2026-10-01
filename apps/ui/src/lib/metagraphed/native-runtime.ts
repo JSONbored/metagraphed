@@ -122,7 +122,7 @@ export function describedMembers(artifact: NativeArtifact): NativeMember[] {
   });
 }
 
-function nativeArguments(text: string):Json[] {
+function nativeArguments(text: string): Json[] {
   if (text.length > 32768) throw new Error("Arguments exceed the request budget.");
   const args: unknown = JSON.parse(text);
   if (!Array.isArray(args)) throw new Error("Enter arguments in a JSON array.");
@@ -138,8 +138,9 @@ function nativeArguments(text: string):Json[] {
   return args;
 }
 export function memberOperation(member: NativeMember, text: string): NativeOperation {
-  const args=nativeArguments(text);
-  if(args.length!==member.args.length)throw new Error(`Enter exactly ${member.args.length} arguments in a JSON array.`);
+  const args = nativeArguments(text);
+  if (args.length !== member.args.length)
+    throw new Error(`Enter exactly ${member.args.length} arguments in a JSON array.`);
   if (member.kind === "runtime")
     return { kind: "runtime", api: member.api!, member: member.member, args };
   if (member.kind === "constant")
@@ -147,15 +148,33 @@ export function memberOperation(member: NativeMember, text: string): NativeOpera
   return { kind: member.kind, pallet: member.pallet!, member: member.member, args };
 }
 
-export function entryOperation(member:NativeMember,text:string,cursor?:string):NativeOperation{
-  if(member.kind!=="storage"||member.args.length===0)throw new Error("Choose a storage map to browse records.");
-  const args=nativeArguments(text);
-  if(args.length>member.args.length)throw new Error(`Enter up to ${member.args.length} leading keys.`);
-  return {kind:"entries",pallet:member.pallet!,member:member.member,args,limit:16,...(cursor?{cursor}:{})};
+export function entryOperation(
+  member: NativeMember,
+  text: string,
+  cursor?: string,
+): NativeOperation {
+  if (member.kind !== "storage" || member.args.length === 0)
+    throw new Error("Choose a storage map to browse records.");
+  const args = nativeArguments(text);
+  if (args.length > member.args.length)
+    throw new Error(`Enter up to ${member.args.length} leading keys.`);
+  return {
+    kind: "entries",
+    pallet: member.pallet!,
+    member: member.member,
+    args,
+    limit: 16,
+    ...(cursor ? { cursor } : {}),
+  };
 }
-export function nativePageCursor(artifact:NativeArtifact):string|null{
-  const contract=artifact.results[0]?.contract;
-  return contract!==null&&typeof contract==="object"&&!Array.isArray(contract)&&typeof contract.next_cursor==="string"?contract.next_cursor:null;
+export function nativePageCursor(artifact: NativeArtifact): string | null {
+  const contract = artifact.results[0]?.contract;
+  return contract !== null &&
+    typeof contract === "object" &&
+    !Array.isArray(contract) &&
+    typeof contract.next_cursor === "string"
+    ? contract.next_cursor
+    : null;
 }
 
 export function nativeTypeLabel(artifact: NativeArtifact, id: number): string {
@@ -188,21 +207,33 @@ export interface NativeValueRow {
   field: string;
   value: string;
 }
-function nativeIdentifier(value:Json):string|null{
-  if(typeof value!=="string"||!/^0x(?:[0-9a-f]{2}){1,128}$/i.test(value))return null;
-  try{
-    const bytes=Uint8Array.from(value.slice(2).match(/../g)!,part=>Number.parseInt(part,16));
-    const name=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
-    return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)?name:null;
-  }catch{return null;}
+function nativeIdentifier(value: Json): string | null {
+  if (typeof value !== "string" || !/^0x(?:[0-9a-f]{2}){1,128}$/i.test(value)) return null;
+  try {
+    const bytes = Uint8Array.from(value.slice(2).match(/../g)!, (part) =>
+      Number.parseInt(part, 16),
+    );
+    const name = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : null;
+  } catch {
+    return null;
+  }
 }
 export function nativeValueRows(artifact: NativeArtifact): NativeValueRow[] {
   const rows: NativeValueRow[] = [];
   const visit = (field: string, value: Json): void => {
     if (value !== null && typeof value === "object") {
-      if(!Array.isArray(value)&&Object.keys(value).length===2&&Object.hasOwn(value,"name")&&Object.hasOwn(value,"value")){
-        const name=nativeIdentifier(value.name!);
-        if(name!==null){visit(`${field}.${name}`,value.value!);return;}
+      if (
+        !Array.isArray(value) &&
+        Object.keys(value).length === 2 &&
+        Object.hasOwn(value, "name") &&
+        Object.hasOwn(value, "value")
+      ) {
+        const name = nativeIdentifier(value.name!);
+        if (name !== null) {
+          visit(`${field}.${name}`, value.value!);
+          return;
+        }
       }
       const entries = Object.entries(value);
       if (entries.length) {

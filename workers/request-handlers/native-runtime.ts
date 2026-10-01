@@ -1,6 +1,6 @@
 import { NativeRuntimeRequestSchema } from "../../schemas-src/routes/native-runtime.ts";
 import { boundedInternalJson } from "../../src/internal-json.ts";
-import { queryNativeRuntime } from "../../src/native-runtime.ts";
+import { readNativeRuntime } from "../../src/native-runtime.ts";
 import {
   networkKvKey,
   chainNetworkFromChainName,
@@ -67,7 +67,7 @@ export async function handleNativeRuntime(
       );
   }
   try {
-    return dataResponse(env, await queryNativeRuntime(input));
+    return dataResponse(env, await readNativeRuntime(input));
   } catch {
     return errorResponse(
       "native_runtime_failed",

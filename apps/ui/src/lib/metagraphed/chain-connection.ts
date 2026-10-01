@@ -46,8 +46,8 @@ const cachedApis = new Map<string, Promise<ApiPromise>>();
 
 /** Official network entrypoints, matching the public native endpoint registry. */
 export function rpcEndpointForNetwork(network: string): string {
-  if(network==="mainnet") return DEFAULT_RPC_ENDPOINT;
-  if(network==="testnet") return "wss://test.finney.opentensor.ai";
+  if (network === "mainnet") return DEFAULT_RPC_ENDPOINT;
+  if (network === "testnet") return "wss://test.finney.opentensor.ai";
   throw new Error("Choose a supported network before connecting a wallet.");
 }
 
@@ -62,18 +62,26 @@ export async function getApi(endpoint: string = DEFAULT_RPC_ENDPOINT): Promise<A
   if (typeof window === "undefined") {
     throw new Error("getApi() is client-only and must not be called during SSR");
   }
-  let pending=cachedApis.get(endpoint);
+  let pending = cachedApis.get(endpoint);
   if (!pending) {
     pending = (async () => {
       const { ApiPromise, WsProvider } = await import("@polkadot/api");
       const provider = new WsProvider(endpoint);
-      try { return await ApiPromise.create({ provider }); }
-      catch(error){ await provider.disconnect(); throw error; }
+      try {
+        return await ApiPromise.create({ provider });
+      } catch (error) {
+        await provider.disconnect();
+        throw error;
+      }
     })();
-    cachedApis.set(endpoint,pending);
+    cachedApis.set(endpoint, pending);
   }
-  try { return await pending; }
-  catch(error){ if(cachedApis.get(endpoint)===pending) cachedApis.delete(endpoint); throw error; }
+  try {
+    return await pending;
+  } catch (error) {
+    if (cachedApis.get(endpoint) === pending) cachedApis.delete(endpoint);
+    throw error;
+  }
 }
 
 // subtensor is a custom runtime with no published @polkadot/api-augment-style

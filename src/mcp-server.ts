@@ -2,7 +2,7 @@ import {
   NativeRuntimeRequestSchema,
   NativeRuntimeArtifactSchema,
 } from "../schemas-src/routes/native-runtime.ts";
-import { queryNativeRuntime } from "./native-runtime.ts";
+import { readNativeRuntime } from "./native-runtime.ts";
 import {
   GetRootBasketsInputSchema,
   GetAccountRootBasketsInputSchema,
@@ -11550,7 +11550,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             "Too many native runtime requests; slow down.",
           );
       }
-      return queryNativeRuntime(parsed.data);
+      return readNativeRuntime(parsed.data);
     },
   },
   {
