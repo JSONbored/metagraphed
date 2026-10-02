@@ -1297,6 +1297,32 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.equal(sentHeaders!["X-Signature"], "0xabc");
     });
 
+    test("query credential remains private in encoded upstream errors", async () => {
+      const credential = "fixture+key with /?=&%#雪";
+      let requestedUrl = "";
+      const result = await callTool(
+        { surface_id: "x:api:7", credential },
+        async (url) => {
+          requestedUrl = String(url);
+          assert.equal(
+            new URL(requestedUrl).searchParams.get("api_key"),
+            credential,
+          );
+          throw new Error(`fetch failed: ${requestedUrl}`);
+        },
+      );
+      assert.equal(result.isError, true);
+      const serialized = JSON.stringify(result);
+      assert.match(serialized, /upstream_unavailable/);
+      assert.ok(serialized.includes("<redacted>"));
+      assert.ok(!serialized.includes(credential));
+      assert.ok(
+        !serialized.includes(
+          new URL(requestedUrl).search.slice("?api_key=".length),
+        ),
+      );
+    });
+
     test("location:query merges every named param", async () => {
       let requestedUrl: string | undefined;
       const result = await callTool(

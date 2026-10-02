@@ -818,6 +818,63 @@ describe("callSubnetSurface", () => {
     assert.ok(result.error.includes("<redacted>"));
   });
 
+  for (const value of ["fixture+key with /?=&%#雪", "fixture-\ud800"]) {
+    for (const percentSpaces of [false, true]) {
+      test(`credential: query errors scrub encoded ${JSON.stringify(value)} with percent spaces ${percentSpaces}`, async () => {
+        let encoded = "";
+        let requests = 0;
+        const result = await callSubnetSurface(
+          { url: "https://example.com/api" },
+          {
+            credential: { location: "query", name: "api_key", value },
+            isUnsafeUrl: SAFE,
+            fetchImpl: async (url) => {
+              requests += 1;
+              const requested = String(url);
+              encoded = new URL(requested).search.slice("?api_key=".length);
+              if (percentSpaces) encoded = encoded.replace(/\+/g, "%20");
+              throw new Error(
+                `fetch failed: https://example.com/api?api_key=${encoded}`,
+              );
+            },
+          },
+        );
+        assert.equal(requests, 1);
+        assert.equal(result.ok, false);
+        assert.equal(
+          result.error,
+          "fetch failed: https://example.com/api?api_key=<redacted>",
+        );
+        assert.ok(!result.error.includes(encoded));
+      });
+    }
+  }
+
+  test("credential bundle: errors remove complete overlapping query values", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "query",
+          values: {
+            short: "fixture-prefix",
+            long: "fixture-prefix/with space",
+            empty: "",
+          },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          throw new Error(`fetch failed: ${url}; raw=fixture-prefix/with space`);
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.error,
+      "fetch failed: https://example.com/api?short=<redacted>&long=<redacted>&empty=; raw=<redacted>",
+    );
+  });
+
   test("credential: no credential supplied leaves error messages untouched", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },

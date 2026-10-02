@@ -149,10 +149,22 @@ function redactCredentialValue(
     : credential.value
       ? [credential.value]
       : [];
-  let result = text;
+  const redactions = new Set<string>();
   for (const value of values) {
-    if (value)
-      result = result.split(value).join(REDACTED_CREDENTIAL_PLACEHOLDER);
+    if (!value) continue;
+    redactions.add(value);
+    if (credential.location === "query") {
+      // buildRequestUrl uses this exact form encoding. Fetch failures may echo
+      // that URL, or render its spaces as %20, instead of the raw secret.
+      const encoded = new URLSearchParams({ value }).toString().slice(6);
+      redactions.add(encoded);
+      redactions.add(encoded.replace(/\+/g, "%20"));
+    }
+  }
+  let result = text;
+  // Remove complete overlapping credentials before their shorter prefixes.
+  for (const value of [...redactions].sort((a, b) => b.length - a.length)) {
+    result = result.split(value).join(REDACTED_CREDENTIAL_PLACEHOLDER);
   }
   return result;
 }
