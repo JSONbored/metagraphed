@@ -57,6 +57,7 @@
     "subnet-stake-flow",
     "subnet-stake-moves",
     "subnet-stake-quote",
+    "subnet-stake-quote-by-network",
     "subnet-stake-transfers",
     "subnet-surface-history",
     "subnet-trajectory",
