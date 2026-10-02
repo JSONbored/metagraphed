@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { test } from "vitest";
 import { TypeRegistry } from "@polkadot/types/create";
 import { Metadata } from "@polkadot/types/metadata";
-import wrapped, { V470_METADATA_SHA256, V470_RUNTIME_VERSION, V470_RUNTIME_VERSION_HEX } from "./fixtures/native-v470-compiled.ts";
+import wrapped, { V470_METADATA_SHA256, V470_RUNTIME_VERSION } from "./fixtures/native-v470-compiled.ts";
 import { decodeNativeMetadata, unwrapNativeMetadata } from "../src/native-runtime-metadata.ts";
 import { decodeNativeValue, encodeNativeValue, nativeHex, type NativeValue } from "../src/native-runtime-values.ts";
 import { queryNativeRuntime } from "../src/native-runtime.ts";
@@ -52,17 +52,18 @@ function sample(id: number, depth = 0): NativeValue {
     }
   }
 }
-function fixture() {
+function fixture(codeHash: string | null = null) {
   const executions: { method: string; params: unknown[] }[] = [];
+  let metadataReads = 0;
   const rpc: BasketRpc = async (method, params) => {
     switch (method) {
       case "chain_getFinalizedHead": return hash;
       case "chain_getHeader": return { number: "0x1f4" };
       case "chain_getBlockHash": return `0x${"44".repeat(32)}`;
       case "state_getRuntimeVersion": return V470_RUNTIME_VERSION;
-      case "state_getStorageHash": return null;
+      case "state_getStorageHash": return codeHash;
       case "state_call": {
-        if (params[0] === "Metadata_metadata_at_version") return wrapped;
+        if (params[0] === "Metadata_metadata_at_version") { metadataReads++; return wrapped; }
         executions.push({ method, params });
         const api = model.apis.find((api) => String(params[0]).startsWith(`${api.name}_`))!;
         const name = String(params[0]).slice(api.name.length + 1);
@@ -73,7 +74,7 @@ function fixture() {
     }
   };
   rpc.batch = async (rows) => Promise.all(rows.map((row) => rpc(row.method, row.params)));
-  return { rpc, executions };
+  return { rpc, executions, metadataReads: () => metadataReads };
 }
 
 test("full compiled v470 metadata matches the independent reference registry, APIs and every constant", () => {
@@ -82,7 +83,7 @@ test("full compiled v470 metadata matches the independent reference registry, AP
   assert.equal(model.pallets.length, 28);
   assert.equal(model.apis.length, 25);
   assert.equal(V470_RUNTIME_VERSION.specVersion, 470);
-  assert.deepEqual(registry.createType("RuntimeVersion", Buffer.from(V470_RUNTIME_VERSION_HEX.slice(2), "hex")).toJSON(), V470_RUNTIME_VERSION);
+  assert.deepEqual(registry.createType("RuntimeVersion", V470_RUNTIME_VERSION).toJSON(), V470_RUNTIME_VERSION);
   assert.deepEqual([...model.types.values()].map((row) => [row.id, row.path]), reference.asV15.lookup.types.map((row) => [row.id.toNumber(), row.type.path.map(String)]));
   assert.deepEqual(model.pallets.map((row) => [row.name, row.index]), reference.asV15.pallets.map((row) => [row.name.toString(), row.index.toNumber()]));
   assert.deepEqual(model.apis, reference.asV15.apis.map((api) => ({ name: api.name.toString(), methods: api.methods.map((method) => ({ name: method.name.toString(), inputs: method.inputs.map((input) => ({ name: input.name.toString(), type: input.type.toNumber() })), output: method.output.toNumber() })) })));
@@ -102,7 +103,7 @@ test("full compiled v470 metadata matches the independent reference registry, AP
 test("every compiled v470 pallet call can be prepared and independently decoded with the exact pallet and call indices", async () => {
   let prepared = 0;
   const uninhabited: string[] = [];
-  const f = fixture();
+  const f = fixture(`0x${"77".repeat(32)}`);
   for (const pallet of model.pallets) {
     if (pallet.calls === null) continue;
     const calls = model.types.get(pallet.calls)!.definition;
@@ -160,6 +161,17 @@ test("compiled v470 EVM and Wasm runtime signatures encode exact bounded executi
     assert.equal(independent.encodedLength, output.length);
     assert.equal(nativeHex(independent.toU8a()), nativeHex(output));
   }
+});
+
+test("warm compiled v470 contracts remove the full metadata transfer and parse while preserving response bytes", async () => {
+  const f = fixture(`0x${"88".repeat(32)}`);
+  const input = { operations: [{ kind: "constant", pallet: "System", member: "SS58Prefix" }] };
+  const cold = await queryNativeRuntime(input, f.rpc);
+  const warm = await queryNativeRuntime(input, f.rpc);
+  assert.equal(JSON.stringify(warm), JSON.stringify(cold));
+  assert.equal(f.metadataReads(), 1);
+  assert.equal(f.executions.length, 0);
+  console.log("NATIVE_V470_METADATA_REUSE_FIXTURE", JSON.stringify({ metadata_reads_removed: 1, metadata_decodes_removed: 1, metadata_wire_hex_bytes_removed: Buffer.byteLength(wrapped), identity_hex_bytes_added: 66, response_bytes: Buffer.byteLength(JSON.stringify(warm)), bytes_equal: true, fixture: true, production: false }));
 });
 
 test("all compiled ShieldApi decode methods are usable reads with exact reference bytes and no submission path", async () => {
