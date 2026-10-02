@@ -3,11 +3,10 @@ import { createHash } from "node:crypto";
 import { test } from "vitest";
 import { TypeRegistry } from "@polkadot/types/create";
 import { Metadata } from "@polkadot/types/metadata";
-import wrapped, { V470_METADATA_SHA256 } from "./fixtures/native-v470-compiled.ts";
+import wrapped, { V470_METADATA_SHA256, V470_RUNTIME_VERSION, V470_RUNTIME_VERSION_HEX } from "./fixtures/native-v470-compiled.ts";
 import { decodeNativeMetadata, unwrapNativeMetadata } from "../src/native-runtime-metadata.ts";
 import { decodeNativeValue, encodeNativeValue, nativeHex, type NativeValue } from "../src/native-runtime-values.ts";
 import { queryNativeRuntime } from "../src/native-runtime.ts";
-import { runtimeApiId } from "../src/native-runtime-scale.ts";
 import type { BasketRpc } from "../src/root-basket-runtime.ts";
 
 const bare = unwrapNativeMetadata(wrapped)!;
@@ -16,6 +15,10 @@ const registry = new TypeRegistry();
 const reference = new Metadata(registry, Buffer.from(bare.slice(2), "hex"));
 registry.setMetadata(reference);
 const hash = `0x${"33".repeat(32)}`;
+
+class UninhabitedType extends Error {
+  constructor(readonly id: number) { super(`Uninhabited compiled type ${model.types.get(id)!.path.join("::")}`); }
+}
 
 // Empty/zero values exercise the compiled ABI. They are deliberately synthetic:
 // this test neither executes a contract nor represents retained chain history.
@@ -40,8 +43,12 @@ function sample(id: number, depth = 0): NativeValue {
     case "tuple": return type.types.map(child);
     case "composite": return fields(type.fields);
     case "variant": {
-      const variant = type.variants.find((row) => row.name === "None") ?? type.variants[0]!;
-      return { variant: variant.name, fields: fields(variant.fields) };
+      const variants = [...type.variants].sort((a, b) => Number(b.name === "None") - Number(a.name === "None"));
+      for (const variant of variants) {
+        try { return { variant: variant.name, fields: fields(variant.fields) }; }
+        catch (error) { if (!(error instanceof UninhabitedType)) throw error; }
+      }
+      throw new UninhabitedType(id);
     }
   }
 }
@@ -52,7 +59,7 @@ function fixture() {
       case "chain_getFinalizedHead": return hash;
       case "chain_getHeader": return { number: "0x1f4" };
       case "chain_getBlockHash": return `0x${"44".repeat(32)}`;
-      case "state_getRuntimeVersion": return { specName: "node-subtensor", specVersion: 470, transactionVersion: 1, apis: model.apis.map((api) => [runtimeApiId(api.name), api.name === "BetaBasketRuntimeApi" ? 5 : 1]) };
+      case "state_getRuntimeVersion": return V470_RUNTIME_VERSION;
       case "state_getStorageHash": return null;
       case "state_call": {
         if (params[0] === "Metadata_metadata_at_version") return wrapped;
@@ -74,6 +81,8 @@ test("full compiled v470 metadata matches the independent reference registry, AP
   assert.equal(model.types.size, 808);
   assert.equal(model.pallets.length, 28);
   assert.equal(model.apis.length, 25);
+  assert.equal(V470_RUNTIME_VERSION.specVersion, 470);
+  assert.deepEqual(registry.createType("RuntimeVersion", Buffer.from(V470_RUNTIME_VERSION_HEX.slice(2), "hex")).toJSON(), V470_RUNTIME_VERSION);
   assert.deepEqual([...model.types.values()].map((row) => [row.id, row.path]), reference.asV15.lookup.types.map((row) => [row.id.toNumber(), row.type.path.map(String)]));
   assert.deepEqual(model.pallets.map((row) => [row.name, row.index]), reference.asV15.pallets.map((row) => [row.name.toString(), row.index.toNumber()]));
   assert.deepEqual(model.apis, reference.asV15.apis.map((api) => ({ name: api.name.toString(), methods: api.methods.map((method) => ({ name: method.name.toString(), inputs: method.inputs.map((input) => ({ name: input.name.toString(), type: input.type.toNumber() })), output: method.output.toNumber() })) })));
@@ -92,6 +101,7 @@ test("full compiled v470 metadata matches the independent reference registry, AP
 
 test("every compiled v470 pallet call can be prepared and independently decoded with the exact pallet and call indices", async () => {
   let prepared = 0;
+  const uninhabited: string[] = [];
   const f = fixture();
   for (const pallet of model.pallets) {
     if (pallet.calls === null) continue;
@@ -99,7 +109,18 @@ test("every compiled v470 pallet call can be prepared and independently decoded 
     assert.equal(calls.kind, "variant");
     if (calls.kind !== "variant") continue;
     for (const call of calls.variants) {
-      const args = call.fields.map((field) => sample(field.type));
+      let args: NativeValue[];
+      try { args = call.fields.map((field) => sample(field.type)); }
+      catch (error) {
+        if (!(error instanceof UninhabitedType)) throw error;
+        // Grandpa's configured Void key-ownership proof has no value. It
+        // cannot be fabricated into a callable extrinsic by any client.
+        assert.equal(pallet.name, "Grandpa");
+        assert.match(call.name, /^report_equivocation/);
+        assert.throws(() => encodeNativeValue(model, error.id, { variant: "Void", fields: {} }), /Invalid native enum variant/);
+        uninhabited.push(`${pallet.name}.${call.name}`);
+        continue;
+      }
       const result = await queryNativeRuntime({ as_of: hash, operations: [{ kind: "prepare", pallet: pallet.name, member: call.name, args }] }, f.rpc);
       const encoded = result.results[0]!.call_data!;
       const independent = registry.createType("Call", Buffer.from(encoded.slice(2), "hex"));
@@ -111,8 +132,8 @@ test("every compiled v470 pallet call can be prepared and independently decoded 
   }
   assert.ok(prepared > 0);
   assert.equal(f.executions.length, 0);
-  console.log("NATIVE_V470_PREPARED_CALL_FIXTURE", JSON.stringify({ prepared_calls: prepared, execution_rpcs: 0, fixture: true, production: false }));
-}, 30000);
+  console.log("NATIVE_V470_PREPARED_CALL_FIXTURE", JSON.stringify({ prepared_calls: prepared, uninhabited_proof_calls: uninhabited, execution_rpcs: 0, fixture: true, production: false }));
+}, 60000);
 
 test("compiled v470 EVM and Wasm runtime signatures encode exact bounded execution requests including authorization_list", async () => {
   for (const [apiName, memberName] of [["EthereumRuntimeRPCApi", "call"], ["EthereumRuntimeRPCApi", "create"], ["ContractsApi", "call"], ["ContractsApi", "instantiate"], ["ContractsApi", "upload_code"]]) {
@@ -139,4 +160,21 @@ test("compiled v470 EVM and Wasm runtime signatures encode exact bounded executi
     assert.equal(independent.encodedLength, output.length);
     assert.equal(nativeHex(independent.toU8a()), nativeHex(output));
   }
+});
+
+test("all compiled ShieldApi decode methods are usable reads with exact reference bytes and no submission path", async () => {
+  const api = model.apis.find((row) => row.name === "ShieldApi")!;
+  assert.deepEqual(api.methods.map((row) => row.name), ["try_decode_shielded_tx", "is_shielded_using_current_key", "try_unshield_tx"]);
+  const f = fixture();
+  const description = await queryNativeRuntime({ operations: [{ kind: "describe", api: api.name }] }, f.rpc);
+  assert.equal((description.results[0]!.value as NativeValue[]).length, 3);
+  for (const member of api.methods) {
+    const args = member.inputs.map((field) => sample(field.type));
+    const result = await queryNativeRuntime({ operations: [{ kind: "runtime", api: api.name, member: member.name, args }] }, f.rpc);
+    const output = encodeNativeValue(model, member.output, result.results[0]!.value!);
+    const independent = registry.createTypeUnsafe(`Lookup${member.output}`, [output]);
+    assert.equal(independent.encodedLength, output.length);
+    assert.equal(nativeHex(independent.toU8a()), nativeHex(output));
+  }
+  assert.deepEqual(f.executions.map((row) => row.params[0]), api.methods.map((row) => `${api.name}_${row.name}`));
 });

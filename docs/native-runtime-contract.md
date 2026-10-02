@@ -75,6 +75,20 @@ one-million-gas budget, in addition to the input, output and timeout bounds. Rev
 return bytes, gas consumption and runtime dispatch errors retain the declared result
 structure. Simulations do not create execution receipts or persist chain state.
 
+Follow the discovered portable type for EVM quantities. The v470
+`primitive_types::U256` layout is four little-endian `u64` limbs, so a gas limit
+of 500,000 is `["500000", "0", "0", "0"]`. All limbs remain exact decimal
+strings, and every high limb participates in gas admission. The existing
+aggregate gas cap and duplicate coalescing apply to this layout as well as
+historical scalar integer layouts. The current signature also includes the
+metadata-declared `authorization_list` argument.
+
+`ShieldApi.try_unshield_tx` decrypts caller-supplied shielded data and decodes
+the resulting extrinsic. The audited implementation does not submit it, access
+a local keystore or write chain state. It is available alongside
+`try_decode_shielded_tx` and `is_shielded_using_current_key` through the same
+typed contract and bounded SCALE read path.
+
 `ContractsApi.call`, `instantiate` and `upload_code` provide Wasm contract
 simulation. Describe `ContractsApi` to obtain the selected runtime's complete
 argument types. Call and instantiate require an explicit `Some` gas limit;

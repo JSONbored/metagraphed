@@ -142,7 +142,13 @@ const READ_API_METHODS: Readonly<Record<string, readonly string[]>> = {
   ],
   ConvertTransactionRuntimeApi: ["convert_transaction"],
   ContractsApi: ["call", "instantiate", "upload_code", "get_storage"],
-  ShieldApi: ["try_decode_shielded_tx", "is_shielded_using_current_key"],
+  // try_unshield_tx only decrypts caller-supplied data and decodes an
+  // extrinsic; pallets/shield/src/lib.rs neither submits nor writes state.
+  ShieldApi: [
+    "try_decode_shielded_tx",
+    "is_shielded_using_current_key",
+    "try_unshield_tx",
+  ],
 };
 export const NATIVE_EVM_SIMULATION_GAS_BUDGET = 1_000_000n;
 

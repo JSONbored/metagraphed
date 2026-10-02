@@ -123,7 +123,11 @@ export const SCALE_READ_API_METHODS: Readonly<
   ],
   ConvertTransactionRuntimeApi: ["convert_transaction"],
   ContractsApi: ["get_storage"],
-  ShieldApi: ["try_decode_shielded_tx", "is_shielded_using_current_key"],
+  ShieldApi: [
+    "try_decode_shielded_tx",
+    "is_shielded_using_current_key",
+    "try_unshield_tx",
+  ],
 };
 
 /** Official RuntimeVersion API identifiers are blake2b-64 of the API name. */
