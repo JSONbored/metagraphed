@@ -38,3 +38,15 @@ attachment calls. This mode does not invent an endpoint or grant provider
 access. Availability still depends on the actual subnet service. Images and
 audio are relayed exactly; fixture tests do not establish a provider's live
 availability or measure production latency.
+
+JSON body credentials, including flat signatures and nested signature envelopes,
+remain scoped to the catalogued origin. Same-origin redirects preserve the exact
+signed payload; a cross-origin redirect stops before a second request can send
+that credential elsewhere. Existing header credential stripping and ordinary
+body forwarding retain their behavior.
+
+Text/SSE, rejected binary and redirect cleanup request stream cancellation
+without waiting for an upstream cleanup promise. The text reader also checks the
+clock between chunks, so continuously ready empty chunks cannot starve its
+deadline timer. Existing capped text bytes, truncation receipts and redirect
+revalidation remain in place.

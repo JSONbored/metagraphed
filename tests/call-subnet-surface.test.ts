@@ -1126,6 +1126,67 @@ describe("callSubnetSurface", () => {
     assert.ok(result.error.includes("<redacted>"));
   });
 
+  for (const method of ["POST", "PUT", "PATCH"])
+    for (const envelope of [false, true])
+      for (const crossOrigin of [false, true])
+        test(`${method} body auth: ${envelope}, ${crossOrigin}`, async () => {
+          const signature = "fixture-body-signature";
+          const body = { prompt: "exact payload" };
+          const expected = JSON.stringify(
+            envelope
+              ? { payload: body, proof: { signature } }
+              : { ...body, signature },
+          );
+          const target = crossOrigin
+            ? "https://next.example/result"
+            : "https://example.com/result";
+          let calls = 0;
+          const result = await callSubnetSurface(
+            { url: "https://example.com/api" },
+            {
+              path: "/api",
+              method,
+              body: JSON.stringify(body),
+              contentType: "application/json",
+              credential: {
+                location: "body",
+                values: { signature },
+                ...(envelope
+                  ? {
+                      bodyEnvelope: {
+                        payloadKey: "payload",
+                        credentialKey: "proof",
+                      },
+                    }
+                  : {}),
+              },
+              isUnsafeUrl: SAFE,
+              fetchImpl: async (url, init) => {
+                calls++;
+                assert.equal(new URL(String(url)).origin, "https://example.com");
+                assert.equal(init!.method, method);
+                assert.equal(init!.body, expected);
+                return calls === 1
+                  ? new Response(null, {
+                      status: 307,
+                      headers: { location: target },
+                    })
+                  : jsonResponse({ exact: true });
+              },
+            },
+          );
+          assert.equal(calls, crossOrigin ? 1 : 2);
+          assert.equal(result.ok, !crossOrigin);
+          if (!result.ok) {
+            assert.equal(result.error_class, "credential_redirect_blocked");
+            assert.equal(result.status_code, 307);
+            assert.equal(JSON.stringify(result).includes(signature), false);
+          } else {
+            assert.deepEqual(result.body, { exact: true });
+            assert.equal(result.url, target);
+          }
+        });
+
   test("credential bundle: preserved across a same-origin redirect, stripped on cross-origin", async () => {
     let calls = 0;
     const result = await callSubnetSurface(
@@ -1555,7 +1616,9 @@ describe("body-read deadline (#8655)", () => {
             new Response(
               new ReadableStream<Uint8Array>({
                 start(controller) {
-                  controller.enqueue(new TextEncoder().encode("data: useful\n\n"));
+                  controller.enqueue(
+                    new TextEncoder().encode("data: useful\n\n"),
+                  );
                 },
                 pull(controller) {
                   pulls++;
@@ -1670,7 +1733,10 @@ describe("body-read deadline (#8655)", () => {
           }),
           { headers: { "content-type": "text/event-stream" } },
         );
-        const cancel = vi.spyOn(ReadableStreamDefaultReader.prototype, "cancel");
+        const cancel = vi.spyOn(
+          ReadableStreamDefaultReader.prototype,
+          "cancel",
+        );
         let requests = 0;
         let result: Awaited<ReturnType<typeof callSubnetSurface>> | undefined;
         try {

@@ -358,6 +358,8 @@ export async function callSubnetSurface(
       ? { body: effectiveBody, contentType: requestContentType }
       : {}),
     extraHeaders,
+    hasBodyCredential:
+      credential?.location === "body" && credentialEntries.length > 0,
     fetchImpl,
     isUnsafeUrl,
     timeoutMs,
@@ -726,6 +728,7 @@ async function safetyCheckedFetch(
     body,
     contentType,
     extraHeaders,
+    hasBodyCredential = false,
     redirectCount = 0,
   }: {
     method: string;
@@ -735,6 +738,7 @@ async function safetyCheckedFetch(
     body?: string;
     contentType?: string;
     extraHeaders?: Record<string, string>;
+    hasBodyCredential?: boolean;
     redirectCount?: number;
   },
 ): Promise<SafetyCheckedFetchResult> {
@@ -788,6 +792,15 @@ async function safetyCheckedFetch(
       // target's origin differs from the current hop's, and it stays
       // dropped for every hop after (a stripped call never receives it back).
       const sameOrigin = new URL(redirectTarget).origin === new URL(url).origin;
+      // Body signatures/envelopes cannot be stripped like a header without
+      // altering the signed payload. Stop before sending them to another host.
+      if (hasBodyCredential && !sameOrigin)
+        return {
+          ok: false,
+          error: "Redirect would send a body credential to another origin.",
+          error_class: "credential_redirect_blocked",
+          status_code: response.status,
+        };
       return safetyCheckedFetch(redirectTarget, {
         method,
         fetchImpl,
@@ -796,6 +809,7 @@ async function safetyCheckedFetch(
         body,
         contentType,
         extraHeaders: sameOrigin ? extraHeaders : undefined,
+        hasBodyCredential,
         redirectCount: redirectCount + 1,
       });
     }
