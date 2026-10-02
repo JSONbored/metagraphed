@@ -1,6 +1,8 @@
 import { evmRuntimeCatalogue } from "./evm-runtime-catalogue.ts";
 import type { DecodeEvmCallOutput } from "../schemas-src/mcp-tools/evm.ts";
 
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
 // The release catalogue contains scalar words, bytes/string and nested dynamic
 // arrays. Offsets are relative to the containing tuple, including array heads.
 // Reject noncanonical scalar/padding values and truncated tails as a whole.
@@ -63,9 +65,7 @@ function decodeArguments(signature: string, names: string[], input: string) {
       const data = hex.slice(start * 2, (start + length) * 2);
       if (type === "bytes") return `0x${data}`;
       try {
-        return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
-          Buffer.from(data, "hex"),
-        );
+        return utf8.decode(Buffer.from(data, "hex"));
       } catch {
         return null;
       }
