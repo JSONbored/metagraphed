@@ -53,6 +53,20 @@ export const SCALE_READ_API_METHODS: Readonly<Record<string, readonly string[]>>
 
 /** Official RuntimeVersion API identifiers are blake2b-64 of the API name. */
 export const runtimeApiId = (name: string) => `0x${Buffer.from(blake2b(Buffer.from(name), { dkLen: 8 })).toString("hex")}`;
-export function scaleReadMethods(api: string): readonly string[] {
-  return Object.hasOwn(SCALE_READ_API_METHODS, api) ? SCALE_READ_API_METHODS[api]! : [];
+const MIN_API_VERSION: Readonly<Record<string, number>> = {
+  "SubnetInfoRuntimeApi.get_subnet_hyperparams_v3": 2,
+  "BetaBasketRuntimeApi.get_basket_position": 2,
+  "BetaBasketRuntimeApi.get_root_basket_portfolio": 2,
+  "BetaBasketRuntimeApi.get_beta_pricing": 3,
+  "BetaBasketRuntimeApi.get_all_beta_pricing": 3,
+  "BetaBasketRuntimeApi.get_beta_index": 3,
+  "BetaBasketRuntimeApi.get_beta_position": 3,
+  "BetaBasketRuntimeApi.get_beta_portfolio": 3,
+  "BetaBasketRuntimeApi.get_basket_trading_status": 4,
+  "BetaBasketRuntimeApi.get_basket_claim_preview": 5,
+  "BetaBasketRuntimeApi.get_root_basket_claim_previews": 5,
+};
+export function scaleReadMethods(api: string, version = Number.MAX_SAFE_INTEGER): readonly string[] {
+  const methods = Object.hasOwn(SCALE_READ_API_METHODS, api) ? SCALE_READ_API_METHODS[api]! : [];
+  return methods.filter((member) => version >= (MIN_API_VERSION[`${api}.${member}`] ?? 1));
 }

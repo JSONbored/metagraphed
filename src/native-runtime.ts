@@ -154,7 +154,7 @@ function plan(
   if (operation.kind === "runtime_scale") {
     const id = runtimeApiId(operation.api);
     const apiVersion = apiVersions.get(id);
-    if (!scaleReadMethods(operation.api).includes(operation.member) || apiVersion === undefined)
+    if (!scaleReadMethods(operation.api, apiVersion).includes(operation.member) || apiVersion === undefined)
       throw new Error("SCALE runtime read is not audited or its API is absent at this source");
     return {
       call: { method: "state_call", params: [`${operation.api}_${operation.member}`, operation.input] },
@@ -231,7 +231,7 @@ function plan(
       const api = metadata.apis.find((row) => row.name === operation.api);
       if (!api) {
         const apiVersion = apiVersions.get(runtimeApiId(operation.api));
-        const methods = scaleReadMethods(operation.api);
+        const methods = scaleReadMethods(operation.api, apiVersion);
         if (apiVersion === undefined || methods.length === 0)
           throw new Error("Unknown native runtime API");
         items = methods.map((member) => ({ kind: "runtime_scale", api: operation.api!, member, runtime_api_version: apiVersion }));

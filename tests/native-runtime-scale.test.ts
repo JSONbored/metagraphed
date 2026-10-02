@@ -82,6 +82,13 @@ test("V14 discovery returns usable audited reads without fabricated type signatu
 test("raw execution never bypasses audited methods or decoded simulation budgets", async () => {
   assert.deepEqual(scaleReadMethods("constructor"), []);
   assert.deepEqual(scaleReadMethods("__proto__"), []);
+  assert.equal(scaleReadMethods("BetaBasketRuntimeApi", 1).length, 8);
+  assert.equal(scaleReadMethods("BetaBasketRuntimeApi", 2).length, 10);
+  assert.equal(scaleReadMethods("BetaBasketRuntimeApi", 3).length, 15);
+  assert.equal(scaleReadMethods("BetaBasketRuntimeApi", 4).length, 16);
+  assert.equal(scaleReadMethods("BetaBasketRuntimeApi", 5).length, 18);
+  assert.ok(!scaleReadMethods("SubnetInfoRuntimeApi", 1).includes("get_subnet_hyperparams_v3"));
+  assert.ok(scaleReadMethods("SubnetInfoRuntimeApi", 2).includes("get_subnet_hyperparams_v3"));
   for (const [api, member] of [
     ["Core", "execute_block"], ["SessionKeys", "generate_session_keys"],
     ["GrandpaApi", "submit_report_equivocation_unsigned_extrinsic"],
@@ -89,6 +96,7 @@ test("raw execution never bypasses audited methods or decoded simulation budgets
     ["EthereumRuntimeRPCApi", "call"], ["EthereumRuntimeRPCApi", "create"],
     ["ContractsApi", "call"], ["ContractsApi", "instantiate"], ["ContractsApi", "upload_code"],
     ["UnknownApi", "read"], ["AccountNonceApi", "unknown_future_method"],
+    ["BetaBasketRuntimeApi", "get_basket_claim_preview"], ["SubnetInfoRuntimeApi", "get_subnet_hyperparams_v3"],
   ]) {
     const f = fixture({ advertised: [api!] });
     await assert.rejects(queryNativeRuntime({ operations: [{ ...operation, api, member }] }, f.rpc), /not audited/);
