@@ -88,7 +88,8 @@ describe("MCP tool annotations", () => {
     assert.deepEqual(declaredOpenWorld, [...OPEN_WORLD_TOOL_NAMES].sort());
   });
   test("native call preparation remains a read and cannot sign or submit", () => {
-    const annotations = byName.get("get_native_runtime")?.annotations as Record<
+    for (const name of ["get_native_runtime", "get_subnet_stake_quote", "get_stake_action_preview"]) {
+    const annotations = byName.get(name)?.annotations as Record<
       string,
       unknown
     >;
@@ -98,6 +99,7 @@ describe("MCP tool annotations", () => {
       idempotentHint: true,
       openWorldHint: true,
     });
+    }
   });
 
   // Pins the #8964 audit's finding: 20 of 207 tools leave our infrastructure.
@@ -122,7 +124,9 @@ describe("MCP tool annotations", () => {
     // became two, not because the set of things we touch grew.
     // Both discovery bridges may contact external services; only invoke_tool permits writes.
     // Native metadata reads use the same external chain RPC as Root baskets.
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 27);
+    // Quote and preview now share a finalized runtime simulation, also outside
+    // the served artifact boundary. Both retain all four safe-read hints.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 29);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,
@@ -211,6 +215,8 @@ describe("open-world annotation guard", () => {
     "loadAccountRootClaim",
     "loadAccountChildren",
     "loadAccountParents",
+    "loadRuntimeStakeQuote",
+    "readNativeRuntime",
     "loadNetworkParameters",
     "loadRandomnessStatus",
     "loadSubnetBurn",

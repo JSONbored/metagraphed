@@ -64,9 +64,18 @@ test("V14 runtime reads use reference SCALE bytes, advertise API version and coa
 
 test("V14 discovery returns usable audited reads without fabricated type signatures", async () => {
   const f = fixture();
-  const directory = await queryNativeRuntime({ operations: [{ kind: "describe", limit: 64 }] }, f.rpc);
-  assert.ok(Array.isArray(directory.results[0]!.value));
-  assert.ok(directory.results[0]!.value.some((row) => row !== null && typeof row === "object" && !Array.isArray(row) && row.name === "AccountNonceApi"));
+  let offset = 0, found = false;
+  for (let pages = 0; pages < 8; pages++) {
+    const directory = await queryNativeRuntime({ as_of: hash, operations: [{ kind: "describe", limit: 64, offset }] }, f.rpc);
+    assert.ok(Array.isArray(directory.results[0]!.value));
+    found ||= directory.results[0]!.value.some((row) => row !== null && typeof row === "object" && !Array.isArray(row) && row.name === "AccountNonceApi");
+    const contract = directory.results[0]!.contract;
+    assert.ok(contract !== null && typeof contract === "object" && !Array.isArray(contract));
+    if (contract.next_offset === null) break;
+    assert.equal(typeof contract.next_offset, "number");
+    offset = Number(contract.next_offset);
+  }
+  assert.ok(found, "The advertised read API must appear in the paginated directory");
   const response = await queryNativeRuntime({ operations: [{ kind: "describe", api: "AccountNonceApi" }] }, f.rpc);
   assert.deepEqual(response.results[0]!.value, [{ kind: "runtime_scale", api: "AccountNonceApi", member: "account_nonce", runtime_api_version: 1 }]);
   assert.equal(f.execution().length, 0);
