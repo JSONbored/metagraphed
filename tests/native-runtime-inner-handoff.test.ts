@@ -53,7 +53,7 @@ test("pool byte-identical legacy inner layouts and export exact canonical contra
   const paths = [...sourcePaths, ...generatedPaths];
   for (let file_index = 0; file_index < paths.length; file_index++) {
     const path = paths[file_index]!;
-    const previous = execFileSync("git", ["show", `HEAD:${path}`]);
+    const previous = execFileSync("git", ["show", `HEAD:${path}`], { maxBuffer: 10000000 });
     const bytes = Buffer.from(await format(readFileSync(path).toString(), { ...(await resolveConfig(path)), filepath: path }));
     const encoded = gzipSync(bytes).toString("base64");
     console.log("NATIVE_INNER_HANDOFF", JSON.stringify({ file_index, path, head, previous_sha256: sha(previous), bytes: bytes.length, sha256: sha(bytes), chunks: Math.ceil(encoded.length / 16000), encoding: "gzip-base64" }));
