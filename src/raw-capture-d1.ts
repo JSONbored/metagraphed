@@ -8,8 +8,8 @@ const MAX_RAW = 32 * 1024 * 1024;
 const KEY = /^chain\/raw\/(testnet\/)?blocks\/(\d{12})-(\d{12})\.ndjson$/;
 const hash = (bytes: Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
-const SELECTION =
-  "SELECT sha256 FROM (SELECT sha256,captured_at FROM raw_capture_selected WHERE key=? UNION ALL SELECT sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1) ORDER BY captured_at DESC LIMIT 1";
+const PUBLICATION =
+  "SELECT sha256 FROM (SELECT b.sha256 FROM raw_capture_batches b JOIN raw_capture_publications p USING(key,sha256) WHERE b.key=? AND b.sha256=? AND b.complete=1 UNION ALL SELECT a.sha256 FROM raw_capture_archives a JOIN raw_capture_publications p USING(key,sha256) WHERE a.key=? AND a.sha256=? AND a.complete=1 AND a.native_sha256=a.compressed_sha256 AND a.native_key='chain/raw/native/v1/'||a.network||'/'||a.sha256||'/'||a.compressed_sha256||'.gz') LIMIT 1";
 type Db = Pick<D1Database, "prepare" | "batch">;
 
 /** Keep exact SCALE bytes in bounded D1 chunks; never acknowledge a partial batch. */
@@ -106,7 +106,10 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
         )
           throw new Error("Raw capture archive identity differs");
         const current = await retry(() =>
-          db.prepare(SELECTION).bind(key, key).first<{ sha256: string }>(),
+          db
+            .prepare(PUBLICATION)
+            .bind(key, digest, key, digest)
+            .first<{ sha256: string }>(),
         );
         if (current?.sha256 !== digest)
           throw new Error("Raw capture selection was not acknowledged");
@@ -182,8 +185,11 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
       // Hashing those same bytes again and inflating the local compression adds
       // no storage verification. Independent raw reconstruction remains in the
       // archive consumer before it can release any staging bytes.
-      // Mark complete and publish the pointer atomically. A newer capture of
-      // the same finalized range cannot be replaced by an older invocation.
+      // Completion, selection and its immutable receipt share one transaction.
+      // The receipt proves this exact version WAS selected: a later invocation
+      // can move the current pointer before this reply or its readback arrives.
+      // An older version that never won selection receives no receipt. Keep the
+      // receipt across archival so lost committed replies remain retryable.
       await retry(() =>
         db.batch([
           db
@@ -196,10 +202,18 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
               "INSERT INTO raw_capture_selected(key,sha256,network,last_block,captured_at) SELECT key,sha256,network,last_block,captured_at FROM raw_capture_batches b WHERE key=? AND sha256=? AND complete=1 AND NOT EXISTS(SELECT 1 FROM raw_capture_archives a WHERE a.key=b.key AND a.selected=1 AND a.sha256<>b.sha256 AND a.captured_at>=b.captured_at) ON CONFLICT(key) DO UPDATE SET sha256=excluded.sha256,network=excluded.network,last_block=excluded.last_block,captured_at=excluded.captured_at WHERE raw_capture_selected.captured_at<excluded.captured_at OR raw_capture_selected.sha256=excluded.sha256",
             )
             .bind(key, digest),
+          db
+            .prepare(
+              "INSERT INTO raw_capture_publications(key,sha256) SELECT s.key,s.sha256 FROM raw_capture_selected s JOIN raw_capture_batches b USING(key,sha256) WHERE s.key=? AND s.sha256=? AND b.complete=1 ON CONFLICT(key,sha256) DO NOTHING",
+            )
+            .bind(key, digest),
         ]),
       );
       const receipt = await retry(() =>
-        db.prepare(SELECTION).bind(key, key).first<{ sha256: string }>(),
+        db
+          .prepare(PUBLICATION)
+          .bind(key, digest, key, digest)
+          .first<{ sha256: string }>(),
       );
       if (receipt?.sha256 !== digest)
         throw new Error("Raw capture selection was not acknowledged");
