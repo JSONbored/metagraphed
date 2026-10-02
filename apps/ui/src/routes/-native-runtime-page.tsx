@@ -269,10 +269,30 @@ function NativeRuntimeExplorer({
         >
           Explore EVM execution
         </button>
+        <button
+          className={button}
+          disabled={busy}
+          onClick={() => {
+            setApi(true);
+            setNamespace("ContractsApi");
+            setDescription(null);
+            discover(0, { api: true, name: "ContractsApi" });
+          }}
+        >
+          Explore Wasm contracts
+        </button>
         {api && namespace === "EthereumRuntimeRPCApi" && (
           <p className="text-13 text-ink-muted">
             Call and create simulate execution at a finalized block. Supply a positive gas_limit;
             each request can use up to 1,000,000 gas. Return data and reverts are preserved.
+          </p>
+        )}
+        {api && namespace === "ContractsApi" && (
+          <p className="text-13 text-ink-muted">
+            Call, instantiate and upload_code simulate at a finalized block. Use an explicit Some
+            gas_limit with ref_time and proof_size. A request permits up to 250,000,000,000 reference
+            picoseconds, 65,536 proof bytes and one code upload of up to 16,384 bytes. Deposits,
+            return bytes and reverts are preserved; simulation does not publish code or a contract.
           </p>
         )}
         <form

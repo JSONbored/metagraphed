@@ -112,7 +112,7 @@ export const NativeRuntimeRequestSchema = z
   })
   .strict()
   .describe(
-    "Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. All operations share one finalized source. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or state mutation occurs.",
+    "Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate at the same finalized source. EVM requests have an aggregate 1,000,000 gas cap. Contracts require an explicit Some gas_limit Weight; distinct simulations share a 250,000,000,000 ref_time and 65,536 proof_size budget, with one code upload of at most 16,384 bytes. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or persistent state mutation occurs.",
   );
 export const NativeRuntimeSourceSchema = z
   .object({

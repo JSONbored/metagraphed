@@ -363,3 +363,38 @@ test("EVM execution is discovered and simulated using the displayed finalized co
     },
   ]);
 });
+
+test("Wasm contracts use discovered Weight arguments and retain reverted bytes without a signing action", async ({ page }) => {
+  const requests: unknown[] = [];
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body);
+    const discovery = body.operations[0].kind === "describe";
+    await route.fulfill({ json: { ok: true, data: {
+      schema_version: 1, source,
+      types: [{ id: 1, path: ["Weight"], definition: { kind: "primitive", primitive: 6 } }],
+      results: discovery ? [{
+        kind: "describe",
+        value: [{ kind: "runtime", api: "ContractsApi", member: "call", args: [{ name: "gas_limit", type: 1 }] }],
+        contract: { next_offset: null },
+      }] : [{
+        kind: "runtime", api: "ContractsApi", member: "call",
+        value: { result: { variant: "Ok", fields: { flags: "1", data: "0xbeef" } } },
+        contract: { root_type: 1 },
+      }],
+    } } });
+  });
+  await gotoThroughRestart(page, "/apis/native");
+  expect(requests).toHaveLength(0);
+  await page.getByRole("button", { name: "Explore Wasm contracts" }).click();
+  await expect(page.getByText("simulation does not publish code or a contract.", { exact: false })).toBeVisible();
+  const gas = { variant: "Some", fields: { ref_time: "100000000000", proof_size: "32768" } };
+  await page.getByLabel("Arguments (JSON array)").fill(JSON.stringify([gas]));
+  await page.getByRole("button", { name: "Read operation" }).click();
+  await expect(page.getByRole("cell", { name: "0xbeef", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Native wallet review" })).toHaveCount(0);
+  expect(requests).toEqual([
+    { operations: [{ kind: "describe", api: "ContractsApi", offset: 0, limit: 32 }] },
+    { as_of: hash, operations: [{ kind: "runtime", api: "ContractsApi", member: "call", args: [gas] }] },
+  ]);
+});

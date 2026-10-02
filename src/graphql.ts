@@ -4951,7 +4951,7 @@ const rootValue = {
     return data;
   },
   async subnet_stake_quote(
-    { netuid, amount, direction }: QuerySubnet_Stake_QuoteArgs,
+    { netuid, amount, direction, network }: QuerySubnet_Stake_QuoteArgs,
     _context: GqlContext,
   ) {
     assertNetuidArgument(netuid);
@@ -4963,7 +4963,7 @@ const rootValue = {
       );
     }
     // The compatibility field shares REST/MCP's finalized chain simulation.
-    const result = await buildRuntimeStakeQuote(netuid, amount, directionParam);
+    const result = await buildRuntimeStakeQuote(netuid, amount, directionParam, undefined, chainNetworkFromChainName(network));
     if (!result.ok) {
       // The shared calculator's own contract errors (bad amount, dead pool)
       // surface as BAD_USER_INPUT rather than a partially-filled card.

@@ -20,6 +20,10 @@ import {
 } from "./native-runtime-values.ts";
 import { nativeRuntimeRpc } from "./native-runtime-rpc.ts";
 import { loadNativeContract } from "./native-runtime-contract.ts";
+import {
+  nativeContractSimulationWork,
+  assertNativeContractSimulationBudget,
+} from "./native-contract-simulation.ts";
 import { basketReadBatch, type BasketRpc } from "./root-basket-runtime.ts";
 import {
   CHAIN_NAME_BY_NETWORK,
@@ -98,7 +102,7 @@ const READ_API_METHODS: Readonly<Record<string, readonly string[]>> = {
     "gas_limit_multiplier_support",
   ],
   ConvertTransactionRuntimeApi: ["convert_transaction"],
-  ContractsApi: ["get_storage"],
+  ContractsApi: ["call", "instantiate", "upload_code", "get_storage"],
   ShieldApi: ["try_decode_shielded_tx", "is_shielded_using_current_key"],
 };
 export const NATIVE_EVM_SIMULATION_GAS_BUDGET = 1_000_000n;
@@ -292,6 +296,12 @@ function plan(
     );
     if (input.length > NATIVE_RUNTIME_LIMITS.valueBytes)
       throw new Error("Native runtime input exceeds byte budget");
+    // The node's state_call executor uses a fresh, discarded overlay. These
+    // official contract APIs simulate execution; no author/submission RPC is
+    // reachable. Bound Weight and code work before issuing any execution RPC.
+    const contractWork = operation.api === "ContractsApi" && operation.member !== "get_storage"
+      ? nativeContractSimulationWork(operation.member, method.inputs, operation.args)
+      : null;
     return {
       call: {
         method: "state_call",
@@ -305,6 +315,7 @@ function plan(
       },
       output: method.output,
       simulationGas,
+      contractWork,
     };
   }
   const pallet = metadata.pallets.find((row) => row.name === operation.pallet);
@@ -497,6 +508,7 @@ export async function readNativeRuntime(
   );
   const unique = new Map<string, { method: string; params: unknown[] }>();
   const executionGas = new Map<string, bigint>();
+  const contractWork = new Map<string, ReturnType<typeof nativeContractSimulationWork>>();
   const callKeys = plans.map((row) => {
     if (!("call" in row) || !row.call) return null;
     const call = { method: row.call.method, params: [...row.call.params, at] };
@@ -504,6 +516,8 @@ export async function readNativeRuntime(
     unique.set(key, call);
     if ("simulationGas" in row && row.simulationGas)
       executionGas.set(key, row.simulationGas);
+    if ("contractWork" in row && row.contractWork)
+      contractWork.set(key, row.contractWork);
     return key;
   });
   if (
@@ -511,6 +525,7 @@ export async function readNativeRuntime(
     NATIVE_EVM_SIMULATION_GAS_BUDGET
   )
     throw new Error("EVM simulations exceed the aggregate gas budget");
+  assertNativeContractSimulationBudget(contractWork.values());
   const calls = [...unique.entries()];
   const values =
     calls.length === 0
