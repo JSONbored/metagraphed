@@ -423,7 +423,6 @@ test("compiled v470 API and storage reads preserve full EVM and Wasm code within
   );
 });
 
-
 test("compiled v470 full Wasm artifact references simulate uploads and prepare exact native calls with compact requests", async () => {
   const pallet = model.pallets.find((row) => row.name === "Contracts")!;
   const calls = model.types.get(pallet.calls!)!.definition;
@@ -436,14 +435,36 @@ test("compiled v470 full Wasm artifact references simulate uploads and prepare e
     sha256: createHash("sha256").update(data).digest("hex"),
     bytes: data.length,
   };
-  for (const [kind, memberName] of [["runtime", "upload_code"], ["runtime", "instantiate"], ["prepare", "upload_code"], ["prepare", "instantiate_with_code"]] as const) {
-    const fields = kind === "runtime" ? api.methods.find((row) => row.name === memberName)!.inputs : calls.variants.find((row) => row.name === memberName)!.fields;
+  for (const [kind, memberName] of [
+    ["runtime", "upload_code"],
+    ["runtime", "instantiate"],
+    ["prepare", "upload_code"],
+    ["prepare", "instantiate_with_code"],
+  ] as const) {
+    const fields =
+      kind === "runtime"
+        ? api.methods.find((row) => row.name === memberName)!.inputs
+        : calls.variants.find((row) => row.name === memberName)!.fields;
     const args = fields.map((field) => sample(field.type));
     fields.forEach((field, index) => {
-      if (field.name === "code") args[index] = kind === "runtime" && memberName === "instantiate" ? { variant: "Upload", fields: "0x" } : "0x";
-      if (field.name === "gas_limit" && kind === "runtime") args[index] = { variant: "Some", fields: { ref_time: "100000000000", proof_size: "32768" } };
+      if (field.name === "code")
+        args[index] =
+          kind === "runtime" && memberName === "instantiate"
+            ? { variant: "Upload", fields: "0x" }
+            : "0x";
+      if (field.name === "gas_limit" && kind === "runtime")
+        args[index] = {
+          variant: "Some",
+          fields: { ref_time: "100000000000", proof_size: "32768" },
+        };
     });
-    const operation = { kind, ...(kind === "runtime" ? { api: api.name } : { pallet: pallet.name }), member: memberName, args, code_artifact: artifact };
+    const operation = {
+      kind,
+      ...(kind === "runtime" ? { api: api.name } : { pallet: pallet.name }),
+      member: memberName,
+      args,
+      code_artifact: artifact,
+    };
     const f = fixture();
     let fetches = 0;
     const fetchImpl = (async (url, init) => {
@@ -452,39 +473,104 @@ test("compiled v470 full Wasm artifact references simulate uploads and prepare e
       assert.equal(init!.redirect, "manual");
       return new Response(data);
     }) as typeof fetch;
-    const result = await queryNativeRuntime({ operations: kind === "runtime" ? [operation, operation] : [operation] }, f.rpc, fetchImpl);
+    const result = await queryNativeRuntime(
+      { operations: kind === "runtime" ? [operation, operation] : [operation] },
+      f.rpc,
+      fetchImpl,
+    );
     assert.equal(fetches, 1);
-    if (kind === "runtime") assert.deepEqual(result.results[0], result.results[1]);
+    if (kind === "runtime")
+      assert.deepEqual(result.results[0], result.results[1]);
     assert.equal(f.executions.length, kind === "runtime" ? 1 : 0);
     const codeIndex = fields.findIndex((field) => field.name === "code");
-    const code = kind === "runtime" && memberName === "instantiate" ? { variant: "Upload", fields: nativeHex(data) } : nativeHex(data);
-    const expected = args.map((value, index) => index === codeIndex ? code : value);
-    const pieces = fields.map((field, index) => registry.createTypeUnsafe(`Lookup${field.type}`, [encodeNativeValue(model, field.type, expected[index]!)]).toU8a());
-    if (kind === "runtime") assert.deepEqual(f.executions[0]!.params, [`ContractsApi_${memberName}`, nativeHex(Buffer.concat(pieces)), hash]);
+    const code =
+      kind === "runtime" && memberName === "instantiate"
+        ? { variant: "Upload", fields: nativeHex(data) }
+        : nativeHex(data);
+    const expected = args.map((value, index) =>
+      index === codeIndex ? code : value,
+    );
+    const pieces = fields.map((field, index) =>
+      registry
+        .createTypeUnsafe(`Lookup${field.type}`, [
+          encodeNativeValue(model, field.type, expected[index]!),
+        ])
+        .toU8a(),
+    );
+    if (kind === "runtime")
+      assert.deepEqual(f.executions[0]!.params, [
+        `ContractsApi_${memberName}`,
+        nativeHex(Buffer.concat(pieces)),
+        hash,
+      ]);
     else {
       const call = calls.variants.find((row) => row.name === memberName)!;
-      assert.equal(result.results[0]!.call_data, nativeHex(Buffer.concat([Buffer.from([pallet.index, call.index]), ...pieces])));
+      assert.equal(
+        result.results[0]!.call_data,
+        nativeHex(
+          Buffer.concat([Buffer.from([pallet.index, call.index]), ...pieces]),
+        ),
+      );
     }
-    assert.deepEqual((result.results[0]!.contract as { code_artifact: unknown }).code_artifact, artifact);
-    assert.deepEqual(args[codeIndex], kind === "runtime" && memberName === "instantiate" ? { variant: "Upload", fields: "0x" } : "0x");
+    assert.deepEqual(
+      (result.results[0]!.contract as { code_artifact: unknown }).code_artifact,
+      artifact,
+    );
+    assert.deepEqual(
+      args[codeIndex],
+      kind === "runtime" && memberName === "instantiate"
+        ? { variant: "Upload", fields: "0x" }
+        : "0x",
+    );
     if (kind === "runtime") {
       const inline = { ...operation, args: expected, code_artifact: undefined };
-      await assert.rejects(() => queryNativeRuntime({ operations: [inline] }, f.rpc, fetchImpl), /code byte budget/);
+      await assert.rejects(
+        () => queryNativeRuntime({ operations: [inline] }, f.rpc, fetchImpl),
+        /Native request exceeds byte budget/,
+      );
       const before = f.executions.length;
-      await assert.rejects(() => queryNativeRuntime({ operations: [operation, { ...operation, args: args.map((value, index) => fields[index]!.name === "origin" ? `0x${"22".repeat(32)}` : value) }] }, f.rpc, fetchImpl), /aggregate/);
+      await assert.rejects(
+        () =>
+          queryNativeRuntime(
+            {
+              operations: [
+                operation,
+                {
+                  ...operation,
+                  args: args.map((value, index) =>
+                    fields[index]!.name === "origin"
+                      ? `0x${"22".repeat(32)}`
+                      : value,
+                  ),
+                },
+              ],
+            },
+            f.rpc,
+            fetchImpl,
+          ),
+        /aggregate/,
+      );
       assert.equal(f.executions.length, before);
     }
     if (kind === "prepare") {
       // Keep full method bytes inside the unchanged public response cap.
       assert.ok(Buffer.byteLength(JSON.stringify(result)) < 524_288);
     }
-    console.log("NATIVE_V470_CODE_ARTIFACT_FIXTURE", JSON.stringify({
-      kind, member: memberName, code_bytes: data.length,
-      request_bytes: Buffer.byteLength(JSON.stringify({ operations: [operation] })),
-      inline_code_hex_bytes_avoided: data.length * 2,
-      artifact_fetches: 1,
-      execution_rpcs: kind === "runtime" ? 1 : 0,
-      fixture: true, production: false,
-    }));
+    console.log(
+      "NATIVE_V470_CODE_ARTIFACT_FIXTURE",
+      JSON.stringify({
+        kind,
+        member: memberName,
+        code_bytes: data.length,
+        request_bytes: Buffer.byteLength(
+          JSON.stringify({ operations: [operation] }),
+        ),
+        inline_code_hex_bytes_avoided: data.length * 2,
+        artifact_fetches: 1,
+        execution_rpcs: kind === "runtime" ? 1 : 0,
+        fixture: true,
+        production: false,
+      }),
+    );
   }
 });

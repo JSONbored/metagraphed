@@ -9573,6 +9573,18 @@ export interface components {
             target_network: string;
             testnet_only_count?: number;
         };
+        /** @description Checksum-bound public Wasm code for ContractsApi upload_code/instantiate or Contracts upload_code/instantiate_with_code preparation. Keep the code argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. One distinct artifact is fetched per request, with no persistent storage. */
+        NativeCodeArtifact: {
+            /** @description Exact artifact byte length, also bounded by this source runtime's Contracts.MaxCodeLen. */
+            bytes: number;
+            /** @description SHA-256 of the exact uncompressed artifact bytes. */
+            sha256: string;
+            /**
+             * Format: uri
+             * @description Public raw.githubusercontent.com URL pinned to a full 40-character commit, with no credentials, query or fragment.
+             */
+            url: string;
+        };
         NativeDefinition: {
             fields: components["schemas"]["NativeField"][];
             /** @constant */
@@ -9675,12 +9687,14 @@ export interface components {
             api: string;
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
+            code_artifact?: components["schemas"]["NativeCodeArtifact"];
             /** @constant */
             kind: "runtime";
             member: string;
         } | {
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
+            code_artifact?: components["schemas"]["NativeCodeArtifact"];
             /** @constant */
             kind: "prepare";
             member: string;
@@ -9696,7 +9710,7 @@ export interface components {
             pallet?: string;
             type_id?: number;
         };
-        /** @description Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate at the same finalized source. EVM requests have an aggregate 1,000,000 gas cap. Contracts require an explicit Some gas_limit Weight; distinct simulations share a 250,000,000,000 ref_time and 65,536 proof_size budget, with one code upload of at most 16,384 bytes. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or persistent state mutation occurs. */
+        /** @description Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate at the same finalized source. EVM requests have an aggregate 1,000,000 gas cap. Contracts require an explicit Some gas_limit Weight; distinct simulations share a 250,000,000,000 ref_time and 65,536 proof_size budget, with one inline code upload of at most 16,384 bytes. A commit-pinned code_artifact reference supports up to 131,072 bytes within the source runtime MaxCodeLen; the reference must include its exact SHA-256 and byte count, and the code argument must be empty hex. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or persistent state mutation occurs. */
         NativeRuntimeRequest: {
             /**
              * @description Canonical finalized block hash to read; omitted selects the current finalized head. Reuse the response's source hash for a consistent multi-request view.

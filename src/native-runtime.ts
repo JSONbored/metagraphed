@@ -503,8 +503,16 @@ function plan(
 
 /** One finalized context for a bounded batch; validate every operation before
  * issuing state reads. Identical calls are coalesced, then restored in order. */
-export async function queryNativeRuntime(raw: unknown, rpc?: BasketRpc, fetchImpl: typeof fetch = fetch) {
-  return readNativeRuntime(NativeRuntimeRequestSchema.parse(raw), rpc, fetchImpl);
+export async function queryNativeRuntime(
+  raw: unknown,
+  rpc?: BasketRpc,
+  fetchImpl: typeof fetch = fetch,
+) {
+  return readNativeRuntime(
+    NativeRuntimeRequestSchema.parse(raw),
+    rpc,
+    fetchImpl,
+  );
 }
 
 /** Internal entrypoint for callers that have already validated the canonical
@@ -575,23 +583,40 @@ export async function readNativeRuntime(
   const needed = new Map<number, NativeType>();
   // Typed reads already have metadata signatures. Do not add an API-list
   // traversal to them just to support the older signature-less read path.
-  const needsApis = input.operations.some(
-    (operation) =>
-      operation.kind === "runtime_scale" ||
+  let needsApis = false;
+  let hasCodeArtifacts = false;
+  for (const operation of input.operations) {
+    needsApis ||= operation.kind === "runtime_scale" ||
       (metadata.version === 14 &&
         operation.kind === "describe" &&
         operation.pallet === undefined &&
-        operation.type_id === undefined),
-  );
+        operation.type_id === undefined);
+    hasCodeArtifacts ||= (operation.kind === "runtime" || operation.kind === "prepare") &&
+      operation.code_artifact !== undefined;
+  }
   const apiList = needsApis ? advertisedApis.parse(rawVersion).apis : [];
   const apiVersions = new Map(apiList);
   if (apiVersions.size !== apiList.length)
     throw new Error("Duplicate advertised native runtime API identifiers");
-  const operations = await resolveNativeCodeArtifacts(metadata, input.operations, fetchImpl);
+  const operations = hasCodeArtifacts
+    ? await resolveNativeCodeArtifacts(metadata, input.operations, fetchImpl)
+    : input.operations;
   const plans = operations.map((operation) => {
     const row = plan(metadata, operation, needed, apiVersions);
-    if ((operation.kind === "runtime" || operation.kind === "prepare") && operation.code_artifact)
-      return { ...row, result: { ...row.result, contract: { ...row.result.contract, code_artifact: operation.code_artifact } } };
+    if (
+      (operation.kind === "runtime" || operation.kind === "prepare") &&
+      operation.code_artifact
+    )
+      return {
+        ...row,
+        result: {
+          ...row.result,
+          contract: {
+            ...row.result.contract,
+            code_artifact: operation.code_artifact,
+          },
+        },
+      };
     return row;
   });
   const unique = new Map<string, { method: string; params: unknown[] }>();

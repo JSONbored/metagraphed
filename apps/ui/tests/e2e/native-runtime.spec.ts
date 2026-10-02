@@ -493,25 +493,60 @@ test("Wasm contracts use discovered Weight arguments and retain reverted bytes w
   ]);
 });
 
-test("native code form sends a compact checksum-bound artifact at the inspected source", async ({ page }) => {
+test("native code form sends a compact checksum-bound artifact at the inspected source", async ({
+  page,
+}) => {
   const artifact = {
     url: `https://raw.githubusercontent.com/example/contracts/${"a".repeat(40)}/code.wasm`,
-    sha256: "b".repeat(64), bytes: 131072,
+    sha256: "b".repeat(64),
+    bytes: 131072,
   };
   const requests: { operations: { kind: string; member?: string }[] }[] = [];
-  await page.route("https://raw.githubusercontent.com/**", () => { throw new Error("Artifact fixtures must not fetch a public provider"); });
+  await page.route("https://raw.githubusercontent.com/**", () => {
+    throw new Error("Artifact fixtures must not fetch a public provider");
+  });
   await page.route("**/api/v1/native-runtime", async (route) => {
     const body = route.request().postDataJSON();
     requests.push(body);
     const discovery = body.operations[0].kind === "describe";
-    await route.fulfill({ json: { ok: true, data: {
-      schema_version: 1, source,
-      types: [{ id: 0, path: [], definition: { kind: "primitive", primitive: 3 } }, { id: 1, path: [], definition: { kind: "sequence", type: 0 } }],
-      results: discovery ? [{ kind: "describe", value: [
-        { kind: "runtime", api: "ContractsApi", member: "upload_code", args: [{ name: "code", type: 1 }] },
-        { kind: "runtime", api: "ContractsApi", member: "get_storage", args: [] },
-      ], contract: { next_offset: null } }] : [{ kind: "runtime", api: "ContractsApi", member: "upload_code", value: { code_hash: `0x${"11".repeat(32)}` }, contract: { code_artifact: artifact } }],
-    } } });
+    await route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          schema_version: 1,
+          source,
+          types: [
+            { id: 0, path: [], definition: { kind: "primitive", primitive: 3 } },
+            { id: 1, path: [], definition: { kind: "sequence", type: 0 } },
+          ],
+          results: discovery
+            ? [
+                {
+                  kind: "describe",
+                  value: [
+                    {
+                      kind: "runtime",
+                      api: "ContractsApi",
+                      member: "upload_code",
+                      args: [{ name: "code", type: 1 }],
+                    },
+                    { kind: "runtime", api: "ContractsApi", member: "get_storage", args: [] },
+                  ],
+                  contract: { next_offset: null },
+                },
+              ]
+            : [
+                {
+                  kind: "runtime",
+                  api: "ContractsApi",
+                  member: "upload_code",
+                  value: { code_hash: `0x${"11".repeat(32)}` },
+                  contract: { code_artifact: artifact },
+                },
+              ],
+        },
+      },
+    });
   });
   await gotoThroughRestart(page, "/apis/native");
   await page.getByLabel("Contract", { exact: true }).selectOption("api");
@@ -527,7 +562,18 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
   await page.getByLabel("Artifact SHA-256").fill(artifact.sha256);
   await page.getByRole("button", { name: "Read operation", exact: true }).click();
   await expect(page.getByRole("cell", { name: `0x${"11".repeat(32)}`, exact: true })).toBeVisible();
-  expect(requests[1]).toEqual({ as_of: hash, operations: [{ kind: "runtime", api: "ContractsApi", member: "upload_code", args: ["0x"], code_artifact: artifact }] });
+  expect(requests[1]).toEqual({
+    as_of: hash,
+    operations: [
+      {
+        kind: "runtime",
+        api: "ContractsApi",
+        member: "upload_code",
+        args: ["0x"],
+        code_artifact: artifact,
+      },
+    ],
+  });
   expect(JSON.stringify(requests[1]).length).toBeLessThan(700);
   await page.getByLabel("Operation", { exact: true }).selectOption("1");
   await expect(page.getByLabel("Code artifact URL")).toHaveCount(0);
@@ -535,6 +581,8 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
   await expect(page.getByLabel("Code artifact URL")).toHaveValue("");
   await expect(page.getByLabel("Artifact SHA-256")).toHaveValue("");
   await expect(page.getByLabel("Artifact bytes")).toHaveValue("");
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth + 1,
+  );
   expect(overflow).toBe(false);
 });

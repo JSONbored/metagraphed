@@ -59,12 +59,29 @@ export const NativeJsonValueSchema = z.json();
 const args = z.array(NativeJsonValueSchema).max(64).default([]);
 export const NativeCodeArtifactSchema = z
   .object({
-    url: z.string().url().max(2048).describe("Public raw.githubusercontent.com URL pinned to a full 40-character commit, with no credentials, query or fragment."),
-    sha256: z.string().regex(/^[0-9a-f]{64}$/).describe("SHA-256 of the exact uncompressed artifact bytes."),
-    bytes: z.int().min(1).max(131072).describe("Exact artifact byte length, also bounded by this source runtime's Contracts.MaxCodeLen."),
+    url: z
+      .string()
+      .url()
+      .max(2048)
+      .describe(
+        "Public raw.githubusercontent.com URL pinned to a full 40-character commit, with no credentials, query or fragment.",
+      ),
+    sha256: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .describe("SHA-256 of the exact uncompressed artifact bytes."),
+    bytes: z
+      .int()
+      .min(1)
+      .max(131072)
+      .describe(
+        "Exact artifact byte length, also bounded by this source runtime's Contracts.MaxCodeLen.",
+      ),
   })
   .strict()
-  .describe("Checksum-bound public Wasm code for ContractsApi upload_code/instantiate or Contracts upload_code/instantiate_with_code preparation. Keep the code argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. One distinct artifact is fetched per request, with no persistent storage.");
+  .describe(
+    "Checksum-bound public Wasm code for ContractsApi upload_code/instantiate or Contracts upload_code/instantiate_with_code preparation. Keep the code argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. One distinct artifact is fetched per request, with no persistent storage.",
+  );
 export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
   z
     .object({
@@ -97,9 +114,22 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
     .strict(),
   z.object({ kind: z.literal("constant"), ...common }).strict(),
   z
-    .object({ kind: z.literal("runtime"), api: name, member: name, args, code_artifact: NativeCodeArtifactSchema.optional() })
+    .object({
+      kind: z.literal("runtime"),
+      api: name,
+      member: name,
+      args,
+      code_artifact: NativeCodeArtifactSchema.optional(),
+    })
     .strict(),
-  z.object({ kind: z.literal("prepare"), ...common, args, code_artifact: NativeCodeArtifactSchema.optional() }).strict(),
+  z
+    .object({
+      kind: z.literal("prepare"),
+      ...common,
+      args,
+      code_artifact: NativeCodeArtifactSchema.optional(),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("describe"),
