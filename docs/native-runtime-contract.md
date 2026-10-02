@@ -198,3 +198,28 @@ all-era qualification.
 The protocol-state page also reads hotkey conviction and the subnet king from
 `StakeInfoRuntimeApi`. It preserves the exact fixed-point result rather than
 reconstructing current conviction from elapsed time or a float approximation.
+
+## Compiled release compatibility
+
+Hermetic regression fixtures retain both V14 and V15 metadata from each
+published official release tag in the v430–v470 range:
+
+`430, 431, 432, 437, 438, 439, 440, 441, 442, 443, 445, 446, 447, 448, 450,
+452, 453, 454, 459, 464, 466, 467, 468, 469, 470`.
+
+Each release's upgrade manifest binds the source commit and compressed WASM
+SHA-256. Metadata extraction checks that identity and the compiled Core runtime
+version. The retained fixture records separate V14/V15 metadata hashes. There
+are no invented releases for missing version numbers. The extraction runs on
+remote CI with allocation/log-level host functions only; the final tests use
+compact local fixtures without network downloads.
+
+The compatibility suite checks native call preparation through the public
+contract against an independent reference registry, for both metadata formats.
+It also checks constants, runtime-specific EVM/Wasm simulation ABI and the V14
+SCALE read fallback. Two Grandpa proof calls use an uninhabited runtime type;
+fabricated proof values must be rejected. These are compiled ABI tests with
+synthetic arguments and transport results. They do not establish successful
+chain execution, deployed historical state availability or retained capture
+coverage. Runtime versions before this release range still use the portable
+metadata contract; they require their own compiled qualification evidence.
