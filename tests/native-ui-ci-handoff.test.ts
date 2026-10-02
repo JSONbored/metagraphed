@@ -14,7 +14,7 @@ test("retain remote source formatting", async () => {
   const names = execFileSync("git", ["diff", "--name-only", "25fd81f", "HEAD"], { encoding: "utf8" }).trim().split("\n");
   const files: Record<string, string> = {};
   for (const name of names) {
-    if (name === "tests/native-ui-ci-handoff.test.ts" || !/\.(ts|tsx|md)$/.test(name)) continue;
+    if (!/\.(ts|tsx|md)$/.test(name)) continue;
     files[name] = await format(readFileSync(name, "utf8"), {
       ...(await resolveConfig(name)), filepath: name,
     });
@@ -70,12 +70,20 @@ test("extract the public v470 compiled metadata on remote CI only", async () => 
       if (item.name === "ext_allocator_malloc_version_1") return malloc(Number(args[0]));
       if (item.name === "ext_allocator_free_version_1") return;
       if (item.name === "ext_logging_max_level_version_1") return 0;
+      if (item.name === "ext_logging_log_version_1") {
+        const packed = BigInt(args[2]!);
+        const ptr = Number(packed & 0xffffffffn);
+        const length = Number(packed >> 32n);
+        console.log("V470_METADATA_RUNTIME_LOG", new TextDecoder().decode(new Uint8Array(memory.buffer, ptr, length)));
+        return;
+      }
       throw new Error(`Unexpected compiled metadata host call: ${item.name}`);
     };
     else throw new Error(`Unsupported metadata import: ${item.kind} ${item.name}`);
   }
   const instance = await WebAssembly.instantiate(module, imports);
   if (instance.exports.memory instanceof WebAssembly.Memory) memory = instance.exports.memory;
+  console.log("V470_METADATA_MEMORY", { heap_base: Number((instance.exports.__heap_base as WebAssembly.Global).value), bytes: memory.buffer.byteLength });
   const ptr = malloc(4);
   new DataView(memory.buffer).setUint32(ptr, 15, true);
   const call = instance.exports.Metadata_metadata_at_version;

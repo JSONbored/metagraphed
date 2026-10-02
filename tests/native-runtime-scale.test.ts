@@ -214,7 +214,9 @@ test("mixed V15 discovery and SCALE reads share the same advertised API context"
   );
   assert.equal(response.results[1]!.value, nonce);
   assert.equal(f.execution().length, 1);
-  const duplicate = fixture({ advertised: ["AccountNonceApi", "AccountNonceApi"] });
+  const duplicate = fixture({
+    advertised: ["AccountNonceApi", "AccountNonceApi"],
+  });
   await assert.rejects(
     queryNativeRuntime({ operations: [operation] }, duplicate.rpc),
     /Duplicate advertised/,
