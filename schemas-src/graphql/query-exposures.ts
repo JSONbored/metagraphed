@@ -345,7 +345,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "subnet-stake-quote",
     returns: "SubnetStakeQuote!",
     description:
-      "A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
+      "A read-only finalized runtime stake/unstake simulation: expected amount out, current vs effective price, and price impact including swap fees. Signs and submits nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
   },
   {
     field: "validator_economics",

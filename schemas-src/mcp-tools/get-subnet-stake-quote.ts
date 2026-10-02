@@ -18,17 +18,19 @@
 import { SubnetStakeQuoteArtifactSchema } from "../routes/stake-quote.ts";
 import { z } from "zod";
 import { kindSchema, netuidSchema } from "./shared.ts";
+import { McpNetworkSchema } from "../shared.ts";
 
 const STAKE_QUOTE_DIRECTIONS = ["stake", "unstake"] as const;
 
 export const GetSubnetStakeQuoteInputSchema = z
   .object({
     netuid: netuidSchema(),
+    network: McpNetworkSchema.optional(),
     amount: z
       .number()
       .gt(0)
       .describe(
-        "Amount to quote, in TAO when staking and in alpha when unstaking. Must be greater than 0.",
+        "Amount to quote, in TAO when staking and in alpha when unstaking. Must be positive, representable with at most nine decimal places and within the runtime u64 range.",
       )
       .meta({ examples: [10] }),
     // `stake` when omitted -- the route publishes it and the handler

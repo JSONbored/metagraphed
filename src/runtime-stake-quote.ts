@@ -1,5 +1,6 @@
 import { readNativeRuntime } from "./native-runtime.ts";
 import type { StakeQuote, StakeQuoteFailure } from "./stake-quote.ts";
+import { CHAIN_NAME_BY_NETWORK, type ChainNetworkId } from "./chain-network.ts";
 
 const WHOLE = 1_000_000_000n;
 const MAX = (1n << 64n) - 1n;
@@ -39,6 +40,7 @@ export async function buildRuntimeStakeQuote(
   amount: unknown,
   direction: string,
   read: typeof readNativeRuntime = readNativeRuntime,
+  network: ChainNetworkId = "mainnet",
 ) {
   if (direction !== "stake" && direction !== "unstake")
     return failure(400, "invalid_direction", "`direction` must be stake or unstake.");
@@ -49,7 +51,7 @@ export async function buildRuntimeStakeQuote(
     return failure(400, "invalid_netuid", "`netuid` must be an unsigned 16-bit subnet id.");
   const member = direction === "stake" ? "sim_swap_tao_for_alpha" : "sim_swap_alpha_for_tao";
   try {
-    const artifact = await read({ operations: [
+    const artifact = await read({ network: CHAIN_NAME_BY_NETWORK[network], operations: [
       { kind: "runtime", api: "SwapRuntimeApi", member: "current_alpha_price", args: [netuid] },
       { kind: "runtime", api: "SwapRuntimeApi", member, args: [netuid, input.toString()] },
     ] });

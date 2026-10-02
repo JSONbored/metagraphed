@@ -36,6 +36,7 @@ import {
 } from "../../src/chain-event-rollup-cold-tier.ts";
 import {
   DEFAULT_CHAIN_NETWORK,
+  CHAIN_NAME_BY_NETWORK,
   networkKvKey,
   type ChainNetworkId,
 } from "../../src/chain-network.ts";
@@ -3627,6 +3628,7 @@ export async function handleSubnetStakeQuote(
   // body anyway); ctx carries only the refusal's fault event (#10901), which
   // must never block or fail the response.
   ctx: { waitUntil?: (promise: Promise<unknown>) => void } = {},
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
@@ -3638,12 +3640,12 @@ export async function handleSubnetStakeQuote(
   const direction = routeValue<string>(url, "direction");
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
-      key: `native-runtime:${resolveClientIp(request)}`,
+      key: networkKvKey(`native-runtime:${resolveClientIp(request)}`, network),
     });
     if (!success)
       return errorResponse("stake_quote_rate_limited", "Too many chain simulation requests; slow down.", 429, {}, { "retry-after": "60" });
   }
-  const result = await buildRuntimeStakeQuote(Number(netuid), amount, direction);
+  const result = await buildRuntimeStakeQuote(Number(netuid), amount, direction, undefined, network);
   if (!result.ok) {
     return errorResponse(result.code, result.error, result.status);
   }
@@ -3651,6 +3653,7 @@ export async function handleSubnetStakeQuote(
     data: { schema_version: 1, ...result.quote },
     meta: {
       source: "chain-runtime",
+      network: CHAIN_NAME_BY_NETWORK[network],
       contract_version: contractVersion(env),
       native_source: result.source,
     },

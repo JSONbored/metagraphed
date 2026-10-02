@@ -52,7 +52,6 @@ export function NativeRuntimePage({
   const { network } = useNetwork();
   const [apiBase, setApiBase] = useState(getApiBase);
   useEffect(() => onApiBaseChange(setApiBase), []);
-  useRegisterApiSource(["/api/v1/native-runtime"], []);
   return (
     <AppShell>
       <EntityHero
@@ -84,6 +83,7 @@ function NativeRuntimeExplorer({
   initialNetuid: string;
   initialColdkey: string;
 }) {
+  useRegisterApiSource(["/api/v1/native-runtime"], []);
   const [feature, setFeature] = useState<NativeFeature>("mechanisms");
   const [netuid, setNetuid] = useState(initialNetuid);
   const [coldkey, setColdkey] = useState(initialColdkey);

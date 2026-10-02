@@ -2,7 +2,7 @@
 vi.mock("../src/runtime-stake-quote.ts", async () => {
   const actual = await vi.importActual<typeof import("../src/runtime-stake-quote.ts")>("../src/runtime-stake-quote.ts");
   const { readRuntimeStakeFixture } = await import("./fixtures/runtime-stake-quote.ts");
-  return { ...actual, buildRuntimeStakeQuote: (netuid: number, amount: unknown, direction: string) => actual.buildRuntimeStakeQuote(netuid, amount, direction, readRuntimeStakeFixture) };
+  return { ...actual, buildRuntimeStakeQuote: (netuid: number, amount: unknown, direction: string, _read?: Parameters<typeof actual.buildRuntimeStakeQuote>[3], network?: Parameters<typeof actual.buildRuntimeStakeQuote>[4]) => actual.buildRuntimeStakeQuote(netuid, amount, direction, readRuntimeStakeFixture, network) };
 });
 
 import {
@@ -11353,6 +11353,20 @@ describe("MCP economics + metagraph data tools", () => {
       assert.match(res.body.result.content[0].text, /rate_limited/);
       assert.equal(keys.length, 1);
       assert.ok(keys[0]!.startsWith("native-runtime:"));
+    }
+  });
+
+  test("stake quote and preview select testnet and share its native work budget", async () => {
+    for (const name of ["get_subnet_stake_quote", "get_stake_action_preview"]) {
+      const keys: string[] = [];
+      const res = await callTool(name, { netuid: 64, amount: 1, network: "test" }, {
+        deps: makeDeps({}, {}),
+        env: { RPC_RATE_LIMITER: { limit: async ({ key }: { key: string }) => { keys.push(key); return { success: true }; } } } as unknown as Env,
+      });
+      assert.notEqual(res.body.result.isError, true);
+      assert.equal(res.body.result.structuredContent.netuid, 64);
+      assert.equal(keys.length, 1);
+      assert.ok(keys[0]!.startsWith("testnet:native-runtime:"));
     }
   });
 

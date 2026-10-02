@@ -13,7 +13,7 @@ export const readRuntimeStakeFixture: typeof readNativeRuntime = (input) => {
   const rpc: BasketRpc = async (method, params) => {
     if (method === "chain_getFinalizedHead") return block;
     if (method === "chain_getHeader") return { number: "0x1f4" };
-    if (method === "chain_getBlockHash") return genesis;
+    if (method === "chain_getBlockHash") return input.network === "test" ? `0x${"55".repeat(32)}` : genesis;
     if (method === "state_getStorageHash") return null;
     if (method === "state_getRuntimeVersion")
       return { specName: "node-subtensor", specVersion: 470, transactionVersion: 1 };

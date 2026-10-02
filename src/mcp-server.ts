@@ -2271,12 +2271,13 @@ const STAKE_PREVIEW_IMPACT_MAX_PCT = 5;
 // `ok` flag) purely from a computed stake quote's price impact — the one signal
 // the preview already carries that reflects how much this size moves the pool.
 // Additive over get_subnet_stake_quote's numbers; adds no execution capability.
-async function loadRuntimeStakeQuote(ctx: McpCtx, netuid: number, amount: unknown, direction: string) {
+async function loadRuntimeStakeQuote(ctx: McpCtx, netuid: number, amount: unknown, direction: string, networkName?: string) {
+  const network = chainNetworkFromChainName(networkName);
   if (ctx.env.RPC_RATE_LIMITER?.limit) {
-    const { success } = await ctx.env.RPC_RATE_LIMITER.limit({ key: `native-runtime:${ctx.clientIp ?? "anon"}` });
+    const { success } = await ctx.env.RPC_RATE_LIMITER.limit({ key: basketNetworkKey(`native-runtime:${ctx.clientIp ?? "anon"}`, network) });
     if (!success) throw toolError("rate_limited", "Too many chain simulation requests; slow down.");
   }
-  return buildRuntimeStakeQuote(netuid, amount, direction);
+  return buildRuntimeStakeQuote(netuid, amount, direction, undefined, network);
 }
 
 function computeStakePreviewAdvisory(quote: StakeQuote) {
@@ -7000,7 +7001,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_subnet_stake_quote",
     title: "Get a subnet stake/unstake quote",
     description:
-      "Simulate a stake or unstake at one finalized chain source using the runtime's SwapRuntimeApi. Returns expected alpha/TAO out, current and effective price, and price impact including swap fees. stake (default) spends amount TAO for alpha; unstake spends amount alpha for TAO. Amounts must fit whole atomic units and u64. Root uses the chain simulator too. Numeric fields are for display; get_native_runtime exposes exact atomic values and source identity. Read-only; builds, signs and submits nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
+      "Simulate a stake or unstake at one finalized chain source using the runtime's SwapRuntimeApi. Returns expected alpha/TAO out, current and effective price, and price impact including swap fees. stake (default) spends amount TAO for alpha; unstake spends amount alpha for TAO. Amounts must fit whole atomic units and u64. Root uses the chain simulator too. network selects finney (default) or test. Numeric fields are for display; get_native_runtime exposes exact atomic values and source identity. Read-only; builds, signs and submits nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
     inputSchema: inputJsonSchema(GetSubnetStakeQuoteInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetStakeQuoteInputSchema>,
@@ -7009,7 +7010,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
-      const result = await loadRuntimeStakeQuote(ctx, netuid, amount, direction);
+      const result = await loadRuntimeStakeQuote(ctx, netuid, amount, direction, args.network);
       if (!result.ok) {
         throw toolError(result.code, result.error);
       }
@@ -7211,7 +7212,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
       // The same finalized simulation serves both the quote and its preview.
-      const result = await loadRuntimeStakeQuote(ctx, netuid, amount, direction);
+      const result = await loadRuntimeStakeQuote(ctx, netuid, amount, direction, args.network);
       if (!result.ok) {
         throw toolError(result.code, result.error);
       }

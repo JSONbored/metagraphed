@@ -6894,7 +6894,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       resolved.url.pathname,
     );
     if (stakeQuoteMatch) {
-      // Read-only constant-product quote (#5235). The result varies with the
+      // Read-only finalized runtime quote. The result varies with the
       // ?amount=/?direction= query, so it's computed per request rather than
       // path-edge-cached like the deterministic sibling analytics routes.
       return handleSubnetStakeQuote(
@@ -8137,7 +8137,6 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||
     SUBNET_OHLC_PATH_PATTERN.test(pathname) ||
-    SUBNET_STAKE_QUOTE_PATH_PATTERN.test(pathname) ||
     // Mainnet-only because it joins the `neurons` tier, which is indexed
     // for finney only. Its live half (StakeThreshold/TaoWeight/Burn) became
     // network-aware in #8700 -- the storage reads are no longer what pins this
@@ -8204,6 +8203,10 @@ async function dispatchLiveChainRoute(
 ): Promise<Response | null> {
   const chain = chainNetworkId(network.id);
   const { pathname } = url;
+
+  const stakeQuoteMatch = SUBNET_STAKE_QUOTE_PATH_PATTERN.exec(pathname);
+  if (stakeQuoteMatch)
+    return handleSubnetStakeQuote(request, env, Number(stakeQuoteMatch[1]), url, ctx, chain);
 
   const walletsMatch = SUBNET_WALLETS_PATH_PATTERN.exec(pathname);
   if (walletsMatch) {

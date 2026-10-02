@@ -3296,7 +3296,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/stake-quote",
     "/metagraph/subnets/{netuid}/stake-quote.json",
-    "Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+    "Simulate a stake/unstake at one finalized chain source: expected alpha/TAO out, current vs effective price and price impact including swap fees. amount is required and must fit whole atomic units and u64; direction defaults to stake (TAO in), while unstake spends alpha. Uses the runtime's SwapRuntimeApi; zero or partial fills return 422 and failed reads return 502. No approximate fallback, signing or submission. Root uses the same simulator. Existing numeric fields are display values; exact atomic results are available through native-runtime. Source identity appears in meta.native_source. Network prefixes select mainnet or testnet.",
     "short",
     ["subnets", "analytics"],
     [],
@@ -5563,7 +5563,6 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/subnets/{netuid}/stake-flow",
   "/api/v1/subnets/{netuid}/volume",
   "/api/v1/subnets/{netuid}/ohlc",
-  "/api/v1/subnets/{netuid}/stake-quote",
   // Mainnet-only by construction rather than policy: the floors are derived
   // against StakeThreshold, TaoWeight and Burn read out of finney storage at
   // request time, so a testnet-addressed question has nothing to answer from.

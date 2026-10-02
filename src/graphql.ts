@@ -4968,7 +4968,10 @@ const rootValue = {
       // The shared calculator's own contract errors (bad amount, dead pool)
       // surface as BAD_USER_INPUT rather than a partially-filled card.
       throw new GraphQLError(result.error, {
-        extensions: { code: result.status < 500 ? "BAD_USER_INPUT" : "INTERNAL_SERVER_ERROR" },
+        extensions: {
+          code:
+            result.status < 500 ? "BAD_USER_INPUT" : "INTERNAL_SERVER_ERROR",
+        },
       });
     }
     return { schema_version: 1, ...result.quote };
