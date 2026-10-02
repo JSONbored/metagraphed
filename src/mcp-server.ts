@@ -14741,18 +14741,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "query_graphql",
-    title: "Run a GraphQL query",
+    title: "Query GraphQL compatibility API",
     description:
-      "Execute an arbitrary read-only GraphQL query against the metagraph " +
-      "GraphQL API (POST /api/v1/graphql) and return its { data, errors } " +
-      "result. Prefer this over the individual REST-mirrored tools (get_subnet, " +
-      "list_subnets, etc.) when you need arbitrary field selection or nested " +
-      "relations resolved in ONE round-trip; prefer a dedicated tool for a " +
-      "single well-known lookup. The endpoint is query-only (no mutations) and " +
-      "enforces the same depth (max 7) and complexity (max 50) limits as the " +
-      "REST GraphQL endpoint -- a query that exceeds them is rejected. Pass the " +
-      "query string in `query` and any GraphQL variables as an object in " +
-      "`variables`.",
+      "Compatibility query for existing GraphQL integrations at POST " +
+      "/api/v1/graphql. For new work, prefer named MCP tools or the REST API; " +
+      "get_native_runtime covers native Bittensor reads and unsigned call " +
+      "preparation. Retains field selection, nested relations and { data, " +
+      "errors } results. Query-only, no mutations; maximum depth 7 and " +
+      "complexity 50. Pass `query` and optional `variables` as an object.",
     inputSchema: inputJsonSchema(QueryGraphqlInputSchema),
     outputSchema: outputJsonSchema(QueryGraphqlOutputSchema),
     async handler(args: z.infer<typeof QueryGraphqlInputSchema>, ctx: McpCtx) {

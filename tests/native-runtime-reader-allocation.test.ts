@@ -38,10 +38,7 @@ const serialized = (value: NativeMetadata) =>
 const strings = (values: Uint8Array[]) =>
   nativeHex(
     Buffer.concat(
-      values.flatMap((value) => [
-        nativeCompact(BigInt(value.length)),
-        value,
-      ]),
+      values.flatMap((value) => [nativeCompact(BigInt(value.length)), value]),
     ),
   );
 
@@ -82,7 +79,10 @@ test("reader-local text decoding retains BOMs, Unicode, empty strings and limits
     assert.equal(previous.text(), value);
     assert.equal(current.offset, previous.offset);
   }
-  assert.equal(current.finish(current.offset), previous.finish(previous.offset));
+  assert.equal(
+    current.finish(current.offset),
+    previous.finish(previous.offset),
+  );
   const oversized = strings([Buffer.alloc(65537)]);
   for (const Reader of [PreviousReader, NativeScaleReader])
     assert.throws(() => new Reader(oversized).text(), /work budget/);
@@ -104,7 +104,12 @@ test("fatal UTF-8 state cannot leak between strings or readers after errors", ()
     [0xf0, 0x9f, 0x92],
     [0xff],
   ]) {
-    const hex = strings([Buffer.from(invalid), valid, Buffer.from([0xac]), valid]);
+    const hex = strings([
+      Buffer.from(invalid),
+      valid,
+      Buffer.from([0xac]),
+      valid,
+    ]);
     const previous = new PreviousReader(hex);
     const current = new NativeScaleReader(hex);
     for (let index = 0; index < 2; index++) {
@@ -114,7 +119,10 @@ test("fatal UTF-8 state cannot leak between strings or readers after errors", ()
       for (const reader of [previous, current])
         assert.equal(reader.text(), "\uFEFF🌐");
     }
-    assert.equal(current.finish(current.offset), previous.finish(previous.offset));
+    assert.equal(
+      current.finish(current.offset),
+      previous.finish(previous.offset),
+    );
     assert.equal(new NativeScaleReader(strings([valid])).text(), "\uFEFF🌐");
   }
 });
@@ -132,7 +140,9 @@ test("a reader lazily constructs one decoder and byte-only readers construct non
   try {
     assert.equal(new NativeScaleReader("0x7f").byte(), 127);
     assert.equal(constructions, 0);
-    const current = new NativeScaleReader(strings([Buffer.from("A"), Buffer.from("B")]));
+    const current = new NativeScaleReader(
+      strings([Buffer.from("A"), Buffer.from("B")]),
+    );
     assert.equal(current.text(), "A");
     assert.equal(current.text(), "B");
     assert.equal(constructions, 1);
@@ -149,8 +159,16 @@ test("reader allocation removal preserves all 182 compiled metadata contracts", 
     for (const version of [14, 15] as const) {
       const hex = unwrapNativeMetadata(era[`v${version}`])!;
       assert.equal(
-        serialized(decodeNativeMetadata(new NativeScaleReader(hex, NATIVE_RUNTIME_LIMITS.metadataBytes))),
-        serialized(decodeNativeMetadata(new PreviousReader(hex, NATIVE_RUNTIME_LIMITS.metadataBytes))),
+        serialized(
+          decodeNativeMetadata(
+            new NativeScaleReader(hex, NATIVE_RUNTIME_LIMITS.metadataBytes),
+          ),
+        ),
+        serialized(
+          decodeNativeMetadata(
+            new PreviousReader(hex, NATIVE_RUNTIME_LIMITS.metadataBytes),
+          ),
+        ),
         `spec ${era.spec} V${version}`,
       );
       contracts++;
@@ -160,7 +178,10 @@ test("reader allocation removal preserves all 182 compiled metadata contracts", 
 
 test("compiled v470 fixture measures removed byte views, BigInt paths and decoder constructors", () => {
   const hex = unwrapNativeMetadata(eras.find((era) => era.spec === 470)!.v15)!;
-  const before = new CountedPreviousReader(hex, NATIVE_RUNTIME_LIMITS.metadataBytes);
+  const before = new CountedPreviousReader(
+    hex,
+    NATIVE_RUNTIME_LIMITS.metadataBytes,
+  );
   const expected = serialized(decodeNativeMetadata(before));
   const Decoder = globalThis.TextDecoder;
   let constructions = 0;
@@ -172,14 +193,22 @@ test("compiled v470 fixture measures removed byte views, BigInt paths and decode
   }
   vi.stubGlobal("TextDecoder", CountedDecoder);
   try {
-    const after = new NativeScaleReader(hex, NATIVE_RUNTIME_LIMITS.metadataBytes);
+    const after = new NativeScaleReader(
+      hex,
+      NATIVE_RUNTIME_LIMITS.metadataBytes,
+    );
     assert.equal(serialized(decodeNativeMetadata(after)), expected);
     assert.equal(constructions, 1);
   } finally {
     vi.unstubAllGlobals();
   }
   const decode = (previous: boolean) =>
-    decodeNativeMetadata(new (previous ? PreviousReader : NativeScaleReader)(hex, NATIVE_RUNTIME_LIMITS.metadataBytes));
+    decodeNativeMetadata(
+      new (previous ? PreviousReader : NativeScaleReader)(
+        hex,
+        NATIVE_RUNTIME_LIMITS.metadataBytes,
+      ),
+    );
   for (let iteration = 0; iteration < 5; iteration++) {
     decode(true);
     decode(false);
