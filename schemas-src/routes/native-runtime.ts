@@ -56,6 +56,10 @@ const common = { pallet: name, member: name };
 // One named recursive value contract keeps OpenAPI references anchored to a
 // real component instead of Zod's anonymous __shared definitions container.
 export const NativeJsonValueSchema = z.json();
+export const NativeEvmResultSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("decoded"), values: z.array(NativeJsonValueSchema) }).strict(),
+  z.object({ status: z.enum(["reverted", "dispatch_error", "execution_error", "invalid_output", "unrecognized_result"]) }).strict(),
+]).describe("Release-bound Solidity return interpretation for an evm_call simulation. Values are in the declared output order, tuples use their unique named fields or positional arrays, and wide integers are exact decimal strings. The native value retains all original return bytes, gas, logs, reverts and dispatch errors. Failed executions and malformed return bytes are never interpreted as successful values.");
 const args = z.array(NativeJsonValueSchema).max(64).default([]);
 const evmAddress = z.string().regex(/^0x[0-9a-f]{40}$/);
 export const NativeEvmCallSchema = z
@@ -65,7 +69,7 @@ export const NativeEvmCallSchema = z
   })
   .strict()
   .describe(
-    "Solidity signature and ordered arguments from this finalized runtime's precompile catalogue. Available on EthereumRuntimeRPCApi.call and EVM.call preparation. Keep the declared data/input argument as 0x; the existing to/target selects the precompile. Wide integers are exact decimal strings. Encoding adds no chain request and retains the ordinary gas, value and wallet-review rules.",
+    "Solidity signature and ordered arguments from this finalized runtime's precompile catalogue. Available on EthereumRuntimeRPCApi.call and EVM.call preparation. Keep the declared data/input argument as 0x; the existing to/target selects the precompile. Wide integers are exact decimal strings. Successful simulations include source-ABI-decoded evm_result values alongside the complete native result. Encoding and return decoding add no chain request and retain the ordinary gas, value and wallet-review rules.",
   );
 export const NativeCodeArtifactSchema = z
   .object({
@@ -152,7 +156,7 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
         .union([z.literal(true), evmAddress])
         .optional()
         .describe(
-          "true lists this source's precompile addresses; an address lists its Solidity signatures and argument names/types. Shares the normal offset/limit pagination and finalized source.",
+          "true lists this source's precompile addresses; an address lists its Solidity signatures, argument names/types and output layouts. Shares the normal offset/limit pagination and finalized source.",
         ),
       offset: z.int().min(0).max(16384).default(0),
       limit: z.int().min(1).max(64).default(32),
@@ -225,6 +229,7 @@ export const NativeRuntimeArtifactSchema = z
               .optional(),
             is_default: z.boolean().optional(),
             value: NativeJsonValueSchema.optional(),
+            evm_result: NativeEvmResultSchema.optional(),
             call_data: z
               .string()
               .regex(/^0x(?:[0-9a-f]{2})+$/)

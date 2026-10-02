@@ -2,6 +2,7 @@ import {
   NativeJsonValueSchema,
   NativeCodeArtifactSchema,
   NativeEvmCallSchema,
+  NativeEvmResultSchema,
   NativeRuntimeRequestSchema,
   NativeRuntimeArtifactSchema,
   NativeRuntimeSourceSchema,
@@ -815,6 +816,7 @@ register(AccountRootClaimArtifactSchema, "AccountRootClaimArtifact");
 register(NativeJsonValueSchema, "NativeJsonValue");
 register(NativeCodeArtifactSchema, "NativeCodeArtifact");
 register(NativeEvmCallSchema, "NativeEvmCall");
+register(NativeEvmResultSchema, "NativeEvmResult");
 register(NativeRuntimeRequestSchema, "NativeRuntimeRequest");
 register(NativeRuntimeArtifactSchema, "NativeRuntimeArtifact");
 register(NativeRuntimeSourceSchema, "NativeRuntimeSource");
@@ -1295,6 +1297,7 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "AccountRootClaimArtifact",
   "NativeCodeArtifact",
   "NativeEvmCall",
+  "NativeEvmResult",
   "NativeRuntimeArtifact",
   "NativeJsonValue",
   "NativeRuntimeRequest",

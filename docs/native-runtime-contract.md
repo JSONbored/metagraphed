@@ -101,7 +101,7 @@ finalized source.
 The same native REST/MCP contract provides release-bound precompile discovery and
 encoding. `{"kind":"describe","evm":true}` lists precompile addresses;
 `{"kind":"describe","evm":"0x0000000000000000000000000000000000000805"}`
-lists that address's signatures, selectors and argument names/types. Both use the
+lists that address's signatures, selectors, argument names/types and return layouts. Both use the
 ordinary offset/limit paging and finalized source. Raw cryptographic precompiles
 have no Solidity function list.
 
@@ -131,6 +131,23 @@ replace the release-qualified ABI. Ordinary raw calldata remains supported.
 
 The native page inspects and pages precompile signatures, accepts Solidity
 arguments and sends the compact descriptor at the inspected finalized source.
+Successful `evm_call` simulations also expose `evm_result.values` in the declared
+output order. `getStake` returns an exact decimal quantity; `getAxon` and
+`getCrowdloan` return named records; array and dynamic byte/string outputs retain
+their contents. Each selected signature's return layout is included in
+`contract.evm_call.outputs`. Wide integers are decimal strings, tuples use
+unique named fields or positional arrays, and bytes remain hex.
+
+The complete native `value` still carries raw return bytes, exit reason, gas,
+weight and logs. Dispatch failures, reverts and EVM errors receive explicit
+`evm_result.status` values without interpreting their bytes as successful
+outputs. Malformed ABI padding, offsets, lengths, trailing bytes or invalid
+UTF-8 produce `invalid_output` while retaining the native execution result.
+Decoding is bounded by the existing value and response budgets and adds no
+execution request. Return layouts follow the selected release's actual Rust
+dispatch signatures and codec structs, including functions omitted from older
+Solidity ABI files; output layouts are shared across unchanged releases.
+
 Clients do not need a downloaded ABI, selector hashes or padded calldata in chat
 context. Reference-vector and compiled-metadata tests qualify encoding and
 binding; they do not establish successful execution of a particular call on a

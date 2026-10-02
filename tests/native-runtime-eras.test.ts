@@ -45,7 +45,7 @@ for (const era of eras) {
 
   // Source identity and execution results are deliberately synthetic. The ABI
   // and RuntimeVersion are extracted from checksum-verified release WASM.
-  function fixture(metadataVersion: 14 | 15) {
+  function fixture(metadataVersion: 14 | 15, result?: NativeValue) {
     const calls: { method: string; params: unknown[] }[] = [];
     const rpc: BasketRpc = async (method, params) => {
       if (method === "chain_getFinalizedHead") return hash;
@@ -66,7 +66,7 @@ for (const era of eras) {
         (row) => `${api.name}_${row.name}` === params[0],
       )!;
       return nativeHex(
-        encodeNativeValue(model15, member.output, sample(member.output)),
+        encodeNativeValue(model15, member.output, result ?? sample(member.output)),
       );
     };
     rpc.batch = (rows) =>
@@ -366,6 +366,7 @@ for (const era of eras) {
         f.rpc,
       );
       assert.equal(response.results[0]!.call_data, nativeHex(expected));
+      assert.equal(Object.hasOwn(response.results[0]!, "evm_result"), false);
       assert.equal(f.calls.length, 0);
       assert.equal(
         (
@@ -407,7 +408,13 @@ for (const era of eras) {
       args,
       evm_call,
     };
-    const f = fixture(15);
+    const returned = sample(method.output) as {
+      variant: string;
+      fields: { exit_reason: NativeValue; value: string; [key: string]: NativeValue };
+    };
+    returned.fields.exit_reason = { variant: "Succeed", fields: { variant: "Returned", fields: {} } };
+    returned.fields.value = `0x${(1n << 200n).toString(16).padStart(64,"0")}`;
+    const f = fixture(15, returned);
     const response = await queryNativeRuntime(
       { operations: [operation, operation] },
       f.rpc,
@@ -428,6 +435,8 @@ for (const era of eras) {
     );
     assert.equal(f.calls[0]!.params[1], nativeHex(expected));
     assert.deepEqual(response.results[0], response.results[1]);
+    assert.deepEqual(response.results[0]!.value, returned);
+    assert.deepEqual(response.results[0]!.evm_result, { status: "decoded", values: [(1n << 200n).toString()] });
     const before = f.calls.length;
     await assert.rejects(
       () =>

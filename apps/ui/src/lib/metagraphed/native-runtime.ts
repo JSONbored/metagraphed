@@ -320,6 +320,7 @@ export function nativeValueRows(artifact: NativeArtifact): NativeValueRow[] {
   };
   artifact.results.forEach((result, index) => {
     const name = `${index + 1}. ${result.pallet ?? result.api ?? "Runtime"}.${result.member ?? "describe"}`;
+    if (result.evm_result !== undefined) visit(`${name}.evm_result`, result.evm_result);
     if (result.value !== undefined) visit(name, result.value);
     if (result.call_data !== undefined) visit(`${name}.call_data`, result.call_data);
   });

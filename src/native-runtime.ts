@@ -27,6 +27,7 @@ import {
 import { resolveNativeCodeArtifacts } from "./native-code-artifact.ts";
 import { resolveNativeEvmCall } from "./native-evm-call.ts";
 import { describeRuntimeEvm } from "./evm-runtime-abi.ts";
+import { decodeNativeEvmResult } from "./evm-runtime-return.ts";
 import { loadNativeContract } from "./native-runtime-contract.ts";
 import {
   NATIVE_CONTRACT_SIMULATION_LIMITS,
@@ -652,6 +653,7 @@ export async function readNativeRuntime(
     if (evm)
       return {
         ...row,
+        evm: evm.contract,
         result: {
           ...row.result,
           contract: { ...row.result.contract, evm_call: evm.contract },
@@ -791,9 +793,13 @@ export async function readNativeRuntime(
     }
     if (!("output" in row) || row.output === undefined)
       throw new Error("Missing native result contract");
+    const decoded = decodeNativeValue(metadata, row.output, value);
     return {
       ...row.result,
-      value: decodeNativeValue(metadata, row.output, value),
+      value: decoded,
+      ...("evm" in row && row.evm
+        ? { evm_result: decodeNativeEvmResult(decoded, row.evm.outputs) }
+        : {}),
       ...("item" in row ? { is_default: isDefault } : {}),
     };
   });

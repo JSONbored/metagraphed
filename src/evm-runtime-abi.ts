@@ -1,4 +1,5 @@
 import { evmRuntimeCatalogue as catalogue } from "./evm-runtime-catalogue.ts";
+import { evmRuntimeOutputs } from "./evm-runtime-outputs.ts";
 
 function releaseAt(spec: number) {
   const release = catalogue.releases.find((row) => row[0] === spec);
@@ -16,7 +17,13 @@ function precompileAt(
   const id = release[2].find((id) => catalogue.precompiles[id][1] === index);
   if (id === undefined)
     throw new Error("Unknown EVM precompile at this source");
-  return catalogue.precompiles[id];
+  return id;
+}
+function outputsAt(release: (typeof catalogue.releases)[number], precompile: number, fn: number) {
+  const source = evmRuntimeOutputs.releases.find(row => row[0] === release[0] && row[1] === release[1])!;
+  const bindingId = source[2].find(id => evmRuntimeOutputs.bindings[id][0] === precompile)!;
+  const binding = evmRuntimeOutputs.bindings[bindingId];
+  return evmRuntimeOutputs.outputs[binding[1].find(row => row[0] === fn)![1]];
 }
 const argumentTypes = (signature: string) =>
   signature
@@ -33,7 +40,8 @@ export function describeRuntimeEvm(
   limit: number,
 ) {
   const release = releaseAt(spec);
-  const precompile = to === true ? null : precompileAt(release, to);
+  const precompileId = to === true ? null : precompileAt(release, to);
+  const precompile = precompileId === null ? null : catalogue.precompiles[precompileId];
   const ids = precompile ? precompile[2] : release[2];
   const value = ids.slice(offset, offset + limit).map((id) => {
     if (precompile) {
@@ -43,6 +51,7 @@ export function describeRuntimeEvm(
         signature: fn[0],
         selector: fn[2],
         args: argumentTypes(fn[0]).map((type, i) => ({ name: fn[1][i], type })),
+        outputs: outputsAt(release, precompileId!, id),
       };
     }
     const row = catalogue.precompiles[id];
@@ -73,7 +82,8 @@ export function encodeRuntimeEvmCall(
   values: unknown[],
 ) {
   const release = releaseAt(spec);
-  const precompile = precompileAt(release, to);
+  const precompileId = precompileAt(release, to);
+  const precompile = catalogue.precompiles[precompileId];
   const id = precompile[2].find(
     (id) => catalogue.functions[id][0] === signature,
   );
@@ -90,14 +100,14 @@ export function encodeRuntimeEvmCall(
   }
   const dynamic = (type: string) =>
     type.endsWith("[]") || type === "bytes" || type === "string";
-  function tuple(types: string[], args: unknown[]): Buffer {
-    if (types.length !== args.length)
+  function tuple(types: string[], args: unknown[], repeat = false): Buffer {
+    if (!repeat && types.length !== args.length)
       throw new Error("EVM argument arity mismatch");
     const heads: Buffer[] = [],
       tails: Buffer[] = [];
-    let tail = types.length * 32;
-    for (let i = 0; i < types.length; i++) {
-      const type = types[i]!,
+    let tail = args.length * 32;
+    for (let i = 0; i < args.length; i++) {
+      const type = types[repeat ? 0 : i]!,
         value = args[i];
       if (dynamic(type)) {
         heads.push(word(BigInt(tail)));
@@ -116,7 +126,7 @@ export function encodeRuntimeEvmCall(
         throw new Error("EVM arguments exceed work budget");
       return Buffer.concat([
         word(BigInt(value.length)),
-        tuple(Array(value.length).fill(type.slice(0, -2)), value),
+        tuple([type.slice(0, -2)], value, true),
       ]);
     }
     if (type === "bytes" || type === "string") {
@@ -179,5 +189,6 @@ export function encodeRuntimeEvmCall(
     signature,
     selector: fn[2],
     source_commit: release[1],
+    outputs: outputsAt(release, precompileId, id),
   };
 }
