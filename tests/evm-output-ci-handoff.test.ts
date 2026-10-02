@@ -22,6 +22,7 @@ async function download(url: string, maxBuffer = 250000) {
 }
 const digest = (data: Uint8Array) => createHash("sha256").update(data).digest("hex");
 const canonicalType = (param: Param): string => param.type.startsWith("tuple") ? `(${param.components!.map(canonicalType).join(",")})${param.type.slice(5)}` : param.type;
+const dynamicOutput = (param: Param): boolean => param.type.endsWith("[]") || param.type === "bytes" || param.type === "string" || (param.type === "tuple" && param.components!.some(dynamicOutput));
 const clean = (param: Param): Param => ({name:param.name,type:param.type,...(param.components ? {components:param.components.map(clean)}:{})});
 function sample(param: Param): unknown {
   const array = /^(.*)\[(\d*)\]$/.exec(param.type);
@@ -136,7 +137,7 @@ test("extract complete official output ABIs and independent ethers return vector
           const returnType=expandedRustType(declaration[1],rust),param=rustParam(returnType,rust);
           const actual=returnType==="()" ? [] : returnType.startsWith("(") ? param.components!:[param];
           let output=actual;
-          if(matches.length===1 && JSON.stringify(matches[0].outputs.map(canonicalType))===JSON.stringify(actual.map(canonicalType)))output=matches[0].outputs.map(clean);
+          if(matches.length===1 && (JSON.stringify(matches[0].outputs.map(canonicalType))===JSON.stringify(actual.map(canonicalType)) || (returnType.startsWith("(") && !dynamicOutput(param) && matches[0].outputs.length===1 && canonicalType(matches[0].outputs[0])===canonicalType(param))))output=matches[0].outputs.map(clean);
           else console.log("EVM_OUTPUT_SOURCE_CORRECTION",release[0],precompile[0],fn[0],JSON.stringify(actual.map(canonicalType)));
 
           const visit=(param:Param)=>{types.add(param.type);param.components?.forEach(visit);};output.forEach(visit);
