@@ -68,17 +68,21 @@ export function decodeNativeStakeQuote(
   const raw = value(artifact, index, member);
   if (raw === null || typeof raw !== "object" || Array.isArray(raw))
     throw new Error("The runtime returned an invalid swap result.");
-  const tao = atomic(raw.tao_amount), alpha = atomic(raw.alpha_amount);
+  const tao = atomic(raw.tao_amount),
+    alpha = atomic(raw.alpha_amount);
   const paid = direction === "stake" ? tao : alpha;
   const output = direction === "stake" ? alpha : tao;
-  const taoFee = atomic(raw.tao_fee), alphaFee = atomic(raw.alpha_fee);
+  const taoFee = atomic(raw.tao_fee),
+    alphaFee = atomic(raw.alpha_fee);
   // v470 reports the swap input after its input-token fee. Together they must
   // consume the requested input; an all-zero or partial result is not a fill.
   if (paid + (direction === "stake" ? taoFee : alphaFee) !== input || output === 0n || price <= 0n)
     throw new Error("The chain simulator could not fill this swap amount.");
-  const taoSlippage = atomic(raw.tao_slippage), alphaSlippage = atomic(raw.alpha_slippage);
+  const taoSlippage = atomic(raw.tao_slippage),
+    alphaSlippage = atomic(raw.alpha_slippage);
   const spot = Number(price) / Number(UNITS_PER_WHOLE);
-  const effective = direction === "stake" ? Number(input) / Number(alpha) : Number(tao) / Number(input);
+  const effective =
+    direction === "stake" ? Number(input) / Number(alpha) : Number(tao) / Number(input);
   return {
     schema_version: 1,
     netuid,
@@ -113,27 +117,42 @@ export async function fetchNativeStakeQuote(
   if (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535 || amount <= 0n || amount > U64_MAX)
     throw new Error("Enter a valid subnet and atomic amount.");
   const read = async (operations: NativeOperation[], asOf?: string) =>
-    (await apiFetch<NativeArtifact>("/api/v1/native-runtime", {
-      signal,
-      init: {
-        method: "POST",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({ operations, ...(asOf ? { as_of: asOf } : {}) }),
-      },
-    })).data;
+    (
+      await apiFetch<NativeArtifact>("/api/v1/native-runtime", {
+        signal,
+        init: {
+          method: "POST",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ operations, ...(asOf ? { as_of: asOf } : {}) }),
+        },
+      })
+    ).data;
   const priceOp = runtime("current_alpha_price", [netuid]);
   const member = direction === "stake" ? "sim_swap_tao_for_alpha" : "sim_swap_alpha_for_tao";
   if (direction === "unstake" && unit === "tao") {
     const first = await read([priceOp]);
     const price = atomic(value(first, 0, "current_alpha_price"));
     const input = alphaForTaoTarget(amount, price);
-    const next = await read([runtime(member, [netuid, input.toString()])], first.source.finalized_block_hash);
-    if (Object.entries(first.source).some(([key, expected]) => next.source[key as keyof NativeArtifact["source"]] !== expected))
+    const next = await read(
+      [runtime(member, [netuid, input.toString()])],
+      first.source.finalized_block_hash,
+    );
+    if (
+      Object.entries(first.source).some(
+        ([key, expected]) => next.source[key as keyof NativeArtifact["source"]] !== expected,
+      )
+    )
       throw new Error("The swap simulation changed its finalized source.");
     return decodeNativeStakeQuote(next, netuid, input, direction, price, 0);
   }
   const artifact = await read([priceOp, runtime(member, [netuid, amount.toString()])]);
-  return decodeNativeStakeQuote(artifact, netuid, amount, direction, atomic(value(artifact, 0, "current_alpha_price")));
+  return decodeNativeStakeQuote(
+    artifact,
+    netuid,
+    amount,
+    direction,
+    atomic(value(artifact, 0, "current_alpha_price")),
+  );
 }
 
 export const nativeStakeQuoteQuery = (
@@ -141,13 +160,21 @@ export const nativeStakeQuoteQuery = (
   amount: bigint | null,
   direction: "stake" | "unstake",
   unit: "tao" | "alpha",
-) => queryOptions({
-  queryKey: metagraphedQueryKey("native-stake-quote", getApiBase(), netuid, amount?.toString(), direction, unit),
-  queryFn: ({ signal }) => fetchNativeStakeQuote(netuid, amount!, direction, unit, signal),
-  enabled: amount !== null,
-  staleTime: 15_000,
-  retry: 0,
-});
+) =>
+  queryOptions({
+    queryKey: metagraphedQueryKey(
+      "native-stake-quote",
+      getApiBase(),
+      netuid,
+      amount?.toString(),
+      direction,
+      unit,
+    ),
+    queryFn: ({ signal }) => fetchNativeStakeQuote(netuid, amount!, direction, unit, signal),
+    enabled: amount !== null,
+    staleTime: 15_000,
+    retry: 0,
+  });
 
 /** The submitted amounts and price protection stay integer-exact. Round price
  * limits conservatively: add down, remove up. Display floats never feed this. */
@@ -164,30 +191,58 @@ export function nativeStakeParams(quote: NativeStakeQuote, hotkey: string, toler
   const limit = (numerator + (quote.direction === "unstake" ? 9_999n : 0n)) / 10_000n;
   if (limit <= 0n || limit > U64_MAX) throw new Error("The price limit exceeds the native range.");
   return quote.direction === "stake"
-    ? buildAddStakeLimitParams({ hotkey, netuid: quote.netuid, amountStaked: asRao(quote.inputAtomic), limitPrice: asRao(limit), allowPartial: false })
-    : buildRemoveStakeLimitParams({ hotkey, netuid: quote.netuid, amountUnstaked: asRawAlpha(quote.inputAtomic), limitPrice: asRao(limit), allowPartial: false });
+    ? buildAddStakeLimitParams({
+        hotkey,
+        netuid: quote.netuid,
+        amountStaked: asRao(quote.inputAtomic),
+        limitPrice: asRao(limit),
+        allowPartial: false,
+      })
+    : buildRemoveStakeLimitParams({
+        hotkey,
+        netuid: quote.netuid,
+        amountUnstaked: asRawAlpha(quote.inputAtomic),
+        limitPrice: asRao(limit),
+        allowPartial: false,
+      });
 }
 
-export function nativeStakeOperation(params: ReturnType<typeof nativeStakeParams>): NativeOperation {
+export function nativeStakeOperation(
+  params: ReturnType<typeof nativeStakeParams>,
+): NativeOperation {
   return {
     kind: "prepare",
     pallet: "SubtensorModule",
     member: params.call,
-    args: [accountHex(params.hotkey), params.netuid,
+    args: [
+      accountHex(params.hotkey),
+      params.netuid,
       (params.call === "add_stake_limit" ? params.amountStaked : params.amountUnstaked).toString(),
-      params.limitPrice.toString(), params.allowPartial],
+      params.limitPrice.toString(),
+      params.allowPartial,
+    ],
   };
 }
 
-export async function prepareNativeStakeCall(quote: NativeStakeQuote, params: ReturnType<typeof nativeStakeParams>) {
+export async function prepareNativeStakeCall(
+  quote: NativeStakeQuote,
+  params: ReturnType<typeof nativeStakeParams>,
+) {
   const response = await apiFetch<NativeArtifact>("/api/v1/native-runtime", {
     init: {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ as_of: quote.source.finalized_block_hash, operations: [nativeStakeOperation(params)] }),
+      body: JSON.stringify({
+        as_of: quote.source.finalized_block_hash,
+        operations: [nativeStakeOperation(params)],
+      }),
     },
   });
-  if (Object.entries(quote.source).some(([key, expected]) => response.data.source[key as keyof NativeArtifact["source"]] !== expected))
+  if (
+    Object.entries(quote.source).some(
+      ([key, expected]) => response.data.source[key as keyof NativeArtifact["source"]] !== expected,
+    )
+  )
     throw new Error("The staking call changed its finalized quote source.");
   return response.data;
 }

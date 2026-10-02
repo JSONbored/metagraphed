@@ -12,6 +12,7 @@ function fixture(netuid = 0): NativeArtifact {
       { kind: "runtime", api: "StakeInfoRuntimeApi", member: "get_stake_info_for_hotkey_coldkey_netuid", contract: null, value: { variant: "Some", fields: { hotkey: hot, coldkey: cold, netuid: String(netuid), stake: "9007199254740993" } } },
       { kind: "runtime", api: "StakeInfoRuntimeApi", member: "get_stake_availability_for_coldkeys", contract: null, value: [[cold, [[String(netuid), { total: "18014398509481986", locked: "13510798882111490", available: "4503599627370496" }]]]] },
       { kind: "runtime", api: "SwapRuntimeApi", member: "current_alpha_price", contract: null, value: "1000000000" },
+      { kind: "storage", pallet: "SubtensorModule", member: "MinerCollateral", contract: null, value: null },
     ],
   };
 }
@@ -35,6 +36,16 @@ test("one hotkey never inherits another hotkey's free stake or an absent positio
   data.results[1]!.value = [[cold, []]];
   expect(decodeNativeStakeHolding(data, hot, cold, 19).availableAtomic).toBe(0n);
 });
+test("miner collateral limits the selected hotkey even when sibling stake is free", () => {
+  const data = fixture(19);
+  data.results[1]!.value = [[cold, [["19", { total: "18014398509481986", locked: "0", available: "10007199254740993" }]]]];
+  data.results[3]!.value = { locked: "8007199254740993" };
+  expect(decodeNativeStakeHolding(data, hot, cold, 19).availableAtomic).toBe(1000000000000000n);
+  data.results[3]!.value = { locked: "9007199254740994" };
+  expect(decodeNativeStakeHolding(data, hot, cold, 19).availableAtomic).toBe(0n);
+  data.results[1]!.value = [[cold, [["19", { total: "1", locked: "2", available: "0" }]]]];
+  expect(decodeNativeStakeHolding(data, hot, cold, 19).availableAtomic).toBe(0n);
+});
 test("invalid identity, quantities and availability cannot become a Max transaction", () => {
   const mutations: ((data: NativeArtifact) => void)[] = [
     data => { data.results[0]!.api = "Other"; },
@@ -46,7 +57,7 @@ test("invalid identity, quantities and availability cannot become a Max transact
     data => { data.results[1]!.value = {}; },
     data => { data.results[1]!.value = [[hot, []]]; },
     data => { data.results[1]!.value = [[cold, [["19", {}]]]]; },
-    data => { data.results[1]!.value = [[cold, [["0", { total: "10", locked: "11", available: "0" }]]]]; },
+    data => { data.results[1]!.value = [[cold, [["0", { total: "10", locked: "11", available: "1" }]]]]; },
     data => { data.results[1]!.value = [[cold, [["0", { total: "10", locked: "2", available: "10" }]]]]; },
     data => { data.results[1]!.value = [[cold, [["0", { total: 10, locked: "2", available: "8" }]]]]; },
   ];
@@ -66,6 +77,7 @@ test("the holding read bounds both account and subnet instead of scanning the ch
   expect(init.signal).toBe(controller.signal);
   const request = JSON.parse(String(init.body));
   expect(request.operations[1]).toEqual({ kind: "runtime", api: "StakeInfoRuntimeApi", member: "get_stake_availability_for_coldkeys", args: [[cold], { variant: "Some", fields: [19] }] });
-  expect(request.operations).toHaveLength(3);
+  expect(request.operations).toHaveLength(4);
+  expect(request.operations[3]).toEqual({ kind: "storage", pallet: "SubtensorModule", member: "MinerCollateral", args: [19, hot, cold] });
   expect(nativeStakeHoldingQuery(hot, null, 19).enabled).toBe(false);
 });

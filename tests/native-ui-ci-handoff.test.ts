@@ -9,6 +9,8 @@ import { format, resolveConfig } from "prettier";
 
 test("retain remote formatted native UI edits and focused qualification", async () => {
   if (!process.env.CI) return;
+  for (const workspace of ["packages/client", "packages/chain-summaries", "packages/ui-kit"])
+    execFileSync("npm", ["run", "build", `--workspace=${workspace}`], { stdio: "pipe" });
   const paths = execFileSync("git", ["diff", "--name-only", "138d7e1", "HEAD"], { encoding: "utf8" }).trim().split("\n");
   const files: Record<string, string> = {};
   for (const name of paths.filter(name => name.startsWith("apps/ui/") && /\.(ts|tsx|har)$/.test(name)))
@@ -19,7 +21,7 @@ test("retain remote formatted native UI edits and focused qualification", async 
     console.log(`NATIVE_UI_HANDOFF ${offset / 16000} ${encoded.slice(offset, offset + 16000)}`);
   for (const args of [
     ["run", "typecheck", "--workspace=apps/ui"],
-    ["run", "test", "--workspace=apps/ui", "--", "src/lib/metagraphed/native-stake-quote.test.ts", "src/lib/metagraphed/native-stake-holding.test.ts", "src/hooks/use-stake-flow.test.ts", "src/components/metagraphed/stake-amount-input.test.ts", "src/lib/metagraphed/native-call-wallet.test.ts", "src/lib/metagraphed/chain-connection-network.test.ts"],
+    ["run", "test", "--workspace=apps/ui", "--", "src/lib/metagraphed/native-stake-quote.test.ts", "src/lib/metagraphed/native-stake-holding.test.ts", "src/lib/metagraphed/native-stake-signing.test.ts", "src/hooks/use-stake-flow.test.ts", "src/components/metagraphed/stake-amount-input.test.ts", "src/lib/metagraphed/native-call-wallet.test.ts", "src/lib/metagraphed/chain-connection-network.test.ts"],
   ]) {
     try { console.log("NATIVE_UI_QUALIFICATION", execFileSync("npm", args, { encoding: "utf8", stdio: "pipe", timeout: 90000, env: { ...process.env, NODE_V8_COVERAGE: undefined } })); }
     catch (error) {

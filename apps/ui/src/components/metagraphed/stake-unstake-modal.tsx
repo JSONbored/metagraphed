@@ -88,6 +88,7 @@ export function StakeUnstakeModal({
 }: StakeUnstakeModalProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   // A ref, not just the `submitting` state: React batches the state update
   // from a click handler, so the DOM button's `disabled` attribute doesn't
   // actually flip until the next render -- a genuine double-click can fire a
@@ -111,6 +112,7 @@ export function StakeUnstakeModal({
 
   const handleOpenChange = (next: boolean) => {
     if (next) {
+      setSubmissionError(null);
       setOpen(true);
       return;
     }
@@ -123,8 +125,11 @@ export function StakeUnstakeModal({
     if (confirmInFlightRef.current) return;
     confirmInFlightRef.current = true;
     setSubmitting(true);
+    setSubmissionError(null);
     try {
       await flow.submit();
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : "The stake could not be submitted.");
     } finally {
       confirmInFlightRef.current = false;
       setSubmitting(false);
@@ -166,6 +171,7 @@ export function StakeUnstakeModal({
         </SheetHeader>
 
         <div className="mt-4 flex-1">
+          {submissionError && <p role="alert" className="text-13 text-health-down">{submissionError}</p>}
           <StakeFlowBody
             hotkey={hotkey}
             netuid={netuid}

@@ -23,9 +23,12 @@ function quantity(value: unknown): bigint {
 }
 export function decodeNativeStakeHolding(artifact: NativeArtifact, hotkey: string, coldkey: string, netuid: number): NativeStakeHolding {
   const hot = accountHex(hotkey), cold = accountHex(coldkey);
-  const info = artifact.results[0], availability = artifact.results[1], price = artifact.results[2];
+  const info = artifact.results[0], availability = artifact.results[1], price = artifact.results[2], collateral = artifact.results[3];
   if (info?.api !== "StakeInfoRuntimeApi" || info.member !== "get_stake_info_for_hotkey_coldkey_netuid" || availability?.api !== "StakeInfoRuntimeApi" || availability.member !== "get_stake_availability_for_coldkeys" || price?.api !== "SwapRuntimeApi" || price.member !== "current_alpha_price")
     throw new Error("The stake response does not match the requested holding.");
+  if (collateral?.kind !== "storage" || collateral.pallet !== "SubtensorModule" || collateral.member !== "MinerCollateral")
+    throw new Error("The stake response does not include the position's miner collateral.");
+  const bonded = collateral.value === null ? 0n : quantity(record(collateral.value).locked);
   const optional = record(info.value);
   let stake = 0n;
   if (optional.variant === "Some") {
@@ -44,11 +47,12 @@ export function decodeNativeStakeHolding(artifact: NativeArtifact, hotkey: strin
         throw new Error("Invalid stake availability subnet.");
       const row = record(subnet[1]);
       const total = quantity(row.total), locked = quantity(row.locked), free = quantity(row.available);
-      if (locked > total || free !== total - locked) throw new Error("Inconsistent stake availability.");
+      if (free > (total > locked ? total - locked : 0n)) throw new Error("Inconsistent stake availability.");
       available = free;
     }
   }
-  return { source: artifact.source, stakeAtomic: stake, availableAtomic: available < stake ? available : stake, priceAtomic: quantity(price.value) };
+  const positionFree = stake > bonded ? stake - bonded : 0n;
+  return { source: artifact.source, stakeAtomic: stake, availableAtomic: available < positionFree ? available : positionFree, priceAtomic: quantity(price.value) };
 }
 
 export function nativeUnstakeMax(holding: NativeStakeHolding | null, unit: "tao" | "alpha"): string | null {
@@ -71,6 +75,7 @@ export const nativeStakeHoldingQuery = (hotkey: string, coldkey: string | null, 
       { kind: "runtime", api: "StakeInfoRuntimeApi", member: "get_stake_info_for_hotkey_coldkey_netuid", args: [hot, cold, netuid] },
       { kind: "runtime", api: "StakeInfoRuntimeApi", member: "get_stake_availability_for_coldkeys", args: [[cold], { variant: "Some", fields: [netuid] }] },
       { kind: "runtime", api: "SwapRuntimeApi", member: "current_alpha_price", args: [netuid] },
+      { kind: "storage", pallet: "SubtensorModule", member: "MinerCollateral", args: [netuid, hot, cold] },
     ];
     const response = await apiFetch<NativeArtifact>("/api/v1/native-runtime", { signal, init: { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ operations }) } });
     return decodeNativeStakeHolding(response.data, hot, cold, netuid);

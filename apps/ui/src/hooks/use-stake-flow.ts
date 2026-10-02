@@ -14,8 +14,8 @@ import { useWallet } from "./use-wallet";
 import { useTxStatus, type TxUiStatus, type UseTxStatusResult } from "./use-tx-status";
 import { useFlowSession, useFeeEstimate } from "./use-flow-session";
 import { nativeStakeHoldingQuery, nativeUnstakeMax } from "@/lib/metagraphed/native-stake-holding";
-import { nativeStakeInput, nativeStakeParams, nativeStakeQuoteQuery, prepareNativeStakeCall, type NativeStakeQuote } from "@/lib/metagraphed/native-stake-quote";
-import { guardNativeSigner, previewNativeCall, revalidateNativeCall } from "@/lib/metagraphed/native-call-wallet";
+import { nativeStakeInput, nativeStakeParams, nativeStakeQuoteQuery } from "@/lib/metagraphed/native-stake-quote";
+import { submitReviewedNativeStake, type ReviewedNativeStake } from "@/lib/metagraphed/native-stake-signing";
 import { getApiBase, getNetwork } from "@/lib/metagraphed/config";
 import { getConnectedWallet } from "@/lib/metagraphed/wallet";
 import type { SubnetStakeQuote, AccountPosition } from "@/lib/metagraphed/types";
@@ -34,8 +34,6 @@ import {
   getMinStake,
   getFreeBalance,
 } from "@/lib/metagraphed/chain-connection";
-import { getSigner } from "@/lib/metagraphed/wallet-injected";
-import { computeIdempotencyKey } from "@/lib/metagraphed/broadcast";
 
 export type StakeFlowAction = "stake" | "unstake";
 export type StakeFlowUnit = "tao" | "alpha";
@@ -282,14 +280,9 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   const [amountInput, setAmountInput] = useState("");
   const [tolerancePct, setTolerancePct] = useState(DEFAULT_TOLERANCE_PCT);
   const [confirmed, setConfirmed] = useState(false);
-  const [reviewed, setReviewed] = useState<{
-    params: AddStakeLimitParams | RemoveStakeLimitParams;
-    quote: NativeStakeQuote;
-    address: string;
-    source: string;
-    sessionId: string;
-    context: string;
-  } | null>(null);
+  const [reviewed, setReviewed] = useState<ReviewedNativeStake | null>(null);
+  const currentReview = useRef(reviewed);
+  currentReview.current = reviewed;
 
   // Shared across all three stake/take flows -- see use-flow-session.ts.
   const { sessionId, api } = useFlowSession(wallet.status);
@@ -310,6 +303,7 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     return () => { active.current = false; };
   }, []);
   useEffect(() => {
+    currentReview.current = null;
     setConfirmed(false);
     setReviewed(null);
     txStatus.reset();
@@ -402,12 +396,14 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     setConfirmed(true);
   }, [canConfirm, liveParams, liveQuote, wallet.wallet, sessionId]);
   const editAmount = useCallback(() => {
+    currentReview.current = null;
     setConfirmed(false);
     setReviewed(null);
     txStatus.reset();
   }, [txStatus]);
 
   const close = useCallback(() => {
+    currentReview.current = null;
     txStatus.reset();
     setConfirmed(false);
     setReviewed(null);
@@ -418,35 +414,11 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     if (working.current || !api || !reviewed || feeRao === null) return;
     working.current = true;
     const assertCurrent = () => {
-      if (!active.current || stakeWalletContext() !== reviewed.context)
-        throw new Error("The account, network or API changed. Review this stake again.");
+      if (!active.current || currentReview.current !== reviewed || stakeWalletContext() !== reviewed.context)
+        throw new Error("The review, account, network or API changed. Review this stake again.");
     };
     try {
-      assertCurrent();
-      const artifact = await prepareNativeStakeCall(reviewed.quote, reviewed.params);
-      assertCurrent();
-      const preview = await previewNativeCall(api, artifact, 0, reviewed.address);
-      assertCurrent();
-      if (preview.feeRao > feeRao + (feeRao + 9n) / 10n)
-        throw new Error("The transaction fee changed. Review this stake again.");
-      if (reviewed.params.call === "add_stake_limit" && preview.balanceRao < reviewed.params.amountStaked + preview.maxFeeRao)
-        throw new Error("The spendable balance cannot cover this stake and its fee.");
-      const connected = await getSigner(reviewed.source);
-      assertCurrent();
-      const recheck = async () => {
-        await revalidateNativeCall(api, preview);
-        if (reviewed.params.call === "add_stake_limit" && await getFreeBalance(api, reviewed.address) < reviewed.params.amountStaked + preview.maxFeeRao)
-          throw new Error("The spendable balance changed. Review this stake again.");
-      };
-      await recheck();
-      assertCurrent();
-      const signer = guardNativeSigner(connected, preview, assertCurrent, recheck);
-      await txStatus.submit(api, preview.extrinsic, {
-        signerAddress: reviewed.address,
-        signer,
-        nonce: preview.nonce,
-        idempotencyKey: computeIdempotencyKey({ callData: preview.callData, address: reviewed.address, genesisHash: preview.source.network_genesis_hash }, preview.nonce, reviewed.sessionId),
-      });
+      await submitReviewedNativeStake(api, reviewed, feeRao, assertCurrent, txStatus.submit);
     } finally { working.current = false; }
   }, [api, reviewed, feeRao, txStatus]);
 
