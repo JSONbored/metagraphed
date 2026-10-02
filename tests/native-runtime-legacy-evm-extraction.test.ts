@@ -117,7 +117,9 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
     const precompileIds=new Map(catalogue.precompiles.map((entry,index)=>[JSON.stringify(entry),index]));
     const outputIds=new Map(returns.outputs.map((entry,index)=>[JSON.stringify(entry),index]));
     const bindingIds=new Map(returns.bindings.map((entry,index)=>[JSON.stringify(entry),index]));
+    const failures:{spec:number;message:string}[]=[];
     for(const era of eras) {
+      try {
       const model=decodeNativeMetadata(new NativeScaleReader(unwrapNativeMetadata(era.v15)!, NATIVE_RUNTIME_LIMITS.metadataBytes));
       const hasEvm=model.pallets.some(pallet=>pallet.name==="EVM");
       if(!hasEvm) {
@@ -240,7 +242,12 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
       catalogue.releases.push([era.spec,era.commit,entries]);returns.releases.push([era.spec,era.commit,returnEntries]);
       input.manifests.push({spec:era.spec,files:files.sort(),addresses:entries.length,functions:count});output.manifests.push({spec:era.spec,files:files.sort(),functions:count});
       console.log("LEGACY_EVM_RELEASE",JSON.stringify({spec:era.spec,commit:era.commit,source:prefix,addresses:entries.length,functions:count,manual,metadata_evm:true}));
+      } catch(error) {
+        const message=String(error instanceof Error ? error.message : error).slice(0,240);
+        failures.push({spec:era.spec,message});console.log("LEGACY_EVM_EXTRACTION_FAILURE",JSON.stringify({spec:era.spec,commit:era.commit,message}));
+      }
     }
+    assert.deepEqual(failures,[],"Every older compiled EVM source must qualify before generation");
     assert.equal(catalogue.releases.length,90);assert.equal(returns.releases.length,90);
     assert.deepEqual(catalogue.releases.slice(0,25),existing.releases);assert.deepEqual(returns.releases.slice(0,25),existingOutputs.releases);
     function fixture(value:unknown,annotation:string,type:string) {
