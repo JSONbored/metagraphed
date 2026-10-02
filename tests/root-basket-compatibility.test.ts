@@ -53,6 +53,7 @@ const generations = [
   [468, 5],
   [469, 5],
   [470, 5],
+  [471, 5],
 ] as const;
 
 function fixture(
@@ -416,7 +417,7 @@ test("earlier priced observations retain weights and explicit absent trading sta
 
 test("untagged and pre-basket versions do not inherit neighboring decoder identities", async () => {
   for (const spec of [
-    0, 430, 440, 444, 449, 451, 455, 458, 460, 465, 471, 1000,
+    0, 430, 440, 444, 449, 451, 455, 458, 460, 465, 472, 1000,
   ]) {
     const source = fixture(spec, 5);
     await assert.rejects(

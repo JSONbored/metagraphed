@@ -130,7 +130,7 @@ test("ABI binding preserves original args, type-checks the declared target and a
       }),
     /empty input/,
   );
-  assert.throws(() => resolveNativeEvmCall(model, 471, op), /not qualified/);
+  assert.throws(() => resolveNativeEvmCall(model, 472, op), /not qualified/);
   const prepare = { ...op, kind: "prepare" as const, pallet: "EVM" };
   assert.throws(
     () => resolveNativeEvmCall({ ...model, pallets: [] }, 470, prepare),
