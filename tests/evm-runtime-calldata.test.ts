@@ -16,7 +16,7 @@ const source = {
 
 test("every release-bound precompile function decodes its independently encoded reference arguments", () => {
   assert.equal(reference.reference.version, "ethers@6.15.0");
-  assert.equal(catalogue.releases.length, 25);
+  assert.equal(catalogue.releases.length, 90);
   assert.equal(reference.vectors.length, catalogue.functions.length);
   let cases = 0;
   for (const release of catalogue.releases) {
@@ -28,18 +28,12 @@ test("every release-bound precompile function decodes its independently encoded 
       new Set(release[2].map((id) => catalogue.precompiles[id][1])).size,
       release[2].length,
     );
-    assert.equal(
-      release[2]
-        .map((id) => catalogue.precompiles[id])
-        .find((row) => row[0] === "Staking")![1],
-      2049,
-    );
-    assert.equal(
-      release[2]
-        .map((id) => catalogue.precompiles[id])
-        .find((row) => row[0] === "StakingV2")![1],
-      2053,
-    );
+    if (release[0] !== 205) {
+      assert.equal(release[2].map((id) => catalogue.precompiles[id]).find((row) => row[0] === "Staking")![1], 2049);
+    }
+    if (release[0] >= 430) {
+      assert.equal(release[2].map((id) => catalogue.precompiles[id]).find((row) => row[0] === "StakingV2")![1], 2053);
+    }
     assert.ok(manifest.files.every((row) => /^[0-9a-f]{64}$/.test(row[1])));
     let functions = 0;
     for (const id of release[2]) {

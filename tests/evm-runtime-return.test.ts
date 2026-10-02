@@ -33,7 +33,7 @@ const decoded = (params: RuntimeEvmOutput[], value: string) =>
 test("all release-qualified precompile outputs decode independent official ethers return vectors with exact values", () => {
   assert.equal(reference.reference.version, "ethers@6.15.0");
   assert.equal(reference.vectors.length, evmRuntimeOutputs.outputs.length);
-  assert.equal(evmRuntimeOutputs.releases.length, 25);
+  assert.equal(evmRuntimeOutputs.releases.length, 90);
   let cases = 0;
   for (const release of evmRuntimeOutputs.releases) {
     const source = evmRuntimeCatalogue.releases.find(

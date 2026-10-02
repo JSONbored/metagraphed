@@ -3,7 +3,7 @@ import { registerModuleStateReset } from "./module-state-registry.ts";
 import {
   NativeScaleReader,
   decodeNativeMetadata,
-  unwrapNativeMetadata,
+  unwrapNativeMetadataReader,
   NATIVE_RUNTIME_LIMITS,
   type NativeMetadata,
 } from "./native-runtime-metadata.ts";
@@ -53,9 +53,9 @@ export async function loadNativeContract(
       fallback = cached;
     }
   }
-  let hex: string | null;
+  let reader: NativeScaleReader | null;
   try {
-    hex = unwrapNativeMetadata(
+    reader = unwrapNativeMetadataReader(
       await read("state_call", [
         "Metadata_metadata_at_version",
         "0x0f000000",
@@ -63,11 +63,11 @@ export async function loadNativeContract(
       ]),
     );
   } catch {
-    hex = null;
+    reader = null;
   }
-  if (hex === null && fallback) return { ...fallback, codeHash };
-  const reader = new NativeScaleReader(
-    hex ?? (await read("state_getMetadata", [at])),
+  if (reader === null && fallback) return { ...fallback, codeHash };
+  reader ??= new NativeScaleReader(
+    await read("state_getMetadata", [at]),
     NATIVE_RUNTIME_LIMITS.metadataBytes,
   );
   const metadata = decodeNativeMetadata(reader);

@@ -356,3 +356,30 @@ export function unwrapNativeMetadata(hex: unknown) {
   );
   return reader.finish(reader.option(() => reader.blob()));
 }
+
+// This internal view shares the already validated wrapper's bytes. The public
+// hex constructor keeps its input checks; decoding still requires offset zero,
+// a bounded metadata payload and complete consumption of the payload.
+const emptyMetadataBytes = new Uint8Array(0);
+class NativeMetadataView extends NativeScaleReader {
+  override readonly bytes: Uint8Array = emptyMetadataBytes;
+  constructor(bytes: Uint8Array) {
+    super("0x");
+    this.bytes = bytes;
+  }
+}
+
+/** Unwrap directly for the transport loader. Avoid copying the payload into a
+ * new buffer, serializing it to hex and allocating another decoded buffer. */
+export function unwrapNativeMetadataReader(hex: unknown) {
+  const reader = new NativeScaleReader(
+    hex,
+    NATIVE_RUNTIME_LIMITS.metadataBytes + 8,
+  );
+  const bytes = reader.finish(
+    reader.option(() =>
+      reader.take(reader.count(NATIVE_RUNTIME_LIMITS.metadataBytes)),
+    ),
+  );
+  return bytes === null ? null : new NativeMetadataView(bytes);
+}

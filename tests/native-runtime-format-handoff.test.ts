@@ -9,8 +9,13 @@ import { test } from "vitest";
 
 const paths = [
   "src/native-runtime-contract.ts",
-  "src/native-runtime.ts",
+  "src/native-runtime-metadata.ts",
   "tests/native-runtime-contract.test.ts",
+  "tests/native-runtime-metadata-view.test.ts",
+  "tests/native-runtime-legacy-evm.test.ts",
+  "tests/evm-runtime-calldata.test.ts",
+  "tests/evm-runtime-return.test.ts",
+  "docs/native-runtime-contract.md",
 ] as const;
 const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 test("format exact native runtime source paths on remote CI", async () => {

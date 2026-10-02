@@ -85,7 +85,8 @@ metadata-declared `authorization_list` argument.
 
 The public MCP `decode_evm_call` tool accepts `runtime_spec_version` for
 release-bound precompile calldata decoding. The audited catalogue follows every
-published official tag from v430 through v470, including the v470 scheduler,
+published compiled release in the qualified spec 205–470 eras, including the
+v470 scheduler,
 Drand, timestamp, runtime configuration and precompile registry interfaces.
 Nested arrays, dynamic bytes, UTF-8 strings and fixed byte arguments retain their
 declared ABI shapes; wide integers remain exact decimal strings. The result
@@ -285,8 +286,17 @@ Repeated reads are coalesced while results retain the requested order.
 Warm isolates retain at most two compact metadata contracts. Each use verifies
 the runtime code hash at the requested block. Genesis, code hash, spec version
 and transaction version bind the cache identity. State values and account
-arguments are never cached there. Missing code-hash RPC support performs a full
-metadata read; oversized projections remain readable without being retained.
+arguments are never cached there. A cached V14 fallback is renegotiated when a
+typed runtime call or API-specific discovery needs signatures; a continued
+provider failure reuses the validated fallback without another V14 fetch or
+decode. Ordinary storage and preparation requests still reuse V14 without that
+retry. Missing code-hash RPC support performs a full metadata read; oversized
+projections remain readable without being retained.
+
+The V15 loader reads the negotiated metadata payload through a bounded byte
+view. It avoids copying that payload into hex and decoding the same hex again,
+while retaining canonical SCALE lengths, wrapper and payload limits, complete
+consumption checks and the same contract checksum.
 
 Frame metadata V14 and V15 are parsed and reference-tested. V15 advertises read
 API signatures; V14 storage, constants and call preparation use its portable
