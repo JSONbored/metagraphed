@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { Miniflare } from "miniflare";
-import { afterAll, beforeAll, beforeEach, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, test, vi } from "vitest";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 
 const runtime = new Miniflare({
@@ -13,6 +13,7 @@ const runtime = new Miniflare({
   d1Databases: ["DB"],
 });
 let db: D1Database;
+let lostReplyPhase: string | undefined;
 const migration = (name: string) =>
   readFileSync(new URL(`../migrations/d1/${name}`, import.meta.url), "utf8")
     .split("-- statement-breakpoint")
@@ -28,6 +29,11 @@ beforeAll(async () => {
   await apply("0038_raw_capture_publications.sql");
 });
 afterAll(() => runtime.dispose());
+afterEach(() => {
+  if (lostReplyPhase)
+    console.info("raw-capture-lost-reply-phase:", lostReplyPhase);
+  lostReplyPhase = undefined;
+});
 beforeEach(async () => {
   vi.useRealTimers();
   await db.prepare("DROP TRIGGER IF EXISTS reject_publication").run();
@@ -64,8 +70,8 @@ const intercepted = (afterCommit: () => Promise<unknown>) => {
   let once = true;
   return rawCaptureD1({
     prepare: (sql: string) => db.prepare(sql),
-    async batch(statements: D1PreparedStatement[]) {
-      const result = await db.batch(statements);
+    async batch<T = unknown>(statements: D1PreparedStatement[]) {
+      const result = await db.batch<T>(statements);
       if (once) {
         once = false;
         await afterCommit();
@@ -130,13 +136,19 @@ test("D1 lost committed reply keeps the original publication through supersessio
     older = value(1000),
     newer = value(1089);
   const writer = intercepted(async () => {
+    lostReplyPhase = "newer-capture";
     await rawCaptureD1(db).put(objectKey, newer);
+    lostReplyPhase = "archive-older";
     await archive(objectKey, sha(older));
+    lostReplyPhase = "archive-newer";
     await archive(objectKey, sha(newer));
+    lostReplyPhase = "committed-reply-lost";
     throw new Error("D1_ERROR: Network connection lost.");
   });
   await writer.put(objectKey, older);
+  lostReplyPhase = "receipt-confirmed";
   await rawCaptureD1(db).put(objectKey, older);
+  lostReplyPhase = "archived-retry-confirmed";
   assert.equal(await count("raw_capture_publications"), 2);
   assert.equal(await count("raw_capture_archives"), 2);
   assert.equal(await count("raw_capture_batches"), 0);

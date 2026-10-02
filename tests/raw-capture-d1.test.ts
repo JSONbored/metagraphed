@@ -212,7 +212,7 @@ test.each(
     const pending = f.store.put(key(), value());
     await vi.runAllTimersAsync();
     await pending;
-    assert.equal(calls, 2);
+    assert.equal(calls, phase === "UPDATE raw_capture_batches" ? 1 : 2);
     assert.equal(
       f.selected(),
       createHash("sha256").update(value()).digest("hex"),
@@ -526,6 +526,34 @@ test("publication receipt failure rolls completion and selection back together",
   assert.equal(
     f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
     2,
+  );
+});
+
+test("a mismatched committed receipt after a lost reply is fatal without another publication transaction", async () => {
+  vi.useFakeTimers();
+  const f = fixture();
+  let publications = 0;
+  f.failAfterWriteWith((text) => {
+    if (text.startsWith("UPDATE raw_capture_batches")) {
+      publications++;
+      throw new Error("D1_ERROR: Network connection lost.");
+    }
+  });
+  f.readWith((text, result) =>
+    text.startsWith("SELECT sha256 FROM (")
+      ? { sha256: "f".repeat(64) }
+      : result,
+  );
+  const rejected = assert.rejects(
+    f.store.put(key(), value()),
+    /selection was not acknowledged/,
+  );
+  await vi.runAllTimersAsync();
+  await rejected;
+  assert.equal(publications, 1);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    1,
   );
 });
 

@@ -239,8 +239,24 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
       // an already acknowledged selection byte-for-byte apart from provenance.
       // A conflicting or unproven version receives no receipt. Both original
       // captures stay intact, and receipts survive supersession and archival.
-      await retry(() =>
-        db.batch([
+      let publicationStarted = false;
+      await retry(async () => {
+        // A lost transaction reply may already have a durable receipt, even
+        // after native archival released all staging. Confirm it before replay:
+        // source chunks no longer exist after that successful handoff.
+        if (publicationStarted) {
+          const committed = await db
+            .prepare(PUBLICATION)
+            .bind(key, digest, key, digest)
+            .first<{ sha256: string }>();
+          if (committed) {
+            if (committed.sha256 !== digest)
+              throw new Error("Raw capture selection was not acknowledged");
+            return;
+          }
+        }
+        publicationStarted = true;
+        await db.batch([
           db
             .prepare(
               "UPDATE raw_capture_batches SET complete=1 WHERE key=? AND sha256=? AND parts=(SELECT count(*) FROM raw_capture_chunks WHERE key=? AND sha256=?) AND compressed_bytes=(SELECT sum(length(data)) FROM raw_capture_chunks WHERE key=? AND sha256=?)",
@@ -256,8 +272,8 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
               "INSERT INTO raw_capture_publications(key,sha256,selected_sha256,chain_sha256) SELECT b.key,b.sha256,c.sha256,? FROM raw_capture_batches b JOIN (SELECT s.key,s.sha256,s.captured_at FROM raw_capture_selected s JOIN raw_capture_batches r USING(key,sha256) WHERE s.key=? AND r.complete=1 UNION ALL SELECT key,sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1 AND complete=1 AND native_sha256=compressed_sha256 AND native_key='chain/raw/native/v1/'||network||'/'||sha256||'/'||compressed_sha256||'.gz' ORDER BY captured_at DESC LIMIT 1) c ON c.key=b.key LEFT JOIN raw_capture_publications p ON p.key=c.key AND p.sha256=c.sha256 WHERE b.key=? AND b.sha256=? AND b.complete=1 AND (c.sha256=b.sha256 OR p.chain_sha256=?) ON CONFLICT(key,sha256) DO NOTHING",
             )
             .bind(chainDigest, key, key, key, digest, chainDigest),
-        ]),
-      );
+        ]);
+      });
       const receipt = await retry(() =>
         db
           .prepare(PUBLICATION)
