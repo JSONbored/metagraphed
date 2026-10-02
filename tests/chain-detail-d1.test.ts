@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, test } from "vitest";
 import { Miniflare } from "miniflare";
@@ -24,6 +25,11 @@ import {
 } from "../src/blocks-cold-tier.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import worker, { neonOwnsChainDetail } from "../workers/data-api.ts";
+import { decompressSyncBatchMessage } from "../src/sync-batch-compress.ts";
+import {
+  SYNC_BATCH_MAX_BYTES,
+  validSyncBatchMessage,
+} from "../src/sync-batch-queue.ts";
 
 const runtime = new Miniflare({
   modules: true,
@@ -414,6 +420,156 @@ test("compressed queue batches acknowledge only a durable atomic block", async (
       .prepare("ALTER TABLE held_extrinsics RENAME TO chain_detail_extrinsics")
       .run();
   }
+});
+
+test("configured HTTP queue preserves a wide block through rollback and replay", async () => {
+  const base = payload('[{"value":"精密 🧬"}]');
+  const accounts = Array.from({ length: 5_001 }, (_, index) => ({
+    block_number: 9_000_001,
+    event_index: index,
+    extrinsic_index: 0,
+    event_kind: "StakeAdded",
+    hotkey: null,
+    coldkey: null,
+    netuid: null,
+    uid: null,
+    amount_tao: "0.000000001",
+    alpha_amount: null,
+    observed_at: stamp,
+  }));
+  const body = { blocks: [{ ...base.blocks[0], account_events: accounts }] };
+  const sent: Uint8Array[] = [];
+  const queuedEnv = {
+    ...env(),
+    SYNC_QUEUE_LANES: "chain-detail",
+    SYNC_BATCHES: {
+      async send(bytes: Uint8Array, options: { contentType: string }) {
+        assert.equal(options.contentType, "bytes");
+        assert.ok(bytes.byteLength <= SYNC_BATCH_MAX_BYTES);
+        sent.push(bytes);
+      },
+    },
+  } as unknown as Parameters<typeof worker.fetch>[1];
+  const context = { waitUntil() {} } as unknown as ExecutionContext;
+  const response = await worker.fetch(
+    new Request("https://d/api/v1/internal/chain-detail-sync", {
+      method: "POST",
+      headers: { "x-chain-detail-sync-token": "secret" },
+      body: JSON.stringify(body),
+    }),
+    queuedEnv,
+    context,
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(((await response.json()) as { stores: string[] }).stores, [
+    "queue",
+  ]);
+  assert.equal(sent.length, 1, "all four families travel in one message");
+  for (const table of chainDetailTables()) assert.equal(await count(table), 0);
+  const decoded = await decompressSyncBatchMessage(sent[0]);
+  assert.ok(validSyncBatchMessage(decoded));
+  const captured = decoded.families!.blockRows[0].synced_at as number;
+  const expected = parseChainDetailSync(body, captured);
+  assert.ok(expected.ok);
+  const { head: _head, ...families } = expected.rows;
+  assert.deepEqual(decoded.families, families, "exact normalized rows survive");
+
+  const calls: string[] = [];
+  const batch = {
+    queue: "sync-batches",
+    messages: [
+      {
+        body: sent[0],
+        ack: () => calls.push("ack"),
+        retry: () => calls.push("retry"),
+      },
+    ],
+  } as unknown as MessageBatch;
+  await db
+    .prepare(
+      "CREATE TRIGGER queue_test_reject_coverage BEFORE INSERT ON chain_detail_blocks BEGIN SELECT RAISE(ABORT, 'coverage unavailable'); END",
+    )
+    .run();
+  try {
+    await worker.queue(batch, queuedEnv, context);
+    assert.deepEqual(calls, ["retry"], "a failed atomic write is never ACKed");
+    for (const table of chainDetailTables())
+      assert.equal(await count(table), 0);
+  } finally {
+    await db.prepare("DROP TRIGGER queue_test_reject_coverage").run();
+  }
+  calls.length = 0;
+  await worker.queue(batch, queuedEnv, context);
+  await worker.queue(batch, queuedEnv, context);
+  assert.deepEqual(
+    calls,
+    ["ack", "ack"],
+    "lost ACK replay retains the same rows",
+  );
+  assert.equal(await count("chain_detail_blocks"), 1);
+  assert.equal(await count("chain_detail_extrinsics"), 1);
+  assert.equal(await count("chain_detail_chain_events"), 1);
+  assert.equal(await count("chain_detail_account_events"), 5_001);
+  assert.deepEqual(
+    await db
+      .prepare(
+        "SELECT amount_tao,alpha_amount,hotkey FROM chain_detail_account_events WHERE event_index=5000",
+      )
+      .first(),
+    { amount_tao: "0.000000001", alpha_amount: null, hotkey: null },
+  );
+  assert.equal(
+    await db
+      .prepare("SELECT call_args FROM chain_detail_extrinsics")
+      .first("call_args"),
+    body.blocks[0].extrinsics[0].call_args,
+  );
+});
+
+test("the configured queue refuses oversized compressed bytes and failed sends", async () => {
+  const context = { waitUntil() {} } as unknown as ExecutionContext;
+  const post = (body: unknown, send: () => Promise<unknown>) =>
+    worker.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { "x-chain-detail-sync-token": "secret" },
+        body: JSON.stringify(body),
+      }),
+      {
+        ...env(),
+        SYNC_QUEUE_LANES: "chain-detail",
+        SYNC_BATCHES: { send },
+      } as unknown as Parameters<typeof worker.fetch>[1],
+      context,
+    );
+  let sends = 0;
+  const overByteBudget = payload(
+    JSON.stringify({ bytes: randomBytes(200_000).toString("hex") }),
+  );
+  assert.equal(
+    (
+      await post(overByteBudget, async () => {
+        sends++;
+      })
+    ).status,
+    502,
+  );
+  assert.equal(
+    sends,
+    0,
+    "overflow is rejected before transport acknowledgment",
+  );
+  assert.equal(
+    (
+      await post(payload(), async () => {
+        sends++;
+        throw new Error("queue unavailable");
+      })
+    ).status,
+    502,
+  );
+  assert.equal(sends, 1);
+  for (const table of chainDetailTables()) assert.equal(await count(table), 0);
 });
 
 test("native D1 chain-event cursors cross blocks without repeating the cursor block", async () => {

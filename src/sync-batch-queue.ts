@@ -31,6 +31,10 @@
 //     never sees at all.
 //
 // Both survive this migration deliberately. See metagraphed-infra#352.
+import {
+  CHAIN_DETAIL_SYNC_MAX_BLOCKS,
+  CHAIN_DETAIL_SYNC_MAX_ROWS,
+} from "./chain-detail-sync-payload.ts";
 
 /** One chunk of a lane's pass, as producers enqueue it. */
 export interface SyncBatchMessage {
@@ -254,58 +258,6 @@ const ENVELOPE_HEADROOM = 2 * 1024;
  * and a family name it does not recognise is a table it would have to guess at.
  */
 export const MULTI_FAMILY_LANES: readonly string[] = ["chain-detail"];
-
-/**
- * Lanes refused this transport **as it is currently encoded**.
- *
- * MEASURED, not assumed (metagraphed-infra#359). `chain-detail`'s indivisible
- * unit is one block: its four families are posted together precisely so a block
- * and its extrinsics cannot land separately, and `packMultiFamilyMessage`
- * refuses to split them for that reason. So the question is never "how many
- * blocks per message" — it is whether ONE block fits.
- *
- * As raw JSON it does not. Built from the real rows of the busiest block
- * captured (#8790494 — 35 extrinsics, 694 chain events, 515 account events,
- * 1,245 rows):
- *
- *   raw JSON     476.6 KiB      against a 128 KiB per-message cap — 3.7x over
- *
- * No producer setting reaches that, because the batch is already one block.
- *
- * THE FIX IS COMPRESSION, AND IT IS NOT CLOSE. The payload is enormously
- * repetitive — the same ss58 addresses, pallet names and event kinds over and
- * over — and gzip gets **11.8x** on exactly these bytes:
- *
- *   gzip -9       40.5 KiB      87.5 KiB of headroom, ~3 blocks per message
- *
- * That is a real design change (`CompressionStream` at the route,
- * `DecompressionStream` at the consumer, a measured ceiling, and a loud failure
- * when a pathological block still overflows), which is why it is its own issue
- * rather than something smuggled in here.
- *
- * WHY THIS IS A GUARD AND NOT A COMMENT, in the meantime. Adding a lane to
- * SYNC_QUEUE_LANES is deliberately a one-word deploy-time change. Without this,
- * that one word turns every chain-detail tick into a 502 from an oversize
- * `send()` — and the producer advances its cursor only on a POST that
- * succeeded, so the lane does not degrade, it WEDGES, retrying the same
- * oversized batch forever. The cheapest possible mistake would take out the
- * highest-cadence lane, and chain-detail is also the largest store writer here:
- * ~1,245 rows every 12 seconds is ~9M rows/day, against account-balances'
- * ~1.5M. It is the lane the queue most wants, which is exactly why the
- * placeholder must fail closed.
- *
- * Everything else stays: the message shape, the packer and the consumer's
- * family writer are correct and tested, and compression drops in behind them
- * without touching any of it.
- */
-export const QUEUE_INELIGIBLE_LANES: Readonly<Record<string, string>> = {
-  "chain-detail":
-    "one block is 476.6 KiB of raw JSON (measured on #8790494) against a " +
-    "128 KiB per-message cap, and its four families cannot be split without " +
-    "losing the atomicity they travel together for. gzip takes the same bytes " +
-    "to 40.5 KiB, so this is a compression change rather than a permanent " +
-    "exclusion -- see metagraphed-infra#383",
-};
 
 /** The family names each multi-family lane may send. A name outside this list
  * is refused rather than written to a guessed table. */
@@ -535,6 +487,11 @@ export function packMultiFamilyMessage(input: {
   // `rows` is absent by construction here; the validator refuses a message
   // carrying both, so the type's optional `rows` is deliberately not set.
   delete (message as { rows?: unknown }).rows;
+  // Never acknowledge a POST with a message the consumer will reject and ACK
+  // without writing. The byte budget is still checked after compression.
+  if (!validSyncBatchMessage(message)) {
+    throw new Error("sync-batches: invalid multi-family message");
+  }
   return message;
 }
 
@@ -622,10 +579,18 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
       if (!rows.every((r) => r !== null && typeof r === "object")) return false;
       total += rows.length;
     }
-    // The row ceiling is on the WHOLE message, not per family: the transport
-    // caps the payload, and four families of 5,000 is 20,000 rows in one
-    // message however it is spelled.
-    if (total === 0 || total > SYNC_BATCH_MAX_ROWS) return false;
+    // This lane transports the already bounded HTTP transaction unchanged.
+    // Applying the single-array packer's 5,000-row ceiling here would ACK valid
+    // compressed blocks without writing them. Reuse both HTTP bounds; the
+    // existing compressed-byte budget bounds the actual queue message.
+    const blocks = (families.blockRows as unknown[] | undefined)?.length ?? 0;
+    if (
+      blocks === 0 ||
+      blocks > CHAIN_DETAIL_SYNC_MAX_BLOCKS ||
+      total - blocks > CHAIN_DETAIL_SYNC_MAX_ROWS
+    ) {
+      return false;
+    }
     if (m.pass_total !== undefined && m.pass_total < total) return false;
     return true;
   }
@@ -687,17 +652,14 @@ export function classifySyncBatch(
  * Absent flag means the old path, so a deployment that has not opted in behaves
  * exactly as before -- the same posture every other switch here takes.
  *
- * ONE LANE OVERRIDES THE FLAG. A lane in QUEUE_INELIGIBLE_LANES does not fit
- * the transport at any producer setting, so naming it here is a mistake the
- * flag cannot express -- and an unexpressible mistake should be refused, not
- * obeyed. See that constant for the measurement.
+ * Every configured lane uses its bounded packer before enqueue. Chain detail
+ * travels compressed with all four families in one atomic transaction.
  */
 export function syncLaneUsesQueue(
   env: { SYNC_BATCHES?: unknown; SYNC_QUEUE_LANES?: string },
   lane: SyncBatchLane,
 ): boolean {
   if (!env.SYNC_BATCHES) return false;
-  if (lane in QUEUE_INELIGIBLE_LANES) return false;
   const enabled = (env.SYNC_QUEUE_LANES ?? "")
     .split(",")
     .map((s) => s.trim())
