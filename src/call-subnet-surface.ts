@@ -594,7 +594,6 @@ async function readBodyCapped(
         if (allowed > 0)
           text += decoder.decode(value.subarray(0, allowed), { stream: true });
         truncated = true;
-        await reader.cancel();
         break;
       }
       text += decoder.decode(value, { stream: true });
@@ -602,8 +601,9 @@ async function readBodyCapped(
     text += decoder.decode();
   } finally {
     // Stop a timed-out or interrupted stream instead of leaving the provider
-    // producing bytes after the bounded tool response has returned.
-    await reader.cancel().catch(() => {});
+    // producing bytes after the bounded tool response has returned. Upstream
+    // cancellation can stall; it must not extend the bounded response deadline.
+    void reader.cancel().catch(() => {});
     reader.releaseLock?.();
   }
   return { text, truncated };

@@ -40,9 +40,10 @@ test("compiled v470 neuron collection establishes the bounded wire and decoded-v
   const rows = Array.from({ length: 256 }, (_, uid) => {
     const row = sampleNativeValue(model, collection.type);
     assert.ok(row !== null && typeof row === "object" && !Array.isArray(row));
+    const hotkey = BigInt(uid + 1).toString(16);
     return {
       ...row,
-      hotkey: `0x${BigInt(uid + 1).toString(16).padStart(64, "0")}`,
+      hotkey: `0x${hotkey.padStart(64, "0")}`,
       coldkey: `0x${"22".repeat(32)}`,
       uid: String(uid),
       netuid: "19",

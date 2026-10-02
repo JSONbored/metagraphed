@@ -1542,6 +1542,82 @@ describe("matchSchemaOperation", () => {
 });
 
 describe("body-read deadline (#8655)", () => {
+  for (const stop of ["deadline", "byte limit"] as const)
+    for (const cancellation of ["pending", "rejected"] as const)
+      test(`${stop}: ${cancellation} cancel stays bounded`, async () => {
+        vi.useFakeTimers();
+        const text =
+          stop === "deadline"
+            ? "data: useful\n\n"
+            : "x".repeat(MAX_RESPONSE_BYTES + 1);
+        let cancelled = 0;
+        const response = new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode(text));
+            },
+            cancel() {
+              cancelled++;
+              return cancellation === "pending"
+                ? new Promise<void>(() => {})
+                : Promise.reject(new Error("upstream cancellation failed"));
+            },
+          }),
+          { headers: { "content-type": "text/event-stream" } },
+        );
+        const cancel = vi.spyOn(ReadableStreamDefaultReader.prototype, "cancel");
+        let requests = 0;
+        let result: Awaited<ReturnType<typeof callSubnetSurface>> | undefined;
+        try {
+          const pending = callSubnetSurface(
+            {
+              url: "https://example.com/stream",
+              probe: { timeout_ms: 30 },
+            },
+            {
+              isUnsafeUrl: SAFE,
+              fetchImpl: async () => {
+                requests++;
+                return response;
+              },
+            },
+          ).then((value) => {
+            result = value;
+          });
+          await vi.advanceTimersByTimeAsync(40);
+          assert.ok(
+            result,
+            "bounded text response still waits for cancellation",
+          );
+          await pending;
+          assert.equal(result.ok, true);
+          if (!result.ok) return;
+          assert.equal(result.body, text.slice(0, MAX_RESPONSE_BYTES));
+          assert.equal(result.truncated, true);
+          assert.equal(requests, 1);
+          assert.equal(cancelled, 1);
+          assert.equal(cancel.mock.calls.length, 1);
+          assert.equal(vi.getTimerCount(), 0);
+          assert.equal(response.body!.locked, false);
+          if (stop === "byte limit" && cancellation === "pending")
+            console.log(
+              "SUBNET_TEXT_CANCELLATION",
+              JSON.stringify({
+                response_bytes: MAX_RESPONSE_BYTES,
+                cancellation_calls: cancel.mock.calls.length,
+                upstream_cancellation_pending: true,
+                response_returned: true,
+                upstream_requests: requests,
+                fixture: true,
+                production: false,
+              }),
+            );
+        } finally {
+          cancel.mockRestore();
+          vi.useRealTimers();
+        }
+      });
+
   test("a failed response stream returns a bounded tool failure without replay or credential disclosure", async () => {
     vi.useFakeTimers();
     try {

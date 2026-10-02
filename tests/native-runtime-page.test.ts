@@ -247,6 +247,7 @@ test("paging rejects absent paths and malformed complete payloads instead of ret
   const m = model();
   for (const [id, path] of [
     [16, ["x"]],
+    [17, [3]],
     [18, []],
     [18, [1]],
     [19, ["x"]],

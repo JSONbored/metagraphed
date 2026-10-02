@@ -519,7 +519,7 @@ function NativeRuntimeExplorer({
                     value={args}
                     onChange={(event) => {
                       setArgs(event.target.value);
-                      setResult(null);
+                      setResult((current) => (current?.results[0]?.value_page ? current : null));
                     }}
                     spellCheck={false}
                   />
@@ -755,6 +755,9 @@ function NativeRuntimeExplorer({
                     <span>
                       Collection offset {result.results[0].value_page.offset} ·{" "}
                       {result.results[0].value_page.total} total items
+                    </span>
+                    <span className="text-ink-muted">
+                      Continuation uses the last submitted arguments and collection path.
                     </span>
                     {result.results[0].value_page.next_offset !== null && lastOperations[0] && (
                       <button

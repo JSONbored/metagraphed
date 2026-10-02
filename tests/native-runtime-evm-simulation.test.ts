@@ -492,6 +492,21 @@ test("source-bound precompile results decode successful values while retaining a
     args: values,
     evm_call,
   };
+  await assert.rejects(
+    queryNativeRuntime(
+      {
+        operations: [
+          { ...operation, value_page: { path: [], offset: 0, limit: 1 } },
+        ],
+      },
+      f.rpc,
+    ),
+    /paging cannot replace evm_call/,
+  );
+  assert.equal(
+    f.calls.some((row) => row.params[0] === "EthereumRuntimeRPCApi_call"),
+    false,
+  );
   for (const [reason, data, status] of [
     [
       { Succeed: "Returned" },
