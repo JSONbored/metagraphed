@@ -11,7 +11,7 @@ import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 import { format, resolveConfig } from "prettier";
 import { test } from "vitest";
 import eras from "./fixtures/native-runtime-legacy-compiled.ts";
-import { NativeScaleReader, decodeNativeMetadata, NATIVE_RUNTIME_LIMITS } from "../src/native-runtime-metadata.ts";
+import { NativeScaleReader, decodeNativeMetadata, NATIVE_RUNTIME_LIMITS, unwrapNativeMetadata } from "../src/native-runtime-metadata.ts";
 import { evmRuntimeCatalogue as existing } from "../src/evm-runtime-catalogue.ts";
 import { evmRuntimeOutputs as existingOutputs } from "../src/evm-runtime-outputs.ts";
 import inputReference from "./fixtures/evm-runtime-reference.ts";
@@ -118,7 +118,7 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
     const outputIds=new Map(returns.outputs.map((entry,index)=>[JSON.stringify(entry),index]));
     const bindingIds=new Map(returns.bindings.map((entry,index)=>[JSON.stringify(entry),index]));
     for(const era of eras) {
-      const model=decodeNativeMetadata(new NativeScaleReader(era.v15, NATIVE_RUNTIME_LIMITS.metadataBytes));
+      const model=decodeNativeMetadata(new NativeScaleReader(unwrapNativeMetadata(era.v15)!, NATIVE_RUNTIME_LIMITS.metadataBytes));
       const hasEvm=model.pallets.some(pallet=>pallet.name==="EVM");
       if(!hasEvm) {
         assert.equal(era.spec,205);

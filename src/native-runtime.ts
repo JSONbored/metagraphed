@@ -549,6 +549,11 @@ export async function readNativeRuntime(
     blockHash.parse(genesis),
     runtime.specVersion,
     runtime.transactionVersion,
+    input.operations.some(
+      (operation) =>
+        operation.kind === "runtime" ||
+        (operation.kind === "describe" && operation.api !== undefined),
+    ),
   );
   const source = NativeRuntimeSourceSchema.parse({
     network: CHAIN_NAME_BY_NETWORK[network],

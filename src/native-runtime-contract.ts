@@ -25,6 +25,7 @@ export async function loadNativeContract(
   genesis: string,
   spec: number,
   transaction: number,
+  runtimeSignatures = false,
 ) {
   let codeHash: string | null = null;
   try {
@@ -38,12 +39,18 @@ export async function loadNativeContract(
     codeHash === null
       ? null
       : JSON.stringify([genesis, codeHash, spec, transaction]);
+  let fallback: Contract | undefined;
   if (key !== null) {
     const cached = contracts.get(key);
     if (cached) {
       contracts.delete(key);
       contracts.set(key, cached);
-      return { ...cached, codeHash };
+      if (cached.metadata.version === 15 || !runtimeSignatures)
+        return { ...cached, codeHash };
+      // V14 describes storage and calls, but lacks runtime API signatures.
+      // A provider's earlier negotiation failure must not hide signatures
+      // when a later typed request can negotiate V15 for the same code.
+      fallback = cached;
     }
   }
   let hex: string | null;
@@ -58,6 +65,7 @@ export async function loadNativeContract(
   } catch {
     hex = null;
   }
+  if (hex === null && fallback) return { ...fallback, codeHash };
   const reader = new NativeScaleReader(
     hex ?? (await read("state_getMetadata", [at])),
     NATIVE_RUNTIME_LIMITS.metadataBytes,
@@ -74,7 +82,7 @@ export async function loadNativeContract(
       JSON.stringify({ ...metadata, types: [...metadata.types.values()] }),
     );
     if (bytes <= 524_288) {
-      if (contracts.size === 2)
+      if (!contracts.has(key) && contracts.size === 2)
         contracts.delete(contracts.keys().next().value!);
       contracts.set(key, contract);
     }
