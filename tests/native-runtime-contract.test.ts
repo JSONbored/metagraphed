@@ -185,21 +185,28 @@ test("the two-entry cache evicts the least recently used contract and failures a
   );
 });
 
-
 test("typed requests recover V15 signatures after a provider's earlier V14 fallback without refetching V14", async () => {
   const source = fixture();
   let available = false;
   let negotiations = 0;
   const read: BasketRpc = (method, params) => {
-    if (method === "state_call" && params[0] === "Metadata_metadata_at_version") {
+    if (
+      method === "state_call" &&
+      params[0] === "Metadata_metadata_at_version"
+    ) {
       negotiations++;
       if (!available) return Promise.resolve("0x00");
     }
-    if (method === "state_call" && params[0] === "AccountNonceApi_account_nonce")
+    if (
+      method === "state_call" &&
+      params[0] === "AccountNonceApi_account_nonce"
+    )
       return Promise.resolve("0x05000000");
     return source.read(method, params);
   };
-  const storage = { operations: [{ kind: "storage", pallet: "System", member: "Number" }] };
+  const storage = {
+    operations: [{ kind: "storage", pallet: "System", member: "Number" }],
+  };
   const cold = await queryNativeRuntime(storage, read);
   const warm = await queryNativeRuntime(storage, read);
   assert.equal(cold.source.metadata_version, 14);
@@ -209,12 +216,22 @@ test("typed requests recover V15 signatures after a provider's earlier V14 fallb
   assert.equal(fallback.metadata.version, 14);
   assert.equal(negotiations, 2);
   available = true;
-  const result = await queryNativeRuntime({ operations: [
-    { kind: "runtime", api: "AccountNonceApi", member: "account_nonce", args: [`0x${"ab".repeat(32)}`] },
-    { kind: "describe", api: "AccountNonceApi" },
-  ] }, read);
+  const result = await queryNativeRuntime(
+    {
+      operations: [
+        {
+          kind: "runtime",
+          api: "AccountNonceApi",
+          member: "account_nonce",
+          args: [`0x${"ab".repeat(32)}`],
+        },
+        { kind: "describe", api: "AccountNonceApi" },
+      ],
+    },
+    read,
+  );
   assert.equal(result.source.metadata_version, 15);
-  assert.equal(result.results[0].value, 5);
+  assert.equal(result.results[0].value, "5");
   assert.ok(Array.isArray(result.results[1].value));
   assert.equal(result.results[1].value[0].kind, "runtime");
   assert.equal(negotiations, 3);
@@ -222,14 +239,19 @@ test("typed requests recover V15 signatures after a provider's earlier V14 fallb
   assert.equal(after.source.metadata_version, 15);
   assert.deepEqual(after.results, cold.results);
   assert.equal(negotiations, 3);
-  assert.equal(source.calls.filter(call => call.method === "state_getMetadata").length, 1);
+  assert.equal(
+    source.calls.filter((call) => call.method === "state_getMetadata").length,
+    1,
+  );
 });
 
 test("a failed V15 retry preserves the bounded fallback and upgrading it does not evict another cached code", async () => {
   const source = fixture();
   let unavailable = true;
-  const read: BasketRpc = (method, params) => method === "state_call" && unavailable
-    ? Promise.reject(new Error("temporary provider failure")) : source.read(method, params);
+  const read: BasketRpc = (method, params) =>
+    method === "state_call" && unavailable
+      ? Promise.reject(new Error("temporary provider failure"))
+      : source.read(method, params);
   const older = await loadNativeContract(read, hash, genesis, 470, 1);
   const retry = await loadNativeContract(read, hash, genesis, 470, 1, true);
   assert.equal(retry.metadata, older.metadata);
@@ -238,7 +260,16 @@ test("a failed V15 retry preserves the bounded fallback and upgrading it does no
   unavailable = false;
   const upgraded = await loadNativeContract(read, hash, genesis, 470, 1, true);
   assert.equal(upgraded.metadata.version, 15);
-  assert.equal((await loadNativeContract(other.read, hash, genesis, 470, 1)).metadata, retained.metadata);
-  assert.equal(source.calls.filter(call => call.method === "state_getMetadata").length, 1);
-  assert.equal(other.calls.filter(call => call.method === "state_call").length, 1);
+  assert.equal(
+    (await loadNativeContract(other.read, hash, genesis, 470, 1)).metadata,
+    retained.metadata,
+  );
+  assert.equal(
+    source.calls.filter((call) => call.method === "state_getMetadata").length,
+    1,
+  );
+  assert.equal(
+    other.calls.filter((call) => call.method === "state_call").length,
+    1,
+  );
 });

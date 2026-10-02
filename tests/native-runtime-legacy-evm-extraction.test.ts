@@ -183,12 +183,30 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
               actual=returnType==="()"?[]:returnType.startsWith("(")?param.components!:[param];
               if(matches.length===1&&(JSON.stringify(matches[0].outputs.map(canonicalType))===JSON.stringify(actual.map(canonicalType))||(returnType.startsWith("(")&&!dynamicOutput(param)&&matches[0].outputs.length===1&&canonicalType(matches[0].outputs[0])===canonicalType(param))))actual=matches[0].outputs.map(clean);
             } else {
-              assert.ok(["BalanceTransferPrecompile","StakingPrecompile"].includes(klass),`${era.spec} manual ${klass}`);
               assert.equal(matches.length,1,`${era.spec} manual ABI ${signature}`);
-              assert.equal(matches[0].outputs.length,0);
-              assert.match(body,/output: vec!\[\]/);
-              assert.ok([...body.matchAll(/output:\s*([^,\n]+)/g)].every(row=>row[1].trim()==="vec![]"),`${era.spec} manual output`);
-              names=matches[0].inputs.map(param=>param.name);actual=[];manual++;
+              names=matches[0].inputs.map(param=>param.name);actual=matches[0].outputs.map(clean);manual++;
+              if(actual.length===0) {
+                assert.ok(["BalanceTransferPrecompile","StakingPrecompile"].includes(klass),`${era.spec} manual empty ${klass}`);
+                assert.ok([...body.matchAll(/output:\s*([^,\n]+)/g)].every(row=>row[1].trim()==="vec![]"),`${era.spec} manual empty output`);
+              } else {
+                assert.equal(klass,"MetagraphPrecompile",`${era.spec} manual value ${klass}`);
+                assert.ok(actual.every(param=>!dynamicOutput(param)),`${era.spec} manual static output ${signature}`);
+                const selected=new RegExp(`get_method_id\\("${escape(signature)}"\\)[^]*?Self::(\\w+)`).exec(body);
+                assert.ok(selected,`${era.spec} manual dispatch ${signature}`);
+                const implementation=new RegExp(`fn ${selected[1]}\\([^]*?(?=\\n    fn |\\n})`).exec(body)?.[0];
+                assert.ok(implementation,`${era.spec} manual implementation ${signature}`);
+                const staticWords=(param:Param):number=>param.type==="tuple"?param.components!.reduce((total,row)=>total+staticWords(row),0):1;
+                const expectedBytes=actual.reduce((total,param)=>total+32*staticWords(param),0);
+                if(actual.length===1&&actual[0].type==="bytes32") {
+                  assert.match(implementation,/output: (?:hotkey|coldkey)\.as_slice\(\)\.into\(\)/);
+                } else {
+                  const arrays=[...implementation.matchAll(/let mut result = \[0_u8; (\d+)\]/g)];
+                  assert.equal(arrays.length,1,`${era.spec} manual allocation ${signature}`);
+                  assert.equal(Number(arrays[0][1]),expectedBytes,`${era.spec} manual size ${signature}`);
+                  assert.match(implementation,/U256::to_big_endian/);
+                  assert.match(implementation,/output: result\.into\(\)/);
+                }
+              }
             }
             const types=signature.slice(signature.indexOf("(")+1,-1).split(",").filter(Boolean);
             assert.equal(names.length,types.length,`${era.spec} ${signature} arity`);
