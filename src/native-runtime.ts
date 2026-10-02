@@ -9,6 +9,7 @@ import {
   type NativeMetadata,
   type NativeType,
   type NativeField,
+  type NativeStorage,
 } from "./native-runtime-metadata.ts";
 import {
   decodeNativeValue,
@@ -72,6 +73,25 @@ type Operation = z.infer<
 type NativeResult = z.infer<
   typeof NativeRuntimeArtifactSchema
 >["results"][number];
+interface NativePlan {
+  result: Omit<NativeResult, "contract"> & {
+    contract: Record<string, unknown>;
+  };
+  call?: { method: string; params: unknown[] };
+  output?: number;
+  item?: NativeStorage;
+  entry?: {
+    prefix: string;
+    palletPrefix: string;
+    item: NativeStorage;
+    limit: number;
+    cursor: string | undefined;
+  };
+  simulationGas?: bigint | null;
+  contractWork?: ReturnType<typeof nativeContractSimulationWork>;
+  inner?: ReturnType<typeof nativeInnerRecord>;
+  evm?: ReturnType<typeof resolveNativeEvmCall>["contract"];
+}
 // Metadata also describes node-internal APIs that can execute a block or write
 // a keystore. Only these audited read API families may reach state_call.
 const READ_APIS = new Set([
@@ -149,7 +169,7 @@ function plan(
   needed: Map<number, NativeType>,
   apiVersions: Map<string, number>,
   spec: number,
-) {
+): NativePlan {
   if (operation.kind === "runtime_scale") {
     const id = runtimeApiId(operation.api);
     const apiVersion = apiVersions.get(id);
@@ -595,7 +615,7 @@ export async function readNativeRuntime(
     ? await resolveNativeCodeArtifacts(metadata, input.operations, fetchImpl)
     : input.operations;
   const innerRecords = new Map<string, ReturnType<typeof nativeInnerRecord>>();
-  const plans = operations.map((operation) => {
+  const plans = operations.map<NativePlan>((operation) => {
     let inner: ReturnType<typeof nativeInnerRecord> | undefined;
     if (
       (operation.kind === "runtime" || operation.kind === "runtime_scale") &&
@@ -626,7 +646,7 @@ export async function readNativeRuntime(
       apiVersions,
       runtime.specVersion,
     );
-    const row = inner
+    const row: NativePlan = inner
       ? {
           ...base,
           inner,
