@@ -57,9 +57,18 @@ function splitTypes(input:string) {
   }
   const last=input.slice(start).trim();if(last)rows.push(last);assert.equal(depth,0);return rows;
 }
+function expandedRustType(raw:string,source:string):string {
+  let type=raw.trim();
+  for(let depth=0;depth<10;depth++) {
+    if(!/^\w+$/.test(type))return type;
+    const alias=new RegExp(`(?:pub\\s+)?type\\s+${type}\\s*=\\s*([^]*?);`).exec(source);
+    if(!alias)return type;type=alias[1].trim();
+  }
+  throw new Error("Recursive Rust return alias");
+}
 function rustParam(raw:string,source:string,depth=0):Param {
   assert.ok(depth<10,raw);
-  const type=raw.trim();
+  const type=expandedRustType(raw,source);
   const scalar:Record<string,string>={u8:"uint8",u16:"uint16",u32:"uint32",u64:"uint64",u128:"uint128",U256:"uint256",H256:"bytes32",Address:"address",bool:"bool",UnboundedBytes:"bytes",UnboundedString:"string",String:"string"};
   if(scalar[type])return {name:"",type:scalar[type]};
   if(type.startsWith("(")&&type.endsWith(")"))return {name:"",type:"tuple",components:splitTypes(type.slice(1,-1)).map(row=>rustParam(row,source,depth+1))};
@@ -124,12 +133,12 @@ test("extract complete official output ABIs and independent ethers return vector
           assert.ok(publicStart>=0,`${release[0]} ${klass} ${fn[0]} Rust binding`);
           const declaration=/fn \w+\s*\([^]*?\)\s*->\s*EvmResult<([^]*?)>\s*\{/.exec(body.slice(publicStart));
           assert.ok(declaration,`${release[0]} ${klass} ${fn[0]} return`);
-          const returnType=declaration[1].trim(),param=rustParam(returnType,rust);
+          const returnType=expandedRustType(declaration[1],rust),param=rustParam(returnType,rust);
           const actual=returnType==="()" ? [] : returnType.startsWith("(") ? param.components!:[param];
           let output=actual;
           if(matches.length===1 && JSON.stringify(matches[0].outputs.map(canonicalType))===JSON.stringify(actual.map(canonicalType)))output=matches[0].outputs.map(clean);
           else console.log("EVM_OUTPUT_SOURCE_CORRECTION",release[0],precompile[0],fn[0],JSON.stringify(actual.map(canonicalType)));
-          console.log("EVM_OUTPUT_RUST_TYPE",returnType);
+
           const visit=(param:Param)=>{types.add(param.type);param.components?.forEach(visit);};output.forEach(visit);
           const key=JSON.stringify(output);
           let outputId=outputIds.get(key);
