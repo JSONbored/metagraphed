@@ -1,7 +1,8 @@
 // Temporary remote published-release qualification and exact byte handoff.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
+import { promisify } from "node:util";
 import { readFileSync } from "node:fs";
 import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 import { test } from "vitest";
@@ -19,6 +20,10 @@ function download(url: string, maxBuffer: number) {
   return execFileSync("curl", ["--fail", "--location", "--max-time", "30", "--silent", "--show-error", url], { maxBuffer });
 }
 const digest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+const run = promisify(execFile);
+async function sourceBytes(url: string) {
+  return (await run("curl", ["--fail", "--location", "--max-time", "30", "--silent", "--show-error", url], {maxBuffer:500000, encoding:"buffer", timeout:35000})).stdout;
+}
 
 async function extract(spec: number, commit: string) {
   const base = `https://github.com/RaoFoundation/subtensor/releases/download/v${spec}`;
@@ -123,12 +128,15 @@ test("qualify published v471 metadata, identical input/return sources and basket
   const inputManifest = inputReference.manifests.find(row=>row.spec===470)!;
   const outputManifest = outputReference.manifests.find(row=>row.spec===470)!;
   const files = new Map([...inputManifest.files, ...outputManifest.files]);
-  for (const [name, sha] of files) {
-    assert.match(name, /^[A-Za-z0-9_/.]+$/);
-    const path = name === "codec/mod.rs" ? `vendor/frontier/precompiles/src/solidity/${name}` : name.endsWith(".abi") ? `precompiles/src/solidity/${name}` : `precompiles/src/${name}`;
-    assert.equal(digest(download(`https://raw.githubusercontent.com/RaoFoundation/subtensor/${commit}/${path}`,500000)),sha,path);
+  const entries = [...files];
+  for (let offset = 0; offset < entries.length; offset += 4) {
+    await Promise.all(entries.slice(offset,offset+4).map(async ([name,sha]) => {
+      assert.match(name, /^[A-Za-z0-9_/.]+$/);
+      const path = name === "codec/mod.rs" ? `vendor/frontier/precompiles/src/solidity/${name}` : name.endsWith(".abi") ? `precompiles/src/solidity/${name}` : `precompiles/src/${name}`;
+      assert.equal(digest(await sourceBytes(`https://raw.githubusercontent.com/RaoFoundation/subtensor/${commit}/${path}`)),sha,path);
+    }));
   }
-  const basketFiles = ["runtime-api/src/lib.rs","pallets/subtensor/src/rpc_info/basket_info.rs"];
+  const basketFiles = ["pallets/subtensor/runtime-api/src/lib.rs","pallets/subtensor/src/rpc_info/basket_info.rs"];
   const basketSources = basketFiles.map(path => {
     const previous = download(`https://raw.githubusercontent.com/RaoFoundation/subtensor/${current.commit}/${path}`,500000);
     const bytes = download(`https://raw.githubusercontent.com/RaoFoundation/subtensor/${commit}/${path}`,500000);

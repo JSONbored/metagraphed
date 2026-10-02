@@ -304,7 +304,7 @@ types. The separate Root basket readers use verified historical API layouts for
 their supported runtime eras rather than inferring those signatures from V14.
 
 The representative v470 fixtures are derived from the
-[official runtime API declarations](https://github.com/RaoFoundation/subtensor/blob/923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d/runtime-api/src/lib.rs),
+[official runtime API declarations](https://github.com/RaoFoundation/subtensor/blob/923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d/pallets/subtensor/runtime-api/src/lib.rs),
 [storage declarations](https://github.com/RaoFoundation/subtensor/blob/923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d/pallets/subtensor/src/lib.rs),
 and [hyperparameter definitions](https://github.com/RaoFoundation/subtensor/blob/923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d/pallets/subtensor/src/rpc_info/subnet_info.rs).
 They are source-based fixtures, not observations of the deployed network.
