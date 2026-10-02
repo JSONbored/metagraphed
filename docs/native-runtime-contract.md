@@ -260,6 +260,21 @@ it does not qualify trie proofs or production gas costs. These five cases
 establish compiled-engine fixture execution, with zero chain requests. They
 do not measure a deployed node, retained history or live latency.
 
+The CI-only `tests/native-runtime-engine.test.ts` extends engine regression
+coverage to contract calls and EVM creation through the same public encoder and
+decoder. A constructor-produced snapshot explicitly seeds an isolated fixture
+representing an already deployed contract; simulation requests themselves still
+discard their overlays. The checks require exact Wasm `u32(42)` return bytes,
+preserved revert flags/data, missing-contract dispatch errors and one execution
+for duplicate calls. EVM creation must return the independent RLP-derived
+nonce-zero address and produce the expected runtime code in its discarded
+overlay. Typed results must re-encode to the complete engine response bytes.
+The published module is checksum-bound, downloaded/compiled once per test file,
+and guarded by the CI execution flag; ordinary local runs skip engine execution.
+Memory, fixture storage, host calls and transactions remain bounded, and unknown
+hosts fail explicitly. These checks qualify fixture behavior rather than
+production state, trie proofs, gas costs or historical retention.
+
 `prepare` encodes a native method from its declared
 argument types, including runtime-specific enum and composite arguments. It
 returns method bytes and signed-extension types for explicit wallet review;
