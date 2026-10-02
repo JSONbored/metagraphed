@@ -55,8 +55,11 @@ test("extract the public v470 compiled metadata on remote CI only", async () => 
       assert.ok(base instanceof WebAssembly.Global);
       heap = Number(base.value);
     }
-    const ptr = Math.ceil(heap / 8) * 8;
-    heap = ptr + bytes;
+    // RuntimeAllocator writes an alignment offset immediately before the
+    // returned pointer. Reserve the host's eight-byte header so that write
+    // cannot corrupt the preceding allocation.
+    const ptr = Math.ceil(heap / 8) * 8 + 8;
+    heap = ptr + Math.max(bytes, 8);
     if (heap > memory.buffer.byteLength) memory.grow(Math.ceil((heap - memory.buffer.byteLength) / 65536));
     return ptr;
   };

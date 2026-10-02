@@ -43,7 +43,7 @@ const variants = (id: number, rows: [string, number, number | null][]) =>
       })),
     },
   });
-const composite = (id: number, fields: [string, number][]) =>
+const composite = (id: number, fields: [string | null, number][]) =>
   type(id, {
     composite: { fields: fields.map(([name, inner]) => field(name, inner)) },
   });
@@ -117,8 +117,8 @@ const callInputs = [
   ["estimate", 9],
   ["access_list", 15],
 ] as const;
-function fixture(gasFields?: string[]) {
-  const inputs = callInputs.map(([name, type]) => ({ name, type }));
+function fixture(gasFields?: string[], limbGas = false) {
+  const inputs = callInputs.map(([name, type]) => ({ name, type: limbGas && name === "gas_limit" ? 30 : type }));
   if (gasFields)
     inputs.forEach((input, index) => {
       input.name = gasFields[index] as typeof input.name;
@@ -136,7 +136,7 @@ function fixture(gasFields?: string[]) {
         ],
       },
     ],
-    evmTypes,
+    [...evmTypes, composite(30, [[null, 31]]), type(31, { array: { len: 4, type: 16 } })],
   );
   registry.register({
     FixtureExitSucceed: { _enum: { Stopped: "Null", Returned: "Null" } },
@@ -391,4 +391,32 @@ test("unknown or ambiguous metadata gas names cannot silently bypass the executi
       !f.calls.some((row) => row.params[0] === "EthereumRuntimeRPCApi_call"),
     );
   }
+});
+
+test("derived U256 gas uses every little-endian u64 limb and the reference ABI without bypassing request bounds", async () => {
+  for (const gas of [[1, "0", 0, "0"], ["1000000", 0, "0", 0]]) {
+    const f = fixture(undefined, true);
+    const out = await queryNativeRuntime({ operations: [operation(args(gas)), operation(args(gas))] }, f.rpc);
+    const expected = f.registry.createType(
+      "(H160,H160,Bytes,U256,U256,Option<U256>,Option<U256>,Option<U256>,bool,Option<Vec<(H160,Vec<H256>)>>)",
+      [from, to, "0xdead", "9007199254740993", gas[0], 1, null, null, false, null],
+    ).toHex();
+    const executions = f.calls.filter((row) => row.params[0] === "EthereumRuntimeRPCApi_call");
+    assert.deepEqual(executions, [{ method: "state_call", params: ["EthereumRuntimeRPCApi_call", expected, hash] }]);
+    assert.deepEqual(out.results[0], out.results[1]);
+  }
+  for (const gas of [
+    [0, 0, 0, 0], ["1000001", 0, 0, 0], [1, 1, 0, 0], [1, 0, 1, 0], [1, 0, 0, 1],
+    [1, -1, 0, 0], [1, "01", 0, 0], [1, "18446744073709551616", 0, 0],
+    [1, 9007199254740992, 0, 0], [1, 0, 0], [1, 0, 0, 0, 0], [1, true, 0, 0],
+  ]) {
+    const f = fixture(undefined, true);
+    await assert.rejects(queryNativeRuntime({ operations: [operation(args(gas))] }, f.rpc), /gas/);
+    assert.ok(!f.calls.some((row) => row.params[0] === "EthereumRuntimeRPCApi_call"));
+  }
+  const f = fixture(undefined, true);
+  const other = args(["600000", 0, 0, 0]);
+  other[2] = "0xbeef";
+  await assert.rejects(queryNativeRuntime({ operations: [operation(args(["600000", 0, 0, 0])), operation(other)] }, f.rpc), /aggregate gas/);
+  assert.ok(!f.calls.some((row) => row.params[0] === "EthereumRuntimeRPCApi_call"));
 });

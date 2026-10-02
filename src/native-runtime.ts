@@ -36,6 +36,19 @@ import {
   type ChainNetworkId,
 } from "./chain-network.ts";
 
+const exactGasInteger = z.union([
+  z.string().regex(/^(0|[1-9]\d*)$/).max(79).transform((value) => BigInt(value)),
+  z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).transform((value) => BigInt(value)),
+]);
+// primitive_types::U256 derives a transparent [u64; 4] portable layout.
+// Preserve that declared JSON representation and interpret every limb for
+// admission. Encoding below still validates it against the actual metadata.
+const evmGasInteger = z.union([
+  exactGasInteger,
+  z.array(exactGasInteger.refine((value) => value < 1n << 64n)).length(4)
+    .transform((limbs) => limbs.reduceRight((value, limb) => (value << 64n) | limb, 0n)),
+]);
+
 const header = z.object({
   number: z
     .string()
@@ -337,15 +350,12 @@ function plan(
       );
       if (gasFields.length !== 1)
         throw new Error("EVM simulation requires a declared gas_limit");
-      const gas = operation.args[gasFields[0]!]!;
-      if (!(
-        (typeof gas === "string" && /^(0|[1-9]\d*)$/.test(gas)) ||
-        (typeof gas === "number" && Number.isSafeInteger(gas) && gas >= 0)
-      ))
+      const gas = evmGasInteger.safeParse(operation.args[gasFields[0]!]!);
+      if (!gas.success)
         throw new Error(
           "EVM simulation gas must be an exact nonnegative integer",
         );
-      simulationGas = BigInt(gas);
+      simulationGas = gas.data;
       if (
         simulationGas === 0n ||
         simulationGas > NATIVE_EVM_SIMULATION_GAS_BUDGET
