@@ -185,16 +185,23 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
             } else {
               assert.equal(matches.length,1,`${era.spec} manual ABI ${signature}`);
               names=matches[0].inputs.map(param=>param.name);actual=matches[0].outputs.map(clean);manual++;
+              const selected=new RegExp(`get_method_id\\("${escape(signature)}"\\)[^]*?Self::(\\w+)`).exec(body);
+              const functionBody=(source:string,name:string)=>new RegExp(`fn ${name}\\([^]*?(?=\\n\\s*(?:pub )?fn |\\n})`).exec(source)?.[0];
+              const implementation=functionBody(body,selected?.[1]??"execute");
+              assert.ok(implementation,`${era.spec} manual implementation ${signature}`);
               if(actual.length===0) {
-                assert.ok(["BalanceTransferPrecompile","StakingPrecompile"].includes(klass),`${era.spec} manual empty ${klass}`);
-                assert.ok([...body.matchAll(/output:\s*([^,\n]+)/g)].every(row=>row[1].trim()==="vec![]"),`${era.spec} manual empty output`);
+                const direct=[...implementation.matchAll(/output:\s*([^,\n]+)/g)];
+                if(direct.length) assert.ok(direct.every(row=>["vec![]","Default::default()"].includes(row[1].trim())),`${era.spec} manual direct empty output ${signature}`);
+                else {
+                  const delegated=implementation.includes("try_dispatch_runtime_call(") ? functionBody(lib,"try_dispatch_runtime_call") : implementation.includes("Self::dispatch(") ? functionBody(body,"dispatch") : undefined;
+                  assert.ok(delegated,`${era.spec} manual delegated output ${signature}`);
+                  const outputs=[...delegated.matchAll(/output:\s*([^,\n]+)/g)];
+                  assert.ok(outputs.length>0&&outputs.every(row=>["vec![]","Default::default()"].includes(row[1].trim())),`${era.spec} manual delegated empty output ${signature}`);
+                }
               } else {
-                assert.equal(klass,"MetagraphPrecompile",`${era.spec} manual value ${klass}`);
+                assert.ok(["MetagraphPrecompile","StakingPrecompile","SubnetPrecompile","NeuronPrecompile"].includes(klass),`${era.spec} manual value ${klass}`);
                 assert.ok(actual.every(param=>!dynamicOutput(param)),`${era.spec} manual static output ${signature}`);
-                const selected=new RegExp(`get_method_id\\("${escape(signature)}"\\)[^]*?Self::(\\w+)`).exec(body);
-                assert.ok(selected,`${era.spec} manual dispatch ${signature}`);
-                const implementation=new RegExp(`fn ${selected[1]}\\([^]*?(?=\\n    fn |\\n})`).exec(body)?.[0];
-                assert.ok(implementation,`${era.spec} manual implementation ${signature}`);
+                assert.ok(selected,`${era.spec} manual value dispatch ${signature}`);
                 const staticWords=(param:Param):number=>param.type==="tuple"?param.components!.reduce((total,row)=>total+staticWords(row),0):1;
                 const expectedBytes=actual.reduce((total,param)=>total+32*staticWords(param),0);
                 if(actual.length===1&&actual[0].type==="bytes32") {
