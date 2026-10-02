@@ -242,6 +242,7 @@ test("bytes and UTF-8 strings preserve content and reject truncated, dirty-paddi
   const bytes = "hasMigrationRun(bytes)";
   assert.deepEqual(decode(bytes, word(32) + word(0), 2064).args, { key: "0x" });
   for (const data of [
+    word(32),
     word(32) + word(33) + "00".repeat(32),
     word(32) + word(1) + "ff" + "00".repeat(30) + "01",
   ])

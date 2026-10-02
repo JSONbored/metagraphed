@@ -322,6 +322,48 @@ test("legacy summary pagination is bounded, deterministic and retains exact weig
   );
 });
 
+test("API 1 entitlement pages preserve membership and continuation at one finalized source", async () => {
+  const other = `0x${"55".repeat(32)}`;
+  const source = fixture(441, 1, {
+    state_getStorage: `0x08${BASKET_FIXTURE_HOTKEY.slice(2)}${other.slice(2)}`,
+    get_root_basket_positions: `0x08${BASKET_FIXTURE_ENTITLEMENT}${other.slice(2)}${BASKET_FIXTURE_ENTITLEMENT.slice(64)}`,
+  });
+  const runtime = await openRootBasketRuntime(source.rpc, "local");
+  const first = await runtime.accountPage(BASKET_FIXTURE_COLDKEY, 0, 1);
+  assert.equal(first.total_relationships, 2);
+  assert.equal(first.next_offset, 1);
+  assert.equal(first.entries.length, 1);
+  assert.deepEqual(first.entries[0], {
+    hotkey: BASKET_FIXTURE_HOTKEY,
+    position: null,
+    claim: null,
+    entitlement: {
+      hotkey: BASKET_FIXTURE_HOTKEY,
+      owed_shares_atomic: "11",
+      payout_rao: "9",
+    },
+  });
+  const final = await runtime.accountPage(BASKET_FIXTURE_COLDKEY, 1, 1);
+  assert.equal(final.total_relationships, 2);
+  assert.equal(final.next_offset, null);
+  assert.deepEqual(final.entries, [
+    {
+      ...first.entries[0],
+      hotkey: other,
+      entitlement: { ...first.entries[0]!.entitlement, hotkey: other },
+    },
+  ]);
+  const reads = source.calls.filter((row) => row.method === "state_call");
+  assert.equal(reads.length, 2);
+  assert.ok(
+    reads.every(
+      (row) =>
+        row.params[0] === "BetaBasketRuntimeApi_get_root_basket_positions" &&
+        row.params[2] === BASKET_FIXTURE_BLOCK,
+    ),
+  );
+});
+
 test("API 1 account pages distinguish missing entitlement, malformed membership and confirmed empty", async () => {
   const source = fixture(441, 1, { get_root_basket_positions: "0x00" });
   const runtime = await openRootBasketRuntime(source.rpc, "local");

@@ -139,6 +139,7 @@ test("malformed ABI return bytes never become successful values and never discar
     [scalar("uint64[]"), `0x${word(32)}${word(2)}${word(1)}`],
     [scalar("uint64[]"), `0x${word(32)}${word(16384)}${word(0).repeat(16382)}`],
     [scalar("uint8[16384]"), "0x"],
+    [[{ name: "", type: "tuple[16384]", components: [] }], "0x"],
     [
       [
         {

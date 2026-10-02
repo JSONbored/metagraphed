@@ -179,6 +179,30 @@ test("invalid requests, network contradictions and throttling perform no RPC wor
   );
   assert.equal(fetch.mock.calls.length, 0);
 });
+test("internal MCP callers without an IP share the anonymous native work limiter", async () => {
+  const fetch = vi.spyOn(globalThis, "fetch");
+  const keys: string[] = [];
+  const env = apiEnv({
+    ...createLocalArtifactEnv(),
+    RPC_RATE_LIMITER: {
+      limit: async ({ key }: { key: string }) => {
+        keys.push(key);
+        return { success: false };
+      },
+    },
+  });
+  for (const [name, args] of [
+    ["get_native_runtime", { operations }],
+    ["get_subnet_stake_quote", { netuid: 19, amount: 1, direction: "stake" }],
+  ] as const) {
+    await assert.rejects(
+      MCP_TOOLS.find((row) => row.name === name)!.handler(args, { env }),
+      { code: "rate_limited" },
+    );
+  }
+  assert.deepEqual(keys, ["native-runtime:anon", "native-runtime:anon"]);
+  assert.equal(fetch.mock.calls.length, 0);
+});
 test("unbound limiter uses the same reader and chain failures return a sanitized no-store error", async () => {
   const env = apiEnv(createLocalArtifactEnv());
   await withNativeRuntimeFixture(async () =>

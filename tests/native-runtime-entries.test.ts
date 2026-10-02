@@ -119,6 +119,35 @@ test("v470 NMap entries expose typed reversible keys and exact values with a fin
       .every((row) => row.params.at(-1) === hash),
   );
 });
+test("entry values reuse an already requested storage read without sharing public objects", async () => {
+  const source = fixture();
+  const hotkey = source.keys[0]!.includes("11".repeat(32))
+    ? "11"
+    : source.keys[0]!.includes("22".repeat(32))
+      ? "22"
+      : "33";
+  const out = await queryNativeRuntime(
+    {
+      operations: [
+        { ...operation, limit: 1 },
+        {
+          kind: "storage",
+          pallet: operation.pallet,
+          member: operation.member,
+          args: [19, `0x${hotkey.repeat(32)}`, `0x${"44".repeat(32)}`],
+        },
+      ],
+    },
+    source.rpc,
+  );
+  const entry = (out.results[0]!.value as { value: unknown }[])[0]!;
+  assert.deepEqual(entry.value, out.results[1]!.value);
+  assert.notEqual(entry.value, out.results[1]!.value);
+  assert.deepEqual(out.results[1]!.value, source.value);
+  const reads = source.calls.filter((row) => row.method === "state_getStorage");
+  assert.equal(reads.length, 1);
+  assert.deepEqual(reads[0]!.params, [source.keys[0], hash]);
+});
 test("empty and fully qualified map prefixes produce bounded records", async () => {
   const empty = await queryNativeRuntime(
     { operations: [operation] },
