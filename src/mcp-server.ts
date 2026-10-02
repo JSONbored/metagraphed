@@ -5849,11 +5849,19 @@ async function subnetSurfaceCall(
       "`path` and `method` must be supplied together, or both omitted.",
     );
   }
-  const hasBodyArg = args?.body !== undefined && args?.body !== null;
+  const hasJsonBodyArg = args.json_body !== undefined;
+  const hasLegacyBodyArg = args?.body !== undefined && args?.body !== null;
+  if (hasJsonBodyArg && args.body !== undefined) {
+    throw toolError("invalid_params", "Supply either `json_body` or `body`.");
+  }
+  // Presence matters: null, false, zero and an empty JSON string are bodies.
+  // The legacy body:null behavior stays omitted when json_body is absent.
+  const hasBodyArg = hasJsonBodyArg || hasLegacyBodyArg;
+  const bodyArgumentName = hasJsonBodyArg ? "`json_body`" : "`body`";
   const hasContentTypeArg =
     typeof args?.content_type === "string" && args.content_type.length > 0;
   if (
-    hasBodyArg &&
+    hasLegacyBodyArg &&
     !(
       typeof args.body === "string" ||
       (typeof args.body === "object" && !Array.isArray(args.body))
@@ -5870,7 +5878,7 @@ async function subnetSurfaceCall(
   if (hasBodyArg && !hasPath) {
     throw toolError(
       "invalid_params",
-      "`body` requires `path` and `method` to also be set.",
+      `${bodyArgumentName} requires \`path\` and \`method\` to also be set.`,
     );
   }
   let normalizedMethod: string | undefined;
@@ -5897,7 +5905,7 @@ async function subnetSurfaceCall(
     ) {
       throw toolError(
         "invalid_params",
-        `\`body\` is only valid with method ${CALL_SURFACE_BODY_METHODS.join(", ")}.`,
+        `${bodyArgumentName} is only valid with method ${CALL_SURFACE_BODY_METHODS.join(", ")}.`,
       );
     }
   }
@@ -6083,6 +6091,19 @@ async function subnetSurfaceCall(
       );
     }
   }
+  if (
+    hasJsonBodyArg &&
+    credentialPlacement?.location === "body" &&
+    !credentialPlacement.bodyEnvelope &&
+    (args.json_body === null ||
+      typeof args.json_body !== "object" ||
+      Array.isArray(args.json_body))
+  ) {
+    throw toolError(
+      "invalid_params",
+      "`json_body` must be an object when credentials merge into the body without a declared envelope.",
+    );
+  }
   if (rowOf(surface.probe)?.enabled === false) {
     throw toolError(
       "surface_unavailable",
@@ -6154,9 +6175,20 @@ async function subnetSurfaceCall(
       const isJsonContentType =
         requestContentType === "application/json" ||
         requestContentType.endsWith("+json");
+      if (hasJsonBodyArg && !isJsonContentType) {
+        throw toolError(
+          "invalid_params",
+          "`json_body` requires a declared application/json or +json content type.",
+        );
+      }
       if (isJsonContentType) {
-        requestBody =
-          typeof args.body === "string" ? args.body : JSON.stringify(args.body);
+        // The MCP transport already parsed the JSON value. Serialize it once
+        // at this HTTP boundary; strings here are JSON strings, not raw text.
+        requestBody = hasJsonBodyArg
+          ? JSON.stringify(args.json_body)
+          : typeof args.body === "string"
+            ? args.body
+            : JSON.stringify(args.body);
       } else {
         if (typeof args.body !== "string") {
           throw toolError(
@@ -15407,6 +15439,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "write_subnet_surface",
     title: "Call a declared write operation on a subnet's live API",
     description:
+      "Use json_body for a direct JSON value (including arrays/scalars/null), or body for an object or pre-serialized text; supply only one. " +
       "Issue a POST, PUT, PATCH or DELETE against a catalogued surface, and return its real response body. The write sibling of call_subnet_surface, which handles GET/HEAD -- see the MCP tool registry for that one. Both are the same implementation and enforce the same gate; they are separate tools so a read never carries a write's risk. `path` and `method` are REQUIRED: there is no curated write, so the operation is always named explicitly. The exact path+method must be declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright and never guessed (#7674, #7675, #11146). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. This grants no authority the caller lacks calling the API directly: the operation must be declared, and an authenticated surface still needs the caller's own credential. `body` is validated against the matched operation's declared request body -- rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) placed in a header, query param, cookie, or merged into the JSON body (#7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call. The response is bounded: JSON is parsed and returned structured, and other text is returned capped. Set `response_mode: attachment` for complete binary results as native MCP content with a compact size/checksum receipt; omitted mode retains binary rejection.",
     inputSchema: inputJsonSchema(WriteSubnetSurfaceInputSchema),
     async handler(

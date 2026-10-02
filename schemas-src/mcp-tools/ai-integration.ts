@@ -286,6 +286,13 @@ const surfaceCallSharedShape = {
 
 /** The body fields, which only the write tool has any use for. */
 const surfaceWriteBodyShape = {
+  json_body: z
+    .json()
+    .optional()
+    .describe(
+      "JSON request value, including an array, string, number, boolean or null. Sent as JSON without pre-serializing or escaping it into a string. Use either json_body or body. Requires a declared application/json or +json request media type; flat body credentials require an object, while a declared credential envelope preserves any JSON payload.",
+    )
+    .meta({ examples: [[{ op: "replace", path: "/name", value: "ada" }]] }),
   body: z
     .union([OpenObjectSchema, z.string()])
     .optional()
@@ -363,6 +370,7 @@ export type WriteSubnetSurfaceInput = z.infer<
  */
 export type SubnetSurfaceCallArgs = Omit<CallSubnetSurfaceInput, "method"> & {
   method?: (typeof CALL_SURFACE_METHODS)[number];
+  json_body?: WriteSubnetSurfaceInput["json_body"];
   body?: WriteSubnetSurfaceInput["body"];
   content_type?: WriteSubnetSurfaceInput["content_type"];
 };
