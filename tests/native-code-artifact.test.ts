@@ -630,3 +630,41 @@ test("artifact deadlines bound stalled bodies and late headers, cancelling their
     }
   }
 });
+
+
+function evmModel(): NativeMetadata {
+  const meta=model();
+  meta.pallets=[{...meta.pallets[0]!,name:"EVM",prefix:"EVM",constants:[]}];
+  meta.apis=[{name:"EthereumRuntimeRPCApi",methods:[{name:"create",inputs:[{name:"data",type:2},{name:"gas_limit",type:6}],output:1}]}];
+  meta.types.get(8)!.definition={kind:"variant",variants:[{name:"create",index:2,fields:[{name:"init",type:2}]},{name:"create2",index:3,fields:[{name:"init",type:2}]}]};
+  return meta;
+}
+
+test("EVM creation artifacts bind only declared init/data bytes and reject gas or incompatible calls before fetching", async () => {
+  const create={kind:"runtime",api:"EthereumRuntimeRPCApi",member:"create",args:["0x","500000"],code_artifact:artifact};
+  for(const row of [create,{kind:"prepare",pallet:"EVM",member:"create",args:["0x"],code_artifact:artifact},{kind:"prepare",pallet:"EVM",member:"create2",args:["0x"],code_artifact:artifact}]) {
+    const f=fetcher();const result=await resolveNativeCodeArtifacts(evmModel(),operations([row,row]),f.fetchImpl);
+    assert.equal(f.calls.length,1);assert.equal((result[0] as {args:unknown[]}).args[0],`0x${data.toString("hex")}`);
+    assert.deepEqual(result[0],result[1]);assert.equal(row.args[0],"0x");
+  }
+  const cases:{row?:unknown;mutate?:(meta:NativeMetadata)=>void}[]=[
+    ...["0","1000001",["1","1","0","0"],null,"01"].map(gas=>({row:{...create,args:["0x",gas]}})),
+    {row:{...create,evm_call:{signature:"x()",args:[]}}},
+    {row:{...create,args:["0x00","500000"]}},
+    {row:{...create,args:["0x", "500000", 0]}},
+    {row:{...create,member:"call"}},
+    {row:{kind:"prepare",pallet:"EVM",member:"call",args:["0x"],code_artifact:artifact}},
+    {mutate:meta=>{meta.pallets=[];}},
+    {mutate:meta=>{meta.apis[0]!.methods=[];}},
+    {mutate:meta=>{meta.apis[0]!.methods[0]!.inputs[0]!.name="code";}},
+    {mutate:meta=>{meta.apis[0]!.methods[0]!.inputs[0]!.type=3;}},
+    {mutate:meta=>{meta.apis[0]!.methods[0]!.inputs[1]!.name="unknown";}},
+    {mutate:meta=>{meta.apis[0]!.methods[0]!.inputs.push({name:"gas_limit",type:6});}},
+    {mutate:meta=>{meta.types.get(8)!.definition={kind:"variant",variants:[]};},row:{kind:"prepare",pallet:"EVM",member:"create",args:["0x"],code_artifact:artifact}},
+  ];
+  for(const item of cases) {
+    const meta=evmModel();item.mutate?.(meta);const f=fetcher();
+    await assert.rejects(()=>resolveNativeCodeArtifacts(meta,operations([item.row??create]),f.fetchImpl));
+    assert.equal(f.calls.length,0);
+  }
+});

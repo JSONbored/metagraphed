@@ -155,7 +155,7 @@ test("map records use leading keys and preserve source while advancing the curso
   await page.getByRole("button", { name: "Inspect contract" }).click();
   await page.getByRole("button", { name: "Browse records" }).click();
   await expect(
-    page.getByRole("cell", { name: "9007199254740993 Copy Exact value", exact: true }),
+    page.getByTitle("9007199254740993", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Next records" }).click();
   await expect(page.getByRole("button", { name: "Next records" })).toHaveCount(0);
@@ -254,7 +254,7 @@ test("native feature reads are explicit, exact and usable at phone width", async
   expect(requests).toHaveLength(0);
   await page.getByRole("button", { name: "Read state", exact: true }).click();
   await expect(
-    page.getByRole("cell", { name: "9007199254740993 Copy Exact value", exact: true }),
+    page.getByTitle("9007199254740993", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("v470 · metadata v15", { exact: true })).toBeVisible();
   expect(requests).toEqual([
@@ -517,7 +517,12 @@ test("Wasm contracts use discovered Weight arguments and retain reverted bytes w
   ]);
 });
 
-test("native code form sends a compact checksum-bound artifact at the inspected source", async ({
+for (const api of ["ContractsApi", "EthereumRuntimeRPCApi"] as const) {
+const member = api === "ContractsApi" ? "upload_code" : "create";
+const readMember = api === "ContractsApi" ? "get_storage" : "account_code_at";
+const result = api === "ContractsApi" ? { code_hash: `0x${"11".repeat(32)}` } : { contract_address: `0x${"22".repeat(20)}` };
+const resultValue = Object.values(result)[0]!;
+test(`${api} code form sends a compact checksum-bound artifact at the inspected source`, async ({
   page,
 }) => {
   const artifact = {
@@ -550,11 +555,11 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
                   value: [
                     {
                       kind: "runtime",
-                      api: "ContractsApi",
-                      member: "upload_code",
-                      args: [{ name: "code", type: 1 }],
+                      api,
+                      member,
+                      args: [{ name: api === "ContractsApi" ? "code" : "data", type: 1 }],
                     },
-                    { kind: "runtime", api: "ContractsApi", member: "get_storage", args: [] },
+                    { kind: "runtime", api, member: readMember, args: [] },
                   ],
                   contract: { next_offset: null },
                 },
@@ -562,9 +567,9 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
             : [
                 {
                   kind: "runtime",
-                  api: "ContractsApi",
-                  member: "upload_code",
-                  value: { code_hash: `0x${"11".repeat(32)}` },
+                  api,
+                  member,
+                  value: result,
                   contract: { code_artifact: artifact },
                 },
               ],
@@ -574,7 +579,7 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
   });
   await gotoThroughRestart(page, "/apis/native");
   await page.getByRole("combobox", { name: "Contract", exact: true }).selectOption("api");
-  await page.getByRole("textbox", { name: "Name", exact: true }).fill("ContractsApi");
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill(api);
   await page.getByRole("button", { name: "Inspect contract" }).click();
   await page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }).fill('["0x"]');
   await page.getByRole("textbox", { name: "Code artifact URL", exact: true }).fill(artifact.url);
@@ -586,15 +591,15 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
   await page.getByRole("textbox", { name: "Artifact SHA-256", exact: true }).fill(artifact.sha256);
   await page.getByRole("button", { name: "Read operation", exact: true }).click();
   await expect(
-    page.getByRole("cell", { name: `0x${"11".repeat(32)} Copy Exact value`, exact: true }),
+    page.getByTitle(resultValue, { exact: true }),
   ).toBeVisible();
   expect(requests[1]).toEqual({
     as_of: hash,
     operations: [
       {
         kind: "runtime",
-        api: "ContractsApi",
-        member: "upload_code",
+        api,
+        member,
         args: ["0x"],
         code_artifact: artifact,
       },
@@ -618,6 +623,8 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
   );
   expect(overflow).toBe(false);
 });
+
+}
 
 test("precompile ABI discovery and simulation use the inspected source and typed Solidity inputs at phone width", async ({
   page,
@@ -711,13 +718,10 @@ test("precompile ABI discovery and simulation use the inspected source and typed
     .fill(JSON.stringify(args));
   await page.getByRole("button", { name: "Read operation", exact: true }).click();
   await expect(
-    page.getByRole("cell", { name: "9007199254740993 Copy Exact value", exact: true }),
+    page.getByTitle("9007199254740993", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("cell", {
-      name: `0x${9007199254740993n.toString(16).padStart(64, "0")} Copy Exact value`,
-      exact: true,
-    }),
+    page.getByTitle(`0x${9007199254740993n.toString(16).padStart(64, "0")}`, { exact: true }),
   ).toBeVisible();
   expect(requests[2]).toEqual({
     operations: [

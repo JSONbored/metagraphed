@@ -217,6 +217,27 @@ requests keep their existing 16 KiB simulation and general request limits.
 The native page provides the URL, checksum and byte-count fields for these code
 operations, with no automatic artifact or state request.
 
+The same `code_artifact` supports EVM deployment bytecode through
+`EthereumRuntimeRPCApi.create` simulation and native `EVM.create`/`create2`
+preparation. Leave the metadata-declared `data` (simulation) or `init`
+(preparation) byte vector as `"0x"`. The verified artifact replaces only that
+argument, preserving constructor bytes, value, fee, nonce, access/authorization
+lists and CREATE2 salt. The runtime's declared code argument must be a byte
+vector; ordinary calls and precompile assistance cannot use this deployment
+reference.
+
+EVM simulation admits the exact positive gas limit before fetching an artifact,
+then retains the existing per-request aggregate gas and native input/output
+budgets. Its actual execution result and creation address remain in the native
+value. EVM code follows the same 128 KiB artifact transport maximum and bounded
+fetch; the selected runtime retains its own code-size and creation-permission
+rules. Wasm continues to enforce its source `MaxCodeLen`. Prepared creation
+bytes remain unsigned and pass through the same explicit wallet source/account
+review; an artifact reference neither deploys code nor submits a transaction.
+The website exposes the artifact fields on both creation paths. Remote
+compiled-metadata fixtures compare complete deployment bytes across the release
+catalogue; they do not establish that a synthetic bytecode fixture executes.
+
 The pinned node's [state RPC](https://github.com/RaoFoundation/polkadot-sdk/blob/cacb4310f20c7cac83eb3ccd8ed5a5ad4212608a/substrate/client/rpc/src/state/state_full.rs)
 invokes its [call executor](https://github.com/RaoFoundation/polkadot-sdk/blob/cacb4310f20c7cac83eb3ccd8ed5a5ad4212608a/substrate/client/service/src/client/call_executor.rs)
 with a fresh overlay, returning the execution result without committing that

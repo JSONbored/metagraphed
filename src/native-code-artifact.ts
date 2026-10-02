@@ -16,6 +16,7 @@ import {
   type NativeValue,
 } from "./native-runtime-values.ts";
 import { nativeContractSimulationWork } from "./native-contract-simulation.ts";
+import { nativeEvmSimulationGas } from "./native-evm-simulation.ts";
 
 type Operation = z.infer<
   typeof NativeRuntimeRequestSchema
@@ -52,18 +53,28 @@ function codeArgument(
   operation: Extract<Operation, { kind: "runtime" | "prepare" }>,
 ) {
   let fields: NativeField[];
-  const pallet = metadata.pallets.find((row) => row.name === "Contracts");
+  const evm = operation.kind === "runtime"
+    ? operation.api === "EthereumRuntimeRPCApi" && operation.member === "create"
+    : operation.pallet === "EVM" && ["create", "create2"].includes(operation.member);
+  const palletName = evm ? "EVM" : "Contracts";
+  const pallet = metadata.pallets.find((row) => row.name === palletName);
   if (!pallet)
-    throw new Error("Native code requires the Contracts pallet at this source");
-  const constant = pallet.constants.find((row) => row.name === "MaxCodeLen");
-  if (!constant) throw new Error("Native code requires the source MaxCodeLen");
-  const limit = decodeNativeValue(metadata, constant.type, constant.value);
-  if (typeof limit !== "string" || !/^(0|[1-9]\d*)$/.test(limit))
-    throw new Error("Invalid native source code byte limit");
+    throw new Error(`Native code requires the ${palletName} pallet at this source`);
+  if (operation.evm_call)
+    throw new Error("Native deployment code cannot use precompile call arguments");
+  let limit = BigInt(NATIVE_RUNTIME_LIMITS.valueBytes);
+  if (!evm) {
+    const constant = pallet.constants.find((row) => row.name === "MaxCodeLen");
+    if (!constant) throw new Error("Native code requires the source MaxCodeLen");
+    const value = decodeNativeValue(metadata, constant.type, constant.value);
+    if (typeof value !== "string" || !/^(0|[1-9]\d*)$/.test(value))
+      throw new Error("Invalid native source code byte limit");
+    limit = BigInt(value);
+  }
   if (
     operation.kind === "runtime" &&
-    operation.api === "ContractsApi" &&
-    ["upload_code", "instantiate"].includes(operation.member)
+    (evm || (operation.api === "ContractsApi" &&
+    ["upload_code", "instantiate"].includes(operation.member)))
   ) {
     const api = metadata.apis.find((row) => row.name === operation.api);
     const method = api?.methods.find((row) => row.name === operation.member);
@@ -71,11 +82,12 @@ function codeArgument(
       throw new Error("Native code runtime method is absent at this source");
     fields = method.inputs;
     // Reject missing/excessive Weight before fetching any public artifact.
-    nativeContractSimulationWork(operation.member, fields, operation.args);
+    if (evm) nativeEvmSimulationGas(fields, operation.args);
+    else nativeContractSimulationWork(operation.member, fields, operation.args);
   } else if (
     operation.kind === "prepare" &&
-    operation.pallet === "Contracts" &&
-    ["upload_code", "instantiate_with_code"].includes(operation.member)
+    (evm || (operation.pallet === "Contracts" &&
+    ["upload_code", "instantiate_with_code"].includes(operation.member)))
   ) {
     const calls =
       pallet.calls === null
@@ -94,7 +106,7 @@ function codeArgument(
   if (operation.args.length !== fields.length)
     throw new Error("Native code argument arity mismatch");
   const indexes = fields.flatMap((field, index) =>
-    field.name === "code" ? [index] : [],
+    field.name === (evm ? operation.kind === "runtime" ? "data" : "init" : "code") ? [index] : [],
   );
   if (indexes.length !== 1)
     throw new Error("Native code requires one declared code argument");
@@ -103,6 +115,8 @@ function codeArgument(
   const value = operation.args[index];
   let upload = false;
   if (!byteVector(metadata, id)) {
+    if (evm)
+      throw new Error("Native EVM code argument is not a declared byte vector");
     const type = metadata.types.get(id)?.definition;
     const variant =
       type?.kind === "variant"
@@ -130,7 +144,7 @@ function codeArgument(
   fields.forEach((field, i) =>
     encodeNativeValue(metadata, field.type, operation.args[i]!),
   );
-  return { argumentIndex: index, upload, limit: BigInt(limit) };
+  return { argumentIndex: index, upload, limit };
 }
 
 async function fetchArtifact(artifact: Artifact, fetchImpl: typeof fetch) {

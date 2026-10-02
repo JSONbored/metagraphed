@@ -288,6 +288,9 @@ test("code artifact references stay compact and bind only declared contract oper
     { ...input, member: "instantiate" },
     { kind: "prepare" as const, pallet: "Contracts", member: "upload_code" },
     { kind: "prepare" as const, pallet: "Contracts", member: "instantiate_with_code" },
+    { ...input, api: "EthereumRuntimeRPCApi", member: "create" },
+    { kind: "prepare" as const, pallet: "EVM", member: "create" },
+    { kind: "prepare" as const, pallet: "EVM", member: "create2" },
   ])
     expect(supportsNativeCodeArtifact(member)).toBe(true);
   for (const member of [
@@ -296,6 +299,8 @@ test("code artifact references stay compact and bind only declared contract oper
     { kind: "prepare" as const, pallet: "Contracts", member: "instantiate" },
     { kind: "prepare" as const, pallet: "Other", member: "upload_code" },
     { kind: "runtime_scale" as const, api: "ContractsApi", member: "upload_code" },
+    { ...input, api: "EthereumRuntimeRPCApi", member: "call" },
+    { kind: "prepare" as const, pallet: "EVM", member: "call" },
   ])
     expect(supportsNativeCodeArtifact(member)).toBe(false);
   for (const fields of [

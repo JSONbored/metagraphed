@@ -142,7 +142,9 @@ export function supportsNativeCodeArtifact(
       ["upload_code", "instantiate"].includes(member.member)) ||
     (member.kind === "prepare" &&
       member.pallet === "Contracts" &&
-      ["upload_code", "instantiate_with_code"].includes(member.member))
+      ["upload_code", "instantiate_with_code"].includes(member.member)) ||
+    (member.kind === "runtime" && member.api === "EthereumRuntimeRPCApi" && member.member === "create") ||
+    (member.kind === "prepare" && member.pallet === "EVM" && ["create", "create2"].includes(member.member))
   );
 }
 export function codeArtifactOperation(
