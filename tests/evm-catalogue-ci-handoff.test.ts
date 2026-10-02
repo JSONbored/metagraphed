@@ -103,7 +103,7 @@ test("extract version-bound official precompile catalogues and independent ether
               const signature = match[1];
               const declaration = /\bfn \w+\s*\(([\s\S]*?)\)\s*->/.exec(body.slice(match.index!));
               assert.ok(declaration, `declaration ${era.spec} ${signature}`);
-              const names = [...declaration[1].matchAll(/(?:^|[,\n])\s*(\w+)\s*:(?!:)/g)].map((row) => row[1]).filter((arg) => !["handle", "_handle"].includes(arg));
+              const names = [...declaration[1].matchAll(/(?:^|[,\n])\s*(\w+)\s*:(?!:)/g)].map((row) => row[1]).slice(1);
               const types = signature.slice(signature.indexOf("(") + 1, -1).split(",").filter(Boolean);
               assert.equal(names.length, types.length, `${era.spec} ${signature} ${names}`);
               const selector = id(signature).slice(0, 10);
