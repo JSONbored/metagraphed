@@ -1163,7 +1163,10 @@ describe("callSubnetSurface", () => {
               isUnsafeUrl: SAFE,
               fetchImpl: async (url, init) => {
                 calls++;
-                assert.equal(new URL(String(url)).origin, "https://example.com");
+                assert.equal(
+                  new URL(String(url)).origin,
+                  "https://example.com",
+                );
                 assert.equal(init!.method, method);
                 assert.equal(init!.body, expected);
                 return calls === 1
