@@ -5891,6 +5891,9 @@ async function subnetSurfaceCall(
       );
     }
   }
+  const hasBodyMethod =
+    normalizedMethod !== undefined &&
+    (CALL_SURFACE_BODY_METHODS as readonly string[]).includes(normalizedMethod);
   const surface = await findCataloguedSurface(ctx, args.surface_id);
   if (!surface) {
     throw await uncallableSurfaceError(ctx, args.surface_id);
@@ -6033,16 +6036,10 @@ async function subnetSurfaceCall(
       // string, so this is Record<string, string> despite the wider
       // Record<string, unknown> inferred from the input schema.
       const credentialValues = credentialObj as Record<string, string>;
-      if (
-        location === "body" &&
-        !(
-          hasPath &&
-          (normalizedMethod === "POST" || normalizedMethod === "PUT")
-        )
-      ) {
+      if (location === "body" && !(hasPath && hasBodyMethod)) {
         throw toolError(
           "invalid_params",
-          "This surface's credential is sent in the request body, which requires `path` and `method` (POST or PUT) to also be set.",
+          `This surface's credential is sent in the request body, which requires \`path\` and \`method\` (${CALL_SURFACE_BODY_METHODS.join(", ")}) to also be set.`,
         );
       }
       // metagraphed#7716: some APIs wrap the credential in its own
@@ -6111,10 +6108,7 @@ async function subnetSurfaceCall(
         `"${normalizedMethod} ${args.path}" is not declared in this surface's captured schema. Fetch the schema with get_api_schema to see valid paths/methods.`,
       );
     }
-    if (
-      hasBodyArg &&
-      (normalizedMethod === "POST" || normalizedMethod === "PUT")
-    ) {
+    if (hasBodyArg && hasBodyMethod) {
       const declaredContent = rowOf(
         rowOf(match.operation.requestBody)?.content,
       );

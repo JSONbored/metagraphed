@@ -9654,6 +9654,7 @@ export interface components {
                 call_data?: string;
                 contract: components["schemas"]["NativeJsonValue"];
                 evm_result?: components["schemas"]["NativeEvmResult"];
+                inner_result?: components["schemas"]["NativeJsonValue"];
                 is_default?: boolean;
                 /** @enum {string} */
                 kind: "storage" | "entries" | "constant" | "runtime" | "runtime_scale" | "prepare" | "describe";
@@ -9669,6 +9670,8 @@ export interface components {
         };
         NativeRuntimeOperation: {
             api: string;
+            /** @description Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result. */
+            decode_inner?: boolean;
             /**
              * @description Exact SCALE arguments encoded for the source runtime API version. Only audited read methods are admitted; result bytes retain their source API id and version. Use typed runtime operations when metadata publishes the signature.
              * @example 0x
@@ -9704,6 +9707,8 @@ export interface components {
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
             code_artifact?: components["schemas"]["NativeCodeArtifact"];
+            /** @description Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result. */
+            decode_inner?: boolean;
             evm_call?: components["schemas"]["NativeEvmCall"];
             /** @constant */
             kind: "runtime";

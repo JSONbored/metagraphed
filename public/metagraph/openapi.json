@@ -39444,6 +39444,9 @@
                 "evm_result": {
                   "$ref": "#/components/schemas/NativeEvmResult"
                 },
+                "inner_result": {
+                  "$ref": "#/components/schemas/NativeJsonValue"
+                },
                 "is_default": {
                   "type": "boolean"
                 },
@@ -39519,6 +39522,10 @@
                 "maxLength": 128,
                 "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
                 "type": "string"
+              },
+              "decode_inner": {
+                "description": "Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result.",
+                "type": "boolean"
               },
               "input": {
                 "description": "Exact SCALE arguments encoded for the source runtime API version. Only audited read methods are admitted; result bytes retain their source API id and version. Use typed runtime operations when metadata publishes the signature.",
@@ -39670,6 +39677,10 @@
               },
               "code_artifact": {
                 "$ref": "#/components/schemas/NativeCodeArtifact"
+              },
+              "decode_inner": {
+                "description": "Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result.",
+                "type": "boolean"
               },
               "evm_call": {
                 "$ref": "#/components/schemas/NativeEvmCall"

@@ -106,6 +106,21 @@ const SCHEMA_DOCUMENT = {
       "/ping": {
         post: { summary: "ping, no request body declared" },
       },
+      "/patch": {
+        patch: {
+          requestBody: {
+            content: { "application/json": { schema: { type: "object" } } },
+          },
+        },
+      },
+      "/patch-note": {
+        patch: {
+          requestBody: {
+            content: { "text/plain": { schema: { type: "string" } } },
+          },
+        },
+      },
+      "/patch-ping": { patch: {} },
       "/multi": {
         post: {
           summary: "ambiguous media type",
@@ -475,6 +490,104 @@ async function callTool(args: Row, fetchImpl?: typeof fetch) {
     globalThis.fetch = of;
   }
 }
+
+describe("PATCH request bodies and credentials", () => {
+  async function patch(args: Row) {
+    const requests: RequestInit[] = [];
+    const result = await callTool(args, async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname === "cloudflare-dns.com") {
+        return Response.json({ Answer: [{ type: 1, data: "18.160.0.1" }] });
+      }
+      assert.equal(url.hostname, "x.example");
+      requests.push(init!);
+      return Response.json({ updated: true });
+    });
+    return { result, requests };
+  }
+
+  test("PATCH preserves JSON and text bodies", async () => {
+    for (const [path, body, contentType] of [
+      ["/patch", { name: "ada" }, "application/json"],
+      ["/patch", '{ "name": "ada" }', "application/json"],
+      ["/patch-note", "exact note\n", "text/plain"],
+    ] as const) {
+      const { result, requests } = await patch({
+        surface_id: "x:api:4",
+        path,
+        method: "patch",
+        body,
+      });
+      assert.equal(result.isError, false);
+      assert.deepEqual(result.structuredContent.body, { updated: true });
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0]!.method, "PATCH");
+      assert.equal(
+        requests[0]!.body,
+        typeof body === "string" ? body : JSON.stringify(body),
+      );
+      assert.equal(
+        new Headers(requests[0]!.headers).get("content-type"),
+        contentType,
+      );
+    }
+  });
+
+  test("PATCH preserves flat and nested body credentials", async () => {
+    for (const [surface_id, credential, expected] of [
+      [
+        "x:api:15",
+        { identity: "fixture", timestamp: "123", signature: "0xabc" },
+        {
+          name: "ada",
+          identity: "fixture",
+          timestamp: "123",
+          signature: "0xabc",
+        },
+      ],
+      [
+        "x:api:19",
+        { signer_ss58: "fixture", nonce: "123", signature: "0xabc" },
+        {
+          payload: { name: "ada" },
+          sig: { signer_ss58: "fixture", nonce: "123", signature: "0xabc" },
+        },
+      ],
+    ] as const) {
+      const { result, requests } = await patch({
+        surface_id,
+        path: "/patch",
+        method: "PATCH",
+        body: { name: "ada" },
+        credential,
+      });
+      assert.equal(result.isError, false);
+      assert.equal(requests.length, 1);
+      assert.deepEqual(JSON.parse(String(requests[0]!.body)), expected);
+      assert.equal(
+        new Headers(requests[0]!.headers).get("content-type"),
+        "application/json",
+      );
+    }
+  });
+
+  test("PATCH rejects undeclared bodies and media", async () => {
+    for (const args of [
+      { path: "/patch-ping", body: { name: "ada" } },
+      { path: "/patch", body: "text", content_type: "text/plain" },
+      { path: "/patch-note", body: { name: "ada" } },
+      { path: "/not-declared", body: { name: "ada" } },
+    ]) {
+      const { result, requests } = await patch({
+        surface_id: "x:api:4",
+        method: "PATCH",
+        ...args,
+      });
+      assert.equal(result.isError, true);
+      assert.equal(requests.length, 0);
+    }
+  });
+});
 
 describe("call_subnet_surface MCP tool (#7014)", () => {
   test("happy path: returns the real response body, not just health metadata", async () => {
@@ -1378,7 +1491,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.match(result.content[0].text, /auth_required/);
     });
 
-    test("location:body without path/method (POST or PUT) is invalid_params", async () => {
+    test("location:body without a body method is invalid_params", async () => {
       const result = await callTool({
         surface_id: "x:api:15",
         credential: {
@@ -1389,7 +1502,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       });
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /invalid_params/);
-      assert.match(result.content[0].text, /POST or PUT/);
+      assert.match(result.content[0].text, /POST, PUT, PATCH/);
     });
 
     test("location:body with method GET is invalid_params even though path is set", async () => {
@@ -1407,7 +1520,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       });
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /invalid_params/);
-      assert.match(result.content[0].text, /POST or PUT/);
+      assert.match(result.content[0].text, /POST, PUT, PATCH/);
     });
 
     test("location:body with auth.body_envelope nests the credential under its own key", async () => {

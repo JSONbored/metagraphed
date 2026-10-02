@@ -42,17 +42,19 @@ test("legacy record selection is scoped to compiled eras and read families, pres
 });
 
 test("native tables show decoded records and original wire bytes together without rounding", () => {
-  const view = {
+  const view: NativeArtifact = {
+    ...artifact,
     results: [
       {
         kind: "runtime",
         api: "DelegateInfoRuntimeApi",
         member: "get_delegate",
+        contract: {},
         value: "0x00",
         inner_result: { stake: "9007199254740993", owner: key },
       },
     ],
-  } as NativeArtifact;
+  };
   const rows = nativeValueRows(view);
   expect(rows).toEqual(
     expect.arrayContaining([
