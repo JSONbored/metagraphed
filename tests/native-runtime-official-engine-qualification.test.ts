@@ -7,7 +7,7 @@ import { test } from "vitest";
 import { decompress } from "fzstd";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
-import { decodeNativeMetadata, unwrapNativeMetadata } from "../src/native-runtime-metadata.ts";
+import { decodeNativeMetadata, unwrapNativeMetadata, NativeScaleReader } from "../src/native-runtime-metadata.ts";
 import { encodeNativeValue, nativeHex, nativeCompact, nativeStorageKey, type NativeValue } from "../src/native-runtime-values.ts";
 import { xxh64 } from "../src/twox-storage-key.ts";
 import { queryNativeRuntime } from "../src/native-runtime.ts";
@@ -72,6 +72,13 @@ async function compiledRuntime() {
         const result=Buffer.alloc(5);result[0]=1;result.writeUInt32LE(remaining,1);return packed(result);
       }
       if(item.name==="ext_storage_set_version_1") {state.set(bytes(args[0]!).toString("hex"),bytes(args[1]!));assert.ok(state.size<=1024);return;}
+      if(item.name==="ext_storage_append_version_1") {
+        const key=bytes(args[0]!).toString("hex"),value=bytes(args[1]!),previous=state.get(key);
+        let count=0n,tail=Buffer.alloc(0);
+        if(previous!==undefined){const reader=new NativeScaleReader(previous,2*1024*1024);count=reader.compact();assert.ok(count<1024n);tail=previous.subarray(reader.offset);}
+        const next=Buffer.concat([nativeCompact(count+1n),tail,value]);assert.ok(next.length<=2*1024*1024);
+        state.set(key,next);return;
+      }
       if(item.name==="ext_storage_clear_version_1") {state.delete(bytes(args[0]!).toString("hex"));return;}
       if(item.name==="ext_storage_exists_version_1")return state.has(bytes(args[0]!).toString("hex"))?1:0;
       if(item.name==="ext_storage_next_key_version_1") {const key=bytes(args[0]!).toString("hex");const next=[...state.keys()].sort().find(row=>row>key);return option(next===undefined?undefined:Buffer.from(next,"hex"));}
