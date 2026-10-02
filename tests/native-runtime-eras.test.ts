@@ -651,10 +651,19 @@ for (const era of eras) {
     }
   });
   test(`compiled v${era.spec} full Wasm artifacts preserve upload and instantiation bytes across both preparation formats`, async () => {
-    const contractPallet = model15.pallets.find((row) => row.name === "Contracts")!;
-    const codeLimit = contractPallet.constants.find((row) => row.name === "MaxCodeLen")!;
-    const sourceLimit = BigInt(String(decodeNativeValue(model15, codeLimit.type, codeLimit.value)));
-    const data = Buffer.alloc(Number(sourceLimit < 131072n ? sourceLimit : 131072n), 0xa5);
+    const contractPallet = model15.pallets.find(
+      (row) => row.name === "Contracts",
+    )!;
+    const codeLimit = contractPallet.constants.find(
+      (row) => row.name === "MaxCodeLen",
+    )!;
+    const sourceLimit = BigInt(
+      String(decodeNativeValue(model15, codeLimit.type, codeLimit.value)),
+    );
+    const data = Buffer.alloc(
+      Number(sourceLimit < 131072n ? sourceLimit : 131072n),
+      0xa5,
+    );
     assert.ok(data.length >= 16384);
     const code_artifact = {
       url: `https://raw.githubusercontent.com/example/contracts/${"a".repeat(40)}/compiled.wasm`,
@@ -672,23 +681,36 @@ for (const era of eras) {
       const bare = unwrapNativeMetadata(era[`v${format}`])!;
       const model = format === 15 ? model15 : decodeNativeMetadata(bare);
       const reference = new TypeRegistry();
-      reference.setMetadata(new Metadata(reference, Buffer.from(bare.slice(2), "hex")));
+      reference.setMetadata(
+        new Metadata(reference, Buffer.from(bare.slice(2), "hex")),
+      );
       const pallet = model.pallets.find((row) => row.name === "Contracts")!;
       const calls = model.types.get(pallet.calls!)!.definition;
       assert.equal(calls.kind, "variant");
       if (calls.kind !== "variant") continue;
       const variant = calls.variants.find((row) => row.name === memberName);
-      const method = model15.apis.find((row) => row.name === "ContractsApi")!.methods.find((row) => row.name === memberName);
+      const method = model15.apis
+        .find((row) => row.name === "ContractsApi")!
+        .methods.find((row) => row.name === memberName);
       const fields = kind === "runtime" ? method!.inputs : variant!.fields;
       const upload = kind === "runtime" && memberName === "instantiate";
       const args = fields.map((field) =>
-        field.name === "code" ? upload ? { variant: "Upload", fields: "0x" } : "0x"
-        : field.name === "gas_limit" && kind === "runtime" ? { variant: "Some", fields: { ref_time: "100000000000", proof_size: "32768" } }
-        : sampleNativeValue(model, field.type),
+        field.name === "code"
+          ? upload
+            ? { variant: "Upload", fields: "0x" }
+            : "0x"
+          : field.name === "gas_limit" && kind === "runtime"
+            ? {
+                variant: "Some",
+                fields: { ref_time: "100000000000", proof_size: "32768" },
+              }
+            : sampleNativeValue(model, field.type),
       );
       const operation = {
         kind,
-        ...(kind === "runtime" ? { api: "ContractsApi" } : { pallet: "Contracts" }),
+        ...(kind === "runtime"
+          ? { api: "ContractsApi" }
+          : { pallet: "Contracts" }),
         member: memberName,
         args,
         code_artifact,
@@ -701,25 +723,125 @@ for (const era of eras) {
         assert.equal(options!.redirect, "manual");
         return new Response(data);
       }) as typeof fetch;
-      const result = await queryNativeRuntime({ operations: kind === "runtime" ? [operation, operation] : [operation] }, f.rpc, fetchImpl);
+      const result = await queryNativeRuntime(
+        {
+          operations: kind === "runtime" ? [operation, operation] : [operation],
+        },
+        f.rpc,
+        fetchImpl,
+      );
       assert.equal(fetches, 1);
       assert.equal(f.calls.length, kind === "runtime" ? 1 : 0);
-      if (kind === "runtime") assert.deepEqual(result.results[0], result.results[1]);
+      if (kind === "runtime")
+        assert.deepEqual(result.results[0], result.results[1]);
       else assert.equal(result.results.length, 1);
-      assert.deepEqual((result.results[0]!.contract as { code_artifact: unknown }).code_artifact, code_artifact);
-      const pieces = fields.map((field, index) => reference.createTypeUnsafe(`Lookup${field.type}`, [
-        encodeNativeValue(model, field.type, field.name === "code" ? upload ? { variant: "Upload", fields: nativeHex(data) } : nativeHex(data) : args[index]!),
-      ]).toU8a());
-      if (kind === "runtime") assert.deepEqual(f.calls[0]!.params, [`ContractsApi_${memberName}`, nativeHex(Buffer.concat(pieces)), hash]);
-      else assert.equal(result.results[0]!.call_data, nativeHex(Buffer.concat([Buffer.from([pallet.index, variant!.index]), ...pieces])));
-      assert.deepEqual(args[fields.findIndex((row) => row.name === "code")], upload ? { variant: "Upload", fields: "0x" } : "0x");
-      await assert.rejects(() => queryNativeRuntime({ operations: [{ ...operation, code_artifact: undefined, args: fields.map((field, index) => field.name === "code" ? upload ? { variant: "Upload", fields: nativeHex(data) } : nativeHex(data) : args[index]!) }] }, f.rpc, fetchImpl), /Native request exceeds byte budget/);
+      assert.deepEqual(
+        (result.results[0]!.contract as { code_artifact: unknown })
+          .code_artifact,
+        code_artifact,
+      );
+      const pieces = fields.map((field, index) =>
+        reference
+          .createTypeUnsafe(`Lookup${field.type}`, [
+            encodeNativeValue(
+              model,
+              field.type,
+              field.name === "code"
+                ? upload
+                  ? { variant: "Upload", fields: nativeHex(data) }
+                  : nativeHex(data)
+                : args[index]!,
+            ),
+          ])
+          .toU8a(),
+      );
+      if (kind === "runtime")
+        assert.deepEqual(f.calls[0]!.params, [
+          `ContractsApi_${memberName}`,
+          nativeHex(Buffer.concat(pieces)),
+          hash,
+        ]);
+      else
+        assert.equal(
+          result.results[0]!.call_data,
+          nativeHex(
+            Buffer.concat([
+              Buffer.from([pallet.index, variant!.index]),
+              ...pieces,
+            ]),
+          ),
+        );
+      assert.deepEqual(
+        args[fields.findIndex((row) => row.name === "code")],
+        upload ? { variant: "Upload", fields: "0x" } : "0x",
+      );
+      await assert.rejects(
+        () =>
+          queryNativeRuntime(
+            {
+              operations: [
+                {
+                  ...operation,
+                  code_artifact: undefined,
+                  args: fields.map((field, index) =>
+                    field.name === "code"
+                      ? upload
+                        ? { variant: "Upload", fields: nativeHex(data) }
+                        : nativeHex(data)
+                      : args[index]!,
+                  ),
+                },
+              ],
+            },
+            f.rpc,
+            fetchImpl,
+          ),
+        /Native request exceeds byte budget/,
+      );
       if (kind === "runtime" && memberName === "instantiate") {
-        await assert.rejects(() => queryNativeRuntime({ operations: [{ ...operation, args: fields.map((field, index) => field.name === "gas_limit" ? { variant: "None", fields: {} } : args[index]!) }] }, f.rpc, fetchImpl), /explicit exact gas_limit Weight/);
+        await assert.rejects(
+          () =>
+            queryNativeRuntime(
+              {
+                operations: [
+                  {
+                    ...operation,
+                    args: fields.map((field, index) =>
+                      field.name === "gas_limit"
+                        ? { variant: "None", fields: {} }
+                        : args[index]!,
+                    ),
+                  },
+                ],
+              },
+              f.rpc,
+              fetchImpl,
+            ),
+          /explicit exact gas_limit Weight/,
+        );
         assert.equal(fetches, 1);
         assert.equal(f.calls.length, 1);
       }
-      console.log("NATIVE_WASM_CODE_ARTIFACT_ERA_FIXTURE", JSON.stringify({ spec: era.spec, format, kind, member: memberName, source_code_limit: sourceLimit.toString(), code_bytes: data.length, compact_single_request_bytes: Buffer.byteLength(JSON.stringify({ operations: [operation] })), embedded_code_hex_bytes: data.length * 2, artifact_fetches: fetches, execution_requests: f.calls.length, exact_bytes: true, fixture: true, production: false }));
+      console.log(
+        "NATIVE_WASM_CODE_ARTIFACT_ERA_FIXTURE",
+        JSON.stringify({
+          spec: era.spec,
+          format,
+          kind,
+          member: memberName,
+          source_code_limit: sourceLimit.toString(),
+          code_bytes: data.length,
+          compact_single_request_bytes: Buffer.byteLength(
+            JSON.stringify({ operations: [operation] }),
+          ),
+          embedded_code_hex_bytes: data.length * 2,
+          artifact_fetches: fetches,
+          execution_requests: f.calls.length,
+          exact_bytes: true,
+          fixture: true,
+          production: false,
+        }),
+      );
     }
   });
 }

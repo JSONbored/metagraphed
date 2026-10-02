@@ -79,6 +79,10 @@ export class NativeScaleReader {
   vector<T>(read: () => T, limit: number = NATIVE_RUNTIME_LIMITS.items): T[] {
     return Array.from({ length: this.count(limit) }, read);
   }
+  forEach(read: () => void, limit: number = NATIVE_RUNTIME_LIMITS.items) {
+    for (let remaining = this.count(limit); remaining > 0; remaining--)
+      read();
+  }
   option<T>(read: () => T): T | null {
     const tag = this.byte();
     if (tag === 0) return null;
@@ -167,7 +171,7 @@ export function decodeNativeMetadata(hex: unknown): NativeMetadata {
     throw new Error("Unsupported native metadata format");
   const id = () => reader.count(NATIVE_RUNTIME_LIMITS.types - 1);
   const docs = () => {
-    reader.vector(() => reader.text());
+    reader.forEach(() => reader.text());
   };
   const field = (): NativeField => {
     const name = reader.option(() => reader.text());
@@ -177,10 +181,10 @@ export function decodeNativeMetadata(hex: unknown): NativeMetadata {
     return { name, type };
   };
   const types = new Map<number, NativeType>();
-  reader.vector(() => {
+  reader.forEach(() => {
     const typeId = id();
     const path = reader.vector(() => reader.text());
-    reader.vector(() => {
+    reader.forEach(() => {
       reader.text();
       reader.option(id);
     });
@@ -328,7 +332,7 @@ export function decodeNativeMetadata(hex: unknown): NativeMetadata {
     id();
     id();
     id();
-    reader.vector(() => {
+    reader.forEach(() => {
       reader.text();
       id();
       reader.blob();
