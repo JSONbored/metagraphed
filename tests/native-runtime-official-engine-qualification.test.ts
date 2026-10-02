@@ -180,6 +180,17 @@ test("official compiled v471 accepts and instantiates a valid minimal Wasm contr
   assert.equal(upload.variant,"Ok");assert.equal(upload.fields.code_hash,nativeHex(blake2b(Buffer.from(code.slice(2),"hex"),{dkLen:32})));assert.ok(BigInt(upload.fields.deposit)>0n);
   const instantiated=await queryNativeRuntime({operations:[{kind:"runtime",api:"ContractsApi",member:"instantiate",args:[origin,"0",{variant:"Some",fields:{ref_time:"50000000000",proof_size:"65536"}},none,{variant:"Upload",fields:code},"0x","0x"]}]},runtime.rpc);
   const value=instantiated.results[0]!.value as {result:{variant:string;fields:{result:{flags:NativeValue;data:string};account_id:string}}};
-  assert.equal(value.result.variant,"Ok");assert.equal(value.result.fields.result.data,"0x");assert.equal(String(value.result.fields.result.flags),"0");assert.match(value.result.fields.account_id,/^0x[0-9a-f]{64}$/);
+  assert.equal(value.result.variant,"Ok");assert.equal(value.result.fields.result.data,"0x");assert.match(value.result.fields.account_id,/^0x[0-9a-f]{64}$/);
+  const fieldType=(id:number,name:string)=>{
+    const definition=model.types.get(id)!.definition;assert.equal(definition.kind,"composite");
+    if(definition.kind!=="composite")throw new Error("Expected compiled record");
+    const field=definition.fields.find(row=>row.name===name);assert.ok(field,name);return field.type;
+  };
+  const method=model.apis.find(row=>row.name==="ContractsApi")!.methods.find(row=>row.name==="instantiate")!;
+  const result=model.types.get(fieldType(method.output,"result"))!.definition;assert.equal(result.kind,"variant");
+  if(result.kind!=="variant")throw new Error("Expected compiled Result");
+  const ok=result.variants.find(row=>row.name==="Ok")!;assert.equal(ok.fields.length,1);
+  const flagsType=fieldType(fieldType(ok.fields[0]!.type,"result"),"flags");
+  assert.equal(nativeHex(encodeNativeValue(model,flagsType,value.result.fields.result.flags)),"0x00000000");
   console.log("NATIVE_OFFICIAL_WASM_ENGINE_FIXTURE",JSON.stringify({head:execFileSync("git",["rev-parse","HEAD"]).toString().trim(),spec:471,commit:era.commit,wasm_sha256:era.wasm_sha256,cases:2,contract_bytes:(code.length-2)/2,valid_upload:true,constructor_return:"0x",fixture_state_keys:runtime.stateKeys(),host_calls:runtime.hostCalls,fixture:true,production:false,chain_requests:0}));
 },180000);
