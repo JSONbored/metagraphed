@@ -246,6 +246,20 @@ overlay. Simulation does not publish code, create a persistent contract or
 submit a transaction. Independent SCALE fixtures qualify the API encoding and
 results; they do not execute Wasm or measure deployed-chain behavior.
 
+A separate [remote engine qualification](https://github.com/JSONbored/metagraphed/actions/runs/37031194950)
+executed the published v471 runtime Wasm, SHA-256
+`04385dd7ddda37d4f70cd59a0e8360227165a4aefead0203c47adea5fc4b4aeb`,
+through the public native request encoder and result decoder. Fixture state
+produced an EVM return word of 42, a preserved revert and a typed timestamp
+precompile result; duplicate calls shared one execution. A valid 107-byte Wasm
+contract passed code upload and constructor execution, preserving its declared
+return flags and empty return bytes. The harness implemented bounded storage
+and balanced transactions, discarded execution overlays and rejected unknown
+host calls. It used the pinned SDK's proof-recording-disabled convention;
+it does not qualify trie proofs or production gas costs. These five cases
+establish compiled-engine fixture execution, with zero chain requests. They
+do not measure a deployed node, retained history or live latency.
+
 `prepare` encodes a native method from its declared
 argument types, including runtime-specific enum and composite arguments. It
 returns method bytes and signed-extension types for explicit wallet review;
