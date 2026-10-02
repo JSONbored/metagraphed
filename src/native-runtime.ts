@@ -586,12 +586,14 @@ export async function readNativeRuntime(
   let needsApis = false;
   let hasCodeArtifacts = false;
   for (const operation of input.operations) {
-    needsApis ||= operation.kind === "runtime_scale" ||
+    needsApis ||=
+      operation.kind === "runtime_scale" ||
       (metadata.version === 14 &&
         operation.kind === "describe" &&
         operation.pallet === undefined &&
         operation.type_id === undefined);
-    hasCodeArtifacts ||= (operation.kind === "runtime" || operation.kind === "prepare") &&
+    hasCodeArtifacts ||=
+      (operation.kind === "runtime" || operation.kind === "prepare") &&
       operation.code_artifact !== undefined;
   }
   const apiList = needsApis ? advertisedApis.parse(rawVersion).apis : [];

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { z } from "zod";
-import {
+import type { z } from "zod";
+import type {
   NativeCodeArtifactSchema,
   NativeRuntimeRequestSchema,
 } from "../schemas-src/routes/native-runtime.ts";
@@ -210,7 +210,7 @@ export async function resolveNativeCodeArtifacts(
       rows.push({
         operation,
         index,
-        artifact: NativeCodeArtifactSchema.parse(operation.code_artifact),
+        artifact: operation.code_artifact,
       });
   });
   if (rows.length === 0) return operations;

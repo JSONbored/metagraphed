@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { TypeRegistry } from "@polkadot/types/create";
 import { Metadata } from "@polkadot/types/metadata";
 import wrapped, {
@@ -20,6 +20,11 @@ import {
 } from "../src/native-runtime-values.ts";
 import { queryNativeRuntime } from "../src/native-runtime.ts";
 import type { BasketRpc } from "../src/root-basket-runtime.ts";
+import { handleNativeRuntime } from "../workers/request-handlers/native-runtime.ts";
+import { MCP_TOOLS } from "../src/mcp-server.ts";
+import { NativeCodeArtifactSchema } from "../schemas-src/routes/native-runtime.ts";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { apiEnv } from "../scripts/lib/worker-env.ts";
 import {
   UninhabitedType,
   sampleNativeValue,
@@ -572,5 +577,73 @@ test("compiled v470 full Wasm artifact references simulate uploads and prepare e
         production: false,
       }),
     );
+  }
+});
+
+
+test("full code references preserve REST/MCP bytes through the actual correlated RPC transport", async () => {
+  const api = model.apis.find((row) => row.name === "ContractsApi")!;
+  const method = api.methods.find((row) => row.name === "upload_code")!;
+  const data = Buffer.alloc(131_072, 0xa5);
+  const artifact = {
+    url: `https://raw.githubusercontent.com/example/contracts/${"a".repeat(40)}/code.wasm`,
+    sha256: createHash("sha256").update(data).digest("hex"),
+    bytes: data.length,
+  };
+  const args = method.inputs.map((field) => field.name === "code" ? "0x" : sample(field.type));
+  const input = {
+    network: "finney", as_of: hash,
+    operations: [{ kind: "runtime", api: api.name, member: method.name, args, code_artifact: artifact }],
+  };
+  const f = fixture();
+  let artifactReads = 0;
+  const executionBodies: number[] = [];
+  const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+    if (String(url) === artifact.url) {
+      artifactReads++;
+      return new Response(data);
+    }
+    assert.equal(String(url), "https://entrypoint-finney.opentensor.ai:443");
+    type Call = { id: number; method: string; params: unknown[] };
+    const body = JSON.parse(String(init!.body)) as Call | Call[];
+    const rows = Array.isArray(body) ? body : [body];
+    if (rows.some((row) => row.params?.[0] === "ContractsApi_upload_code")) executionBodies.push(Buffer.byteLength(String(init!.body)));
+    const replies = await Promise.all(rows.map(async (row) => ({ jsonrpc: "2.0", id: row.id, result: await f.rpc(row.method, row.params) })));
+    return Response.json(Array.isArray(body) ? replies.reverse() : replies[0]);
+  });
+  const parse = vi.spyOn(NativeCodeArtifactSchema, "parse");
+  const keys: string[] = [];
+  const env = apiEnv({
+    ...createLocalArtifactEnv(),
+    RPC_RATE_LIMITER: { limit: async ({ key }: { key: string }) => { keys.push(key); return { success: true }; } },
+  });
+  try {
+    const rest = await handleNativeRuntime(new Request("https://api.metagraph.sh/api/v1/native-runtime", {
+      method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "192.0.2.1" }, body: JSON.stringify(input),
+    }), env);
+    assert.equal(rest.status, 200);
+    const restData = (await rest.json() as { data: unknown }).data;
+    const mcp = await MCP_TOOLS.find((row) => row.name === "get_native_runtime")!.handler(input, { env, clientIp: "192.0.2.1" });
+    assert.equal(JSON.stringify(mcp), JSON.stringify(restData));
+    assert.deepEqual(keys, ["native-runtime:192.0.2.1", "native-runtime:192.0.2.1"]);
+    assert.equal(artifactReads, 2);
+    assert.equal(f.executions.length, 2);
+    assert.equal(parse.mock.calls.length, 0);
+    assert.ok(executionBodies.every((bytes) => bytes > 262_144));
+    const artifactFetches = artifactReads;
+    const inline = { ...input, operations: [{ ...input.operations[0], code_artifact: undefined, args: args.map((value, index) => method.inputs[index]!.name === "code" ? nativeHex(data) : value) }] };
+    const rejected = await handleNativeRuntime(new Request("https://api.metagraph.sh/api/v1/native-runtime", { method: "POST", body: JSON.stringify(inline) }), env);
+    assert.equal(rejected.status, 400);
+    assert.equal(artifactReads, artifactFetches);
+    const before = f.executions.length;
+    const invalid = { ...input, operations: [{ ...input.operations[0], code_artifact: { ...artifact, sha256: "0".repeat(64) } }] };
+    const failed = await handleNativeRuntime(new Request("https://api.metagraph.sh/api/v1/native-runtime", { method: "POST", body: JSON.stringify(invalid) }), env);
+    assert.equal(failed.status, 502);
+    assert.equal((await failed.json() as { error: { code: string } }).error.code, "native_runtime_failed");
+    assert.equal(f.executions.length, before);
+    console.log("NATIVE_CODE_ARTIFACT_HTTP_MCP_FIXTURE", JSON.stringify({ code_bytes: data.length, request_bytes: Buffer.byteLength(JSON.stringify(input)), execution_request_bytes: executionBodies, redundant_artifact_parses: 0, exact_rest_mcp_bytes: true, fixture: true, production: false }));
+  } finally {
+    parse.mockRestore();
+    fetch.mockRestore();
   }
 });
