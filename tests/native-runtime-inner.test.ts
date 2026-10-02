@@ -389,12 +389,15 @@ test("duplicate native results decode once per wire type and inner contract whil
   }
 });
 
-
 test("source-qualified legacy vector pages preserve exact nested values in both metadata formats", async () => {
-  for (let index = 0; index < eras.length; index++) {
-    const release = nativeRuntimeInnerCatalogue.find((row) => row.spec === eras[index]!.spec)!;
+  for (const release of nativeRuntimeInnerCatalogue) {
+    const index = eras.findIndex((row) => row.spec === release.spec);
+    assert.ok(index >= 0);
     const base = decodeNativeMetadata(unwrapNativeMetadata(eras[index]!.v15)!);
-    const model = { ...base, types: new Map(release.types.map((type) => [type.id, type])) };
+    const model = {
+      ...base,
+      types: new Map(release.types.map((type) => [type.id, type])),
+    };
     const method = release.methods.find((row) => row.member === "get_neurons")!;
     const root = model.types.get(method.root_type)!.definition;
     assert.equal(root.kind, "sequence");
@@ -404,26 +407,52 @@ test("source-qualified legacy vector pages preserve exact nested values in both 
     const bytes = nativeHex(encodeNativeValue(model, method.root_type, values));
     for (const format of [14, 15] as const) {
       const f = fixture(index, format);
-      const op = { ...f.select(method.api, method.member, bytes), decode_inner: true,
-        value_page: { path: [], offset: 1, limit: 1 } };
-      const out = await queryNativeRuntime({ as_of: at, operations: [op, op] }, f.rpc);
+      const op = {
+        ...f.select(method.api, method.member, bytes),
+        decode_inner: true,
+        value_page: { path: [], offset: 1, limit: 1 },
+      };
+      const out = await queryNativeRuntime(
+        { as_of: at, operations: [op, op] },
+        f.rpc,
+      );
       assert.equal(f.calls.length, 1);
       assert.deepEqual(out.results[0]!.inner_result, [item]);
       assert.equal(out.results[0]!.value, undefined);
       assert.equal(out.results[0]!.value_page!.total, 3);
       assert.equal(out.results[0]!.value_page!.next_offset, 2);
-      assert.notEqual(out.results[0]!.inner_result, out.results[1]!.inner_result);
+      assert.notEqual(
+        out.results[0]!.inner_result,
+        out.results[1]!.inner_result,
+      );
       assert.deepEqual(out.results[0], out.results[1]);
-      const direct = nativeInnerRecord(base, release.spec, `0x${release.metadata_sha256[1]}`, method.api, method.member);
+      const direct = nativeInnerRecord(
+        base,
+        release.spec,
+        `0x${release.metadata_sha256[1]}`,
+        method.api,
+        method.member,
+      );
       assert.deepEqual(direct.page(op.value_page).decode(bytes)!.value, [item]);
-      const singular = release.methods.find((row) => row.member === "get_neuron")!;
-      const missing = { ...f.select(singular.api, singular.member, "0x"), decode_inner: true,
-        value_page: { path: ["weights"], offset: 0, limit: 1 } };
+      const singular = release.methods.find(
+        (row) => row.member === "get_neuron",
+      )!;
+      const missing = {
+        ...f.select(singular.api, singular.member, "0x"),
+        decode_inner: true,
+        value_page: { path: ["weights"], offset: 0, limit: 1 },
+      };
       const absent = await queryNativeRuntime({ operations: [missing] }, f.rpc);
       assert.equal(absent.results[0]!.inner_result, null);
       assert.equal(absent.results[0]!.value_page, undefined);
       assert.equal(absent.results[0]!.value, undefined);
-      const single = nativeInnerRecord(base, release.spec, `0x${release.metadata_sha256[1]}`, singular.api, singular.member);
+      const single = nativeInnerRecord(
+        base,
+        release.spec,
+        `0x${release.metadata_sha256[1]}`,
+        singular.api,
+        singular.member,
+      );
       assert.equal(single.page(missing.value_page).decode("0x"), null);
     }
   }

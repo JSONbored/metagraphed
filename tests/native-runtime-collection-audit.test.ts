@@ -42,6 +42,8 @@ test("compiled v470 neuron collection establishes the bounded wire and decoded-v
     assert.ok(row !== null && typeof row === "object" && !Array.isArray(row));
     return {
       ...row,
+      hotkey: `0x${BigInt(uid + 1).toString(16).padStart(64, "0")}`,
+      coldkey: `0x${"22".repeat(32)}`,
       uid: String(uid),
       netuid: "19",
       active: true,
@@ -117,12 +119,23 @@ test("compiled v470 neuron collection establishes the bounded wire and decoded-v
   );
   assert.equal(executions, 1);
   const operation = {
-    kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neurons", args: [19],
+    kind: "runtime",
+    api: "NeuronInfoRuntimeApi",
+    member: "get_neurons",
+    args: [19],
     value_page: { path: [], offset: 0, limit: 16 },
   };
-  const paged = await queryNativeRuntime({ as_of: at, operations: [
-    operation, operation, { ...operation, value_page: { ...operation.value_page, offset: 16 } },
-  ] }, rpc);
+  const paged = await queryNativeRuntime(
+    {
+      as_of: at,
+      operations: [
+        operation,
+        operation,
+        { ...operation, value_page: { ...operation.value_page, offset: 16 } },
+      ],
+    },
+    rpc,
+  );
   assert.equal(executions, 2);
   assert.deepEqual(paged.results[0]!.value, rows.slice(0, 16));
   assert.deepEqual(paged.results[1]!.value, rows.slice(0, 16));
@@ -130,38 +143,94 @@ test("compiled v470 neuron collection establishes the bounded wire and decoded-v
   assert.deepEqual(paged.results[2]!.value, rows.slice(16, 32));
   assert.equal(paged.results[0]!.value_page!.total, 256);
   assert.equal(paged.results[0]!.value_page!.next_offset, 16);
-  const collected = [...paged.results[0]!.value as NativeValue[], ...paged.results[2]!.value as NativeValue[]];
+  const collected = [
+    ...(paged.results[0]!.value as NativeValue[]),
+    ...(paged.results[2]!.value as NativeValue[]),
+  ];
   for (let offset = 32; offset < rows.length; offset += 16) {
-    const next = await queryNativeRuntime({ as_of: at, operations: [
-      { ...operation, value_page: { ...operation.value_page, offset } },
-    ] }, rpc);
-    collected.push(...next.results[0]!.value as NativeValue[]);
-    assert.equal(next.results[0]!.value_page!.next_offset, offset + 16 === rows.length ? null : offset + 16);
+    const next = await queryNativeRuntime(
+      {
+        as_of: at,
+        operations: [
+          { ...operation, value_page: { ...operation.value_page, offset } },
+        ],
+      },
+      rpc,
+    );
+    collected.push(...(next.results[0]!.value as NativeValue[]));
+    assert.equal(
+      next.results[0]!.value_page!.next_offset,
+      offset + 16 === rows.length ? null : offset + 16,
+    );
   }
   assert.deepEqual(collected, rows);
   vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
     const requests = JSON.parse(String(init?.body));
-    const reply = async (request: { id: unknown; method: string; params: unknown[] }) =>
-      ({ jsonrpc: "2.0", id: request.id, result: await rpc(request.method, request.params) });
-    return Response.json(Array.isArray(requests) ? await Promise.all(requests.map(reply)) : await reply(requests));
+    const reply = async (request: {
+      id: unknown;
+      method: string;
+      params: unknown[];
+    }) => ({
+      jsonrpc: "2.0",
+      id: request.id,
+      result: await rpc(request.method, request.params),
+    });
+    return Response.json(
+      Array.isArray(requests)
+        ? await Promise.all(requests.map(reply))
+        : await reply(requests),
+    );
   });
   const env = apiEnv(createLocalArtifactEnv());
   const input = { as_of: at, operations: [operation] };
-  const rest = await handleNativeRuntime(new Request("https://api.metagraph.sh/api/v1/native-runtime", {
-    method: "POST", body: JSON.stringify(input), headers: { "content-type": "application/json" },
-  }), env);
+  const rest = await handleNativeRuntime(
+    new Request("https://api.metagraph.sh/api/v1/native-runtime", {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: { "content-type": "application/json" },
+    }),
+    env,
+  );
   assert.equal(rest.status, 200);
-  const envelope = await rest.json() as { data: unknown };
-  const mcp = await MCP_TOOLS.find((row) => row.name === "get_native_runtime")!.handler(input, { env, clientIp: "192.0.2.1" });
+  const envelope = (await rest.json()) as { data: unknown };
+  const mcp = await MCP_TOOLS.find(
+    (row) => row.name === "get_native_runtime",
+  )!.handler(input, { env, clientIp: "192.0.2.1" });
   assert.equal(JSON.stringify(mcp), JSON.stringify(envelope.data));
   const beforeInvalid = executions;
   for (const input of [
-    { operations: [{ ...operation, value_page: { ...operation.value_page, offset: 1 } }] },
-    { operations: [{ ...operation, value_page: { ...operation.value_page, path: ["missing"] } }] },
-    { operations: [{ ...operation, value_page: { ...operation.value_page, limit: 0 } }] },
+    {
+      operations: [
+        { ...operation, value_page: { ...operation.value_page, offset: 1 } },
+      ],
+    },
+    {
+      operations: [
+        {
+          ...operation,
+          value_page: { ...operation.value_page, path: ["missing"] },
+        },
+      ],
+    },
+    {
+      operations: [
+        { ...operation, value_page: { ...operation.value_page, limit: 0 } },
+      ],
+    },
     { operations: Array(5).fill(operation) },
-    { operations: [{ kind: "runtime_scale", api: operation.api, member: operation.member, input: "0x1300", value_page: operation.value_page }] },
-  ]) await assert.rejects(queryNativeRuntime(input, rpc));
+    {
+      operations: [
+        {
+          kind: "runtime_scale",
+          api: operation.api,
+          member: operation.member,
+          input: "0x1300",
+          value_page: operation.value_page,
+        },
+      ],
+    },
+  ])
+    await assert.rejects(queryNativeRuntime(input, rpc));
   assert.equal(executions, beforeInvalid);
   console.log(
     "NATIVE_COLLECTION_BASELINE",
@@ -178,7 +247,9 @@ test("compiled v470 neuron collection establishes the bounded wire and decoded-v
       ordinary_full_value: "work_budget_rejected",
       baseline_upstream_requests: 1,
       page_neurons: 16,
-      first_page_json_bytes: Buffer.byteLength(JSON.stringify(paged.results[0]!.value)),
+      first_page_json_bytes: Buffer.byteLength(
+        JSON.stringify(paged.results[0]!.value),
+      ),
       duplicate_and_distinct_page_upstream_requests: 1,
       full_collection_reconstructed: true,
       unchanged_default_rejection: true,

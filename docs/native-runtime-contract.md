@@ -425,13 +425,18 @@ bytes match the previous array-producing traversal across all 182 contracts.
 The v470 fixture removes 7,290 arrays and 6,440 element slots. Warm contract
 reuse remains bound to code identity and its existing two-contract byte cap.
 
-
 ## Explicit collection pages
 
 A typed `storage`, `constant` or `runtime` read accepts `value_page`:
 
 ```json
-{"kind":"runtime","api":"NeuronInfoRuntimeApi","member":"get_neurons","args":[19],"value_page":{"path":[],"offset":0,"limit":16}}
+{
+  "kind": "runtime",
+  "api": "NeuronInfoRuntimeApi",
+  "member": "get_neurons",
+  "args": [19],
+  "value_page": { "path": [], "offset": 0, "limit": 16 }
+}
 ```
 
 The root path `[]` selects the returned vector. Named fields, positional tuple/array

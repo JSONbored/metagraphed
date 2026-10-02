@@ -364,9 +364,9 @@ function NativeRuntimeExplorer({
                 setResult(null);
                 setEvmDescription(null);
                 setDecodeInner(false);
-        setValuePaging(false);
-        setValuePath("[]");
-        setValueOffset("0");
+                setValuePaging(false);
+                setValuePath("[]");
+                setValueOffset("0");
                 setOffset(0);
               }}
             />
@@ -417,9 +417,9 @@ function NativeRuntimeExplorer({
                   onChange={(event) => {
                     setMemberIndex(Number(event.target.value));
                     setDecodeInner(false);
-        setValuePaging(false);
-        setValuePath("[]");
-        setValueOffset("0");
+                    setValuePaging(false);
+                    setValuePath("[]");
+                    setValueOffset("0");
                     setEvmDescription(null);
                     setEvmSignature("");
                     setEvmArgs("[]");
@@ -461,31 +461,30 @@ function NativeRuntimeExplorer({
                 className="space-y-3"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  action(
-                    () => {
-                      const operation = evmCallOperation(
-                        codeArtifactOperation(
-                          innerRecordOperation(
-                            memberOperation(member, args),
-                            decodeInner &&
-                              supportsLegacyInnerRecord(
-                                description.source.runtime_spec_version,
-                                member,
-                              ),
-                          ),
-                          codeUrl,
-                          codeSha256,
-                          codeBytes,
+                  action(() => {
+                    const operation = evmCallOperation(
+                      codeArtifactOperation(
+                        innerRecordOperation(
+                          memberOperation(member, args),
+                          decodeInner &&
+                            supportsLegacyInnerRecord(
+                              description.source.runtime_spec_version,
+                              member,
+                            ),
                         ),
-                        evmSignature,
-                        evmArgs,
-                      );
-                      return [valuePaging
+                        codeUrl,
+                        codeSha256,
+                        codeBytes,
+                      ),
+                      evmSignature,
+                      evmArgs,
+                    );
+                    return [
+                      valuePaging
                         ? valuePageOperation(operation, valuePath, valueOffset, valueLimit)
-                        : operation];
-                    },
-                    description.source.finalized_block_hash,
-                  );
+                        : operation,
+                    ];
+                  }, description.source.finalized_block_hash);
                 }}
               >
                 {supportsLegacyInnerRecord(description.source.runtime_spec_version, member) && (
@@ -699,32 +698,50 @@ function NativeRuntimeExplorer({
                 {member.kind !== "prepare" && (
                   <div className="space-y-3">
                     <label className="flex items-center gap-2 text-13">
-                      <input type="checkbox" disabled={busy} checked={valuePaging}
-                        onChange={(event) => setValuePaging(event.target.checked)} />
+                      <input
+                        type="checkbox"
+                        disabled={busy}
+                        checked={valuePaging}
+                        onChange={(event) => setValuePaging(event.target.checked)}
+                      />
                       Read a collection page
                     </label>
                     {valuePaging && (
                       <div className="grid gap-3 sm:grid-cols-3">
                         <label className="min-w-0 space-y-1 text-13">
                           Collection path (JSON array)
-                          <input className={control} disabled={busy} value={valuePath}
-                            onChange={(event) => setValuePath(event.target.value)} />
+                          <input
+                            className={control}
+                            disabled={busy}
+                            value={valuePath}
+                            onChange={(event) => setValuePath(event.target.value)}
+                          />
                         </label>
                         <label className="min-w-0 space-y-1 text-13">
                           Collection offset
-                          <input className={control} disabled={busy} value={valueOffset}
-                            inputMode="numeric" onChange={(event) => setValueOffset(event.target.value)} />
+                          <input
+                            className={control}
+                            disabled={busy}
+                            value={valueOffset}
+                            inputMode="numeric"
+                            onChange={(event) => setValueOffset(event.target.value)}
+                          />
                         </label>
                         <label className="min-w-0 space-y-1 text-13">
                           Collection page size
-                          <input className={control} disabled={busy} value={valueLimit}
-                            inputMode="numeric" onChange={(event) => setValueLimit(event.target.value)} />
+                          <input
+                            className={control}
+                            disabled={busy}
+                            value={valueLimit}
+                            inputMode="numeric"
+                            onChange={(event) => setValueLimit(event.target.value)}
+                          />
                         </label>
                         <p className="text-13 text-ink-muted sm:col-span-3">
-                          Use [] for a root collection, field names for nested records, or
-                          [0, "weights"] for the first neuron’s weights. Enum paths start with
-                          the variant name. Each page validates the complete response and stays
-                          at the inspected finalized block.
+                          Use [] for a root collection, field names for nested records, or [0,
+                          "weights"] for the first neuron’s weights. Enum paths start with the
+                          variant name. Each page validates the complete response and stays at the
+                          inspected finalized block.
                         </p>
                       </div>
                     )}
@@ -736,15 +753,21 @@ function NativeRuntimeExplorer({
                 {result?.results[0]?.value_page && (
                   <div className="flex flex-wrap items-center gap-3 text-13">
                     <span>
-                      Collection offset {result.results[0].value_page.offset} ·
-                      {" "}{result.results[0].value_page.total} total items
+                      Collection offset {result.results[0].value_page.offset} ·{" "}
+                      {result.results[0].value_page.total} total items
                     </span>
                     {result.results[0].value_page.next_offset !== null && lastOperations[0] && (
-                      <button className={button} disabled={busy} type="button"
-                        onClick={() => action(
-                          () => [nextValuePageOperation(lastOperations[0]!, result)],
-                          result.source.finalized_block_hash,
-                        )}>
+                      <button
+                        className={button}
+                        disabled={busy}
+                        type="button"
+                        onClick={() =>
+                          action(
+                            () => [nextValuePageOperation(lastOperations[0]!, result)],
+                            result.source.finalized_block_hash,
+                          )
+                        }
+                      >
                         Next collection page
                       </button>
                     )}

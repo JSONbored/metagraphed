@@ -98,7 +98,9 @@ interface NativePlan {
   valuePage?: {
     inner: boolean;
     identity: string;
-    decode: (value: unknown) => ReturnType<ReturnType<typeof planNativeValuePage>["decode"]> | null;
+    decode: (
+      value: unknown,
+    ) => ReturnType<ReturnType<typeof planNativeValuePage>["decode"]> | null;
   };
   evm?: ReturnType<typeof resolveNativeEvmCall>["contract"];
 }
@@ -413,7 +415,11 @@ function plan(
         pallet: pallet.name,
         member: item.name,
         ...(operation.value_page
-          ? planNativeValuePage(metadata, item.type, operation.value_page).decode(item.value)
+          ? planNativeValuePage(
+              metadata,
+              item.type,
+              operation.value_page,
+            ).decode(item.value)
           : { value: decodeNativeValue(metadata, item.type, item.value) }),
         contract: contract(metadata, item.type, needed),
       },
@@ -543,22 +549,39 @@ export async function readNativeRuntime(
     throw new Error("Native request exceeds byte budget");
   if (
     input.operations.reduce(
-      (total, op) => total + (op.kind === "entries" ? op.limit : 0) +
+      (total, op) =>
+        total +
+        (op.kind === "entries" ? op.limit : 0) +
         ("value_page" in op && op.value_page ? op.value_page.limit : 0),
       0,
     ) > 64
   )
-    throw new Error(input.operations.some((op) => "value_page" in op && op.value_page)
-      ? "Native selected values exceed the aggregate page budget"
-      : "Native entries exceed the aggregate page budget");
+    throw new Error(
+      input.operations.some((op) => "value_page" in op && op.value_page)
+        ? "Native selected values exceed the aggregate page budget"
+        : "Native entries exceed the aggregate page budget",
+    );
   if (
-    input.operations.some((op) => op.kind === "entries" && op.cursor !== undefined) &&
+    input.operations.some(
+      (op) => op.kind === "entries" && op.cursor !== undefined,
+    ) &&
     input.as_of === undefined
-  ) throw new Error("Native entries continuation requires its finalized as_of hash");
+  )
+    throw new Error(
+      "Native entries continuation requires its finalized as_of hash",
+    );
   if (
-    input.operations.some((op) => "value_page" in op && op.value_page !== undefined && op.value_page.offset > 0) &&
+    input.operations.some(
+      (op) =>
+        "value_page" in op &&
+        op.value_page !== undefined &&
+        op.value_page.offset > 0,
+    ) &&
     input.as_of === undefined
-  ) throw new Error("Native value page continuation requires its finalized as_of hash");
+  )
+    throw new Error(
+      "Native value page continuation requires its finalized as_of hash",
+    );
   const network: ChainNetworkId = chainNetworkFromChainName(input.network);
   const read = rpc ?? nativeRuntimeRpc(network);
   const finalized = blockHash.parse(await read("chain_getFinalizedHead", []));
@@ -670,21 +693,41 @@ export async function readNativeRuntime(
           },
         }
       : base;
-    if ("value_page" in operation && operation.value_page && operation.kind !== "constant") {
-      if (evm) throw new Error("Native value paging cannot replace evm_call result interpretation");
+    if (
+      "value_page" in operation &&
+      operation.value_page &&
+      operation.kind !== "constant"
+    ) {
+      if (evm)
+        throw new Error(
+          "Native value paging cannot replace evm_call result interpretation",
+        );
       const plannedPage = inner
         ? inner.page(operation.value_page)
         : row.output !== undefined
           ? planNativeValuePage(metadata, row.output, operation.value_page)
           : null;
-      if (!plannedPage) throw new Error("Native SCALE value paging requires decode_inner and its source contract");
-      row = { ...row, valuePage: {
-        inner: Boolean(inner),
-        identity: JSON.stringify([inner?.contract.root_type ?? row.output, operation.value_page]),
-        decode: inner
-          ? (value) => (plannedPage as ReturnType<typeof inner.page>).decode(value, true)
-          : plannedPage.decode,
-      } };
+      if (!plannedPage)
+        throw new Error(
+          "Native SCALE value paging requires decode_inner and its source contract",
+        );
+      row = {
+        ...row,
+        valuePage: {
+          inner: Boolean(inner),
+          identity: JSON.stringify([
+            inner?.contract.root_type ?? row.output,
+            operation.value_page,
+          ]),
+          decode: inner
+            ? (value) =>
+                (plannedPage as ReturnType<typeof inner.page>).decode(
+                  value,
+                  true,
+                )
+            : plannedPage.decode,
+        },
+      };
     }
     if (
       (operation.kind === "runtime" || operation.kind === "prepare") &&
@@ -829,7 +872,10 @@ export async function readNativeRuntime(
     }
     return { inner_result: decoded };
   };
-  const pagedValues = new Map<string, ReturnType<ReturnType<typeof planNativeValuePage>["decode"]> | null>();
+  const pagedValues = new Map<
+    string,
+    ReturnType<ReturnType<typeof planNativeValuePage>["decode"]> | null
+  >();
   const results = plans.map<PlannedResult>((row, index) => {
     if ("entry" in row && row.entry) {
       const entry = row.entry,
@@ -865,12 +911,15 @@ export async function readNativeRuntime(
     }
     if (row.valuePage) {
       const memoKey = `${key}:${row.valuePage.identity}`;
-      let page = isDefault ? row.valuePage.decode(value) : pagedValues.get(memoKey);
+      let page = isDefault
+        ? row.valuePage.decode(value)
+        : pagedValues.get(memoKey);
       if (page === undefined) {
         page = row.valuePage.decode(value);
         pagedValues.set(memoKey, page);
       }
-      return { ...row.result,
+      return {
+        ...row.result,
         ...(page ? { value_page: page.value_page } : {}),
         ...(row.valuePage.inner
           ? { inner_result: page?.value ?? null }

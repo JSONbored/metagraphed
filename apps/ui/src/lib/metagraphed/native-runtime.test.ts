@@ -483,25 +483,104 @@ test("decoded Solidity returns appear before raw execution bytes with exact quan
   );
 });
 
-
 test("explicit collection paging preserves the submitted operation and uses typed continuation", () => {
-  const operation = { kind: "runtime" as const, api: "NeuronInfoRuntimeApi", member: "get_neurons", args: [19] };
+  const operation = {
+    kind: "runtime" as const,
+    api: "NeuronInfoRuntimeApi",
+    member: "get_neurons",
+    args: [19],
+  };
   const page = valuePageOperation(operation, "[]", "0", "16");
   expect(page).toEqual({ ...operation, value_page: { path: [], offset: 0, limit: 16 } });
-  const artifact = { schema_version: 1, source: {}, types: [], results: [{
-    ...operation, value: [], contract: {},
-    value_page: { path: [], offset: 0, limit: 16, total: 256, next_offset: 16, collection_type: 0, element_type: 1, value_encoding: "items" },
-  }] } as unknown as NativeArtifact;
-  expect(nextValuePageOperation(page, artifact)).toEqual({ ...operation, value_page: { path: [], offset: 16, limit: 16 } });
-  expect(operation).toEqual({ kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neurons", args: [19] });
-  for (const path of ["{}", "[null]", "[true]", "[-1]", '[""]', `["${"x".repeat(129)}"]`, JSON.stringify(Array(65).fill(0)), "x".repeat(16385)])
+  const artifact = {
+    schema_version: 1,
+    source: {},
+    types: [],
+    results: [
+      {
+        ...operation,
+        value: [],
+        contract: {},
+        value_page: {
+          path: [],
+          offset: 0,
+          limit: 16,
+          total: 256,
+          next_offset: 16,
+          collection_type: 0,
+          element_type: 1,
+          value_encoding: "items",
+        },
+      },
+    ],
+  } as unknown as NativeArtifact;
+  expect(nextValuePageOperation(page, artifact)).toEqual({
+    ...operation,
+    value_page: { path: [], offset: 16, limit: 16 },
+  });
+  expect(operation).toEqual({
+    kind: "runtime",
+    api: "NeuronInfoRuntimeApi",
+    member: "get_neurons",
+    args: [19],
+  });
+  for (const path of [
+    "{}",
+    "[null]",
+    "[true]",
+    "[-1]",
+    '[""]',
+    `["${"x".repeat(129)}"]`,
+    JSON.stringify(Array(65).fill(0)),
+    "x".repeat(16385),
+  ])
     expect(() => valuePageOperation(operation, path, "0", "16")).toThrow();
-  for (const [offset, limit] of [["-1", "1"], ["1.5", "1"], ["262145", "1"], ["0", "0"], ["0", "65"]])
+  for (const [offset, limit] of [
+    ["-1", "1"],
+    ["1.5", "1"],
+    ["262145", "1"],
+    ["0", "0"],
+    ["0", "65"],
+  ])
     expect(() => valuePageOperation(operation, "[]", offset!, limit!)).toThrow();
-  expect(() => valuePageOperation({ kind: "describe", offset: 0, limit: 32 }, "[]", "0", "16")).toThrow();
-  expect(() => valuePageOperation({ kind: "runtime_scale", api: operation.api, member: operation.member, input: "0x" }, "[]", "0", "16")).toThrow();
-  expect(() => valuePageOperation({ ...operation, evm_call: { signature: "x()", args: [] } }, "[]", "0", "16")).toThrow();
-  expect(valuePageOperation({ kind: "runtime_scale", api: operation.api, member: operation.member, input: "0x", decode_inner: true }, "[]", "0", "16")).toMatchObject({ value_page: { offset: 0 } });
+  expect(() =>
+    valuePageOperation({ kind: "describe", offset: 0, limit: 32 }, "[]", "0", "16"),
+  ).toThrow();
+  expect(() =>
+    valuePageOperation(
+      { kind: "runtime_scale", api: operation.api, member: operation.member, input: "0x" },
+      "[]",
+      "0",
+      "16",
+    ),
+  ).toThrow();
+  expect(() =>
+    valuePageOperation({ ...operation, evm_call: { signature: "x()", args: [] } }, "[]", "0", "16"),
+  ).toThrow();
+  expect(
+    valuePageOperation(
+      {
+        kind: "runtime_scale",
+        api: operation.api,
+        member: operation.member,
+        input: "0x",
+        decode_inner: true,
+      },
+      "[]",
+      "0",
+      "16",
+    ),
+  ).toMatchObject({ value_page: { offset: 0 } });
   expect(() => nextValuePageOperation(page, { ...artifact, results: [] })).toThrow();
-  expect(() => nextValuePageOperation(page, { ...artifact, results: [{ ...artifact.results[0]!, value_page: { ...artifact.results[0]!.value_page!, next_offset: null } }] })).toThrow();
+  expect(() =>
+    nextValuePageOperation(page, {
+      ...artifact,
+      results: [
+        {
+          ...artifact.results[0]!,
+          value_page: { ...artifact.results[0]!.value_page!, next_offset: null },
+        },
+      ],
+    }),
+  ).toThrow();
 });

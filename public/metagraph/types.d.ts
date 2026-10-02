@@ -9662,6 +9662,7 @@ export interface components {
                 pallet?: string;
                 storage_key?: string;
                 value?: components["schemas"]["NativeJsonValue"];
+                value_page?: components["schemas"]["NativeValuePage"];
             }[];
             /** @constant */
             schema_version: 1;
@@ -9680,6 +9681,7 @@ export interface components {
             /** @constant */
             kind: "runtime_scale";
             member: string;
+            value_page?: components["schemas"]["NativeValuePageRequest"];
         } | {
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
@@ -9687,6 +9689,7 @@ export interface components {
             kind: "storage";
             member: string;
             pallet: string;
+            value_page?: components["schemas"]["NativeValuePageRequest"];
         } | {
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
@@ -9702,6 +9705,7 @@ export interface components {
             kind: "constant";
             member: string;
             pallet: string;
+            value_page?: components["schemas"]["NativeValuePageRequest"];
         } | {
             api: string;
             /** @default [] */
@@ -9713,6 +9717,7 @@ export interface components {
             /** @constant */
             kind: "runtime";
             member: string;
+            value_page?: components["schemas"]["NativeValuePageRequest"];
         } | {
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
@@ -9771,6 +9776,29 @@ export interface components {
             runtime_code_hash: string | null;
             runtime_spec_version: number;
             runtime_transaction_version: number;
+        };
+        NativeValuePage: {
+            collection_type: number;
+            element_type: number;
+            /** @default 16 */
+            limit: number;
+            next_offset: number | null;
+            /** @default 0 */
+            offset: number;
+            /** @default [] */
+            path: (string | number)[];
+            total: number;
+            /** @enum {string} */
+            value_encoding: "items" | "hex";
+        };
+        /** @description Explicit page of one portable sequence or array. Path selects named fields, positional tuple/array indices or enum variant names; transparent single-field newtypes need no segment. The selected collection alone becomes value (or inner_result with decode_inner); value_page identifies its types, total and continuation. All upstream bytes are validated without allocating omitted values. Continue offsets with the identical operation/path and response source as_of hash. Ordinary omitted-option behavior and limits are unchanged. */
+        NativeValuePageRequest: {
+            /** @default 16 */
+            limit: number;
+            /** @default 0 */
+            offset: number;
+            /** @default [] */
+            path: (string | number)[];
         };
         NativeVariant: {
             fields: components["schemas"]["NativeField"][];

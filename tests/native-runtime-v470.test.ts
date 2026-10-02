@@ -735,13 +735,26 @@ test("full code references preserve REST/MCP bytes through the actual correlated
   }
 });
 
-
 test("compiled constants and storage pages preserve source declarations and storage defaults", async () => {
   const system = model.pallets.find((row) => row.name === "System")!;
   const version = system.constants.find((row) => row.name === "Version")!;
-  const full = decodeNativeValue(model, version.type, version.value) as { apis: NativeValue[] };
+  const full = decodeNativeValue(model, version.type, version.value) as {
+    apis: NativeValue[];
+  };
   const f = fixture();
-  const constant = await queryNativeRuntime({ operations: [{ kind: "constant", pallet: "System", member: "Version", value_page: { path: ["apis"], offset: 0, limit: 2 } }] }, f.rpc);
+  const constant = await queryNativeRuntime(
+    {
+      operations: [
+        {
+          kind: "constant",
+          pallet: "System",
+          member: "Version",
+          value_page: { path: ["apis"], offset: 0, limit: 2 },
+        },
+      ],
+    },
+    f.rpc,
+  );
   assert.deepEqual(constant.results[0]!.value, full.apis.slice(0, 2));
   assert.equal(constant.results[0]!.value_page!.total, full.apis.length);
   assert.equal(f.executions.length, 0);
@@ -750,14 +763,34 @@ test("compiled constants and storage pages preserve source declarations and stor
   const values = [true, false, true];
   const hex = nativeHex(encodeNativeValue(model, item.value, values));
   let current: string | null = hex;
-  const rpc: BasketRpc = (method, params) => method === "state_getStorage" ? Promise.resolve(current) : f.rpc(method, params);
-  rpc.batch = (calls) => Promise.all(calls.map((row) => rpc(row.method, row.params)));
-  const operation = { kind: "storage", pallet: pallet.name, member: item.name, args: [19], value_page: { path: [], offset: 1, limit: 1 } };
-  const actual = await queryNativeRuntime({ as_of: hash, operations: [operation] }, rpc);
+  const rpc: BasketRpc = (method, params) =>
+    method === "state_getStorage"
+      ? Promise.resolve(current)
+      : f.rpc(method, params);
+  rpc.batch = (calls) =>
+    Promise.all(calls.map((row) => rpc(row.method, row.params)));
+  const operation = {
+    kind: "storage",
+    pallet: pallet.name,
+    member: item.name,
+    args: [19],
+    value_page: { path: [], offset: 1, limit: 1 },
+  };
+  const actual = await queryNativeRuntime(
+    { as_of: hash, operations: [operation] },
+    rpc,
+  );
   assert.deepEqual(actual.results[0]!.value, [false]);
   assert.equal(actual.results[0]!.is_default, false);
   current = null;
-  const fallback = await queryNativeRuntime({ operations: [{ ...operation, value_page: { ...operation.value_page, offset: 0 } }] }, rpc);
+  const fallback = await queryNativeRuntime(
+    {
+      operations: [
+        { ...operation, value_page: { ...operation.value_page, offset: 0 } },
+      ],
+    },
+    rpc,
+  );
   assert.deepEqual(fallback.results[0]!.value, []);
   assert.equal(fallback.results[0]!.is_default, true);
   assert.equal(fallback.results[0]!.value_page!.total, 0);

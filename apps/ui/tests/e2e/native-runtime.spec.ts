@@ -847,24 +847,57 @@ test("precompile ABI discovery and simulation use the inspected source and typed
   );
 });
 
-
-test("collection continuation stays pinned to the submitted operation despite later form edits", async ({ page }) => {
+test("collection continuation stays pinned to the submitted operation despite later form edits", async ({
+  page,
+}) => {
   const requests: unknown[] = [];
   await page.route("**/api/v1/native-runtime", async (route) => {
     const body = route.request().postDataJSON();
     requests.push(body);
     const op = body.operations[0];
-    await route.fulfill({ json: { ok: true, data: {
-      schema_version: 1, source, types: [],
-      results: op.kind === "describe" ? [{ kind: "describe", contract: { next_offset: null }, value: [{
-        kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neurons", args: [{ name: "netuid", type: 0 }],
-      }] }] : [{ kind: "runtime", api: op.api, member: op.member, contract: { root_type: 0 },
-        value: [{ uid: String(op.value_page.offset) }], value_page: {
-          ...op.value_page, total: 2, next_offset: op.value_page.offset === 0 ? 1 : null,
-          collection_type: 0, element_type: 1, value_encoding: "items",
+    await route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          schema_version: 1,
+          source,
+          types: [],
+          results:
+            op.kind === "describe"
+              ? [
+                  {
+                    kind: "describe",
+                    contract: { next_offset: null },
+                    value: [
+                      {
+                        kind: "runtime",
+                        api: "NeuronInfoRuntimeApi",
+                        member: "get_neurons",
+                        args: [{ name: "netuid", type: 0 }],
+                      },
+                    ],
+                  },
+                ]
+              : [
+                  {
+                    kind: "runtime",
+                    api: op.api,
+                    member: op.member,
+                    contract: { root_type: 0 },
+                    value: [{ uid: String(op.value_page.offset) }],
+                    value_page: {
+                      ...op.value_page,
+                      total: 2,
+                      next_offset: op.value_page.offset === 0 ? 1 : null,
+                      collection_type: 0,
+                      element_type: 1,
+                      value_encoding: "items",
+                    },
+                  },
+                ],
         },
-      }],
-    } } });
+      },
+    });
   });
   await gotoThroughRestart(page, "/apis/native");
   await page.getByRole("combobox", { name: "Contract", exact: true }).selectOption("api");
@@ -877,12 +910,24 @@ test("collection continuation stays pinned to the submitted operation despite la
   await page.getByRole("button", { name: "Read operation", exact: true }).click();
   await expect(page.getByRole("button", { name: "Next collection page" })).toBeVisible();
   await args.fill("[20]");
-  await page.getByRole("textbox", { name: "Collection path (JSON array)", exact: true }).fill('["different"]');
+  await page
+    .getByRole("textbox", { name: "Collection path (JSON array)", exact: true })
+    .fill('["different"]');
   await page.getByRole("button", { name: "Next collection page" }).click();
-  await expect(page.getByText("Collection offset 1 · 2 total items", { exact: true })).toBeVisible();
-  expect(requests.at(-1)).toEqual({ as_of: hash, operations: [{
-    kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neurons", args: [19],
-    value_page: { path: [], offset: 1, limit: 1 },
-  }] });
+  await expect(
+    page.getByText("Collection offset 1 · 2 total items", { exact: true }),
+  ).toBeVisible();
+  expect(requests.at(-1)).toEqual({
+    as_of: hash,
+    operations: [
+      {
+        kind: "runtime",
+        api: "NeuronInfoRuntimeApi",
+        member: "get_neurons",
+        args: [19],
+        value_page: { path: [], offset: 1, limit: 1 },
+      },
+    ],
+  });
   await expect(page.getByRole("button", { name: "Next collection page" })).toHaveCount(0);
 });

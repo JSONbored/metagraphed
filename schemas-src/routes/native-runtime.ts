@@ -121,14 +121,19 @@ export const NativeCodeArtifactSchema = z
   .describe(
     "Checksum-bound public deployment code for ContractsApi upload_code/instantiate, Contracts upload_code/instantiate_with_code preparation, EthereumRuntimeRPCApi.create simulation or EVM.create/create2 preparation. Keep the declared code/data/init argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. EVM simulation gas is admitted before fetching; runtime execution rules and unsigned wallet review remain unchanged. One distinct artifact is fetched per request, with no persistent storage.",
   );
-const valuePath = z.array(z.union([z.string().min(1).max(128), z.int().min(0).max(16383)])).max(64);
-export const NativeValuePageRequestSchema = z.object({
-  path: valuePath.default([]),
-  offset: z.int().min(0).max(262144).default(0),
-  limit: z.int().min(1).max(64).default(16),
-}).strict().describe(
-  "Explicit page of one portable sequence or array. Path selects named fields, positional tuple/array indices or enum variant names; transparent single-field newtypes need no segment. The selected collection alone becomes value (or inner_result with decode_inner); value_page identifies its types, total and continuation. All upstream bytes are validated without allocating omitted values. Continue offsets with the identical operation/path and response source as_of hash. Ordinary omitted-option behavior and limits are unchanged.",
-);
+const valuePath = z
+  .array(z.union([z.string().min(1).max(128), z.int().min(0).max(16383)]))
+  .max(64);
+export const NativeValuePageRequestSchema = z
+  .object({
+    path: valuePath.default([]),
+    offset: z.int().min(0).max(262144).default(0),
+    limit: z.int().min(1).max(64).default(16),
+  })
+  .strict()
+  .describe(
+    "Explicit page of one portable sequence or array. Path selects named fields, positional tuple/array indices or enum variant names; transparent single-field newtypes need no segment. The selected collection alone becomes value (or inner_result with decode_inner); value_page identifies its types, total and continuation. All upstream bytes are validated without allocating omitted values. Continue offsets with the identical operation/path and response source as_of hash. Ordinary omitted-option behavior and limits are unchanged.",
+  );
 export const NativeValuePageSchema = NativeValuePageRequestSchema.extend({
   total: z.int().min(0).max(262144),
   next_offset: z.int().min(0).max(262144).nullable(),
@@ -154,9 +159,14 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
         ),
     })
     .strict(),
-  z.object({ kind: z.literal("storage"), ...common, args,
-    value_page: NativeValuePageRequestSchema.optional(),
-  }).strict(),
+  z
+    .object({
+      kind: z.literal("storage"),
+      ...common,
+      args,
+      value_page: NativeValuePageRequestSchema.optional(),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("entries"),
@@ -170,9 +180,13 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
         .optional(),
     })
     .strict(),
-  z.object({ kind: z.literal("constant"), ...common,
-    value_page: NativeValuePageRequestSchema.optional(),
-  }).strict(),
+  z
+    .object({
+      kind: z.literal("constant"),
+      ...common,
+      value_page: NativeValuePageRequestSchema.optional(),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("runtime"),

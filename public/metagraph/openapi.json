@@ -39478,6 +39478,9 @@
                 },
                 "value": {
                   "$ref": "#/components/schemas/NativeJsonValue"
+                },
+                "value_page": {
+                  "$ref": "#/components/schemas/NativeValuePage"
                 }
               },
               "required": [
@@ -39544,6 +39547,9 @@
                 "maxLength": 128,
                 "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
                 "type": "string"
+              },
+              "value_page": {
+                "$ref": "#/components/schemas/NativeValuePageRequest"
               }
             },
             "required": [
@@ -39578,6 +39584,9 @@
                 "maxLength": 128,
                 "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
                 "type": "string"
+              },
+              "value_page": {
+                "$ref": "#/components/schemas/NativeValuePageRequest"
               }
             },
             "required": [
@@ -39650,6 +39659,9 @@
                 "maxLength": 128,
                 "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
                 "type": "string"
+              },
+              "value_page": {
+                "$ref": "#/components/schemas/NativeValuePageRequest"
               }
             },
             "required": [
@@ -39693,6 +39705,9 @@
                 "maxLength": 128,
                 "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
                 "type": "string"
+              },
+              "value_page": {
+                "$ref": "#/components/schemas/NativeValuePageRequest"
               }
             },
             "required": [
@@ -39908,6 +39923,130 @@
           "runtime_code_hash",
           "metadata_version",
           "metadata_sha256"
+        ],
+        "type": "object"
+      },
+      "NativeValuePage": {
+        "additionalProperties": false,
+        "properties": {
+          "collection_type": {
+            "maximum": 16383,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "element_type": {
+            "maximum": 16383,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "default": 16,
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "maximum": 262144,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 262144,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "default": [],
+            "items": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "maximum": 16383,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              ]
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "total": {
+            "maximum": 262144,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "value_encoding": {
+            "enum": [
+              "items",
+              "hex"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "offset",
+          "limit",
+          "total",
+          "next_offset",
+          "collection_type",
+          "element_type",
+          "value_encoding"
+        ],
+        "type": "object"
+      },
+      "NativeValuePageRequest": {
+        "additionalProperties": false,
+        "description": "Explicit page of one portable sequence or array. Path selects named fields, positional tuple/array indices or enum variant names; transparent single-field newtypes need no segment. The selected collection alone becomes value (or inner_result with decode_inner); value_page identifies its types, total and continuation. All upstream bytes are validated without allocating omitted values. Continue offsets with the identical operation/path and response source as_of hash. Ordinary omitted-option behavior and limits are unchanged.",
+        "properties": {
+          "limit": {
+            "default": 16,
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 262144,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "default": [],
+            "items": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "maximum": 16383,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              ]
+            },
+            "maxItems": 64,
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "offset",
+          "limit"
         ],
         "type": "object"
       },

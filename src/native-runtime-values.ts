@@ -70,7 +70,11 @@ function getType(metadata: NativeMetadata, id: number) {
   if (!type) throw new Error("Missing native portable type");
   return type.definition;
 }
-export function nativeUnsignedWidth(metadata: NativeMetadata, id: number, depth = 0): number {
+export function nativeUnsignedWidth(
+  metadata: NativeMetadata,
+  id: number,
+  depth = 0,
+): number {
   if (depth > NATIVE_RUNTIME_LIMITS.depth)
     throw new Error("Native type recursion exceeds work budget");
   const type = getType(metadata, id);

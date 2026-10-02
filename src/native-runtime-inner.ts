@@ -51,7 +51,11 @@ export function nativeInnerRecord(
     else if (d.kind === "bits") pending.push(d.store, d.order);
     else if (d.kind !== "primitive") pending.push(d.type);
   }
-  const readInner = <T>(value: unknown, outer: boolean, decode: (hex: unknown) => T): T | null => {
+  const readInner = <T>(
+    value: unknown,
+    outer: boolean,
+    decode: (hex: unknown) => T,
+  ): T | null => {
     if (outer) {
       const reader = new NativeScaleReader(value);
       const length = reader.count(NATIVE_RUNTIME_LIMITS.valueBytes),
@@ -78,7 +82,9 @@ export function nativeInnerRecord(
       types: [...needed.values()],
     },
     decode(value: unknown, outer = false) {
-      return readInner(value, outer, (hex) => decodeNativeValue(model, method.root_type, hex));
+      return readInner(value, outer, (hex) =>
+        decodeNativeValue(model, method.root_type, hex),
+      );
     },
     page(request: Parameters<typeof planNativeValuePage>[2]) {
       const planned = planNativeValuePage(model, method.root_type, request);
