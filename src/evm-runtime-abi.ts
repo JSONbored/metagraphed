@@ -128,11 +128,8 @@ export function encodeRuntimeEvmCall(
           throw new Error("EVM bytes must be even-length hex");
         length = (value.length - 2) / 2;
       } else {
-        for (const char of value) {
-          const code = char.codePointAt(0)!;
-          if (code >= 0xd800 && code <= 0xdfff)
-            throw new Error("EVM string contains an unpaired surrogate");
-        }
+        if (!value.isWellFormed())
+          throw new Error("EVM string contains an unpaired surrogate");
         length = Buffer.byteLength(value);
       }
       const prefix = word(BigInt(length));

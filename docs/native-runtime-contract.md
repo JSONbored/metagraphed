@@ -122,8 +122,8 @@ keep `data` as `"0x"`. For example:
 
 The server encodes and inserts exactly that ABI input; native source, gas, value,
 access/authorization lists, admission and duplicate coalescing still apply. The
-result contract retains the signature, selector, address, encoded input and
-source commit. The same `evm_call` works with native `EVM.call` preparation using
+result contract retains the signature, selector, address and source commit;
+padded calldata is not echoed into that compact receipt. The same `evm_call` works with native `EVM.call` preparation using
 `target` and empty `input`, so the existing explicit wallet review can sign those
 method bytes. Integer widths, dynamic array offsets, UTF-8 and byte padding are
 bounded and exact. Caller-supplied selectors and arbitrary signatures cannot

@@ -54,6 +54,7 @@ test("ABI binding preserves original args, type-checks the declared target and a
   assert.equal(op.args[index], "0x");
   assert.ok(String(resolved.operation.args[index]).startsWith("0xe3b598fa"));
   assert.equal(resolved.contract!.address, to);
+  assert.equal(Object.hasOwn(resolved.contract!, "input"), false);
   assert.equal(
     resolveNativeEvmCall(model, 470, { ...op, evm_call: undefined }).operation
       .args,

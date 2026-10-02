@@ -86,6 +86,7 @@ export function resolveNativeEvmCall(
     operation.evm_call.args,
   );
   const args = operation.args.slice();
-  args[index] = encoded.input;
-  return { operation: { ...operation, args }, contract: encoded };
+  const { input: calldata, ...contract } = encoded;
+  args[index] = calldata;
+  return { operation: { ...operation, args }, contract };
 }
