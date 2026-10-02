@@ -348,7 +348,9 @@ function NativeRuntimeExplorer({
                   value={memberIndex}
                   onChange={(event) => {
                     setMemberIndex(Number(event.target.value));
-                    setArgs(members[Number(event.target.value)]?.kind === "runtime_scale" ? "0x" : "[]");
+                    setArgs(
+                      members[Number(event.target.value)]?.kind === "runtime_scale" ? "0x" : "[]",
+                    );
                     setResult(null);
                   }}
                 >
@@ -398,7 +400,9 @@ function NativeRuntimeExplorer({
                   ))}
                 </dl>
                 <label className="block space-y-1 text-13">
-                  {member.kind === "runtime_scale" ? "Arguments (SCALE hex)" : "Arguments (JSON array)"}
+                  {member.kind === "runtime_scale"
+                    ? "Arguments (SCALE hex)"
+                    : "Arguments (JSON array)"}
                   <textarea
                     disabled={busy}
                     className={`${control} font-mono`}
@@ -413,8 +417,9 @@ function NativeRuntimeExplorer({
                 </label>
                 {member.kind === "runtime_scale" && (
                   <p className="text-13 text-ink-muted">
-                    This source advertises {member.api} version {member.runtimeApiVersion}, but its metadata omits the typed signature.
-                    Encode arguments with that runtime’s ABI. This audited read returns exact SCALE bytes at the inspected finalized block.
+                    This source advertises {member.api} version {member.runtimeApiVersion}, but its
+                    metadata omits the typed signature. Encode arguments with that runtime’s ABI.
+                    This audited read returns exact SCALE bytes at the inspected finalized block.
                   </p>
                 )}
                 <p className="text-13 text-ink-muted">

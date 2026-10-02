@@ -88,17 +88,21 @@ describe("MCP tool annotations", () => {
     assert.deepEqual(declaredOpenWorld, [...OPEN_WORLD_TOOL_NAMES].sort());
   });
   test("native call preparation remains a read and cannot sign or submit", () => {
-    for (const name of ["get_native_runtime", "get_subnet_stake_quote", "get_stake_action_preview"]) {
-    const annotations = byName.get(name)?.annotations as Record<
-      string,
-      unknown
-    >;
-    assert.deepEqual(annotations, {
-      readOnlyHint: true,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: true,
-    });
+    for (const name of [
+      "get_native_runtime",
+      "get_subnet_stake_quote",
+      "get_stake_action_preview",
+    ]) {
+      const annotations = byName.get(name)?.annotations as Record<
+        string,
+        unknown
+      >;
+      assert.deepEqual(annotations, {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      });
     }
   });
 

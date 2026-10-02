@@ -58,11 +58,21 @@ const common = { pallet: name, member: name };
 export const NativeJsonValueSchema = z.json();
 const args = z.array(NativeJsonValueSchema).max(64).default([]);
 export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("runtime_scale"), api: name, member: name,
-    input: z.string().regex(/^0x(?:[0-9a-f]{2})*$/).max(32768).meta({ examples: ["0x"] })
-      .describe("Exact SCALE arguments encoded for the source runtime API version. Only audited read methods are admitted; result bytes retain their source API id and version. Use typed runtime operations when metadata publishes the signature."),
-  }).strict(),
+  z
+    .object({
+      kind: z.literal("runtime_scale"),
+      api: name,
+      member: name,
+      input: z
+        .string()
+        .regex(/^0x(?:[0-9a-f]{2})*$/)
+        .max(32768)
+        .meta({ examples: ["0x"] })
+        .describe(
+          "Exact SCALE arguments encoded for the source runtime API version. Only audited read methods are admitted; result bytes retain their source API id and version. Use typed runtime operations when metadata publishes the signature.",
+        ),
+    })
+    .strict(),
   z.object({ kind: z.literal("storage"), ...common, args }).strict(),
   z
     .object({

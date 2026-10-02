@@ -39353,6 +39353,7 @@
                     "entries",
                     "constant",
                     "runtime",
+                    "runtime_scale",
                     "prepare",
                     "describe"
                   ],
@@ -39411,6 +39412,41 @@
       },
       "NativeRuntimeOperation": {
         "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "api": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "input": {
+                "description": "Exact SCALE arguments encoded for the source runtime API version. Only audited read methods are admitted; result bytes retain their source API id and version. Use typed runtime operations when metadata publishes the signature.",
+                "examples": [
+                  "0x"
+                ],
+                "maxLength": 32768,
+                "pattern": "^0x(?:[0-9a-f]{2})*$",
+                "type": "string"
+              },
+              "kind": {
+                "const": "runtime_scale",
+                "type": "string"
+              },
+              "member": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "api",
+              "member",
+              "input"
+            ],
+            "type": "object"
+          },
           {
             "additionalProperties": false,
             "properties": {
@@ -39652,7 +39688,7 @@
             "type": "string"
           },
           "operations": {
-            "description": "One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.",
+            "description": "One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; runtime_scale accepts caller-encoded SCALE for audited read methods and returns exact bytes with the source API id/version, including V14 APIs without typed signatures; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.",
             "examples": [
               [
                 {
@@ -95547,7 +95583,7 @@
     },
     "/api/v1/native-runtime": {
       "post": {
-        "description": "Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata. Up to 16 operations share one source. Descriptions are paginated; exact integers are decimal strings and byte vectors are hex. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input, retaining return bytes, reverts and exact deposits. Call method bytes require an explicit wallet signature before execution. No transaction is submitted or code published by a simulation.",
+        "description": "Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata. Up to 16 operations share one source. Descriptions are paginated; exact integers are decimal strings and byte vectors are hex. runtime_scale accepts caller-encoded SCALE for audited reads, including V14 APIs without typed signatures, and returns exact bytes with the source API id/version. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input, retaining return bytes, reverts and exact deposits. Call method bytes require an explicit wallet signature before execution. No transaction is submitted or code published by a simulation.",
         "operationId": "nativeRuntime",
         "parameters": [],
         "requestBody": {

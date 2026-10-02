@@ -3492,7 +3492,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata. Up to 16 operations share one source. Descriptions are paginated; exact integers are decimal strings and byte vectors are hex. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input, retaining return bytes, reverts and exact deposits. Call method bytes require an explicit wallet signature before execution. No transaction is submitted or code published by a simulation. */
+        /** @description Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata. Up to 16 operations share one source. Descriptions are paginated; exact integers are decimal strings and byte vectors are hex. runtime_scale accepts caller-encoded SCALE for audited reads, including V14 APIs without typed signatures, and returns exact bytes with the source API id/version. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input, retaining return bytes, reverts and exact deposits. Call method bytes require an explicit wallet signature before execution. No transaction is submitted or code published by a simulation. */
         post: operations["nativeRuntime"];
         delete?: never;
         options?: never;
@@ -9628,7 +9628,7 @@ export interface components {
                 contract: components["schemas"]["NativeJsonValue"];
                 is_default?: boolean;
                 /** @enum {string} */
-                kind: "storage" | "entries" | "constant" | "runtime" | "prepare" | "describe";
+                kind: "storage" | "entries" | "constant" | "runtime" | "runtime_scale" | "prepare" | "describe";
                 member?: string;
                 pallet?: string;
                 storage_key?: string;
@@ -9640,6 +9640,16 @@ export interface components {
             types: components["schemas"]["NativePortableType"][];
         };
         NativeRuntimeOperation: {
+            api: string;
+            /**
+             * @description Exact SCALE arguments encoded for the source runtime API version. Only audited read methods are admitted; result bytes retain their source API id and version. Use typed runtime operations when metadata publishes the signature.
+             * @example 0x
+             */
+            input: string;
+            /** @constant */
+            kind: "runtime_scale";
+            member: string;
+        } | {
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
             /** @constant */
@@ -9700,7 +9710,7 @@ export interface components {
              */
             network?: "finney" | "test";
             /**
-             * @description One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.
+             * @description One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; runtime_scale accepts caller-encoded SCALE for audited read methods and returns exact bytes with the source API id/version, including V14 APIs without typed signatures; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.
              * @example [
              *       {
              *         "kind": "describe",

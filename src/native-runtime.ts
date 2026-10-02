@@ -19,7 +19,11 @@ import {
   type NativeValue,
 } from "./native-runtime-values.ts";
 import { nativeRuntimeRpc } from "./native-runtime-rpc.ts";
-import { runtimeApiId, scaleReadMethods, SCALE_READ_API_METHODS } from "./native-runtime-scale.ts";
+import {
+  runtimeApiId,
+  scaleReadMethods,
+  SCALE_READ_API_METHODS,
+} from "./native-runtime-scale.ts";
 import { loadNativeContract } from "./native-runtime-contract.ts";
 import {
   nativeContractSimulationWork,
@@ -43,7 +47,14 @@ const version = z.object({
   specVersion: z.int().nonnegative(),
   transactionVersion: z.int().nonnegative(),
 });
-const advertisedApis = z.object({ apis: z.array(z.tuple([z.string().regex(/^0x[0-9a-f]{16}$/), z.int().nonnegative()])).max(256).default([]) });
+const advertisedApis = z.object({
+  apis: z
+    .array(
+      z.tuple([z.string().regex(/^0x[0-9a-f]{16}$/), z.int().nonnegative()]),
+    )
+    .max(256)
+    .default([]),
+});
 const blockHash = NativeRuntimeSourceSchema.shape.finalized_block_hash;
 type Operation = z.infer<
   typeof NativeRuntimeRequestSchema
@@ -154,13 +165,28 @@ function plan(
   if (operation.kind === "runtime_scale") {
     const id = runtimeApiId(operation.api);
     const apiVersion = apiVersions.get(id);
-    if (!scaleReadMethods(operation.api, apiVersion).includes(operation.member) || apiVersion === undefined)
-      throw new Error("SCALE runtime read is not audited or its API is absent at this source");
+    if (
+      !scaleReadMethods(operation.api, apiVersion).includes(operation.member) ||
+      apiVersion === undefined
+    )
+      throw new Error(
+        "SCALE runtime read is not audited or its API is absent at this source",
+      );
     return {
-      call: { method: "state_call", params: [`${operation.api}_${operation.member}`, operation.input] },
+      call: {
+        method: "state_call",
+        params: [`${operation.api}_${operation.member}`, operation.input],
+      },
       result: {
-        kind: "runtime_scale" as const, api: operation.api, member: operation.member,
-        contract: { encoding: "scale", abi: "caller-encoded", runtime_api_id: id, runtime_api_version: apiVersion },
+        kind: "runtime_scale" as const,
+        api: operation.api,
+        member: operation.member,
+        contract: {
+          encoding: "scale",
+          abi: "caller-encoded",
+          runtime_api_id: id,
+          runtime_api_version: apiVersion,
+        },
       },
     };
   }
@@ -234,16 +260,22 @@ function plan(
         const methods = scaleReadMethods(operation.api, apiVersion);
         if (apiVersion === undefined || methods.length === 0)
           throw new Error("Unknown native runtime API");
-        items = methods.map((member) => ({ kind: "runtime_scale", api: operation.api!, member, runtime_api_version: apiVersion }));
-      } else items = api.methods
-        .filter((method) => readApiMethod(api.name, method.name))
-        .map((method) => ({
-          kind: "runtime",
-          api: api.name,
-          member: method.name,
-          args: method.inputs.map((field) => ({ ...field })),
-          value_type: method.output,
+        items = methods.map((member) => ({
+          kind: "runtime_scale",
+          api: operation.api!,
+          member,
+          runtime_api_version: apiVersion,
         }));
+      } else
+        items = api.methods
+          .filter((method) => readApiMethod(api.name, method.name))
+          .map((method) => ({
+            kind: "runtime",
+            api: api.name,
+            member: method.name,
+            args: method.inputs.map((field) => ({ ...field })),
+            value_type: method.output,
+          }));
     } else
       items = [
         ...metadata.pallets.map((row) => ({ kind: "pallet", name: row.name })),
@@ -252,9 +284,15 @@ function plan(
             row.methods.some((method) => readApiMethod(row.name, method.name)),
           )
           .map((row) => ({ kind: "api", name: row.name })),
-        ...(apiVersions.size === 0 ? [] : Object.keys(SCALE_READ_API_METHODS)
-          .filter((name) => !metadata.apis.some((row) => row.name === name) && apiVersions.has(runtimeApiId(name)))
-          .map((name) => ({ kind: "api", name }))),
+        ...(apiVersions.size === 0
+          ? []
+          : Object.keys(SCALE_READ_API_METHODS)
+              .filter(
+                (name) =>
+                  !metadata.apis.some((row) => row.name === name) &&
+                  apiVersions.has(runtimeApiId(name)),
+              )
+              .map((name) => ({ kind: "api", name }))),
       ];
     const page = items.slice(
       operation.offset,
@@ -535,12 +573,18 @@ export async function readNativeRuntime(
   const needed = new Map<number, NativeType>();
   // Typed reads already have metadata signatures. Do not add an API-list
   // traversal to them just to support the older signature-less read path.
-  const needsApis = input.operations.some((operation) =>
-    operation.kind === "runtime_scale" ||
-    (metadata.version === 14 && operation.kind === "describe" &&
-      operation.pallet === undefined && operation.type_id === undefined),
+  const needsApis = input.operations.some(
+    (operation) =>
+      operation.kind === "runtime_scale" ||
+      (metadata.version === 14 &&
+        operation.kind === "describe" &&
+        operation.pallet === undefined &&
+        operation.type_id === undefined),
   );
-  const apiVersions = new Map(needsApis ? advertisedApis.parse(rawVersion).apis : []);
+  const apiList = needsApis ? advertisedApis.parse(rawVersion).apis : [];
+  const apiVersions = new Map(apiList);
+  if (apiVersions.size !== apiList.length)
+    throw new Error("Duplicate advertised native runtime API identifiers");
   const plans = input.operations.map((operation) =>
     plan(metadata, operation, needed, apiVersions),
   );
@@ -655,7 +699,11 @@ export async function readNativeRuntime(
     let value = responses.get(key),
       isDefault = false;
     if (row.result.kind === "runtime_scale") {
-      if (typeof value !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(value) || value.length > 2 + NATIVE_RUNTIME_LIMITS.valueBytes * 2)
+      if (
+        typeof value !== "string" ||
+        !/^0x(?:[0-9a-fA-F]{2})*$/.test(value) ||
+        value.length > 2 + NATIVE_RUNTIME_LIMITS.valueBytes * 2
+      )
         throw new Error("Invalid or oversized SCALE runtime result");
       return { ...row.result, value };
     }

@@ -48,7 +48,6 @@ test("extract the public v470 compiled metadata on remote CI only", async () => 
   console.log("V470_WASM_IMPORTS", JSON.stringify(WebAssembly.Module.imports(module)));
   const initialMemory = new WebAssembly.Memory({ initial: 64, maximum: 2048 });
   let memory = initialMemory;
-  let instance: WebAssembly.Instance;
   let heap = 0;
   const malloc = (bytes: number) => {
     if (heap === 0) {
@@ -68,14 +67,14 @@ test("extract the public v470 compiled metadata on remote CI only", async () => 
     if (item.kind === "memory") group[item.name] = initialMemory;
     else if (item.kind === "function") group[item.name] = (...args: (number | bigint)[]) => {
       hostCalls[item.name] = (hostCalls[item.name] ?? 0) + 1;
-      if (item.name === "ext_allocator_malloc_version1") return malloc(Number(args[0]));
-      if (item.name === "ext_allocator_free_version1") return;
-      if (item.name === "ext_logging_max_level_version1") return 0;
+      if (item.name === "ext_allocator_malloc_version_1") return malloc(Number(args[0]));
+      if (item.name === "ext_allocator_free_version_1") return;
+      if (item.name === "ext_logging_max_level_version_1") return 0;
       throw new Error(`Unexpected compiled metadata host call: ${item.name}`);
     };
     else throw new Error(`Unsupported metadata import: ${item.kind} ${item.name}`);
   }
-  instance = await WebAssembly.instantiate(module, imports);
+  const instance = await WebAssembly.instantiate(module, imports);
   if (instance.exports.memory instanceof WebAssembly.Memory) memory = instance.exports.memory;
   const ptr = malloc(4);
   new DataView(memory.buffer).setUint32(ptr, 15, true);

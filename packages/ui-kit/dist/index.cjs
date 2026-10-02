@@ -1766,7 +1766,7 @@ function Raw({
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-raw-body", children: [
           rows.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx("dl", { children: rows.map((row) => /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-raw-row", children: [
             /* @__PURE__ */ jsxRuntime.jsx("dt", { children: row.label }),
-            /* @__PURE__ */ jsxRuntime.jsx("dd", { children: row.href ? /* @__PURE__ */ jsxRuntime.jsx("a", { href: row.href, className: "text-accent hover:underline", children: /* @__PURE__ */ jsxRuntime.jsx("code", { title: row.value, children: row.value }) }) : /* @__PURE__ */ jsxRuntime.jsx("code", { title: row.value, children: row.value }) }),
+            /* @__PURE__ */ jsxRuntime.jsx("dd", { children: row.href ? /* @__PURE__ */ jsxRuntime.jsx("a", { href: row.href, className: "text-accent hover:underline", children: /* @__PURE__ */ jsxRuntime.jsx("code", { children: row.value }) }) : /* @__PURE__ */ jsxRuntime.jsx("code", { children: row.value }) }),
             /* @__PURE__ */ jsxRuntime.jsx(
               CopyButton,
               {
