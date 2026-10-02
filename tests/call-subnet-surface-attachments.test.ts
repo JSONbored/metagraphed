@@ -416,7 +416,7 @@ for (const [mime, kind, version] of [
     assert.deepEqual(Buffer.from(data, "base64"), bytes);
   });
 
-test("large MCP binary fixture has one byte copy in content and a compact receipt", async () => {
+test("large binary fixture has one copy and a compact receipt", async () => {
   const bytes = Buffer.alloc(131072, 0xa5);
   const { raw, result, requests } = await mcp(
     { surface_id: "fixture:media:1", response_mode: "attachment" },
@@ -431,7 +431,9 @@ test("large MCP binary fixture has one byte copy in content and a compact receip
   const encoded = result.content[0].resource.blob;
   assert.deepEqual(Buffer.from(encoded, "base64"), bytes);
   assert.equal(raw.split(encoded).length - 1, 1);
-  const receiptBytes = Buffer.byteLength(JSON.stringify(result.structuredContent));
+  const receiptBytes = Buffer.byteLength(
+    JSON.stringify(result.structuredContent),
+  );
   assert.ok(receiptBytes < 512);
   console.log(
     "SUBNET_BINARY_CONTENT_FIXTURE",
