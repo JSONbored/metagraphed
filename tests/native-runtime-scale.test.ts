@@ -79,6 +79,24 @@ test("V14 discovery returns usable audited reads without fabricated type signatu
   }
 });
 
+test("typed requests retain their metadata-only path without validating an unused API list", async () => {
+  for (const metadata of [metadata14, metadata15]) {
+    const f = fixture({ metadata });
+    const rpc: BasketRpc = async (method, params) => {
+      const value = await f.rpc(method, params);
+      return method === "state_getRuntimeVersion"
+        ? { specName: "node-subtensor", specVersion: 372, transactionVersion: 1, apis: "invalid unused list" }
+        : value;
+    };
+    for (const operation of [{ kind: "describe", type_id: 0 }, { kind: "describe", pallet: "System" }]) {
+      const response = await queryNativeRuntime({ operations: [operation] }, rpc);
+      assert.equal(response.results[0]!.kind, "describe");
+    }
+    await assert.rejects(queryNativeRuntime({ operations: [operation] }, rpc));
+    assert.equal(f.execution().length, 0);
+  }
+});
+
 test("raw execution never bypasses audited methods or decoded simulation budgets", async () => {
   assert.deepEqual(scaleReadMethods("constructor"), []);
   assert.deepEqual(scaleReadMethods("__proto__"), []);

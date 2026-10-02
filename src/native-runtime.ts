@@ -42,8 +42,8 @@ const version = z.object({
   specName: z.literal("node-subtensor"),
   specVersion: z.int().nonnegative(),
   transactionVersion: z.int().nonnegative(),
-  apis: z.array(z.tuple([z.string().regex(/^0x[0-9a-f]{16}$/), z.int().nonnegative()])).max(256).default([]),
 });
+const advertisedApis = z.object({ apis: z.array(z.tuple([z.string().regex(/^0x[0-9a-f]{16}$/), z.int().nonnegative()])).max(256).default([]) });
 const blockHash = NativeRuntimeSourceSchema.shape.finalized_block_hash;
 type Operation = z.infer<
   typeof NativeRuntimeRequestSchema
@@ -252,9 +252,9 @@ function plan(
             row.methods.some((method) => readApiMethod(row.name, method.name)),
           )
           .map((row) => ({ kind: "api", name: row.name })),
-        ...Object.keys(SCALE_READ_API_METHODS)
+        ...(apiVersions.size === 0 ? [] : Object.keys(SCALE_READ_API_METHODS)
           .filter((name) => !metadata.apis.some((row) => row.name === name) && apiVersions.has(runtimeApiId(name)))
-          .map((name) => ({ kind: "api", name })),
+          .map((name) => ({ kind: "api", name }))),
       ];
     const page = items.slice(
       operation.offset,
@@ -533,7 +533,14 @@ export async function readNativeRuntime(
     runtime_code_hash: codeHash,
   });
   const needed = new Map<number, NativeType>();
-  const apiVersions = new Map(runtime.apis);
+  // Typed reads already have metadata signatures. Do not add an API-list
+  // traversal to them just to support the older signature-less read path.
+  const needsApis = input.operations.some((operation) =>
+    operation.kind === "runtime_scale" ||
+    (metadata.version === 14 && operation.kind === "describe" &&
+      operation.pallet === undefined && operation.type_id === undefined),
+  );
+  const apiVersions = new Map(needsApis ? advertisedApis.parse(rawVersion).apis : []);
   const plans = input.operations.map((operation) =>
     plan(metadata, operation, needed, apiVersions),
   );
