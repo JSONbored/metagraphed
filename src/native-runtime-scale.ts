@@ -1,4 +1,4 @@
-import { blake2AsHex } from "@polkadot/util-crypto";
+import { blake2b } from "@noble/hashes/blake2.js";
 
 // Read implementations audited at Subtensor v470, commit
 // 923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d, runtime/src/lib.rs.
@@ -52,7 +52,7 @@ export const SCALE_READ_API_METHODS: Readonly<Record<string, readonly string[]>>
 };
 
 /** Official RuntimeVersion API identifiers are blake2b-64 of the API name. */
-export const runtimeApiId = (name: string) => blake2AsHex(name, 64);
+export const runtimeApiId = (name: string) => `0x${Buffer.from(blake2b(Buffer.from(name), { dkLen: 8 })).toString("hex")}`;
 export function scaleReadMethods(api: string): readonly string[] {
   return Object.hasOwn(SCALE_READ_API_METHODS, api) ? SCALE_READ_API_METHODS[api]! : [];
 }

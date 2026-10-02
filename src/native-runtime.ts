@@ -121,21 +121,7 @@ function contract(
   metadata: NativeMetadata,
   root: number,
   needed: Map<number, NativeType>,
-  apiVersions: Map<string, number>,
 ) {
-  if (operation.kind === "runtime_scale") {
-    const id = runtimeApiId(operation.api);
-    const apiVersion = apiVersions.get(id);
-    if (!scaleReadMethods(operation.api).includes(operation.member) || apiVersion === undefined)
-      throw new Error("SCALE runtime read is not audited or its API is absent at this source");
-    return {
-      call: { method: "state_call", params: [`${operation.api}_${operation.member}`, operation.input] },
-      result: {
-        kind: "runtime_scale" as const, api: operation.api, member: operation.member,
-        contract: { encoding: "scale", abi: "caller-encoded", runtime_api_id: id, runtime_api_version: apiVersion },
-      },
-    };
-  }
   const pending = [root];
   while (pending.length) {
     const id = pending.pop()!;
@@ -163,7 +149,21 @@ function plan(
   metadata: NativeMetadata,
   operation: Operation,
   needed: Map<number, NativeType>,
+  apiVersions: Map<string, number>,
 ) {
+  if (operation.kind === "runtime_scale") {
+    const id = runtimeApiId(operation.api);
+    const apiVersion = apiVersions.get(id);
+    if (!scaleReadMethods(operation.api).includes(operation.member) || apiVersion === undefined)
+      throw new Error("SCALE runtime read is not audited or its API is absent at this source");
+    return {
+      call: { method: "state_call", params: [`${operation.api}_${operation.member}`, operation.input] },
+      result: {
+        kind: "runtime_scale" as const, api: operation.api, member: operation.member,
+        contract: { encoding: "scale", abi: "caller-encoded", runtime_api_id: id, runtime_api_version: apiVersion },
+      },
+    };
+  }
   if (operation.kind === "describe") {
     if (
       [operation.pallet, operation.api, operation.type_id].filter(
