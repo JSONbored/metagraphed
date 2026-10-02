@@ -864,7 +864,9 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url) => {
-          throw new Error(`fetch failed: ${url}; raw=fixture-prefix/with space`);
+          throw new Error(
+            `fetch failed: ${url}; raw=fixture-prefix/with space`,
+          );
         },
       },
     );
