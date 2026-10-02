@@ -136,8 +136,8 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
       assert.ok(used,`used addresses ${era.spec}`);
       const addresses=[...used[1].matchAll(/hash\(([^)]+)\)/g)].map(match=>match[1]);
       const exports=new Map<string,string>();
-      for(const match of lib.matchAll(/(?:pub\s+)?use (\w+)::([^;]+);/g))for(const name of match[2].match(/\b[A-Z]\w*/g)??[])exports.set(name,match[1]);
-      const modules=[...lib.matchAll(/^use (\w+)::\*;/gm)].map(match=>match[1]);
+      for(const match of lib.matchAll(/(?:pub\s+)?use (?:crate::)?(\w+)::([^;]+);/g))for(const name of match[2].match(/\b[A-Z]\w*/g)??[])exports.set(name,match[1]);
+      const modules=[...lib.matchAll(/^use (?:crate::)?(\w+)::\*;/gm)].map(match=>match[1]);
       const sources=new Map<string,string>(),abiCache=new Map<string,Function[]>();
       async function moduleSource(path:string) {
         let source=sources.get(path);
@@ -172,7 +172,16 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
           assert.ok(signatures.length,`${era.spec} ABI ${klass}`);assert.equal(new Set(signatures).size,signatures.length);
           const filename=name==="PrecompileRegistry" ? "registry":name[0].toLowerCase()+name.slice(1);
           let abi=abiCache.get(filename);
-          if(!abi) {const bytes=await download(base+prefix+`solidity/${filename}.abi`);files.push([prefix+`solidity/${filename}.abi`,digest(bytes)]);abi=JSON.parse(bytes.toString()) as Function[];abiCache.set(filename,abi);}
+          if(!abi) {
+            const abiPath=prefix+`solidity/${filename}.abi`,bytes=await optionalSource(base+abiPath);
+            abi=[];
+            if(bytes!==null) {
+              files.push([abiPath,digest(bytes)]);
+              try {abi=JSON.parse(bytes.toString()) as Function[];}
+              catch(error) {if(!(error instanceof SyntaxError))throw error;console.log("LEGACY_EVM_RUST_ABI",JSON.stringify({spec:era.spec,path:abiPath,reason:"invalid published JSON",sha256:digest(bytes)}));}
+            } else console.log("LEGACY_EVM_RUST_ABI",JSON.stringify({spec:era.spec,path:abiPath,reason:"missing published ABI"}));
+            abiCache.set(filename,abi);
+          }
           for(const signature of signatures) {
             const matches=abi.filter(row=>row.type==="function"&&`${row.name}(${row.inputs.map(canonicalType).join(",")})`===signature);
             let names:string[],actual:Param[],returnType="";
