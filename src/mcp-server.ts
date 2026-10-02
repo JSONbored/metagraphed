@@ -11565,7 +11565,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_root_baskets",
     title: "Read native Root baskets",
     description:
-      "Read finalized Root baskets across audited official releases v441–v470. source.capabilities declares pricing, stored target weights and trading-status availability. API-1 directories contain summaries; later directories contain pricing. Exact quantities are decimal strings. Resume next_after using source.finalized_block_hash as as_of; empty pricing pages may be nonterminal. Read-only. Mirrors GET /api/v1/root-baskets.",
+      "Read finalized Root baskets across audited official releases v441–v471. source.capabilities declares pricing, stored target weights and trading-status availability. API-1 directories contain summaries; later directories contain pricing. Exact quantities are decimal strings. Resume next_after using source.finalized_block_hash as as_of; empty pricing pages may be nonterminal. Read-only. Mirrors GET /api/v1/root-baskets.",
     inputSchema: inputJsonSchema(GetRootBasketsInputSchema),
     async handler(args, ctx) {
       const parsed = GetRootBasketsInputSchema.safeParse(args);
@@ -11598,7 +11598,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_account_root_baskets",
     title: "Get native Root basket account positions",
     description:
-      "Read at most 16 native Root basket relationships across audited releases v441–v470. source.capabilities distinguishes API-1 owed-share entitlements, API-3 display beta positions and API-5 dust-aware claim previews. Marked payout is not an execution quote. Resume next_offset using source.finalized_block_hash as as_of. Confirmed non-basket relationships remain null; no silent 256-entry truncation. Read-only. Mirrors GET /api/v1/accounts/{ss58}/root-baskets.",
+      "Read at most 16 native Root basket relationships across audited releases v441–v471. source.capabilities distinguishes API-1 owed-share entitlements, API-3 display beta positions and API-5 dust-aware claim previews. Marked payout is not an execution quote. Resume next_offset using source.finalized_block_hash as as_of. Confirmed non-basket relationships remain null; no silent 256-entry truncation. Read-only. Mirrors GET /api/v1/accounts/{ss58}/root-baskets.",
     inputSchema: inputJsonSchema(GetAccountRootBasketsInputSchema),
     async handler(args, ctx) {
       const parsed = GetAccountRootBasketsInputSchema.safeParse(args);
@@ -15539,7 +15539,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Identify + decode a raw Ethereum.transact `to`/`input` pair against " +
       "Bittensor EVM precompiles. Supply runtime_spec_version for the " +
-      "official release-bound catalogue across published v430–v470 tags, " +
+      "official release-bound catalogue across audited published spec 205–471 eras, " +
       "including nested arrays, bytes and strings. The result includes " +
       "the audited source commit. Omit the version to retain the legacy " +
       "captured-call catalogue and output. An ordinary contract has null " +
@@ -15576,7 +15576,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         if (!decoded) {
           throw toolError(
             "invalid_params",
-            "Argument `runtime_spec_version` must name an audited published release tag from v430–v470.",
+            "Argument `runtime_spec_version` must name an audited compiled spec in the published 205–471 eras.",
           );
         }
         return decoded;

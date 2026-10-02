@@ -95,7 +95,7 @@ test("discarded metadata arrays are removed across all compiled release contract
       assert.ok(reader.discardedElements >= model.types.size);
       contracts++;
     }
-  assert.equal(contracts, 180);
+  assert.equal(contracts, 182);
 }, 60000);
 
 test("compiled v470 metadata fixture measures the removed allocations and preserves the complete contract", () => {

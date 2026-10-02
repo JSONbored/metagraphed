@@ -16,7 +16,7 @@ const source = {
 
 test("every release-bound precompile function decodes its independently encoded reference arguments", () => {
   assert.equal(reference.reference.version, "ethers@6.15.0");
-  assert.equal(catalogue.releases.length, 90);
+  assert.equal(catalogue.releases.length, 91);
   assert.equal(reference.vectors.length, catalogue.functions.length);
   let cases = 0;
   for (const release of catalogue.releases) {
@@ -120,7 +120,7 @@ test("version selection retains old bindings, identifies raw precompiles and dec
     null,
   );
   assert.equal(
-    decodeRuntimeEvmCall(471, address(2053), "0x00000000"),
+    decodeRuntimeEvmCall(472, address(2053), "0x00000000"),
     undefined,
   );
   assert.equal(

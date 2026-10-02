@@ -87,7 +87,7 @@ test("discovery pages only the selected release and precompile, preserving raw p
     ),
   );
   assert.equal(describeRuntimeEvm(470, address(1), 0, 64).contract.total, 0);
-  for (const spec of [0, 436, 471])
+  for (const spec of [0, 436, 472])
     assert.throws(() => describeRuntimeEvm(spec, true, 0, 64), /not qualified/);
   for (const to of [address(9999), `0x${"ab".repeat(20)}`])
     assert.throws(() => describeRuntimeEvm(470, to, 0, 64), /Unknown EVM/);

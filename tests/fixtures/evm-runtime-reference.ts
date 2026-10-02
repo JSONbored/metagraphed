@@ -1,7 +1,7 @@
 // Independent ethers input vectors and compiled-source provenance.
 import { brotliDecompressSync } from "node:zlib";
 const compressed = [
-  "W2QGJKKgD0ekJv0Q0AgdPud9/zKwtGr91EbxDWAAaU3zB251IG0krR2gpuaqSNGnqvPTtG8WlOpK1ZUYCe6vy23LUkuZmSTzrg+1yNI2n/bW0Vpz5oRC6ZeX",
+  "X9ANJKKgD0ekJv0Q0AgdPud9/zKwtGr91EbxDWAAaU3zB251IG0krR2gpuaqSNGnqvPTtG8WlOpK1ZUYCe6vy23LUkuZmSTzrg+1yNI2n/bW0Vpz5oRC6ZeX",
   "/eUCXcE53F2fmWvZ/PMW4TAOJfg/m2nronTpNp3KFKV1YajqvH+rwIRHdmAV3PCYxzwh7d7ebRhLldeFcBT8Co55wqsANg0QVgRFLTCQZsPQMdY9Eb8f1idk",
   "dnuc9PUfjlFEVMAkNoZWoN+bKQokIOPevtqylKDT93VCQCQpbGzvnv/xQ0VfbD/3fvgz//HDN0/DF/+w33/cr9/+kv0u6u/Ch48fbnTvf8G+fvr+7z/8mQ/f",
   "fixF+tN/937B/+Zfqvw9+ef/DH76N9+//etffL0/9dd//Vf+uf/jT/r5849fPv/qn7/49//sX/W/+1vc0//y67+g/if//tfwr379C/nV37V/+OVv/fjv/t2/",
@@ -142,7 +142,7 @@ const compressed = [
   "kLC3v19JAIDwj1wHABSR6wCAIXIdAHBErQMAiRtcBwAIEbkOABAGLozgYwiwRDD4iAAscvJulF246FMbMRFXJLxsiIjenirv1qnOrS81e4ciLqOGHaSd4aOm",
   "HHxYAvpj8OHqWhtObB12GO8IeeJKcnDhCsmH3BHF1JkBb8NFBNx8ZpdD89676DQXQvTQ+mPwYQ3YFwXa3dzm2ki1ErCDFLNfCpr3nnQ50GtXe95OLrxZ0sU1",
   "cglYJ+caVoXwDz46UYuenSj4C4gkbz0Xqn8jnmuM8nWypAuGWjXtJye66Q+erusiEefxWmbet5FhB2uqQORB1KgTBSKzskPTSlTe4FtFGqSb1yOhem2ai8PF",
-  "XhfCv7Dji3ZBxmh0AEBAf/8/Aw==",
+  "XhfCv7Dji3ZBxqh1AEAwgHk8jvZNNchU6O//Zw==",
 ].join("");
 export default JSON.parse(
   brotliDecompressSync(Buffer.from(compressed, "base64")).toString(),

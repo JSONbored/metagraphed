@@ -21,7 +21,7 @@ const previous = (hex: unknown) => {
 const sha = (bytes: Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
 
-test("direct metadata views preserve all 180 compiled projections, bytes and checksums without hex serialization", () => {
+test("direct metadata views preserve every compiled projection, byte and checksum without hex serialization", () => {
   let cases = 0;
   for (const era of [...legacy, ...eras])
     for (const format of [14, 15] as const) {
@@ -53,7 +53,7 @@ test("direct metadata views preserve all 180 compiled projections, bytes and che
       assert.equal(serialize(after), serialize(before));
       cases++;
     }
-  assert.equal(cases, 180);
+  assert.equal(cases, 182);
 });
 
 test("wrapper option, canonical length, truncation, trailing bytes and payload limits match the hex path", () => {

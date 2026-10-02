@@ -27,7 +27,7 @@ import type { BasketRpc } from "../src/root-basket-runtime.ts";
 const hash = `0x${"33".repeat(32)}`;
 const specs = [
   430, 431, 432, 437, 438, 439, 440, 441, 442, 443, 445, 446, 447, 448, 450,
-  452, 453, 454, 459, 464, 466, 467, 468, 469, 470,
+  452, 453, 454, 459, 464, 466, 467, 468, 469, 470, 471,
 ];
 assert.deepEqual(
   eras.map((era) => era.spec),

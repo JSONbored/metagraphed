@@ -38,7 +38,7 @@ export const DecodeEvmCallInputSchema = z
       .max(4294967295)
       .optional()
       .describe(
-        "Official Subtensor spec version for release-bound decoding (published tags v430–v470). Omit for the legacy captured-call catalogue and unchanged output.",
+        "Official Subtensor spec version for release-bound decoding (audited published releases in spec 205–471 eras). Omit for the legacy captured-call catalogue and unchanged output.",
       )
       .meta({ examples: [470] }),
   })

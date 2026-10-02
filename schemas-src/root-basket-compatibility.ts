@@ -110,6 +110,12 @@ export const ROOT_BASKET_RUNTIME_ADAPTERS = [
     commit: "923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d",
     decoder: "subtensor-v470-923fd1fa-v1",
   },
+  {
+    spec: 471,
+    api: 5,
+    commit: "c004cebf360f4088187ee49d851dfb1a1eaaf710",
+    decoder: "subtensor-v471-c004cebf-v1",
+  },
 ] as const;
 
 export function rootBasketCapabilities(api: 1 | 3 | 4 | 5) {

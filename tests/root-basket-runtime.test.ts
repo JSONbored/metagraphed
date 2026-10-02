@@ -26,6 +26,7 @@ test("runtime API identity matches the independent Blake2b-64 trait-name golden"
 for (const [specVersion, decoderVersion] of [
   [469, "subtensor-v469-370bac46-v1"],
   [470, "subtensor-v470-923fd1fa-v1"],
+  [471, "subtensor-v471-c004cebf-v1"],
 ] as const) {
   test(`v${specVersion} basket views share one finalized runtime and encoded account identity`, async () => {
     const fixture = source({
@@ -58,7 +59,7 @@ for (const [specVersion, decoderVersion] of [
         : "subtensor-v469-370bac46-v1";
     for (const wrong of [
       { decoder_version: otherDecoder },
-      { runtime_spec_version: 471 },
+      { runtime_spec_version: 472 },
       { runtime_api_version: 4 },
       { unexpected: true },
     ])
@@ -143,7 +144,7 @@ test("unsupported or ambiguous runtime APIs fail before metadata or basket work"
     { specName: "other", specVersion: 469, apis: [[BASKET_RUNTIME_API_ID, 5]] },
     {
       specName: "node-subtensor",
-      specVersion: 471,
+      specVersion: 472,
       apis: [[BASKET_RUNTIME_API_ID, 5]],
     },
     {
