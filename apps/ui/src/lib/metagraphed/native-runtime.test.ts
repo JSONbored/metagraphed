@@ -22,25 +22,51 @@ import { encodeSs58 } from "./ss58";
 
 const key = `0x${"12".repeat(32)}`;
 test("legacy record selection is scoped to compiled eras and read families, preserving omitted flags", () => {
-  const member = { kind: "runtime" as const, api: "DelegateInfoRuntimeApi", member: "get_delegate", args: [] };
+  const member = {
+    kind: "runtime" as const,
+    api: "DelegateInfoRuntimeApi",
+    member: "get_delegate",
+    args: [],
+  };
   expect(supportsLegacyInnerRecord(210, member)).toBe(true);
-  for (const spec of [0, 209, 220, 233, 470]) expect(supportsLegacyInnerRecord(spec, member)).toBe(false);
+  for (const spec of [0, 209, 220, 233, 470])
+    expect(supportsLegacyInnerRecord(spec, member)).toBe(false);
   expect(supportsLegacyInnerRecord(210, { ...member, api: "AccountNonceApi" })).toBe(false);
   expect(supportsLegacyInnerRecord(210, { ...member, member: "get_subnet_state" })).toBe(false);
   const operation = memberOperation(member, "[]");
   expect(innerRecordOperation(operation, false)).toBe(operation);
   expect(innerRecordOperation(operation, true)).toEqual({ ...operation, decode_inner: true });
-  expect(() => innerRecordOperation({ kind: "constant", pallet: "P", member: "C" }, true)).toThrow(/legacy runtime record/);
+  expect(() => innerRecordOperation({ kind: "constant", pallet: "P", member: "C" }, true)).toThrow(
+    /legacy runtime record/,
+  );
 });
 
 test("native tables show decoded records and original wire bytes together without rounding", () => {
-  const view = { results: [{ kind: "runtime", api: "DelegateInfoRuntimeApi", member: "get_delegate", value: "0x00", inner_result: { stake: "9007199254740993", owner: key } }] } as NativeArtifact;
+  const view = {
+    results: [
+      {
+        kind: "runtime",
+        api: "DelegateInfoRuntimeApi",
+        member: "get_delegate",
+        value: "0x00",
+        inner_result: { stake: "9007199254740993", owner: key },
+      },
+    ],
+  } as NativeArtifact;
   const rows = nativeValueRows(view);
-  expect(rows).toEqual(expect.arrayContaining([
-    expect.objectContaining({ field: "1. DelegateInfoRuntimeApi.get_delegate.inner_result.stake", value: "9007199254740993" }),
-    expect.objectContaining({ field: "1. DelegateInfoRuntimeApi.get_delegate.inner_result.owner", value: key }),
-    expect.objectContaining({ field: "1. DelegateInfoRuntimeApi.get_delegate", value: "0x00" }),
-  ]));
+  expect(rows).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        field: "1. DelegateInfoRuntimeApi.get_delegate.inner_result.stake",
+        value: "9007199254740993",
+      }),
+      expect.objectContaining({
+        field: "1. DelegateInfoRuntimeApi.get_delegate.inner_result.owner",
+        value: key,
+      }),
+      expect.objectContaining({ field: "1. DelegateInfoRuntimeApi.get_delegate", value: "0x00" }),
+    ]),
+  );
 });
 test("legacy read discovery accepts exact SCALE arguments without inventing portable types", () => {
   const member = {

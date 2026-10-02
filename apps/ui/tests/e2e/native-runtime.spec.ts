@@ -29,41 +29,109 @@ const source = {
   metadata_sha256: `0x${"55".repeat(32)}`,
 };
 test.use({ serviceWorkers: "block" });
-test("historical runtime inspection decodes qualified legacy records and resets selection for a new source", async ({ page }) => {
-  const oldHash = `0x${"ab".repeat(32)}`, requests: unknown[] = [];
-  await page.route("**/api/v1/native-runtime", async route => {
-    const body = route.request().postDataJSON(); requests.push(body);
-    const discovery = body.operations[0].kind === "describe", old = body.as_of === oldHash;
-    await route.fulfill({ json: { ok: true, data: {
-      schema_version: 1, source: { ...source, finalized_block_hash: body.as_of ?? hash, runtime_spec_version: old ? 210 : 470 }, types: [],
-      results: discovery ? [{ kind: "describe", value: [{ kind: "runtime", api: "DelegateInfoRuntimeApi", member: "get_delegate", args: [{ name: "delegate_account_vec", type: 1 }] }], contract: { next_offset: null } }] : [{ kind: "runtime", api: "DelegateInfoRuntimeApi", member: "get_delegate", value: "0x", inner_result: null, contract: { root_type: 1, inner_scale: { root_type: 0, types: [] } } }],
-    } } });
+test("historical runtime inspection decodes qualified legacy records and resets selection for a new source", async ({
+  page,
+}) => {
+  const oldHash = `0x${"ab".repeat(32)}`,
+    requests: unknown[] = [];
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body);
+    const discovery = body.operations[0].kind === "describe",
+      old = body.as_of === oldHash;
+    await route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          schema_version: 1,
+          source: {
+            ...source,
+            finalized_block_hash: body.as_of ?? hash,
+            runtime_spec_version: old ? 210 : 470,
+          },
+          types: [],
+          results: discovery
+            ? [
+                {
+                  kind: "describe",
+                  value: [
+                    {
+                      kind: "runtime",
+                      api: "DelegateInfoRuntimeApi",
+                      member: "get_delegate",
+                      args: [{ name: "delegate_account_vec", type: 1 }],
+                    },
+                  ],
+                  contract: { next_offset: null },
+                },
+              ]
+            : [
+                {
+                  kind: "runtime",
+                  api: "DelegateInfoRuntimeApi",
+                  member: "get_delegate",
+                  value: "0x",
+                  inner_result: null,
+                  contract: { root_type: 1, inner_scale: { root_type: 0, types: [] } },
+                },
+              ],
+        },
+      },
+    });
   });
   await gotoThroughRestart(page, "/apis/native");
-  await page.getByRole("textbox", { name: "Finalized block hash (optional)", exact: true }).fill(oldHash);
+  await page
+    .getByRole("textbox", { name: "Finalized block hash (optional)", exact: true })
+    .fill(oldHash);
   await page.getByRole("combobox", { name: "Contract", exact: true }).selectOption("api");
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("DelegateInfoRuntimeApi");
   await page.getByRole("button", { name: "Inspect contract" }).click();
   await page.getByRole("checkbox", { name: "Decode nested legacy records" }).check();
-  await page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }).fill(JSON.stringify([`0x${"12".repeat(32)}`]));
+  await page
+    .getByRole("textbox", { name: "Arguments (JSON array)", exact: true })
+    .fill(JSON.stringify([`0x${"12".repeat(32)}`]));
   await page.getByRole("button", { name: "Read operation", exact: true }).click();
-  await expect(page.getByText("1. DelegateInfoRuntimeApi.get_delegate.inner_result", { exact: true })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Absent Copy Exact value", exact: true })).toBeVisible();
+  await expect(
+    page.getByText("1. DelegateInfoRuntimeApi.get_delegate.inner_result", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Absent Copy Exact value", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("cell", { name: "0x Copy Exact value", exact: true })).toBeVisible();
   expect(requests[0]).toMatchObject({ as_of: oldHash });
-  expect(requests[1]).toEqual({ as_of: oldHash, operations: [{ kind: "runtime", api: "DelegateInfoRuntimeApi", member: "get_delegate", args: [`0x${"12".repeat(32)}`], decode_inner: true }] });
-  await page.getByRole("textbox", { name: "Finalized block hash (optional)", exact: true }).fill(hash);
+  expect(requests[1]).toEqual({
+    as_of: oldHash,
+    operations: [
+      {
+        kind: "runtime",
+        api: "DelegateInfoRuntimeApi",
+        member: "get_delegate",
+        args: [`0x${"12".repeat(32)}`],
+        decode_inner: true,
+      },
+    ],
+  });
+  await page
+    .getByRole("textbox", { name: "Finalized block hash (optional)", exact: true })
+    .fill(hash);
   await expect(page.getByRole("checkbox", { name: "Decode nested legacy records" })).toHaveCount(0);
   await page.getByRole("button", { name: "Inspect contract" }).click();
-  await expect(page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "Decode nested legacy records" })).toHaveCount(0);
 });
 
 test("invalid historical block hashes issue no native request", async ({ page }) => {
   const requests: unknown[] = [];
-  await page.route("**/api/v1/native-runtime", async route => { requests.push(route.request().postDataJSON()); await route.fulfill({ json: {} }); });
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    requests.push(route.request().postDataJSON());
+    await route.fulfill({ json: {} });
+  });
   await gotoThroughRestart(page, "/apis/native");
-  await page.getByRole("textbox", { name: "Finalized block hash (optional)", exact: true }).fill("not-a-hash");
+  await page
+    .getByRole("textbox", { name: "Finalized block hash (optional)", exact: true })
+    .fill("not-a-hash");
   await page.getByRole("button", { name: "Inspect contract" }).click();
   await expect(page.locator('[role="alert"]')).toContainText("finalized block hash");
   expect(requests).toEqual([]);

@@ -80,9 +80,12 @@ export const NativeEvmResultSchema = z
     "Release-bound Solidity return interpretation for an evm_call simulation. Values are in the declared output order, tuples use their unique named fields or positional arrays, and wide integers are exact decimal strings. The native value retains all original return bytes, gas, logs, reverts and dispatch errors. Failed executions and malformed return bytes are never interpreted as successful values.",
   );
 const args = z.array(NativeJsonValueSchema).max(64).default([]);
-const decodeInner = z.boolean().optional().describe(
-  "Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result.",
-);
+const decodeInner = z
+  .boolean()
+  .optional()
+  .describe(
+    "Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result.",
+  );
 const evmAddress = z.string().regex(/^0x[0-9a-f]{40}$/);
 export const NativeEvmCallSchema = z
   .object({

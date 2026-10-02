@@ -601,7 +601,13 @@ export async function readNativeRuntime(
       const key = `${operation.api}_${operation.member}`;
       inner = innerRecords.get(key);
       if (!inner) {
-        inner = nativeInnerRecord(metadata, runtime.specVersion, sha256, operation.api, operation.member);
+        inner = nativeInnerRecord(
+          metadata,
+          runtime.specVersion,
+          sha256,
+          operation.api,
+          operation.member,
+        );
         innerRecords.set(key, inner);
       }
     }
@@ -617,11 +623,16 @@ export async function readNativeRuntime(
       apiVersions,
       runtime.specVersion,
     );
-    const row = inner ? {
-      ...base,
-      inner,
-      result: { ...base.result, contract: { ...base.result.contract, inner_scale: inner.contract } },
-    } : base;
+    const row = inner
+      ? {
+          ...base,
+          inner,
+          result: {
+            ...base.result,
+            contract: { ...base.result.contract, inner_scale: inner.contract },
+          },
+        }
+      : base;
     if (
       (operation.kind === "runtime" || operation.kind === "prepare") &&
       operation.code_artifact
@@ -752,7 +763,12 @@ export async function readNativeRuntime(
     }
     return decoded;
   };
-  const innerResult = (key: string, inner: ReturnType<typeof nativeInnerRecord>, value: unknown, outer = false) => {
+  const innerResult = (
+    key: string,
+    inner: ReturnType<typeof nativeInnerRecord>,
+    value: unknown,
+    outer = false,
+  ) => {
     let decoded = innerValues.get(key);
     if (decoded === undefined) {
       decoded = inner.decode(value, outer);
@@ -768,7 +784,10 @@ export async function readNativeRuntime(
         ...row.result,
         contract: { ...row.result.contract, next_cursor: page.next },
         value: page.keys.map((key) => {
-          const callKey = JSON.stringify({ method: "state_getStorage", params: [key, at] });
+          const callKey = JSON.stringify({
+            method: "state_getStorage",
+            params: [key, at],
+          });
           const value = responses.get(callKey);
           if (value === null || value === undefined)
             throw new Error("Native enumerated storage value is absent");
@@ -794,7 +813,9 @@ export async function readNativeRuntime(
       return {
         ...row.result,
         value,
-        ...("inner" in row && row.inner ? innerResult(key, row.inner, value, true) : {}),
+        ...("inner" in row && row.inner
+          ? innerResult(key, row.inner, value, true)
+          : {}),
       };
     }
     if ("item" in row && row.item && value === null) {
@@ -807,11 +828,15 @@ export async function readNativeRuntime(
       throw new Error("Missing native result contract");
     // Defaults belong to their storage declaration; aliases can share a key
     // and wire type while declaring different fallback bytes.
-    const decoded = isDefault ? decodeNativeValue(metadata, row.output, value) : decodeResult(key, row.output, value);
+    const decoded = isDefault
+      ? decodeNativeValue(metadata, row.output, value)
+      : decodeResult(key, row.output, value);
     return {
       ...row.result,
       value: decoded,
-      ...("inner" in row && row.inner ? innerResult(key, row.inner, decoded) : {}),
+      ...("inner" in row && row.inner
+        ? innerResult(key, row.inner, decoded)
+        : {}),
       ...("evm" in row && row.evm
         ? { evm_result: decodeNativeEvmResult(decoded, row.evm.outputs) }
         : {}),

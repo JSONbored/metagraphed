@@ -368,7 +368,10 @@ export function evmCallOperation(
   return { ...operation, evm_call: { signature: signature.trim(), args: nativeArguments(text) } };
 }
 
-export function innerRecordOperation(operation: NativeOperation, enabled: boolean): NativeOperation {
+export function innerRecordOperation(
+  operation: NativeOperation,
+  enabled: boolean,
+): NativeOperation {
   if (!enabled) return operation;
   if (operation.kind !== "runtime" && operation.kind !== "runtime_scale")
     throw new Error("Choose a legacy runtime record read.");
@@ -376,10 +379,32 @@ export function innerRecordOperation(operation: NativeOperation, enabled: boolea
 }
 
 export function supportsLegacyInnerRecord(spec: number, member: NativeMember) {
-  return [205, 210, 211, 212, 216, 217, 218, 219].includes(spec) &&
+  return (
+    [205, 210, 211, 212, 216, 217, 218, 219].includes(spec) &&
     (member.kind === "runtime" || member.kind === "runtime_scale") &&
-    ["DelegateInfoRuntimeApi", "NeuronInfoRuntimeApi", "SubnetInfoRuntimeApi", "StakeInfoRuntimeApi"].includes(member.api ?? "") &&
-    ["get_delegates", "get_delegate", "get_delegated", "get_neurons", "get_neuron", "get_neurons_lite", "get_neuron_lite", "get_subnet_info", "get_subnets_info", "get_subnet_info_v2", "get_subnets_info_v2", "get_subnet_hyperparams", "get_stake_info_for_coldkey", "get_stake_info_for_coldkeys"].includes(member.member);
+    [
+      "DelegateInfoRuntimeApi",
+      "NeuronInfoRuntimeApi",
+      "SubnetInfoRuntimeApi",
+      "StakeInfoRuntimeApi",
+    ].includes(member.api ?? "") &&
+    [
+      "get_delegates",
+      "get_delegate",
+      "get_delegated",
+      "get_neurons",
+      "get_neuron",
+      "get_neurons_lite",
+      "get_neuron_lite",
+      "get_subnet_info",
+      "get_subnets_info",
+      "get_subnet_info_v2",
+      "get_subnets_info_v2",
+      "get_subnet_hyperparams",
+      "get_stake_info_for_coldkey",
+      "get_stake_info_for_coldkeys",
+    ].includes(member.member)
+  );
 }
 export function evmPrecompileOperation(
   member: NativeMember,

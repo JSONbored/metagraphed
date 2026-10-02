@@ -130,7 +130,9 @@ function NativeRuntimeExplorer({
     try {
       const pinned = asOf ?? (sourceHash.trim() || undefined);
       if (pinned && !/^0x[0-9a-f]{64}$/.test(pinned))
-        throw new Error("Enter a 0x-prefixed finalized block hash with 64 lowercase hex characters.");
+        throw new Error(
+          "Enter a 0x-prefixed finalized block hash with 64 lowercase hex characters.",
+        );
       const response = await apiFetch<NativeArtifact>("/api/v1/native-runtime", {
         signal: active.signal,
         init: {
@@ -323,9 +325,9 @@ function NativeRuntimeExplorer({
             Call, instantiate and upload_code simulate at a finalized block. Use an explicit Some
             gas_limit with ref_time and proof_size. A request permits up to 250,000,000,000
             reference picoseconds and 65,536 proof bytes. Inline code permits 16,384 bytes; a
-            checksum-pinned artifact permits up to the runtime’s MaxCodeLen, capped at 131,072 bytes.
-            Deposits, return bytes and reverts are preserved; simulation does not publish code or a
-            contract.
+            checksum-pinned artifact permits up to the runtime’s MaxCodeLen, capped at 131,072
+            bytes. Deposits, return bytes and reverts are preserved; simulation does not publish
+            code or a contract.
           </p>
         )}
         <form
@@ -446,7 +448,11 @@ function NativeRuntimeExplorer({
                         codeArtifactOperation(
                           innerRecordOperation(
                             memberOperation(member, args),
-                            decodeInner && supportsLegacyInnerRecord(description.source.runtime_spec_version, member),
+                            decodeInner &&
+                              supportsLegacyInnerRecord(
+                                description.source.runtime_spec_version,
+                                member,
+                              ),
                           ),
                           codeUrl,
                           codeSha256,
@@ -462,7 +468,12 @@ function NativeRuntimeExplorer({
               >
                 {supportsLegacyInnerRecord(description.source.runtime_spec_version, member) && (
                   <label className="flex items-center gap-2 text-13">
-                    <input type="checkbox" disabled={busy} checked={decodeInner} onChange={(event) => setDecodeInner(event.target.checked)} />
+                    <input
+                      type="checkbox"
+                      disabled={busy}
+                      checked={decodeInner}
+                      onChange={(event) => setDecodeInner(event.target.checked)}
+                    />
                     Decode nested legacy records
                   </label>
                 )}
