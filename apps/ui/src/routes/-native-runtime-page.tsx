@@ -28,10 +28,13 @@ import {
   nativeTypeLabel,
   nativeValueRows,
   nativePageOffset,
+  queryNativeNeuronPage,
   type NativeArtifact,
   type NativeFeature,
   type NativeOperation,
   type NativeValueRow,
+  type NativeNeuronPage,
+  type NativeNeuronPageRequest,
 } from "@/lib/metagraphed/native-runtime";
 
 const control =
@@ -111,6 +114,11 @@ function NativeRuntimeExplorer({
   const [valueOffset, setValueOffset] = useState("0");
   const [valueLimit, setValueLimit] = useState("16");
   const [lastOperations, setLastOperations] = useState<NativeOperation[]>([]);
+  const [neuronNetuid, setNeuronNetuid] = useState(initialNetuid);
+  const [neuronOffset, setNeuronOffset] = useState("0");
+  const [neuronLimit, setNeuronLimit] = useState("16");
+  const [neuronLite, setNeuronLite] = useState(false);
+  const [neuronPage, setNeuronPage] = useState<NativeNeuronPage | null>(null);
   const [codeUrl, setCodeUrl] = useState("");
   const [codeSha256, setCodeSha256] = useState("");
   const [codeBytes, setCodeBytes] = useState("");
@@ -127,6 +135,7 @@ function NativeRuntimeExplorer({
     operations: NativeOperation[],
     discovery: boolean | "evm" = false,
     asOf?: string,
+    neuron?: NativeNeuronPageRequest,
   ) => {
     controller.current?.abort();
     const active = new AbortController();
@@ -134,27 +143,34 @@ function NativeRuntimeExplorer({
     setBusy(true);
     setError(null);
     setResult(null);
+    setNeuronPage(null);
     try {
       const pinned = asOf ?? (sourceHash.trim() || undefined);
       if (pinned && !/^0x[0-9a-f]{64}$/.test(pinned))
         throw new Error(
           "Enter a 0x-prefixed finalized block hash with 64 lowercase hex characters.",
         );
-      const response = await apiFetch<NativeArtifact>("/api/v1/native-runtime", {
-        signal: active.signal,
-        init: {
-          method: "POST",
-          headers: { Accept: "application/json", "Content-Type": "application/json" },
-          body: JSON.stringify({ operations, ...(pinned ? { as_of: pinned } : {}) }),
-        },
-      });
+      const query = async (items: NativeOperation[], at?: string) => {
+        if (active.signal.aborted) throw new DOMException("Request aborted", "AbortError");
+        const response = await apiFetch<NativeArtifact>("/api/v1/native-runtime", {
+          signal: active.signal,
+          init: {
+            method: "POST",
+            headers: { Accept: "application/json", "Content-Type": "application/json" },
+            body: JSON.stringify({ operations: items, ...(at ? { as_of: at } : {}) }),
+          },
+        });
+        return response.data;
+      };
+      const page = neuron ? await queryNativeNeuronPage(neuron, query, pinned) : null;
+      const data = page ? page.artifact : await query(operations, pinned);
       if (active.signal.aborted) return;
-      if (discovery === "evm") setEvmDescription(response.data);
+      if (discovery === "evm") setEvmDescription(data);
       else if (discovery) {
         setEvmDescription(null);
         setEvmSignature("");
         setEvmArgs("[]");
-        setDescription(response.data);
+        setDescription(data);
         setCodeUrl("");
         setCodeSha256("");
         setCodeBytes("");
@@ -163,10 +179,11 @@ function NativeRuntimeExplorer({
         setValuePaging(false);
         setValuePath("[]");
         setValueOffset("0");
-        setArgs(describedMembers(response.data)[0]?.kind === "runtime_scale" ? "0x" : "[]");
+        setArgs(describedMembers(data)[0]?.kind === "runtime_scale" ? "0x" : "[]");
       } else {
         setLastOperations(operations);
-        setResult(response.data);
+        setNeuronPage(page?.page ?? null);
+        setResult(data);
       }
     } catch (failure) {
       if (!active.signal.aborted)
@@ -291,6 +308,75 @@ function NativeRuntimeExplorer({
             </button>
           </div>
         </form>
+      </section>
+
+      <section aria-labelledby="native-neurons" className="space-y-4">
+        <div>
+          <h2 id="native-neurons" className="font-display text-18 text-ink-strong">
+            Neuron records
+          </h2>
+          <p className="text-13 text-ink-muted">
+            Read a bounded UID range at one finalized block. Full records include their weights
+            and bonds; absent records remain absent. Each page fetches only its selected neurons.
+          </p>
+        </div>
+        <form
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void read([], false, undefined, {
+              netuid: neuronNetuid,
+              offset: neuronOffset,
+              limit: neuronLimit,
+              lite: neuronLite,
+            });
+          }}
+        >
+          <label className="space-y-1 text-13">
+            Neuron subnet
+            <input disabled={busy} className={control} inputMode="numeric" value={neuronNetuid}
+              onChange={(event) => setNeuronNetuid(event.target.value)} />
+          </label>
+          <label className="space-y-1 text-13">
+            Starting UID
+            <input disabled={busy} className={control} inputMode="numeric" value={neuronOffset}
+              onChange={(event) => setNeuronOffset(event.target.value)} />
+          </label>
+          <label className="space-y-1 text-13">
+            Neurons per page
+            <input disabled={busy} className={control} inputMode="numeric" value={neuronLimit}
+              onChange={(event) => setNeuronLimit(event.target.value)} />
+          </label>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex items-center gap-2 text-13">
+              <input type="checkbox" disabled={busy} checked={neuronLite}
+                onChange={(event) => setNeuronLite(event.target.checked)} />
+              Lite records
+            </label>
+            <button className={button} disabled={busy} type="submit">Read neuron page</button>
+          </div>
+        </form>
+        {neuronPage && result && (
+          <div className="flex flex-wrap items-center gap-3 text-13">
+            <span>
+              Subnet {neuronPage.netuid} · UID {neuronPage.offset} · {neuronPage.total} UID slots
+            </span>
+            <span className="text-ink-muted">
+              Continuation keeps this page’s subnet, record format and finalized block.
+            </span>
+            {neuronPage.next_offset !== null && (
+              <button className={button} disabled={busy} type="button"
+                onClick={() => void read([], false, result.source.finalized_block_hash, {
+                  netuid: String(neuronPage.netuid),
+                  offset: String(neuronPage.next_offset),
+                  limit: String(neuronPage.limit),
+                  lite: neuronPage.lite,
+                })}>
+                Next neuron page
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="native-contract" className="space-y-4">

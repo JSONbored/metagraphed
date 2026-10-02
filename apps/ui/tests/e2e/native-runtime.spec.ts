@@ -29,6 +29,112 @@ const source = {
   metadata_sha256: `0x${"55".repeat(32)}`,
 };
 test.use({ serviceWorkers: "block" });
+test("neuron UID pages fetch singular records and continue the saved subnet, format and finalized source", async ({ page }) => {
+  const requests: { as_of?: string; operations: { kind: string; member: string; args: number[] }[] }[] = [];
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body);
+    const count = body.operations[0].member === "SubnetworkN";
+    await route.fulfill({ json: { ok: true, data: {
+      schema_version: 1, source, types: [],
+      results: count
+        ? [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", value: "19", contract: {} }]
+        : body.operations.map((operation: { kind: string; member: string; args: number[] }) => ({
+          kind: operation.kind, api: "NeuronInfoRuntimeApi", member: operation.member, contract: {},
+          value: operation.args[1] === 3 ? { variant: "None", fields: {} } : { uid: String(operation.args[1]), stake: "9007199254740993" },
+        })),
+    } } });
+  });
+  await gotoThroughRestart(page, "/apis/native");
+  expect(requests).toEqual([]);
+  await page.getByRole("button", { name: "Read neuron page", exact: true }).click();
+  await expect(page.getByText("Subnet 19 · UID 0 · 19 UID slots", { exact: true })).toBeVisible();
+  await expect(page.getByText("4. NeuronInfoRuntimeApi.get_neuron.variant", { exact: true })).toBeVisible();
+  expect(requests).toHaveLength(2);
+  expect(requests[0]).toEqual({ operations: [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [19] }] });
+  expect(requests[1]).toEqual({ as_of: hash, operations: Array.from({ length: 16 }, (_, uid) => ({
+    kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neuron", args: [19, uid],
+  })) });
+  await page.getByRole("textbox", { name: "Neuron subnet", exact: true }).fill("20");
+  await page.getByRole("textbox", { name: "Starting UID", exact: true }).fill("14");
+  await page.getByRole("textbox", { name: "Neurons per page", exact: true }).fill("1");
+  await page.getByRole("checkbox", { name: "Lite records", exact: true }).check();
+  await page.getByRole("button", { name: "Next neuron page", exact: true }).click();
+  await expect(page.getByText("Subnet 19 · UID 16 · 19 UID slots", { exact: true })).toBeVisible();
+  expect(requests[2]).toEqual({ as_of: hash, operations: [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [19] }] });
+  expect(requests[3]).toEqual({ as_of: hash, operations: [16, 17, 18].map((uid) => ({
+    kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neuron", args: [19, uid],
+  })) });
+  await expect(page.getByRole("button", { name: "Next neuron page", exact: true })).toHaveCount(0);
+});
+
+test("historical neuron pages use qualified byte reads while empty ranges issue no record request", async ({ page }) => {
+  const requests: unknown[] = [], oldHash = `0x${"ab".repeat(32)}`;
+  let empty = false;
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body);
+    await route.fulfill({ json: { ok: true, data: {
+      schema_version: 1,
+      source: { ...source, finalized_block_hash: oldHash, runtime_spec_version: 210, metadata_version: 14 },
+      types: [],
+      results: body.operations[0].member === "SubnetworkN"
+        ? [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", value: empty ? "0" : "3", contract: {} }]
+        : body.operations.map((operation: { kind: string; member: string }, index: number) => ({
+          kind: operation.kind, api: "NeuronInfoRuntimeApi", member: operation.member, contract: {},
+          value: "0x", inner_result: index === 1 ? null : { uid: "1", stake: "9007199254740993" },
+        })),
+    } } });
+  });
+  await gotoThroughRestart(page, "/apis/native");
+  await page.getByRole("textbox", { name: "Finalized block hash (optional)", exact: true }).fill(oldHash);
+  await page.getByRole("textbox", { name: "Starting UID", exact: true }).fill("1");
+  await page.getByRole("checkbox", { name: "Lite records", exact: true }).check();
+  await page.getByRole("button", { name: "Read neuron page", exact: true }).click();
+  await expect(page.getByText("2. NeuronInfoRuntimeApi.get_neuron_lite.inner_result", { exact: true })).toBeVisible();
+  expect(requests[1]).toEqual({ as_of: oldHash, operations: ["0100", "0200"].map((uid) => ({
+    kind: "runtime_scale", api: "NeuronInfoRuntimeApi", member: "get_neuron_lite", input: `0x1300${uid}`, decode_inner: true,
+  })) });
+  empty = true;
+  await page.getByRole("textbox", { name: "Starting UID", exact: true }).fill("0");
+  await page.getByRole("button", { name: "Read neuron page", exact: true }).click();
+  await expect(page.getByText("Subnet 19 · UID 0 · 0 UID slots", { exact: true })).toBeVisible();
+  expect(requests).toHaveLength(3);
+  await expect(page.getByRole("button", { name: "Next neuron page", exact: true })).toHaveCount(0);
+});
+
+test("neuron page admission and source failures clear partial results and allow a clean retry", async ({ page }) => {
+  const requests: unknown[] = [];
+  let mismatch = true;
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body);
+    const count = body.operations[0].member === "SubnetworkN";
+    await route.fulfill({ json: { ok: true, data: {
+      schema_version: 1,
+      source: { ...source, finalized_block_hash: !count && mismatch ? `0x${"ab".repeat(32)}` : hash },
+      types: [],
+      results: count
+        ? [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", value: "1", contract: {} }]
+        : [{ kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neuron", value: { uid: "0" }, contract: {} }],
+    } } });
+  });
+  await gotoThroughRestart(page, "/apis/native");
+  await page.getByRole("textbox", { name: "Neurons per page", exact: true }).fill("17");
+  await page.getByRole("button", { name: "Read neuron page", exact: true }).click();
+  await expect(page.locator('[role="alert"]')).toContainText("page size from 1 through 16");
+  expect(requests).toEqual([]);
+  await page.getByRole("textbox", { name: "Neurons per page", exact: true }).fill("16");
+  await page.getByRole("button", { name: "Read neuron page", exact: true }).click();
+  await expect(page.locator('[role="alert"]')).toContainText("changed their finalized source");
+  await expect(page.getByRole("button", { name: "Next neuron page", exact: true })).toHaveCount(0);
+  expect(requests).toHaveLength(2);
+  mismatch = false;
+  await page.getByRole("button", { name: "Read neuron page", exact: true }).click();
+  await expect(page.getByText("Subnet 19 · UID 0 · 1 UID slots", { exact: true })).toBeVisible();
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+  expect(requests).toHaveLength(4);
+});
 test("historical runtime inspection decodes qualified legacy records and resets selection for a new source", async ({
   page,
 }) => {

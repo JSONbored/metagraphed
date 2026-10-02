@@ -432,6 +432,58 @@ for every string, preserving initial BOMs and rejection of malformed or truncate
 UTF-8, including after a preceding decode error. Decoder state is not shared
 between requests/readers.
 
+## Neuron UID pages without a bulk result
+
+The website's **Neuron records** form reads a bounded range of singular records
+through the existing native contract. It first reads `SubtensorModule.SubnetworkN`,
+then sends up to sixteen `NeuronInfoRuntimeApi.get_neuron` operations at that
+response's finalized block. **Lite records** selects `get_neuron_lite` explicitly.
+The count and records retain their network, genesis, block, runtime and code
+identity; continuation uses the last successful subnet, format and page size even
+if the form is subsequently edited. Empty/completed ranges make no record request.
+
+REST and MCP use the same operations. First request the count:
+
+```json
+{
+  "operations": [
+    { "kind": "storage", "pallet": "SubtensorModule", "member": "SubnetworkN", "args": [19] }
+  ]
+}
+```
+
+Use its `source.finalized_block_hash` as `as_of` for the selected singular reads:
+
+```json
+{
+  "as_of": "0x3333333333333333333333333333333333333333333333333333333333333333",
+  "operations": [
+    { "kind": "runtime", "api": "NeuronInfoRuntimeApi", "member": "get_neuron", "args": [19, 0] },
+    { "kind": "runtime", "api": "NeuronInfoRuntimeApi", "member": "get_neuron", "args": [19, 1] }
+  ]
+}
+```
+
+The displayed hash is a fixture placeholder; continuation must use the actual
+count response. Stop before its UID count and keep that source for later batches.
+Each result retains its source-defined Option and complete fields, including
+weights and bonds for full records. A missing UID remains `None`; later requested
+UIDs are still returned. This is an explicit UID range, not a synthesized substitute
+for the upstream `get_neurons` vector: the pinned v470 implementation stops that
+vector at the first missing neuron. Do not report a UID count as the vector length.
+
+For the eight source-qualified opaque eras (compiled specs 205, 210, 211, 212,
+216, 217, 218 and 219), the form uses `runtime_scale` singular reads with
+`decode_inner: true`. Arguments are the source's little-endian `u16` netuid and UID;
+the native server still requires the exact compiled metadata/catalogue binding.
+For netuid 19 and UID 256, the input is `0x13000001`. Exact outer bytes and decoded
+records/confirmed absence remain available together.
+
+Singular reads avoid downloading and parsing an oversized full collection. The
+existing sixteen-operation, per-value byte, work and final-response budgets remain
+in force. An individual record that exceeds a budget still fails explicitly; UID
+pagination does not make an unbounded single record safe.
+
 ## Explicit collection pages
 
 A typed `storage`, `constant` or `runtime` read accepts `value_page`:

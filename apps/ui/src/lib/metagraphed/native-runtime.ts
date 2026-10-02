@@ -6,6 +6,118 @@ export type NativeRequest = ApiSchema<"NativeRuntimeRequest">;
 export type NativeOperation = NativeRequest["operations"][number];
 type Json = NonNullable<NativeArtifact["results"][number]["value"]> | null;
 
+export interface NativeNeuronPageRequest {
+  netuid: string;
+  offset: string;
+  limit: string;
+  lite: boolean;
+}
+export interface NativeNeuronPage {
+  netuid: number;
+  offset: number;
+  limit: number;
+  lite: boolean;
+  total: number;
+  next_offset: number | null;
+}
+
+/** UID pages use singular runtime reads, never the full neuron vector. The
+ * count and records share one finalized source; missing UIDs retain None. */
+export async function queryNativeNeuronPage(
+  input: NativeNeuronPageRequest,
+  query: (operations: NativeOperation[], asOf?: string) => Promise<NativeArtifact>,
+  asOf?: string,
+): Promise<{ artifact: NativeArtifact; page: NativeNeuronPage }> {
+  const integer = (text: string, min: number, max: number) => {
+    if (!/^(0|[1-9]\d*)$/.test(text) || Number(text) < min || Number(text) > max)
+      throw new Error("Enter a subnet and UID from 0 through 65535, and a page size from 1 through 16.");
+    return Number(text);
+  };
+  const netuid = integer(input.netuid, 0, 65535),
+    offset = integer(input.offset, 0, 65535),
+    limit = integer(input.limit, 1, 16);
+  if (asOf !== undefined && !/^0x[0-9a-f]{64}$/.test(asOf))
+    throw new Error("Neuron pages require a canonical finalized block hash.");
+  const count = await query(
+    [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [netuid] }],
+    asOf,
+  );
+  const row = count.results[0],
+    at = count.source.finalized_block_hash;
+  if (
+    count.results.length !== 1 ||
+    row?.kind !== "storage" ||
+    row.pallet !== "SubtensorModule" ||
+    row.member !== "SubnetworkN" ||
+    typeof row.value !== "string" ||
+    !/^(0|[1-9]\d*)$/.test(row.value) ||
+    Number(row.value) > 65535 ||
+    !/^0x[0-9a-f]{64}$/.test(at) ||
+    (asOf !== undefined && at !== asOf)
+  )
+    throw new Error("Invalid source-pinned neuron count.");
+  const total = Number(row.value);
+  if (offset > total) throw new Error("The starting UID exceeds this source’s neuron count.");
+  const end = Math.min(total, offset + limit),
+    member = input.lite ? "get_neuron_lite" : "get_neuron",
+    legacy = supportsLegacyInnerRecord(count.source.runtime_spec_version, {
+      kind: "runtime_scale",
+      api: "NeuronInfoRuntimeApi",
+      member,
+      args: [],
+    });
+  const operations: NativeOperation[] = Array.from({ length: end - offset }, (_, index) => {
+    const uid = offset + index;
+    return legacy
+      ? {
+          kind: "runtime_scale",
+          api: "NeuronInfoRuntimeApi",
+          member,
+          input: `0x${[netuid & 255, netuid >>> 8, uid & 255, uid >>> 8]
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join("")}`,
+          decode_inner: true,
+        }
+      : { kind: "runtime", api: "NeuronInfoRuntimeApi", member, args: [netuid, uid] };
+  });
+  const artifact = operations.length ? await query(operations, at) : count;
+  for (const field of [
+    "network",
+    "network_genesis_hash",
+    "finalized_block_hash",
+    "finalized_block",
+    "runtime_spec_version",
+    "runtime_transaction_version",
+    "runtime_code_hash",
+  ] as const)
+    if (artifact.source[field] !== count.source[field])
+      throw new Error("Neuron records changed their finalized source.");
+  if (
+    operations.length &&
+    (artifact.results.length !== operations.length ||
+      artifact.results.some(
+        (result) =>
+          result.kind !== (legacy ? "runtime_scale" : "runtime") ||
+          result.api !== "NeuronInfoRuntimeApi" ||
+          result.member !== member ||
+          !Object.hasOwn(result, "value") ||
+          (legacy && !Object.hasOwn(result, "inner_result")),
+      ))
+  )
+    throw new Error("Incomplete source-pinned neuron records.");
+  return {
+    artifact,
+    page: {
+      netuid,
+      offset,
+      limit,
+      lite: input.lite,
+      total,
+      next_offset: end < total ? end : null,
+    },
+  };
+}
+
 export const NATIVE_FEATURES = [
   { id: "mechanisms", label: "Mechanisms", account: false, hotkey: false },
   { id: "collateral", label: "Collateral policy", account: false, hotkey: false },
