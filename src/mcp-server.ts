@@ -589,6 +589,7 @@ import {
 } from "./changelog-mcp.ts";
 import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.ts";
 import { decodeEvmPrecompileCall } from "./evm-precompiles.ts";
+import { decodeRuntimeEvmCall } from "./evm-runtime-calldata.ts";
 import { H160_PATTERN, loadAddressMapping } from "./address-mapping.ts";
 import {
   FEED_KINDS,
@@ -15543,14 +15544,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Decode an EVM precompile call",
     description:
       "Identify + decode a raw Ethereum.transact `to`/`input` pair against " +
-      "Bittensor's 16 fixed-address EVM precompiles (epic #6725) -- the " +
-      "same registry src/evm-precompiles.ts uses to add a `precompile_call` " +
-      "field onto captured Ethereum.transact calldata. precompile/address/" +
-      "function are all null when `to` isn't one of the 16 known precompile " +
-      "addresses (an ordinary contract call). When `to` IS a known " +
-      "precompile but the calldata's 4-byte selector doesn't match any of " +
-      "its declared functions, function is null but precompile/address are " +
-      "still populated.",
+      "Bittensor EVM precompiles. Supply runtime_spec_version for the " +
+      "official release-bound catalogue across published v430–v470 tags, " +
+      "including nested arrays, bytes and strings. The result includes " +
+      "the audited source commit. Omit the version to retain the legacy " +
+      "captured-call catalogue and output. An ordinary contract has null " +
+      "precompile/address/function. A recognized precompile with an unknown " +
+      "selector has null function; a recognized function with malformed " +
+      "arguments has null args. This tool performs no chain requests.",
     inputSchema: inputJsonSchema(DecodeEvmCallInputSchema),
     outputSchema: outputJsonSchema(DecodeEvmCallOutputSchema),
     async handler(args: z.infer<typeof DecodeEvmCallInputSchema>) {
@@ -15571,6 +15572,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           "invalid_params",
           "Argument `input` must be 0x-prefixed hex calldata.",
         );
+      }
+      if (args.runtime_spec_version !== undefined) {
+        const decoded = decodeRuntimeEvmCall(args.runtime_spec_version, args.to, args.input);
+        if (!decoded) {
+          throw toolError(
+            "invalid_params",
+            "Argument `runtime_spec_version` must name an audited published release tag from v430–v470.",
+          );
+        }
+        return decoded;
       }
       return (
         decodeEvmPrecompileCall(args.to, args.input) ?? {

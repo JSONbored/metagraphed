@@ -32,6 +32,9 @@ export const DecodeEvmCallInputSchema = z
       .regex(/^0x[0-9a-fA-F]*$/)
       .describe("ABI-encoded EVM call data (0x-prefixed) to decode.")
       .meta({ examples: ["0xa9059cbb0000000000000000000000001234"] }),
+    runtime_spec_version: z.int().min(1).max(4294967295).optional().describe(
+      "Official Subtensor spec version for release-bound decoding (published tags v430–v470). Omit for the legacy captured-call catalogue and unchanged output.",
+    ),
   })
   .strict();
 export type DecodeEvmCallInput = z.infer<typeof DecodeEvmCallInputSchema>;
@@ -44,7 +47,9 @@ export const DecodeEvmCallOutputSchema = z
     signature: z.string().optional(),
     // The decoded call arguments. GENUINELY OPEN: the key set is whatever the
     // decoded function signature declares, so there is no shape to write down.
-    args: OpenObjectSchema.optional(),
+    args: OpenObjectSchema.nullable().optional(),
+    runtime_spec_version: z.int().optional(),
+    source_commit: z.string().regex(/^[0-9a-f]{40}$/).optional(),
   })
   .strict();
 export type DecodeEvmCallOutput = z.infer<typeof DecodeEvmCallOutputSchema>;

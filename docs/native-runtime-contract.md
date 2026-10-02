@@ -83,6 +83,21 @@ aggregate gas cap and duplicate coalescing apply to this layout as well as
 historical scalar integer layouts. The current signature also includes the
 metadata-declared `authorization_list` argument.
 
+The public MCP `decode_evm_call` tool accepts `runtime_spec_version` for
+release-bound precompile calldata decoding. The audited catalogue follows every
+published official tag from v430 through v470, including the v470 scheduler,
+Drand, timestamp, runtime configuration and precompile registry interfaces.
+Nested arrays, dynamic bytes, UTF-8 strings and fixed byte arguments retain their
+declared ABI shapes; wide integers remain exact decimal strings. The result
+identifies its source commit. Unknown selectors retain the recognized address;
+malformed arguments produce `args: null` rather than a partial decode. Raw
+cryptographic/storage precompiles are identified but have no Solidity selector.
+The tool makes no chain requests. Omit the version to retain the original
+captured-call catalogue and response bytes. The protected history decoder is
+unchanged. Decoding is a local interpretation of calldata; use the native
+`EthereumRuntimeRPCApi.call` operation to simulate execution at the selected
+finalized source.
+
 `ShieldApi.try_unshield_tx` decrypts caller-supplied shielded data and decodes
 the resulting extrinsic. The audited implementation does not submit it, access
 a local keystore or write chain state. It is available alongside
