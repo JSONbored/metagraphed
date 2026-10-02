@@ -52,6 +52,7 @@ import {
   type LaneQueue,
 } from "./lane-queue.ts";
 import { probeJob } from "./probe-jobs.ts";
+import { isD1ConnectionError } from "./d1-connection-error.ts";
 
 /** What one origin's check concluded. */
 export type OriginVerdict =
@@ -274,24 +275,73 @@ export async function persistOriginCheck(
   // this function had already computed the answer.
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!db?.run) return { ok: false, reason: "no_store_binding" };
-  try {
-    await db.run(
-      `INSERT INTO origin_reachability` +
-        ` (origin, checked_at, surface_count, samples, verdict)` +
-        ` VALUES (?, ?, ?, ?, ?)` +
-        ` ON CONFLICT (origin) DO UPDATE SET` +
-        ` checked_at = EXCLUDED.checked_at,` +
-        ` surface_count = EXCLUDED.surface_count,` +
-        ` samples = EXCLUDED.samples,` +
-        ` verdict = EXCLUDED.verdict`,
-      [
-        check.origin,
-        check.checked_at,
-        check.surface_ids.length,
-        check.samples.length,
-        check.verdict,
-      ],
+  // Pin the already-observed result before any await. A lost reply must not
+  // trigger another probe, change its timestamp, or rewind a newer verdict.
+  const values: [string, number, number, number, OriginVerdict] = [
+    check.origin,
+    check.checked_at,
+    check.surface_ids.length,
+    check.samples.length,
+    check.verdict,
+  ];
+  const text = `INSERT INTO origin_reachability
+    (origin, checked_at, surface_count, samples, verdict)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT (origin) DO UPDATE SET
+    checked_at = EXCLUDED.checked_at,
+    surface_count = EXCLUDED.surface_count,
+    samples = EXCLUDED.samples,
+    verdict = EXCLUDED.verdict
+    WHERE origin_reachability.checked_at < EXCLUDED.checked_at`;
+  const confirmed = async () => {
+    if (!db.query) throw new Error("Origin write readback unavailable");
+    const rows = await db.query<{
+      checked_at: number | string;
+      surface_count: number;
+      samples: number;
+      verdict: OriginVerdict;
+    }>(
+      "SELECT checked_at,surface_count,samples,verdict FROM origin_reachability WHERE origin=?",
+      [values[0]],
     );
+    if (!rows.length) return false;
+    if (rows.length !== 1)
+      throw new Error("Origin write readback identity differs");
+    const row = rows[0]!;
+    const current = BigInt(row.checked_at),
+      expected = BigInt(values[1]);
+    if (current > expected) return true; // The older queued check was superseded.
+    if (current < expected) return false;
+    if (
+      row.surface_count !== values[2] ||
+      row.samples !== values[3] ||
+      row.verdict !== values[4]
+    )
+      throw new Error("Origin write readback identity differs");
+    return true;
+  };
+  try {
+    let written: { changes: number };
+    try {
+      written = await db.run(text, values);
+    } catch (error) {
+      if (!isD1ConnectionError(error) || !db.query) throw error;
+      await new Promise((resolve) =>
+        setTimeout(resolve, 250 + Math.floor(Math.random() * 250)),
+      );
+      // A commit also increments its export revision. Acknowledge the exact
+      // stored observation rather than replaying that already-committed batch.
+      if (await confirmed()) return { ok: true };
+      try {
+        written = await db.run(text, values);
+      } catch (retryError) {
+        if (!isD1ConnectionError(retryError)) throw retryError;
+        if (await confirmed()) return { ok: true };
+        throw retryError;
+      }
+    }
+    if (written.changes === 0 && !(await confirmed()))
+      throw new Error("Origin write readback did not confirm the check");
     return { ok: true };
   } catch (error) {
     return {
