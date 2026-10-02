@@ -482,16 +482,17 @@ async function extract(tag: string, commit: string, publishedHash: string, publi
   return { tag, spec, commit, wasm_sha256: digest(blob), digest_sha256: digest(manifestBytes), runtimeVersion, ...metadata };
 }
 
-test("extract compiled pre-v430 release contracts on remote CI only", async () => {
+test("pin the actual published legacy build identities on remote CI", () => {
   if (!process.env.CI) return;
-  const fixtures = [];
-  for (const [tag, commit, sha256, bytes] of releases) fixtures.push(await extract(tag, commit, sha256, bytes));
-  const compressed = brotliCompressSync(Buffer.from(JSON.stringify(fixtures)), { params: { [constants.BROTLI_PARAM_QUALITY]: 6, [constants.BROTLI_PARAM_LGWIN]: 24 } }).toString("base64");
-  const source = `// Checksum-verified official Subtensor release WASM metadata, v1.1.7–v3.4.9-424.\n// Extracted on remote CI; no deployed state, contract execution or submission.\n// Source: https://github.com/RaoFoundation/subtensor/releases\nimport { brotliDecompressSync } from "node:zlib";\nexport interface CompiledLegacyRuntimeEra {\n  tag: string;\n  digest_sha256: string;\n  spec: number;\n  commit: string;\n  wasm_sha256: string;\n  runtimeVersion: { specName: string; specVersion: number; transactionVersion: number; apis: [string, number][] };\n  v14: string;\n  v14_sha256: string;\n  v15: string;\n  v15_sha256: string;\n}\nconst compressed = [\n${compressed.match(/.{1,120}/g)!.map((part) => JSON.stringify(part)).join(",\n")}\n].join("");\nexport default JSON.parse(brotliDecompressSync(Buffer.from(compressed, "base64")).toString()) as CompiledLegacyRuntimeEra[];\n`;
-  const name = "tests/fixtures/native-runtime-legacy-compiled.ts";
-  const formatted = await format(source, { ...(await resolveConfig(name)), filepath: name });
-  const encoded = gzipSync(formatted).toString("base64");
-  const head = execFileSync("git", ["rev-parse", "HEAD"]).toString().trim();
-  console.log("NATIVE_LEGACY_HANDOFF", JSON.stringify({ path: name, head, encoding: "gzip-base64", bytes: Buffer.byteLength(formatted), sha256: digest(Buffer.from(formatted)), chunks: Math.ceil(encoded.length / 16000), releases: fixtures.length }));
-  for (let offset = 0; offset < encoded.length; offset += 16000) console.log(`NATIVE_LEGACY_FIXTURE_HANDOFF ${offset / 16000} ${encoded.slice(offset, offset + 16000)}`);
-}, 1200000);
+  for (const [tag, tagCommit, publishedHash, publishedBytes] of releases) {
+    const base = `https://github.com/RaoFoundation/subtensor/releases/download/${tag}`;
+    const bytes = download(`${base}/subtensor-digest.json`, 32768);
+    const manifest = JSON.parse(bytes.toString());
+    assert.match(manifest.commit, /^[0-9a-f]{40}$/);
+    assert.equal(manifest.info.git.commit, manifest.commit);
+    assert.equal(manifest.runtimes.compressed.sha256, manifest.sha256);
+    assert.equal(Number(manifest.runtimes.compressed.size), publishedBytes);
+    if (publishedHash) assert.equal(`sha256:${manifest.sha256.slice(2)}`, publishedHash);
+    console.log("NATIVE_LEGACY_BUILD_IDENTITY", JSON.stringify({ tag, tag_commit: tagCommit, commit: manifest.commit, spec: manifest.runtimes.compressed.subwasm.core_version.specVersion, digest_sha256: digest(bytes), wasm_sha256: manifest.sha256.slice(2), wasm_bytes: publishedBytes }));
+  }
+}, 300000);
