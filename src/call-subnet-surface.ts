@@ -18,6 +18,9 @@
 // src/health-prober.ts), which callers are required to supply -- this
 // module never chooses or weakens the safety policy, only structurally
 // mirrors the loop that applies it.
+import { createHash } from "node:crypto";
+import type { ContentBlock } from "@modelcontextprotocol/sdk/types.js";
+
 const MAX_REDIRECTS = 5;
 // 256 KiB -- generous for a JSON API response, small enough that a
 // misbehaving/adversarial upstream can't use this tool as a bandwidth sink.
@@ -29,7 +32,8 @@ type ContentTypeKind = "json" | "text" | "binary" | "unknown";
 // types are returned as a capped string. Anything else (images, video,
 // octet-stream, ...) is rejected outright per #7014's own scope ("reject/
 // truncate unexpected binary") -- there is no sane way to return binary
-// content through a JSON-RPC tool result body anyway.
+// content through a JSON tool result body. Explicit attachment mode instead
+// carries complete binary bytes in a native MCP content block.
 function classifyContentType(contentType: string | null): ContentTypeKind {
   const type = (contentType || "").split(";")[0].trim().toLowerCase();
   if (!type) return "unknown";
@@ -154,6 +158,8 @@ function redactCredentialValue(
 }
 
 export interface CallSubnetSurfaceOptions {
+  responseMode?: "attachment";
+  protocolVersion?: string | null;
   // Query params merged onto the effective base URL.
   query?: Record<string, string | number | boolean>;
   // MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER
@@ -201,6 +207,7 @@ export interface CallSubnetSurfaceSuccess {
   body: unknown;
   truncated: boolean;
   parse_error?: string;
+  attachment?: ContentBlock;
 }
 
 export interface CallSubnetSurfaceFailure {
@@ -231,6 +238,8 @@ export async function callSubnetSurface(
     body: requestBody,
     contentType: requestContentType,
     credential,
+    responseMode,
+    protocolVersion,
     fetchImpl = fetch,
     isUnsafeUrl,
   } = options ?? {};
@@ -285,7 +294,7 @@ export async function callSubnetSurface(
   //
   // Spelled out rather than imported from CALL_SURFACE_BODY_METHODS, which owns
   // this vocabulary (schemas-src/mcp-tools/ai-integration.ts): this module has
-  // NO imports on purpose -- it is the outbound-fetch safety path, and pulling
+  // no schema imports on purpose -- it is the outbound-fetch safety path, and pulling
   // in the schema module would drag Zod and the whole tool registry into it.
   // The tool handler validates the same rule from the shared list before ever
   // calling here, so this is the defensive second check, not the decision.
@@ -382,7 +391,7 @@ export async function callSubnetSurface(
   const { response, latencyMs, redirectTarget } = fetched;
   const contentType = response.headers.get("content-type") || null;
   const kind = classifyContentType(contentType);
-  if (kind === "binary") {
+  if (kind === "binary" && responseMode !== "attachment") {
     await response.body?.cancel();
     return {
       ok: false,
@@ -393,6 +402,38 @@ export async function callSubnetSurface(
       content_type: contentType,
       latency_ms: latencyMs,
     };
+  }
+
+  if (kind === "binary") {
+    try {
+      const bytes = await readBinaryBody(response, MAX_RESPONSE_BYTES, timeoutMs);
+      const mimeType = contentType!.split(";")[0]!.trim().toLowerCase();
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      const data = bytes.toString("base64");
+      const attachment: ContentBlock = ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mimeType)
+        ? { type: "image", mimeType, data }
+        : mimeType.startsWith("audio/") && (protocolVersion ?? "2025-03-26") >= "2025-03-26"
+          ? { type: "audio", mimeType, data }
+          : { type: "resource", resource: { uri: `urn:sha256:${sha256}`, mimeType, blob: data } };
+      return {
+        ok: true,
+        status_code: response.status,
+        content_type: contentType,
+        latency_ms: latencyMs,
+        url: redactQueryCredential(redirectTarget || requestUrl, credential),
+        body: { encoding: "mcp_content", mime_type: mimeType, bytes: bytes.length, sha256 },
+        truncated: false,
+        ...(bytes.length ? { attachment } : {}),
+      };
+    } catch {
+      return {
+        ok: false,
+        error: "The binary response must be complete within the response byte limit and deadline.",
+        status_code: response.status,
+        content_type: contentType,
+        latency_ms: latencyMs,
+      };
+    }
   }
 
   let raw: { text: string; truncated: boolean };
@@ -430,6 +471,36 @@ export async function callSubnetSurface(
     truncated: raw.truncated,
     ...(parseError ? { parse_error: parseError } : {}),
   };
+}
+
+async function readBinaryBody(response: Response, maxBytes: number, deadlineMs: number): Promise<Buffer> {
+  if (!response.body) return Buffer.alloc(0);
+  const reader = response.body.getReader();
+  const deadline = Date.now() + deadlineMs;
+  // One bounded destination avoids retaining tiny upstream chunks and a
+  // second body-sized concatenation. Only received bytes leave this reader.
+  const bytes = Buffer.allocUnsafe(maxBytes);
+  let received = 0;
+  try {
+    for (;;) {
+      if (Date.now() >= deadline) throw new Error("Binary response deadline");
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const chunk = await Promise.race([
+        reader.read(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("Binary response deadline")), deadline - Date.now());
+        }),
+      ]).finally(() => clearTimeout(timer));
+      if (chunk.done) break;
+      if (received + chunk.value.byteLength > maxBytes) throw new Error("Binary response byte limit");
+      bytes.set(chunk.value, received);
+      received += chunk.value.byteLength;
+    }
+    return bytes.subarray(0, received);
+  } finally {
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
 }
 
 // Reads a Response body up to `maxBytes`, decoding as UTF-8 text. Returns
