@@ -73,10 +73,14 @@ type Operation = z.infer<
 type NativeResult = z.infer<
   typeof NativeRuntimeArtifactSchema
 >["results"][number];
+// Discovery can carry optional fields. The final canonical schema parse
+// validates and clones their public JSON representation.
+type PlannedResult = Omit<NativeResult, "contract" | "value"> & {
+  contract: Record<string, unknown>;
+  value?: unknown;
+};
 interface NativePlan {
-  result: Omit<NativeResult, "contract"> & {
-    contract: Record<string, unknown>;
-  };
+  result: PlannedResult;
   call?: { method: string; params: unknown[] };
   output?: number;
   item?: NativeStorage;
@@ -88,7 +92,7 @@ interface NativePlan {
     cursor: string | undefined;
   };
   simulationGas?: bigint | null;
-  contractWork?: ReturnType<typeof nativeContractSimulationWork>;
+  contractWork?: ReturnType<typeof nativeContractSimulationWork> | null;
   inner?: ReturnType<typeof nativeInnerRecord>;
   evm?: ReturnType<typeof resolveNativeEvmCall>["contract"];
 }
@@ -799,7 +803,7 @@ export async function readNativeRuntime(
     }
     return { inner_result: decoded };
   };
-  const results = plans.map<NativeResult>((row, index) => {
+  const results = plans.map<PlannedResult>((row, index) => {
     if ("entry" in row && row.entry) {
       const entry = row.entry,
         page = pages.get(index)!;
