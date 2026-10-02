@@ -274,6 +274,8 @@ and guarded by the CI execution flag; ordinary local runs skip engine execution.
 Memory, fixture storage, host calls and transactions remain bounded, and unknown
 hosts fail explicitly. These checks qualify fixture behavior rather than
 production state, trie proofs, gas costs or historical retention.
+Creation fixtures keep the source whitelist gate enabled, preserving denial for
+an unlisted caller before explicitly listing that caller in isolated test state.
 
 `prepare` encodes a native method from its declared
 argument types, including runtime-specific enum and composite arguments. It
