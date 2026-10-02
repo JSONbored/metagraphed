@@ -13,6 +13,8 @@ import {
   featureOperations,
   describedMembers,
   memberOperation,
+  supportsNativeCodeArtifact,
+  codeArtifactOperation,
   entryOperation,
   nativePageCursor,
   nativeTypeLabel,
@@ -94,6 +96,9 @@ function NativeRuntimeExplorer({
   const [description, setDescription] = useState<NativeArtifact | null>(null);
   const [memberIndex, setMemberIndex] = useState(0);
   const [args, setArgs] = useState("[]");
+  const [codeUrl, setCodeUrl] = useState("");
+  const [codeSha256, setCodeSha256] = useState("");
+  const [codeBytes, setCodeBytes] = useState("");
   const [result, setResult] = useState<NativeArtifact | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -119,6 +124,9 @@ function NativeRuntimeExplorer({
       if (active.signal.aborted) return;
       if (discovery) {
         setDescription(response.data);
+        setCodeUrl("");
+        setCodeSha256("");
+        setCodeBytes("");
         setMemberIndex(0);
         setArgs(describedMembers(response.data)[0]?.kind === "runtime_scale" ? "0x" : "[]");
       } else setResult(response.data);
@@ -348,6 +356,9 @@ function NativeRuntimeExplorer({
                   value={memberIndex}
                   onChange={(event) => {
                     setMemberIndex(Number(event.target.value));
+                    setCodeUrl("");
+                    setCodeSha256("");
+                    setCodeBytes("");
                     setArgs(
                       members[Number(event.target.value)]?.kind === "runtime_scale" ? "0x" : "[]",
                     );
@@ -384,7 +395,7 @@ function NativeRuntimeExplorer({
                 onSubmit={(event) => {
                   event.preventDefault();
                   action(
-                    () => [memberOperation(member, args)],
+                    () => [codeArtifactOperation(memberOperation(member, args), codeUrl, codeSha256, codeBytes)],
                     description.source.finalized_block_hash,
                   );
                 }}
@@ -415,6 +426,28 @@ function NativeRuntimeExplorer({
                     spellCheck={false}
                   />
                 </label>
+                {supportsNativeCodeArtifact(member) && (
+                  <fieldset className="space-y-3 rounded border border-border p-3">
+                    <legend className="px-1 text-13 font-medium text-ink-strong">Code artifact (optional)</legend>
+                    <p className="text-13 text-ink-muted">
+                      Use a public GitHub file pinned to a commit for code up to 128 KiB. Include its SHA-256 and byte length. Leave the code argument as empty hex, or Upload with empty hex fields. The server verifies the bytes against the selected runtime’s limit.
+                    </p>
+                    <label className="block space-y-1 text-13">
+                      Code artifact URL
+                      <input type="url" className={control} disabled={busy} value={codeUrl} onChange={(event) => { setCodeUrl(event.target.value); setResult(null); }} />
+                    </label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="min-w-0 space-y-1 text-13">
+                        Artifact SHA-256
+                        <input className={`${control} font-mono`} disabled={busy} value={codeSha256} onChange={(event) => { setCodeSha256(event.target.value); setResult(null); }} spellCheck={false} />
+                      </label>
+                      <label className="min-w-0 space-y-1 text-13">
+                        Artifact bytes
+                        <input className={control} inputMode="numeric" disabled={busy} value={codeBytes} onChange={(event) => { setCodeBytes(event.target.value); setResult(null); }} />
+                      </label>
+                    </div>
+                  </fieldset>
+                )}
                 {member.kind === "runtime_scale" && (
                   <p className="text-13 text-ink-muted">
                     This source advertises {member.api} version {member.runtimeApiVersion}, but its

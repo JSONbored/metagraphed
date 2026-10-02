@@ -57,6 +57,14 @@ const common = { pallet: name, member: name };
 // real component instead of Zod's anonymous __shared definitions container.
 export const NativeJsonValueSchema = z.json();
 const args = z.array(NativeJsonValueSchema).max(64).default([]);
+export const NativeCodeArtifactSchema = z
+  .object({
+    url: z.string().url().max(2048).describe("Public raw.githubusercontent.com URL pinned to a full 40-character commit, with no credentials, query or fragment."),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/).describe("SHA-256 of the exact uncompressed artifact bytes."),
+    bytes: z.int().min(1).max(131072).describe("Exact artifact byte length, also bounded by this source runtime's Contracts.MaxCodeLen."),
+  })
+  .strict()
+  .describe("Checksum-bound public Wasm code for ContractsApi upload_code/instantiate or Contracts upload_code/instantiate_with_code preparation. Keep the code argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. One distinct artifact is fetched per request, with no persistent storage.");
 export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
   z
     .object({
@@ -89,9 +97,9 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
     .strict(),
   z.object({ kind: z.literal("constant"), ...common }).strict(),
   z
-    .object({ kind: z.literal("runtime"), api: name, member: name, args })
+    .object({ kind: z.literal("runtime"), api: name, member: name, args, code_artifact: NativeCodeArtifactSchema.optional() })
     .strict(),
-  z.object({ kind: z.literal("prepare"), ...common, args }).strict(),
+  z.object({ kind: z.literal("prepare"), ...common, args, code_artifact: NativeCodeArtifactSchema.optional() }).strict(),
   z
     .object({
       kind: z.literal("describe"),
@@ -127,7 +135,7 @@ export const NativeRuntimeRequestSchema = z
   })
   .strict()
   .describe(
-    "Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate at the same finalized source. EVM requests have an aggregate 1,000,000 gas cap. Contracts require an explicit Some gas_limit Weight; distinct simulations share a 250,000,000,000 ref_time and 65,536 proof_size budget, with one code upload of at most 16,384 bytes. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or persistent state mutation occurs.",
+    "Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate at the same finalized source. EVM requests have an aggregate 1,000,000 gas cap. Contracts require an explicit Some gas_limit Weight; distinct simulations share a 250,000,000,000 ref_time and 65,536 proof_size budget, with one inline code upload of at most 16,384 bytes. A commit-pinned code_artifact reference supports up to 131,072 bytes within the source runtime MaxCodeLen; the reference must include its exact SHA-256 and byte count, and the code argument must be empty hex. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or persistent state mutation occurs.",
   );
 export const NativeRuntimeSourceSchema = z
   .object({

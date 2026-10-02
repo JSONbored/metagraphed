@@ -3,6 +3,8 @@ import {
   describedMembers,
   featureOperations,
   memberOperation,
+  supportsNativeCodeArtifact,
+  codeArtifactOperation,
   nativeTypeLabel,
   nativeValueRows,
   nativePageOffset,
@@ -257,4 +259,33 @@ test("result tables retain every exact field, enum tag, empty value and unsigned
     "0x0102",
   ]);
   expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length);
+});
+
+
+test("code artifact references stay compact and bind only declared contract operations", () => {
+  const url = `https://raw.githubusercontent.com/example/contracts/${"a".repeat(40)}/code.wasm`;
+  const sha256 = "b".repeat(64);
+  const input = { kind: "runtime" as const, api: "ContractsApi", member: "upload_code", args: ["0x"] };
+  expect(codeArtifactOperation(input, "", "", "")).toBe(input);
+  expect(codeArtifactOperation(input, ` ${url} `, ` ${sha256} `, " 131072 ")).toEqual({ ...input, code_artifact: { url, sha256, bytes: 131072 } });
+  expect(codeArtifactOperation(input, url, sha256, "1")).toMatchObject({ code_artifact: { bytes: 1 } });
+  expect(input.args).toEqual(["0x"]);
+  for (const member of [
+    input, { ...input, member: "instantiate" },
+    { kind: "prepare" as const, pallet: "Contracts", member: "upload_code" },
+    { kind: "prepare" as const, pallet: "Contracts", member: "instantiate_with_code" },
+  ]) expect(supportsNativeCodeArtifact(member)).toBe(true);
+  for (const member of [
+    { ...input, api: "Other" }, { ...input, member: "call" },
+    { kind: "prepare" as const, pallet: "Contracts", member: "instantiate" },
+    { kind: "prepare" as const, pallet: "Other", member: "upload_code" },
+    { kind: "runtime_scale" as const, api: "ContractsApi", member: "upload_code" },
+  ]) expect(supportsNativeCodeArtifact(member)).toBe(false);
+  for (const fields of [
+    ["", sha256, "1"], [url.replace("https:", "http:"), sha256, "1"], [url + "?x=1", sha256, "1"],
+    [url.replace("raw.githubusercontent.com", "example.com"), sha256, "1"], [url.replace("a".repeat(40), "main"), sha256, "1"],
+    [url.replace("https://", "https://x@"), sha256, "1"], [url + "#x", sha256, "1"],
+    [url, "bad", "1"], [url, sha256, ""], [url, sha256, "0"], [url, sha256, "01"], [url, sha256, "1.5"], [url, sha256, "131073"],
+  ]) expect(() => codeArtifactOperation(input, fields[0]!, fields[1]!, fields[2]!)).toThrow();
+  expect(() => codeArtifactOperation({ ...input, api: "Other" }, url, sha256, "1")).toThrow(/contract code/);
 });

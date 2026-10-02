@@ -24,8 +24,10 @@ import {
   scaleReadMethods,
   SCALE_READ_API_METHODS,
 } from "./native-runtime-scale.ts";
+import { resolveNativeCodeArtifacts } from "./native-code-artifact.ts";
 import { loadNativeContract } from "./native-runtime-contract.ts";
 import {
+  NATIVE_CONTRACT_SIMULATION_LIMITS,
   nativeContractSimulationWork,
   assertNativeContractSimulationBudget,
 } from "./native-contract-simulation.ts";
@@ -366,6 +368,7 @@ function plan(
             operation.member,
             method.inputs,
             operation.args,
+            operation.code_artifact?.bytes,
           )
         : null;
     return {
@@ -500,8 +503,8 @@ function plan(
 
 /** One finalized context for a bounded batch; validate every operation before
  * issuing state reads. Identical calls are coalesced, then restored in order. */
-export async function queryNativeRuntime(raw: unknown, rpc?: BasketRpc) {
-  return readNativeRuntime(NativeRuntimeRequestSchema.parse(raw), rpc);
+export async function queryNativeRuntime(raw: unknown, rpc?: BasketRpc, fetchImpl: typeof fetch = fetch) {
+  return readNativeRuntime(NativeRuntimeRequestSchema.parse(raw), rpc, fetchImpl);
 }
 
 /** Internal entrypoint for callers that have already validated the canonical
@@ -509,6 +512,7 @@ export async function queryNativeRuntime(raw: unknown, rpc?: BasketRpc) {
 export async function readNativeRuntime(
   input: z.infer<typeof NativeRuntimeRequestSchema>,
   rpc?: BasketRpc,
+  fetchImpl: typeof fetch = fetch,
 ) {
   if (Buffer.byteLength(JSON.stringify(input)) > 32_768)
     throw new Error("Native request exceeds byte budget");
@@ -583,24 +587,33 @@ export async function readNativeRuntime(
   const apiVersions = new Map(apiList);
   if (apiVersions.size !== apiList.length)
     throw new Error("Duplicate advertised native runtime API identifiers");
-  const plans = input.operations.map((operation) =>
-    plan(metadata, operation, needed, apiVersions),
-  );
+  const operations = await resolveNativeCodeArtifacts(metadata, input.operations, fetchImpl);
+  const plans = operations.map((operation) => {
+    const row = plan(metadata, operation, needed, apiVersions);
+    if ((operation.kind === "runtime" || operation.kind === "prepare") && operation.code_artifact)
+      return { ...row, result: { ...row.result, contract: { ...row.result.contract, code_artifact: operation.code_artifact } } };
+    return row;
+  });
   const unique = new Map<string, { method: string; params: unknown[] }>();
   const executionGas = new Map<string, bigint>();
   const contractWork = new Map<
     string,
     ReturnType<typeof nativeContractSimulationWork>
   >();
-  const callKeys = plans.map((row) => {
+  let codeByteLimit: number = NATIVE_CONTRACT_SIMULATION_LIMITS.codeBytes;
+  const callKeys = plans.map((row, index) => {
     if (!("call" in row) || !row.call) return null;
     const call = { method: row.call.method, params: [...row.call.params, at] };
     const key = JSON.stringify(call);
     unique.set(key, call);
     if ("simulationGas" in row && row.simulationGas)
       executionGas.set(key, row.simulationGas);
-    if ("contractWork" in row && row.contractWork)
+    if ("contractWork" in row && row.contractWork) {
       contractWork.set(key, row.contractWork);
+      const operation = operations[index]!;
+      if (operation.kind === "runtime" && operation.code_artifact)
+        codeByteLimit = Math.max(codeByteLimit, operation.code_artifact.bytes);
+    }
     return key;
   });
   if (
@@ -608,7 +621,7 @@ export async function readNativeRuntime(
     NATIVE_EVM_SIMULATION_GAS_BUDGET
   )
     throw new Error("EVM simulations exceed the aggregate gas budget");
-  assertNativeContractSimulationBudget(contractWork.values());
+  assertNativeContractSimulationBudget(contractWork.values(), codeByteLimit);
   const calls = [...unique.entries()];
   const values =
     calls.length === 0

@@ -44,6 +44,7 @@ export function nativeContractSimulationWork(
   member: string,
   inputs: readonly { name: string | null }[],
   args: readonly NativeValue[],
+  codeByteLimit: number = NATIVE_CONTRACT_SIMULATION_LIMITS.codeBytes,
 ) {
   const work = { refTime: 0n, proofSize: 0n, codeBytes: 0, codeUploads: 0 };
   const argument = (name: string) => {
@@ -79,13 +80,14 @@ export function nativeContractSimulationWork(
     work.codeBytes = bytes.parse(argument("code"));
     work.codeUploads = 1;
   }
-  if (work.codeBytes > NATIVE_CONTRACT_SIMULATION_LIMITS.codeBytes)
+  if (work.codeBytes > codeByteLimit)
     throw new Error("Contract simulation exceeds its code byte budget");
   return work;
 }
 
 export function assertNativeContractSimulationBudget(
   rows: Iterable<ReturnType<typeof nativeContractSimulationWork>>,
+  codeByteLimit: number = NATIVE_CONTRACT_SIMULATION_LIMITS.codeBytes,
 ) {
   const total = { refTime: 0n, proofSize: 0n, codeBytes: 0, codeUploads: 0 };
   for (const row of rows) {
@@ -97,7 +99,7 @@ export function assertNativeContractSimulationBudget(
   if (
     total.refTime > NATIVE_CONTRACT_SIMULATION_LIMITS.refTime ||
     total.proofSize > NATIVE_CONTRACT_SIMULATION_LIMITS.proofSize ||
-    total.codeBytes > NATIVE_CONTRACT_SIMULATION_LIMITS.codeBytes ||
+    total.codeBytes > codeByteLimit ||
     total.codeUploads > NATIVE_CONTRACT_SIMULATION_LIMITS.codeUploads
   )
     throw new Error(

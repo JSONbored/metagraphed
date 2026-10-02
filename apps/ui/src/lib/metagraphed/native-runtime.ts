@@ -133,6 +133,23 @@ export function describedMembers(artifact: NativeArtifact): NativeMember[] {
   });
 }
 
+export function supportsNativeCodeArtifact(member: Pick<NativeMember, "kind" | "api" | "pallet" | "member">) {
+  return (member.kind === "runtime" && member.api === "ContractsApi" && ["upload_code", "instantiate"].includes(member.member)) ||
+    (member.kind === "prepare" && member.pallet === "Contracts" && ["upload_code", "instantiate_with_code"].includes(member.member));
+}
+export function codeArtifactOperation(operation: NativeOperation, url: string, sha256: string, bytes: string): NativeOperation {
+  const fields = [url.trim(), sha256.trim(), bytes.trim()];
+  if (fields.every((field) => !field)) return operation;
+  if ((operation.kind !== "runtime" && operation.kind !== "prepare") || !supportsNativeCodeArtifact(operation)) throw new Error("Choose a contract code upload or preparation operation.");
+  const source = new URL(fields[0]!);
+  if (source.protocol !== "https:" || source.hostname !== "raw.githubusercontent.com" || source.username || source.password || source.port || source.search || source.hash ||
+    !/^\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+\/[0-9a-f]{40}\/[^%?#\\]+$/.test(source.pathname))
+    throw new Error("Enter a public GitHub raw file URL pinned to a full commit.");
+  if (!/^[0-9a-f]{64}$/.test(fields[1]!)) throw new Error("Enter the artifact’s exact 64-character SHA-256.");
+  if (!/^[1-9]\d*$/.test(fields[2]!) || Number(fields[2]) > 131072) throw new Error("Enter an artifact size from 1 through 131,072 bytes.");
+  return { ...operation, code_artifact: { url: source.href, sha256: fields[1]!, bytes: Number(fields[2]) } } as NativeOperation;
+}
+
 function nativeArguments(text: string): Json[] {
   if (text.length > 32768) throw new Error("Arguments exceed the request budget.");
   const args: unknown = JSON.parse(text);

@@ -128,6 +128,40 @@ types. Returned gas consumed/required, deposits, account/code hashes, return
 flags and bytes, and dispatch errors remain exact typed results. A revert flag
 does not become a successful execution receipt.
 
+A `code_artifact` reference supports full Wasm code without inserting its hex
+into the request or chat context. Supply a public `raw.githubusercontent.com`
+file URL pinned to a full commit, the exact SHA-256 and uncompressed byte count:
+
+```json
+{
+  "kind": "runtime",
+  "api": "ContractsApi",
+  "member": "upload_code",
+  "args": ["<origin>", "0x", "<storage deposit limit>", "<determinism>"],
+  "code_artifact": {
+    "url": "https://raw.githubusercontent.com/owner/contracts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/contract.wasm",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "bytes": 131072
+  }
+}
+```
+
+Use the metadata-declared argument order and types; the strings in angle
+brackets above are placeholders. For `instantiate`, keep the code enum as
+`{"variant":"Upload","fields":"0x"}`. The same reference works with native
+`Contracts.upload_code` and `instantiate_with_code` preparation. The server
+checks the declared code type, all arguments and explicit simulation Weight,
+then loads at most one distinct public artifact under a five-second deadline
+and bounded stream. Redirects, mutable URLs, wrong lengths or checksums reject.
+Artifact size is at most 128 KiB and must fit this source's `MaxCodeLen`.
+Distinct simulations still share one upload and the same Weight budgets. The
+reference and verified byte identity remain in the result contract; prepared
+method bytes include the complete code for wallet review. This adds no stored
+artifact, service, provider credential or recurring download. Ordinary inline
+requests keep their existing 16 KiB simulation and general request limits.
+The native page provides the URL, checksum and byte-count fields for these code
+operations, with no automatic artifact or state request.
+
 The pinned node's [state RPC](https://github.com/RaoFoundation/polkadot-sdk/blob/cacb4310f20c7cac83eb3ccd8ed5a5ad4212608a/substrate/client/rpc/src/state/state_full.rs)
 invokes its [call executor](https://github.com/RaoFoundation/polkadot-sdk/blob/cacb4310f20c7cac83eb3ccd8ed5a5ad4212608a/substrate/client/service/src/client/call_executor.rs)
 with a fresh overlay, returning the execution result without committing that

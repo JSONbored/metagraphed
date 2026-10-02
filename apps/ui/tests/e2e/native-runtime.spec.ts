@@ -492,3 +492,49 @@ test("Wasm contracts use discovered Weight arguments and retain reverted bytes w
     },
   ]);
 });
+
+test("native code form sends a compact checksum-bound artifact at the inspected source", async ({ page }) => {
+  const artifact = {
+    url: `https://raw.githubusercontent.com/example/contracts/${"a".repeat(40)}/code.wasm`,
+    sha256: "b".repeat(64), bytes: 131072,
+  };
+  const requests: { operations: { kind: string; member?: string }[] }[] = [];
+  await page.route("https://raw.githubusercontent.com/**", () => { throw new Error("Artifact fixtures must not fetch a public provider"); });
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body);
+    const discovery = body.operations[0].kind === "describe";
+    await route.fulfill({ json: { ok: true, data: {
+      schema_version: 1, source,
+      types: [{ id: 0, path: [], definition: { kind: "primitive", primitive: 3 } }, { id: 1, path: [], definition: { kind: "sequence", type: 0 } }],
+      results: discovery ? [{ kind: "describe", value: [
+        { kind: "runtime", api: "ContractsApi", member: "upload_code", args: [{ name: "code", type: 1 }] },
+        { kind: "runtime", api: "ContractsApi", member: "get_storage", args: [] },
+      ], contract: { next_offset: null } }] : [{ kind: "runtime", api: "ContractsApi", member: "upload_code", value: { code_hash: `0x${"11".repeat(32)}` }, contract: { code_artifact: artifact } }],
+    } } });
+  });
+  await gotoThroughRestart(page, "/apis/native");
+  await page.getByLabel("Contract", { exact: true }).selectOption("api");
+  await page.getByLabel("Name", { exact: true }).fill("ContractsApi");
+  await page.getByRole("button", { name: "Inspect contract" }).click();
+  await page.getByLabel("Arguments (JSON array)").fill('["0x"]');
+  await page.getByLabel("Code artifact URL").fill(artifact.url);
+  await page.getByLabel("Artifact SHA-256").fill("bad");
+  await page.getByLabel("Artifact bytes").fill("131072");
+  await page.getByRole("button", { name: "Read operation", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("64-character SHA-256");
+  expect(requests).toHaveLength(1);
+  await page.getByLabel("Artifact SHA-256").fill(artifact.sha256);
+  await page.getByRole("button", { name: "Read operation", exact: true }).click();
+  await expect(page.getByRole("cell", { name: `0x${"11".repeat(32)}`, exact: true })).toBeVisible();
+  expect(requests[1]).toEqual({ as_of: hash, operations: [{ kind: "runtime", api: "ContractsApi", member: "upload_code", args: ["0x"], code_artifact: artifact }] });
+  expect(JSON.stringify(requests[1]).length).toBeLessThan(700);
+  await page.getByLabel("Operation", { exact: true }).selectOption("1");
+  await expect(page.getByLabel("Code artifact URL")).toHaveCount(0);
+  await page.getByLabel("Operation", { exact: true }).selectOption("0");
+  await expect(page.getByLabel("Code artifact URL")).toHaveValue("");
+  await expect(page.getByLabel("Artifact SHA-256")).toHaveValue("");
+  await expect(page.getByLabel("Artifact bytes")).toHaveValue("");
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  expect(overflow).toBe(false);
+});
