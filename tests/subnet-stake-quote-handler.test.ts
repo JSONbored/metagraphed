@@ -1,10 +1,17 @@
+// Keep the real quote/runtime/codec path; only the chain transport is synthetic.
+vi.mock("../src/runtime-stake-quote.ts", async () => {
+  const actual = await vi.importActual<typeof import("../src/runtime-stake-quote.ts")>("../src/runtime-stake-quote.ts");
+  const { readRuntimeStakeFixture } = await import("./fixtures/runtime-stake-quote.ts");
+  return { ...actual, buildRuntimeStakeQuote: (netuid: number, amount: unknown, direction: string) => actual.buildRuntimeStakeQuote(netuid, amount, direction, readRuntimeStakeFixture) };
+});
+
 // Handler + economics-resolver coverage for GET /api/v1/subnets/{netuid}/
 // stake-quote (#5235), driven directly against the entities handler (api.ts
 // pulls in a graphql-ws dep this env lacks). The pure slippage math is unit
 // tested in stake-quote.test.ts; the api.ts route dispatch is exercised in
 // api-coverage.test.ts.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { handleSubnetStakeQuote } from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
@@ -72,7 +79,26 @@ function extractNetuid(path: string) {
 }
 
 describe("handleSubnetStakeQuote (#5235)", () => {
-  test("stake quote from the live economics tier: alpha out, positive impact", async () => {
+  test("reports the finalized source instead of claiming snapshot provenance", async () => {
+    const { status, json } = await call({}, "/api/v1/subnets/64/stake-quote?amount=1");
+    assert.equal(status, 200);
+    assert.equal(json.meta.source, "chain-runtime");
+    assert.equal(json.meta.native_source.runtime_spec_version, 470);
+    assert.equal(json.meta.native_source.finalized_block, "500");
+    assert.equal(json.data.tao_in_pool_tao, null);
+    assert.equal(json.data.alpha_in_pool, null);
+  });
+
+  test("applies the existing native work limiter before simulation", async () => {
+    const keys: string[] = [];
+    const { status, json } = await call({ RPC_RATE_LIMITER: { limit: async ({ key }: { key: string }) => { keys.push(key); return { success: false }; } } }, "/api/v1/subnets/64/stake-quote?amount=1");
+    assert.equal(status, 429);
+    assert.equal(json.error.code, "stake_quote_rate_limited");
+    assert.equal(keys.length, 1);
+    assert.ok(keys[0]!.startsWith("native-runtime:"));
+  });
+
+  test("stake quote from finalized runtime: alpha out, positive impact", async () => {
     const { status, json } = await call(
       liveEconomicsEnv(),
       `/api/v1/subnets/${NETUID}/stake-quote?amount=1000&direction=stake`,
@@ -86,7 +112,7 @@ describe("handleSubnetStakeQuote (#5235)", () => {
     assert.equal(json.data.is_root, false);
   });
 
-  test("unstake quote resolved from the committed economics.json fallback: tao out", async () => {
+  test("unstake quote from finalized runtime: tao out", async () => {
     const { status, json } = await call(
       artifactEconomicsEnv(),
       `/api/v1/subnets/${NETUID}/stake-quote?amount=50000&direction=unstake`,
@@ -117,10 +143,10 @@ describe("handleSubnetStakeQuote (#5235)", () => {
     assert.equal(json.data.tao_in_pool_tao, null);
   });
 
-  test("no economics tier available → 422 insufficient_liquidity", async () => {
+  test("empty runtime simulation → 422 insufficient_liquidity", async () => {
     const { status, json } = await call(
       {},
-      `/api/v1/subnets/${NETUID}/stake-quote?amount=1`,
+      `/api/v1/subnets/999/stake-quote?amount=1`,
     );
     assert.equal(status, 422);
     assert.equal(json.error.code, "insufficient_liquidity");

@@ -203,7 +203,7 @@ export function StakeAmountInput({
           {(quote as NativeStakeQuote).source.finalized_block}
           {"taoFeeAtomic" in quote &&
             typeof quote.taoFeeAtomic === "bigint" &&
-            ` · swap fee ${raoToTao(asRao(quote.taoFeeAtomic))} τ`}
+            ` · swap fee ${raoToTao(asRao(quote.taoFeeAtomic))}τ`}
           {"alphaFeeAtomic" in quote &&
             typeof quote.alphaFeeAtomic === "bigint" &&
             ` · ${raoToTao(asRao(quote.alphaFeeAtomic))} α`}

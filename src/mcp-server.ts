@@ -1745,7 +1745,8 @@ import {
 } from "./subnet-ohlc.ts";
 import { answerSubnetOhlc } from "./subnet-ohlc-answer.ts";
 import { GET_SUBNET_OHLC_CANDLE_DEFAULT } from "../schemas-src/mcp-tools/get-subnet-volume-ohlc.ts";
-import { computeStakeQuote, type StakeQuote } from "./stake-quote.ts";
+import { type StakeQuote } from "./stake-quote.ts";
+import { buildRuntimeStakeQuote } from "./runtime-stake-quote.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
@@ -2261,8 +2262,8 @@ export const MCP_SERVER_VERSION = "1.78.30";
 // this codebase, so they follow common AMM/DEX slippage conventions: ~1% is the
 // point most swap UIs surface a soft slippage notice, and 5% is the widely-used
 // "high price impact — confirm carefully" hard threshold above which `ok` flips
-// to false. A root (netuid 0) stake is always 1:1 with 0% impact, so it never
-// warns. All units are percent, matching the quote's `price_impact_pct`.
+// to false. All units are percent, matching the finalized simulation's
+// `price_impact_pct`, including fees.
 const STAKE_PREVIEW_IMPACT_NOTICE_PCT = 1;
 const STAKE_PREVIEW_IMPACT_MAX_PCT = 5;
 
@@ -2270,8 +2271,16 @@ const STAKE_PREVIEW_IMPACT_MAX_PCT = 5;
 // `ok` flag) purely from a computed stake quote's price impact — the one signal
 // the preview already carries that reflects how much this size moves the pool.
 // Additive over get_subnet_stake_quote's numbers; adds no execution capability.
+async function loadRuntimeStakeQuote(ctx: McpCtx, netuid: number, amount: unknown, direction: string) {
+  if (ctx.env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await ctx.env.RPC_RATE_LIMITER.limit({ key: `native-runtime:${ctx.clientIp ?? "anon"}` });
+    if (!success) throw toolError("rate_limited", "Too many chain simulation requests; slow down.");
+  }
+  return buildRuntimeStakeQuote(netuid, amount, direction);
+}
+
 function computeStakePreviewAdvisory(quote: StakeQuote) {
-  // `StakeQuote`, not `Row`. The quote comes straight off `computeStakeQuote`,
+  // `StakeQuote`, not `Row`. The quote comes from the finalized simulator,
   // which declares `price_impact_pct: number` -- and the bag had this function
   // comparing an `any` against both thresholds, where an absent impact reads
   // false in every direction and lands on `ok: false` with no warning saying
@@ -6991,15 +7000,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_subnet_stake_quote",
     title: "Get a subnet stake/unstake quote",
     description:
-      "Estimate a stake or unstake against one subnet's AMM pool: expected " +
-      "alpha/TAO out, spot and effective price, and price impact, computed " +
-      "with the chain's own constant-product swap formula against the " +
-      "subnet's live pool reserves (the same economics tier get_subnet_economics " +
-      "reads). direction stake (default) spends amount TAO for alpha; unstake " +
-      "spends amount alpha for TAO. Root (netuid 0) has no AMM pool and always " +
-      "quotes 1:1 with zero price impact. Read-only, pure math -- it builds no " +
-      "transaction, signs nothing, and never touches a key. Mirrors " +
-      "GET /api/v1/subnets/{netuid}/stake-quote.",
+      "Simulate a stake or unstake at one finalized chain source using the runtime's SwapRuntimeApi. Returns expected alpha/TAO out, current and effective price, and price impact including swap fees. stake (default) spends amount TAO for alpha; unstake spends amount alpha for TAO. Amounts must fit whole atomic units and u64. Root uses the chain simulator too. Numeric fields are for display; get_native_runtime exposes exact atomic values and source identity. Read-only; builds, signs and submits nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
     inputSchema: inputJsonSchema(GetSubnetStakeQuoteInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetStakeQuoteInputSchema>,
@@ -7008,14 +7009,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
-      const { economics } = await loadSubnetEconomics(ctx, netuid);
-      const result = computeStakeQuote({
-        netuid,
-        taoInPool: economics?.tao_in_pool_tao,
-        alphaInPool: economics?.alpha_in_pool,
-        amount,
-        direction,
-      });
+      const result = await loadRuntimeStakeQuote(ctx, netuid, amount, direction);
       if (!result.ok) {
         throw toolError(result.code, result.error);
       }
@@ -7199,9 +7193,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Produce a clearly-labeled, human-readable PREVIEW of what a hypothetical " +
       "stake or unstake against one subnet would look like: the estimated " +
       "resulting amount out, the effective vs spot price, and the estimated " +
-      "price-impact/slippage -- computed from the same live AMM pool economics " +
-      "get_subnet_stake_quote reads (direction stake spends amount TAO for " +
-      "alpha; unstake spends amount alpha for TAO; root netuid 0 is 1:1). This " +
+      "price-impact/slippage -- computed from the same finalized runtime simulation " +
+      "get_subnet_stake_quote reads (stake spends amount TAO for alpha; " +
+      "unstake spends amount alpha for TAO). This " +
       "is INFORMATIONAL ONLY and strictly READ-ONLY: it does NOT execute, build, " +
       "prepare, or sign any transaction, produces no signable/extrinsic " +
       "artifact, and never touches a wallet or key. Submitting a stake requires " +
@@ -7216,17 +7210,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
-      // Reuse the exact stake-quote data loader + pure-math calculation -- no
-      // duplicated economics logic. This is a presentation layer over the same
-      // numbers get_subnet_stake_quote returns.
-      const { economics } = await loadSubnetEconomics(ctx, netuid);
-      const result = computeStakeQuote({
-        netuid,
-        taoInPool: economics?.tao_in_pool_tao,
-        alphaInPool: economics?.alpha_in_pool,
-        amount,
-        direction,
-      });
+      // The same finalized simulation serves both the quote and its preview.
+      const result = await loadRuntimeStakeQuote(ctx, netuid, amount, direction);
       if (!result.ok) {
         throw toolError(result.code, result.error);
       }
@@ -7235,9 +7220,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const inUnit = direction === "stake" ? "TAO" : "alpha";
       const outUnit = q.expected_out_unit === "alpha" ? "alpha" : "TAO";
       const verb = direction === "stake" ? "Staking" : "Unstaking";
-      const summary = q.is_root
-        ? `${verb} ${amount} ${inUnit} on subnet ${netuid} (root) previews an estimated ${q.expected_out} ${outUnit} at a 1:1 price with no price impact.`
-        : `${verb} ${amount} ${inUnit} on subnet ${netuid} previews an estimated ${q.expected_out} ${outUnit} at an effective price of ${q.effective_price_tao} TAO/alpha (spot ${q.spot_price_tao}), with an estimated ${q.price_impact_pct}% price impact (slippage).`;
+      const summary = `${verb} ${amount} ${inUnit} on subnet ${netuid}${q.is_root ? " (root)" : ""} previews an estimated ${q.expected_out} ${outUnit} at an effective price of ${q.effective_price_tao} TAO/alpha (spot ${q.spot_price_tao}), with an estimated ${q.price_impact_pct}% price impact (slippage)${q.price_impact_pct === 0 ? "; no price impact" : ""}.`;
       return {
         netuid: q.netuid,
         direction: q.direction,

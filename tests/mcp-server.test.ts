@@ -1,3 +1,10 @@
+// Keep the real quote/runtime/codec path; only the chain transport is synthetic.
+vi.mock("../src/runtime-stake-quote.ts", async () => {
+  const actual = await vi.importActual<typeof import("../src/runtime-stake-quote.ts")>("../src/runtime-stake-quote.ts");
+  const { readRuntimeStakeFixture } = await import("./fixtures/runtime-stake-quote.ts");
+  return { ...actual, buildRuntimeStakeQuote: (netuid: number, amount: unknown, direction: string) => actual.buildRuntimeStakeQuote(netuid, amount, direction, readRuntimeStakeFixture) };
+});
+
 import {
   mcpAccountContext,
   withMcpAccount,
@@ -11315,7 +11322,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(typeof out.degraded_reason, "string");
   });
 
-  test("get_subnet_stake_quote quotes a stake against the live pool reserves", async () => {
+  test("get_subnet_stake_quote quotes a stake through the finalized runtime simulator", async () => {
     const res = await callTool(
       "get_subnet_stake_quote",
       { netuid: 64, amount: 1000, direction: "stake" },
@@ -11332,10 +11339,24 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.is_root, false);
     assert.ok(out.expected_out > 0);
     assert.ok(out.price_impact_pct > 0);
-    assert.equal(out.tao_in_pool_tao, STAKE_QUOTE_POOL_ROW.tao_in_pool_tao);
+    assert.equal(out.tao_in_pool_tao, null);
   });
 
-  test("get_subnet_stake_quote quotes an unstake against the live pool reserves", async () => {
+  test("stake quote and preview share the existing native work limiter", async () => {
+    for (const name of ["get_subnet_stake_quote", "get_stake_action_preview"]) {
+      const keys: string[] = [];
+      const res = await callTool(name, { netuid: 64, amount: 1 }, {
+        deps: makeDeps({}, {}),
+        env: { RPC_RATE_LIMITER: { limit: async ({ key }: { key: string }) => { keys.push(key); return { success: false }; } } } as unknown as Env,
+      });
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rate_limited/);
+      assert.equal(keys.length, 1);
+      assert.ok(keys[0]!.startsWith("native-runtime:"));
+    }
+  });
+
+  test("get_subnet_stake_quote quotes an unstake through the finalized runtime simulator", async () => {
     const res = await callTool(
       "get_subnet_stake_quote",
       { netuid: 64, amount: 500, direction: "unstake" },
@@ -11404,7 +11425,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /invalid_direction/);
   });
 
-  test("get_subnet_stake_quote surfaces insufficient_liquidity when the subnet has no pool row", async () => {
+  test("get_subnet_stake_quote surfaces insufficient_liquidity when the chain simulator cannot fill the swap", async () => {
     const res = await callTool(
       "get_subnet_stake_quote",
       { netuid: 999, amount: 10, direction: "stake" },
@@ -11516,7 +11537,7 @@ describe("MCP economics + metagraph data tools", () => {
     }
   });
 
-  test("get_stake_action_preview surfaces insufficient_liquidity when the subnet has no pool row", async () => {
+  test("get_stake_action_preview surfaces insufficient_liquidity when the chain simulator cannot fill the swap", async () => {
     const res = await callTool(
       "get_stake_action_preview",
       { netuid: 999, amount: 10, direction: "stake" },

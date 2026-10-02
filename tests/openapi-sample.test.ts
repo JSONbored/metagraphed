@@ -55,6 +55,22 @@ describe("sampleFromSchema", () => {
     assert.equal(out.n, 1);
   });
 
+  test("allOf preserves required sibling source identity while applying discriminant constraints", () => {
+    const schema = {
+      type: "object", additionalProperties: false,
+      required: ["network", "finalized_block", "runtime_spec_version"],
+      properties: {
+        network: { type: "string", enum: ["finney", "test"] },
+        finalized_block: { type: "string", pattern: "^(0|[1-9]\\d*)$" },
+        runtime_spec_version: { type: "integer" },
+      },
+      allOf: [{ oneOf: [{ properties: { runtime_spec_version: { const: 470 } } }] }],
+    };
+    const out = s(schema);
+    assert.deepEqual(out, { network: "finney", finalized_block: "1000", runtime_spec_version: 470 });
+    assert.ok(new Ajv2020({ strict: false }).compile(schema)(out));
+  });
+
   test("oneOf/anyOf pick the first non-null variant", () => {
     assert.equal(
       s({ oneOf: [{ type: "null" }, { type: "string" }] }),

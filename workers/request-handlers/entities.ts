@@ -261,7 +261,7 @@ import {
   loadCrowdloan,
   loadCrowdloans,
 } from "../../src/crowdloans.ts";
-import { computeStakeQuote } from "../../src/stake-quote.ts";
+import { buildRuntimeStakeQuote } from "../../src/runtime-stake-quote.ts";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
 import { loadRuntimeVersionHistoryColdTier } from "../../src/runtime-versions-cold-tier.ts";
 import { loadUpgradeRadar } from "../../src/upgrade-radar.ts";
@@ -3615,11 +3615,9 @@ export async function resolveSubnetEconomicsRow(env: Env, netuid: number) {
 }
 
 // GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake
-// (#5235): a read-only constant-product slippage/price-impact estimate against
-// the subnet's live AMM pool reserves — no chain write, no custody. Pure math in
-// src/stake-quote.ts; this handler just resolves the reserves and maps its
-// typed result onto the API envelope (400 for a bad request, 422 when the pool
-// can't fill the requested swap).
+// Finalized metadata-backed chain simulation, preserving the quote data shape.
+// The source lives in meta; numeric amounts are presentation values, with exact
+// atomic results available through POST /api/v1/native-runtime.
 export async function handleSubnetStakeQuote(
   request: Request,
   env: Env,
@@ -3638,24 +3636,24 @@ export async function handleSubnetStakeQuote(
   // published `number` first.
   const amount = (routeQuery(url).amount as number | undefined) ?? 0;
   const direction = routeValue<string>(url, "direction");
-  const { row, generatedAt } = await resolveSubnetEconomicsRow(env, netuid);
-  const result = computeStakeQuote({
-    netuid: Number(netuid),
-    taoInPool: row?.tao_in_pool_tao,
-    alphaInPool: row?.alpha_in_pool,
-    amount,
-    direction,
-  });
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `native-runtime:${resolveClientIp(request)}`,
+    });
+    if (!success)
+      return errorResponse("stake_quote_rate_limited", "Too many chain simulation requests; slow down.", 429, {}, { "retry-after": "60" });
+  }
+  const result = await buildRuntimeStakeQuote(Number(netuid), amount, direction);
   if (!result.ok) {
     return errorResponse(result.code, result.error, result.status);
   }
   const envelopePayload = {
     data: { schema_version: 1, ...result.quote },
-    meta: await metagraphMeta(
-      env,
-      `/metagraph/subnets/${netuid}/stake-quote.json`,
-      generatedAt,
-    ),
+    meta: {
+      source: "chain-runtime",
+      contract_version: contractVersion(env),
+      native_source: result.source,
+    },
   };
   // Same opt-in staging tripwire as handleApiRequest's generic path (types-
   // epic B, #7860 requirement 6) -- this route bypasses that generic path

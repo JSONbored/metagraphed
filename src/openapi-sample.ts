@@ -973,7 +973,11 @@ export function sampleFromSchema(
   if (Array.isArray(schema.allOf)) {
     let merged: Sample = {};
     let scalar: unknown;
-    for (const sub of schema.allOf as Schema[]) {
+    // Sibling properties/required constraints apply alongside allOf. Dropping
+    // them omitted finalized source identity from Root basket examples.
+    const siblings = { ...schema };
+    delete siblings.allOf;
+    for (const sub of [siblings, ...(schema.allOf as Schema[])]) {
       const part = sampleFromSchema(sub, components, name, depth, activeRefs);
       if (part && typeof part === "object" && !Array.isArray(part)) {
         merged = { ...merged, ...(part as Sample) };

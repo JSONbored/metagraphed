@@ -1,9 +1,16 @@
+// Keep the real quote/runtime/codec path; only the chain transport is synthetic.
+vi.mock("../src/runtime-stake-quote.ts", async () => {
+  const actual = await vi.importActual<typeof import("../src/runtime-stake-quote.ts")>("../src/runtime-stake-quote.ts");
+  const { readRuntimeStakeFixture } = await import("./fixtures/runtime-stake-quote.ts");
+  return { ...actual, buildRuntimeStakeQuote: (netuid: number, amount: unknown, direction: string) => actual.buildRuntimeStakeQuote(netuid, amount, direction, readRuntimeStakeFixture) };
+});
+
 // Route-dispatch coverage for GET /api/v1/subnets/{netuid}/stake-quote (#5235):
 // drives the real api.ts router end-to-end so the path-pattern match + handler
 // call are exercised. Handler/resolver branch detail lives in
 // subnet-stake-quote-handler.test.ts; the pure math in stake-quote.test.ts.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
