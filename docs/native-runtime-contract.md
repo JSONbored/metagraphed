@@ -424,3 +424,42 @@ canonical SCALE lengths and UTF-8 validation remain active; retained projection
 bytes match the previous array-producing traversal across all 182 contracts.
 The v470 fixture removes 7,290 arrays and 6,440 element slots. Warm contract
 reuse remains bound to code identity and its existing two-contract byte cap.
+
+
+## Explicit collection pages
+
+A typed `storage`, `constant` or `runtime` read accepts `value_page`:
+
+```json
+{"kind":"runtime","api":"NeuronInfoRuntimeApi","member":"get_neurons","args":[19],"value_page":{"path":[],"offset":0,"limit":16}}
+```
+
+The root path `[]` selects the returned vector. Named fields, positional tuple/array
+indices and enum variant names select nested collections: `[0,"weights"]` selects
+the first neuron's weights. Transparent single-field newtypes add no path segment.
+The selected collection alone becomes `value`. `value_page` reports its source
+collection/element type ids, total, offset, limit and next offset. Raw byte collections
+remain hex. Empty collections return an empty value and terminal continuation;
+an absent variant or element path is an error, rather than fabricated empty data.
+
+Continue with the identical operation/path and the response's finalized source hash
+as `as_of`. A nonzero offset requires that source. The website exposes these controls
+and continues the saved request even if the argument form is subsequently edited.
+Identical and distinct pages share one upstream execution within a request, while
+identical page decoding is memoized and public results remain independent objects.
+
+With `decode_inner`, source-qualified legacy `runtime` and `runtime_scale` methods
+also accept the option. The page is returned as `inner_result`; original outer bytes
+are omitted only for this explicit projection, and remain available by omitting the
+page option. Unqualified caller-encoded output cannot silently acquire a guessed
+layout. EVM precompile interpretation retains its complete result and does not combine
+with collection projection.
+
+The full upstream value is validated, including omitted booleans, Unicode, enum
+variants, compact integers and trailing bytes. Fixed-width integer/byte spans skip
+in bulk without allocating their values. Wire bytes, per-collection count, text,
+depth, retained item and final response limits stay unchanged. Explicit pages have a
+separate bounded validation traversal to handle omitted nested records without
+retaining them; adversarial zero-width wrappers cannot create unbounded work.
+A request retains at most 64 selected collection/storage entries across its operations.
+Default full reads retain their original representations, bounds and errors.

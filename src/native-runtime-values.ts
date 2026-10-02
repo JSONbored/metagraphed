@@ -70,14 +70,14 @@ function getType(metadata: NativeMetadata, id: number) {
   if (!type) throw new Error("Missing native portable type");
   return type.definition;
 }
-function numericWidth(metadata: NativeMetadata, id: number, depth = 0): number {
+export function nativeUnsignedWidth(metadata: NativeMetadata, id: number, depth = 0): number {
   if (depth > NATIVE_RUNTIME_LIMITS.depth)
     throw new Error("Native type recursion exceeds work budget");
   const type = getType(metadata, id);
   if (type.kind === "primitive" && type.primitive >= 3 && type.primitive <= 8)
     return WIDTHS[type.primitive - 3]!;
   if (type.kind === "composite" && type.fields.length === 1)
-    return numericWidth(metadata, type.fields[0]!.type, depth + 1);
+    return nativeUnsignedWidth(metadata, type.fields[0]!.type, depth + 1);
   throw new Error("Native compact/bit storage must be unsigned integer");
 }
 function fieldsValue(
@@ -118,6 +118,16 @@ export function decodeNativeValue(
 ): NativeValue {
   const partial = hex instanceof NativeScaleReader;
   const reader = partial ? hex : new NativeScaleReader(hex);
+  const value = nativeValueReader(metadata, reader)(id);
+  return partial ? value : reader.finish(value);
+}
+
+/** One allocation budget shared by all values retained in an explicit page. */
+export function nativeValueReader(
+  metadata: NativeMetadata,
+  reader: NativeScaleReader,
+  initialWork = 0,
+) {
   if (
     reader.bytes.length > NATIVE_RUNTIME_LIMITS.valueBytes ||
     !Number.isSafeInteger(reader.offset) ||
@@ -125,7 +135,7 @@ export function decodeNativeValue(
     reader.offset > reader.bytes.length
   )
     throw new Error("Invalid or oversized native value reader");
-  let work = 0;
+  let work = initialWork;
   const read = (typeId: number, depth = 0): NativeValue => {
     if (
       depth > NATIVE_RUNTIME_LIMITS.depth ||
@@ -173,13 +183,13 @@ export function decodeNativeValue(
       }
       case "compact": {
         const value = reader.compact();
-        if (value >= 1n << BigInt(numericWidth(metadata, type.type) * 8))
+        if (value >= 1n << BigInt(nativeUnsignedWidth(metadata, type.type) * 8))
           throw new Error("Native compact integer out of range");
         return value.toString();
       }
       case "bits": {
         const length = reader.count();
-        const width = numericWidth(metadata, type.store);
+        const width = nativeUnsignedWidth(metadata, type.store);
         if (width > 8) throw new Error("Invalid native bit storage width");
         return {
           bit_length: length,
@@ -211,8 +221,7 @@ export function decodeNativeValue(
       }
     }
   };
-  const value = read(id);
-  return partial ? value : reader.finish(value);
+  return read;
 }
 
 export function encodeNativeValue(
@@ -308,7 +317,7 @@ export function encodeNativeValue(
       }
       case "compact": {
         const amount = integer(input);
-        unsigned(amount, numericWidth(metadata, type.type));
+        unsigned(amount, nativeUnsignedWidth(metadata, type.type));
         result = nativeCompact(amount);
         break;
       }
@@ -324,7 +333,7 @@ export function encodeNativeValue(
           input.bit_length > NATIVE_RUNTIME_LIMITS.items
         )
           throw new Error("Invalid native bit sequence");
-        const width = numericWidth(metadata, type.store);
+        const width = nativeUnsignedWidth(metadata, type.store);
         if (width > 8) throw new Error("Invalid native bit storage width");
         const bytes = new NativeScaleReader(input.bytes_hex).bytes;
         if (bytes.length !== Math.ceil(input.bit_length / (width * 8)) * width)

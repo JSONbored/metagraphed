@@ -433,3 +433,39 @@ export function nativeEvmFunctions(artifact: NativeArtifact | null): string[] {
       : [],
   );
 }
+
+export function valuePageOperation(
+  operation: NativeOperation,
+  pathText: string,
+  offsetText: string,
+  limitText: string,
+): NativeOperation {
+  if (!["storage", "constant", "runtime", "runtime_scale"].includes(operation.kind))
+    throw new Error("Choose a native value read to page a collection.");
+  if (operation.kind === "runtime_scale" && !operation.decode_inner)
+    throw new Error("Enable source-qualified inner record decoding first.");
+  if (operation.kind === "runtime" && operation.evm_call)
+    throw new Error("Use the complete precompile interpretation without collection paging.");
+  if (pathText.length > 16384) throw new Error("Collection path exceeds the request budget.");
+  const path: unknown = JSON.parse(pathText);
+  if (!Array.isArray(path) || path.length > 64 || path.some((part) =>
+    typeof part === "string"
+      ? part.length === 0 || part.length > 128
+      : !Number.isInteger(part) || Number(part) < 0 || Number(part) > 16383,
+  )) throw new Error("Enter a JSON path of field/variant names and nonnegative indices.");
+  const integer = (text: string, max: number, min: number) => {
+    if (!/^(0|[1-9]\d*)$/.test(text) || Number(text) < min || Number(text) > max)
+      throw new Error("Enter a valid collection offset and page size from 1 through 64.");
+    return Number(text);
+  };
+  return { ...operation, value_page: {
+    path, offset: integer(offsetText, 262144, 0), limit: integer(limitText, 64, 1),
+  } } as NativeOperation;
+}
+
+export function nextValuePageOperation(operation: NativeOperation, artifact: NativeArtifact): NativeOperation {
+  const page = artifact.results[0]?.value_page;
+  if (!page || page.next_offset === null)
+    throw new Error("This collection has no next page.");
+  return valuePageOperation(operation, JSON.stringify(page.path), String(page.next_offset), String(page.limit));
+}

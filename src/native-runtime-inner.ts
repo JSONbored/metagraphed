@@ -6,6 +6,7 @@ import {
   type NativeType,
 } from "./native-runtime-metadata.ts";
 import { decodeNativeValue } from "./native-runtime-values.ts";
+import { planNativeValuePage } from "./native-runtime-page.ts";
 
 /** The outer Vec<u8> is metadata-defined. Its source-derived record layout is
  * admitted only for the exact published metadata, never for a version label. */
@@ -50,6 +51,21 @@ export function nativeInnerRecord(
     else if (d.kind === "bits") pending.push(d.store, d.order);
     else if (d.kind !== "primitive") pending.push(d.type);
   }
+  const readInner = <T>(value: unknown, outer: boolean, decode: (hex: unknown) => T): T | null => {
+    if (outer) {
+      const reader = new NativeScaleReader(value);
+      const length = reader.count(NATIVE_RUNTIME_LIMITS.valueBytes),
+        start = reader.offset;
+      reader.take(length);
+      reader.finish(undefined);
+      reader.offset = start;
+      return reader.finish(
+        method.empty_is_none && length === 0 ? null : decode(reader),
+      );
+    }
+    if (method.empty_is_none && value === "0x") return null;
+    return decode(value);
+  };
   return {
     contract: {
       encoding: "scale",
@@ -62,21 +78,15 @@ export function nativeInnerRecord(
       types: [...needed.values()],
     },
     decode(value: unknown, outer = false) {
-      if (outer) {
-        const reader = new NativeScaleReader(value);
-        const length = reader.count(NATIVE_RUNTIME_LIMITS.valueBytes),
-          start = reader.offset;
-        reader.take(length);
-        reader.finish(undefined);
-        reader.offset = start;
-        return reader.finish(
-          method.empty_is_none && length === 0
-            ? null
-            : decodeNativeValue(model, method.root_type, reader),
-        );
-      }
-      if (method.empty_is_none && value === "0x") return null;
-      return decodeNativeValue(model, method.root_type, value);
+      return readInner(value, outer, (hex) => decodeNativeValue(model, method.root_type, hex));
+    },
+    page(request: Parameters<typeof planNativeValuePage>[2]) {
+      const planned = planNativeValuePage(model, method.root_type, request);
+      return {
+        decode(value: unknown, outer = false) {
+          return readInner(value, outer, planned.decode);
+        },
+      };
     },
   };
 }

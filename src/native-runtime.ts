@@ -35,6 +35,7 @@ import {
 } from "./native-evm-simulation.ts";
 import { loadNativeContract } from "./native-runtime-contract.ts";
 import { nativeInnerRecord } from "./native-runtime-inner.ts";
+import { planNativeValuePage } from "./native-runtime-page.ts";
 import {
   NATIVE_CONTRACT_SIMULATION_LIMITS,
   nativeContractSimulationWork,
@@ -94,6 +95,11 @@ interface NativePlan {
   simulationGas?: bigint | null;
   contractWork?: ReturnType<typeof nativeContractSimulationWork> | null;
   inner?: ReturnType<typeof nativeInnerRecord>;
+  valuePage?: {
+    inner: boolean;
+    identity: string;
+    decode: (value: unknown) => ReturnType<ReturnType<typeof planNativeValuePage>["decode"]> | null;
+  };
   evm?: ReturnType<typeof resolveNativeEvmCall>["contract"];
 }
 // Metadata also describes node-internal APIs that can execute a block or write
@@ -406,7 +412,9 @@ function plan(
         kind: "constant" as const,
         pallet: pallet.name,
         member: item.name,
-        value: decodeNativeValue(metadata, item.type, item.value),
+        ...(operation.value_page
+          ? planNativeValuePage(metadata, item.type, operation.value_page).decode(item.value)
+          : { value: decodeNativeValue(metadata, item.type, item.value) }),
         contract: contract(metadata, item.type, needed),
       },
     };
@@ -535,20 +543,22 @@ export async function readNativeRuntime(
     throw new Error("Native request exceeds byte budget");
   if (
     input.operations.reduce(
-      (total, op) => total + (op.kind === "entries" ? op.limit : 0),
+      (total, op) => total + (op.kind === "entries" ? op.limit : 0) +
+        ("value_page" in op && op.value_page ? op.value_page.limit : 0),
       0,
     ) > 64
   )
-    throw new Error("Native entries exceed the aggregate page budget");
+    throw new Error(input.operations.some((op) => "value_page" in op && op.value_page)
+      ? "Native selected values exceed the aggregate page budget"
+      : "Native entries exceed the aggregate page budget");
   if (
-    input.operations.some(
-      (op) => op.kind === "entries" && op.cursor !== undefined,
-    ) &&
+    input.operations.some((op) => op.kind === "entries" && op.cursor !== undefined) &&
     input.as_of === undefined
-  )
-    throw new Error(
-      "Native entries continuation requires its finalized as_of hash",
-    );
+  ) throw new Error("Native entries continuation requires its finalized as_of hash");
+  if (
+    input.operations.some((op) => "value_page" in op && op.value_page !== undefined && op.value_page.offset > 0) &&
+    input.as_of === undefined
+  ) throw new Error("Native value page continuation requires its finalized as_of hash");
   const network: ChainNetworkId = chainNetworkFromChainName(input.network);
   const read = rpc ?? nativeRuntimeRpc(network);
   const finalized = blockHash.parse(await read("chain_getFinalizedHead", []));
@@ -650,7 +660,7 @@ export async function readNativeRuntime(
       apiVersions,
       runtime.specVersion,
     );
-    const row: NativePlan = inner
+    let row: NativePlan = inner
       ? {
           ...base,
           inner,
@@ -660,6 +670,22 @@ export async function readNativeRuntime(
           },
         }
       : base;
+    if ("value_page" in operation && operation.value_page && operation.kind !== "constant") {
+      if (evm) throw new Error("Native value paging cannot replace evm_call result interpretation");
+      const plannedPage = inner
+        ? inner.page(operation.value_page)
+        : row.output !== undefined
+          ? planNativeValuePage(metadata, row.output, operation.value_page)
+          : null;
+      if (!plannedPage) throw new Error("Native SCALE value paging requires decode_inner and its source contract");
+      row = { ...row, valuePage: {
+        inner: Boolean(inner),
+        identity: JSON.stringify([inner?.contract.root_type ?? row.output, operation.value_page]),
+        decode: inner
+          ? (value) => (plannedPage as ReturnType<typeof inner.page>).decode(value, true)
+          : plannedPage.decode,
+      } };
+    }
     if (
       (operation.kind === "runtime" || operation.kind === "prepare") &&
       operation.code_artifact
@@ -803,6 +829,7 @@ export async function readNativeRuntime(
     }
     return { inner_result: decoded };
   };
+  const pagedValues = new Map<string, ReturnType<ReturnType<typeof planNativeValuePage>["decode"]> | null>();
   const results = plans.map<PlannedResult>((row, index) => {
     if ("entry" in row && row.entry) {
       const entry = row.entry,
@@ -830,6 +857,27 @@ export async function readNativeRuntime(
     if (key === null || key === undefined) return row.result;
     let value = responses.get(key),
       isDefault = false;
+    if ("item" in row && row.item && value === null) {
+      if (row.item.optional)
+        return { ...row.result, value: null, is_default: false };
+      value = row.item.fallback;
+      isDefault = true;
+    }
+    if (row.valuePage) {
+      const memoKey = `${key}:${row.valuePage.identity}`;
+      let page = isDefault ? row.valuePage.decode(value) : pagedValues.get(memoKey);
+      if (page === undefined) {
+        page = row.valuePage.decode(value);
+        pagedValues.set(memoKey, page);
+      }
+      return { ...row.result,
+        ...(page ? { value_page: page.value_page } : {}),
+        ...(row.valuePage.inner
+          ? { inner_result: page?.value ?? null }
+          : { value: page?.value ?? null }),
+        ...("item" in row ? { is_default: isDefault } : {}),
+      };
+    }
     if (row.result.kind === "runtime_scale") {
       if (
         typeof value !== "string" ||
@@ -844,12 +892,6 @@ export async function readNativeRuntime(
           ? innerResult(key, row.inner, value, true)
           : {}),
       };
-    }
-    if ("item" in row && row.item && value === null) {
-      if (row.item.optional)
-        return { ...row.result, value: null, is_default: false };
-      value = row.item.fallback;
-      isDefault = true;
     }
     if (!("output" in row) || row.output === undefined)
       throw new Error("Missing native result contract");
