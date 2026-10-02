@@ -56,6 +56,7 @@ for (const generation of ["legacy", "weighted"] as const) {
       }),
     );
     await gotoThroughRestart(page, `/validators?basket=${BASKET_KEY}`);
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
     const section = page.locator("section#baskets");
     await section.scrollIntoViewIfNeeded();
     await expect(section.getByText("3 alpha_atomic", { exact: true })).toBeVisible();
@@ -117,6 +118,7 @@ test("API 1 account entitlement remains a marked payout without a dust-aware pre
     }),
   );
   await gotoThroughRestart(page, `/accounts/${BASKET_ACCOUNT}`);
+  await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
   const section = page.locator("section#root-baskets");
   await section.scrollIntoViewIfNeeded();
   await expect(section.getByText("9007199254740993", { exact: true })).toBeVisible();
@@ -144,6 +146,7 @@ for (const width of [375, 768, 1280]) {
         }),
       );
       await gotoThroughRestart(page, `/validators?basket=${BASKET_KEY}`);
+      await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
       const section = page.locator("section#baskets");
       await section.scrollIntoViewIfNeeded();
       await expect(section.getByText("3 alpha_atomic", { exact: true })).toBeVisible();
@@ -165,6 +168,7 @@ for (const width of [375, 768, 1280]) {
         }),
       );
       await gotoThroughRestart(page, `/accounts/${BASKET_ACCOUNT}`);
+      await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
       const account = page.locator("section#root-baskets");
       await account.scrollIntoViewIfNeeded();
       await expect(account.getByText("9007199.254740993 TAO", { exact: true })).toBeVisible();
@@ -249,6 +253,7 @@ test("selected basket reports unsupported state without inventing a balance", as
     }),
   );
   await gotoThroughRestart(page, `/validators?basket=${BASKET_KEY}`);
+  await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
   const section = page.locator("section#baskets");
   await section.scrollIntoViewIfNeeded();
   await expect(section.getByText(/not supported/)).toHaveCount(2);
@@ -259,6 +264,13 @@ test("selected basket reports unsupported state without inventing a balance", as
 test("account pages retain claims after exit and keep failed reads distinct from empty positions", async ({
   page,
 }) => {
+  const hydrationErrors: string[] = [];
+  const hydrationError = /hydration|server rendered|Minified React error #(418|419|423|425)/i;
+  page.on("pageerror", (error) => hydrationErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && hydrationError.test(message.text()))
+      hydrationErrors.push(message.text());
+  });
   await page.setViewportSize({ width: 375, height: 812 });
   const requests: URL[] = [];
   let unavailable = false;
@@ -292,6 +304,7 @@ test("account pages retain claims after exit and keep failed reads distinct from
     });
   });
   await gotoThroughRestart(page, `/accounts/${BASKET_ACCOUNT}`);
+  await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
   const section = page.locator("section#root-baskets");
   await section.scrollIntoViewIfNeeded();
   await expect(section.getByText(/Continue to check the next page/)).toBeVisible();
@@ -309,4 +322,5 @@ test("account pages retain claims after exit and keep failed reads distinct from
   unavailable = false;
   await section.getByRole("button", { name: "Retry native positions" }).click();
   await expect(section.getByText(/Continue to check the next page/)).toBeVisible();
+  expect(hydrationErrors).toEqual([]);
 });
