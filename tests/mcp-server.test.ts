@@ -130,7 +130,10 @@ import {
   buildBlockExtrinsics,
 } from "../src/extrinsics.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.ts";
-import { EVM_PRECOMPILE_BY_ADDRESS, functionSelector } from "../src/evm-precompiles.ts";
+import {
+  EVM_PRECOMPILE_BY_ADDRESS,
+  functionSelector,
+} from "../src/evm-precompiles.ts";
 import {
   CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
@@ -6636,22 +6639,43 @@ describe("MCP decode_evm_call (#6725/#6729)", () => {
   test("explicit releases decode v470 selectors without a chain request and retain declared malformed arguments", async () => {
     const input = functionSelector("getTimestamp()");
     const to = "0x0000000000000000000000000000000000000811";
-    for (const [runtime_spec_version, precompile] of [[430, null], [470, "Timestamp"]] as const) {
-      const res = await callTool("decode_evm_call", { to, input, runtime_spec_version }, {});
+    for (const [runtime_spec_version, precompile] of [
+      [430, null],
+      [470, "Timestamp"],
+    ] as const) {
+      const res = await callTool(
+        "decode_evm_call",
+        { to, input, runtime_spec_version },
+        {},
+      );
       assert.equal(res.body.result.isError, false);
       assert.equal(res.body.result.structuredContent.precompile, precompile);
-      assert.equal(res.body.result.structuredContent.runtime_spec_version, runtime_spec_version);
+      assert.equal(
+        res.body.result.structuredContent.runtime_spec_version,
+        runtime_spec_version,
+      );
     }
-    const malformed = await callTool("decode_evm_call", {
-      to: "0x0000000000000000000000000000000000000805",
-      input: functionSelector("setRejectLockedAlpha(bool)"),
-      runtime_spec_version: 470,
-    }, {});
+    const malformed = await callTool(
+      "decode_evm_call",
+      {
+        to: "0x0000000000000000000000000000000000000805",
+        input: functionSelector("setRejectLockedAlpha(bool)"),
+        runtime_spec_version: 470,
+      },
+      {},
+    );
     assert.equal(malformed.body.result.isError, false);
-    assert.equal(malformed.body.result.structuredContent.function, "setRejectLockedAlpha");
+    assert.equal(
+      malformed.body.result.structuredContent.function,
+      "setRejectLockedAlpha",
+    );
     assert.equal(malformed.body.result.structuredContent.args, null);
     for (const runtime_spec_version of [436, 471]) {
-      const res = await callTool("decode_evm_call", { to, input, runtime_spec_version }, {});
+      const res = await callTool(
+        "decode_evm_call",
+        { to, input, runtime_spec_version },
+        {},
+      );
       assert.equal(res.body.result.isError, true);
       assert.match(res.body.result.content[0].text, /runtime_spec_version/);
     }

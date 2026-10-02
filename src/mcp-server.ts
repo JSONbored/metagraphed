@@ -15574,7 +15574,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       if (args.runtime_spec_version !== undefined) {
-        const decoded = decodeRuntimeEvmCall(args.runtime_spec_version, args.to, args.input);
+        const decoded = decodeRuntimeEvmCall(
+          args.runtime_spec_version,
+          args.to,
+          args.input,
+        );
         if (!decoded) {
           throw toolError(
             "invalid_params",

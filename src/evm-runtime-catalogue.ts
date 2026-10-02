@@ -877,7 +877,7 @@ export const evmRuntimeCatalogue: {
     ["Ed25519Verify", 1026, []],
     ["Sr25519Verify", 1027, []],
     ["BalanceTransfer", 2048, [0]],
-    ["Staking", 2053, [1, 2, 3, 4, 5, 6, 7]],
+    ["Staking", 2049, [1, 2, 3, 4, 5, 6, 7]],
     [
       "Subnet",
       2051,
