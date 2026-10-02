@@ -32,6 +32,7 @@ import { probeJob } from "./probe-jobs.ts";
 // representable, and a hand-rolled `number` would be the #9782 class of bug
 // waiting to happen.
 import type { AttributionSweeps } from "../generated/db/types.ts";
+import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
 
 // The verdict list lives in src/attribution-verdicts.ts and is re-exported
 // here, where every existing caller already imports it from. That module has no
@@ -245,13 +246,55 @@ export async function sweepSubnet(
 
 /** The minimal producer-store surface used here (src/producer-store.ts),
  * structural so tests can inject a plain object. */
-export interface SweepStoreDb {
-  query?<Row>(text: string, values?: unknown[]): Promise<Row[]>;
-  run?(text: string, values?: unknown[]): Promise<{ changes: number }>;
+export type SweepStoreDb = Partial<
+  Pick<ProducerStore, "query" | "run" | "transaction">
+>;
+
+// Five bindings per candidate, below D1's 100-binding statement ceiling.
+// VALUES is shared by both owned stores; no SQL dialect translation is needed.
+const CANDIDATES_PER_STATEMENT = 20;
+
+function candidateStatements(result: SweepResult): ProducerStatement[] {
+  const statements: ProducerStatement[] = [];
+  let batch: SweepCandidate[] = [];
+  const keys = new Set<string>();
+  const flush = () => {
+    if (batch.length === 0) return;
+    statements.push({
+      text:
+        `INSERT INTO attribution_candidates` +
+        ` (netuid, ss58, source_url, first_seen, last_seen) VALUES ` +
+        batch.map(() => "(?, ?, ?, ?, ?)").join(", ") +
+        ` ON CONFLICT (netuid, ss58, source_url) DO UPDATE SET` +
+        ` last_seen = EXCLUDED.last_seen` +
+        ` WHERE EXCLUDED.last_seen >= attribution_candidates.last_seen`,
+      values: batch.flatMap((candidate) => [
+        result.netuid,
+        candidate.ss58,
+        candidate.source_url,
+        result.swept_at,
+        result.swept_at,
+      ]),
+    });
+    batch = [];
+    keys.clear();
+  };
+  for (const candidate of result.candidates) {
+    const key = JSON.stringify([candidate.ss58, candidate.source_url]);
+    // Postgres cannot update one conflict key twice in the same INSERT. Keep
+    // repeated observations in separate statements, preserving their order.
+    if (batch.length === CANDIDATES_PER_STATEMENT || keys.has(key)) flush();
+    batch.push(candidate);
+    keys.add(key);
+  }
+  flush();
+  return statements;
 }
 
 /**
- * Persist one pass.
+ * Persist one complete pass in one transaction. A candidate failure must not
+ * leave a fresh sweep receipt with only a prefix of its observations stored.
+ * D1 submits the batch once and updates both export revisions in that commit.
  *
  * ON CONFLICT DO UPDATE, never INSERT OR REPLACE: the latter is SQLite's
  * spelling and Postgres rejects it outright, which is how every write in the
@@ -269,43 +312,32 @@ export async function persistSweep(
   // what left the retry report reading "run() declined without throwing" while
   // this function had already computed the answer.
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  if (!db?.run) return { ok: false, reason: "no_store_binding" };
+  if (!db?.transaction) return { ok: false, reason: "no_store_binding" };
   try {
-    await db.run(
-      `INSERT INTO attribution_sweeps` +
-        ` (netuid, swept_at, sources_checked, sources_read, candidates, verdict)` +
-        ` VALUES (?, ?, ?, ?, ?, ?)` +
-        ` ON CONFLICT (netuid) DO UPDATE SET` +
-        ` swept_at = EXCLUDED.swept_at,` +
-        ` sources_checked = EXCLUDED.sources_checked,` +
-        ` sources_read = EXCLUDED.sources_read,` +
-        ` candidates = EXCLUDED.candidates,` +
-        ` verdict = EXCLUDED.verdict`,
-      [
-        result.netuid,
-        result.swept_at,
-        result.sources_checked,
-        result.sources_read,
-        result.candidates.length,
-        result.verdict,
-      ],
-    );
-    for (const candidate of result.candidates) {
-      await db.run(
-        `INSERT INTO attribution_candidates` +
-          ` (netuid, ss58, source_url, first_seen, last_seen)` +
-          ` VALUES (?, ?, ?, ?, ?)` +
-          ` ON CONFLICT (netuid, ss58, source_url) DO UPDATE SET` +
-          ` last_seen = EXCLUDED.last_seen`,
-        [
+    await db.transaction([
+      {
+        text:
+          `INSERT INTO attribution_sweeps` +
+          ` (netuid, swept_at, sources_checked, sources_read, candidates, verdict)` +
+          ` VALUES (?, ?, ?, ?, ?, ?)` +
+          ` ON CONFLICT (netuid) DO UPDATE SET` +
+          ` swept_at = EXCLUDED.swept_at,` +
+          ` sources_checked = EXCLUDED.sources_checked,` +
+          ` sources_read = EXCLUDED.sources_read,` +
+          ` candidates = EXCLUDED.candidates,` +
+          ` verdict = EXCLUDED.verdict` +
+          ` WHERE EXCLUDED.swept_at >= attribution_sweeps.swept_at`,
+        values: [
           result.netuid,
-          candidate.ss58,
-          candidate.source_url,
           result.swept_at,
-          result.swept_at,
+          result.sources_checked,
+          result.sources_read,
+          result.candidates.length,
+          result.verdict,
         ],
-      );
-    }
+      },
+      ...candidateStatements(result),
+    ]);
     return { ok: true };
   } catch (error) {
     return {
