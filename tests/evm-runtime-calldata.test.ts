@@ -18,6 +18,9 @@ test("every release-bound precompile function decodes its independently encoded 
   for (const release of catalogue.releases) {
     const manifest = reference.manifests.find((row) => row.spec === release[0])!;
     assert.equal(release[2].length, manifest.addresses);
+    assert.equal(new Set(release[2].map((id) => catalogue.precompiles[id][1])).size, release[2].length);
+    assert.equal(release[2].map((id) => catalogue.precompiles[id]).find((row) => row[0] === "Staking")![1], 2049);
+    assert.equal(release[2].map((id) => catalogue.precompiles[id]).find((row) => row[0] === "StakingV2")![1], 2053);
     assert.ok(manifest.files.every((row) => /^[0-9a-f]{64}$/.test(row[1])));
     let functions = 0;
     for (const id of release[2]) {

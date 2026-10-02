@@ -34,7 +34,7 @@ export const DecodeEvmCallInputSchema = z
       .meta({ examples: ["0xa9059cbb0000000000000000000000001234"] }),
     runtime_spec_version: z.int().min(1).max(4294967295).optional().describe(
       "Official Subtensor spec version for release-bound decoding (published tags v430–v470). Omit for the legacy captured-call catalogue and unchanged output.",
-    ),
+    ).meta({ examples: [470] }),
   })
   .strict();
 export type DecodeEvmCallInput = z.infer<typeof DecodeEvmCallInputSchema>;
