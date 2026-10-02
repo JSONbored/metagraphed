@@ -35,7 +35,9 @@ for (const era of eras) {
   const bare15 = unwrapNativeMetadata(era.v15)!;
   const model15 = decodeNativeMetadata(bare15);
   const registry15 = new TypeRegistry();
-  registry15.setMetadata(new Metadata(registry15, bare15));
+  registry15.setMetadata(
+    new Metadata(registry15, Buffer.from(bare15.slice(2), "hex")),
+  );
   const sample = (id: number) => sampleNativeValue(model15, id);
 
   // Source identity and execution results are deliberately synthetic. The ABI
@@ -84,7 +86,10 @@ for (const era of eras) {
       const bare = unwrapNativeMetadata(wrapped)!;
       const model = decodeNativeMetadata(bare);
       const registry = new TypeRegistry();
-      const reference = new Metadata(registry, bare);
+      const reference = new Metadata(
+        registry,
+        Buffer.from(bare.slice(2), "hex"),
+      );
       registry.setMetadata(reference);
       const view = metadataVersion === 14 ? reference.asV14 : reference.asV15;
       assert.equal(model.version, metadataVersion);
