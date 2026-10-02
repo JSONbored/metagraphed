@@ -248,14 +248,15 @@ test("bytes and UTF-8 strings preserve content and reject truncated, dirty-paddi
     netuid: 19,
     symbol: "",
   });
-  const bom = word(19) + word(64) + word(3) + "efbbbf" + "00".repeat(29);
-  assert.deepEqual(decode(string, bom, 2051).args, {
-    netuid: 19,
-    symbol: "\ufeff",
-  });
   assert.equal(
     decode(string, word(19) + word(64) + word(1) + "ff" + "00".repeat(31), 2051)
       .args,
     null,
   );
+  // A failed string decode cannot poison the next request's decoder state.
+  const bom = word(19) + word(64) + word(3) + "efbbbf" + "00".repeat(29);
+  assert.deepEqual(decode(string, bom, 2051).args, {
+    netuid: 19,
+    symbol: "\ufeff",
+  });
 });
