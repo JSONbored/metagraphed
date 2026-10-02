@@ -145,7 +145,7 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
         return source;
       }
       // Older wildcard exports are resolved against the actual compiled module declarations.
-      for(const path of modules) {const source=await moduleSource(path);for(const match of source.matchAll(/pub struct (\w+)/g))exports.set(match[1],path);}
+      for(const path of modules) {const source=await moduleSource(path);for(const match of source.matchAll(/pub(?:\([^)]*\))?\s+struct (\w+)/g))exports.set(match[1],path);}
       const entries:number[]=[],returnEntries:number[]=[];
       let count=0,manual=0;
       for(const address of addresses) {
