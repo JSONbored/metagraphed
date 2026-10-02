@@ -57,6 +57,16 @@ const common = { pallet: name, member: name };
 // real component instead of Zod's anonymous __shared definitions container.
 export const NativeJsonValueSchema = z.json();
 const args = z.array(NativeJsonValueSchema).max(64).default([]);
+const evmAddress = z.string().regex(/^0x[0-9a-f]{40}$/);
+export const NativeEvmCallSchema = z
+  .object({
+    signature: z.string().min(3).max(1024),
+    args,
+  })
+  .strict()
+  .describe(
+    "Solidity signature and ordered arguments from this finalized runtime's precompile catalogue. Available on EthereumRuntimeRPCApi.call and EVM.call preparation. Keep the declared data/input argument as 0x; the existing to/target selects the precompile. Wide integers are exact decimal strings. Encoding adds no chain request and retains the ordinary gas, value and wallet-review rules.",
+  );
 export const NativeCodeArtifactSchema = z
   .object({
     url: z
@@ -120,6 +130,7 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
       member: name,
       args,
       code_artifact: NativeCodeArtifactSchema.optional(),
+      evm_call: NativeEvmCallSchema.optional(),
     })
     .strict(),
   z
@@ -128,6 +139,7 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
       ...common,
       args,
       code_artifact: NativeCodeArtifactSchema.optional(),
+      evm_call: NativeEvmCallSchema.optional(),
     })
     .strict(),
   z
@@ -136,6 +148,9 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
       pallet: name.optional(),
       api: name.optional(),
       type_id: typeId.optional(),
+      evm: z.union([z.literal(true), evmAddress]).optional().describe(
+        "true lists this source's precompile addresses; an address lists its Solidity signatures and argument names/types. Shares the normal offset/limit pagination and finalized source.",
+      ),
       offset: z.int().min(0).max(16384).default(0),
       limit: z.int().min(1).max(64).default(32),
     })
@@ -160,7 +175,7 @@ export const NativeRuntimeRequestSchema = z
         ],
       })
       .describe(
-        "One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; runtime_scale accepts caller-encoded SCALE for audited read methods and returns exact bytes with the source API id/version, including V14 APIs without typed signatures; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.",
+        "One to sixteen native operations sharing the same finalized context. Describe discovers runtime names, portable argument types and paged release-bound EVM precompile signatures; storage, constant and runtime read typed values; runtime_scale accepts caller-encoded SCALE for audited read methods and returns exact bytes with the source API id/version, including V14 APIs without typed signatures; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.",
       ),
   })
   .strict()

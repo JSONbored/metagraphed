@@ -335,3 +335,29 @@ export function nativePageOffset(artifact: NativeArtifact): number | null {
     ? contract.next_offset
     : null;
 }
+
+export function supportsNativeEvmCall(member: Pick<NativeMember, "kind" | "api" | "pallet" | "member">) {
+  return (member.kind === "runtime" && member.api === "EthereumRuntimeRPCApi" && member.member === "call") ||
+    (member.kind === "prepare" && member.pallet === "EVM" && member.member === "call");
+}
+export function evmCallOperation(operation: NativeOperation, signature: string, text: string): NativeOperation {
+  if (!signature.trim()) return operation;
+  if ((operation.kind !== "runtime" && operation.kind !== "prepare") || !supportsNativeEvmCall(operation))
+    throw new Error("Choose an EVM call simulation or preparation operation.");
+  return { ...operation, evm_call: { signature: signature.trim(), args: nativeArguments(text) } };
+}
+export function evmPrecompileOperation(member: NativeMember, text: string): Extract<NativeOperation, {kind: "describe"}> {
+  if (!supportsNativeEvmCall(member)) throw new Error("Choose an EVM call operation.");
+  const args = nativeArguments(text);
+  const index = member.args.findIndex((field) => field.name === (member.kind === "runtime" ? "to" : "target"));
+  const address = args[index];
+  if (typeof address !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(address))
+    throw new Error("Enter the precompile’s 20-byte to/target address in the native arguments.");
+  return { kind: "describe", evm: address.toLowerCase(), offset: 0, limit: 64 };
+}
+export function nativeEvmFunctions(artifact: NativeArtifact | null): string[] {
+  const rows = artifact?.results[0]?.value;
+  if (!Array.isArray(rows)) return [];
+  return rows.flatMap((row) => row && typeof row === "object" && !Array.isArray(row) &&
+    row.kind === "evm_function" && typeof row.signature === "string" ? [row.signature] : []);
+}

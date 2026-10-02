@@ -25,6 +25,8 @@ import {
   SCALE_READ_API_METHODS,
 } from "./native-runtime-scale.ts";
 import { resolveNativeCodeArtifacts } from "./native-code-artifact.ts";
+import { resolveNativeEvmCall } from "./native-evm-call.ts";
+import { describeRuntimeEvm } from "./evm-runtime-abi.ts";
 import { loadNativeContract } from "./native-runtime-contract.ts";
 import {
   NATIVE_CONTRACT_SIMULATION_LIMITS,
@@ -164,6 +166,7 @@ function plan(
   operation: Operation,
   needed: Map<number, NativeType>,
   apiVersions: Map<string, number>,
+  spec: number,
 ) {
   if (operation.kind === "runtime_scale") {
     const id = runtimeApiId(operation.api);
@@ -195,13 +198,20 @@ function plan(
   }
   if (operation.kind === "describe") {
     if (
-      [operation.pallet, operation.api, operation.type_id].filter(
+      [operation.pallet, operation.api, operation.type_id, operation.evm].filter(
         (value) => value !== undefined,
       ).length > 1
     )
       throw new Error(
-        "Describe one pallet, runtime API or portable type at a time",
+        "Describe one pallet, runtime API, portable type or EVM precompile at a time",
       );
+    if (operation.evm !== undefined)
+      return {
+        result: {
+          kind: "describe" as const,
+          ...describeRuntimeEvm(spec, operation.evm, operation.offset, operation.limit),
+        },
+      };
     if (operation.type_id !== undefined)
       return {
         result: {
@@ -591,7 +601,8 @@ export async function readNativeRuntime(
       (metadata.version === 14 &&
         operation.kind === "describe" &&
         operation.pallet === undefined &&
-        operation.type_id === undefined);
+        operation.type_id === undefined &&
+        operation.evm === undefined);
     hasCodeArtifacts ||=
       (operation.kind === "runtime" || operation.kind === "prepare") &&
       operation.code_artifact !== undefined;
@@ -604,7 +615,10 @@ export async function readNativeRuntime(
     ? await resolveNativeCodeArtifacts(metadata, input.operations, fetchImpl)
     : input.operations;
   const plans = operations.map((operation) => {
-    const row = plan(metadata, operation, needed, apiVersions);
+    const evm = (operation.kind === "runtime" || operation.kind === "prepare") && operation.evm_call
+      ? resolveNativeEvmCall(metadata, runtime.specVersion, operation)
+      : null;
+    const row = plan(metadata, evm?.operation ?? operation, needed, apiVersions, runtime.specVersion);
     if (
       (operation.kind === "runtime" || operation.kind === "prepare") &&
       operation.code_artifact
@@ -617,6 +631,14 @@ export async function readNativeRuntime(
             ...row.result.contract,
             code_artifact: operation.code_artifact,
           },
+        },
+      };
+    if (evm)
+      return {
+        ...row,
+        result: {
+          ...row.result,
+          contract: { ...row.result.contract, evm_call: evm.contract },
         },
       };
     return row;

@@ -98,6 +98,44 @@ unchanged. Decoding is a local interpretation of calldata; use the native
 `EthereumRuntimeRPCApi.call` operation to simulate execution at the selected
 finalized source.
 
+The same native REST/MCP contract provides release-bound precompile discovery and
+encoding. `{"kind":"describe","evm":true}` lists precompile addresses;
+`{"kind":"describe","evm":"0x0000000000000000000000000000000000000805"}`
+lists that address's signatures, selectors and argument names/types. Both use the
+ordinary offset/limit paging and finalized source. Raw cryptographic precompiles
+have no Solidity function list.
+
+On `EthereumRuntimeRPCApi.call`, add `evm_call` with a catalogue signature and
+ordered Solidity arguments. Set the native `to` argument to the precompile and
+keep `data` as `"0x"`. For example:
+
+```json
+{
+  "signature": "getStake(bytes32,bytes32,uint256)",
+  "args": [
+    "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "0x2222222222222222222222222222222222222222222222222222222222222222",
+    "19"
+  ]
+}
+```
+
+The server encodes and inserts exactly that ABI input; native source, gas, value,
+access/authorization lists, admission and duplicate coalescing still apply. The
+result contract retains the signature, selector, address, encoded input and
+source commit. The same `evm_call` works with native `EVM.call` preparation using
+`target` and empty `input`, so the existing explicit wallet review can sign those
+method bytes. Integer widths, dynamic array offsets, UTF-8 and byte padding are
+bounded and exact. Caller-supplied selectors and arbitrary signatures cannot
+replace the release-qualified ABI. Ordinary raw calldata remains supported.
+
+The native page inspects and pages precompile signatures, accepts Solidity
+arguments and sends the compact descriptor at the inspected finalized source.
+Clients do not need a downloaded ABI, selector hashes or padded calldata in chat
+context. Reference-vector and compiled-metadata tests qualify encoding and
+binding; they do not establish successful execution of a particular call on a
+live node.
+
 `ShieldApi.try_unshield_tx` decrypts caller-supplied shielded data and decodes
 the resulting extrinsic. The audited implementation does not submit it, access
 a local keystore or write chain state. It is available alongside

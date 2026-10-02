@@ -5,6 +5,10 @@ import {
   memberOperation,
   supportsNativeCodeArtifact,
   codeArtifactOperation,
+  supportsNativeEvmCall,
+  evmCallOperation,
+  evmPrecompileOperation,
+  nativeEvmFunctions,
   nativeTypeLabel,
   nativeValueRows,
   nativePageOffset,
@@ -313,4 +317,22 @@ test("code artifact references stay compact and bind only declared contract oper
   expect(() => codeArtifactOperation({ ...input, api: "Other" }, url, sha256, "1")).toThrow(
     /contract code/,
   );
+});
+
+
+test("precompile assistance preserves ordinary operations, exact arguments and source-pinned discovery", () => {
+  const member={kind:"runtime" as const,api:"EthereumRuntimeRPCApi",member:"call",args:[{name:"to",type:0},{name:"data",type:0}]};
+  const to=`0x${(2053).toString(16).padStart(40,"0")}`;
+  const operation=memberOperation(member,JSON.stringify([to,"0x"]));
+  expect(supportsNativeEvmCall(member)).toBe(true);
+  expect(supportsNativeEvmCall({...member,member:"create"})).toBe(false);
+  expect(supportsNativeEvmCall({kind:"prepare",pallet:"EVM",member:"call"})).toBe(true);
+  expect(evmCallOperation(operation,"","[]")).toBe(operation);
+  expect(evmCallOperation(operation," getStake(bytes32,bytes32,uint256) ",`["${key}","${key}","18446744073709551616"]`)).toEqual({...operation,evm_call:{signature:"getStake(bytes32,bytes32,uint256)",args:[key,key,"18446744073709551616"]}});
+  expect(()=>evmCallOperation({kind:"constant",pallet:"EVM",member:"x"},"x()","[]")).toThrow(/Choose/);
+  expect(()=>evmCallOperation(operation,"x(uint256)","[9007199254740993]")).toThrow(/decimal strings/);
+  expect(evmPrecompileOperation(member,JSON.stringify([to,"0x"]))).toEqual({kind:"describe",evm:to,offset:0,limit:64});
+  expect(()=>evmPrecompileOperation(member,'["0x12","0x"]')).toThrow(/20-byte/);
+  expect(nativeEvmFunctions(null)).toEqual([]);
+  expect(nativeEvmFunctions({...artifact,results:[{kind:"describe",value:[{kind:"evm_function",signature:"x()"},{kind:"other",signature:"bad"},null],contract:{}}]})).toEqual(["x()"]);
 });

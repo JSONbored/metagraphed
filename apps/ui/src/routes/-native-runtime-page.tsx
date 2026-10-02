@@ -15,6 +15,10 @@ import {
   memberOperation,
   supportsNativeCodeArtifact,
   codeArtifactOperation,
+  supportsNativeEvmCall,
+  evmCallOperation,
+  evmPrecompileOperation,
+  nativeEvmFunctions,
   entryOperation,
   nativePageCursor,
   nativeTypeLabel,
@@ -99,13 +103,16 @@ function NativeRuntimeExplorer({
   const [codeUrl, setCodeUrl] = useState("");
   const [codeSha256, setCodeSha256] = useState("");
   const [codeBytes, setCodeBytes] = useState("");
+  const [evmDescription, setEvmDescription] = useState<NativeArtifact | null>(null);
+  const [evmSignature, setEvmSignature] = useState("");
+  const [evmArgs, setEvmArgs] = useState("[]");
   const [result, setResult] = useState<NativeArtifact | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
 
-  const read = async (operations: NativeOperation[], discovery = false, asOf?: string) => {
+  const read = async (operations: NativeOperation[], discovery: boolean | "evm" = false, asOf?: string) => {
     controller.current?.abort();
     const active = new AbortController();
     controller.current = active;
@@ -122,7 +129,11 @@ function NativeRuntimeExplorer({
         },
       });
       if (active.signal.aborted) return;
-      if (discovery) {
+      if (discovery === "evm") setEvmDescription(response.data);
+      else if (discovery) {
+        setEvmDescription(null);
+        setEvmSignature("");
+        setEvmArgs("[]");
         setDescription(response.data);
         setCodeUrl("");
         setCodeSha256("");
@@ -356,6 +367,9 @@ function NativeRuntimeExplorer({
                   value={memberIndex}
                   onChange={(event) => {
                     setMemberIndex(Number(event.target.value));
+                    setEvmDescription(null);
+                    setEvmSignature("");
+                    setEvmArgs("[]");
                     setCodeUrl("");
                     setCodeSha256("");
                     setCodeBytes("");
@@ -396,12 +410,12 @@ function NativeRuntimeExplorer({
                   event.preventDefault();
                   action(
                     () => [
-                      codeArtifactOperation(
+                      evmCallOperation(codeArtifactOperation(
                         memberOperation(member, args),
                         codeUrl,
                         codeSha256,
                         codeBytes,
-                      ),
+                      ), evmSignature, evmArgs),
                     ],
                     description.source.finalized_block_hash,
                   );
@@ -433,6 +447,43 @@ function NativeRuntimeExplorer({
                     spellCheck={false}
                   />
                 </label>
+                {supportsNativeEvmCall(member) && (
+                  <fieldset className="space-y-3 rounded border border-border p-3">
+                    <legend className="px-1 text-13 font-medium text-ink-strong">Precompile function (optional)</legend>
+                    <p className="text-13 text-ink-muted">
+                      Set to/target in the native arguments and leave data/input as 0x. Select a
+                      Solidity signature and supply its arguments; the server encodes calldata
+                      from the inspected runtime’s ABI. Native gas, value and wallet review still apply.
+                    </p>
+                    <button className={button} disabled={busy} type="button" onClick={() => {
+                      try { void read([evmPrecompileOperation(member, args)], "evm", description.source.finalized_block_hash); }
+                      catch (failure) { setError(failure instanceof Error ? failure.message : "The precompile could not be inspected."); }
+                    }}>Inspect precompile</button>
+                    <label className="block space-y-1 text-13">
+                      Solidity signature
+                      <input disabled={busy} className={control} value={evmSignature} list="native-evm-functions"
+                        onChange={(event) => { setEvmSignature(event.target.value); setResult(null); }}
+                        placeholder="getStake(bytes32,bytes32,uint256)" spellCheck={false} />
+                    </label>
+                    <datalist id="native-evm-functions">
+                      {nativeEvmFunctions(evmDescription).map((signature) => <option key={signature} value={signature} />)}
+                    </datalist>
+                    {evmDescription && nativePageOffset(evmDescription) !== null && (
+                      <button className={button} disabled={busy} type="button" onClick={() => {
+                        try { void read([{ ...evmPrecompileOperation(member, args), offset: nativePageOffset(evmDescription)! }], "evm", description.source.finalized_block_hash); }
+                        catch (failure) { setError(failure instanceof Error ? failure.message : "The precompile page could not be read."); }
+                      }}>Next signatures</button>
+                    )}
+                    {evmDescription && <p className="text-13 text-ink-muted">
+                      {nativeEvmFunctions(evmDescription).length} signatures at v{evmDescription.source.runtime_spec_version}.
+                    </p>}
+                    <label className="block space-y-1 text-13">
+                      Solidity arguments (JSON array)
+                      <textarea disabled={busy} className={`${control} font-mono`} rows={3} value={evmArgs}
+                        onChange={(event) => { setEvmArgs(event.target.value); setResult(null); }} spellCheck={false} />
+                    </label>
+                  </fieldset>
+                )}
                 {supportsNativeCodeArtifact(member) && (
                   <fieldset className="space-y-3 rounded border border-border p-3">
                     <legend className="px-1 text-13 font-medium text-ink-strong">
