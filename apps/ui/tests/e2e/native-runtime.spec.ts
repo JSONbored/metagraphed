@@ -312,11 +312,11 @@ test("metadata-discovered calls use their declared arguments and pinned contract
   await gotoThroughRestart(page, "/apis/native");
   await page.getByRole("button", { name: "Inspect contract" }).click();
   await expect(page.getByText("TaoBalance", { exact: true })).toBeVisible();
-  await page.getByLabel("Arguments (JSON array)").fill("[9007199254740993]");
+  await page.getByLabel("Arguments (JSON array)", { exact: true }).fill("[9007199254740993]");
   await page.getByRole("button", { name: "Prepare unsigned call" }).click();
   await expect(page.getByRole("alert")).toContainText("decimal strings");
   expect(requests).toHaveLength(1);
-  await page.getByLabel("Arguments (JSON array)").fill('["9007199254740993"]');
+  await page.getByLabel("Arguments (JSON array)", { exact: true }).fill('["9007199254740993"]');
   await page.getByRole("button", { name: "Prepare unsigned call" }).click();
   await expect(page.getByRole("cell", { name: "0x0754010203", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Native wallet review" })).toBeVisible();
@@ -415,7 +415,7 @@ test("EVM execution is discovered and simulated using the displayed finalized co
   await expect(
     page.getByText("each request can use up to 1,000,000 gas.", { exact: false }),
   ).toBeVisible();
-  await page.getByLabel("Arguments (JSON array)").fill('["500000"]');
+  await page.getByLabel("Arguments (JSON array)", { exact: true }).fill('["500000"]');
   await page.getByRole("button", { name: "Read operation" }).click();
   await expect(page.getByRole("cell", { name: "0xdeadbeef", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Native wallet review" })).toHaveCount(0);
@@ -480,7 +480,7 @@ test("Wasm contracts use discovered Weight arguments and retain reverted bytes w
     page.getByText("simulation does not publish code or a contract.", { exact: false }),
   ).toBeVisible();
   const gas = { variant: "Some", fields: { ref_time: "100000000000", proof_size: "32768" } };
-  await page.getByLabel("Arguments (JSON array)").fill(JSON.stringify([gas]));
+  await page.getByLabel("Arguments (JSON array)", { exact: true }).fill(JSON.stringify([gas]));
   await page.getByRole("button", { name: "Read operation" }).click();
   await expect(page.getByRole("cell", { name: "0xbeef", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Native wallet review" })).toHaveCount(0);
@@ -552,7 +552,7 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
   await page.getByLabel("Contract", { exact: true }).selectOption("api");
   await page.getByLabel("Name", { exact: true }).fill("ContractsApi");
   await page.getByRole("button", { name: "Inspect contract" }).click();
-  await page.getByLabel("Arguments (JSON array)").fill('["0x"]');
+  await page.getByLabel("Arguments (JSON array)", { exact: true }).fill('["0x"]');
   await page.getByLabel("Code artifact URL").fill(artifact.url);
   await page.getByLabel("Artifact SHA-256").fill("bad");
   await page.getByLabel("Artifact bytes").fill("131072");
