@@ -406,29 +406,48 @@ export async function callSubnetSurface(
 
   if (kind === "binary") {
     try {
-      const bytes = await readBinaryBody(response, MAX_RESPONSE_BYTES, timeoutMs);
+      const bytes = await readBinaryBody(
+        response,
+        MAX_RESPONSE_BYTES,
+        timeoutMs,
+      );
       const mimeType = contentType!.split(";")[0]!.trim().toLowerCase();
       const sha256 = createHash("sha256").update(bytes).digest("hex");
       const data = bytes.toString("base64");
-      const attachment: ContentBlock = ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mimeType)
+      const attachment: ContentBlock = [
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/gif",
+      ].includes(mimeType)
         ? { type: "image", mimeType, data }
-        : mimeType.startsWith("audio/") && (protocolVersion ?? "2025-03-26") >= "2025-03-26"
+        : mimeType.startsWith("audio/") &&
+            (protocolVersion ?? "2025-03-26") >= "2025-03-26"
           ? { type: "audio", mimeType, data }
-          : { type: "resource", resource: { uri: `urn:sha256:${sha256}`, mimeType, blob: data } };
+          : {
+              type: "resource",
+              resource: { uri: `urn:sha256:${sha256}`, mimeType, blob: data },
+            };
       return {
         ok: true,
         status_code: response.status,
         content_type: contentType,
         latency_ms: latencyMs,
         url: redactQueryCredential(redirectTarget || requestUrl, credential),
-        body: { encoding: "mcp_content", mime_type: mimeType, bytes: bytes.length, sha256 },
+        body: {
+          encoding: "mcp_content",
+          mime_type: mimeType,
+          bytes: bytes.length,
+          sha256,
+        },
         truncated: false,
         ...(bytes.length ? { attachment } : {}),
       };
     } catch {
       return {
         ok: false,
-        error: "The binary response must be complete within the response byte limit and deadline.",
+        error:
+          "The binary response must be complete within the response byte limit and deadline.",
         status_code: response.status,
         content_type: contentType,
         latency_ms: latencyMs,
@@ -473,7 +492,11 @@ export async function callSubnetSurface(
   };
 }
 
-async function readBinaryBody(response: Response, maxBytes: number, deadlineMs: number): Promise<Buffer> {
+async function readBinaryBody(
+  response: Response,
+  maxBytes: number,
+  deadlineMs: number,
+): Promise<Buffer> {
   if (!response.body) return Buffer.alloc(0);
   const reader = response.body.getReader();
   const deadline = Date.now() + deadlineMs;
@@ -488,11 +511,15 @@ async function readBinaryBody(response: Response, maxBytes: number, deadlineMs: 
       const chunk = await Promise.race([
         reader.read(),
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error("Binary response deadline")), deadline - Date.now());
+          timer = setTimeout(
+            () => reject(new Error("Binary response deadline")),
+            deadline - Date.now(),
+          );
         }),
       ]).finally(() => clearTimeout(timer));
       if (chunk.done) break;
-      if (received + chunk.value.byteLength > maxBytes) throw new Error("Binary response byte limit");
+      if (received + chunk.value.byteLength > maxBytes)
+        throw new Error("Binary response byte limit");
       bytes.set(chunk.value, received);
       received += chunk.value.byteLength;
     }

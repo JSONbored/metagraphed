@@ -5833,6 +5833,14 @@ async function subnetSurfaceCall(
   if (!SURFACE_ID_PATTERN.test(args.surface_id)) {
     throw toolError("invalid_params", "Invalid surface_id format.");
   }
+  if (
+    args.response_mode !== undefined &&
+    !CallSubnetSurfaceInputSchema.shape.response_mode.safeParse(
+      args.response_mode,
+    ).success
+  ) {
+    throw toolError("invalid_params", "response_mode must be attachment.");
+  }
   const hasPath = typeof args?.path === "string" && args.path.length > 0;
   const hasMethod = typeof args?.method === "string" && args.method.length > 0;
   if (hasPath !== hasMethod) {
@@ -17674,7 +17682,8 @@ async function dispatchTool(
     // one generic shape onto whichever tool degraded and `degraded` is a
     // per-tool object (#9910). Applied to every result, not just a stamped
     // one: a handler that built its own partial block is the same violation.
-    const nativeContent = data instanceof McpContentResult ? data.content : undefined;
+    const nativeContent =
+      data instanceof McpContentResult ? data.content : undefined;
     if (data instanceof McpContentResult) data = data.value;
     const outputSchema = tool.outputSchema ?? TOOL_OUTPUT_SCHEMAS[tool.name];
     const payload = completeDegradedBlock(
@@ -17699,7 +17708,11 @@ async function dispatchTool(
         argsProject(args),
       );
     }
-    const content = toolResultContent(payload, outputSchema, ctx?.protocolVersion);
+    const content = toolResultContent(
+      payload,
+      outputSchema,
+      ctx?.protocolVersion,
+    );
     if (nativeContent) content.push(nativeContent);
     return {
       content,

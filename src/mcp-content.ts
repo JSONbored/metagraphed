@@ -6,10 +6,7 @@ export class McpContentResult {
   readonly value: Record<string, unknown>;
   readonly content: ContentBlock;
 
-  constructor(
-    value: Record<string, unknown>,
-    content: ContentBlock,
-  ) {
+  constructor(value: Record<string, unknown>, content: ContentBlock) {
     this.value = value;
     this.content = content;
   }
