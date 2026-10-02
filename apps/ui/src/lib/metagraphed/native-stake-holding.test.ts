@@ -99,6 +99,15 @@ test("one hotkey never inherits another hotkey's free stake or an absent positio
   data.results[1]!.value = [[cold, []]];
   expect(decodeNativeStakeHolding(data, hot, cold, 19).availableAtomic).toBe(0n);
 });
+test("TAO Max remains representable when price times holdings exceeds the runtime amount width", () => {
+  const holding = decodeNativeStakeHolding(fixture(19), hot, cold, 19);
+  expect(
+    nativeUnstakeMax(
+      { ...holding, availableAtomic: (1n << 64n) - 1n, priceAtomic: 2000000000n },
+      "tao",
+    ),
+  ).toBe("18446744073.709551615");
+});
 test("miner collateral limits the selected hotkey even when sibling stake is free", () => {
   const data = fixture(19);
   data.results[1]!.value = [

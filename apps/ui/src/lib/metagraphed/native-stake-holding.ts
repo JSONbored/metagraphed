@@ -97,7 +97,9 @@ export function nativeUnstakeMax(
   if (holding.priceAtomic === 0n) return null;
   // TAO mode is a target estimate. Its exact ceil conversion must never select
   // more alpha than the bounded holding; the ensuing simulator supplies output.
-  return raoToTao(asRao((holding.availableAtomic * holding.priceAtomic) / UNITS_PER_WHOLE));
+  const target = (holding.availableAtomic * holding.priceAtomic) / UNITS_PER_WHOLE;
+  const max = (1n << 64n) - 1n;
+  return raoToTao(asRao(target > max ? max : target));
 }
 
 export const nativeStakeHoldingQuery = (hotkey: string, coldkey: string | null, netuid: number) =>

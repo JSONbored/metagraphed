@@ -299,9 +299,14 @@ function plan(
     // The node's state_call executor uses a fresh, discarded overlay. These
     // official contract APIs simulate execution; no author/submission RPC is
     // reachable. Bound Weight and code work before issuing any execution RPC.
-    const contractWork = operation.api === "ContractsApi" && operation.member !== "get_storage"
-      ? nativeContractSimulationWork(operation.member, method.inputs, operation.args)
-      : null;
+    const contractWork =
+      operation.api === "ContractsApi" && operation.member !== "get_storage"
+        ? nativeContractSimulationWork(
+            operation.member,
+            method.inputs,
+            operation.args,
+          )
+        : null;
     return {
       call: {
         method: "state_call",
@@ -508,7 +513,10 @@ export async function readNativeRuntime(
   );
   const unique = new Map<string, { method: string; params: unknown[] }>();
   const executionGas = new Map<string, bigint>();
-  const contractWork = new Map<string, ReturnType<typeof nativeContractSimulationWork>>();
+  const contractWork = new Map<
+    string,
+    ReturnType<typeof nativeContractSimulationWork>
+  >();
   const callKeys = plans.map((row) => {
     if (!("call" in row) || !row.call) return null;
     const call = { method: row.call.method, params: [...row.call.params, at] };

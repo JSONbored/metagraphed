@@ -4963,7 +4963,13 @@ const rootValue = {
       );
     }
     // The compatibility field shares REST/MCP's finalized chain simulation.
-    const result = await buildRuntimeStakeQuote(netuid, amount, directionParam, undefined, chainNetworkFromChainName(network));
+    const result = await buildRuntimeStakeQuote(
+      netuid,
+      amount,
+      directionParam,
+      undefined,
+      chainNetworkFromChainName(network),
+    );
     if (!result.ok) {
       // The shared calculator's own contract errors (bad amount, dead pool)
       // surface as BAD_USER_INPUT rather than a partially-filled card.

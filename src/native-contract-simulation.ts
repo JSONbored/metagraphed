@@ -13,7 +13,10 @@ export const NATIVE_CONTRACT_SIMULATION_LIMITS = {
 
 const exact = z
   .union([
-    z.string().regex(/^(0|[1-9]\d*)$/).max(20),
+    z
+      .string()
+      .regex(/^(0|[1-9]\d*)$/)
+      .max(20),
     z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   ])
   .transform((value) => BigInt(value));
@@ -26,7 +29,10 @@ const explicitWeight = z
   .object({ variant: z.literal("Some"), fields: weight })
   .strict();
 const bytes = z.union([
-  z.string().regex(/^0x(?:[0-9a-fA-F]{2})*$/).transform((value) => (value.length - 2) / 2),
+  z
+    .string()
+    .regex(/^0x(?:[0-9a-fA-F]{2})*$/)
+    .transform((value) => (value.length - 2) / 2),
   z.array(z.number().int().min(0).max(255)).transform((value) => value.length),
 ]);
 const code = z.discriminatedUnion("variant", [
@@ -41,16 +47,26 @@ export function nativeContractSimulationWork(
 ) {
   const work = { refTime: 0n, proofSize: 0n, codeBytes: 0, codeUploads: 0 };
   const argument = (name: string) => {
-    const indexes = inputs.flatMap((field, index) => field.name === name ? [index] : []);
-    if (indexes.length !== 1) throw new Error(`Contract simulation requires a declared ${name}`);
+    const indexes = inputs.flatMap((field, index) =>
+      field.name === name ? [index] : [],
+    );
+    if (indexes.length !== 1)
+      throw new Error(`Contract simulation requires a declared ${name}`);
     return args[indexes[0]!]!;
   };
   if (member === "call" || member === "instantiate") {
     const parsed = explicitWeight.safeParse(argument("gas_limit"));
-    if (!parsed.success) throw new Error("Contract simulation requires an explicit exact gas_limit Weight");
+    if (!parsed.success)
+      throw new Error(
+        "Contract simulation requires an explicit exact gas_limit Weight",
+      );
     work.refTime = parsed.data.fields.ref_time;
     work.proofSize = parsed.data.fields.proof_size;
-    if (work.refTime === 0n || work.refTime > NATIVE_CONTRACT_SIMULATION_LIMITS.refTime || work.proofSize > NATIVE_CONTRACT_SIMULATION_LIMITS.proofSize)
+    if (
+      work.refTime === 0n ||
+      work.refTime > NATIVE_CONTRACT_SIMULATION_LIMITS.refTime ||
+      work.proofSize > NATIVE_CONTRACT_SIMULATION_LIMITS.proofSize
+    )
       throw new Error("Contract simulation exceeds its Weight budget");
   }
   if (member === "instantiate") {
@@ -78,6 +94,13 @@ export function assertNativeContractSimulationBudget(
     total.codeBytes += row.codeBytes;
     total.codeUploads += row.codeUploads;
   }
-  if (total.refTime > NATIVE_CONTRACT_SIMULATION_LIMITS.refTime || total.proofSize > NATIVE_CONTRACT_SIMULATION_LIMITS.proofSize || total.codeBytes > NATIVE_CONTRACT_SIMULATION_LIMITS.codeBytes || total.codeUploads > NATIVE_CONTRACT_SIMULATION_LIMITS.codeUploads)
-    throw new Error("Contract simulations exceed the aggregate Weight or code budget");
+  if (
+    total.refTime > NATIVE_CONTRACT_SIMULATION_LIMITS.refTime ||
+    total.proofSize > NATIVE_CONTRACT_SIMULATION_LIMITS.proofSize ||
+    total.codeBytes > NATIVE_CONTRACT_SIMULATION_LIMITS.codeBytes ||
+    total.codeUploads > NATIVE_CONTRACT_SIMULATION_LIMITS.codeUploads
+  )
+    throw new Error(
+      "Contract simulations exceed the aggregate Weight or code budget",
+    );
 }

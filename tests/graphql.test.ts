@@ -11960,13 +11960,25 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     const quotes = await import("../src/runtime-stake-quote.ts");
     const read = vi.spyOn(quotes, "buildRuntimeStakeQuote");
     try {
-      const testnet = await gql("{ subnet_stake_quote(netuid: 64, amount: 1, network: test) { expected_out } }");
+      const testnet = await gql(
+        "{ subnet_stake_quote(netuid: 64, amount: 1, network: test) { expected_out } }",
+      );
       assert.equal(testnet.body.errors, undefined);
       assert.equal(read.mock.calls[0]![4], "testnet");
-      read.mockResolvedValueOnce({ ok: false, status: 502, code: "stake_quote_failed", error: "The finalized runtime read failed." });
-      const failure = await gql("{ subnet_stake_quote(netuid: 64, amount: 1) { expected_out } }");
+      read.mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        code: "stake_quote_failed",
+        error: "The finalized runtime read failed.",
+      });
+      const failure = await gql(
+        "{ subnet_stake_quote(netuid: 64, amount: 1) { expected_out } }",
+      );
       assert.equal(failure.body.data, null);
-      assert.equal(failure.body.errors[0].extensions.code, "INTERNAL_SERVER_ERROR");
+      assert.equal(
+        failure.body.errors[0].extensions.code,
+        "INTERNAL_SERVER_ERROR",
+      );
     } finally {
       read.mockRestore();
     }

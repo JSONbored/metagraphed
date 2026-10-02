@@ -74,6 +74,38 @@ The caller must supply an exact positive `gas_limit`; each request has an aggreg
 one-million-gas budget, in addition to the input, output and timeout bounds. Reverts,
 return bytes, gas consumption and runtime dispatch errors retain the declared result
 structure. Simulations do not create execution receipts or persist chain state.
+
+`ContractsApi.call`, `instantiate` and `upload_code` provide Wasm contract
+simulation. Describe `ContractsApi` to obtain the selected runtime's complete
+argument types. Call and instantiate require an explicit `Some` gas limit;
+omitting it would select the upstream maximum block Weight. For WeightV2,
+the limit has this form:
+
+```json
+{
+  "variant": "Some",
+  "fields": { "ref_time": "100000000000", "proof_size": "32768" }
+}
+```
+
+Distinct simulations in a request share limits of 250,000,000,000 reference
+picoseconds and 65,536 proof bytes. Reference time is a Weight unit, not a
+prediction of wall time. Historical WeightV1 uses an exact reference-time
+integer in the `Some` fields. Code upload simulation and `instantiate` with
+`Code::Upload` share one upload and 16,384 code bytes per request; the overall
+32 KB request limit also applies. `Code::Existing` selects an on-chain code
+hash. Both hex byte strings and byte arrays use the runtime's declared SCALE
+types. Returned gas consumed/required, deposits, account/code hashes, return
+flags and bytes, and dispatch errors remain exact typed results. A revert flag
+does not become a successful execution receipt.
+
+The pinned node's [state RPC](https://github.com/RaoFoundation/polkadot-sdk/blob/cacb4310f20c7cac83eb3ccd8ed5a5ad4212608a/substrate/client/rpc/src/state/state_full.rs)
+invokes its [call executor](https://github.com/RaoFoundation/polkadot-sdk/blob/cacb4310f20c7cac83eb3ccd8ed5a5ad4212608a/substrate/client/service/src/client/call_executor.rs)
+with a fresh overlay, returning the execution result without committing that
+overlay. Simulation does not publish code, create a persistent contract or
+submit a transaction. Independent SCALE fixtures qualify the API encoding and
+results; they do not execute Wasm or measure deployed-chain behavior.
+
 `prepare` encodes a native method from its declared
 argument types, including runtime-specific enum and composite arguments. It
 returns method bytes and signed-extension types for explicit wallet review;

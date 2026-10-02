@@ -56,7 +56,9 @@ test("both directions and Root use the finalized simulator and include input-tok
       );
       assert.equal(read.mock.calls.length, 1);
       assert.deepEqual(
-        read.mock.calls[0]![0].operations.map((row) => row.kind === "runtime" ? row.member : row.kind),
+        read.mock.calls[0]![0].operations.map((row) =>
+          row.kind === "runtime" ? row.member : row.kind,
+        ),
         [
           "current_alpha_price",
           direction === "stake"
