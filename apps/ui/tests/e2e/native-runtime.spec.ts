@@ -118,7 +118,9 @@ test("neuron UID pages fetch singular records and continue the saved subnet, for
   });
   expect(requests[4]).toEqual({
     as_of: hash,
-    operations: [{ kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neuron_lite", args: [20, 14] }],
+    operations: [
+      { kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neuron_lite", args: [20, 14] },
+    ],
   });
 });
 

@@ -233,12 +233,23 @@ test("neuron page admission and response-source validation prevent invalid or mi
 });
 
 test("immutable neuron continuation removes count reads without changing full or lite page artifacts", async () => {
-  const measurements: { spec: number; lite: boolean; before: number; after: number; count_before: number; count_after: number; records: number; serialized_bytes: number }[] = [];
+  const measurements: {
+    spec: number;
+    lite: boolean;
+    before: number;
+    after: number;
+    count_before: number;
+    count_after: number;
+    records: number;
+    serialized_bytes: number;
+  }[] = [];
   for (const spec of [470, 205, 210, 211, 212, 216, 217, 218, 219]) {
     for (const lite of [false, true]) {
       const count = neuronCount("1024", spec);
       const traverse = async (reuse: boolean) => {
-        let calls = 0, counts = 0, records = 0;
+        let calls = 0,
+          counts = 0,
+          records = 0;
         const pages: NativeNeuronPageResult[] = [];
         const query = async (operations: NativeOperation[], at?: string) => {
           calls++;
@@ -266,7 +277,8 @@ test("immutable neuron continuation removes count reads without changing full or
         } while (offset < 1024);
         return { calls, counts, records, pages };
       };
-      const baseline = await traverse(false), optimized = await traverse(true);
+      const baseline = await traverse(false),
+        optimized = await traverse(true);
       expect(baseline.calls).toBe(128);
       expect(optimized.calls).toBe(65);
       expect(baseline.counts).toBe(64);
@@ -274,12 +286,31 @@ test("immutable neuron continuation removes count reads without changing full or
       expect(optimized.records).toBe(1024);
       expect(optimized.records).toBe(baseline.records);
       expect(optimized.pages).toHaveLength(64);
-      const before = JSON.stringify(baseline.pages), after = JSON.stringify(optimized.pages);
+      const before = JSON.stringify(baseline.pages),
+        after = JSON.stringify(optimized.pages);
       expect(after).toBe(before);
-      measurements.push({ spec, lite, before: baseline.calls, after: optimized.calls, count_before: baseline.counts, count_after: optimized.counts, records: optimized.records, serialized_bytes: new TextEncoder().encode(after).length });
+      measurements.push({
+        spec,
+        lite,
+        before: baseline.calls,
+        after: optimized.calls,
+        count_before: baseline.counts,
+        count_after: optimized.counts,
+        records: optimized.records,
+        serialized_bytes: new TextEncoder().encode(after).length,
+      });
     }
   }
-  console.log("NATIVE_NEURON_COUNT_REUSE_FIXTURE", JSON.stringify({ production: false, uid_slots: 1024, page_size: 16, page_artifacts_byte_equal: true, measurements }));
+  console.log(
+    "NATIVE_NEURON_COUNT_REUSE_FIXTURE",
+    JSON.stringify({
+      production: false,
+      uid_slots: 1024,
+      page_size: 16,
+      page_artifacts_byte_equal: true,
+      measurements,
+    }),
+  );
 });
 
 test("neuron continuation rejects changed page identity and invalid cursors before any read", async () => {
@@ -288,20 +319,44 @@ test("neuron continuation rejects changed page identity and invalid cursors befo
   const previous = await queryNativeNeuronPage(input, async (operations) =>
     operations[0]!.kind === "storage" ? count : neuronRecords(operations, count),
   );
-  const continuation = { ...input, offset: "16" }, hash = count.source.finalized_block_hash;
+  const continuation = { ...input, offset: "16" },
+    hash = count.source.finalized_block_hash;
   let reads = 0;
-  const query = async () => { reads++; return count; };
+  const query = async () => {
+    reads++;
+    return count;
+  };
   for (const changed of [
-    { netuid: "20" }, { lite: true }, { limit: "8" }, { offset: "15" }, { offset: "17" },
+    { netuid: "20" },
+    { lite: true },
+    { limit: "8" },
+    { offset: "15" },
+    { offset: "17" },
   ])
-    await expect(queryNativeNeuronPage({ ...continuation, ...changed }, query, hash, previous)).rejects.toThrow(/continuation/);
+    await expect(
+      queryNativeNeuronPage({ ...continuation, ...changed }, query, hash, previous),
+    ).rejects.toThrow(/continuation/);
   for (const at of [undefined, `0x${"ab".repeat(32)}`])
-    await expect(queryNativeNeuronPage(continuation, query, at, previous)).rejects.toThrow(/continuation/);
+    await expect(queryNativeNeuronPage(continuation, query, at, previous)).rejects.toThrow(
+      /continuation/,
+    );
   for (const page of [
-    { next_offset: null }, { next_offset: 17 }, { offset: -1 }, { offset: 0.5 }, { offset: 1 },
-    { total: -1 }, { total: 16 }, { total: 65536 }, { total: 35.5 },
+    { next_offset: null },
+    { next_offset: 17 },
+    { offset: -1 },
+    { offset: 0.5 },
+    { offset: 1 },
+    { total: -1 },
+    { total: 16 },
+    { total: 65536 },
+    { total: 35.5 },
   ])
-    await expect(queryNativeNeuronPage(continuation, query, hash, { ...previous, page: { ...previous.page, ...page } })).rejects.toThrow(/continuation/);
+    await expect(
+      queryNativeNeuronPage(continuation, query, hash, {
+        ...previous,
+        page: { ...previous.page, ...page },
+      }),
+    ).rejects.toThrow(/continuation/);
   expect(reads).toBe(0);
 });
 
@@ -312,31 +367,74 @@ test("failed continuation preserves its snapshot for retry and validates every r
     const previous = await queryNativeNeuronPage(input, async (operations) =>
       operations[0]!.kind === "storage" ? count : neuronRecords(operations, count),
     );
-    const snapshot = JSON.stringify(previous), continuation = { ...input, offset: "16" }, hash = count.source.finalized_block_hash;
+    const snapshot = JSON.stringify(previous),
+      continuation = { ...input, offset: "16" },
+      hash = count.source.finalized_block_hash;
     for (const changed of [
-      { network: "testnet" }, { network_genesis_hash: `0x${"ab".repeat(32)}` },
-      { finalized_block_hash: `0x${"ab".repeat(32)}` }, { finalized_block: "501" },
-      { runtime_spec_version: 471 }, { runtime_transaction_version: 2 },
+      { network: "testnet" },
+      { network_genesis_hash: `0x${"ab".repeat(32)}` },
+      { finalized_block_hash: `0x${"ab".repeat(32)}` },
+      { finalized_block: "501" },
+      { runtime_spec_version: 471 },
+      { runtime_transaction_version: 2 },
       { runtime_code_hash: `0x${"ab".repeat(32)}` },
     ]) {
       let calls = 0;
-      await expect(queryNativeNeuronPage(continuation, async (operations) => {
-        calls++;
-        const records = neuronRecords(operations, count);
-        return { ...records, source: { ...records.source, ...changed } as NativeArtifact["source"] };
-      }, hash, previous)).rejects.toThrow(/finalized source/);
+      await expect(
+        queryNativeNeuronPage(
+          continuation,
+          async (operations) => {
+            calls++;
+            const records = neuronRecords(operations, count);
+            return {
+              ...records,
+              source: { ...records.source, ...changed } as NativeArtifact["source"],
+            };
+          },
+          hash,
+          previous,
+        ),
+      ).rejects.toThrow(/finalized source/);
       expect(calls).toBe(1);
     }
-    await expect(queryNativeNeuronPage(continuation, async () => { throw new DOMException("Request aborted", "AbortError"); }, hash, previous)).rejects.toThrow(/aborted/);
-    await expect(queryNativeNeuronPage(continuation, async (operations) => ({ ...neuronRecords(operations, count), results: [] }), hash, previous)).rejects.toThrow(/Incomplete/);
+    await expect(
+      queryNativeNeuronPage(
+        continuation,
+        async () => {
+          throw new DOMException("Request aborted", "AbortError");
+        },
+        hash,
+        previous,
+      ),
+    ).rejects.toThrow(/aborted/);
+    await expect(
+      queryNativeNeuronPage(
+        continuation,
+        async (operations) => ({ ...neuronRecords(operations, count), results: [] }),
+        hash,
+        previous,
+      ),
+    ).rejects.toThrow(/Incomplete/);
     expect(JSON.stringify(previous)).toBe(snapshot);
     const calls: NativeOperation[][] = [];
-    const retried = await queryNativeNeuronPage(continuation, async (operations) => {
-      calls.push(operations);
-      const records = neuronRecords(operations, count);
-      // A metadata format upgrade retains the same finalized/runtime identity.
-      return { ...records, source: { ...records.source, metadata_version: 14, metadata_sha256: `0x${"ab".repeat(32)}` } };
-    }, hash, previous);
+    const retried = await queryNativeNeuronPage(
+      continuation,
+      async (operations) => {
+        calls.push(operations);
+        const records = neuronRecords(operations, count);
+        // A metadata format change retains the same finalized/runtime identity.
+        return {
+          ...records,
+          source: {
+            ...records.source,
+            metadata_version: 14,
+            metadata_sha256: `0x${"ab".repeat(32)}`,
+          },
+        };
+      },
+      hash,
+      previous,
+    );
     expect(calls).toHaveLength(1);
     expect(calls[0]).toHaveLength(16);
     expect(retried.page.next_offset).toBe(32);

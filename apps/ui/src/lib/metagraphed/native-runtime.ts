@@ -61,10 +61,12 @@ export async function queryNativeNeuronPage(
       offset !== Math.min(previous.page.total, previous.page.offset + limit))
   )
     throw new Error("Neuron continuation must retain its successful page and finalized source.");
-  const reference = previous?.artifact ?? await query(
-    [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [netuid] }],
-    asOf,
-  );
+  const reference =
+    previous?.artifact ??
+    (await query(
+      [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [netuid] }],
+      asOf,
+    ));
   const at = reference.source.finalized_block_hash;
   let total: number;
   if (previous) total = previous.page.total;
