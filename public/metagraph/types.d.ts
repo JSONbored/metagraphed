@@ -9573,9 +9573,9 @@ export interface components {
             target_network: string;
             testnet_only_count?: number;
         };
-        /** @description Checksum-bound public Wasm code for ContractsApi upload_code/instantiate or Contracts upload_code/instantiate_with_code preparation. Keep the code argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. One distinct artifact is fetched per request, with no persistent storage. */
+        /** @description Checksum-bound public deployment code for ContractsApi upload_code/instantiate, Contracts upload_code/instantiate_with_code preparation, EthereumRuntimeRPCApi.create simulation or EVM.create/create2 preparation. Keep the declared code/data/init argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. EVM simulation gas is admitted before fetching; runtime execution rules and unsigned wallet review remain unchanged. One distinct artifact is fetched per request, with no persistent storage. */
         NativeCodeArtifact: {
-            /** @description Exact artifact byte length, also bounded by this source runtime's Contracts.MaxCodeLen. */
+            /** @description Exact artifact byte length. Wasm is also bounded by this source runtime's Contracts.MaxCodeLen; EVM creation retains the native input and execution budgets. */
             bytes: number;
             /** @description SHA-256 of the exact uncompressed artifact bytes. */
             sha256: string;

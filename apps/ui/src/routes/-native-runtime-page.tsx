@@ -567,8 +567,8 @@ function NativeRuntimeExplorer({
                       Use a public GitHub file pinned to a commit for code up to 128 KiB. Include
                       its SHA-256 and byte length. Leave the code argument as empty hex, or Upload
                       with empty hex fields. The server verifies the bytes against the selected
-                      runtime’s declared code argument. Wasm also follows MaxCodeLen; EVM
-                      simulation retains the explicit gas budget and the runtime’s execution rules.
+                      runtime’s declared code argument. Wasm also follows MaxCodeLen; EVM simulation
+                      retains the explicit gas budget and the runtime’s execution rules.
                     </p>
                     <label className="block space-y-1 text-13">
                       Code artifact URL

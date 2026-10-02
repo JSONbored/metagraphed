@@ -154,9 +154,7 @@ test("map records use leading keys and preserve source while advancing the curso
   await gotoThroughRestart(page, "/apis/native");
   await page.getByRole("button", { name: "Inspect contract" }).click();
   await page.getByRole("button", { name: "Browse records" }).click();
-  await expect(
-    page.getByTitle("9007199254740993", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByTitle("9007199254740993", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Next records" }).click();
   await expect(page.getByRole("button", { name: "Next records" })).toHaveCount(0);
   expect(requests.slice(1)).toEqual([
@@ -253,9 +251,7 @@ test("native feature reads are explicit, exact and usable at phone width", async
   await expect(page.getByRole("heading", { name: "Native chain", exact: true })).toBeVisible();
   expect(requests).toHaveLength(0);
   await page.getByRole("button", { name: "Read state", exact: true }).click();
-  await expect(
-    page.getByTitle("9007199254740993", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByTitle("9007199254740993", { exact: true })).toBeVisible();
   await expect(page.getByText("v470 · metadata v15", { exact: true })).toBeVisible();
   expect(requests).toEqual([
     {
@@ -518,112 +514,116 @@ test("Wasm contracts use discovered Weight arguments and retain reverted bytes w
 });
 
 for (const api of ["ContractsApi", "EthereumRuntimeRPCApi"] as const) {
-const member = api === "ContractsApi" ? "upload_code" : "create";
-const readMember = api === "ContractsApi" ? "get_storage" : "account_code_at";
-const result = api === "ContractsApi" ? { code_hash: `0x${"11".repeat(32)}` } : { contract_address: `0x${"22".repeat(20)}` };
-const resultValue = Object.values(result)[0]!;
-test(`${api} code form sends a compact checksum-bound artifact at the inspected source`, async ({
-  page,
-}) => {
-  const artifact = {
-    url: `https://raw.githubusercontent.com/example/contracts/${"a".repeat(40)}/code.wasm`,
-    sha256: "b".repeat(64),
-    bytes: 131072,
-  };
-  const requests: { operations: { kind: string; member?: string }[] }[] = [];
-  await page.route("https://raw.githubusercontent.com/**", () => {
-    throw new Error("Artifact fixtures must not fetch a public provider");
-  });
-  await page.route("**/api/v1/native-runtime", async (route) => {
-    const body = route.request().postDataJSON();
-    requests.push(body);
-    const discovery = body.operations[0].kind === "describe";
-    await route.fulfill({
-      json: {
-        ok: true,
-        data: {
-          schema_version: 1,
-          source,
-          types: [
-            { id: 0, path: [], definition: { kind: "primitive", primitive: 3 } },
-            { id: 1, path: [], definition: { kind: "sequence", type: 0 } },
-          ],
-          results: discovery
-            ? [
-                {
-                  kind: "describe",
-                  value: [
-                    {
-                      kind: "runtime",
-                      api,
-                      member,
-                      args: [{ name: api === "ContractsApi" ? "code" : "data", type: 1 }],
-                    },
-                    { kind: "runtime", api, member: readMember, args: [] },
-                  ],
-                  contract: { next_offset: null },
-                },
-              ]
-            : [
-                {
-                  kind: "runtime",
-                  api,
-                  member,
-                  value: result,
-                  contract: { code_artifact: artifact },
-                },
-              ],
-        },
-      },
+  const member = api === "ContractsApi" ? "upload_code" : "create";
+  const readMember = api === "ContractsApi" ? "get_storage" : "account_code_at";
+  const result =
+    api === "ContractsApi"
+      ? { code_hash: `0x${"11".repeat(32)}` }
+      : { contract_address: `0x${"22".repeat(20)}` };
+  const resultValue = Object.values(result)[0]!;
+  test(`${api} code form sends a compact checksum-bound artifact at the inspected source`, async ({
+    page,
+  }) => {
+    const artifact = {
+      url: `https://raw.githubusercontent.com/example/contracts/${"a".repeat(40)}/code.wasm`,
+      sha256: "b".repeat(64),
+      bytes: 131072,
+    };
+    const requests: { operations: { kind: string; member?: string }[] }[] = [];
+    await page.route("https://raw.githubusercontent.com/**", () => {
+      throw new Error("Artifact fixtures must not fetch a public provider");
     });
+    await page.route("**/api/v1/native-runtime", async (route) => {
+      const body = route.request().postDataJSON();
+      requests.push(body);
+      const discovery = body.operations[0].kind === "describe";
+      await route.fulfill({
+        json: {
+          ok: true,
+          data: {
+            schema_version: 1,
+            source,
+            types: [
+              { id: 0, path: [], definition: { kind: "primitive", primitive: 3 } },
+              { id: 1, path: [], definition: { kind: "sequence", type: 0 } },
+            ],
+            results: discovery
+              ? [
+                  {
+                    kind: "describe",
+                    value: [
+                      {
+                        kind: "runtime",
+                        api,
+                        member,
+                        args: [{ name: api === "ContractsApi" ? "code" : "data", type: 1 }],
+                      },
+                      { kind: "runtime", api, member: readMember, args: [] },
+                    ],
+                    contract: { next_offset: null },
+                  },
+                ]
+              : [
+                  {
+                    kind: "runtime",
+                    api,
+                    member,
+                    value: result,
+                    contract: { code_artifact: artifact },
+                  },
+                ],
+          },
+        },
+      });
+    });
+    await gotoThroughRestart(page, "/apis/native");
+    await page.getByRole("combobox", { name: "Contract", exact: true }).selectOption("api");
+    await page.getByRole("textbox", { name: "Name", exact: true }).fill(api);
+    await page.getByRole("button", { name: "Inspect contract" }).click();
+    await page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }).fill('["0x"]');
+    await page.getByRole("textbox", { name: "Code artifact URL", exact: true }).fill(artifact.url);
+    await page.getByRole("textbox", { name: "Artifact SHA-256", exact: true }).fill("bad");
+    await page.getByRole("textbox", { name: "Artifact bytes", exact: true }).fill("131072");
+    await page.getByRole("button", { name: "Read operation", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText("64-character SHA-256");
+    expect(requests).toHaveLength(1);
+    await page
+      .getByRole("textbox", { name: "Artifact SHA-256", exact: true })
+      .fill(artifact.sha256);
+    await page.getByRole("button", { name: "Read operation", exact: true }).click();
+    await expect(page.getByTitle(resultValue, { exact: true })).toBeVisible();
+    expect(requests[1]).toEqual({
+      as_of: hash,
+      operations: [
+        {
+          kind: "runtime",
+          api,
+          member,
+          args: ["0x"],
+          code_artifact: artifact,
+        },
+      ],
+    });
+    expect(JSON.stringify(requests[1]).length).toBeLessThan(700);
+    await page.getByRole("combobox", { name: "Operation", exact: true }).selectOption("1");
+    await expect(page.getByRole("textbox", { name: "Code artifact URL", exact: true })).toHaveCount(
+      0,
+    );
+    await page.getByRole("combobox", { name: "Operation", exact: true }).selectOption("0");
+    await expect(page.getByRole("textbox", { name: "Code artifact URL", exact: true })).toHaveValue(
+      "",
+    );
+    await expect(page.getByRole("textbox", { name: "Artifact SHA-256", exact: true })).toHaveValue(
+      "",
+    );
+    await expect(page.getByRole("textbox", { name: "Artifact bytes", exact: true })).toHaveValue(
+      "",
+    );
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth + 1,
+    );
+    expect(overflow).toBe(false);
   });
-  await gotoThroughRestart(page, "/apis/native");
-  await page.getByRole("combobox", { name: "Contract", exact: true }).selectOption("api");
-  await page.getByRole("textbox", { name: "Name", exact: true }).fill(api);
-  await page.getByRole("button", { name: "Inspect contract" }).click();
-  await page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }).fill('["0x"]');
-  await page.getByRole("textbox", { name: "Code artifact URL", exact: true }).fill(artifact.url);
-  await page.getByRole("textbox", { name: "Artifact SHA-256", exact: true }).fill("bad");
-  await page.getByRole("textbox", { name: "Artifact bytes", exact: true }).fill("131072");
-  await page.getByRole("button", { name: "Read operation", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("64-character SHA-256");
-  expect(requests).toHaveLength(1);
-  await page.getByRole("textbox", { name: "Artifact SHA-256", exact: true }).fill(artifact.sha256);
-  await page.getByRole("button", { name: "Read operation", exact: true }).click();
-  await expect(
-    page.getByTitle(resultValue, { exact: true }),
-  ).toBeVisible();
-  expect(requests[1]).toEqual({
-    as_of: hash,
-    operations: [
-      {
-        kind: "runtime",
-        api,
-        member,
-        args: ["0x"],
-        code_artifact: artifact,
-      },
-    ],
-  });
-  expect(JSON.stringify(requests[1]).length).toBeLessThan(700);
-  await page.getByRole("combobox", { name: "Operation", exact: true }).selectOption("1");
-  await expect(page.getByRole("textbox", { name: "Code artifact URL", exact: true })).toHaveCount(
-    0,
-  );
-  await page.getByRole("combobox", { name: "Operation", exact: true }).selectOption("0");
-  await expect(page.getByRole("textbox", { name: "Code artifact URL", exact: true })).toHaveValue(
-    "",
-  );
-  await expect(page.getByRole("textbox", { name: "Artifact SHA-256", exact: true })).toHaveValue(
-    "",
-  );
-  await expect(page.getByRole("textbox", { name: "Artifact bytes", exact: true })).toHaveValue("");
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > window.innerWidth + 1,
-  );
-  expect(overflow).toBe(false);
-});
-
 }
 
 test("precompile ABI discovery and simulation use the inspected source and typed Solidity inputs at phone width", async ({
@@ -717,9 +717,7 @@ test("precompile ABI discovery and simulation use the inspected source and typed
     .getByRole("textbox", { name: "Solidity arguments (JSON array)", exact: true })
     .fill(JSON.stringify(args));
   await page.getByRole("button", { name: "Read operation", exact: true }).click();
-  await expect(
-    page.getByTitle("9007199254740993", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByTitle("9007199254740993", { exact: true })).toBeVisible();
   await expect(
     page.getByTitle(`0x${9007199254740993n.toString(16).padStart(64, "0")}`, { exact: true }),
   ).toBeVisible();

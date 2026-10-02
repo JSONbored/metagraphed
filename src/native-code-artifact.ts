@@ -53,19 +53,27 @@ function codeArgument(
   operation: Extract<Operation, { kind: "runtime" | "prepare" }>,
 ) {
   let fields: NativeField[];
-  const evm = operation.kind === "runtime"
-    ? operation.api === "EthereumRuntimeRPCApi" && operation.member === "create"
-    : operation.pallet === "EVM" && ["create", "create2"].includes(operation.member);
+  const evm =
+    operation.kind === "runtime"
+      ? operation.api === "EthereumRuntimeRPCApi" &&
+        operation.member === "create"
+      : operation.pallet === "EVM" &&
+        ["create", "create2"].includes(operation.member);
   const palletName = evm ? "EVM" : "Contracts";
   const pallet = metadata.pallets.find((row) => row.name === palletName);
   if (!pallet)
-    throw new Error(`Native code requires the ${palletName} pallet at this source`);
+    throw new Error(
+      `Native code requires the ${palletName} pallet at this source`,
+    );
   if (operation.evm_call)
-    throw new Error("Native deployment code cannot use precompile call arguments");
+    throw new Error(
+      "Native deployment code cannot use precompile call arguments",
+    );
   let limit = BigInt(NATIVE_RUNTIME_LIMITS.valueBytes);
   if (!evm) {
     const constant = pallet.constants.find((row) => row.name === "MaxCodeLen");
-    if (!constant) throw new Error("Native code requires the source MaxCodeLen");
+    if (!constant)
+      throw new Error("Native code requires the source MaxCodeLen");
     const value = decodeNativeValue(metadata, constant.type, constant.value);
     if (typeof value !== "string" || !/^(0|[1-9]\d*)$/.test(value))
       throw new Error("Invalid native source code byte limit");
@@ -73,8 +81,9 @@ function codeArgument(
   }
   if (
     operation.kind === "runtime" &&
-    (evm || (operation.api === "ContractsApi" &&
-    ["upload_code", "instantiate"].includes(operation.member)))
+    (evm ||
+      (operation.api === "ContractsApi" &&
+        ["upload_code", "instantiate"].includes(operation.member)))
   ) {
     const api = metadata.apis.find((row) => row.name === operation.api);
     const method = api?.methods.find((row) => row.name === operation.member);
@@ -86,8 +95,9 @@ function codeArgument(
     else nativeContractSimulationWork(operation.member, fields, operation.args);
   } else if (
     operation.kind === "prepare" &&
-    (evm || (operation.pallet === "Contracts" &&
-    ["upload_code", "instantiate_with_code"].includes(operation.member)))
+    (evm ||
+      (operation.pallet === "Contracts" &&
+        ["upload_code", "instantiate_with_code"].includes(operation.member)))
   ) {
     const calls =
       pallet.calls === null
@@ -106,7 +116,10 @@ function codeArgument(
   if (operation.args.length !== fields.length)
     throw new Error("Native code argument arity mismatch");
   const indexes = fields.flatMap((field, index) =>
-    field.name === (evm ? operation.kind === "runtime" ? "data" : "init" : "code") ? [index] : [],
+    field.name ===
+    (evm ? (operation.kind === "runtime" ? "data" : "init") : "code")
+      ? [index]
+      : [],
   );
   if (indexes.length !== 1)
     throw new Error("Native code requires one declared code argument");

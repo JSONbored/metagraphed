@@ -487,38 +487,167 @@ for (const era of eras) {
   });
 
   test(`compiled v${era.spec} full EVM deployment artifacts preserve creation and unsigned native bytes in both formats`, async () => {
-    const data = Buffer.alloc(49152, 0xa5), hex = nativeHex(data);
-    const code_artifact = { url: `https://raw.githubusercontent.com/example/contracts/${"a".repeat(40)}/init.bin`, bytes: data.length, sha256: createHash("sha256").update(data).digest("hex") };
-    for (const [format, kind, memberName] of [[15,"runtime","create"],[14,"prepare","create"],[15,"prepare","create"],[14,"prepare","create2"],[15,"prepare","create2"]] as const) {
+    const data = Buffer.alloc(49152, 0xa5),
+      hex = nativeHex(data);
+    const code_artifact = {
+      url: `https://raw.githubusercontent.com/example/contracts/${"a".repeat(40)}/init.bin`,
+      bytes: data.length,
+      sha256: createHash("sha256").update(data).digest("hex"),
+    };
+    for (const [format, kind, memberName] of [
+      [15, "runtime", "create"],
+      [14, "prepare", "create"],
+      [15, "prepare", "create"],
+      [14, "prepare", "create2"],
+      [15, "prepare", "create2"],
+    ] as const) {
       const bare = unwrapNativeMetadata(era[`v${format}`])!;
       const model = format === 15 ? model15 : decodeNativeMetadata(bare);
-      const reference = new TypeRegistry(); reference.setMetadata(new Metadata(reference,Buffer.from(bare.slice(2),"hex")));
-      const pallet = model.pallets.find(row=>row.name==="EVM")!;
+      const reference = new TypeRegistry();
+      reference.setMetadata(
+        new Metadata(reference, Buffer.from(bare.slice(2), "hex")),
+      );
+      const pallet = model.pallets.find((row) => row.name === "EVM")!;
       const calls = model.types.get(pallet.calls!)!.definition;
-      assert.equal(calls.kind,"variant"); if(calls.kind!=="variant")continue;
-      const variant = calls.variants.find(row=>row.name===memberName)!;
-      const method = model15.apis.find(row=>row.name==="EthereumRuntimeRPCApi")!.methods.find(row=>row.name==="create")!;
-      const fields = kind === "runtime" ? method.inputs : variant.fields, codeName = kind === "runtime" ? "data":"init";
-      const args = fields.map(field=>field.name===codeName ? "0x" : field.name==="gas_limit" && kind==="runtime" ? ["500000","0","0","0"] : sampleNativeValue(model,field.type));
-      const operation = {kind,...(kind==="runtime" ? {api:"EthereumRuntimeRPCApi"}:{pallet:"EVM"}),member:memberName,args,code_artifact};
-      const f=fixture(format);let fetches=0;
-      const fetchImpl=(async (url,options)=>{fetches++;assert.equal(url,code_artifact.url);assert.equal(options!.redirect,"manual");return new Response(data);}) as typeof fetch;
-      const request={operations:[operation,operation]};
-      const result=await queryNativeRuntime(request,f.rpc,fetchImpl);
-      assert.equal(fetches,1);assert.equal(f.calls.length,kind==="runtime" ? 1:0);
-      assert.deepEqual(result.results[0],result.results[1]);
-      assert.deepEqual((result.results[0]!.contract as {code_artifact:unknown}).code_artifact,code_artifact);
-      assert.equal(Object.hasOwn(result.results[0]!,"evm_result"),false);
-      const pieces=fields.map((field,index)=>reference.createTypeUnsafe(`Lookup${field.type}`,[encodeNativeValue(model,field.type,field.name===codeName ? hex:args[index]!)]).toU8a());
-      if(kind==="runtime")assert.deepEqual(f.calls[0]!.params,["EthereumRuntimeRPCApi_create",nativeHex(Buffer.concat(pieces)),hash]);
-      else assert.equal(result.results[0]!.call_data,nativeHex(Buffer.concat([Buffer.from([pallet.index,variant.index]),...pieces])));
-      assert.equal(args[fields.findIndex(row=>row.name===codeName)],"0x");
-      await assert.rejects(()=>queryNativeRuntime({operations:[{...operation,code_artifact:undefined,args:fields.map((field,index)=>field.name===codeName ? hex:args[index]!)}]},f.rpc,fetchImpl),/Native request exceeds byte budget/);
-      if(kind==="runtime")for(const gas of [["0","0","0","0"],["1000001","0","0","0"],["1","1","0","0"]]) {
-        await assert.rejects(()=>queryNativeRuntime({operations:[{...operation,args:fields.map((field,index)=>field.name==="gas_limit" ? gas:args[index]!)}]},f.rpc,fetchImpl),/gas budget/);
-        assert.equal(fetches,1);assert.equal(f.calls.length,1);
-      }
-      console.log("NATIVE_EVM_CODE_ARTIFACT_FIXTURE",JSON.stringify({spec:era.spec,format,kind,member:memberName,code_bytes:data.length,compact_single_request_bytes:Buffer.byteLength(JSON.stringify({operations:[operation]})),embedded_code_hex_bytes:data.length*2,artifact_fetches:fetches,execution_requests:f.calls.length,exact_bytes:true,fixture:true,production:false}));
+      assert.equal(calls.kind, "variant");
+      if (calls.kind !== "variant") continue;
+      const variant = calls.variants.find((row) => row.name === memberName)!;
+      const method = model15.apis
+        .find((row) => row.name === "EthereumRuntimeRPCApi")!
+        .methods.find((row) => row.name === "create")!;
+      const fields = kind === "runtime" ? method.inputs : variant.fields,
+        codeName = kind === "runtime" ? "data" : "init";
+      const args = fields.map((field) =>
+        field.name === codeName
+          ? "0x"
+          : field.name === "gas_limit" && kind === "runtime"
+            ? ["500000", "0", "0", "0"]
+            : sampleNativeValue(model, field.type),
+      );
+      const operation = {
+        kind,
+        ...(kind === "runtime"
+          ? { api: "EthereumRuntimeRPCApi" }
+          : { pallet: "EVM" }),
+        member: memberName,
+        args,
+        code_artifact,
+      };
+      const f = fixture(format);
+      let fetches = 0;
+      const fetchImpl = (async (url, options) => {
+        fetches++;
+        assert.equal(url, code_artifact.url);
+        assert.equal(options!.redirect, "manual");
+        return new Response(data);
+      }) as typeof fetch;
+      const request = { operations: [operation, operation] };
+      const result = await queryNativeRuntime(request, f.rpc, fetchImpl);
+      assert.equal(fetches, 1);
+      assert.equal(f.calls.length, kind === "runtime" ? 1 : 0);
+      assert.deepEqual(result.results[0], result.results[1]);
+      assert.deepEqual(
+        (result.results[0]!.contract as { code_artifact: unknown })
+          .code_artifact,
+        code_artifact,
+      );
+      assert.equal(Object.hasOwn(result.results[0]!, "evm_result"), false);
+      const pieces = fields.map((field, index) =>
+        reference
+          .createTypeUnsafe(`Lookup${field.type}`, [
+            encodeNativeValue(
+              model,
+              field.type,
+              field.name === codeName ? hex : args[index]!,
+            ),
+          ])
+          .toU8a(),
+      );
+      if (kind === "runtime")
+        assert.deepEqual(f.calls[0]!.params, [
+          "EthereumRuntimeRPCApi_create",
+          nativeHex(Buffer.concat(pieces)),
+          hash,
+        ]);
+      else
+        assert.equal(
+          result.results[0]!.call_data,
+          nativeHex(
+            Buffer.concat([
+              Buffer.from([pallet.index, variant.index]),
+              ...pieces,
+            ]),
+          ),
+        );
+      assert.equal(
+        args[fields.findIndex((row) => row.name === codeName)],
+        "0x",
+      );
+      await assert.rejects(
+        () =>
+          queryNativeRuntime(
+            {
+              operations: [
+                {
+                  ...operation,
+                  code_artifact: undefined,
+                  args: fields.map((field, index) =>
+                    field.name === codeName ? hex : args[index]!,
+                  ),
+                },
+              ],
+            },
+            f.rpc,
+            fetchImpl,
+          ),
+        /Native request exceeds byte budget/,
+      );
+      if (kind === "runtime")
+        for (const gas of [
+          ["0", "0", "0", "0"],
+          ["1000001", "0", "0", "0"],
+          ["1", "1", "0", "0"],
+        ]) {
+          await assert.rejects(
+            () =>
+              queryNativeRuntime(
+                {
+                  operations: [
+                    {
+                      ...operation,
+                      args: fields.map((field, index) =>
+                        field.name === "gas_limit" ? gas : args[index]!,
+                      ),
+                    },
+                  ],
+                },
+                f.rpc,
+                fetchImpl,
+              ),
+            /gas budget/,
+          );
+          assert.equal(fetches, 1);
+          assert.equal(f.calls.length, 1);
+        }
+      console.log(
+        "NATIVE_EVM_CODE_ARTIFACT_FIXTURE",
+        JSON.stringify({
+          spec: era.spec,
+          format,
+          kind,
+          member: memberName,
+          code_bytes: data.length,
+          compact_single_request_bytes: Buffer.byteLength(
+            JSON.stringify({ operations: [operation] }),
+          ),
+          embedded_code_hex_bytes: data.length * 2,
+          artifact_fetches: fetches,
+          execution_requests: f.calls.length,
+          exact_bytes: true,
+          fixture: true,
+          production: false,
+        }),
+      );
     }
   });
 }

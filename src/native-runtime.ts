@@ -28,7 +28,10 @@ import { resolveNativeCodeArtifacts } from "./native-code-artifact.ts";
 import { resolveNativeEvmCall } from "./native-evm-call.ts";
 import { describeRuntimeEvm } from "./evm-runtime-abi.ts";
 import { decodeNativeEvmResult } from "./evm-runtime-return.ts";
-import { NATIVE_EVM_SIMULATION_GAS_BUDGET, nativeEvmSimulationGas } from "./native-evm-simulation.ts";
+import {
+  NATIVE_EVM_SIMULATION_GAS_BUDGET,
+  nativeEvmSimulationGas,
+} from "./native-evm-simulation.ts";
 import { loadNativeContract } from "./native-runtime-contract.ts";
 import {
   NATIVE_CONTRACT_SIMULATION_LIMITS,
