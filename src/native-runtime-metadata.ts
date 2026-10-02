@@ -15,6 +15,7 @@ export const NATIVE_RUNTIME_LIMITS = {
 export class NativeScaleReader {
   readonly bytes: Uint8Array;
   offset = 0;
+  private textDecoder?: TextDecoder;
   constructor(
     hex: unknown,
     maxBytes: number = NATIVE_RUNTIME_LIMITS.valueBytes,
@@ -46,7 +47,10 @@ export class NativeScaleReader {
     return result;
   }
   byte() {
-    return Number(this.uint(1));
+    const value = this.bytes[this.offset];
+    if (value === undefined) throw new Error("Truncated native SCALE data");
+    this.offset++;
+    return value;
   }
   compact() {
     const first = this.byte();
@@ -89,7 +93,13 @@ export class NativeScaleReader {
     return read();
   }
   text() {
-    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+    // Non-streaming decode resets UTF-8/BOM state for each SCALE string,
+    // including after a fatal error. Keep the decoder local to this reader.
+    this.textDecoder ??= new TextDecoder("utf-8", {
+      fatal: true,
+      ignoreBOM: true,
+    });
+    return this.textDecoder.decode(
       this.take(this.count(NATIVE_RUNTIME_LIMITS.text)),
     );
   }

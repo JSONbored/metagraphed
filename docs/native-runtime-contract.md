@@ -425,6 +425,13 @@ bytes match the previous array-producing traversal across all 182 contracts.
 The v470 fixture removes 7,290 arrays and 6,440 element slots. Warm contract
 reuse remains bound to code identity and its existing two-contract byte cap.
 
+Single-byte reads use the bounded byte directly rather than creating a one-byte
+view and converting through BigInt. Each reader lazily reuses one fatal UTF-8
+decoder for its independent SCALE strings. Non-streaming decode resets its state
+for every string, preserving initial BOMs and rejection of malformed or truncated
+UTF-8, including after a preceding decode error. Decoder state is not shared
+between requests/readers.
+
 ## Explicit collection pages
 
 A typed `storage`, `constant` or `runtime` read accepts `value_page`:
