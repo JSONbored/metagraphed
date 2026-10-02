@@ -316,8 +316,8 @@ function NativeRuntimeExplorer({
             Neuron records
           </h2>
           <p className="text-13 text-ink-muted">
-            Read a bounded UID range at one finalized block. Full records include their weights
-            and bonds; absent records remain absent. Each page fetches only its selected neurons.
+            Read a bounded UID range at one finalized block. Full records include their weights and
+            bonds; absent records remain absent. Each page fetches only its selected neurons.
           </p>
         </div>
         <form
@@ -334,26 +334,47 @@ function NativeRuntimeExplorer({
         >
           <label className="space-y-1 text-13">
             Neuron subnet
-            <input disabled={busy} className={control} inputMode="numeric" value={neuronNetuid}
-              onChange={(event) => setNeuronNetuid(event.target.value)} />
+            <input
+              disabled={busy}
+              className={control}
+              inputMode="numeric"
+              value={neuronNetuid}
+              onChange={(event) => setNeuronNetuid(event.target.value)}
+            />
           </label>
           <label className="space-y-1 text-13">
             Starting UID
-            <input disabled={busy} className={control} inputMode="numeric" value={neuronOffset}
-              onChange={(event) => setNeuronOffset(event.target.value)} />
+            <input
+              disabled={busy}
+              className={control}
+              inputMode="numeric"
+              value={neuronOffset}
+              onChange={(event) => setNeuronOffset(event.target.value)}
+            />
           </label>
           <label className="space-y-1 text-13">
             Neurons per page
-            <input disabled={busy} className={control} inputMode="numeric" value={neuronLimit}
-              onChange={(event) => setNeuronLimit(event.target.value)} />
+            <input
+              disabled={busy}
+              className={control}
+              inputMode="numeric"
+              value={neuronLimit}
+              onChange={(event) => setNeuronLimit(event.target.value)}
+            />
           </label>
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex items-center gap-2 text-13">
-              <input type="checkbox" disabled={busy} checked={neuronLite}
-                onChange={(event) => setNeuronLite(event.target.checked)} />
+              <input
+                type="checkbox"
+                disabled={busy}
+                checked={neuronLite}
+                onChange={(event) => setNeuronLite(event.target.checked)}
+              />
               Lite records
             </label>
-            <button className={button} disabled={busy} type="submit">Read neuron page</button>
+            <button className={button} disabled={busy} type="submit">
+              Read neuron page
+            </button>
           </div>
         </form>
         {neuronPage && result && (
@@ -365,13 +386,19 @@ function NativeRuntimeExplorer({
               Continuation keeps this page’s subnet, record format and finalized block.
             </span>
             {neuronPage.next_offset !== null && (
-              <button className={button} disabled={busy} type="button"
-                onClick={() => void read([], false, result.source.finalized_block_hash, {
-                  netuid: String(neuronPage.netuid),
-                  offset: String(neuronPage.next_offset),
-                  limit: String(neuronPage.limit),
-                  lite: neuronPage.lite,
-                })}>
+              <button
+                className={button}
+                disabled={busy}
+                type="button"
+                onClick={() =>
+                  void read([], false, result.source.finalized_block_hash, {
+                    netuid: String(neuronPage.netuid),
+                    offset: String(neuronPage.next_offset),
+                    limit: String(neuronPage.limit),
+                    lite: neuronPage.lite,
+                  })
+                }
+              >
                 Next neuron page
               </button>
             )}

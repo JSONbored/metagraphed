@@ -30,7 +30,15 @@ function neuronCount(total: string, spec = 470): NativeArtifact {
   return {
     ...artifact,
     source: { ...artifact.source, runtime_spec_version: spec },
-    results: [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", value: total, contract: {} }],
+    results: [
+      {
+        kind: "storage",
+        pallet: "SubtensorModule",
+        member: "SubnetworkN",
+        value: total,
+        contract: {},
+      },
+    ],
   };
 }
 function neuronRecords(operations: NativeOperation[], count: NativeArtifact): NativeArtifact {
@@ -46,7 +54,12 @@ function neuronRecords(operations: NativeOperation[], count: NativeArtifact): Na
         contract: {},
         ...(operation.kind === "runtime_scale"
           ? { value: "0x", inner_result: index === 2 ? null : { stake: "9007199254740993" } }
-          : { value: index === 2 ? { variant: "None", fields: {} } : { uid: operation.args[1]!, stake: "9007199254740993" } }),
+          : {
+              value:
+                index === 2
+                  ? { variant: "None", fields: {} }
+                  : { uid: operation.args[1]!, stake: "9007199254740993" },
+            }),
       };
     }),
   };
@@ -66,21 +79,41 @@ test("neuron UID pages bound singular reads, pin both requests and preserve abse
     );
     expect(calls[0]).toEqual({
       at: count.source.finalized_block_hash,
-      operations: [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [19] }],
+      operations: [
+        { kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [19] },
+      ],
     });
     expect(calls[1]!.at).toBe(count.source.finalized_block_hash);
-    expect(calls[1]!.operations).toEqual(Array.from({ length: 16 }, (_, index) => ({
-      kind: "runtime", api: "NeuronInfoRuntimeApi", member: lite ? "get_neuron_lite" : "get_neuron", args: [19, index + 16],
-    })));
-    expect(result.page).toEqual({ netuid: 19, offset: 16, limit: 16, lite, total: 35, next_offset: 32 });
+    expect(calls[1]!.operations).toEqual(
+      Array.from({ length: 16 }, (_, index) => ({
+        kind: "runtime",
+        api: "NeuronInfoRuntimeApi",
+        member: lite ? "get_neuron_lite" : "get_neuron",
+        args: [19, index + 16],
+      })),
+    );
+    expect(result.page).toEqual({
+      netuid: 19,
+      offset: 16,
+      limit: 16,
+      lite,
+      total: 35,
+      next_offset: 32,
+    });
     expect(result.artifact.results[2]!.value).toEqual({ variant: "None", fields: {} });
     expect(result.artifact.results[0]!.value).toMatchObject({ stake: "9007199254740993" });
   }
 });
 
 test("neuron pages clamp the last page and do not read records for empty or completed ranges", async () => {
-  for (const [total, offset, length] of [[3, 2, 1], [0, 0, 0], [3, 3, 0], [65535, 65534, 1]]) {
-    const calls: NativeOperation[][] = [], count = neuronCount(String(total));
+  for (const [total, offset, length] of [
+    [3, 2, 1],
+    [0, 0, 0],
+    [3, 3, 0],
+    [65535, 65534, 1],
+  ]) {
+    const calls: NativeOperation[][] = [],
+      count = neuronCount(String(total));
     const result = await queryNativeNeuronPage(
       { netuid: "65535", offset: String(offset), limit: "16", lite: false },
       async (operations) => {
@@ -97,7 +130,8 @@ test("neuron pages clamp the last page and do not read records for empty or comp
 
 test("all qualified opaque neuron eras use exact little-endian singular arguments and retain inner absence", async () => {
   for (const spec of [205, 210, 211, 212, 216, 217, 218, 219]) {
-    const count = neuronCount("258", spec), calls: NativeOperation[][] = [];
+    const count = neuronCount("258", spec),
+      calls: NativeOperation[][] = [];
     const result = await queryNativeNeuronPage(
       { netuid: "256", offset: "255", limit: "16", lite: true },
       async (operations) => {
@@ -105,9 +139,15 @@ test("all qualified opaque neuron eras use exact little-endian singular argument
         return calls.length === 1 ? count : neuronRecords(operations, count);
       },
     );
-    expect(calls[1]).toEqual(["ff00", "0001", "0101"].map((uid) => ({
-      kind: "runtime_scale", api: "NeuronInfoRuntimeApi", member: "get_neuron_lite", input: `0x0001${uid}`, decode_inner: true,
-    })));
+    expect(calls[1]).toEqual(
+      ["ff00", "0001", "0101"].map((uid) => ({
+        kind: "runtime_scale",
+        api: "NeuronInfoRuntimeApi",
+        member: "get_neuron_lite",
+        input: `0x0001${uid}`,
+        decode_inner: true,
+      })),
+    );
     expect(result.artifact.results[2]!.inner_result).toBeNull();
     expect(result.artifact.results[2]!.value).toBe("0x");
     expect(result.page.next_offset).toBeNull();
@@ -116,51 +156,78 @@ test("all qualified opaque neuron eras use exact little-endian singular argument
 
 test("neuron page admission and response-source validation prevent invalid or mismatched follow-up reads", async () => {
   let reads = 0;
-  const query = async () => { reads++; return neuronCount("3"); };
+  const query = async () => {
+    reads++;
+    return neuronCount("3");
+  };
   const input = { netuid: "19", offset: "0", limit: "16", lite: false };
   for (const bad of [
-    { netuid: "-1" }, { netuid: "65536" }, { offset: "01" }, { offset: "65536" },
-    { limit: "0" }, { limit: "17" }, { limit: "1e1" }, { netuid: "9".repeat(400) },
-  ]) await expect(queryNativeNeuronPage({ ...input, ...bad }, query)).rejects.toThrow();
+    { netuid: "-1" },
+    { netuid: "65536" },
+    { offset: "01" },
+    { offset: "65536" },
+    { limit: "0" },
+    { limit: "17" },
+    { limit: "1e1" },
+    { netuid: "9".repeat(400) },
+  ])
+    await expect(queryNativeNeuronPage({ ...input, ...bad }, query)).rejects.toThrow();
   await expect(queryNativeNeuronPage(input, query, "bad-hash")).rejects.toThrow();
   expect(reads).toBe(0);
   for (const value of ["-1", "65536", "01", "1.0", "9".repeat(400)]) {
-    await expect(queryNativeNeuronPage(input, async () => neuronCount(value))).rejects.toThrow(/neuron count/);
+    await expect(queryNativeNeuronPage(input, async () => neuronCount(value))).rejects.toThrow(
+      /neuron count/,
+    );
   }
   for (const count of [
     { ...neuronCount("3"), results: [] },
     { ...neuronCount("3"), results: [{ ...neuronCount("3").results[0]!, member: "Other" }] },
     { ...neuronCount("3"), results: [{ ...neuronCount("3").results[0]!, value: 3 }] },
-  ]) await expect(queryNativeNeuronPage(input, async () => count)).rejects.toThrow(/neuron count/);
-  await expect(queryNativeNeuronPage({ ...input, offset: "4" }, query)).rejects.toThrow(/starting UID/);
-  await expect(queryNativeNeuronPage(input, query, `0x${"ab".repeat(32)}`)).rejects.toThrow(/neuron count/);
+  ])
+    await expect(queryNativeNeuronPage(input, async () => count)).rejects.toThrow(/neuron count/);
+  await expect(queryNativeNeuronPage({ ...input, offset: "4" }, query)).rejects.toThrow(
+    /starting UID/,
+  );
+  await expect(queryNativeNeuronPage(input, query, `0x${"ab".repeat(32)}`)).rejects.toThrow(
+    /neuron count/,
+  );
   for (const changed of [
-    { network: "testnet" }, { network_genesis_hash: `0x${"ab".repeat(32)}` },
-    { finalized_block_hash: `0x${"ab".repeat(32)}` }, { finalized_block: "501" },
-    { runtime_spec_version: 471 }, { runtime_transaction_version: 2 },
+    { network: "testnet" },
+    { network_genesis_hash: `0x${"ab".repeat(32)}` },
+    { finalized_block_hash: `0x${"ab".repeat(32)}` },
+    { finalized_block: "501" },
+    { runtime_spec_version: 471 },
+    { runtime_transaction_version: 2 },
     { runtime_code_hash: `0x${"ab".repeat(32)}` },
   ]) {
     let calls = 0;
     const count = neuronCount("3");
-    await expect(queryNativeNeuronPage(input, async (operations) => {
-      if (++calls === 1) return count;
-      const records = neuronRecords(operations, count);
-      return { ...records, source: { ...records.source, ...changed } as NativeArtifact["source"] };
-    })).rejects.toThrow(/finalized source/);
+    await expect(
+      queryNativeNeuronPage(input, async (operations) => {
+        if (++calls === 1) return count;
+        const records = neuronRecords(operations, count);
+        return {
+          ...records,
+          source: { ...records.source, ...changed } as NativeArtifact["source"],
+        };
+      }),
+    ).rejects.toThrow(/finalized source/);
     expect(calls).toBe(2);
   }
   for (const failure of ["missing", "wrong-method", "missing-value", "missing-inner"] as const) {
     let calls = 0;
     const count = neuronCount("3", failure === "missing-inner" ? 210 : 470);
-    await expect(queryNativeNeuronPage(input, async (operations) => {
-      if (++calls === 1) return count;
-      const records = neuronRecords(operations, count);
-      if (failure === "missing") records.results.pop();
-      else if (failure === "wrong-method") records.results[0]!.member = "get_neurons";
-      else if (failure === "missing-value") delete records.results[0]!.value;
-      else delete records.results[0]!.inner_result;
-      return records;
-    })).rejects.toThrow(/Incomplete/);
+    await expect(
+      queryNativeNeuronPage(input, async (operations) => {
+        if (++calls === 1) return count;
+        const records = neuronRecords(operations, count);
+        if (failure === "missing") records.results.pop();
+        else if (failure === "wrong-method") records.results[0]!.member = "get_neurons";
+        else if (failure === "missing-value") delete records.results[0]!.value;
+        else delete records.results[0]!.inner_result;
+        return records;
+      }),
+    ).rejects.toThrow(/Incomplete/);
   }
 });
 test("legacy record selection is scoped to compiled eras and read families, preserving omitted flags", () => {

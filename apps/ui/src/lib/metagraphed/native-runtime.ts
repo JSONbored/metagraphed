@@ -30,7 +30,9 @@ export async function queryNativeNeuronPage(
 ): Promise<{ artifact: NativeArtifact; page: NativeNeuronPage }> {
   const integer = (text: string, min: number, max: number) => {
     if (!/^(0|[1-9]\d*)$/.test(text) || Number(text) < min || Number(text) > max)
-      throw new Error("Enter a subnet and UID from 0 through 65535, and a page size from 1 through 16.");
+      throw new Error(
+        "Enter a subnet and UID from 0 through 65535, and a page size from 1 through 16.",
+      );
     return Number(text);
   };
   const netuid = integer(input.netuid, 0, 65535),

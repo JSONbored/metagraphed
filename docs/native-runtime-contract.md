@@ -447,7 +447,12 @@ REST and MCP use the same operations. First request the count:
 ```json
 {
   "operations": [
-    { "kind": "storage", "pallet": "SubtensorModule", "member": "SubnetworkN", "args": [19] }
+    {
+      "kind": "storage",
+      "pallet": "SubtensorModule",
+      "member": "SubnetworkN",
+      "args": [19]
+    }
   ]
 }
 ```
@@ -458,8 +463,18 @@ Use its `source.finalized_block_hash` as `as_of` for the selected singular reads
 {
   "as_of": "0x3333333333333333333333333333333333333333333333333333333333333333",
   "operations": [
-    { "kind": "runtime", "api": "NeuronInfoRuntimeApi", "member": "get_neuron", "args": [19, 0] },
-    { "kind": "runtime", "api": "NeuronInfoRuntimeApi", "member": "get_neuron", "args": [19, 1] }
+    {
+      "kind": "runtime",
+      "api": "NeuronInfoRuntimeApi",
+      "member": "get_neuron",
+      "args": [19, 0]
+    },
+    {
+      "kind": "runtime",
+      "api": "NeuronInfoRuntimeApi",
+      "member": "get_neuron",
+      "args": [19, 1]
+    }
   ]
 }
 ```
