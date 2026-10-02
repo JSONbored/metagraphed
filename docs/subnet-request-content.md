@@ -30,7 +30,8 @@ MCP JSON transport; use strings when the provider's schema represents exact
 wide integers as strings.
 
 `json_body` requires a declared `application/json` or `+json` request media
-type. It follows the same POST/PUT/PATCH, operation admission, caller credential,
+type, including media parameters. The exact declared Content-Type is forwarded.
+It follows the same POST/PUT/PATCH, operation admission, caller credential,
 network safety and request limits as other writes. Read tools accept no body.
 
 For flat body credentials, supply an object so the credential fields can merge

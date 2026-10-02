@@ -353,7 +353,8 @@ export const WriteSubnetSurfaceInputSchema = z
       )
       .meta({ examples: ["POST"] }),
   })
-  .strict();
+  .strict()
+  .meta({ not: { required: ["body", "json_body"] } });
 export type WriteSubnetSurfaceInput = z.infer<
   typeof WriteSubnetSurfaceInputSchema
 >;

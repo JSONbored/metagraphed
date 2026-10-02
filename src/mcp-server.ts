@@ -6172,9 +6172,11 @@ async function subnetSurfaceCall(
           `This operation declares multiple request body media types (${declaredMediaTypes.join(", ")}) and none is application/json -- supply content_type explicitly.`,
         );
       }
+      const bodyMediaType = hasJsonBodyArg
+        ? requestContentType.split(";", 1)[0]!.trim().toLowerCase()
+        : requestContentType;
       const isJsonContentType =
-        requestContentType === "application/json" ||
-        requestContentType.endsWith("+json");
+        bodyMediaType === "application/json" || bodyMediaType.endsWith("+json");
       if (hasJsonBodyArg && !isJsonContentType) {
         throw toolError(
           "invalid_params",
