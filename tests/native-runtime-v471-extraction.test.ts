@@ -100,7 +100,7 @@ function fixtureSource(path: string, value: unknown) {
   const prefix = original.slice(0, original.indexOf("const compressed"));
   const tail = original.slice(original.indexOf("export default"));
   assert.ok(prefix.includes('import { brotliDecompressSync }'));
-  assert.ok(tail.includes('JSON.parse(brotliDecompressSync'));
+  assert.match(tail, /^export default JSON\.parse\(\s*brotliDecompressSync\(Buffer\.from\(compressed, "base64"\)\)\.toString\(\),?\s*\)/);
   const data = brotliCompressSync(Buffer.from(JSON.stringify(value)), {params: {[constants.BROTLI_PARAM_QUALITY]: 6, [constants.BROTLI_PARAM_LGWIN]:24}}).toString("base64");
   return `${prefix.replace("v430–v470", "v430–v471")}const compressed = [${data.match(/.{1,120}/g)!.map(part => JSON.stringify(part)).join(",")}].join("");\n${tail}`;
 }
