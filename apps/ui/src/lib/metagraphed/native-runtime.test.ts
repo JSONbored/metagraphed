@@ -380,14 +380,47 @@ test("precompile assistance preserves ordinary operations, exact arguments and s
   ).toEqual(["x()"]);
 });
 
-
 test("decoded Solidity returns appear before raw execution bytes with exact quantities", () => {
-  const view = { ...artifact, results: [{ kind: "runtime" as const, api: "EthereumRuntimeRPCApi", member: "call", value: { variant: "Ok", fields: { value: "0xab", used_gas: "21000" } }, evm_result: { status: "decoded" as const, values: [{ stake: "9007199254740993", axon: { port: 443, ip: "340282366920938463463374607431768211455" } }] }, contract: {} }] };
+  const view = {
+    ...artifact,
+    results: [
+      {
+        kind: "runtime" as const,
+        api: "EthereumRuntimeRPCApi",
+        member: "call",
+        value: { variant: "Ok", fields: { value: "0xab", used_gas: "21000" } },
+        evm_result: {
+          status: "decoded" as const,
+          values: [
+            {
+              stake: "9007199254740993",
+              axon: { port: 443, ip: "340282366920938463463374607431768211455" },
+            },
+          ],
+        },
+        contract: {},
+      },
+    ],
+  };
   const rows = nativeValueRows(view);
-  expect(rows[0]).toMatchObject({ field: "1. EthereumRuntimeRPCApi.call.evm_result.status", value: "decoded" });
-  expect(rows).toEqual(expect.arrayContaining([
-    expect.objectContaining({ field: "1. EthereumRuntimeRPCApi.call.evm_result.values.0.stake", value: "9007199254740993" }),
-    expect.objectContaining({ field: "1. EthereumRuntimeRPCApi.call.evm_result.values.0.axon.port", value: "443" }),
-    expect.objectContaining({ field: "1. EthereumRuntimeRPCApi.call.fields.value", value: "0xab" }),
-  ]));
+  expect(rows[0]).toMatchObject({
+    field: "1. EthereumRuntimeRPCApi.call.evm_result.status",
+    value: "decoded",
+  });
+  expect(rows).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        field: "1. EthereumRuntimeRPCApi.call.evm_result.values.0.stake",
+        value: "9007199254740993",
+      }),
+      expect.objectContaining({
+        field: "1. EthereumRuntimeRPCApi.call.evm_result.values.0.axon.port",
+        value: "443",
+      }),
+      expect.objectContaining({
+        field: "1. EthereumRuntimeRPCApi.call.fields.value",
+        value: "0xab",
+      }),
+    ]),
+  );
 });

@@ -9620,11 +9620,20 @@ export interface components {
             order: number;
             store: number;
         };
-        /** @description Solidity signature and ordered arguments from this finalized runtime's precompile catalogue. Available on EthereumRuntimeRPCApi.call and EVM.call preparation. Keep the declared data/input argument as 0x; the existing to/target selects the precompile. Wide integers are exact decimal strings. Encoding adds no chain request and retains the ordinary gas, value and wallet-review rules. */
+        /** @description Solidity signature and ordered arguments from this finalized runtime's precompile catalogue. Available on EthereumRuntimeRPCApi.call and EVM.call preparation. Keep the declared data/input argument as 0x; the existing to/target selects the precompile. Wide integers are exact decimal strings. Successful simulations include source-ABI-decoded evm_result values alongside the complete native result. Encoding and return decoding add no chain request and retain the ordinary gas, value and wallet-review rules. */
         NativeEvmCall: {
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
             signature: string;
+        };
+        /** @description Release-bound Solidity return interpretation for an evm_call simulation. Values are in the declared output order, tuples use their unique named fields or positional arrays, and wide integers are exact decimal strings. The native value retains all original return bytes, gas, logs, reverts and dispatch errors. Failed executions and malformed return bytes are never interpreted as successful values. */
+        NativeEvmResult: {
+            /** @constant */
+            status: "decoded";
+            values: components["schemas"]["NativeJsonValue"][];
+        } | {
+            /** @enum {string} */
+            status: "reverted" | "dispatch_error" | "execution_error" | "invalid_output" | "unrecognized_result";
         };
         NativeField: {
             name: string | null;
@@ -9644,6 +9653,7 @@ export interface components {
                 api?: string;
                 call_data?: string;
                 contract: components["schemas"]["NativeJsonValue"];
+                evm_result?: components["schemas"]["NativeEvmResult"];
                 is_default?: boolean;
                 /** @enum {string} */
                 kind: "storage" | "entries" | "constant" | "runtime" | "runtime_scale" | "prepare" | "describe";
@@ -9709,7 +9719,7 @@ export interface components {
             pallet: string;
         } | {
             api?: string;
-            /** @description true lists this source's precompile addresses; an address lists its Solidity signatures and argument names/types. Shares the normal offset/limit pagination and finalized source. */
+            /** @description true lists this source's precompile addresses; an address lists its Solidity signatures, argument names/types and output layouts. Shares the normal offset/limit pagination and finalized source. */
             evm?: true | string;
             /** @constant */
             kind: "describe";

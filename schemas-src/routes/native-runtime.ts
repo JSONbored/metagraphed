@@ -56,10 +56,29 @@ const common = { pallet: name, member: name };
 // One named recursive value contract keeps OpenAPI references anchored to a
 // real component instead of Zod's anonymous __shared definitions container.
 export const NativeJsonValueSchema = z.json();
-export const NativeEvmResultSchema = z.discriminatedUnion("status", [
-  z.object({ status: z.literal("decoded"), values: z.array(NativeJsonValueSchema) }).strict(),
-  z.object({ status: z.enum(["reverted", "dispatch_error", "execution_error", "invalid_output", "unrecognized_result"]) }).strict(),
-]).describe("Release-bound Solidity return interpretation for an evm_call simulation. Values are in the declared output order, tuples use their unique named fields or positional arrays, and wide integers are exact decimal strings. The native value retains all original return bytes, gas, logs, reverts and dispatch errors. Failed executions and malformed return bytes are never interpreted as successful values.");
+export const NativeEvmResultSchema = z
+  .discriminatedUnion("status", [
+    z
+      .object({
+        status: z.literal("decoded"),
+        values: z.array(NativeJsonValueSchema),
+      })
+      .strict(),
+    z
+      .object({
+        status: z.enum([
+          "reverted",
+          "dispatch_error",
+          "execution_error",
+          "invalid_output",
+          "unrecognized_result",
+        ]),
+      })
+      .strict(),
+  ])
+  .describe(
+    "Release-bound Solidity return interpretation for an evm_call simulation. Values are in the declared output order, tuples use their unique named fields or positional arrays, and wide integers are exact decimal strings. The native value retains all original return bytes, gas, logs, reverts and dispatch errors. Failed executions and malformed return bytes are never interpreted as successful values.",
+  );
 const args = z.array(NativeJsonValueSchema).max(64).default([]);
 const evmAddress = z.string().regex(/^0x[0-9a-f]{40}$/);
 export const NativeEvmCallSchema = z

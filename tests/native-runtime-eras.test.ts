@@ -66,7 +66,11 @@ for (const era of eras) {
         (row) => `${api.name}_${row.name}` === params[0],
       )!;
       return nativeHex(
-        encodeNativeValue(model15, member.output, result ?? sample(member.output)),
+        encodeNativeValue(
+          model15,
+          member.output,
+          result ?? sample(member.output),
+        ),
       );
     };
     rpc.batch = (rows) =>
@@ -410,10 +414,17 @@ for (const era of eras) {
     };
     const returned = sample(method.output) as {
       variant: string;
-      fields: { exit_reason: NativeValue; value: string; [key: string]: NativeValue };
+      fields: {
+        exit_reason: NativeValue;
+        value: string;
+        [key: string]: NativeValue;
+      };
     };
-    returned.fields.exit_reason = { variant: "Succeed", fields: { variant: "Returned", fields: {} } };
-    returned.fields.value = `0x${(1n << 200n).toString(16).padStart(64,"0")}`;
+    returned.fields.exit_reason = {
+      variant: "Succeed",
+      fields: { variant: "Returned", fields: {} },
+    };
+    returned.fields.value = `0x${(1n << 200n).toString(16).padStart(64, "0")}`;
     const f = fixture(15, returned);
     const response = await queryNativeRuntime(
       { operations: [operation, operation] },
@@ -436,7 +447,10 @@ for (const era of eras) {
     assert.equal(f.calls[0]!.params[1], nativeHex(expected));
     assert.deepEqual(response.results[0], response.results[1]);
     assert.deepEqual(response.results[0]!.value, returned);
-    assert.deepEqual(response.results[0]!.evm_result, { status: "decoded", values: [(1n << 200n).toString()] });
+    assert.deepEqual(response.results[0]!.evm_result, {
+      status: "decoded",
+      values: [(1n << 200n).toString()],
+    });
     const before = f.calls.length;
     await assert.rejects(
       () =>

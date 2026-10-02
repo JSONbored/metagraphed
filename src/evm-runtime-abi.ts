@@ -19,11 +19,19 @@ function precompileAt(
     throw new Error("Unknown EVM precompile at this source");
   return id;
 }
-function outputsAt(release: (typeof catalogue.releases)[number], precompile: number, fn: number) {
-  const source = evmRuntimeOutputs.releases.find(row => row[0] === release[0] && row[1] === release[1])!;
-  const bindingId = source[2].find(id => evmRuntimeOutputs.bindings[id][0] === precompile)!;
+function outputsAt(
+  release: (typeof catalogue.releases)[number],
+  precompile: number,
+  fn: number,
+) {
+  const source = evmRuntimeOutputs.releases.find(
+    (row) => row[0] === release[0] && row[1] === release[1],
+  )!;
+  const bindingId = source[2].find(
+    (id) => evmRuntimeOutputs.bindings[id][0] === precompile,
+  )!;
   const binding = evmRuntimeOutputs.bindings[bindingId];
-  return evmRuntimeOutputs.outputs[binding[1].find(row => row[0] === fn)![1]];
+  return evmRuntimeOutputs.outputs[binding[1].find((row) => row[0] === fn)![1]];
 }
 const argumentTypes = (signature: string) =>
   signature
@@ -41,7 +49,8 @@ export function describeRuntimeEvm(
 ) {
   const release = releaseAt(spec);
   const precompileId = to === true ? null : precompileAt(release, to);
-  const precompile = precompileId === null ? null : catalogue.precompiles[precompileId];
+  const precompile =
+    precompileId === null ? null : catalogue.precompiles[precompileId];
   const ids = precompile ? precompile[2] : release[2];
   const value = ids.slice(offset, offset + limit).map((id) => {
     if (precompile) {

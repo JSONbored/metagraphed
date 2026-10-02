@@ -479,25 +479,64 @@ test("derived U256 gas uses every little-endian u64 limb and the reference ABI w
 test("source-bound precompile results decode successful values while retaining all raw failure and gas fields", async () => {
   const f = fixture();
   const values = args();
-  values[1] = `0x${(2053).toString(16).padStart(40,"0")}`;
+  values[1] = `0x${(2053).toString(16).padStart(40, "0")}`;
   values[2] = "0x";
-  const evm_call = { signature: "getStake(bytes32,bytes32,uint256)", args: [`0x${"11".repeat(32)}`,`0x${"22".repeat(32)}`,"19"] };
-  const operation = { kind: "runtime", api: "EthereumRuntimeRPCApi", member: "call", args: values, evm_call };
+  const evm_call = {
+    signature: "getStake(bytes32,bytes32,uint256)",
+    args: [`0x${"11".repeat(32)}`, `0x${"22".repeat(32)}`, "19"],
+  };
+  const operation = {
+    kind: "runtime",
+    api: "EthereumRuntimeRPCApi",
+    member: "call",
+    args: values,
+    evm_call,
+  };
   for (const [reason, data, status] of [
-    [{Succeed:"Returned"},`0x${(1n<<200n).toString(16).padStart(64,"0")}`,"decoded"],
-    [{Succeed:"Returned"},"0xdeadbeef","invalid_output"],
-    [{Revert:"Reverted"},"0xdeadbeef","reverted"],
+    [
+      { Succeed: "Returned" },
+      `0x${(1n << 200n).toString(16).padStart(64, "0")}`,
+      "decoded",
+    ],
+    [{ Succeed: "Returned" }, "0xdeadbeef", "invalid_output"],
+    [{ Revert: "Reverted" }, "0xdeadbeef", "reverted"],
   ] as const) {
-    const info = { exit_reason: reason, value: data, used_gas: { standard: 21000, effective: 22000 }, weight_info: null, logs: [] };
-    f.setOutput(f.registry.createType("FixtureCallResult",{Ok:info}).toHex());
-    const output = await queryNativeRuntime({operations:[operation]},f.rpc);
-    assert.deepEqual(output.results[0]!.evm_result, status==="decoded" ? {status,values:[(1n<<200n).toString()]}:{status});
-    const native = output.results[0]!.value as {fields:{value:string;used_gas:{standard:string;effective:string}}};
-    assert.equal(native.fields.value,data);
-    assert.deepEqual(native.fields.used_gas,{standard:"21000",effective:"22000"});
+    const info = {
+      exit_reason: reason,
+      value: data,
+      used_gas: { standard: 21000, effective: 22000 },
+      weight_info: null,
+      logs: [],
+    };
+    f.setOutput(
+      f.registry.createType("FixtureCallResult", { Ok: info }).toHex(),
+    );
+    const output = await queryNativeRuntime({ operations: [operation] }, f.rpc);
+    assert.deepEqual(
+      output.results[0]!.evm_result,
+      status === "decoded"
+        ? { status, values: [(1n << 200n).toString()] }
+        : { status },
+    );
+    const native = output.results[0]!.value as {
+      fields: {
+        value: string;
+        used_gas: { standard: string; effective: string };
+      };
+    };
+    assert.equal(native.fields.value, data);
+    assert.deepEqual(native.fields.used_gas, {
+      standard: "21000",
+      effective: "22000",
+    });
   }
-  f.setOutput(f.registry.createType("FixtureCallResult",{Err:42}).toHex());
-  const dispatch = await queryNativeRuntime({operations:[operation]},f.rpc);
-  assert.deepEqual(dispatch.results[0]!.evm_result,{status:"dispatch_error"});
-  assert.deepEqual(dispatch.results[0]!.value,{variant:"Err",fields:"42"});
+  f.setOutput(f.registry.createType("FixtureCallResult", { Err: 42 }).toHex());
+  const dispatch = await queryNativeRuntime({ operations: [operation] }, f.rpc);
+  assert.deepEqual(dispatch.results[0]!.evm_result, {
+    status: "dispatch_error",
+  });
+  assert.deepEqual(dispatch.results[0]!.value, {
+    variant: "Err",
+    fields: "42",
+  });
 });

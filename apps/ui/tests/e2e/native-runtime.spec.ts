@@ -81,7 +81,9 @@ test("legacy runtime API discovery performs a pinned SCALE read and retains exac
   await expect(page.getByText(/advertises AccountNonceApi version 1/)).toBeVisible();
   await args.fill(`0x${"12".repeat(32)}`);
   await page.getByRole("button", { name: "Read operation", exact: true }).click();
-  await expect(page.getByRole("cell", { name: "0x04030201 Copy Exact value", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "0x04030201 Copy Exact value", exact: true }),
+  ).toBeVisible();
   expect(requests[1]).toEqual({
     as_of: hash,
     operations: [
@@ -152,7 +154,9 @@ test("map records use leading keys and preserve source while advancing the curso
   await gotoThroughRestart(page, "/apis/native");
   await page.getByRole("button", { name: "Inspect contract" }).click();
   await page.getByRole("button", { name: "Browse records" }).click();
-  await expect(page.getByRole("cell", { name: "9007199254740993 Copy Exact value", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "9007199254740993 Copy Exact value", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Next records" }).click();
   await expect(page.getByRole("button", { name: "Next records" })).toHaveCount(0);
   expect(requests.slice(1)).toEqual([
@@ -249,7 +253,9 @@ test("native feature reads are explicit, exact and usable at phone width", async
   await expect(page.getByRole("heading", { name: "Native chain", exact: true })).toBeVisible();
   expect(requests).toHaveLength(0);
   await page.getByRole("button", { name: "Read state", exact: true }).click();
-  await expect(page.getByRole("cell", { name: "9007199254740993 Copy Exact value", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "9007199254740993 Copy Exact value", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("v470 · metadata v15", { exact: true })).toBeVisible();
   expect(requests).toEqual([
     {
@@ -312,13 +318,19 @@ test("metadata-discovered calls use their declared arguments and pinned contract
   await gotoThroughRestart(page, "/apis/native");
   await page.getByRole("button", { name: "Inspect contract" }).click();
   await expect(page.getByText("TaoBalance", { exact: true })).toBeVisible();
-  await page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }).fill("[9007199254740993]");
+  await page
+    .getByRole("textbox", { name: "Arguments (JSON array)", exact: true })
+    .fill("[9007199254740993]");
   await page.getByRole("button", { name: "Prepare unsigned call" }).click();
   await expect(page.getByRole("alert")).toContainText("decimal strings");
   expect(requests).toHaveLength(1);
-  await page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }).fill('["9007199254740993"]');
+  await page
+    .getByRole("textbox", { name: "Arguments (JSON array)", exact: true })
+    .fill('["9007199254740993"]');
   await page.getByRole("button", { name: "Prepare unsigned call" }).click();
-  await expect(page.getByRole("cell", { name: "0x0754010203 Copy Exact value", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "0x0754010203 Copy Exact value", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("region", { name: "Native wallet review" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign and submit reviewed call" })).toHaveCount(0);
   expect(requests[1]).toEqual({
@@ -353,10 +365,14 @@ test("failed native reads do not leave a prior response presented as the new sta
   );
   await gotoThroughRestart(page, "/apis/native");
   await page.getByRole("button", { name: "Read state", exact: true }).click();
-  await expect(page.getByRole("cell", { name: "123456 Copy Exact value", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "123456 Copy Exact value", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Read state", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("The finalized read failed.");
-  await expect(page.getByRole("cell", { name: "123456 Copy Exact value", exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("cell", { name: "123456 Copy Exact value", exact: true }),
+  ).toHaveCount(0);
 });
 
 test("EVM execution is discovered and simulated using the displayed finalized contract", async ({
@@ -415,9 +431,13 @@ test("EVM execution is discovered and simulated using the displayed finalized co
   await expect(
     page.getByText("each request can use up to 1,000,000 gas.", { exact: false }),
   ).toBeVisible();
-  await page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }).fill('["500000"]');
+  await page
+    .getByRole("textbox", { name: "Arguments (JSON array)", exact: true })
+    .fill('["500000"]');
   await page.getByRole("button", { name: "Read operation" }).click();
-  await expect(page.getByRole("cell", { name: "0xdeadbeef Copy Exact value", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "0xdeadbeef Copy Exact value", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("region", { name: "Native wallet review" })).toHaveCount(0);
   expect(requests).toEqual([
     { operations: [{ kind: "describe", api: "EthereumRuntimeRPCApi", offset: 0, limit: 32 }] },
@@ -480,9 +500,13 @@ test("Wasm contracts use discovered Weight arguments and retain reverted bytes w
     page.getByText("simulation does not publish code or a contract.", { exact: false }),
   ).toBeVisible();
   const gas = { variant: "Some", fields: { ref_time: "100000000000", proof_size: "32768" } };
-  await page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }).fill(JSON.stringify([gas]));
+  await page
+    .getByRole("textbox", { name: "Arguments (JSON array)", exact: true })
+    .fill(JSON.stringify([gas]));
   await page.getByRole("button", { name: "Read operation" }).click();
-  await expect(page.getByRole("cell", { name: "0xbeef Copy Exact value", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "0xbeef Copy Exact value", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("region", { name: "Native wallet review" })).toHaveCount(0);
   expect(requests).toEqual([
     { operations: [{ kind: "describe", api: "ContractsApi", offset: 0, limit: 32 }] },
@@ -561,7 +585,9 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
   expect(requests).toHaveLength(1);
   await page.getByRole("textbox", { name: "Artifact SHA-256", exact: true }).fill(artifact.sha256);
   await page.getByRole("button", { name: "Read operation", exact: true }).click();
-  await expect(page.getByRole("cell", { name: `0x${"11".repeat(32)} Copy Exact value`, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: `0x${"11".repeat(32)} Copy Exact value`, exact: true }),
+  ).toBeVisible();
   expect(requests[1]).toEqual({
     as_of: hash,
     operations: [
@@ -576,10 +602,16 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
   });
   expect(JSON.stringify(requests[1]).length).toBeLessThan(700);
   await page.getByRole("combobox", { name: "Operation", exact: true }).selectOption("1");
-  await expect(page.getByRole("textbox", { name: "Code artifact URL", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Code artifact URL", exact: true })).toHaveCount(
+    0,
+  );
   await page.getByRole("combobox", { name: "Operation", exact: true }).selectOption("0");
-  await expect(page.getByRole("textbox", { name: "Code artifact URL", exact: true })).toHaveValue("");
-  await expect(page.getByRole("textbox", { name: "Artifact SHA-256", exact: true })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Code artifact URL", exact: true })).toHaveValue(
+    "",
+  );
+  await expect(page.getByRole("textbox", { name: "Artifact SHA-256", exact: true })).toHaveValue(
+    "",
+  );
   await expect(page.getByRole("textbox", { name: "Artifact bytes", exact: true })).toHaveValue("");
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -626,7 +658,13 @@ test("precompile ABI discovery and simulation use the inspected source and typed
               },
               { kind: "runtime", api: "EthereumRuntimeRPCApi", member: "create", args: [] },
             ]
-        : { variant: "Ok", fields: { exit_reason: { variant: "Succeed", fields: { variant: "Returned", fields: {} } }, value: `0x${(9007199254740993n).toString(16).padStart(64, "0")}` } };
+        : {
+            variant: "Ok",
+            fields: {
+              exit_reason: { variant: "Succeed", fields: { variant: "Returned", fields: {} } },
+              value: `0x${9007199254740993n.toString(16).padStart(64, "0")}`,
+            },
+          };
     await route.fulfill({
       json: {
         ok: true,
@@ -634,7 +672,16 @@ test("precompile ABI discovery and simulation use the inspected source and typed
           schema_version: 1,
           source,
           types: [],
-          results: [{ kind: op.kind, value: rows, ...(op.kind === "runtime" ? { evm_result: { status: "decoded", values: ["9007199254740993"] } } : {}), contract: { total: 1, next_offset: null } }],
+          results: [
+            {
+              kind: op.kind,
+              value: rows,
+              ...(op.kind === "runtime"
+                ? { evm_result: { status: "decoded", values: ["9007199254740993"] } }
+                : {}),
+              contract: { total: 1, next_offset: null },
+            },
+          ],
         },
       },
     });
@@ -642,7 +689,9 @@ test("precompile ABI discovery and simulation use the inspected source and typed
   await gotoThroughRestart(page, "/apis/native");
   await page.getByRole("button", { name: "Explore EVM execution", exact: true }).click();
   await expect(page.getByRole("group", { name: "Precompile function (optional)" })).toBeVisible();
-  await page.getByRole("textbox", { name: "Arguments (JSON array)", exact: true }).fill(JSON.stringify([to, "0x"]));
+  await page
+    .getByRole("textbox", { name: "Arguments (JSON array)", exact: true })
+    .fill(JSON.stringify([to, "0x"]));
   await page.getByRole("button", { name: "Inspect precompile", exact: true }).click();
   await expect(page.getByText("1 signatures at v470.", { exact: true })).toBeVisible();
   expect(requests[1]).toEqual({
@@ -661,8 +710,15 @@ test("precompile ABI discovery and simulation use the inspected source and typed
     .getByRole("textbox", { name: "Solidity arguments (JSON array)", exact: true })
     .fill(JSON.stringify(args));
   await page.getByRole("button", { name: "Read operation", exact: true }).click();
-  await expect(page.getByRole("cell", { name: "9007199254740993 Copy Exact value", exact: true })).toBeVisible();
-  await expect(page.getByRole("cell", { name: `0x${(9007199254740993n).toString(16).padStart(64, "0")} Copy Exact value`, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "9007199254740993 Copy Exact value", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("cell", {
+      name: `0x${9007199254740993n.toString(16).padStart(64, "0")} Copy Exact value`,
+      exact: true,
+    }),
+  ).toBeVisible();
   expect(requests[2]).toEqual({
     operations: [
       {
