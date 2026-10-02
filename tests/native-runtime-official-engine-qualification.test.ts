@@ -61,6 +61,9 @@ async function compiledRuntime() {
       if(item.name==="ext_allocator_malloc_version_1")return malloc(Number(args[0]));
       if(item.name==="ext_allocator_free_version_1")return;
       if(item.name==="ext_logging_max_level_version_1")return 0;
+      // The official host ABI returns u64::MAX when proof recording is disabled.
+      // This in-memory fixture does not claim trie-proof or production gas costs.
+      if(item.name==="ext_storage_proof_size_storage_proof_size_version_1")return -1n;
       if(item.name==="ext_storage_get_version_1")return option(state.get(bytes(args[0]!).toString("hex")));
       if(item.name==="ext_storage_read_version_1") {
         const value=state.get(bytes(args[0]!).toString("hex"));if(value===undefined)return packed(Buffer.from([0]));
@@ -99,6 +102,7 @@ async function compiledRuntime() {
     const item=pallet.storage.find(row=>row.name===itemName)!;assert.ok(item,itemName);
     state.set(nativeStorageKey(model,pallet.prefix,item,args).slice(2),Buffer.from(encodeNativeValue(model,item.value,value)));
   };
+  setStorage("System","Number",[],"500");
   let executions=0;
   const rpc:BasketRpc=async(method,params=[])=>{
     if(method==="chain_getFinalizedHead")return hash;
@@ -167,7 +171,7 @@ test("official compiled v471 accepts and instantiates a valid minimal Wasm contr
   const uploaded=await queryNativeRuntime({operations:[{kind:"runtime",api:"ContractsApi",member:"upload_code",args:[origin,code,none,{variant:"Enforced",fields:{}}]}]},runtime.rpc);
   const upload=uploaded.results[0]!.value as {variant:string;fields:{code_hash:string;deposit:string}};
   assert.equal(upload.variant,"Ok");assert.equal(upload.fields.code_hash,nativeHex(blake2b(Buffer.from(code.slice(2),"hex"),{dkLen:32})));assert.ok(BigInt(upload.fields.deposit)>0n);
-  const instantiated=await queryNativeRuntime({operations:[{kind:"runtime",api:"ContractsApi",member:"instantiate",args:[origin,"0",{variant:"Some",fields:{ref_time:"50000000000",proof_size:"1000000"}},none,{variant:"Upload",fields:code},"0x","0x"]}]},runtime.rpc);
+  const instantiated=await queryNativeRuntime({operations:[{kind:"runtime",api:"ContractsApi",member:"instantiate",args:[origin,"0",{variant:"Some",fields:{ref_time:"50000000000",proof_size:"65536"}},none,{variant:"Upload",fields:code},"0x","0x"]}]},runtime.rpc);
   const value=instantiated.results[0]!.value as {result:{variant:string;fields:{result:{flags:NativeValue;data:string};account_id:string}}};
   assert.equal(value.result.variant,"Ok");assert.equal(value.result.fields.result.data,"0x");assert.equal(String(value.result.fields.result.flags),"0");assert.match(value.result.fields.account_id,/^0x[0-9a-f]{64}$/);
   console.log("NATIVE_OFFICIAL_WASM_ENGINE_FIXTURE",JSON.stringify({head:execFileSync("git",["rev-parse","HEAD"]).toString().trim(),spec:471,commit:era.commit,wasm_sha256:era.wasm_sha256,cases:2,contract_bytes:(code.length-2)/2,valid_upload:true,constructor_return:"0x",fixture_state_keys:runtime.stateKeys(),host_calls:runtime.hostCalls,fixture:true,production:false,chain_requests:0}));
