@@ -158,12 +158,16 @@ export function decodeNativeValue(
       }
       case "array":
       case "sequence": {
-        const length = type.kind === "array" ? type.length : reader.count();
-        if (length > NATIVE_RUNTIME_LIMITS.items)
-          throw new Error("Native value exceeds work budget");
         const element = getType(metadata, type.type);
-        if (element.kind === "primitive" && element.primitive === 3)
-          return nativeHex(reader.take(length));
+        const raw = element.kind === "primitive" && element.primitive === 3;
+        const limit = raw
+          ? NATIVE_RUNTIME_LIMITS.valueBytes
+          : NATIVE_RUNTIME_LIMITS.items;
+        const length = type.kind === "array" ? type.length : reader.count(limit);
+        if (length > limit) throw new Error("Native value exceeds work budget");
+        // Raw bytes use one bulk slice; only recursively decoded items use
+        // the collection work budget. The reader still enforces valueBytes.
+        if (raw) return nativeHex(reader.take(length));
         return Array.from({ length }, () => child(type.type));
       }
       case "compact": {
@@ -291,10 +295,7 @@ export function encodeNativeValue(
           length = input.length;
           body = join(input.map((part) => child(type.type, part)));
         }
-        if (
-          length > NATIVE_RUNTIME_LIMITS.items ||
-          (type.kind === "array" && length !== type.length)
-        )
+        if (type.kind === "array" && length !== type.length)
           throw new Error(
             "Native array length does not match the runtime contract",
           );

@@ -153,6 +153,13 @@ hashes, chain dispatch failures and finalization status remain visible. No
 server-side signature or submission occurs; a fee estimate does not guarantee
 execution or cap the fee ultimately charged by the chain.
 
+Raw byte vectors and fixed byte arrays use the value-byte budget rather than
+the recursive collection budget. Full EVM account code and the v470 runtime's
+128 KiB `Contracts.PristineCode` remain hex and can be read within the existing
+262,144-byte value and 524,288-byte response limits. SCALE length prefixes count
+toward the value limit. Numeric arrays, nested collections, and execution code
+uploads keep their existing item and simulation budgets.
+
 ## Finality, bounds and reuse
 
 Every operation shares one finalized block, genesis hash, runtime and metadata
