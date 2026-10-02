@@ -12,6 +12,7 @@ const paths = [
   "tests/native-runtime-metadata-allocation.test.ts",
   "tests/native-runtime-legacy.test.ts",
   "tests/native-runtime-eras.test.ts",
+  "docs/native-runtime-contract.md",
 ] as const;
 const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 test("format exact native runtime source paths on remote CI", async () => {

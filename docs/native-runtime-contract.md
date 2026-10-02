@@ -334,24 +334,41 @@ reconstructing current conviction from elapsed time or a float approximation.
 ## Compiled release compatibility
 
 Hermetic regression fixtures retain both V14 and V15 metadata from each
-published official release tag in the v430–v470 range:
+published official release tag with a WASM artifact: 65 older releases from
+`v1.1.7` through `v3.4.9-424` (compiled specs 205–424), plus these 25 releases
+in the v430–v470 range:
 
 `430, 431, 432, 437, 438, 439, 440, 441, 442, 443, 445, 446, 447, 448, 450,
 452, 453, 454, 459, 464, 466, 467, 468, 469, 470`.
 
-Each release's upgrade manifest binds the source commit and compressed WASM
-SHA-256. Metadata extraction checks that identity and the compiled Core runtime
-version. The retained fixture records separate V14/V15 metadata hashes. There
+The newer upgrade manifests bind the source commit and compressed WASM
+SHA-256. Older releases use the published srtool digest, pinned by its own
+SHA-256 together with the exact WASM checksum, length and compiled build
+commit. Metadata extraction checks that identity and the compiled Core runtime
+version. Five older tag commits differ from the published build commits:
+`v2.0.0`, `v2.0.4`, `v3.2.1`, `v3.2.15-347` and `v3.4.1-413`. Both identities
+are retained; a tag name is never substituted for the actual compiled source.
+The fixtures record separate V14/V15 metadata hashes for all 90 releases. There
 are no invented releases for missing version numbers. The extraction runs on
 remote CI with allocation/log-level host functions only; the final tests use
 compact local fixtures without network downloads.
 
 The compatibility suite checks native call preparation through the public
 contract against an independent reference registry, for both metadata formats.
-It also checks constants, runtime-specific EVM/Wasm simulation ABI and the V14
-SCALE read fallback. Two Grandpa proof calls use an uninhabited runtime type;
+It also checks constants, exact older storage keys and leading-key prefixes,
+audited typed reads, runtime-specific EVM/Wasm simulation ABI and the V14
+SCALE read fallback. Full code artifacts exercise upload/instantiation paths
+across v430–v470, with both preparation formats and each source MaxCodeLen. Two Grandpa proof calls use an uninhabited runtime type;
 fabricated proof values must be rejected. These are compiled ABI tests with
 synthetic arguments and transport results. They do not establish successful
 chain execution, deployed historical state availability or retained capture
-coverage. Runtime versions before this release range still use the portable
-metadata contract; they require their own compiled qualification evidence.
+coverage. The portable metadata contract derives features from the selected
+source. Version numbers without published WASM artifacts are not invented or
+counted as independently compiled qualification.
+
+Cold metadata parsing traverses discarded documentation, type parameters and
+custom records without building unused arrays. Collection and text limits,
+canonical SCALE lengths and UTF-8 validation remain active; retained projection
+bytes match the previous array-producing traversal across all 180 contracts.
+The v470 fixture removes 7,290 arrays and 6,440 element slots. Warm contract
+reuse remains bound to code identity and its existing two-contract byte cap.

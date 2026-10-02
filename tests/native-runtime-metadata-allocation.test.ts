@@ -38,7 +38,10 @@ const serialized = (value: NativeMetadata) =>
 test("metadata traversal retains canonical lengths, work limits, text validation and callback errors", () => {
   const empty = new NativeScaleReader("0x00");
   let visited = 0;
-  assert.equal(empty.forEach(() => visited++), undefined);
+  assert.equal(
+    empty.forEach(() => visited++),
+    undefined,
+  );
   assert.equal(empty.finish(visited), 0);
   const two = new NativeScaleReader("0x080102");
   const values: number[] = [];
@@ -78,7 +81,10 @@ test("discarded metadata arrays are removed across all compiled release contract
         hex,
         NATIVE_RUNTIME_LIMITS.metadataBytes,
       );
-      const reader = new CountedReader(hex, NATIVE_RUNTIME_LIMITS.metadataBytes);
+      const reader = new CountedReader(
+        hex,
+        NATIVE_RUNTIME_LIMITS.metadataBytes,
+      );
       const model = decodeNativeMetadata(reader);
       assert.equal(
         serialized(model),
@@ -107,7 +113,8 @@ test("compiled v470 metadata fixture measures the removed allocations and preser
     decode(true);
     decode(false);
   }
-  const previous: number[] = [], current: number[] = [];
+  const previous: number[] = [],
+    current: number[] = [];
   for (let sample = 0; sample < 5; sample++) {
     // Alternate measurement order to avoid always warming one implementation.
     for (const old of sample % 2 ? [false, true] : [true, false]) {

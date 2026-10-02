@@ -80,8 +80,7 @@ export class NativeScaleReader {
     return Array.from({ length: this.count(limit) }, read);
   }
   forEach(read: () => void, limit: number = NATIVE_RUNTIME_LIMITS.items) {
-    for (let remaining = this.count(limit); remaining > 0; remaining--)
-      read();
+    for (let remaining = this.count(limit); remaining > 0; remaining--) read();
   }
   option<T>(read: () => T): T | null {
     const tag = this.byte();
