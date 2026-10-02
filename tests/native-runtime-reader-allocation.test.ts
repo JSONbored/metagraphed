@@ -128,7 +128,7 @@ test("fatal UTF-8 state cannot leak between strings or readers after errors", ()
 });
 
 test("a reader lazily constructs one decoder and byte-only readers construct none", () => {
-  const Decoder = globalThis.TextDecoder;
+  const Decoder = TextDecoder;
   let constructions = 0;
   class CountedDecoder extends Decoder {
     constructor(...args: ConstructorParameters<typeof Decoder>) {
@@ -183,7 +183,7 @@ test("compiled v470 fixture measures removed byte views, BigInt paths and decode
     NATIVE_RUNTIME_LIMITS.metadataBytes,
   );
   const expected = serialized(decodeNativeMetadata(before));
-  const Decoder = globalThis.TextDecoder;
+  const Decoder = TextDecoder;
   let constructions = 0;
   class CountedDecoder extends Decoder {
     constructor(...args: ConstructorParameters<typeof Decoder>) {
