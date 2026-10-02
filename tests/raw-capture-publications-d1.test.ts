@@ -196,6 +196,62 @@ test("D1 never acknowledges a conflicting version that did not win selection", a
   assert.equal(await count("raw_capture_batches"), 2);
 });
 
+test.each([false, true])(
+  "D1 acknowledges the reverse overlapping order only with exact chain-byte equivalence: testnet=%s",
+  async (testnet) => {
+    const store = rawCaptureD1(db),
+      objectKey = key(testnet);
+    const newer = value(2000),
+      older = value(1000);
+    await store.put(objectKey, newer);
+    await store.put(objectKey, older);
+    assert.equal(await selected(objectKey), sha(newer));
+    const receipt = await db
+      .prepare(
+        "SELECT selected_sha256,chain_sha256 FROM raw_capture_publications WHERE key=? AND sha256=?",
+      )
+      .bind(objectKey, sha(older))
+      .first<{ selected_sha256: string; chain_sha256: string }>();
+    assert.equal(receipt?.selected_sha256, sha(newer));
+    assert.equal(
+      receipt?.chain_sha256,
+      createHash("sha256")
+        .update(older.replace('"captured_at":1000', '"captured_at":0'))
+        .digest("hex"),
+    );
+    await assert.rejects(
+      store.put(objectKey, value(900, ["0xffff"])),
+      /selection was not acknowledged/,
+    );
+    assert.equal(await count("raw_capture_publications"), 2);
+  },
+);
+
+test("D1 verifies an already archived newer selection before acknowledging an equivalent older original", async () => {
+  const store = rawCaptureD1(db),
+    objectKey = key();
+  await store.put(objectKey, value(2000));
+  await archive(objectKey, sha(value(2000)));
+  await store.put(objectKey, value(1000));
+  assert.equal(
+    await db
+      .prepare("SELECT sha256 FROM raw_capture_archives WHERE selected=1")
+      .first<string>("sha256"),
+    sha(value(2000)),
+  );
+  assert.equal(
+    await db
+      .prepare(
+        "SELECT selected_sha256 FROM raw_capture_publications WHERE sha256=?",
+      )
+      .bind(sha(value(1000)))
+      .first<string>("selected_sha256"),
+    sha(value(2000)),
+  );
+  assert.equal(await count("raw_capture_publications"), 2);
+  assert.equal(await count("raw_capture_batches"), 1);
+});
+
 test("D1 migration preserves existing descriptors and attests only current complete selections", async () => {
   const store = rawCaptureD1(db),
     objectKey = key();

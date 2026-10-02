@@ -12,6 +12,53 @@ const PUBLICATION =
   "SELECT sha256 FROM (SELECT b.sha256 FROM raw_capture_batches b JOIN raw_capture_publications p USING(key,sha256) WHERE b.key=? AND b.sha256=? AND b.complete=1 UNION ALL SELECT a.sha256 FROM raw_capture_archives a JOIN raw_capture_publications p USING(key,sha256) WHERE a.key=? AND a.sha256=? AND a.complete=1 AND a.native_sha256=a.compressed_sha256 AND a.native_key='chain/raw/native/v1/'||a.network||'/'||a.sha256||'/'||a.compressed_sha256||'.gz') LIMIT 1";
 type Db = Pick<D1Database, "prepare" | "batch">;
 
+/** Hash every original byte except each top-level captured_at numeric token. */
+function chainPayloadHash(value: string, rows: string[]): string {
+  const digest = createHash("sha256");
+  let rowStart = 0,
+    hashedThrough = 0;
+  for (const line of rows) {
+    let depth = 0;
+    let provenance: { start: number; end: number } | undefined;
+    // JSON.parse already validated this row. Skip quoted strings as a whole,
+    // including escaped quotes, so nested fields and SCALE/header bytes cannot
+    // be mistaken for the one top-level provenance key. Parse key strings only;
+    // never round or reserialize another payload field.
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === "{" || char === "[") depth++;
+      else if (char === "}" || char === "]") depth--;
+      else if (char === '"') {
+        const start = i;
+        for (;;) {
+          i = line.indexOf('"', i + 1);
+          let slashes = 0;
+          for (let j = i - 1; line[j] === "\\"; j--) slashes++;
+          if (slashes % 2 === 0) break;
+        }
+        if (
+          depth !== 1 ||
+          JSON.parse(line.slice(start, i + 1)) !== "captured_at"
+        )
+          continue;
+        const colon = /^\s*:\s*/.exec(line.slice(i + 1));
+        if (!colon) continue;
+        const tokenStart = i + 1 + colon[0].length;
+        const number = /^[0-9.eE+-]+/.exec(line.slice(tokenStart));
+        if (provenance || !number)
+          throw new Error("Raw capture provenance is ambiguous");
+        provenance = { start: tokenStart, end: tokenStart + number[0].length };
+      }
+    }
+    // The validated safe-integer field necessarily supplied this numeric token.
+    digest.update(value.slice(hashedThrough, rowStart + provenance!.start));
+    digest.update("0");
+    hashedThrough = rowStart + provenance!.end;
+    rowStart += line.length + 1;
+  }
+  return digest.update(value.slice(hashedThrough)).digest("hex");
+}
+
 /** Keep exact SCALE bytes in bounded D1 chunks; never acknowledge a partial batch. */
 export function rawCaptureD1(db: Db): RawCaptureStore {
   return {
@@ -43,6 +90,7 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
           throw new Error("Raw capture identity differs");
         capturedAt = Math.max(capturedAt, row.captured_at);
       }
+      const chainDigest = chainPayloadHash(value, rows);
       const compressed = gzipSync(raw, { level: 6 });
       // The reservation's compressed_bytes/parts CHECKs enforce the compressed
       // budget before any chunk is written; the input bound caps compression.
@@ -186,10 +234,11 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
       // no storage verification. Independent raw reconstruction remains in the
       // archive consumer before it can release any staging bytes.
       // Completion, selection and its immutable receipt share one transaction.
-      // The receipt proves this exact version WAS selected: a later invocation
-      // can move the current pointer before this reply or its readback arrives.
-      // An older version that never won selection receives no receipt. Keep the
-      // receipt across archival so lost committed replies remain retryable.
+      // A receipt pins the selected version that acknowledged these exact bytes:
+      // either this version won selection, or its complete chain payload matched
+      // an already acknowledged selection byte-for-byte apart from provenance.
+      // A conflicting or unproven version receives no receipt. Both original
+      // captures stay intact, and receipts survive supersession and archival.
       await retry(() =>
         db.batch([
           db
@@ -204,9 +253,9 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
             .bind(key, digest),
           db
             .prepare(
-              "INSERT INTO raw_capture_publications(key,sha256) SELECT s.key,s.sha256 FROM raw_capture_selected s JOIN raw_capture_batches b USING(key,sha256) WHERE s.key=? AND s.sha256=? AND b.complete=1 ON CONFLICT(key,sha256) DO NOTHING",
+              "INSERT INTO raw_capture_publications(key,sha256,selected_sha256,chain_sha256) SELECT b.key,b.sha256,c.sha256,? FROM raw_capture_batches b JOIN (SELECT s.key,s.sha256,s.captured_at FROM raw_capture_selected s JOIN raw_capture_batches r USING(key,sha256) WHERE s.key=? AND r.complete=1 UNION ALL SELECT key,sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1 AND complete=1 AND native_sha256=compressed_sha256 AND native_key='chain/raw/native/v1/'||network||'/'||sha256||'/'||compressed_sha256||'.gz' ORDER BY captured_at DESC LIMIT 1) c ON c.key=b.key LEFT JOIN raw_capture_publications p ON p.key=c.key AND p.sha256=c.sha256 WHERE b.key=? AND b.sha256=? AND b.complete=1 AND (c.sha256=b.sha256 OR p.chain_sha256=?) ON CONFLICT(key,sha256) DO NOTHING",
             )
-            .bind(key, digest),
+            .bind(chainDigest, key, key, key, digest, chainDigest),
         ]),
       );
       const receipt = await retry(() =>

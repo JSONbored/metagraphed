@@ -31,6 +31,7 @@ const publicationMigration = readFileSync(
   ),
   "utf8",
 );
+type WriteHook = (text: string, params: unknown[]) => void | Promise<void>;
 function fixture() {
   const sql = new DatabaseSync(":memory:");
   databases.push(sql);
@@ -49,9 +50,7 @@ function fixture() {
   );
   sql.exec(publicationMigration);
   let fail: ((text: string, params: unknown[]) => void) | undefined;
-  let afterWrite:
-    | ((text: string, params: unknown[]) => void | Promise<void>)
-    | undefined;
+  let afterWrite: WriteHook | undefined;
   let readback: ((text: string, result: unknown) => unknown) | undefined;
   const prepared = (text: string, params: unknown[] = []) => ({
     text,
@@ -380,7 +379,10 @@ test("an older capture cannot displace an archived selection and newer captures 
   const f = fixture();
   await f.store.put(key(), value(2000));
   const old = archive(f);
-  await assert.rejects(f.store.put(key(), value(1000)), /selection/);
+  await assert.rejects(
+    f.store.put(key(), value(1000, ["0xffff"])),
+    /selection/,
+  );
   await f.store.put(key(), value(3000));
   const current = archive(f);
   assert.equal(
@@ -458,15 +460,17 @@ test("a lost committed reply remains retryable after a newer writer and archival
     await f.store.put(key(), second);
     archive(f);
     // The superseded original is also independently archived, selected=0.
+    const source = f.sql
+      .prepare(
+        "SELECT sha256,compressed_sha256 FROM raw_capture_batches WHERE key=?",
+      )
+      .get(key())!;
+    const nativeKey = `chain/raw/native/v1/mainnet/${source.sha256}/${source.compressed_sha256}.gz`;
     f.sql
       .prepare(
         "INSERT INTO raw_capture_archives SELECT b.*,0,?, ?,compressed_sha256 FROM raw_capture_batches b WHERE b.key=?",
       )
-      .run(
-        `chain/raw/native/v1/mainnet/${createHash("sha256").update(first).digest("hex")}/${f.sql.prepare("SELECT compressed_sha256 FROM raw_capture_batches WHERE key=?").get(key())!.compressed_sha256}.gz`,
-        "b".repeat(32),
-        key(),
-      );
+      .run(nativeKey, "b".repeat(32), key());
     lost = true;
     throw new Error("D1_ERROR: Network connection lost.");
   });
@@ -545,6 +549,106 @@ test("complete but never selected conflicting data has no publication receipt", 
   assert.equal(
     f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
     1,
+  );
+});
+
+test.each([false, true])(
+  "an older complete matching capture pins the newer selection without replacing either original: archived=%s",
+  async (archived) => {
+    const f = fixture();
+    const newer = value(2000),
+      older = value(1000);
+    await f.store.put(key(), newer);
+    if (archived) archive(f);
+    await f.store.put(key(), older);
+    const receipt = f.sql
+      .prepare(
+        "SELECT selected_sha256,chain_sha256 FROM raw_capture_publications WHERE key=? AND sha256=?",
+      )
+      .get(key(), createHash("sha256").update(older).digest("hex"))!;
+    assert.equal(
+      receipt.selected_sha256,
+      createHash("sha256").update(newer).digest("hex"),
+    );
+    assert.equal(typeof receipt.chain_sha256, "string");
+    assert.equal(
+      archived
+        ? f.sql
+            .prepare("SELECT sha256 FROM raw_capture_archives WHERE selected=1")
+            .get()?.sha256
+        : f.selected(),
+      receipt.selected_sha256,
+    );
+    const chunk = f.sql
+      .prepare("SELECT data FROM raw_capture_chunks WHERE key=? AND sha256=?")
+      .get(key(), createHash("sha256").update(older).digest("hex"))!;
+    assert.equal(gunzipSync(chunk.data as Uint8Array).toString(), older);
+  },
+);
+
+test("chain identity masks only top-level provenance and preserves arbitrary original JSON bytes", async () => {
+  const f = fixture();
+  const payload =
+    '{ "captured_\\u0061t" : 2e3, "block_number":10, "header":{"captured_at":7,"precise":9007199254740993,"text":"quote\\\" slash\\\\ [] {}"}, "label":"captured_at", "extrinsics":["0x00","0x01"], "events":null }\n\n';
+  await f.store.put(key(), payload);
+  const older = payload.replace("2e3", "1e3");
+  await f.store.put(key(), older);
+  const originals = f.sql
+    .prepare("SELECT data FROM raw_capture_chunks ORDER BY sha256")
+    .all()
+    .map((row) => gunzipSync(row.data as Uint8Array).toString())
+    .sort();
+  assert.deepEqual(originals, [payload, older].sort());
+  for (const changed of [
+    older.replace('"captured_at":7', '"captured_at":8'),
+    older.replace("9007199254740993", "9007199254740992"),
+    older.replace('["0x00","0x01"]', '["0x01","0x00"]'),
+    older.replace('"events":null', '"events":"0x00"'),
+    older.replace('"label":"captured_at"', '"label":"different"'),
+    older.replace(" }", "}"),
+  ])
+    await assert.rejects(
+      f.store.put(key(), changed),
+      /selection was not acknowledged/,
+    );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    2,
+  );
+});
+
+test.each(["1000", '"ambiguous"'])(
+  "duplicate top-level provenance fields fail before any reservation: %s",
+  async (earlier) => {
+    const f = fixture();
+    const raw = value(2000).replace(
+      '{"block_number"',
+      `{"captured_at":${earlier},"block_number"`,
+    );
+    await assert.rejects(f.store.put(key(), raw), /provenance is ambiguous/);
+    assert.equal(
+      f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+      0,
+    );
+  },
+);
+
+test("equivalent multi-block captures acknowledge every row without rounding or reordering", async () => {
+  const f = fixture();
+  const objectKey = key().replace("000000000010.ndjson", "000000000011.ndjson");
+  const newer =
+    value(2000) + value(2010).replace('"block_number":10', '"block_number":11');
+  const older =
+    value(1000) + value(1010).replace('"block_number":10', '"block_number":11');
+  await f.store.put(objectKey, newer);
+  await f.store.put(objectKey, older);
+  assert.equal(
+    f.selected(objectKey),
+    createHash("sha256").update(newer).digest("hex"),
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    2,
   );
 });
 
@@ -710,7 +814,7 @@ test("older capture invocations cannot replace newer selected data", async () =>
   await f.store.put(key(), value(2000));
   const prior = f.selected();
   await assert.rejects(
-    f.store.put(key(), value(1000)),
+    f.store.put(key(), value(1000, ["0xffff"])),
     /selection was not acknowledged/,
   );
   assert.equal(f.selected(), prior);
