@@ -165,21 +165,44 @@ export function bittensorNativeFixture(staking = false) {
   add(28, "Option", option(27));
   add(30, "Unit", { tuple: [] });
   if (staking) {
-    add(31, "SimSwapResult", { composite: { fields: [
-      field("tao_amount", 10), field("alpha_amount", 9),
-      field("tao_fee", 10), field("alpha_fee", 9),
-      field("tao_slippage", 10), field("alpha_slippage", 9),
-    ] } });
+    add(31, "SimSwapResult", {
+      composite: {
+        fields: [
+          field("tao_amount", 10),
+          field("alpha_amount", 9),
+          field("tao_fee", 10),
+          field("alpha_fee", 9),
+          field("tao_slippage", 10),
+          field("alpha_slippage", 9),
+        ],
+      },
+    });
     add(32, "", { compact: { type: 9 } });
-    add(33, "StakeInfo", { composite: { fields: [
-      field("hotkey", 6), field("coldkey", 6), field("netuid", 13),
-      field("stake", 32), field("locked", 16), field("emission", 32),
-      field("tao_emission", 18), field("drain", 16), field("is_registered", 29),
-    ] } });
+    add(33, "StakeInfo", {
+      composite: {
+        fields: [
+          field("hotkey", 6),
+          field("coldkey", 6),
+          field("netuid", 13),
+          field("stake", 32),
+          field("locked", 16),
+          field("emission", 32),
+          field("tao_emission", 18),
+          field("drain", 16),
+          field("is_registered", 29),
+        ],
+      },
+    });
     add(34, "Option", option(33));
-    add(35, "StakeAvailability", { composite: { fields: [
-      field("total", 32), field("locked", 32), field("available", 32),
-    ] } });
+    add(35, "StakeAvailability", {
+      composite: {
+        fields: [
+          field("total", 32),
+          field("locked", 32),
+          field("available", 32),
+        ],
+      },
+    });
     add(36, "", { tuple: [7, 35] });
     add(37, "BTreeMap", { sequence: { type: 36 } });
     add(38, "", { tuple: [6, 37] });
@@ -257,10 +280,27 @@ export function bittensorNativeFixture(staking = false) {
         {
           name: "StakeInfoRuntimeApi",
           methods: [
-            ...(staking ? [
-              runtime("get_stake_info_for_hotkey_coldkey_netuid", [["hotkey_account", 6], ["coldkey_account", 6], ["netuid", 7]], 34),
-              runtime("get_stake_availability_for_coldkeys", [["coldkey_accounts", 40], ["netuids", 24]], 39),
-            ] : []),
+            ...(staking
+              ? [
+                  runtime(
+                    "get_stake_info_for_hotkey_coldkey_netuid",
+                    [
+                      ["hotkey_account", 6],
+                      ["coldkey_account", 6],
+                      ["netuid", 7],
+                    ],
+                    34,
+                  ),
+                  runtime(
+                    "get_stake_availability_for_coldkeys",
+                    [
+                      ["coldkey_accounts", 40],
+                      ["netuids", 24],
+                    ],
+                    39,
+                  ),
+                ]
+              : []),
             runtime(
               "get_coldkey_lock",
               [
@@ -272,15 +312,33 @@ export function bittensorNativeFixture(staking = false) {
           ],
           docs: [],
         },
-        ...(staking ? [{
-          name: "SwapRuntimeApi",
-          methods: [
-            runtime("current_alpha_price", [["netuid", 7]], 2),
-            runtime("sim_swap_tao_for_alpha", [["netuid", 7], ["tao", 10]], 31),
-            runtime("sim_swap_alpha_for_tao", [["netuid", 7], ["alpha", 9]], 31),
-          ],
-          docs: [],
-        }] : []),
+        ...(staking
+          ? [
+              {
+                name: "SwapRuntimeApi",
+                methods: [
+                  runtime("current_alpha_price", [["netuid", 7]], 2),
+                  runtime(
+                    "sim_swap_tao_for_alpha",
+                    [
+                      ["netuid", 7],
+                      ["tao", 10],
+                    ],
+                    31,
+                  ),
+                  runtime(
+                    "sim_swap_alpha_for_tao",
+                    [
+                      ["netuid", 7],
+                      ["alpha", 9],
+                    ],
+                    31,
+                  ),
+                ],
+                docs: [],
+              },
+            ]
+          : []),
       ],
       outerEnums: { callType: 30, eventType: 30, errorType: 30 },
       custom: { map: [] },

@@ -67,8 +67,10 @@ export function formatQuoteHint(quote: SubnetStakeQuote | null): string | null {
   if (!quote) return null;
   const outUnit = quote.expected_out_unit === "tao" ? "τ" : "α";
   const impact = `${formatDecimal(quote.price_impact_pct, 2)}% price impact`;
-  const output = "outputAtomic" in quote && typeof quote.outputAtomic === "bigint"
-    ? raoToTao(asRao(quote.outputAtomic)) : formatNumber(quote.expected_out);
+  const output =
+    "outputAtomic" in quote && typeof quote.outputAtomic === "bigint"
+      ? raoToTao(asRao(quote.outputAtomic))
+      : formatNumber(quote.expected_out);
   return `≈ ${joinAmountUnit(output, outUnit)} · ${impact}`;
 }
 
@@ -197,9 +199,14 @@ export function StakeAmountInput({
 
       {quote && "source" in quote && (
         <p className="break-words text-10 text-ink-muted">
-          Chain simulation · v{(quote as NativeStakeQuote).source.runtime_spec_version} · block {(quote as NativeStakeQuote).source.finalized_block}
-          {"taoFeeAtomic" in quote && typeof quote.taoFeeAtomic === "bigint" && ` · swap fee ${raoToTao(asRao(quote.taoFeeAtomic))} τ`}
-          {"alphaFeeAtomic" in quote && typeof quote.alphaFeeAtomic === "bigint" && ` · ${raoToTao(asRao(quote.alphaFeeAtomic))} α`}
+          Chain simulation · v{(quote as NativeStakeQuote).source.runtime_spec_version} · block{" "}
+          {(quote as NativeStakeQuote).source.finalized_block}
+          {"taoFeeAtomic" in quote &&
+            typeof quote.taoFeeAtomic === "bigint" &&
+            ` · swap fee ${raoToTao(asRao(quote.taoFeeAtomic))} τ`}
+          {"alphaFeeAtomic" in quote &&
+            typeof quote.alphaFeeAtomic === "bigint" &&
+            ` · ${raoToTao(asRao(quote.alphaFeeAtomic))} α`}
         </p>
       )}
       {validationMessages.length > 0 ? (

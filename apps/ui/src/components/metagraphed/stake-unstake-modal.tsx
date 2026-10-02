@@ -129,7 +129,9 @@ export function StakeUnstakeModal({
     try {
       await flow.submit();
     } catch (error) {
-      setSubmissionError(error instanceof Error ? error.message : "The stake could not be submitted.");
+      setSubmissionError(
+        error instanceof Error ? error.message : "The stake could not be submitted.",
+      );
     } finally {
       confirmInFlightRef.current = false;
       setSubmitting(false);
@@ -171,7 +173,11 @@ export function StakeUnstakeModal({
         </SheetHeader>
 
         <div className="mt-4 flex-1">
-          {submissionError && <p role="alert" className="text-13 text-health-down">{submissionError}</p>}
+          {submissionError && (
+            <p role="alert" className="text-13 text-health-down">
+              {submissionError}
+            </p>
+          )}
           <StakeFlowBody
             hotkey={hotkey}
             netuid={netuid}
@@ -260,7 +266,10 @@ function StakeFlowBody({
           feeTao={flow.feeTao}
           expectedOut={
             flow.quote
-              ? { amount: raoToTao(asRao(flow.quote.outputAtomic)), unit: flow.quote.expected_out_unit }
+              ? {
+                  amount: raoToTao(asRao(flow.quote.outputAtomic)),
+                  unit: flow.quote.expected_out_unit,
+                }
               : undefined
           }
           priceImpactPct={flow.quote?.price_impact_pct}

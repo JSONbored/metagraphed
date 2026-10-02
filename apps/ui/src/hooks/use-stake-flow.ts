@@ -14,8 +14,16 @@ import { useWallet } from "./use-wallet";
 import { useTxStatus, type TxUiStatus, type UseTxStatusResult } from "./use-tx-status";
 import { useFlowSession, useFeeEstimate } from "./use-flow-session";
 import { nativeStakeHoldingQuery, nativeUnstakeMax } from "@/lib/metagraphed/native-stake-holding";
-import { nativeStakeInput, nativeStakeParams, nativeStakeQuoteQuery, type NativeStakeQuote } from "@/lib/metagraphed/native-stake-quote";
-import { submitReviewedNativeStake, type ReviewedNativeStake } from "@/lib/metagraphed/native-stake-signing";
+import {
+  nativeStakeInput,
+  nativeStakeParams,
+  nativeStakeQuoteQuery,
+  type NativeStakeQuote,
+} from "@/lib/metagraphed/native-stake-quote";
+import {
+  submitReviewedNativeStake,
+  type ReviewedNativeStake,
+} from "@/lib/metagraphed/native-stake-signing";
 import { getApiBase, getNetwork } from "@/lib/metagraphed/config";
 import { getConnectedWallet } from "@/lib/metagraphed/wallet";
 import type { AccountPosition } from "@/lib/metagraphed/types";
@@ -30,10 +38,7 @@ import {
   type RemoveStakeLimitParams,
   type StakeValidationIssue,
 } from "@/lib/metagraphed/stake-extrinsics";
-import {
-  getMinStake,
-  getFreeBalance,
-} from "@/lib/metagraphed/chain-connection";
+import { getMinStake, getFreeBalance } from "@/lib/metagraphed/chain-connection";
 
 export type StakeFlowAction = "stake" | "unstake";
 export type StakeFlowUnit = "tao" | "alpha";
@@ -294,13 +299,17 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     minimum: Rao;
   } | null>(null);
   const coldkeyAddress = wallet.wallet?.address ?? null;
-  const freeBalanceRao = balances?.api === api && balances.address === coldkeyAddress ? balances.free : null;
-  const minStakeRao = balances?.api === api && balances.address === coldkeyAddress ? balances.minimum : null;
+  const freeBalanceRao =
+    balances?.api === api && balances.address === coldkeyAddress ? balances.free : null;
+  const minStakeRao =
+    balances?.api === api && balances.address === coldkeyAddress ? balances.minimum : null;
   const active = useRef(true);
   const working = useRef(false);
   useEffect(() => {
     active.current = true;
-    return () => { active.current = false; };
+    return () => {
+      active.current = false;
+    };
   }, []);
   useEffect(() => {
     currentReview.current = null;
@@ -327,7 +336,10 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   }, [api, coldkeyAddress]);
 
   const inputAtomic = nativeStakeInput(amountInput);
-  const quoteQ = useQuery({ ...nativeStakeQuoteQuery(netuid, inputAtomic, action, unit), enabled: inputAtomic !== null && !confirmed });
+  const quoteQ = useQuery({
+    ...nativeStakeQuoteQuery(netuid, inputAtomic, action, unit),
+    enabled: inputAtomic !== null && !confirmed,
+  });
   const liveQuote = quoteQ.data ?? null;
   const quote = confirmed && reviewed ? reviewed.quote : liveQuote;
   const spotPriceTao = quote?.spot_price_tao ?? null;
@@ -339,17 +351,18 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
 
   const liveParams = useMemo(() => {
     if (!liveQuote) return null;
-    try { return nativeStakeParams(liveQuote, hotkey, tolerancePct); }
-    catch { return null; }
+    try {
+      return nativeStakeParams(liveQuote, hotkey, tolerancePct);
+    } catch {
+      return null;
+    }
   }, [liveQuote, hotkey, tolerancePct]);
   const params = confirmed && reviewed ? reviewed.params : liveParams;
 
   const validationIssues = useMemo(() => {
     if (!params || minStakeRao == null) return [];
     const amountRao =
-      params.call === "add_stake_limit"
-        ? params.amountStaked
-        : asRao(quote?.outputAtomic ?? 0n);
+      params.call === "add_stake_limit" ? params.amountStaked : asRao(quote?.outputAtomic ?? 0n);
     return validateStakeInputs({
       hotkey,
       netuid,
@@ -370,8 +383,14 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   );
 
   const canConfirm =
-    api != null && wallet.wallet != null && minStakeRao != null && freeBalanceRao != null &&
-    liveParams != null && validationIssues.length === 0 && quoteQ.isSuccess && !quoteQ.isFetching;
+    api != null &&
+    wallet.wallet != null &&
+    minStakeRao != null &&
+    freeBalanceRao != null &&
+    liveParams != null &&
+    validationIssues.length === 0 &&
+    quoteQ.isSuccess &&
+    !quoteQ.isFetching;
 
   const maxStakeRao = freeBalanceRao != null ? resolveStakeMaxRao(freeBalanceRao) : null;
   const maxUnstakeUnavailable = false;
@@ -392,7 +411,14 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
 
   const confirm = useCallback(() => {
     if (!canConfirm || !liveParams || !liveQuote || !wallet.wallet) return;
-    setReviewed({ params: { ...liveParams }, quote: { ...liveQuote, source: { ...liveQuote.source } }, address: wallet.wallet.address, source: wallet.wallet.source, sessionId, context: stakeWalletContext() });
+    setReviewed({
+      params: { ...liveParams },
+      quote: { ...liveQuote, source: { ...liveQuote.source } },
+      address: wallet.wallet.address,
+      source: wallet.wallet.source,
+      sessionId,
+      context: stakeWalletContext(),
+    });
     setConfirmed(true);
   }, [canConfirm, liveParams, liveQuote, wallet.wallet, sessionId]);
   const editAmount = useCallback(() => {
@@ -414,12 +440,18 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     if (working.current || !api || !reviewed || feeRao === null) return;
     working.current = true;
     const assertCurrent = () => {
-      if (!active.current || currentReview.current !== reviewed || stakeWalletContext() !== reviewed.context)
+      if (
+        !active.current ||
+        currentReview.current !== reviewed ||
+        stakeWalletContext() !== reviewed.context
+      )
         throw new Error("The review, account, network or API changed. Review this stake again.");
     };
     try {
       await submitReviewedNativeStake(api, reviewed, feeRao, assertCurrent, txStatus.submit);
-    } finally { working.current = false; }
+    } finally {
+      working.current = false;
+    }
   }, [api, reviewed, feeRao, txStatus]);
 
   const phase = deriveStakeFlowPhase(wallet.status, confirmed, txStatus.status);

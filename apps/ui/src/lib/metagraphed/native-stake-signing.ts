@@ -31,16 +31,24 @@ export async function submitReviewedNativeStake(
   const preview = await previewNativeCall(api, artifact, 0, review.address);
   assertCurrent();
   if (preview.callData !== buildExtrinsic(api, review.params).method.toHex())
-    throw new Error("The prepared staking arguments differ from the reviewed amount and price limit.");
+    throw new Error(
+      "The prepared staking arguments differ from the reviewed amount and price limit.",
+    );
   if (feeRao < 0n || preview.feeRao > feeRao + (feeRao + 9n) / 10n)
     throw new Error("The transaction fee changed. Review this stake again.");
-  if (review.params.call === "add_stake_limit" && preview.balanceRao < review.params.amountStaked + preview.maxFeeRao)
+  if (
+    review.params.call === "add_stake_limit" &&
+    preview.balanceRao < review.params.amountStaked + preview.maxFeeRao
+  )
     throw new Error("The spendable balance cannot cover this stake and its fee.");
   const connected = await getSigner(review.source);
   assertCurrent();
   const recheck = async () => {
     await revalidateNativeCall(api, preview);
-    if (review.params.call === "add_stake_limit" && await getFreeBalance(api, review.address) < review.params.amountStaked + preview.maxFeeRao)
+    if (
+      review.params.call === "add_stake_limit" &&
+      (await getFreeBalance(api, review.address)) < review.params.amountStaked + preview.maxFeeRao
+    )
       throw new Error("The spendable balance changed. Review this stake again.");
   };
   await recheck();
@@ -50,6 +58,14 @@ export async function submitReviewedNativeStake(
     signerAddress: review.address,
     signer,
     nonce: preview.nonce,
-    idempotencyKey: computeIdempotencyKey({ callData: preview.callData, address: review.address, genesisHash: preview.source.network_genesis_hash }, preview.nonce, review.sessionId),
+    idempotencyKey: computeIdempotencyKey(
+      {
+        callData: preview.callData,
+        address: review.address,
+        genesisHash: preview.source.network_genesis_hash,
+      },
+      preview.nonce,
+      review.sessionId,
+    ),
   });
 }
