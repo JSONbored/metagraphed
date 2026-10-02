@@ -65,7 +65,7 @@ function rustParam(raw:string,source:string,depth=0):Param {
   if(type.startsWith("(")&&type.endsWith(")"))return {name:"",type:"tuple",components:splitTypes(type.slice(1,-1)).map(row=>rustParam(row,source,depth+1))};
   const vector=/^Vec<([^]+)>$/.exec(type);
   if(vector){const item=rustParam(vector[1],source,depth+1);return {...item,type:item.type+"[]"};}
-  const body=new RegExp(`(?:pub\s+)?struct\s+${type}\s*\{([^]*?)\}`).exec(source);
+  const body=new RegExp(`(?:pub\\s+)?struct\\s+${type}\\s*\\{([^]*?)\\}`).exec(source);
   assert.ok(body,`Unknown Rust output ${type}`);
   const fields=body[1].replace(/\/\/[^\n]*/g,"");
   const components=splitTypes(fields).map(row=>{const match=/^(?:pub\s+)?(\w+)\s*:\s*([^]+)$/.exec(row);assert.ok(match,`${type} ${row}`);return {...rustParam(match[2],source,depth+1),name:match[1]};});
