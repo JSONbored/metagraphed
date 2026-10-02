@@ -327,6 +327,30 @@ contains a signature, prefer the typed `runtime` operation. A SCALE result is
 explicitly byte-oriented: the server does not invent missing portable types or
 claim it has decoded that older ABI.
 
+For the published spec 205, 210, 211, 212, 216, 217, 218 and 219 runtimes,
+delegate, neuron, subnet and stake read APIs wrap their records in `Vec<u8>`.
+Set `decode_inner: true` on `runtime` or `runtime_scale` to read those records
+through layouts derived from the exact compiled source and bound to the
+published metadata checksum. `inner_result` contains the record;
+`contract.inner_scale` carries its scoped portable types and source commit.
+The ordinary `value` retains the original bytes. An absent singular record
+becomes `null`; vectors and nested SCALE Options retain their declared shapes.
+Decoding adds no chain request. Omitted or disabled decoding preserves the
+ordinary result. Later runtimes expose these structures through their normal
+portable API result types and do not need this option. EVM account code remains
+bytecode, rather than a record interpreted through these layouts.
+
+The native page can inspect an explicitly supplied canonical finalized block
+hash, select nested record decoding for these legacy reads, and display both
+decoded fields and original bytes. Changing the source clears the previous
+contract and record selection. Malformed hashes issue no request.
+
+Repeated native results share their SCALE decoding within one request, keyed
+by the upstream call and wire type. Nested records also share their selected
+source decoding. Public result objects remain independent after canonical
+response validation. Storage defaults retain their declaration-specific
+fallback bytes; retained state and account values are not cached across requests.
+
 `describe` exposes the audited SCALE methods when an advertised API has no
 metadata signatures. The website lets users select the method, enter SCALE hex
 and read the exact bytes at the inspected block. EVM `call`/`create`, Wasm

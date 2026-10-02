@@ -326,6 +326,7 @@ export function nativeValueRows(artifact: NativeArtifact): NativeValueRow[] {
   };
   artifact.results.forEach((result, index) => {
     const name = `${index + 1}. ${result.pallet ?? result.api ?? "Runtime"}.${result.member ?? "describe"}`;
+    if (result.inner_result !== undefined) visit(`${name}.inner_result`, result.inner_result);
     if (result.evm_result !== undefined) visit(`${name}.evm_result`, result.evm_result);
     if (result.value !== undefined) visit(name, result.value);
     if (result.call_data !== undefined) visit(`${name}.call_data`, result.call_data);
@@ -365,6 +366,20 @@ export function evmCallOperation(
   )
     throw new Error("Choose an EVM call simulation or preparation operation.");
   return { ...operation, evm_call: { signature: signature.trim(), args: nativeArguments(text) } };
+}
+
+export function innerRecordOperation(operation: NativeOperation, enabled: boolean): NativeOperation {
+  if (!enabled) return operation;
+  if (operation.kind !== "runtime" && operation.kind !== "runtime_scale")
+    throw new Error("Choose a legacy runtime record read.");
+  return { ...operation, decode_inner: true };
+}
+
+export function supportsLegacyInnerRecord(spec: number, member: NativeMember) {
+  return [205, 210, 211, 212, 216, 217, 218, 219].includes(spec) &&
+    (member.kind === "runtime" || member.kind === "runtime_scale") &&
+    ["DelegateInfoRuntimeApi", "NeuronInfoRuntimeApi", "SubnetInfoRuntimeApi", "StakeInfoRuntimeApi"].includes(member.api ?? "") &&
+    ["get_delegates", "get_delegate", "get_delegated", "get_neurons", "get_neuron", "get_neurons_lite", "get_neuron_lite", "get_subnet_info", "get_subnets_info", "get_subnet_info_v2", "get_subnets_info_v2", "get_subnet_hyperparams", "get_stake_info_for_coldkey", "get_stake_info_for_coldkeys"].includes(member.member);
 }
 export function evmPrecompileOperation(
   member: NativeMember,

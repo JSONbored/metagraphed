@@ -33,6 +33,7 @@ import {
   nativeEvmSimulationGas,
 } from "./native-evm-simulation.ts";
 import { loadNativeContract } from "./native-runtime-contract.ts";
+import { nativeInnerRecord } from "./native-runtime-inner.ts";
 import {
   NATIVE_CONTRACT_SIMULATION_LIMITS,
   nativeContractSimulationWork,
@@ -590,19 +591,37 @@ export async function readNativeRuntime(
   const operations = hasCodeArtifacts
     ? await resolveNativeCodeArtifacts(metadata, input.operations, fetchImpl)
     : input.operations;
+  const innerRecords = new Map<string, ReturnType<typeof nativeInnerRecord>>();
   const plans = operations.map((operation) => {
+    let inner: ReturnType<typeof nativeInnerRecord> | undefined;
+    if (
+      (operation.kind === "runtime" || operation.kind === "runtime_scale") &&
+      operation.decode_inner
+    ) {
+      const key = `${operation.api}_${operation.member}`;
+      inner = innerRecords.get(key);
+      if (!inner) {
+        inner = nativeInnerRecord(metadata, runtime.specVersion, sha256, operation.api, operation.member);
+        innerRecords.set(key, inner);
+      }
+    }
     const evm =
       (operation.kind === "runtime" || operation.kind === "prepare") &&
       operation.evm_call
         ? resolveNativeEvmCall(metadata, runtime.specVersion, operation)
         : null;
-    const row = plan(
+    const base = plan(
       metadata,
       evm?.operation ?? operation,
       needed,
       apiVersions,
       runtime.specVersion,
     );
+    const row = inner ? {
+      ...base,
+      inner,
+      result: { ...base.result, contract: { ...base.result.contract, inner_scale: inner.contract } },
+    } : base;
     if (
       (operation.kind === "runtime" || operation.kind === "prepare") &&
       operation.code_artifact
@@ -718,6 +737,29 @@ export async function readNativeRuntime(
     );
     chunk.forEach(([key], index) => responses.set(key, readValues[index]));
   }
+  const decodedValues = new Map<string, Map<number, NativeValue>>();
+  const innerValues = new Map<string, NativeValue>();
+  const decodeResult = (key: string, type: number, value: unknown) => {
+    let types = decodedValues.get(key);
+    if (!types) {
+      types = new Map<number, NativeValue>();
+      decodedValues.set(key, types);
+    }
+    let decoded = types.get(type);
+    if (decoded === undefined) {
+      decoded = decodeNativeValue(metadata, type, value);
+      types.set(type, decoded);
+    }
+    return decoded;
+  };
+  const innerResult = (key: string, inner: ReturnType<typeof nativeInnerRecord>, value: unknown, outer = false) => {
+    let decoded = innerValues.get(key);
+    if (decoded === undefined) {
+      decoded = inner.decode(value, outer);
+      innerValues.set(key, decoded);
+    }
+    return { inner_result: decoded };
+  };
   const results = plans.map((row, index) => {
     if ("entry" in row && row.entry) {
       const entry = row.entry,
@@ -726,15 +768,14 @@ export async function readNativeRuntime(
         ...row.result,
         contract: { ...row.result.contract, next_cursor: page.next },
         value: page.keys.map((key) => {
-          const value = responses.get(
-            JSON.stringify({ method: "state_getStorage", params: [key, at] }),
-          );
+          const callKey = JSON.stringify({ method: "state_getStorage", params: [key, at] });
+          const value = responses.get(callKey);
           if (value === null || value === undefined)
             throw new Error("Native enumerated storage value is absent");
           return {
             storage_key: key,
             keys: page.decoded.get(key)!,
-            value: decodeNativeValue(metadata, entry.item.value, value),
+            value: decodeResult(callKey, entry.item.value, value),
           };
         }),
       };
@@ -750,7 +791,11 @@ export async function readNativeRuntime(
         value.length > 2 + NATIVE_RUNTIME_LIMITS.valueBytes * 2
       )
         throw new Error("Invalid or oversized SCALE runtime result");
-      return { ...row.result, value };
+      return {
+        ...row.result,
+        value,
+        ...("inner" in row && row.inner ? innerResult(key, row.inner, value, true) : {}),
+      };
     }
     if ("item" in row && row.item && value === null) {
       if (row.item.optional)
@@ -760,10 +805,13 @@ export async function readNativeRuntime(
     }
     if (!("output" in row) || row.output === undefined)
       throw new Error("Missing native result contract");
-    const decoded = decodeNativeValue(metadata, row.output, value);
+    // Defaults belong to their storage declaration; aliases can share a key
+    // and wire type while declaring different fallback bytes.
+    const decoded = isDefault ? decodeNativeValue(metadata, row.output, value) : decodeResult(key, row.output, value);
     return {
       ...row.result,
       value: decoded,
+      ...("inner" in row && row.inner ? innerResult(key, row.inner, decoded) : {}),
       ...("evm" in row && row.evm
         ? { evm_result: decodeNativeEvmResult(decoded, row.evm.outputs) }
         : {}),

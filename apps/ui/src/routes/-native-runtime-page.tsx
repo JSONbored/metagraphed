@@ -17,6 +17,8 @@ import {
   codeArtifactOperation,
   supportsNativeEvmCall,
   evmCallOperation,
+  innerRecordOperation,
+  supportsLegacyInnerRecord,
   evmPrecompileOperation,
   nativeEvmFunctions,
   entryOperation,
@@ -100,6 +102,8 @@ function NativeRuntimeExplorer({
   const [description, setDescription] = useState<NativeArtifact | null>(null);
   const [memberIndex, setMemberIndex] = useState(0);
   const [args, setArgs] = useState("[]");
+  const [sourceHash, setSourceHash] = useState("");
+  const [decodeInner, setDecodeInner] = useState(false);
   const [codeUrl, setCodeUrl] = useState("");
   const [codeSha256, setCodeSha256] = useState("");
   const [codeBytes, setCodeBytes] = useState("");
@@ -124,12 +128,15 @@ function NativeRuntimeExplorer({
     setError(null);
     setResult(null);
     try {
+      const pinned = asOf ?? (sourceHash.trim() || undefined);
+      if (pinned && !/^0x[0-9a-f]{64}$/.test(pinned))
+        throw new Error("Enter a 0x-prefixed finalized block hash with 64 lowercase hex characters.");
       const response = await apiFetch<NativeArtifact>("/api/v1/native-runtime", {
         signal: active.signal,
         init: {
           method: "POST",
           headers: { Accept: "application/json", "Content-Type": "application/json" },
-          body: JSON.stringify({ operations, ...(asOf ? { as_of: asOf } : {}) }),
+          body: JSON.stringify({ operations, ...(pinned ? { as_of: pinned } : {}) }),
         },
       });
       if (active.signal.aborted) return;
@@ -143,6 +150,7 @@ function NativeRuntimeExplorer({
         setCodeSha256("");
         setCodeBytes("");
         setMemberIndex(0);
+        setDecodeInner(false);
         setArgs(describedMembers(response.data)[0]?.kind === "runtime_scale" ? "0x" : "[]");
       } else setResult(response.data);
     } catch (failure) {
@@ -314,7 +322,8 @@ function NativeRuntimeExplorer({
           <p className="text-13 text-ink-muted">
             Call, instantiate and upload_code simulate at a finalized block. Use an explicit Some
             gas_limit with ref_time and proof_size. A request permits up to 250,000,000,000
-            reference picoseconds, 65,536 proof bytes and one code upload of up to 16,384 bytes.
+            reference picoseconds and 65,536 proof bytes. Inline code permits 16,384 bytes; a
+            checksum-pinned artifact permits up to the runtime’s MaxCodeLen, capped at 131,072 bytes.
             Deposits, return bytes and reverts are preserved; simulation does not publish code or a
             contract.
           </p>
@@ -326,6 +335,24 @@ function NativeRuntimeExplorer({
             discover(0);
           }}
         >
+          <label className="min-w-0 flex-1 space-y-1 text-13">
+            Finalized block hash (optional)
+            <input
+              disabled={busy}
+              className={`${control} font-mono`}
+              value={sourceHash}
+              maxLength={66}
+              placeholder="Latest finalized block"
+              onChange={(event) => {
+                setSourceHash(event.target.value);
+                setDescription(null);
+                setResult(null);
+                setEvmDescription(null);
+                setDecodeInner(false);
+                setOffset(0);
+              }}
+            />
+          </label>
           <label className="space-y-1 text-13">
             Contract
             <select
@@ -371,6 +398,7 @@ function NativeRuntimeExplorer({
                   value={memberIndex}
                   onChange={(event) => {
                     setMemberIndex(Number(event.target.value));
+                    setDecodeInner(false);
                     setEvmDescription(null);
                     setEvmSignature("");
                     setEvmArgs("[]");
@@ -416,7 +444,10 @@ function NativeRuntimeExplorer({
                     () => [
                       evmCallOperation(
                         codeArtifactOperation(
-                          memberOperation(member, args),
+                          innerRecordOperation(
+                            memberOperation(member, args),
+                            decodeInner && supportsLegacyInnerRecord(description.source.runtime_spec_version, member),
+                          ),
                           codeUrl,
                           codeSha256,
                           codeBytes,
@@ -429,6 +460,12 @@ function NativeRuntimeExplorer({
                   );
                 }}
               >
+                {supportsLegacyInnerRecord(description.source.runtime_spec_version, member) && (
+                  <label className="flex items-center gap-2 text-13">
+                    <input type="checkbox" disabled={busy} checked={decodeInner} onChange={(event) => setDecodeInner(event.target.checked)} />
+                    Decode nested legacy records
+                  </label>
+                )}
                 <dl className="grid gap-2 sm:grid-cols-2">
                   {member.args.map((field, index) => (
                     <div className="min-w-0 text-13" key={index}>
