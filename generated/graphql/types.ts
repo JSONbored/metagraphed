@@ -3791,7 +3791,7 @@ export type Query = {
   subnet_stake_flow: SubnetStakeFlow;
   /** Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves. */
   subnet_stake_moves: SubnetStakeMoves;
-  /** A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
+  /** A read-only finalized runtime stake/unstake simulation: expected amount out, current vs effective price, and price impact including swap fees. Signs and submits nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
   subnet_stake_quote: SubnetStakeQuote;
   /** Per-subnet stake-transfer activity over a 7d/30d window (distinct senders, StakeTransferred count, and transfers per sender); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers. */
   subnet_stake_transfers: SubnetStakeTransfers;
@@ -5149,6 +5149,7 @@ export type QuerySubnet_Stake_QuoteArgs = {
   amount: Scalars['Float']['input'];
   direction?: InputMaybe<Scalars['String']['input']>;
   netuid: Scalars['Int']['input'];
+  network?: InputMaybe<Network>;
 };
 
 
@@ -7598,7 +7599,7 @@ export type SubnetStakeMoves = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
-/** A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
+/** A read-only finalized runtime stake/unstake simulation. Numeric fields are display values; exact atomic quantities are available through native-runtime. Legacy reserve fields are null; source identity is returned in REST metadata. Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
 export type SubnetStakeQuote = {
   __typename?: 'SubnetStakeQuote';
   alpha_in_pool?: Maybe<Scalars['Float']['output']>;
@@ -7608,7 +7609,7 @@ export type SubnetStakeQuote = {
   effective_price_tao: Scalars['Float']['output'];
   expected_out: Scalars['Float']['output'];
   expected_out_unit: Scalars['String']['output'];
-  /** True for root (netuid 0), which quotes 1:1 with no price impact. */
+  /** True for root (netuid 0). Price and fees come from the runtime simulator. */
   is_root: Scalars['Boolean']['output'];
   netuid: Scalars['Int']['output'];
   price_impact_pct: Scalars['Float']['output'];

@@ -1,11 +1,13 @@
 import { test, expect } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart";
 
-test("native page initializes inside the app source provider without issuing a read", async ({ page }) => {
+test("native page initializes inside the app source provider without issuing a read", async ({
+  page,
+}) => {
   const requests: string[] = [];
   await page.route("**/api/v1/native-runtime", async (route) => {
     requests.push(route.request().url());
-    await route.fulfill({ status: 500, contentType: "application/json", body: '{}' });
+    await route.fulfill({ status: 500, contentType: "application/json", body: "{}" });
   });
   await gotoThroughRestart(page, "/apis/native");
   await expect(page.getByRole("heading", { name: "Native chain", exact: true })).toBeVisible();

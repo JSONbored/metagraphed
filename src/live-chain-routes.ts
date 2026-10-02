@@ -50,6 +50,7 @@ export const LIVE_CHAIN_ROUTE_PATHS: readonly string[] = [
   "/api/v1/subnets/{netuid}/burn",
   "/api/v1/subnets/{netuid}/lease",
   "/api/v1/subnets/{netuid}/recycled",
+  "/api/v1/subnets/{netuid}/stake-quote",
   "/api/v1/sudo/key",
 ];
 

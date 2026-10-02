@@ -8421,6 +8421,11 @@
                 "trading_status": false
               },
               "decoder_version": "subtensor-v441-8b9d55c7-v1",
+              "finalized_block": "1000",
+              "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "network": "finney",
+              "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
               "runtime_api_version": 1,
               "runtime_spec_version": 441
             },
@@ -61403,7 +61408,7 @@
       },
       "SubnetStakeQuoteArtifact": {
         "additionalProperties": false,
-        "description": "A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
+        "description": "A read-only finalized runtime stake/unstake simulation. Numeric fields are display values; exact atomic quantities are available through native-runtime. Legacy reserve fields are null; source identity is returned in REST metadata. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
         "properties": {
           "alpha_in_pool": {
             "anyOf": [
@@ -61443,7 +61448,7 @@
             "type": "string"
           },
           "is_root": {
-            "description": "True for root (netuid 0), which quotes 1:1 with no price impact.",
+            "description": "True for root (netuid 0). Price and fees come from the runtime simulator.",
             "type": "boolean"
           },
           "netuid": {
@@ -76131,6 +76136,157 @@
         },
         "tags": [
           "subnets"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/{network}/subnets/{netuid}/stake-quote": {
+      "get": {
+        "description": "Network-scoped form of /api/v1/subnets/{netuid}/stake-quote — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "subnetStakeQuoteByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The stake amount to quote, in TAO. Must be greater than zero.",
+            "in": "query",
+            "name": "amount",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Which side of the trade to price: `stake` buys alpha with TAO, `unstake` sells alpha for TAO. Omit for `stake`.",
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "stake",
+              "enum": [
+                "stake",
+                "unstake"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SubnetStakeQuoteArtifactResponse": {
+                    "$ref": "#/components/examples/SubnetStakeQuoteArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetStakeQuoteArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "subnets",
+          "analytics"
         ],
         "x-metagraphed-networks": [
           "finney",
@@ -108722,7 +108878,7 @@
     },
     "/api/v1/subnets/{netuid}/stake-quote": {
       "get": {
-        "description": "Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+        "description": "Simulate a stake/unstake at one finalized chain source: expected alpha/TAO out, current vs effective price and price impact including swap fees. amount is required and must fit whole atomic units and u64; direction defaults to stake (TAO in), while unstake spends alpha. Uses the runtime's SwapRuntimeApi; zero or partial fills return 422 and failed reads return 502. No approximate fallback, signing or submission. Root uses the same simulator. Existing numeric fields are display values; exact atomic results are available through native-runtime. Source identity appears in meta.native_source. Network prefixes select mainnet or testnet.",
         "operationId": "subnetStakeQuote",
         "parameters": [
           {
@@ -108848,9 +109004,11 @@
           "subnets",
           "analytics"
         ],
-        "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
-          "mainnet"
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },

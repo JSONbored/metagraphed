@@ -1,8 +1,27 @@
 // Keep the real quote/runtime/codec path; only the chain transport is synthetic.
 vi.mock("../src/runtime-stake-quote.ts", async () => {
-  const actual = await vi.importActual<typeof import("../src/runtime-stake-quote.ts")>("../src/runtime-stake-quote.ts");
-  const { readRuntimeStakeFixture } = await import("./fixtures/runtime-stake-quote.ts");
-  return { ...actual, buildRuntimeStakeQuote: (netuid: number, amount: unknown, direction: string, _read?: Parameters<typeof actual.buildRuntimeStakeQuote>[3], network?: Parameters<typeof actual.buildRuntimeStakeQuote>[4]) => actual.buildRuntimeStakeQuote(netuid, amount, direction, readRuntimeStakeFixture, network) };
+  const actual = await vi.importActual<
+    typeof import("../src/runtime-stake-quote.ts")
+  >("../src/runtime-stake-quote.ts");
+  const { readRuntimeStakeFixture } =
+    await import("./fixtures/runtime-stake-quote.ts");
+  return {
+    ...actual,
+    buildRuntimeStakeQuote: (
+      netuid: number,
+      amount: unknown,
+      direction: string,
+      _read?: Parameters<typeof actual.buildRuntimeStakeQuote>[3],
+      network?: Parameters<typeof actual.buildRuntimeStakeQuote>[4],
+    ) =>
+      actual.buildRuntimeStakeQuote(
+        netuid,
+        amount,
+        direction,
+        readRuntimeStakeFixture,
+        network,
+      ),
+  };
 });
 
 // Handler + economics-resolver coverage for GET /api/v1/subnets/{netuid}/
@@ -80,7 +99,10 @@ function extractNetuid(path: string) {
 
 describe("handleSubnetStakeQuote (#5235)", () => {
   test("reports the finalized source instead of claiming snapshot provenance", async () => {
-    const { status, json } = await call({}, "/api/v1/subnets/64/stake-quote?amount=1");
+    const { status, json } = await call(
+      {},
+      "/api/v1/subnets/64/stake-quote?amount=1",
+    );
     assert.equal(status, 200);
     assert.equal(json.meta.source, "chain-runtime");
     assert.equal(json.meta.native_source.runtime_spec_version, 470);
@@ -91,7 +113,17 @@ describe("handleSubnetStakeQuote (#5235)", () => {
 
   test("applies the existing native work limiter before simulation", async () => {
     const keys: string[] = [];
-    const { status, json } = await call({ RPC_RATE_LIMITER: { limit: async ({ key }: { key: string }) => { keys.push(key); return { success: false }; } } }, "/api/v1/subnets/64/stake-quote?amount=1");
+    const { status, json } = await call(
+      {
+        RPC_RATE_LIMITER: {
+          limit: async ({ key }: { key: string }) => {
+            keys.push(key);
+            return { success: false };
+          },
+        },
+      },
+      "/api/v1/subnets/64/stake-quote?amount=1",
+    );
     assert.equal(status, 429);
     assert.equal(json.error.code, "stake_quote_rate_limited");
     assert.equal(keys.length, 1);

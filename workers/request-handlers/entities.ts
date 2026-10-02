@@ -3643,9 +3643,21 @@ export async function handleSubnetStakeQuote(
       key: networkKvKey(`native-runtime:${resolveClientIp(request)}`, network),
     });
     if (!success)
-      return errorResponse("stake_quote_rate_limited", "Too many chain simulation requests; slow down.", 429, {}, { "retry-after": "60" });
+      return errorResponse(
+        "stake_quote_rate_limited",
+        "Too many chain simulation requests; slow down.",
+        429,
+        {},
+        { "retry-after": "60" },
+      );
   }
-  const result = await buildRuntimeStakeQuote(Number(netuid), amount, direction, undefined, network);
+  const result = await buildRuntimeStakeQuote(
+    Number(netuid),
+    amount,
+    direction,
+    undefined,
+    network,
+  );
   if (!result.ok) {
     return errorResponse(result.code, result.error, result.status);
   }

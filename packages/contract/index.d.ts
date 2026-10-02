@@ -869,6 +869,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/subnets/{netuid}/stake-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Network-scoped form of /api/v1/subnets/{netuid}/stake-quote — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
+        get: operations["subnetStakeQuoteByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/{network}/sudo/key": {
         parameters: {
             query?: never;
@@ -4902,7 +4919,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote. */
+        /** @description Simulate a stake/unstake at one finalized chain source: expected alpha/TAO out, current vs effective price and price impact including swap fees. amount is required and must fit whole atomic units and u64; direction defaults to stake (TAO in), while unstake spends alpha. Uses the runtime's SwapRuntimeApi; zero or partial fills return 422 and failed reads return 502. No approximate fallback, signing or submission. Root uses the same simulator. Existing numeric fields are display values; exact atomic results are available through native-runtime. Source identity appears in meta.native_source. Network prefixes select mainnet or testnet. */
         get: operations["subnetStakeQuote"];
         put?: never;
         post?: never;
@@ -13742,7 +13759,7 @@ export interface components {
             schema_version: number;
             window: ("7d" | "30d") | null;
         };
-        /** @description A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
+        /** @description A read-only finalized runtime stake/unstake simulation. Numeric fields are display values; exact atomic quantities are available through native-runtime. Legacy reserve fields are null; source identity is returned in REST metadata. Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
         SubnetStakeQuoteArtifact: {
             alpha_in_pool: number | null;
             amount: number;
@@ -13755,7 +13772,7 @@ export interface components {
             expected_out: number;
             /** @enum {string} */
             expected_out_unit: "alpha" | "tao";
-            /** @description True for root (netuid 0), which quotes 1:1 with no price impact. */
+            /** @description True for root (netuid 0). Price and fees come from the runtime simulator. */
             is_root: boolean;
             netuid: number;
             price_impact_pct: number;
@@ -15574,6 +15591,11 @@ export interface operations {
                      *             "trading_status": false
                      *           },
                      *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "runtime_api_version": 1,
                      *           "runtime_spec_version": 441
                      *         },
@@ -21113,6 +21135,11 @@ export interface operations {
                      *             "trading_status": false
                      *           },
                      *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "runtime_api_version": 1,
                      *           "runtime_spec_version": 441
                      *         },
@@ -22178,6 +22205,130 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetRecycledArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetStakeQuoteByNetwork: {
+        parameters: {
+            query: {
+                /** @description The stake amount to quote, in TAO. Must be greater than zero. */
+                amount: number;
+                /** @description Which side of the trade to price: `stake` buys alpha with TAO, `unstake` sells alpha for TAO. Omit for `stake`. */
+                direction?: "stake" | "unstake";
+            };
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "alpha_in_pool": 0.5,
+                     *         "amount": 0.5,
+                     *         "direction": "stake",
+                     *         "effective_price_tao": 0.5,
+                     *         "expected_out": 0.5,
+                     *         "expected_out_unit": "alpha",
+                     *         "is_root": false,
+                     *         "netuid": 7,
+                     *         "price_impact_pct": 0.5,
+                     *         "schema_version": 1,
+                     *         "spot_price_tao": 0.5,
+                     *         "tao_in_pool_tao": 0.5
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetStakeQuoteArtifact"];
                     };
                 };
             };
@@ -24818,6 +24969,11 @@ export interface operations {
                      *             "trading_status": false
                      *           },
                      *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "runtime_api_version": 1,
                      *           "runtime_spec_version": 441
                      *         },
@@ -42446,6 +42602,11 @@ export interface operations {
                      *             "trading_status": false
                      *           },
                      *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "runtime_api_version": 1,
                      *           "runtime_spec_version": 441
                      *         },

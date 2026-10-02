@@ -201,9 +201,9 @@ type Query {
   subnet_ohlc(netuid: Int!, interval: String, days: Int, limit: Int): SubnetOhlc!
 
   """
-  A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.
+  A read-only finalized runtime stake/unstake simulation: expected amount out, current vs effective price, and price impact including swap fees. Signs and submits nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.
   """
-  subnet_stake_quote(netuid: Int!, amount: Float!, direction: String): SubnetStakeQuote!
+  subnet_stake_quote(netuid: Int!, amount: Float!, direction: String, network: Network): SubnetStakeQuote!
 
   """
   Rank every subnet by what it costs to become an EARNING validator there: the same fields as subnet_validator_economics, one row per subnet, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding (omitting a filter means BOTH, which is not the same as false). Every subnet the ranking drops is returned in the excluded list with a reason. The registration burn is excluded from the ranking -- it is a live per-subnet read and immaterial to the order. Mirrors GET /api/v1/validators/economics.
@@ -2000,7 +2000,7 @@ type AlphaUsdFieldSource {
 }
 
 """
-A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote.
+A read-only finalized runtime stake/unstake simulation. Numeric fields are display values; exact atomic quantities are available through native-runtime. Legacy reserve fields are null; source identity is returned in REST metadata. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.
 """
 type SubnetStakeQuote {
   alpha_in_pool: Float
@@ -2012,7 +2012,9 @@ type SubnetStakeQuote {
   expected_out: Float!
   expected_out_unit: String!
 
-  """True for root (netuid 0), which quotes 1:1 with no price impact."""
+  """
+  True for root (netuid 0). Price and fees come from the runtime simulator.
+  """
   is_root: Boolean!
   netuid: Int!
   price_impact_pct: Float!

@@ -8206,7 +8206,14 @@ async function dispatchLiveChainRoute(
 
   const stakeQuoteMatch = SUBNET_STAKE_QUOTE_PATH_PATTERN.exec(pathname);
   if (stakeQuoteMatch)
-    return handleSubnetStakeQuote(request, env, Number(stakeQuoteMatch[1]), url, ctx, chain);
+    return handleSubnetStakeQuote(
+      request,
+      env,
+      Number(stakeQuoteMatch[1]),
+      url,
+      ctx,
+      chain,
+    );
 
   const walletsMatch = SUBNET_WALLETS_PATH_PATTERN.exec(pathname);
   if (walletsMatch) {

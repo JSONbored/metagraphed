@@ -7722,7 +7722,7 @@
       "url": "https://api.chutes.ai/chutes/miner_means"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "kind": "data-artifact",
       "netuid": 64,
@@ -7745,7 +7745,7 @@
           "date": "date"
         },
         "grain": "daily",
-        "provenance": "probe-derived",
+        "provenance": "operator-attested",
         "role": "external-revenue",
         "shape": "flat-array",
         "source_url": "https://api.chutes.ai/openapi.json",
@@ -8148,7 +8148,7 @@
       "url": "https://api.chutes.ai/nodes/"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 64,
@@ -8167,7 +8167,7 @@
           "date": "timestamp"
         },
         "grain": "cumulative",
-        "provenance": "chain-verified",
+        "provenance": "operator-attested",
         "role": "external-revenue",
         "rows": "items",
         "shape": "flat-array",
@@ -8289,7 +8289,7 @@
       "url": "https://api.chutes.ai/nodes/supported"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "kind": "subnet-api",
       "netuid": 64,
@@ -8307,7 +8307,7 @@
           "amount": "total"
         },
         "grain": "cumulative",
-        "provenance": "probe-derived",
+        "provenance": "operator-attested",
         "role": "external-revenue",
         "shape": "scalar",
         "source_url": "https://api.chutes.ai/openapi.json"

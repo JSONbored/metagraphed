@@ -1,8 +1,27 @@
 // Keep the real quote/runtime/codec path; only the chain transport is synthetic.
 vi.mock("../src/runtime-stake-quote.ts", async () => {
-  const actual = await vi.importActual<typeof import("../src/runtime-stake-quote.ts")>("../src/runtime-stake-quote.ts");
-  const { readRuntimeStakeFixture } = await import("./fixtures/runtime-stake-quote.ts");
-  return { ...actual, buildRuntimeStakeQuote: (netuid: number, amount: unknown, direction: string, _read?: Parameters<typeof actual.buildRuntimeStakeQuote>[3], network?: Parameters<typeof actual.buildRuntimeStakeQuote>[4]) => actual.buildRuntimeStakeQuote(netuid, amount, direction, readRuntimeStakeFixture, network) };
+  const actual = await vi.importActual<
+    typeof import("../src/runtime-stake-quote.ts")
+  >("../src/runtime-stake-quote.ts");
+  const { readRuntimeStakeFixture } =
+    await import("./fixtures/runtime-stake-quote.ts");
+  return {
+    ...actual,
+    buildRuntimeStakeQuote: (
+      netuid: number,
+      amount: unknown,
+      direction: string,
+      _read?: Parameters<typeof actual.buildRuntimeStakeQuote>[3],
+      network?: Parameters<typeof actual.buildRuntimeStakeQuote>[4],
+    ) =>
+      actual.buildRuntimeStakeQuote(
+        netuid,
+        amount,
+        direction,
+        readRuntimeStakeFixture,
+        network,
+      ),
+  };
 });
 
 // Coverage for src/response-validation-tripwire.ts and its call sites.

@@ -2271,11 +2271,26 @@ const STAKE_PREVIEW_IMPACT_MAX_PCT = 5;
 // `ok` flag) purely from a computed stake quote's price impact — the one signal
 // the preview already carries that reflects how much this size moves the pool.
 // Additive over get_subnet_stake_quote's numbers; adds no execution capability.
-async function loadRuntimeStakeQuote(ctx: McpCtx, netuid: number, amount: unknown, direction: string, networkName?: string) {
+async function loadRuntimeStakeQuote(
+  ctx: McpCtx,
+  netuid: number,
+  amount: unknown,
+  direction: string,
+  networkName?: string,
+) {
   const network = chainNetworkFromChainName(networkName);
   if (ctx.env.RPC_RATE_LIMITER?.limit) {
-    const { success } = await ctx.env.RPC_RATE_LIMITER.limit({ key: basketNetworkKey(`native-runtime:${ctx.clientIp ?? "anon"}`, network) });
-    if (!success) throw toolError("rate_limited", "Too many chain simulation requests; slow down.");
+    const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+      key: basketNetworkKey(
+        `native-runtime:${ctx.clientIp ?? "anon"}`,
+        network,
+      ),
+    });
+    if (!success)
+      throw toolError(
+        "rate_limited",
+        "Too many chain simulation requests; slow down.",
+      );
   }
   return buildRuntimeStakeQuote(netuid, amount, direction, undefined, network);
 }
@@ -7010,7 +7025,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
-      const result = await loadRuntimeStakeQuote(ctx, netuid, amount, direction, args.network);
+      const result = await loadRuntimeStakeQuote(
+        ctx,
+        netuid,
+        amount,
+        direction,
+        args.network,
+      );
       if (!result.ok) {
         throw toolError(result.code, result.error);
       }
@@ -7212,7 +7233,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
       // The same finalized simulation serves both the quote and its preview.
-      const result = await loadRuntimeStakeQuote(ctx, netuid, amount, direction, args.network);
+      const result = await loadRuntimeStakeQuote(
+        ctx,
+        netuid,
+        amount,
+        direction,
+        args.network,
+      );
       if (!result.ok) {
         throw toolError(result.code, result.error);
       }

@@ -1638,6 +1638,10 @@ export const QUERY_PARAMETER_ENUMS = {
   "/api/v1/{network}/subnets/{netuid}/recycled": {
     "network": ["finney","mainnet","test","testnet"],
   },
+  "/api/v1/{network}/subnets/{netuid}/stake-quote": {
+    "direction": ["stake","unstake"],
+    "network": ["finney","mainnet","test","testnet"],
+  },
   "/api/v1/{network}/sudo/key": {
     "network": ["finney","mainnet","test","testnet"],
   },
