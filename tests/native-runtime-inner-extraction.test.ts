@@ -1,6 +1,8 @@
 // Temporary pinned-source extraction; removed after the verified remote handoff.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { format, resolveConfig } from "prettier";
@@ -12,6 +14,7 @@ import { decodeNativeMetadata, unwrapNativeMetadata, type NativeType, type Nativ
 import { encodeNativeValue, nativeHex } from "../src/native-runtime-values.ts";
 
 const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+const sourceDownload = promisify(execFile);
 const families = {
   DelegateInfoRuntimeApi: "delegate_info",
   NeuronInfoRuntimeApi: "neuron_info",
@@ -68,9 +71,8 @@ test("extract all 112 legacy opaque record layouts from exact compiled source an
   for (const era of eras.slice(0, 8)) {
     const sourceFiles = ["runtime/src/lib.rs", ...Object.values(families).map(name => `pallets/subtensor/src/rpc_info/${name}.rs`)];
     const loaded = await Promise.all(sourceFiles.map(async path => {
-      const response = await fetch(`https://raw.githubusercontent.com/RaoFoundation/subtensor/${era.commit}/${path}`, { signal: AbortSignal.timeout(10000) });
-      assert.ok(response.ok, `${era.spec} ${path}: HTTP ${response.status}`);
-      const bytes = new Uint8Array(await response.arrayBuffer()); assert.ok(bytes.length < 1000000);
+      const response = await sourceDownload("curl", ["--fail", "--location", "--proto", "=https", "--max-time", "30", "--silent", "--show-error", `https://raw.githubusercontent.com/RaoFoundation/subtensor/${era.commit}/${path}`], { maxBuffer: 1000000, encoding: "buffer", timeout: 35000 });
+      const bytes = new Uint8Array(response.stdout); assert.ok(bytes.length < 1000000);
       return { path, sha256: sha(bytes), text: new TextDecoder("utf-8", { fatal: true }).decode(bytes).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "") };
     }));
     const runtime = loaded[0]!.text, bare = unwrapNativeMetadata(era.v15)!;

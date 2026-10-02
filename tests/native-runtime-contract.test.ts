@@ -233,7 +233,9 @@ test("typed requests recover V15 signatures after a provider's earlier V14 fallb
   assert.equal(result.source.metadata_version, 15);
   assert.equal(result.results[0].value, "5");
   assert.ok(Array.isArray(result.results[1].value));
-  assert.equal(result.results[1].value[0].kind, "runtime");
+  const item = result.results[1].value[0];
+  assert.ok(item && typeof item === "object" && !Array.isArray(item));
+  assert.equal(item.kind, "runtime");
   assert.equal(negotiations, 3);
   const after = await queryNativeRuntime(storage, read);
   assert.equal(after.source.metadata_version, 15);
@@ -300,9 +302,11 @@ test("API-specific discovery upgrades a cached fallback before advertising typed
   const typed = await queryNativeRuntime(request, read);
   assert.equal(typed.source.metadata_version, 15);
   assert.ok(Array.isArray(typed.results[0]!.value));
-  assert.equal(typed.results[0]!.value[0].kind, "runtime");
-  assert.equal(typed.results[0]!.value[0].member, "account_nonce");
-  assert.ok(Array.isArray(typed.results[0]!.value[0].args));
+  const item = typed.results[0]!.value[0];
+  assert.ok(item && typeof item === "object" && !Array.isArray(item));
+  assert.equal(item.kind, "runtime");
+  assert.equal(item.member, "account_nonce");
+  assert.ok(Array.isArray(item.args));
   assert.equal(negotiations, 2);
   assert.equal(
     JSON.stringify(await queryNativeRuntime(request, read)),
