@@ -10,6 +10,7 @@ import wrapped, {
 import {
   decodeNativeMetadata,
   unwrapNativeMetadata,
+  type NativeField,
 } from "../src/native-runtime-metadata.ts";
 import {
   decodeNativeValue,
@@ -446,7 +447,7 @@ test("compiled v470 full Wasm artifact references simulate uploads and prepare e
     ["prepare", "upload_code"],
     ["prepare", "instantiate_with_code"],
   ] as const) {
-    const fields =
+    const fields: NativeField[] =
       kind === "runtime"
         ? api.methods.find((row) => row.name === memberName)!.inputs
         : calls.variants.find((row) => row.name === memberName)!.fields;
