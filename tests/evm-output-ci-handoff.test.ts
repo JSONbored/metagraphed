@@ -72,6 +72,7 @@ function rustParam(raw:string,source:string,depth=0):Param {
   const type=expandedRustType(raw,source);
   const scalar:Record<string,string>={u8:"uint8",u16:"uint16",u32:"uint32",u64:"uint64",u128:"uint128",U256:"uint256",H256:"bytes32",Address:"address",bool:"bool",UnboundedBytes:"bytes",UnboundedString:"string",String:"string"};
   if(scalar[type])return {name:"",type:scalar[type]};
+  if(type==="Bytes4"){assert.match(source,/pub struct Bytes4\(\[u8; 4\]\)/);assert.ok(source.includes("word[..4].copy_from_slice(&value.0)"));return {name:"",type:"bytes4"};}
   if(type.startsWith("(")&&type.endsWith(")"))return {name:"",type:"tuple",components:splitTypes(type.slice(1,-1)).map(row=>rustParam(row,source,depth+1))};
   const vector=/^Vec<([^]+)>$/.exec(type);
   if(vector){const item=rustParam(vector[1],source,depth+1);return {...item,type:item.type+"[]"};}
