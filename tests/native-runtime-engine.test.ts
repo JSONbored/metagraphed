@@ -64,7 +64,12 @@ function compiledModule() {
     );
     const wasm = decompress(blob.subarray(8));
     assert.ok(wasm.length < 50 * 1024 * 1024);
-    return { blob, module: await WebAssembly.compile(wasm) };
+    // Worker ambient types omit the Node compilation API used only by this CI fixture.
+    const engine = WebAssembly as typeof WebAssembly & {
+      compile(bytes: Uint8Array): Promise<WebAssembly.Module>;
+    };
+    assert.equal(typeof engine.compile, "function");
+    return { blob, module: await engine.compile(wasm) };
   })());
 }
 
@@ -184,8 +189,8 @@ async function compiledRuntime() {
           const key = bytes(args[0]!).toString("hex"),
             value = bytes(args[1]!),
             previous = state.get(key);
-          let count = 0n,
-            tail = Buffer.alloc(0);
+          let count = 0n;
+          let tail: Buffer = Buffer.alloc(0);
           if (previous !== undefined) {
             const reader = new NativeScaleReader(
               nativeHex(previous),
