@@ -99,11 +99,8 @@ test("neuron UID pages fetch singular records and continue the saved subnet, for
   await page.getByRole("checkbox", { name: "Lite records", exact: true }).check();
   await page.getByRole("button", { name: "Next neuron page", exact: true }).click();
   await expect(page.getByText("Subnet 19 · UID 16 · 19 UID slots", { exact: true })).toBeVisible();
+  expect(requests).toHaveLength(3);
   expect(requests[2]).toEqual({
-    as_of: hash,
-    operations: [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [19] }],
-  });
-  expect(requests[3]).toEqual({
     as_of: hash,
     operations: [16, 17, 18].map((uid) => ({
       kind: "runtime",
@@ -113,6 +110,16 @@ test("neuron UID pages fetch singular records and continue the saved subnet, for
     })),
   });
   await expect(page.getByRole("button", { name: "Next neuron page", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Read neuron page", exact: true }).click();
+  await expect(page.getByText("Subnet 20 · UID 14 · 19 UID slots", { exact: true })).toBeVisible();
+  expect(requests).toHaveLength(5);
+  expect(requests[3]).toEqual({
+    operations: [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [20] }],
+  });
+  expect(requests[4]).toEqual({
+    as_of: hash,
+    operations: [{ kind: "runtime", api: "NeuronInfoRuntimeApi", member: "get_neuron_lite", args: [20, 14] }],
+  });
 });
 
 test("historical neuron pages use qualified byte reads while empty ranges issue no record request", async ({

@@ -439,8 +439,12 @@ through the existing native contract. It first reads `SubtensorModule.Subnetwork
 then sends up to sixteen `NeuronInfoRuntimeApi.get_neuron` operations at that
 response's finalized block. **Lite records** selects `get_neuron_lite` explicitly.
 The count and records retain their network, genesis, block, runtime and code
-identity; continuation uses the last successful subnet, format and page size even
-if the form is subsequently edited. Empty/completed ranges make no record request.
+identity; continuation reuses that successful count within the page's local state
+and sends only the records request. It keeps the last successful subnet, format,
+page size and exact next UID even if the form is subsequently edited. Explicit
+new reads fetch a fresh count. Network or API origin changes reset the page state;
+there is no shared count cache. Every records response must still match the pinned
+source. Empty/completed ranges make no record request.
 
 REST and MCP use the same operations. First request the count:
 

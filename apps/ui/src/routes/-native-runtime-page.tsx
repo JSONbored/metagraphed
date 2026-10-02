@@ -35,6 +35,7 @@ import {
   type NativeValueRow,
   type NativeNeuronPage,
   type NativeNeuronPageRequest,
+  type NativeNeuronPageResult,
 } from "@/lib/metagraphed/native-runtime";
 
 const control =
@@ -136,6 +137,7 @@ function NativeRuntimeExplorer({
     discovery: boolean | "evm" = false,
     asOf?: string,
     neuron?: NativeNeuronPageRequest,
+    previousNeuronPage?: NativeNeuronPageResult,
   ) => {
     controller.current?.abort();
     const active = new AbortController();
@@ -162,7 +164,9 @@ function NativeRuntimeExplorer({
         });
         return response.data;
       };
-      const page = neuron ? await queryNativeNeuronPage(neuron, query, pinned) : null;
+      const page = neuron
+        ? await queryNativeNeuronPage(neuron, query, pinned, previousNeuronPage)
+        : null;
       const data = page ? page.artifact : await query(operations, pinned);
       if (active.signal.aborted) return;
       if (discovery === "evm") setEvmDescription(data);
@@ -391,12 +395,18 @@ function NativeRuntimeExplorer({
                 disabled={busy}
                 type="button"
                 onClick={() =>
-                  void read([], false, result.source.finalized_block_hash, {
-                    netuid: String(neuronPage.netuid),
-                    offset: String(neuronPage.next_offset),
-                    limit: String(neuronPage.limit),
-                    lite: neuronPage.lite,
-                  })
+                  void read(
+                    [],
+                    false,
+                    result.source.finalized_block_hash,
+                    {
+                      netuid: String(neuronPage.netuid),
+                      offset: String(neuronPage.next_offset),
+                      limit: String(neuronPage.limit),
+                      lite: neuronPage.lite,
+                    },
+                    { artifact: result, page: neuronPage },
+                  )
                 }
               >
                 Next neuron page

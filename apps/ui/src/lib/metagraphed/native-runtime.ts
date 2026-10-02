@@ -20,6 +20,10 @@ export interface NativeNeuronPage {
   total: number;
   next_offset: number | null;
 }
+export interface NativeNeuronPageResult {
+  artifact: NativeArtifact;
+  page: NativeNeuronPage;
+}
 
 /** UID pages use singular runtime reads, never the full neuron vector. The
  * count and records share one finalized source; missing UIDs retain None. */
@@ -27,7 +31,8 @@ export async function queryNativeNeuronPage(
   input: NativeNeuronPageRequest,
   query: (operations: NativeOperation[], asOf?: string) => Promise<NativeArtifact>,
   asOf?: string,
-): Promise<{ artifact: NativeArtifact; page: NativeNeuronPage }> {
+  previous?: NativeNeuronPageResult,
+): Promise<NativeNeuronPageResult> {
   const integer = (text: string, min: number, max: number) => {
     if (!/^(0|[1-9]\d*)$/.test(text) || Number(text) < min || Number(text) > max)
       throw new Error(
@@ -40,29 +45,49 @@ export async function queryNativeNeuronPage(
     limit = integer(input.limit, 1, 16);
   if (asOf !== undefined && !/^0x[0-9a-f]{64}$/.test(asOf))
     throw new Error("Neuron pages require a canonical finalized block hash.");
-  const count = await query(
+  if (
+    previous &&
+    (asOf !== previous.artifact.source.finalized_block_hash ||
+      previous.page.netuid !== netuid ||
+      previous.page.lite !== input.lite ||
+      previous.page.limit !== limit ||
+      previous.page.next_offset !== offset ||
+      !Number.isInteger(previous.page.offset) ||
+      previous.page.offset < 0 ||
+      !Number.isInteger(previous.page.total) ||
+      previous.page.total < 0 ||
+      previous.page.total > 65535 ||
+      offset >= previous.page.total ||
+      offset !== Math.min(previous.page.total, previous.page.offset + limit))
+  )
+    throw new Error("Neuron continuation must retain its successful page and finalized source.");
+  const reference = previous?.artifact ?? await query(
     [{ kind: "storage", pallet: "SubtensorModule", member: "SubnetworkN", args: [netuid] }],
     asOf,
   );
-  const row = count.results[0],
-    at = count.source.finalized_block_hash;
-  if (
-    count.results.length !== 1 ||
-    row?.kind !== "storage" ||
-    row.pallet !== "SubtensorModule" ||
-    row.member !== "SubnetworkN" ||
-    typeof row.value !== "string" ||
-    !/^(0|[1-9]\d*)$/.test(row.value) ||
-    Number(row.value) > 65535 ||
-    !/^0x[0-9a-f]{64}$/.test(at) ||
-    (asOf !== undefined && at !== asOf)
-  )
-    throw new Error("Invalid source-pinned neuron count.");
-  const total = Number(row.value);
+  const at = reference.source.finalized_block_hash;
+  let total: number;
+  if (previous) total = previous.page.total;
+  else {
+    const row = reference.results[0];
+    if (
+      reference.results.length !== 1 ||
+      row?.kind !== "storage" ||
+      row.pallet !== "SubtensorModule" ||
+      row.member !== "SubnetworkN" ||
+      typeof row.value !== "string" ||
+      !/^(0|[1-9]\d*)$/.test(row.value) ||
+      Number(row.value) > 65535 ||
+      !/^0x[0-9a-f]{64}$/.test(at) ||
+      (asOf !== undefined && at !== asOf)
+    )
+      throw new Error("Invalid source-pinned neuron count.");
+    total = Number(row.value);
+  }
   if (offset > total) throw new Error("The starting UID exceeds this source’s neuron count.");
   const end = Math.min(total, offset + limit),
     member = input.lite ? "get_neuron_lite" : "get_neuron",
-    legacy = supportsLegacyInnerRecord(count.source.runtime_spec_version, {
+    legacy = supportsLegacyInnerRecord(reference.source.runtime_spec_version, {
       kind: "runtime_scale",
       api: "NeuronInfoRuntimeApi",
       member,
@@ -82,7 +107,7 @@ export async function queryNativeNeuronPage(
         }
       : { kind: "runtime", api: "NeuronInfoRuntimeApi", member, args: [netuid, uid] };
   });
-  const artifact = operations.length ? await query(operations, at) : count;
+  const artifact = operations.length ? await query(operations, at) : reference;
   for (const field of [
     "network",
     "network_genesis_hash",
@@ -92,7 +117,7 @@ export async function queryNativeNeuronPage(
     "runtime_transaction_version",
     "runtime_code_hash",
   ] as const)
-    if (artifact.source[field] !== count.source[field])
+    if (artifact.source[field] !== reference.source[field])
       throw new Error("Neuron records changed their finalized source.");
   if (
     operations.length &&
