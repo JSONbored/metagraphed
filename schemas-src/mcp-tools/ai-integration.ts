@@ -236,7 +236,8 @@ const surfaceCallSharedShape = {
     .optional()
     .describe(
       "Return complete binary responses as native MCP image/audio content or an embedded binary resource, with only MIME type, size and SHA-256 in body. The existing 256 KiB response limit and deadline apply; incomplete binary responses are rejected. JSON/text behavior is unchanged. Omit to preserve the ordinary binary-content rejection.",
-    ),
+    )
+    .meta({ examples: ["attachment"] }),
   query: z
     .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
     .optional()
