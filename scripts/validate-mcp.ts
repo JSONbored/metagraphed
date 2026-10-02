@@ -1,4 +1,5 @@
 import { withNativeRuntimeFixture } from "../tests/fixtures/native-runtime.ts";
+import { withRuntimeStakeFixture } from "../tests/fixtures/runtime-stake-quote.ts";
 // Contract validator for the remote MCP server at POST /mcp.
 //
 // Exercises the JSON-RPC lifecycle (initialize + tools/list) and a tools/call
@@ -237,7 +238,9 @@ async function call(name: string, args: unknown): Promise<Row> {
     params: { name, arguments: args },
   };
   const res =
-    name === "get_native_runtime"
+    name === "get_subnet_stake_quote" || name === "get_stake_action_preview"
+      ? await withRuntimeStakeFixture(() => mcp(payload))
+      : name === "get_native_runtime"
       ? await withNativeRuntimeFixture(() => mcp(payload))
       : name === "get_root_baskets" || name === "get_account_root_baskets"
         ? await withBasketRuntimeFixture(() => mcp(payload))
@@ -1330,6 +1333,22 @@ assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
 // Account tools are store-backed too; the cold env degrades each to its
 // schema-stable empty payload (validated against the declared outputSchema).
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+for (const network of ["finney", "test"]) {
+  const quote = await callOk("get_subnet_stake_quote", {
+    netuid: 7,
+    amount: 10,
+    network,
+  });
+  assert.equal(quote.direction, "stake");
+  assert.ok(quote.expected_out > 0);
+  assert.equal(quote.tao_in_pool_tao, null);
+  const preview = await callOk("get_stake_action_preview", {
+    netuid: 7,
+    amount: 10,
+    network,
+  });
+  assert.equal(preview.estimated_out.amount, quote.expected_out);
+}
 const nativeRuntime = await callOk("get_native_runtime", {
   operations: [
     { kind: "storage", pallet: "System", member: "Number" },

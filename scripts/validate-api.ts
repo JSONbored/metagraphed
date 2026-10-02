@@ -24,6 +24,8 @@ import {} from "../workers/request-params.ts";
 import { apiEnv } from "./lib/worker-env.ts";
 import { addAjvFormats } from "./lib/ajv-formats.ts";
 import { withBasketRuntimeFixture } from "../tests/fixtures/root-basket-runtime.ts";
+import { withNativeRuntimeFixture } from "../tests/fixtures/native-runtime.ts";
+import { withRuntimeStakeFixture } from "../tests/fixtures/runtime-stake-quote.ts";
 
 // OpenAPI document + Worker response bodies are dynamic JSON read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
@@ -323,6 +325,15 @@ interface CheckOptions {
 }
 
 const checks: [string, (body: Row) => void, CheckOptions?][] = [
+  [
+    "/api/v1/native-runtime",
+    (body) => {
+      assert.equal(body.data.results[0].value, "500");
+      assert.equal(body.data.source.runtime_spec_version, 470);
+      assert.equal(body.data.source.finalized_block_hash, `0x${"33".repeat(32)}`);
+    },
+    { body: { operations: [{ kind: "storage", pallet: "System", member: "Number" }] } },
+  ],
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],
   [
     "/api/v1/subnets",
@@ -3071,7 +3082,12 @@ assert.equal(
 // the real Worker router, so intercept only these checks' outgoing RPC reads
 // and restore fetch before continuing the sequential route catalogue.
 async function checkedRequest(request: Request) {
-  if (!new URL(request.url).pathname.endsWith("/root-baskets"))
+  const pathname = new URL(request.url).pathname;
+  if (pathname.endsWith("/native-runtime"))
+    return withNativeRuntimeFixture(() => handleRequest(request, apiEnv(env), {}));
+  if (pathname.endsWith("/stake-quote"))
+    return withRuntimeStakeFixture(() => handleRequest(request, apiEnv(env), {}));
+  if (!pathname.endsWith("/root-baskets"))
     return handleRequest(request, apiEnv(env), {});
   return withBasketRuntimeFixture(() =>
     handleRequest(request, apiEnv(env), {}),

@@ -65,6 +65,9 @@ describe("Raw", () => {
     );
     expect(html).toContain('href="https://api.metagraph.sh/openapi.json"');
     expect(html).toContain('aria-label="Copy Coldkey"');
+    // Raw values wrap in full. A title repeating the same identifier adds
+    // bytes without exposing anything beyond the visible/copyable value.
+    expect(html).not.toMatch(/<code title=/);
     expect(html).toContain('class="mg-raw-code"');
     expect(html).not.toContain(" open");
   });

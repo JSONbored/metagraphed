@@ -60,7 +60,7 @@ const PATH_PARAMETER =
   "the route carries this in its path; MCP has only flat arguments";
 /** A POST body field, which openapi.json models as a requestBody. */
 const REQUEST_BODY = "a POST body field on the route, not a query parameter";
-for (const argument of ["network", "as_of", "operations"])
+for (const argument of ["as_of", "operations"])
   DECLARED[`get_native_runtime.${argument}`] = REQUEST_BODY;
 /** No REST equivalent -- the tool computes or resolves something itself. */
 const MCP_NATIVE =

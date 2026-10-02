@@ -63,11 +63,15 @@ for (const generation of ["legacy", "weighted"] as const) {
     await expect(section.getByText("Not published by this runtime", { exact: true })).toHaveCount(
       generation === "legacy" ? 3 : 2,
     );
-    await expect(section.getByRole("columnheader", { name: "Exact u16 weight" })).toBeVisible();
+    // The mobile cards layout hides the header row while retaining the exact
+    // values asserted above. Check the semantic header without requiring the
+    // desktop layout at this phone viewport.
+    await expect(section.getByRole("columnheader", { name: "Exact u16 weight", includeHidden: true })).toBeAttached();
     if (generation === "legacy") {
       await expect(
         section.getByRole("columnheader", {
           name: "Display price (TAO/β, 4 d.p.)",
+          includeHidden: true,
         }),
       ).toHaveCount(0);
       await expect(

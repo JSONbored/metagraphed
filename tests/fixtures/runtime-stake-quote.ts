@@ -3,18 +3,19 @@ import { bittensorNativeFixture } from "./native-bittensor.ts";
 import { readNativeRuntime } from "../../src/native-runtime.ts";
 import { nativeHex } from "../../src/native-runtime-values.ts";
 import type { BasketRpc } from "../../src/root-basket-runtime.ts";
+import { rpcUrlForNetwork } from "../../src/chain-network.ts";
 
 // Synthetic v470 contract values encoded/decoded by the pinned independent
 // SCALE library. This fixture never opens a socket or calls global fetch.
 const { wrapped, registry } = bittensorNativeFixture(true);
 const block = `0x${"33".repeat(32)}`;
 const genesis = `0x${"44".repeat(32)}`;
-export const readRuntimeStakeFixture: typeof readNativeRuntime = (input) => {
+function stakeFixtureRpc(network: "finney" | "test" | undefined): BasketRpc {
   const rpc: BasketRpc = async (method, params) => {
     if (method === "chain_getFinalizedHead") return block;
     if (method === "chain_getHeader") return { number: "0x1f4" };
     if (method === "chain_getBlockHash")
-      return input.network === "test" ? `0x${"55".repeat(32)}` : genesis;
+      return network === "test" ? `0x${"55".repeat(32)}` : genesis;
     if (method === "state_getStorageHash") return null;
     if (method === "state_getRuntimeVersion")
       return {
@@ -80,5 +81,35 @@ export const readRuntimeStakeFixture: typeof readNativeRuntime = (input) => {
   };
   rpc.batch = (rows) =>
     Promise.all(rows.map((row) => rpc(row.method, row.params)));
-  return readNativeRuntime(input, rpc);
+  return rpc;
+}
+export const readRuntimeStakeFixture: typeof readNativeRuntime = (input) =>
+  readNativeRuntime(input, stakeFixtureRpc(input.network));
+
+/** Sequential contract-validator reads use the real transport, with every
+ * outbound request replaced by the reference codec fixture. */
+export async function withRuntimeStakeFixture<T>(action: () => Promise<T>) {
+  const previous = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    const rpc = stakeFixtureRpc(
+      url === rpcUrlForNetwork("testnet") ? "test" : "finney",
+    );
+    const requests = JSON.parse(String(init?.body));
+    const answer = async (row: {
+      id: unknown;
+      method: string;
+      params: unknown[];
+    }) => ({ jsonrpc: "2.0", id: row.id, result: await rpc(row.method, row.params) });
+    return Response.json(
+      Array.isArray(requests)
+        ? await Promise.all(requests.map(answer))
+        : await answer(requests),
+    );
+  };
+  try {
+    return await action();
+  } finally {
+    globalThis.fetch = previous;
+  }
 };
