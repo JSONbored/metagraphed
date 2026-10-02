@@ -1219,7 +1219,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Read native basket positions and dust-aware claim previews for at most 16 staking relationships at one finalized block. Reuse source.finalized_block_hash as as_of with next_offset to resume. Confirmed non-basket relationships retain null position/claim; a small returned portfolio is never treated as proof of completeness. Audited official releases v441–v470; account entitlements, beta positions and claim previews follow their actual API generation. Read-only. */
+        /** @description Read native basket positions and dust-aware claim previews for at most 16 staking relationships at one finalized block. Reuse source.finalized_block_hash as as_of with next_offset to resume. Confirmed non-basket relationships retain null position/claim; a small returned portfolio is never treated as proof of completeness. Audited official releases v441–v471; account entitlements, beta positions and claim previews follow their actual API generation. Read-only. */
         get: operations["accountRootBaskets"];
         put?: never;
         post?: never;
@@ -3813,7 +3813,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex. Exact atomic values remain strings. Reuse source.finalized_block_hash as as_of when following next_after; an empty page with a cursor is nonterminal. Audited official releases v441–v470; API-1 directories contain exact summaries and weights. Unsupported and unavailable states contain no data. Read-only, no trade or claim submission. */
+        /** @description Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex. Exact atomic values remain strings. Reuse source.finalized_block_hash as as_of when following next_after; an empty page with a cursor is nonterminal. Audited official releases v441–v471; API-1 directories contain exact summaries and weights. Unsupported and unavailable states contain no data. Read-only, no trade or claim submission. */
         get: operations["rootBaskets"];
         put?: never;
         post?: never;
@@ -10839,7 +10839,7 @@ export interface components {
         };
         RootBasketReadData: components["schemas"]["RootBasketDirectory"] | components["schemas"]["RootBasketLegacyDirectory"] | components["schemas"]["RootBasketDetail"] | components["schemas"]["RootBasketAccountPage"];
         /**
-         * @description Finalized native Root basket state across explicitly audited official releases v441–v470. source.capabilities identifies published operations: API 1 exposes holdings, stored target weights and owed-share entitlements; API 3 adds display beta and pricing; API 4 removes target weights and adds trading status; API 5 adds dust-aware claim previews. Absent methods are never called or replaced with invented prices or zero claims. Unknown layouts and failed reads return no data. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. Historical block reads require an archive source and do not establish retained snapshot coverage.
+         * @description Finalized native Root basket state across explicitly audited official releases v441–v471. source.capabilities identifies published operations: API 1 exposes holdings, stored target weights and owed-share entitlements; API 3 adds display beta and pricing; API 4 removes target weights and adds trading status; API 5 adds dust-aware claim previews. Absent methods are never called or replaced with invented prices or zero claims. Unknown layouts and failed reads return no data. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. Historical block reads require an archive source and do not establish retained snapshot coverage.
          * @example {
          *       "data": {
          *         "kind": "directory",
@@ -10903,7 +10903,7 @@ export interface components {
                 trading_status: boolean;
             };
             /** @enum {string} */
-            decoder_version: "subtensor-v441-8b9d55c7-v1" | "subtensor-v442-ec112cb0-v1" | "subtensor-v443-c02a376e-v1" | "subtensor-v445-d3f40e44-v1" | "subtensor-v446-52d7e7cf-v1" | "subtensor-v447-1f090af8-v1" | "subtensor-v448-e18ca67f-v1" | "subtensor-v450-9540b3af-v1" | "subtensor-v452-da06f033-v1" | "subtensor-v453-823bdcbc-v1" | "subtensor-v454-14cde641-v1" | "subtensor-v459-70378404-v1" | "subtensor-v464-5cd66b85-v1" | "subtensor-v466-cdffbe2f-v1" | "subtensor-v467-c6bcb4a7-v1" | "subtensor-v468-30c70d90-v1" | "subtensor-v469-370bac46-v1" | "subtensor-v470-923fd1fa-v1";
+            decoder_version: "subtensor-v441-8b9d55c7-v1" | "subtensor-v442-ec112cb0-v1" | "subtensor-v443-c02a376e-v1" | "subtensor-v445-d3f40e44-v1" | "subtensor-v446-52d7e7cf-v1" | "subtensor-v447-1f090af8-v1" | "subtensor-v448-e18ca67f-v1" | "subtensor-v450-9540b3af-v1" | "subtensor-v452-da06f033-v1" | "subtensor-v453-823bdcbc-v1" | "subtensor-v454-14cde641-v1" | "subtensor-v459-70378404-v1" | "subtensor-v464-5cd66b85-v1" | "subtensor-v466-cdffbe2f-v1" | "subtensor-v467-c6bcb4a7-v1" | "subtensor-v468-30c70d90-v1" | "subtensor-v469-370bac46-v1" | "subtensor-v470-923fd1fa-v1" | "subtensor-v471-c004cebf-v1";
             /** @example 9007199254740993 */
             finalized_block: string;
             finalized_block_hash: string;
@@ -10913,7 +10913,7 @@ export interface components {
             /** @enum {number} */
             runtime_api_version: 1 | 3 | 4 | 5;
             /** @enum {number} */
-            runtime_spec_version: 441 | 442 | 443 | 445 | 446 | 447 | 448 | 450 | 452 | 453 | 454 | 459 | 464 | 466 | 467 | 468 | 469 | 470;
+            runtime_spec_version: 441 | 442 | 443 | 445 | 446 | 447 | 448 | 450 | 452 | 453 | 454 | 459 | 464 | 466 | 467 | 468 | 469 | 470 | 471;
         } & (({
             /** @constant */
             decoder_version?: "subtensor-v441-8b9d55c7-v1";
@@ -11040,6 +11040,13 @@ export interface components {
             runtime_api_version?: 5;
             /** @constant */
             runtime_spec_version?: 470;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v471-c004cebf-v1";
+            /** @constant */
+            runtime_api_version?: 5;
+            /** @constant */
+            runtime_spec_version?: 471;
         }) & ({
             /** @constant */
             capabilities?: {

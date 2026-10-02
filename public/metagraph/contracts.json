@@ -1478,7 +1478,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Bounded finalized native Root basket pricing or one fund's detail. Audited official releases v441–v470; no static artifact or claim submission.",
+      "description": "Bounded finalized native Root basket pricing or one fund's detail. Audited official releases v441–v471; no static artifact or claim submission.",
       "id": "root-baskets",
       "path": "/metagraph/root-baskets.json",
       "retirement": null,

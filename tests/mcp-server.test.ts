@@ -6636,12 +6636,13 @@ describe("MCP run_saved_query (#6755/#6757)", () => {
 describe("MCP decode_evm_call (#6725/#6729)", () => {
   const SUBNET_ADDRESS = "0x0000000000000000000000000000000000000803";
 
-  test("explicit releases decode v470 selectors without a chain request and retain declared malformed arguments", async () => {
+  test("explicit releases decode v470/v471 selectors without a chain request and retain declared malformed arguments", async () => {
     const input = functionSelector("getTimestamp()");
     const to = "0x0000000000000000000000000000000000000811";
     for (const [runtime_spec_version, precompile] of [
       [430, null],
       [470, "Timestamp"],
+      [471, "Timestamp"],
     ] as const) {
       const res = await callTool(
         "decode_evm_call",
@@ -6654,6 +6655,11 @@ describe("MCP decode_evm_call (#6725/#6729)", () => {
         res.body.result.structuredContent.runtime_spec_version,
         runtime_spec_version,
       );
+      if (runtime_spec_version === 471)
+        assert.equal(
+          res.body.result.structuredContent.source_commit,
+          "c004cebf360f4088187ee49d851dfb1a1eaaf710",
+        );
     }
     const malformed = await callTool(
       "decode_evm_call",
@@ -6670,7 +6676,7 @@ describe("MCP decode_evm_call (#6725/#6729)", () => {
       "setRejectLockedAlpha",
     );
     assert.equal(malformed.body.result.structuredContent.args, null);
-    for (const runtime_spec_version of [436, 471]) {
+    for (const runtime_spec_version of [436, 472]) {
       const res = await callTool(
         "decode_evm_call",
         { to, input, runtime_spec_version },

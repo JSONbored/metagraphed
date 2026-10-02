@@ -10067,7 +10067,7 @@
     {
       "artifact_path": "/metagraph/root-baskets.json",
       "cache": "short",
-      "description": "Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex. Exact atomic values remain strings. Reuse source.finalized_block_hash as as_of when following next_after; an empty page with a cursor is nonterminal. Audited official releases v441–v470; API-1 directories contain exact summaries and weights. Unsupported and unavailable states contain no data. Read-only, no trade or claim submission.",
+      "description": "Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex. Exact atomic values remain strings. Reuse source.finalized_block_hash as as_of when following next_after; an empty page with a cursor is nonterminal. Audited official releases v441–v471; API-1 directories contain exact summaries and weights. Unsupported and unavailable states contain no data. Read-only, no trade or claim submission.",
       "id": "root-baskets",
       "mainnet_only": false,
       "method": "GET",
@@ -10121,7 +10121,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/root-baskets.json",
       "cache": "short",
-      "description": "Read native basket positions and dust-aware claim previews for at most 16 staking relationships at one finalized block. Reuse source.finalized_block_hash as as_of with next_offset to resume. Confirmed non-basket relationships retain null position/claim; a small returned portfolio is never treated as proof of completeness. Audited official releases v441–v470; account entitlements, beta positions and claim previews follow their actual API generation. Read-only.",
+      "description": "Read native basket positions and dust-aware claim previews for at most 16 staking relationships at one finalized block. Reuse source.finalized_block_hash as as_of with next_offset to resume. Confirmed non-basket relationships retain null position/claim; a small returned portfolio is never treated as proof of completeness. Audited official releases v441–v471; account entitlements, beta positions and claim previews follow their actual API generation. Read-only.",
       "id": "account-root-baskets",
       "mainnet_only": false,
       "method": "GET",
