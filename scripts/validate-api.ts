@@ -3142,8 +3142,8 @@ for (const [route, assertion, options = {}] of checks) {
     // ETag and the contract-version header are deliberately NOT asserted
     // here: measured across the existing catalogue, no error response carries
     // either -- a 404 on /api/v1/subnets/999999 and a 400 on a malformed
-    // ?limit both omit them. They are properties of a cacheable success body,
-    // not of every response.
+    // ?limit both omit them. Successful dynamic responses carry the contract
+    // header but deliberately omit the cacheable body's ETag.
     assert.equal(body.ok, false, `${route}: expected an error envelope`);
     assert.equal(body.schema_version, 1, `${route}: expected schema_version 1`);
     assert.ok(body.error, `${route}: error envelope must carry an error`);
