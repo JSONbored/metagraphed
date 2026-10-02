@@ -106,48 +106,17 @@ const READ_APIS = new Set([
 // Runner with is_transactional=false, at one finalized state, with an aggregate
 // gas budget. They simulate execution and never submit a transaction.
 const READ_API_METHODS: Readonly<Record<string, readonly string[]>> = {
-  Core: ["version"],
-  Metadata: ["metadata", "metadata_at_version", "metadata_versions"],
-  AuraApi: ["slot_duration", "authorities"],
-  BabeApi: [
-    "configuration",
-    "current_epoch_start",
-    "current_epoch",
-    "next_epoch",
-    "generate_key_ownership_proof",
-  ],
-  GrandpaApi: [
-    "grandpa_authorities",
-    "current_set_id",
-    "generate_key_ownership_proof",
-  ],
-  SessionKeys: ["decode_session_keys"],
-  GenesisBuilder: ["get_preset", "preset_names"],
+  ...SCALE_READ_API_METHODS,
   EthereumRuntimeRPCApi: [
-    "chain_id",
-    "account_basic",
-    "gas_price",
-    "account_code_at",
-    "author",
-    "storage_at",
+    ...SCALE_READ_API_METHODS.EthereumRuntimeRPCApi!,
     "call",
     "create",
-    "current_transaction_statuses",
-    "current_block",
-    "current_receipts",
-    "current_all",
-    "extrinsic_filter",
-    "elasticity",
-    "gas_limit_multiplier_support",
   ],
-  ConvertTransactionRuntimeApi: ["convert_transaction"],
-  ContractsApi: ["call", "instantiate", "upload_code", "get_storage"],
-  // try_unshield_tx only decrypts caller-supplied data and decodes an
-  // extrinsic; pallets/shield/src/lib.rs neither submits nor writes state.
-  ShieldApi: [
-    "try_decode_shielded_tx",
-    "is_shielded_using_current_key",
-    "try_unshield_tx",
+  ContractsApi: [
+    ...SCALE_READ_API_METHODS.ContractsApi!,
+    "call",
+    "instantiate",
+    "upload_code",
   ],
 };
 export const NATIVE_EVM_SIMULATION_GAS_BUDGET = 1_000_000n;

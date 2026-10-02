@@ -103,9 +103,6 @@ export class NativeScaleReader {
 export type NativeField = import("zod").infer<
   typeof import("../schemas-src/routes/native-runtime.ts").NativeFieldSchema
 >;
-export type NativeVariant = import("zod").infer<
-  typeof import("../schemas-src/routes/native-runtime.ts").NativeVariantSchema
->;
 export type NativeDefinition = import("zod").infer<
   typeof import("../schemas-src/routes/native-runtime.ts").NativeDefinitionSchema
 >;
