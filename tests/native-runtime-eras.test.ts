@@ -23,10 +23,13 @@ import type { BasketRpc } from "../src/root-basket-runtime.ts";
 
 const hash = `0x${"33".repeat(32)}`;
 const specs = [
-  430, 431, 432, 437, 438, 439, 440, 441, 442, 443, 445, 446, 447,
-  448, 450, 452, 453, 454, 459, 464, 466, 467, 468, 469, 470,
+  430, 431, 432, 437, 438, 439, 440, 441, 442, 443, 445, 446, 447, 448, 450,
+  452, 453, 454, 459, 464, 466, 467, 468, 469, 470,
 ];
-assert.deepEqual(eras.map((era) => era.spec), specs);
+assert.deepEqual(
+  eras.map((era) => era.spec),
+  specs,
+);
 
 for (const era of eras) {
   const bare15 = unwrapNativeMetadata(era.v15)!;
@@ -42,13 +45,11 @@ for (const era of eras) {
     const rpc: BasketRpc = async (method, params) => {
       if (method === "chain_getFinalizedHead") return hash;
       if (method === "chain_getHeader") return { number: "0x1f4" };
-      if (method === "chain_getBlockHash")
-        return `0x${"44".repeat(32)}`;
+      if (method === "chain_getBlockHash") return `0x${"44".repeat(32)}`;
       if (method === "state_getRuntimeVersion") return era.runtimeVersion;
       if (method === "state_getStorageHash")
         return `0x${(era.spec * 100 + metadataVersion).toString(16).padStart(64, "0")}`;
-      if (method === "state_getMetadata")
-        return unwrapNativeMetadata(era.v14);
+      if (method === "state_getMetadata") return unwrapNativeMetadata(era.v14);
       assert.equal(method, "state_call");
       if (params[0] === "Metadata_metadata_at_version")
         return metadataVersion === 15 ? era.v15 : "0x00";
@@ -144,7 +145,12 @@ for (const era of eras) {
             {
               as_of: hash,
               operations: [
-                { kind: "prepare", pallet: pallet.name, member: call.name, args },
+                {
+                  kind: "prepare",
+                  pallet: pallet.name,
+                  member: call.name,
+                  args,
+                },
               ],
             },
             f.rpc,
@@ -172,7 +178,15 @@ for (const era of eras) {
     assert.ok(constants > 0);
     console.log(
       "NATIVE_COMPILED_ERA_CALLS",
-      JSON.stringify({ spec: era.spec, prepared, constants, voidCalls, execution_rpcs: 0, fixture: true, production: false }),
+      JSON.stringify({
+        spec: era.spec,
+        prepared,
+        constants,
+        voidCalls,
+        execution_rpcs: 0,
+        fixture: true,
+        production: false,
+      }),
     );
   }, 60000);
 
@@ -190,39 +204,94 @@ for (const era of eras) {
       const args = member.inputs.map((field) => sample(field.type));
       member.inputs.forEach((field, index) => {
         if (field.name === "gas_limit")
-          args[index] = apiName === "ContractsApi"
-            ? { variant: "Some", fields: { ref_time: "100000000000", proof_size: "32768" } }
-            : ["500000", "0", "0", "0"];
+          args[index] =
+            apiName === "ContractsApi"
+              ? {
+                  variant: "Some",
+                  fields: { ref_time: "100000000000", proof_size: "32768" },
+                }
+              : ["500000", "0", "0", "0"];
       });
       const f = fixture(15);
       const response = await queryNativeRuntime(
-        { operations: [{ kind: "runtime", api: apiName, member: memberName, args }] },
+        {
+          operations: [
+            { kind: "runtime", api: apiName, member: memberName, args },
+          ],
+        },
         f.rpc,
       );
       const pieces = member.inputs.map((field, index) => {
         const bytes = encodeNativeValue(model15, field.type, args[index]!);
-        const independent = registry15.createTypeUnsafe(`Lookup${field.type}`, [bytes]);
+        const independent = registry15.createTypeUnsafe(`Lookup${field.type}`, [
+          bytes,
+        ]);
         assert.equal(independent.encodedLength, bytes.length);
         assert.equal(nativeHex(independent.toU8a()), nativeHex(bytes));
         return bytes;
       });
-      assert.deepEqual(f.calls, [{ method: "state_call", params: [`${apiName}_${memberName}`, nativeHex(Buffer.concat(pieces)), hash] }]);
-      const output = encodeNativeValue(model15, member.output, response.results[0]!.value!);
-      const independent = registry15.createTypeUnsafe(`Lookup${member.output}`, [output]);
+      assert.deepEqual(f.calls, [
+        {
+          method: "state_call",
+          params: [
+            `${apiName}_${memberName}`,
+            nativeHex(Buffer.concat(pieces)),
+            hash,
+          ],
+        },
+      ]);
+      const output = encodeNativeValue(
+        model15,
+        member.output,
+        response.results[0]!.value!,
+      );
+      const independent = registry15.createTypeUnsafe(
+        `Lookup${member.output}`,
+        [output],
+      );
       assert.equal(independent.encodedLength, output.length);
       assert.equal(nativeHex(independent.toU8a()), nativeHex(output));
       simulations++;
     }
-    const nonce = model15.apis.find((row) => row.name === "AccountNonceApi")!.methods.find((row) => row.name === "account_nonce")!;
-    const input = nativeHex(encodeNativeValue(model15, nonce.inputs[0]!.type, sample(nonce.inputs[0]!.type)));
+    const nonce = model15.apis
+      .find((row) => row.name === "AccountNonceApi")!
+      .methods.find((row) => row.name === "account_nonce")!;
+    const input = nativeHex(
+      encodeNativeValue(
+        model15,
+        nonce.inputs[0]!.type,
+        sample(nonce.inputs[0]!.type),
+      ),
+    );
     const f = fixture(14);
     const response = await queryNativeRuntime(
-      { operations: [{ kind: "runtime_scale", api: "AccountNonceApi", member: "account_nonce", input }] },
+      {
+        operations: [
+          {
+            kind: "runtime_scale",
+            api: "AccountNonceApi",
+            member: "account_nonce",
+            input,
+          },
+        ],
+      },
       f.rpc,
     );
     assert.equal(response.source.metadata_version, 14);
-    assert.equal(response.results[0]!.value, nativeHex(encodeNativeValue(model15, nonce.output, sample(nonce.output))));
+    assert.equal(
+      response.results[0]!.value,
+      nativeHex(encodeNativeValue(model15, nonce.output, sample(nonce.output))),
+    );
     assert.equal(f.calls.length, 1);
-    console.log("NATIVE_COMPILED_ERA_APIS", JSON.stringify({ spec: era.spec, simulations, v14_reads: 1, fixture: true, production: false }));
+    console.log(
+      "NATIVE_COMPILED_ERA_APIS",
+      JSON.stringify({
+        spec: era.spec,
+        simulations,
+        v14_reads: 1,
+        fixture: true,
+        production: false,
+      }),
+    );
   });
 }
