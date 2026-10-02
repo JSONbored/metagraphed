@@ -163,7 +163,8 @@ export function decodeNativeValue(
         const limit = raw
           ? NATIVE_RUNTIME_LIMITS.valueBytes
           : NATIVE_RUNTIME_LIMITS.items;
-        const length = type.kind === "array" ? type.length : reader.count(limit);
+        const length =
+          type.kind === "array" ? type.length : reader.count(limit);
         if (length > limit) throw new Error("Native value exceeds work budget");
         // Raw bytes use one bulk slice; only recursively decoded items use
         // the collection work budget. The reader still enforces valueBytes.

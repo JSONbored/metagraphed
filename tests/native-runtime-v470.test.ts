@@ -344,7 +344,6 @@ test("all compiled ShieldApi decode methods are usable reads with exact referenc
   );
 });
 
-
 test("compiled v470 API and storage reads preserve full EVM and Wasm code within existing response bounds", async () => {
   const api = model.apis.find((row) => row.name === "EthereumRuntimeRPCApi")!;
   const method = api.methods.find((row) => row.name === "account_code_at")!;
@@ -358,8 +357,12 @@ test("compiled v470 API and storage reads preserve full EVM and Wasm code within
   const keyArgs = [sample(storage.key!)];
   const storageKey = nativeStorageKey(model, pallet.prefix, storage, keyArgs);
   // These bytes qualify the compiled ABI and public reader, not code execution.
-  const evmResult = nativeHex(registry.createTypeUnsafe(`Lookup${method.output}`, [evmCode]).toU8a());
-  const wasmResult = nativeHex(registry.createTypeUnsafe(`Lookup${storage.value}`, [wasmCode]).toU8a());
+  const evmResult = nativeHex(
+    registry.createTypeUnsafe(`Lookup${method.output}`, [evmCode]).toU8a(),
+  );
+  const wasmResult = nativeHex(
+    registry.createTypeUnsafe(`Lookup${storage.value}`, [wasmCode]).toU8a(),
+  );
   const f = fixture();
   const reads: { method: string; params: unknown[] }[] = [];
   const rpc: BasketRpc = async (name, params) => {
@@ -374,11 +377,17 @@ test("compiled v470 API and storage reads preserve full EVM and Wasm code within
     }
     return f.rpc(name, params);
   };
-  rpc.batch = async (rows) => Promise.all(rows.map((row) => rpc(row.method, row.params)));
+  rpc.batch = async (rows) =>
+    Promise.all(rows.map((row) => rpc(row.method, row.params)));
   const input = {
     operations: [
       { kind: "runtime", api: api.name, member: method.name, args },
-      { kind: "storage", pallet: pallet.name, member: storage.name, args: keyArgs },
+      {
+        kind: "storage",
+        pallet: pallet.name,
+        member: storage.name,
+        args: keyArgs,
+      },
     ],
   };
   const result = await queryNativeRuntime(input, rpc);
@@ -390,16 +399,26 @@ test("compiled v470 API and storage reads preserve full EVM and Wasm code within
   assert.equal(reads.filter((row) => row.method === "state_call").length, 1);
   assert.ok(Buffer.byteLength(JSON.stringify(result)) < 524_288);
   // Overall response budgeting is unchanged even when each value fits its cap.
-  await assert.rejects(() => queryNativeRuntime({ operations: [input.operations[1], input.operations[1]] }, rpc), /response exceeds byte budget/);
-  console.log("NATIVE_V470_CODE_READ_FIXTURE", JSON.stringify({
-    evm_code_bytes: 24_576,
-    wasm_code_bytes: 131_072,
-    previous_bulk_byte_limit: 16_384,
-    value_byte_budget: 262_144,
-    response_byte_budget: 524_288,
-    response_bytes: Buffer.byteLength(JSON.stringify(result)),
-    exact_code_bytes: true,
-    fixture: true,
-    production: false,
-  }));
+  await assert.rejects(
+    () =>
+      queryNativeRuntime(
+        { operations: [input.operations[1], input.operations[1]] },
+        rpc,
+      ),
+    /response exceeds byte budget/,
+  );
+  console.log(
+    "NATIVE_V470_CODE_READ_FIXTURE",
+    JSON.stringify({
+      evm_code_bytes: 24_576,
+      wasm_code_bytes: 131_072,
+      previous_bulk_byte_limit: 16_384,
+      value_byte_budget: 262_144,
+      response_byte_budget: 524_288,
+      response_bytes: Buffer.byteLength(JSON.stringify(result)),
+      exact_code_bytes: true,
+      fixture: true,
+      production: false,
+    }),
+  );
 });

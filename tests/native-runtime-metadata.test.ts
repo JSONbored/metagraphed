@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { TypeRegistry } from "@polkadot/types/create";
+import { U8aFixed } from "@polkadot/types-codec";
 import { Metadata } from "@polkadot/types/metadata";
 import metadata14 from "./fixtures/native-metadata-v14.ts";
 import metadata15 from "./fixtures/native-metadata-v15.ts";
@@ -208,14 +209,29 @@ test("bulk byte vectors retain full bounded code and SCALE bytes without recursi
   for (const length of [0, 1, 16_384, 16_385, 24_576, 131_072, 262_140]) {
     const value = `0x${"a5".repeat(length)}`;
     const reference = registry.createType("Bytes", value).toU8a();
-    assert.equal(nativeHex(encodeNativeValue(meta, 19, value)), nativeHex(reference));
+    assert.equal(
+      nativeHex(encodeNativeValue(meta, 19, value)),
+      nativeHex(reference),
+    );
     assert.equal(decodeNativeValue(meta, 19, nativeHex(reference)), value);
   }
-  for (const length of [0, 32, 16_385, 131_072, NATIVE_RUNTIME_LIMITS.valueBytes]) {
+  for (const length of [
+    0,
+    32,
+    16_385,
+    131_072,
+    NATIVE_RUNTIME_LIMITS.valueBytes,
+  ]) {
     meta.types.get(20)!.definition = { kind: "array", type: 3, length };
     const value = `0x${"5a".repeat(length)}`;
-    const reference = registry.createType(`[u8;${length}]`, value).toU8a();
-    assert.equal(nativeHex(encodeNativeValue(meta, 20, value)), nativeHex(reference));
+    // Use the fixed-byte codec directly: the shorthand type-name parser caps
+    // array declarations at 2,048, independently of the SCALE byte format.
+    const bits = (length * 8) as ConstructorParameters<typeof U8aFixed>[2];
+    const reference = new U8aFixed(registry, value, bits).toU8a();
+    assert.equal(
+      nativeHex(encodeNativeValue(meta, 20, value)),
+      nativeHex(reference),
+    );
     assert.equal(decodeNativeValue(meta, 20, nativeHex(reference)), value);
   }
 });
@@ -226,26 +242,83 @@ test("bulk byte budgets include SCALE prefixes and preserve recursive collection
   // The four-byte compact prefix leaves at most valueBytes - 4 body bytes.
   for (const length of [bytes - 3, bytes, bytes + 1]) {
     const value = `0x${"a5".repeat(length)}`;
-    assert.throws(() => encodeNativeValue(meta, 19, value), /byte budget|oversized/);
-    const encoded = nativeHex(Buffer.concat([nativeCompact(BigInt(length)), Buffer.from(value.slice(2), "hex")]));
+    assert.throws(
+      () => encodeNativeValue(meta, 19, value),
+      /byte budget|oversized/,
+    );
+    const encoded = nativeHex(
+      Buffer.concat([
+        nativeCompact(BigInt(length)),
+        Buffer.from(value.slice(2), "hex"),
+      ]),
+    );
     assert.throws(() => decodeNativeValue(meta, 19, encoded), /oversized/);
   }
-  assert.throws(() => decodeNativeValue(meta, 19, nativeHex(nativeCompact(BigInt(bytes + 1)))), /work budget/);
-  assert.throws(() => decodeNativeValue(meta, 19, nativeHex(nativeCompact(BigInt(bytes)))), /Truncated/);
-  meta.types.get(20)!.definition = { kind: "array", type: 3, length: bytes + 1 };
+  assert.throws(
+    () =>
+      decodeNativeValue(meta, 19, nativeHex(nativeCompact(BigInt(bytes + 1)))),
+    /work budget/,
+  );
+  assert.throws(
+    () => decodeNativeValue(meta, 19, nativeHex(nativeCompact(BigInt(bytes)))),
+    /Truncated/,
+  );
+  meta.types.get(20)!.definition = {
+    kind: "array",
+    type: 3,
+    length: bytes + 1,
+  };
   assert.throws(() => decodeNativeValue(meta, 20, "0x"), /work budget/);
-  assert.throws(() => encodeNativeValue(meta, 20, `0x${"00".repeat(bytes + 1)}`), /oversized/);
+  assert.throws(
+    () => encodeNativeValue(meta, 20, `0x${"00".repeat(bytes + 1)}`),
+    /oversized/,
+  );
   meta.types.get(20)!.definition = { kind: "array", type: 3, length: 16_385 };
-  assert.throws(() => encodeNativeValue(meta, 20, `0x${"00".repeat(16_384)}`), /length/);
-  assert.throws(() => decodeNativeValue(meta, 20, `0x${"00".repeat(16_384)}`), /Truncated/);
-  assert.throws(() => decodeNativeValue(meta, 20, `0x${"00".repeat(16_386)}`), /Trailing/);
+  assert.throws(
+    () => encodeNativeValue(meta, 20, `0x${"00".repeat(16_384)}`),
+    /length/,
+  );
+  assert.throws(
+    () => decodeNativeValue(meta, 20, `0x${"00".repeat(16_384)}`),
+    /Truncated/,
+  );
+  assert.throws(
+    () => decodeNativeValue(meta, 20, `0x${"00".repeat(16_386)}`),
+    /Trailing/,
+  );
   const count = NATIVE_RUNTIME_LIMITS.items;
   // Numeric arrays still require one recursive visit for each item and parent.
-  assert.equal(encodeNativeValue(meta, 19, Array(count - 1).fill(1)).length, count + 1);
-  assert.throws(() => encodeNativeValue(meta, 19, Array(count).fill(1)), /work budget/);
-  assert.throws(() => encodeNativeValue(meta, 19, Array(count + 1).fill(1)), /work budget/);
-  assert.throws(() => decodeNativeValue(meta, 21, nativeHex(nativeCompact(BigInt(count + 1)))), /work budget/);
-  assert.throws(() => decodeNativeValue(meta, 21, nativeHex(Buffer.concat([nativeCompact(BigInt(count)), Buffer.alloc(count * 8)]))), /work budget/);
+  assert.equal(
+    encodeNativeValue(meta, 19, Array(count - 1).fill(1)).length,
+    count + 1,
+  );
+  assert.throws(
+    () => encodeNativeValue(meta, 19, Array(count).fill(1)),
+    /work budget/,
+  );
+  assert.throws(
+    () => encodeNativeValue(meta, 19, Array(count + 1).fill(1)),
+    /work budget/,
+  );
+  assert.throws(
+    () =>
+      decodeNativeValue(meta, 21, nativeHex(nativeCompact(BigInt(count + 1)))),
+    /work budget/,
+  );
+  assert.throws(
+    () =>
+      decodeNativeValue(
+        meta,
+        21,
+        nativeHex(
+          Buffer.concat([
+            nativeCompact(BigInt(count)),
+            Buffer.alloc(count * 8),
+          ]),
+        ),
+      ),
+    /work budget/,
+  );
 });
 
 test("malformed, ambiguous, oversized and recursive values are rejected", () => {
