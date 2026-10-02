@@ -11,6 +11,7 @@ import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 import { format, resolveConfig } from "prettier";
 import { test } from "vitest";
 import { evmRuntimeCatalogue as catalogue } from "../src/evm-runtime-catalogue.ts";
+import inputReference from "./fixtures/evm-runtime-reference.ts";
 
 type Param = { name: string; type: string; components?: Param[] };
 type Function = { type: string; name: string; inputs: Param[]; outputs: Param[]; stateMutability: string };
@@ -47,6 +48,30 @@ function jsonValue(param: Param, value: unknown): unknown {
   return value;
 }
 
+function splitTypes(input:string) {
+  const rows:string[]=[];let depth=0,start=0;
+  for(let index=0;index<input.length;index++) {
+    const char=input[index];if(char==="<"||char==="("||char==="[")depth++;
+    if(char===">"||char===")"||char==="]")depth--;
+    if(char===","&&depth===0){rows.push(input.slice(start,index).trim());start=index+1;}
+  }
+  const last=input.slice(start).trim();if(last)rows.push(last);assert.equal(depth,0);return rows;
+}
+function rustParam(raw:string,source:string,depth=0):Param {
+  assert.ok(depth<10,raw);
+  const type=raw.trim();
+  const scalar:Record<string,string>={u8:"uint8",u16:"uint16",u32:"uint32",u64:"uint64",u128:"uint128",U256:"uint256",H256:"bytes32",Address:"address",bool:"bool",UnboundedBytes:"bytes",UnboundedString:"string",String:"string"};
+  if(scalar[type])return {name:"",type:scalar[type]};
+  if(type.startsWith("(")&&type.endsWith(")"))return {name:"",type:"tuple",components:splitTypes(type.slice(1,-1)).map(row=>rustParam(row,source,depth+1))};
+  const vector=/^Vec<([^]+)>$/.exec(type);
+  if(vector){const item=rustParam(vector[1],source,depth+1);return {...item,type:item.type+"[]"};}
+  const body=new RegExp(`(?:pub\s+)?struct\s+${type}\s*\{([^]*?)\}`).exec(source);
+  assert.ok(body,`Unknown Rust output ${type}`);
+  const fields=body[1].replace(/\/\/[^\n]*/g,"");
+  const components=splitTypes(fields).map(row=>{const match=/^(?:pub\s+)?(\w+)\s*:\s*([^]+)$/.exec(row);assert.ok(match,`${type} ${row}`);return {...rustParam(match[2],source,depth+1),name:match[1]};});
+  assert.ok(components.length,type);return {name:"",type:"tuple",components};
+}
+
 test("extract complete official output ABIs and independent ethers return vectors on remote CI", async () => {
   if (!process.env.CI) return;
   const scratch = await mkdtemp(join(tmpdir(), "evm-output-"));
@@ -62,11 +87,27 @@ test("extract complete official output ABIs and independent ethers return vector
     const outputs: Param[][]=[], bindings:[number,[number,number][]][]=[], releases:[number,string,number[]][]=[], vectors:[string,unknown[]][]=[], manifests:{spec:number;files:[string,string][];functions:number}[]=[];
     const outputIds=new Map<string,number>(), bindingIds=new Map<string,number>(), types=new Set<string>();
     for (const release of catalogue.releases) {
-      const entries:number[]=[], files:[string,string][]=[], cache=new Map<string,Function[]>();
+      const entries:number[]=[], files:[string,string][]=[], cache=new Map<string,Function[]>(),rustCache=new Map<string,string>();
+      const old=inputReference.manifests.find(row=>row.spec===release[0])!;
+      const libBytes=await download(`https://raw.githubusercontent.com/RaoFoundation/subtensor/${release[1]}/precompiles/src/lib.rs`);
+      assert.equal(digest(libBytes),old.files.find(row=>row[0]==="lib.rs")![1]);
+      files.push(["lib.rs",digest(libBytes)]);
+      const exports=new Map<string,string>();
+      for(const match of libBytes.toString().matchAll(/pub use (\w+)::([^;]+);/g))for(const name of match[2].match(/\b[A-Z]\w*/g)??[])exports.set(name,match[1]);
+      const codecBytes=await download(`https://raw.githubusercontent.com/RaoFoundation/subtensor/${release[1]}/vendor/frontier/precompiles/src/solidity/codec/mod.rs`);
+      assert.match(codecBytes.toString(),/encode_arguments as encode_return_value/);files.push(["codec/mod.rs",digest(codecBytes)]);
       let count=0;
       for (const id of release[2]) {
         const precompile=catalogue.precompiles[id];
         if (!precompile[2].length) continue;
+        const klass=[...exports.keys()].find(name=>name.replace(/Precompile(?=V\d+$|$)/,"")===precompile[0])!;
+        assert.ok(klass,`${release[0]} ${precompile[0]} class`);
+        const rustPath=exports.get(klass)!;
+        let rust=rustCache.get(rustPath);
+        if(!rust){const data=await download(`https://raw.githubusercontent.com/RaoFoundation/subtensor/${release[1]}/precompiles/src/${rustPath}.rs`);assert.equal(digest(data),old.files.find(row=>row[0]===`${rustPath}.rs`)![1]);rust=data.toString();rustCache.set(rustPath,rust);files.push([`${rustPath}.rs`,digest(data)]);}
+        const starts=[...rust.matchAll(/#\[precompile_utils::precompile\]\s*impl(?:<[^>]+>)?\s+(\w+)/g)];
+        const start=starts.find(row=>row[1]===klass)!;assert.ok(start,klass);
+        const end=starts.find(row=>row.index!>start.index!)?.index??rust.length,body=rust.slice(start.index!,end);
         const filename=precompile[0]==="PrecompileRegistry" ? "registry" : precompile[0][0].toLowerCase()+precompile[0].slice(1);
         let abi=cache.get(filename);
         if (!abi) {
@@ -79,14 +120,22 @@ test("extract complete official output ABIs and independent ethers return vector
         for (const fnId of precompile[2]) {
           const fn=catalogue.functions[fnId];
           const matches=abi.filter(row=>row.type==="function" && `${row.name}(${row.inputs.map(canonicalType).join(",")})`===fn[0]);
-          assert.equal(matches.length,1,`${release[0]} ${precompile[0]} ${fn[0]} ABI binding`);
-          const output=matches[0].outputs.map(clean);
+          const publicStart=body.indexOf(`#[precompile::public("${fn[0]}")]`);
+          assert.ok(publicStart>=0,`${release[0]} ${klass} ${fn[0]} Rust binding`);
+          const declaration=/fn \w+\s*\([^]*?\)\s*->\s*EvmResult<([^]*?)>\s*\{/.exec(body.slice(publicStart));
+          assert.ok(declaration,`${release[0]} ${klass} ${fn[0]} return`);
+          const returnType=declaration[1].trim(),param=rustParam(returnType,rust);
+          const actual=returnType==="()" ? [] : returnType.startsWith("(") ? param.components!:[param];
+          let output=actual;
+          if(matches.length===1 && JSON.stringify(matches[0].outputs.map(canonicalType))===JSON.stringify(actual.map(canonicalType)))output=matches[0].outputs.map(clean);
+          else console.log("EVM_OUTPUT_SOURCE_CORRECTION",release[0],precompile[0],fn[0],JSON.stringify(actual.map(canonicalType)));
+          console.log("EVM_OUTPUT_RUST_TYPE",returnType);
           const visit=(param:Param)=>{types.add(param.type);param.components?.forEach(visit);};output.forEach(visit);
           const key=JSON.stringify(output);
           let outputId=outputIds.get(key);
           if (outputId===undefined) {
             outputId=outputs.length;outputs.push(output);outputIds.set(key,outputId);
-            const args=output.map(sample), iface=new Interface([{...matches[0],outputs:output}]);
+            const args=output.map(sample), iface=new Interface([{type:"function",name:fn[0].split("(")[0],stateMutability:"view",inputs:fn[0].slice(fn[0].indexOf("(")+1,-1).split(",").filter(Boolean).map(type=>({name:"",type})),outputs:output}]);
             const encoded=iface.encodeFunctionResult(fn[0],args);
             const independent=iface.decodeFunctionResult(fn[0],encoded);
             assert.equal(iface.encodeFunctionResult(fn[0],independent),encoded);
