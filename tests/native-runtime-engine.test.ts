@@ -71,7 +71,6 @@ function compiledModule() {
 async function compiledRuntime() {
   const { blob, module } = await compiledModule();
   let memory = new WebAssembly.Memory({ initial: 64, maximum: 2048 });
-  let instance: WebAssembly.Instance;
   let heap = 0,
     totalHostCalls = 0;
   let state = new Map<string, Buffer>();
@@ -205,6 +204,23 @@ async function compiledRuntime() {
           state.delete(bytes(args[0]!).toString("hex"));
           return;
         }
+        if (item.name === "ext_storage_clear_prefix_version_2") {
+          const prefix = bytes(args[0]!).toString("hex");
+          const limit = bytes(args[1]!);
+          assert.ok(prefix.length > 0 && prefix.length <= 8192);
+          assert.ok(
+            (limit.length === 1 && limit[0] === 0) ||
+              (limit.length === 5 && limit[0] === 1),
+          );
+          // The fresh CREATE address has no storage slots. Reject any other
+          // case rather than approximating backend/overlay removal counts.
+          assert.ok(
+            ![...state.keys()].some((key) => key.startsWith(prefix)),
+            "fixture only qualifies empty-prefix removal",
+          );
+          // Pinned sp-io v2 returns SCALE KillStorageResult::AllRemoved(0).
+          return packed(Buffer.alloc(5));
+        }
         if (item.name === "ext_storage_exists_version_1")
           return state.has(bytes(args[0]!).toString("hex")) ? 1 : 0;
         if (item.name === "ext_storage_next_key_version_1") {
@@ -249,7 +265,7 @@ async function compiledRuntime() {
       };
     else throw new Error(`Unsupported import ${item.kind} ${item.name}`);
   }
-  instance = await WebAssembly.instantiate(module, imports);
+  const instance = await WebAssembly.instantiate(module, imports);
   if (instance.exports.memory instanceof WebAssembly.Memory)
     memory = instance.exports.memory;
   const invoke = (name: string, input: Uint8Array) => {
