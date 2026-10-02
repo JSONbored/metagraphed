@@ -305,44 +305,161 @@ for (const era of eras) {
 
   test(`compiled v${era.spec} precompile ABI binds byte-exact runtime simulations and V14/V15 wallet preparation`, async () => {
     const to = `0x${(2053).toString(16).padStart(40, "0")}`;
-    const evm_call = { signature: "getStake(bytes32,bytes32,uint256)", args: [`0x${"11".repeat(32)}`, `0x${"22".repeat(32)}`, "19"] };
-    const encoded = encodeRuntimeEvmCall(era.spec, to, evm_call.signature, evm_call.args);
+    const evm_call = {
+      signature: "getStake(bytes32,bytes32,uint256)",
+      args: [`0x${"11".repeat(32)}`, `0x${"22".repeat(32)}`, "19"],
+    };
+    const encoded = encodeRuntimeEvmCall(
+      era.spec,
+      to,
+      evm_call.signature,
+      evm_call.args,
+    );
     for (const format of [14, 15] as const) {
-      const model = decodeNativeMetadata(unwrapNativeMetadata(era[`v${format}`])!);
+      const model = decodeNativeMetadata(
+        unwrapNativeMetadata(era[`v${format}`])!,
+      );
       const registry = new TypeRegistry();
-      registry.setMetadata(new Metadata(registry, Buffer.from(unwrapNativeMetadata(era[`v${format}`])!.slice(2), "hex")));
+      registry.setMetadata(
+        new Metadata(
+          registry,
+          Buffer.from(unwrapNativeMetadata(era[`v${format}`])!.slice(2), "hex"),
+        ),
+      );
       const pallet = model.pallets.find((row) => row.name === "EVM")!;
       const calls = model.types.get(pallet.calls!)!.definition;
       assert.equal(calls.kind, "variant");
       if (calls.kind !== "variant") return;
-      const call: {name: string; index: number; fields: NativeField[]} = calls.variants.find((row) => row.name === "call")!;
-      const args = call.fields.map((field) => field.name === "target" ? to : field.name === "input" ? "0x" : sampleNativeValue(model, field.type));
-      const inputIndex = call.fields.findIndex((field) => field.name === "input");
-      const expected = Buffer.concat([Buffer.from([pallet.index, call.index]), ...call.fields.map((field, index) => registry.createTypeUnsafe(`Lookup${field.type}`, [encodeNativeValue(model,field.type,index === inputIndex ? encoded.input : args[index]!)]).toU8a())]);
+      const call: { name: string; index: number; fields: NativeField[] } =
+        calls.variants.find((row) => row.name === "call")!;
+      const args = call.fields.map((field) =>
+        field.name === "target"
+          ? to
+          : field.name === "input"
+            ? "0x"
+            : sampleNativeValue(model, field.type),
+      );
+      const inputIndex = call.fields.findIndex(
+        (field) => field.name === "input",
+      );
+      const expected = Buffer.concat([
+        Buffer.from([pallet.index, call.index]),
+        ...call.fields.map((field, index) =>
+          registry
+            .createTypeUnsafe(`Lookup${field.type}`, [
+              encodeNativeValue(
+                model,
+                field.type,
+                index === inputIndex ? encoded.input : args[index]!,
+              ),
+            ])
+            .toU8a(),
+        ),
+      ]);
       const f = fixture(format);
-      const response = await queryNativeRuntime({operations:[{kind:"prepare",pallet:"EVM",member:"call",args,evm_call}]},f.rpc);
-      assert.equal(response.results[0]!.call_data,nativeHex(expected));
-      assert.equal(f.calls.length,0);
-      assert.equal((response.results[0]!.contract as {evm_call:{source_commit:string}}).evm_call.source_commit,era.commit);
-      const discovery = await queryNativeRuntime({operations:[{kind:"describe",evm:to,offset:0,limit:64}]},f.rpc);
-      assert.equal(discovery.types.length,0);
-      assert.equal((discovery.results[0]!.contract as {source_commit:string}).source_commit,era.commit);
-      assert.equal(f.calls.length,0);
+      const response = await queryNativeRuntime(
+        {
+          operations: [
+            { kind: "prepare", pallet: "EVM", member: "call", args, evm_call },
+          ],
+        },
+        f.rpc,
+      );
+      assert.equal(response.results[0]!.call_data, nativeHex(expected));
+      assert.equal(f.calls.length, 0);
+      assert.equal(
+        (
+          response.results[0]!.contract as {
+            evm_call: { source_commit: string };
+          }
+        ).evm_call.source_commit,
+        era.commit,
+      );
+      const discovery = await queryNativeRuntime(
+        { operations: [{ kind: "describe", evm: to, offset: 0, limit: 64 }] },
+        f.rpc,
+      );
+      assert.equal(discovery.types.length, 0);
+      assert.equal(
+        (discovery.results[0]!.contract as { source_commit: string })
+          .source_commit,
+        era.commit,
+      );
+      assert.equal(f.calls.length, 0);
     }
-    const api = model15.apis.find((row) => row.name === "EthereumRuntimeRPCApi")!;
+    const api = model15.apis.find(
+      (row) => row.name === "EthereumRuntimeRPCApi",
+    )!;
     const method = api.methods.find((row) => row.name === "call")!;
-    const args = method.inputs.map((field) => field.name === "to" ? to : field.name === "data" ? "0x" : field.name === "gas_limit" ? ["500000","0","0","0"] : sample(field.type));
-    const operation={kind:"runtime",api:api.name,member:method.name,args,evm_call};
-    const f=fixture(15);
-    const response=await queryNativeRuntime({operations:[operation,operation]},f.rpc);
-    assert.equal(f.calls.length,1);
-    const expected=Buffer.concat(method.inputs.map((field,index)=>registry15.createTypeUnsafe(`Lookup${field.type}`,[encodeNativeValue(model15,field.type,field.name === "data" ? encoded.input : args[index]!)]).toU8a()));
-    assert.equal(f.calls[0]!.params[1],nativeHex(expected));
-    assert.deepEqual(response.results[0],response.results[1]);
-    const before=f.calls.length;
-    await assert.rejects(()=>queryNativeRuntime({operations:[{...operation,args:args.map((value,index)=>method.inputs[index]!.name === "gas_limit" ? ["1000001","0","0","0"] : value)}]},f.rpc),/gas budget/);
-    await assert.rejects(()=>queryNativeRuntime({operations:[{kind:"describe",evm:true,pallet:"EVM"}]},f.rpc),/Describe one/);
-    assert.equal(f.calls.length,before);
-    assert.equal(encoded.source_commit,evmRuntimeCatalogue.releases.find((row)=>row[0] === era.spec)![1]);
+    const args = method.inputs.map((field) =>
+      field.name === "to"
+        ? to
+        : field.name === "data"
+          ? "0x"
+          : field.name === "gas_limit"
+            ? ["500000", "0", "0", "0"]
+            : sample(field.type),
+    );
+    const operation = {
+      kind: "runtime",
+      api: api.name,
+      member: method.name,
+      args,
+      evm_call,
+    };
+    const f = fixture(15);
+    const response = await queryNativeRuntime(
+      { operations: [operation, operation] },
+      f.rpc,
+    );
+    assert.equal(f.calls.length, 1);
+    const expected = Buffer.concat(
+      method.inputs.map((field, index) =>
+        registry15
+          .createTypeUnsafe(`Lookup${field.type}`, [
+            encodeNativeValue(
+              model15,
+              field.type,
+              field.name === "data" ? encoded.input : args[index]!,
+            ),
+          ])
+          .toU8a(),
+      ),
+    );
+    assert.equal(f.calls[0]!.params[1], nativeHex(expected));
+    assert.deepEqual(response.results[0], response.results[1]);
+    const before = f.calls.length;
+    await assert.rejects(
+      () =>
+        queryNativeRuntime(
+          {
+            operations: [
+              {
+                ...operation,
+                args: args.map((value, index) =>
+                  method.inputs[index]!.name === "gas_limit"
+                    ? ["1000001", "0", "0", "0"]
+                    : value,
+                ),
+              },
+            ],
+          },
+          f.rpc,
+        ),
+      /gas budget/,
+    );
+    await assert.rejects(
+      () =>
+        queryNativeRuntime(
+          { operations: [{ kind: "describe", evm: true, pallet: "EVM" }] },
+          f.rpc,
+        ),
+      /Describe one/,
+    );
+    assert.equal(f.calls.length, before);
+    assert.equal(
+      encoded.source_commit,
+      evmRuntimeCatalogue.releases.find((row) => row[0] === era.spec)![1],
+    );
   });
 }

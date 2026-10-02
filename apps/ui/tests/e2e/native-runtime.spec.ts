@@ -587,38 +587,95 @@ test("native code form sends a compact checksum-bound artifact at the inspected 
   expect(overflow).toBe(false);
 });
 
-test("precompile ABI discovery and simulation use the inspected source and typed Solidity inputs at phone width", async ({page}) => {
-  await page.setViewportSize({width:375,height:812});
-  const to=`0x${(2053).toString(16).padStart(40,"0")}`;
-  const signature="getStake(bytes32,bytes32,uint256)";
-  const requests: unknown[]=[];
-  await page.route("**/api/v1/native-runtime",async(route)=>{
-    const body=route.request().postDataJSON(); requests.push(body);
-    const op=body.operations[0];
-    const rows=op.kind === "describe"
-      ? op.evm ? [{kind:"evm_function",signature,selector:"0xe3b598fa",args:[{name:"hotkey",type:"bytes32"},{name:"coldkey",type:"bytes32"},{name:"netuid",type:"uint256"}]}]
-        : [{kind:"runtime",api:"EthereumRuntimeRPCApi",member:"call",args:[{name:"to",type:0},{name:"data",type:1}]},{kind:"runtime",api:"EthereumRuntimeRPCApi",member:"create",args:[]}]
-      : "0xaabb";
-    await route.fulfill({json:{ok:true,data:{schema_version:1,source,types:[],results:[{kind:op.kind,value:rows,contract:{total:1,next_offset:null}}]}}});
+test("precompile ABI discovery and simulation use the inspected source and typed Solidity inputs at phone width", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const to = `0x${(2053).toString(16).padStart(40, "0")}`;
+  const signature = "getStake(bytes32,bytes32,uint256)";
+  const requests: unknown[] = [];
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body);
+    const op = body.operations[0];
+    const rows =
+      op.kind === "describe"
+        ? op.evm
+          ? [
+              {
+                kind: "evm_function",
+                signature,
+                selector: "0xe3b598fa",
+                args: [
+                  { name: "hotkey", type: "bytes32" },
+                  { name: "coldkey", type: "bytes32" },
+                  { name: "netuid", type: "uint256" },
+                ],
+              },
+            ]
+          : [
+              {
+                kind: "runtime",
+                api: "EthereumRuntimeRPCApi",
+                member: "call",
+                args: [
+                  { name: "to", type: 0 },
+                  { name: "data", type: 1 },
+                ],
+              },
+              { kind: "runtime", api: "EthereumRuntimeRPCApi", member: "create", args: [] },
+            ]
+        : "0xaabb";
+    await route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          schema_version: 1,
+          source,
+          types: [],
+          results: [{ kind: op.kind, value: rows, contract: { total: 1, next_offset: null } }],
+        },
+      },
+    });
   });
-  await gotoThroughRestart(page,"/apis/native");
-  await page.getByRole("button",{name:"Explore EVM execution",exact:true}).click();
-  await expect(page.getByRole("group",{name:"Precompile function (optional)"})).toBeVisible();
-  await page.getByLabel("Arguments (JSON array)",{exact:true}).fill(JSON.stringify([to,"0x"]));
-  await page.getByRole("button",{name:"Inspect precompile",exact:true}).click();
-  await expect(page.getByText("1 signatures at v470.", {exact:true})).toBeVisible();
-  expect(requests[1]).toEqual({operations:[{kind:"describe",evm:to,offset:0,limit:64}],as_of:hash});
-  await page.getByLabel("Solidity signature",{exact:true}).fill(signature);
-  await page.getByLabel("Solidity arguments (JSON array)",{exact:true}).fill('[9007199254740993]');
-  await page.getByRole("button",{name:"Read operation",exact:true}).click();
+  await gotoThroughRestart(page, "/apis/native");
+  await page.getByRole("button", { name: "Explore EVM execution", exact: true }).click();
+  await expect(page.getByRole("group", { name: "Precompile function (optional)" })).toBeVisible();
+  await page.getByLabel("Arguments (JSON array)", { exact: true }).fill(JSON.stringify([to, "0x"]));
+  await page.getByRole("button", { name: "Inspect precompile", exact: true }).click();
+  await expect(page.getByText("1 signatures at v470.", { exact: true })).toBeVisible();
+  expect(requests[1]).toEqual({
+    operations: [{ kind: "describe", evm: to, offset: 0, limit: 64 }],
+    as_of: hash,
+  });
+  await page.getByLabel("Solidity signature", { exact: true }).fill(signature);
+  await page
+    .getByLabel("Solidity arguments (JSON array)", { exact: true })
+    .fill("[9007199254740993]");
+  await page.getByRole("button", { name: "Read operation", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("decimal strings");
   expect(requests).toHaveLength(2);
-  const args=[`0x${"11".repeat(32)}`,`0x${"22".repeat(32)}`,"19"];
-  await page.getByLabel("Solidity arguments (JSON array)",{exact:true}).fill(JSON.stringify(args));
-  await page.getByRole("button",{name:"Read operation",exact:true}).click();
-  await expect(page.getByRole("cell",{name:"0xaabb",exact:true})).toBeVisible();
-  expect(requests[2]).toEqual({operations:[{kind:"runtime",api:"EthereumRuntimeRPCApi",member:"call",args:[to,"0x"],evm_call:{signature,args}}],as_of:hash});
-  await page.getByLabel("Operation",{exact:true}).selectOption("1");
-  await expect(page.getByRole("group",{name:"Precompile function (optional)"})).toHaveCount(0);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  const args = [`0x${"11".repeat(32)}`, `0x${"22".repeat(32)}`, "19"];
+  await page
+    .getByLabel("Solidity arguments (JSON array)", { exact: true })
+    .fill(JSON.stringify(args));
+  await page.getByRole("button", { name: "Read operation", exact: true }).click();
+  await expect(page.getByRole("cell", { name: "0xaabb", exact: true })).toBeVisible();
+  expect(requests[2]).toEqual({
+    operations: [
+      {
+        kind: "runtime",
+        api: "EthereumRuntimeRPCApi",
+        member: "call",
+        args: [to, "0x"],
+        evm_call: { signature, args },
+      },
+    ],
+    as_of: hash,
+  });
+  await page.getByLabel("Operation", { exact: true }).selectOption("1");
+  await expect(page.getByRole("group", { name: "Precompile function (optional)" })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });

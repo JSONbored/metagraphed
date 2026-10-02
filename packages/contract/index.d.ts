@@ -9620,6 +9620,12 @@ export interface components {
             order: number;
             store: number;
         };
+        /** @description Solidity signature and ordered arguments from this finalized runtime's precompile catalogue. Available on EthereumRuntimeRPCApi.call and EVM.call preparation. Keep the declared data/input argument as 0x; the existing to/target selects the precompile. Wide integers are exact decimal strings. Encoding adds no chain request and retains the ordinary gas, value and wallet-review rules. */
+        NativeEvmCall: {
+            /** @default [] */
+            args: components["schemas"]["NativeJsonValue"][];
+            signature: string;
+        };
         NativeField: {
             name: string | null;
             type: number;
@@ -9688,6 +9694,7 @@ export interface components {
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
             code_artifact?: components["schemas"]["NativeCodeArtifact"];
+            evm_call?: components["schemas"]["NativeEvmCall"];
             /** @constant */
             kind: "runtime";
             member: string;
@@ -9695,12 +9702,15 @@ export interface components {
             /** @default [] */
             args: components["schemas"]["NativeJsonValue"][];
             code_artifact?: components["schemas"]["NativeCodeArtifact"];
+            evm_call?: components["schemas"]["NativeEvmCall"];
             /** @constant */
             kind: "prepare";
             member: string;
             pallet: string;
         } | {
             api?: string;
+            /** @description true lists this source's precompile addresses; an address lists its Solidity signatures and argument names/types. Shares the normal offset/limit pagination and finalized source. */
+            evm?: true | string;
             /** @constant */
             kind: "describe";
             /** @default 32 */
@@ -9724,7 +9734,7 @@ export interface components {
              */
             network?: "finney" | "test";
             /**
-             * @description One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; runtime_scale accepts caller-encoded SCALE for audited read methods and returns exact bytes with the source API id/version, including V14 APIs without typed signatures; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.
+             * @description One to sixteen native operations sharing the same finalized context. Describe discovers runtime names, portable argument types and paged release-bound EVM precompile signatures; storage, constant and runtime read typed values; runtime_scale accepts caller-encoded SCALE for audited read methods and returns exact bytes with the source API id/version, including V14 APIs without typed signatures; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.
              * @example [
              *       {
              *         "kind": "describe",

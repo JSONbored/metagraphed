@@ -112,7 +112,11 @@ function NativeRuntimeExplorer({
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
 
-  const read = async (operations: NativeOperation[], discovery: boolean | "evm" = false, asOf?: string) => {
+  const read = async (
+    operations: NativeOperation[],
+    discovery: boolean | "evm" = false,
+    asOf?: string,
+  ) => {
     controller.current?.abort();
     const active = new AbortController();
     controller.current = active;
@@ -410,12 +414,16 @@ function NativeRuntimeExplorer({
                   event.preventDefault();
                   action(
                     () => [
-                      evmCallOperation(codeArtifactOperation(
-                        memberOperation(member, args),
-                        codeUrl,
-                        codeSha256,
-                        codeBytes,
-                      ), evmSignature, evmArgs),
+                      evmCallOperation(
+                        codeArtifactOperation(
+                          memberOperation(member, args),
+                          codeUrl,
+                          codeSha256,
+                          codeBytes,
+                        ),
+                        evmSignature,
+                        evmArgs,
+                      ),
                     ],
                     description.source.finalized_block_hash,
                   );
@@ -449,38 +457,104 @@ function NativeRuntimeExplorer({
                 </label>
                 {supportsNativeEvmCall(member) && (
                   <fieldset className="space-y-3 rounded border border-border p-3">
-                    <legend className="px-1 text-13 font-medium text-ink-strong">Precompile function (optional)</legend>
+                    <legend className="px-1 text-13 font-medium text-ink-strong">
+                      Precompile function (optional)
+                    </legend>
                     <p className="text-13 text-ink-muted">
                       Set to/target in the native arguments and leave data/input as 0x. Select a
-                      Solidity signature and supply its arguments; the server encodes calldata
-                      from the inspected runtime’s ABI. Native gas, value and wallet review still apply.
+                      Solidity signature and supply its arguments; the server encodes calldata from
+                      the inspected runtime’s ABI. Native gas, value and wallet review still apply.
                     </p>
-                    <button className={button} disabled={busy} type="button" onClick={() => {
-                      try { void read([evmPrecompileOperation(member, args)], "evm", description.source.finalized_block_hash); }
-                      catch (failure) { setError(failure instanceof Error ? failure.message : "The precompile could not be inspected."); }
-                    }}>Inspect precompile</button>
+                    <button
+                      className={button}
+                      disabled={busy}
+                      type="button"
+                      onClick={() => {
+                        try {
+                          void read(
+                            [evmPrecompileOperation(member, args)],
+                            "evm",
+                            description.source.finalized_block_hash,
+                          );
+                        } catch (failure) {
+                          setError(
+                            failure instanceof Error
+                              ? failure.message
+                              : "The precompile could not be inspected.",
+                          );
+                        }
+                      }}
+                    >
+                      Inspect precompile
+                    </button>
                     <label className="block space-y-1 text-13">
                       Solidity signature
-                      <input disabled={busy} className={control} value={evmSignature} list="native-evm-functions"
-                        onChange={(event) => { setEvmSignature(event.target.value); setResult(null); }}
-                        placeholder="getStake(bytes32,bytes32,uint256)" spellCheck={false} />
+                      <input
+                        disabled={busy}
+                        className={control}
+                        value={evmSignature}
+                        list="native-evm-functions"
+                        onChange={(event) => {
+                          setEvmSignature(event.target.value);
+                          setResult(null);
+                        }}
+                        placeholder="getStake(bytes32,bytes32,uint256)"
+                        spellCheck={false}
+                      />
                     </label>
                     <datalist id="native-evm-functions">
-                      {nativeEvmFunctions(evmDescription).map((signature) => <option key={signature} value={signature} />)}
+                      {nativeEvmFunctions(evmDescription).map((signature) => (
+                        <option key={signature} value={signature} />
+                      ))}
                     </datalist>
                     {evmDescription && nativePageOffset(evmDescription) !== null && (
-                      <button className={button} disabled={busy} type="button" onClick={() => {
-                        try { void read([{ ...evmPrecompileOperation(member, args), offset: nativePageOffset(evmDescription)! }], "evm", description.source.finalized_block_hash); }
-                        catch (failure) { setError(failure instanceof Error ? failure.message : "The precompile page could not be read."); }
-                      }}>Next signatures</button>
+                      <button
+                        className={button}
+                        disabled={busy}
+                        type="button"
+                        onClick={() => {
+                          try {
+                            void read(
+                              [
+                                {
+                                  ...evmPrecompileOperation(member, args),
+                                  offset: nativePageOffset(evmDescription)!,
+                                },
+                              ],
+                              "evm",
+                              description.source.finalized_block_hash,
+                            );
+                          } catch (failure) {
+                            setError(
+                              failure instanceof Error
+                                ? failure.message
+                                : "The precompile page could not be read.",
+                            );
+                          }
+                        }}
+                      >
+                        Next signatures
+                      </button>
                     )}
-                    {evmDescription && <p className="text-13 text-ink-muted">
-                      {nativeEvmFunctions(evmDescription).length} signatures at v{evmDescription.source.runtime_spec_version}.
-                    </p>}
+                    {evmDescription && (
+                      <p className="text-13 text-ink-muted">
+                        {nativeEvmFunctions(evmDescription).length} signatures at v
+                        {evmDescription.source.runtime_spec_version}.
+                      </p>
+                    )}
                     <label className="block space-y-1 text-13">
                       Solidity arguments (JSON array)
-                      <textarea disabled={busy} className={`${control} font-mono`} rows={3} value={evmArgs}
-                        onChange={(event) => { setEvmArgs(event.target.value); setResult(null); }} spellCheck={false} />
+                      <textarea
+                        disabled={busy}
+                        className={`${control} font-mono`}
+                        rows={3}
+                        value={evmArgs}
+                        onChange={(event) => {
+                          setEvmArgs(event.target.value);
+                          setResult(null);
+                        }}
+                        spellCheck={false}
+                      />
                     </label>
                   </fieldset>
                 )}

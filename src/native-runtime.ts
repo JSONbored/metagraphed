@@ -198,9 +198,12 @@ function plan(
   }
   if (operation.kind === "describe") {
     if (
-      [operation.pallet, operation.api, operation.type_id, operation.evm].filter(
-        (value) => value !== undefined,
-      ).length > 1
+      [
+        operation.pallet,
+        operation.api,
+        operation.type_id,
+        operation.evm,
+      ].filter((value) => value !== undefined).length > 1
     )
       throw new Error(
         "Describe one pallet, runtime API, portable type or EVM precompile at a time",
@@ -209,7 +212,12 @@ function plan(
       return {
         result: {
           kind: "describe" as const,
-          ...describeRuntimeEvm(spec, operation.evm, operation.offset, operation.limit),
+          ...describeRuntimeEvm(
+            spec,
+            operation.evm,
+            operation.offset,
+            operation.limit,
+          ),
         },
       };
     if (operation.type_id !== undefined)
@@ -615,10 +623,18 @@ export async function readNativeRuntime(
     ? await resolveNativeCodeArtifacts(metadata, input.operations, fetchImpl)
     : input.operations;
   const plans = operations.map((operation) => {
-    const evm = (operation.kind === "runtime" || operation.kind === "prepare") && operation.evm_call
-      ? resolveNativeEvmCall(metadata, runtime.specVersion, operation)
-      : null;
-    const row = plan(metadata, evm?.operation ?? operation, needed, apiVersions, runtime.specVersion);
+    const evm =
+      (operation.kind === "runtime" || operation.kind === "prepare") &&
+      operation.evm_call
+        ? resolveNativeEvmCall(metadata, runtime.specVersion, operation)
+        : null;
+    const row = plan(
+      metadata,
+      evm?.operation ?? operation,
+      needed,
+      apiVersions,
+      runtime.specVersion,
+    );
     if (
       (operation.kind === "runtime" || operation.kind === "prepare") &&
       operation.code_artifact

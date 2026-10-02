@@ -148,9 +148,12 @@ export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
       pallet: name.optional(),
       api: name.optional(),
       type_id: typeId.optional(),
-      evm: z.union([z.literal(true), evmAddress]).optional().describe(
-        "true lists this source's precompile addresses; an address lists its Solidity signatures and argument names/types. Shares the normal offset/limit pagination and finalized source.",
-      ),
+      evm: z
+        .union([z.literal(true), evmAddress])
+        .optional()
+        .describe(
+          "true lists this source's precompile addresses; an address lists its Solidity signatures and argument names/types. Shares the normal offset/limit pagination and finalized source.",
+        ),
       offset: z.int().min(0).max(16384).default(0),
       limit: z.int().min(1).max(64).default(32),
     })

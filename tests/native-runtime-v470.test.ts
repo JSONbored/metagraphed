@@ -510,7 +510,9 @@ test("compiled v470 full Wasm artifact references simulate uploads and prepare e
         hash,
       ]);
     else {
-      const callIndex: number = calls.variants.find((row) => row.name === memberName)!.index;
+      const callIndex: number = calls.variants.find(
+        (row) => row.name === memberName,
+      )!.index;
       assert.equal(
         result.results[0]!.call_data,
         nativeHex(
