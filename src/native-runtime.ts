@@ -37,16 +37,29 @@ import {
 } from "./chain-network.ts";
 
 const exactGasInteger = z.union([
-  z.string().regex(/^(0|[1-9]\d*)$/).max(79).transform((value) => BigInt(value)),
-  z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).transform((value) => BigInt(value)),
+  z
+    .string()
+    .regex(/^(0|[1-9]\d*)$/)
+    .max(79)
+    .transform((value) => BigInt(value)),
+  z
+    .number()
+    .int()
+    .nonnegative()
+    .max(Number.MAX_SAFE_INTEGER)
+    .transform((value) => BigInt(value)),
 ]);
 // primitive_types::U256 derives a transparent [u64; 4] portable layout.
 // Preserve that declared JSON representation and interpret every limb for
 // admission. Encoding below still validates it against the actual metadata.
 const evmGasInteger = z.union([
   exactGasInteger,
-  z.array(exactGasInteger.refine((value) => value < 1n << 64n)).length(4)
-    .transform((limbs) => limbs.reduceRight((value, limb) => (value << 64n) | limb, 0n)),
+  z
+    .array(exactGasInteger.refine((value) => value < 1n << 64n))
+    .length(4)
+    .transform((limbs) =>
+      limbs.reduceRight((value, limb) => (value << 64n) | limb, 0n),
+    ),
 ]);
 
 const header = z.object({

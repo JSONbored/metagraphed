@@ -6,6 +6,7 @@ import { gzipSync } from "node:zlib";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { decompress } from "fzstd";
+import { TypeRegistry } from "@polkadot/types/create";
 import { decodeNativeMetadata, unwrapNativeMetadata } from "../src/native-runtime-metadata.ts";
 import { format, resolveConfig } from "prettier";
 
@@ -89,6 +90,13 @@ test("extract the public v470 compiled metadata on remote CI only", async () => 
   console.log("V470_METADATA_MEMORY", { heap_base: Number((instance.exports.__heap_base as WebAssembly.Global).value), bytes: memory.buffer.byteLength });
   const ptr = malloc(4);
   new DataView(memory.buffer).setUint32(ptr, 15, true);
+  const versionCall = instance.exports.Core_version;
+  assert.equal(typeof versionCall, "function");
+  const versionPacked = BigInt(versionCall(ptr, 0));
+  const versionBytes = Buffer.from(memory.buffer, Number(versionPacked & 0xffffffffn), Number(versionPacked >> 32n));
+  const runtimeVersion = new TypeRegistry().createType("RuntimeVersion", versionBytes).toJSON();
+  console.log("V470_COMPILED_RUNTIME_VERSION", JSON.stringify(runtimeVersion));
+  assert.equal((runtimeVersion as { specVersion: number }).specVersion, 470);
   const call = instance.exports.Metadata_metadata_at_version;
   assert.equal(typeof call, "function");
   const packed = BigInt(call(ptr, 4));
@@ -98,6 +106,6 @@ test("extract the public v470 compiled metadata on remote CI only", async () => 
   const metadata = decodeNativeMetadata(unwrapNativeMetadata(wrapped)!);
   assert.equal(metadata.version, 15);
   console.log("V470_COMPILED_METADATA_SUMMARY", JSON.stringify({ wasm_sha256: sha, wasm_bytes: wasm.length, metadata_bytes: length, types: metadata.types.size, pallets: metadata.pallets.map((row) => row.name), apis: metadata.apis.map((row) => ({ name: row.name, methods: row.methods.map((method) => method.name) })), hostCalls, fixture: true, production: false }));
-  const encoded = gzipSync(JSON.stringify({ wrapped, sha, hostCalls })).toString("base64");
+  const encoded = gzipSync(JSON.stringify({ wrapped, sha, hostCalls, runtimeVersion, runtimeVersionHex: `0x${versionBytes.toString("hex")}` })).toString("base64");
   for (let offset = 0; offset < encoded.length; offset += 16000) console.log(`V470_METADATA_HANDOFF ${offset / 16000} ${encoded.slice(offset, offset + 16000)}`);
 }, 180000);
