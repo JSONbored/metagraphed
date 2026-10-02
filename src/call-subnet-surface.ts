@@ -392,7 +392,7 @@ export async function callSubnetSurface(
   const contentType = response.headers.get("content-type") || null;
   const kind = classifyContentType(contentType);
   if (kind === "binary" && responseMode !== "attachment") {
-    await response.body?.cancel();
+    void response.body?.cancel().catch(() => {});
     return {
       ok: false,
       // contentType is guaranteed non-empty here: classifyContentType only
@@ -571,10 +571,12 @@ async function readBodyCapped(
     // agent.
     const DEADLINE = Symbol("deadline");
     for (;;) {
-      // No separate "already past the deadline" guard: a non-positive delay
-      // makes setTimeout fire on the next tick, so the race below resolves
-      // DEADLINE immediately anyway. A guard here would be a second way to
-      // express the same rule, and an unreachable one.
+      // Continuously ready chunks can starve a timer's macrotask. Check the
+      // clock too, including zero-length chunks that never exhaust the byte cap.
+      if (Date.now() >= deadline) {
+        truncated = true;
+        break;
+      }
       let timer: ReturnType<typeof setTimeout> | undefined;
       const chunk = await Promise.race([
         reader.read(),
@@ -766,7 +768,7 @@ async function safetyCheckedFetch(
       redirectCount < MAX_REDIRECTS
     ) {
       const redirectTarget = new URL(location, url).toString();
-      await response.body?.cancel();
+      void response.body?.cancel().catch(() => {});
       if (await isUnsafeUrl(redirectTarget)) {
         return {
           ok: false,

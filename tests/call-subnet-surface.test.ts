@@ -1542,6 +1542,111 @@ describe("matchSchemaOperation", () => {
 });
 
 describe("body-read deadline (#8655)", () => {
+  test("ready empty chunks cannot starve the text response deadline", async () => {
+    vi.useFakeTimers();
+    let pulls = 0;
+    let cancelled = 0;
+    try {
+      const result = await callSubnetSurface(
+        { url: "https://example.com/stream", probe: { timeout_ms: 30 } },
+        {
+          isUnsafeUrl: SAFE,
+          fetchImpl: async () =>
+            new Response(
+              new ReadableStream<Uint8Array>({
+                start(controller) {
+                  controller.enqueue(new TextEncoder().encode("data: useful\n\n"));
+                },
+                pull(controller) {
+                  pulls++;
+                  vi.setSystemTime(Date.now() + 31);
+                  controller.enqueue(new Uint8Array(0));
+                },
+                cancel() {
+                  cancelled++;
+                },
+              }),
+              { headers: { "content-type": "text/event-stream" } },
+            ),
+        },
+      );
+      assert.equal(result.ok, true);
+      if (!result.ok) return;
+      assert.equal(result.body, "data: useful\n\n");
+      assert.equal(result.truncated, true);
+      assert.ok(pulls <= 2);
+      assert.equal(cancelled, 1);
+      assert.equal(vi.getTimerCount(), 0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  for (const kind of ["binary", "safe redirect", "private redirect"] as const)
+    for (const cancellation of ["pending", "rejected"] as const)
+      test(`${kind}: ${cancellation} cleanup preserves the gate`, async () => {
+        vi.useFakeTimers();
+        let requests = 0;
+        let cancelled = 0;
+        let result: Awaited<ReturnType<typeof callSubnetSurface>> | undefined;
+        const target =
+          kind === "private redirect"
+            ? "https://private.example/result"
+            : "https://next.example/result";
+        const response = new Response(
+          new ReadableStream<Uint8Array>({
+            cancel() {
+              cancelled++;
+              return cancellation === "pending"
+                ? new Promise<void>(() => {})
+                : Promise.reject(new Error("upstream cancellation failed"));
+            },
+          }),
+          kind === "binary"
+            ? { headers: { "content-type": "image/png" } }
+            : { status: 302, headers: { location: target } },
+        );
+        try {
+          const pending = callSubnetSurface(
+            { url: "https://example.com/result", probe: { timeout_ms: 30 } },
+            {
+              isUnsafeUrl: async (url) => url.includes("private.example"),
+              fetchImpl: async () => {
+                requests++;
+                return requests === 1
+                  ? response
+                  : jsonResponse({ exact: "9007199254740993" });
+              },
+            },
+          ).then((value) => {
+            result = value;
+          });
+          await vi.advanceTimersByTimeAsync(40);
+          assert.ok(result, "cleanup still blocks the bounded response");
+          await pending;
+          assert.equal(cancelled, 1);
+          assert.equal(requests, kind === "safe redirect" ? 2 : 1);
+          if (kind === "safe redirect") {
+            assert.equal(result.ok, true);
+            if (result.ok) {
+              assert.deepEqual(result.body, { exact: "9007199254740993" });
+              assert.equal(result.url, target);
+            }
+          } else {
+            assert.equal(result.ok, false);
+            if (!result.ok && kind === "private redirect") {
+              assert.equal(result.private_redirect_blocked, true);
+              assert.equal(result.redirect_target, target);
+            } else if (!result.ok) {
+              assert.equal(result.error, "unsupported content-type: image/png");
+            }
+          }
+          assert.equal(vi.getTimerCount(), 0);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
   for (const stop of ["deadline", "byte limit"] as const)
     for (const cancellation of ["pending", "rejected"] as const)
       test(`${stop}: ${cancellation} cancel stays bounded`, async () => {
