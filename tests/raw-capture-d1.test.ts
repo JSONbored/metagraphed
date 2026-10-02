@@ -589,7 +589,8 @@ test.each([false, true])(
 test("chain identity masks only top-level provenance and preserves arbitrary original JSON bytes", async () => {
   const f = fixture();
   const payload =
-    '{ "captured_\\u0061t" : 2e3, "block_number":10, "header":{"captured_at":7,"precise":9007199254740993,"text":"quote\\\" slash\\\\ [] {}"}, "label":"captured_at", "extrinsics":["0x00","0x01"], "events":null }\n\n';
+    String.raw`{ "captured_\u0061t" : 2e3, "block_number":10, "header":{"captured_at":7,"precise":9007199254740993,"text":"quote\" slash\\ [] {}"}, "label":"captured_at", "extrinsics":["0x00","0x01"], "events":null }` +
+    "\n\n";
   await f.store.put(key(), payload);
   const older = payload.replace("2e3", "1e3");
   await f.store.put(key(), older);

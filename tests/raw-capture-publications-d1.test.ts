@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { Miniflare } from "miniflare";
-import { afterAll, beforeAll, beforeEach, test } from "vitest";
+import { afterAll, beforeAll, beforeEach, test, vi } from "vitest";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 
 const runtime = new Miniflare({
@@ -21,6 +21,7 @@ const apply = async (name: string) => {
   for (const sql of migration(name)) await db.prepare(sql).run();
 };
 beforeAll(async () => {
+  vi.useRealTimers();
   db = await runtime.getD1Database("DB");
   await apply("0028_raw_capture_storage.sql");
   await apply("0029_raw_capture_archive.sql");
@@ -28,6 +29,7 @@ beforeAll(async () => {
 });
 afterAll(() => runtime.dispose());
 beforeEach(async () => {
+  vi.useRealTimers();
   await db.prepare("DROP TRIGGER IF EXISTS reject_publication").run();
   for (const table of [
     "raw_capture_archives",
