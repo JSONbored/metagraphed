@@ -105,8 +105,8 @@ export const AXON_DROP_RATIO = 0.7;
 export const AXON_BASELINE_FLOOR = 20;
 
 /**
- * Flags on one day at or above this count are reported as OUR capture rather
- * than as findings about subnets.
+ * Flags not explained by deregistration churn at or above this count are
+ * reported as OUR capture rather than as findings about subnets.
  *
  * Four: the window's genuine incidents flag at most three subnets on a day, and
  * they are independent events that happen to overlap. The one day where several
@@ -278,9 +278,23 @@ export function evaluateAxonAnnouncements(
   return out.sort((a, b) => a.ratio - b.ratio || a.netuid - b.netuid);
 }
 
-/** True when this many subnets flagging at once is more likely to be us. */
+/**
+ * Count capture suspects after measuring each loss mechanism. Deregistration
+ * churn is evidence of a membership change, not an independent capture fault;
+ * including it made four explained changes override their own measurements.
+ * Findings from different latest capture days are not a simultaneous cluster.
+ * Turnover and unread mechanisms still count, so a metagraph capture that
+ * empties several subnets cannot clear itself through the turnover label.
+ */
 export function isFleetWide(findings: readonly AxonFinding[]): boolean {
-  return findings.length >= AXON_FLEET_WIDE_FLAGS;
+  const countsByDay = new Map<string, number>();
+  for (const finding of findings) {
+    if (finding.kind === "churn-replaced") continue;
+    const count = (countsByDay.get(finding.date) ?? 0) + 1;
+    countsByDay.set(finding.date, count);
+    if (count >= AXON_FLEET_WIDE_FLAGS) return true;
+  }
+  return false;
 }
 
 /** Human-readable summary, bounded so a fleet event cannot produce a wall. */
@@ -579,8 +593,8 @@ export async function runAxonAnnouncementWatchdog(
     await record(env, {
       error: new Error(
         fleetWide
-          ? `${findings.length} subnets dropped below their axon baseline on the same day -- ` +
-              `that is far more than any observed independent cluster (max 3), so read this as the ` +
+          ? `At least ${AXON_FLEET_WIDE_FLAGS} subnets dropped below their axon baseline on the same day without ` +
+              `deregistration churn explaining the decline -- read this as the ` +
               `metagraph capture failing rather than as subnets going dark: ${detail}`
           : // ONLY ON A MEASURED WITHDRAWAL. This sentence names a cause and
             // sends a reader to a specific subnet's operators, so it is gated
