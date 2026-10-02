@@ -75,7 +75,7 @@ async function compiledRuntime() {
       if(item.name==="ext_storage_append_version_1") {
         const key=bytes(args[0]!).toString("hex"),value=bytes(args[1]!),previous=state.get(key);
         let count=0n,tail=Buffer.alloc(0);
-        if(previous!==undefined){const reader=new NativeScaleReader(previous,2*1024*1024);count=reader.compact();assert.ok(count<1024n);tail=previous.subarray(reader.offset);}
+        if(previous!==undefined){const reader=new NativeScaleReader(nativeHex(previous),2*1024*1024);count=reader.compact();assert.ok(count<1024n);tail=previous.subarray(reader.offset);}
         const next=Buffer.concat([nativeCompact(count+1n),tail,value]);assert.ok(next.length<=2*1024*1024);
         state.set(key,next);return;
       }
