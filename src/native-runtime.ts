@@ -69,6 +69,9 @@ const blockHash = NativeRuntimeSourceSchema.shape.finalized_block_hash;
 type Operation = z.infer<
   typeof NativeRuntimeRequestSchema
 >["operations"][number];
+type NativeResult = z.infer<
+  typeof NativeRuntimeArtifactSchema
+>["results"][number];
 // Metadata also describes node-internal APIs that can execute a block or write
 // a keystore. Only these audited read API families may reach state_call.
 const READ_APIS = new Set([
@@ -776,7 +779,7 @@ export async function readNativeRuntime(
     }
     return { inner_result: decoded };
   };
-  const results = plans.map((row, index) => {
+  const results = plans.map<NativeResult>((row, index) => {
     if ("entry" in row && row.entry) {
       const entry = row.entry,
         page = pages.get(index)!;
