@@ -136,7 +136,7 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
       assert.ok(used,`used addresses ${era.spec}`);
       const addresses=[...used[1].matchAll(/hash\(([^)]+)\)/g)].map(match=>match[1]);
       const exports=new Map<string,string>();
-      for(const match of lib.matchAll(/pub use (\w+)::([^;]+);/g))for(const name of match[2].match(/\b[A-Z]\w*/g)??[])exports.set(name,match[1]);
+      for(const match of lib.matchAll(/(?:pub\s+)?use (\w+)::([^;]+);/g))for(const name of match[2].match(/\b[A-Z]\w*/g)??[])exports.set(name,match[1]);
       const modules=[...lib.matchAll(/^use (\w+)::\*;/gm)].map(match=>match[1]);
       const sources=new Map<string,string>(),abiCache=new Map<string,Function[]>();
       async function moduleSource(path:string) {
@@ -151,8 +151,9 @@ test("extract older published EVM addresses, actual Rust signatures and returns 
       for(const address of addresses) {
         const dispatch=new RegExp(`a if a == hash\\(${escape(address)}\\) =>([^]*?)(?=a if|_ =>)`).exec(lib);
         assert.ok(dispatch,`${era.spec} dispatch ${address}`);
-        const klass=/Some\((\w+)(?:::<[^>]+>)?::execute/.exec(dispatch[1])?.[1];
+        const klass=address.includes("::") ? address.split("::")[0] : /Some\((\w+)(?:::<[^>]+>)?::execute/.exec(dispatch[1])?.[1];
         assert.ok(klass,`${era.spec} class ${address}`);
+        assert.match(dispatch[1],new RegExp(`\\b${klass}(?:::<[^>]+>)?::(?:try_)?execute(?:::<[^>]+>)?\\(`),`${era.spec} compiled dispatcher ${klass}`);
         let index:number,rust="",path="";
         if(/^\d+$/.test(address))index=Number(address);
         else {
