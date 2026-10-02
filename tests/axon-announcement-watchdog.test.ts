@@ -242,6 +242,24 @@ describe("the fleet-wide guard", () => {
       true,
     );
   });
+
+  test("drops on different capture days do not manufacture a simultaneous cluster", () => {
+    const suspects = Array.from({ length: AXON_FLEET_WIDE_FLAGS }, (_, i) => ({
+      ...finding(i + 1),
+      date: `2026-08-${15 + i}`,
+    }));
+    assert.equal(isFleetWide(suspects), false);
+    assert.equal(
+      isFleetWide([
+        ...suspects,
+        finding(101),
+        finding(102),
+        finding(103),
+      ]),
+      true,
+      "four unexplained drops on one day still meet the unchanged threshold",
+    );
+  });
 });
 
 describe("evaluateAxonAnnouncements and axonDetail", () => {
