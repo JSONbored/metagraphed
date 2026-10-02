@@ -2488,6 +2488,8 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
   get_account_children: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_account_parents: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_native_runtime: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_subnet_stake_quote: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_stake_action_preview: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_account_root_claim: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_account_snapshot: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_evm_address_mapping: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
@@ -11541,7 +11543,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_native_runtime",
     title: "Read native chain features and prepare unsigned calls",
     description:
-      "Use finalized runtime metadata to read native storage items, map records, constants and audited runtime APIs, including collateral, locks, pending delegation, mechanisms and hyperparameters. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input; return bytes, reverts and exact deposits are retained. Start with describe for a pallet/API. entries accepts leading keys and returns next_cursor; continue with the same source as_of hash. At most 16 operations share one source and type registry; identical reads are coalesced. Integers are exact decimal strings, bytes are hex, enums are {variant,fields}. prepare returns call method bytes for explicit wallet review and signature; it submits nothing. Mirrors POST /api/v1/native-runtime.",
+      "Use finalized runtime metadata to read native storage items, map records, constants and audited runtime APIs, including collateral, locks, pending delegation, mechanisms and hyperparameters. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input; return bytes, reverts and exact deposits are retained. Start with describe for a pallet/API. runtime_scale reads audited APIs with caller-encoded SCALE, including V14 sources without typed signatures; exact result bytes carry the source API id/version. entries accepts leading keys and returns next_cursor; continue with the same source as_of hash. At most 16 operations share one source and type registry; identical reads are coalesced. Integers are exact decimal strings, bytes are hex, enums are {variant,fields}. prepare returns call method bytes for explicit wallet review and signature; it submits nothing. Mirrors POST /api/v1/native-runtime.",
     inputSchema: inputJsonSchema(NativeRuntimeRequestSchema),
     async handler(args, ctx) {
       const parsed = NativeRuntimeRequestSchema.safeParse(args);

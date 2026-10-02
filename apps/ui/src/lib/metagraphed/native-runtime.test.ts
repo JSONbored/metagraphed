@@ -13,6 +13,18 @@ import {
 import { encodeSs58 } from "./ss58";
 
 const key = `0x${"12".repeat(32)}`;
+test("legacy read discovery accepts exact SCALE arguments without inventing portable types", () => {
+  const member = { kind: "runtime_scale" as const, api: "AccountNonceApi", member: "account_nonce", args: [], runtimeApiVersion: 1 };
+  const found = describedMembers({ ...artifact, results: [{ kind: "describe", value: [{ kind: "runtime_scale", api: member.api, member: member.member, runtime_api_version: 1 }], contract: {} }] });
+  expect(found).toEqual([member]);
+  expect(memberOperation(member, " 0x00ABff ")).toEqual({ kind: "runtime_scale", api: member.api, member: member.member, input: "0x00abff" });
+  expect(memberOperation(member, "0x")).toMatchObject({ input: "0x" });
+  for (const input of ["[]", "0x1", "0xgg", "0x" + "00".repeat(16384)]) expect(() => memberOperation(member, input)).toThrow(/SCALE argument bytes/);
+  expect(featureOperations("conviction", "19", "", key)).toEqual([
+    { kind: "runtime", api: "StakeInfoRuntimeApi", member: "get_hotkey_conviction", args: [key, 19] },
+    { kind: "runtime", api: "StakeInfoRuntimeApi", member: "get_most_convicted_hotkey_on_subnet", args: [19] },
+  ]);
+});
 const artifact: NativeArtifact = {
   schema_version: 1,
   source: {

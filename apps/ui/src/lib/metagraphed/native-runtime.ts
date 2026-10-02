@@ -14,6 +14,7 @@ export const NATIVE_FEATURES = [
   { id: "auto-stake", label: "Auto stake", account: true, hotkey: false },
   { id: "pending-children", label: "Pending delegation", account: false, hotkey: true },
   { id: "miner-collateral", label: "Miner collateral", account: true, hotkey: true },
+  { id: "conviction", label: "Conviction and subnet king", account: false, hotkey: true },
 ] as const;
 export type NativeFeature = (typeof NATIVE_FEATURES)[number]["id"];
 
@@ -69,14 +70,20 @@ export function featureOperations(
       return [storage("PendingChildKeys", [netuid, accountHex(hotkey)])];
     case "miner-collateral":
       return [storage("MinerCollateral", [netuid, accountHex(hotkey), accountHex(coldkey)])];
+    case "conviction":
+      return [
+        runtime("StakeInfoRuntimeApi", "get_hotkey_conviction", [accountHex(hotkey), netuid]),
+        runtime("StakeInfoRuntimeApi", "get_most_convicted_hotkey_on_subnet", [netuid]),
+      ];
   }
 }
 
 export interface NativeMember {
-  kind: "storage" | "constant" | "runtime" | "prepare";
+  kind: "storage" | "constant" | "runtime" | "runtime_scale" | "prepare";
   pallet?: string;
   api?: string;
   member: string;
+  runtimeApiVersion?: number;
   args: { name: string | null; type: number }[];
 }
 export function describedMembers(artifact: NativeArtifact): NativeMember[] {
@@ -90,7 +97,7 @@ export function describedMembers(artifact: NativeArtifact): NativeMember[] {
       typeof row.member !== "string"
     )
       return [];
-    if (!["storage", "constant", "runtime", "prepare"].includes(String(row.kind))) return [];
+    if (!["storage", "constant", "runtime", "runtime_scale", "prepare"].includes(String(row.kind))) return [];
     const args: NativeMember["args"] = [];
     if (typeof row.key_type === "number") {
       const key = artifact.types.find((type) => type.id === row.key_type);
@@ -116,6 +123,7 @@ export function describedMembers(artifact: NativeArtifact): NativeMember[] {
         member: row.member,
         ...(typeof row.pallet === "string" ? { pallet: row.pallet } : {}),
         ...(typeof row.api === "string" ? { api: row.api } : {}),
+        ...(typeof row.runtime_api_version === "number" ? { runtimeApiVersion: row.runtime_api_version } : {}),
         args,
       },
     ];
@@ -138,6 +146,12 @@ function nativeArguments(text: string): Json[] {
   return args;
 }
 export function memberOperation(member: NativeMember, text: string): NativeOperation {
+  if (member.kind === "runtime_scale") {
+    const input = text.trim().toLowerCase();
+    if (input.length > 32768 || !/^0x(?:[0-9a-f]{2})*$/.test(input))
+      throw new Error("Enter bounded, even-length 0x-prefixed SCALE argument bytes for this runtime API version.");
+    return { kind: "runtime_scale", api: member.api!, member: member.member, input };
+  }
   const args = nativeArguments(text);
   if (args.length !== member.args.length)
     throw new Error(`Enter exactly ${member.args.length} arguments in a JSON array.`);

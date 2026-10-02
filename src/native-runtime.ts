@@ -19,6 +19,7 @@ import {
   type NativeValue,
 } from "./native-runtime-values.ts";
 import { nativeRuntimeRpc } from "./native-runtime-rpc.ts";
+import { runtimeApiId, scaleReadMethods, SCALE_READ_API_METHODS } from "./native-runtime-scale.ts";
 import { loadNativeContract } from "./native-runtime-contract.ts";
 import {
   nativeContractSimulationWork,
@@ -41,6 +42,7 @@ const version = z.object({
   specName: z.literal("node-subtensor"),
   specVersion: z.int().nonnegative(),
   transactionVersion: z.int().nonnegative(),
+  apis: z.array(z.tuple([z.string().regex(/^0x[0-9a-f]{16}$/), z.int().nonnegative()])).max(256).default([]),
 });
 const blockHash = NativeRuntimeSourceSchema.shape.finalized_block_hash;
 type Operation = z.infer<
@@ -119,7 +121,21 @@ function contract(
   metadata: NativeMetadata,
   root: number,
   needed: Map<number, NativeType>,
+  apiVersions: Map<string, number>,
 ) {
+  if (operation.kind === "runtime_scale") {
+    const id = runtimeApiId(operation.api);
+    const apiVersion = apiVersions.get(id);
+    if (!scaleReadMethods(operation.api).includes(operation.member) || apiVersion === undefined)
+      throw new Error("SCALE runtime read is not audited or its API is absent at this source");
+    return {
+      call: { method: "state_call", params: [`${operation.api}_${operation.member}`, operation.input] },
+      result: {
+        kind: "runtime_scale" as const, api: operation.api, member: operation.member,
+        contract: { encoding: "scale", abi: "caller-encoded", runtime_api_id: id, runtime_api_version: apiVersion },
+      },
+    };
+  }
   const pending = [root];
   while (pending.length) {
     const id = pending.pop()!;
@@ -175,6 +191,7 @@ function plan(
       value_type?: number;
       optional?: boolean;
       args?: NativeField[];
+      runtime_api_version?: number;
     }[];
     if (operation.pallet !== undefined) {
       const pallet = metadata.pallets.find(
@@ -212,8 +229,13 @@ function plan(
       ];
     } else if (operation.api !== undefined) {
       const api = metadata.apis.find((row) => row.name === operation.api);
-      if (!api) throw new Error("Unknown native runtime API");
-      items = api.methods
+      if (!api) {
+        const apiVersion = apiVersions.get(runtimeApiId(operation.api));
+        const methods = scaleReadMethods(operation.api);
+        if (apiVersion === undefined || methods.length === 0)
+          throw new Error("Unknown native runtime API");
+        items = methods.map((member) => ({ kind: "runtime_scale", api: operation.api!, member, runtime_api_version: apiVersion }));
+      } else items = api.methods
         .filter((method) => readApiMethod(api.name, method.name))
         .map((method) => ({
           kind: "runtime",
@@ -230,6 +252,9 @@ function plan(
             row.methods.some((method) => readApiMethod(row.name, method.name)),
           )
           .map((row) => ({ kind: "api", name: row.name })),
+        ...Object.keys(SCALE_READ_API_METHODS)
+          .filter((name) => !metadata.apis.some((row) => row.name === name) && apiVersions.has(runtimeApiId(name)))
+          .map((name) => ({ kind: "api", name })),
       ];
     const page = items.slice(
       operation.offset,
@@ -508,8 +533,9 @@ export async function readNativeRuntime(
     runtime_code_hash: codeHash,
   });
   const needed = new Map<number, NativeType>();
+  const apiVersions = new Map(runtime.apis);
   const plans = input.operations.map((operation) =>
-    plan(metadata, operation, needed),
+    plan(metadata, operation, needed, apiVersions),
   );
   const unique = new Map<string, { method: string; params: unknown[] }>();
   const executionGas = new Map<string, bigint>();
@@ -621,6 +647,11 @@ export async function readNativeRuntime(
     if (key === null || key === undefined) return row.result;
     let value = responses.get(key),
       isDefault = false;
+    if (row.result.kind === "runtime_scale") {
+      if (typeof value !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(value) || value.length > 2 + NATIVE_RUNTIME_LIMITS.valueBytes * 2)
+        throw new Error("Invalid or oversized SCALE runtime result");
+      return { ...row.result, value };
+    }
     if ("item" in row && row.item && value === null) {
       if (row.item.optional)
         return { ...row.result, value: null, is_default: false };

@@ -100,7 +100,11 @@ export async function withRuntimeStakeFixture<T>(action: () => Promise<T>) {
       id: unknown;
       method: string;
       params: unknown[];
-    }) => ({ jsonrpc: "2.0", id: row.id, result: await rpc(row.method, row.params) });
+    }) => ({
+      jsonrpc: "2.0",
+      id: row.id,
+      result: await rpc(row.method, row.params),
+    });
     return Response.json(
       Array.isArray(requests)
         ? await Promise.all(requests.map(answer))
@@ -112,4 +116,4 @@ export async function withRuntimeStakeFixture<T>(action: () => Promise<T>) {
   } finally {
     globalThis.fetch = previous;
   }
-};
+}

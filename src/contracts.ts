@@ -3925,7 +3925,7 @@ export const API_ROUTES = [
     "POST",
     "/api/v1/native-runtime",
     "/metagraph/native-runtime.json",
-    "Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata. Up to 16 operations share one source. Descriptions are paginated; exact integers are decimal strings and byte vectors are hex. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input, retaining return bytes, reverts and exact deposits. Call method bytes require an explicit wallet signature before execution. No transaction is submitted or code published by a simulation.",
+    "Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata. Up to 16 operations share one source. Descriptions are paginated; exact integers are decimal strings and byte vectors are hex. runtime_scale accepts caller-encoded SCALE for audited reads, including V14 APIs without typed signatures, and returns exact bytes with the source API id/version. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input, retaining return bytes, reverts and exact deposits. Call method bytes require an explicit wallet signature before execution. No transaction is submitted or code published by a simulation.",
     "short",
     ["chain"],
     [],

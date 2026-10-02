@@ -241,10 +241,10 @@ async function call(name: string, args: unknown): Promise<Row> {
     name === "get_subnet_stake_quote" || name === "get_stake_action_preview"
       ? await withRuntimeStakeFixture(() => mcp(payload))
       : name === "get_native_runtime"
-      ? await withNativeRuntimeFixture(() => mcp(payload))
-      : name === "get_root_baskets" || name === "get_account_root_baskets"
-        ? await withBasketRuntimeFixture(() => mcp(payload))
-        : await mcp(payload);
+        ? await withNativeRuntimeFixture(() => mcp(payload))
+        : name === "get_root_baskets" || name === "get_account_root_baskets"
+          ? await withBasketRuntimeFixture(() => mcp(payload))
+          : await mcp(payload);
   assert.equal(res.status, 200, `${name}: expected HTTP 200`);
   const result = res.body?.result;
   assert.ok(result, `${name}: missing JSON-RPC result`);

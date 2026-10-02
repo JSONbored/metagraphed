@@ -66,7 +66,9 @@ for (const generation of ["legacy", "weighted"] as const) {
     // The mobile cards layout hides the header row while retaining the exact
     // values asserted above. Check the semantic header without requiring the
     // desktop layout at this phone viewport.
-    await expect(section.getByRole("columnheader", { name: "Exact u16 weight", includeHidden: true })).toBeAttached();
+    await expect(
+      section.getByRole("columnheader", { name: "Exact u16 weight", includeHidden: true }),
+    ).toBeAttached();
     if (generation === "legacy") {
       await expect(
         section.getByRole("columnheader", {

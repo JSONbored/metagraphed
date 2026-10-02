@@ -12,11 +12,10 @@ import { GetSubnetStakeQuoteInputSchema } from "./get-subnet-stake-quote.ts";
 
 const STAKE_QUOTE_DIRECTIONS = ["stake", "unstake"] as const;
 
-export const GetStakeActionPreviewInputSchema = GetSubnetStakeQuoteInputSchema
-  .extend({
+export const GetStakeActionPreviewInputSchema =
+  GetSubnetStakeQuoteInputSchema.extend({
     direction: kindSchema(STAKE_QUOTE_DIRECTIONS).optional(),
-  })
-  .strict();
+  }).strict();
 export type GetStakeActionPreviewInput = z.infer<
   typeof GetStakeActionPreviewInputSchema
 >;

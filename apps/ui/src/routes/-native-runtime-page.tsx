@@ -120,7 +120,7 @@ function NativeRuntimeExplorer({
       if (discovery) {
         setDescription(response.data);
         setMemberIndex(0);
-        setArgs("[]");
+        setArgs(describedMembers(response.data)[0]?.kind === "runtime_scale" ? "0x" : "[]");
       } else setResult(response.data);
     } catch (failure) {
       if (!active.signal.aborted)
@@ -348,7 +348,7 @@ function NativeRuntimeExplorer({
                   value={memberIndex}
                   onChange={(event) => {
                     setMemberIndex(Number(event.target.value));
-                    setArgs("[]");
+                    setArgs(members[Number(event.target.value)]?.kind === "runtime_scale" ? "0x" : "[]");
                     setResult(null);
                   }}
                 >
@@ -398,7 +398,7 @@ function NativeRuntimeExplorer({
                   ))}
                 </dl>
                 <label className="block space-y-1 text-13">
-                  Arguments (JSON array)
+                  {member.kind === "runtime_scale" ? "Arguments (SCALE hex)" : "Arguments (JSON array)"}
                   <textarea
                     disabled={busy}
                     className={`${control} font-mono`}
@@ -411,6 +411,12 @@ function NativeRuntimeExplorer({
                     spellCheck={false}
                   />
                 </label>
+                {member.kind === "runtime_scale" && (
+                  <p className="text-13 text-ink-muted">
+                    This source advertises {member.api} version {member.runtimeApiVersion}, but its metadata omits the typed signature.
+                    Encode arguments with that runtime’s ABI. This audited read returns exact SCALE bytes at the inspected finalized block.
+                  </p>
+                )}
                 <p className="text-13 text-ink-muted">
                   Use decimal strings for large integers, hex for bytes and public keys, and{" "}
                   {'{"variant":"Some","fields":…}'} for enums. Prepared call bytes can be reviewed

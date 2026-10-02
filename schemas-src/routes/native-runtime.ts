@@ -58,6 +58,11 @@ const common = { pallet: name, member: name };
 export const NativeJsonValueSchema = z.json();
 const args = z.array(NativeJsonValueSchema).max(64).default([]);
 export const NativeRuntimeOperationSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("runtime_scale"), api: name, member: name,
+    input: z.string().regex(/^0x(?:[0-9a-f]{2})*$/).max(32768).meta({ examples: ["0x"] })
+      .describe("Exact SCALE arguments encoded for the source runtime API version. Only audited read methods are admitted; result bytes retain their source API id and version. Use typed runtime operations when metadata publishes the signature."),
+  }).strict(),
   z.object({ kind: z.literal("storage"), ...common, args }).strict(),
   z
     .object({
@@ -107,7 +112,7 @@ export const NativeRuntimeRequestSchema = z
         ],
       })
       .describe(
-        "One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.",
+        "One to sixteen native operations sharing the same finalized context. Describe discovers runtime names and portable argument types; storage, constant and runtime read typed values; runtime_scale accepts caller-encoded SCALE for audited read methods and returns exact bytes with the source API id/version, including V14 APIs without typed signatures; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.",
       ),
   })
   .strict()
@@ -141,6 +146,7 @@ export const NativeRuntimeArtifactSchema = z
               "entries",
               "constant",
               "runtime",
+              "runtime_scale",
               "prepare",
               "describe",
             ]),

@@ -330,9 +330,16 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     (body) => {
       assert.equal(body.data.results[0].value, "500");
       assert.equal(body.data.source.runtime_spec_version, 470);
-      assert.equal(body.data.source.finalized_block_hash, `0x${"33".repeat(32)}`);
+      assert.equal(
+        body.data.source.finalized_block_hash,
+        `0x${"33".repeat(32)}`,
+      );
     },
-    { body: { operations: [{ kind: "storage", pallet: "System", member: "Number" }] } },
+    {
+      body: {
+        operations: [{ kind: "storage", pallet: "System", member: "Number" }],
+      },
+    },
   ],
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],
   [
@@ -3084,9 +3091,13 @@ assert.equal(
 async function checkedRequest(request: Request) {
   const pathname = new URL(request.url).pathname;
   if (pathname.endsWith("/native-runtime"))
-    return withNativeRuntimeFixture(() => handleRequest(request, apiEnv(env), {}));
+    return withNativeRuntimeFixture(() =>
+      handleRequest(request, apiEnv(env), {}),
+    );
   if (pathname.endsWith("/stake-quote"))
-    return withRuntimeStakeFixture(() => handleRequest(request, apiEnv(env), {}));
+    return withRuntimeStakeFixture(() =>
+      handleRequest(request, apiEnv(env), {}),
+    );
   if (!pathname.endsWith("/root-baskets"))
     return handleRequest(request, apiEnv(env), {});
   return withBasketRuntimeFixture(() =>

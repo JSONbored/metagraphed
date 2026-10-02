@@ -152,3 +152,35 @@ The representative v470 fixtures are derived from the
 [storage declarations](https://github.com/RaoFoundation/subtensor/blob/923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d/pallets/subtensor/src/lib.rs),
 and [hyperparameter definitions](https://github.com/RaoFoundation/subtensor/blob/923fd1fa7d6eadad3ec16f3941826b86c9c3aa1d/pallets/subtensor/src/rpc_info/subnet_info.rs).
 They are source-based fixtures, not observations of the deployed network.
+
+## Runtime reads when metadata omits signatures
+
+V14 metadata contains portable pallet types but no runtime API method signatures.
+`runtime_scale` provides actual reads in that case. The caller supplies the exact
+SCALE argument bytes for the source runtime's ABI. The service admits only the
+named read methods audited against the pinned v470 runtime implementation and
+requires that `RuntimeVersion.apis` advertise that API. It returns the exact result
+hex plus `runtime_api_id` and `runtime_api_version` in the result contract. The
+request uses the same finalized source, canonical ancestor checks, network
+isolation, work/byte bounds and duplicate coalescing as typed reads.
+
+For example, an `AccountNonceApi.account_nonce` read supplies the AccountId32's
+32 raw bytes as `input`, not JSON arguments. The response's API version and runtime
+source identify the ABI the caller must use to decode the result. Where metadata
+contains a signature, prefer the typed `runtime` operation. A SCALE result is
+explicitly byte-oriented: the server does not invent missing portable types or
+claim it has decoded that older ABI.
+
+`describe` exposes the audited SCALE methods when an advertised API has no
+metadata signatures. The website lets users select the method, enter SCALE hex
+and read the exact bytes at the inspected block. EVM `call`/`create`, Wasm
+`call`/`instantiate`/`upload_code`, block execution, keystore generation and
+submission methods cannot use this path; simulations require typed gas/Weight
+admission. An older runtime may advertise an API whose version lacks a newer
+method; the node's method error is retained as a failed read, never fabricated
+as empty data. Source-derived V14/V15 regression fixtures are not deployed
+all-era qualification.
+
+The protocol-state page also reads hotkey conviction and the subnet king from
+`StakeInfoRuntimeApi`. It preserves the exact fixed-point result rather than
+reconstructing current conviction from elapsed time or a float approximation.

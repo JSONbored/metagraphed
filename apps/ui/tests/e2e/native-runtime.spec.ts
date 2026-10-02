@@ -29,6 +29,31 @@ const source = {
   metadata_sha256: `0x${"55".repeat(32)}`,
 };
 test.use({ serviceWorkers: "block" });
+test("legacy runtime API discovery performs a pinned SCALE read and retains exact result bytes", async ({ page }) => {
+  const requests: unknown[] = [];
+  await page.route("**/api/v1/native-runtime", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body);
+    const discovery = body.operations[0].kind === "describe";
+    await route.fulfill({ json: { ok: true, data: {
+      schema_version: 1, source: { ...source, metadata_version: 14, runtime_spec_version: 372 }, types: [],
+      results: discovery ? [{ kind: "describe", value: [{ kind: "runtime_scale", api: "AccountNonceApi", member: "account_nonce", runtime_api_version: 1 }], contract: { next_offset: null } }]
+        : [{ kind: "runtime_scale", api: "AccountNonceApi", member: "account_nonce", value: "0x04030201", contract: { encoding: "scale", abi: "caller-encoded", runtime_api_version: 1 } }],
+    } } });
+  });
+  await gotoThroughRestart(page, "/apis/native");
+  await page.getByLabel("Contract", { exact: true }).selectOption("api");
+  await page.getByLabel("Name", { exact: true }).fill("AccountNonceApi");
+  await page.getByRole("button", { name: "Inspect contract" }).click();
+  const args = page.getByLabel("Arguments (SCALE hex)");
+  await expect(args).toHaveValue("0x");
+  await expect(page.getByText(/advertises AccountNonceApi version 1/)).toBeVisible();
+  await args.fill(`0x${"12".repeat(32)}`);
+  await page.getByRole("button", { name: "Read operation", exact: true }).click();
+  await expect(page.getByRole("cell", { name: "0x04030201", exact: true })).toBeVisible();
+  expect(requests[1]).toEqual({ as_of: hash, operations: [{ kind: "runtime_scale", api: "AccountNonceApi", member: "account_nonce", input: `0x${"12".repeat(32)}` }] });
+  await expect(page.getByRole("region", { name: "Review unsigned native call" })).toHaveCount(0);
+});
 test("map records use leading keys and preserve source while advancing the cursor", async ({
   page,
 }) => {
