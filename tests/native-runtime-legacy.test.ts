@@ -113,7 +113,9 @@ for (const era of eras) {
         prefixes = 0,
         prepared = 0;
       const voidCalls: string[] = [];
-      type Result = Awaited<ReturnType<typeof queryNativeRuntime>>["results"][number];
+      type Result = Awaited<
+        ReturnType<typeof queryNativeRuntime>
+      >["results"][number];
       const pending: unknown[] = [];
       const checks: ((result: Result) => void)[] = [];
       let requestBatches = 0;
@@ -121,14 +123,20 @@ for (const era of eras) {
         if (pending.length === 0) return;
         const operations = pending.splice(0);
         const assertions = checks.splice(0);
-        const response = await queryNativeRuntime({ as_of: at, operations }, rpc);
+        const response = await queryNativeRuntime(
+          { as_of: at, operations },
+          rpc,
+        );
         assert.equal(response.source.runtime_spec_version, era.spec);
         assert.equal(response.source.metadata_version, version);
         assert.equal(response.results.length, assertions.length);
         response.results.forEach((result, index) => assertions[index]!(result));
         requestBatches++;
       };
-      const enqueue = async (operation: unknown, check: (result: Result) => void) => {
+      const enqueue = async (
+        operation: unknown,
+        check: (result: Result) => void,
+      ) => {
         pending.push(operation);
         checks.push(check);
         if (pending.length === 16) await flush();
@@ -147,7 +155,10 @@ for (const era of eras) {
           ]);
           assert.equal(expected.encodedLength, bytes.length);
           assert.equal(nativeHex(expected.toU8a()), constant.value);
-          await enqueue({ kind: "constant", pallet: pallet.name, member: constant.name }, (result) => assert.deepEqual(result.value, decoded));
+          await enqueue(
+            { kind: "constant", pallet: pallet.name, member: constant.name },
+            (result) => assert.deepEqual(result.value, decoded),
+          );
           constants++;
         }
         for (const item of pallet.storage) {
@@ -198,7 +209,14 @@ for (const era of eras) {
           assert.equal(independent.encodedLength, bytes.length);
           assert.equal(nativeHex(independent.toU8a()), nativeHex(bytes));
           values.set(key, nativeHex(bytes));
-          await enqueue({ kind: "storage", pallet: pallet.name, member: item.name, args }, (result) => assert.deepEqual(result.value, decodeNativeValue(model, item.value, nativeHex(bytes))));
+          await enqueue(
+            { kind: "storage", pallet: pallet.name, member: item.name, args },
+            (result) =>
+              assert.deepEqual(
+                result.value,
+                decodeNativeValue(model, item.value, nativeHex(bytes)),
+              ),
+          );
           storage++;
         }
         if (pallet.calls === null) continue;
@@ -216,19 +234,32 @@ for (const era of eras) {
             assert.equal(pallet.name, "Grandpa");
             assert.match(call.name, /^report_equivocation/);
             assert.throws(
-              () => encodeNativeValue(model, error.id, { variant: "Void", fields: {} }),
+              () =>
+                encodeNativeValue(model, error.id, {
+                  variant: "Void",
+                  fields: {},
+                }),
               /Invalid native enum variant/,
             );
             voidCalls.push(`${pallet.name}.${call.name}`);
             continue;
           }
-          await enqueue({ kind: "prepare", pallet: pallet.name, member: call.name, args }, (result) => {
-            const data = result.call_data!;
-            const independent = registry.createType("Call", Buffer.from(data.slice(2), "hex"));
-            assert.deepEqual([...independent.callIndex], [pallet.index, call.index]);
-            assert.equal(nativeHex(independent.toU8a()), data);
-            assert.equal(independent.encodedLength, (data.length - 2) / 2);
-          });
+          await enqueue(
+            { kind: "prepare", pallet: pallet.name, member: call.name, args },
+            (result) => {
+              const data = result.call_data!;
+              const independent = registry.createType(
+                "Call",
+                Buffer.from(data.slice(2), "hex"),
+              );
+              assert.deepEqual(
+                [...independent.callIndex],
+                [pallet.index, call.index],
+              );
+              assert.equal(nativeHex(independent.toU8a()), data);
+              assert.equal(independent.encodedLength, (data.length - 2) / 2);
+            },
+          );
           prepared++;
         }
       }
@@ -276,7 +307,11 @@ for (const era of eras) {
       if (method === "state_getStorageHash")
         return `0x${createHash("sha256").update(`${era.wasm_sha256}:15`).digest("hex")}`;
       assert.equal(method, "state_call");
-      if (params[0] === "Metadata_metadata_at_version" && params[1] === "0x0f000000") return era.v15;
+      if (
+        params[0] === "Metadata_metadata_at_version" &&
+        params[1] === "0x0f000000"
+      )
+        return era.v15;
       assert.deepEqual(params, [expectedMethod, expectedInput, at]);
       executed++;
       return expectedOutput;
@@ -329,7 +364,13 @@ for (const era of eras) {
           },
           rpc,
         );
-        assert.ok(isDeepStrictEqual(response.results[0]!.value, decodeNativeValue(model, method.output, expectedOutput)), `${expectedMethod}: native result mismatch`);
+        assert.ok(
+          isDeepStrictEqual(
+            response.results[0]!.value,
+            decodeNativeValue(model, method.output, expectedOutput),
+          ),
+          `${expectedMethod}: native result mismatch`,
+        );
         methods.push(expectedMethod);
         const output = model.types.get(method.output)!.definition;
         if (output.kind === "sequence") {
