@@ -274,22 +274,29 @@ test("a failed V15 retry preserves the bounded fallback and upgrading it does no
   );
 });
 
-
 test("API-specific discovery upgrades a cached fallback before advertising typed arguments", async () => {
   const source = fixture();
   let available = false;
   let negotiations = 0;
   const read: BasketRpc = (method, params) => {
-    if (method === "state_call" && params[0] === "Metadata_metadata_at_version") {
+    if (
+      method === "state_call" &&
+      params[0] === "Metadata_metadata_at_version"
+    ) {
       negotiations++;
       return Promise.resolve(available ? metadata15 : "0x00");
     }
     return source.read(method, params);
   };
-  const old = await queryNativeRuntime({ operations: [{ kind: "storage", pallet: "System", member: "Number" }] }, read);
+  const old = await queryNativeRuntime(
+    { operations: [{ kind: "storage", pallet: "System", member: "Number" }] },
+    read,
+  );
   assert.equal(old.source.metadata_version, 14);
   available = true;
-  const request = { operations: [{ kind: "describe", api: "AccountNonceApi" }] };
+  const request = {
+    operations: [{ kind: "describe", api: "AccountNonceApi" }],
+  };
   const typed = await queryNativeRuntime(request, read);
   assert.equal(typed.source.metadata_version, 15);
   assert.ok(Array.isArray(typed.results[0]!.value));
@@ -297,6 +304,9 @@ test("API-specific discovery upgrades a cached fallback before advertising typed
   assert.equal(typed.results[0]!.value[0].member, "account_nonce");
   assert.ok(Array.isArray(typed.results[0]!.value[0].args));
   assert.equal(negotiations, 2);
-  assert.equal(JSON.stringify(await queryNativeRuntime(request, read)), JSON.stringify(typed));
+  assert.equal(
+    JSON.stringify(await queryNativeRuntime(request, read)),
+    JSON.stringify(typed),
+  );
   assert.equal(negotiations, 2);
 });

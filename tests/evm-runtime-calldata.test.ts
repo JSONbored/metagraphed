@@ -29,10 +29,20 @@ test("every release-bound precompile function decodes its independently encoded 
       release[2].length,
     );
     if (release[0] !== 205) {
-      assert.equal(release[2].map((id) => catalogue.precompiles[id]).find((row) => row[0] === "Staking")![1], 2049);
+      assert.equal(
+        release[2]
+          .map((id) => catalogue.precompiles[id])
+          .find((row) => row[0] === "Staking")![1],
+        2049,
+      );
     }
     if (release[0] >= 430) {
-      assert.equal(release[2].map((id) => catalogue.precompiles[id]).find((row) => row[0] === "StakingV2")![1], 2053);
+      assert.equal(
+        release[2]
+          .map((id) => catalogue.precompiles[id])
+          .find((row) => row[0] === "StakingV2")![1],
+        2053,
+      );
     }
     assert.ok(manifest.files.every((row) => /^[0-9a-f]{64}$/.test(row[1])));
     let functions = 0;
@@ -93,7 +103,7 @@ test("every release-bound precompile function decodes its independently encoded 
   console.log(
     "EVM_CATALOGUE_COMPACT_FIXTURE",
     JSON.stringify({
-      releases: 25,
+      releases: catalogue.releases.length,
       prepared_reference_decode_cases: cases,
       shared_catalogue_bytes: Buffer.byteLength(JSON.stringify(catalogue)),
       repeated_catalogue_bytes: Buffer.byteLength(repeated),
