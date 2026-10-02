@@ -14,11 +14,11 @@ import { useWallet } from "./use-wallet";
 import { useTxStatus, type TxUiStatus, type UseTxStatusResult } from "./use-tx-status";
 import { useFlowSession, useFeeEstimate } from "./use-flow-session";
 import { nativeStakeHoldingQuery, nativeUnstakeMax } from "@/lib/metagraphed/native-stake-holding";
-import { nativeStakeInput, nativeStakeParams, nativeStakeQuoteQuery } from "@/lib/metagraphed/native-stake-quote";
+import { nativeStakeInput, nativeStakeParams, nativeStakeQuoteQuery, type NativeStakeQuote } from "@/lib/metagraphed/native-stake-quote";
 import { submitReviewedNativeStake, type ReviewedNativeStake } from "@/lib/metagraphed/native-stake-signing";
 import { getApiBase, getNetwork } from "@/lib/metagraphed/config";
 import { getConnectedWallet } from "@/lib/metagraphed/wallet";
-import type { SubnetStakeQuote, AccountPosition } from "@/lib/metagraphed/types";
+import type { AccountPosition } from "@/lib/metagraphed/types";
 import { taoToRao, raoToTao, alphaToRawAlpha, asRao, type Rao } from "@/lib/metagraphed/units";
 import {
   computeLimitPrice,
@@ -243,7 +243,7 @@ export interface UseStakeFlowResult {
   tolerancePct: number;
   setTolerancePct: (value: number) => void;
 
-  quote: SubnetStakeQuote | null;
+  quote: NativeStakeQuote | null;
   quoteIsPending: boolean;
   quoteError: string | null;
   spotPriceTao: number | null;

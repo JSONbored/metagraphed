@@ -15,7 +15,7 @@ import { StakeAmountInput } from "@/components/metagraphed/stake-amount-input";
 import { PreSignConfirmation } from "@/components/metagraphed/pre-sign-confirmation";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import { rawAlphaToAlpha } from "@/lib/metagraphed/units";
+import { rawAlphaToAlpha, asRawAlpha, raoToTao, asRao } from "@/lib/metagraphed/units";
 import type { BroadcastStatus } from "@/lib/metagraphed/broadcast";
 import type { DecodedTxError } from "@/lib/metagraphed/tx-errors";
 import {
@@ -260,7 +260,7 @@ function StakeFlowBody({
           feeTao={flow.feeTao}
           expectedOut={
             flow.quote
-              ? { amount: String(flow.quote.expected_out), unit: flow.quote.expected_out_unit }
+              ? { amount: raoToTao(asRao(flow.quote.outputAtomic)), unit: flow.quote.expected_out_unit }
               : undefined
           }
           priceImpactPct={flow.quote?.price_impact_pct}
@@ -360,7 +360,7 @@ function describeTxError(error: DecodedTxError | null): string {
 function confirmAmountTao(flow: UseStakeFlowResult): string {
   if (flow.action === "stake") return flow.amountInput;
   if (flow.unit === "tao") return flow.amountInput;
-  return flow.quote?.expected_out != null ? String(flow.quote.expected_out) : flow.amountInput;
+  return flow.quote ? raoToTao(asRao(flow.quote.outputAtomic)) : flow.amountInput;
 }
 
 /** The confirm screen's alpha display -- for unstake, reconstructed from the exact RawAlpha this params object will submit (never a re-derived estimate), so what's shown is exactly what gets signed. */
@@ -369,7 +369,7 @@ function confirmAmountAlpha(flow: UseStakeFlowResult): string | undefined {
     return rawAlphaToAlpha(flow.params.amountUnstaked);
   }
   if (flow.action === "stake" && flow.quote?.expected_out_unit === "alpha") {
-    return String(flow.quote.expected_out);
+    return rawAlphaToAlpha(asRawAlpha(flow.quote.outputAtomic));
   }
   return undefined;
 }

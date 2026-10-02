@@ -2,7 +2,8 @@ import { RangeControl } from "@jsonbored/ui-kit";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { formatDecimal, formatNumber, joinAmountUnit } from "@/lib/metagraphed/format";
-import { raoToTao, type Rao } from "@/lib/metagraphed/units";
+import { raoToTao, asRao, type Rao } from "@/lib/metagraphed/units";
+import type { NativeStakeQuote } from "@/lib/metagraphed/native-stake-quote";
 import type { SubnetStakeQuote } from "@/lib/metagraphed/types";
 import type { StakeFlowAction, StakeFlowUnit } from "@/hooks/use-stake-flow";
 import { MAX_UNSTAKE_UNAVAILABLE_ROOT_MESSAGE } from "@/hooks/use-stake-flow";
@@ -66,7 +67,9 @@ export function formatQuoteHint(quote: SubnetStakeQuote | null): string | null {
   if (!quote) return null;
   const outUnit = quote.expected_out_unit === "tao" ? "τ" : "α";
   const impact = `${formatDecimal(quote.price_impact_pct, 2)}% price impact`;
-  return `≈ ${joinAmountUnit(formatNumber(quote.expected_out), outUnit)} · ${impact}`;
+  const output = "outputAtomic" in quote && typeof quote.outputAtomic === "bigint"
+    ? raoToTao(asRao(quote.outputAtomic)) : formatNumber(quote.expected_out);
+  return `≈ ${joinAmountUnit(output, outUnit)} · ${impact}`;
 }
 
 export interface StakeAmountInputProps {
@@ -192,6 +195,13 @@ export function StakeAmountInput({
         <p className="text-11 text-ink-strong">{formatQuoteHint(quote)}</p>
       ) : null}
 
+      {quote && "source" in quote && (
+        <p className="break-words text-10 text-ink-muted">
+          Chain simulation · v{(quote as NativeStakeQuote).source.runtime_spec_version} · block {(quote as NativeStakeQuote).source.finalized_block}
+          {"taoFeeAtomic" in quote && typeof quote.taoFeeAtomic === "bigint" && ` · swap fee ${raoToTao(asRao(quote.taoFeeAtomic))} τ`}
+          {"alphaFeeAtomic" in quote && typeof quote.alphaFeeAtomic === "bigint" && ` · ${raoToTao(asRao(quote.alphaFeeAtomic))} α`}
+        </p>
+      )}
       {validationMessages.length > 0 ? (
         <ul className="space-y-1">
           {validationMessages.map((message) => (

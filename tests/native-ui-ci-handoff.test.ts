@@ -13,7 +13,7 @@ test("retain remote formatted native UI edits and focused qualification", async 
     execFileSync("npm", ["run", "build", `--workspace=${workspace}`], { stdio: "pipe" });
   const paths = execFileSync("git", ["diff", "--name-only", "138d7e1", "HEAD"], { encoding: "utf8" }).trim().split("\n");
   const files: Record<string, string> = {};
-  for (const name of paths.filter(name => name.startsWith("apps/ui/") && /\.(ts|tsx|har)$/.test(name)))
+  for (const name of paths.filter(name => (name.startsWith("apps/ui/") && /\.(ts|tsx|har)$/.test(name)) || ["tests/fixtures/native-bittensor.ts", "tests/native-runtime-staking.test.ts"].includes(name)))
     files[name] = await format(readFileSync(name, "utf8"), { ...(await resolveConfig(path.resolve(name))), filepath: name, ...(name.endsWith(".har") ? { parser: "json" } : {}) });
   const encoded = gzipSync(JSON.stringify(files)).toString("base64");
   console.log("NATIVE_UI_FORMATTED_FILES", JSON.stringify(Object.keys(files)));

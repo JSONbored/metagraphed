@@ -28,7 +28,7 @@ function fixture() {
   const api = {} as ApiPromise;
   const extrinsic = { method: { toHex: () => "0x0700" } } as unknown as NativeCallPreview["extrinsic"];
   const preview: NativeCallPreview = { source: quote.source, address: review.address, callData: "0x0700", pallet: "SubtensorModule", member: "add_stake_limit", arguments: [], nonce: "4294967295", feeRao: 100n, maxFeeRao: 110n, balanceRao: 2000n, extrinsic };
-  const payload: SignerPayloadJSON = { address: review.address, method: preview.callData, genesisHash: quote.source.network_genesis_hash, specVersion: "0x01d6", transactionVersion: "0x01", nonce: "0xffffffff", era: "0x0500", blockHash: quote.source.finalized_block_hash, blockNumber: "0x01f4", tip: "0x00", signedExtensions: [], version: 4 };
+  const payload: SignerPayloadJSON = { address: review.address, method: "0x0700", genesisHash: `0x${"44".repeat(32)}`, specVersion: "0x01d6", transactionVersion: "0x01", nonce: "0xffffffff", era: "0x0500", blockHash: `0x${"33".repeat(32)}`, blockNumber: "0x01f4", tip: "0x00", signedExtensions: [], version: 4 };
   const signPayload = vi.fn(async () => ({ id: 1, signature: "0xaaaa" as const }));
   vi.mocked(prepareNativeStakeCall).mockResolvedValue(artifact);
   vi.mocked(previewNativeCall).mockResolvedValue(preview);
