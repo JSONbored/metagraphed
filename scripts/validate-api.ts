@@ -322,6 +322,8 @@ interface CheckOptions {
   body?: unknown;
   /** Expected status. Anything but 200 asserts the ERROR envelope instead. */
   expect_status?: number;
+  /** Dynamic success responses forbid caching and do not carry an ETag. */
+  no_store?: boolean;
 }
 
 const checks: [string, (body: Row) => void, CheckOptions?][] = [
@@ -336,6 +338,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       );
     },
     {
+      no_store: true,
       body: {
         operations: [{ kind: "storage", pallet: "System", member: "Number" }],
       },
@@ -3147,7 +3150,20 @@ for (const [route, assertion, options = {}] of checks) {
     assertion(body);
     continue;
   }
-  assert.ok(response.headers.get("etag"), `${route}: missing ETag`);
+  if (options.no_store) {
+    assert.equal(
+      response.headers.get("cache-control"),
+      "no-store",
+      `${route}: dynamic response must not be cached`,
+    );
+    assert.equal(
+      response.headers.get("etag"),
+      null,
+      `${route}: unexpected ETag`,
+    );
+  } else {
+    assert.ok(response.headers.get("etag"), `${route}: missing ETag`);
+  }
   assert.equal(
     response.headers.get("x-metagraph-contract-version"),
     CONTRACT_VERSION,

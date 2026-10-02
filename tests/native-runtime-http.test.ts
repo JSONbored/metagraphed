@@ -52,6 +52,7 @@ test("native REST and MCP share bytes, network source and the existing limiter",
       );
       assert.equal(artifact.source.network, network);
       assert.equal(rest.headers.get("cache-control"), "no-store");
+      assert.equal(rest.headers.get("etag"), null);
       const tool = await MCP_TOOLS.find(
         (row) => row.name === "get_native_runtime",
       )!.handler({ network, operations }, { env, clientIp: "192.0.2.1" });
