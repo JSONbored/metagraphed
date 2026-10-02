@@ -250,12 +250,7 @@ describe("the fleet-wide guard", () => {
     }));
     assert.equal(isFleetWide(suspects), false);
     assert.equal(
-      isFleetWide([
-        ...suspects,
-        finding(101),
-        finding(102),
-        finding(103),
-      ]),
+      isFleetWide([...suspects, finding(101), finding(102), finding(103)]),
       true,
       "four unexplained drops on one day still meet the unchanged threshold",
     );
