@@ -103,10 +103,7 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
       rows.push({
         kind: operation.method,
         identifier: operation.path,
-        tool:
-          operation.method === "GET" || operation.method === "HEAD"
-            ? "call_subnet_surface"
-            : "write_subnet_surface",
+        tool: operation.method === "GET" ? "call_subnet_surface" : "write_subnet_surface",
         body_types: operation.request_content_types,
         arguments: {
           surface_id,

@@ -154,7 +154,7 @@ describe("reviewed integration details", () => {
     for (const operation of [
       { method: "POST", path: "/run" },
       { method: "PATCH", path: "/run", request_content_types: ["application/octet-stream"] },
-      ...["GET", "HEAD", "DELETE"].map((method) => ({
+      ...["GET", "DELETE"].map((method) => ({
         method,
         path: "/run",
         request_content_types: ["application/json"],
@@ -163,9 +163,7 @@ describe("reviewed integration details", () => {
     ]) {
       const rows = surfaceIntegrationOperations({ id: http.id, http: { operations: [operation] } });
       expect(rows[0].tool).toBe(
-        operation.method === "GET" || operation.method === "HEAD"
-          ? "call_subnet_surface"
-          : "write_subnet_surface",
+        operation.method === "GET" ? "call_subnet_surface" : "write_subnet_surface",
       );
       expect(rows[0].arguments).toEqual({
         surface_id: http.id,
