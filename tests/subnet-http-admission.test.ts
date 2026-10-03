@@ -93,11 +93,11 @@ describe("source-reviewed HTTP operations independent of health probes", () => {
   test("Gopher submits and retrieves a job with caller auth, without implicit polling", async () => {
     const fixture = setup();
     const requestBody = { type: "twitter", arguments: { type: "searchbyquery", query: "bittensor", max_results: 10 } };
-    const submitted = await fixture.call({ surface_id: gopher.id, path: "/api/v1/search/live", method: "POST", json_body: requestBody, credential: "fixture-caller" });
+    const submitted = await fixture.call({ surface_id: gopher.id, path: "/api/v1/search/live", method: "POST", json_body: requestBody, credential: "Bearer fixture-caller" });
     assert.equal(submitted.isError, false);
     assert.equal(submitted.structuredContent.body.uuid, "fixture-job");
     assert.equal(fixture.calls.length, 1);
-    const result = await fixture.call({ surface_id: gopher.id, path: "/api/v1/search/live/result/fixture-job", method: "GET", credential: "fixture-caller" });
+    const result = await fixture.call({ surface_id: gopher.id, path: "/api/v1/search/live/result/fixture-job", method: "GET", credential: "Bearer fixture-caller" });
     assert.equal(result.isError, false);
     assert.deepEqual(result.structuredContent.body, [{ ID: "fixture", Content: "exact result" }]);
     assert.equal(fixture.calls.length, 2);
@@ -145,7 +145,7 @@ describe("source-reviewed HTTP operations independent of health probes", () => {
   for (const path of ["/api/v1/search/live/result/a%2Fb", "/api/v1/search/live/result/a%5Cb", "/api/v1/search/live/result/", "/api/v1/search/live/result/a/extra"]) {
     test(`rejects an escaped or incomplete job identifier: ${path}`, async () => {
       const fixture = setup();
-      const result = await fixture.call({ surface_id: gopher.id, path, method: "GET", credential: "fixture-caller" });
+      const result = await fixture.call({ surface_id: gopher.id, path, method: "GET", credential: "Bearer fixture-caller" });
       assert.equal(result.isError, true);
       assert.equal(fixture.calls.length, 0);
     });
@@ -181,7 +181,7 @@ describe("source-reviewed HTTP operations independent of health probes", () => {
     const ctx = { env, accountId: "7", readArtifact: fixture.readArtifact } as unknown as Ctx;
     const store = MCP_TOOLS.find((tool) => tool.name === "store_surface_credential")!;
     const write = MCP_TOOLS.find((tool) => tool.name === "write_subnet_surface")!;
-    const registered = await store.handler({ surface_id: "srf-gopher12345678", credential: "stored-fixture" }, ctx) as Row;
+    const registered = await store.handler({ surface_id: "srf-gopher12345678", credential: "Bearer stored-fixture" }, ctx) as Row;
     assert.equal(registered.surface_id, gopher.id);
     assert.equal(fixture.calls.length, 0);
     const args = { surface_id: gopher.id, path: "/api/v1/search/live", method: "POST", json_body: { type: "twitter", arguments: { type: "searchbyquery", query: "bittensor" } } };
@@ -190,7 +190,7 @@ describe("source-reviewed HTTP operations independent of health probes", () => {
     try {
       await write.handler(args, ctx);
       assert.equal(fixture.calls[0].headers.get("authorization"), "Bearer stored-fixture");
-      await write.handler({ ...args, credential: "explicit-fixture" }, ctx);
+      await write.handler({ ...args, credential: "Bearer explicit-fixture" }, ctx);
       assert.equal(fixture.calls[1].headers.get("authorization"), "Bearer explicit-fixture");
       await assert.rejects(write.handler(args, { ...ctx, accountId: "8" }), (error: Row) => error.code === "auth_required");
       assert.equal(fixture.calls.length, 2);
