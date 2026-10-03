@@ -1185,6 +1185,7 @@ import {
   DeleteSurfaceCredentialInputSchema,
   DeleteSurfaceCredentialOutputSchema,
 } from "../schemas-src/mcp-tools/ai-integration.ts";
+import { AuthSchema } from "../schemas-src/routes/subnet-detail.ts";
 import {
   deleteSurfaceCredential,
   isSurfaceCredentialStoreConfigured,
@@ -15843,7 +15844,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Goal-shaped integration guide for one subnet: how to actually call it. " +
       "Returns, per callable service, the base URL, whether auth is required " +
-      "(and which schemes), how to fetch its machine-readable schema, and its " +
+      "(and which schemes), the declared credential placement/format for " +
+      "reviewed HTTP/MCP services, how to fetch its machine-readable schema, and its " +
       "last-known health — plus next steps. Accepts a netuid or a slug/chain " +
       "name. When a subnet exposes nothing callable, says so and points to its " +
       "profile. Pairs with find_subnet_for_task / search_subnets.",
@@ -15897,6 +15899,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         const fixture = rowOf(s.fixture);
         const fixtureStatus = rowOf(s.fixture_status);
         const health = rowOf(s.health);
+        // Reviewed operations suppress GET snippets, so their guide needs the
+        // catalog's public auth descriptor. Legacy answers stay byte-identical.
+        const authDetail =
+          mcpAdmissions.has(s) || httpAdmissions.has(s)
+            ? AuthSchema.safeParse(s.auth)
+            : undefined;
         return {
           surface_id: s.surface_id,
           kind: s.kind,
@@ -15921,6 +15929,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           auth: {
             required: Boolean(s.auth_required),
             schemes: itemsOf(s.auth_schemes),
+            ...(authDetail?.success && authDetail.data
+              ? { detail: authDetail.data }
+              : {}),
           },
           // Ready-to-run curl/Python/TS for a first call (issue #351).
           // Regenerate from base_url + auth so cleartext credential guards stay

@@ -5,6 +5,7 @@
 // hand-written literal field-for-field.
 import { z } from "zod";
 import { SurfaceVerifyArtifactSchema } from "../routes/ai-native.ts";
+import { AuthSchema } from "../routes/subnet-detail.ts";
 import { McpSurfaceAdmissionSchema } from "../subnet-mcp-admission.ts";
 import { HttpSurfaceAdmissionSchema } from "../subnet-http-admission.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
@@ -39,7 +40,8 @@ export type HowDoICallInput = z.infer<typeof HowDoICallInputSchema>;
  *
  * Modeled, not derived. This is not a subset of the catalog service record:
  * `auth` collapses the catalog's auth_required/auth_schemes pair into
- * `{required, schemes}`, `health` keeps three of its seven fields, and
+ * `{required, schemes}` with the canonical `detail` for reviewed services,
+ * `health` keeps three of its seven fields, and
  * `schema`/`fixture` are rewritten into "can I use this, and how" answers.
  * Deriving from AgentCatalogServiceSchema fails against production on
  * `auth.scheme` alone.
@@ -67,7 +69,11 @@ const HowDoICallServiceSchema = z
     http: HttpSurfaceAdmissionSchema.optional(),
     http_execution: z.string().optional(),
     auth: z
-      .object({ required: z.boolean(), schemes: z.array(z.string()) })
+      .object({
+        required: z.boolean(),
+        schemes: z.array(z.string()),
+        detail: AuthSchema,
+      })
       .strict(),
     // NULL for a declared non-GET service (#11146): the generator refuses to
     // emit a GET snippet against a mutation, and the catalog row stored none.

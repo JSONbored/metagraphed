@@ -13,6 +13,11 @@ HTTP callability and recorded health separate from MCP admission, and supplies n
 plain GET snippet for an MCP endpoint. The website's catalog data preserves the
 same admission object through the canonical schema.
 
+`auth.detail` includes a valid canonical public authentication descriptor
+from that same catalog record. Follow its credential location/name/value format
+and optional token URL; the guide never reads stored caller credentials or the
+provider to construct these instructions. Invalid/missing descriptors are omitted.
+
 A source-reviewed service can declare `mcp.public_discovery: true` when its
 catalog is public while execution requires a key. Discovery then omits stored
 credentials and their private KV lookup. An explicit caller credential still

@@ -540,6 +540,10 @@ describe("BitMind source-reviewed detection execution", () => {
     const guide = HowDoICallOutputSchema.parse(result.structuredContent);
     assert.equal(guide.services.length, 6);
     assert.deepEqual(
+      guide.services.map((service) => service.auth.detail),
+      admitted.map((row) => row.auth),
+    );
+    assert.deepEqual(
       guide.services.map((service) => service.http),
       admitted.map((row) => row.http),
     );

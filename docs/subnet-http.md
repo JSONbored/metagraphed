@@ -7,6 +7,16 @@ does not enable a probe, establish provider availability or grant access to othe
 paths. Existing surfaces without this declaration keep their current behavior.
 
 Use `how_do_i_call` to retrieve the exact admission and the provider's schema link.
+
+For a valid reviewed service, `auth.detail` reuses the public catalog descriptor:
+the credential scheme, header/query/cookie/body placement, name or signature
+header set, value placeholder, optional body envelope and OAuth token URL. These
+are provider instructions, not stored credentials. The guide reads no private
+credential store and needs no additional surface/schema/provider request. Missing
+or malformed descriptors are omitted; existing `auth.required` and `auth.schemes`
+remain. Legacy services without a valid reviewed operation retain their original
+guide shape.
+
 Use `write_subnet_surface` for POST/PUT/PATCH/DELETE and `call_subnet_surface` for
 GET/HEAD. Supply `path` and `method` explicitly, use `json_body` for JSON, and provide your
 own credential when required. Request/response limits, credential isolation,
