@@ -111,7 +111,7 @@ function setup(
       message.method === "initialize"
         ? {
             protocolVersion: "2025-11-25",
-            capabilities: { tools: {} },
+            capabilities: { tools: {}, prompts: {}, resources: {} },
             serverInfo: { name: "fixture", version: "1" },
           }
         : message.method === "tools/list"
@@ -122,7 +122,11 @@ function setup(
                 annotations: { readOnlyHint: name !== "read" },
               })),
             }
-          : output;
+          : message.method === "prompts/list"
+            ? { prompts: (rows[0]?.mcp?.read_prompts ?? []).map((name: string) => ({ name, arguments: name === "empty" ? [] : [{ name: "login", required: true }] })) }
+            : message.method === "resources/list"
+              ? { resources: (rows[0]?.mcp?.read_resources ?? []).map((uri: string) => ({ name: "taxonomy", uri })) }
+              : output;
     return Response.json(
       { jsonrpc: "2.0", id: message.id, result },
       { headers: { "mcp-session-id": "fixture-session" } },
@@ -158,6 +162,84 @@ function setup(
 const args = { surface_id: surface.id, tool_name: "read" };
 
 describe("subnet MCP public contract", () => {
+  test("prompt roles and resource bytes survive the public SDK response once", async () => {
+    const admitted = {
+      ...surface,
+      mcp: { ...surface.mcp, read_prompts: ["plan"], read_resources: ["fixture://taxonomy"] },
+    };
+    const content = [
+      { type: "text", text: 'review these "provider instructions"\n' },
+      { type: "image", mimeType: "image/png", data: "AQIDBA==" },
+    ];
+    const prompt = setup([admitted], {
+      description: "source prompt",
+      messages: content.map((block, index) => ({ role: index ? "assistant" : "user", content: block })),
+      _meta: { source: "fixture" },
+    });
+    const result = await prompt.call("get_subnet_mcp_prompt", { surface_id: surface.id, prompt_name: "plan", arguments: { login: "caller" } });
+    assert.equal(result.isError, false);
+    assert.deepEqual(result.content, content);
+    assert.deepEqual(result.structuredContent, {
+      surface_id: surface.id,
+      prompt_name: "plan",
+      description: "source prompt",
+      messages: [{ role: "user", content_index: 0 }, { role: "assistant", content_index: 1 }],
+      upstream_meta: { source: "fixture" },
+    });
+    assert.equal(JSON.stringify(result).split("AQIDBA==").length - 1, 1);
+    const contents = [
+      { uri: "fixture://taxonomy", mimeType: "application/json", text: '{"exact":"18446744073709551615"}\n' },
+      { uri: "fixture://attachment", mimeType: "application/octet-stream", blob: "AAH/" },
+    ];
+    const resource = setup([admitted], { contents, _meta: { source: "fixture" } });
+    const read = await resource.call("read_subnet_mcp_resource", { surface_id: surface.id, resource_uri: "fixture://taxonomy" });
+    assert.equal(read.isError, false);
+    assert.deepEqual(read.content, contents.map((resource) => ({ type: "resource", resource })));
+    assert.deepEqual(read.structuredContent, {
+      surface_id: surface.id,
+      resource_uri: "fixture://taxonomy",
+      resources: [{ uri: "fixture://taxonomy", content_index: 0 }, { uri: "fixture://attachment", content_index: 1 }],
+      upstream_meta: { source: "fixture" },
+    });
+    assert.equal(JSON.stringify(read).split("AAH/").length - 1, 1);
+    for (const [tool, response] of [["get_subnet_mcp_prompt", result], ["read_subnet_mcp_resource", read]] as const) {
+      const published = listToolDefinitions().find((t) => t.name === tool);
+      assert.ok(published?.outputSchema);
+      assert.equal(published.annotations?.readOnlyHint, true);
+      assert.equal(new Ajv2020({ strict: false }).compile(published.outputSchema)(response.structuredContent), true);
+    }
+  });
+  test("prompt/resource admission, argument and credential guards run before provider traffic", async () => {
+    for (const [tool, valid, invalid] of [
+      ["get_subnet_mcp_prompt", { surface_id: surface.id, prompt_name: "plan" }, { surface_id: surface.id, prompt_name: "plan", arguments: { login: 7 } }],
+      ["read_subnet_mcp_resource", { surface_id: surface.id, resource_uri: "fixture://taxonomy" }, { surface_id: surface.id, resource_uri: "" }],
+    ] as const) {
+      const { call, calls } = setup();
+      assert.equal((await call(tool, valid)).structuredContent.error.code, "operation_not_allowed");
+      assert.equal((await call(tool, invalid)).structuredContent.error.code, "invalid_params");
+      assert.equal(calls.length, 0);
+    }
+  });
+  test("minimal native prompt/resource results preserve credential receipts and omitted metadata", async () => {
+    const admitted = {
+      ...surface,
+      auth_required: true,
+      auth: { scheme: "bearer", location: "header", name: "Authorization" },
+      mcp: { ...surface.mcp, read_prompts: ["empty"], read_resources: ["fixture://taxonomy"] },
+    };
+    for (const [name, args, output, expected] of [
+      ["get_subnet_mcp_prompt", { prompt_name: "empty" }, { messages: [] }, { prompt_name: "empty", messages: [] }],
+      ["read_subnet_mcp_resource", { resource_uri: "fixture://taxonomy" }, { contents: [] }, { resource_uri: "fixture://taxonomy", resources: [] }],
+    ] as const) {
+      const { call, calls } = setup([admitted], output);
+      const result = await call(name, { surface_id: surface.id, ...args, credential: "Bearer fixture-credential" });
+      assert.equal(result.isError, false);
+      assert.deepEqual(result.content, []);
+      assert.deepEqual(result.structuredContent, { surface_id: surface.id, ...expected, credential_source: "argument" });
+      assert.ok(calls.every((call) => call.headers.get("authorization") === "Bearer fixture-credential"));
+      assert.ok(!JSON.stringify(result).includes("fixture-credential"));
+    }
+  });
   test("SN74 bearer admission discovers the reviewed catalog and protects persisted actions", async () => {
     const registry = JSON.parse(
       readFileSync(
@@ -179,6 +261,8 @@ describe("subnet MCP public contract", () => {
     assert.equal(new Set(toolNames).size, 105);
     assert.equal(admission.read_tools.length, 89);
     assert.equal(admission.write_tools.length, 16);
+    assert.equal(admission.read_prompts?.length, 4);
+    assert.deepEqual(admission.read_resources, ["loopover://enrichment-analyzers", "loopover://finding-taxonomy"]);
     const { call, calls } = setup([registered], undefined, [], toolNames);
     const missing = await call("discover_subnet_mcp", {
       surface_id: registered.id,

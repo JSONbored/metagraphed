@@ -397,6 +397,18 @@
                 "minLength": 1,
                 "maxLength": 128
               }
+            },
+            "read_prompts": {
+              "type": "array",
+              "maxItems": 512,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+            },
+            "read_resources": {
+              "type": "array",
+              "maxItems": 512,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
             }
           }
         }

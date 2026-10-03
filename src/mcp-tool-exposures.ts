@@ -432,6 +432,16 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
     reason:
       "Calls an admitted read tool on a third-party MCP server; the provider's protocol and native result have no REST route twin.",
   },
+  get_subnet_mcp_prompt: {
+    operation: null,
+    reason:
+      "Retrieves an admitted third-party MCP prompt with native messages and roles; no REST route mirrors this protocol session.",
+  },
+  read_subnet_mcp_resource: {
+    operation: null,
+    reason:
+      "Reads an admitted third-party MCP resource as native embedded content; no REST route mirrors this protocol session.",
+  },
   write_subnet_mcp: {
     operation: null,
     reason:

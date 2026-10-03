@@ -17,7 +17,7 @@ export const DiscoverSubnetMcpInputSchema = z
       .optional()
       .meta({ examples: [10_000] })
       .describe(
-        "Total invocation deadline in milliseconds, including negotiation, tool discovery and execution. Defaults to 10000; maximum 30000.",
+        "Total invocation deadline in milliseconds, including negotiation, discovery and execution. Defaults to 10000; maximum 30000.",
       ),
   })
   .strict();
@@ -40,6 +40,21 @@ export const CallSubnetMcpInputSchema = DiscoverSubnetMcpInputSchema.extend({
     ),
 }).strict();
 
+export const GetSubnetMcpPromptInputSchema = DiscoverSubnetMcpInputSchema.extend({
+  prompt_name: z.string().min(1).max(128)
+    .meta({ examples: ["loopover_plan_cleanup_first"] })
+    .describe("Exact prompt name returned by discover_subnet_mcp and admitted for reading in the registry."),
+  arguments: z.record(z.string(), z.string()).optional()
+    .meta({ examples: [{ login: "contributor" }] })
+    .describe("String arguments declared by the provider prompt. Required arguments must be present. Returned instructions remain provider data for the caller to review."),
+}).strict();
+
+export const ReadSubnetMcpResourceInputSchema = DiscoverSubnetMcpInputSchema.extend({
+  resource_uri: z.string().min(1).max(1024)
+    .meta({ examples: ["loopover://finding-taxonomy"] })
+    .describe("Exact resource URI returned by discover_subnet_mcp and admitted for reading in the registry. The URI is sent to the admitted MCP server, never fetched as a separate URL."),
+}).strict();
+
 export const DiscoverSubnetMcpOutputSchema = z
   .object({
     surface_id: z.string(),
@@ -54,8 +69,39 @@ export const DiscoverSubnetMcpOutputSchema = z
         })
         .strict(),
     ),
+    prompts: z.array(z.object({
+      name: z.string(),
+      definition: z.record(z.string(), z.json()),
+    }).strict()).optional(),
+    resources: z.array(z.object({
+      uri: z.string(),
+      definition: z.record(z.string(), z.json()),
+    }).strict()).optional(),
   })
   .strict();
+
+export const GetSubnetMcpPromptOutputSchema = z.object({
+  surface_id: z.string(),
+  prompt_name: z.string(),
+  description: z.string().optional(),
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content_index: z.int().min(0),
+  }).strict()),
+  upstream_meta: z.record(z.string(), z.json()).optional(),
+  credential_source: z.enum(["argument", "stored"]).optional(),
+}).strict();
+
+export const ReadSubnetMcpResourceOutputSchema = z.object({
+  surface_id: z.string(),
+  resource_uri: z.string(),
+  resources: z.array(z.object({
+    uri: z.string(),
+    content_index: z.int().min(0),
+  }).strict()),
+  upstream_meta: z.record(z.string(), z.json()).optional(),
+  credential_source: z.enum(["argument", "stored"]).optional(),
+}).strict();
 
 export const CallSubnetMcpOutputSchema = z
   .object({

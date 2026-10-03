@@ -206,7 +206,9 @@
         "https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/packages/loopover-mcp/README.md",
         "https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/mcp/server.ts",
         "https://github.com/JSONbored/loopover/tree/f665d94a751ed5374216117b469fcd7092003b23/packages/loopover-contract/src/tools",
-        "https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/services/agent-orchestrator.ts"
+        "https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/services/agent-orchestrator.ts",
+        "https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/review/finding-taxonomy.ts",
+        "https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/review/enrichment-analyzers-taxonomy.ts"
       ],
       "url": "https://api.loopover.ai/mcp",
       "mcp": {
@@ -319,6 +321,16 @@
           "loopover_set_action_autonomy",
           "loopover_set_agent_paused",
           "loopover_watch_issues"
+        ],
+        "read_prompts": [
+          "loopover_draft_contribution_pr_packet",
+          "loopover_plan_cleanup_first",
+          "loopover_preflight_contribution_branch",
+          "loopover_select_contribution_issue"
+        ],
+        "read_resources": [
+          "loopover://enrichment-analyzers",
+          "loopover://finding-taxonomy"
         ]
       }
     },

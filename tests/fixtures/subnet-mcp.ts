@@ -35,6 +35,8 @@ export async function withSubnetMcpFixture<T>(
           transport: "streamable-http",
           read_tools: ["read"],
           write_tools: ["write"],
+          read_prompts: ["plan"],
+          read_resources: ["fixture://taxonomy"],
         },
       },
     ],
@@ -84,7 +86,7 @@ export async function withSubnetMcpFixture<T>(
       message.method === "initialize"
         ? {
             protocolVersion: "2025-11-25",
-            capabilities: { tools: {} },
+            capabilities: { tools: {}, prompts: {}, resources: {} },
             serverInfo: { name: "validator-fixture", version: "1" },
           }
         : message.method === "tools/list"
@@ -102,7 +104,15 @@ export async function withSubnetMcpFixture<T>(
                 ],
                 structuredContent: { value: message.params.arguments.value },
               }
-            : null;
+            : message.method === "prompts/list"
+              ? { prompts: [{ name: "plan", arguments: [{ name: "login", required: true }] }] }
+              : message.method === "prompts/get"
+                ? { messages: [{ role: "user", content: { type: "text", text: "validator prompt fixture" } }] }
+                : message.method === "resources/list"
+                  ? { resources: [{ name: "taxonomy", uri: "fixture://taxonomy" }] }
+                  : message.method === "resources/read"
+                    ? { contents: [{ uri: "fixture://taxonomy", mimeType: "application/json", text: '{"fixture":true}' }] }
+                    : null;
     assert.ok(result, "Unmocked protocol method");
     return Response.json(
       { jsonrpc: "2.0", id: message.id, result },

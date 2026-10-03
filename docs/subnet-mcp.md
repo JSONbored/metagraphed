@@ -13,6 +13,14 @@ HTTP callability and recorded health separate from MCP admission, and supplies n
 plain GET snippet for an MCP endpoint. The website's catalog data preserves the
 same admission object through the canonical schema.
 
+Discovery also returns source-reviewed `prompts` and `resources` when the registry
+admits them. Use `get_subnet_mcp_prompt` with its exact `prompt_name` and string
+arguments, or `read_subnet_mcp_resource` with its exact `resource_uri`. A resource
+URI is an identifier for the admitted MCP server, not a URL the bridge fetches.
+Prompt receipts retain each message's role and its zero-based `content_index`;
+resource receipts map each returned URI to the corresponding native content block.
+Text, images, audio and embedded resource bytes occur once in native content.
+
 For example, the official Minos assistant configuration documents five public
 read tools: `get_current_round`, `get_leaderboard`, `list_recent_rounds`,
 `get_miner_history`, and `get_subnet_overview`. Their names are source-bound in
@@ -40,6 +48,13 @@ Their provider read-only hints cannot make them callable through
 not execute returned commands. Operator/internal and self-hosted administration
 belong to separate interfaces. The pinned sources qualify admission, while
 actual provider availability and schemas are established during discovery.
+
+The same pinned server declares four read-only contributor planning prompts and
+two JSON taxonomy resources: `loopover://finding-taxonomy` and
+`loopover://enrichment-analyzers`. The URI declarations are in
+[finding taxonomy](https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/review/finding-taxonomy.ts)
+and [enrichment analyzers](https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/review/enrichment-analyzers-taxonomy.ts).
+These prompts are advisory text; retrieving one does not execute its instructions.
 
 The bridge uses the pinned official SDK for initialization, JSON/SSE transport,
 sessions and tool-result validation. A Worker-compatible JSON Schema validator

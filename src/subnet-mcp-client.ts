@@ -5,6 +5,10 @@ import {
   CallToolResultSchema,
   type CallToolResult,
   type Tool,
+  type Prompt,
+  type Resource,
+  type GetPromptResult,
+  type ReadResourceResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import {
   MAX_RESPONSE_BYTES,
@@ -28,6 +32,8 @@ export interface SubnetMcpOptions {
   url: string;
   readTools: readonly string[];
   writeTools: readonly string[];
+  readPrompts?: readonly string[];
+  readResources?: readonly string[];
   credential?: CallSubnetSurfaceCredential;
   timeoutMs: number;
   fetchImpl: typeof fetch;
@@ -40,11 +46,20 @@ export type SubnetMcpOperation =
       kind: "read" | "write";
       name: string;
       arguments: Record<string, unknown>;
-    };
+    }
+  | { kind: "prompt"; name: string; arguments: Record<string, string> }
+  | { kind: "resource"; uri: string };
 
 export type SubnetMcpResult =
-  | { kind: "discover"; tools: (Tool & { access: "read" | "write" })[] }
-  | { kind: "call"; result: CallToolResult };
+  | {
+      kind: "discover";
+      tools: (Tool & { access: "read" | "write" })[];
+      prompts?: Prompt[];
+      resources?: Resource[];
+    }
+  | { kind: "call"; result: CallToolResult }
+  | { kind: "prompt"; result: GetPromptResult }
+  | { kind: "resource"; result: ReadResourceResult };
 
 /** A fresh SDK client per invocation: no caller credentials, validators or
  * provider session ids survive into another caller's operation. This module
@@ -70,13 +85,17 @@ export async function runSubnetMcp(
       );
     allowed.set(name, "write");
   }
-  if (
-    operation.kind !== "discover" &&
-    allowed.get(operation.name) !== operation.kind
-  ) {
+  const admitted =
+    operation.kind === "discover" ||
+    (operation.kind === "resource"
+      ? options.readResources?.includes(operation.uri)
+      : operation.kind === "prompt"
+        ? options.readPrompts?.includes(operation.name)
+        : allowed.get(operation.name) === operation.kind);
+  if (!admitted) {
     throw new SubnetMcpError(
       "operation_not_allowed",
-      "This MCP operation is not admitted for this tool.",
+      "This MCP operation is not admitted for this surface.",
     );
   }
   const endpoint = new URL(options.url);
@@ -231,11 +250,83 @@ export async function runSubnetMcp(
   };
   const execute = async (): Promise<SubnetMcpResult> => {
     await client.connect(transport, requestOptions);
+    // Prompt/resource catalogs do not participate in the SDK's tool-schema
+    // cache. Walk only the requested capability, retaining the same budgets.
+    async function listReviewed<T>(
+      list: (cursor?: string) => Promise<{ items: T[]; nextCursor?: string }>,
+      key: (item: T) => string,
+      admission: readonly string[],
+    ): Promise<T[]> {
+      const reviewed = new Set(admission);
+      const items: T[] = [];
+      const names = new Set<string>();
+      const cursors = new Set<string>();
+      let cursor: string | undefined;
+      do {
+        const page = await list(cursor);
+        for (const item of page.items) {
+          const name = key(item);
+          if (names.has(name) || names.size === MAX_TOOLS)
+            throw new SubnetMcpError(
+              "invalid_catalog",
+              "The upstream MCP catalog repeats an entry or exceeds its limit.",
+            );
+          names.add(name);
+          if (reviewed.has(name)) items.push(item);
+        }
+        cursor = page.nextCursor;
+        if (cursor) {
+          if (cursors.has(cursor))
+            throw new SubnetMcpError(
+              "invalid_catalog",
+              "The upstream MCP catalog repeats a cursor.",
+            );
+          cursors.add(cursor);
+        }
+      } while (cursor);
+      return items;
+    }
+    const listPrompts = () => listReviewed(
+      async (cursor) => {
+        const page = await client.listPrompts(cursor ? { cursor } : undefined, requestOptions);
+        return { items: page.prompts, nextCursor: page.nextCursor };
+      },
+      (prompt) => prompt.name,
+      options.readPrompts ?? [],
+    );
+    const listResources = () => listReviewed(
+      async (cursor) => {
+        const page = await client.listResources(cursor ? { cursor } : undefined, requestOptions);
+        return { items: page.resources, nextCursor: page.nextCursor };
+      },
+      (resource) => resource.uri,
+      options.readResources ?? [],
+    );
+    if (operation.kind === "prompt") {
+      const prompt = (await listPrompts()).find((item) => item.name === operation.name);
+      if (!prompt)
+        throw new SubnetMcpError("not_found", "The admitted prompt is absent from the upstream MCP catalog.");
+      if (prompt.arguments?.some((arg) => arg.required && !Object.hasOwn(operation.arguments, arg.name)))
+        throw new SubnetMcpError("invalid_params", "A required upstream prompt argument is missing.");
+      return {
+        kind: "prompt",
+        result: await client.getPrompt({ name: operation.name, arguments: operation.arguments }, requestOptions),
+      };
+    }
+    if (operation.kind === "resource") {
+      const resources = await listResources();
+      if (!resources.some((item) => item.uri === operation.uri))
+        throw new SubnetMcpError("not_found", "The admitted resource is absent from the upstream MCP catalog.");
+      return {
+        kind: "resource",
+        result: await client.readResource({ uri: operation.uri }, requestOptions),
+      };
+    }
     let cursor: string | undefined;
     const cursors = new Set<string>();
     const names = new Set<string>();
     const tools: (Tool & { access: "read" | "write" })[] = [];
-    do {
+    if (allowed.size > 0) do {
       const page = await client.listTools(
         cursor ? { cursor } : undefined,
         requestOptions,
@@ -285,7 +376,12 @@ export async function runSubnetMcp(
         "not_found",
         "The admitted tool is absent from the upstream MCP catalog.",
       );
-    return { kind: "discover", tools };
+    return {
+      kind: "discover",
+      tools,
+      ...(options.readPrompts?.length ? { prompts: await listPrompts() } : {}),
+      ...(options.readResources?.length ? { resources: await listResources() } : {}),
+    };
   };
   try {
     return await Promise.race([execute(), expired]);

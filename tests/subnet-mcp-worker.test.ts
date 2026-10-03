@@ -53,7 +53,7 @@ beforeAll(async () => {
             if (message.method === 'notifications/initialized') return new Response(null, { status: 202 });
             let result;
             if (message.method === 'initialize') result = {
-              protocolVersion: '2025-11-25', capabilities: { tools: {} },
+              protocolVersion: '2025-11-25', capabilities: { tools: {}, prompts: {}, resources: {} },
               serverInfo: { name: 'worker-fixture', version: '1' }
             };
             else if (message.method === 'tools/list') result = {
@@ -69,6 +69,18 @@ beforeAll(async () => {
               }),
               _meta: { fixture: 'workerd' }
             };
+            else if (message.method === 'prompts/list') result = {
+              prompts: [{ name: 'plan', arguments: [{ name: 'login', required: true }] }]
+            };
+            else if (message.method === 'prompts/get') result = {
+              messages: content.map((block, index) => ({ role: index ? 'assistant' : 'user', content: block }))
+            };
+            else if (message.method === 'resources/list') result = {
+              resources: [{ name: 'taxonomy', uri: 'fixture://taxonomy' }]
+            };
+            else if (message.method === 'resources/read') result = {
+              contents: [{ uri: 'fixture://taxonomy', mimeType: 'application/octet-stream', blob: 'AAH/' }]
+            };
             else throw new Error('Unmocked protocol method');
             const data = JSON.stringify({ jsonrpc: '2.0', id: message.id, result });
             return new Response(mode === 'sse' ? 'event: message\\ndata: ' + data + '\\n\\n' : data, {
@@ -82,10 +94,13 @@ beforeAll(async () => {
           globalThis.fetch = async () => { throw new Error('External network forbidden'); };
           const options = {
             url: 'https://subnet.example/mcp', readTools: ['read'], writeTools: ['write'],
+            readPrompts: ['plan'], readResources: ['fixture://taxonomy'],
             credential: { location: 'header', name: 'Authorization', value: 'Bearer worker-fixture' },
             timeoutMs: 2000, fetchImpl, isUnsafeUrl: async () => false
           };
-          const operation = mode === 'discover' ? { kind: 'discover' } : {
+          const operation = mode === 'discover' ? { kind: 'discover' }
+            : mode === 'prompt' ? { kind: 'prompt', name: 'plan', arguments: { login: 'caller' } }
+            : mode === 'resource' ? { kind: 'resource', uri: 'fixture://taxonomy' } : {
             kind: mode === 'write' ? 'write' : 'read',
             name: mode === 'write' || mode === 'denied-write' ? 'write' : 'read',
             arguments: { payload: { value: mode === 'invalid-input' ? 'bad' : ${JSON.stringify(exact)} } }
@@ -166,6 +181,22 @@ test("workerd discovery preserves nested provider schemas and reviewed admission
     false,
   );
 });
+
+for (const mode of ["prompt", "resource"])
+  test(`workerd ${mode} negotiates its capability without tool discovery`, async () => {
+    const { result, error, calls } = await invoke(mode);
+    assert.equal(error, undefined);
+    assert.equal(result.kind, mode);
+    assert.deepEqual(result.result, mode === "prompt" ? {
+      messages: content.map((block, index) => ({ role: index ? "assistant" : "user", content: block })),
+    } : {
+      contents: [{ uri: "fixture://taxonomy", mimeType: "application/octet-stream", blob: "AAH/" }],
+    });
+    const prefix = mode === "prompt" ? "prompts" : "resources";
+    assert.deepEqual(calls.filter((call: Row) => call.message?.id !== undefined).map((call: Row) => call.message.method), ["initialize", `${prefix}/list`, `${prefix}/${mode === "prompt" ? "get" : "read"}`]);
+    assert.ok(calls.every((call: Row) => call.headers.authorization === "Bearer worker-fixture"));
+    assert.ok(calls.some((call: Row) => call.method === "DELETE"));
+  });
 
 for (const [mode, code] of [
   ["invalid-input", "invalid_params"],
