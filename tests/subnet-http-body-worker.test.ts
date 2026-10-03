@@ -168,18 +168,34 @@ test("workerd forwards joined arrays, exploded objects and JSON query values wit
 
 test("workerd admits inherited Swagger formData and forwards exact file bytes with header auth", async () => {
   const bytes = Buffer.concat([
-    Buffer.from('--fixture\r\nContent-Disposition: form-data; name="file"; filename="test.bin"\r\n\r\n'),
+    Buffer.from(
+      '--fixture\r\nContent-Disposition: form-data; name="file"; filename="test.bin"\r\n\r\n',
+    ),
     Buffer.from([0, 128, 255]),
     Buffer.from("\r\n--fixture--\r\n"),
   ]);
   const content_type = 'multipart/form-data; boundary="fixture"';
-  const response = await runtime.dispatchFetch("https://worker-fixture.example/", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ swagger_body: true, body_base64: bytes.toString("base64"), content_type }),
-  });
+  const response = await runtime.dispatchFetch(
+    "https://worker-fixture.example/",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        swagger_body: true,
+        body_base64: bytes.toString("base64"),
+        content_type,
+      }),
+    },
+  );
   assert.equal(response.status, 200);
   const { result, calls } = (await response.json()) as Row;
   assert.equal(result.ok, true);
-  assert.deepEqual(calls, [{ method: "POST", contentType: content_type, bytes: [...bytes], authorization: "Bearer fixture-token" }]);
+  assert.deepEqual(calls, [
+    {
+      method: "POST",
+      contentType: content_type,
+      bytes: [...bytes],
+      authorization: "Bearer fixture-token",
+    },
+  ]);
 });
