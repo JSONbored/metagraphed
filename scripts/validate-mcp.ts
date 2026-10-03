@@ -4,6 +4,12 @@ import {
   withSubnetMcpFixture,
   SUBNET_MCP_FIXTURE_ID,
 } from "../tests/fixtures/subnet-mcp.ts";
+import {
+  withSubnetHttpFixture,
+  SUBNET_HTTP_FIXTURE_ID,
+  SUBNET_VERIFY_FIXTURE_ID,
+  SUBNET_HTTP_FIXTURE_CREDENTIAL,
+} from "../tests/fixtures/subnet-http.ts";
 // Contract validator for the remote MCP server at POST /mcp.
 //
 // Exercises the JSON-RPC lifecycle (initialize + tools/list) and a tools/call
@@ -99,6 +105,15 @@ const env = createLocalArtifactEnv({
   METAGRAPH_CONTROL: accountKv,
 });
 const MCP_URL = "https://api.metagraph.sh/mcp";
+
+// This standalone validator must never fall through to a real provider. Scoped
+// fixtures replace fetch while exercising live-call implementations offline.
+const previousFetch = globalThis.fetch;
+let blockedUnmockedFetches = 0;
+globalThis.fetch = async () => {
+  blockedUnmockedFetches++;
+  throw new Error("Unmocked network request in the offline MCP validator");
+};
 
 // Compile each tool's declared outputSchema once; callOk asserts every
 // successful tool result's structuredContent validates against it, so a tool's
@@ -278,6 +293,10 @@ async function callOk(
   options?: McpCallOptions,
 ): Promise<Row> {
   const result = await call(name, args, options);
+  return validateSuccessfulResult(name, result);
+}
+
+function validateSuccessfulResult(name: string, result: Row): Row {
   assert.equal(
     result.isError,
     false,
@@ -778,6 +797,102 @@ await withSubnetMcpFixture(env, async (fixtureEnv) => {
     );
     assert.equal(result.structured_content.value, "18446744073709551615");
   }
+});
+
+await withSubnetHttpFixture(env, async (fixtureEnv, state) => {
+  const options = { envOverride: fixtureEnv };
+  const target = { surface_id: SUBNET_HTTP_FIXTURE_ID };
+  const stored = await callOk(
+    "store_surface_credential",
+    { ...target, credential: SUBNET_HTTP_FIXTURE_CREDENTIAL, ttl_seconds: 60 },
+    options,
+  );
+  assert.equal(stored.stored, true);
+  assert.equal(stored.replaced, false);
+  assert.equal(state.encrypted.size, 1);
+  const listed = await callOk("list_surface_credentials", {}, options);
+  assert.equal(listed.count, 1);
+  assert.equal(listed.credentials[0].surface_id, SUBNET_HTTP_FIXTURE_ID);
+  assert.equal(listed.credentials[0].shape, "string");
+  assert.ok(!JSON.stringify(listed).includes(SUBNET_HTTP_FIXTURE_CREDENTIAL));
+  const read = await callOk(
+    "call_subnet_surface",
+    { ...target, path: "/v1/status", method: "GET" },
+    options,
+  );
+  assert.equal(read.credential_source, "stored");
+  assert.equal(read.body.value, "18446744073709551615");
+  // Compare the former successful sweep's probe + second call with reuse of
+  // one response. These extra calls exist only in this offline comparison.
+  const previousProbe = await call(
+    "call_subnet_surface",
+    { ...target, path: "/v1/status", method: "GET" },
+    options,
+  );
+  assert.equal(previousProbe.isError, false);
+  const previousRead = await callOk(
+    "call_subnet_surface",
+    { ...target, path: "/v1/status", method: "GET" },
+    options,
+  );
+  assert.deepEqual(previousRead.body, read.body);
+  assert.equal(state.requests.length, 3);
+  for (const request of state.requests.slice(1)) {
+    assert.equal(request.url, state.requests[0]!.url);
+    assert.equal(request.method, state.requests[0]!.method);
+    assert.equal(request.body, state.requests[0]!.body);
+    assert.deepEqual([...request.headers], [...state.requests[0]!.headers]);
+  }
+  const body = { value: "18446744073709551615", items: [null, false, 0] };
+  const written = await callOk(
+    "write_subnet_surface",
+    { ...target, path: "/v1/echo", method: "POST", json_body: body },
+    options,
+  );
+  assert.equal(written.credential_source, "stored");
+  assert.deepEqual(written.body.received, body);
+  assert.equal(state.requests[3]!.body, JSON.stringify(body));
+  assert.equal(state.requests[3]!.headers.get("content-type"), "application/json");
+  const deleted = await callOk("delete_surface_credential", target, options);
+  assert.equal(deleted.deleted, true);
+  assert.equal(state.encrypted.size, 0);
+  assert.equal(
+    (await callOk("delete_surface_credential", target, options)).deleted,
+    false,
+  );
+  assert.equal((await callOk("list_surface_credentials", {}, options)).count, 0);
+  const denied = await call(
+    "write_subnet_surface",
+    { ...target, path: "/v1/echo", method: "POST", json_body: body },
+    options,
+  );
+  assert.equal(denied.isError, true);
+  assert.equal(state.requests.length, 4, "Deleted credentials fail before HTTP");
+  const verified = await callOk(
+    "verify_integration",
+    { surface_id: SUBNET_VERIFY_FIXTURE_ID },
+    options,
+  );
+  assert.equal(verified.surface_id, SUBNET_VERIFY_FIXTURE_ID);
+  assert.equal(verified.status_code, 200);
+  assert.equal(verified.callable, true);
+  assert.equal(state.requests.length, 5);
+  console.log(
+    "MCP_OFFLINE_HTTP_CONFORMANCE_FIXTURE",
+    JSON.stringify({
+      tools_exercised: 6,
+      newly_validated_responses: 5,
+      credential_metadata_rows: 1,
+      encrypted_records_after_delete: state.encrypted.size,
+      previous_fixture_read_invocations: 2,
+      current_fixture_read_invocations: 1,
+      request_bytes_and_response_body_equal: true,
+      http_execution_requests: 4,
+      verification_requests: 1,
+      provider_fixture_requests: state.requests.length,
+      production_requests: 0,
+    }),
+  );
 });
 
 await callOk("search_subnets", { query: "subnet", limit: 5 });
@@ -2109,20 +2224,6 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
     "read-only RPC proxying is intentionally disabled until endpoint scoring and abuse controls land (rpc_proxy_disabled)",
   ],
   [
-    "write_subnet_surface",
-    // #11568. Its READ sibling call_subnet_surface is swept here and validated
-    // against this exact same outputSchema, so the envelope is proven -- the
-    // two tools are one implementation and differ only in which verbs they
-    // will issue.
-    //
-    // The write half cannot be swept, and deliberately so. Succeeding would
-    // mean this gate issuing a real POST/PUT/PATCH/DELETE against a third
-    // party's host on every CI run, which is not a thing a validation sweep
-    // should do at any frequency. The hermetic fixture declares no write
-    // operation either, so the call is refused before a response exists.
-    "issuing real writes to third-party subnet hosts is not something a sweep may do; the identical response envelope is validated via its read sibling call_subnet_surface",
-  ],
-  [
     "get_deregistration_ranking",
     // NOT a gap in the tool -- this is the decline working. The committed
     // economics artifact the harness falls back to is a captured snapshot that
@@ -2145,22 +2246,6 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
   [
     "get_alert_trigger",
     "the alert-triggers tier is not bound to this deployment (alert_triggers_unavailable)",
-  ],
-  [
-    "store_surface_credential",
-    "the harness has an authenticated account but no credential-store encryption secret",
-  ],
-  [
-    "list_surface_credentials",
-    "the harness has an authenticated account but no credential-store encryption secret",
-  ],
-  [
-    "delete_surface_credential",
-    "the harness has an authenticated account but no credential-store encryption secret",
-  ],
-  [
-    "verify_integration",
-    "requires ONE OF surface_id/netuid, a cross-field constraint the published object schema cannot express -- MCP requires a top-level type:object, so zod cannot emit the anyOf that would say so, and the sweep has no required argument to synthesise from",
   ],
   [
     "get_chain_activity",
@@ -2234,6 +2319,8 @@ for (const [toolName, directory] of Object.entries(SLUG_REGISTRIES)) {
   );
 }
 
+let sweepSuccesses = 0;
+let sweepInvocations = 0;
 for (const def of listToolDefinitions()) {
   if (RESPONSE_VALIDATED.has(def.name)) continue;
   if (RESPONSE_UNVALIDATED_REASONS.has(def.name)) continue;
@@ -2253,6 +2340,7 @@ for (const def of listToolDefinitions()) {
   // an agent copies. That is a defect whatever the environment, so it fails
   // here rather than being absorbed into the allowlist below.
   const probe = await call(def.name, args);
+  sweepInvocations++;
   if (probe.isError) {
     const text = String(probe.content?.[0]?.text ?? "");
     assert.ok(
@@ -2262,8 +2350,18 @@ for (const def of listToolDefinitions()) {
     );
     continue;
   }
-  await callOk(def.name, args);
+  validateSuccessfulResult(def.name, probe);
+  sweepSuccesses++;
 }
+console.log(
+  "MCP_RESPONSE_SWEEP_FIXTURE",
+  JSON.stringify({
+    tool_invocations: sweepInvocations,
+    successful_responses_validated: sweepSuccesses,
+    duplicate_invocations_removed: sweepSuccesses,
+    production_requests: 0,
+  }),
+);
 
 // --- A `fields` projection must satisfy the tool's own schema (#9880) ------
 //
@@ -2671,4 +2769,13 @@ console.log(
     schemaService ? "all" : "all-but-schema"
   } tools/call + the resources/subscribe -> ingest -> notify round trip ` +
     `+ the subnet-status subscribe -> notify-changed -> notify round trip.`,
+);
+globalThis.fetch = previousFetch;
+console.log(
+  "MCP_OFFLINE_NETWORK_FIXTURE",
+  JSON.stringify({
+    blocked_unmocked_fetch_attempts: blockedUnmockedFetches,
+    outgoing_network_requests: 0,
+    production_requests: 0,
+  }),
 );
