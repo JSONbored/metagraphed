@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { captureUpsertStatements } from "./capture-family-d1.ts";
 import { NOMINATOR_POSITION_INSERT_COLUMNS } from "./account-nominator-positions.ts";
+import { NOMINATOR_POSITIONS_CONFLICT } from "./nominator-positions-neon-write.ts";
 import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
 
 export interface SelfStakeSnapshot {
@@ -116,7 +117,7 @@ export async function writeSelfStakeSnapshotD1(
         {
           table: "nominator_positions",
           columns,
-          conflict: ["coldkey", "hotkey", "netuid"],
+          conflict: NOMINATOR_POSITIONS_CONFLICT,
         },
         rows,
         "nominator_positions.captured_at < excluded.captured_at",
