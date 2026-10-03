@@ -250,7 +250,10 @@ describe("Chutes source-reviewed inference and parameter execution", () => {
     assert.equal(validate(registry), true, JSON.stringify(validate.errors));
     assert.equal(rows.length, 4);
     assert.equal(
-      rows.reduce((count, row) => count + (row.http?.operations.length ?? 0), 0),
+      rows.reduce(
+        (count, row) => count + (row.http?.operations.length ?? 0),
+        0,
+      ),
       6,
     );
     for (const row of rows) {
