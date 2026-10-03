@@ -422,6 +422,10 @@
             "transport": {
               "const": "streamable-http"
             },
+            "public_discovery": {
+              "type": "boolean",
+              "description": "Source-reviewed keyless catalog discovery when true. Execution still uses the surface's authentication requirement. False or omission preserves the existing requirement."
+            },
             "read_tools": {
               "type": "array",
               "maxItems": 512,

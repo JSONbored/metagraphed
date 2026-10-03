@@ -3009,6 +3009,7 @@ async function resolveExecutionSurfaceCredential(
   surfaceId: string,
   hasPath: boolean,
   hasBodyMethod: boolean,
+  allowMissingCredential = false,
 ) {
   const hasInBandStringCredential =
     typeof args?.credential === "string" && args.credential.length > 0;
@@ -3024,6 +3025,10 @@ async function resolveExecutionSurfaceCredential(
       "`credential` was supplied but this surface does not require one.",
     );
   }
+  // A reviewed public catalog needs no stored provider key. Explicit caller
+  // credentials still receive the normal placement validation below.
+  if (allowMissingCredential && !hasInBandCredential)
+    return { credentialPlacement: undefined, credentialSource: undefined };
   // #9009: an authenticated caller can register a credential once
   // (store_surface_credential) instead of passing it as a tool argument
   // on every call -- a tool argument travels through client logs, the
@@ -3322,6 +3327,7 @@ async function executeSubnetMcp(
       surfaceId,
       false,
       false,
+      kind === "discover" && admission.public_discovery === true,
     );
   const { runSubnetMcp, SubnetMcpError } =
     await import("./subnet-mcp-client.ts");

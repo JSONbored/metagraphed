@@ -13,6 +13,14 @@ HTTP callability and recorded health separate from MCP admission, and supplies n
 plain GET snippet for an MCP endpoint. The website's catalog data preserves the
 same admission object through the canonical schema.
 
+A source-reviewed service can declare `mcp.public_discovery: true` when its
+catalog is public while execution requires a key. Discovery then omits stored
+credentials and their private KV lookup. An explicit caller credential still
+receives the usual validation and is forwarded. Read/write tools, prompts and
+resources retain their authentication requirements. Omission or `false` keeps
+the existing discovery requirement; tool arguments cannot override this registry
+decision.
+
 Discovery also returns source-reviewed `prompts` and `resources` when the registry
 admits them. Use `get_subnet_mcp_prompt` with its exact `prompt_name` and string
 arguments, or `read_subnet_mcp_resource` with its exact `resource_uri`. A resource
@@ -28,6 +36,18 @@ the registry; their argument and output schemas come from MCP discovery. First
 discover `sn-107-minos-mcp`, then supply the selected tool's arguments according
 to the returned schema. This source evidence establishes the integration
 contract, not the provider's current availability.
+
+SN22 Desearch's official hosted service, `sn-22-desearch-mcp`, admits all 15 read
+tools in the pinned server: AI, web and X search; web and X link search; X posts,
+users, replies, retweeters and trends; page extraction; and legacy web crawling.
+Its [hosted setup](https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/README.md),
+[tool implementation](https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/src/server.ts)
+and [HTTP handler](https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/src/http.ts)
+establish public discovery and caller-key execution. Discover the service first,
+then supply your Desearch API key as `credential` or store it once; the declared
+placement is `x-api-key`. Provider charges and limits belong to that key. Live
+discovery supplies the argument schemas, including repeated URL collections.
+Source qualification does not assert current provider availability.
 
 The SN74 LoopOver contribution interface is `gittensory-mcp`. Its pinned
 [hosted server](https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/mcp/server.ts)

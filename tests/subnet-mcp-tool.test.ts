@@ -712,6 +712,90 @@ describe("subnet MCP public contract", () => {
     );
     assert.ok(!JSON.stringify(result).includes("caller-secret"));
   });
+  test("public discovery is opt-in and never grants keyless execution", async () => {
+    const protectedSurface = {
+      ...surface,
+      auth_required: true,
+      auth: { scheme: "api-key", location: "header", name: "x-key" },
+    };
+    for (const public_discovery of [undefined, false, true]) {
+      const row = {
+        ...protectedSurface,
+        mcp: {
+          ...surface.mcp,
+          ...(public_discovery !== undefined ? { public_discovery } : {}),
+          read_prompts: ["plan"],
+          read_resources: ["fixture://taxonomy"],
+        },
+      };
+      const fixture = setup([row]);
+      const spoofed = await fixture.call("discover_subnet_mcp", {
+        surface_id: surface.id, public_discovery: true,
+      });
+      assert.equal(spoofed.structuredContent.error.code, "invalid_params");
+      assert.equal(fixture.calls.length, 0);
+      const discovered = await fixture.call("discover_subnet_mcp", {
+        surface_id: surface.id,
+      });
+      if (public_discovery === true) {
+        assert.equal(discovered.isError, false);
+        assert.equal(discovered.structuredContent.tools.length, 2);
+        assert.ok(fixture.calls.every((call) => !call.headers.has("x-key")));
+      } else {
+        assert.equal(discovered.structuredContent.error.code, "auth_required");
+        assert.equal(fixture.calls.length, 0);
+      }
+      for (const [name, arguments_] of [
+        ["read_subnet_mcp", args],
+        ["write_subnet_mcp", { ...args, tool_name: "write" }],
+        ["get_subnet_mcp_prompt", { surface_id: surface.id, prompt_name: "plan", arguments: { login: "a" } }],
+        ["read_subnet_mcp_resource", { surface_id: surface.id, resource_uri: "fixture://taxonomy" }],
+      ] as const) {
+        fixture.calls.length = 0;
+        const denied = await fixture.call(name, arguments_);
+        assert.equal(denied.structuredContent.error.code, "auth_required");
+        assert.equal(fixture.calls.length, 0);
+      }
+      fixture.calls.length = 0;
+      const explicit = await fixture.call("discover_subnet_mcp", {
+        surface_id: surface.id, credential: "explicit-key",
+      });
+      assert.equal(explicit.isError, false);
+      assert.ok(fixture.calls.every((call) => call.headers.get("x-key") === "explicit-key"));
+    }
+    assert.equal(McpSurfaceAdmissionSchema.safeParse({ ...surface.mcp, public_discovery: "true" }).success, false);
+  });
+  test("reviewed public discovery avoids a private KV read and decrypt with equal catalog bytes", async () => {
+    const values = new Map<string, string>();
+    let reads = 0;
+    const env = {
+      METAGRAPH_CONTROL: {
+        get: async (key: string) => { reads++; return values.has(key) ? JSON.parse(values.get(key)!) : null; },
+        put: async (key: string, value: string) => { values.set(key, value); },
+      },
+      MCP_SURFACE_CREDENTIAL_SECRET: "fixture-encryption-key",
+    } as unknown as ConfiguredSurfaceCredentialEnv;
+    await storeSurfaceCredential(env, "account:7", surface.id, "stored-private-key");
+    const outputs: string[] = [];
+    const counts: number[] = [];
+    for (const public_discovery of [false, true]) {
+      const row = { ...surface, auth_required: true, auth: { scheme: "api-key", location: "header", name: "x-key" }, mcp: { ...surface.mcp, public_discovery } };
+      const { readArtifact, fetchImpl, calls } = setup([row]);
+      const previous = globalThis.fetch;
+      globalThis.fetch = fetchImpl;
+      reads = 0;
+      try {
+        const result = await definition("discover_subnet_mcp").handler({ surface_id: surface.id }, { env, accountId: "7", readArtifact } as unknown as McpCtx);
+        outputs.push(JSON.stringify(result));
+        counts.push(reads);
+        assert.ok(calls.every((call) => call.headers.get("x-key") === (public_discovery ? null : "stored-private-key")));
+      } finally { globalThis.fetch = previous; }
+    }
+    assert.deepEqual(counts, [1, 0]);
+    assert.equal(outputs[0], outputs[1]);
+    assert.ok(!outputs[1]!.includes("stored-private-key"));
+    console.log("SUBNET_MCP_PUBLIC_DISCOVERY_FIXTURE", JSON.stringify({ private_kv_reads_existing: counts[0], private_kv_reads_public: counts[1], returned_catalog_bytes: Buffer.byteLength(outputs[1]!), production_requests: 0 }));
+  });
   test("stored credentials use canonical identity and explicit credentials win", async () => {
     const row = {
       ...surface,
