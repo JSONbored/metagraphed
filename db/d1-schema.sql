@@ -776,6 +776,14 @@ CREATE TABLE raw_capture_chunks (
   FOREIGN KEY(key,sha256) REFERENCES raw_capture_batches(key,sha256) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
+CREATE TABLE raw_capture_publications (
+  key TEXT NOT NULL,
+  sha256 TEXT NOT NULL CHECK (length(sha256) = 64),
+  selected_sha256 TEXT NOT NULL CHECK (length(selected_sha256) = 64),
+  chain_sha256 TEXT CHECK (chain_sha256 IS NULL OR length(chain_sha256) = 64),
+  PRIMARY KEY (key,sha256)
+) WITHOUT ROWID;
+
 CREATE TABLE raw_capture_selected (
   key TEXT PRIMARY KEY NOT NULL,
   sha256 TEXT NOT NULL,

@@ -1045,6 +1045,12 @@
   },
   {
     "type": "table",
+    "name": "raw_capture_publications",
+    "tbl_name": "raw_capture_publications",
+    "sql": "CREATE TABLE raw_capture_publications (\n  key TEXT NOT NULL,\n  sha256 TEXT NOT NULL CHECK (length(sha256) = 64),\n  selected_sha256 TEXT NOT NULL CHECK (length(selected_sha256) = 64),\n  chain_sha256 TEXT CHECK (chain_sha256 IS NULL OR length(chain_sha256) = 64),\n  PRIMARY KEY (key,sha256)\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
     "name": "raw_capture_selected",
     "tbl_name": "raw_capture_selected",
     "sql": "CREATE TABLE raw_capture_selected (\n  key TEXT PRIMARY KEY NOT NULL,\n  sha256 TEXT NOT NULL,\n  network TEXT NOT NULL CHECK(network IN ('mainnet','testnet')),\n  last_block INTEGER NOT NULL,\n  captured_at INTEGER NOT NULL,\n  FOREIGN KEY(key,sha256) REFERENCES raw_capture_batches(key,sha256)\n) WITHOUT ROWID"
