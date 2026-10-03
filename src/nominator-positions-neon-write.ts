@@ -47,6 +47,7 @@ import {
 } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+import type { SelfStakeSnapshot } from "./self-stake-snapshot.ts";
 
 /** The lane name this writer files its `lane_health` verdict under (`neon:<lane>`). */
 export const NOMINATOR_POSITIONS_NEON_LANE = "nominator-positions";
@@ -93,6 +94,15 @@ export interface NominatorPositionsMirrorOutcome {
    * writer -- took nothing. A completeness ledger nobody can tell is empty is
    * worse than no ledger. */
   pass?: NeonWriteResult;
+  snapshot?: NeonWriteResult &
+    SelfStakeSnapshot & {
+      sha256: string;
+      received_rows: number;
+      received_chunks: number;
+      completed_at: number | null;
+      complete: boolean;
+      positions_retired: number;
+    };
 }
 
 export interface NominatorPositionsMirrorDeps {
@@ -103,6 +113,7 @@ export interface NominatorPositionsMirrorDeps {
 
 export type NominatorPositionsInput = {
   rows: Row[];
+  selfStakeSnapshot?: SelfStakeSnapshot;
   coldkeyMaxCapturedAt: ReadonlyMap<string, number>;
   /** This chunk's completeness tally (#10056). Written last, and only when
    * both the upsert and the prune succeeded -- see below. */
@@ -147,6 +158,21 @@ export async function mirrorNominatorPositionsToNeon(
     "nominator_positions_passes",
     "nominator_scan_receipts",
   ]);
+  if (
+    input.selfStakeSnapshot &&
+    (!d1 || source !== POSITION_SOURCE_SELF_STAKE)
+  ) {
+    return {
+      attempted: true,
+      write: {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason:
+          "Full self-stake snapshots require their native D1 source domain",
+      },
+    };
+  }
   if (d1) {
     const outcome = await writeNominatorPositionsD1(d1, input);
     const laneDb = laneHealthStore(env, deps.laneHealthDb);

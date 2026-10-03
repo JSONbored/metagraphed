@@ -11,6 +11,10 @@ import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import {
+  parseSelfStakeSnapshot,
+  type SelfStakeSnapshot,
+} from "../src/self-stake-snapshot.ts";
+import {
   writeUsageRollupD1,
   type UsageRollupBucket,
 } from "../src/usage-rollup-d1.ts";
@@ -2787,13 +2791,14 @@ async function handleNominatorPositionsSync(
 // by the writer, never accepted from the wire: a producer that could name its
 // own source could claim the other lane's domain and delete its rows.
 //
-// NO PASS TALLY, unlike its sibling. `nominator_positions_passes` records
+// NO ALPHA PASS TALLY, unlike its sibling. `nominator_positions_passes` records
 // completeness of a full keyspace scan; self-stake is a targeted read over
 // registered (hotkey, netuid) pairs and declaring it complete would corrupt
-// the ledger the other lane's consumers gate on.
+// the ledger the other lane's consumers gate on. Its optional full-snapshot
+// receipt is separate, and retires absent owners only after all chunks arrive.
 const SELF_STAKE_SYNC_TOKEN_HEADER = "x-self-stake-sync-token";
-// One runtime API call per (hotkey, netuid) pair makes this lane WEEKLY and
-// far smaller than the Alpha scan, but the ceilings match its sibling's so a
+// One runtime API call per (hotkey, netuid) pair makes this lane far smaller
+// than the Alpha scan, but the ceilings match its sibling's so a
 // producer cannot be surprised by a different limit on the same table.
 const SELF_STAKE_SYNC_MAX_BODY_BYTES = 8_000_000;
 const SELF_STAKE_SYNC_MAX_ROWS = 25_000;
@@ -2864,10 +2869,19 @@ async function handleSelfStakeSync(
 
   const rows = incoming.map(coerceNominatorPositionSyncRow);
   const cutoffs = coldkeyMaxCapturedAt(rows);
+  let snapshot: SelfStakeSnapshot | undefined;
+  if (!Array.isArray(parsed) && Object.hasOwn(parsed, "snapshot")) {
+    try {
+      snapshot = parseSelfStakeSnapshot(parsed.snapshot, rows);
+    } catch (error) {
+      return writeJson({ error: String(error) }, 400);
+    }
+  }
 
   const neon = await mirrorNominatorPositionsToNeon(env, ctx, {
     rows,
     coldkeyMaxCapturedAt: cutoffs,
+    selfStakeSnapshot: snapshot,
     source: POSITION_SOURCE_SELF_STAKE,
     lane: SELF_STAKE_NEON_LANE,
   });
@@ -2893,6 +2907,7 @@ async function handleSelfStakeSync(
     ok: true,
     self_stake_positions_written: rows.length,
     coldkeys_pruned: cutoffs.size,
+    ...(snapshot ? { self_stake_snapshot: neon.snapshot } : {}),
     stores: ["neon"],
   });
 }
@@ -9232,7 +9247,8 @@ export function decodeBlockHeader(
   payload: unknown,
 ): { blockTag: string; blockNumber: number; timestampSeconds: number } | null {
   const result = (payload as { result?: unknown })?.result as
-    { number?: unknown; timestamp?: unknown } | undefined;
+    | { number?: unknown; timestamp?: unknown }
+    | undefined;
   if (!result) return null;
   const { number: rawNumber, timestamp: rawTimestamp } = result;
   if (typeof rawNumber !== "string" || typeof rawTimestamp !== "string")

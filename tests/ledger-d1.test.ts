@@ -82,11 +82,15 @@ const count = (table: string) =>
   db.prepare(`SELECT COUNT(*) n FROM ${table}`).first<number>("n");
 beforeAll(async () => {
   db = await runtime.getD1Database("DB");
-  for (const statement of readFileSync(
-    new URL("../migrations/d1/0010_ledger_state.sql", import.meta.url),
-    "utf8",
-  ).split("-- statement-breakpoint"))
-    if (statement.trim()) await db.prepare(statement).run();
+  for (const file of [
+    "0010_ledger_state.sql",
+    "0039_self_stake_snapshot_receipts.sql",
+  ])
+    for (const statement of readFileSync(
+      new URL("../migrations/d1/" + file, import.meta.url),
+      "utf8",
+    ).split("-- statement-breakpoint"))
+      if (statement.trim()) await db.prepare(statement).run();
 });
 afterAll(async () => runtime.dispose());
 beforeEach(async () => {
