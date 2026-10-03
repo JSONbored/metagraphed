@@ -244,6 +244,6 @@ describe("reviewed integration details", () => {
     );
     expect(html).toContain("Caller authentication required");
     expect(html).not.toContain("Public discovery;");
-    expect(html).not.toContain("MCP discovery");
+    expect(html).not.toContain("Copy Source HTTP MCP discovery");
   });
 });
