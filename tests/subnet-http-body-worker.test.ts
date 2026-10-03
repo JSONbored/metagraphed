@@ -195,14 +195,32 @@ test("workerd verifies and forwards a compact referenced request larger than the
   };
   const content_type = 'multipart/form-data; boundary="fixture"';
   for (const valid of [true, false]) {
-    const response = await runtime.dispatchFetch("https://worker-fixture.example/", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ body_artifact: { ...body_artifact, sha256: valid ? body_artifact.sha256 : "0".repeat(64) }, content_type }),
-    });
+    const response = await runtime.dispatchFetch(
+      "https://worker-fixture.example/",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          body_artifact: {
+            ...body_artifact,
+            sha256: valid ? body_artifact.sha256 : "0".repeat(64),
+          },
+          content_type,
+        }),
+      },
+    );
     const { result, calls } = await jsonBody(response);
     assert.equal(result.ok, valid);
     assert.deepEqual(calls[0], { kind: "source", method: "GET" });
-    if (valid) assert.deepEqual(calls[1], { kind: "provider", method: "POST", contentType: content_type, authorization: "Bearer worker-fixture-key", bytes: bytes.length, sha256: body_artifact.sha256 });
+    if (valid)
+      assert.deepEqual(calls[1], {
+        kind: "provider",
+        method: "POST",
+        contentType: content_type,
+        authorization: "Bearer worker-fixture-key",
+        bytes: bytes.length,
+        sha256: body_artifact.sha256,
+      });
     assert.equal(calls.length, valid ? 2 : 1);
   }
 });

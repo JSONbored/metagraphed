@@ -25,7 +25,10 @@ type Operation = z.infer<
 type Artifact = z.infer<typeof NativeCodeArtifactSchema>;
 
 function artifactUrl(value: string) {
-  return publicCommitArtifactUrl(value, "Native code requires a public commit-pinned artifact URL");
+  return publicCommitArtifactUrl(
+    value,
+    "Native code requires a public commit-pinned artifact URL",
+  );
 }
 function byteVector(metadata: NativeMetadata, id: number) {
   const type = metadata.types.get(id)?.definition;

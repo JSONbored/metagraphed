@@ -6409,18 +6409,34 @@ async function subnetSurfaceCall(
       "invalid_params",
       "`body_base64` must be canonical padded base64.",
     );
-  if (hasArtifactBodyArg && (hasJsonBodyArg || hasBase64BodyArg || args.body !== undefined))
-    throw toolError("invalid_params", "Supply only one of `body_artifact`, `body_base64`, `json_body` or `body`.");
-  if (hasArtifactBodyArg && !WriteSubnetSurfaceInputSchema.shape.body_artifact.safeParse(args.body_artifact).success)
-    throw toolError("invalid_params", "`body_artifact` requires a public URL, lowercase SHA-256 and an exact byte count from 0 to 10,000,000.");
+  if (
+    hasArtifactBodyArg &&
+    (hasJsonBodyArg || hasBase64BodyArg || args.body !== undefined)
+  )
+    throw toolError(
+      "invalid_params",
+      "Supply only one of `body_artifact`, `body_base64`, `json_body` or `body`.",
+    );
+  if (
+    hasArtifactBodyArg &&
+    !WriteSubnetSurfaceInputSchema.shape.body_artifact.safeParse(
+      args.body_artifact,
+    ).success
+  )
+    throw toolError(
+      "invalid_params",
+      "`body_artifact` requires a public URL, lowercase SHA-256 and an exact byte count from 0 to 10,000,000.",
+    );
   // Presence matters: null, false, zero and an empty JSON string are bodies.
   // The legacy body:null behavior stays omitted when json_body is absent.
   const hasBodyArg = hasJsonBodyArg || hasLegacyBodyArg || hasByteBodyArg;
-  const bodyArgumentName = hasArtifactBodyArg ? "`body_artifact`" : hasBase64BodyArg
-    ? "`body_base64`"
-    : hasJsonBodyArg
-      ? "`json_body`"
-      : "`body`";
+  const bodyArgumentName = hasArtifactBodyArg
+    ? "`body_artifact`"
+    : hasBase64BodyArg
+      ? "`body_base64`"
+      : hasJsonBodyArg
+        ? "`json_body`"
+        : "`body`";
   const hasContentTypeArg =
     typeof args?.content_type === "string" && args.content_type.length > 0;
   if (
@@ -6525,7 +6541,9 @@ async function subnetSurfaceCall(
   }
   let requestBody;
   let requestContentType;
-  const outboundUrlSafety = workerResolvedUrlSafetyGuard({ fetchImpl: globalThis.fetch });
+  const outboundUrlSafety = workerResolvedUrlSafetyGuard({
+    fetchImpl: globalThis.fetch,
+  });
   let serializedQuery: SerializedQueryGroup[] | undefined;
   let httpParameters: SerializedHttpParameters | undefined;
   if (reviewedHttp && !hasPath)
@@ -6733,9 +6751,12 @@ async function subnetSurfaceCall(
             `content_type "${requestContentType}" must be concrete and declared for this byte request. Declared: ${declaredMediaTypes.join(", ")}.`,
           );
         requestBody = hasArtifactBodyArg
-          ? (signal: AbortSignal) => fetchSubnetBodyArtifact(args.body_artifact!, {
-              signal, fetchImpl: globalThis.fetch, isUnsafeUrl: outboundUrlSafety,
-            })
+          ? (signal: AbortSignal) =>
+              fetchSubnetBodyArtifact(args.body_artifact!, {
+                signal,
+                fetchImpl: globalThis.fetch,
+                isUnsafeUrl: outboundUrlSafety,
+              })
           : Buffer.from(args.body_base64 as string, "base64");
       } else if (isJsonContentType) {
         // The MCP transport already parsed the JSON value. Serialize it once

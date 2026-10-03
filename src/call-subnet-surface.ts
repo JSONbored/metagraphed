@@ -205,7 +205,10 @@ export interface CallSubnetSurfaceOptions {
   // Request body, already serialized or decoded by the caller. Forward the
   // same string or byte view without another conversion or copy. Ignored
   // unless `path` is also set; GET/HEAD never send a body regardless.
-  body?: string | Uint8Array<ArrayBuffer> | ((signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>);
+  body?:
+    | string
+    | Uint8Array<ArrayBuffer>
+    | ((signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>);
   // The `content-type` header to send alongside `body`. Ignored when `body`
   // is not set.
   contentType?: string;
@@ -825,7 +828,10 @@ async function safetyCheckedFetch(
     fetchImpl: typeof fetch;
     isUnsafeUrl: (url: string) => Promise<boolean>;
     timeoutMs: number;
-    body?: string | Uint8Array<ArrayBuffer> | ((signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>);
+    body?:
+      | string
+      | Uint8Array<ArrayBuffer>
+      | ((signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>);
     contentType?: string;
     extraHeaders?: Record<string, string>;
     hasBodyCredential?: boolean;
@@ -842,7 +848,8 @@ async function safetyCheckedFetch(
   try {
     // Deferred file bytes resolve only after the target is safe, inside the
     // same fetch deadline. Redirects reuse these exact verified bytes once.
-    const resolvedBody = typeof body === "function" ? await body(controller.signal) : body;
+    const resolvedBody =
+      typeof body === "function" ? await body(controller.signal) : body;
     if (typeof body === "function") started = performance.now();
     const response = await fetchImpl(url, {
       method,

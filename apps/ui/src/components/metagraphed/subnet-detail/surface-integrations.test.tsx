@@ -33,15 +33,39 @@ const http: Surface = {
 };
 
 describe("reviewed integration details", () => {
+  it("copies a reviewed HEAD operation through the read tool", () => {
+    const rows = surfaceIntegrationOperations({
+      ...http,
+      http: { operations: [{ method: "HEAD", path: "/health" }] },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].tool).toBe("call_subnet_surface");
+    expect(rows[0].arguments.method).toBe("HEAD");
+    expect(rows[0].arguments).not.toHaveProperty("body_artifact");
+  });
   it("offers a compact artifact alternative for a required binary or multipart write", () => {
     for (const media of ["application/octet-stream", "multipart/form-data", "image/*"]) {
-      const rows = surfaceIntegrationOperations({ ...http, http: { operations: [{ method: "PUT", path: "/upload", request_content_types: [media], request_body_required: true }] } });
+      const rows = surfaceIntegrationOperations({
+        ...http,
+        http: {
+          operations: [
+            {
+              method: "PUT",
+              path: "/upload",
+              request_content_types: [media],
+              request_body_required: true,
+            },
+          ],
+        },
+      });
       expect(rows).toHaveLength(2);
       expect(rows[0].arguments.body_base64).toBeDefined();
       expect(rows[1].kind).toBe("PUT from artifact");
       expect(rows[1].tool).toBe("write_subnet_surface");
       expect(rows[1].arguments).toEqual({
-        surface_id: http.id, path: "/upload", method: "PUT",
+        surface_id: http.id,
+        path: "/upload",
+        method: "PUT",
         content_type: rows[0].arguments.content_type,
         body_artifact: {
           url: "<public raw.githubusercontent.com URL with a full 40-character commit>",

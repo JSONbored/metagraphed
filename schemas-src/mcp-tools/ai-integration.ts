@@ -309,11 +309,42 @@ const surfaceCallSharedShape = {
 
 /** The body fields, which only the write tool has any use for. */
 const surfaceWriteBodyShape = {
-  body_artifact: z.object({
-    url: z.string().url().max(2048).describe("Public raw.githubusercontent.com URL pinned to a full 40-character commit, without credentials, query or fragment."),
-    sha256: z.string().regex(/^[0-9a-f]{64}$/).describe("SHA-256 of the exact uncompressed request bytes."),
-    bytes: z.int().min(0).max(MAX_SUBNET_BODY_ARTIFACT_BYTES).describe("Exact complete request payload length, at most 10,000,000 bytes including multipart framing."),
-  }).strict().optional().describe("Exact request bytes from a checksum-bound public artifact, without putting file base64 in chat context. Use only one of body_artifact, body_base64, json_body or body. Requires an admitted body/media declaration. Multipart must already be encoded with the matching content_type boundary. The source is fetched once without caller credentials, under the target fetch deadline; integrity succeeds before any provider write. No persistent storage. JSON body credentials cannot be merged.").meta({ examples: [{ url: "https://raw.githubusercontent.com/example/uploads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/request.bin", sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", bytes: 0 }] }),
+  body_artifact: z
+    .object({
+      url: z
+        .string()
+        .url()
+        .max(2048)
+        .describe(
+          "Public raw.githubusercontent.com URL pinned to a full 40-character commit, without credentials, query or fragment.",
+        ),
+      sha256: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/)
+        .describe("SHA-256 of the exact uncompressed request bytes."),
+      bytes: z
+        .int()
+        .min(0)
+        .max(MAX_SUBNET_BODY_ARTIFACT_BYTES)
+        .describe(
+          "Exact complete request payload length, at most 10,000,000 bytes including multipart framing.",
+        ),
+    })
+    .strict()
+    .optional()
+    .describe(
+      "Exact request bytes from a checksum-bound public artifact, without putting file base64 in chat context. Use only one of body_artifact, body_base64, json_body or body. Requires an admitted body/media declaration. Multipart must already be encoded with the matching content_type boundary. The source is fetched once without caller credentials, under the target fetch deadline; integrity succeeds before any provider write. No persistent storage. JSON body credentials cannot be merged.",
+    )
+    .meta({
+      examples: [
+        {
+          url: "https://raw.githubusercontent.com/example/uploads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/request.bin",
+          sha256:
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          bytes: 0,
+        },
+      ],
+    }),
   body_base64: z
     .string()
     .regex(
