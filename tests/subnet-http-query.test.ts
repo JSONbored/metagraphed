@@ -448,10 +448,12 @@ async function invoke(
     reviewed?: boolean;
     raw?: string;
     tool?: string;
+    credentialLocation?: "query" | "header";
   } = {},
 ) {
   const calls: { url: string; init: RequestInit }[] = [];
   const artifacts: string[] = [];
+  const credentialLocation = options.credentialLocation ?? "query";
   const surface = {
     id: "query:api:1",
     surface_id: "query:api:1",
@@ -460,7 +462,11 @@ async function invoke(
     url: "https://fixture.example/api",
     auth_required: true,
     public_safe: true,
-    auth: { scheme: "api-key", location: "query", name: "api_key" },
+    auth: {
+      scheme: "api-key",
+      location: credentialLocation,
+      name: credentialLocation === "query" ? "api_key" : "x-api-key",
+    },
     probe: { method: "GET", enabled: !options.reviewed },
     schema_source: { surface_id: "query:openapi:1" },
     ...(options.reviewed
@@ -671,15 +677,27 @@ describe("public MCP declared-query boundary", () => {
     const path =
       "/query?" +
       values.map((value) => `color=${encodeURIComponent(value)}`).join("&");
-    const legacy = { ...base, path };
-    const typed = { ...base, query_values: { color: values } };
-    const before = await invoke(legacy);
-    const after = await invoke(typed);
+    // Header auth keeps the paired URLs independent of the legacy query
+    // credential merge's URLSearchParams re-encoding. Query auth is covered
+    // separately above, including byte preservation for the legacy mode.
+    const legacy = { ...base, credential: "fixture-token", path };
+    const typed = {
+      ...base,
+      credential: "fixture-token",
+      query_values: { color: values },
+    };
+    const before = await invoke(legacy, { credentialLocation: "header" });
+    const after = await invoke(typed, { credentialLocation: "header" });
     assert.equal(before.result.isError, false, JSON.stringify(before.result));
     assert.equal(after.result.isError, false, JSON.stringify(after.result));
     assert.equal(after.calls[0].url, before.calls[0].url);
     assert.equal(before.calls.length, 1);
     assert.equal(after.calls.length, 1);
+    for (const fixture of [before, after])
+      assert.equal(
+        new Headers(fixture.calls[0].init.headers).get("x-api-key"),
+        "fixture-token",
+      );
     const legacyBytes = Buffer.byteLength(JSON.stringify(legacy));
     const typedBytes = Buffer.byteLength(JSON.stringify(typed));
     assert.ok(typedBytes < legacyBytes);
@@ -690,6 +708,7 @@ describe("public MCP declared-query boundary", () => {
         typed_argument_bytes: typedBytes,
         outbound_url_equal: true,
         provider_requests_per_mode: 1,
+        credential_location: "header",
         production_requests: 0,
       }),
     );
