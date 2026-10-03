@@ -21,6 +21,26 @@ discover `sn-107-minos-mcp`, then supply the selected tool's arguments according
 to the returned schema. This source evidence establishes the integration
 contract, not the provider's current availability.
 
+The SN74 LoopOver contribution interface is `gittensory-mcp`. Its pinned
+[hosted server](https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/mcp/server.ts)
+registers 105 contributor/maintainer tools admitted here: 89 reads and 16 writes.
+This includes branch analysis from supplied metadata, bounty and contribution
+context, notifications, repository review, and authorized maintainer actions.
+The [client setup](https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/packages/loopover-mcp/README.md)
+documents bearer authentication. Use your own LoopOver session token, with the
+complete `Bearer <token>` header value as `credential`, or store that value with
+`store_surface_credential`. GitHub personal access tokens are not LoopOver
+session credentials. The provider still checks account identity, repository
+access and maintainer roles.
+
+LoopOver's agent planning, explanation and PR-packet operations are reviewed
+writes because their [implementation persists agent runs](https://github.com/JSONbored/loopover/blob/f665d94a751ed5374216117b469fcd7092003b23/src/services/agent-orchestrator.ts).
+Their provider read-only hints cannot make them callable through
+`read_subnet_mcp`. Local execution specifications remain data; the bridge does
+not execute returned commands. Operator/internal and self-hosted administration
+belong to separate interfaces. The pinned sources qualify admission, while
+actual provider availability and schemas are established during discovery.
+
 The bridge uses the pinned official SDK for initialization, JSON/SSE transport,
 sessions and tool-result validation. A Worker-compatible JSON Schema validator
 checks inputs and outputs without code generation. Provider annotations never

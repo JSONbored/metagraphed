@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import {
@@ -52,6 +53,7 @@ function setup(
     _meta: { source: "fixture" },
   },
   catalogServices: Row[] = [],
+  toolNames = ["read", "write"],
 ) {
   const calls: Row[] = [];
   const artifacts: string[] = [];
@@ -89,7 +91,10 @@ function setup(
   const fetchImpl: typeof fetch = async (url, init) => {
     if (String(url).startsWith("https://cloudflare-dns.com/dns-query"))
       return Response.json({ Answer: [{ type: 1, data: "18.160.0.1" }] });
-    assert.equal(new URL(String(url)).origin, "https://subnet.example");
+    assert.equal(
+      new URL(String(url)).origin,
+      new URL(rows[0]?.url ?? surface.url).origin,
+    );
     const message =
       typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
     calls.push({
@@ -111,10 +116,10 @@ function setup(
           }
         : message.method === "tools/list"
           ? {
-              tools: ["read", "write"].map((name) => ({
+              tools: toolNames.map((name) => ({
                 name,
                 inputSchema: { type: "object", additionalProperties: false },
-                annotations: { readOnlyHint: name === "write" },
+                annotations: { readOnlyHint: name !== "read" },
               })),
             }
           : output;
@@ -153,6 +158,89 @@ function setup(
 const args = { surface_id: surface.id, tool_name: "read" };
 
 describe("subnet MCP public contract", () => {
+  test("SN74 bearer admission discovers the reviewed catalog and protects persisted actions", async () => {
+    const registry = JSON.parse(
+      readFileSync(
+        new URL("../registry/subnets/gittensor.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    const registered = registry.surfaces.find(
+      (row: Row) => row.id === "gittensory-mcp",
+    );
+    assert.ok(registered);
+    const admission = McpSurfaceAdmissionSchema.parse(registered.mcp);
+    assert.equal(registered.probe.enabled, false);
+    assert.deepEqual(
+      [registered.auth.scheme, registered.auth.location, registered.auth.name],
+      ["bearer", "header", "Authorization"],
+    );
+    const toolNames = [...admission.read_tools, ...admission.write_tools];
+    assert.equal(new Set(toolNames).size, 105);
+    assert.equal(admission.read_tools.length, 89);
+    assert.equal(admission.write_tools.length, 16);
+    const { call, calls } = setup([registered], undefined, [], toolNames);
+    const missing = await call("discover_subnet_mcp", {
+      surface_id: registered.id,
+    });
+    assert.equal(missing.structuredContent.error.code, "auth_required");
+    assert.equal(calls.length, 0);
+    const caller = {
+      surface_id: registered.id,
+      credential: "Bearer sn74-fixture-session",
+    };
+    const discovered = await call("discover_subnet_mcp", caller);
+    assert.equal(discovered.isError, false);
+    assert.equal(discovered.structuredContent.tools.length, 105);
+    assert.deepEqual(
+      discovered.structuredContent.tools.map((tool: Row) => [
+        tool.name,
+        tool.access,
+      ]),
+      [
+        ...admission.read_tools.map((name) => [name, "read"]),
+        ...admission.write_tools.map((name) => [name, "write"]),
+      ],
+    );
+    calls.length = 0;
+    for (const tool_name of admission.write_tools) {
+      const denied = await call("read_subnet_mcp", { ...caller, tool_name });
+      assert.equal(
+        denied.structuredContent.error.code,
+        "operation_not_allowed",
+      );
+    }
+    assert.equal(calls.length, 0);
+    for (const tool_name of [
+      "loopover_agent_plan_next_work",
+      "loopover_agent_explain_next_action",
+      "loopover_agent_prepare_pr_packet",
+    ]) {
+      assert.ok(admission.write_tools.includes(tool_name));
+      assert.equal(
+        discovered.structuredContent.tools.find(
+          (tool: Row) => tool.name === tool_name,
+        ).annotations.readOnlyHint,
+        true,
+      );
+      const result = await call("write_subnet_mcp", { ...caller, tool_name });
+      assert.equal(result.isError, false);
+      assert.equal(result.structuredContent.tool_name, tool_name);
+    }
+    const read = await call("read_subnet_mcp", {
+      ...caller,
+      tool_name: "loopover_list_bounties",
+    });
+    assert.equal(read.isError, false);
+    assert.equal(read.structuredContent.surface_id, registered.id);
+    assert.ok(
+      calls.every(
+        (call) =>
+          call.headers.get("authorization") === "Bearer sn74-fixture-session",
+      ),
+    );
+    assert.ok(!JSON.stringify(read).includes("sn74-fixture-session"));
+  });
   test("integration guide exposes unprobed MCP admission alongside callable HTTP services", async () => {
     const mcp = {
       surface_id: surface.id,

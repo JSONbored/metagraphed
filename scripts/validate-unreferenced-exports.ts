@@ -100,8 +100,9 @@ export const MAX_UNREFERENCED_EXPORTS: number = 729;
  * residue. Lock the gain in rather than leaving unused-export capacity behind.
  *
  * 152 after #12039 reuses the wallet connection trigger in contextual settings.
+ * 151 after the subnet MCP catalog reuses its canonical admission schema.
  */
-export const MAX_UNREFERENCED_EXPORTS_UI: number = 152;
+export const MAX_UNREFERENCED_EXPORTS_UI: number = 151;
 
 /** Whether a knip issue belongs to the UI workspaces rather than the backend. */
 export function isUiFile(file: string): boolean {
