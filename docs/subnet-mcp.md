@@ -69,6 +69,14 @@ within the admitted origin, bounds requests/bytes/time, and attempts bounded
 session deletion before closing. It does not initiate provider OAuth or obtain
 credentials for the caller.
 
+Successful catalog POST responses can use the existing one-megabyte invocation
+byte budget. Initialization, independent GET/SSE streams, operation results and
+HTTP error bodies retain their 256-KiB response limit. Catalog pages, prompts,
+resources and results still share that same one-megabyte total; a larger catalog
+does not grant another byte budget. The published LoopOver contract fixture
+includes 163 tool contracts and a 262,655-byte conservative catalog, without
+asserting that every conditional tool is enabled in the hosted deployment.
+
 Native content blocks, structured values, metadata and execution errors remain
 available. Native image/audio/blob bytes are not serialized into a second receipt
 text. The bridge returns a structured receipt identifying the surface and tool,

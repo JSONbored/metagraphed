@@ -17,7 +17,8 @@ import {
 } from "./call-subnet-surface.ts";
 
 const MAX_REQUESTS = 64;
-const MAX_TOTAL_BYTES = 4 * MAX_RESPONSE_BYTES;
+export const MAX_SUBNET_MCP_CATALOG_BYTES = 4 * MAX_RESPONSE_BYTES;
+const MAX_TOTAL_BYTES = MAX_SUBNET_MCP_CATALOG_BYTES;
 const MAX_TOOLS = 512;
 
 export class SubnetMcpError extends Error {
@@ -108,6 +109,7 @@ export async function runSubnetMcp(
   let phase: "operation" | "cleanup" | "closed" = "operation";
   let requests = 0;
   let totalBytes = 0;
+  let requestingCatalog = false;
   const validator = new CfWorkerJsonSchemaValidator();
   const client = new Client(
     { name: "metagraphed-subnet-bridge", version: "1" },
@@ -120,6 +122,9 @@ export async function runSubnetMcp(
       : [];
 
   const checkedFetch: typeof fetch = async (input, init) => {
+    // Capture at request start: the independent GET/SSE stream and later tool
+    // results never inherit a catalog POST's larger allowance.
+    const catalogResponse = requestingCatalog && init?.method === "POST";
     if (
       phase === "closed" ||
       (phase === "cleanup" && init?.method !== "DELETE")
@@ -190,6 +195,10 @@ export async function runSubnetMcp(
         continue;
       }
       if (!response.body) return response;
+      const responseLimit =
+        catalogResponse && response.ok
+          ? MAX_SUBNET_MCP_CATALOG_BYTES
+          : MAX_RESPONSE_BYTES;
       const reader = response.body.getReader();
       readers.add(reader);
       let bytes = 0;
@@ -208,7 +217,7 @@ export async function runSubnetMcp(
             }
             bytes += next.value.byteLength;
             totalBytes += next.value.byteLength;
-            if (bytes > MAX_RESPONSE_BYTES || totalBytes > MAX_TOTAL_BYTES)
+            if (bytes > responseLimit || totalBytes > MAX_TOTAL_BYTES)
               throw new SubnetMcpError(
                 "response_too_large",
                 "The upstream MCP response exceeds the byte budget.",
@@ -252,6 +261,14 @@ export async function runSubnetMcp(
     signal: controller.signal,
     timeout: options.timeoutMs + 1_000,
   };
+  async function catalogRequest<T>(request: () => Promise<T>): Promise<T> {
+    requestingCatalog = true;
+    try {
+      return await request();
+    } finally {
+      requestingCatalog = false;
+    }
+  }
   const execute = async (): Promise<SubnetMcpResult> => {
     await client.connect(transport, requestOptions);
     // Prompt/resource catalogs do not participate in the SDK's tool-schema
@@ -293,9 +310,11 @@ export async function runSubnetMcp(
     const listPrompts = () =>
       listReviewed(
         async (cursor) => {
-          const page = await client.listPrompts(
-            cursor ? { cursor } : undefined,
-            requestOptions,
+          const page = await catalogRequest(() =>
+            client.listPrompts(
+              cursor ? { cursor } : undefined,
+              requestOptions,
+            ),
           );
           return { items: page.prompts, nextCursor: page.nextCursor };
         },
@@ -305,9 +324,11 @@ export async function runSubnetMcp(
     const listResources = () =>
       listReviewed(
         async (cursor) => {
-          const page = await client.listResources(
-            cursor ? { cursor } : undefined,
-            requestOptions,
+          const page = await catalogRequest(() =>
+            client.listResources(
+              cursor ? { cursor } : undefined,
+              requestOptions,
+            ),
           );
           return { items: page.resources, nextCursor: page.nextCursor };
         },
@@ -362,9 +383,11 @@ export async function runSubnetMcp(
     const tools: (Tool & { access: "read" | "write" })[] = [];
     if (allowed.size > 0)
       do {
-        const page = await client.listTools(
-          cursor ? { cursor } : undefined,
-          requestOptions,
+        const page = await catalogRequest(() =>
+          client.listTools(
+            cursor ? { cursor } : undefined,
+            requestOptions,
+          ),
         );
         for (const tool of page.tools) {
           if (names.has(tool.name) || names.size === MAX_TOOLS)

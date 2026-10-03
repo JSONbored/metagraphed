@@ -6,12 +6,16 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { posix } from "node:path";
+import { TextDecoder } from "node:util";
 import { gunzipSync } from "node:zlib";
 import { readFileSync } from "node:fs";
 import { build } from "esbuild";
 import { test } from "vitest";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { runSubnetMcp } from "../src/subnet-mcp-client.ts";
+import {
+  runSubnetMcp,
+  MAX_SUBNET_MCP_CATALOG_BYTES,
+} from "../src/subnet-mcp-client.ts";
 import { MAX_RESPONSE_BYTES } from "../src/call-subnet-surface.ts";
 
 const require = createRequire(import.meta.url);
@@ -236,10 +240,17 @@ process.stdout.write(result);`;
         "-e",
         runner,
       ],
-      { input: code, env: {}, maxBuffer: 4 * 1024 * 1024, timeout: 30_000 },
+      {
+        input: code,
+        // Worker env declarations augment Node's type; the child still receives
+        // no inherited variables or credentials.
+        env: {} as NodeJS.ProcessEnv,
+        maxBuffer: 4 * 1024 * 1024,
+        timeout: 30_000,
+      },
     );
     const tools = JSON.parse(output.toString("utf8")) as Tool[];
-    assert.ok(tools.length >= 105 && tools.length <= 512);
+    assert.equal(tools.length, 163);
     assert.equal(new Set(tools.map((tool) => tool.name)).size, tools.length);
     for (const name of [...admission.read_tools, ...admission.write_tools])
       assert.ok(
@@ -262,6 +273,10 @@ test("published provider schemas fit discovery without schema or permission loss
       JSON.stringify({ jsonrpc: "2.0", id: 2, result: { tools } }),
     );
   const outputSchemas = all.map((tool) => JSON.stringify(tool.outputSchema));
+  assert.equal(reviewed.length, 105);
+  assert.ok(wireBytes(reviewed) < MAX_RESPONSE_BYTES);
+  assert.ok(wireBytes(all) > MAX_RESPONSE_BYTES);
+  assert.ok(wireBytes(all) < MAX_SUBNET_MCP_CATALOG_BYTES);
   console.log(
     "PUBLISHED_SUBNET_CATALOG",
     JSON.stringify({
@@ -271,7 +286,9 @@ test("published provider schemas fit discovery without schema or permission loss
       admitted: reviewed.length,
       admitted_wire_bytes: wireBytes(reviewed),
       conservative_wire_bytes: wireBytes(all),
-      per_response_limit: MAX_RESPONSE_BYTES,
+      operation_response_limit: MAX_RESPONSE_BYTES,
+      catalog_response_limit: MAX_SUBNET_MCP_CATALOG_BYTES,
+      invocation_limit: MAX_SUBNET_MCP_CATALOG_BYTES,
       output_schemas: outputSchemas.length,
       distinct_output_schemas: new Set(outputSchemas).size,
       provider_requests: 0,

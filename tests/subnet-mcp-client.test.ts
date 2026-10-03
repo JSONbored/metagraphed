@@ -4,6 +4,7 @@ import type { Row } from "./row-type.ts";
 import {
   runSubnetMcp,
   SubnetMcpError,
+  MAX_SUBNET_MCP_CATALOG_BYTES,
   type SubnetMcpOptions,
 } from "../src/subnet-mcp-client.ts";
 import { MAX_RESPONSE_BYTES } from "../src/call-subnet-surface.ts";
@@ -688,6 +689,66 @@ describe("isolated upstream MCP protocol", () => {
       }),
     });
     await fails(tooManyTools.options, { kind: "discover" }, "invalid_catalog");
+  });
+  for (const sse of [false, true])
+    test(`large ${sse ? "SSE" : "JSON"} catalogs retain tools, prompts and resources within the invocation budget`, async () => {
+      const description = "x".repeat(MAX_RESPONSE_BYTES + 256);
+      const tool = { ...readTool, description };
+      const prompt = { name: "plan", description };
+      const resource = { name: "taxonomy", uri: "fixture://taxonomy", description };
+      const upstream = fixture({
+        sse,
+        tools: () => ({ tools: [tool] }),
+        prompts: () => ({ prompts: [prompt] }),
+        resources: () => ({ resources: [resource] }),
+      });
+      const result = await runSubnetMcp({
+        ...upstream.options,
+        readPrompts: ["plan"],
+        readResources: ["fixture://taxonomy"],
+      }, { kind: "discover" });
+      assert.deepEqual(result, {
+        kind: "discover",
+        tools: [{ ...tool, access: "read" }],
+        prompts: [prompt],
+        resources: [resource],
+      });
+    });
+  test("large catalogs cannot enlarge operation results or HTTP errors", async () => {
+    const description = "x".repeat(MAX_RESPONSE_BYTES + 256);
+    for (const method of ["tools/call", "prompts/get", "resources/read"]) {
+      const upstream = fixture({
+        tools: () => ({ tools: [{ ...readTool, description }] }),
+        prompts: () => ({ prompts: [{ name: "plan", description }] }),
+        resources: () => ({
+          resources: [{ name: "taxonomy", uri: "fixture://taxonomy", description }],
+        }),
+        intercept: (wire) => wire.message?.method === method
+          ? new Response(description, {
+            headers: { "content-type": "application/json" },
+          })
+          : undefined,
+      });
+      upstream.options.readPrompts = ["plan"];
+      upstream.options.readResources = ["fixture://taxonomy"];
+      await fails(upstream.options, method === "tools/call" ? read
+        : method === "prompts/get" ? { kind: "prompt", name: "plan", arguments: {} }
+          : { kind: "resource", uri: "fixture://taxonomy" }, "response_too_large");
+      assert.ok(upstream.calls.some((wire) => wire.message?.method === method));
+    }
+    const error = fixture({
+      intercept: (wire) => wire.message?.method === "tools/list"
+        ? new Response(description, { status: 500 })
+        : undefined,
+    });
+    await fails(error.options, { kind: "discover" }, "response_too_large");
+    const oversized = fixture({
+      tools: () => ({ tools: [{
+        ...readTool,
+        description: "x".repeat(MAX_SUBNET_MCP_CATALOG_BYTES),
+      }] }),
+    });
+    await fails(oversized.options, { kind: "discover" }, "response_too_large");
   });
   test("deadlines include stalled fetches, empty-chunk streams and cleanup", async () => {
     const stalled = fixture({
