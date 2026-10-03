@@ -1,3 +1,4 @@
+import { McpSurfaceAdmissionSchema } from "./subnet-mcp-admission.ts";
 import {
   NativeJsonValueSchema,
   NativeValuePageRequestSchema,
@@ -596,6 +597,7 @@ const register = (schema: z.ZodType, id: string) => {
 register(SubnetsArtifactSchema, "SubnetsArtifact");
 register(SubnetIndexEntrySchema, "SubnetIndexEntry");
 register(SubnetDetailArtifactSchema, "SubnetDetailArtifact");
+register(McpSurfaceAdmissionSchema, "McpSurfaceAdmission");
 register(SurfaceSchema, "Surface");
 register(CandidateSurfaceSchema, "CandidateSurface");
 register(EndpointResourceSchema, "EndpointResource");

@@ -139,7 +139,7 @@ function redactQueryCredential(
 // this module's control, and some implementations echo the request URL (or
 // occasionally other request details) into it. Handles both a single value
 // and a multi-value bundle.
-function redactCredentialValue(
+export function redactCredentialValue(
   text: string,
   credential: CallSubnetSurfaceCredential | undefined,
 ): string {

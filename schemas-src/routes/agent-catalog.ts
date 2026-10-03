@@ -1,3 +1,4 @@
+import { McpSurfaceAdmissionSchema } from "../subnet-mcp-admission.ts";
 // GET /api/v1/agent-catalog, /api/v1/agent-catalog/{netuid},
 // /api/v1/agent-resources (types-epic B batch 10, #8064).
 //
@@ -216,6 +217,7 @@ export const AgentCatalogServiceSchema = z
     kind: z.string(),
     capability: z.string().optional(),
     description: z.string().nullable().optional(),
+    mcp: McpSurfaceAdmissionSchema.optional(),
     method: SurfaceMethodSchema.optional().meta({
       description:
         "HTTP method this service is invoked with; absent means GET. A non-GET service is a declared mutation (#11146): it carries no GET snippets -- call it through call_subnet_surface with the captured schema.",
