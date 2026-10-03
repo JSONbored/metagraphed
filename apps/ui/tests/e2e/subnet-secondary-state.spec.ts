@@ -384,7 +384,12 @@ const surfaces = [
         {
           method: "POST",
           path: "/search/live",
-          request_content_types: ["application/json", "text/plain", "multipart/form-data", "application/octet-stream"],
+          request_content_types: [
+            "application/json",
+            "text/plain",
+            "multipart/form-data",
+            "application/octet-stream",
+          ],
           request_body_required: true,
         },
         { method: "GET", path: "/search/live/result/{uuid}" },
@@ -506,32 +511,78 @@ for (const width of [375, 768, 1280]) {
             }),
           );
       }
-      const formats = details.getByRole("combobox", { name: "Request format POST /search/live", exact: true });
+      const formats = details.getByRole("combobox", {
+        name: "Request format POST /search/live",
+        exact: true,
+      });
       await expect(formats).toHaveValue("application/json");
       for (const [media, body] of [
-        ["text/plain", { content_type: "text/plain", body: "<replace with the provider's encoded request body>" }],
-        ["multipart/form-data", { content_type: "multipart/form-data; boundary=REPLACE_WITH_YOUR_BOUNDARY", body_base64: "<canonical base64 of the complete multipart body with the matching boundary>" }],
+        [
+          "text/plain",
+          {
+            content_type: "text/plain",
+            body: "<replace with the provider's encoded request body>",
+          },
+        ],
+        [
+          "multipart/form-data",
+          {
+            content_type: "multipart/form-data; boundary=REPLACE_WITH_YOUR_BOUNDARY",
+            body_base64:
+              "<canonical base64 of the complete multipart body with the matching boundary>",
+          },
+        ],
         ["application/json", { json_body: {} }],
       ] as const) {
         await formats.selectOption(media);
-        await details.getByRole("button", { name: "Copy POST /search/live call template", exact: true }).click();
-        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(JSON.stringify({
-          name: "write_subnet_surface", arguments: { surface_id: "sn-19-fixture-http", path: "/search/live", method: "POST", ...body },
-        }));
+        await details
+          .getByRole("button", { name: "Copy POST /search/live call template", exact: true })
+          .click();
+        await expect
+          .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+          .toBe(
+            JSON.stringify({
+              name: "write_subnet_surface",
+              arguments: {
+                surface_id: "sn-19-fixture-http",
+                path: "/search/live",
+                method: "POST",
+                ...body,
+              },
+            }),
+          );
       }
-      const artifactFormats = details.getByRole("combobox", { name: "Request format POST from artifact /search/live", exact: true });
+      const artifactFormats = details.getByRole("combobox", {
+        name: "Request format POST from artifact /search/live",
+        exact: true,
+      });
       await artifactFormats.focus();
       await page.keyboard.press("End");
       await expect(artifactFormats).toHaveValue("application/octet-stream");
-      await details.getByRole("button", { name: "Copy POST from artifact /search/live call template", exact: true }).click();
-      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(JSON.stringify({
-        name: "write_subnet_surface", arguments: { surface_id: "sn-19-fixture-http", path: "/search/live", method: "POST",
-          content_type: "application/octet-stream", body_artifact: {
-            url: "<public raw.githubusercontent.com URL with a full 40-character commit>",
-            sha256: "<lowercase SHA-256 of the complete request bytes>",
-            bytes: "<exact complete request byte count, at most 10000000>",
-          } },
-      }));
+      await details
+        .getByRole("button", {
+          name: "Copy POST from artifact /search/live call template",
+          exact: true,
+        })
+        .click();
+      await expect
+        .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+        .toBe(
+          JSON.stringify({
+            name: "write_subnet_surface",
+            arguments: {
+              surface_id: "sn-19-fixture-http",
+              path: "/search/live",
+              method: "POST",
+              content_type: "application/octet-stream",
+              body_artifact: {
+                url: "<public raw.githubusercontent.com URL with a full 40-character commit>",
+                sha256: "<lowercase SHA-256 of the complete request bytes>",
+                bytes: "<exact complete request byte count, at most 10000000>",
+              },
+            },
+          }),
+        );
       expect(requests.filter((path) => path.includes("agent-catalog"))).toEqual([]);
       expect(requests.filter((path) => path === "/api/v1/subnets/19/surfaces").length).toBe(before);
       expect(

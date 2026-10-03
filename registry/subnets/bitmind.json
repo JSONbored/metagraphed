@@ -10,9 +10,7 @@
   ],
   "contact": "intern@bitmind.ai",
   "curation": {
-    "gap_notes": [
-      "No verified SSE/event stream yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-07-16T00:40:00.000Z",
@@ -31,11 +29,7 @@
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
     "outcome": "none-found",
-    "checked": [
-      "docs",
-      "openapi",
-      "website"
-    ],
+    "checked": ["docs", "openapi", "website"],
     "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (docs:pricing, website:per month, website:pricing). \"No observable external revenue\" means no published amount, not no revenue."
   },
   "surfaces": [
@@ -54,9 +48,7 @@
       },
       "provider": "bitmind",
       "public_safe": true,
-      "source_urls": [
-        "https://docs.bitmind.ai/"
-      ],
+      "source_urls": ["https://docs.bitmind.ai/"],
       "url": "https://bitmind.ai/"
     },
     {
@@ -74,9 +66,7 @@
       },
       "provider": "bitmind",
       "public_safe": true,
-      "source_urls": [
-        "https://docs.bitmind.ai/"
-      ],
+      "source_urls": ["https://docs.bitmind.ai/"],
       "url": "https://docs.bitmind.ai/"
     },
     {
@@ -115,9 +105,7 @@
       },
       "provider": "bitmind",
       "public_safe": true,
-      "source_urls": [
-        "https://docs.bitmind.ai/"
-      ],
+      "source_urls": ["https://docs.bitmind.ai/"],
       "url": "https://app.bitmind.ai/"
     },
     {
@@ -141,9 +129,7 @@
       },
       "schema_status": "machine-readable",
       "schema_url": "https://api.bitmind.ai/openapi.json",
-      "source_urls": [
-        "https://api.bitmind.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
       "url": "https://api.bitmind.ai/openapi.json"
     },
     {
@@ -165,9 +151,7 @@
         "state": "community-submitted",
         "submitted_by": "jsonbored"
       },
-      "source_urls": [
-        "https://github.com/BitMind-AI/bitmind-subnet"
-      ],
+      "source_urls": ["https://github.com/BitMind-AI/bitmind-subnet"],
       "url": "https://github.com/BitMind-AI/gasbench"
     },
     {
@@ -189,9 +173,7 @@
         "state": "community-submitted",
         "submitted_by": "kiannidev"
       },
-      "source_urls": [
-        "https://bitmind.ai/"
-      ],
+      "source_urls": ["https://bitmind.ai/"],
       "url": "https://api.bitmind.ai/health"
     },
     {
@@ -423,9 +405,7 @@
           {
             "method": "POST",
             "path": "/detect-text",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           }
         ]

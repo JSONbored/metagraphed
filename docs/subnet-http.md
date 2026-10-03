@@ -99,14 +99,14 @@ Bearer credential and keeps recurring health probes disabled. Use the registered
 surface's exact operation with `write_subnet_surface`; `how_do_i_call` and the
 website's integration details expose its media contract.
 
-| Surface | Path | Declared request formats |
-| --- | --- | --- |
-| `sn-34-bitmind-detect-v1` | `/v1/detect` | JSON, plain text, multipart |
-| `sn-34-bitmind-detect-image` | `/detect-image` | JSON, multipart |
-| `sn-34-bitmind-detect-video` | `/detect-video` | JSON, multipart |
-| `sn-34-bitmind-detect-text` | `/detect-text` | JSON |
-| `sn-34-bitmind-enterprise-image` | `/image` | JSON, multipart |
-| `sn-34-bitmind-enterprise-video` | `/video` | JSON, multipart |
+| Surface                          | Path            | Declared request formats    |
+| -------------------------------- | --------------- | --------------------------- |
+| `sn-34-bitmind-detect-v1`        | `/v1/detect`    | JSON, plain text, multipart |
+| `sn-34-bitmind-detect-image`     | `/detect-image` | JSON, multipart             |
+| `sn-34-bitmind-detect-video`     | `/detect-video` | JSON, multipart             |
+| `sn-34-bitmind-detect-text`      | `/detect-text`  | JSON                        |
+| `sn-34-bitmind-enterprise-image` | `/image`        | JSON, multipart             |
+| `sn-34-bitmind-enterprise-video` | `/video`        | JSON, multipart             |
 
 The standard operations use `https://api.bitmind.ai`; enterprise operations use
 `https://enterprise.bitmind.ai`. Store credentials separately for each surface,

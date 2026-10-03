@@ -36,32 +36,80 @@ describe("reviewed integration details", () => {
   it("keeps every declared media choice in two rows while retaining the preferred default", () => {
     const source: Surface = {
       ...http,
-      http: { operations: [{ method: "POST", path: "/detect", request_body_required: true,
-        request_content_types: ["text/plain", "multipart/form-data", "application/json", "application/octet-stream", "multipart/form-data"] }] },
+      http: {
+        operations: [
+          {
+            method: "POST",
+            path: "/detect",
+            request_body_required: true,
+            request_content_types: [
+              "text/plain",
+              "multipart/form-data",
+              "application/json",
+              "application/octet-stream",
+              "multipart/form-data",
+            ],
+          },
+        ],
+      },
     };
     const rows = surfaceIntegrationOperations(source);
     expect(rows).toHaveLength(2);
-    expect(rows[0].arguments).toEqual({ surface_id: http.id, path: "/detect", method: "POST", json_body: {} });
+    expect(rows[0].arguments).toEqual({
+      surface_id: http.id,
+      path: "/detect",
+      method: "POST",
+      json_body: {},
+    });
     expect(rows[0].body_options?.map((option) => option.media)).toEqual([
-      "application/json", "text/plain", "multipart/form-data", "application/octet-stream",
+      "application/json",
+      "text/plain",
+      "multipart/form-data",
+      "application/octet-stream",
     ]);
-    expect(rows[0].body_options?.[1].body).toEqual({ content_type: "text/plain", body: "<replace with the provider's encoded request body>" });
-    expect(rows[0].body_options?.[2].body).toEqual({ content_type: "multipart/form-data; boundary=REPLACE_WITH_YOUR_BOUNDARY", body_base64: "<canonical base64 of the complete multipart body with the matching boundary>" });
-    expect(rows[1].body_options?.map((option) => option.media)).toEqual(["multipart/form-data", "application/octet-stream"]);
+    expect(rows[0].body_options?.[1].body).toEqual({
+      content_type: "text/plain",
+      body: "<replace with the provider's encoded request body>",
+    });
+    expect(rows[0].body_options?.[2].body).toEqual({
+      content_type: "multipart/form-data; boundary=REPLACE_WITH_YOUR_BOUNDARY",
+      body_base64: "<canonical base64 of the complete multipart body with the matching boundary>",
+    });
+    expect(rows[1].body_options?.map((option) => option.media)).toEqual([
+      "multipart/form-data",
+      "application/octet-stream",
+    ]);
     expect(rows[1].body_options?.[1].body).not.toHaveProperty("body_base64");
-    const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><SurfaceIntegrations surfaces={[source]} /></QueryClientProvider>);
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        <SurfaceIntegrations surfaces={[source]} />
+      </QueryClientProvider>,
+    );
     expect(html).toContain('aria-label="Request format POST /detect"');
     expect(html).toContain('aria-label="Request format POST from artifact /detect"');
     expect(html).toContain('value="application/json" selected=""');
   });
 
   it("offers optional request formats while keeping omission as the initial template", () => {
-    const rows = surfaceIntegrationOperations({ ...http, http: { operations: [{
-      method: "PATCH", path: "/optional", request_content_types: ["application/json", "multipart/form-data"],
-    }] } });
+    const rows = surfaceIntegrationOperations({
+      ...http,
+      http: {
+        operations: [
+          {
+            method: "PATCH",
+            path: "/optional",
+            request_content_types: ["application/json", "multipart/form-data"],
+          },
+        ],
+      },
+    });
     expect(rows).toHaveLength(2);
     expect(rows[0].arguments).toEqual({ surface_id: http.id, path: "/optional", method: "PATCH" });
-    expect(rows[0].body_options?.map((option) => option.media)).toEqual([undefined, "application/json", "multipart/form-data"]);
+    expect(rows[0].body_options?.map((option) => option.media)).toEqual([
+      undefined,
+      "application/json",
+      "multipart/form-data",
+    ]);
     expect(rows[0].body_options?.[0].body).toEqual({});
     expect(rows[1].arguments).toHaveProperty("body_artifact");
   });

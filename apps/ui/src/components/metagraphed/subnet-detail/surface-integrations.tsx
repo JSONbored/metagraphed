@@ -19,7 +19,8 @@ type Operation = {
 
 function CallTemplate({ row }: { row: Operation }) {
   const [format, setFormat] = useState<string>();
-  const selected = row.body_options?.find((option) => option.media === format) ?? row.body_options?.[0];
+  const selected =
+    row.body_options?.find((option) => option.media === format) ?? row.body_options?.[0];
   const arguments_ = selected ? { ...row.base_arguments, ...selected.body } : row.arguments;
   return (
     <div className="flex min-w-0 items-center gap-1">
@@ -149,7 +150,8 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
           ? [...(operation.request_body_required ? [] : [{ body: {} }]), ...options]
           : undefined,
       });
-      const artifactOptions = options.filter((option) => Object.hasOwn(option.body, "body_base64"))
+      const artifactOptions = options
+        .filter((option) => Object.hasOwn(option.body, "body_base64"))
         .map(({ media, body }) => ({
           media,
           body: {
