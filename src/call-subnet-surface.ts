@@ -159,7 +159,9 @@ export function redactCredentialValue(
     : credential?.value
       ? [credential.value]
       : [];
-  const values = parameterValues?.length ? [...credentialValues, ...parameterValues] : credentialValues;
+  const values = parameterValues?.length
+    ? [...credentialValues, ...parameterValues]
+    : credentialValues;
   const redactions = new Set<string>();
   for (const value of values) {
     if (!value) continue;
@@ -294,7 +296,9 @@ export async function callSubnetSurface(
   // safetyCheckedFetch, and a body-location credential is ready to merge
   // into the outgoing JSON below.
   let effectiveQuery = query;
-  const extraHeaders: Record<string, string> = requestHeaders ? Object.assign(Object.create(null), requestHeaders) : {};
+  const extraHeaders: Record<string, string> = requestHeaders
+    ? Object.assign(Object.create(null), requestHeaders)
+    : {};
   let bodyCredentialFields: Record<string, string> | null = null;
   if (credential && credentialEntries.length > 0) {
     if (credential.location === "query") {
@@ -306,8 +310,10 @@ export async function callSubnetSurface(
       }
     } else if (credential.location === "header") {
       for (const [name, value] of credentialEntries) {
-        if (requestHeaders) for (const key of Object.keys(extraHeaders))
-          if (key.toLowerCase() === name.toLowerCase()) delete extraHeaders[key];
+        if (requestHeaders)
+          for (const key of Object.keys(extraHeaders))
+            if (key.toLowerCase() === name.toLowerCase())
+              delete extraHeaders[key];
         extraHeaders[name] = value;
       }
     } else if (credential.location === "cookie") {
@@ -319,10 +325,23 @@ export async function callSubnetSurface(
     }
   }
   if (serializedCookies?.length) {
-    const headerNames = Object.keys(extraHeaders).filter((name) => name.toLowerCase() === "cookie");
+    const headerNames = Object.keys(extraHeaders).filter(
+      (name) => name.toLowerCase() === "cookie",
+    );
     const existingCookies = headerNames.map((name) => extraHeaders[name]!);
-    const credentialNames = new Set(existingCookies.flatMap((header) => header.split(";").map((part) => part.split("=", 1)[0]!.trim())));
-    const declared = serializedCookies.map((group) => group.pairs.filter((pair) => !credentialNames.has(pair.name)).map((pair) => pair.value).join(group.separator)).filter(Boolean);
+    const credentialNames = new Set(
+      existingCookies.flatMap((header) =>
+        header.split(";").map((part) => part.split("=", 1)[0]!.trim()),
+      ),
+    );
+    const declared = serializedCookies
+      .map((group) =>
+        group.pairs
+          .filter((pair) => !credentialNames.has(pair.name))
+          .map((pair) => pair.value)
+          .join(group.separator),
+      )
+      .filter(Boolean);
     for (const name of headerNames) delete extraHeaders[name];
     const cookie = [...declared, ...existingCookies].join("; ");
     if (cookie) extraHeaders.cookie = cookie;
@@ -446,7 +465,13 @@ export async function callSubnetSurface(
           }
         : {}),
       ...(fetched.error
-        ? { error: redactCredentialValue(fetched.error, credential, parameterRedactions) }
+        ? {
+            error: redactCredentialValue(
+              fetched.error,
+              credential,
+              parameterRedactions,
+            ),
+          }
         : {}),
     };
   }

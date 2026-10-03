@@ -135,15 +135,29 @@ beforeAll(async () => {
 afterAll(async () => runtime?.dispose());
 
 test("workerd preserves typed JSON header values, raw cookies and credential precedence", async () => {
-  const response = await runtime.dispatchFetch("https://worker-fixture.example/", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ header_values: { "x-json": { nested: [0, null, "雪😀"] } }, cookie_values: { color: { token: "wrong", R: "literal%2C" }, keep: "a +&雪" } }),
-  });
+  const response = await runtime.dispatchFetch(
+    "https://worker-fixture.example/",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        header_values: { "x-json": { nested: [0, null, "雪😀"] } },
+        cookie_values: {
+          color: { token: "wrong", R: "literal%2C" },
+          keep: "a +&雪",
+        },
+      }),
+    },
+  );
   assert.equal(response.status, 200);
   const { result, calls } = (await response.json()) as Row;
-  assert.equal(result.ok, true); assert.equal(calls.length, 1);
+  assert.equal(result.ok, true);
+  assert.equal(calls.length, 1);
   assert.deepEqual(JSON.parse(calls[0].json), { nested: [0, null, "雪😀"] });
-  assert.equal(calls[0].cookie, "R=literal%2C; keep=a%20%2B%26%E9%9B%AA; token=fixture-secret");
+  assert.equal(
+    calls[0].cookie,
+    "R=literal%2C; keep=a%20%2B%26%E9%9B%AA; token=fixture-secret",
+  );
 });
 
 test("workerd sends decoded nonUTF8 multipart bytes with the exact boundary header", async () => {

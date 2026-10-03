@@ -1409,7 +1409,10 @@ import {
   resolveLocalRequestBody,
 } from "./subnet-http-body.ts";
 import { resolveSwaggerRequestBody } from "./subnet-swagger-body.ts";
-import { serializeDeclaredHttpParameters, type SerializedHttpParameters } from "./subnet-http-parameters.ts";
+import {
+  serializeDeclaredHttpParameters,
+  type SerializedHttpParameters,
+} from "./subnet-http-parameters.ts";
 import {
   serializeDeclaredQuery,
   type SerializedQueryGroup,
@@ -6341,14 +6344,37 @@ async function subnetSurfaceCall(
   const hasQueryValues =
     args.query_values !== undefined &&
     Object.keys(args.query_values).length > 0;
-  if (args.header_values !== undefined && !CallSubnetSurfaceInputSchema.shape.header_values.safeParse(args.header_values).success)
-    throw toolError("invalid_params", "header_values must be an object of JSON values.");
-  if (args.cookie_values !== undefined && !CallSubnetSurfaceInputSchema.shape.cookie_values.safeParse(args.cookie_values).success)
-    throw toolError("invalid_params", "cookie_values must be an object of JSON values.");
-  const hasHttpValues = (args.header_values !== undefined && Object.keys(args.header_values).length > 0) || (args.cookie_values !== undefined && Object.keys(args.cookie_values).length > 0);
+  if (
+    args.header_values !== undefined &&
+    !CallSubnetSurfaceInputSchema.shape.header_values.safeParse(
+      args.header_values,
+    ).success
+  )
+    throw toolError(
+      "invalid_params",
+      "header_values must be an object of JSON values.",
+    );
+  if (
+    args.cookie_values !== undefined &&
+    !CallSubnetSurfaceInputSchema.shape.cookie_values.safeParse(
+      args.cookie_values,
+    ).success
+  )
+    throw toolError(
+      "invalid_params",
+      "cookie_values must be an object of JSON values.",
+    );
+  const hasHttpValues =
+    (args.header_values !== undefined &&
+      Object.keys(args.header_values).length > 0) ||
+    (args.cookie_values !== undefined &&
+      Object.keys(args.cookie_values).length > 0);
   const hasDeclaredValues = hasQueryValues || hasHttpValues;
   if (hasHttpValues && !hasPath)
-    throw toolError("invalid_params", "header_values and cookie_values require path and method for captured parameter serialization.");
+    throw toolError(
+      "invalid_params",
+      "header_values and cookie_values require path and method for captured parameter serialization.",
+    );
   if (hasQueryValues && !hasPath)
     throw toolError(
       "invalid_params",
@@ -6523,7 +6549,8 @@ async function subnetSurfaceCall(
           rowOf(schema)?.document,
           args.path as string,
           normalizedMethod as string,
-          hasDeclaredValues || (hasBodyArg && capturedDocument?.swagger === "2.0"),
+          hasDeclaredValues ||
+            (hasBodyArg && capturedDocument?.swagger === "2.0"),
         );
     if (!match) {
       throw toolError(
@@ -6568,11 +6595,25 @@ async function subnetSurfaceCall(
     }
     if (hasHttpValues) {
       if (!schema || !parameterMatch)
-        throw toolError("no_schema", "header_values and cookie_values require this admitted operation's captured parameter declarations.");
+        throw toolError(
+          "no_schema",
+          "header_values and cookie_values require this admitted operation's captured parameter declarations.",
+        );
       try {
-        httpParameters = serializeDeclaredHttpParameters(capturedDocument, parameterMatch.pathItem, parameterMatch.operation, args.header_values, args.cookie_values);
+        httpParameters = serializeDeclaredHttpParameters(
+          capturedDocument,
+          parameterMatch.pathItem,
+          parameterMatch.operation,
+          args.header_values,
+          args.cookie_values,
+        );
       } catch (error) {
-        throw toolError("invalid_params", error instanceof Error ? error.message : "Invalid captured HTTP parameters.");
+        throw toolError(
+          "invalid_params",
+          error instanceof Error
+            ? error.message
+            : "Invalid captured HTTP parameters.",
+        );
       }
     }
     const swaggerBody =

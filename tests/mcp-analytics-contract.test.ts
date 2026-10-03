@@ -347,6 +347,57 @@ describe("MCP attribution and outcomes", () => {
 });
 
 describe("MCP analytics payload privacy", () => {
+  test("opaque header and cookie values stay private without subtree traversal", async () => {
+    const { events, deps } = captures();
+    let headerReads = 0;
+    let ordinaryReads = 0;
+    const values = { "X-Key": "fixture-private-value", version: "1" };
+    const privateHeaders = new Proxy(values, {
+      ownKeys(target) {
+        headerReads++;
+        return Reflect.ownKeys(target);
+      },
+    });
+    const ordinary = new Proxy(values, {
+      ownKeys(target) {
+        ordinaryReads++;
+        return Reflect.ownKeys(target);
+      },
+    });
+    await recordMcpToolCallEvent(
+      env,
+      {
+        toolName: "call_subnet_surface",
+        isError: false,
+        durationMs: 1,
+        parameters: {
+          header_values: privateHeaders,
+          cookie_values: { session: "fixture-cookie-value" },
+          query: { page: 1 },
+          ordinary,
+        },
+      },
+      deps,
+    );
+    assert.equal(events.length, 1);
+    const captured = events[0].properties.$mcp_parameters;
+    assert.equal(captured.header_values, "[redacted]");
+    assert.equal(captured.cookie_values, "[redacted]");
+    assert.deepEqual(captured.query, { page: 1 });
+    assert.deepEqual(captured.ordinary, values);
+    assert.equal(headerReads, 0);
+    assert.equal(ordinaryReads, 1);
+    console.log(
+      "SUBNET_HTTP_PARAMETER_PRIVACY_FIXTURE",
+      JSON.stringify({
+        header_object_enumerations: headerReads,
+        ordinary_object_enumerations: ordinaryReads,
+        capture_requests: events.length,
+        production_requests: 0,
+      }),
+    );
+  });
+
   test("resource exception context uses the same credential redaction as resource events", async () => {
     const { events, deps } = captures();
     const uri =
