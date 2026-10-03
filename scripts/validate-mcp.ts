@@ -10,6 +10,7 @@ import {
   SUBNET_VERIFY_FIXTURE_ID,
   SUBNET_HTTP_FIXTURE_CREDENTIAL,
 } from "../tests/fixtures/subnet-http.ts";
+import { withMcpProxyFixture } from "../tests/fixtures/mcp-proxy.ts";
 // Contract validator for the remote MCP server at POST /mcp.
 //
 // Exercises the JSON-RPC lifecycle (initialize + tools/list) and a tools/call
@@ -903,6 +904,59 @@ await withSubnetHttpFixture(env, async (fixtureEnv, state) => {
       production_requests: 0,
     }),
   );
+});
+
+await withMcpProxyFixture(env, async (fixtureEnv, state) => {
+  const options = { envOverride: fixtureEnv };
+  for (const network of ["finney", "test"] as const) {
+    const result = await callOk("call_rpc", { network, method: "system_chain" }, options);
+    assert.equal(result.network, network);
+    assert.equal(result.endpoint_id, `fixture-${network}`);
+    assert.deepEqual(result.result, { network, wide: "18446744073709551615", nullable: null });
+  }
+  assert.equal(state.requests.length, 2);
+  const query = `query Q($netuid: Int!) {
+    main: subnet(netuid: $netuid) { netuid name description }
+    test: subnet(netuid: $netuid, network: test) { netuid name description }
+    page: subnets(limit: 1) { items { netuid name } total next_cursor }
+  }`;
+  const selected = await callOk("query_graphql", { query, variables: { netuid: 7 } }, options);
+  assert.deepEqual(selected.errors, []);
+  assert.deepEqual(selected.data.main, { netuid: 7, name: "finney fixture 7", description: null });
+  assert.deepEqual(selected.data.test, { netuid: 7, name: "test fixture 7", description: null });
+  assert.equal(selected.data.page.total, 2);
+  assert.equal(selected.data.page.next_cursor, "7");
+  assert.deepEqual(selected.data.page.items, [{ netuid: 7, name: "finney fixture 7" }]);
+  const next = await callOk("query_graphql", {
+    query: 'query { subnets(limit: 1, cursor: "7") { items { netuid name } total next_cursor } }',
+  }, options);
+  assert.deepEqual(next.data.subnets.items, [{ netuid: 8, name: "finney fixture 8" }]);
+  assert.equal(next.data.subnets.next_cursor, null);
+  const named = await callOk("list_subnets", { limit: 2 }, options);
+  const expected = [selected.data.page.items[0], next.data.subnets.items[0]];
+  assert.deepEqual(named.subnets.map((row: Row) => ({ netuid: row.netuid, name: row.title })), expected);
+  const response = await handleRequest(new Request("https://mcp-proxy-fixture.example/api/v1/subnets?limit=2"), apiEnv(fixtureEnv), accountCtx);
+  assert.equal(response.status, 200);
+  const rest = await response.json() as Row;
+  assert.deepEqual(rest.data.subnets.map((row: Row) => ({ netuid: row.netuid, name: row.name })), expected);
+  const partial = await callOk("query_graphql", {
+    query: '{ __typename subnet(netuid: 7) { endpoints(kind: "bogus") { id } } }',
+  }, options);
+  assert.deepEqual(partial.data, { __typename: "Query", subnet: null });
+  assert.equal(partial.errors.length, 1);
+  assert.equal(partial.errors[0].extensions.code, "BAD_USER_INPUT");
+  for (const query of ["{ definitely_not_a_fixture_field }", "mutation { __typename }"]) {
+    const denied = await call("query_graphql", { query }, options);
+    assert.equal(denied.isError, true);
+    assert.equal(denied.structuredContent.error.code, "invalid_graphql_query");
+  }
+  assert.equal(state.requests.length, 2, "GraphQL fixtures make no provider request");
+  console.log("MCP_PROXY_CONFORMANCE_FIXTURE", JSON.stringify({
+    newly_validated_responses: 2, rpc_networks: 2, rpc_provider_fixture_requests: 2,
+    graphql_populated_rows: 2, graphql_partial_error_rows: 1,
+    graphql_matches_named_mcp_and_rest_selection: true,
+    graphql_provider_requests: 0, production_requests: 0,
+  }));
 });
 
 await callOk("search_subnets", { query: "subnet", limit: 5 });
@@ -2230,10 +2284,6 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
     "needs the AI layer, which is unbound in the hermetic harness (ai_unavailable)",
   ],
   [
-    "call_rpc",
-    "read-only RPC proxying is intentionally disabled until endpoint scoring and abuse controls land (rpc_proxy_disabled)",
-  ],
-  [
     "get_deregistration_ranking",
     // NOT a gap in the tool -- this is the decline working. The committed
     // economics artifact the harness falls back to is a captured snapshot that
@@ -2244,10 +2294,6 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
     // check-mcp-conformance workflow once the capture lane has published a
     // blob carrying the field.
     "the committed economics artifact predates the NetworkImmunityPeriod capture, and the ordering declines rather than computing without it (deregistration_ranking_unavailable)",
-  ],
-  [
-    "query_graphql",
-    "executes against the live GraphQL schema, which the artifact harness does not serve",
   ],
   [
     "get_webhook_subscription",

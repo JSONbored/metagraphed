@@ -15346,15 +15346,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             : `The RPC upstream returned HTTP ${response.status}.`,
         );
       }
+      const rpcPayload = rowOf(payload);
+      if (!rpcPayload) {
+        throw toolError(
+          "rpc_invalid_response",
+          "The RPC proxy returned a non-object response envelope.",
+        );
+      }
       return {
         network,
         method: args.method,
-        jsonrpc: (payload as Row | null)?.jsonrpc ?? "2.0",
-        result:
-          payload && "result" in (payload as Row)
-            ? (payload as Row).result
-            : null,
-        error: (payload as Row | null)?.error ?? null,
+        jsonrpc: rpcPayload.jsonrpc ?? "2.0",
+        result: "result" in rpcPayload ? rpcPayload.result : null,
+        error: rpcPayload.error ?? null,
         endpoint_id: response.headers.get("x-metagraph-rpc-endpoint-id"),
         provider: response.headers.get("x-metagraph-rpc-provider"),
         cache: response.headers.get("x-metagraph-rpc-cache"),
