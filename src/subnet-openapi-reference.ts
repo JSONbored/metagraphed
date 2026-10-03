@@ -1,7 +1,9 @@
 /** A captured schema object, resolved locally without fetches or copies. */
-export function capturedSchemaObject(value: unknown): Record<string, unknown> | null {
+export function capturedSchemaObject(
+  value: unknown,
+): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : null;
 }
 
@@ -14,7 +16,8 @@ export function resolveLocalSchemaObject(
   const visited = new Set<string>();
   for (let hop = 0; hop < 32 && current; hop++) {
     if (current.$ref === undefined) return current;
-    if (typeof current.$ref !== "string" || !current.$ref.startsWith("#/")) return null;
+    if (typeof current.$ref !== "string" || !current.$ref.startsWith("#/"))
+      return null;
     const reference = current.$ref;
     if (visited.has(reference)) return null;
     visited.add(reference);
@@ -29,7 +32,8 @@ export function resolveLocalSchemaObject(
       if (/~(?:[^01]|$)/.test(token)) return null;
       const key = token.replace(/~1/g, "/").replace(/~0/g, "~");
       if (Array.isArray(target)) {
-        if (!/^(?:0|[1-9][0-9]*)$/.test(key) || !Object.hasOwn(target, key)) return null;
+        if (!/^(?:0|[1-9][0-9]*)$/.test(key) || !Object.hasOwn(target, key))
+          return null;
         target = target[Number(key)];
       } else {
         const parent = capturedSchemaObject(target);

@@ -132,15 +132,29 @@ test("workerd sends decoded nonUTF8 multipart bytes with the exact boundary head
 });
 
 test("workerd forwards joined arrays, exploded objects and JSON query values with credential precedence", async () => {
-  const response = await runtime.dispatchFetch("https://worker-fixture.example/", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ query_values: { ids: ["a,b", "雪 /"], color: { api_key: "wrong", flag: false }, filter: { nested: [0, null] } } }),
-  });
+  const response = await runtime.dispatchFetch(
+    "https://worker-fixture.example/",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query_values: {
+          ids: ["a,b", "雪 /"],
+          color: { api_key: "wrong", flag: false },
+          filter: { nested: [0, null] },
+        },
+      }),
+    },
+  );
   assert.equal(response.status, 200);
   const { result, calls } = (await response.json()) as Row;
   assert.equal(result.ok, true);
-  assert.deepEqual(calls, [{ method: "GET", url: "https://subnet.example/query?ids=a%2Cb,%E9%9B%AA%20%2F&flag=false&filter=%7B%22nested%22%3A%5B0%2Cnull%5D%7D&api_key=fixture+%2B%26%E9%9B%AA" }]);
+  assert.deepEqual(calls, [
+    {
+      method: "GET",
+      url: "https://subnet.example/query?ids=a%2Cb,%E9%9B%AA%20%2F&flag=false&filter=%7B%22nested%22%3A%5B0%2Cnull%5D%7D&api_key=fixture+%2B%26%E9%9B%AA",
+    },
+  ]);
   assert.equal(JSON.stringify(result).includes("fixture"), false);
   assert.equal(JSON.stringify(result).includes("wrong"), false);
 });

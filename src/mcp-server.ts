@@ -1408,7 +1408,10 @@ import {
   matchesBinaryRequestMediaType,
   resolveLocalRequestBody,
 } from "./subnet-http-body.ts";
-import { serializeDeclaredQuery, type SerializedQueryGroup } from "./subnet-http-query.ts";
+import {
+  serializeDeclaredQuery,
+  type SerializedQueryGroup,
+} from "./subnet-http-query.ts";
 import {
   ECONOMIC_LEADERBOARD_BOARDS,
   formatLeaderboards,
@@ -6325,11 +6328,22 @@ async function subnetSurfaceCall(
   }
   if (
     args.query_values !== undefined &&
-    !CallSubnetSurfaceInputSchema.shape.query_values.safeParse(args.query_values).success
-  ) throw toolError("invalid_params", "query_values must be an object of JSON values.");
-  const hasQueryValues = args.query_values !== undefined && Object.keys(args.query_values).length > 0;
+    !CallSubnetSurfaceInputSchema.shape.query_values.safeParse(
+      args.query_values,
+    ).success
+  )
+    throw toolError(
+      "invalid_params",
+      "query_values must be an object of JSON values.",
+    );
+  const hasQueryValues =
+    args.query_values !== undefined &&
+    Object.keys(args.query_values).length > 0;
   if (hasQueryValues && !hasPath)
-    throw toolError("invalid_params", "query_values requires path and method for captured parameter serialization.");
+    throw toolError(
+      "invalid_params",
+      "query_values requires path and method for captured parameter serialization.",
+    );
   const hasJsonBodyArg = args.json_body !== undefined;
   const hasBase64BodyArg = args.body_base64 !== undefined;
   const hasLegacyBodyArg = args?.body !== undefined && args?.body !== null;
@@ -6471,12 +6485,13 @@ async function subnetSurfaceCall(
   if (hasPath) {
     const schemaArtifactId =
       rowOf(surface.schema_source)?.surface_id || surface.surface_id;
-    const schema = reviewedHttp && !hasQueryValues
-      ? null
-      : await loadOptionalArtifact(
-          ctx,
-          `/metagraph/schemas/${schemaArtifactId}.json`,
-        );
+    const schema =
+      reviewedHttp && !hasQueryValues
+        ? null
+        : await loadOptionalArtifact(
+            ctx,
+            `/metagraph/schemas/${schemaArtifactId}.json`,
+          );
     if (!schema && !reviewedHttp) {
       throw toolError(
         "no_schema",
@@ -6508,17 +6523,33 @@ async function subnetSurfaceCall(
     }
     if (hasQueryValues) {
       const queryMatch = reviewedHttp
-        ? matchSchemaOperation(rowOf(schema)?.document, args.path as string, normalizedMethod as string, true)
+        ? matchSchemaOperation(
+            rowOf(schema)?.document,
+            args.path as string,
+            normalizedMethod as string,
+            true,
+          )
         : match;
       if (!schema || !queryMatch)
-        throw toolError("no_schema", "query_values requires this admitted operation's captured query parameter declarations; use query for pre-serialized fields.");
+        throw toolError(
+          "no_schema",
+          "query_values requires this admitted operation's captured query parameter declarations; use query for pre-serialized fields.",
+        );
       try {
         serializedQuery = serializeDeclaredQuery(
-          rowOf(schema)?.document, queryMatch.pathItem, queryMatch.operation,
-          args.query_values!, args.query,
+          rowOf(schema)?.document,
+          queryMatch.pathItem,
+          queryMatch.operation,
+          args.query_values!,
+          args.query,
         );
       } catch (error) {
-        throw toolError("invalid_params", error instanceof Error ? error.message : "Invalid declared query values.");
+        throw toolError(
+          "invalid_params",
+          error instanceof Error
+            ? error.message
+            : "Invalid declared query values.",
+        );
       }
     }
     const operationRequestBody = resolveLocalRequestBody(

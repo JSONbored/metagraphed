@@ -21,7 +21,10 @@
 import { createHash } from "node:crypto";
 import type { ContentBlock } from "@modelcontextprotocol/sdk/types.js";
 import { resolveLocalSchemaObject } from "./subnet-openapi-reference.ts";
-import { applySerializedQuery, type SerializedQueryGroup } from "./subnet-http-query.ts";
+import {
+  applySerializedQuery,
+  type SerializedQueryGroup,
+} from "./subnet-http-query.ts";
 
 const MAX_REDIRECTS = 5;
 // 256 KiB -- generous for a JSON API response, small enough that a
@@ -63,7 +66,8 @@ function buildRequestUrl(
       url.searchParams.set(key, String(value));
     }
   }
-  if (serializedQuery?.length) applySerializedQuery(url, serializedQuery, credentials);
+  if (serializedQuery?.length)
+    applySerializedQuery(url, serializedQuery, credentials);
   return url.toString();
 }
 
@@ -348,7 +352,9 @@ export async function callSubnetSurface(
     baseUrl = resolved.toString();
   }
   const requestUrl = buildRequestUrl(
-    baseUrl, effectiveQuery, serializedQuery,
+    baseUrl,
+    effectiveQuery,
+    serializedQuery,
     credential?.location === "query" ? credentialEntries : [],
   );
   if (
