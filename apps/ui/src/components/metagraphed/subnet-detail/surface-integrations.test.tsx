@@ -209,4 +209,41 @@ describe("reviewed integration details", () => {
     const html = renderToStaticMarkup(<SurfaceIntegrations surfaces={[]} />);
     expect(html).toContain("No valid reviewed operation declarations were returned.");
   });
+
+  it.each([undefined, false, true])(
+    "distinguishes reviewed public discovery from execution authentication (%s)",
+    (public_discovery) => {
+      const source: Surface = {
+        ...mcp,
+        mcp: { ...(mcp.mcp as object), public_discovery },
+      };
+      const html = renderToStaticMarkup(
+        <QueryClientProvider client={new QueryClient()}>
+          <SurfaceIntegrations surfaces={[source]} />
+        </QueryClientProvider>,
+      );
+      expect(html).toContain("Copy Source MCP MCP discovery");
+      if (public_discovery === true) {
+        expect(html).toContain("Public discovery; caller authentication required for execution");
+      } else {
+        expect(html).toContain("Caller authentication required");
+        expect(html).not.toContain("Public discovery;");
+      }
+    },
+  );
+
+  it("does not label malformed MCP metadata as public discovery alongside HTTP operations", () => {
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        <SurfaceIntegrations
+          surfaces={[
+            { ...http, auth_required: true, mcp: { public_discovery: true, read_tools: ["read"] } },
+          ]}
+        />
+      </QueryClientProvider>,
+    );
+    expect(html).toContain("Caller authentication required");
+    expect(html).not.toContain("Public discovery;");
+    expect(html).not.toContain("MCP discovery");
+  });
 });

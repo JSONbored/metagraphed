@@ -9584,6 +9584,8 @@ export interface components {
             testnet_only_count?: number;
         };
         McpSurfaceAdmission: {
+            /** @description Source-reviewed keyless catalog discovery when true. Execution still uses the surface's authentication requirement. False or omission preserves the existing requirement. */
+            public_discovery?: boolean;
             read_prompts?: string[];
             read_resources?: string[];
             read_tools: string[];

@@ -39129,6 +39129,10 @@
       "McpSurfaceAdmission": {
         "additionalProperties": false,
         "properties": {
+          "public_discovery": {
+            "description": "Source-reviewed keyless catalog discovery when true. Execution still uses the surface's authentication requirement. False or omission preserves the existing requirement.",
+            "type": "boolean"
+          },
           "read_prompts": {
             "items": {
               "maxLength": 128,

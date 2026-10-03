@@ -1249,6 +1249,11 @@ type Surface {
 
 type McpSurfaceAdmission {
   transport: String!
+
+  """
+  Source-reviewed keyless catalog discovery when true. Execution still uses the surface's authentication requirement. False or omission preserves the existing requirement.
+  """
+  public_discovery: Boolean
   read_tools: [String!]!
   write_tools: [String!]!
   read_prompts: [String!]

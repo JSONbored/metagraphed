@@ -119,7 +119,18 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
 
 export default function SurfaceIntegrations({ surfaces }: { surfaces: Surface[] }) {
   const entries = surfaces
-    .map((surface) => ({ surface, operations: surfaceIntegrationOperations(surface) }))
+    .map((surface) => {
+      const operations = surfaceIntegrationOperations(surface);
+      const hasMcp = operations.some(
+        (operation) =>
+          operation.tool !== "call_subnet_surface" && operation.tool !== "write_subnet_surface",
+      );
+      // Native operations exist only after canonical admission validation.
+      const publicDiscovery =
+        hasMcp &&
+        (surface.mcp as { public_discovery?: unknown } | undefined)?.public_discovery === true;
+      return { surface, operations, hasMcp, publicDiscovery };
+    })
     .filter((entry) => entry.operations.length > 0);
   return (
     <div id="surface-integrations" className="space-y-4">
@@ -135,7 +146,7 @@ export default function SurfaceIntegrations({ surfaces }: { surfaces: Surface[] 
           No valid reviewed operation declarations were returned.
         </p>
       ) : null}
-      {entries.map(({ surface, operations }) => (
+      {entries.map(({ surface, operations, hasMcp, publicDiscovery }) => (
         <section
           key={surface.id}
           className="space-y-3"
@@ -145,14 +156,12 @@ export default function SurfaceIntegrations({ surfaces }: { surfaces: Surface[] 
             <span className="font-medium text-ink-strong">{surface.name ?? surface.id}</span>
             <span className="text-ink-muted">
               {surface.auth_required
-                ? "Caller authentication required"
+                ? publicDiscovery
+                  ? "Public discovery; caller authentication required for execution"
+                  : "Caller authentication required"
                 : "No declared authentication"}
             </span>
-            {operations.some(
-              (operation) =>
-                operation.tool !== "call_subnet_surface" &&
-                operation.tool !== "write_subnet_surface",
-            ) ? (
+            {hasMcp ? (
               <CopyButton
                 label={`${surface.name ?? surface.id} MCP discovery`}
                 value={JSON.stringify({

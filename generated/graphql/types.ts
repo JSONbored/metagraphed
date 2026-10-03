@@ -3123,6 +3123,8 @@ export type IntensityDistribution = {
 
 export type McpSurfaceAdmission = {
   __typename?: 'McpSurfaceAdmission';
+  /** Source-reviewed keyless catalog discovery when true. Execution still uses the surface's authentication requirement. False or omission preserves the existing requirement. */
+  public_discovery?: Maybe<Scalars['Boolean']['output']>;
   read_prompts?: Maybe<Array<Scalars['String']['output']>>;
   read_resources?: Maybe<Array<Scalars['String']['output']>>;
   read_tools: Array<Scalars['String']['output']>;
@@ -11957,6 +11959,7 @@ export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
 }
 
 export type McpSurfaceAdmissionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['McpSurfaceAdmission'] = ResolversParentTypes['McpSurfaceAdmission']> = ResolversObject<{
+  public_discovery?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   read_prompts?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   read_resources?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   read_tools?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
