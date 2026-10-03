@@ -695,18 +695,25 @@ describe("isolated upstream MCP protocol", () => {
       const description = "x".repeat(MAX_RESPONSE_BYTES + 256);
       const tool = { ...readTool, description };
       const prompt = { name: "plan", description };
-      const resource = { name: "taxonomy", uri: "fixture://taxonomy", description };
+      const resource = {
+        name: "taxonomy",
+        uri: "fixture://taxonomy",
+        description,
+      };
       const upstream = fixture({
         sse,
         tools: () => ({ tools: [tool] }),
         prompts: () => ({ prompts: [prompt] }),
         resources: () => ({ resources: [resource] }),
       });
-      const result = await runSubnetMcp({
-        ...upstream.options,
-        readPrompts: ["plan"],
-        readResources: ["fixture://taxonomy"],
-      }, { kind: "discover" });
+      const result = await runSubnetMcp(
+        {
+          ...upstream.options,
+          readPrompts: ["plan"],
+          readResources: ["fixture://taxonomy"],
+        },
+        { kind: "discover" },
+      );
       assert.deepEqual(result, {
         kind: "discover",
         tools: [{ ...tool, access: "read" }],
@@ -721,32 +728,59 @@ describe("isolated upstream MCP protocol", () => {
         tools: () => ({ tools: [{ ...readTool, description }] }),
         prompts: () => ({ prompts: [{ name: "plan", description }] }),
         resources: () => ({
-          resources: [{ name: "taxonomy", uri: "fixture://taxonomy", description }],
+          resources: [
+            { name: "taxonomy", uri: "fixture://taxonomy", description },
+          ],
         }),
-        intercept: (wire) => wire.message?.method === method
-          ? new Response(description, {
-            headers: { "content-type": "application/json" },
-          })
-          : undefined,
+        intercept: (wire) =>
+          wire.message?.method === method
+            ? new Response(description, {
+                headers: { "content-type": "application/json" },
+              })
+            : undefined,
       });
       upstream.options.readPrompts = ["plan"];
       upstream.options.readResources = ["fixture://taxonomy"];
-      await fails(upstream.options, method === "tools/call" ? read
-        : method === "prompts/get" ? { kind: "prompt", name: "plan", arguments: {} }
-          : { kind: "resource", uri: "fixture://taxonomy" }, "response_too_large");
+      await fails(
+        upstream.options,
+        method === "tools/call"
+          ? read
+          : method === "prompts/get"
+            ? { kind: "prompt", name: "plan", arguments: {} }
+            : { kind: "resource", uri: "fixture://taxonomy" },
+        "response_too_large",
+      );
       assert.ok(upstream.calls.some((wire) => wire.message?.method === method));
     }
+    let cancelled = false;
     const error = fixture({
-      intercept: (wire) => wire.message?.method === "tools/list"
-        ? new Response(description, { status: 500 })
-        : undefined,
+      intercept: (wire) =>
+        wire.message?.method === "tools/list"
+          ? new Response(
+              new ReadableStream<Uint8Array>({
+                start(output) {
+                  output.enqueue(new TextEncoder().encode(description));
+                },
+                cancel() {
+                  cancelled = true;
+                },
+              }),
+              { status: 500 },
+            )
+          : undefined,
     });
-    await fails(error.options, { kind: "discover" }, "response_too_large");
+    // The SDK retains its HTTP error when the bounded error-body read rejects.
+    await fails(error.options, { kind: "discover" }, "upstream_mcp_error");
+    assert.equal(cancelled, true);
     const oversized = fixture({
-      tools: () => ({ tools: [{
-        ...readTool,
-        description: "x".repeat(MAX_SUBNET_MCP_CATALOG_BYTES),
-      }] }),
+      tools: () => ({
+        tools: [
+          {
+            ...readTool,
+            description: "x".repeat(MAX_SUBNET_MCP_CATALOG_BYTES),
+          },
+        ],
+      }),
     });
     await fails(oversized.options, { kind: "discover" }, "response_too_large");
   });

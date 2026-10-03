@@ -311,10 +311,7 @@ export async function runSubnetMcp(
       listReviewed(
         async (cursor) => {
           const page = await catalogRequest(() =>
-            client.listPrompts(
-              cursor ? { cursor } : undefined,
-              requestOptions,
-            ),
+            client.listPrompts(cursor ? { cursor } : undefined, requestOptions),
           );
           return { items: page.prompts, nextCursor: page.nextCursor };
         },
@@ -384,10 +381,7 @@ export async function runSubnetMcp(
     if (allowed.size > 0)
       do {
         const page = await catalogRequest(() =>
-          client.listTools(
-            cursor ? { cursor } : undefined,
-            requestOptions,
-          ),
+          client.listTools(cursor ? { cursor } : undefined, requestOptions),
         );
         for (const tool of page.tools) {
           if (names.has(tool.name) || names.size === MAX_TOOLS)
