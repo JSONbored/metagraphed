@@ -8086,9 +8086,19 @@ export type SurfaceHttp = {
 export type SurfaceHttpOperations = {
   __typename?: 'SurfaceHttpOperations';
   method: Scalars['String']['output'];
+  parameters?: Maybe<Array<SurfaceHttpOperationsParameters>>;
   path: Scalars['String']['output'];
   request_body_required?: Maybe<Scalars['Boolean']['output']>;
   request_content_types?: Maybe<Array<Scalars['String']['output']>>;
+};
+
+export type SurfaceHttpOperationsParameters = {
+  __typename?: 'SurfaceHttpOperationsParameters';
+  allowReserved?: Maybe<Scalars['Boolean']['output']>;
+  explode?: Maybe<Scalars['Boolean']['output']>;
+  in: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  style?: Maybe<Scalars['String']['output']>;
 };
 
 export type SurfaceList = {
@@ -8973,6 +8983,7 @@ export type ResolversTypes = ResolversObject<{
   SurfaceHistoryChange: ResolverTypeWrapper<SurfaceHistoryChange>;
   SurfaceHttp: ResolverTypeWrapper<SurfaceHttp>;
   SurfaceHttpOperations: ResolverTypeWrapper<SurfaceHttpOperations>;
+  SurfaceHttpOperationsParameters: ResolverTypeWrapper<SurfaceHttpOperationsParameters>;
   SurfaceList: ResolverTypeWrapper<SurfaceList>;
   TaoUsd: ResolverTypeWrapper<TaoUsd>;
   TaoUsdConversion: ResolverTypeWrapper<TaoUsdConversion>;
@@ -9447,6 +9458,7 @@ export type ResolversParentTypes = ResolversObject<{
   SurfaceHistoryChange: SurfaceHistoryChange;
   SurfaceHttp: SurfaceHttp;
   SurfaceHttpOperations: SurfaceHttpOperations;
+  SurfaceHttpOperationsParameters: SurfaceHttpOperationsParameters;
   SurfaceList: SurfaceList;
   TaoUsd: TaoUsd;
   TaoUsdConversion: TaoUsdConversion;
@@ -14515,9 +14527,18 @@ export type SurfaceHttpResolvers<ContextType = GqlContext, ParentType extends Re
 
 export type SurfaceHttpOperationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SurfaceHttpOperations'] = ResolversParentTypes['SurfaceHttpOperations']> = ResolversObject<{
   method?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  parameters?: Resolver<Maybe<Array<ResolversTypes['SurfaceHttpOperationsParameters']>>, ParentType, ContextType>;
   path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   request_body_required?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   request_content_types?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+}>;
+
+export type SurfaceHttpOperationsParametersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SurfaceHttpOperationsParameters'] = ResolversParentTypes['SurfaceHttpOperationsParameters']> = ResolversObject<{
+  allowReserved?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  explode?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  in?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  style?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SurfaceListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SurfaceList'] = ResolversParentTypes['SurfaceList']> = ResolversObject<{
@@ -15236,6 +15257,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SurfaceHistoryChange?: SurfaceHistoryChangeResolvers<ContextType>;
   SurfaceHttp?: SurfaceHttpResolvers<ContextType>;
   SurfaceHttpOperations?: SurfaceHttpOperationsResolvers<ContextType>;
+  SurfaceHttpOperationsParameters?: SurfaceHttpOperationsParametersResolvers<ContextType>;
   SurfaceList?: SurfaceListResolvers<ContextType>;
   TaoUsd?: TaoUsdResolvers<ContextType>;
   TaoUsdConversion?: TaoUsdConversionResolvers<ContextType>;

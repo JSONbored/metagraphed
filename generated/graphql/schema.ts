@@ -1269,6 +1269,15 @@ type SurfaceHttpOperations {
   path: String!
   request_content_types: [String!]
   request_body_required: Boolean
+  parameters: [SurfaceHttpOperationsParameters!]
+}
+
+type SurfaceHttpOperationsParameters {
+  name: String!
+  in: String!
+  style: String
+  explode: Boolean
+  allowReserved: Boolean
 }
 
 type Endpoint {

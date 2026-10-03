@@ -39,19 +39,56 @@ describe("reviewed integration details", () => {
       { name: "stream", in: "query" as const },
       { name: "session", in: "cookie" as const },
     ];
-    const source: Surface = { ...http, http: { operations: [{ method: "POST", path: "/generate", parameters, request_content_types: ["application/json"], request_body_required: true }] } };
+    const source: Surface = {
+      ...http,
+      http: {
+        operations: [
+          {
+            method: "POST",
+            path: "/generate",
+            parameters,
+            request_content_types: ["application/json"],
+            request_body_required: true,
+          },
+        ],
+      },
+    };
     const rows = surfaceIntegrationOperations(source);
     expect(rows).toHaveLength(1);
     expect(rows[0].parameters).toEqual(parameters);
-    expect(rows[0].arguments).toEqual({ surface_id: http.id, path: "/generate", method: "POST", json_body: {} });
-    const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><SurfaceIntegrations surfaces={[source]} /></QueryClientProvider>);
+    expect(rows[0].arguments).toEqual({
+      surface_id: http.id,
+      path: "/generate",
+      method: "POST",
+      json_body: {},
+    });
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        <SurfaceIntegrations surfaces={[source]} />
+      </QueryClientProvider>,
+    );
     expect(html).toContain("Optional parameters");
     expect(html).toContain("header: X-TEE-Only, query: stream, cookie: session");
     expect(html).toContain("header_values, query_values or cookie_values");
   });
   it("retains reviewed parameters on the binary and artifact alternatives", () => {
-    const parameters = [{ name: "X-Options", in: "header" as const, style: "simple" as const, explode: true }];
-    const rows = surfaceIntegrationOperations({ ...http, http: { operations: [{ method: "POST", path: "/upload", parameters, request_content_types: ["application/octet-stream"], request_body_required: true }] } });
+    const parameters = [
+      { name: "X-Options", in: "header" as const, style: "simple" as const, explode: true },
+    ];
+    const rows = surfaceIntegrationOperations({
+      ...http,
+      http: {
+        operations: [
+          {
+            method: "POST",
+            path: "/upload",
+            parameters,
+            request_content_types: ["application/octet-stream"],
+            request_body_required: true,
+          },
+        ],
+      },
+    });
     expect(rows).toHaveLength(2);
     expect(rows.map((row) => row.parameters)).toEqual([parameters, parameters]);
     for (const row of rows) expect(row.arguments).not.toHaveProperty("header_values");

@@ -6270,6 +6270,15 @@ export interface components {
                     operations: {
                         /** @enum {string} */
                         method: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
+                        parameters?: {
+                            allowReserved?: boolean;
+                            explode?: boolean;
+                            /** @enum {string} */
+                            in: "query" | "header" | "cookie";
+                            name: string;
+                            /** @enum {string} */
+                            style?: "form" | "simple" | "spaceDelimited" | "pipeDelimited" | "deepObject" | "cookie";
+                        }[];
                         path: string;
                         request_body_required?: boolean;
                         request_content_types?: string[];
@@ -14368,6 +14377,15 @@ export interface components {
                 operations: {
                     /** @enum {string} */
                     method: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
+                    parameters?: {
+                        allowReserved?: boolean;
+                        explode?: boolean;
+                        /** @enum {string} */
+                        in: "query" | "header" | "cookie";
+                        name: string;
+                        /** @enum {string} */
+                        style?: "form" | "simple" | "spaceDelimited" | "pipeDelimited" | "deepObject" | "cookie";
+                    }[];
                     path: string;
                     request_body_required?: boolean;
                     request_content_types?: string[];

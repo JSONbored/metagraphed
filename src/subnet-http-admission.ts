@@ -20,13 +20,13 @@ export function matchReviewedHttpOperation(
       ...(operation.parameters ? { parameters: operation.parameters } : {}),
       ...(operation.request_content_types
         ? {
-          requestBody: {
-            required: operation.request_body_required === true,
-            content: Object.fromEntries(
-              operation.request_content_types.map((type) => [type, {}]),
-            ),
-          },
-        }
+            requestBody: {
+              required: operation.request_body_required === true,
+              content: Object.fromEntries(
+                operation.request_content_types.map((type) => [type, {}]),
+              ),
+            },
+          }
         : {}),
     };
   }

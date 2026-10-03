@@ -3244,7 +3244,7 @@ function readHttpSurfaceAdmission(surface: Row) {
   if (
     !admission.success ||
     surface.public_safe !== true ||
-    surface.kind !== "subnet-api"
+    (surface.kind !== "subnet-api" && surface.kind !== "sse")
   )
     throw toolError(
       "invalid_registry",
@@ -6562,7 +6562,8 @@ async function subnetSurfaceCall(
           normalizedMethod as string,
         )
       : null;
-    const hasReviewedParameters = reviewedMatch?.operation.parameters !== undefined;
+    const hasReviewedParameters =
+      reviewedMatch?.operation.parameters !== undefined;
     const schema =
       reviewedHttp && (!hasDeclaredValues || hasReviewedParameters)
         ? null
@@ -6607,7 +6608,9 @@ async function subnetSurfaceCall(
           )
         : match
       : null;
-    const parameterDocument = hasReviewedParameters ? undefined : capturedDocument;
+    const parameterDocument = hasReviewedParameters
+      ? undefined
+      : capturedDocument;
     if (hasQueryValues) {
       if ((!schema && !hasReviewedParameters) || !parameterMatch)
         throw toolError(

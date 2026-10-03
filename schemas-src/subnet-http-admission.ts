@@ -7,7 +7,14 @@ const HttpSurfaceParameterSchema = z
     name: z.string().min(1).max(128),
     in: z.enum(["query", "header", "cookie"]),
     style: z
-      .enum(["form", "simple", "spaceDelimited", "pipeDelimited", "deepObject", "cookie"])
+      .enum([
+        "form",
+        "simple",
+        "spaceDelimited",
+        "pipeDelimited",
+        "deepObject",
+        "cookie",
+      ])
       .optional(),
     explode: z.boolean().optional(),
     allowReserved: z.boolean().optional(),

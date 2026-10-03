@@ -19826,6 +19826,50 @@
                             ],
                             "type": "string"
                           },
+                          "parameters": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "allowReserved": {
+                                  "type": "boolean"
+                                },
+                                "explode": {
+                                  "type": "boolean"
+                                },
+                                "in": {
+                                  "enum": [
+                                    "query",
+                                    "header",
+                                    "cookie"
+                                  ],
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "maxLength": 128,
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "style": {
+                                  "enum": [
+                                    "form",
+                                    "simple",
+                                    "spaceDelimited",
+                                    "pipeDelimited",
+                                    "deepObject",
+                                    "cookie"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "in"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 128,
+                            "type": "array"
+                          },
                           "path": {
                             "maxLength": 2048,
                             "minLength": 1,
@@ -64796,6 +64840,50 @@
                         "DELETE"
                       ],
                       "type": "string"
+                    },
+                    "parameters": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "allowReserved": {
+                            "type": "boolean"
+                          },
+                          "explode": {
+                            "type": "boolean"
+                          },
+                          "in": {
+                            "enum": [
+                              "query",
+                              "header",
+                              "cookie"
+                            ],
+                            "type": "string"
+                          },
+                          "name": {
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "style": {
+                            "enum": [
+                              "form",
+                              "simple",
+                              "spaceDelimited",
+                              "pipeDelimited",
+                              "deepObject",
+                              "cookie"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "in"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 128,
+                      "type": "array"
                     },
                     "path": {
                       "maxLength": 2048,

@@ -62,7 +62,8 @@ const COLUMNS: DataTableColumn<Operation>[] = [
   {
     key: "parameters",
     label: "Optional parameters",
-    value: (row) => row.parameters?.map((parameter) => `${parameter.in}: ${parameter.name}`).join(", ") || "—",
+    value: (row) =>
+      row.parameters?.map((parameter) => `${parameter.in}: ${parameter.name}`).join(", ") || "—",
     wrap: true,
   },
   {
@@ -208,9 +209,9 @@ export default function SurfaceIntegrations({ surfaces }: { surfaces: Surface[] 
         Reviewed operations · use your own provider credentials when required. Tool and prompt
         arguments come from live MCP discovery; fill HTTP body fields from the provider schema and
         replace path placeholders. Templates with angle-bracket values need those values replaced;
-        byte bodies use canonical base64, and multipart boundaries must match the encoded body.
-        Set optional parameters with header_values, query_values or cookie_values when needed.
-        Health and call permission are separate.
+        byte bodies use canonical base64, and multipart boundaries must match the encoded body. Set
+        optional parameters with header_values, query_values or cookie_values when needed. Health
+        and call permission are separate.
       </p>
       {entries.length === 0 ? (
         <p className="text-13 text-ink-muted">

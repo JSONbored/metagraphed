@@ -50,6 +50,7 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   McpSurfaceAdmission: "McpSurfaceAdmission",
   SurfaceHttp: "SurfaceHttp",
   SurfaceHttpOperations: "SurfaceHttpOperations",
+  SurfaceHttpOperationsParameters: "SurfaceHttpOperationsParameters",
   // The seven a `route: null` binding kept out of this check until #10772:
   // the field named no route, so its response component was never paired
   // with the type the SDL publishes for it. Naming the route surfaced all

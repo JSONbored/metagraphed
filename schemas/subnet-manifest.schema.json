@@ -185,9 +185,22 @@
                   "additionalProperties": false,
                   "required": ["name", "in"],
                   "properties": {
-                    "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
                     "in": { "enum": ["query", "header", "cookie"] },
-                    "style": { "enum": ["form", "simple", "spaceDelimited", "pipeDelimited", "deepObject", "cookie"] },
+                    "style": {
+                      "enum": [
+                        "form",
+                        "simple",
+                        "spaceDelimited",
+                        "pipeDelimited",
+                        "deepObject",
+                        "cookie"
+                      ]
+                    },
                     "explode": { "type": "boolean" },
                     "allowReserved": { "type": "boolean" }
                   }
@@ -484,7 +497,7 @@
           "if": { "required": ["http"] },
           "then": {
             "properties": {
-              "kind": { "const": "subnet-api" },
+              "kind": { "enum": ["subnet-api", "sse"] },
               "public_safe": { "const": true }
             }
           }

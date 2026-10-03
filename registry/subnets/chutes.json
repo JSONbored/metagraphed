@@ -438,7 +438,6 @@
       "probe": {
         "enabled": false,
         "expect": "any",
-        "method": "POST",
         "timeout_ms": 10000
       },
       "http": {
@@ -446,9 +445,7 @@
           {
             "method": "POST",
             "path": "/v1/chat/completions",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true,
             "parameters": [
               {
@@ -472,9 +469,7 @@
           {
             "method": "POST",
             "path": "/v1/completions",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true,
             "parameters": [
               {
@@ -498,9 +493,7 @@
           {
             "method": "POST",
             "path": "/tokenize",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true,
             "parameters": [
               {
@@ -520,9 +513,7 @@
           {
             "method": "POST",
             "path": "/detokenize",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true,
             "parameters": [
               {
@@ -1841,7 +1832,6 @@
       "probe": {
         "enabled": false,
         "expect": "any",
-        "method": "POST",
         "timeout_ms": 10000
       },
       "http": {
@@ -1849,9 +1839,7 @@
           {
             "method": "POST",
             "path": "/v1/embeddings",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true,
             "parameters": [
               {
@@ -1896,7 +1884,6 @@
       "probe": {
         "enabled": false,
         "expect": "any",
-        "method": "POST",
         "timeout_ms": 10000
       },
       "http": {
@@ -1904,9 +1891,7 @@
           {
             "method": "POST",
             "path": "/generate",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true,
             "parameters": [
               {
