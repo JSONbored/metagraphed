@@ -184,11 +184,10 @@ export interface CallSubnetSurfaceOptions {
   // Overrides the surface's probe-derived method (Phase 1 default). Ignored
   // unless `path` is also set.
   method?: string;
-  // MCP execute Phase 2c (#7675) request body, already serialized to a string
-  // by the caller -- this function never serializes or validates it, only
-  // sends it as-is. Ignored unless `path` is also set; GET/HEAD never send a
-  // body regardless.
-  body?: string;
+  // Request body, already serialized or decoded by the caller. Forward the
+  // same string or byte view without another conversion or copy. Ignored
+  // unless `path` is also set; GET/HEAD never send a body regardless.
+  body?: string | Uint8Array<ArrayBuffer>;
   // The `content-type` header to send alongside `body`. Ignored when `body`
   // is not set.
   contentType?: string;
@@ -339,6 +338,13 @@ export async function callSubnetSurface(
     baseUrl = resolved.toString();
   }
   const requestUrl = buildRequestUrl(baseUrl, effectiveQuery);
+  if (bodyCredentialFields && requestBody !== undefined && typeof requestBody !== "string")
+    return {
+      ok: false,
+      error: "Byte-preserving requests cannot merge JSON body credentials.",
+      error_class: "invalid_params",
+    };
+  const credentialBody = typeof requestBody === "string" ? requestBody : undefined;
 
   // A body-location credential bundle is merged into the outgoing JSON
   // request body -- the tool handler is responsible for ensuring this only
@@ -353,13 +359,13 @@ export async function callSubnetSurface(
   const effectiveBody = bodyCredentialFields
     ? credential?.bodyEnvelope
       ? JSON.stringify({
-          [credential.bodyEnvelope.payloadKey]: requestBody
-            ? JSON.parse(requestBody)
+          [credential.bodyEnvelope.payloadKey]: credentialBody
+            ? JSON.parse(credentialBody)
             : {},
           [credential.bodyEnvelope.credentialKey]: bodyCredentialFields,
         })
       : JSON.stringify({
-          ...(requestBody ? JSON.parse(requestBody) : {}),
+          ...(credentialBody ? JSON.parse(credentialBody) : {}),
           ...bodyCredentialFields,
         })
     : requestBody;
@@ -747,7 +753,7 @@ async function safetyCheckedFetch(
     fetchImpl: typeof fetch;
     isUnsafeUrl: (url: string) => Promise<boolean>;
     timeoutMs: number;
-    body?: string;
+    body?: string | Uint8Array<ArrayBuffer>;
     contentType?: string;
     extraHeaders?: Record<string, string>;
     hasBodyCredential?: boolean;

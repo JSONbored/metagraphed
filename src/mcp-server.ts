@@ -1405,6 +1405,10 @@ import {
   type CallSubnetSurfaceCredential,
 } from "./call-subnet-surface.ts";
 import {
+  matchesBinaryRequestMediaType,
+  resolveLocalRequestBody,
+} from "./subnet-http-body.ts";
+import {
   ECONOMIC_LEADERBOARD_BOARDS,
   formatLeaderboards,
   LEADERBOARD_BOARDS,
@@ -6319,14 +6323,27 @@ async function subnetSurfaceCall(
     );
   }
   const hasJsonBodyArg = args.json_body !== undefined;
+  const hasBase64BodyArg = args.body_base64 !== undefined;
   const hasLegacyBodyArg = args?.body !== undefined && args?.body !== null;
   if (hasJsonBodyArg && args.body !== undefined) {
     throw toolError("invalid_params", "Supply either `json_body` or `body`.");
   }
+  if (hasBase64BodyArg && (hasJsonBodyArg || args.body !== undefined))
+    throw toolError(
+      "invalid_params",
+      "Supply only one of `body_base64`, `json_body` or `body`.",
+    );
+  if (
+    hasBase64BodyArg &&
+    !WriteSubnetSurfaceInputSchema.shape.body_base64.safeParse(args.body_base64).success
+  )
+    throw toolError("invalid_params", "`body_base64` must be canonical padded base64.");
   // Presence matters: null, false, zero and an empty JSON string are bodies.
   // The legacy body:null behavior stays omitted when json_body is absent.
-  const hasBodyArg = hasJsonBodyArg || hasLegacyBodyArg;
-  const bodyArgumentName = hasJsonBodyArg ? "`json_body`" : "`body`";
+  const hasBodyArg = hasJsonBodyArg || hasLegacyBodyArg || hasBase64BodyArg;
+  const bodyArgumentName = hasBase64BodyArg
+    ? "`body_base64`"
+    : hasJsonBodyArg ? "`json_body`" : "`body`";
   const hasContentTypeArg =
     typeof args?.content_type === "string" && args.content_type.length > 0;
   if (
@@ -6405,6 +6422,11 @@ async function subnetSurfaceCall(
     hasPath,
     hasBodyMethod,
   );
+  if (hasBase64BodyArg && credentialPlacement?.location === "body")
+    throw toolError(
+      "invalid_params",
+      "`body_base64` cannot merge JSON body credentials; use `json_body` or `body` for that declared credential placement.",
+    );
   if (
     hasJsonBodyArg &&
     credentialPlacement?.location === "body" &&
@@ -6468,9 +6490,13 @@ async function subnetSurfaceCall(
           : `"${normalizedMethod} ${args.path}" is not declared in this surface's captured schema. Fetch the schema with get_api_schema to see valid paths/methods.`,
       );
     }
+    const operationRequestBody = resolveLocalRequestBody(
+      rowOf(schema)?.document,
+      match.operation.requestBody,
+    );
     if (
       reviewedHttp &&
-      rowOf(match.operation.requestBody)?.required === true &&
+      operationRequestBody?.required === true &&
       !hasBodyArg
     )
       throw toolError(
@@ -6478,9 +6504,7 @@ async function subnetSurfaceCall(
         "This reviewed HTTP operation requires a request body.",
       );
     if (hasBodyArg && hasBodyMethod) {
-      const declaredContent = rowOf(
-        rowOf(match.operation.requestBody)?.content,
-      );
+      const declaredContent = rowOf(operationRequestBody?.content);
       const declaredMediaTypes = declaredContent
         ? Object.keys(declaredContent)
         : [];
@@ -6493,7 +6517,7 @@ async function subnetSurfaceCall(
       if (hasContentTypeArg) {
         // hasContentTypeArg already proved this is a non-empty string.
         const contentType = args.content_type as string;
-        if (!declaredMediaTypes.includes(contentType)) {
+        if (!hasBase64BodyArg && !declaredMediaTypes.includes(contentType)) {
           throw toolError(
             "invalid_params",
             `content_type "${contentType}" is not declared for this operation. Declared: ${declaredMediaTypes.join(", ")}.`,
@@ -6521,7 +6545,14 @@ async function subnetSurfaceCall(
           "`json_body` requires a declared application/json or +json content type.",
         );
       }
-      if (isJsonContentType) {
+      if (hasBase64BodyArg) {
+        if (!matchesBinaryRequestMediaType(requestContentType, declaredMediaTypes))
+          throw toolError(
+            "invalid_params",
+            `content_type "${requestContentType}" must be concrete and declared for this byte request. Declared: ${declaredMediaTypes.join(", ")}.`,
+          );
+        requestBody = Buffer.from(args.body_base64 as string, "base64");
+      } else if (isJsonContentType) {
         // The MCP transport already parsed the JSON value. Serialize it once
         // at this HTTP boundary; strings here are JSON strings, not raw text.
         requestBody = hasJsonBodyArg
@@ -15880,7 +15911,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "write_subnet_surface",
     title: "Call a declared write operation on a subnet's live API",
     description:
-      "Use json_body for a direct JSON value (including arrays/scalars/null), or body for an object or pre-serialized text; supply only one. " +
+      "Supply only one body field: json_body for a direct JSON value (including arrays/scalars/null), body for an object or pre-serialized text, or body_base64 for exact file bytes or caller-encoded multipart. " +
       "Issue a POST, PUT, PATCH or DELETE against a catalogued surface, and return its real response body. The write sibling of call_subnet_surface, which handles GET/HEAD -- see the MCP tool registry for that one. Both are the same implementation and enforce the same gate; they are separate tools so a read never carries a write's risk. `path` and `method` are REQUIRED: there is no curated write, so the operation is always named explicitly. The exact path+method must be declared in the surface's captured schema (fetch it with get_api_schema) or reviewed http.operations (see how_do_i_call) -- an undeclared operation is rejected outright and never guessed (#7674, #7675, #11146). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. This grants no authority the caller lacks calling the API directly: the operation must be declared, and an authenticated surface still needs the caller's own credential. `body` is validated against the matched operation's declared request body -- rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) placed in a header, query param, cookie, or merged into the JSON body (#7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call. The response is bounded: JSON is parsed and returned structured, and other text is returned capped. Set `response_mode: attachment` for complete binary results as native MCP content with a compact size/checksum receipt; omitted mode retains binary rejection.",
     inputSchema: inputJsonSchema(WriteSubnetSurfaceInputSchema),
     async handler(

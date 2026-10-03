@@ -15,6 +15,30 @@ selection remain the same as other subnet HTTP calls. An admitted operation is
 matched locally; it does not fetch or reinterpret a provider's schema on each
 request. The provider remains responsible for its request field validation.
 
+For a schema-declared binary write, pass `body_base64` containing canonical padded
+base64 of the exact request bytes. The bytes are decoded once and forwarded as a
+byte view. Use only one of `body_base64`, `json_body` or `body`. Empty byte bodies
+are supported. Existing JSON values retain their normal JSON number normalization;
+byte bodies preserve the caller's exact encoding, including raw JSON when needed.
+
+For multipart, encode the complete multipart body yourself and pass its matching
+boundary in `content_type`, for example `multipart/form-data; boundary=upload-1`.
+The full Content-Type header and payload are forwarded unchanged. Declared MIME
+ranges such as `image/*` require an explicit concrete `content_type`. Fixed
+parameters in a declaration require an exact match. Local OpenAPI request-body
+references are resolved within the captured document, including escaped JSON
+pointer keys; cycles, missing targets, external references and chains beyond
+32 reference hops are rejected without fetching another document.
+
+Header, query and cookie credentials can accompany byte requests. JSON body
+credentials require `json_body` or `body`, because merging credential fields would
+alter the byte payload. The existing 64 KiB limit applies to the entire incoming
+MCP request, including base64's overhead and the JSON-RPC envelope. This is not a
+64 KiB file allowance or a bulk-upload facility; no request limit is increased.
+These request representations follow the captured
+[OpenAPI media-type and request-body contract](https://spec.openapis.org/oas/v3.1.0.html#request-body-object)
+and the caller retains responsibility for the provider's field and file rules.
+
 SN10 TaoFi admits the eight POST operations in its published
 [OpenAPI document](https://taofi-doc.web.app/openapi.yaml): `getBuyQuote`,
 `getBuyCall`, `getSellQuote`, `getSellCall`, `getRefundCall`, `getBalance`,

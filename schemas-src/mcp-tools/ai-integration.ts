@@ -292,11 +292,21 @@ const surfaceCallSharedShape = {
 
 /** The body fields, which only the write tool has any use for. */
 const surfaceWriteBodyShape = {
+  body_base64: z
+    .string()
+    .regex(
+      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)?(?![\s\S])/,
+    )
+    .optional()
+    .describe(
+      "Exact HTTP bytes as canonical padded base64, decoded once. Use only one of body_base64, json_body or body. Requires a declared request media type; multipart needs content_type with its boundary and an already encoded body. JSON body credentials cannot be merged. The 64 KiB complete MCP request limit includes base64 and envelope overhead.",
+    )
+    .meta({ contentEncoding: "base64", examples: ["AP+A"] }),
   json_body: z
     .json()
     .optional()
     .describe(
-      "JSON request value, including an array, string, number, boolean or null. Sent as JSON without pre-serializing or escaping it into a string. Use either json_body or body. Requires a declared application/json or +json request media type; flat body credentials require an object, while a declared credential envelope preserves any JSON payload.",
+      "JSON request value, including an array, string, number, boolean or null. Sent as JSON without pre-serializing or escaping it into a string. Use only one of json_body, body or body_base64. Requires a declared application/json or +json request media type; flat body credentials require an object, while a declared credential envelope preserves any JSON payload.",
     )
     .meta({ examples: [[{ op: "replace", path: "/name", value: "ada" }]] }),
   body: z
@@ -360,7 +370,15 @@ export const WriteSubnetSurfaceInputSchema = z
       .meta({ examples: ["POST"] }),
   })
   .strict()
-  .meta({ not: { required: ["body", "json_body"] } });
+  .meta({
+    not: {
+      anyOf: [
+        { required: ["body", "json_body"] },
+        { required: ["body", "body_base64"] },
+        { required: ["json_body", "body_base64"] },
+      ],
+    },
+  });
 export type WriteSubnetSurfaceInput = z.infer<
   typeof WriteSubnetSurfaceInputSchema
 >;
@@ -378,6 +396,7 @@ export type WriteSubnetSurfaceInput = z.infer<
 export type SubnetSurfaceCallArgs = Omit<CallSubnetSurfaceInput, "method"> & {
   method?: (typeof CALL_SURFACE_METHODS)[number];
   json_body?: WriteSubnetSurfaceInput["json_body"];
+  body_base64?: WriteSubnetSurfaceInput["body_base64"];
   body?: WriteSubnetSurfaceInput["body"];
   content_type?: WriteSubnetSurfaceInput["content_type"];
 };
