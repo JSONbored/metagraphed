@@ -3212,7 +3212,10 @@ async function executeSubnetMcp(
       kind, name: (args as z.infer<typeof CallSubnetMcpInputSchema>).tool_name,
       arguments: (args as z.infer<typeof CallSubnetMcpInputSchema>).arguments ?? {},
     });
-    if (result.kind === "discover") return { surface_id: surfaceId, tools: result.tools };
+    if (result.kind === "discover") return {
+      surface_id: surfaceId,
+      tools: result.tools.map(({ access, ...definition }) => ({ name: definition.name, access, definition })),
+    };
     const upstream = result.result;
     return new McpForwardedResult({
       surface_id: surfaceId,

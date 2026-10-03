@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { StoredSurfaceCredentialSchema } from "./ai-integration.ts";
 import { surfaceIdSchema } from "./shared.ts";
 
@@ -18,7 +17,13 @@ export const CallSubnetMcpInputSchema = DiscoverSubnetMcpInputSchema.extend({
 
 export const DiscoverSubnetMcpOutputSchema = z.object({
   surface_id: z.string(),
-  tools: z.array(ToolSchema.extend({ access: z.enum(["read", "write"]) })),
+  tools: z.array(z.object({
+    name: z.string(),
+    access: z.enum(["read", "write"]),
+    // The provider owns this extensible MCP definition, including its nested
+    // JSON Schemas. The SDK validates it before it reaches this JSON document.
+    definition: z.record(z.string(), z.json()),
+  }).strict()),
 }).strict();
 
 export const CallSubnetMcpOutputSchema = z.object({
