@@ -162,7 +162,13 @@ export function SurfacesSection({ netuid, name }: { netuid: number; name?: strin
             {integrationsOpen ? "Hide integration details" : "Show integration details"}
           </button>
           {integrationsOpen ? (
-            <Suspense fallback={<p role="status" className="text-13 text-ink-muted">Loading integration details…</p>}>
+            <Suspense
+              fallback={
+                <p role="status" className="text-13 text-ink-muted">
+                  Loading integration details…
+                </p>
+              }
+            >
               <SurfaceIntegrations surfaces={rows} />
             </Suspense>
           ) : null}

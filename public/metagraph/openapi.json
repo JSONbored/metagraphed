@@ -19808,6 +19808,59 @@
                   },
                   "type": "object"
                 },
+                "http": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "operations": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "method": {
+                            "enum": [
+                              "GET",
+                              "POST",
+                              "PUT",
+                              "PATCH",
+                              "DELETE"
+                            ],
+                            "type": "string"
+                          },
+                          "path": {
+                            "maxLength": 2048,
+                            "minLength": 1,
+                            "pattern": "^\\/(?!\\/)[^?#\\\\]*$",
+                            "type": "string"
+                          },
+                          "request_body_required": {
+                            "type": "boolean"
+                          },
+                          "request_content_types": {
+                            "items": {
+                              "maxLength": 128,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "maxItems": 16,
+                            "minItems": 1,
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "method",
+                          "path"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 512,
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "operations"
+                  ],
+                  "type": "object"
+                },
                 "kind": {
                   "type": "string"
                 },
@@ -64720,6 +64773,59 @@
           },
           "curation_level": {
             "$ref": "#/components/schemas/CurationLevel"
+          },
+          "http": {
+            "additionalProperties": false,
+            "properties": {
+              "operations": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "method": {
+                      "enum": [
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE"
+                      ],
+                      "type": "string"
+                    },
+                    "path": {
+                      "maxLength": 2048,
+                      "minLength": 1,
+                      "pattern": "^\\/(?!\\/)[^?#\\\\]*$",
+                      "type": "string"
+                    },
+                    "request_body_required": {
+                      "type": "boolean"
+                    },
+                    "request_content_types": {
+                      "items": {
+                        "maxLength": 128,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "maxItems": 16,
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "method",
+                    "path"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 512,
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "operations"
+            ],
+            "type": "object"
           },
           "id": {
             "type": "string"

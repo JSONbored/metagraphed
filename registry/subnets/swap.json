@@ -136,65 +136,49 @@
           {
             "method": "POST",
             "path": "/getBuyQuote",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           },
           {
             "method": "POST",
             "path": "/getBuyCall",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           },
           {
             "method": "POST",
             "path": "/getSellQuote",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           },
           {
             "method": "POST",
             "path": "/getSellCall",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           },
           {
             "method": "POST",
             "path": "/getRefundCall",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           },
           {
             "method": "POST",
             "path": "/getBalance",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           },
           {
             "method": "POST",
             "path": "/getNativeTaoQuote",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           },
           {
             "method": "POST",
             "path": "/getNativeTaoCall",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           }
         ]

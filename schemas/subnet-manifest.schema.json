@@ -162,7 +162,12 @@
             "required": ["method", "path"],
             "properties": {
               "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
-              "path": { "type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^/(?!/)[^?#\\\\]*$" },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048,
+                "pattern": "^/(?!/)[^?#\\\\]*$"
+              },
               "request_content_types": {
                 "type": "array",
                 "minItems": 1,
@@ -171,10 +176,15 @@
               },
               "request_body_required": { "type": "boolean" }
             },
-            "allOf": [{
-              "if": { "properties": { "request_body_required": { "const": true } }, "required": ["request_body_required"] },
-              "then": { "required": ["request_content_types"] }
-            }]
+            "allOf": [
+              {
+                "if": {
+                  "properties": { "request_body_required": { "const": true } },
+                  "required": ["request_body_required"]
+                },
+                "then": { "required": ["request_content_types"] }
+              }
+            ]
           }
         }
       }
@@ -450,7 +460,12 @@
       "allOf": [
         {
           "if": { "required": ["http"] },
-          "then": { "properties": { "kind": { "const": "subnet-api" }, "public_safe": { "const": true } } }
+          "then": {
+            "properties": {
+              "kind": { "const": "subnet-api" },
+              "public_safe": { "const": true }
+            }
+          }
         },
         {
           "if": {

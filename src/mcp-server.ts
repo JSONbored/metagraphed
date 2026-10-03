@@ -3196,13 +3196,16 @@ async function findExecutionSurface(
   surfaceId: string,
   knownCatalogued?: Row | null,
 ) {
-  const catalogued = knownCatalogued === undefined
-    ? await findCataloguedSurface(ctx, surfaceId)
-    : knownCatalogued;
+  const catalogued =
+    knownCatalogued === undefined
+      ? await findCataloguedSurface(ctx, surfaceId)
+      : knownCatalogued;
   if (catalogued) return catalogued;
   const registry = await loadOptionalArtifact(ctx, SURFACES_ARTIFACT);
   const rows = rowsOf(registry?.surfaces);
-  let surface = rows.find((row) => row.id === surfaceId || row.key === surfaceId);
+  let surface = rows.find(
+    (row) => row.id === surfaceId || row.key === surfaceId,
+  );
   if (!surface) {
     const aliases = await loadOptionalArtifact(ctx, SURFACE_ALIASES_PATH);
     const alias = resolveSurfaceAlias(aliases, surfaceId);
@@ -3218,8 +3221,15 @@ async function findExecutionSurface(
 function readHttpSurfaceAdmission(surface: Row) {
   if (!surface.http) return null;
   const admission = HttpSurfaceAdmissionSchema.safeParse(surface.http);
-  if (!admission.success || surface.public_safe !== true || surface.kind !== "subnet-api")
-    throw toolError("invalid_registry", "This surface has invalid HTTP admission metadata.");
+  if (
+    !admission.success ||
+    surface.public_safe !== true ||
+    surface.kind !== "subnet-api"
+  )
+    throw toolError(
+      "invalid_registry",
+      "This surface has invalid HTTP admission metadata.",
+    );
   return admission.data;
 }
 
@@ -3604,7 +3614,10 @@ async function requireCredentialStoreSurface(
     throw toolError("invalid_params", "Invalid surface_id format.");
   }
   const catalogued = await findCataloguedSurface(ctx, surfaceId);
-  const surface = catalogued ?? (await findAdmittedMcpSurface(ctx, surfaceId)) ?? (await findExecutionSurface(ctx, surfaceId, null));
+  const surface =
+    catalogued ??
+    (await findAdmittedMcpSurface(ctx, surfaceId)) ??
+    (await findExecutionSurface(ctx, surfaceId, null));
   if (!surface) throw await uncallableSurfaceError(ctx, surfaceId);
   if (surface.http) readHttpSurfaceAdmission(surface);
   if (!catalogued && surface.mcp && rowOf(surface.auth)?.location === "body")
@@ -6437,7 +6450,11 @@ async function subnetSurfaceCall(
     // hasMethod` check above guarantees normalizedMethod is set
     // whenever hasPath is true.
     const match = reviewedHttp
-      ? matchReviewedHttpOperation(reviewedHttp, args.path as string, normalizedMethod as string)
+      ? matchReviewedHttpOperation(
+          reviewedHttp,
+          args.path as string,
+          normalizedMethod as string,
+        )
       : matchSchemaOperation(
           rowOf(schema)?.document,
           args.path as string,
@@ -6456,7 +6473,10 @@ async function subnetSurfaceCall(
       rowOf(match.operation.requestBody)?.required === true &&
       !hasBodyArg
     )
-      throw toolError("invalid_params", "This reviewed HTTP operation requires a request body.");
+      throw toolError(
+        "invalid_params",
+        "This reviewed HTTP operation requires a request body.",
+      );
     if (hasBodyArg && hasBodyMethod) {
       const declaredContent = rowOf(
         rowOf(match.operation.requestBody)?.content,
@@ -15605,7 +15625,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         (s) => rowOf(s.eligibility)?.callable === true,
       );
       const mcpAdmissions = new Map<Row, AdmittedMcpSurface["mcp"]>();
-      const httpAdmissions = new Map<Row, z.infer<typeof HttpSurfaceAdmissionSchema>>();
+      const httpAdmissions = new Map<
+        Row,
+        z.infer<typeof HttpSurfaceAdmissionSchema>
+      >();
       for (const service of services) {
         if (service.http) {
           const admission = HttpSurfaceAdmissionSchema.safeParse(service.http);
@@ -15624,7 +15647,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         callable.length > 0
           ? services.filter(
               (s) =>
-                rowOf(s.eligibility)?.callable === true || mcpAdmissions.has(s) || httpAdmissions.has(s),
+                rowOf(s.eligibility)?.callable === true ||
+                mcpAdmissions.has(s) ||
+                httpAdmissions.has(s),
             )
           : services;
       const steps = guideServices.map((s) => {
@@ -15659,9 +15684,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           // Ready-to-run curl/Python/TS for a first call (issue #351).
           // Regenerate from base_url + auth so cleartext credential guards stay
           // current even when reading older catalogs with stored snippets.
-          snippets: s.mcp || s.http
-            ? null
-            : generateServiceSnippets(s) || s.snippets || null,
+          snippets:
+            s.mcp || s.http
+              ? null
+              : generateServiceSnippets(s) || s.snippets || null,
           schema: s.schema_artifact
             ? {
                 available: true,
@@ -15711,9 +15737,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           ? "Use each MCP service's mcp_discovery instruction to negotiate its live schemas, then read_subnet_mcp or write_subnet_mcp according to its reviewed admission. For HTTP services, follow base_url, auth and schema fields. MCP discovery and recorded health are separate."
           : httpStep
             ? "Use each HTTP service's http_execution instruction and reviewed operations. Supply the declared request body and your own credential when required. Disabled health probes do not prevent these explicitly admitted calls; recorded health remains separate."
-          : isCallable
-            ? "Call a service's base_url below. Where auth.required is true, supply a credential per auth.schemes. Fetch the machine-readable schema via get_api_schema, and confirm live status with get_subnet_health before relying on it."
-            : "This subnet exposes no callable services yet. Use get_subnet for its profile and gaps, or find_subnet_for_task to find an alternative that can do the job.",
+            : isCallable
+              ? "Call a service's base_url below. Where auth.required is true, supply a credential per auth.schemes. Fetch the machine-readable schema via get_api_schema, and confirm live status with get_subnet_health before relying on it."
+              : "This subnet exposes no callable services yet. Use get_subnet for its profile and gaps, or find_subnet_for_task to find an alternative that can do the job.",
         services: steps,
         next_steps: [
           ...(mcpStep ? [mcpStep.mcp_discovery] : []),

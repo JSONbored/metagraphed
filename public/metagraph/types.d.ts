@@ -6266,6 +6266,15 @@ export interface components {
                     stale?: boolean;
                     status?: string;
                 };
+                http?: {
+                    operations: {
+                        /** @enum {string} */
+                        method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+                        path: string;
+                        request_body_required?: boolean;
+                        request_content_types?: string[];
+                    }[];
+                };
                 kind: string;
                 mcp?: components["schemas"]["McpSurfaceAdmission"];
                 /**
@@ -14353,6 +14362,15 @@ export interface components {
             authority: components["schemas"]["Authority"];
             classification?: components["schemas"]["Classification"];
             curation_level?: components["schemas"]["CurationLevel"];
+            http?: {
+                operations: {
+                    /** @enum {string} */
+                    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+                    path: string;
+                    request_body_required?: boolean;
+                    request_content_types?: string[];
+                }[];
+            };
             id: string;
             key?: string;
             kind: components["schemas"]["SurfaceKind"];

@@ -9,7 +9,11 @@ export const HttpSurfaceAdmissionSchema = z
         z
           .object({
             method: z.enum(QUERY_ENUMS.surfaceMethod),
-            path: z.string().min(1).max(2048).regex(/^\/(?!\/)[^?#\\]*$/),
+            path: z
+              .string()
+              .min(1)
+              .max(2048)
+              .regex(/^\/(?!\/)[^?#\\]*$/),
             request_content_types: z
               .array(z.string().min(1).max(128))
               .min(1)

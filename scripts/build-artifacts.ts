@@ -1935,15 +1935,16 @@ function buildSubnetServices(netuid: unknown): Row[] {
         auth: authDetail,
         // Copy-paste curl/Python/TS that GETs this surface, auth header/param
         // filled from the structured auth detail (issue #746, was #351 guess).
-        snippets: surface.mcp || surface.http
-          ? null
-          : generateServiceSnippets({
-              base_url: surface.url,
-              method: surface.method,
-              auth_required: authRequired,
-              auth_schemes: authSchemes,
-              auth: authDetail,
-            }),
+        snippets:
+          surface.mcp || surface.http
+            ? null
+            : generateServiceSnippets({
+                base_url: surface.url,
+                method: surface.method,
+                auth_required: authRequired,
+                auth_schemes: authSchemes,
+                auth: authDetail,
+              }),
         ...(fixtureRef ? { fixture: fixtureRef } : {}),
         fixture_status: fixtureStatus,
         schema_url: surface.schema_url || schema?.schema_url || null,

@@ -1222,6 +1222,7 @@ type Surface {
   kind: String!
   last_verified_at: String
   mcp: McpSurfaceAdmission
+  http: SurfaceHttp
 
   """
   HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.
@@ -1252,6 +1253,17 @@ type McpSurfaceAdmission {
   write_tools: [String!]!
   read_prompts: [String!]
   read_resources: [String!]
+}
+
+type SurfaceHttp {
+  operations: [SurfaceHttpOperations!]!
+}
+
+type SurfaceHttpOperations {
+  method: String!
+  path: String!
+  request_content_types: [String!]
+  request_body_required: Boolean
 }
 
 type Endpoint {

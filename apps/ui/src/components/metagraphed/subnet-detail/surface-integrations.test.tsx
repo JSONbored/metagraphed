@@ -19,16 +19,28 @@ const mcp: Surface = {
 const http: Surface = {
   id: "sn-42-source-http",
   name: "Source HTTP",
-  http: { operations: [
-    { method: "POST", path: "/api/v1/search/live", request_content_types: ["application/json"], request_body_required: true },
-    { method: "GET", path: "/api/v1/search/live/result/{uuid}" },
-  ] },
+  http: {
+    operations: [
+      {
+        method: "POST",
+        path: "/api/v1/search/live",
+        request_content_types: ["application/json"],
+        request_body_required: true,
+      },
+      { method: "GET", path: "/api/v1/search/live/result/{uuid}" },
+    ],
+  },
 };
 
 describe("reviewed integration details", () => {
   it("maps all MCP capability kinds without granting writes through the read tool", () => {
     const rows = surfaceIntegrationOperations(mcp);
-    expect(rows.map((row) => row.tool)).toEqual(["read_subnet_mcp", "write_subnet_mcp", "get_subnet_mcp_prompt", "read_subnet_mcp_resource"]);
+    expect(rows.map((row) => row.tool)).toEqual([
+      "read_subnet_mcp",
+      "write_subnet_mcp",
+      "get_subnet_mcp_prompt",
+      "read_subnet_mcp_resource",
+    ]);
     expect(rows.map((row) => row.arguments)).toEqual([
       { surface_id: mcp.id, tool_name: "read" },
       { surface_id: mcp.id, tool_name: "write" },
@@ -40,14 +52,33 @@ describe("reviewed integration details", () => {
   it("preserves the HTTP verb split, body type and result path placeholder", () => {
     const rows = surfaceIntegrationOperations(http);
     expect(rows.map((row) => row.tool)).toEqual(["write_subnet_surface", "call_subnet_surface"]);
-    expect(rows[0].arguments).toEqual({ surface_id: http.id, method: "POST", path: "/api/v1/search/live", json_body: {} });
+    expect(rows[0].arguments).toEqual({
+      surface_id: http.id,
+      method: "POST",
+      path: "/api/v1/search/live",
+      json_body: {},
+    });
     expect(rows[0].body_types).toEqual(["application/json"]);
-    expect(rows[1].arguments).toEqual({ surface_id: http.id, method: "GET", path: "/api/v1/search/live/result/{uuid}" });
+    expect(rows[1].arguments).toEqual({
+      surface_id: http.id,
+      method: "GET",
+      path: "/api/v1/search/live/result/{uuid}",
+    });
   });
 
   it("rejects malformed permissions rather than exposing callable templates", () => {
-    expect(surfaceIntegrationOperations({ ...mcp, mcp: { ...mcp.mcp as object, write_tools: ["x".repeat(129)] } })).toEqual([]);
-    expect(surfaceIntegrationOperations({ ...http, http: { operations: [{ method: "POST", path: "//outside.example/run" }] } })).toEqual([]);
+    expect(
+      surfaceIntegrationOperations({
+        ...mcp,
+        mcp: { ...(mcp.mcp as object), write_tools: ["x".repeat(129)] },
+      }),
+    ).toEqual([]);
+    expect(
+      surfaceIntegrationOperations({
+        ...http,
+        http: { operations: [{ method: "POST", path: "//outside.example/run" }] },
+      }),
+    ).toEqual([]);
   });
 
   it("renders source operations, auth and copy actions without treating resource URIs as URLs", () => {

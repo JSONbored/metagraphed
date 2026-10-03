@@ -138,9 +138,7 @@
           {
             "method": "POST",
             "path": "/api/v1/search/live",
-            "request_content_types": [
-              "application/json"
-            ],
+            "request_content_types": ["application/json"],
             "request_body_required": true
           },
           {
