@@ -5,7 +5,6 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { posix } from "node:path";
 import { TextDecoder } from "node:util";
 import { gunzipSync } from "node:zlib";
@@ -15,7 +14,6 @@ import { handleMcpRequest } from "../src/mcp-server.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
 import { desearchCases } from "./fixtures/desearch-cases.ts";
 
-const require = createRequire(import.meta.url);
 const revision = "a99cfecd5d9242c407f1cca9ea73c2b2abec2c42";
 const sources = [
   { name: "http", sha: "9f6b9cd44eb79e90fe5dae7080d9653ecdcafaaa166d28247a66e5e7055b51c5" },
@@ -29,6 +27,13 @@ const packages = [
   { id: "zod4", url: "https://registry.npmjs.org/zod/-/zod-4.6.5.tgz", integrity: "v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==" },
   { id: "jsonschema", url: "https://registry.npmjs.org/zod-to-json-schema/-/zod-to-json-schema-3.25.2.tgz", integrity: "O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==" },
   { id: "desearch", url: "https://registry.npmjs.org/desearch-js/-/desearch-js-1.5.0.tgz", integrity: "wWiv4kNFVrtgBJGg1zXEiizHZy2vFek7CA8XPIBwN+LkvwPM3sUsF/YAcKGBfFueAq2Op2lf7QGowr4X48VpkQ==" },
+  { id: "contenttype", url: "https://registry.npmjs.org/content-type/-/content-type-1.0.5.tgz", integrity: "nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==" },
+  { id: "ajv", url: "https://registry.npmjs.org/ajv/-/ajv-8.17.1.tgz", integrity: "B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==" },
+  { id: "formats", url: "https://registry.npmjs.org/ajv-formats/-/ajv-formats-3.0.1.tgz", integrity: "8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==" },
+  { id: "eventsource", url: "https://registry.npmjs.org/eventsource-parser/-/eventsource-parser-3.0.2.tgz", integrity: "6RxOBZ/cYgd8usLwsEl+EC09Au/9BcmCKYF2/xbml6DNczf7nv0MQb+7BA2F+li6//I+28VNlQR37XfQtcAJuA==" },
+  { id: "deepequal", url: "https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz", integrity: "f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==" },
+  { id: "uri", url: "https://registry.npmjs.org/fast-uri/-/fast-uri-3.0.6.tgz", integrity: "Atfo14OibSv5wAp4VWNsFYE1AchQRTv9cBGWET4pZWHzYshFSS9NQI6I57rdKn9croWVMbYFbLhJ+yJvmZIIHw==" },
+  { id: "traverse", url: "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz", integrity: "NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==" },
 ] as const;
 const surface = JSON.parse(readFileSync(new URL("../registry/subnets/desearch.json", import.meta.url), "utf8")).surfaces.find((row: Row) => row.id === "sn-22-desearch-mcp") as Row;
 const decode = (bytes: Uint8Array) => new TextDecoder("utf-8", { fatal: true }).decode(bytes);
@@ -86,17 +91,24 @@ async function publishedProvider(): Promise<Row> {
           if (args.path === "node:http") path = "mock/http";
           else if (args.path === "undici") path = "mock/undici";
           else if (args.path === "desearch-js") path = "desearch/package/dist/index.mjs";
+          else if (args.path === "content-type") path = "contenttype/package/index.js";
           else if (args.path.startsWith("@modelcontextprotocol/sdk/")) path = "sdk/package/dist/esm/" + args.path.slice("@modelcontextprotocol/sdk/".length);
           else if (/^zod(?:\/|$)/.test(args.path)) {
             path = args.importer.startsWith("provider/")
               ? "zod3/package/lib/index.mjs"
               : "zod4/package/" + (args.path === "zod" ? "index.js" : args.path.slice(4) + "/index.js");
           } else if (args.path === "zod-to-json-schema") path = "jsonschema/package/dist/esm/index.js";
-          else if (/^(?:ajv(?:\/|$)|ajv-formats(?:\/|$)|eventsource-parser(?:\/|$))/.test(args.path)) return { path: require.resolve(args.path), namespace: "file" };
+          else if (/^ajv(?:\/|$)/.test(args.path)) path = "ajv/package/" + (args.path === "ajv" ? "dist/ajv.js" : args.path.slice(4));
+          else if (args.path === "ajv-formats") path = "formats/package/dist/index.js";
+          else if (/^eventsource-parser(?:\/|$)/.test(args.path)) path = "eventsource/package/dist/" + (args.path === "eventsource-parser" ? "index.js" : args.path.slice("eventsource-parser/".length) + ".js");
+          else if (args.path === "fast-deep-equal") path = "deepequal/package/index.js";
+          else if (args.path === "fast-uri") path = "uri/package/index.js";
+          else if (args.path === "json-schema-traverse") path = "traverse/package/index.js";
           else {
             assert.ok(args.path.startsWith("."), "no unreviewed upstream capabilities: " + args.path);
             path = posix.normalize(posix.join(posix.dirname(args.importer), args.path));
           }
+          if (!files.has(path)) path = [path + ".js", path + "/index.js", path + ".json"].find((candidate) => files.has(candidate)) ?? path;
           assert.ok(files.has(path), "only pinned modules: " + path);
           return { path, namespace: "published" };
         });
