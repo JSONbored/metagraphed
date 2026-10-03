@@ -220,7 +220,7 @@ describe("subnet MCP public contract", () => {
       assert.equal(
         discovered.structuredContent.tools.find(
           (tool: Row) => tool.name === tool_name,
-        ).annotations.readOnlyHint,
+        ).definition.annotations.readOnlyHint,
         true,
       );
       const result = await call("write_subnet_mcp", { ...caller, tool_name });
