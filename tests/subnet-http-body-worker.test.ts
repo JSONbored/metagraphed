@@ -33,38 +33,76 @@ beforeAll(async () => {
           });
           return Response.json({ result, calls });
         }};`,
-      resolveDir: process.cwd(), loader: "ts",
+      resolveDir: process.cwd(),
+      loader: "ts",
     },
-    bundle: true, format: "esm", platform: "browser", write: false,
+    bundle: true,
+    format: "esm",
+    platform: "browser",
+    write: false,
     // Match the deploy builder's native Node bridge for CommonJS dependencies.
-    plugins: [{ name: "native-node-requires", setup(builder) {
-      builder.onResolve({ filter: /.*/ }, args => {
-        if (!isBuiltin(args.path)) return;
-        return args.kind === "require-call"
-          ? { path: args.path.replace(/^node:/, ""), namespace: "native-node-require" }
-          : { path: args.path.startsWith("node:") ? args.path : `node:${args.path}`, external: true };
-      });
-      builder.onLoad({ filter: /.*/, namespace: "native-node-require" }, args => ({
-        contents: `import native from 'node:${args.path}'; module.exports = native;`, loader: "js",
-      }));
-    } }],
+    plugins: [
+      {
+        name: "native-node-requires",
+        setup(builder) {
+          builder.onResolve({ filter: /.*/ }, (args) => {
+            if (!isBuiltin(args.path)) return;
+            return args.kind === "require-call"
+              ? {
+                  path: args.path.replace(/^node:/, ""),
+                  namespace: "native-node-require",
+                }
+              : {
+                  path: args.path.startsWith("node:")
+                    ? args.path
+                    : `node:${args.path}`,
+                  external: true,
+                };
+          });
+          builder.onLoad(
+            { filter: /.*/, namespace: "native-node-require" },
+            (args) => ({
+              contents: `import native from 'node:${args.path}'; module.exports = native;`,
+              loader: "js",
+            }),
+          );
+        },
+      },
+    ],
   });
   runtime = new Miniflare({
-    modules: true, script: bundled.outputFiles[0].text,
-    compatibilityDate: "2026-06-06", compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
+    modules: true,
+    script: bundled.outputFiles[0].text,
+    compatibilityDate: "2026-06-06",
+    compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
   });
 }, 60_000);
 afterAll(async () => runtime?.dispose());
 
 test("workerd sends decoded nonUTF8 multipart bytes with the exact boundary header", async () => {
-  const bytes = Buffer.concat([Buffer.from('--fixture\r\nContent-Disposition: form-data; name="file"\r\n\r\n'), Buffer.from([0, 128, 255]), Buffer.from("\r\n--fixture--\r\n")]);
+  const bytes = Buffer.concat([
+    Buffer.from(
+      '--fixture\r\nContent-Disposition: form-data; name="file"\r\n\r\n',
+    ),
+    Buffer.from([0, 128, 255]),
+    Buffer.from("\r\n--fixture--\r\n"),
+  ]);
   const content_type = 'multipart/form-data; boundary="fixture"';
-  const response = await runtime.dispatchFetch("https://worker-fixture.example/", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ body_base64: bytes.toString("base64"), content_type }),
-  });
+  const response = await runtime.dispatchFetch(
+    "https://worker-fixture.example/",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        body_base64: bytes.toString("base64"),
+        content_type,
+      }),
+    },
+  );
   assert.equal(response.status, 200);
   const { result, calls } = await jsonBody(response);
   assert.equal(result.ok, true);
-  assert.deepEqual(calls, [{ method: "POST", contentType: content_type, bytes: [...bytes] }]);
+  assert.deepEqual(calls, [
+    { method: "POST", contentType: content_type, bytes: [...bytes] },
+  ]);
 });

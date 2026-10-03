@@ -1,3 +1,5 @@
+import { recordOrNull } from "./read-store.ts";
+
 /** Byte requests can provide MIME parameters (notably a multipart boundary).
  * Legacy string/JSON requests retain their existing exact media matching. */
 export function matchesBinaryRequestMediaType(
@@ -20,12 +22,14 @@ export function matchesBinaryRequestMediaType(
     // A declaration containing fixed parameters must match them exactly.
     if (media.includes(";")) return false;
     const range = media.trim().toLowerCase();
-    return range === essence || range === "*/*" ||
-      (range.endsWith("/*") && range.slice(0, -1) === essence.split("/", 1)[0] + "/");
+    return (
+      range === essence ||
+      range === "*/*" ||
+      (range.endsWith("/*") &&
+        range.slice(0, -1) === essence.split("/", 1)[0] + "/")
+    );
   });
 }
-import { recordOrNull } from "./read-store.ts";
-
 /** Resolve only references inside the captured document, without network access.
  * Cycles, missing targets and excessive chains cannot admit a request body. */
 export function resolveLocalRequestBody(

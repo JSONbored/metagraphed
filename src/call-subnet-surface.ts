@@ -338,13 +338,18 @@ export async function callSubnetSurface(
     baseUrl = resolved.toString();
   }
   const requestUrl = buildRequestUrl(baseUrl, effectiveQuery);
-  if (bodyCredentialFields && requestBody !== undefined && typeof requestBody !== "string")
+  if (
+    bodyCredentialFields &&
+    requestBody !== undefined &&
+    typeof requestBody !== "string"
+  )
     return {
       ok: false,
       error: "Byte-preserving requests cannot merge JSON body credentials.",
       error_class: "invalid_params",
     };
-  const credentialBody = typeof requestBody === "string" ? requestBody : undefined;
+  const credentialBody =
+    typeof requestBody === "string" ? requestBody : undefined;
 
   // A body-location credential bundle is merged into the outgoing JSON
   // request body -- the tool handler is responsible for ensuring this only

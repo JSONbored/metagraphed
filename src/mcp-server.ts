@@ -6335,15 +6335,21 @@ async function subnetSurfaceCall(
     );
   if (
     hasBase64BodyArg &&
-    !WriteSubnetSurfaceInputSchema.shape.body_base64.safeParse(args.body_base64).success
+    !WriteSubnetSurfaceInputSchema.shape.body_base64.safeParse(args.body_base64)
+      .success
   )
-    throw toolError("invalid_params", "`body_base64` must be canonical padded base64.");
+    throw toolError(
+      "invalid_params",
+      "`body_base64` must be canonical padded base64.",
+    );
   // Presence matters: null, false, zero and an empty JSON string are bodies.
   // The legacy body:null behavior stays omitted when json_body is absent.
   const hasBodyArg = hasJsonBodyArg || hasLegacyBodyArg || hasBase64BodyArg;
   const bodyArgumentName = hasBase64BodyArg
     ? "`body_base64`"
-    : hasJsonBodyArg ? "`json_body`" : "`body`";
+    : hasJsonBodyArg
+      ? "`json_body`"
+      : "`body`";
   const hasContentTypeArg =
     typeof args?.content_type === "string" && args.content_type.length > 0;
   if (
@@ -6494,11 +6500,7 @@ async function subnetSurfaceCall(
       rowOf(schema)?.document,
       match.operation.requestBody,
     );
-    if (
-      reviewedHttp &&
-      operationRequestBody?.required === true &&
-      !hasBodyArg
-    )
+    if (reviewedHttp && operationRequestBody?.required === true && !hasBodyArg)
       throw toolError(
         "invalid_params",
         "This reviewed HTTP operation requires a request body.",
@@ -6546,7 +6548,9 @@ async function subnetSurfaceCall(
         );
       }
       if (hasBase64BodyArg) {
-        if (!matchesBinaryRequestMediaType(requestContentType, declaredMediaTypes))
+        if (
+          !matchesBinaryRequestMediaType(requestContentType, declaredMediaTypes)
+        )
           throw toolError(
             "invalid_params",
             `content_type "${requestContentType}" must be concrete and declared for this byte request. Declared: ${declaredMediaTypes.join(", ")}.`,
