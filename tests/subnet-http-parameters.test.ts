@@ -301,9 +301,11 @@ describe("captured header and cookie representations", () => {
       ["cookie", ["a,b"], { style: "cookie", explode: false }, {}],
       ["cookie", { "a b": 1 }, { style: "cookie" }, {}],
       ["cookie", "\r\n", { style: "cookie" }, {}],
+      ["cookie", "\0", { style: "cookie" }, {}],
       ["cookie", "\ud800", {}, {}],
       ["cookie", {}, { content: { "application/json": {} } }, {}],
       ["cookie", "a; auth=wrong", { content: { "text/plain": {} } }, {}],
+      ["cookie", "\0", { content: { "text/plain": {} } }, {}],
       ["cookie", "雪", { content: { "text/plain": {} } }, {}],
       ["cookie", "a", { name: "a=b", content: { "text/plain": {} } }, {}],
     ] as const)

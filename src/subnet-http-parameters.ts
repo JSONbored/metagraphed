@@ -320,7 +320,7 @@ export function serializeDeclaredHttpParameters(
       occupiedCookies.add(emitted);
     }
     for (const pair of group.pairs) {
-      if (/[;\r\n\x00]/.test(pair.value))
+      if (/[;\r\n]/.test(pair.value) || pair.value.includes("\0"))
         invalid(name, "needs provider-defined escaping for cookie syntax");
       result.redactions.push(pair.value.slice(pair.value.indexOf("=") + 1));
     }
