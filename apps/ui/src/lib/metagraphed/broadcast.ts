@@ -68,8 +68,8 @@ export interface BroadcastEvent {
  * prompting for a signature, not after.
  */
 export function computeIdempotencyKey(
-  params: StakeCallParams,
-  nonce: number,
+  params: StakeCallParams | { callData: string; address: string; genesisHash: string },
+  nonce: number | string,
   sessionId: string,
 ): string {
   const stable = JSON.stringify(params, (_key, value) =>
@@ -128,6 +128,8 @@ export interface SubmitStakeExtrinsicOptions {
   idempotencyKey: string;
   mortalityBlocks?: number;
   onStatus?: (event: BroadcastEvent) => void;
+  /** Explicit pending nonce approved by a native call preview. */
+  nonce?: string;
 }
 
 /**
@@ -145,6 +147,7 @@ export async function submitStakeExtrinsic(
     idempotencyKey,
     mortalityBlocks = DEFAULT_MORTALITY_BLOCKS,
     onStatus,
+    nonce,
   }: SubmitStakeExtrinsicOptions,
 ): Promise<{ txHash: string; unsubscribe: () => void }> {
   if (hasAlreadySubmitted(idempotencyKey)) {
@@ -154,7 +157,7 @@ export async function submitStakeExtrinsic(
 
   const unsubscribe = await extrinsic.signAndSend(
     signerAddress,
-    { signer, era: mortalityBlocks },
+    { signer, era: mortalityBlocks, ...(nonce !== undefined ? { nonce } : {}) },
     (result) => {
       onStatus?.({
         status: mapExtrinsicStatus(result.status),

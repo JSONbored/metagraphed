@@ -31,6 +31,7 @@ export const LIVE_CHAIN_ROUTE_PATHS: readonly string[] = [
   "/api/v1/accounts/{ss58}/balance",
   "/api/v1/accounts/{ss58}/children",
   "/api/v1/accounts/{ss58}/parents",
+  "/api/v1/accounts/{ss58}/root-baskets",
   "/api/v1/accounts/{ss58}/root-claim",
   // #9399. Answers on every network -- it reads whichever chain the prefix selects,
   // like its per-subnet sibling below. Listing it is what makes the capability matrix
@@ -41,6 +42,7 @@ export const LIVE_CHAIN_ROUTE_PATHS: readonly string[] = [
   "/api/v1/evm/address/{h160}",
   "/api/v1/network/parameters",
   "/api/v1/network/randomness",
+  "/api/v1/root-baskets",
   // Shape parsing is network-agnostic: an ss58 checksum and a 32-byte hash
   // mean the same thing on every chain, so this answers identically under a
   // /testnet/ prefix and must not be reported as unserved there.
@@ -48,6 +50,7 @@ export const LIVE_CHAIN_ROUTE_PATHS: readonly string[] = [
   "/api/v1/subnets/{netuid}/burn",
   "/api/v1/subnets/{netuid}/lease",
   "/api/v1/subnets/{netuid}/recycled",
+  "/api/v1/subnets/{netuid}/stake-quote",
   "/api/v1/sudo/key",
 ];
 

@@ -7054,6 +7054,72 @@
           "schema_version": 1
         }
       },
+      "NativeRuntimeArtifactResponse": {
+        "value": {
+          "data": {
+            "results": [
+              {
+                "contract": "example",
+                "kind": "storage"
+              }
+            ],
+            "schema_version": 1,
+            "source": {
+              "finalized_block": "1000",
+              "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "metadata_version": 14,
+              "network": "finney",
+              "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "runtime_code_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "runtime_spec_version": 1,
+              "runtime_transaction_version": 1
+            },
+            "types": [
+              {
+                "definition": {
+                  "fields": [
+                    {
+                      "name": "Example Subnet",
+                      "type": 1
+                    }
+                  ],
+                  "kind": "composite"
+                },
+                "id": 1,
+                "path": [
+                  "example"
+                ]
+              }
+            ]
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "NetworkCapabilitiesArtifactResponse": {
         "value": {
           "data": {
@@ -8291,6 +8357,79 @@
               "needs_operational_count": 1,
               "profile_count": 1
             }
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
+      "RootBasketsArtifactResponse": {
+        "value": {
+          "data": {
+            "data": {
+              "kind": "directory",
+              "limit": 1,
+              "next_after": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "pricing": [
+                {
+                  "bag_index_q64_bits": "1000",
+                  "display_price_q64_bits": "1000",
+                  "display_shares_q64_bits": "1000",
+                  "first_block": "1000",
+                  "hotkey": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                  "pending_entitlement_q64_bits": "1000",
+                  "provisional": false,
+                  "raw_spot_price_q64_bits": "1000",
+                  "shares_atomic": "1000",
+                  "spot_nav_rao": "1000",
+                  "stake_index_q64_bits": "1000",
+                  "stake_price_q64_bits": "1000",
+                  "staker_twr_q64_bits": "1000"
+                }
+              ]
+            },
+            "network": "finney",
+            "schema_version": 1,
+            "source": {
+              "capabilities": {
+                "beta_positions": false,
+                "claim_preview": false,
+                "pricing": false,
+                "target_weights": true,
+                "trading_status": false
+              },
+              "decoder_version": "subtensor-v441-8b9d55c7-v1",
+              "finalized_block": "1000",
+              "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "network": "finney",
+              "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "runtime_api_version": 1,
+              "runtime_spec_version": 441
+            },
+            "status": "available"
           },
           "meta": {
             "artifact_path": "example",
@@ -19669,8 +19808,109 @@
                   },
                   "type": "object"
                 },
+                "http": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "operations": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "method": {
+                            "enum": [
+                              "GET",
+                              "HEAD",
+                              "POST",
+                              "PUT",
+                              "PATCH",
+                              "DELETE"
+                            ],
+                            "type": "string"
+                          },
+                          "parameters": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "allowReserved": {
+                                  "type": "boolean"
+                                },
+                                "explode": {
+                                  "type": "boolean"
+                                },
+                                "in": {
+                                  "enum": [
+                                    "query",
+                                    "header",
+                                    "cookie"
+                                  ],
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "maxLength": 128,
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "style": {
+                                  "enum": [
+                                    "form",
+                                    "simple",
+                                    "spaceDelimited",
+                                    "pipeDelimited",
+                                    "deepObject",
+                                    "cookie"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "in"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 128,
+                            "type": "array"
+                          },
+                          "path": {
+                            "maxLength": 2048,
+                            "minLength": 1,
+                            "pattern": "^\\/(?!\\/)[^?#\\\\]*$",
+                            "type": "string"
+                          },
+                          "request_body_required": {
+                            "type": "boolean"
+                          },
+                          "request_content_types": {
+                            "items": {
+                              "maxLength": 128,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "maxItems": 16,
+                            "minItems": 1,
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "method",
+                          "path"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 512,
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "operations"
+                  ],
+                  "type": "object"
+                },
                 "kind": {
                   "type": "string"
+                },
+                "mcp": {
+                  "$ref": "#/components/schemas/McpSurfaceAdmission"
                 },
                 "method": {
                   "description": "HTTP method this service is invoked with; absent means GET. A non-GET service is a declared mutation (#11146): it carries no GET snippets -- call it through call_subnet_surface with the captured schema.",
@@ -38931,6 +39171,1066 @@
         ],
         "type": "object"
       },
+      "McpSurfaceAdmission": {
+        "additionalProperties": false,
+        "properties": {
+          "public_discovery": {
+            "description": "Source-reviewed keyless catalog discovery when true. Execution still uses the surface's authentication requirement. False or omission preserves the existing requirement.",
+            "type": "boolean"
+          },
+          "read_prompts": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 512,
+            "type": "array"
+          },
+          "read_resources": {
+            "items": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 512,
+            "type": "array"
+          },
+          "read_tools": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 512,
+            "type": "array"
+          },
+          "transport": {
+            "const": "streamable-http",
+            "type": "string"
+          },
+          "write_tools": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 512,
+            "type": "array"
+          }
+        },
+        "required": [
+          "transport",
+          "read_tools",
+          "write_tools"
+        ],
+        "type": "object"
+      },
+      "NativeCodeArtifact": {
+        "additionalProperties": false,
+        "description": "Checksum-bound public deployment code for ContractsApi upload_code/instantiate, Contracts upload_code/instantiate_with_code preparation, EthereumRuntimeRPCApi.create simulation or EVM.create/create2 preparation. Keep the declared code/data/init argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. EVM simulation gas is admitted before fetching; runtime execution rules and unsigned wallet review remain unchanged. One distinct artifact is fetched per request, with no persistent storage.",
+        "properties": {
+          "bytes": {
+            "description": "Exact artifact byte length. Wasm is also bounded by this source runtime's Contracts.MaxCodeLen; EVM creation retains the native input and execution budgets.",
+            "maximum": 131072,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "sha256": {
+            "description": "SHA-256 of the exact uncompressed artifact bytes.",
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "url": {
+            "description": "Public raw.githubusercontent.com URL pinned to a full 40-character commit, with no credentials, query or fragment.",
+            "format": "uri",
+            "maxLength": 2048,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "sha256",
+          "bytes"
+        ],
+        "type": "object"
+      },
+      "NativeDefinition": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "fields": {
+                "items": {
+                  "$ref": "#/components/schemas/NativeField"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "const": "composite",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "fields"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "variant",
+                "type": "string"
+              },
+              "variants": {
+                "items": {
+                  "$ref": "#/components/schemas/NativeVariant"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind",
+              "variants"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "sequence",
+                "type": "string"
+              },
+              "type": {
+                "maximum": 16383,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "array",
+                "type": "string"
+              },
+              "length": {
+                "maximum": 4294967295,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "maximum": 16383,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "type",
+              "length"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "tuple",
+                "type": "string"
+              },
+              "types": {
+                "items": {
+                  "maximum": 16383,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind",
+              "types"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "primitive",
+                "type": "string"
+              },
+              "primitive": {
+                "maximum": 14,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "primitive"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "compact",
+                "type": "string"
+              },
+              "type": {
+                "maximum": 16383,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "bits",
+                "type": "string"
+              },
+              "order": {
+                "maximum": 16383,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "store": {
+                "maximum": 16383,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "store",
+              "order"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "NativeEvmCall": {
+        "additionalProperties": false,
+        "description": "Solidity signature and ordered arguments from this finalized runtime's precompile catalogue. Available on EthereumRuntimeRPCApi.call and EVM.call preparation. Keep the declared data/input argument as 0x; the existing to/target selects the precompile. Wide integers are exact decimal strings. Successful simulations include source-ABI-decoded evm_result values alongside the complete native result. Encoding and return decoding add no chain request and retain the ordinary gas, value and wallet-review rules.",
+        "properties": {
+          "args": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/NativeJsonValue"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "signature": {
+            "maxLength": 1024,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "signature",
+          "args"
+        ],
+        "type": "object"
+      },
+      "NativeEvmResult": {
+        "description": "Release-bound Solidity return interpretation for an evm_call simulation. Values are in the declared output order, tuples use their unique named fields or positional arrays, and wide integers are exact decimal strings. The native value retains all original return bytes, gas, logs, reverts and dispatch errors. Failed executions and malformed return bytes are never interpreted as successful values.",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "const": "decoded",
+                "type": "string"
+              },
+              "values": {
+                "items": {
+                  "$ref": "#/components/schemas/NativeJsonValue"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "status",
+              "values"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "enum": [
+                  "reverted",
+                  "dispatch_error",
+                  "execution_error",
+                  "invalid_output",
+                  "unrecognized_result"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "NativeField": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "maximum": 16383,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object"
+      },
+      "NativeJsonValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "items": {
+              "$ref": "#/components/schemas/NativeJsonValue"
+            },
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/NativeJsonValue"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "NativePortableType": {
+        "additionalProperties": false,
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/NativeDefinition"
+          },
+          "id": {
+            "maximum": 16383,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "definition"
+        ],
+        "type": "object"
+      },
+      "NativeRuntimeArtifact": {
+        "additionalProperties": false,
+        "description": "Native results decoded and encoded against this finalized block's portable metadata, including newly introduced fields and operations. contract carries the relevant runtime type identities. Raw fixed-point values retain their bits. Prepared call_data is the method bytes only, not a signed extrinsic or an execution receipt. This read does not establish retained history coverage.",
+        "properties": {
+          "results": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "api": {
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                  "type": "string"
+                },
+                "call_data": {
+                  "pattern": "^0x(?:[0-9a-f]{2})+$",
+                  "type": "string"
+                },
+                "contract": {
+                  "$ref": "#/components/schemas/NativeJsonValue"
+                },
+                "evm_result": {
+                  "$ref": "#/components/schemas/NativeEvmResult"
+                },
+                "inner_result": {
+                  "$ref": "#/components/schemas/NativeJsonValue"
+                },
+                "is_default": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "enum": [
+                    "storage",
+                    "entries",
+                    "constant",
+                    "runtime",
+                    "runtime_scale",
+                    "prepare",
+                    "describe"
+                  ],
+                  "type": "string"
+                },
+                "member": {
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                  "type": "string"
+                },
+                "pallet": {
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                  "type": "string"
+                },
+                "storage_key": {
+                  "pattern": "^0x(?:[0-9a-f]{2})*$",
+                  "type": "string"
+                },
+                "value": {
+                  "$ref": "#/components/schemas/NativeJsonValue"
+                },
+                "value_page": {
+                  "$ref": "#/components/schemas/NativeValuePage"
+                }
+              },
+              "required": [
+                "kind",
+                "contract"
+              ],
+              "type": "object"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "$ref": "#/components/schemas/NativeRuntimeSource"
+          },
+          "types": {
+            "items": {
+              "$ref": "#/components/schemas/NativePortableType"
+            },
+            "maxItems": 16384,
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "types",
+          "results"
+        ],
+        "type": "object"
+      },
+      "NativeRuntimeOperation": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "api": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "decode_inner": {
+                "description": "Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result.",
+                "type": "boolean"
+              },
+              "input": {
+                "description": "Exact SCALE arguments encoded for the source runtime API version. Only audited read methods are admitted; result bytes retain their source API id and version. Use typed runtime operations when metadata publishes the signature.",
+                "examples": [
+                  "0x"
+                ],
+                "maxLength": 32768,
+                "pattern": "^0x(?:[0-9a-f]{2})*$",
+                "type": "string"
+              },
+              "kind": {
+                "const": "runtime_scale",
+                "type": "string"
+              },
+              "member": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "value_page": {
+                "$ref": "#/components/schemas/NativeValuePageRequest"
+              }
+            },
+            "required": [
+              "kind",
+              "api",
+              "member",
+              "input"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "args": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/NativeJsonValue"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "kind": {
+                "const": "storage",
+                "type": "string"
+              },
+              "member": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "pallet": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "value_page": {
+                "$ref": "#/components/schemas/NativeValuePageRequest"
+              }
+            },
+            "required": [
+              "kind",
+              "pallet",
+              "member",
+              "args"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "args": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/NativeJsonValue"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "cursor": {
+                "maxLength": 8194,
+                "pattern": "^0x(?:[0-9a-f]{2})+$",
+                "type": "string"
+              },
+              "kind": {
+                "const": "entries",
+                "type": "string"
+              },
+              "limit": {
+                "default": 16,
+                "maximum": 32,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "member": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "pallet": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "pallet",
+              "member",
+              "args",
+              "limit"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "constant",
+                "type": "string"
+              },
+              "member": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "pallet": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "value_page": {
+                "$ref": "#/components/schemas/NativeValuePageRequest"
+              }
+            },
+            "required": [
+              "kind",
+              "pallet",
+              "member"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "api": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "args": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/NativeJsonValue"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "code_artifact": {
+                "$ref": "#/components/schemas/NativeCodeArtifact"
+              },
+              "decode_inner": {
+                "description": "Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result.",
+                "type": "boolean"
+              },
+              "evm_call": {
+                "$ref": "#/components/schemas/NativeEvmCall"
+              },
+              "kind": {
+                "const": "runtime",
+                "type": "string"
+              },
+              "member": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "value_page": {
+                "$ref": "#/components/schemas/NativeValuePageRequest"
+              }
+            },
+            "required": [
+              "kind",
+              "api",
+              "member",
+              "args"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "args": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/NativeJsonValue"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "code_artifact": {
+                "$ref": "#/components/schemas/NativeCodeArtifact"
+              },
+              "evm_call": {
+                "$ref": "#/components/schemas/NativeEvmCall"
+              },
+              "kind": {
+                "const": "prepare",
+                "type": "string"
+              },
+              "member": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "pallet": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "pallet",
+              "member",
+              "args"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "api": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "evm": {
+                "anyOf": [
+                  {
+                    "const": true,
+                    "type": "boolean"
+                  },
+                  {
+                    "pattern": "^0x[0-9a-f]{40}$",
+                    "type": "string"
+                  }
+                ],
+                "description": "true lists this source's precompile addresses; an address lists its Solidity signatures, argument names/types and output layouts. Shares the normal offset/limit pagination and finalized source."
+              },
+              "kind": {
+                "const": "describe",
+                "type": "string"
+              },
+              "limit": {
+                "default": 32,
+                "maximum": 64,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "offset": {
+                "default": 0,
+                "maximum": 16384,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "pallet": {
+                "maxLength": 128,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "type": "string"
+              },
+              "type_id": {
+                "maximum": 16383,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "offset",
+              "limit"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "NativeRuntimeRequest": {
+        "additionalProperties": false,
+        "description": "Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate at the same finalized source. EVM requests have an aggregate 1,000,000 gas cap. Contracts require an explicit Some gas_limit Weight; distinct simulations share a 250,000,000,000 ref_time and 65,536 proof_size budget, with one inline code upload of at most 16,384 bytes. A commit-pinned code_artifact reference supports up to 131,072 bytes within the source runtime MaxCodeLen; the reference must include its exact SHA-256 and byte count, and the code argument must be empty hex. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or persistent state mutation occurs.",
+        "properties": {
+          "as_of": {
+            "description": "Canonical finalized block hash to read; omitted selects the current finalized head. Reuse the response's source hash for a consistent multi-request view.",
+            "examples": [
+              "0x3333333333333333333333333333333333333333333333333333333333333333"
+            ],
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "network": {
+            "description": "Which Bittensor chain to read: `finney` is mainnet (the default when omitted), `test` is testnet. They are separate chains — a netuid on one is unrelated to the same netuid on the other.",
+            "enum": [
+              "finney",
+              "test"
+            ],
+            "examples": [
+              "finney"
+            ],
+            "type": "string"
+          },
+          "operations": {
+            "description": "One to sixteen native operations sharing the same finalized context. Describe discovers runtime names, portable argument types and paged release-bound EVM precompile signatures; storage, constant and runtime read typed values; runtime_scale accepts caller-encoded SCALE for audited read methods and returns exact bytes with the source API id/version, including V14 APIs without typed signatures; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.",
+            "examples": [
+              [
+                {
+                  "kind": "describe",
+                  "limit": 16,
+                  "pallet": "SubtensorModule"
+                }
+              ]
+            ],
+            "items": {
+              "$ref": "#/components/schemas/NativeRuntimeOperation"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "operations"
+        ],
+        "type": "object"
+      },
+      "NativeRuntimeSource": {
+        "additionalProperties": false,
+        "properties": {
+          "finalized_block": {
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "finalized_block_hash": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "metadata_sha256": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "metadata_version": {
+            "enum": [
+              14,
+              15
+            ],
+            "type": "number"
+          },
+          "network": {
+            "$ref": "#/components/schemas/BittensorNetwork"
+          },
+          "network_genesis_hash": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "runtime_code_hash": {
+            "anyOf": [
+              {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runtime_spec_version": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "runtime_transaction_version": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "network",
+          "network_genesis_hash",
+          "finalized_block_hash",
+          "finalized_block",
+          "runtime_spec_version",
+          "runtime_transaction_version",
+          "runtime_code_hash",
+          "metadata_version",
+          "metadata_sha256"
+        ],
+        "type": "object"
+      },
+      "NativeValuePage": {
+        "additionalProperties": false,
+        "properties": {
+          "collection_type": {
+            "maximum": 16383,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "element_type": {
+            "maximum": 16383,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "default": 16,
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "maximum": 262144,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 262144,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "default": [],
+            "items": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "maximum": 16383,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              ]
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "total": {
+            "maximum": 262144,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "value_encoding": {
+            "enum": [
+              "items",
+              "hex"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "offset",
+          "limit",
+          "total",
+          "next_offset",
+          "collection_type",
+          "element_type",
+          "value_encoding"
+        ],
+        "type": "object"
+      },
+      "NativeValuePageRequest": {
+        "additionalProperties": false,
+        "description": "Explicit page of one portable sequence or array. Path selects named fields, positional tuple/array indices or enum variant names; transparent single-field newtypes need no segment. The selected collection alone becomes value (or inner_result with decode_inner); value_page identifies its types, total and continuation. All upstream bytes are validated without allocating omitted values. Continue offsets with the identical operation/path and response source as_of hash. Ordinary omitted-option behavior and limits are unchanged.",
+        "properties": {
+          "limit": {
+            "default": 16,
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 262144,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "default": [],
+            "items": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "maximum": 16383,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              ]
+            },
+            "maxItems": 64,
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "offset",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "NativeVariant": {
+        "additionalProperties": false,
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/NativeField"
+            },
+            "type": "array"
+          },
+          "index": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "index",
+          "fields"
+        ],
+        "type": "object"
+      },
       "NetworkCapabilitiesArtifact": {
         "additionalProperties": false,
         "properties": {
@@ -43806,6 +45106,1343 @@
           "stale"
         ],
         "type": "string"
+      },
+      "RootBasketAccountEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "claim": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootBasketClaimPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entitlement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootBasketEntitlement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootBasketPosition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "hotkey",
+          "position",
+          "claim"
+        ],
+        "type": "object"
+      },
+      "RootBasketAccountPage": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/RootBasketAccountEntry"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "kind": {
+            "const": "account",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 16,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "maximum": 4096,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offset": {
+            "maximum": 4096,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "total_relationships": {
+            "maximum": 4096,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "ss58",
+          "entries",
+          "total_relationships",
+          "next_offset",
+          "offset",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "RootBasketBaseline": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "first_block": {
+                "const": "0",
+                "type": "string"
+              },
+              "price_divisor_q64_bits": {
+                "type": "null"
+              },
+              "provisional": {
+                "const": true,
+                "type": "boolean"
+              },
+              "rate0_q32_bits": {
+                "type": "null"
+              },
+              "tr_splice_q64_bits": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "provisional",
+              "first_block",
+              "price_divisor_q64_bits",
+              "rate0_q32_bits",
+              "tr_splice_q64_bits"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "first_block": {
+                "type": "string"
+              },
+              "price_divisor_q64_bits": {
+                "type": "string"
+              },
+              "provisional": {
+                "const": false,
+                "type": "boolean"
+              },
+              "rate0_q32_bits": {
+                "type": "string"
+              },
+              "tr_splice_q64_bits": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "provisional",
+              "first_block",
+              "price_divisor_q64_bits",
+              "rate0_q32_bits",
+              "tr_splice_q64_bits"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "RootBasketClaimPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "accrued_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "dust_rows": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "flushed_credits": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "forfeited_estimate_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "owed_shares_atomic": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "redeemable_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "rows": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rows_to_sell": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "swept_rows": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hotkey",
+          "owed_shares_atomic",
+          "accrued_rao",
+          "redeemable_rao",
+          "forfeited_estimate_rao",
+          "rows",
+          "rows_to_sell",
+          "dust_rows",
+          "swept_rows",
+          "flushed_credits"
+        ],
+        "type": "object"
+      },
+      "RootBasketDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootBasketBaseline"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "const": "fund",
+            "type": "string"
+          },
+          "pricing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootBasketPricing"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "$ref": "#/components/schemas/RootBasketSummary"
+          },
+          "trading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootBasketTradingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "pricing",
+          "summary",
+          "trading",
+          "baseline"
+        ],
+        "type": "object"
+      },
+      "RootBasketDirectory": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "directory",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "next_after": {
+            "anyOf": [
+              {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pricing": {
+            "items": {
+              "$ref": "#/components/schemas/RootBasketPricing"
+            },
+            "maxItems": 64,
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "pricing",
+          "next_after",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "RootBasketEntitlement": {
+        "additionalProperties": false,
+        "properties": {
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "owed_shares_atomic": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "payout_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hotkey",
+          "owed_shares_atomic",
+          "payout_rao"
+        ],
+        "type": "object"
+      },
+      "RootBasketLegacyDirectory": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "legacy-directory",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "next_after": {
+            "anyOf": [
+              {
+                "pattern": "^0x[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summaries": {
+            "items": {
+              "$ref": "#/components/schemas/RootBasketSummary"
+            },
+            "maxItems": 64,
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "summaries",
+          "next_after",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "RootBasketPosition": {
+        "additionalProperties": false,
+        "properties": {
+          "beta_atomic": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "display_beta_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "display_price_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "realizable_value_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "spot_value_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hotkey",
+          "beta_atomic",
+          "display_beta_q64_bits",
+          "display_price_q64_bits",
+          "realizable_value_rao",
+          "spot_value_rao",
+          "provisional"
+        ],
+        "type": "object"
+      },
+      "RootBasketPricing": {
+        "additionalProperties": false,
+        "properties": {
+          "bag_index_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "display_price_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "display_shares_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "first_block": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "pending_entitlement_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "provisional": {
+            "type": "boolean"
+          },
+          "raw_spot_price_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "shares_atomic": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "spot_nav_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "stake_index_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "stake_price_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "staker_twr_q64_bits": {
+            "examples": [
+              "18446744073709551616"
+            ],
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hotkey",
+          "raw_spot_price_q64_bits",
+          "display_price_q64_bits",
+          "stake_price_q64_bits",
+          "pending_entitlement_q64_bits",
+          "staker_twr_q64_bits",
+          "bag_index_q64_bits",
+          "stake_index_q64_bits",
+          "first_block",
+          "provisional",
+          "spot_nav_rao",
+          "shares_atomic",
+          "display_shares_q64_bits"
+        ],
+        "type": "object"
+      },
+      "RootBasketReadData": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RootBasketDirectory"
+          },
+          {
+            "$ref": "#/components/schemas/RootBasketLegacyDirectory"
+          },
+          {
+            "$ref": "#/components/schemas/RootBasketDetail"
+          },
+          {
+            "$ref": "#/components/schemas/RootBasketAccountPage"
+          }
+        ]
+      },
+      "RootBasketsArtifact": {
+        "description": "Finalized native Root basket state across explicitly audited official releases v441–v471. source.capabilities identifies published operations: API 1 exposes holdings, stored target weights and owed-share entitlements; API 3 adds display beta and pricing; API 4 removes target weights and adds trading status; API 5 adds dust-aware claim previews. Absent methods are never called or replaced with invented prices or zero claims. Unknown layouts and failed reads return no data. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. Historical block reads require an archive source and do not establish retained snapshot coverage.",
+        "examples": [
+          {
+            "data": {
+              "kind": "directory",
+              "limit": 64,
+              "next_after": null,
+              "pricing": []
+            },
+            "network": "finney",
+            "schema_version": 1,
+            "source": {
+              "capabilities": {
+                "beta_positions": true,
+                "claim_preview": true,
+                "pricing": true,
+                "target_weights": false,
+                "trading_status": true
+              },
+              "decoder_version": "subtensor-v470-923fd1fa-v1",
+              "finalized_block": "500",
+              "finalized_block_hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+              "metadata_sha256": "0x5555555555555555555555555555555555555555555555555555555555555555",
+              "network": "finney",
+              "network_genesis_hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+              "runtime_api_version": 5,
+              "runtime_spec_version": 470
+            },
+            "status": "available"
+          }
+        ],
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/RootBasketReadData"
+              },
+              "network": {
+                "$ref": "#/components/schemas/BittensorNetwork"
+              },
+              "schema_version": {
+                "const": 1,
+                "type": "number"
+              },
+              "source": {
+                "$ref": "#/components/schemas/RootBasketSource"
+              },
+              "status": {
+                "const": "available",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "network",
+              "status",
+              "source",
+              "data"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "type": "null"
+              },
+              "network": {
+                "$ref": "#/components/schemas/BittensorNetwork"
+              },
+              "schema_version": {
+                "const": 1,
+                "type": "number"
+              },
+              "source": {
+                "type": "null"
+              },
+              "status": {
+                "const": "unsupported",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "network",
+              "status",
+              "source",
+              "data"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "type": "null"
+              },
+              "network": {
+                "$ref": "#/components/schemas/BittensorNetwork"
+              },
+              "schema_version": {
+                "const": 1,
+                "type": "number"
+              },
+              "source": {
+                "type": "null"
+              },
+              "status": {
+                "const": "unavailable",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "network",
+              "status",
+              "source",
+              "data"
+            ],
+            "type": "object"
+          }
+        ],
+        "type": "object"
+      },
+      "RootBasketSource": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "oneOf": [
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v441-8b9d55c7-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 441
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v442-ec112cb0-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 442
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v443-c02a376e-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 443
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v445-d3f40e44-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 445
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v446-52d7e7cf-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 446
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v447-1f090af8-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 447
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v448-e18ca67f-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  },
+                  "runtime_spec_version": {
+                    "const": 448
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v450-9540b3af-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 450
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v452-da06f033-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 452
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v453-823bdcbc-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 453
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v454-14cde641-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 454
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v459-70378404-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  },
+                  "runtime_spec_version": {
+                    "const": 459
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v464-5cd66b85-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 4
+                  },
+                  "runtime_spec_version": {
+                    "const": 464
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v466-cdffbe2f-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 4
+                  },
+                  "runtime_spec_version": {
+                    "const": 466
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v467-c6bcb4a7-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 4
+                  },
+                  "runtime_spec_version": {
+                    "const": 467
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v468-30c70d90-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 5
+                  },
+                  "runtime_spec_version": {
+                    "const": 468
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v469-370bac46-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 5
+                  },
+                  "runtime_spec_version": {
+                    "const": 469
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v470-923fd1fa-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 5
+                  },
+                  "runtime_spec_version": {
+                    "const": 470
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "decoder_version": {
+                    "const": "subtensor-v471-c004cebf-v1"
+                  },
+                  "runtime_api_version": {
+                    "const": 5
+                  },
+                  "runtime_spec_version": {
+                    "const": 471
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "oneOf": [
+              {
+                "properties": {
+                  "capabilities": {
+                    "const": {
+                      "beta_positions": false,
+                      "claim_preview": false,
+                      "pricing": false,
+                      "target_weights": true,
+                      "trading_status": false
+                    }
+                  },
+                  "runtime_api_version": {
+                    "const": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "capabilities": {
+                    "const": {
+                      "beta_positions": true,
+                      "claim_preview": false,
+                      "pricing": true,
+                      "target_weights": true,
+                      "trading_status": false
+                    }
+                  },
+                  "runtime_api_version": {
+                    "const": 3
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "capabilities": {
+                    "const": {
+                      "beta_positions": true,
+                      "claim_preview": false,
+                      "pricing": true,
+                      "target_weights": false,
+                      "trading_status": true
+                    }
+                  },
+                  "runtime_api_version": {
+                    "const": 4
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "capabilities": {
+                    "const": {
+                      "beta_positions": true,
+                      "claim_preview": true,
+                      "pricing": true,
+                      "target_weights": false,
+                      "trading_status": true
+                    }
+                  },
+                  "runtime_api_version": {
+                    "const": 5
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "capabilities": {
+            "additionalProperties": false,
+            "properties": {
+              "beta_positions": {
+                "type": "boolean"
+              },
+              "claim_preview": {
+                "type": "boolean"
+              },
+              "pricing": {
+                "type": "boolean"
+              },
+              "target_weights": {
+                "type": "boolean"
+              },
+              "trading_status": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "pricing",
+              "beta_positions",
+              "target_weights",
+              "trading_status",
+              "claim_preview"
+            ],
+            "type": "object"
+          },
+          "decoder_version": {
+            "enum": [
+              "subtensor-v441-8b9d55c7-v1",
+              "subtensor-v442-ec112cb0-v1",
+              "subtensor-v443-c02a376e-v1",
+              "subtensor-v445-d3f40e44-v1",
+              "subtensor-v446-52d7e7cf-v1",
+              "subtensor-v447-1f090af8-v1",
+              "subtensor-v448-e18ca67f-v1",
+              "subtensor-v450-9540b3af-v1",
+              "subtensor-v452-da06f033-v1",
+              "subtensor-v453-823bdcbc-v1",
+              "subtensor-v454-14cde641-v1",
+              "subtensor-v459-70378404-v1",
+              "subtensor-v464-5cd66b85-v1",
+              "subtensor-v466-cdffbe2f-v1",
+              "subtensor-v467-c6bcb4a7-v1",
+              "subtensor-v468-30c70d90-v1",
+              "subtensor-v469-370bac46-v1",
+              "subtensor-v470-923fd1fa-v1",
+              "subtensor-v471-c004cebf-v1"
+            ],
+            "type": "string"
+          },
+          "finalized_block": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "finalized_block_hash": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "metadata_sha256": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "network": {
+            "$ref": "#/components/schemas/BittensorNetwork"
+          },
+          "network_genesis_hash": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "runtime_api_version": {
+            "enum": [
+              1,
+              3,
+              4,
+              5
+            ],
+            "type": "number"
+          },
+          "runtime_spec_version": {
+            "enum": [
+              441,
+              442,
+              443,
+              445,
+              446,
+              447,
+              448,
+              450,
+              452,
+              453,
+              454,
+              459,
+              464,
+              466,
+              467,
+              468,
+              469,
+              470,
+              471
+            ],
+            "type": "number"
+          }
+        },
+        "required": [
+          "network",
+          "network_genesis_hash",
+          "finalized_block_hash",
+          "finalized_block",
+          "runtime_spec_version",
+          "runtime_api_version",
+          "decoder_version",
+          "metadata_sha256",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "RootBasketSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "deposited_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "holdings": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "netuid": {
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "quantity_atomic": {
+                  "examples": [
+                    "9007199254740993"
+                  ],
+                  "maxLength": 20,
+                  "pattern": "^(0|[1-9]\\d*)$",
+                  "type": "string"
+                },
+                "quantity_unit": {
+                  "enum": [
+                    "rao",
+                    "alpha_atomic"
+                  ],
+                  "type": "string"
+                },
+                "realizable_value_rao": {
+                  "examples": [
+                    "9007199254740993"
+                  ],
+                  "maxLength": 20,
+                  "pattern": "^(0|[1-9]\\d*)$",
+                  "type": "string"
+                },
+                "spot_value_rao": {
+                  "examples": [
+                    "9007199254740993"
+                  ],
+                  "maxLength": 20,
+                  "pattern": "^(0|[1-9]\\d*)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "netuid",
+                "quantity_atomic",
+                "quantity_unit",
+                "spot_value_rao",
+                "realizable_value_rao"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1024,
+            "type": "array"
+          },
+          "hotkey": {
+            "pattern": "^0x[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "realizable_nav_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "redeemed_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "shares_atomic": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "spot_nav_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "target_weights": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "netuid": {
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "weight_u16": {
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "weight_u16"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1024,
+            "type": "array"
+          }
+        },
+        "required": [
+          "hotkey",
+          "realizable_nav_rao",
+          "spot_nav_rao",
+          "shares_atomic",
+          "deposited_rao",
+          "redeemed_rao",
+          "holdings"
+        ],
+        "type": "object"
+      },
+      "RootBasketTradingStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "available_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "budget_rao": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "frozen": {
+            "type": "boolean"
+          },
+          "refill_blocks": {
+            "examples": [
+              "9007199254740993"
+            ],
+            "maxLength": 20,
+            "pattern": "^(0|[1-9]\\d*)$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "frozen",
+          "refill_blocks",
+          "available_rao",
+          "budget_rao"
+        ],
+        "type": "object"
       },
       "RpcEndpointsArtifact": {
         "additionalProperties": false,
@@ -59253,7 +61890,7 @@
       },
       "SubnetStakeQuoteArtifact": {
         "additionalProperties": false,
-        "description": "A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
+        "description": "A read-only finalized runtime stake/unstake simulation. Numeric fields are display values; exact atomic quantities are available through native-runtime. Legacy reserve fields are null; source identity is returned in REST metadata. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
         "properties": {
           "alpha_in_pool": {
             "anyOf": [
@@ -59293,7 +61930,7 @@
             "type": "string"
           },
           "is_root": {
-            "description": "True for root (netuid 0), which quotes 1:1 with no price impact.",
+            "description": "True for root (netuid 0). Price and fees come from the runtime simulator.",
             "type": "boolean"
           },
           "netuid": {
@@ -62186,6 +64823,104 @@
           "curation_level": {
             "$ref": "#/components/schemas/CurationLevel"
           },
+          "http": {
+            "additionalProperties": false,
+            "properties": {
+              "operations": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "method": {
+                      "enum": [
+                        "GET",
+                        "HEAD",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE"
+                      ],
+                      "type": "string"
+                    },
+                    "parameters": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "allowReserved": {
+                            "type": "boolean"
+                          },
+                          "explode": {
+                            "type": "boolean"
+                          },
+                          "in": {
+                            "enum": [
+                              "query",
+                              "header",
+                              "cookie"
+                            ],
+                            "type": "string"
+                          },
+                          "name": {
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "style": {
+                            "enum": [
+                              "form",
+                              "simple",
+                              "spaceDelimited",
+                              "pipeDelimited",
+                              "deepObject",
+                              "cookie"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "in"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 128,
+                      "type": "array"
+                    },
+                    "path": {
+                      "maxLength": 2048,
+                      "minLength": 1,
+                      "pattern": "^\\/(?!\\/)[^?#\\\\]*$",
+                      "type": "string"
+                    },
+                    "request_body_required": {
+                      "type": "boolean"
+                    },
+                    "request_content_types": {
+                      "items": {
+                        "maxLength": 128,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "maxItems": 16,
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "method",
+                    "path"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 512,
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "operations"
+            ],
+            "type": "object"
+          },
           "id": {
             "type": "string"
           },
@@ -62204,6 +64939,9 @@
                 "type": "null"
               }
             ]
+          },
+          "mcp": {
+            "$ref": "#/components/schemas/McpSurfaceAdmission"
           },
           "method": {
             "description": "HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.",
@@ -66354,6 +69092,165 @@
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/AccountParentsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "accounts"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/{network}/accounts/{ss58}/root-baskets": {
+      "get": {
+        "description": "Network-scoped form of /api/v1/accounts/{ss58}/root-baskets — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "accountRootBasketsByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "maximum": 4096,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 16). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 16.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 16,
+              "maximum": 16,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RootBasketsArtifactResponse": {
+                    "$ref": "#/components/examples/RootBasketsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RootBasketsArtifact"
                         }
                       },
                       "type": "object"
@@ -72098,6 +74995,131 @@
         ]
       }
     },
+    "/api/v1/{network}/native-runtime": {
+      "post": {
+        "description": "Network-scoped form of /api/v1/native-runtime — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "nativeRuntimeByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeRuntimeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "NativeRuntimeArtifactResponse": {
+                    "$ref": "#/components/examples/NativeRuntimeArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NativeRuntimeArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "chain"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
     "/api/v1/{network}/network/parameters": {
       "get": {
         "description": "Network-scoped form of /api/v1/network/parameters — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
@@ -72434,6 +75456,164 @@
         },
         "tags": [
           "operations"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/{network}/root-baskets": {
+      "get": {
+        "description": "Network-scoped form of /api/v1/root-baskets — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "rootBasketsByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional AccountId32 hex fund key; selects one fund's detail instead of directory pricing.",
+            "in": "query",
+            "name": "hotkey",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque upstream AccountId32 continuation. Pass it back verbatim with as_of. Empty pricing pages can still carry this cursor.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 64). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 64.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 64,
+              "maximum": 64,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RootBasketsArtifactResponse": {
+                    "$ref": "#/components/examples/RootBasketsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RootBasketsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "chain"
         ],
         "x-metagraphed-networks": [
           "finney",
@@ -73539,6 +76719,157 @@
         },
         "tags": [
           "subnets"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/{network}/subnets/{netuid}/stake-quote": {
+      "get": {
+        "description": "Network-scoped form of /api/v1/subnets/{netuid}/stake-quote — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "subnetStakeQuoteByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The stake amount to quote, in TAO. Must be greater than zero.",
+            "in": "query",
+            "name": "amount",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Which side of the trade to price: `stake` buys alpha with TAO, `unstake` sells alpha for TAO. Omit for `stake`.",
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "stake",
+              "enum": [
+                "stake",
+                "unstake"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SubnetStakeQuoteArtifactResponse": {
+                    "$ref": "#/components/examples/SubnetStakeQuoteArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetStakeQuoteArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "subnets",
+          "analytics"
         ],
         "x-metagraphed-networks": [
           "finney",
@@ -76138,6 +79469,150 @@
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
           "mainnet"
+        ]
+      }
+    },
+    "/api/v1/accounts/{ss58}/root-baskets": {
+      "get": {
+        "description": "Read native basket positions and dust-aware claim previews for at most 16 staking relationships at one finalized block. Reuse source.finalized_block_hash as as_of with next_offset to resume. Confirmed non-basket relationships retain null position/claim; a small returned portfolio is never treated as proof of completeness. Audited official releases v441–v471; account entitlements, beta positions and claim previews follow their actual API generation. Read-only.",
+        "operationId": "accountRootBaskets",
+        "parameters": [
+          {
+            "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "maximum": 4096,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 16). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 16.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 16,
+              "maximum": 16,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RootBasketsArtifactResponse": {
+                    "$ref": "#/components/examples/RootBasketsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RootBasketsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "accounts"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },
@@ -92653,6 +96128,115 @@
         ]
       }
     },
+    "/api/v1/native-runtime": {
+      "post": {
+        "description": "Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata. Up to 16 operations share one source. Descriptions are paginated; exact integers are decimal strings and byte vectors are hex. runtime_scale accepts caller-encoded SCALE for audited reads, including V14 APIs without typed signatures, and returns exact bytes with the source API id/version. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input, retaining return bytes, reverts and exact deposits. Call method bytes require an explicit wallet signature before execution. No transaction is submitted or code published by a simulation.",
+        "operationId": "nativeRuntime",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeRuntimeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "NativeRuntimeArtifactResponse": {
+                    "$ref": "#/components/examples/NativeRuntimeArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NativeRuntimeArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "chain"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
     "/api/v1/network/parameters": {
       "get": {
         "description": "Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure. READ `field_sources` BEFORE CITING ANY VALUE HERE: it labels every field measured (with the storage item behind it) or reconstructed (our arithmetic), and three are reconstructed. `block_emission_tao` and `block_emission_halvings` are derived from TotalIssuance, never read from the `BlockEmission` storage item, which is stale at 1.0 TAO (#8747). `emission_gate_exponent_effective` is the runtime default (3) whenever the storage item is unset, which is its current state on finney — that 3 comes from our source tree, not from chain.",
@@ -96321,6 +99905,149 @@
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
           "mainnet"
+        ]
+      }
+    },
+    "/api/v1/root-baskets": {
+      "get": {
+        "description": "Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex. Exact atomic values remain strings. Reuse source.finalized_block_hash as as_of when following next_after; an empty page with a cursor is nonterminal. Audited official releases v441–v471; API-1 directories contain exact summaries and weights. Unsupported and unavailable states contain no data. Read-only, no trade or claim submission.",
+        "operationId": "rootBaskets",
+        "parameters": [
+          {
+            "description": "Optional AccountId32 hex fund key; selects one fund's detail instead of directory pricing.",
+            "in": "query",
+            "name": "hotkey",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque upstream AccountId32 continuation. Pass it back verbatim with as_of. Empty pricing pages can still carry this cursor.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "pattern": "^0x[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 64). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 64.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 64,
+              "maximum": 64,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RootBasketsArtifactResponse": {
+                    "$ref": "#/components/examples/RootBasketsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RootBasketsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "tags": [
+          "chain"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },
@@ -105734,7 +109461,7 @@
     },
     "/api/v1/subnets/{netuid}/stake-quote": {
       "get": {
-        "description": "Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+        "description": "Simulate a stake/unstake at one finalized chain source: expected alpha/TAO out, current vs effective price and price impact including swap fees. amount is required and must fit whole atomic units and u64; direction defaults to stake (TAO in), while unstake spends alpha. Uses the runtime's SwapRuntimeApi; zero or partial fills return 422 and failed reads return 502. No approximate fallback, signing or submission. Root uses the same simulator. Existing numeric fields are display values; exact atomic results are available through native-runtime. Source identity appears in meta.native_source. Network prefixes select mainnet or testnet.",
         "operationId": "subnetStakeQuote",
         "parameters": [
           {
@@ -105860,9 +109587,11 @@
           "subnets",
           "analytics"
         ],
-        "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
-          "mainnet"
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },

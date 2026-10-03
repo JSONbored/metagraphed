@@ -91,6 +91,8 @@ describe("data-api's bundle boundary", () => {
     "src/native-store-export.ts",
     "src/raw-capture-d1.ts",
     "src/raw-capture-sync.ts",
+    "src/root-basket-observation.ts",
+    "schemas-src/root-basket-observation.ts",
     "src/account-balance.ts",
     "src/chain-burn.ts",
     "src/subnet-burn-history.ts",
@@ -144,6 +146,12 @@ describe("data-api's bundle boundary", () => {
     // dependency; the named boundaries remain mandatory above.
     // The native neuron receipt adds 5,165 source bytes to that measured
     // graph (4,824,337 total), without adding any forbidden module.
+    // Native basket route/query contracts add 8,096 source bytes against
+    // 7d2231a3 after its serving dependency isolation: 4,754,854 total.
+    // Remote CI emits 4,974 additional minified bytes / 1,556 gzip bytes;
+    // no router, codec, collector, GraphQL or MCP module enters this graph.
+    // The original source budget still holds. Keep the observation collector
+    // and its schema outside this graph, as named above.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);

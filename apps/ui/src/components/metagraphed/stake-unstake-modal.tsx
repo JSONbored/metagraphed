@@ -15,7 +15,7 @@ import { StakeAmountInput } from "@/components/metagraphed/stake-amount-input";
 import { PreSignConfirmation } from "@/components/metagraphed/pre-sign-confirmation";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import { rawAlphaToAlpha } from "@/lib/metagraphed/units";
+import { rawAlphaToAlpha, asRawAlpha, raoToTao, asRao } from "@/lib/metagraphed/units";
 import type { BroadcastStatus } from "@/lib/metagraphed/broadcast";
 import type { DecodedTxError } from "@/lib/metagraphed/tx-errors";
 import {
@@ -88,6 +88,7 @@ export function StakeUnstakeModal({
 }: StakeUnstakeModalProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   // A ref, not just the `submitting` state: React batches the state update
   // from a click handler, so the DOM button's `disabled` attribute doesn't
   // actually flip until the next render -- a genuine double-click can fire a
@@ -111,6 +112,7 @@ export function StakeUnstakeModal({
 
   const handleOpenChange = (next: boolean) => {
     if (next) {
+      setSubmissionError(null);
       setOpen(true);
       return;
     }
@@ -123,8 +125,13 @@ export function StakeUnstakeModal({
     if (confirmInFlightRef.current) return;
     confirmInFlightRef.current = true;
     setSubmitting(true);
+    setSubmissionError(null);
     try {
       await flow.submit();
+    } catch (error) {
+      setSubmissionError(
+        error instanceof Error ? error.message : "The stake could not be submitted.",
+      );
     } finally {
       confirmInFlightRef.current = false;
       setSubmitting(false);
@@ -166,6 +173,11 @@ export function StakeUnstakeModal({
         </SheetHeader>
 
         <div className="mt-4 flex-1">
+          {submissionError && (
+            <p role="alert" className="text-13 text-health-down">
+              {submissionError}
+            </p>
+          )}
           <StakeFlowBody
             hotkey={hotkey}
             netuid={netuid}
@@ -254,7 +266,10 @@ function StakeFlowBody({
           feeTao={flow.feeTao}
           expectedOut={
             flow.quote
-              ? { amount: String(flow.quote.expected_out), unit: flow.quote.expected_out_unit }
+              ? {
+                  amount: raoToTao(asRao(flow.quote.outputAtomic)),
+                  unit: flow.quote.expected_out_unit,
+                }
               : undefined
           }
           priceImpactPct={flow.quote?.price_impact_pct}
@@ -354,7 +369,7 @@ function describeTxError(error: DecodedTxError | null): string {
 function confirmAmountTao(flow: UseStakeFlowResult): string {
   if (flow.action === "stake") return flow.amountInput;
   if (flow.unit === "tao") return flow.amountInput;
-  return flow.quote?.expected_out != null ? String(flow.quote.expected_out) : flow.amountInput;
+  return flow.quote ? raoToTao(asRao(flow.quote.outputAtomic)) : flow.amountInput;
 }
 
 /** The confirm screen's alpha display -- for unstake, reconstructed from the exact RawAlpha this params object will submit (never a re-derived estimate), so what's shown is exactly what gets signed. */
@@ -363,7 +378,7 @@ function confirmAmountAlpha(flow: UseStakeFlowResult): string | undefined {
     return rawAlphaToAlpha(flow.params.amountUnstaked);
   }
   if (flow.action === "stake" && flow.quote?.expected_out_unit === "alpha") {
-    return String(flow.quote.expected_out);
+    return rawAlphaToAlpha(asRawAlpha(flow.quote.outputAtomic));
   }
   return undefined;
 }

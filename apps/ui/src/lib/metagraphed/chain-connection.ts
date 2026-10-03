@@ -42,7 +42,25 @@ export type StakeCallParams =
  */
 export const DEFAULT_RPC_ENDPOINT = "wss://entrypoint-finney.opentensor.ai";
 
-let cachedApi: Promise<ApiPromise> | null = null;
+const cachedApis = new Map<string, Promise<ApiPromise>>();
+let sdkModule: Promise<typeof import("@polkadot/api")> | null = null;
+
+// Share first-time SDK loading across endpoint connections. A failed chunk
+// load remains retryable, just like a failed connection.
+function loadSdk() {
+  sdkModule ??= import("@polkadot/api").catch((error) => {
+    sdkModule = null;
+    throw error;
+  });
+  return sdkModule;
+}
+
+/** Official network entrypoints, matching the public native endpoint registry. */
+export function rpcEndpointForNetwork(network: string): string {
+  if (network === "mainnet") return DEFAULT_RPC_ENDPOINT;
+  if (network === "testnet") return "wss://test.finney.opentensor.ai";
+  throw new Error("Choose a supported network before connecting a wallet.");
+}
 
 /**
  * Connect (once, cached) to a trusted RPC endpoint and return the live,
@@ -55,14 +73,45 @@ export async function getApi(endpoint: string = DEFAULT_RPC_ENDPOINT): Promise<A
   if (typeof window === "undefined") {
     throw new Error("getApi() is client-only and must not be called during SSR");
   }
-  if (!cachedApi) {
-    cachedApi = (async () => {
-      const { ApiPromise, WsProvider } = await import("@polkadot/api");
+  let pending = cachedApis.get(endpoint);
+  if (!pending) {
+    pending = (async () => {
+      const { ApiPromise, WsProvider } = await loadSdk();
       const provider = new WsProvider(endpoint);
-      return ApiPromise.create({ provider });
+      let expired = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const connecting = ApiPromise.create({ provider, throwOnConnect: true });
+      void connecting.then(
+        (connected) => {
+          if (expired) void connected.disconnect().catch(() => {});
+        },
+        () => {},
+      );
+      try {
+        return await Promise.race([
+          connecting,
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => {
+              expired = true;
+              reject(new Error("The wallet connection timed out. Retry to reconnect."));
+            }, 30_000);
+          }),
+        ]);
+      } catch (error) {
+        await provider.disconnect().catch(() => {});
+        throw error;
+      } finally {
+        clearTimeout(timer);
+      }
     })();
+    cachedApis.set(endpoint, pending);
   }
-  return cachedApi;
+  try {
+    return await pending;
+  } catch (error) {
+    if (cachedApis.get(endpoint) === pending) cachedApis.delete(endpoint);
+    throw error;
+  }
 }
 
 // subtensor is a custom runtime with no published @polkadot/api-augment-style
@@ -90,7 +139,7 @@ interface BigIntCodec {
   toBigInt(): bigint;
 }
 interface AccountInfoCodec {
-  data: { free: BigIntCodec };
+  data: { free: BigIntCodec; [field: string]: unknown };
 }
 interface NumberCodec {
   toNumber(): number;
@@ -172,7 +221,27 @@ export async function getFreeBalance(api: ApiPromise, coldkeySs58: string): Prom
   if (!isAccountInfoCodec(account)) {
     throw new Error("system.account did not return an AccountInfo with a free balance");
   }
-  return asRao(account.data.free.toBigInt());
+  const free = account.data.free.toBigInt();
+  // Current AccountData has frozen; older metadata exposes separate fee/misc
+  // freezes. They overlap rather than add, and reserved/held funds are already
+  // excluded from free. Never offer frozen funds to Max or a fee review.
+  let frozen = 0n;
+  for (const field of ["frozen", "feeFrozen", "miscFrozen"]) {
+    const value = account.data[field];
+    if (value === undefined) continue;
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      !("toBigInt" in value) ||
+      typeof value.toBigInt !== "function"
+    )
+      throw new Error(`system.account returned an invalid ${field} balance`);
+    const amount: unknown = value.toBigInt();
+    if (typeof amount !== "bigint" || amount < 0n)
+      throw new Error(`system.account returned an invalid ${field} balance`);
+    if (amount > frozen) frozen = amount;
+  }
+  return asRao(free > frozen ? free - frozen : 0n);
 }
 
 /**

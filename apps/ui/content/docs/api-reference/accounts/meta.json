@@ -22,6 +22,8 @@
     "account-positions",
     "account-prometheus",
     "account-registrations",
+    "account-root-baskets",
+    "account-root-baskets-by-network",
     "account-root-claim",
     "account-root-claim-by-network",
     "account-serving",

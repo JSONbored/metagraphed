@@ -55,6 +55,29 @@ describe("sampleFromSchema", () => {
     assert.equal(out.n, 1);
   });
 
+  test("allOf preserves required sibling source identity while applying discriminant constraints", () => {
+    const schema = {
+      type: "object",
+      additionalProperties: false,
+      required: ["network", "finalized_block", "runtime_spec_version"],
+      properties: {
+        network: { type: "string", enum: ["finney", "test"] },
+        finalized_block: { type: "string", pattern: "^(0|[1-9]\\d*)$" },
+        runtime_spec_version: { type: "integer" },
+      },
+      allOf: [
+        { oneOf: [{ properties: { runtime_spec_version: { const: 470 } } }] },
+      ],
+    };
+    const out = s(schema);
+    assert.deepEqual(out, {
+      network: "finney",
+      finalized_block: "1000",
+      runtime_spec_version: 470,
+    });
+    assert.ok(new Ajv2020({ strict: false }).compile(schema)(out));
+  });
+
   test("oneOf/anyOf pick the first non-null variant", () => {
     assert.equal(
       s({ oneOf: [{ type: "null" }, { type: "string" }] }),
@@ -188,6 +211,29 @@ describe("sampleFromSchema", () => {
       /^#\/components\/schemas\//,
     );
     assert.equal(s({ type: "string", pattern: "^something-else$" }), "example");
+  });
+
+  test("exact runtime hashes and canonical unsigned integers produce valid examples", () => {
+    const schema = {
+      type: "object",
+      required: ["block_hash", "hotkey", "block_number", "shares_q64"],
+      properties: {
+        block_hash: { type: "string", pattern: "^0x[0-9a-f]{64}$" },
+        hotkey: { type: "string", pattern: "^0x[0-9a-fA-F]{64}$" },
+        block_number: {
+          type: "string",
+          pattern: "^(0|[1-9]\\d*)$",
+          maxLength: 20,
+        },
+        shares_q64: { type: "string", pattern: "^(0|[1-9]\\d*)$" },
+      },
+    };
+    const sample = s(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(sample), JSON.stringify(validate.errors));
+    assert.equal(sample.block_hash, sample.hotkey);
+    assert.equal(sample.block_number, "1000");
+    assert.equal(sample.shares_q64, "1000");
   });
 
   test("number seeds by field name + clamps to min/max", () => {

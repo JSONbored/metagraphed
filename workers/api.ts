@@ -1,3 +1,5 @@
+import { handleNativeRuntime } from "./request-handlers/native-runtime.ts";
+import { handleRootBaskets } from "./request-handlers/root-baskets.ts";
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { handleNativeStoreExportRequest } from "../src/native-store-export.ts";
@@ -5743,6 +5745,23 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
     );
   }
 
+  if (networkRoute.url.pathname === "/api/v1/native-runtime") {
+    if (networkRoute.network.id === "local")
+      return errorResponse(
+        "network_unavailable",
+        "Local chain data is not hosted by Metagraphed.",
+        404,
+        { network: "local" },
+      );
+    return handleNativeRuntime(
+      request,
+      env,
+      networkRoute.explicit
+        ? chainNetworkId(networkRoute.network.id)
+        : undefined,
+    );
+  }
+
   if (networkRoute.explicit) {
     if (networkRoute.network.isDefault) {
       url = networkRoute.url;
@@ -6875,7 +6894,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       resolved.url.pathname,
     );
     if (stakeQuoteMatch) {
-      // Read-only constant-product quote (#5235). The result varies with the
+      // Read-only finalized runtime quote. The result varies with the
       // ?amount=/?direction= query, so it's computed per request rather than
       // path-edge-cached like the deterministic sibling analytics routes.
       return handleSubnetStakeQuote(
@@ -8118,7 +8137,6 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||
     SUBNET_OHLC_PATH_PATTERN.test(pathname) ||
-    SUBNET_STAKE_QUOTE_PATH_PATTERN.test(pathname) ||
     // Mainnet-only because it joins the `neurons` tier, which is indexed
     // for finney only. Its live half (StakeThreshold/TaoWeight/Burn) became
     // network-aware in #8700 -- the storage reads are no longer what pins this
@@ -8185,6 +8203,17 @@ async function dispatchLiveChainRoute(
 ): Promise<Response | null> {
   const chain = chainNetworkId(network.id);
   const { pathname } = url;
+
+  const stakeQuoteMatch = SUBNET_STAKE_QUOTE_PATH_PATTERN.exec(pathname);
+  if (stakeQuoteMatch)
+    return handleSubnetStakeQuote(
+      request,
+      env,
+      Number(stakeQuoteMatch[1]),
+      url,
+      ctx,
+      chain,
+    );
 
   const walletsMatch = SUBNET_WALLETS_PATH_PATTERN.exec(pathname);
   if (walletsMatch) {
@@ -8332,6 +8361,12 @@ async function dispatchLiveChainRoute(
   if (accountBalanceMatch) {
     return handleAccountBalance(request, env, accountBalanceMatch[1], chain);
   }
+  if (pathname === "/api/v1/root-baskets")
+    return handleRootBaskets(request, env, url, chain);
+  const rootBasketsAccount =
+    /^\/api\/v1\/accounts\/([^/]+)\/root-baskets$/.exec(pathname);
+  if (rootBasketsAccount)
+    return handleRootBaskets(request, env, url, chain, rootBasketsAccount[1]);
   const accountRootClaimMatch = ACCOUNT_ROOT_CLAIM_PATH_PATTERN.exec(pathname);
   if (accountRootClaimMatch) {
     return handleAccountRootClaim(
@@ -10973,6 +11008,11 @@ function allowedMethodsForPath(pathname: string): string {
   if (url.pathname === A2A_ENDPOINT_PATH) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/rpc/")) {
+    methods = "POST, OPTIONS";
+  } else if (
+    resolveNetworkPrefix(new URL(url.pathname, "https://api.metagraph.sh")).url
+      .pathname === "/api/v1/native-runtime"
+  ) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";

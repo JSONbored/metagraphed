@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, DataTable, MarkerRail, type DataTableColumn } from "@jsonbored/ui-kit";
 import { subnetSurfacesQuery, subnetUptimeQuery } from "@/lib/metagraphed/queries";
@@ -8,6 +8,8 @@ import { useNearViewport } from "@/hooks/use-near-viewport";
 import { ErrorState } from "@/components/metagraphed/states";
 import type { Surface } from "@/lib/metagraphed/types";
 import { surfaceRail, uptimeBySurface } from "./subnet-detail-logic";
+
+const SurfaceIntegrations = lazy(() => import("./surface-integrations"));
 
 const COLUMNS: DataTableColumn<Surface & { uptime: number | null }>[] = [
   { key: "kind", label: "Kind", kind: "text", value: (row) => row.kind ?? "—" },
@@ -52,6 +54,7 @@ const COLUMNS: DataTableColumn<Surface & { uptime: number | null }>[] = [
  */
 export function SurfacesSection({ netuid, name }: { netuid: number; name?: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const { ref, nearViewport } = useNearViewport();
   const surfaces = useQuery({
     ...subnetSurfacesQuery(netuid),
@@ -147,6 +150,30 @@ export function SurfacesSection({ netuid, name }: { netuid: number; name?: strin
         )
       }
     >
+      {rows.some((row) => row.mcp !== undefined || row.http !== undefined) ? (
+        <div className="space-y-4">
+          <button
+            type="button"
+            className="mg-section-more min-h-11"
+            aria-expanded={integrationsOpen}
+            aria-controls="surface-integrations"
+            onClick={() => setIntegrationsOpen((open) => !open)}
+          >
+            {integrationsOpen ? "Hide integration details" : "Show integration details"}
+          </button>
+          {integrationsOpen ? (
+            <Suspense
+              fallback={
+                <p role="status" className="text-13 text-ink-muted">
+                  Loading integration details…
+                </p>
+              }
+            >
+              <SurfaceIntegrations surfaces={rows} />
+            </Suspense>
+          ) : null}
+        </div>
+      ) : null}
       {expanded ? (
         <DataTable
           rows={tableRows}

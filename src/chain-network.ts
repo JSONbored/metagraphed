@@ -143,10 +143,10 @@ export function chainNetworkId(id: string | undefined): ChainNetworkId {
  */
 /** The path segment each network is spelled with -- the inverse of
  * `chainNetworkFromChainName`, kept beside it so the two cannot drift. */
-export const CHAIN_NAME_BY_NETWORK: Readonly<Record<ChainNetworkId, string>> = {
+export const CHAIN_NAME_BY_NETWORK = {
   mainnet: "finney",
   testnet: "test",
-};
+} as const satisfies Readonly<Record<ChainNetworkId, string>>;
 
 export function chainNetworkFromChainName(
   chain: string | null | undefined,

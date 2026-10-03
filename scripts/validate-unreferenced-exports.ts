@@ -80,8 +80,11 @@ import { repoRoot } from "./lib.ts";
  * meant "the backend's unreferenced exports" through six changes, and widening
  * what it counts would hide 154 of them behind a bigger figure instead of
  * putting a ratchet on them.
+ *
+ * 729 after the release-qualified EVM decoder reused DecodeEvmCallOutput from
+ * its canonical schema rather than restating that output type.
  */
-export const MAX_UNREFERENCED_EXPORTS: number = 730;
+export const MAX_UNREFERENCED_EXPORTS: number = 729;
 
 /**
  * The same ceiling for the two UI workspaces. THE CEILING ONLY FALLS.
@@ -97,8 +100,9 @@ export const MAX_UNREFERENCED_EXPORTS: number = 730;
  * residue. Lock the gain in rather than leaving unused-export capacity behind.
  *
  * 152 after #12039 reuses the wallet connection trigger in contextual settings.
+ * 151 after the subnet MCP catalog reuses its canonical admission schema.
  */
-export const MAX_UNREFERENCED_EXPORTS_UI: number = 152;
+export const MAX_UNREFERENCED_EXPORTS_UI: number = 151;
 
 /** Whether a knip issue belongs to the UI workspaces rather than the backend. */
 export function isUiFile(file: string): boolean {

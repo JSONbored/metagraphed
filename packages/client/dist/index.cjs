@@ -1089,6 +1089,9 @@ var QUERY_PARAMETER_ENUMS = {
   "/api/v1/{network}/accounts/{ss58}/parents": {
     "network": ["finney", "mainnet", "test", "testnet"]
   },
+  "/api/v1/{network}/accounts/{ss58}/root-baskets": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
   "/api/v1/{network}/accounts/{ss58}/root-claim": {
     "network": ["finney", "mainnet", "test", "testnet"]
   },
@@ -1235,6 +1238,9 @@ var QUERY_PARAMETER_ENUMS = {
   "/api/v1/{network}/extrinsics/{hash}": {
     "network": ["finney", "mainnet", "test", "testnet"]
   },
+  "/api/v1/{network}/native-runtime": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
   "/api/v1/{network}/network/parameters": {
     "network": ["finney", "mainnet", "test", "testnet"]
   },
@@ -1242,6 +1248,9 @@ var QUERY_PARAMETER_ENUMS = {
     "network": ["finney", "mainnet", "test", "testnet"]
   },
   "/api/v1/{network}/networks": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/root-baskets": {
     "network": ["finney", "mainnet", "test", "testnet"]
   },
   "/api/v1/{network}/search/resolve": {
@@ -1268,6 +1277,10 @@ var QUERY_PARAMETER_ENUMS = {
     "network": ["finney", "mainnet", "test", "testnet"]
   },
   "/api/v1/{network}/subnets/{netuid}/recycled": {
+    "network": ["finney", "mainnet", "test", "testnet"]
+  },
+  "/api/v1/{network}/subnets/{netuid}/stake-quote": {
+    "direction": ["stake", "unstake"],
     "network": ["finney", "mainnet", "test", "testnet"]
   },
   "/api/v1/{network}/sudo/key": {

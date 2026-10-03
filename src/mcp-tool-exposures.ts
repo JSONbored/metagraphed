@@ -259,6 +259,9 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_account_entities: { operation: "account-entities" },
   get_account_balance: { operation: "account-balance" },
   get_account_root_claim: { operation: "account-root-claim" },
+  get_native_runtime: { operation: "native-runtime" },
+  get_root_baskets: { operation: "root-baskets" },
+  get_account_root_baskets: { operation: "account-root-baskets" },
   get_account_children: { operation: "account-children" },
   get_account_parents: { operation: "account-parents" },
   get_account_events: { operation: "account-events" },
@@ -419,6 +422,31 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   find_subnet_for_task: { operation: "agent-catalog" },
   how_do_i_call: { operation: "agent-catalog-subnet" },
   verify_integration: { operation: "surface-verify" },
+  discover_subnet_mcp: {
+    operation: null,
+    reason:
+      "Negotiates a reviewed third-party MCP server and returns its live tool definitions; no REST route mirrors this protocol session.",
+  },
+  read_subnet_mcp: {
+    operation: null,
+    reason:
+      "Calls an admitted read tool on a third-party MCP server; the provider's protocol and native result have no REST route twin.",
+  },
+  get_subnet_mcp_prompt: {
+    operation: null,
+    reason:
+      "Retrieves an admitted third-party MCP prompt with native messages and roles; no REST route mirrors this protocol session.",
+  },
+  read_subnet_mcp_resource: {
+    operation: null,
+    reason:
+      "Reads an admitted third-party MCP resource as native embedded content; no REST route mirrors this protocol session.",
+  },
+  write_subnet_mcp: {
+    operation: null,
+    reason:
+      "Calls an explicitly admitted write tool on a third-party MCP server after permission review; no REST route mirrors this session.",
+  },
   call_subnet_surface: {
     operation: null,
     reason:

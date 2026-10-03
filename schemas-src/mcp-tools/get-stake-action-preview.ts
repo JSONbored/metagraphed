@@ -8,22 +8,14 @@
 // own outputSchema inline rather than via TOOL_OUTPUT_SCHEMAS.
 import { z } from "zod";
 import { kindSchema, netuidSchema } from "./shared.ts";
+import { GetSubnetStakeQuoteInputSchema } from "./get-subnet-stake-quote.ts";
 
 const STAKE_QUOTE_DIRECTIONS = ["stake", "unstake"] as const;
 
-export const GetStakeActionPreviewInputSchema = z
-  .object({
-    netuid: netuidSchema(),
-    amount: z
-      .number()
-      .gt(0)
-      .describe(
-        "Amount to quote, in TAO when staking and in alpha when unstaking. Must be greater than 0.",
-      )
-      .meta({ examples: [10] }),
+export const GetStakeActionPreviewInputSchema =
+  GetSubnetStakeQuoteInputSchema.extend({
     direction: kindSchema(STAKE_QUOTE_DIRECTIONS).optional(),
-  })
-  .strict();
+  }).strict();
 export type GetStakeActionPreviewInput = z.infer<
   typeof GetStakeActionPreviewInputSchema
 >;

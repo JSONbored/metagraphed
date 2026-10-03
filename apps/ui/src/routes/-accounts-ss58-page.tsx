@@ -1,3 +1,4 @@
+import { AccountRootBasketsSection } from "@/components/metagraphed/root-baskets";
 import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
@@ -38,7 +39,7 @@ import {
 import { formatNumber } from "@/lib/metagraphed/format";
 import { useRelativeTime } from "@/hooks/use-time-format";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { Route } from "./accounts.$ss58";
+import { Route, type SearchParams } from "./accounts.$ss58";
 
 /**
  * Five sections, and Counterparties stands where the issue drafted History.
@@ -51,6 +52,7 @@ import { Route } from "./accounts.$ss58";
  */
 const SECTIONS = [
   { id: "positions", name: "Positions" },
+  { id: "root-baskets", name: "Native Root positions" },
   { id: "flow", name: "Flow" },
   { id: "counterparties", name: "Counterparties" },
   { id: "activity", name: "Activity" },
@@ -182,6 +184,11 @@ export function AccountDetailPage() {
 
   const rawRows: RawRow[] = [
     { label: "ss58", value: ss58 },
+    {
+      label: "Current protocol state",
+      value: "Locks, auto stake and collateral",
+      href: `/apis/native?coldkey=${encodeURIComponent(ss58)}`,
+    },
     ...(identity.data?.data.name ? [{ label: "Identity", value: identity.data.data.name }] : []),
     ...(identity.data?.data.url
       ? [{ label: "Identity URL", value: identity.data.data.url, href: identity.data.data.url }]
@@ -230,11 +237,16 @@ export function AccountDetailPage() {
         }
       >
         <PositionsSection ss58={ss58} nameOf={nameOf} />
+        <AccountRootBasketsSection key={ss58} ss58={ss58} />
         <FlowSection
           ss58={ss58}
           window={window}
           onWindow={(next: FlowWindow) =>
-            void navigate({ search: (prev) => ({ ...prev, window: next }), replace: true })
+            void navigate({
+              to: Route.to,
+              search: (prev: SearchParams) => ({ ...prev, window: next }),
+              replace: true,
+            })
           }
           nameOf={nameOf}
         />

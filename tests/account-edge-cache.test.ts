@@ -227,6 +227,7 @@ describe("the account edge cache", () => {
       "/balance",
       "/children",
       "/parents",
+      "/root-baskets",
       "/root-claim",
     ]);
   });

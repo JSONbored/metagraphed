@@ -355,3 +355,247 @@ test.describe("Subnet detail secondary query states", () => {
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
   });
 });
+
+const surfaces = [
+  {
+    id: "sn-19-fixture-mcp",
+    name: "Fixture MCP",
+    netuid: 19,
+    kind: "subnet-api",
+    url: "https://subnet.example/mcp",
+    auth_required: true,
+    mcp: {
+      transport: "streamable-http",
+      read_tools: ["read"],
+      write_tools: ["write"],
+      read_prompts: ["plan"],
+      read_resources: ["fixture://taxonomy"],
+    },
+  },
+  {
+    id: "sn-19-fixture-http",
+    name: "Fixture HTTP",
+    netuid: 19,
+    kind: "subnet-api",
+    url: "https://subnet.example/api",
+    auth_required: false,
+    http: {
+      operations: [
+        {
+          method: "POST",
+          path: "/search/live",
+          request_content_types: [
+            "application/json",
+            "text/plain",
+            "multipart/form-data",
+            "application/octet-stream",
+          ],
+          request_body_required: true,
+        },
+        { method: "GET", path: "/search/live/result/{uuid}" },
+        {
+          method: "PATCH",
+          path: "/document",
+          request_content_types: ["application/merge-patch+json"],
+          request_body_required: true,
+        },
+        {
+          method: "PUT",
+          path: "/bytes",
+          request_content_types: ["application/octet-stream"],
+          request_body_required: true,
+        },
+        {
+          method: "POST",
+          path: "/multipart",
+          request_content_types: ["multipart/form-data"],
+          request_body_required: true,
+        },
+      ],
+    },
+  },
+];
+
+for (const width of [375, 768, 1280]) {
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`reviewed integration details ${width}px ${colorScheme}`, async ({ page, context }) => {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme });
+      const requests: string[] = [];
+      page.on("request", (request) => {
+        requests.push(new URL(request.url()).pathname);
+      });
+      await page.route("https://subnet.example/**", (route) => route.abort());
+      await page.route("**/api/v1/subnets/19/surfaces*", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: true, data: { surfaces } }),
+        }),
+      );
+      const surfaceRead = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/v1/subnets/19/surfaces" &&
+          response.status() === 200,
+      );
+      await gotoThroughRestart(page, "/subnets/19");
+      await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
+      await page.evaluate(() => {
+        document.documentElement.style.scrollBehavior = "auto";
+      });
+      await page
+        .locator("#surfaces")
+        .evaluate((element) => element.scrollIntoView({ block: "center" }));
+      await surfaceRead;
+      const toggle = page.getByRole("button", { name: "Show integration details" });
+      await expect(toggle).toBeVisible();
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      await expect(page.locator("#surface-integrations")).toHaveCount(0);
+      const before = requests.filter((path) => path === "/api/v1/subnets/19/surfaces").length;
+      await toggle.focus();
+      await page.keyboard.press("Enter");
+      const details = page.locator("#surface-integrations");
+      await expect(details).toBeVisible();
+      await expect(page.getByRole("button", { name: "Hide integration details" })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
+      await expect(
+        details.getByText("Caller authentication required", { exact: true }),
+      ).toBeVisible();
+      await expect(details.getByText("read_subnet_mcp", { exact: true })).toBeVisible();
+      await expect(details.getByText("write_subnet_mcp", { exact: true })).toBeVisible();
+      await expect(details.getByText("get_subnet_mcp_prompt", { exact: true })).toBeVisible();
+      await expect(details.getByText("read_subnet_mcp_resource", { exact: true })).toBeVisible();
+      await expect(
+        details.getByText("write_subnet_surface", { exact: true }).first(),
+      ).toBeVisible();
+      await expect(details.getByText("call_subnet_surface", { exact: true })).toBeVisible();
+      await expect(
+        details.getByRole("button", { name: "Copy Fixture MCP MCP discovery", exact: true }),
+      ).toBeVisible();
+      await expect(
+        details.getByText(/multipart boundaries must match the encoded body/),
+      ).toBeVisible();
+      for (const [method, path, body] of [
+        ["PATCH", "/document", { json_body: {}, content_type: "application/merge-patch+json" }],
+        [
+          "PUT",
+          "/bytes",
+          {
+            content_type: "application/octet-stream",
+            body_base64: "<canonical base64 of the exact request bytes>",
+          },
+        ],
+        [
+          "POST",
+          "/multipart",
+          {
+            content_type: "multipart/form-data; boundary=REPLACE_WITH_YOUR_BOUNDARY",
+            body_base64:
+              "<canonical base64 of the complete multipart body with the matching boundary>",
+          },
+        ],
+      ] as const) {
+        await details
+          .getByRole("button", { name: `Copy ${method} ${path} call template`, exact: true })
+          .click();
+        await expect
+          .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+          .toBe(
+            JSON.stringify({
+              name: "write_subnet_surface",
+              arguments: { surface_id: "sn-19-fixture-http", path, method, ...body },
+            }),
+          );
+      }
+      const formats = details.getByRole("combobox", {
+        name: "Request format POST /search/live",
+        exact: true,
+      });
+      await expect(formats).toHaveValue("application/json");
+      for (const [media, body] of [
+        [
+          "text/plain",
+          {
+            content_type: "text/plain",
+            body: "<replace with the provider's encoded request body>",
+          },
+        ],
+        [
+          "multipart/form-data",
+          {
+            content_type: "multipart/form-data; boundary=REPLACE_WITH_YOUR_BOUNDARY",
+            body_base64:
+              "<canonical base64 of the complete multipart body with the matching boundary>",
+          },
+        ],
+        ["application/json", { json_body: {} }],
+      ] as const) {
+        await formats.selectOption(media);
+        await details
+          .getByRole("button", { name: "Copy POST /search/live call template", exact: true })
+          .click();
+        await expect
+          .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+          .toBe(
+            JSON.stringify({
+              name: "write_subnet_surface",
+              arguments: {
+                surface_id: "sn-19-fixture-http",
+                path: "/search/live",
+                method: "POST",
+                ...body,
+              },
+            }),
+          );
+      }
+      const artifactFormats = details.getByRole("combobox", {
+        name: "Request format POST from artifact /search/live",
+        exact: true,
+      });
+      await artifactFormats.focus();
+      await page.keyboard.press("End");
+      await expect(artifactFormats).toHaveValue("application/octet-stream");
+      await details
+        .getByRole("button", {
+          name: "Copy POST from artifact /search/live call template",
+          exact: true,
+        })
+        .click();
+      await expect
+        .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+        .toBe(
+          JSON.stringify({
+            name: "write_subnet_surface",
+            arguments: {
+              surface_id: "sn-19-fixture-http",
+              path: "/search/live",
+              method: "POST",
+              content_type: "application/octet-stream",
+              body_artifact: {
+                url: "<public raw.githubusercontent.com URL with a full 40-character commit>",
+                sha256: "<lowercase SHA-256 of the complete request bytes>",
+                bytes: "<exact complete request byte count, at most 10000000>",
+              },
+            },
+          }),
+        );
+      expect(requests.filter((path) => path.includes("agent-catalog"))).toEqual([]);
+      expect(requests.filter((path) => path === "/api/v1/subnets/19/surfaces").length).toBe(before);
+      expect(
+        requests.filter(
+          (path) => path === "/mcp" || path === "/api" || path.startsWith("/search/"),
+        ),
+      ).toEqual([]);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(1);
+      await page.getByRole("button", { name: "Hide integration details" }).click();
+      await expect(details).toHaveCount(0);
+    });
+  }
+}

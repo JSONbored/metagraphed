@@ -23,6 +23,9 @@ import { taoToRao } from "../src/emission-decomposition.ts";
 import {} from "../workers/request-params.ts";
 import { apiEnv } from "./lib/worker-env.ts";
 import { addAjvFormats } from "./lib/ajv-formats.ts";
+import { withBasketRuntimeFixture } from "../tests/fixtures/root-basket-runtime.ts";
+import { withNativeRuntimeFixture } from "../tests/fixtures/native-runtime.ts";
+import { withRuntimeStakeFixture } from "../tests/fixtures/runtime-stake-quote.ts";
 
 // OpenAPI document + Worker response bodies are dynamic JSON read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
@@ -319,9 +322,28 @@ interface CheckOptions {
   body?: unknown;
   /** Expected status. Anything but 200 asserts the ERROR envelope instead. */
   expect_status?: number;
+  /** Dynamic success responses forbid caching and do not carry an ETag. */
+  no_store?: boolean;
 }
 
 const checks: [string, (body: Row) => void, CheckOptions?][] = [
+  [
+    "/api/v1/native-runtime",
+    (body) => {
+      assert.equal(body.data.results[0].value, "500");
+      assert.equal(body.data.source.runtime_spec_version, 470);
+      assert.equal(
+        body.data.source.finalized_block_hash,
+        `0x${"33".repeat(32)}`,
+      );
+    },
+    {
+      no_store: true,
+      body: {
+        operations: [{ kind: "storage", pallet: "System", member: "Number" }],
+      },
+    },
+  ],
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],
   [
     "/api/v1/subnets",
@@ -1249,6 +1271,22 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       );
       assert.equal("balance_tao" in body.data, true);
+    },
+  ],
+  [
+    "/api/v1/root-baskets",
+    (body) => {
+      assert.ok(
+        ["available", "unsupported", "unavailable"].includes(body.data.status),
+      );
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/root-baskets",
+    (body) => {
+      assert.ok(
+        ["available", "unsupported", "unavailable"].includes(body.data.status),
+      );
     },
   ],
   [
@@ -3050,9 +3088,29 @@ assert.equal(
   "API validation checks must cover every configured API route",
 );
 
+// New native basket contract checks are offline. The existing harness invokes
+// the real Worker router, so intercept only these checks' outgoing RPC reads
+// and restore fetch before continuing the sequential route catalogue.
+async function checkedRequest(request: Request) {
+  const pathname = new URL(request.url).pathname;
+  if (pathname.endsWith("/native-runtime"))
+    return withNativeRuntimeFixture(() =>
+      handleRequest(request, apiEnv(env), {}),
+    );
+  if (pathname.endsWith("/stake-quote"))
+    return withRuntimeStakeFixture(() =>
+      handleRequest(request, apiEnv(env), {}),
+    );
+  if (!pathname.endsWith("/root-baskets"))
+    return handleRequest(request, apiEnv(env), {});
+  return withBasketRuntimeFixture(() =>
+    handleRequest(request, apiEnv(env), {}),
+  );
+}
+
 for (const [route, assertion, options = {}] of checks) {
   const expectStatus = options.expect_status ?? 200;
-  const response = await handleRequest(
+  const response = await checkedRequest(
     new Request(
       `https://metagraph.sh${route}`,
       options.body === undefined
@@ -3063,8 +3121,6 @@ for (const [route, assertion, options = {}] of checks) {
             body: JSON.stringify(options.body),
           },
     ),
-    apiEnv(env),
-    {},
   );
   assert.equal(
     response.status,
@@ -3086,15 +3142,28 @@ for (const [route, assertion, options = {}] of checks) {
     // ETag and the contract-version header are deliberately NOT asserted
     // here: measured across the existing catalogue, no error response carries
     // either -- a 404 on /api/v1/subnets/999999 and a 400 on a malformed
-    // ?limit both omit them. They are properties of a cacheable success body,
-    // not of every response.
+    // ?limit both omit them. Successful dynamic responses carry the contract
+    // header but deliberately omit the cacheable body's ETag.
     assert.equal(body.ok, false, `${route}: expected an error envelope`);
     assert.equal(body.schema_version, 1, `${route}: expected schema_version 1`);
     assert.ok(body.error, `${route}: error envelope must carry an error`);
     assertion(body);
     continue;
   }
-  assert.ok(response.headers.get("etag"), `${route}: missing ETag`);
+  if (options.no_store) {
+    assert.equal(
+      response.headers.get("cache-control"),
+      "no-store",
+      `${route}: dynamic response must not be cached`,
+    );
+    assert.equal(
+      response.headers.get("etag"),
+      null,
+      `${route}: unexpected ETag`,
+    );
+  } else {
+    assert.ok(response.headers.get("etag"), `${route}: missing ETag`);
+  }
   assert.equal(
     response.headers.get("x-metagraph-contract-version"),
     CONTRACT_VERSION,

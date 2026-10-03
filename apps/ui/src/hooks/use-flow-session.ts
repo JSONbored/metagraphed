@@ -9,7 +9,13 @@ import { useEffect, useState } from "react";
 import type { ApiPromise } from "@polkadot/api";
 import type { TxUiStatus } from "./use-tx-status";
 import type { ConnectedWallet } from "@/lib/metagraphed/wallet";
-import { getApi, buildExtrinsic, type StakeCallParams } from "@/lib/metagraphed/chain-connection";
+import {
+  getApi,
+  rpcEndpointForNetwork,
+  buildExtrinsic,
+  type StakeCallParams,
+} from "@/lib/metagraphed/chain-connection";
+import { useNetwork } from "./use-api-base";
 import { estimateFee } from "@/lib/metagraphed/tx-fee";
 import type { Rao } from "@/lib/metagraphed/units";
 
@@ -25,18 +31,21 @@ export interface UseFlowSessionResult {
  * to submit its own extrinsic later.
  */
 export function useFlowSession(walletStatus: string): UseFlowSessionResult {
+  const { network } = useNetwork();
+  const endpoint = rpcEndpointForNetwork(network.id);
   const [sessionId, setSessionId] = useState("");
   useEffect(() => {
     setSessionId(crypto.randomUUID());
-  }, []);
+  }, [endpoint, walletStatus]);
 
-  const [api, setApi] = useState<ApiPromise | null>(null);
+  const [connection, setConnection] = useState<{ endpoint: string; api: ApiPromise } | null>(null);
   useEffect(() => {
+    setConnection(null);
     if (walletStatus !== "connected") return;
     let cancelled = false;
-    getApi()
+    getApi(endpoint)
       .then((connected) => {
-        if (!cancelled) setApi(connected);
+        if (!cancelled) setConnection({ endpoint, api: connected });
       })
       .catch(() => {
         /* best-effort; callers' own dependent data simply stays unavailable */
@@ -44,9 +53,12 @@ export function useFlowSession(walletStatus: string): UseFlowSessionResult {
     return () => {
       cancelled = true;
     };
-  }, [walletStatus]);
+  }, [walletStatus, endpoint]);
 
-  return { sessionId, api };
+  return {
+    sessionId,
+    api: walletStatus === "connected" && connection?.endpoint === endpoint ? connection.api : null,
+  };
 }
 
 /**

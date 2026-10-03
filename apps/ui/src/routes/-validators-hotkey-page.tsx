@@ -52,7 +52,7 @@ import { deltaCell, formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { deserializeOperatorRows } from "@/lib/metagraphed/validator-operators";
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
-import { Route } from "./validators.$hotkey";
+import { Route, type ValidatorDetailSearch } from "./validators.$hotkey";
 
 const SECTIONS = [
   { id: "stake", name: "Stake by subnet" },
@@ -449,7 +449,11 @@ export function ValidatorDetailPage() {
               options={WINDOWS}
               value={window}
               onChange={(next: ValidatorWindow) =>
-                void navigate({ search: (prev) => ({ ...prev, window: next }), replace: true })
+                void navigate({
+                  to: Route.to,
+                  search: (prev: ValidatorDetailSearch) => ({ ...prev, window: next }),
+                  replace: true,
+                })
               }
             />
           }

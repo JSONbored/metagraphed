@@ -851,7 +851,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake, computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool) at /api/v1/subnets/{netuid}/stake-quote (no static file). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000× the relevant reserve is rejected with 422). `amount` is REQUIRED — the only required query parameter on this API — and a missing, non-numeric or non-positive one is a 400 `invalid_query` naming the parameter, the same code every other query violation answers (#10401; it was `invalid_amount` for the missing case until the contract stopped declaring the parameter optional). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+      "description": "Read-only finalized stake/unstake simulation for one subnet: expected alpha/TAO out, current vs effective price and price-impact percent including swap fees. Uses the runtime's SwapRuntimeApi at one finalized source; no reserve-ratio approximation, transaction preparation or submission. amount is required, positive, representable in whole atomic units and within u64. direction defaults to stake (TAO in); unstake spends alpha. Partial/zero fills return 422 insufficient_liquidity; failed runtime reads return 502 stake_quote_failed. Root also uses the chain simulator. Legacy numeric fields are display values; exact atomic results are available through POST /api/v1/native-runtime. The finalized source identity is returned in meta.native_source.",
       "id": "subnet-stake-quote",
       "path": "/metagraph/subnets/{netuid}/stake-quote.json",
       "retirement": null,
@@ -1461,6 +1461,39 @@
       "path": "/metagraph/accounts/{ss58}/balance.json",
       "retirement": null,
       "schema_ref": "#/components/schemas/AccountBalanceArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Read finalized native storage, constants and runtime APIs or prepare unsigned calls using the runtime's portable metadata. Batched operations share one source and type registry; no signature or transaction submission.",
+      "id": "native-runtime",
+      "path": "/metagraph/native-runtime.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/NativeRuntimeArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Bounded finalized native Root basket pricing or one fund's detail. Audited official releases v441–v471; no static artifact or claim submission.",
+      "id": "root-baskets",
+      "path": "/metagraph/root-baskets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/RootBasketsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Bounded native basket positions and dust-aware claim previews, at one finalized block. Relationship pagination prevents silent omission; no static artifact.",
+      "id": "account-root-baskets",
+      "path": "/metagraph/accounts/{ss58}/root-baskets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/RootBasketsArtifact",
       "status": "live",
       "storage_tier": "r2"
     },
@@ -3068,7 +3101,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 173,
+    "mainnet_only_route_count": 172,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

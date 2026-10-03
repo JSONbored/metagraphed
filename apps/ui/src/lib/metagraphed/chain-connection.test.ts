@@ -232,6 +232,26 @@ describe("live delegate-take bounds/rate-limit queries", () => {
       /AccountInfo with a free balance/,
     );
   });
+  it("excludes overlapping current and legacy freezes from exact spendable balance", async () => {
+    const codec = (value: bigint) => ({ toBigInt: () => value });
+    for (const [free, extra, expected] of [
+      [9007199254740993n, { frozen: codec(100n) }, 9007199254740893n],
+      [1000n, { feeFrozen: codec(300n), miscFrozen: codec(200n) }, 700n],
+      [100n, { frozen: codec(200n) }, 0n],
+      [100n, {}, 100n],
+    ] as const) {
+      const api = {
+        query: { system: { account: async () => ({ data: { free: codec(free), ...extra } }) } },
+      } as unknown as ApiPromise;
+      await expect(getFreeBalance(api, "account")).resolves.toBe(expected);
+    }
+    for (const frozen of [{}, { toBigInt: () => "100" }, { toBigInt: () => -1n }]) {
+      const api = {
+        query: { system: { account: async () => ({ data: { free: codec(1000n), frozen } }) } },
+      } as unknown as ApiPromise;
+      await expect(getFreeBalance(api, "account")).rejects.toThrow(/invalid frozen/);
+    }
+  });
 
   it("getMaxDelegateTake returns the live-confirmed 18% bound (11796 parts)", async () => {
     const { api } = makeQueryApi({ maxDelegateTake: 11_796 });

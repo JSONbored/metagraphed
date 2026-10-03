@@ -1,3 +1,39 @@
+import { McpSurfaceAdmissionSchema } from "./subnet-mcp-admission.ts";
+import {
+  NativeJsonValueSchema,
+  NativeValuePageRequestSchema,
+  NativeValuePageSchema,
+  NativeCodeArtifactSchema,
+  NativeEvmCallSchema,
+  NativeEvmResultSchema,
+  NativeRuntimeRequestSchema,
+  NativeRuntimeArtifactSchema,
+  NativeRuntimeSourceSchema,
+  NativePortableTypeSchema,
+  NativeFieldSchema,
+  NativeVariantSchema,
+  NativeDefinitionSchema,
+  NativeRuntimeOperationSchema,
+} from "./routes/native-runtime.ts";
+import {
+  RootBasketsArtifactSchema,
+  RootBasketBaselineSchema,
+  RootBasketAccountEntrySchema,
+  RootBasketDirectorySchema,
+  RootBasketLegacyDirectorySchema,
+  RootBasketDetailSchema,
+  RootBasketAccountPageSchema,
+  RootBasketReadDataSchema,
+} from "./routes/root-baskets.ts";
+import {
+  RootBasketSourceSchema,
+  RootBasketPricingSchema,
+  RootBasketSummarySchema,
+  RootBasketTradingStatusSchema,
+  RootBasketPositionSchema,
+  RootBasketClaimPreviewSchema,
+  RootBasketEntitlementSchema,
+} from "./root-basket-runtime.ts";
 // Component-name registry for the OpenAPI generator (types-epic B, #7860).
 //
 // Each entry here becomes a NAMED entry in public/metagraph/openapi.json's
@@ -561,6 +597,7 @@ const register = (schema: z.ZodType, id: string) => {
 register(SubnetsArtifactSchema, "SubnetsArtifact");
 register(SubnetIndexEntrySchema, "SubnetIndexEntry");
 register(SubnetDetailArtifactSchema, "SubnetDetailArtifact");
+register(McpSurfaceAdmissionSchema, "McpSurfaceAdmission");
 register(SurfaceSchema, "Surface");
 register(CandidateSurfaceSchema, "CandidateSurface");
 register(EndpointResourceSchema, "EndpointResource");
@@ -780,6 +817,35 @@ register(
   "AccountPositionHistoryArtifact",
 );
 register(AccountRootClaimArtifactSchema, "AccountRootClaimArtifact");
+register(NativeJsonValueSchema, "NativeJsonValue");
+register(NativeValuePageRequestSchema, "NativeValuePageRequest");
+register(NativeValuePageSchema, "NativeValuePage");
+register(NativeCodeArtifactSchema, "NativeCodeArtifact");
+register(NativeEvmCallSchema, "NativeEvmCall");
+register(NativeEvmResultSchema, "NativeEvmResult");
+register(NativeRuntimeRequestSchema, "NativeRuntimeRequest");
+register(NativeRuntimeArtifactSchema, "NativeRuntimeArtifact");
+register(NativeRuntimeSourceSchema, "NativeRuntimeSource");
+register(NativePortableTypeSchema, "NativePortableType");
+register(NativeFieldSchema, "NativeField");
+register(NativeVariantSchema, "NativeVariant");
+register(NativeDefinitionSchema, "NativeDefinition");
+register(NativeRuntimeOperationSchema, "NativeRuntimeOperation");
+register(RootBasketsArtifactSchema, "RootBasketsArtifact");
+register(RootBasketBaselineSchema, "RootBasketBaseline");
+register(RootBasketAccountEntrySchema, "RootBasketAccountEntry");
+register(RootBasketDirectorySchema, "RootBasketDirectory");
+register(RootBasketLegacyDirectorySchema, "RootBasketLegacyDirectory");
+register(RootBasketDetailSchema, "RootBasketDetail");
+register(RootBasketAccountPageSchema, "RootBasketAccountPage");
+register(RootBasketReadDataSchema, "RootBasketReadData");
+register(RootBasketSourceSchema, "RootBasketSource");
+register(RootBasketPricingSchema, "RootBasketPricing");
+register(RootBasketSummarySchema, "RootBasketSummary");
+register(RootBasketTradingStatusSchema, "RootBasketTradingStatus");
+register(RootBasketPositionSchema, "RootBasketPosition");
+register(RootBasketClaimPreviewSchema, "RootBasketClaimPreview");
+register(RootBasketEntitlementSchema, "RootBasketEntitlement");
 register(AccountServingArtifactSchema, "AccountServingArtifact");
 register(AccountPrometheusArtifactSchema, "AccountPrometheusArtifact");
 register(AccountStakeMovesArtifactSchema, "AccountStakeMovesArtifact");
@@ -1235,6 +1301,33 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "AccountPositionsArtifact",
   "AccountPositionHistoryArtifact",
   "AccountRootClaimArtifact",
+  "NativeValuePageRequest",
+  "NativeValuePage",
+  "NativeCodeArtifact",
+  "NativeEvmCall",
+  "NativeEvmResult",
+  "NativeRuntimeArtifact",
+  "NativeJsonValue",
+  "NativeRuntimeRequest",
+  "NativeRuntimeSource",
+  "NativePortableType",
+  "NativeField",
+  "NativeVariant",
+  "NativeDefinition",
+  "NativeRuntimeOperation",
+  "RootBasketsArtifact",
+  "RootBasketBaseline",
+  "RootBasketAccountEntry",
+  "RootBasketDirectory",
+  "RootBasketDetail",
+  "RootBasketAccountPage",
+  "RootBasketReadData",
+  "RootBasketSource",
+  "RootBasketPricing",
+  "RootBasketSummary",
+  "RootBasketTradingStatus",
+  "RootBasketPosition",
+  "RootBasketClaimPreview",
   "AccountServingArtifact",
   "AccountPrometheusArtifact",
   "AccountStakeMovesArtifact",

@@ -203,6 +203,7 @@
     "validate:retired-storage": "node scripts/validate-retired-storage.ts"
   },
   "dependencies": {
+    "@cfworker/json-schema": "4.1.1",
     "@cloudflare/workers-oauth-provider": "^0.8.3",
     "@duckdb/node-api": "^1.5.4-r.1",
     "@jsonbored/chain-summaries": "*",

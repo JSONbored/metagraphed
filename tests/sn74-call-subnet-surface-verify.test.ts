@@ -351,16 +351,19 @@ describe("SN74 Gittensor call_subnet_surface verification (#7087)", () => {
     });
   });
 
-  describe("gittensory-mcp (auth required -- Phase 3 territory)", () => {
+  describe("gittensory-mcp (bearer auth required)", () => {
     const SURFACE = surfaceOf("gittensory-mcp");
 
-    test("registry surface exists and correctly declares custom auth", () => {
+    test("registry surface declares the source-bound bearer transport", () => {
       assert.ok(SURFACE, "registry surface gittensory-mcp is present");
       assert.equal(SURFACE.kind, "subnet-api");
-      // Live-confirmed: anonymous GET and JSON-RPC POST both return HTTP 401
-      // {"error":"unauthorized"}, so auth_required:true matches reality.
+      // The pinned public setup and server authenticate Authorization bearer
+      // tokens. This is source proof; this test makes no provider request.
       assert.equal(SURFACE.auth_required, true);
-      assert.equal(SURFACE.auth?.scheme, "custom");
+      assert.equal(SURFACE.auth?.scheme, "bearer");
+      assert.equal(SURFACE.auth?.location, "header");
+      assert.equal(SURFACE.auth?.name, "Authorization");
+      assert.equal(SURFACE.mcp?.transport, "streamable-http");
       // POST-only JSON-RPC endpoint; recurring read probes stay disabled.
       assert.equal(SURFACE.probe?.enabled, false);
       assert.equal(SURFACE.url, "https://api.loopover.ai/mcp");

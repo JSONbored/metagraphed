@@ -18,6 +18,14 @@
 // src/health-prober.ts), which callers are required to supply -- this
 // module never chooses or weakens the safety policy, only structurally
 // mirrors the loop that applies it.
+import { createHash } from "node:crypto";
+import type { ContentBlock } from "@modelcontextprotocol/sdk/types.js";
+import { resolveLocalSchemaObject } from "./subnet-openapi-reference.ts";
+import {
+  applySerializedQuery,
+  type SerializedQueryGroup,
+} from "./subnet-http-query.ts";
+
 const MAX_REDIRECTS = 5;
 // 256 KiB -- generous for a JSON API response, small enough that a
 // misbehaving/adversarial upstream can't use this tool as a bandwidth sink.
@@ -29,7 +37,8 @@ type ContentTypeKind = "json" | "text" | "binary" | "unknown";
 // types are returned as a capped string. Anything else (images, video,
 // octet-stream, ...) is rejected outright per #7014's own scope ("reject/
 // truncate unexpected binary") -- there is no sane way to return binary
-// content through a JSON-RPC tool result body anyway.
+// content through a JSON tool result body. Explicit attachment mode instead
+// carries complete binary bytes in a native MCP content block.
 function classifyContentType(contentType: string | null): ContentTypeKind {
   const type = (contentType || "").split(";")[0].trim().toLowerCase();
   if (!type) return "unknown";
@@ -47,6 +56,8 @@ function classifyContentType(contentType: string | null): ContentTypeKind {
 function buildRequestUrl(
   baseUrl: string,
   query: Record<string, string | number | boolean> | undefined,
+  serializedQuery?: readonly SerializedQueryGroup[],
+  credentials: readonly [string, string][] = [],
 ): string {
   const url = new URL(baseUrl);
   if (query && typeof query === "object") {
@@ -55,6 +66,8 @@ function buildRequestUrl(
       url.searchParams.set(key, String(value));
     }
   }
+  if (serializedQuery?.length)
+    applySerializedQuery(url, serializedQuery, credentials);
   return url.toString();
 }
 
@@ -135,27 +148,50 @@ function redactQueryCredential(
 // this module's control, and some implementations echo the request URL (or
 // occasionally other request details) into it. Handles both a single value
 // and a multi-value bundle.
-function redactCredentialValue(
+export function redactCredentialValue(
   text: string,
   credential: CallSubnetSurfaceCredential | undefined,
+  parameterValues?: readonly string[],
 ): string {
-  if (!text || !credential) return text;
-  const values = credential.values
+  if (!text || (!credential && !parameterValues?.length)) return text;
+  const credentialValues = credential?.values
     ? Object.values(credential.values)
-    : credential.value
+    : credential?.value
       ? [credential.value]
       : [];
-  let result = text;
+  const values = parameterValues?.length
+    ? [...credentialValues, ...parameterValues]
+    : credentialValues;
+  const redactions = new Set<string>();
   for (const value of values) {
-    if (value)
-      result = result.split(value).join(REDACTED_CREDENTIAL_PLACEHOLDER);
+    if (!value) continue;
+    redactions.add(value);
+    if (credential?.location === "query") {
+      // buildRequestUrl uses this exact form encoding. Fetch failures may echo
+      // that URL, or render its spaces as %20, instead of the raw secret.
+      const encoded = new URLSearchParams({ value }).toString().slice(6);
+      redactions.add(encoded);
+      redactions.add(encoded.replace(/\+/g, "%20"));
+    }
+  }
+  let result = text;
+  // Remove complete overlapping credentials before their shorter prefixes.
+  for (const value of [...redactions].sort((a, b) => b.length - a.length)) {
+    result = result.split(value).join(REDACTED_CREDENTIAL_PLACEHOLDER);
   }
   return result;
 }
 
 export interface CallSubnetSurfaceOptions {
+  responseMode?: "attachment";
+  protocolVersion?: string | null;
   // Query params merged onto the effective base URL.
   query?: Record<string, string | number | boolean>;
+  // Already serialized from the admitted captured operation, not user URL text.
+  serializedQuery?: readonly SerializedQueryGroup[];
+  requestHeaders?: Record<string, string>;
+  serializedCookies?: readonly import("./subnet-http-parameters.ts").SerializedCookieGroup[];
+  parameterRedactions?: readonly string[];
   // MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER
   // (call_subnet_surface's tool handler) is responsible for confirming this
   // path is declared in the surface's captured schema via matchSchemaOperation
@@ -166,11 +202,13 @@ export interface CallSubnetSurfaceOptions {
   // Overrides the surface's probe-derived method (Phase 1 default). Ignored
   // unless `path` is also set.
   method?: string;
-  // MCP execute Phase 2c (#7675) request body, already serialized to a string
-  // by the caller -- this function never serializes or validates it, only
-  // sends it as-is. Ignored unless `path` is also set; GET/HEAD never send a
-  // body regardless.
-  body?: string;
+  // Request body, already serialized or decoded by the caller. Forward the
+  // same string or byte view without another conversion or copy. Ignored
+  // unless `path` is also set; GET/HEAD never send a body regardless.
+  body?:
+    | string
+    | Uint8Array<ArrayBuffer>
+    | ((signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>);
   // The `content-type` header to send alongside `body`. Ignored when `body`
   // is not set.
   contentType?: string;
@@ -201,6 +239,7 @@ export interface CallSubnetSurfaceSuccess {
   body: unknown;
   truncated: boolean;
   parse_error?: string;
+  attachment?: ContentBlock;
 }
 
 export interface CallSubnetSurfaceFailure {
@@ -226,11 +265,17 @@ export async function callSubnetSurface(
 ): Promise<CallSubnetSurfaceResult> {
   const {
     query,
+    requestHeaders,
+    serializedCookies,
+    parameterRedactions,
+    serializedQuery,
     path,
     method: methodOverride,
     body: requestBody,
     contentType: requestContentType,
     credential,
+    responseMode,
+    protocolVersion,
     fetchImpl = fetch,
     isUnsafeUrl,
   } = options ?? {};
@@ -254,16 +299,24 @@ export async function callSubnetSurface(
   // safetyCheckedFetch, and a body-location credential is ready to merge
   // into the outgoing JSON below.
   let effectiveQuery = query;
-  const extraHeaders: Record<string, string> = {};
+  const extraHeaders: Record<string, string> = requestHeaders
+    ? Object.assign(Object.create(null), requestHeaders)
+    : {};
   let bodyCredentialFields: Record<string, string> | null = null;
   if (credential && credentialEntries.length > 0) {
     if (credential.location === "query") {
-      effectiveQuery = { ...(query || {}) };
-      for (const [name, value] of credentialEntries) {
-        effectiveQuery[name] = value;
+      if (!serializedQuery?.length) {
+        effectiveQuery = { ...(query || {}) };
+        for (const [name, value] of credentialEntries) {
+          effectiveQuery[name] = value;
+        }
       }
     } else if (credential.location === "header") {
       for (const [name, value] of credentialEntries) {
+        if (requestHeaders)
+          for (const key of Object.keys(extraHeaders))
+            if (key.toLowerCase() === name.toLowerCase())
+              delete extraHeaders[key];
         extraHeaders[name] = value;
       }
     } else if (credential.location === "cookie") {
@@ -273,6 +326,28 @@ export async function callSubnetSurface(
     } else if (credential.location === "body") {
       bodyCredentialFields = Object.fromEntries(credentialEntries);
     }
+  }
+  if (serializedCookies?.length) {
+    const headerNames = Object.keys(extraHeaders).filter(
+      (name) => name.toLowerCase() === "cookie",
+    );
+    const existingCookies = headerNames.map((name) => extraHeaders[name]!);
+    const credentialNames = new Set(
+      existingCookies.flatMap((header) =>
+        header.split(";").map((part) => part.split("=", 1)[0]!.trim()),
+      ),
+    );
+    const declared = serializedCookies
+      .map((group) =>
+        group.pairs
+          .filter((pair) => !credentialNames.has(pair.name))
+          .map((pair) => pair.value)
+          .join(group.separator),
+      )
+      .filter(Boolean);
+    for (const name of headerNames) delete extraHeaders[name];
+    const cookie = [...declared, ...existingCookies].join("; ");
+    if (cookie) extraHeaders.cookie = cookie;
   }
   const method =
     path && methodOverride
@@ -285,7 +360,7 @@ export async function callSubnetSurface(
   //
   // Spelled out rather than imported from CALL_SURFACE_BODY_METHODS, which owns
   // this vocabulary (schemas-src/mcp-tools/ai-integration.ts): this module has
-  // NO imports on purpose -- it is the outbound-fetch safety path, and pulling
+  // no schema imports on purpose -- it is the outbound-fetch safety path, and pulling
   // in the schema module would drag Zod and the whole tool registry into it.
   // The tool handler validates the same rule from the shared list before ever
   // calling here, so this is the defensive second check, not the decision.
@@ -317,7 +392,24 @@ export async function callSubnetSurface(
     }
     baseUrl = resolved.toString();
   }
-  const requestUrl = buildRequestUrl(baseUrl, effectiveQuery);
+  const requestUrl = buildRequestUrl(
+    baseUrl,
+    effectiveQuery,
+    serializedQuery,
+    credential?.location === "query" ? credentialEntries : [],
+  );
+  if (
+    bodyCredentialFields &&
+    requestBody !== undefined &&
+    typeof requestBody !== "string"
+  )
+    return {
+      ok: false,
+      error: "Byte-preserving requests cannot merge JSON body credentials.",
+      error_class: "invalid_params",
+    };
+  const credentialBody =
+    typeof requestBody === "string" ? requestBody : undefined;
 
   // A body-location credential bundle is merged into the outgoing JSON
   // request body -- the tool handler is responsible for ensuring this only
@@ -332,13 +424,13 @@ export async function callSubnetSurface(
   const effectiveBody = bodyCredentialFields
     ? credential?.bodyEnvelope
       ? JSON.stringify({
-          [credential.bodyEnvelope.payloadKey]: requestBody
-            ? JSON.parse(requestBody)
+          [credential.bodyEnvelope.payloadKey]: credentialBody
+            ? JSON.parse(credentialBody)
             : {},
           [credential.bodyEnvelope.credentialKey]: bodyCredentialFields,
         })
       : JSON.stringify({
-          ...(requestBody ? JSON.parse(requestBody) : {}),
+          ...(credentialBody ? JSON.parse(credentialBody) : {}),
           ...bodyCredentialFields,
         })
     : requestBody;
@@ -349,6 +441,8 @@ export async function callSubnetSurface(
       ? { body: effectiveBody, contentType: requestContentType }
       : {}),
     extraHeaders,
+    hasBodyCredential:
+      credential?.location === "body" && credentialEntries.length > 0,
     fetchImpl,
     isUnsafeUrl,
     timeoutMs,
@@ -374,7 +468,13 @@ export async function callSubnetSurface(
           }
         : {}),
       ...(fetched.error
-        ? { error: redactCredentialValue(fetched.error, credential) }
+        ? {
+            error: redactCredentialValue(
+              fetched.error,
+              credential,
+              parameterRedactions,
+            ),
+          }
         : {}),
     };
   }
@@ -382,8 +482,8 @@ export async function callSubnetSurface(
   const { response, latencyMs, redirectTarget } = fetched;
   const contentType = response.headers.get("content-type") || null;
   const kind = classifyContentType(contentType);
-  if (kind === "binary") {
-    await response.body?.cancel();
+  if (kind === "binary" && responseMode !== "attachment") {
+    void response.body?.cancel().catch(() => {});
     return {
       ok: false,
       // contentType is guaranteed non-empty here: classifyContentType only
@@ -393,6 +493,57 @@ export async function callSubnetSurface(
       content_type: contentType,
       latency_ms: latencyMs,
     };
+  }
+
+  if (kind === "binary") {
+    try {
+      const bytes = await readBinaryBody(
+        response,
+        MAX_RESPONSE_BYTES,
+        timeoutMs,
+      );
+      const mimeType = contentType!.split(";")[0]!.trim().toLowerCase();
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      const data = bytes.toString("base64");
+      const attachment: ContentBlock = [
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/gif",
+      ].includes(mimeType)
+        ? { type: "image", mimeType, data }
+        : mimeType.startsWith("audio/") &&
+            (protocolVersion ?? "2025-03-26") >= "2025-03-26"
+          ? { type: "audio", mimeType, data }
+          : {
+              type: "resource",
+              resource: { uri: `urn:sha256:${sha256}`, mimeType, blob: data },
+            };
+      return {
+        ok: true,
+        status_code: response.status,
+        content_type: contentType,
+        latency_ms: latencyMs,
+        url: redactQueryCredential(redirectTarget || requestUrl, credential),
+        body: {
+          encoding: "mcp_content",
+          mime_type: mimeType,
+          bytes: bytes.length,
+          sha256,
+        },
+        truncated: false,
+        ...(bytes.length ? { attachment } : {}),
+      };
+    } catch {
+      return {
+        ok: false,
+        error:
+          "The binary response must be complete within the response byte limit and deadline.",
+        status_code: response.status,
+        content_type: contentType,
+        latency_ms: latencyMs,
+      };
+    }
   }
 
   let raw: { text: string; truncated: boolean };
@@ -430,6 +581,44 @@ export async function callSubnetSurface(
     truncated: raw.truncated,
     ...(parseError ? { parse_error: parseError } : {}),
   };
+}
+
+async function readBinaryBody(
+  response: Response,
+  maxBytes: number,
+  deadlineMs: number,
+): Promise<Buffer> {
+  if (!response.body) return Buffer.alloc(0);
+  const reader = response.body.getReader();
+  const deadline = Date.now() + deadlineMs;
+  // One bounded destination avoids retaining tiny upstream chunks and a
+  // second body-sized concatenation. Only received bytes leave this reader.
+  const bytes = Buffer.allocUnsafe(maxBytes);
+  let received = 0;
+  try {
+    for (;;) {
+      if (Date.now() >= deadline) throw new Error("Binary response deadline");
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const chunk = await Promise.race([
+        reader.read(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("Binary response deadline")),
+            deadline - Date.now(),
+          );
+        }),
+      ]).finally(() => clearTimeout(timer));
+      if (chunk.done) break;
+      if (received + chunk.value.byteLength > maxBytes)
+        throw new Error("Binary response byte limit");
+      bytes.set(chunk.value, received);
+      received += chunk.value.byteLength;
+    }
+    return bytes.subarray(0, received);
+  } finally {
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
 }
 
 // Reads a Response body up to `maxBytes`, decoding as UTF-8 text. Returns
@@ -473,10 +662,12 @@ async function readBodyCapped(
     // agent.
     const DEADLINE = Symbol("deadline");
     for (;;) {
-      // No separate "already past the deadline" guard: a non-positive delay
-      // makes setTimeout fire on the next tick, so the race below resolves
-      // DEADLINE immediately anyway. A guard here would be a second way to
-      // express the same rule, and an unreachable one.
+      // Continuously ready chunks can starve a timer's macrotask. Check the
+      // clock too, including zero-length chunks that never exhaust the byte cap.
+      if (Date.now() >= deadline) {
+        truncated = true;
+        break;
+      }
       let timer: ReturnType<typeof setTimeout> | undefined;
       const chunk = await Promise.race([
         reader.read(),
@@ -496,7 +687,6 @@ async function readBodyCapped(
         if (allowed > 0)
           text += decoder.decode(value.subarray(0, allowed), { stream: true });
         truncated = true;
-        await reader.cancel();
         break;
       }
       text += decoder.decode(value, { stream: true });
@@ -504,8 +694,9 @@ async function readBodyCapped(
     text += decoder.decode();
   } finally {
     // Stop a timed-out or interrupted stream instead of leaving the provider
-    // producing bytes after the bounded tool response has returned.
-    await reader.cancel().catch(() => {});
+    // producing bytes after the bounded tool response has returned. Upstream
+    // cancellation can stall; it must not extend the bounded response deadline.
+    void reader.cancel().catch(() => {});
     reader.releaseLock?.();
   }
   return { text, truncated };
@@ -514,6 +705,7 @@ async function readBodyCapped(
 export interface SchemaOperationMatch {
   operation: Record<string, unknown>;
   matchedTemplate: string;
+  pathItem?: Record<string, unknown>;
 }
 
 // Decides whether a concrete request `path` + `method` is declared in a
@@ -545,6 +737,7 @@ export function matchSchemaOperation(
   document: unknown,
   path: string,
   method: string,
+  includePathItem = false,
 ): SchemaOperationMatch | null {
   if (typeof path !== "string" || !path.startsWith("/")) {
     throw new Error(
@@ -563,15 +756,17 @@ export function matchSchemaOperation(
   for (const [template, pathItem] of Object.entries(
     paths as Record<string, unknown>,
   )) {
-    if (!pathItem || typeof pathItem !== "object") continue;
     if (!segmentsMatch(splitPathSegments(template), requestSegments)) {
       continue;
     }
-    const operation = (pathItem as Record<string, unknown>)[normalizedMethod];
+    const resolvedPathItem = resolveLocalSchemaObject(document, pathItem);
+    if (!resolvedPathItem) continue;
+    const operation = resolvedPathItem[normalizedMethod];
     if (!operation || typeof operation !== "object") continue;
     return {
       operation: operation as Record<string, unknown>,
       matchedTemplate: template,
+      ...(includePathItem ? { pathItem: resolvedPathItem } : {}),
     };
   }
   return null;
@@ -626,15 +821,20 @@ async function safetyCheckedFetch(
     body,
     contentType,
     extraHeaders,
+    hasBodyCredential = false,
     redirectCount = 0,
   }: {
     method: string;
     fetchImpl: typeof fetch;
     isUnsafeUrl: (url: string) => Promise<boolean>;
     timeoutMs: number;
-    body?: string;
+    body?:
+      | string
+      | Uint8Array<ArrayBuffer>
+      | ((signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>);
     contentType?: string;
     extraHeaders?: Record<string, string>;
+    hasBodyCredential?: boolean;
     redirectCount?: number;
   },
 ): Promise<SafetyCheckedFetchResult> {
@@ -644,19 +844,45 @@ async function safetyCheckedFetch(
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const started = performance.now();
+  let started = performance.now();
   try {
+    let targetHeaders: Headers | Record<string, string> = {
+      accept: "application/json, text/*;q=0.8, */*;q=0.5",
+      "user-agent": "metagraphed-mcp-call-subnet-surface/0.0",
+      ...(body !== undefined && contentType
+        ? { "content-type": contentType }
+        : {}),
+      ...(extraHeaders || {}),
+    };
+    if (typeof body === "function") {
+      // Validate credential/parameter bytes before downloading a file. Reuse
+      // these normalized headers in the actual request.
+      try {
+        targetHeaders = new Headers(targetHeaders);
+      } catch {
+        throw new Error(
+          "Request body artifact requires valid HTTP request headers",
+        );
+      }
+    }
+    // Deferred file bytes resolve only after the target is safe, inside the
+    // same fetch deadline. Redirects reuse these exact verified bytes once.
+    const resolvedBody =
+      typeof body === "function" ? await body(controller.signal) : body;
+    if (typeof body === "function") {
+      const ready = performance.now();
+      // A ready stream can finish in microtasks before the timer runs. Check
+      // elapsed time so an expired file cannot start a provider write.
+      if (ready - started >= timeoutMs) {
+        controller.abort();
+        throw new Error("Request body artifact timed out");
+      }
+      started = ready;
+    }
     const response = await fetchImpl(url, {
       method,
-      headers: {
-        accept: "application/json, text/*;q=0.8, */*;q=0.5",
-        "user-agent": "metagraphed-mcp-call-subnet-surface/0.0",
-        ...(body !== undefined && contentType
-          ? { "content-type": contentType }
-          : {}),
-        ...(extraHeaders || {}),
-      },
-      ...(body !== undefined ? { body } : {}),
+      headers: targetHeaders,
+      ...(resolvedBody !== undefined ? { body: resolvedBody } : {}),
       redirect: "manual",
       signal: controller.signal,
     });
@@ -668,7 +894,7 @@ async function safetyCheckedFetch(
       redirectCount < MAX_REDIRECTS
     ) {
       const redirectTarget = new URL(location, url).toString();
-      await response.body?.cancel();
+      void response.body?.cancel().catch(() => {});
       if (await isUnsafeUrl(redirectTarget)) {
         return {
           ok: false,
@@ -688,14 +914,24 @@ async function safetyCheckedFetch(
       // target's origin differs from the current hop's, and it stays
       // dropped for every hop after (a stripped call never receives it back).
       const sameOrigin = new URL(redirectTarget).origin === new URL(url).origin;
+      // Body signatures/envelopes cannot be stripped like a header without
+      // altering the signed payload. Stop before sending them to another host.
+      if (hasBodyCredential && !sameOrigin)
+        return {
+          ok: false,
+          error: "Redirect would send a body credential to another origin.",
+          error_class: "credential_redirect_blocked",
+          status_code: response.status,
+        };
       return safetyCheckedFetch(redirectTarget, {
         method,
         fetchImpl,
         isUnsafeUrl,
         timeoutMs,
-        body,
+        body: resolvedBody,
         contentType,
         extraHeaders: sameOrigin ? extraHeaders : undefined,
+        hasBodyCredential,
         redirectCount: redirectCount + 1,
       });
     }

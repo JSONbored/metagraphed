@@ -9,7 +9,8 @@
 // validation, error-code mapping) end-to-end through the real JSON-RPC path.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleMcpRequest } from "../src/mcp-server.ts";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import { handleMcpRequest, MCP_TOOLS } from "../src/mcp-server.ts";
 import { authLookupCacheWrite } from "../src/auth-lookup-cache.ts";
 import {
   API_KEY_LOOKUP_KV_TTL,
@@ -105,6 +106,53 @@ const SCHEMA_DOCUMENT = {
       },
       "/ping": {
         post: { summary: "ping, no request body declared" },
+      },
+      "/patch": {
+        patch: {
+          requestBody: {
+            content: { "application/json": { schema: { type: "object" } } },
+          },
+        },
+      },
+      "/patch-note": {
+        patch: {
+          requestBody: {
+            content: { "text/plain": { schema: { type: "string" } } },
+          },
+        },
+      },
+      "/patch-ping": { patch: {} },
+      "/json-value": {
+        post: {
+          requestBody: { content: { "application/json": { schema: {} } } },
+        },
+        put: {
+          requestBody: { content: { "application/json": { schema: {} } } },
+        },
+        patch: {
+          requestBody: { content: { "application/json": { schema: {} } } },
+        },
+      },
+      "/json-patch": {
+        patch: {
+          requestBody: {
+            content: {
+              "application/json-patch+json": { schema: { type: "array" } },
+            },
+          },
+        },
+      },
+      "/json-charset": {
+        post: {
+          requestBody: {
+            content: {
+              "Application/Json; charset=utf-8": { schema: { type: "array" } },
+              "Application/Vnd.fixture+Json; charset=utf-8": {
+                schema: { type: "array" },
+              },
+            },
+          },
+        },
       },
       "/multi": {
         post: {
@@ -446,7 +494,11 @@ function surfaceToolFor(args: Row): string {
     : "call_subnet_surface";
 }
 
-async function callTool(args: Row, fetchImpl?: typeof fetch) {
+async function callTool(
+  args: Row,
+  fetchImpl?: typeof fetch,
+  rawRequestBody?: string,
+) {
   const of = globalThis.fetch;
   globalThis.fetch =
     fetchImpl ??
@@ -460,12 +512,14 @@ async function callTool(args: Row, fetchImpl?: typeof fetch) {
       new Request("https://metagraph.sh/mcp", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/call",
-          params: { name: surfaceToolFor(args), arguments: args },
-        }),
+        body:
+          rawRequestBody ??
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: { name: surfaceToolFor(args), arguments: args },
+          }),
       }),
       {} as unknown as Env,
       deps,
@@ -475,6 +529,403 @@ async function callTool(args: Row, fetchImpl?: typeof fetch) {
     globalThis.fetch = of;
   }
 }
+
+describe("direct JSON subnet request values", () => {
+  const base = { surface_id: "x:api:4", path: "/json-value", method: "POST" };
+  const values = [
+    ["null", null, "null"],
+    ["false", false, "false"],
+    ["zero", 0, "0"],
+    ["negative zero", -0, "0"],
+    ["empty string", "", '""'],
+    ["Unicode string", 'hello\n雪"', '"hello\\n雪\\""'],
+    ["empty array", [], "[]"],
+    [
+      "nested array",
+      [null, false, { amount: "9007199254740993" }],
+      '[null,false,{"amount":"9007199254740993"}]',
+    ],
+    [
+      "object",
+      { name: "ada", data: [1, null] },
+      '{"name":"ada","data":[1,null]}',
+    ],
+  ] as const;
+
+  async function send(args: Row, rawRequestBody?: string) {
+    const requests: RequestInit[] = [];
+    const result = await callTool(
+      args,
+      async (input, init) => {
+        const url = new URL(String(input));
+        if (url.hostname === "cloudflare-dns.com") {
+          return Response.json({ Answer: [{ type: 1, data: "18.160.0.1" }] });
+        }
+        assert.equal(url.hostname, "x.example");
+        requests.push(init!);
+        return Response.json({ accepted: true });
+      },
+      rawRequestBody,
+    );
+    return { result, requests };
+  }
+
+  test("published write schema accepts every JSON root and the read schema excludes the field", () => {
+    const ajv = new Ajv2020({ strict: false, validateFormats: false });
+    const write = ajv.compile(
+      MCP_TOOLS.find((t) => t.name === "write_subnet_surface")!.inputSchema,
+    );
+    const read = ajv.compile(
+      MCP_TOOLS.find((t) => t.name === "call_subnet_surface")!.inputSchema,
+    );
+    for (const [, value] of values) {
+      assert.equal(
+        write({ ...base, json_body: value }),
+        true,
+        JSON.stringify(write.errors),
+      );
+      assert.equal(
+        read({ surface_id: base.surface_id, json_body: value }),
+        false,
+      );
+    }
+    assert.equal(write({ ...base, body: "[]", json_body: [] }), false);
+  });
+
+  for (const [name, value, expected] of values) {
+    test(`sends exact ${name} JSON bytes through every body verb`, async () => {
+      for (const method of ["POST", "PUT", "PATCH"]) {
+        const { result, requests } = await send({
+          ...base,
+          method,
+          json_body: value,
+        });
+        assert.equal(result.isError, false);
+        assert.deepEqual(result.structuredContent.body, { accepted: true });
+        assert.equal(requests.length, 1);
+        assert.equal(requests[0]!.method, method);
+        assert.equal(requests[0]!.body, expected);
+        assert.equal(
+          new Headers(requests[0]!.headers).get("content-type"),
+          "application/json",
+        );
+      }
+    });
+  }
+
+  test("JSON Patch arrays use the operation's declared structured JSON media type", async () => {
+    const { result, requests } = await send({
+      ...base,
+      path: "/json-patch",
+      method: "PATCH",
+      json_body: [{ op: "replace", path: "/name", value: "ada" }],
+    });
+    assert.equal(result.isError, false);
+    assert.equal(requests.length, 1);
+    assert.equal(
+      requests[0]!.body,
+      '[{"op":"replace","path":"/name","value":"ada"}]',
+    );
+    assert.equal(
+      new Headers(requests[0]!.headers).get("content-type"),
+      "application/json-patch+json",
+    );
+  });
+
+  test("declared JSON media parameters retain their exact outgoing header", async () => {
+    for (const content_type of [
+      "Application/Json; charset=utf-8",
+      "Application/Vnd.fixture+Json; charset=utf-8",
+    ]) {
+      const { result, requests } = await send({
+        ...base,
+        path: "/json-charset",
+        content_type,
+        json_body: [false, null],
+      });
+      assert.equal(result.isError, false);
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0]!.body, "[false,null]");
+      assert.equal(
+        new Headers(requests[0]!.headers).get("content-type"),
+        content_type,
+      );
+    }
+  });
+
+  test("raw negative-zero and overflow inputs retain transport normalization", async () => {
+    for (const [raw, expected] of [
+      ["-0", "0"],
+      ["1e400", "null"],
+    ]) {
+      const { result, requests } = await send(
+        base,
+        '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"write_subnet_surface","arguments":{"surface_id":"x:api:4","path":"/json-value","method":"POST","json_body":' +
+          raw +
+          "}}}",
+      );
+      assert.equal(result.isError, false);
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0]!.body, expected);
+    }
+  });
+
+  test("legacy serialized text and omitted null keep their exact behavior", async () => {
+    for (const [body, expected] of [
+      ["  [1, null]\n", "  [1, null]\n"],
+      [null, undefined],
+    ]) {
+      const { result, requests } = await send({ ...base, body });
+      assert.equal(result.isError, false);
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0]!.body, expected);
+    }
+  });
+
+  test("conflicting bodies, undeclared media and wrong permissions issue no operation", async () => {
+    for (const args of [
+      { ...base, json_body: null, body: null },
+      { ...base, json_body: [], body: "[]" },
+      { ...base, path: "/ping", json_body: null },
+      { ...base, path: "/not-declared", json_body: [] },
+      { ...base, content_type: "text/plain", json_body: [] },
+      { ...base, path: "/users/123/notes", method: "PUT", json_body: "text" },
+      { ...base, path: "/multi", json_body: [] },
+      { ...base, path: "/multi", content_type: "text/csv", json_body: [] },
+      { ...base, method: "DELETE", json_body: null },
+      { ...base, method: "GET", json_body: null },
+      { ...base, path: undefined, json_body: [] },
+      { ...base, surface_id: "x:api:5", json_body: [] },
+      { ...base, surface_id: "x:api:3", json_body: [] },
+      { ...base, surface_id: "x:api:15", json_body: [] },
+    ]) {
+      const { result, requests } = await send(args);
+      assert.equal(result.isError, true);
+      assert.equal(requests.length, 0);
+    }
+  });
+
+  test("flat body credentials preserve objects and reject roots that would be reshaped", async () => {
+    const credential = {
+      identity: "fixture",
+      timestamp: "123",
+      signature: "0xabc",
+    };
+    for (const json_body of [null, [], false, "text", 0]) {
+      const { result, requests } = await send({
+        ...base,
+        surface_id: "x:api:15",
+        credential,
+        json_body,
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /must be an object/);
+      assert.equal(requests.length, 0);
+    }
+    const { result, requests } = await send({
+      ...base,
+      surface_id: "x:api:15",
+      credential,
+      json_body: { name: "ada", signature: "replaced" },
+    });
+    assert.equal(result.isError, false);
+    assert.equal(requests.length, 1);
+    assert.deepEqual(JSON.parse(String(requests[0]!.body)), {
+      name: "ada",
+      ...credential,
+    });
+  });
+
+  test("declared nested credentials preserve every JSON root including null", async () => {
+    const credential = {
+      signer_ss58: "fixture",
+      nonce: "123",
+      signature: "0xabc",
+    };
+    for (const [, json_body] of values) {
+      const { result, requests } = await send({
+        ...base,
+        surface_id: "x:api:19",
+        credential,
+        json_body,
+      });
+      assert.equal(result.isError, false);
+      assert.equal(requests.length, 1);
+      assert.deepEqual(JSON.parse(String(requests[0]!.body)), {
+        payload: json_body === 0 ? 0 : json_body,
+        sig: credential,
+      });
+    }
+  });
+
+  test("signed array payload stays exact across same-origin redirects and stops across origins", async () => {
+    const credential = {
+      signer_ss58: "fixture",
+      nonce: "123",
+      signature: "0xabc",
+    };
+    for (const location of [
+      "https://x.example/again",
+      "https://other.example/again",
+    ]) {
+      const requests: RequestInit[] = [];
+      const result = await callTool(
+        {
+          ...base,
+          surface_id: "x:api:19",
+          credential,
+          json_body: [null, "雪"],
+        },
+        async (input, init) => {
+          if (new URL(String(input)).hostname === "cloudflare-dns.com") {
+            return Response.json({ Answer: [{ type: 1, data: "18.160.0.1" }] });
+          }
+          requests.push(init!);
+          return requests.length === 1
+            ? new Response(null, { status: 307, headers: { location } })
+            : Response.json({ accepted: true });
+        },
+      );
+      const sameOrigin = location.includes("x.example");
+      assert.equal(result.isError, !sameOrigin);
+      assert.equal(requests.length, sameOrigin ? 2 : 1);
+      const expected =
+        '{"payload":[null,"雪"],"sig":{"signer_ss58":"fixture","nonce":"123","signature":"0xabc"}}';
+      for (const request of requests) assert.equal(request.body, expected);
+    }
+  });
+
+  test("direct JSON removes argument escaping while preserving equivalent request bytes", async () => {
+    const json_body = Array.from({ length: 32 }, (_, i) => ({
+      op: "replace",
+      path: `/items/${i}`,
+      value: 'quoted " value\n雪',
+    }));
+    const legacy = { ...base, body: JSON.stringify(json_body) };
+    const direct = { ...base, json_body };
+    const before = await send(legacy);
+    const after = await send(direct);
+    assert.equal(before.result.isError, false);
+    assert.equal(after.result.isError, false);
+    assert.equal(before.requests.length, 1);
+    assert.equal(after.requests.length, 1);
+    assert.equal(before.requests[0]!.body, after.requests[0]!.body);
+    const beforeBytes = Buffer.byteLength(JSON.stringify(legacy));
+    const afterBytes = Buffer.byteLength(JSON.stringify(direct));
+    assert.ok(afterBytes < beforeBytes);
+    console.log(
+      "SUBNET_JSON_BODY_FIXTURE",
+      JSON.stringify({
+        operations: 32,
+        legacy_argument_json_bytes: beforeBytes,
+        direct_argument_json_bytes: afterBytes,
+        argument_bytes_removed: beforeBytes - afterBytes,
+        request_bytes_equal: true,
+        requests_per_mode: 1,
+        fixture: true,
+        production: false,
+      }),
+    );
+  });
+});
+
+describe("PATCH request bodies and credentials", () => {
+  async function patch(args: Row) {
+    const requests: RequestInit[] = [];
+    const result = await callTool(args, async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname === "cloudflare-dns.com") {
+        return Response.json({ Answer: [{ type: 1, data: "18.160.0.1" }] });
+      }
+      assert.equal(url.hostname, "x.example");
+      requests.push(init!);
+      return Response.json({ updated: true });
+    });
+    return { result, requests };
+  }
+
+  test("PATCH preserves JSON and text bodies", async () => {
+    for (const [path, body, contentType] of [
+      ["/patch", { name: "ada" }, "application/json"],
+      ["/patch", '{ "name": "ada" }', "application/json"],
+      ["/patch-note", "exact note\n", "text/plain"],
+    ] as const) {
+      const { result, requests } = await patch({
+        surface_id: "x:api:4",
+        path,
+        method: "patch",
+        body,
+      });
+      assert.equal(result.isError, false);
+      assert.deepEqual(result.structuredContent.body, { updated: true });
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0]!.method, "PATCH");
+      assert.equal(
+        requests[0]!.body,
+        typeof body === "string" ? body : JSON.stringify(body),
+      );
+      assert.equal(
+        new Headers(requests[0]!.headers).get("content-type"),
+        contentType,
+      );
+    }
+  });
+
+  test("PATCH preserves flat and nested body credentials", async () => {
+    for (const [surface_id, credential, expected] of [
+      [
+        "x:api:15",
+        { identity: "fixture", timestamp: "123", signature: "0xabc" },
+        {
+          name: "ada",
+          identity: "fixture",
+          timestamp: "123",
+          signature: "0xabc",
+        },
+      ],
+      [
+        "x:api:19",
+        { signer_ss58: "fixture", nonce: "123", signature: "0xabc" },
+        {
+          payload: { name: "ada" },
+          sig: { signer_ss58: "fixture", nonce: "123", signature: "0xabc" },
+        },
+      ],
+    ] as const) {
+      const { result, requests } = await patch({
+        surface_id,
+        path: "/patch",
+        method: "PATCH",
+        body: { name: "ada" },
+        credential,
+      });
+      assert.equal(result.isError, false);
+      assert.equal(requests.length, 1);
+      assert.deepEqual(JSON.parse(String(requests[0]!.body)), expected);
+      assert.equal(
+        new Headers(requests[0]!.headers).get("content-type"),
+        "application/json",
+      );
+    }
+  });
+
+  test("PATCH rejects undeclared bodies and media", async () => {
+    for (const args of [
+      { path: "/patch-ping", body: { name: "ada" } },
+      { path: "/patch", body: "text", content_type: "text/plain" },
+      { path: "/patch-note", body: { name: "ada" } },
+      { path: "/not-declared", body: { name: "ada" } },
+    ]) {
+      const { result, requests } = await patch({
+        surface_id: "x:api:4",
+        method: "PATCH",
+        ...args,
+      });
+      assert.equal(result.isError, true);
+      assert.equal(requests.length, 0);
+    }
+  });
+});
 
 describe("call_subnet_surface MCP tool (#7014)", () => {
   test("happy path: returns the real response body, not just health metadata", async () => {
@@ -1184,6 +1635,32 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.equal(sentHeaders!["X-Signature"], "0xabc");
     });
 
+    test("query credential remains private in encoded upstream errors", async () => {
+      const credential = "fixture+key with /?=&%#雪";
+      let requestedUrl = "";
+      const result = await callTool(
+        { surface_id: "x:api:7", credential },
+        async (url) => {
+          requestedUrl = String(url);
+          assert.equal(
+            new URL(requestedUrl).searchParams.get("api_key"),
+            credential,
+          );
+          throw new Error(`fetch failed: ${requestedUrl}`);
+        },
+      );
+      assert.equal(result.isError, true);
+      const serialized = JSON.stringify(result);
+      assert.match(serialized, /upstream_unavailable/);
+      assert.ok(serialized.includes("<redacted>"));
+      assert.ok(!serialized.includes(credential));
+      assert.ok(
+        !serialized.includes(
+          new URL(requestedUrl).search.slice("?api_key=".length),
+        ),
+      );
+    });
+
     test("location:query merges every named param", async () => {
       let requestedUrl: string | undefined;
       const result = await callTool(
@@ -1378,7 +1855,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.match(result.content[0].text, /auth_required/);
     });
 
-    test("location:body without path/method (POST or PUT) is invalid_params", async () => {
+    test("location:body without a body method is invalid_params", async () => {
       const result = await callTool({
         surface_id: "x:api:15",
         credential: {
@@ -1389,7 +1866,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       });
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /invalid_params/);
-      assert.match(result.content[0].text, /POST or PUT/);
+      assert.match(result.content[0].text, /POST, PUT, PATCH/);
     });
 
     test("location:body with method GET is invalid_params even though path is set", async () => {
@@ -1407,7 +1884,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       });
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /invalid_params/);
-      assert.match(result.content[0].text, /POST or PUT/);
+      assert.match(result.content[0].text, /POST, PUT, PATCH/);
     });
 
     test("location:body with auth.body_envelope nests the credential under its own key", async () => {

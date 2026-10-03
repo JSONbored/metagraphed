@@ -39,11 +39,13 @@ function valueForPattern(pattern: string, name = ""): string {
     case "^[a-f0-9]{64}$":
       return HEX64;
     case "^0x[0-9a-fA-F]{64}$":
+    case "^0x[0-9a-f]{64}$":
       // The 0x-prefixed form (#8744's chain_state.block_hash) -- a block hash
       // is carried alongside the height so the pinning is exact, and a height
       // alone is ambiguous across a reorg.
       return `0x${HEX64}`;
     case "^\\d+$":
+    case "^(0|[1-9]\\d*)$":
       // A rao count as a decimal string, because the value is a bigint and a
       // JSON number is the wrong type for one (the emission pipeline's
       // aggregate identity tolerance). 1000 rao is the real tolerance.
@@ -971,7 +973,11 @@ export function sampleFromSchema(
   if (Array.isArray(schema.allOf)) {
     let merged: Sample = {};
     let scalar: unknown;
-    for (const sub of schema.allOf as Schema[]) {
+    // Sibling properties/required constraints apply alongside allOf. Dropping
+    // them omitted finalized source identity from Root basket examples.
+    const siblings = { ...schema };
+    delete siblings.allOf;
+    for (const sub of [siblings, ...(schema.allOf as Schema[])]) {
       const part = sampleFromSchema(sub, components, name, depth, activeRefs);
       if (part && typeof part === "object" && !Array.isArray(part)) {
         merged = { ...merged, ...(part as Sample) };

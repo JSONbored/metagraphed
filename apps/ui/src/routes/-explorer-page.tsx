@@ -60,7 +60,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { Route } from "./chain.index";
+import { Route, type ChainOverviewSearch } from "./chain.index";
 
 const SECTIONS = [
   { id: "throughput", name: "Throughput" },
@@ -187,7 +187,11 @@ export function ExplorerPage() {
   const governanceError = runtime.error ?? sudo.error ?? config.error;
 
   const setWindow = (next: ChainWindowValue) => {
-    navigate({ search: (prev) => ({ ...prev, window: next }), replace: true });
+    navigate({
+      to: Route.to,
+      search: (prev: ChainOverviewSearch) => ({ ...prev, window: next }),
+      replace: true,
+    });
   };
 
   // The head block and the block time were chips AND cells -- and at two

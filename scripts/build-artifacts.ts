@@ -1922,6 +1922,8 @@ function buildSubnetServices(netuid: unknown): Row[] {
         // byte-identical. A non-GET service gets no snippets below (the
         // generator refuses to GET a declared mutation).
         ...(surface.method ? { method: surface.method } : {}),
+        ...(surface.mcp ? { mcp: surface.mcp } : {}),
+        ...(surface.http ? { http: surface.http } : {}),
         base_url: surface.url,
         provider: surface.provider || null,
         authority: surface.authority || null,
@@ -1933,13 +1935,16 @@ function buildSubnetServices(netuid: unknown): Row[] {
         auth: authDetail,
         // Copy-paste curl/Python/TS that GETs this surface, auth header/param
         // filled from the structured auth detail (issue #746, was #351 guess).
-        snippets: generateServiceSnippets({
-          base_url: surface.url,
-          method: surface.method,
-          auth_required: authRequired,
-          auth_schemes: authSchemes,
-          auth: authDetail,
-        }),
+        snippets:
+          surface.mcp || surface.http
+            ? null
+            : generateServiceSnippets({
+                base_url: surface.url,
+                method: surface.method,
+                auth_required: authRequired,
+                auth_schemes: authSchemes,
+                auth: authDetail,
+              }),
         ...(fixtureRef ? { fixture: fixtureRef } : {}),
         fixture_status: fixtureStatus,
         schema_url: surface.schema_url || schema?.schema_url || null,

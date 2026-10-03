@@ -1,9 +1,35 @@
+// Keep the real quote/runtime/codec path; only the chain transport is synthetic.
+vi.mock("../src/runtime-stake-quote.ts", async () => {
+  const actual = await vi.importActual<
+    typeof import("../src/runtime-stake-quote.ts")
+  >("../src/runtime-stake-quote.ts");
+  const { readRuntimeStakeFixture } =
+    await import("./fixtures/runtime-stake-quote.ts");
+  return {
+    ...actual,
+    buildRuntimeStakeQuote: (
+      netuid: number,
+      amount: unknown,
+      direction: string,
+      _read?: Parameters<typeof actual.buildRuntimeStakeQuote>[3],
+      network?: Parameters<typeof actual.buildRuntimeStakeQuote>[4],
+    ) =>
+      actual.buildRuntimeStakeQuote(
+        netuid,
+        amount,
+        direction,
+        readRuntimeStakeFixture,
+        network,
+      ),
+  };
+});
+
 // Route-dispatch coverage for GET /api/v1/subnets/{netuid}/stake-quote (#5235):
 // drives the real api.ts router end-to-end so the path-pattern match + handler
 // call are exercised. Handler/resolver branch detail lives in
 // subnet-stake-quote-handler.test.ts; the pure math in stake-quote.test.ts.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
@@ -49,6 +75,39 @@ function env() {
 }
 
 describe("GET /api/v1/subnets/{netuid}/stake-quote route", () => {
+  test("network prefixes isolate finalized sources and native work-limit keys", async () => {
+    for (const network of ["mainnet", "testnet"]) {
+      const keys: string[] = [];
+      const selected = env() as unknown as Env;
+      selected.RPC_RATE_LIMITER = {
+        limit: async ({ key }: { key: string }) => {
+          keys.push(key);
+          return { success: true };
+        },
+      } as Env["RPC_RATE_LIMITER"];
+      const response = await handleRequest(
+        req(`/api/v1/${network}/subnets/64/stake-quote?amount=1`),
+        selected,
+        {},
+      );
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(
+        result.meta.native_source.network,
+        network === "testnet" ? "test" : "finney",
+      );
+      assert.equal(
+        result.meta.native_source.network_genesis_hash,
+        `0x${(network === "testnet" ? "55" : "44").repeat(32)}`,
+      );
+      assert.ok(
+        keys.includes(
+          `${network === "testnet" ? "testnet:" : ""}native-runtime:anonymous`,
+        ),
+      );
+    }
+  });
+
   test("dispatches to a 200 quote", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets/64/stake-quote?amount=1000&direction=stake"),

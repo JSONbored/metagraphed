@@ -1166,12 +1166,11 @@ function assignMcpAttribution(
 // which that default list does NOT cover and which call_subnet_surface's own
 // `credential` argument (src/call-subnet-surface.ts) needs: a bearer token,
 // API key, or Bittensor hotkey-signed bundle a caller supplies for one call.
-// Every other sensitive argument this server takes is already covered by the
-// baseline set — e.g. get_alert_trigger's `owner_token` via the "token"
-// substring — so `credential` is the only addition needed.
+// Opaque custom header parameters can carry private values under names such
+// as X-Key. Redact the whole field instead of traversing those values.
 
 const MCP_SENSITIVE_KEY_PATTERN =
-  /authorization|cookie|password|token|secret|api[_-]?key|private[_-]?key|credential/i;
+  /authorization|cookie|password|token|secret|api[_-]?key|private[_-]?key|credential|header_values|body_artifact/i;
 
 const MCP_REDACTED_VALUE = "[redacted]";
 

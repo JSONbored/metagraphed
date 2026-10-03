@@ -87,6 +87,24 @@ describe("MCP tool annotations", () => {
       .sort();
     assert.deepEqual(declaredOpenWorld, [...OPEN_WORLD_TOOL_NAMES].sort());
   });
+  test("native call preparation remains a read and cannot sign or submit", () => {
+    for (const name of [
+      "get_native_runtime",
+      "get_subnet_stake_quote",
+      "get_stake_action_preview",
+    ]) {
+      const annotations = byName.get(name)?.annotations as Record<
+        string,
+        unknown
+      >;
+      assert.deepEqual(annotations, {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      });
+    }
+  });
 
   // Pins the #8964 audit's finding: 20 of 207 tools leave our infrastructure.
   // Not a style rule — an accidental widening of the open-world set is how the
@@ -109,7 +127,12 @@ describe("MCP tool annotations", () => {
     // both are open-world for that reason. The count moved because one tool
     // became two, not because the set of things we touch grew.
     // Both discovery bridges may contact external services; only invoke_tool permits writes.
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 26);
+    // Native metadata reads use the same external chain RPC as Root baskets.
+    // Quote and preview now share a finalized runtime simulation, also outside
+    // the served artifact boundary. Both retain all four safe-read hints.
+    // The five subnet MCP tools negotiate/call another provider's server,
+    // including read-only prompts and resources; native reads remain unchanged.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 34);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,
@@ -142,6 +165,7 @@ describe("MCP tool annotations", () => {
       .map((def) => def.name);
     assert.deepEqual(mutating, [
       "invoke_tool",
+      "write_subnet_mcp",
       // #11568: the write half of the surface-call split. Its read sibling is
       // deliberately absent from this list now -- that is the split working.
       "write_subnet_surface",
@@ -198,6 +222,8 @@ describe("open-world annotation guard", () => {
     "loadAccountRootClaim",
     "loadAccountChildren",
     "loadAccountParents",
+    "loadRuntimeStakeQuote",
+    "readNativeRuntime",
     "loadNetworkParameters",
     "loadRandomnessStatus",
     "loadSubnetBurn",

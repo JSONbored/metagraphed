@@ -140,8 +140,32 @@ describe("normalizeExtrinsic", () => {
 });
 
 describe("normalizeAgentCatalogDetail", () => {
-  it("drops backend-provided snippets from callable service payloads", () => {
-    const out = normalizeAgentCatalogDetail(
+  it("retains MCP admission through the canonical schema and drops malformed metadata", async () => {
+    const mcp = {
+      transport: "streamable-http",
+      read_tools: ["read"],
+      write_tools: ["write"],
+      read_prompts: ["plan"],
+      read_resources: ["fixture://taxonomy"],
+    };
+    const out = await normalizeAgentCatalogDetail(
+      {
+        services: [
+          { mcp },
+          { mcp: { ...mcp, transport: "stdio" } },
+          { mcp: { ...mcp, read_tools: [""] } },
+          { mcp: { ...mcp, write_tools: ["x".repeat(129)] } },
+          { mcp: { ...mcp, read_prompts: [""] } },
+          { mcp: { ...mcp, read_resources: ["x".repeat(1025)] } },
+        ],
+      },
+      107,
+    );
+    expect(out.services?.[0]?.mcp).toEqual(mcp);
+    for (const service of out.services?.slice(1) ?? []) expect(service.mcp).toBeUndefined();
+  });
+  it("drops backend-provided snippets from callable service payloads", async () => {
+    const out = await normalizeAgentCatalogDetail(
       {
         services: [
           {

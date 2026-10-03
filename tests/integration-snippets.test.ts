@@ -4,6 +4,21 @@ import { generateServiceSnippets } from "../src/integration-snippets.ts";
 import type { Row } from "./row-type.ts";
 
 describe("generateServiceSnippets (#351)", () => {
+  test("MCP admission suppresses plain GET snippets without changing HTTP services", () => {
+    const service = { base_url: "https://subnet.example/mcp" };
+    assert.ok(generateServiceSnippets(service));
+    assert.equal(
+      generateServiceSnippets({
+        ...service,
+        mcp: {
+          transport: "streamable-http",
+          read_tools: ["read"],
+          write_tools: [],
+        },
+      }),
+      null,
+    );
+  });
   test("no-auth service: plain GET in all three languages", () => {
     const out = generateServiceSnippets({
       base_url: "https://api.example.io/health",

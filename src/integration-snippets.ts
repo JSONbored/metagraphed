@@ -114,6 +114,8 @@ export function generateServiceSnippets(
 ): ServiceSnippets | null {
   const url = service?.base_url;
   if (!isSnippetSafeUrl(url)) return null;
+  // An MCP endpoint requires protocol negotiation, never a plain GET snippet.
+  if (service?.mcp) return null;
   // A declared mutation (#11146): "GET the surface URL" stops being a valid
   // entry point, and a wrong-verb snippet is worse than none. The service row
   // carries `method` instead, and the agent reaches the surface through

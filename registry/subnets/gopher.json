@@ -133,6 +133,20 @@
       },
       "auth_required": true,
       "authority": "community",
+      "http": {
+        "operations": [
+          {
+            "method": "POST",
+            "path": "/api/v1/search/live",
+            "request_content_types": ["application/json"],
+            "request_body_required": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/v1/search/live/result/{uuid}"
+          }
+        ]
+      },
       "id": "sn-42-gopher-ai-subnet-api",
       "kind": "subnet-api",
       "name": "Gopher Data API live search",
@@ -149,10 +163,10 @@
         "submitted_by": "claytonlin1110"
       },
       "source_urls": [
-        "https://github.com/gopher-lab/gopher-client/blob/main/client/client.go#L15-L16",
-        "https://github.com/gopher-lab/gopher-client/blob/main/config/config.go#L15-L16",
-        "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go#L22-L23",
-        "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go#L75-L76"
+        "https://github.com/gopher-lab/gopher-client/blob/4784cc13ea6f2f567110d8b22d0183640a1338ca/client/client.go#L15-L16",
+        "https://github.com/gopher-lab/gopher-client/blob/4784cc13ea6f2f567110d8b22d0183640a1338ca/config/config.go#L15-L16",
+        "https://github.com/gopher-lab/gopher-mcp-server/blob/f75705d9b1a121a4b1936ad967a30611736e5b70/data/internal/client/client.go#L22-L23",
+        "https://github.com/gopher-lab/gopher-mcp-server/blob/f75705d9b1a121a4b1936ad967a30611736e5b70/data/internal/client/client.go#L75-L76"
       ],
       "url": "https://data.gopher-ai.com/api/v1/search/live"
     },

@@ -1,3 +1,16 @@
+import { withNativeRuntimeFixture } from "../tests/fixtures/native-runtime.ts";
+import { withRuntimeStakeFixture } from "../tests/fixtures/runtime-stake-quote.ts";
+import {
+  withSubnetMcpFixture,
+  SUBNET_MCP_FIXTURE_ID,
+} from "../tests/fixtures/subnet-mcp.ts";
+import {
+  withSubnetHttpFixture,
+  SUBNET_HTTP_FIXTURE_ID,
+  SUBNET_VERIFY_FIXTURE_ID,
+  SUBNET_HTTP_FIXTURE_CREDENTIAL,
+} from "../tests/fixtures/subnet-http.ts";
+import { withMcpProxyFixture } from "../tests/fixtures/mcp-proxy.ts";
 // Contract validator for the remote MCP server at POST /mcp.
 //
 // Exercises the JSON-RPC lifecycle (initialize + tools/list) and a tools/call
@@ -6,6 +19,10 @@
 // MCP endpoint is not artifact-backed and must not enter the
 // `checks.length === API_ROUTES.length` invariant.
 import assert from "node:assert/strict";
+import {
+  withBasketRuntimeFixture,
+  BASKET_FIXTURE_WIDE,
+} from "../tests/fixtures/root-basket-runtime.ts";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
@@ -89,6 +106,15 @@ const env = createLocalArtifactEnv({
   METAGRAPH_CONTROL: accountKv,
 });
 const MCP_URL = "https://api.metagraph.sh/mcp";
+
+// This standalone validator must never fall through to a real provider. Scoped
+// fixtures replace fetch while exercising live-call implementations offline.
+// Keep the guard through process exit, including detached waitUntil work.
+let blockedUnmockedFetches = 0;
+globalThis.fetch = async () => {
+  blockedUnmockedFetches++;
+  throw new Error("Unmocked network request in the offline MCP validator");
+};
 
 // Compile each tool's declared outputSchema once; callOk asserts every
 // successful tool result's structuredContent validates against it, so a tool's
@@ -224,13 +250,25 @@ async function getJson(path: string): Promise<Row> {
   return { status: response.status, body: text ? JSON.parse(text) : null };
 }
 
-async function call(name: string, args: unknown): Promise<Row> {
-  const res = await mcp({
+async function call(
+  name: string,
+  args: unknown,
+  options?: McpCallOptions,
+): Promise<Row> {
+  const payload = {
     jsonrpc: "2.0",
     id: 1,
     method: "tools/call",
     params: { name, arguments: args },
-  });
+  };
+  const res =
+    name === "get_subnet_stake_quote" || name === "get_stake_action_preview"
+      ? await withRuntimeStakeFixture(() => mcp(payload, options))
+      : name === "get_native_runtime"
+        ? await withNativeRuntimeFixture(() => mcp(payload, options))
+        : name === "get_root_baskets" || name === "get_account_root_baskets"
+          ? await withBasketRuntimeFixture(() => mcp(payload, options))
+          : await mcp(payload, options);
   assert.equal(res.status, 200, `${name}: expected HTTP 200`);
   const result = res.body?.result;
   assert.ok(result, `${name}: missing JSON-RPC result`);
@@ -238,16 +276,28 @@ async function call(name: string, args: unknown): Promise<Row> {
     Array.isArray(result.content) && result.content.length > 0,
     `${name}: result.content must be a non-empty array`,
   );
+  const expectedContentType =
+    name === "read_subnet_mcp_resource" && result.isError === false
+      ? "resource"
+      : "text";
   assert.equal(
     result.content[0].type,
-    "text",
-    `${name}: first content block must be text`,
+    expectedContentType,
+    `${name}: first content block must be ${expectedContentType}`,
   );
   return result;
 }
 
-async function callOk(name: string, args: unknown): Promise<Row> {
-  const result = await call(name, args);
+async function callOk(
+  name: string,
+  args: unknown,
+  options?: McpCallOptions,
+): Promise<Row> {
+  const result = await call(name, args, options);
+  return validateSuccessfulResult(name, result);
+}
+
+function validateSuccessfulResult(name: string, result: Row): Row {
   assert.equal(
     result.isError,
     false,
@@ -701,6 +751,213 @@ assert.deepEqual(
 );
 
 // --- One tools/call per tool ----------------------------------------------
+
+await withSubnetMcpFixture(env, async (fixtureEnv) => {
+  const options = { envOverride: fixtureEnv };
+  const discovered = await callOk(
+    "discover_subnet_mcp",
+    { surface_id: SUBNET_MCP_FIXTURE_ID },
+    options,
+  );
+  assert.equal(discovered.tools.length, 2);
+  assert.equal(discovered.prompts.length, 1);
+  assert.equal(discovered.resources.length, 1);
+  const prompt = await callOk(
+    "get_subnet_mcp_prompt",
+    {
+      surface_id: SUBNET_MCP_FIXTURE_ID,
+      prompt_name: "plan",
+      arguments: { login: "caller" },
+    },
+    options,
+  );
+  assert.deepEqual(prompt.messages, [{ role: "user", content_index: 0 }]);
+  const resource = await callOk(
+    "read_subnet_mcp_resource",
+    {
+      surface_id: SUBNET_MCP_FIXTURE_ID,
+      resource_uri: "fixture://taxonomy",
+    },
+    options,
+  );
+  assert.deepEqual(resource.resources, [
+    { uri: "fixture://taxonomy", content_index: 0 },
+  ]);
+  for (const [name, tool_name] of [
+    ["read_subnet_mcp", "read"],
+    ["write_subnet_mcp", "write"],
+  ]) {
+    const result = await callOk(
+      name,
+      {
+        surface_id: SUBNET_MCP_FIXTURE_ID,
+        tool_name,
+        arguments: { value: "18446744073709551615" },
+      },
+      options,
+    );
+    assert.equal(result.structured_content.value, "18446744073709551615");
+  }
+});
+
+await withSubnetHttpFixture(env, async (fixtureEnv, state) => {
+  const options = { envOverride: fixtureEnv };
+  const target = { surface_id: SUBNET_HTTP_FIXTURE_ID };
+  const stored = await callOk(
+    "store_surface_credential",
+    { ...target, credential: SUBNET_HTTP_FIXTURE_CREDENTIAL, ttl_seconds: 60 },
+    options,
+  );
+  assert.equal(stored.stored, true);
+  assert.equal(stored.replaced, false);
+  assert.equal(state.encrypted.size, 1);
+  const listed = await callOk("list_surface_credentials", {}, options);
+  assert.equal(listed.count, 1);
+  assert.equal(listed.credentials[0].surface_id, SUBNET_HTTP_FIXTURE_ID);
+  assert.equal(listed.credentials[0].shape, "string");
+  assert.ok(!JSON.stringify(listed).includes(SUBNET_HTTP_FIXTURE_CREDENTIAL));
+  const read = await callOk(
+    "call_subnet_surface",
+    { ...target, path: "/v1/status", method: "GET" },
+    options,
+  );
+  assert.equal(read.credential_source, "stored");
+  assert.equal(read.body.value, "18446744073709551615");
+  // Compare the former successful sweep's probe + second call with reuse of
+  // one response. These extra calls exist only in this offline comparison.
+  const previousProbe = await call(
+    "call_subnet_surface",
+    { ...target, path: "/v1/status", method: "GET" },
+    options,
+  );
+  assert.equal(previousProbe.isError, false);
+  const previousRead = await callOk(
+    "call_subnet_surface",
+    { ...target, path: "/v1/status", method: "GET" },
+    options,
+  );
+  assert.deepEqual(previousRead.body, read.body);
+  assert.equal(state.requests.length, 3);
+  for (const request of state.requests.slice(1)) {
+    assert.equal(request.url, state.requests[0]!.url);
+    assert.equal(request.method, state.requests[0]!.method);
+    assert.equal(request.body, state.requests[0]!.body);
+    assert.deepEqual([...request.headers], [...state.requests[0]!.headers]);
+  }
+  const body = { value: "18446744073709551615", items: [null, false, 0] };
+  const written = await callOk(
+    "write_subnet_surface",
+    { ...target, path: "/v1/echo", method: "POST", json_body: body },
+    options,
+  );
+  assert.equal(written.credential_source, "stored");
+  assert.deepEqual(written.body.received, body);
+  assert.equal(state.requests[3]!.body, JSON.stringify(body));
+  assert.equal(
+    state.requests[3]!.headers.get("content-type"),
+    "application/json",
+  );
+  const deleted = await callOk("delete_surface_credential", target, options);
+  assert.equal(deleted.deleted, true);
+  assert.equal(state.encrypted.size, 0);
+  assert.equal(
+    (await callOk("delete_surface_credential", target, options)).deleted,
+    false,
+  );
+  assert.equal(
+    (await callOk("list_surface_credentials", {}, options)).count,
+    0,
+  );
+  const denied = await call(
+    "write_subnet_surface",
+    { ...target, path: "/v1/echo", method: "POST", json_body: body },
+    options,
+  );
+  assert.equal(denied.isError, true);
+  assert.equal(
+    state.requests.length,
+    4,
+    "Deleted credentials fail before HTTP",
+  );
+  const verified = await callOk(
+    "verify_integration",
+    { surface_id: SUBNET_VERIFY_FIXTURE_ID },
+    options,
+  );
+  assert.equal(verified.surface_id, SUBNET_VERIFY_FIXTURE_ID);
+  assert.equal(verified.status_code, 200);
+  assert.equal(verified.callable, true);
+  assert.equal(state.requests.length, 5);
+  console.log(
+    "MCP_OFFLINE_HTTP_CONFORMANCE_FIXTURE",
+    JSON.stringify({
+      tools_exercised: 6,
+      newly_validated_responses: 5,
+      credential_metadata_rows: 1,
+      encrypted_records_after_delete: state.encrypted.size,
+      previous_fixture_read_invocations: 2,
+      current_fixture_read_invocations: 1,
+      request_bytes_and_response_body_equal: true,
+      http_execution_requests: 4,
+      verification_requests: 1,
+      provider_fixture_requests: state.requests.length,
+      production_requests: 0,
+    }),
+  );
+});
+
+await withMcpProxyFixture(env, async (fixtureEnv, state) => {
+  const options = { envOverride: fixtureEnv };
+  for (const network of ["finney", "test"] as const) {
+    const result = await callOk("call_rpc", { network, method: "system_chain" }, options);
+    assert.equal(result.network, network);
+    assert.equal(result.endpoint_id, `fixture-${network}`);
+    assert.deepEqual(result.result, { network, wide: "18446744073709551615", nullable: null });
+  }
+  assert.equal(state.requests.length, 2);
+  const query = `query Q($netuid: Int!) {
+    main: subnet(netuid: $netuid) { netuid name description }
+    test: subnet(netuid: $netuid, network: test) { netuid name description }
+    page: subnets(limit: 1) { items { netuid name } total next_cursor }
+  }`;
+  const selected = await callOk("query_graphql", { query, variables: { netuid: 7 } }, options);
+  assert.deepEqual(selected.errors, []);
+  assert.deepEqual(selected.data.main, { netuid: 7, name: "finney fixture 7", description: null });
+  assert.deepEqual(selected.data.test, { netuid: 7, name: "test fixture 7", description: null });
+  assert.equal(selected.data.page.total, 2);
+  assert.equal(selected.data.page.next_cursor, "7");
+  assert.deepEqual(selected.data.page.items, [{ netuid: 7, name: "finney fixture 7" }]);
+  const next = await callOk("query_graphql", {
+    query: 'query { subnets(limit: 1, cursor: "7") { items { netuid name } total next_cursor } }',
+  }, options);
+  assert.deepEqual(next.data.subnets.items, [{ netuid: 8, name: "finney fixture 8" }]);
+  assert.equal(next.data.subnets.next_cursor, null);
+  const named = await callOk("list_subnets", { limit: 2 }, options);
+  const expected = [selected.data.page.items[0], next.data.subnets.items[0]];
+  assert.deepEqual(named.subnets.map((row: Row) => ({ netuid: row.netuid, name: row.title })), expected);
+  const response = await handleRequest(new Request("https://mcp-proxy-fixture.example/api/v1/subnets?limit=2"), apiEnv(fixtureEnv), accountCtx);
+  assert.equal(response.status, 200);
+  const rest = await response.json() as Row;
+  assert.deepEqual(rest.data.subnets.map((row: Row) => ({ netuid: row.netuid, name: row.name })), expected);
+  const partial = await callOk("query_graphql", {
+    query: '{ __typename subnet(netuid: 7) { endpoints(kind: "bogus") { id } } }',
+  }, options);
+  assert.deepEqual(partial.data, { __typename: "Query", subnet: null });
+  assert.equal(partial.errors.length, 1);
+  assert.equal(partial.errors[0].extensions.code, "BAD_USER_INPUT");
+  for (const query of ["{ definitely_not_a_fixture_field }", "mutation { __typename }"]) {
+    const denied = await call("query_graphql", { query }, options);
+    assert.equal(denied.isError, true);
+    assert.equal(denied.structuredContent.error.code, "invalid_graphql_query");
+  }
+  assert.equal(state.requests.length, 2, "GraphQL fixtures make no provider request");
+  console.log("MCP_PROXY_CONFORMANCE_FIXTURE", JSON.stringify({
+    newly_validated_responses: 2, rpc_networks: 2, rpc_provider_fixture_requests: 2,
+    graphql_populated_rows: 2, graphql_partial_error_rows: 1,
+    graphql_matches_named_mcp_and_rest_selection: true,
+    graphql_provider_requests: 0, production_requests: 0,
+  }));
+});
 
 await callOk("search_subnets", { query: "subnet", limit: 5 });
 await callOk("find_subnets_by_capability", { capability: "data", limit: 5 });
@@ -1319,6 +1576,40 @@ assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
 // Account tools are store-backed too; the cold env degrades each to its
 // schema-stable empty payload (validated against the declared outputSchema).
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+for (const network of ["finney", "test"]) {
+  const quote = await callOk("get_subnet_stake_quote", {
+    netuid: 7,
+    amount: 10,
+    network,
+  });
+  assert.equal(quote.direction, "stake");
+  assert.ok(quote.expected_out > 0);
+  assert.equal(quote.tao_in_pool_tao, null);
+  const preview = await callOk("get_stake_action_preview", {
+    netuid: 7,
+    amount: 10,
+    network,
+  });
+  assert.equal(preview.estimated_out.amount, quote.expected_out);
+}
+const nativeRuntime = await callOk("get_native_runtime", {
+  operations: [
+    { kind: "storage", pallet: "System", member: "Number" },
+    { kind: "prepare", pallet: "System", member: "remark", args: ["0x010203"] },
+  ],
+});
+assert.equal(nativeRuntime.results[0].value, "500");
+assert.equal(nativeRuntime.results[1].call_data, "0x00000c010203");
+const basketDirectory = await callOk("get_root_baskets", {});
+assert.equal(basketDirectory.status, "available");
+assert.equal(basketDirectory.data.kind, "directory");
+assert.equal(basketDirectory.data.pricing[0].spot_nav_rao, BASKET_FIXTURE_WIDE);
+const basketAccount = await callOk("get_account_root_baskets", { ss58: SS58 });
+assert.equal(basketAccount.status, "available");
+assert.equal(basketAccount.data.kind, "account");
+assert.equal(basketAccount.data.entries.length, 1);
+assert.ok(basketAccount.data.entries[0].position);
+assert.ok(basketAccount.data.entries[0].claim);
 const account = await callOk("get_account", { ss58: SS58 });
 assert.ok(
   Array.isArray(account.registrations) && Array.isArray(account.recent_events),
@@ -1993,24 +2284,6 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
     "needs the AI layer, which is unbound in the hermetic harness (ai_unavailable)",
   ],
   [
-    "call_rpc",
-    "read-only RPC proxying is intentionally disabled until endpoint scoring and abuse controls land (rpc_proxy_disabled)",
-  ],
-  [
-    "write_subnet_surface",
-    // #11568. Its READ sibling call_subnet_surface is swept here and validated
-    // against this exact same outputSchema, so the envelope is proven -- the
-    // two tools are one implementation and differ only in which verbs they
-    // will issue.
-    //
-    // The write half cannot be swept, and deliberately so. Succeeding would
-    // mean this gate issuing a real POST/PUT/PATCH/DELETE against a third
-    // party's host on every CI run, which is not a thing a validation sweep
-    // should do at any frequency. The hermetic fixture declares no write
-    // operation either, so the call is refused before a response exists.
-    "issuing real writes to third-party subnet hosts is not something a sweep may do; the identical response envelope is validated via its read sibling call_subnet_surface",
-  ],
-  [
     "get_deregistration_ranking",
     // NOT a gap in the tool -- this is the decline working. The committed
     // economics artifact the harness falls back to is a captured snapshot that
@@ -2023,32 +2296,12 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
     "the committed economics artifact predates the NetworkImmunityPeriod capture, and the ordering declines rather than computing without it (deregistration_ranking_unavailable)",
   ],
   [
-    "query_graphql",
-    "executes against the live GraphQL schema, which the artifact harness does not serve",
-  ],
-  [
     "get_webhook_subscription",
     "the webhook subscription store is not configured on this deployment (webhooks_unavailable)",
   ],
   [
     "get_alert_trigger",
     "the alert-triggers tier is not bound to this deployment (alert_triggers_unavailable)",
-  ],
-  [
-    "store_surface_credential",
-    "the harness has an authenticated account but no credential-store encryption secret",
-  ],
-  [
-    "list_surface_credentials",
-    "the harness has an authenticated account but no credential-store encryption secret",
-  ],
-  [
-    "delete_surface_credential",
-    "the harness has an authenticated account but no credential-store encryption secret",
-  ],
-  [
-    "verify_integration",
-    "requires ONE OF surface_id/netuid, a cross-field constraint the published object schema cannot express -- MCP requires a top-level type:object, so zod cannot emit the anyOf that would say so, and the sweep has no required argument to synthesise from",
   ],
   [
     "get_chain_activity",
@@ -2122,6 +2375,8 @@ for (const [toolName, directory] of Object.entries(SLUG_REGISTRIES)) {
   );
 }
 
+let sweepSuccesses = 0;
+let sweepInvocations = 0;
 for (const def of listToolDefinitions()) {
   if (RESPONSE_VALIDATED.has(def.name)) continue;
   if (RESPONSE_UNVALIDATED_REASONS.has(def.name)) continue;
@@ -2141,6 +2396,7 @@ for (const def of listToolDefinitions()) {
   // an agent copies. That is a defect whatever the environment, so it fails
   // here rather than being absorbed into the allowlist below.
   const probe = await call(def.name, args);
+  sweepInvocations++;
   if (probe.isError) {
     const text = String(probe.content?.[0]?.text ?? "");
     assert.ok(
@@ -2150,8 +2406,18 @@ for (const def of listToolDefinitions()) {
     );
     continue;
   }
-  await callOk(def.name, args);
+  validateSuccessfulResult(def.name, probe);
+  sweepSuccesses++;
 }
+console.log(
+  "MCP_RESPONSE_SWEEP_FIXTURE",
+  JSON.stringify({
+    tool_invocations: sweepInvocations,
+    successful_responses_validated: sweepSuccesses,
+    duplicate_invocations_removed: sweepSuccesses,
+    production_requests: 0,
+  }),
+);
 
 // --- A `fields` projection must satisfy the tool's own schema (#9880) ------
 //
@@ -2559,4 +2825,12 @@ console.log(
     schemaService ? "all" : "all-but-schema"
   } tools/call + the resources/subscribe -> ingest -> notify round trip ` +
     `+ the subnet-status subscribe -> notify-changed -> notify round trip.`,
+);
+console.log(
+  "MCP_OFFLINE_NETWORK_FIXTURE",
+  JSON.stringify({
+    blocked_unmocked_fetch_attempts: blockedUnmockedFetches,
+    outgoing_network_requests: 0,
+    production_requests: 0,
+  }),
 );

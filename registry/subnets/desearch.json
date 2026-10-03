@@ -1416,6 +1416,56 @@
         "https://www.desearch.ai/openapi.json"
       ],
       "url": "https://api.desearch.ai/web/crawl"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "x-api-key",
+        "scheme": "api-key",
+        "scopes_note": "Caller-owned Desearch API key. Catalog discovery is public; tool calls spend the caller's own provider account and retain its limits. Authorization bearer is also accepted by the provider; this declaration uses its documented x-api-key header."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-22-desearch-mcp",
+      "kind": "subnet-api",
+      "mcp": {
+        "public_discovery": true,
+        "read_tools": [
+          "ai-search",
+          "x-search",
+          "web-search",
+          "web-links-search",
+          "x-links-search",
+          "x-posts-by-urls",
+          "x-post-by-id",
+          "x-posts-by-user",
+          "x-post-retweeters",
+          "x-user-posts",
+          "x-user-replies",
+          "x-post-replies",
+          "extract",
+          "web-crawl",
+          "x-trends"
+        ],
+        "transport": "streamable-http",
+        "write_tools": []
+      },
+      "name": "Desearch MCP",
+      "notes": "Source-reviewed hosted Streamable HTTP server with all 15 registered read tools: AI/web/X search, extraction, X data and legacy crawl. Stateless per-request caller keys. Public discovery does not grant execution credentials. Pinned source establishes the integration declaration, not live availability; recurring probes remain disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "JSON-RPC"
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "rate_limit_notes": "Provider limits and charges remain with the caller. No availability probe or automatic provider invocation is enabled.",
+      "source_urls": [
+        "https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/README.md",
+        "https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/server.ts",
+        "https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/http.ts"
+      ],
+      "url": "https://mcp.desearch.ai/mcp"
     }
   ],
   "website_url": "https://www.desearch.ai/"

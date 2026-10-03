@@ -3,7 +3,7 @@ title: Chain
 description: Every Chain endpoint in the metagraphed API, with its method and path.
 ---
 
-59 endpoints.
+63 endpoints.
 
 - [Chain Activity](/docs/api-reference/chain/chain-activity) — `GET /api/v1/chain/activity`  
   Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first.
@@ -123,3 +123,11 @@ description: Every Chain endpoint in the metagraphed API, with its method and pa
   Network-scoped form of /api/v1/export/chain-events — prefix the route with a network to choose which chain answers it.
 - [Indexer Lag](/docs/api-reference/chain/indexer-lag) — `GET /api/v1/chain/indexer-lag`  
   Fetch the block-indexing latency card.
+- [Native Runtime](/docs/api-reference/chain/native-runtime) — `POST /api/v1/native-runtime`  
+  Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata.
+- [Native Runtime By Network](/docs/api-reference/chain/native-runtime-by-network) — `POST /api/v1/{network}/native-runtime`  
+  Network-scoped form of /api/v1/native-runtime — prefix the route with a network to choose which chain answers it.
+- [Root Baskets](/docs/api-reference/chain/root-baskets) — `GET /api/v1/root-baskets`  
+  Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex.
+- [Root Baskets By Network](/docs/api-reference/chain/root-baskets-by-network) — `GET /api/v1/{network}/root-baskets`  
+  Network-scoped form of /api/v1/root-baskets — prefix the route with a network to choose which chain answers it.

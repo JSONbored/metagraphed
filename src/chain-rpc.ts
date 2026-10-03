@@ -30,6 +30,7 @@ import {
   ChainRpcBatchSchema,
   ChainRpcEnvelopeSchema,
 } from "../schemas-src/chain-rpc-envelope.ts";
+import { boundedInternalJson } from "./internal-json.ts";
 import {
   admitChainRpcRequest,
   type ChainRpcAdmission,
@@ -106,6 +107,8 @@ export function describeRpcError(error: unknown): string {
 }
 
 export interface ChainRpcOptions {
+  /** Optional streamed response budget; existing callers keep their behavior. */
+  maxResponseBytes?: number;
   /** Injected for tests and for callers that wrap fetch. */
   fetchImpl?: typeof fetch;
   /** Shared operation admission; injected clocks keep scheduling testable. */
@@ -167,7 +170,10 @@ export async function chainRpc(
   // than reading `undefined` off a string.
   let parsedBody: unknown;
   try {
-    parsedBody = await res.json();
+    parsedBody =
+      options.maxResponseBytes === undefined
+        ? await res.json()
+        : await boundedInternalJson(res, options.maxResponseBytes);
   } catch (cause) {
     throw new Error(`${method}: response body was not JSON`, { cause });
   }
@@ -256,7 +262,10 @@ export async function chainRpcBatch(
 
   let parsedBody: unknown;
   try {
-    parsedBody = await res.json();
+    parsedBody =
+      options.maxResponseBytes === undefined
+        ? await res.json()
+        : await boundedInternalJson(res, options.maxResponseBytes);
   } catch (cause) {
     throw new Error(`${label}: response body was not JSON`, { cause });
   }

@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { TransactionSubscriptions } from "@/lib/metagraphed/transaction-subscriptions";
 import type { ApiPromise } from "@polkadot/api";
 import type { SubmittableExtrinsic } from "@polkadot/api/types";
 import type { Signer } from "@polkadot/api/types";
@@ -32,7 +33,7 @@ export interface UseTxStatusResult {
   submit: (
     api: ApiPromise,
     extrinsic: SubmittableExtrinsic<"promise">,
-    options: { signerAddress: string; signer: Signer; idempotencyKey: string },
+    options: { signerAddress: string; signer: Signer; idempotencyKey: string; nonce?: string },
   ) => Promise<void>;
   reset: () => void;
 }
@@ -63,29 +64,31 @@ export function useTxStatus(): UseTxStatusResult {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [blockHash, setBlockHash] = useState<string | null>(null);
   const [error, setError] = useState<DecodedTxError | null>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const [subscriptions] = useState(() => new TransactionSubscriptions());
+  useEffect(() => () => subscriptions.clear(), [subscriptions]);
 
   const reset = useCallback(() => {
-    unsubscribeRef.current?.();
-    unsubscribeRef.current = null;
+    subscriptions.clear();
     setStatus("idle");
     setTxHash(null);
     setBlockHash(null);
     setError(null);
-  }, []);
+  }, [subscriptions]);
 
   const submit = useCallback(
     async (
       api: ApiPromise,
       extrinsic: SubmittableExtrinsic<"promise">,
-      options: { signerAddress: string; signer: Signer; idempotencyKey: string },
+      options: { signerAddress: string; signer: Signer; idempotencyKey: string; nonce?: string },
     ) => {
+      const active = subscriptions.begin();
       setStatus("signing");
       setError(null);
       try {
         const { unsubscribe } = await submitStakeExtrinsic(api, extrinsic, {
           ...options,
           onStatus: (event: BroadcastEvent) => {
+            if (!subscriptions.current(active)) return;
             setTxHash(event.txHash);
             if (event.blockHash) setBlockHash(event.blockHash);
 
@@ -108,13 +111,14 @@ export function useTxStatus(): UseTxStatusResult {
             setStatus(event.status);
           },
         });
-        unsubscribeRef.current = unsubscribe;
+        subscriptions.retain(active, unsubscribe);
       } catch (err) {
+        if (!subscriptions.current(active)) return;
         setError(parseSubmitError(err));
         setStatus("submit-error");
       }
     },
-    [],
+    [subscriptions],
   );
 
   return { status, txHash, blockHash, error, submit, reset };

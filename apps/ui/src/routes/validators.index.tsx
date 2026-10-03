@@ -15,6 +15,7 @@ import { hubMeta } from "@/lib/metagraphed/hub-copy";
  * parameter remains readable so saved links can explain its unavailable state. */
 export const validatorsSearchSchema = defineSearchSchema({
   q: stringSearch(),
+  basket: stringSearch(),
   minStake: numberSearch(0),
   named: booleanSearch(false),
   sort: enumSearch(["name", "keys", "take", "memberships"] as const, "name"),

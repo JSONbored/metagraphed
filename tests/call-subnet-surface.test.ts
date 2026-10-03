@@ -818,6 +818,65 @@ describe("callSubnetSurface", () => {
     assert.ok(result.error.includes("<redacted>"));
   });
 
+  for (const value of ["fixture+key with /?=&%#雪", "fixture-\ud800"]) {
+    for (const percentSpaces of [false, true]) {
+      test(`credential: query errors scrub encoded ${JSON.stringify(value)} with percent spaces ${percentSpaces}`, async () => {
+        let encoded = "";
+        let requests = 0;
+        const result = await callSubnetSurface(
+          { url: "https://example.com/api" },
+          {
+            credential: { location: "query", name: "api_key", value },
+            isUnsafeUrl: SAFE,
+            fetchImpl: async (url) => {
+              requests += 1;
+              const requested = String(url);
+              encoded = new URL(requested).search.slice("?api_key=".length);
+              if (percentSpaces) encoded = encoded.replace(/\+/g, "%20");
+              throw new Error(
+                `fetch failed: https://example.com/api?api_key=${encoded}`,
+              );
+            },
+          },
+        );
+        assert.equal(requests, 1);
+        assert.equal(result.ok, false);
+        assert.equal(
+          result.error,
+          "fetch failed: https://example.com/api?api_key=<redacted>",
+        );
+        assert.ok(!result.error.includes(encoded));
+      });
+    }
+  }
+
+  test("credential bundle: errors remove complete overlapping query values", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "query",
+          values: {
+            short: "fixture-prefix",
+            long: "fixture-prefix/with space",
+            empty: "",
+          },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          throw new Error(
+            `fetch failed: ${url}; raw=fixture-prefix/with space`,
+          );
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.error,
+      "fetch failed: https://example.com/api?short=<redacted>&long=<redacted>&empty=; raw=<redacted>",
+    );
+  });
+
   test("credential: no credential supplied leaves error messages untouched", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
@@ -1125,6 +1184,70 @@ describe("callSubnetSurface", () => {
     assert.ok(!result.error.includes("5F-secret"));
     assert.ok(result.error.includes("<redacted>"));
   });
+
+  for (const method of ["POST", "PUT", "PATCH"])
+    for (const envelope of [false, true])
+      for (const crossOrigin of [false, true])
+        test(`${method} body auth: ${envelope}, ${crossOrigin}`, async () => {
+          const signature = "fixture-body-signature";
+          const body = { prompt: "exact payload" };
+          const expected = JSON.stringify(
+            envelope
+              ? { payload: body, proof: { signature } }
+              : { ...body, signature },
+          );
+          const target = crossOrigin
+            ? "https://next.example/result"
+            : "https://example.com/result";
+          let calls = 0;
+          const result = await callSubnetSurface(
+            { url: "https://example.com/api" },
+            {
+              path: "/api",
+              method,
+              body: JSON.stringify(body),
+              contentType: "application/json",
+              credential: {
+                location: "body",
+                values: { signature },
+                ...(envelope
+                  ? {
+                      bodyEnvelope: {
+                        payloadKey: "payload",
+                        credentialKey: "proof",
+                      },
+                    }
+                  : {}),
+              },
+              isUnsafeUrl: SAFE,
+              fetchImpl: async (url, init) => {
+                calls++;
+                assert.equal(
+                  new URL(String(url)).origin,
+                  "https://example.com",
+                );
+                assert.equal(init!.method, method);
+                assert.equal(init!.body, expected);
+                return calls === 1
+                  ? new Response(null, {
+                      status: 307,
+                      headers: { location: target },
+                    })
+                  : jsonResponse({ exact: true });
+              },
+            },
+          );
+          assert.equal(calls, crossOrigin ? 1 : 2);
+          assert.equal(result.ok, !crossOrigin);
+          if (!result.ok) {
+            assert.equal(result.error_class, "credential_redirect_blocked");
+            assert.equal(result.status_code, 307);
+            assert.equal(JSON.stringify(result).includes(signature), false);
+          } else {
+            assert.deepEqual(result.body, { exact: true });
+            assert.equal(result.url, target);
+          }
+        });
 
   test("credential bundle: preserved across a same-origin redirect, stripped on cross-origin", async () => {
     let calls = 0;
@@ -1542,6 +1665,192 @@ describe("matchSchemaOperation", () => {
 });
 
 describe("body-read deadline (#8655)", () => {
+  test("ready empty chunks cannot starve the text response deadline", async () => {
+    vi.useFakeTimers();
+    let pulls = 0;
+    let cancelled = 0;
+    try {
+      const result = await callSubnetSurface(
+        { url: "https://example.com/stream", probe: { timeout_ms: 30 } },
+        {
+          isUnsafeUrl: SAFE,
+          fetchImpl: async () =>
+            new Response(
+              new ReadableStream<Uint8Array>({
+                start(controller) {
+                  controller.enqueue(
+                    new TextEncoder().encode("data: useful\n\n"),
+                  );
+                },
+                pull(controller) {
+                  pulls++;
+                  vi.setSystemTime(Date.now() + 31);
+                  controller.enqueue(new Uint8Array(0));
+                },
+                cancel() {
+                  cancelled++;
+                },
+              }),
+              { headers: { "content-type": "text/event-stream" } },
+            ),
+        },
+      );
+      assert.equal(result.ok, true);
+      if (!result.ok) return;
+      assert.equal(result.body, "data: useful\n\n");
+      assert.equal(result.truncated, true);
+      assert.ok(pulls <= 2);
+      assert.equal(cancelled, 1);
+      assert.equal(vi.getTimerCount(), 0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  for (const kind of ["binary", "safe redirect", "private redirect"] as const)
+    for (const cancellation of ["pending", "rejected"] as const)
+      test(`${kind}: ${cancellation} cleanup preserves the gate`, async () => {
+        vi.useFakeTimers();
+        let requests = 0;
+        let cancelled = 0;
+        let result: Awaited<ReturnType<typeof callSubnetSurface>> | undefined;
+        const target =
+          kind === "private redirect"
+            ? "https://private.example/result"
+            : "https://next.example/result";
+        const response = new Response(
+          new ReadableStream<Uint8Array>({
+            cancel() {
+              cancelled++;
+              return cancellation === "pending"
+                ? new Promise<void>(() => {})
+                : Promise.reject(new Error("upstream cancellation failed"));
+            },
+          }),
+          kind === "binary"
+            ? { headers: { "content-type": "image/png" } }
+            : { status: 302, headers: { location: target } },
+        );
+        try {
+          const pending = callSubnetSurface(
+            { url: "https://example.com/result", probe: { timeout_ms: 30 } },
+            {
+              isUnsafeUrl: async (url) => url.includes("private.example"),
+              fetchImpl: async () => {
+                requests++;
+                return requests === 1
+                  ? response
+                  : jsonResponse({ exact: "9007199254740993" });
+              },
+            },
+          ).then((value) => {
+            result = value;
+          });
+          await vi.advanceTimersByTimeAsync(40);
+          assert.ok(result, "cleanup still blocks the bounded response");
+          await pending;
+          assert.equal(cancelled, 1);
+          assert.equal(requests, kind === "safe redirect" ? 2 : 1);
+          if (kind === "safe redirect") {
+            assert.equal(result.ok, true);
+            if (result.ok) {
+              assert.deepEqual(result.body, { exact: "9007199254740993" });
+              assert.equal(result.url, target);
+            }
+          } else {
+            assert.equal(result.ok, false);
+            if (!result.ok && kind === "private redirect") {
+              assert.equal(result.private_redirect_blocked, true);
+              assert.equal(result.redirect_target, target);
+            } else if (!result.ok) {
+              assert.equal(result.error, "unsupported content-type: image/png");
+            }
+          }
+          assert.equal(vi.getTimerCount(), 0);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+  for (const stop of ["deadline", "byte limit"] as const)
+    for (const cancellation of ["pending", "rejected"] as const)
+      test(`${stop}: ${cancellation} cancel stays bounded`, async () => {
+        vi.useFakeTimers();
+        const text =
+          stop === "deadline"
+            ? "data: useful\n\n"
+            : "x".repeat(MAX_RESPONSE_BYTES + 1);
+        let cancelled = 0;
+        const response = new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode(text));
+            },
+            cancel() {
+              cancelled++;
+              return cancellation === "pending"
+                ? new Promise<void>(() => {})
+                : Promise.reject(new Error("upstream cancellation failed"));
+            },
+          }),
+          { headers: { "content-type": "text/event-stream" } },
+        );
+        const cancel = vi.spyOn(
+          ReadableStreamDefaultReader.prototype,
+          "cancel",
+        );
+        let requests = 0;
+        let result: Awaited<ReturnType<typeof callSubnetSurface>> | undefined;
+        try {
+          const pending = callSubnetSurface(
+            {
+              url: "https://example.com/stream",
+              probe: { timeout_ms: 30 },
+            },
+            {
+              isUnsafeUrl: SAFE,
+              fetchImpl: async () => {
+                requests++;
+                return response;
+              },
+            },
+          ).then((value) => {
+            result = value;
+          });
+          await vi.advanceTimersByTimeAsync(40);
+          assert.ok(
+            result,
+            "bounded text response still waits for cancellation",
+          );
+          await pending;
+          assert.equal(result.ok, true);
+          if (!result.ok) return;
+          assert.equal(result.body, text.slice(0, MAX_RESPONSE_BYTES));
+          assert.equal(result.truncated, true);
+          assert.equal(requests, 1);
+          assert.equal(cancelled, 1);
+          assert.equal(cancel.mock.calls.length, 1);
+          assert.equal(vi.getTimerCount(), 0);
+          assert.equal(response.body!.locked, false);
+          if (stop === "byte limit" && cancellation === "pending")
+            console.log(
+              "SUBNET_TEXT_CANCELLATION",
+              JSON.stringify({
+                response_bytes: MAX_RESPONSE_BYTES,
+                cancellation_calls: cancel.mock.calls.length,
+                upstream_cancellation_pending: true,
+                response_returned: true,
+                upstream_requests: requests,
+                fixture: true,
+                production: false,
+              }),
+            );
+        } finally {
+          cancel.mockRestore();
+          vi.useRealTimers();
+        }
+      });
+
   test("a failed response stream returns a bounded tool failure without replay or credential disclosure", async () => {
     vi.useFakeTimers();
     try {

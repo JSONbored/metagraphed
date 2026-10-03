@@ -7,19 +7,10 @@
 // marking them auth_required, wrongly re-enabling a dead one) is caught
 // here.
 //
-// Live-verified 2026-07-21:
-//   - sn-10-taofi-openapi: GET https://taofi-doc.web.app/openapi.yaml ->
-//     200 text/yaml, ~44 KB OpenAPI document. probe.enabled: true,
-//     expect: "any" (correctly not "json" -- the response is YAML, not
-//     JSON) already matches this exactly.
-//   - sn-10-taofi-api: GET https://taofi-api.web.app/ -> 404 (the host is
-//     genuinely down/gone right now). The registry already has
-//     probe.enabled: false for this surface -- that already correctly
-//     reflects the live broken state, not a config defect to fix. This
-//     test pins the surface's own metadata (auth_required, url,
-//     schema_url) and the fact that it's deliberately probe-disabled,
-//     without asserting a live call succeeds (it doesn't, and shouldn't be
-//     expected to).
+// Recurring GET/HEAD probes stay separate from explicit calls. TaoFi's
+// published schema declares eight JSON POST operations; a GET 404 at the
+// bare host does not establish their availability. The reviewed-operation
+// positives and permissions are covered in subnet-http-admission.test.ts.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -134,15 +125,12 @@ describe("SN10 Swap call_subnet_surface verification: sn-10-taofi-openapi (#7026
 describe("SN10 Swap call_subnet_surface verification: sn-10-taofi-api (#7026)", () => {
   const SURFACE = surfaceById("sn-10-taofi-api");
 
-  test("the surface is correctly marked probe-disabled, matching its live 404 state", () => {
+  test("POST-only service keeps recurring read probes disabled", () => {
     assert.ok(SURFACE, "registry surface sn-10-taofi-api is present");
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
     assert.equal(SURFACE.url, "https://taofi-api.web.app/");
-    // Live-verified 2026-07-21: this host returns 404. probe.enabled being
-    // false is the CORRECT state here, not a bug to fix -- this test pins
-    // that so a future PR doesn't flip it back to enabled without the host
-    // actually coming back up.
+    // Explicit source-reviewed calls do not enable recurring GET probes.
     assert.equal(SURFACE.probe?.enabled, false);
   });
 });

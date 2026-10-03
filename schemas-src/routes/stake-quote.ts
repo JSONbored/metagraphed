@@ -1,7 +1,6 @@
 // GET /api/v1/subnets/{netuid}/stake-quote (types-epic A pilot route #4 of
-// 5, #7859) — computed-payload envelope variant: no artifact read, pure math
-// (src/stake-quote.ts's computeStakeQuote) against the live economics-tier
-// AMM pool reserves, wired in workers/request-handlers/entities.ts's
+// 5, #7859) — computed-payload envelope variant: finalized runtime simulation,
+// wired in workers/request-handlers/entities.ts's
 // handleSubnetStakeQuote. src/stake-quote.ts already exports its own
 // StakeQuote TS interface (the eventual target of types-epic C's Postgres/
 // domain-type generation) -- this Zod schema is the wire-boundary
@@ -24,7 +23,7 @@ export const SubnetStakeQuoteArtifactSchema = z
     is_root: z
       .boolean()
       .describe(
-        "True for root (netuid 0), which quotes 1:1 with no price impact.",
+        "True for root (netuid 0). Price and fees come from the runtime simulator.",
       ),
     netuid: z.int().min(0),
     price_impact_pct: z.number().min(0),
@@ -34,7 +33,7 @@ export const SubnetStakeQuoteArtifactSchema = z
   })
   .strict()
   .describe(
-    "A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
+    "A read-only finalized runtime stake/unstake simulation. Numeric fields are display values; exact atomic quantities are available through native-runtime. Legacy reserve fields are null; source identity is returned in REST metadata. Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
   );
 export type SubnetStakeQuoteArtifact = z.infer<
   typeof SubnetStakeQuoteArtifactSchema

@@ -58,10 +58,10 @@ export function Raw({
                 <dd>
                   {row.href ? (
                     <a href={row.href} className="text-accent hover:underline">
-                      <code title={row.value}>{row.value}</code>
+                      <code>{row.value}</code>
                     </a>
                   ) : (
-                    <code title={row.value}>{row.value}</code>
+                    <code>{row.value}</code>
                   )}
                 </dd>
                 <CopyButton

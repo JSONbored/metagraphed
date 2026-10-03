@@ -404,7 +404,7 @@
       "id": "sn-64-chutes-sse",
       "kind": "sse",
       "name": "Chutes streaming chat completions",
-      "notes": "POST /v1/chat/completions with `stream: true` yields line-streamed chunks. Endpoint requires an Authorization: Bearer token.",
+      "notes": "Source-reviewed LLM gateway POST operations for chat/completions (streaming or nonstreaming), tokenization and detokenization. Supply the caller's Authorization: Bearer API key and a model accepted by the gateway. Declared optional headers control TEE-only, invocation tracing and thinking; stream can also be passed as a query parameter when absent from the JSON body. Responses retain provider fields/events and existing byte/deadline limits; this declaration does not establish live model availability or enable health probes.",
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -414,9 +414,112 @@
       "source_urls": [
         "https://chutes.ai/docs/getting-started/running-a-chute",
         "https://chutes.ai/docs/guides/streaming",
-        "https://chutes.ai/llms.txt"
+        "https://chutes.ai/llms.txt",
+        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/main.py",
+        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/invocation/router.py",
+        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/user/service.py",
+        "https://github.com/chutesai/chutes/blob/08d79872854a664de16b32b14cd0bf947e427517/chutes/chute/template/vllm.py"
       ],
-      "url": "https://llm.chutes.ai/v1/chat/completions"
+      "url": "https://llm.chutes.ai/v1/chat/completions",
+      "method": "POST",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "http": {
+        "operations": [
+          {
+            "method": "POST",
+            "path": "/v1/chat/completions",
+            "request_content_types": ["application/json"],
+            "request_body_required": true,
+            "parameters": [
+              {
+                "name": "X-TEE-Only",
+                "in": "header"
+              },
+              {
+                "name": "X-Chutes-Trace",
+                "in": "header"
+              },
+              {
+                "name": "X-Enable-Thinking",
+                "in": "header"
+              },
+              {
+                "name": "stream",
+                "in": "query"
+              }
+            ]
+          },
+          {
+            "method": "POST",
+            "path": "/v1/completions",
+            "request_content_types": ["application/json"],
+            "request_body_required": true,
+            "parameters": [
+              {
+                "name": "X-TEE-Only",
+                "in": "header"
+              },
+              {
+                "name": "X-Chutes-Trace",
+                "in": "header"
+              },
+              {
+                "name": "X-Enable-Thinking",
+                "in": "header"
+              },
+              {
+                "name": "stream",
+                "in": "query"
+              }
+            ]
+          },
+          {
+            "method": "POST",
+            "path": "/tokenize",
+            "request_content_types": ["application/json"],
+            "request_body_required": true,
+            "parameters": [
+              {
+                "name": "X-TEE-Only",
+                "in": "header"
+              },
+              {
+                "name": "X-Chutes-Trace",
+                "in": "header"
+              },
+              {
+                "name": "X-Enable-Thinking",
+                "in": "header"
+              }
+            ]
+          },
+          {
+            "method": "POST",
+            "path": "/detokenize",
+            "request_content_types": ["application/json"],
+            "request_body_required": true,
+            "parameters": [
+              {
+                "name": "X-TEE-Only",
+                "in": "header"
+              },
+              {
+                "name": "X-Chutes-Trace",
+                "in": "header"
+              },
+              {
+                "name": "X-Enable-Thinking",
+                "in": "header"
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "auth_required": false,
@@ -1697,6 +1800,112 @@
       },
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/jobs/%7Bjob_id%7D"
+    },
+    {
+      "id": "sn-64-chutes-embeddings",
+      "name": "Chutes embedding inference",
+      "kind": "subnet-api",
+      "url": "https://embed.chutes.ai/v1/embeddings",
+      "provider": "chutes",
+      "auth_required": true,
+      "authority": "community",
+      "public_safe": true,
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "method": "POST",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "http": {
+        "operations": [
+          {
+            "method": "POST",
+            "path": "/v1/embeddings",
+            "request_content_types": ["application/json"],
+            "request_body_required": true,
+            "parameters": [
+              {
+                "name": "X-TEE-Only",
+                "in": "header"
+              },
+              {
+                "name": "X-Chutes-Trace",
+                "in": "header"
+              }
+            ]
+          }
+        ]
+      },
+      "review": {
+        "state": "community-submitted"
+      },
+      "source_urls": [
+        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/main.py",
+        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/invocation/router.py",
+        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/user/service.py",
+        "https://github.com/chutesai/chutes/blob/08d79872854a664de16b32b14cd0bf947e427517/chutes/chute/template/embedding.py"
+      ],
+      "notes": "Source-reviewed embedding gateway POST operation. Supply the caller's Authorization: Bearer API key, model and provider-native JSON fields. TEE-only and trace headers are explicitly declared. Provider quota/access/model behavior is preserved; probes remain disabled. Embedding arrays and usage metadata are returned unchanged."
+    },
+    {
+      "id": "sn-64-chutes-image-generation",
+      "name": "Chutes image generation",
+      "kind": "subnet-api",
+      "url": "https://image.chutes.ai/generate",
+      "provider": "chutes",
+      "auth_required": true,
+      "authority": "community",
+      "public_safe": true,
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "method": "POST",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "http": {
+        "operations": [
+          {
+            "method": "POST",
+            "path": "/generate",
+            "request_content_types": ["application/json"],
+            "request_body_required": true,
+            "parameters": [
+              {
+                "name": "X-TEE-Only",
+                "in": "header"
+              },
+              {
+                "name": "X-Chutes-Trace",
+                "in": "header"
+              }
+            ]
+          }
+        ]
+      },
+      "review": {
+        "state": "community-submitted"
+      },
+      "source_urls": [
+        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/main.py",
+        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/invocation/router.py",
+        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/user/service.py",
+        "https://github.com/chutesai/chutes/blob/08d79872854a664de16b32b14cd0bf947e427517/chutes/chute/template/diffusion.py"
+      ],
+      "notes": "Source-reviewed image gateway POST operation. Supply the caller's Authorization: Bearer API key, model and provider-native JSON fields. TEE-only and trace headers are explicitly declared. Provider quota/access/model behavior is preserved; probes remain disabled. Use response_mode:attachment for complete bounded image bytes."
     }
   ],
   "website_url": "https://chutes.ai/"

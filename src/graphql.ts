@@ -521,7 +521,8 @@ import {
 import { subnetOwnershipHistoryNode } from "./subnet-ownership-answer.ts";
 import { SUBNET_CONVICTION_FIELD_SOURCES } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
-import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
+import { STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
+import { buildRuntimeStakeQuote } from "./runtime-stake-quote.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
@@ -4950,8 +4951,8 @@ const rootValue = {
     return data;
   },
   async subnet_stake_quote(
-    { netuid, amount, direction }: QuerySubnet_Stake_QuoteArgs,
-    context: GqlContext,
+    { netuid, amount, direction, network }: QuerySubnet_Stake_QuoteArgs,
+    _context: GqlContext,
   ) {
     assertNetuidArgument(netuid);
     const directionParam = direction ?? "stake";
@@ -4961,22 +4962,22 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    // Same pure computeStakeQuote over the live pool reserves the REST route +
-    // get_subnet_stake_quote MCP tool run -- no economics logic duplicated, and
-    // still strictly read-only (nothing is built, signed, or submitted).
-    const economics = await loadSubnetEconomics(context, netuid);
-    const result = computeStakeQuote({
+    // The compatibility field shares REST/MCP's finalized chain simulation.
+    const result = await buildRuntimeStakeQuote(
       netuid,
-      taoInPool: economics?.tao_in_pool_tao,
-      alphaInPool: economics?.alpha_in_pool,
       amount,
-      direction: directionParam,
-    });
+      directionParam,
+      undefined,
+      chainNetworkFromChainName(network),
+    );
     if (!result.ok) {
       // The shared calculator's own contract errors (bad amount, dead pool)
       // surface as BAD_USER_INPUT rather than a partially-filled card.
       throw new GraphQLError(result.error, {
-        extensions: { code: "BAD_USER_INPUT" },
+        extensions: {
+          code:
+            result.status < 500 ? "BAD_USER_INPUT" : "INTERNAL_SERVER_ERROR",
+        },
       });
     }
     return { schema_version: 1, ...result.quote };

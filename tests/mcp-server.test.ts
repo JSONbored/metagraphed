@@ -1,3 +1,29 @@
+// Keep the real quote/runtime/codec path; only the chain transport is synthetic.
+vi.mock("../src/runtime-stake-quote.ts", async () => {
+  const actual = await vi.importActual<
+    typeof import("../src/runtime-stake-quote.ts")
+  >("../src/runtime-stake-quote.ts");
+  const { readRuntimeStakeFixture } =
+    await import("./fixtures/runtime-stake-quote.ts");
+  return {
+    ...actual,
+    buildRuntimeStakeQuote: (
+      netuid: number,
+      amount: unknown,
+      direction: string,
+      _read?: Parameters<typeof actual.buildRuntimeStakeQuote>[3],
+      network?: Parameters<typeof actual.buildRuntimeStakeQuote>[4],
+    ) =>
+      actual.buildRuntimeStakeQuote(
+        netuid,
+        amount,
+        direction,
+        readRuntimeStakeFixture,
+        network,
+      ),
+  };
+});
+
 import {
   mcpAccountContext,
   withMcpAccount,
@@ -104,7 +130,10 @@ import {
   buildBlockExtrinsics,
 } from "../src/extrinsics.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.ts";
-import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.ts";
+import {
+  EVM_PRECOMPILE_BY_ADDRESS,
+  functionSelector,
+} from "../src/evm-precompiles.ts";
 import {
   CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
@@ -347,6 +376,7 @@ describe("MCP tool registry", () => {
       if (
         ![
           "invoke_tool",
+          "write_subnet_mcp",
           "write_subnet_surface",
           "store_surface_credential",
           "delete_surface_credential",
@@ -6607,6 +6637,57 @@ describe("MCP run_saved_query (#6755/#6757)", () => {
 describe("MCP decode_evm_call (#6725/#6729)", () => {
   const SUBNET_ADDRESS = "0x0000000000000000000000000000000000000803";
 
+  test("explicit releases decode v470/v471 selectors without a chain request and retain declared malformed arguments", async () => {
+    const input = functionSelector("getTimestamp()");
+    const to = "0x0000000000000000000000000000000000000811";
+    for (const [runtime_spec_version, precompile] of [
+      [430, null],
+      [470, "Timestamp"],
+      [471, "Timestamp"],
+    ] as const) {
+      const res = await callTool(
+        "decode_evm_call",
+        { to, input, runtime_spec_version },
+        {},
+      );
+      assert.equal(res.body.result.isError, false);
+      assert.equal(res.body.result.structuredContent.precompile, precompile);
+      assert.equal(
+        res.body.result.structuredContent.runtime_spec_version,
+        runtime_spec_version,
+      );
+      if (runtime_spec_version === 471)
+        assert.equal(
+          res.body.result.structuredContent.source_commit,
+          "c004cebf360f4088187ee49d851dfb1a1eaaf710",
+        );
+    }
+    const malformed = await callTool(
+      "decode_evm_call",
+      {
+        to: "0x0000000000000000000000000000000000000805",
+        input: functionSelector("setRejectLockedAlpha(bool)"),
+        runtime_spec_version: 470,
+      },
+      {},
+    );
+    assert.equal(malformed.body.result.isError, false);
+    assert.equal(
+      malformed.body.result.structuredContent.function,
+      "setRejectLockedAlpha",
+    );
+    assert.equal(malformed.body.result.structuredContent.args, null);
+    for (const runtime_spec_version of [436, 472]) {
+      const res = await callTool(
+        "decode_evm_call",
+        { to, input, runtime_spec_version },
+        {},
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /runtime_spec_version/);
+    }
+  });
+
   test("decodes a real precompile call end-to-end", async () => {
     const fn = EVM_PRECOMPILE_BY_ADDRESS.get(SUBNET_ADDRESS)!.functions.find(
       (f) => f.name === "getWeightsVersionKey",
@@ -11315,7 +11396,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(typeof out.degraded_reason, "string");
   });
 
-  test("get_subnet_stake_quote quotes a stake against the live pool reserves", async () => {
+  test("get_subnet_stake_quote quotes a stake through the finalized runtime simulator", async () => {
     const res = await callTool(
       "get_subnet_stake_quote",
       { netuid: 64, amount: 1000, direction: "stake" },
@@ -11332,10 +11413,60 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.is_root, false);
     assert.ok(out.expected_out > 0);
     assert.ok(out.price_impact_pct > 0);
-    assert.equal(out.tao_in_pool_tao, STAKE_QUOTE_POOL_ROW.tao_in_pool_tao);
+    assert.equal(out.tao_in_pool_tao, null);
   });
 
-  test("get_subnet_stake_quote quotes an unstake against the live pool reserves", async () => {
+  test("stake quote and preview share the existing native work limiter", async () => {
+    for (const name of ["get_subnet_stake_quote", "get_stake_action_preview"]) {
+      const keys: string[] = [];
+      const res = await callTool(
+        name,
+        { netuid: 64, amount: 1 },
+        {
+          deps: makeDeps({}, {}),
+          env: {
+            RPC_RATE_LIMITER: {
+              limit: async ({ key }: { key: string }) => {
+                keys.push(key);
+                return { success: false };
+              },
+            },
+          } as unknown as Env,
+        },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rate_limited/);
+      assert.equal(keys.length, 1);
+      assert.ok(keys[0]!.startsWith("native-runtime:"));
+    }
+  });
+
+  test("stake quote and preview select testnet and share its native work budget", async () => {
+    for (const name of ["get_subnet_stake_quote", "get_stake_action_preview"]) {
+      const keys: string[] = [];
+      const res = await callTool(
+        name,
+        { netuid: 64, amount: 1, network: "test" },
+        {
+          deps: makeDeps({}, {}),
+          env: {
+            RPC_RATE_LIMITER: {
+              limit: async ({ key }: { key: string }) => {
+                keys.push(key);
+                return { success: true };
+              },
+            },
+          } as unknown as Env,
+        },
+      );
+      assert.notEqual(res.body.result.isError, true);
+      assert.equal(res.body.result.structuredContent.netuid, 64);
+      assert.equal(keys.length, 1);
+      assert.ok(keys[0]!.startsWith("testnet:native-runtime:"));
+    }
+  });
+
+  test("get_subnet_stake_quote quotes an unstake through the finalized runtime simulator", async () => {
     const res = await callTool(
       "get_subnet_stake_quote",
       { netuid: 64, amount: 500, direction: "unstake" },
@@ -11404,7 +11535,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /invalid_direction/);
   });
 
-  test("get_subnet_stake_quote surfaces insufficient_liquidity when the subnet has no pool row", async () => {
+  test("get_subnet_stake_quote surfaces insufficient_liquidity when the chain simulator cannot fill the swap", async () => {
     const res = await callTool(
       "get_subnet_stake_quote",
       { netuid: 999, amount: 10, direction: "stake" },
@@ -11516,7 +11647,7 @@ describe("MCP economics + metagraph data tools", () => {
     }
   });
 
-  test("get_stake_action_preview surfaces insufficient_liquidity when the subnet has no pool row", async () => {
+  test("get_stake_action_preview surfaces insufficient_liquidity when the chain simulator cannot fill the swap", async () => {
     const res = await callTool(
       "get_stake_action_preview",
       { netuid: 999, amount: 10, direction: "stake" },

@@ -106,9 +106,9 @@ describe("formatQuoteHint", () => {
     expect(formatQuoteHint(baseQuote)).toBe("≈ 5.25 α · 0.42% price impact");
   });
 
-  it("formats a 1:1 root-subnet note instead of a price-impact percentage", () => {
+  it("uses the runtime's actual price impact for root too", () => {
     expect(
       formatQuoteHint({ ...baseQuote, is_root: true, expected_out_unit: "tao", expected_out: 10 }),
-    ).toBe("≈ 10τ · root subnet · 1:1");
+    ).toBe("≈ 10τ · 0.42% price impact");
   });
 });

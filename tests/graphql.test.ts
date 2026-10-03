@@ -1,3 +1,29 @@
+// Keep the real quote/runtime/codec path; only the chain transport is synthetic.
+vi.mock("../src/runtime-stake-quote.ts", async () => {
+  const actual = await vi.importActual<
+    typeof import("../src/runtime-stake-quote.ts")
+  >("../src/runtime-stake-quote.ts");
+  const { readRuntimeStakeFixture } =
+    await import("./fixtures/runtime-stake-quote.ts");
+  return {
+    ...actual,
+    buildRuntimeStakeQuote: (
+      netuid: number,
+      amount: unknown,
+      direction: string,
+      _read?: Parameters<typeof actual.buildRuntimeStakeQuote>[3],
+      network?: Parameters<typeof actual.buildRuntimeStakeQuote>[4],
+    ) =>
+      actual.buildRuntimeStakeQuote(
+        netuid,
+        amount,
+        direction,
+        readRuntimeStakeFixture,
+        network,
+      ),
+  };
+});
+
 import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
 installNativeSurfaceFixtures();
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
@@ -11894,7 +11920,7 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     assert.ok(/netuid/i.test(body.errors[0].message));
   });
 
-  test("subnet_stake_quote quotes against the live pool reserves", async () => {
+  test("subnet_stake_quote uses the finalized simulator", async () => {
     const { status, body } = await gql(
       "{ subnet_stake_quote(netuid: 64, amount: 1000) { schema_version netuid direction amount expected_out expected_out_unit spot_price_tao effective_price_tao price_impact_pct is_root } }",
       fixtureEnv(POOL),
@@ -11928,6 +11954,34 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     );
     assert.ok(body.errors, "expected a GraphQL error");
     assert.ok(/direction/i.test(body.errors[0].message));
+  });
+
+  test("subnet_stake_quote selects testnet and reports runtime failures as server errors", async () => {
+    const quotes = await import("../src/runtime-stake-quote.ts");
+    const read = vi.spyOn(quotes, "buildRuntimeStakeQuote");
+    try {
+      const testnet = await gql(
+        "{ subnet_stake_quote(netuid: 64, amount: 1, network: test) { expected_out } }",
+      );
+      assert.equal(testnet.body.errors, undefined);
+      assert.equal(read.mock.calls[0]![4], "testnet");
+      read.mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        code: "stake_quote_failed",
+        error: "The finalized runtime read failed.",
+      });
+      const failure = await gql(
+        "{ subnet_stake_quote(netuid: 64, amount: 1) { expected_out } }",
+      );
+      assert.equal(failure.body.data, null);
+      assert.equal(
+        failure.body.errors[0].extensions.code,
+        "INTERNAL_SERVER_ERROR",
+      );
+    } finally {
+      read.mockRestore();
+    }
   });
 
   test("subnet_stake_quote surfaces the calculator's error for a subnet with no pool", async () => {

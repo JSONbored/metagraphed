@@ -3121,6 +3121,17 @@ export type IntensityDistribution = {
   p90: Scalars['Float']['output'];
 };
 
+export type McpSurfaceAdmission = {
+  __typename?: 'McpSurfaceAdmission';
+  /** Source-reviewed keyless catalog discovery when true. Execution still uses the surface's authentication requirement. False or omission preserves the existing requirement. */
+  public_discovery?: Maybe<Scalars['Boolean']['output']>;
+  read_prompts?: Maybe<Array<Scalars['String']['output']>>;
+  read_resources?: Maybe<Array<Scalars['String']['output']>>;
+  read_tools: Array<Scalars['String']['output']>;
+  transport: Scalars['String']['output'];
+  write_tools: Array<Scalars['String']['output']>;
+};
+
 /** The Bittensor network whose static subnet artifact to read: finney (mainnet, default) or test (testnet). Mirrors the list_subnets MCP tool's network argument. */
 export enum Network {
   Finney = 'finney',
@@ -3791,7 +3802,7 @@ export type Query = {
   subnet_stake_flow: SubnetStakeFlow;
   /** Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves. */
   subnet_stake_moves: SubnetStakeMoves;
-  /** A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
+  /** A read-only finalized runtime stake/unstake simulation: expected amount out, current vs effective price, and price impact including swap fees. Signs and submits nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
   subnet_stake_quote: SubnetStakeQuote;
   /** Per-subnet stake-transfer activity over a 7d/30d window (distinct senders, StakeTransferred count, and transfers per sender); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers. */
   subnet_stake_transfers: SubnetStakeTransfers;
@@ -5149,6 +5160,7 @@ export type QuerySubnet_Stake_QuoteArgs = {
   amount: Scalars['Float']['input'];
   direction?: InputMaybe<Scalars['String']['input']>;
   netuid: Scalars['Int']['input'];
+  network?: InputMaybe<Network>;
 };
 
 
@@ -7598,7 +7610,7 @@ export type SubnetStakeMoves = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
-/** A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
+/** A read-only finalized runtime stake/unstake simulation. Numeric fields are display values; exact atomic quantities are available through native-runtime. Legacy reserve fields are null; source identity is returned in REST metadata. Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
 export type SubnetStakeQuote = {
   __typename?: 'SubnetStakeQuote';
   alpha_in_pool?: Maybe<Scalars['Float']['output']>;
@@ -7608,7 +7620,7 @@ export type SubnetStakeQuote = {
   effective_price_tao: Scalars['Float']['output'];
   expected_out: Scalars['Float']['output'];
   expected_out_unit: Scalars['String']['output'];
-  /** True for root (netuid 0), which quotes 1:1 with no price impact. */
+  /** True for root (netuid 0). Price and fees come from the runtime simulator. */
   is_root: Scalars['Boolean']['output'];
   netuid: Scalars['Int']['output'];
   price_impact_pct: Scalars['Float']['output'];
@@ -8027,10 +8039,12 @@ export type Surface = {
   auth_required: Scalars['Boolean']['output'];
   authority: Scalars['String']['output'];
   classification?: Maybe<Scalars['String']['output']>;
+  http?: Maybe<SurfaceHttp>;
   id: Scalars['String']['output'];
   key?: Maybe<Scalars['String']['output']>;
   kind: Scalars['String']['output'];
   last_verified_at?: Maybe<Scalars['String']['output']>;
+  mcp?: Maybe<McpSurfaceAdmission>;
   /** HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution. */
   method?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
@@ -8062,6 +8076,29 @@ export type SurfaceHistoryChange = {
   /** Coalesced column then overlay id, so it is present on every row including those written before the column was recorded. */
   surface_id?: Maybe<Scalars['String']['output']>;
   url?: Maybe<Scalars['String']['output']>;
+};
+
+export type SurfaceHttp = {
+  __typename?: 'SurfaceHttp';
+  operations: Array<SurfaceHttpOperations>;
+};
+
+export type SurfaceHttpOperations = {
+  __typename?: 'SurfaceHttpOperations';
+  method: Scalars['String']['output'];
+  parameters?: Maybe<Array<SurfaceHttpOperationsParameters>>;
+  path: Scalars['String']['output'];
+  request_body_required?: Maybe<Scalars['Boolean']['output']>;
+  request_content_types?: Maybe<Array<Scalars['String']['output']>>;
+};
+
+export type SurfaceHttpOperationsParameters = {
+  __typename?: 'SurfaceHttpOperationsParameters';
+  allowReserved?: Maybe<Scalars['Boolean']['output']>;
+  explode?: Maybe<Scalars['Boolean']['output']>;
+  in: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  style?: Maybe<Scalars['String']['output']>;
 };
 
 export type SurfaceList = {
@@ -8745,6 +8782,7 @@ export type ResolversTypes = ResolversObject<{
   IntegrationReadinessComponents: ResolverTypeWrapper<IntegrationReadinessComponents>;
   IntensityDistribution: ResolverTypeWrapper<IntensityDistribution>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
+  McpSurfaceAdmission: ResolverTypeWrapper<McpSurfaceAdmission>;
   Network: ResolverTypeWrapper<Network>;
   NetworkParameters: ResolverTypeWrapper<NetworkParameters>;
   NetworkRandomness: ResolverTypeWrapper<NetworkRandomness>;
@@ -8943,6 +8981,9 @@ export type ResolversTypes = ResolversObject<{
   SudoKey: ResolverTypeWrapper<SudoKey>;
   Surface: ResolverTypeWrapper<Surface>;
   SurfaceHistoryChange: ResolverTypeWrapper<SurfaceHistoryChange>;
+  SurfaceHttp: ResolverTypeWrapper<SurfaceHttp>;
+  SurfaceHttpOperations: ResolverTypeWrapper<SurfaceHttpOperations>;
+  SurfaceHttpOperationsParameters: ResolverTypeWrapper<SurfaceHttpOperationsParameters>;
   SurfaceList: ResolverTypeWrapper<SurfaceList>;
   TaoUsd: ResolverTypeWrapper<TaoUsd>;
   TaoUsdConversion: ResolverTypeWrapper<TaoUsdConversion>;
@@ -9217,6 +9258,7 @@ export type ResolversParentTypes = ResolversObject<{
   IntegrationReadinessComponents: IntegrationReadinessComponents;
   IntensityDistribution: IntensityDistribution;
   JSON: Scalars['JSON']['output'];
+  McpSurfaceAdmission: McpSurfaceAdmission;
   NetworkParameters: NetworkParameters;
   NetworkRandomness: NetworkRandomness;
   Neuron: Neuron;
@@ -9414,6 +9456,9 @@ export type ResolversParentTypes = ResolversObject<{
   SudoKey: SudoKey;
   Surface: Surface;
   SurfaceHistoryChange: SurfaceHistoryChange;
+  SurfaceHttp: SurfaceHttp;
+  SurfaceHttpOperations: SurfaceHttpOperations;
+  SurfaceHttpOperationsParameters: SurfaceHttpOperationsParameters;
   SurfaceList: SurfaceList;
   TaoUsd: TaoUsd;
   TaoUsdConversion: TaoUsdConversion;
@@ -11925,6 +11970,15 @@ export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
   name: 'JSON';
 }
 
+export type McpSurfaceAdmissionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['McpSurfaceAdmission'] = ResolversParentTypes['McpSurfaceAdmission']> = ResolversObject<{
+  public_discovery?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  read_prompts?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  read_resources?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  read_tools?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  transport?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  write_tools?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type NetworkParametersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NetworkParameters'] = ResolversParentTypes['NetworkParameters']> = ResolversObject<{
   block_emission_halvings?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   block_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -14435,10 +14489,12 @@ export type SurfaceResolvers<ContextType = GqlContext, ParentType extends Resolv
   auth_required?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   authority?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   classification?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  http?: Resolver<Maybe<ResolversTypes['SurfaceHttp']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   key?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   last_verified_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  mcp?: Resolver<Maybe<ResolversTypes['McpSurfaceAdmission']>, ParentType, ContextType>;
   method?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -14463,6 +14519,26 @@ export type SurfaceHistoryChangeResolvers<ContextType = GqlContext, ParentType e
   source_commit?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   surface_id?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SurfaceHttpResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SurfaceHttp'] = ResolversParentTypes['SurfaceHttp']> = ResolversObject<{
+  operations?: Resolver<Array<ResolversTypes['SurfaceHttpOperations']>, ParentType, ContextType>;
+}>;
+
+export type SurfaceHttpOperationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SurfaceHttpOperations'] = ResolversParentTypes['SurfaceHttpOperations']> = ResolversObject<{
+  method?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  parameters?: Resolver<Maybe<Array<ResolversTypes['SurfaceHttpOperationsParameters']>>, ParentType, ContextType>;
+  path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  request_body_required?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  request_content_types?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+}>;
+
+export type SurfaceHttpOperationsParametersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SurfaceHttpOperationsParameters'] = ResolversParentTypes['SurfaceHttpOperationsParameters']> = ResolversObject<{
+  allowReserved?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  explode?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  in?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  style?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SurfaceListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SurfaceList'] = ResolversParentTypes['SurfaceList']> = ResolversObject<{
@@ -14982,6 +15058,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   IntegrationReadinessComponents?: IntegrationReadinessComponentsResolvers<ContextType>;
   IntensityDistribution?: IntensityDistributionResolvers<ContextType>;
   JSON?: GraphQLScalarType;
+  McpSurfaceAdmission?: McpSurfaceAdmissionResolvers<ContextType>;
   NetworkParameters?: NetworkParametersResolvers<ContextType>;
   NetworkRandomness?: NetworkRandomnessResolvers<ContextType>;
   Neuron?: NeuronResolvers<ContextType>;
@@ -15178,6 +15255,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SudoKey?: SudoKeyResolvers<ContextType>;
   Surface?: SurfaceResolvers<ContextType>;
   SurfaceHistoryChange?: SurfaceHistoryChangeResolvers<ContextType>;
+  SurfaceHttp?: SurfaceHttpResolvers<ContextType>;
+  SurfaceHttpOperations?: SurfaceHttpOperationsResolvers<ContextType>;
+  SurfaceHttpOperationsParameters?: SurfaceHttpOperationsParametersResolvers<ContextType>;
   SurfaceList?: SurfaceListResolvers<ContextType>;
   TaoUsd?: TaoUsdResolvers<ContextType>;
   TaoUsdConversion?: TaoUsdConversionResolvers<ContextType>;

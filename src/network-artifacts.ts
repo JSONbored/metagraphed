@@ -26,6 +26,7 @@ export const NETWORK_PUBLISHED_ARTIFACT_PATHS: readonly string[] = [
   // Not an emitted file: /api/v1/networks is computed live and answered before
   // any network gate, precisely so it never 404s. Listed here so the matrix
   // reports it as served — it is the one route guaranteed on every network.
+  "/metagraph/native-runtime.json",
   "/metagraph/networks.json",
 ];
 
@@ -38,5 +39,6 @@ export const NETWORK_PUBLISHED_ARTIFACT_PATHS: readonly string[] = [
  * file the build writes, or the matrix is promising a 404.
  */
 export const NETWORK_COMPUTED_ARTIFACT_PATHS: readonly string[] = [
+  "/metagraph/native-runtime.json",
   "/metagraph/networks.json",
 ];

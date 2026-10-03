@@ -538,3 +538,27 @@ Three routes were served in production while absent from `openapi.json`, each on
 ## Current Domain Scope
 
 Use `metagraph.sh` for the current launch. Do not use `subnet.health` for v1 registry, status, badge, health, or probe contracts.
+
+## Native runtime
+
+`POST /api/v1/native-runtime` and the `get_native_runtime` MCP tool share one
+metadata-backed request and response contract. The computed contract artifact
+`/metagraph/native-runtime.json` identifies this response in the catalogue; no
+static file is written. Storage and map reads, constants, audited runtime reads,
+bounded EVM/Wasm simulations and unsigned call preparation share one finalized
+source and portable type registry. Integers and fixed-point bits remain exact.
+The response uses `Cache-Control: no-store` without an ETag. The website's
+`/apis/native` explorer provides discovery, reads and explicit wallet review.
+See [native runtime operations and bounds](native-runtime-contract.md).
+
+## Native Root baskets
+
+`GET /api/v1/root-baskets` returns at most 64 pricing rows. Add `hotkey=<AccountId32 hex>` for one fund's summary, holdings, trading gates and baseline. `GET /api/v1/accounts/{ss58}/root-baskets` returns position and dust-aware claim views for at most 16 staking relationships. The MCP tools `get_root_baskets` and `get_account_root_baskets` use the same reader and response schema.
+
+The computed contract artifacts `/metagraph/root-baskets.json` and `/metagraph/accounts/{ss58}/root-baskets.json` identify these live reads in the route catalogue. Their values are computed by the bounded reader on demand.
+
+All reads use one finalized block. Resume directory pages with `cursor=next_after` and account pages with `offset=next_offset`, always supplying `as_of=source.finalized_block_hash` from the first page. An empty directory page with a cursor is not complete. Account entries with null position/claim are confirmed non-basket relationships; continuation counts relationships rather than non-null positions. Exact balances and U64F64 bits remain decimal strings. Claim estimates describe the audited runtime's dust policy, not a promise that a transaction will execute or pay that amount.
+
+The version-specific readers cover the audited official node-subtensor releases from v441 through v470 and their basket API versions. See [supported layouts and per-era fields](root-basket-compatibility.md). The source records the matching decoder identity. Unsupported layouts return `status: unsupported`; failed RPC, unavailable historical state, or decode failures return `status: unavailable`, with null source/data. Confirmed empty state remains `status: available`. The current-state routes use the short, unsettled cache profile and share the existing RPC rate limiter across REST/MCP. They perform no persistence, signing or submission, and do not reinterpret the deprecated v440 `/root-claim` response.
+
+`collectRootBasketObservation` follows the complete bounded directory and records every page receipt, including empty nonterminal pages, at one finalized source. It includes holdings, baseline and trading status and has explicit page/fund/response budgets. This collector is not scheduled or connected to the historical v454 receiver. Persistence, history activation, and historical return materialization require separate qualification; these current-state reads do not claim historical coverage.

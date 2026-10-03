@@ -5,6 +5,11 @@
 // hand-written literal field-for-field.
 import { z } from "zod";
 import { SurfaceVerifyArtifactSchema } from "../routes/ai-native.ts";
+import { AuthSchema } from "../routes/subnet-detail.ts";
+import { McpSurfaceAdmissionSchema } from "../subnet-mcp-admission.ts";
+import { HttpSurfaceAdmissionSchema } from "../subnet-http-admission.ts";
+import { QUERY_ENUMS } from "../query-enums.ts";
+import { MAX_SUBNET_BODY_ARTIFACT_BYTES } from "../../src/subnet-body-artifact-policy.ts";
 import {
   OpenArraySchema,
   OpenObjectSchema,
@@ -35,7 +40,8 @@ export type HowDoICallInput = z.infer<typeof HowDoICallInputSchema>;
  *
  * Modeled, not derived. This is not a subset of the catalog service record:
  * `auth` collapses the catalog's auth_required/auth_schemes pair into
- * `{required, schemes}`, `health` keeps three of its seven fields, and
+ * `{required, schemes}` with the canonical `detail` for reviewed services,
+ * `health` keeps three of its seven fields, and
  * `schema`/`fixture` are rewritten into "can I use this, and how" answers.
  * Deriving from AgentCatalogServiceSchema fails against production on
  * `auth.scheme` alone.
@@ -58,8 +64,16 @@ const HowDoICallServiceSchema = z
       ),
     base_url: z.string(),
     callable: z.boolean(),
+    mcp: McpSurfaceAdmissionSchema.optional(),
+    mcp_discovery: z.string().optional(),
+    http: HttpSurfaceAdmissionSchema.optional(),
+    http_execution: z.string().optional(),
     auth: z
-      .object({ required: z.boolean(), schemes: z.array(z.string()) })
+      .object({
+        required: z.boolean(),
+        schemes: z.array(z.string()),
+        detail: AuthSchema,
+      })
       .strict(),
     // NULL for a declared non-GET service (#11146): the generator refuses to
     // emit a GET snippet against a mutation, and the catalog row stored none.
@@ -188,14 +202,7 @@ export type VerifyIntegrationOutput = z.infer<
  * accepting it would mean validating against a requestBody the operation
  * essentially never declares.
  */
-export const CALL_SURFACE_METHODS = [
-  "GET",
-  "HEAD",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-] as const;
+export const CALL_SURFACE_METHODS = QUERY_ENUMS.httpOperationMethod;
 export const CALL_SURFACE_BODY_METHODS = ["POST", "PUT", "PATCH"] as const;
 
 /**
@@ -229,8 +236,16 @@ export const CALL_SURFACE_WRITE_METHODS = CALL_SURFACE_METHODS.filter(
  * accept for the parts that are genuinely identical -- the surface, where to
  * send the request, and the caller's own credential.
  */
+const DeclaredHttpValuesSchema = z.record(z.string(), z.json());
 const surfaceCallSharedShape = {
   surface_id: surfaceIdSchema(),
+  response_mode: z
+    .literal("attachment")
+    .optional()
+    .describe(
+      "Return complete binary responses as native MCP image/audio content or an embedded binary resource, with only MIME type, size and SHA-256 in body. The existing 256 KiB response limit and deadline apply; incomplete binary responses are rejected. JSON/text behavior is unchanged. Omit to preserve the ordinary binary-content rejection.",
+    )
+    .meta({ examples: ["attachment"] }),
   query: z
     .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
     .optional()
@@ -240,6 +255,21 @@ const surfaceCallSharedShape = {
         "supported — encode them into `path` or `body` instead.",
     )
     .meta({ examples: ["inference"] }),
+  query_values: DeclaredHttpValuesSchema.optional()
+    .describe(
+      "Declared query values, including arrays and objects. Requires path/method and captured or reviewed parameters; honors OpenAPI query styles/explode and captured Swagger 2 collectionFormat/JSON content. Do not repeat a name in query. Use query for already serialized scalar fields. Style nulls/empty collections are omitted; JSON content preserves all JSON roots. Credentials override emitted names. Nested style values need declared JSON content.",
+    )
+    .meta({ examples: [{ color: ["blue", "black"] }] }),
+  header_values: DeclaredHttpValuesSchema.optional()
+    .describe(
+      "Captured or reviewed custom headers; requires path/method. OpenAPI simple/explode, captured JSON content and Swagger collectionFormat. Names are case-insensitive; credentials take precedence. Transport/auth headers use dedicated fields.",
+    )
+    .meta({ examples: [{ "X-Request-Version": "1" }] }),
+  cookie_values: DeclaredHttpValuesSchema.optional()
+    .describe(
+      "Captured or reviewed cookies; requires path/method. OpenAPI form/cookie style. Cookie style needs provider-escaped values; captured content needs a serialized string. Credentials override names; cross-origin redirects strip values.",
+    )
+    .meta({ examples: [{ locale: "en" }] }),
   path: z
     .string()
     .optional()
@@ -279,12 +309,65 @@ const surfaceCallSharedShape = {
 
 /** The body fields, which only the write tool has any use for. */
 const surfaceWriteBodyShape = {
+  body_artifact: z
+    .object({
+      url: z
+        .string()
+        .url()
+        .max(2048)
+        .describe(
+          "Public raw.githubusercontent.com URL pinned to a full 40-character commit, without credentials, query or fragment.",
+        ),
+      sha256: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/)
+        .describe("SHA-256 of the exact uncompressed request bytes."),
+      bytes: z
+        .int()
+        .min(0)
+        .max(MAX_SUBNET_BODY_ARTIFACT_BYTES)
+        .describe(
+          "Exact complete request payload length, at most 10,000,000 bytes including multipart framing.",
+        ),
+    })
+    .strict()
+    .optional()
+    .describe(
+      "Exact request bytes from a checksum-bound public artifact, without putting file base64 in chat context. Use only one of body_artifact, body_base64, json_body or body. Requires an admitted body/media declaration. Multipart must already be encoded with the matching content_type boundary. The source is fetched once without caller credentials, under the target fetch deadline; integrity succeeds before any provider write. No persistent storage. JSON body credentials cannot be merged.",
+    )
+    .meta({
+      examples: [
+        {
+          url: "https://raw.githubusercontent.com/example/uploads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/request.bin",
+          sha256:
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          bytes: 0,
+        },
+      ],
+    }),
+  body_base64: z
+    .string()
+    .regex(
+      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)?(?![\s\S])/,
+    )
+    .optional()
+    .describe(
+      "Exact HTTP bytes as canonical padded base64, decoded once. Use only one of body_base64, json_body or body. Requires a captured/reviewed body declaration and concrete media type; multipart needs content_type with its boundary and an already encoded body. JSON body credentials cannot be merged. The 64 KiB complete MCP request limit includes base64 and envelope overhead.",
+    )
+    .meta({ contentEncoding: "base64", examples: ["AP+A"] }),
+  json_body: z
+    .json()
+    .optional()
+    .describe(
+      "JSON request value, including an array, string, number, boolean or null. Sent as JSON without pre-serializing or escaping it into a string. Use only one of json_body, body or body_base64. Requires application/json or +json media through OpenAPI requestBody or Swagger 2 body/consumes; flat body credentials require an object, while a declared credential envelope preserves any JSON payload.",
+    )
+    .meta({ examples: [[{ op: "replace", path: "/name", value: "ada" }]] }),
   body: z
     .union([OpenObjectSchema, z.string()])
     .optional()
     .describe(
       "Request body: an object (sent as JSON) or a pre-serialized string. " +
-        "Validated against the matched operation's declared request body.",
+        "Matches the captured/reviewed operation's body/media declaration; the provider validates fields.",
     )
     .meta({ examples: [{ prompt: "hello" }] }),
   content_type: z
@@ -339,7 +422,19 @@ export const WriteSubnetSurfaceInputSchema = z
       )
       .meta({ examples: ["POST"] }),
   })
-  .strict();
+  .strict()
+  .meta({
+    not: {
+      anyOf: [
+        { required: ["body", "json_body"] },
+        { required: ["body", "body_base64"] },
+        { required: ["json_body", "body_base64"] },
+        { required: ["body_artifact", "body"] },
+        { required: ["body_artifact", "json_body"] },
+        { required: ["body_artifact", "body_base64"] },
+      ],
+    },
+  });
 export type WriteSubnetSurfaceInput = z.infer<
   typeof WriteSubnetSurfaceInputSchema
 >;
@@ -356,6 +451,9 @@ export type WriteSubnetSurfaceInput = z.infer<
  */
 export type SubnetSurfaceCallArgs = Omit<CallSubnetSurfaceInput, "method"> & {
   method?: (typeof CALL_SURFACE_METHODS)[number];
+  json_body?: WriteSubnetSurfaceInput["json_body"];
+  body_base64?: WriteSubnetSurfaceInput["body_base64"];
+  body_artifact?: WriteSubnetSurfaceInput["body_artifact"];
   body?: WriteSubnetSurfaceInput["body"];
   content_type?: WriteSubnetSurfaceInput["content_type"];
 };

@@ -14,6 +14,7 @@ import {
   type SerializedOperatorRow,
 } from "./validator-operators";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
+import type { McpSurfaceAdmissionSchema } from "../../../../../schemas-src/subnet-mcp-admission.ts";
 import type {
   AdapterSnapshot,
   AgentResource,
@@ -1788,10 +1789,14 @@ function normalizeAgentCatalogSummary(raw: unknown): AgentCatalogSummary | null 
   };
 }
 
-function normalizeAgentCatalogService(raw: unknown): AgentCatalogService | null {
+function normalizeAgentCatalogService(
+  raw: unknown,
+  mcpSchema: typeof McpSurfaceAdmissionSchema,
+): AgentCatalogService | null {
   if (!isRecord(raw)) return null;
   const healthRaw = isRecord(raw.health) ? raw.health : undefined;
   const eligRaw = isRecord(raw.eligibility) ? raw.eligibility : undefined;
+  const mcp = raw.mcp === undefined ? undefined : mcpSchema.safeParse(raw.mcp);
   return {
     kind: coerceString(raw.kind),
     capability: coerceString(raw.capability),
@@ -1801,6 +1806,7 @@ function normalizeAgentCatalogService(raw: unknown): AgentCatalogService | null 
     authority: coerceString(raw.authority),
     auth_required: booleanValue(raw.auth_required),
     auth_schemes: stringArray(raw.auth_schemes),
+    ...(mcp?.success ? { mcp: mcp.data } : {}),
     health: healthRaw
       ? {
           status: coerceString(healthRaw.status),
@@ -1824,12 +1830,18 @@ function normalizeAgentCatalogService(raw: unknown): AgentCatalogService | null 
   };
 }
 
-export function normalizeAgentCatalogDetail(raw: unknown, netuid: number): AgentCatalogDetail {
+export async function normalizeAgentCatalogDetail(
+  raw: unknown,
+  netuid: number,
+): Promise<AgentCatalogDetail> {
+  // Catalog validation is needed on detail requests, not every initial page load.
+  const { McpSurfaceAdmissionSchema } =
+    await import("../../../../../schemas-src/subnet-mcp-admission.ts");
   const base = normalizeAgentCatalogSummary(raw) ?? { netuid };
   const d = isRecord(raw) ? raw : {};
   const services = Array.isArray(d.services)
     ? d.services
-        .map(normalizeAgentCatalogService)
+        .map((service) => normalizeAgentCatalogService(service, McpSurfaceAdmissionSchema))
         .filter((s): s is AgentCatalogService => s !== null)
     : [];
   return {
@@ -1879,7 +1891,7 @@ export const agentCatalogDetailQuery = (netuid: number) =>
     queryFn: async ({ signal }) => {
       const res = await apiFetch<unknown>(`/api/v1/agent-catalog/${netuid}`, { signal });
       return {
-        data: normalizeAgentCatalogDetail(res.data, netuid),
+        data: await normalizeAgentCatalogDetail(res.data, netuid),
         meta: res.meta,
         url: res.url,
       } as ApiResult<AgentCatalogDetail>;

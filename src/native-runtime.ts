@@ -1,0 +1,973 @@
+import { z } from "zod";
+import {
+  NativeRuntimeRequestSchema,
+  NativeRuntimeArtifactSchema,
+  NativeRuntimeSourceSchema,
+} from "../schemas-src/routes/native-runtime.ts";
+import {
+  NATIVE_RUNTIME_LIMITS,
+  type NativeMetadata,
+  type NativeType,
+  type NativeField,
+  type NativeStorage,
+} from "./native-runtime-metadata.ts";
+import {
+  decodeNativeValue,
+  encodeNativeValue,
+  nativeStorageKey,
+  nativeHex,
+  nativeStorageEntryKeys,
+  type NativeValue,
+} from "./native-runtime-values.ts";
+import { nativeRuntimeRpc } from "./native-runtime-rpc.ts";
+import {
+  runtimeApiId,
+  scaleReadMethods,
+  SCALE_READ_API_METHODS,
+} from "./native-runtime-scale.ts";
+import { resolveNativeCodeArtifacts } from "./native-code-artifact.ts";
+import { resolveNativeEvmCall } from "./native-evm-call.ts";
+import { describeRuntimeEvm } from "./evm-runtime-abi.ts";
+import { decodeNativeEvmResult } from "./evm-runtime-return.ts";
+import {
+  NATIVE_EVM_SIMULATION_GAS_BUDGET,
+  nativeEvmSimulationGas,
+} from "./native-evm-simulation.ts";
+import { loadNativeContract } from "./native-runtime-contract.ts";
+import { nativeInnerRecord } from "./native-runtime-inner.ts";
+import { planNativeValuePage } from "./native-runtime-page.ts";
+import {
+  NATIVE_CONTRACT_SIMULATION_LIMITS,
+  nativeContractSimulationWork,
+  assertNativeContractSimulationBudget,
+} from "./native-contract-simulation.ts";
+import { basketReadBatch, type BasketRpc } from "./root-basket-runtime.ts";
+import {
+  CHAIN_NAME_BY_NETWORK,
+  chainNetworkFromChainName,
+  type ChainNetworkId,
+} from "./chain-network.ts";
+
+const header = z.object({
+  number: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]+$/)
+    .max(18),
+});
+const version = z.object({
+  specName: z.literal("node-subtensor"),
+  specVersion: z.int().nonnegative(),
+  transactionVersion: z.int().nonnegative(),
+});
+const advertisedApis = z.object({
+  apis: z
+    .array(
+      z.tuple([z.string().regex(/^0x[0-9a-f]{16}$/), z.int().nonnegative()]),
+    )
+    .max(256)
+    .default([]),
+});
+const blockHash = NativeRuntimeSourceSchema.shape.finalized_block_hash;
+type Operation = z.infer<
+  typeof NativeRuntimeRequestSchema
+>["operations"][number];
+type NativeResult = z.infer<
+  typeof NativeRuntimeArtifactSchema
+>["results"][number];
+// Discovery can carry optional fields. The final canonical schema parse
+// validates and clones their public JSON representation.
+type PlannedResult = Omit<NativeResult, "contract" | "value"> & {
+  contract: Record<string, unknown>;
+  value?: unknown;
+};
+interface NativePlan {
+  result: PlannedResult;
+  call?: { method: string; params: unknown[] };
+  output?: number;
+  item?: NativeStorage;
+  entry?: {
+    prefix: string;
+    palletPrefix: string;
+    item: NativeStorage;
+    limit: number;
+    cursor: string | undefined;
+  };
+  simulationGas?: bigint | null;
+  contractWork?: ReturnType<typeof nativeContractSimulationWork> | null;
+  inner?: ReturnType<typeof nativeInnerRecord>;
+  valuePage?: {
+    inner: boolean;
+    identity: string;
+    decode: (
+      value: unknown,
+    ) => ReturnType<ReturnType<typeof planNativeValuePage>["decode"]> | null;
+  };
+  evm?: ReturnType<typeof resolveNativeEvmCall>["contract"];
+}
+// Metadata also describes node-internal APIs that can execute a block or write
+// a keystore. Only these audited read API families may reach state_call.
+const READ_APIS = new Set([
+  "DelegateInfoRuntimeApi",
+  "NeuronInfoRuntimeApi",
+  "SubnetInfoRuntimeApi",
+  "StakeInfoRuntimeApi",
+  "SubnetRegistrationRuntimeApi",
+  "BetaBasketRuntimeApi",
+  "ProxyFilterRuntimeApi",
+  "SwapRuntimeApi",
+  "AccountNonceApi",
+  "TransactionPaymentApi",
+  "TransactionPaymentCallApi",
+]);
+// Audited against Subtensor v470's runtime implementations. These APIs mix
+// reads with block execution, unsigned submission or local keystore writes,
+// so admission is per method. Ethereum call/create use the official runtime
+// Runner with is_transactional=false, at one finalized state, with an aggregate
+// gas budget. They simulate execution and never submit a transaction.
+const READ_API_METHODS: Readonly<Record<string, readonly string[]>> = {
+  ...SCALE_READ_API_METHODS,
+  EthereumRuntimeRPCApi: [
+    ...SCALE_READ_API_METHODS.EthereumRuntimeRPCApi!,
+    "call",
+    "create",
+  ],
+  ContractsApi: [
+    ...SCALE_READ_API_METHODS.ContractsApi!,
+    "call",
+    "instantiate",
+    "upload_code",
+  ],
+};
+
+function readApiMethod(api: string, member: string) {
+  return (
+    READ_APIS.has(api) ||
+    (Object.hasOwn(READ_API_METHODS, api) &&
+      READ_API_METHODS[api]!.includes(member))
+  );
+}
+
+function contract(
+  metadata: NativeMetadata,
+  root: number,
+  needed: Map<number, NativeType>,
+) {
+  const pending = [root];
+  while (pending.length) {
+    const id = pending.pop()!;
+    if (needed.has(id)) continue;
+    const type = metadata.types.get(id);
+    if (!type) throw new Error("Missing native portable type");
+    needed.set(id, type);
+    const def = type.definition;
+    if (def.kind === "composite")
+      pending.push(...def.fields.map((field) => field.type));
+    else if (def.kind === "variant")
+      pending.push(
+        ...def.variants.flatMap((variant) =>
+          variant.fields.map((field) => field.type),
+        ),
+      );
+    else if (def.kind === "tuple") pending.push(...def.types);
+    else if (def.kind === "bits") {
+      pending.push(def.store, def.order);
+    } else if (def.kind !== "primitive") pending.push(def.type);
+  }
+  return { root_type: root };
+}
+function plan(
+  metadata: NativeMetadata,
+  operation: Operation,
+  needed: Map<number, NativeType>,
+  apiVersions: Map<string, number>,
+  spec: number,
+): NativePlan {
+  if (operation.kind === "runtime_scale") {
+    const id = runtimeApiId(operation.api);
+    const apiVersion = apiVersions.get(id);
+    if (
+      !scaleReadMethods(operation.api, apiVersion).includes(operation.member) ||
+      apiVersion === undefined
+    )
+      throw new Error(
+        "SCALE runtime read is not audited or its API is absent at this source",
+      );
+    return {
+      call: {
+        method: "state_call",
+        params: [`${operation.api}_${operation.member}`, operation.input],
+      },
+      result: {
+        kind: "runtime_scale" as const,
+        api: operation.api,
+        member: operation.member,
+        contract: {
+          encoding: "scale",
+          abi: "caller-encoded",
+          runtime_api_id: id,
+          runtime_api_version: apiVersion,
+        },
+      },
+    };
+  }
+  if (operation.kind === "describe") {
+    if (
+      [
+        operation.pallet,
+        operation.api,
+        operation.type_id,
+        operation.evm,
+      ].filter((value) => value !== undefined).length > 1
+    )
+      throw new Error(
+        "Describe one pallet, runtime API, portable type or EVM precompile at a time",
+      );
+    if (operation.evm !== undefined)
+      return {
+        result: {
+          kind: "describe" as const,
+          ...describeRuntimeEvm(
+            spec,
+            operation.evm,
+            operation.offset,
+            operation.limit,
+          ),
+        },
+      };
+    if (operation.type_id !== undefined)
+      return {
+        result: {
+          kind: "describe" as const,
+          contract: contract(metadata, operation.type_id, needed),
+        },
+      };
+    let items: {
+      kind: string;
+      name?: string;
+      pallet?: string;
+      api?: string;
+      member?: string;
+      key_type?: number | null;
+      key_parts?: number;
+      value_type?: number;
+      optional?: boolean;
+      args?: NativeField[];
+      runtime_api_version?: number;
+    }[];
+    if (operation.pallet !== undefined) {
+      const pallet = metadata.pallets.find(
+        (row) => row.name === operation.pallet,
+      );
+      if (!pallet) throw new Error("Unknown native pallet");
+      const calls =
+        pallet.calls === null
+          ? undefined
+          : metadata.types.get(pallet.calls)?.definition;
+      items = [
+        ...pallet.storage.map((item) => ({
+          kind: "storage",
+          pallet: pallet.name,
+          member: item.name,
+          key_type: item.key,
+          key_parts: item.hashers.length,
+          value_type: item.value,
+          optional: item.optional,
+        })),
+        ...pallet.constants.map((item) => ({
+          kind: "constant",
+          pallet: pallet.name,
+          member: item.name,
+          value_type: item.type,
+        })),
+        ...(calls?.kind === "variant"
+          ? calls.variants.map((call) => ({
+              kind: "prepare",
+              pallet: pallet.name,
+              member: call.name,
+              args: call.fields.map((field) => ({ ...field })),
+            }))
+          : []),
+      ];
+    } else if (operation.api !== undefined) {
+      const api = metadata.apis.find((row) => row.name === operation.api);
+      if (!api) {
+        const apiVersion = apiVersions.get(runtimeApiId(operation.api));
+        const methods = scaleReadMethods(operation.api, apiVersion);
+        if (apiVersion === undefined || methods.length === 0)
+          throw new Error("Unknown native runtime API");
+        items = methods.map((member) => ({
+          kind: "runtime_scale",
+          api: operation.api!,
+          member,
+          runtime_api_version: apiVersion,
+        }));
+      } else
+        items = api.methods
+          .filter((method) => readApiMethod(api.name, method.name))
+          .map((method) => ({
+            kind: "runtime",
+            api: api.name,
+            member: method.name,
+            args: method.inputs.map((field) => ({ ...field })),
+            value_type: method.output,
+          }));
+    } else
+      items = [
+        ...metadata.pallets.map((row) => ({ kind: "pallet", name: row.name })),
+        ...metadata.apis
+          .filter((row) =>
+            row.methods.some((method) => readApiMethod(row.name, method.name)),
+          )
+          .map((row) => ({ kind: "api", name: row.name })),
+        ...(apiVersions.size === 0
+          ? []
+          : Object.keys(SCALE_READ_API_METHODS)
+              .filter(
+                (name) =>
+                  !metadata.apis.some((row) => row.name === name) &&
+                  apiVersions.has(runtimeApiId(name)),
+              )
+              .map((name) => ({ kind: "api", name }))),
+      ];
+    const page = items.slice(
+      operation.offset,
+      operation.offset + operation.limit,
+    );
+    for (const item of page) {
+      for (const key of ["key_type", "value_type"] as const)
+        if (typeof item[key] === "number")
+          contract(metadata, item[key], needed);
+      for (const field of item.args ?? [])
+        contract(metadata, field.type, needed);
+    }
+    return {
+      result: {
+        kind: "describe" as const,
+        value: page,
+        contract: {
+          total: items.length,
+          next_offset:
+            operation.offset + operation.limit < items.length
+              ? operation.offset + operation.limit
+              : null,
+        },
+      },
+    };
+  }
+  if (operation.kind === "runtime") {
+    if (!readApiMethod(operation.api, operation.member))
+      throw new Error("Native runtime method is not an audited read");
+    const api = metadata.apis.find((row) => row.name === operation.api);
+    const method = api?.methods.find((row) => row.name === operation.member);
+    if (!method) throw new Error("Unknown native runtime method");
+    if (operation.args.length !== method.inputs.length)
+      throw new Error("Native runtime argument arity mismatch");
+    let simulationGas = 0n;
+    if (
+      operation.api === "EthereumRuntimeRPCApi" &&
+      (operation.member === "call" || operation.member === "create")
+    ) {
+      simulationGas = nativeEvmSimulationGas(method.inputs, operation.args);
+    }
+    const input = Buffer.concat(
+      method.inputs.map((field, index) =>
+        encodeNativeValue(metadata, field.type, operation.args[index]!),
+      ),
+    );
+    if (input.length > NATIVE_RUNTIME_LIMITS.valueBytes)
+      throw new Error("Native runtime input exceeds byte budget");
+    // The node's state_call executor uses a fresh, discarded overlay. These
+    // official contract APIs simulate execution; no author/submission RPC is
+    // reachable. Bound Weight and code work before issuing any execution RPC.
+    const contractWork =
+      operation.api === "ContractsApi" && operation.member !== "get_storage"
+        ? nativeContractSimulationWork(
+            operation.member,
+            method.inputs,
+            operation.args,
+            operation.code_artifact?.bytes,
+          )
+        : null;
+    return {
+      call: {
+        method: "state_call",
+        params: [`${operation.api}_${method.name}`, nativeHex(input)],
+      },
+      result: {
+        kind: "runtime" as const,
+        api: operation.api,
+        member: method.name,
+        contract: contract(metadata, method.output, needed),
+      },
+      output: method.output,
+      simulationGas,
+      contractWork,
+    };
+  }
+  const pallet = metadata.pallets.find((row) => row.name === operation.pallet);
+  if (!pallet) throw new Error("Unknown native pallet");
+  if (operation.kind === "constant") {
+    const item = pallet.constants.find((row) => row.name === operation.member);
+    if (!item) throw new Error("Unknown native constant");
+    return {
+      result: {
+        kind: "constant" as const,
+        pallet: pallet.name,
+        member: item.name,
+        ...(operation.value_page
+          ? planNativeValuePage(
+              metadata,
+              item.type,
+              operation.value_page,
+            ).decode(item.value)
+          : { value: decodeNativeValue(metadata, item.type, item.value) }),
+        contract: contract(metadata, item.type, needed),
+      },
+    };
+  }
+  if (operation.kind === "prepare") {
+    const calls =
+      pallet.calls === null
+        ? undefined
+        : metadata.types.get(pallet.calls)?.definition;
+    const call =
+      calls?.kind === "variant"
+        ? calls.variants.find((row) => row.name === operation.member)
+        : undefined;
+    if (!call) throw new Error("Unknown native extrinsic");
+    if (operation.args.length !== call.fields.length)
+      throw new Error("Native call argument arity mismatch");
+    metadata.signedExtensions.forEach((extension) => {
+      contract(metadata, extension.type, needed);
+      contract(metadata, extension.additional, needed);
+    });
+    const input = Buffer.concat([
+      Buffer.from([pallet.index, call.index]),
+      ...call.fields.map((field, index) =>
+        encodeNativeValue(metadata, field.type, operation.args[index]!),
+      ),
+    ]);
+    if (input.length > NATIVE_RUNTIME_LIMITS.valueBytes)
+      throw new Error("Native call exceeds byte budget");
+    return {
+      result: {
+        kind: "prepare" as const,
+        pallet: pallet.name,
+        member: call.name,
+        call_data: nativeHex(input),
+        contract: {
+          extrinsic_version: metadata.extrinsicVersion,
+          signed_extensions: metadata.signedExtensions,
+          args: call.fields.map((field) => ({
+            name: field.name,
+            ...contract(metadata, field.type, needed),
+          })),
+        },
+      },
+    };
+  }
+  const item = pallet.storage.find((row) => row.name === operation.member);
+  if (!item) throw new Error("Unknown native storage item");
+  if (operation.kind === "entries") {
+    if (item.key === null)
+      throw new Error("Native entries require a storage map");
+    const prefix = nativeStorageKey(
+      metadata,
+      pallet.prefix,
+      item,
+      operation.args,
+      true,
+    );
+    if (operation.cursor !== undefined) {
+      if (!operation.cursor.startsWith(prefix))
+        throw new Error("Native entries cursor must belong to this map prefix");
+      nativeStorageEntryKeys(metadata, pallet.prefix, item, operation.cursor);
+    }
+    contract(metadata, item.key, needed);
+    return {
+      call: {
+        method: "state_getKeysPaged",
+        params: [prefix, operation.limit + 1, operation.cursor ?? null],
+      },
+      entry: {
+        prefix,
+        palletPrefix: pallet.prefix,
+        item,
+        limit: operation.limit,
+        cursor: operation.cursor,
+      },
+      result: {
+        kind: "entries" as const,
+        pallet: pallet.name,
+        member: item.name,
+        contract: {
+          ...contract(metadata, item.value, needed),
+          key_type: item.key,
+          hashers: item.hashers,
+          prefix,
+        },
+      },
+    };
+  }
+  const key = nativeStorageKey(metadata, pallet.prefix, item, operation.args);
+  return {
+    call: { method: "state_getStorage", params: [key] },
+    item,
+    output: item.value,
+    result: {
+      kind: "storage" as const,
+      pallet: pallet.name,
+      member: item.name,
+      storage_key: key,
+      contract: contract(metadata, item.value, needed),
+    },
+  };
+}
+
+/** One finalized context for a bounded batch; validate every operation before
+ * issuing state reads. Identical calls are coalesced, then restored in order. */
+export async function queryNativeRuntime(
+  raw: unknown,
+  rpc?: BasketRpc,
+  fetchImpl: typeof fetch = fetch,
+) {
+  return readNativeRuntime(
+    NativeRuntimeRequestSchema.parse(raw),
+    rpc,
+    fetchImpl,
+  );
+}
+
+/** Internal entrypoint for callers that have already validated the canonical
+ * request at their REST or MCP boundary. Do not clone and walk it a second time. */
+export async function readNativeRuntime(
+  input: z.infer<typeof NativeRuntimeRequestSchema>,
+  rpc?: BasketRpc,
+  fetchImpl: typeof fetch = fetch,
+) {
+  if (Buffer.byteLength(JSON.stringify(input)) > 32_768)
+    throw new Error("Native request exceeds byte budget");
+  if (
+    input.operations.reduce(
+      (total, op) =>
+        total +
+        (op.kind === "entries" ? op.limit : 0) +
+        ("value_page" in op && op.value_page ? op.value_page.limit : 0),
+      0,
+    ) > 64
+  )
+    throw new Error(
+      input.operations.some((op) => "value_page" in op && op.value_page)
+        ? "Native selected values exceed the aggregate page budget"
+        : "Native entries exceed the aggregate page budget",
+    );
+  if (
+    input.operations.some(
+      (op) => op.kind === "entries" && op.cursor !== undefined,
+    ) &&
+    input.as_of === undefined
+  )
+    throw new Error(
+      "Native entries continuation requires its finalized as_of hash",
+    );
+  if (
+    input.operations.some(
+      (op) =>
+        "value_page" in op &&
+        op.value_page !== undefined &&
+        op.value_page.offset > 0,
+    ) &&
+    input.as_of === undefined
+  )
+    throw new Error(
+      "Native value page continuation requires its finalized as_of hash",
+    );
+  const network: ChainNetworkId = chainNetworkFromChainName(input.network);
+  const read = rpc ?? nativeRuntimeRpc(network);
+  const finalized = blockHash.parse(await read("chain_getFinalizedHead", []));
+  const at = input.as_of ?? finalized;
+  const [rawHeader, rawVersion, genesis] = await basketReadBatch(read, [
+    { method: "chain_getHeader", params: [at] },
+    { method: "state_getRuntimeVersion", params: [at] },
+    { method: "chain_getBlockHash", params: [0] },
+  ]);
+  const height = BigInt(header.parse(rawHeader).number),
+    runtime = version.parse(rawVersion);
+  if (at !== finalized) {
+    const [finalizedHeader, canonical] = await basketReadBatch(read, [
+      { method: "chain_getHeader", params: [finalized] },
+      { method: "chain_getBlockHash", params: [`0x${height.toString(16)}`] },
+    ]);
+    if (
+      height > BigInt(header.parse(finalizedHeader).number) ||
+      blockHash.parse(canonical) !== at
+    )
+      throw new Error("Native as_of must be a canonical finalized ancestor");
+  }
+  const { metadata, sha256, codeHash } = await loadNativeContract(
+    read,
+    at,
+    blockHash.parse(genesis),
+    runtime.specVersion,
+    runtime.transactionVersion,
+    input.operations.some(
+      (operation) =>
+        operation.kind === "runtime" ||
+        (operation.kind === "describe" && operation.api !== undefined),
+    ),
+  );
+  const source = NativeRuntimeSourceSchema.parse({
+    network: CHAIN_NAME_BY_NETWORK[network],
+    network_genesis_hash: genesis,
+    finalized_block_hash: at,
+    finalized_block: height.toString(),
+    runtime_spec_version: runtime.specVersion,
+    runtime_transaction_version: runtime.transactionVersion,
+    metadata_version: metadata.version,
+    metadata_sha256: sha256,
+    runtime_code_hash: codeHash,
+  });
+  const needed = new Map<number, NativeType>();
+  // Typed reads already have metadata signatures. Do not add an API-list
+  // traversal to them just to support the older signature-less read path.
+  let needsApis = false;
+  let hasCodeArtifacts = false;
+  for (const operation of input.operations) {
+    needsApis ||=
+      operation.kind === "runtime_scale" ||
+      (metadata.version === 14 &&
+        operation.kind === "describe" &&
+        operation.pallet === undefined &&
+        operation.type_id === undefined &&
+        operation.evm === undefined);
+    hasCodeArtifacts ||=
+      (operation.kind === "runtime" || operation.kind === "prepare") &&
+      operation.code_artifact !== undefined;
+  }
+  const apiList = needsApis ? advertisedApis.parse(rawVersion).apis : [];
+  const apiVersions = new Map(apiList);
+  if (apiVersions.size !== apiList.length)
+    throw new Error("Duplicate advertised native runtime API identifiers");
+  const operations = hasCodeArtifacts
+    ? await resolveNativeCodeArtifacts(metadata, input.operations, fetchImpl)
+    : input.operations;
+  const innerRecords = new Map<string, ReturnType<typeof nativeInnerRecord>>();
+  const plans = operations.map<NativePlan>((operation) => {
+    let inner: ReturnType<typeof nativeInnerRecord> | undefined;
+    if (
+      (operation.kind === "runtime" || operation.kind === "runtime_scale") &&
+      operation.decode_inner
+    ) {
+      const key = `${operation.api}_${operation.member}`;
+      inner = innerRecords.get(key);
+      if (!inner) {
+        inner = nativeInnerRecord(
+          metadata,
+          runtime.specVersion,
+          sha256,
+          operation.api,
+          operation.member,
+        );
+        innerRecords.set(key, inner);
+      }
+    }
+    const evm =
+      (operation.kind === "runtime" || operation.kind === "prepare") &&
+      operation.evm_call
+        ? resolveNativeEvmCall(metadata, runtime.specVersion, operation)
+        : null;
+    const base = plan(
+      metadata,
+      evm?.operation ?? operation,
+      needed,
+      apiVersions,
+      runtime.specVersion,
+    );
+    let row: NativePlan = inner
+      ? {
+          ...base,
+          inner,
+          result: {
+            ...base.result,
+            contract: { ...base.result.contract, inner_scale: inner.contract },
+          },
+        }
+      : base;
+    if (
+      "value_page" in operation &&
+      operation.value_page &&
+      operation.kind !== "constant"
+    ) {
+      if (evm)
+        throw new Error(
+          "Native value paging cannot replace evm_call result interpretation",
+        );
+      const plannedPage = inner
+        ? inner.page(operation.value_page)
+        : row.output !== undefined
+          ? planNativeValuePage(metadata, row.output, operation.value_page)
+          : null;
+      if (!plannedPage)
+        throw new Error(
+          "Native SCALE value paging requires decode_inner and its source contract",
+        );
+      row = {
+        ...row,
+        valuePage: {
+          inner: Boolean(inner),
+          identity: JSON.stringify([
+            inner?.contract.root_type ?? row.output,
+            operation.value_page,
+          ]),
+          decode: inner
+            ? (value) =>
+                (plannedPage as ReturnType<typeof inner.page>).decode(
+                  value,
+                  true,
+                )
+            : plannedPage.decode,
+        },
+      };
+    }
+    if (
+      (operation.kind === "runtime" || operation.kind === "prepare") &&
+      operation.code_artifact
+    )
+      return {
+        ...row,
+        result: {
+          ...row.result,
+          contract: {
+            ...row.result.contract,
+            code_artifact: operation.code_artifact,
+          },
+        },
+      };
+    if (evm)
+      return {
+        ...row,
+        evm: evm.contract,
+        result: {
+          ...row.result,
+          contract: { ...row.result.contract, evm_call: evm.contract },
+        },
+      };
+    return row;
+  });
+  const unique = new Map<string, { method: string; params: unknown[] }>();
+  const executionGas = new Map<string, bigint>();
+  const contractWork = new Map<
+    string,
+    ReturnType<typeof nativeContractSimulationWork>
+  >();
+  let codeByteLimit: number = NATIVE_CONTRACT_SIMULATION_LIMITS.codeBytes;
+  const callKeys = plans.map((row, index) => {
+    if (!("call" in row) || !row.call) return null;
+    const call = { method: row.call.method, params: [...row.call.params, at] };
+    const key = JSON.stringify(call);
+    unique.set(key, call);
+    if ("simulationGas" in row && row.simulationGas)
+      executionGas.set(key, row.simulationGas);
+    if ("contractWork" in row && row.contractWork) {
+      contractWork.set(key, row.contractWork);
+      const operation = operations[index]!;
+      if (operation.kind === "runtime" && operation.code_artifact)
+        codeByteLimit = Math.max(codeByteLimit, operation.code_artifact.bytes);
+    }
+    return key;
+  });
+  if (
+    [...executionGas.values()].reduce((total, gas) => total + gas, 0n) >
+    NATIVE_EVM_SIMULATION_GAS_BUDGET
+  )
+    throw new Error("EVM simulations exceed the aggregate gas budget");
+  assertNativeContractSimulationBudget(contractWork.values(), codeByteLimit);
+  const calls = [...unique.entries()];
+  const values =
+    calls.length === 0
+      ? []
+      : await basketReadBatch(
+          read,
+          calls.map(([, call]) => call),
+        );
+  const responses = new Map(calls.map(([key], index) => [key, values[index]]));
+  const pages = new Map<
+    number,
+    { keys: string[]; decoded: Map<string, NativeValue[]>; next: string | null }
+  >();
+  const extra = new Map<string, { method: string; params: unknown[] }>();
+  plans.forEach((row, index) => {
+    if (!("entry" in row) || !row.entry) return;
+    const page = responses.get(callKeys[index]!);
+    if (!Array.isArray(page) || page.length > row.entry.limit + 1)
+      throw new Error("Invalid native entries page");
+    let previous = row.entry.cursor ?? "";
+    const decoded = new Map<string, NativeValue[]>();
+    for (const key of page) {
+      if (
+        typeof key !== "string" ||
+        !/^0x(?:[0-9a-f]{2})+$/.test(key) ||
+        !key.startsWith(row.entry.prefix) ||
+        key <= previous ||
+        key.length > 8194
+      )
+        throw new Error("Invalid native entries key order or prefix");
+      decoded.set(
+        key,
+        nativeStorageEntryKeys(
+          metadata,
+          row.entry.palletPrefix,
+          row.entry.item,
+          key,
+        ),
+      );
+      previous = key;
+    }
+    const keys = page.slice(0, row.entry.limit) as string[];
+    pages.set(index, {
+      keys,
+      decoded,
+      next: page.length > row.entry.limit ? keys.at(-1)! : null,
+    });
+    for (const key of keys) {
+      const call = { method: "state_getStorage", params: [key, at] };
+      const id = JSON.stringify(call);
+      if (!responses.has(id)) extra.set(id, call);
+    }
+  });
+  const entryReads = [...extra.entries()];
+  for (let offset = 0; offset < entryReads.length; offset += 16) {
+    const chunk = entryReads.slice(offset, offset + 16);
+    const readValues = await basketReadBatch(
+      read,
+      chunk.map(([, call]) => call),
+    );
+    chunk.forEach(([key], index) => responses.set(key, readValues[index]));
+  }
+  const decodedValues = new Map<string, Map<number, NativeValue>>();
+  const innerValues = new Map<string, NativeValue>();
+  const decodeResult = (key: string, type: number, value: unknown) => {
+    let types = decodedValues.get(key);
+    if (!types) {
+      types = new Map<number, NativeValue>();
+      decodedValues.set(key, types);
+    }
+    let decoded = types.get(type);
+    if (decoded === undefined) {
+      decoded = decodeNativeValue(metadata, type, value);
+      types.set(type, decoded);
+    }
+    return decoded;
+  };
+  const innerResult = (
+    key: string,
+    inner: ReturnType<typeof nativeInnerRecord>,
+    value: unknown,
+    outer = false,
+  ) => {
+    let decoded = innerValues.get(key);
+    if (decoded === undefined) {
+      decoded = inner.decode(value, outer);
+      innerValues.set(key, decoded);
+    }
+    return { inner_result: decoded };
+  };
+  const pagedValues = new Map<
+    string,
+    ReturnType<ReturnType<typeof planNativeValuePage>["decode"]> | null
+  >();
+  const results = plans.map<PlannedResult>((row, index) => {
+    if ("entry" in row && row.entry) {
+      const entry = row.entry,
+        page = pages.get(index)!;
+      return {
+        ...row.result,
+        contract: { ...row.result.contract, next_cursor: page.next },
+        value: page.keys.map((key) => {
+          const callKey = JSON.stringify({
+            method: "state_getStorage",
+            params: [key, at],
+          });
+          const value = responses.get(callKey);
+          if (value === null || value === undefined)
+            throw new Error("Native enumerated storage value is absent");
+          return {
+            storage_key: key,
+            keys: page.decoded.get(key)!,
+            value: decodeResult(callKey, entry.item.value, value),
+          };
+        }),
+      };
+    }
+    const key = callKeys[index];
+    if (key === null || key === undefined) return row.result;
+    let value = responses.get(key),
+      isDefault = false;
+    if ("item" in row && row.item && value === null) {
+      if (row.item.optional)
+        return { ...row.result, value: null, is_default: false };
+      value = row.item.fallback;
+      isDefault = true;
+    }
+    if (row.valuePage) {
+      const memoKey = `${key}:${row.valuePage.identity}`;
+      let page = isDefault
+        ? row.valuePage.decode(value)
+        : pagedValues.get(memoKey);
+      if (page === undefined) {
+        page = row.valuePage.decode(value);
+        pagedValues.set(memoKey, page);
+      }
+      return {
+        ...row.result,
+        ...(page ? { value_page: page.value_page } : {}),
+        ...(row.valuePage.inner
+          ? { inner_result: page?.value ?? null }
+          : { value: page?.value ?? null }),
+        ...("item" in row ? { is_default: isDefault } : {}),
+      };
+    }
+    if (row.result.kind === "runtime_scale") {
+      if (
+        typeof value !== "string" ||
+        !/^0x(?:[0-9a-fA-F]{2})*$/.test(value) ||
+        value.length > 2 + NATIVE_RUNTIME_LIMITS.valueBytes * 2
+      )
+        throw new Error("Invalid or oversized SCALE runtime result");
+      return {
+        ...row.result,
+        value,
+        ...("inner" in row && row.inner
+          ? innerResult(key, row.inner, value, true)
+          : {}),
+      };
+    }
+    if (!("output" in row) || row.output === undefined)
+      throw new Error("Missing native result contract");
+    // Defaults belong to their storage declaration; aliases can share a key
+    // and wire type while declaring different fallback bytes.
+    const decoded = isDefault
+      ? decodeNativeValue(metadata, row.output, value)
+      : decodeResult(key, row.output, value);
+    return {
+      ...row.result,
+      value: decoded,
+      ...("inner" in row && row.inner
+        ? innerResult(key, row.inner, decoded)
+        : {}),
+      ...("evm" in row && row.evm
+        ? { evm_result: decodeNativeEvmResult(decoded, row.evm.outputs) }
+        : {}),
+      ...("item" in row ? { is_default: isDefault } : {}),
+    };
+  });
+  const output = NativeRuntimeArtifactSchema.parse({
+    schema_version: 1,
+    source,
+    types: [...needed.values()],
+    results,
+  });
+  if (Buffer.byteLength(JSON.stringify(output)) > 524_288)
+    throw new Error("Native response exceeds byte budget");
+  return output;
+}

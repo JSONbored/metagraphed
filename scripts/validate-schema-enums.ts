@@ -100,6 +100,12 @@ compareSchemaEnum(
   subnetSchema.$defs.surface.properties.method.enum,
   QUERY_ENUMS.surfaceMethod,
 );
+compareSchemaEnum(
+  "subnet-manifest reviewed HTTP operation method",
+  subnetSchema.$defs.http_admission.properties.operations.items.properties
+    .method.enum,
+  QUERY_ENUMS.httpOperationMethod,
+);
 
 if (errors.length > 0) {
   console.error(

@@ -1740,7 +1740,7 @@ function Raw({
         /* @__PURE__ */ jsxs("div", { className: "mg-raw-body", children: [
           rows.length > 0 ? /* @__PURE__ */ jsx("dl", { children: rows.map((row) => /* @__PURE__ */ jsxs("div", { className: "mg-raw-row", children: [
             /* @__PURE__ */ jsx("dt", { children: row.label }),
-            /* @__PURE__ */ jsx("dd", { children: row.href ? /* @__PURE__ */ jsx("a", { href: row.href, className: "text-accent hover:underline", children: /* @__PURE__ */ jsx("code", { title: row.value, children: row.value }) }) : /* @__PURE__ */ jsx("code", { title: row.value, children: row.value }) }),
+            /* @__PURE__ */ jsx("dd", { children: row.href ? /* @__PURE__ */ jsx("a", { href: row.href, className: "text-accent hover:underline", children: /* @__PURE__ */ jsx("code", { children: row.value }) }) : /* @__PURE__ */ jsx("code", { children: row.value }) }),
             /* @__PURE__ */ jsx(
               CopyButton,
               {

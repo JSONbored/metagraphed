@@ -21,6 +21,7 @@ export function apisNav(pathname: string): SectionNavItem[] {
     { id: "apis", name: "Catalog", href: "/apis" },
     { id: "endpoints", name: "Endpoints", href: "/apis/endpoints" },
     { id: "schemas", name: "Schemas", href: "/apis/schemas" },
+    { id: "native", name: "Native chain", href: "/apis/native" },
     { id: "providers", name: "Providers", href: "/apis/providers" },
   ].map((item) => ({ ...item, current: item.href === path }));
 }

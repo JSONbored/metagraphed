@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/accounts/{ss58}/root-baskets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Network-scoped form of /api/v1/accounts/{ss58}/root-baskets — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
+        get: operations["accountRootBasketsByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/{network}/accounts/{ss58}/root-claim": {
         parameters: {
             query?: never;
@@ -659,6 +676,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/native-runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Network-scoped form of /api/v1/native-runtime — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
+        post: operations["nativeRuntimeByNetwork"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/{network}/network/parameters": {
         parameters: {
             query?: never;
@@ -702,6 +736,23 @@ export interface paths {
         };
         /** @description Network-scoped form of /api/v1/networks — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["networkCapabilitiesByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/{network}/root-baskets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Network-scoped form of /api/v1/root-baskets — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
+        get: operations["rootBasketsByNetwork"];
         put?: never;
         post?: never;
         delete?: never;
@@ -810,6 +861,23 @@ export interface paths {
         };
         /** @description Network-scoped form of /api/v1/subnets/{netuid}/recycled — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
         get: operations["subnetRecycledByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/{network}/subnets/{netuid}/stake-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Network-scoped form of /api/v1/subnets/{netuid}/stake-quote — prefix the route with a network to choose which chain answers it. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data. */
+        get: operations["subnetStakeQuoteByNetwork"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1136,6 +1204,23 @@ export interface paths {
         };
         /** @description Fetch one account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first and last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events store. Windowed registration events including re-registrations after a deregistration; the account-level companion to GET /api/v1/chain/registrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state). */
         get: operations["accountRegistrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{ss58}/root-baskets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read native basket positions and dust-aware claim previews for at most 16 staking relationships at one finalized block. Reuse source.finalized_block_hash as as_of with next_offset to resume. Confirmed non-basket relationships retain null position/claim; a small returned portfolio is never treated as proof of completeness. Audited official releases v441–v471; account entitlements, beta positions and claim previews follow their actual API generation. Read-only. */
+        get: operations["accountRootBaskets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3398,6 +3483,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/native-runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Read finalized native storage, constants and runtime APIs or prepare unsigned calls from the block's portable metadata. Up to 16 operations share one source. Descriptions are paginated; exact integers are decimal strings and byte vectors are hex. runtime_scale accepts caller-encoded SCALE for audited reads, including V14 APIs without typed signatures, and returns exact bytes with the source API id/version. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate with bounded gas/Weight and code input, retaining return bytes, reverts and exact deposits. Call method bytes require an explicit wallet signature before execution. No transaction is submitted or code published by a simulation. */
+        post: operations["nativeRuntime"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/network/parameters": {
         parameters: {
             query?: never;
@@ -3696,6 +3798,23 @@ export interface paths {
         };
         /** @description Fetch profile completeness gaps for contributor targeting. */
         get: operations["reviewProfileCompleteness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/root-baskets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read bounded native Root basket pricing (maximum 64 funds) or one fund's detail with hotkey=AccountId32 hex. Exact atomic values remain strings. Reuse source.finalized_block_hash as as_of when following next_after; an empty page with a cursor is nonterminal. Audited official releases v441–v471; API-1 directories contain exact summaries and weights. Unsupported and unavailable states contain no data. Read-only, no trade or claim submission. */
+        get: operations["rootBaskets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4800,7 +4919,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote. */
+        /** @description Simulate a stake/unstake at one finalized chain source: expected alpha/TAO out, current vs effective price and price impact including swap fees. amount is required and must fit whole atomic units and u64; direction defaults to stake (TAO in), while unstake spends alpha. Uses the runtime's SwapRuntimeApi; zero or partial fills return 422 and failed reads return 502. No approximate fallback, signing or submission. Root uses the same simulator. Existing numeric fields are display values; exact atomic results are available through native-runtime. Source identity appears in meta.native_source. Network prefixes select mainnet or testnet. */
         get: operations["subnetStakeQuote"];
         put?: never;
         post?: never;
@@ -6147,7 +6266,26 @@ export interface components {
                     stale?: boolean;
                     status?: string;
                 };
+                http?: {
+                    operations: {
+                        /** @enum {string} */
+                        method: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
+                        parameters?: {
+                            allowReserved?: boolean;
+                            explode?: boolean;
+                            /** @enum {string} */
+                            in: "query" | "header" | "cookie";
+                            name: string;
+                            /** @enum {string} */
+                            style?: "form" | "simple" | "spaceDelimited" | "pipeDelimited" | "deepObject" | "cookie";
+                        }[];
+                        path: string;
+                        request_body_required?: boolean;
+                        request_content_types?: string[];
+                    }[];
+                };
                 kind: string;
+                mcp?: components["schemas"]["McpSurfaceAdmission"];
                 /**
                  * @description HTTP method this service is invoked with; absent means GET. A non-GET service is a declared mutation (#11146): it carries no GET snippets -- call it through call_subnet_surface with the captured schema.
                  * @enum {string}
@@ -9454,6 +9592,248 @@ export interface components {
             target_network: string;
             testnet_only_count?: number;
         };
+        McpSurfaceAdmission: {
+            /** @description Source-reviewed keyless catalog discovery when true. Execution still uses the surface's authentication requirement. False or omission preserves the existing requirement. */
+            public_discovery?: boolean;
+            read_prompts?: string[];
+            read_resources?: string[];
+            read_tools: string[];
+            /** @constant */
+            transport: "streamable-http";
+            write_tools: string[];
+        };
+        /** @description Checksum-bound public deployment code for ContractsApi upload_code/instantiate, Contracts upload_code/instantiate_with_code preparation, EthereumRuntimeRPCApi.create simulation or EVM.create/create2 preparation. Keep the declared code/data/init argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. EVM simulation gas is admitted before fetching; runtime execution rules and unsigned wallet review remain unchanged. One distinct artifact is fetched per request, with no persistent storage. */
+        NativeCodeArtifact: {
+            /** @description Exact artifact byte length. Wasm is also bounded by this source runtime's Contracts.MaxCodeLen; EVM creation retains the native input and execution budgets. */
+            bytes: number;
+            /** @description SHA-256 of the exact uncompressed artifact bytes. */
+            sha256: string;
+            /**
+             * Format: uri
+             * @description Public raw.githubusercontent.com URL pinned to a full 40-character commit, with no credentials, query or fragment.
+             */
+            url: string;
+        };
+        NativeDefinition: {
+            fields: components["schemas"]["NativeField"][];
+            /** @constant */
+            kind: "composite";
+        } | {
+            /** @constant */
+            kind: "variant";
+            variants: components["schemas"]["NativeVariant"][];
+        } | {
+            /** @constant */
+            kind: "sequence";
+            type: number;
+        } | {
+            /** @constant */
+            kind: "array";
+            length: number;
+            type: number;
+        } | {
+            /** @constant */
+            kind: "tuple";
+            types: number[];
+        } | {
+            /** @constant */
+            kind: "primitive";
+            primitive: number;
+        } | {
+            /** @constant */
+            kind: "compact";
+            type: number;
+        } | {
+            /** @constant */
+            kind: "bits";
+            order: number;
+            store: number;
+        };
+        /** @description Solidity signature and ordered arguments from this finalized runtime's precompile catalogue. Available on EthereumRuntimeRPCApi.call and EVM.call preparation. Keep the declared data/input argument as 0x; the existing to/target selects the precompile. Wide integers are exact decimal strings. Successful simulations include source-ABI-decoded evm_result values alongside the complete native result. Encoding and return decoding add no chain request and retain the ordinary gas, value and wallet-review rules. */
+        NativeEvmCall: {
+            /** @default [] */
+            args: components["schemas"]["NativeJsonValue"][];
+            signature: string;
+        };
+        /** @description Release-bound Solidity return interpretation for an evm_call simulation. Values are in the declared output order, tuples use their unique named fields or positional arrays, and wide integers are exact decimal strings. The native value retains all original return bytes, gas, logs, reverts and dispatch errors. Failed executions and malformed return bytes are never interpreted as successful values. */
+        NativeEvmResult: {
+            /** @constant */
+            status: "decoded";
+            values: components["schemas"]["NativeJsonValue"][];
+        } | {
+            /** @enum {string} */
+            status: "reverted" | "dispatch_error" | "execution_error" | "invalid_output" | "unrecognized_result";
+        };
+        NativeField: {
+            name: string | null;
+            type: number;
+        };
+        NativeJsonValue: string | number | boolean | null | components["schemas"]["NativeJsonValue"][] | {
+            [key: string]: components["schemas"]["NativeJsonValue"];
+        };
+        NativePortableType: {
+            definition: components["schemas"]["NativeDefinition"];
+            id: number;
+            path: string[];
+        };
+        /** @description Native results decoded and encoded against this finalized block's portable metadata, including newly introduced fields and operations. contract carries the relevant runtime type identities. Raw fixed-point values retain their bits. Prepared call_data is the method bytes only, not a signed extrinsic or an execution receipt. This read does not establish retained history coverage. */
+        NativeRuntimeArtifact: {
+            results: {
+                api?: string;
+                call_data?: string;
+                contract: components["schemas"]["NativeJsonValue"];
+                evm_result?: components["schemas"]["NativeEvmResult"];
+                inner_result?: components["schemas"]["NativeJsonValue"];
+                is_default?: boolean;
+                /** @enum {string} */
+                kind: "storage" | "entries" | "constant" | "runtime" | "runtime_scale" | "prepare" | "describe";
+                member?: string;
+                pallet?: string;
+                storage_key?: string;
+                value?: components["schemas"]["NativeJsonValue"];
+                value_page?: components["schemas"]["NativeValuePage"];
+            }[];
+            /** @constant */
+            schema_version: 1;
+            source: components["schemas"]["NativeRuntimeSource"];
+            types: components["schemas"]["NativePortableType"][];
+        };
+        NativeRuntimeOperation: {
+            api: string;
+            /** @description Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result. */
+            decode_inner?: boolean;
+            /**
+             * @description Exact SCALE arguments encoded for the source runtime API version. Only audited read methods are admitted; result bytes retain their source API id and version. Use typed runtime operations when metadata publishes the signature.
+             * @example 0x
+             */
+            input: string;
+            /** @constant */
+            kind: "runtime_scale";
+            member: string;
+            value_page?: components["schemas"]["NativeValuePageRequest"];
+        } | {
+            /** @default [] */
+            args: components["schemas"]["NativeJsonValue"][];
+            /** @constant */
+            kind: "storage";
+            member: string;
+            pallet: string;
+            value_page?: components["schemas"]["NativeValuePageRequest"];
+        } | {
+            /** @default [] */
+            args: components["schemas"]["NativeJsonValue"][];
+            cursor?: string;
+            /** @constant */
+            kind: "entries";
+            /** @default 16 */
+            limit: number;
+            member: string;
+            pallet: string;
+        } | {
+            /** @constant */
+            kind: "constant";
+            member: string;
+            pallet: string;
+            value_page?: components["schemas"]["NativeValuePageRequest"];
+        } | {
+            api: string;
+            /** @default [] */
+            args: components["schemas"]["NativeJsonValue"][];
+            code_artifact?: components["schemas"]["NativeCodeArtifact"];
+            /** @description Decode the nested SCALE record in a source-qualified legacy delegate, neuron, subnet or stake API. The exact published metadata binds the layout. inner_result carries the decoded record and contract.inner_scale its scoped portable types, while value retains the original bytes. An absent singular record becomes null; vectors and nested Options keep their source encoding. Does not add a chain request. Omit for APIs whose metadata already declares their structured result. */
+            decode_inner?: boolean;
+            evm_call?: components["schemas"]["NativeEvmCall"];
+            /** @constant */
+            kind: "runtime";
+            member: string;
+            value_page?: components["schemas"]["NativeValuePageRequest"];
+        } | {
+            /** @default [] */
+            args: components["schemas"]["NativeJsonValue"][];
+            code_artifact?: components["schemas"]["NativeCodeArtifact"];
+            evm_call?: components["schemas"]["NativeEvmCall"];
+            /** @constant */
+            kind: "prepare";
+            member: string;
+            pallet: string;
+        } | {
+            api?: string;
+            /** @description true lists this source's precompile addresses; an address lists its Solidity signatures, argument names/types and output layouts. Shares the normal offset/limit pagination and finalized source. */
+            evm?: true | string;
+            /** @constant */
+            kind: "describe";
+            /** @default 32 */
+            limit: number;
+            /** @default 0 */
+            offset: number;
+            pallet?: string;
+            type_id?: number;
+        };
+        /** @description Use runtime metadata to read exact native storage, constants and runtime APIs or prepare an unsigned native call. Ethereum call/create and ContractsApi call/instantiate/upload_code simulate at the same finalized source. EVM requests have an aggregate 1,000,000 gas cap. Contracts require an explicit Some gas_limit Weight; distinct simulations share a 250,000,000,000 ref_time and 65,536 proof_size budget, with one inline code upload of at most 16,384 bytes. A commit-pinned code_artifact reference supports up to 131,072 bytes within the source runtime MaxCodeLen; the reference must include its exact SHA-256 and byte count, and the code argument must be empty hex. Integers are exact decimal strings; byte vectors and AccountId32 are hex. Enum input is {variant,fields}; named fields are objects and unnamed multi-fields are arrays. No signature, submission or persistent state mutation occurs. */
+        NativeRuntimeRequest: {
+            /**
+             * @description Canonical finalized block hash to read; omitted selects the current finalized head. Reuse the response's source hash for a consistent multi-request view.
+             * @example 0x3333333333333333333333333333333333333333333333333333333333333333
+             */
+            as_of?: string;
+            /**
+             * @description Which Bittensor chain to read: `finney` is mainnet (the default when omitted), `test` is testnet. They are separate chains — a netuid on one is unrelated to the same netuid on the other.
+             * @example finney
+             * @enum {string}
+             */
+            network?: "finney" | "test";
+            /**
+             * @description One to sixteen native operations sharing the same finalized context. Describe discovers runtime names, portable argument types and paged release-bound EVM precompile signatures; storage, constant and runtime read typed values; runtime_scale accepts caller-encoded SCALE for audited read methods and returns exact bytes with the source API id/version, including V14 APIs without typed signatures; entries pages map records using up to 32 keys per operation and 64 keys per request; prepare produces unsigned call method bytes. Entries args select leading keys. Continue with next_cursor and the response source as_of hash.
+             * @example [
+             *       {
+             *         "kind": "describe",
+             *         "limit": 16,
+             *         "pallet": "SubtensorModule"
+             *       }
+             *     ]
+             */
+            operations: components["schemas"]["NativeRuntimeOperation"][];
+        };
+        NativeRuntimeSource: {
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            /** @enum {number} */
+            metadata_version: 14 | 15;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            runtime_code_hash: string | null;
+            runtime_spec_version: number;
+            runtime_transaction_version: number;
+        };
+        NativeValuePage: {
+            collection_type: number;
+            element_type: number;
+            /** @default 16 */
+            limit: number;
+            next_offset: number | null;
+            /** @default 0 */
+            offset: number;
+            /** @default [] */
+            path: (string | number)[];
+            total: number;
+            /** @enum {string} */
+            value_encoding: "items" | "hex";
+        };
+        /** @description Explicit page of one portable sequence or array. Path selects named fields, positional tuple/array indices or enum variant names; transparent single-field newtypes need no segment. The selected collection alone becomes value (or inner_result with decode_inner); value_page identifies its types, total and continuation. All upstream bytes are validated without allocating omitted values. Continue offsets with the identical operation/path and response source as_of hash. Ordinary omitted-option behavior and limits are unchanged. */
+        NativeValuePageRequest: {
+            /** @default 16 */
+            limit: number;
+            /** @default 0 */
+            offset: number;
+            /** @default [] */
+            path: (string | number)[];
+        };
+        NativeVariant: {
+            fields: components["schemas"]["NativeField"][];
+            index: number;
+            name: string;
+        };
         NetworkCapabilitiesArtifact: {
             default_network: string;
             network_count: number;
@@ -10397,6 +10777,416 @@ export interface components {
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {string} */
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
+        RootBasketAccountEntry: {
+            claim: components["schemas"]["RootBasketClaimPreview"] | null;
+            entitlement?: components["schemas"]["RootBasketEntitlement"] | null;
+            hotkey: string;
+            position: components["schemas"]["RootBasketPosition"] | null;
+        };
+        RootBasketAccountPage: {
+            entries: components["schemas"]["RootBasketAccountEntry"][];
+            /** @constant */
+            kind: "account";
+            limit: number;
+            next_offset: number | null;
+            offset: number;
+            ss58: string;
+            total_relationships: number;
+        };
+        RootBasketBaseline: {
+            /** @constant */
+            first_block: "0";
+            price_divisor_q64_bits: null;
+            /** @constant */
+            provisional: true;
+            rate0_q32_bits: null;
+            tr_splice_q64_bits: null;
+        } | {
+            first_block: string;
+            price_divisor_q64_bits: string;
+            /** @constant */
+            provisional: false;
+            rate0_q32_bits: string;
+            tr_splice_q64_bits: string;
+        };
+        RootBasketClaimPreview: {
+            /** @example 9007199254740993 */
+            accrued_rao: string;
+            dust_rows: number;
+            flushed_credits: number;
+            /** @example 9007199254740993 */
+            forfeited_estimate_rao: string;
+            hotkey: string;
+            /** @example 9007199254740993 */
+            owed_shares_atomic: string;
+            /** @example 9007199254740993 */
+            redeemable_rao: string;
+            rows: number;
+            rows_to_sell: number;
+            swept_rows: number;
+        };
+        RootBasketDetail: {
+            baseline: components["schemas"]["RootBasketBaseline"] | null;
+            /** @constant */
+            kind: "fund";
+            pricing: components["schemas"]["RootBasketPricing"] | null;
+            summary: components["schemas"]["RootBasketSummary"];
+            trading: components["schemas"]["RootBasketTradingStatus"] | null;
+        };
+        RootBasketDirectory: {
+            /** @constant */
+            kind: "directory";
+            limit: number;
+            next_after: string | null;
+            pricing: components["schemas"]["RootBasketPricing"][];
+        };
+        RootBasketEntitlement: {
+            hotkey: string;
+            /** @example 9007199254740993 */
+            owed_shares_atomic: string;
+            /** @example 9007199254740993 */
+            payout_rao: string;
+        };
+        RootBasketLegacyDirectory: {
+            /** @constant */
+            kind: "legacy-directory";
+            limit: number;
+            next_after: string | null;
+            summaries: components["schemas"]["RootBasketSummary"][];
+        };
+        RootBasketPosition: {
+            /** @example 9007199254740993 */
+            beta_atomic: string;
+            /** @example 18446744073709551616 */
+            display_beta_q64_bits: string;
+            /** @example 18446744073709551616 */
+            display_price_q64_bits: string;
+            hotkey: string;
+            provisional: boolean;
+            /** @example 9007199254740993 */
+            realizable_value_rao: string;
+            /** @example 9007199254740993 */
+            spot_value_rao: string;
+        };
+        RootBasketPricing: {
+            /** @example 18446744073709551616 */
+            bag_index_q64_bits: string;
+            /** @example 18446744073709551616 */
+            display_price_q64_bits: string;
+            /** @example 18446744073709551616 */
+            display_shares_q64_bits: string;
+            /** @example 9007199254740993 */
+            first_block: string;
+            hotkey: string;
+            /** @example 18446744073709551616 */
+            pending_entitlement_q64_bits: string;
+            provisional: boolean;
+            /** @example 18446744073709551616 */
+            raw_spot_price_q64_bits: string;
+            /** @example 9007199254740993 */
+            shares_atomic: string;
+            /** @example 9007199254740993 */
+            spot_nav_rao: string;
+            /** @example 18446744073709551616 */
+            stake_index_q64_bits: string;
+            /** @example 18446744073709551616 */
+            stake_price_q64_bits: string;
+            /** @example 18446744073709551616 */
+            staker_twr_q64_bits: string;
+        };
+        RootBasketReadData: components["schemas"]["RootBasketDirectory"] | components["schemas"]["RootBasketLegacyDirectory"] | components["schemas"]["RootBasketDetail"] | components["schemas"]["RootBasketAccountPage"];
+        /**
+         * @description Finalized native Root basket state across explicitly audited official releases v441–v471. source.capabilities identifies published operations: API 1 exposes holdings, stored target weights and owed-share entitlements; API 3 adds display beta and pricing; API 4 removes target weights and adds trading status; API 5 adds dust-aware claim previews. Absent methods are never called or replaced with invented prices or zero claims. Unknown layouts and failed reads return no data. Exact u64/u128 values are decimal strings; AccountId32 keys are hex. Read-only; no claim or trade is submitted. Historical block reads require an archive source and do not establish retained snapshot coverage.
+         * @example {
+         *       "data": {
+         *         "kind": "directory",
+         *         "limit": 64,
+         *         "next_after": null,
+         *         "pricing": []
+         *       },
+         *       "network": "finney",
+         *       "schema_version": 1,
+         *       "source": {
+         *         "capabilities": {
+         *           "beta_positions": true,
+         *           "claim_preview": true,
+         *           "pricing": true,
+         *           "target_weights": false,
+         *           "trading_status": true
+         *         },
+         *         "decoder_version": "subtensor-v470-923fd1fa-v1",
+         *         "finalized_block": "500",
+         *         "finalized_block_hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+         *         "metadata_sha256": "0x5555555555555555555555555555555555555555555555555555555555555555",
+         *         "network": "finney",
+         *         "network_genesis_hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+         *         "runtime_api_version": 5,
+         *         "runtime_spec_version": 470
+         *       },
+         *       "status": "available"
+         *     }
+         */
+        RootBasketsArtifact: {
+            data: components["schemas"]["RootBasketReadData"];
+            network: components["schemas"]["BittensorNetwork"];
+            /** @constant */
+            schema_version: 1;
+            source: components["schemas"]["RootBasketSource"];
+            /** @constant */
+            status: "available";
+        } | {
+            data: null;
+            network: components["schemas"]["BittensorNetwork"];
+            /** @constant */
+            schema_version: 1;
+            source: null;
+            /** @constant */
+            status: "unsupported";
+        } | {
+            data: null;
+            network: components["schemas"]["BittensorNetwork"];
+            /** @constant */
+            schema_version: 1;
+            source: null;
+            /** @constant */
+            status: "unavailable";
+        };
+        RootBasketSource: {
+            capabilities: {
+                beta_positions: boolean;
+                claim_preview: boolean;
+                pricing: boolean;
+                target_weights: boolean;
+                trading_status: boolean;
+            };
+            /** @enum {string} */
+            decoder_version: "subtensor-v441-8b9d55c7-v1" | "subtensor-v442-ec112cb0-v1" | "subtensor-v443-c02a376e-v1" | "subtensor-v445-d3f40e44-v1" | "subtensor-v446-52d7e7cf-v1" | "subtensor-v447-1f090af8-v1" | "subtensor-v448-e18ca67f-v1" | "subtensor-v450-9540b3af-v1" | "subtensor-v452-da06f033-v1" | "subtensor-v453-823bdcbc-v1" | "subtensor-v454-14cde641-v1" | "subtensor-v459-70378404-v1" | "subtensor-v464-5cd66b85-v1" | "subtensor-v466-cdffbe2f-v1" | "subtensor-v467-c6bcb4a7-v1" | "subtensor-v468-30c70d90-v1" | "subtensor-v469-370bac46-v1" | "subtensor-v470-923fd1fa-v1" | "subtensor-v471-c004cebf-v1";
+            /** @example 9007199254740993 */
+            finalized_block: string;
+            finalized_block_hash: string;
+            metadata_sha256: string;
+            network: components["schemas"]["BittensorNetwork"];
+            network_genesis_hash: string;
+            /** @enum {number} */
+            runtime_api_version: 1 | 3 | 4 | 5;
+            /** @enum {number} */
+            runtime_spec_version: 441 | 442 | 443 | 445 | 446 | 447 | 448 | 450 | 452 | 453 | 454 | 459 | 464 | 466 | 467 | 468 | 469 | 470 | 471;
+        } & (({
+            /** @constant */
+            decoder_version?: "subtensor-v441-8b9d55c7-v1";
+            /** @constant */
+            runtime_api_version?: 1;
+            /** @constant */
+            runtime_spec_version?: 441;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v442-ec112cb0-v1";
+            /** @constant */
+            runtime_api_version?: 1;
+            /** @constant */
+            runtime_spec_version?: 442;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v443-c02a376e-v1";
+            /** @constant */
+            runtime_api_version?: 1;
+            /** @constant */
+            runtime_spec_version?: 443;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v445-d3f40e44-v1";
+            /** @constant */
+            runtime_api_version?: 1;
+            /** @constant */
+            runtime_spec_version?: 445;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v446-52d7e7cf-v1";
+            /** @constant */
+            runtime_api_version?: 1;
+            /** @constant */
+            runtime_spec_version?: 446;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v447-1f090af8-v1";
+            /** @constant */
+            runtime_api_version?: 1;
+            /** @constant */
+            runtime_spec_version?: 447;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v448-e18ca67f-v1";
+            /** @constant */
+            runtime_api_version?: 1;
+            /** @constant */
+            runtime_spec_version?: 448;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v450-9540b3af-v1";
+            /** @constant */
+            runtime_api_version?: 3;
+            /** @constant */
+            runtime_spec_version?: 450;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v452-da06f033-v1";
+            /** @constant */
+            runtime_api_version?: 3;
+            /** @constant */
+            runtime_spec_version?: 452;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v453-823bdcbc-v1";
+            /** @constant */
+            runtime_api_version?: 3;
+            /** @constant */
+            runtime_spec_version?: 453;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v454-14cde641-v1";
+            /** @constant */
+            runtime_api_version?: 3;
+            /** @constant */
+            runtime_spec_version?: 454;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v459-70378404-v1";
+            /** @constant */
+            runtime_api_version?: 3;
+            /** @constant */
+            runtime_spec_version?: 459;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v464-5cd66b85-v1";
+            /** @constant */
+            runtime_api_version?: 4;
+            /** @constant */
+            runtime_spec_version?: 464;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v466-cdffbe2f-v1";
+            /** @constant */
+            runtime_api_version?: 4;
+            /** @constant */
+            runtime_spec_version?: 466;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v467-c6bcb4a7-v1";
+            /** @constant */
+            runtime_api_version?: 4;
+            /** @constant */
+            runtime_spec_version?: 467;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v468-30c70d90-v1";
+            /** @constant */
+            runtime_api_version?: 5;
+            /** @constant */
+            runtime_spec_version?: 468;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v469-370bac46-v1";
+            /** @constant */
+            runtime_api_version?: 5;
+            /** @constant */
+            runtime_spec_version?: 469;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v470-923fd1fa-v1";
+            /** @constant */
+            runtime_api_version?: 5;
+            /** @constant */
+            runtime_spec_version?: 470;
+        } | {
+            /** @constant */
+            decoder_version?: "subtensor-v471-c004cebf-v1";
+            /** @constant */
+            runtime_api_version?: 5;
+            /** @constant */
+            runtime_spec_version?: 471;
+        }) & ({
+            /** @constant */
+            capabilities?: {
+                beta_positions: false;
+                claim_preview: false;
+                pricing: false;
+                target_weights: true;
+                trading_status: false;
+            };
+            /** @constant */
+            runtime_api_version?: 1;
+        } | {
+            /** @constant */
+            capabilities?: {
+                beta_positions: true;
+                claim_preview: false;
+                pricing: true;
+                target_weights: true;
+                trading_status: false;
+            };
+            /** @constant */
+            runtime_api_version?: 3;
+        } | {
+            /** @constant */
+            capabilities?: {
+                beta_positions: true;
+                claim_preview: false;
+                pricing: true;
+                target_weights: false;
+                trading_status: true;
+            };
+            /** @constant */
+            runtime_api_version?: 4;
+        } | {
+            /** @constant */
+            capabilities?: {
+                beta_positions: true;
+                claim_preview: true;
+                pricing: true;
+                target_weights: false;
+                trading_status: true;
+            };
+            /** @constant */
+            runtime_api_version?: 5;
+        }));
+        RootBasketSummary: {
+            /** @example 9007199254740993 */
+            deposited_rao: string;
+            holdings: {
+                netuid: number;
+                /** @example 9007199254740993 */
+                quantity_atomic: string;
+                /** @enum {string} */
+                quantity_unit: "rao" | "alpha_atomic";
+                /** @example 9007199254740993 */
+                realizable_value_rao: string;
+                /** @example 9007199254740993 */
+                spot_value_rao: string;
+            }[];
+            hotkey: string;
+            /** @example 9007199254740993 */
+            realizable_nav_rao: string;
+            /** @example 9007199254740993 */
+            redeemed_rao: string;
+            /** @example 9007199254740993 */
+            shares_atomic: string;
+            /** @example 9007199254740993 */
+            spot_nav_rao: string;
+            target_weights?: {
+                netuid: number;
+                weight_u16: number;
+            }[];
+        };
+        RootBasketTradingStatus: {
+            /** @example 9007199254740993 */
+            available_rao: string;
+            /** @example 9007199254740993 */
+            budget_rao: string;
+            enabled: boolean;
+            frozen: boolean;
+            /** @example 9007199254740993 */
+            refill_blocks: string;
+        };
         RpcEndpointsArtifact: {
             contract_version?: string;
             endpoints: {
@@ -13082,7 +13872,7 @@ export interface components {
             schema_version: number;
             window: ("7d" | "30d") | null;
         };
-        /** @description A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
+        /** @description A read-only finalized runtime stake/unstake simulation. Numeric fields are display values; exact atomic quantities are available through native-runtime. Legacy reserve fields are null; source identity is returned in REST metadata. Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
         SubnetStakeQuoteArtifact: {
             alpha_in_pool: number | null;
             amount: number;
@@ -13095,7 +13885,7 @@ export interface components {
             expected_out: number;
             /** @enum {string} */
             expected_out_unit: "alpha" | "tao";
-            /** @description True for root (netuid 0), which quotes 1:1 with no price impact. */
+            /** @description True for root (netuid 0). Price and fees come from the runtime simulator. */
             is_root: boolean;
             netuid: number;
             price_impact_pct: number;
@@ -13583,10 +14373,29 @@ export interface components {
             authority: components["schemas"]["Authority"];
             classification?: components["schemas"]["Classification"];
             curation_level?: components["schemas"]["CurationLevel"];
+            http?: {
+                operations: {
+                    /** @enum {string} */
+                    method: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
+                    parameters?: {
+                        allowReserved?: boolean;
+                        explode?: boolean;
+                        /** @enum {string} */
+                        in: "query" | "header" | "cookie";
+                        name: string;
+                        /** @enum {string} */
+                        style?: "form" | "simple" | "spaceDelimited" | "pipeDelimited" | "deepObject" | "cookie";
+                    }[];
+                    path: string;
+                    request_body_required?: boolean;
+                    request_content_types?: string[];
+                }[];
+            };
             id: string;
             key?: string;
             kind: components["schemas"]["SurfaceKind"];
             last_verified_at?: string | null;
+            mcp?: components["schemas"]["McpSurfaceAdmission"];
             /**
              * @description HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.
              * @enum {string}
@@ -14797,6 +15606,162 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountParentsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountRootBasketsByNetwork: {
+        parameters: {
+            query?: {
+                /** @description Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response. */
+                as_of?: string;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
+                offset?: number;
+                /** @description Maximum number of rows to return in one page (at most 16). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 16. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "data": {
+                     *           "kind": "directory",
+                     *           "limit": 1,
+                     *           "next_after": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "pricing": [
+                     *             {
+                     *               "bag_index_q64_bits": "1000",
+                     *               "display_price_q64_bits": "1000",
+                     *               "display_shares_q64_bits": "1000",
+                     *               "first_block": "1000",
+                     *               "hotkey": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *               "pending_entitlement_q64_bits": "1000",
+                     *               "provisional": false,
+                     *               "raw_spot_price_q64_bits": "1000",
+                     *               "shares_atomic": "1000",
+                     *               "spot_nav_rao": "1000",
+                     *               "stake_index_q64_bits": "1000",
+                     *               "stake_price_q64_bits": "1000",
+                     *               "staker_twr_q64_bits": "1000"
+                     *             }
+                     *           ]
+                     *         },
+                     *         "network": "finney",
+                     *         "schema_version": 1,
+                     *         "source": {
+                     *           "capabilities": {
+                     *             "beta_positions": false,
+                     *             "claim_preview": false,
+                     *             "pricing": false,
+                     *             "target_weights": true,
+                     *             "trading_status": false
+                     *           },
+                     *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_api_version": 1,
+                     *           "runtime_spec_version": 441
+                     *         },
+                     *         "status": "available"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["RootBasketsArtifact"];
                     };
                 };
             };
@@ -19721,6 +20686,147 @@ export interface operations {
             };
         };
     };
+    nativeRuntimeByNetwork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NativeRuntimeRequest"];
+            };
+        };
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "results": [
+                     *           {
+                     *             "contract": "example",
+                     *             "kind": "storage"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "source": {
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_version": 14,
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_code_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_spec_version": 1,
+                     *           "runtime_transaction_version": 1
+                     *         },
+                     *         "types": [
+                     *           {
+                     *             "definition": {
+                     *               "fields": [
+                     *                 {
+                     *                   "name": "Example Subnet",
+                     *                   "type": 1
+                     *                 }
+                     *               ],
+                     *               "kind": "composite"
+                     *             },
+                     *             "id": 1,
+                     *             "path": [
+                     *               "example"
+                     *             ]
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["NativeRuntimeArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     networkParametersByNetwork: {
         parameters: {
             query?: never;
@@ -20047,6 +21153,159 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["NetworkCapabilitiesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rootBasketsByNetwork: {
+        parameters: {
+            query?: {
+                /** @description Optional AccountId32 hex fund key; selects one fund's detail instead of directory pricing. */
+                hotkey?: string;
+                /** @description Opaque upstream AccountId32 continuation. Pass it back verbatim with as_of. Empty pricing pages can still carry this cursor. */
+                cursor?: string;
+                /** @description Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response. */
+                as_of?: string;
+                /** @description Maximum number of rows to return in one page (at most 64). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 64. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "data": {
+                     *           "kind": "directory",
+                     *           "limit": 1,
+                     *           "next_after": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "pricing": [
+                     *             {
+                     *               "bag_index_q64_bits": "1000",
+                     *               "display_price_q64_bits": "1000",
+                     *               "display_shares_q64_bits": "1000",
+                     *               "first_block": "1000",
+                     *               "hotkey": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *               "pending_entitlement_q64_bits": "1000",
+                     *               "provisional": false,
+                     *               "raw_spot_price_q64_bits": "1000",
+                     *               "shares_atomic": "1000",
+                     *               "spot_nav_rao": "1000",
+                     *               "stake_index_q64_bits": "1000",
+                     *               "stake_price_q64_bits": "1000",
+                     *               "staker_twr_q64_bits": "1000"
+                     *             }
+                     *           ]
+                     *         },
+                     *         "network": "finney",
+                     *         "schema_version": 1,
+                     *         "source": {
+                     *           "capabilities": {
+                     *             "beta_positions": false,
+                     *             "claim_preview": false,
+                     *             "pricing": false,
+                     *             "target_weights": true,
+                     *             "trading_status": false
+                     *           },
+                     *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_api_version": 1,
+                     *           "runtime_spec_version": 441
+                     *         },
+                     *         "status": "available"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["RootBasketsArtifact"];
                     };
                 };
             };
@@ -21078,6 +22337,130 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetRecycledArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetStakeQuoteByNetwork: {
+        parameters: {
+            query: {
+                /** @description The stake amount to quote, in TAO. Must be greater than zero. */
+                amount: number;
+                /** @description Which side of the trade to price: `stake` buys alpha with TAO, `unstake` sells alpha for TAO. Omit for `stake`. */
+                direction?: "stake" | "unstake";
+            };
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "alpha_in_pool": 0.5,
+                     *         "amount": 0.5,
+                     *         "direction": "stake",
+                     *         "effective_price_tao": 0.5,
+                     *         "expected_out": 0.5,
+                     *         "expected_out_unit": "alpha",
+                     *         "is_root": false,
+                     *         "netuid": 7,
+                     *         "price_impact_pct": 0.5,
+                     *         "schema_version": 1,
+                     *         "spot_price_tao": 0.5,
+                     *         "tao_in_pool_tao": 0.5
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetStakeQuoteArtifact"];
                     };
                 };
             };
@@ -23603,6 +24986,160 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountRegistrationsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountRootBaskets: {
+        parameters: {
+            query?: {
+                /** @description Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response. */
+                as_of?: string;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
+                offset?: number;
+                /** @description Maximum number of rows to return in one page (at most 16). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 16. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "data": {
+                     *           "kind": "directory",
+                     *           "limit": 1,
+                     *           "next_after": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "pricing": [
+                     *             {
+                     *               "bag_index_q64_bits": "1000",
+                     *               "display_price_q64_bits": "1000",
+                     *               "display_shares_q64_bits": "1000",
+                     *               "first_block": "1000",
+                     *               "hotkey": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *               "pending_entitlement_q64_bits": "1000",
+                     *               "provisional": false,
+                     *               "raw_spot_price_q64_bits": "1000",
+                     *               "shares_atomic": "1000",
+                     *               "spot_nav_rao": "1000",
+                     *               "stake_index_q64_bits": "1000",
+                     *               "stake_price_q64_bits": "1000",
+                     *               "staker_twr_q64_bits": "1000"
+                     *             }
+                     *           ]
+                     *         },
+                     *         "network": "finney",
+                     *         "schema_version": 1,
+                     *         "source": {
+                     *           "capabilities": {
+                     *             "beta_positions": false,
+                     *             "claim_preview": false,
+                     *             "pricing": false,
+                     *             "target_weights": true,
+                     *             "trading_status": false
+                     *           },
+                     *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_api_version": 1,
+                     *           "runtime_spec_version": 441
+                     *         },
+                     *         "status": "available"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["RootBasketsArtifact"];
                     };
                 };
             };
@@ -38124,6 +39661,144 @@ export interface operations {
             };
         };
     };
+    nativeRuntime: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NativeRuntimeRequest"];
+            };
+        };
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "results": [
+                     *           {
+                     *             "contract": "example",
+                     *             "kind": "storage"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "source": {
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_version": 14,
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_code_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_spec_version": 1,
+                     *           "runtime_transaction_version": 1
+                     *         },
+                     *         "types": [
+                     *           {
+                     *             "definition": {
+                     *               "fields": [
+                     *                 {
+                     *                   "name": "Example Subnet",
+                     *                   "type": 1
+                     *                 }
+                     *               ],
+                     *               "kind": "composite"
+                     *             },
+                     *             "id": 1,
+                     *             "path": [
+                     *               "example"
+                     *             ]
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["NativeRuntimeArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     networkParameters: {
         parameters: {
             query?: never;
@@ -40949,6 +42624,156 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rootBaskets: {
+        parameters: {
+            query?: {
+                /** @description Optional AccountId32 hex fund key; selects one fund's detail instead of directory pricing. */
+                hotkey?: string;
+                /** @description Opaque upstream AccountId32 continuation. Pass it back verbatim with as_of. Empty pricing pages can still carry this cursor. */
+                cursor?: string;
+                /** @description Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response. */
+                as_of?: string;
+                /** @description Maximum number of rows to return in one page (at most 64). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 64. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "data": {
+                     *           "kind": "directory",
+                     *           "limit": 1,
+                     *           "next_after": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "pricing": [
+                     *             {
+                     *               "bag_index_q64_bits": "1000",
+                     *               "display_price_q64_bits": "1000",
+                     *               "display_shares_q64_bits": "1000",
+                     *               "first_block": "1000",
+                     *               "hotkey": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *               "pending_entitlement_q64_bits": "1000",
+                     *               "provisional": false,
+                     *               "raw_spot_price_q64_bits": "1000",
+                     *               "shares_atomic": "1000",
+                     *               "spot_nav_rao": "1000",
+                     *               "stake_index_q64_bits": "1000",
+                     *               "stake_price_q64_bits": "1000",
+                     *               "staker_twr_q64_bits": "1000"
+                     *             }
+                     *           ]
+                     *         },
+                     *         "network": "finney",
+                     *         "schema_version": 1,
+                     *         "source": {
+                     *           "capabilities": {
+                     *             "beta_positions": false,
+                     *             "claim_preview": false,
+                     *             "pricing": false,
+                     *             "target_weights": true,
+                     *             "trading_status": false
+                     *           },
+                     *           "decoder_version": "subtensor-v441-8b9d55c7-v1",
+                     *           "finalized_block": "1000",
+                     *           "finalized_block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "network": "finney",
+                     *           "network_genesis_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_api_version": 1,
+                     *           "runtime_spec_version": 441
+                     *         },
+                     *         "status": "available"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["RootBasketsArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

@@ -1,3 +1,8 @@
+import { RootBasketCaptureSchema } from "./root-basket-capture.ts";
+import {
+  RootBasketFinalizedHashSchema,
+  ROOT_BASKET_READ_LIMITS,
+} from "./root-basket-runtime.ts";
 import { lazySchemaMap } from "./lazy-schema-map.ts";
 // What every route accepts as a query parameter, in ONE place (#10062).
 //
@@ -291,6 +296,7 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1/agent-catalog/{netuid}",
   "/api/v1/providers/{slug}",
   "/api/v1/coverage",
+  "/api/v1/native-runtime",
   "/api/v1/ask",
   "/api/v1/webhooks/subscriptions/{id}",
   "/api/v1/alerts/triggers/{id}",
@@ -407,7 +413,52 @@ export const FEED_QUERY_SCHEMAS = {
   netuid: netuidSchema().optional(),
 } as const;
 
+const rootBasketAccount =
+  RootBasketCaptureSchema.shape.funds.element.shape.hotkey;
+const rootBasketAsOf = RootBasketFinalizedHashSchema.optional()
+  .describe(
+    "Canonical finalized block hash. Required when resuming a page; reuse source.finalized_block_hash from the first response.",
+  )
+  .meta({ examples: [`0x${"11".repeat(32)}`] });
+export const RootBasketsQuerySchema = z.object({
+  hotkey: rootBasketAccount
+    .optional()
+    .describe(
+      "Optional AccountId32 hex fund key; selects one fund's detail instead of directory pricing.",
+    )
+    .meta({ examples: [`0x${"22".repeat(32)}`] }),
+  cursor: rootBasketAccount
+    .optional()
+    .describe(
+      "Opaque upstream AccountId32 continuation. Pass it back verbatim with as_of. Empty pricing pages can still carry this cursor.",
+    )
+    .meta({ examples: [`0x${"22".repeat(32)}`] }),
+  as_of: rootBasketAsOf,
+  limit: limitSchema(
+    ROOT_BASKET_READ_LIMITS.page,
+    ROOT_BASKET_READ_LIMITS.page,
+  ).optional(),
+});
+export const AccountRootBasketsQuerySchema = z.object({
+  as_of: rootBasketAsOf,
+  offset: z
+    .int()
+    .min(0)
+    .max(ROOT_BASKET_READ_LIMITS.relationships)
+    .optional()
+    .describe(
+      "Relationship offset at the pinned block, default 0. Includes confirmed non-basket relationships so no position is silently skipped.",
+    )
+    .meta({ examples: [16] }),
+  limit: limitSchema(
+    ROOT_BASKET_READ_LIMITS.accountPage,
+    ROOT_BASKET_READ_LIMITS.accountPage,
+  ).optional(),
+});
+
 export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
+  "/api/v1/root-baskets": () => RootBasketsQuerySchema,
+  "/api/v1/accounts/{ss58}/root-baskets": () => AccountRootBasketsQuerySchema,
   // #10600: the two composite subnet routes. They took NO parameters until
   // now -- not for want of size (272,825 B and 202,948 B) but because the
   // ordinary lever does not fit: a query collection pages ONE data_key, and
