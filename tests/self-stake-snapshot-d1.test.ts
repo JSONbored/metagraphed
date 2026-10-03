@@ -475,8 +475,9 @@ test("full-snapshot receipts use the existing write/prune health lanes without c
         async query() {
           return [];
         },
-        async run(_text, values) {
-          verdicts.push(values ?? []);
+        async run(text, values) {
+          if (text.startsWith("INSERT INTO lane_health "))
+            verdicts.push(values ?? []);
           return { changes: 1 };
         },
       },
