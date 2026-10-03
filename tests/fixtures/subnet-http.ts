@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
 import { RegistryManifestSchema } from "../../schemas-src/registry-kv.ts";
-import { registryManifestKey, registryObjectKey } from "../../src/registry-kv.ts";
+import {
+  registryManifestKey,
+  registryObjectKey,
+} from "../../src/registry-kv.ts";
 import { SURFACE_CREDENTIAL_KV_PREFIX } from "../../src/mcp-surface-credentials.ts";
 import { METAGRAPH_LATEST_KEY } from "../../workers/config.ts";
 import type { Row } from "../row-type.ts";
@@ -15,10 +18,18 @@ const origin = "https://subnet-http-fixture.example";
  * Unmatched requests fail; no fetch is delegated to a real endpoint. */
 export async function withSubnetHttpFixture<T>(
   baseEnv: Row,
-  action: (env: Row, state: {
-    requests: { url: string; method: string; headers: Headers; body: string }[];
-    encrypted: Map<string, { value: string; metadata: Row }>;
-  }) => Promise<T>,
+  action: (
+    env: Row,
+    state: {
+      requests: {
+        url: string;
+        method: string;
+        headers: Headers;
+        body: string;
+      }[];
+      encrypted: Map<string, { value: string; metadata: Row }>;
+    },
+  ) => Promise<T>,
 ) {
   const surfaces = {
     surfaces: [

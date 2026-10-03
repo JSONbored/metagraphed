@@ -108,7 +108,7 @@ const MCP_URL = "https://api.metagraph.sh/mcp";
 
 // This standalone validator must never fall through to a real provider. Scoped
 // fixtures replace fetch while exercising live-call implementations offline.
-const previousFetch = globalThis.fetch;
+// Keep the guard through process exit, including detached waitUntil work.
 let blockedUnmockedFetches = 0;
 globalThis.fetch = async () => {
   blockedUnmockedFetches++;
@@ -852,7 +852,10 @@ await withSubnetHttpFixture(env, async (fixtureEnv, state) => {
   assert.equal(written.credential_source, "stored");
   assert.deepEqual(written.body.received, body);
   assert.equal(state.requests[3]!.body, JSON.stringify(body));
-  assert.equal(state.requests[3]!.headers.get("content-type"), "application/json");
+  assert.equal(
+    state.requests[3]!.headers.get("content-type"),
+    "application/json",
+  );
   const deleted = await callOk("delete_surface_credential", target, options);
   assert.equal(deleted.deleted, true);
   assert.equal(state.encrypted.size, 0);
@@ -860,14 +863,21 @@ await withSubnetHttpFixture(env, async (fixtureEnv, state) => {
     (await callOk("delete_surface_credential", target, options)).deleted,
     false,
   );
-  assert.equal((await callOk("list_surface_credentials", {}, options)).count, 0);
+  assert.equal(
+    (await callOk("list_surface_credentials", {}, options)).count,
+    0,
+  );
   const denied = await call(
     "write_subnet_surface",
     { ...target, path: "/v1/echo", method: "POST", json_body: body },
     options,
   );
   assert.equal(denied.isError, true);
-  assert.equal(state.requests.length, 4, "Deleted credentials fail before HTTP");
+  assert.equal(
+    state.requests.length,
+    4,
+    "Deleted credentials fail before HTTP",
+  );
   const verified = await callOk(
     "verify_integration",
     { surface_id: SUBNET_VERIFY_FIXTURE_ID },
@@ -2770,7 +2780,6 @@ console.log(
   } tools/call + the resources/subscribe -> ingest -> notify round trip ` +
     `+ the subnet-status subscribe -> notify-changed -> notify round trip.`,
 );
-globalThis.fetch = previousFetch;
 console.log(
   "MCP_OFFLINE_NETWORK_FIXTURE",
   JSON.stringify({
