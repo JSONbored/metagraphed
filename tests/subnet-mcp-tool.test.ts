@@ -7,8 +7,9 @@ import { SurfaceSchema } from "../schemas-src/routes/subnet-detail.ts";
 import { AgentCatalogServiceSchema } from "../schemas-src/routes/agent-catalog.ts";
 import { storeSurfaceCredential, type ConfiguredSurfaceCredentialEnv } from "../src/mcp-surface-credentials.ts";
 import { McpForwardedResult } from "../src/mcp-content.ts";
-import type { McpCtx } from "../src/mcp-server.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
+
+type McpCtx = Parameters<(typeof MCP_TOOLS)[number]["handler"]>[1];
 
 const surface = {
   id: "sn-107-fixture-mcp", key: "srf-fixture10000000", netuid: 107,

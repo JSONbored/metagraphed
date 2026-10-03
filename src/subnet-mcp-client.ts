@@ -13,8 +13,10 @@ const MAX_TOTAL_BYTES = 4 * MAX_RESPONSE_BYTES;
 const MAX_TOOLS = 512;
 
 export class SubnetMcpError extends Error {
-  constructor(readonly code: string, message: string) {
+  readonly code: string;
+  constructor(code: string, message: string) {
     super(message);
+    this.code = code;
   }
 }
 

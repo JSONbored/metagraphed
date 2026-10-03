@@ -14,9 +14,16 @@ export class McpContentResult {
 
 /** SDK-validated upstream blocks, retained once as native MCP content. */
 export class McpForwardedResult {
+  readonly value: Record<string, unknown>;
+  readonly content: ContentBlock[];
+  readonly isError: boolean;
   constructor(
-    readonly value: Record<string, unknown>,
-    readonly content: ContentBlock[],
-    readonly isError: boolean,
-  ) {}
+    value: Record<string, unknown>,
+    content: ContentBlock[],
+    isError: boolean,
+  ) {
+    this.value = value;
+    this.content = content;
+    this.isError = isError;
+  }
 }
