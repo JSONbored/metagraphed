@@ -1835,9 +1835,8 @@ export async function normalizeAgentCatalogDetail(
   netuid: number,
 ): Promise<AgentCatalogDetail> {
   // Catalog validation is needed on detail requests, not every initial page load.
-  const { McpSurfaceAdmissionSchema } = await import(
-    "../../../../../schemas-src/subnet-mcp-admission.ts"
-  );
+  const { McpSurfaceAdmissionSchema } =
+    await import("../../../../../schemas-src/subnet-mcp-admission.ts");
   const base = normalizeAgentCatalogSummary(raw) ?? { netuid };
   const d = isRecord(raw) ? raw : {};
   const services = Array.isArray(d.services)
