@@ -178,7 +178,9 @@ export async function mirrorNominatorPositionsToNeon(
     const laneDb = laneHealthStore(env, deps.laneHealthDb);
     const now = deps.now ?? Date.now;
     for (const [key, result] of Object.entries(outcome)) {
-      if (key === "attempted") continue;
+      // The snapshot is a receipt for this same atomic write/prune, not a
+      // separately scheduled producer with an independent silence cadence.
+      if (key === "attempted" || key === "snapshot") continue;
       const name = key === "write" ? lane : `${lane}-${key}`;
       await recordNeonWriteVerdict(
         laneDb,

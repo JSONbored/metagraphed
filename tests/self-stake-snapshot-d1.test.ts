@@ -453,6 +453,43 @@ test("snapshot metadata cannot borrow Alpha's prune domain or fall back to legac
   assert.equal((await rowsOf()).length, 0);
 });
 
+test("full-snapshot receipts use the existing write/prune health lanes without creating a fictitious producer", async () => {
+  const verdicts: unknown[][] = [];
+  const result = await mirrorNominatorPositionsToNeon(
+    dataApiEnv({
+      D1_STATE: db,
+      D1_STATE_TABLES:
+        "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
+    }),
+    null,
+    {
+      rows: [row()],
+      coldkeyMaxCapturedAt: new Map([["a", stamp]]),
+      selfStakeSnapshot: snapshot(),
+      source: "self-stake",
+      lane: "self-stake",
+    },
+    {
+      now: () => Date.now(),
+      laneHealthDb: {
+        async query() {
+          return [];
+        },
+        async run(_text, values) {
+          verdicts.push(values ?? []);
+          return { changes: 1 };
+        },
+      },
+    },
+  );
+  assert.equal(result.snapshot!.complete, true);
+  assert.equal(verdicts.length, 2);
+  assert.deepEqual(verdicts.map((values) => values[0]).sort(), [
+    "neon:self-stake",
+    "neon:self-stake-prune",
+  ]);
+});
+
 test("the real sync handler validates metadata and returns the exact durable snapshot acknowledgement", async () => {
   const coldkey = "5DvTpiniW9s3APmHRYn8FroUWyfnLtrsid5Mtn5EwMXHN2ed",
     hotkey = "5FTsvUZk3aoFdaAKAvWr1XVLmnEnEs5MoTM4nXtCUCu7yPQ7";
