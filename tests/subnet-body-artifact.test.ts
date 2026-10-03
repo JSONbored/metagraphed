@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import {
   fetchSubnetBodyArtifact,
   type SubnetBodyArtifact,
@@ -587,8 +587,8 @@ describe("public admitted write path", () => {
       inline.targetCalls[0]!.init.method,
     );
     assert.deepEqual(
-      artifact.targetCalls[0]!.init.headers,
-      inline.targetCalls[0]!.init.headers,
+      [...new Headers(artifact.targetCalls[0]!.init.headers)],
+      [...new Headers(inline.targetCalls[0]!.init.headers)],
     );
     assert.deepEqual(
       Buffer.from(artifact.targetCalls[0]!.init.body as Uint8Array),
@@ -730,6 +730,62 @@ describe("public admitted write path", () => {
       "Bearer fixture-secret",
     );
     assert.equal(new Headers(calls[1]!.headers).get("authorization"), null);
+  });
+  test("invalid HTTP credentials fail before resolving a file", async () => {
+    let resolved = 0;
+    const result = await callSubnetSurface(
+      { url: "https://subnet.example/" },
+      {
+        path: "/upload",
+        method: "POST",
+        contentType: content_type,
+        body: async () => {
+          resolved++;
+          return payload;
+        },
+        credential: {
+          location: "header",
+          name: "Authorization",
+          value: "Bearer fixture-secret\r\ninjected: value",
+        },
+        isUnsafeUrl: safe,
+        fetchImpl: async () => {
+          throw new Error("provider fetch forbidden");
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(resolved, 0);
+    if (!result.ok) {
+      assert.match(result.error, /valid HTTP request headers/);
+      assert.ok(!result.error.includes("fixture-secret"));
+    }
+  });
+  test("elapsed file work cannot bypass the deadline through ready microtasks", async () => {
+    const clock = vi.spyOn(performance, "now").mockReturnValue(20);
+    clock.mockReturnValueOnce(0);
+    let fetched = 0;
+    try {
+      const result = await callSubnetSurface(
+        { url: "https://subnet.example/", probe: { timeout_ms: 10 } },
+        {
+          path: "/upload",
+          method: "POST",
+          contentType: content_type,
+          body: async () => payload,
+          isUnsafeUrl: safe,
+          fetchImpl: async () => {
+            fetched++;
+            return Response.json({ accepted: true });
+          },
+        },
+      );
+      assert.equal(result.ok, false);
+      assert.equal(fetched, 0);
+      if (!result.ok) assert.match(result.error, /timed out/);
+    } finally {
+      clock.mockRestore();
+    }
   });
   test("body credentials and read verbs cannot resolve deferred bytes", async () => {
     let resolved = 0;

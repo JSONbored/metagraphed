@@ -846,21 +846,42 @@ async function safetyCheckedFetch(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let started = performance.now();
   try {
+    let targetHeaders: Headers | Record<string, string> = {
+      accept: "application/json, text/*;q=0.8, */*;q=0.5",
+      "user-agent": "metagraphed-mcp-call-subnet-surface/0.0",
+      ...(body !== undefined && contentType
+        ? { "content-type": contentType }
+        : {}),
+      ...(extraHeaders || {}),
+    };
+    if (typeof body === "function") {
+      // Validate credential/parameter bytes before downloading a file. Reuse
+      // these normalized headers in the actual request.
+      try {
+        targetHeaders = new Headers(targetHeaders);
+      } catch {
+        throw new Error(
+          "Request body artifact requires valid HTTP request headers",
+        );
+      }
+    }
     // Deferred file bytes resolve only after the target is safe, inside the
     // same fetch deadline. Redirects reuse these exact verified bytes once.
     const resolvedBody =
       typeof body === "function" ? await body(controller.signal) : body;
-    if (typeof body === "function") started = performance.now();
+    if (typeof body === "function") {
+      const ready = performance.now();
+      // A ready stream can finish in microtasks before the timer runs. Check
+      // elapsed time so an expired file cannot start a provider write.
+      if (ready - started >= timeoutMs) {
+        controller.abort();
+        throw new Error("Request body artifact timed out");
+      }
+      started = ready;
+    }
     const response = await fetchImpl(url, {
       method,
-      headers: {
-        accept: "application/json, text/*;q=0.8, */*;q=0.5",
-        "user-agent": "metagraphed-mcp-call-subnet-surface/0.0",
-        ...(resolvedBody !== undefined && contentType
-          ? { "content-type": contentType }
-          : {}),
-        ...(extraHeaders || {}),
-      },
+      headers: targetHeaders,
       ...(resolvedBody !== undefined ? { body: resolvedBody } : {}),
       redirect: "manual",
       signal: controller.signal,
