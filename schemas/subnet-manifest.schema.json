@@ -30,11 +30,7 @@
       "pattern": "^[a-z0-9][a-z0-9-]*$"
     },
     "status": {
-      "enum": [
-        "active",
-        "inactive",
-        "unknown"
-      ]
+      "enum": ["active", "inactive", "unknown"]
     },
     "categories": {
       "type": "array",
@@ -44,34 +40,22 @@
       "uniqueItems": true
     },
     "docs_url": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "format": "uri",
       "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
     },
     "source_repo": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "format": "uri",
       "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
     },
     "dashboard_url": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "format": "uri",
       "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
     },
     "website_url": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "format": "uri",
       "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
     },
@@ -204,13 +188,7 @@
         },
         "method": {
           "description": "HTTP method this surface is invoked with. ABSENT MEANS GET -- every pre-existing surface keeps its meaning unchanged. A non-GET surface is a declared mutation (metagraphed#11146): it may never enable a probe (the prober only speaks GET/HEAD, and probing a mutation with GET would publish a route that answers a method nobody declared), and callers reach it through call_subnet_surface's schema-gated execution, not by fetching the URL.",
-          "enum": [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE"
-          ]
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
         },
         "url": {
           "type": "string",
@@ -241,11 +219,7 @@
           "pattern": "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://"
         },
         "schema_status": {
-          "enum": [
-            "machine-readable",
-            "ui-only",
-            "not-captured"
-          ]
+          "enum": ["machine-readable", "ui-only", "not-captured"]
         },
         "source_urls": {
           "type": "array",
@@ -261,17 +235,11 @@
         "review": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "state"
-          ],
+          "required": ["state"],
           "description": "Per-surface HUMAN review/governance state for the single-file contribution model: a surface enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\". Human-governance axis ONLY \u2014 machine verification + freshness (live or stale) is the separate probe-derived `verification` overlay (health, last_verified_at, incidents); subnet-level curation has its own `curation.review_state`.",
           "properties": {
             "state": {
-              "enum": [
-                "community-submitted",
-                "maintainer-reviewed",
-                "rejected"
-              ]
+              "enum": ["community-submitted", "maintainer-reviewed", "rejected"]
             },
             "submitted_by": {
               "type": "string"
@@ -280,11 +248,7 @@
               "type": "string"
             },
             "confidence": {
-              "enum": [
-                "low",
-                "medium",
-                "high"
-              ]
+              "enum": ["low", "medium", "high"]
             },
             "review_notes": {
               "type": "string"
@@ -301,10 +265,7 @@
         "rate_limit": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "requests",
-            "window"
-          ],
+          "required": ["requests", "window"],
           "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only \u2014 metagraphed does not enforce it and it never feeds completeness.",
           "properties": {
             "requests": {
@@ -323,12 +284,7 @@
               "description": "Optional short-term burst allowance above the steady rate."
             },
             "scope": {
-              "enum": [
-                "per-key",
-                "per-ip",
-                "global",
-                "unknown"
-              ],
+              "enum": ["per-key", "per-ip", "global", "unknown"],
               "description": "What the limit is counted against."
             },
             "cost_notes": {
@@ -338,14 +294,9 @@
           }
         },
         "auth": {
-          "type": [
-            "object",
-            "null"
-          ],
+          "type": ["object", "null"],
           "additionalProperties": false,
-          "required": [
-            "scheme"
-          ],
+          "required": ["scheme"],
           "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only \u2014 never a real secret; integration-only, never feeds completeness.",
           "properties": {
             "scheme": {
@@ -361,12 +312,7 @@
               "description": "Credential scheme. \"signature\" is a multi-value bundle (e.g. a Bittensor hotkey-signed request: signature + timestamp + address headers) the caller computes and supplies as a whole -- see `names`, not `name`."
             },
             "location": {
-              "enum": [
-                "header",
-                "query",
-                "cookie",
-                "body"
-              ],
+              "enum": ["header", "query", "cookie", "body"],
               "description": "Where the credential is sent. \"body\" only applies to scheme:signature (the values are merged into the outgoing JSON request body, not sent as headers/query/cookie)."
             },
             "name": {
@@ -384,10 +330,7 @@
             "body_envelope": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-                "payload_key",
-                "credential_key"
-              ],
+              "required": ["payload_key", "credential_key"],
               "description": "For scheme:signature, location:body only: set when the target API wraps the credential in its own nested object alongside the semantic request payload (e.g. {\"payload\": {...}, \"sig\": {...}}) instead of flat-merging the credential's fields into the top-level body. `names` still lists the credential bundle's own field names (nested under `credential_key`), unaffected by this wrapper shape. Omit entirely for a flat top-level merge (the default).",
               "properties": {
                 "payload_key": {
@@ -430,11 +373,7 @@
         "mcp": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "transport",
-            "read_tools",
-            "write_tools"
-          ],
+          "required": ["transport", "read_tools", "write_tools"],
           "properties": {
             "transport": {
               "const": "streamable-http"
@@ -467,17 +406,10 @@
           "if": {
             "properties": {
               "method": {
-                "enum": [
-                  "POST",
-                  "PUT",
-                  "PATCH",
-                  "DELETE"
-                ]
+                "enum": ["POST", "PUT", "PATCH", "DELETE"]
               }
             },
-            "required": [
-              "method"
-            ]
+            "required": ["method"]
           },
           "then": {
             "properties": {
@@ -493,9 +425,7 @@
         },
         {
           "if": {
-            "required": [
-              "mcp"
-            ]
+            "required": ["mcp"]
           },
           "then": {
             "properties": {
@@ -520,10 +450,7 @@
     "revenue": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "role",
-        "provenance"
-      ],
+      "required": ["role", "provenance"],
       "properties": {
         "role": {
           "description": "What this surface actually measures. A \"stats\" endpoint is guilty until proven revenue: miner payout is emission (the denominator), and counting it as revenue puts the denominator in the numerator. `not-revenue` and `miner-payout` are successful verdicts, recorded so a false positive is retired rather than re-investigated.",
@@ -547,26 +474,13 @@
         },
         "currency": {
           "description": "Unit the amount field carries. Declared rather than inferred from the path: api.chutes.ai/payments/summary/tao is named for TAO and reconciles as USD.",
-          "enum": [
-            "USD",
-            "TAO",
-            "ALPHA"
-          ]
+          "enum": ["USD", "TAO", "ALPHA"]
         },
         "grain": {
-          "enum": [
-            "daily",
-            "weekly",
-            "monthly",
-            "cumulative"
-          ]
+          "enum": ["daily", "weekly", "monthly", "cumulative"]
         },
         "shape": {
-          "enum": [
-            "flat-array",
-            "keyed-map",
-            "scalar"
-          ],
+          "enum": ["flat-array", "keyed-map", "scalar"],
           "description": "How the payload is arranged, so an extractor does not have to guess. `flat-array`: a list of records, `fields.date`/`fields.amount` naming keys within one (SN64's daily_revenue_summary). `keyed-map`: nested {period: {subkey: amount}} where the period IS the key and there are no field names to point at (SN51's revenue-for-validators). `scalar`: one object carrying a single total, `fields.amount` naming it (SN64's payments/summary/tao)."
         },
         "rows": {
@@ -596,12 +510,7 @@
         },
         "circularity": {
           "description": "Whether the money originates outside Bittensor. Absent means unknown, never external.",
-          "enum": [
-            "external",
-            "alpha-denominated",
-            "team-funded",
-            "unknown"
-          ],
+          "enum": ["external", "alpha-denominated", "team-funded", "unknown"],
           "default": "unknown"
         },
         "source_url": {
@@ -622,14 +531,10 @@
                 "const": "none"
               }
             },
-            "required": [
-              "provenance"
-            ]
+            "required": ["provenance"]
           },
           "then": {
-            "required": [
-              "searched_at"
-            ]
+            "required": ["searched_at"]
           }
         },
         {
@@ -639,23 +544,13 @@
                 "const": "external-revenue"
               },
               "provenance": {
-                "enum": [
-                  "chain-verified",
-                  "probe-derived"
-                ]
+                "enum": ["chain-verified", "probe-derived"]
               }
             },
-            "required": [
-              "role",
-              "provenance"
-            ]
+            "required": ["role", "provenance"]
           },
           "then": {
-            "required": [
-              "currency",
-              "grain",
-              "shape"
-            ]
+            "required": ["currency", "grain", "shape"]
           }
         },
         {
@@ -665,23 +560,16 @@
                 "const": "flat-array"
               }
             },
-            "required": [
-              "shape"
-            ]
+            "required": ["shape"]
           },
           "then": {
             "properties": {
               "fields": {
                 "type": "object",
-                "required": [
-                  "date",
-                  "amount"
-                ]
+                "required": ["date", "amount"]
               }
             },
-            "required": [
-              "fields"
-            ]
+            "required": ["fields"]
           }
         },
         {
@@ -691,22 +579,16 @@
                 "const": "scalar"
               }
             },
-            "required": [
-              "shape"
-            ]
+            "required": ["shape"]
           },
           "then": {
             "properties": {
               "fields": {
                 "type": "object",
-                "required": [
-                  "amount"
-                ]
+                "required": ["amount"]
               }
             },
-            "required": [
-              "fields"
-            ]
+            "required": ["fields"]
           }
         },
         {
@@ -716,9 +598,7 @@
                 "const": "keyed-map"
               }
             },
-            "required": [
-              "shape"
-            ]
+            "required": ["shape"]
           },
           "then": {
             "properties": {
@@ -731,30 +611,16 @@
     "probe": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "enabled",
-        "method",
-        "expect"
-      ],
+      "required": ["enabled", "method", "expect"],
       "properties": {
         "enabled": {
           "type": "boolean"
         },
         "method": {
-          "enum": [
-            "GET",
-            "HEAD",
-            "JSON-RPC",
-            "WSS-RPC"
-          ]
+          "enum": ["GET", "HEAD", "JSON-RPC", "WSS-RPC"]
         },
         "expect": {
-          "enum": [
-            "json",
-            "html",
-            "sse",
-            "any"
-          ]
+          "enum": ["json", "html", "sse", "any"]
         },
         "timeout_ms": {
           "type": "integer",
@@ -766,10 +632,7 @@
     "curation": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "level",
-        "review_state"
-      ],
+      "required": ["level", "review_state"],
       "properties": {
         "level": {
           "enum": [
@@ -791,16 +654,10 @@
           ]
         },
         "reviewed_at": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "verified_at": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "source_count": {
           "type": "integer",
@@ -817,16 +674,11 @@
     "partnership": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "tier",
-        "since"
-      ],
+      "required": ["tier", "since"],
       "description": "Display/placement metadata \u2014 e.g. a featured-pilot slot on the homepage. Distinct from `authority` and `curation.level`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md).",
       "properties": {
         "tier": {
-          "enum": [
-            "pilot"
-          ]
+          "enum": ["pilot"]
         },
         "since": {
           "type": "string",
@@ -840,10 +692,7 @@
     "link": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "label",
-        "url"
-      ],
+      "required": ["label", "url"],
       "properties": {
         "label": {
           "type": "string",
@@ -862,10 +711,7 @@
     "exchange_listing": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "exchange",
-        "url"
-      ],
+      "required": ["exchange", "url"],
       "properties": {
         "exchange": {
           "type": "string",
@@ -887,10 +733,7 @@
     "verification": {
       "type": "object",
       "additionalProperties": true,
-      "required": [
-        "classification",
-        "verified_at"
-      ],
+      "required": ["classification", "verified_at"],
       "properties": {
         "classification": {
           "enum": [
@@ -921,16 +764,10 @@
           "maximum": 100
         },
         "content_type": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "redirect_target": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uri"
         }
       }
@@ -938,11 +775,7 @@
     "wallet_search": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "searched_at",
-        "outcome",
-        "checked"
-      ],
+      "required": ["searched_at", "outcome", "checked"],
       "description": "Whether this subnet has been searched for DECLARED WALLETS -- a treasury, a multisig, or a burn address the team has published -- and when. The sibling of `revenue_search`, and it exists for the same reason one phase later: `registry/entities/` holds addresses that EXIST, so a subnet that declares none has no address to write and its absence has nowhere to live. Without this the claim \"N of 128 subnets publish no treasury address\" cannot be made at all, because nothing distinguishes a subnet nobody looked at from one that was looked at and had none.",
       "properties": {
         "searched_at": {
@@ -951,10 +784,7 @@
           "description": "When the search was run. An absence with no date is not evidence."
         },
         "outcome": {
-          "enum": [
-            "none-found",
-            "wallets-declared"
-          ],
+          "enum": ["none-found", "wallets-declared"],
           "description": "`none-found` asserts the team publishes no wallet address; `wallets-declared` says at least one is registered in `registry/entities/` against this netuid. Cross-checked against the entity files themselves, so the summary cannot drift from the data it summarises.",
           "type": "string"
         },
@@ -984,11 +814,7 @@
     "revenue_search": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "searched_at",
-        "outcome",
-        "checked"
-      ],
+      "required": ["searched_at", "outcome", "checked"],
       "description": "Whether this subnet has been searched for external revenue, and when. A subnet with no revenue-shaped surface has nowhere to put a per-surface `revenue` block, so an undated silence is indistinguishable from nobody having looked. This is the subnet-level record that makes an absence evidence.",
       "properties": {
         "searched_at": {
@@ -997,10 +823,7 @@
           "description": "When the search was run. An absence with no date is not evidence."
         },
         "outcome": {
-          "enum": [
-            "none-found",
-            "surfaces-declared"
-          ],
+          "enum": ["none-found", "surfaces-declared"],
           "description": "`none-found` asserts no external-revenue surface exists; `surfaces-declared` says at least one does. Cross-checked against the surfaces themselves, so the summary cannot drift from the data."
         },
         "checked": {

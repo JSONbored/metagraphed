@@ -60,11 +60,20 @@ export async function runSubnetMcp(
   for (const name of options.readTools) allowed.set(name, "read");
   for (const name of options.writeTools) {
     if (allowed.has(name))
-      throw new SubnetMcpError("invalid_registry", "MCP read/write admissions overlap.");
+      throw new SubnetMcpError(
+        "invalid_registry",
+        "MCP read/write admissions overlap.",
+      );
     allowed.set(name, "write");
   }
-  if (operation.kind !== "discover" && allowed.get(operation.name) !== operation.kind) {
-    throw new SubnetMcpError("operation_not_allowed", "This MCP operation is not admitted for this tool.");
+  if (
+    operation.kind !== "discover" &&
+    allowed.get(operation.name) !== operation.kind
+  ) {
+    throw new SubnetMcpError(
+      "operation_not_allowed",
+      "This MCP operation is not admitted for this tool.",
+    );
   }
   const endpoint = new URL(options.url);
   const controller = new AbortController();
@@ -84,32 +93,58 @@ export async function runSubnetMcp(
       : [];
 
   const checkedFetch: typeof fetch = async (input, init) => {
-    if (phase === "closed" || (phase === "cleanup" && init?.method !== "DELETE"))
-      throw new SubnetMcpError("request_closed", "The upstream MCP invocation has ended.");
+    if (
+      phase === "closed" ||
+      (phase === "cleanup" && init?.method !== "DELETE")
+    )
+      throw new SubnetMcpError(
+        "request_closed",
+        "The upstream MCP invocation has ended.",
+      );
     if (phase === "operation" && ++requests > MAX_REQUESTS)
-      throw new SubnetMcpError("request_limit", "The upstream MCP request budget was exceeded.");
+      throw new SubnetMcpError(
+        "request_limit",
+        "The upstream MCP request budget was exceeded.",
+      );
     let url = new URL(input instanceof Request ? input.url : String(input));
     if (url.href !== endpoint.href)
-      throw new SubnetMcpError("unsafe_url", "The SDK requested an unregistered MCP endpoint.");
+      throw new SubnetMcpError(
+        "unsafe_url",
+        "The SDK requested an unregistered MCP endpoint.",
+      );
     const headers = new Headers(init?.headers);
     for (const [name, value] of credentialEntries) {
       if (credential?.location === "query") url.searchParams.set(name, value);
-      else if (credential?.location === "cookie") headers.append("cookie", `${name}=${value}`);
+      else if (credential?.location === "cookie")
+        headers.append("cookie", `${name}=${value}`);
       else headers.set(name, value);
     }
-    if (typeof init?.body === "string" && new TextEncoder().encode(init.body).length > MAX_RESPONSE_BYTES)
-      throw new SubnetMcpError("request_too_large", "The upstream MCP request exceeds the byte limit.");
-    const signal = phase === "cleanup"
-      ? AbortSignal.timeout(250)
-      : init?.signal
-        ? AbortSignal.any([controller.signal, init.signal])
-        : controller.signal;
+    if (
+      typeof init?.body === "string" &&
+      new TextEncoder().encode(init.body).length > MAX_RESPONSE_BYTES
+    )
+      throw new SubnetMcpError(
+        "request_too_large",
+        "The upstream MCP request exceeds the byte limit.",
+      );
+    const signal =
+      phase === "cleanup"
+        ? AbortSignal.timeout(250)
+        : init?.signal
+          ? AbortSignal.any([controller.signal, init.signal])
+          : controller.signal;
     for (let hop = 0; ; hop++) {
       if (await options.isUnsafeUrl(url.href))
-        throw new SubnetMcpError("unsafe_url", "The upstream MCP endpoint or redirect is unsafe.");
+        throw new SubnetMcpError(
+          "unsafe_url",
+          "The upstream MCP endpoint or redirect is unsafe.",
+        );
       signal.throwIfAborted();
       const response = await options.fetchImpl(url.href, {
-        ...init, headers, redirect: "manual", signal,
+        ...init,
+        headers,
+        redirect: "manual",
+        signal,
       });
       if (signal.aborted) {
         void response.body?.cancel().catch(() => {});
@@ -120,7 +155,10 @@ export async function runSubnetMcp(
         void response.body?.cancel().catch(() => {});
         const target = new URL(location, url);
         if (hop === 5 || target.origin !== endpoint.origin)
-          throw new SubnetMcpError("redirect_blocked", "The upstream MCP redirect exceeds its admitted origin or hop limit.");
+          throw new SubnetMcpError(
+            "redirect_blocked",
+            "The upstream MCP redirect exceeds its admitted origin or hop limit.",
+          );
         url = target;
         continue;
       }
@@ -144,7 +182,10 @@ export async function runSubnetMcp(
             bytes += next.value.byteLength;
             totalBytes += next.value.byteLength;
             if (bytes > MAX_RESPONSE_BYTES || totalBytes > MAX_TOTAL_BYTES)
-              throw new SubnetMcpError("response_too_large", "The upstream MCP response exceeds the byte budget.");
+              throw new SubnetMcpError(
+                "response_too_large",
+                "The upstream MCP response exceeds the byte budget.",
+              );
             if (next.value.byteLength === 0 && ++emptyChunks % 128 === 0)
               await new Promise<void>((resolve) => setTimeout(resolve, 0));
             output.enqueue(next.value);
@@ -160,14 +201,19 @@ export async function runSubnetMcp(
         },
       });
       return new Response(body, {
-        status: response.status, statusText: response.statusText, headers: response.headers,
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
       });
     }
   };
   const transport = new StreamableHTTPClientTransport(endpoint, {
     fetch: checkedFetch,
   });
-  const timeout = new SubnetMcpError("timeout", "The upstream MCP invocation exceeded its deadline.");
+  const timeout = new SubnetMcpError(
+    "timeout",
+    "The upstream MCP invocation exceeded its deadline.",
+  );
   let timer: ReturnType<typeof setTimeout>;
   const expired = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => {
@@ -175,7 +221,10 @@ export async function runSubnetMcp(
       reject(timeout);
     }, options.timeoutMs);
   });
-  const requestOptions = { signal: controller.signal, timeout: options.timeoutMs + 1_000 };
+  const requestOptions = {
+    signal: controller.signal,
+    timeout: options.timeoutMs + 1_000,
+  };
   const execute = async (): Promise<SubnetMcpResult> => {
     await client.connect(transport, requestOptions);
     let cursor: string | undefined;
@@ -183,32 +232,53 @@ export async function runSubnetMcp(
     const names = new Set<string>();
     const tools: (Tool & { access: "read" | "write" })[] = [];
     do {
-      const page = await client.listTools(cursor ? { cursor } : undefined, requestOptions);
+      const page = await client.listTools(
+        cursor ? { cursor } : undefined,
+        requestOptions,
+      );
       for (const tool of page.tools) {
         if (names.has(tool.name) || names.size === MAX_TOOLS)
-          throw new SubnetMcpError("invalid_catalog", "The upstream MCP catalog repeats a tool or exceeds its limit.");
+          throw new SubnetMcpError(
+            "invalid_catalog",
+            "The upstream MCP catalog repeats a tool or exceeds its limit.",
+          );
         names.add(tool.name);
         const access = allowed.get(tool.name);
         if (access) tools.push({ ...tool, access });
         if (operation.kind !== "discover" && tool.name === operation.name) {
-          const checked = validator.getValidator(tool.inputSchema)(operation.arguments);
+          const checked = validator.getValidator(tool.inputSchema)(
+            operation.arguments,
+          );
           if (!checked.valid)
-            throw new SubnetMcpError("invalid_params", "Arguments do not match the upstream MCP tool schema.");
+            throw new SubnetMcpError(
+              "invalid_params",
+              "Arguments do not match the upstream MCP tool schema.",
+            );
           // listTools caches this page's output schemas inside the SDK. Call
           // before another page replaces that cache, retaining SDK validation.
-          const result = await client.callTool({ name: tool.name, arguments: operation.arguments }, undefined, requestOptions);
+          const result = await client.callTool(
+            { name: tool.name, arguments: operation.arguments },
+            undefined,
+            requestOptions,
+          );
           return { kind: "call", result };
         }
       }
       cursor = page.nextCursor;
       if (cursor) {
         if (cursors.has(cursor))
-          throw new SubnetMcpError("invalid_catalog", "The upstream MCP catalog repeats a cursor.");
+          throw new SubnetMcpError(
+            "invalid_catalog",
+            "The upstream MCP catalog repeats a cursor.",
+          );
         cursors.add(cursor);
       }
     } while (cursor);
     if (operation.kind !== "discover")
-      throw new SubnetMcpError("not_found", "The admitted tool is absent from the upstream MCP catalog.");
+      throw new SubnetMcpError(
+        "not_found",
+        "The admitted tool is absent from the upstream MCP catalog.",
+      );
     return { kind: "discover", tools };
   };
   try {
@@ -216,7 +286,10 @@ export async function runSubnetMcp(
   } catch (error) {
     if (controller.signal.reason === timeout) throw timeout;
     if (error instanceof SubnetMcpError) throw error;
-    throw new SubnetMcpError("upstream_mcp_error", redactCredentialValue(String(error), credential));
+    throw new SubnetMcpError(
+      "upstream_mcp_error",
+      redactCredentialValue(String(error), credential),
+    );
   } finally {
     clearTimeout(timer!);
     phase = "cleanup";
@@ -227,7 +300,9 @@ export async function runSubnetMcp(
     let cleanupTimer: ReturnType<typeof setTimeout>;
     await Promise.race([
       transport.terminateSession().catch(() => {}),
-      new Promise<void>((resolve) => { cleanupTimer = setTimeout(resolve, 250); }),
+      new Promise<void>((resolve) => {
+        cleanupTimer = setTimeout(resolve, 250);
+      }),
     ]);
     clearTimeout(cleanupTimer!);
     phase = "closed";

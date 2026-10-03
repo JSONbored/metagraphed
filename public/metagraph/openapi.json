@@ -19811,6 +19811,9 @@
                 "kind": {
                   "type": "string"
                 },
+                "mcp": {
+                  "$ref": "#/components/schemas/McpSurfaceAdmission"
+                },
                 "method": {
                   "description": "HTTP method this service is invoked with; absent means GET. A non-GET service is a declared mutation (#11146): it carries no GET snippets -- call it through call_subnet_surface with the captured schema.",
                   "enum": [
@@ -39067,6 +39070,39 @@
           "target_network",
           "link_count",
           "links"
+        ],
+        "type": "object"
+      },
+      "McpSurfaceAdmission": {
+        "additionalProperties": false,
+        "properties": {
+          "read_tools": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 512,
+            "type": "array"
+          },
+          "transport": {
+            "const": "streamable-http",
+            "type": "string"
+          },
+          "write_tools": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 512,
+            "type": "array"
+          }
+        },
+        "required": [
+          "transport",
+          "read_tools",
+          "write_tools"
         ],
         "type": "object"
       },
@@ -64685,6 +64721,9 @@
                 "type": "null"
               }
             ]
+          },
+          "mcp": {
+            "$ref": "#/components/schemas/McpSurfaceAdmission"
           },
           "method": {
             "description": "HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.",

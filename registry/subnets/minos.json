@@ -31,9 +31,7 @@
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
     "outcome": "none-found",
-    "checked": [
-      "website"
-    ]
+    "checked": ["website"]
   },
   "surfaces": [
     {
@@ -100,9 +98,7 @@
       },
       "provider": "minos",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/minos-protocol/minos_subnet"
-      ],
+      "source_urls": ["https://github.com/minos-protocol/minos_subnet"],
       "url": "https://theminos.ai/"
     },
     {
@@ -120,9 +116,7 @@
       },
       "provider": "minos",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/minos-protocol/minos_subnet"
-      ],
+      "source_urls": ["https://github.com/minos-protocol/minos_subnet"],
       "url": "https://github.com/minos-protocol/minos_subnet"
     },
     {
@@ -161,11 +155,7 @@
         "scheme": "signature",
         "scopes_note": "Requires a hotkey-signed request: the hotkey, timestamp, signature fields merged into the POST body, proving control of a registered hotkey (documented in the official minos_subnet README; live-verified 2026-07-22 -- an unsigned request's HTTP 422 lists exactly these fields as missing). No static API token exists. Calling this via path+method credential passthrough requires a captured schema for this subnet, not yet registered.",
         "location": "body",
-        "names": [
-          "hotkey",
-          "timestamp",
-          "signature"
-        ]
+        "names": ["hotkey", "timestamp", "signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -195,11 +185,7 @@
         "scheme": "signature",
         "scopes_note": "Requires a hotkey-signed request: the hotkey, timestamp, signature fields merged into the POST body, proving control of a registered hotkey (documented in the official minos_subnet README; live-verified 2026-07-22 -- an unsigned request's HTTP 422 lists exactly these fields as missing). No static API token exists. Calling this via path+method credential passthrough requires a captured schema for this subnet, not yet registered.",
         "location": "body",
-        "names": [
-          "hotkey",
-          "timestamp",
-          "signature"
-        ]
+        "names": ["hotkey", "timestamp", "signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -229,11 +215,7 @@
         "scheme": "signature",
         "scopes_note": "Requires a hotkey-signed request: the validator_hotkey, timestamp, signature fields merged into the POST body, proving control of a registered hotkey (documented in the official minos_subnet README; live-verified 2026-07-22 -- an unsigned request's HTTP 422 lists exactly these fields as missing). No static API token exists. Calling this via path+method credential passthrough requires a captured schema for this subnet, not yet registered.",
         "location": "body",
-        "names": [
-          "validator_hotkey",
-          "timestamp",
-          "signature"
-        ]
+        "names": ["validator_hotkey", "timestamp", "signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -263,11 +245,7 @@
         "scheme": "signature",
         "scopes_note": "Requires a hotkey-signed request: the validator_hotkey, timestamp, signature fields merged into the POST body, proving control of a registered hotkey (documented in the official minos_subnet README; live-verified 2026-07-22 -- an unsigned request's HTTP 422 lists exactly these fields as missing). No static API token exists. Calling this via path+method credential passthrough requires a captured schema for this subnet, not yet registered.",
         "location": "body",
-        "names": [
-          "validator_hotkey",
-          "timestamp",
-          "signature"
-        ]
+        "names": ["validator_hotkey", "timestamp", "signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -297,11 +275,7 @@
         "scheme": "signature",
         "scopes_note": "Requires a hotkey-signed request: the validator_hotkey, timestamp, signature fields merged into the POST body, proving control of a registered hotkey (documented in the official minos_subnet README; live-verified 2026-07-22 -- an unsigned request's HTTP 422 lists exactly these fields as missing). No static API token exists. Calling this via path+method credential passthrough requires a captured schema for this subnet, not yet registered.",
         "location": "body",
-        "names": [
-          "validator_hotkey",
-          "timestamp",
-          "signature"
-        ]
+        "names": ["validator_hotkey", "timestamp", "signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -331,11 +305,7 @@
         "scheme": "signature",
         "scopes_note": "Requires a hotkey-signed request: the validator_hotkey, timestamp, signature fields merged into the POST body, proving control of a registered hotkey (documented in the official minos_subnet README; live-verified 2026-07-22 -- an unsigned request's HTTP 422 lists exactly these fields as missing). No static API token exists. Calling this via path+method credential passthrough requires a captured schema for this subnet, not yet registered.",
         "location": "body",
-        "names": [
-          "validator_hotkey",
-          "timestamp",
-          "signature"
-        ]
+        "names": ["validator_hotkey", "timestamp", "signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -365,11 +335,7 @@
         "scheme": "signature",
         "scopes_note": "Requires a hotkey-signed request: the validator_hotkey, timestamp, signature fields merged into the POST body, proving control of a registered hotkey (documented in the official minos_subnet README; live-verified 2026-07-22 -- an unsigned request's HTTP 422 lists exactly these fields as missing). No static API token exists. Calling this via path+method credential passthrough requires a captured schema for this subnet, not yet registered.",
         "location": "body",
-        "names": [
-          "validator_hotkey",
-          "timestamp",
-          "signature"
-        ]
+        "names": ["validator_hotkey", "timestamp", "signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -399,11 +365,7 @@
         "scheme": "signature",
         "scopes_note": "Requires a hotkey-signed request: the validator_hotkey, timestamp, signature fields merged into the POST body, proving control of a registered hotkey (documented in the official minos_subnet README; live-verified 2026-07-22 -- an unsigned request's HTTP 422 lists exactly these fields as missing). No static API token exists. Calling this via path+method credential passthrough requires a captured schema for this subnet, not yet registered.",
         "location": "body",
-        "names": [
-          "validator_hotkey",
-          "timestamp",
-          "signature"
-        ]
+        "names": ["validator_hotkey", "timestamp", "signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -433,11 +395,7 @@
         "scheme": "signature",
         "scopes_note": "Requires a hotkey-signed request: the validator_hotkey, timestamp, signature fields merged into the POST body, proving control of a registered hotkey (documented in the official minos_subnet README; live-verified 2026-07-22 -- an unsigned request's HTTP 422 lists exactly these fields as missing). No static API token exists. Calling this via path+method credential passthrough requires a captured schema for this subnet, not yet registered.",
         "location": "body",
-        "names": [
-          "validator_hotkey",
-          "timestamp",
-          "signature"
-        ]
+        "names": ["validator_hotkey", "timestamp", "signature"]
       },
       "auth_required": true,
       "authority": "community",

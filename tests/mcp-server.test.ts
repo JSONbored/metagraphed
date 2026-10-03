@@ -376,6 +376,7 @@ describe("MCP tool registry", () => {
       if (
         ![
           "invoke_tool",
+          "write_subnet_mcp",
           "write_subnet_surface",
           "store_surface_credential",
           "delete_surface_credential",

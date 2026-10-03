@@ -130,7 +130,8 @@ describe("MCP tool annotations", () => {
     // Native metadata reads use the same external chain RPC as Root baskets.
     // Quote and preview now share a finalized runtime simulation, also outside
     // the served artifact boundary. Both retain all four safe-read hints.
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 29);
+    // The three subnet MCP tools negotiate/call another provider's server.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 32);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,
@@ -163,6 +164,7 @@ describe("MCP tool annotations", () => {
       .map((def) => def.name);
     assert.deepEqual(mutating, [
       "invoke_tool",
+      "write_subnet_mcp",
       // #11568: the write half of the surface-call split. Its read sibling is
       // deliberately absent from this list now -- that is the split working.
       "write_subnet_surface",

@@ -6267,6 +6267,7 @@ export interface components {
                     status?: string;
                 };
                 kind: string;
+                mcp?: components["schemas"]["McpSurfaceAdmission"];
                 /**
                  * @description HTTP method this service is invoked with; absent means GET. A non-GET service is a declared mutation (#11146): it carries no GET snippets -- call it through call_subnet_surface with the captured schema.
                  * @enum {string}
@@ -9572,6 +9573,12 @@ export interface components {
             source_network: string;
             target_network: string;
             testnet_only_count?: number;
+        };
+        McpSurfaceAdmission: {
+            read_tools: string[];
+            /** @constant */
+            transport: "streamable-http";
+            write_tools: string[];
         };
         /** @description Checksum-bound public deployment code for ContractsApi upload_code/instantiate, Contracts upload_code/instantiate_with_code preparation, EthereumRuntimeRPCApi.create simulation or EVM.create/create2 preparation. Keep the declared code/data/init argument as 0x (or Code::Upload with fields 0x); the server verifies and fills only that declared byte vector. EVM simulation gas is admitted before fetching; runtime execution rules and unsigned wallet review remain unchanged. One distinct artifact is fetched per request, with no persistent storage. */
         NativeCodeArtifact: {
@@ -14348,6 +14355,7 @@ export interface components {
             key?: string;
             kind: components["schemas"]["SurfaceKind"];
             last_verified_at?: string | null;
+            mcp?: components["schemas"]["McpSurfaceAdmission"];
             /**
              * @description HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.
              * @enum {string}

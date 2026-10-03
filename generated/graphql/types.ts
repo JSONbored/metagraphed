@@ -3121,6 +3121,13 @@ export type IntensityDistribution = {
   p90: Scalars['Float']['output'];
 };
 
+export type McpSurfaceAdmission = {
+  __typename?: 'McpSurfaceAdmission';
+  read_tools: Array<Scalars['String']['output']>;
+  transport: Scalars['String']['output'];
+  write_tools: Array<Scalars['String']['output']>;
+};
+
 /** The Bittensor network whose static subnet artifact to read: finney (mainnet, default) or test (testnet). Mirrors the list_subnets MCP tool's network argument. */
 export enum Network {
   Finney = 'finney',
@@ -8032,6 +8039,7 @@ export type Surface = {
   key?: Maybe<Scalars['String']['output']>;
   kind: Scalars['String']['output'];
   last_verified_at?: Maybe<Scalars['String']['output']>;
+  mcp?: Maybe<McpSurfaceAdmission>;
   /** HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution. */
   method?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
@@ -8746,6 +8754,7 @@ export type ResolversTypes = ResolversObject<{
   IntegrationReadinessComponents: ResolverTypeWrapper<IntegrationReadinessComponents>;
   IntensityDistribution: ResolverTypeWrapper<IntensityDistribution>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
+  McpSurfaceAdmission: ResolverTypeWrapper<McpSurfaceAdmission>;
   Network: ResolverTypeWrapper<Network>;
   NetworkParameters: ResolverTypeWrapper<NetworkParameters>;
   NetworkRandomness: ResolverTypeWrapper<NetworkRandomness>;
@@ -9218,6 +9227,7 @@ export type ResolversParentTypes = ResolversObject<{
   IntegrationReadinessComponents: IntegrationReadinessComponents;
   IntensityDistribution: IntensityDistribution;
   JSON: Scalars['JSON']['output'];
+  McpSurfaceAdmission: McpSurfaceAdmission;
   NetworkParameters: NetworkParameters;
   NetworkRandomness: NetworkRandomness;
   Neuron: Neuron;
@@ -11926,6 +11936,12 @@ export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
   name: 'JSON';
 }
 
+export type McpSurfaceAdmissionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['McpSurfaceAdmission'] = ResolversParentTypes['McpSurfaceAdmission']> = ResolversObject<{
+  read_tools?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  transport?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  write_tools?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type NetworkParametersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NetworkParameters'] = ResolversParentTypes['NetworkParameters']> = ResolversObject<{
   block_emission_halvings?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   block_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -14440,6 +14456,7 @@ export type SurfaceResolvers<ContextType = GqlContext, ParentType extends Resolv
   key?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   last_verified_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  mcp?: Resolver<Maybe<ResolversTypes['McpSurfaceAdmission']>, ParentType, ContextType>;
   method?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -14983,6 +15000,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   IntegrationReadinessComponents?: IntegrationReadinessComponentsResolvers<ContextType>;
   IntensityDistribution?: IntensityDistributionResolvers<ContextType>;
   JSON?: GraphQLScalarType;
+  McpSurfaceAdmission?: McpSurfaceAdmissionResolvers<ContextType>;
   NetworkParameters?: NetworkParametersResolvers<ContextType>;
   NetworkRandomness?: NetworkRandomnessResolvers<ContextType>;
   Neuron?: NeuronResolvers<ContextType>;

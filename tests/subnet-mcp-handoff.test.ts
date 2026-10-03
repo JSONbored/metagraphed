@@ -16,6 +16,8 @@ const sourcePaths = [
   "scripts/build-artifacts.ts", "src/call-subnet-surface.ts", "src/mcp-content.ts",
   "src/mcp-server.ts", "src/subnet-mcp-client.ts", "tests/subnet-mcp-client.test.ts",
   "tests/subnet-mcp-tool.test.ts", "docs/subnet-mcp.md",
+  "src/mcp-tool-exposures.ts", "schemas-src/graphql/published-names.ts",
+  "tests/mcp-tool-annotations.test.ts", "tests/mcp-server.test.ts",
 ];
 const generatedPaths = [
   "public/metagraph/openapi.json", "public/metagraph/contracts.json",
