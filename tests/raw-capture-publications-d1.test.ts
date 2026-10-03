@@ -6,12 +6,7 @@ import { Miniflare } from "miniflare";
 import { afterAll, afterEach, beforeAll, beforeEach, test, vi } from "vitest";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 
-const runtime = new Miniflare({
-  modules: true,
-  script: "export default {fetch(){return new Response('test')}}",
-  compatibilityDate: "2026-06-06",
-  d1Databases: ["DB"],
-});
+let runtime: Miniflare;
 let db: D1Database;
 let lostReplyPhase: string | undefined;
 const migration = (name: string) =>
@@ -23,6 +18,12 @@ const apply = async (name: string) => {
 };
 beforeAll(async () => {
   vi.useRealTimers();
+  runtime = new Miniflare({
+    modules: true,
+    script: "export default {fetch(){return new Response('test')}}",
+    compatibilityDate: "2026-06-06",
+    d1Databases: ["DB"],
+  });
   db = await runtime.getD1Database("DB");
   await apply("0028_raw_capture_storage.sql");
   await apply("0029_raw_capture_archive.sql");
@@ -69,7 +70,14 @@ const selected = (objectKey: string) =>
 const intercepted = (afterCommit: () => Promise<unknown>) => {
   let once = true;
   return rawCaptureD1({
-    prepare: (sql: string) => db.prepare(sql),
+    prepare: (sql: string) => {
+      if (
+        lostReplyPhase?.startsWith("committed-reply-lost:") &&
+        sql.startsWith("SELECT sha256 FROM")
+      )
+        lostReplyPhase = "retry-receipt-read";
+      return db.prepare(sql);
+    },
     async batch<T = unknown>(statements: D1PreparedStatement[]) {
       const result = await db.batch<T>(statements);
       if (once) {
@@ -142,7 +150,14 @@ test("D1 lost committed reply keeps the original publication through supersessio
     await archive(objectKey, sha(older));
     lostReplyPhase = "archive-newer";
     await archive(objectKey, sha(newer));
-    lostReplyPhase = "committed-reply-lost";
+    lostReplyPhase =
+      "committed-reply-lost:" +
+      JSON.stringify({
+        fakeTimers: vi.isFakeTimers(),
+        timerHasClock: "clock" in globalThis.setTimeout,
+        timerMock: vi.isMockFunction(globalThis.setTimeout),
+        randomMock: vi.isMockFunction(Math.random),
+      });
     throw new Error("D1_ERROR: Network connection lost.");
   });
   await writer.put(objectKey, older);
