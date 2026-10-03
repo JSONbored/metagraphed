@@ -61,7 +61,7 @@ export async function fetchSubnetBodyArtifact(
   try {
     if (await withinSignal(isUnsafeUrl(url), signal))
       throw new BodyArtifactError("Request body artifact URL is unsafe");
-    response = await withinSignal(
+    const fetched = await withinSignal(
       fetchImpl(url, {
         method: "GET",
         redirect: "manual",
@@ -76,12 +76,13 @@ export async function fetchSubnetBodyArtifact(
       }),
       signal,
     );
-    if (!response.ok)
+    response = fetched;
+    if (!fetched.ok)
       throw new BodyArtifactError(
-        `Request body artifact response failed: ${response.status}`,
+        `Request body artifact response failed: ${fetched.status}`,
       );
-    const declared = response.headers.get("content-length");
-    const encoding = response.headers.get("content-encoding");
+    const declared = fetched.headers.get("content-length");
+    const encoding = fetched.headers.get("content-encoding");
     const compressed = encoding !== null && encoding !== "identity";
     if (
       declared !== null &&
@@ -92,7 +93,7 @@ export async function fetchSubnetBodyArtifact(
       throw new BodyArtifactError(
         "Request body artifact declared length mismatch",
       );
-    reader = response.body?.getReader();
+    reader = fetched.body?.getReader();
     if (!reader)
       throw new BodyArtifactError("Request body artifact body is absent");
     const body = new Uint8Array(artifact.bytes);

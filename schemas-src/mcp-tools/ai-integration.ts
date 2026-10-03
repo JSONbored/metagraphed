@@ -7,6 +7,7 @@ import { z } from "zod";
 import { SurfaceVerifyArtifactSchema } from "../routes/ai-native.ts";
 import { McpSurfaceAdmissionSchema } from "../subnet-mcp-admission.ts";
 import { HttpSurfaceAdmissionSchema } from "../subnet-http-admission.ts";
+import { QUERY_ENUMS } from "../query-enums.ts";
 import { MAX_SUBNET_BODY_ARTIFACT_BYTES } from "../../src/subnet-body-artifact-policy.ts";
 import {
   OpenArraySchema,
@@ -195,14 +196,7 @@ export type VerifyIntegrationOutput = z.infer<
  * accepting it would mean validating against a requestBody the operation
  * essentially never declares.
  */
-export const CALL_SURFACE_METHODS = [
-  "GET",
-  "HEAD",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-] as const;
+export const CALL_SURFACE_METHODS = QUERY_ENUMS.httpOperationMethod;
 export const CALL_SURFACE_BODY_METHODS = ["POST", "PUT", "PATCH"] as const;
 
 /**

@@ -149,6 +149,9 @@ export const QUERY_ENUMS = {
   // the same closed set, and validate:schema-enums pins the manifest copy to
   // this one. Absent on a surface means GET.
   surfaceMethod: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  // Reviewed HTTP operation admissions share the callable tool vocabulary.
+  // HEAD is a read operation, independent of the legacy surface/probe method.
+  httpOperationMethod: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
   surfaceKind: [
     "archive",
     "dashboard",

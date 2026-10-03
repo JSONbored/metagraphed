@@ -8,7 +8,7 @@ export const HttpSurfaceAdmissionSchema = z
       .array(
         z
           .object({
-            method: z.enum(QUERY_ENUMS.surfaceMethod),
+            method: z.enum(QUERY_ENUMS.httpOperationMethod),
             path: z
               .string()
               .min(1)

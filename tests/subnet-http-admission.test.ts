@@ -5,7 +5,8 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import { HttpSurfaceAdmissionSchema } from "../schemas-src/subnet-http-admission.ts";
 import { SurfaceSchema } from "../schemas-src/routes/subnet-detail.ts";
 import { AgentCatalogServiceSchema } from "../schemas-src/routes/agent-catalog.ts";
-import { HowDoICallOutputSchema } from "../schemas-src/mcp-tools/ai-integration.ts";
+import { CALL_SURFACE_METHODS, HowDoICallOutputSchema } from "../schemas-src/mcp-tools/ai-integration.ts";
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
 import { handleMcpRequest, MCP_TOOLS } from "../src/mcp-server.ts";
 import { matchReviewedHttpOperation } from "../src/subnet-http-admission.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
@@ -94,6 +95,7 @@ function setup(rows: Row[] = [taofi, gopher], operational: Row[] = []) {
       body: init?.body,
       headers: new Headers(init?.headers),
     });
+    if (init?.method === "HEAD") return new Response(null, { status: 204 });
     return Response.json(
       String(url).includes("/result/")
         ? [{ ID: "fixture", Content: "exact result" }]
@@ -134,6 +136,43 @@ function setup(rows: Row[] = [taofi, gopher], operational: Row[] = []) {
 }
 
 describe("source-reviewed HTTP operations independent of health probes", () => {
+  test("reviewed HEAD shares the callable contract without changing surface probe rules", () => {
+    const manifest = JSON.parse(
+      readFileSync(new URL("../schemas/subnet-manifest.schema.json", import.meta.url), "utf8"),
+    );
+    const validate = new Ajv2020({ strict: false, validateFormats: false }).compile({
+      ...manifest.$defs.surface, $defs: manifest.$defs,
+    });
+    const http = { operations: [{ method: "HEAD", path: "/status" }] };
+    assert.equal(HttpSurfaceAdmissionSchema.safeParse(http).success, true);
+    assert.deepEqual(
+      manifest.$defs.http_admission.properties.operations.items.properties.method.enum,
+      [...CALL_SURFACE_METHODS],
+    );
+    assert.deepEqual([...CALL_SURFACE_METHODS], [...QUERY_ENUMS.httpOperationMethod]);
+    assert.deepEqual(manifest.$defs.surface.properties.method.enum, [...QUERY_ENUMS.surfaceMethod]);
+    const { netuid: _netuid, ...declaration } = taofi;
+    assert.equal(validate({ ...declaration, http }), true, JSON.stringify(validate.errors));
+    const admission = HttpSurfaceAdmissionSchema.parse(http);
+    assert.ok(matchReviewedHttpOperation(admission, "/status", "HEAD"));
+    assert.equal(matchReviewedHttpOperation(admission, "/status", "GET"), null);
+    assert.equal(matchReviewedHttpOperation(admission, "/status", "POST"), null);
+  });
+
+  test("a reviewed HEAD runs once through the read tool and cannot be invoked as a write", async () => {
+    const fixture = setup([{ ...taofi, http: { operations: [{ method: "HEAD", path: "/status" }] } }]);
+    const args = { surface_id: taofi.id, path: "/status", method: "HEAD" };
+    const result = await fixture.call(args);
+    assert.equal(result.isError, false);
+    assert.equal(result.structuredContent.status_code, 204);
+    assert.equal(fixture.calls.length, 1);
+    assert.equal(fixture.calls[0].method, "HEAD");
+    assert.equal(fixture.calls[0].body, undefined);
+    const denied = await fixture.call(args, "write_subnet_surface");
+    assert.equal(denied.isError, true);
+    assert.equal(fixture.calls.length, 1);
+  });
+
   test("both actual registry declarations validate through canonical and manifest schemas", () => {
     const manifest = JSON.parse(
       readFileSync(

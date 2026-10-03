@@ -4,7 +4,7 @@ import { isBuiltin } from "node:module";
 import { build } from "esbuild";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, test } from "vitest";
-import { jsonBody, type Row } from "./row-type.ts";
+import type { Row } from "./row-type.ts";
 
 let runtime: Miniflare;
 beforeAll(async () => {
@@ -209,7 +209,7 @@ test("workerd verifies and forwards a compact referenced request larger than the
         }),
       },
     );
-    const { result, calls } = await jsonBody(response);
+    const { result, calls } = (await response.json()) as Row;
     assert.equal(result.ok, valid);
     assert.deepEqual(calls[0], { kind: "source", method: "GET" });
     if (valid)
