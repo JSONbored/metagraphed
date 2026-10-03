@@ -13,7 +13,7 @@ import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import {
   parseSelfStakeSnapshot,
   type SelfStakeSnapshot,
-} from "../src/self-stake-snapshot.ts";
+} from "../src/self-stake-snapshot-d1.ts";
 import {
   writeUsageRollupD1,
   type UsageRollupBucket,

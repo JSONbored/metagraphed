@@ -15,7 +15,7 @@ import {
 import { NOMINATOR_SCAN_RECEIPTS_RETENTION_MS } from "./nominator-scan-receipts.ts";
 import type { ProducerStore, ProducerStatement } from "./producer-store.ts";
 import type { NeonWriteResult } from "./neon-write.ts";
-import { writeSelfStakeSnapshotD1 } from "./self-stake-snapshot.ts";
+import { writeSelfStakeSnapshotD1 } from "./self-stake-snapshot-d1.ts";
 
 function passStatement(lane: string, pass: PassTallyInput): ProducerStatement {
   const table = PASS_TABLES[lane];

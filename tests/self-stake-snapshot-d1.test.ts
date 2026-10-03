@@ -7,7 +7,7 @@ import {
   parseSelfStakeSnapshot,
   writeSelfStakeSnapshotD1,
   type SelfStakeSnapshot,
-} from "../src/self-stake-snapshot.ts";
+} from "../src/self-stake-snapshot-d1.ts";
 import { writeNominatorPositionsD1 } from "../src/ledger-d1.ts";
 import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";

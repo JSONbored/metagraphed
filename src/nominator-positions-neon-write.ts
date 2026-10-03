@@ -47,7 +47,7 @@ import {
 } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
-import type { SelfStakeSnapshot } from "./self-stake-snapshot.ts";
+import type { SelfStakeSnapshot } from "./self-stake-snapshot-d1.ts";
 
 /** The lane name this writer files its `lane_health` verdict under (`neon:<lane>`). */
 export const NOMINATOR_POSITIONS_NEON_LANE = "nominator-positions";
