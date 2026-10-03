@@ -5,6 +5,7 @@
 // hand-written literal field-for-field.
 import { z } from "zod";
 import { SurfaceVerifyArtifactSchema } from "../routes/ai-native.ts";
+import { McpSurfaceAdmissionSchema } from "../subnet-mcp-admission.ts";
 import {
   OpenArraySchema,
   OpenObjectSchema,
@@ -58,6 +59,8 @@ const HowDoICallServiceSchema = z
       ),
     base_url: z.string(),
     callable: z.boolean(),
+    mcp: McpSurfaceAdmissionSchema.optional(),
+    mcp_discovery: z.string().optional(),
     auth: z
       .object({ required: z.boolean(), schemes: z.array(z.string()) })
       .strict(),

@@ -140,6 +140,26 @@ describe("normalizeExtrinsic", () => {
 });
 
 describe("normalizeAgentCatalogDetail", () => {
+  it("retains MCP admission through the canonical schema and drops malformed metadata", () => {
+    const mcp = {
+      transport: "streamable-http",
+      read_tools: ["read"],
+      write_tools: ["write"],
+    };
+    const out = normalizeAgentCatalogDetail(
+      {
+        services: [
+          { mcp },
+          { mcp: { ...mcp, transport: "stdio" } },
+          { mcp: { ...mcp, read_tools: [""] } },
+          { mcp: { ...mcp, write_tools: ["x".repeat(129)] } },
+        ],
+      },
+      107,
+    );
+    expect(out.services?.[0]?.mcp).toEqual(mcp);
+    for (const service of out.services?.slice(1) ?? []) expect(service.mcp).toBeUndefined();
+  });
   it("drops backend-provided snippets from callable service payloads", () => {
     const out = normalizeAgentCatalogDetail(
       {

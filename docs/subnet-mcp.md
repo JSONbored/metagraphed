@@ -7,6 +7,12 @@ provider's protocol and retrieve its live schemas. Call a reviewed read tool wit
 HTTP surface remains subject to the existing HTTP caller's schema and admission
 rules.
 
+`how_do_i_call` includes each admitted MCP service and its exact discovery call,
+including when an HTTP service on the same subnet is already usable. It keeps
+HTTP callability and recorded health separate from MCP admission, and supplies no
+plain GET snippet for an MCP endpoint. The website's catalog data preserves the
+same admission object through the canonical schema.
+
 For example, the official Minos assistant configuration documents five public
 read tools: `get_current_round`, `get_leaderboard`, `list_recent_rounds`,
 `get_miner_history`, and `get_subnet_overview`. Their names are source-bound in

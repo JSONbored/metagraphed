@@ -15461,12 +15461,25 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const callable = services.filter(
         (s) => rowOf(s.eligibility)?.callable === true,
       );
+      const mcpAdmissions = new Map<Row, AdmittedMcpSurface["mcp"]>();
+      for (const service of services) {
+        if (!service.mcp) continue;
+        const admission = McpSurfaceAdmissionSchema.safeParse(service.mcp);
+        if (admission.success) mcpAdmissions.set(service, admission.data);
+      }
       // The four nested blocks -- eligibility, schema_source, fixture,
       // fixture_status, health -- are each read through `rowOf` ONCE per
       // service. On a bag `s.fixture.response?.status` compiled without the
       // `?.` on `fixture` itself, which is only safe because the `s.fixture`
       // ternary above it happens to guard it; nothing said so (#10782).
-      const steps = (callable.length > 0 ? callable : services).map((s) => {
+      const guideServices =
+        callable.length > 0
+          ? services.filter(
+              (s) =>
+                rowOf(s.eligibility)?.callable === true || mcpAdmissions.has(s),
+            )
+          : services;
+      const steps = guideServices.map((s) => {
         const fixture = rowOf(s.fixture);
         const fixtureStatus = rowOf(s.fixture_status);
         const health = rowOf(s.health);
@@ -15479,6 +15492,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           ...(s.method ? { method: s.method } : {}),
           base_url: s.base_url,
           callable: rowOf(s.eligibility)?.callable === true,
+          ...(mcpAdmissions.has(s)
+            ? {
+                mcp: mcpAdmissions.get(s),
+                mcp_discovery: `discover_subnet_mcp with surface_id ${s.surface_id}`,
+              }
+            : {}),
           auth: {
             required: Boolean(s.auth_required),
             schemes: itemsOf(s.auth_schemes),
@@ -15486,7 +15505,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           // Ready-to-run curl/Python/TS for a first call (issue #351).
           // Regenerate from base_url + auth so cleartext credential guards stay
           // current even when reading older catalogs with stored snippets.
-          snippets: generateServiceSnippets(s) || s.snippets || null,
+          snippets: s.mcp
+            ? null
+            : generateServiceSnippets(s) || s.snippets || null,
           schema: s.schema_artifact
             ? {
                 available: true,
@@ -15521,6 +15542,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const isCallable = callable.length > 0;
       const schemaStep = steps.find((s) => s.schema.available);
       const fixtureStep = steps.find((s) => s.fixture.available);
+      const mcpStep = steps.find((s) => s.mcp_discovery);
       return {
         netuid,
         name: detail?.name,
@@ -15530,17 +15552,24 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         health_source: detail?.health_source ?? "unavailable",
         callable: isCallable,
         callable_count: callable.length,
-        guidance: isCallable
-          ? "Call a service's base_url below. Where auth.required is true, supply a credential per auth.schemes. Fetch the machine-readable schema via get_api_schema, and confirm live status with get_subnet_health before relying on it."
-          : "This subnet exposes no callable services yet. Use get_subnet for its profile and gaps, or find_subnet_for_task to find an alternative that can do the job.",
+        guidance: mcpStep
+          ? "Use each MCP service's mcp_discovery instruction to negotiate its live schemas, then read_subnet_mcp or write_subnet_mcp according to its reviewed admission. For HTTP services, follow base_url, auth and schema fields. MCP discovery and recorded health are separate."
+          : isCallable
+            ? "Call a service's base_url below. Where auth.required is true, supply a credential per auth.schemes. Fetch the machine-readable schema via get_api_schema, and confirm live status with get_subnet_health before relying on it."
+            : "This subnet exposes no callable services yet. Use get_subnet for its profile and gaps, or find_subnet_for_task to find an alternative that can do the job.",
         services: steps,
-        next_steps: isCallable
-          ? [
-              `get_subnet_health with netuid ${netuid} for live status`,
-              ...(schemaStep ? [schemaStep.schema.fetch_with] : []),
-              ...(fixtureStep ? [fixtureStep.fixture.fetch_with] : []),
-            ]
-          : [`get_subnet with netuid ${netuid}`],
+        next_steps: [
+          ...(mcpStep ? [mcpStep.mcp_discovery] : []),
+          ...(isCallable
+            ? [
+                `get_subnet_health with netuid ${netuid} for live status`,
+                ...(schemaStep ? [schemaStep.schema.fetch_with] : []),
+                ...(fixtureStep ? [fixtureStep.fixture.fetch_with] : []),
+              ]
+            : mcpStep
+              ? []
+              : [`get_subnet with netuid ${netuid}`]),
+        ],
       };
     },
   },

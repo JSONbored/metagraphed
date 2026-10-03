@@ -4436,6 +4436,7 @@ export interface AgentCatalogService {
   authority?: string;
   auth_required?: boolean;
   auth_schemes?: string[];
+  mcp?: ApiComponents["schemas"]["McpSurfaceAdmission"];
   health?: AgentCatalogServiceHealth;
   eligibility?: { callable?: boolean; live_status?: string; reasons?: string[] };
   schema_url?: string | null;

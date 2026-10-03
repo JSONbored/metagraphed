@@ -14,6 +14,7 @@ import {
   type SerializedOperatorRow,
 } from "./validator-operators";
 import { QUERY_PARAMETER_ENUMS } from "@jsonbored/metagraphed";
+import { McpSurfaceAdmissionSchema } from "../../../../../schemas-src/subnet-mcp-admission.ts";
 import type {
   AdapterSnapshot,
   AgentResource,
@@ -1792,6 +1793,8 @@ function normalizeAgentCatalogService(raw: unknown): AgentCatalogService | null 
   if (!isRecord(raw)) return null;
   const healthRaw = isRecord(raw.health) ? raw.health : undefined;
   const eligRaw = isRecord(raw.eligibility) ? raw.eligibility : undefined;
+  const mcp =
+    raw.mcp === undefined ? undefined : McpSurfaceAdmissionSchema.safeParse(raw.mcp);
   return {
     kind: coerceString(raw.kind),
     capability: coerceString(raw.capability),
@@ -1801,6 +1804,7 @@ function normalizeAgentCatalogService(raw: unknown): AgentCatalogService | null 
     authority: coerceString(raw.authority),
     auth_required: booleanValue(raw.auth_required),
     auth_schemes: stringArray(raw.auth_schemes),
+    ...(mcp?.success ? { mcp: mcp.data } : {}),
     health: healthRaw
       ? {
           status: coerceString(healthRaw.status),

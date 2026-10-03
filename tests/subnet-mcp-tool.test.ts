@@ -51,6 +51,7 @@ function setup(
     structuredContent: { exact: "18446744073709551615" },
     _meta: { source: "fixture" },
   },
+  catalogServices: Row[] = [],
 ) {
   const calls: Row[] = [];
   const artifacts: string[] = [];
@@ -73,6 +74,16 @@ function setup(
       };
     if (path === "/metagraph/operational-surfaces.json")
       return { ok: true, data: { surfaces: [] } };
+    if (path === "/metagraph/agent-catalog/107.json")
+      return {
+        ok: true,
+        data: {
+          netuid: 107,
+          name: "fixture",
+          slug: "fixture",
+          services: catalogServices,
+        },
+      };
     return { ok: false, status: 404 };
   };
   const fetchImpl: typeof fetch = async (url, init) => {
@@ -142,6 +153,55 @@ function setup(
 const args = { surface_id: surface.id, tool_name: "read" };
 
 describe("subnet MCP public contract", () => {
+  test("integration guide exposes unprobed MCP admission alongside callable HTTP services", async () => {
+    const mcp = {
+      surface_id: surface.id,
+      kind: "subnet-api",
+      capability: "query",
+      base_url: surface.url,
+      mcp: surface.mcp,
+      eligibility: { callable: false },
+      // Old stored GET snippets must never override protocol negotiation.
+      snippets: {
+        curl: "stale GET",
+        python: "stale GET",
+        typescript: "stale GET",
+      },
+    };
+    const http = {
+      surface_id: "sn-107-fixture-http",
+      kind: "subnet-api",
+      capability: "query",
+      base_url: "https://subnet.example/api",
+      eligibility: { callable: true },
+    };
+    for (const services of [[mcp], [http, mcp]]) {
+      const { call, calls } = setup([surface], undefined, services);
+      const result = await call("how_do_i_call", { netuid: 107 });
+      assert.equal(result.isError, false);
+      const guide = result.structuredContent;
+      const service = guide.services.find(
+        (s: Row) => s.surface_id === surface.id,
+      );
+      assert.ok(service);
+      assert.deepEqual(service.mcp, surface.mcp);
+      assert.equal(service.snippets, null);
+      assert.equal(
+        service.mcp_discovery,
+        `discover_subnet_mcp with surface_id ${surface.id}`,
+      );
+      assert.ok(guide.next_steps.includes(service.mcp_discovery));
+      assert.match(guide.guidance, /read_subnet_mcp/);
+      assert.equal(guide.callable_count, services.length - 1);
+      if (services.length === 2) {
+        const httpGuide = guide.services.find(
+          (s: Row) => s.surface_id === http.surface_id,
+        );
+        assert.match(httpGuide.snippets.curl, /https:\/\/subnet.example\/api/);
+      }
+      assert.equal(calls.length, 0);
+    }
+  });
   test("disabled recurring probes do not prevent explicit MCP discovery", async () => {
     const { call, artifacts } = setup();
     const result = await call("discover_subnet_mcp", {
@@ -434,7 +494,7 @@ describe("subnet MCP public contract", () => {
     ]);
     let writes = 0;
     const env = {
-      OAUTH_KV: {
+      METAGRAPH_CONTROL: {
         get: async () => null,
         put: async () => {
           writes++;

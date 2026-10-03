@@ -1,5 +1,9 @@
 import { withNativeRuntimeFixture } from "../tests/fixtures/native-runtime.ts";
 import { withRuntimeStakeFixture } from "../tests/fixtures/runtime-stake-quote.ts";
+import {
+  withSubnetMcpFixture,
+  SUBNET_MCP_FIXTURE_ID,
+} from "../tests/fixtures/subnet-mcp.ts";
 // Contract validator for the remote MCP server at POST /mcp.
 //
 // Exercises the JSON-RPC lifecycle (initialize + tools/list) and a tools/call
@@ -230,7 +234,11 @@ async function getJson(path: string): Promise<Row> {
   return { status: response.status, body: text ? JSON.parse(text) : null };
 }
 
-async function call(name: string, args: unknown): Promise<Row> {
+async function call(
+  name: string,
+  args: unknown,
+  options?: McpCallOptions,
+): Promise<Row> {
   const payload = {
     jsonrpc: "2.0",
     id: 1,
@@ -239,12 +247,12 @@ async function call(name: string, args: unknown): Promise<Row> {
   };
   const res =
     name === "get_subnet_stake_quote" || name === "get_stake_action_preview"
-      ? await withRuntimeStakeFixture(() => mcp(payload))
+      ? await withRuntimeStakeFixture(() => mcp(payload, options))
       : name === "get_native_runtime"
-        ? await withNativeRuntimeFixture(() => mcp(payload))
+        ? await withNativeRuntimeFixture(() => mcp(payload, options))
         : name === "get_root_baskets" || name === "get_account_root_baskets"
-          ? await withBasketRuntimeFixture(() => mcp(payload))
-          : await mcp(payload);
+          ? await withBasketRuntimeFixture(() => mcp(payload, options))
+          : await mcp(payload, options);
   assert.equal(res.status, 200, `${name}: expected HTTP 200`);
   const result = res.body?.result;
   assert.ok(result, `${name}: missing JSON-RPC result`);
@@ -260,8 +268,12 @@ async function call(name: string, args: unknown): Promise<Row> {
   return result;
 }
 
-async function callOk(name: string, args: unknown): Promise<Row> {
-  const result = await call(name, args);
+async function callOk(
+  name: string,
+  args: unknown,
+  options?: McpCallOptions,
+): Promise<Row> {
+  const result = await call(name, args, options);
   assert.equal(
     result.isError,
     false,
@@ -715,6 +727,31 @@ assert.deepEqual(
 );
 
 // --- One tools/call per tool ----------------------------------------------
+
+await withSubnetMcpFixture(env, async (fixtureEnv) => {
+  const options = { envOverride: fixtureEnv };
+  const discovered = await callOk(
+    "discover_subnet_mcp",
+    { surface_id: SUBNET_MCP_FIXTURE_ID },
+    options,
+  );
+  assert.equal(discovered.tools.length, 2);
+  for (const [name, tool_name] of [
+    ["read_subnet_mcp", "read"],
+    ["write_subnet_mcp", "write"],
+  ]) {
+    const result = await callOk(
+      name,
+      {
+        surface_id: SUBNET_MCP_FIXTURE_ID,
+        tool_name,
+        arguments: { value: "18446744073709551615" },
+      },
+      options,
+    );
+    assert.equal(result.structured_content.value, "18446744073709551615");
+  }
+});
 
 await callOk("search_subnets", { query: "subnet", limit: 5 });
 await callOk("find_subnets_by_capability", { capability: "data", limit: 5 });
