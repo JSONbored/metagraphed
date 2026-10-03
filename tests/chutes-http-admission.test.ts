@@ -250,8 +250,8 @@ describe("Chutes source-reviewed inference and parameter execution", () => {
     assert.equal(validate(registry), true, JSON.stringify(validate.errors));
     assert.equal(rows.length, 4);
     assert.equal(
-      rows.reduce((count, row) => count + row.http.operations.length, 0),
-      7,
+      rows.reduce((count, row) => count + (row.http?.operations.length ?? 0), 0),
+      6,
     );
     for (const row of rows) {
       assert.equal(SurfaceSchema.safeParse(row).success, true);
@@ -265,18 +265,20 @@ describe("Chutes source-reviewed inference and parameter execution", () => {
         }).success,
         true,
       );
+      if (row.id === modelsId) {
+        assert.equal(row.auth_required, false);
+        assert.equal(row.probe.enabled, true);
+        assert.equal(row.http, undefined);
+        continue;
+      }
       assert.ok(
         row.source_urls.some((url: string) =>
           url.includes("3b5609f42f84e29dea374382ef1fa95b0fda329c"),
         ),
       );
-      if (row.id === modelsId) {
-        assert.equal(row.auth_required, false);
-        assert.equal(row.probe.enabled, true);
-        continue;
-      }
       assert.equal(row.auth_required, true);
       assert.equal(row.probe.enabled, false);
+      assert.equal(row.probe.method, "GET");
       assert.equal(row.method, "POST");
       assert.equal(row.auth.name, "Authorization");
       for (const operation of row.http.operations) {
@@ -339,7 +341,7 @@ describe("Chutes source-reviewed inference and parameter execution", () => {
   test("public model discovery stays credential-free with one GET and no body", async () => {
     const fixture = setup();
     const result = await fixture.invoke(
-      { surface_id: modelsId, path: "/v1/models", method: "GET" },
+      { surface_id: modelsId },
       "call_subnet_surface",
     );
     assert.equal(result.isError, false);
@@ -411,7 +413,7 @@ describe("Chutes source-reviewed inference and parameter execution", () => {
     assert.equal(fixture.calls.length, 1);
   });
   for (const status of [400, 401, 403, 404, 426, 429, 503])
-    test(`provider ${status} remains an error with its exact body and no replay`, async () => {
+    test(`provider ${status} is preserved with its exact body and no replay`, async () => {
       const body = {
         detail: `fixture provider refusal ${status}`,
         provider_field: "unchanged",
@@ -420,7 +422,7 @@ describe("Chutes source-reviewed inference and parameter execution", () => {
         response: () => Response.json(body, { status }),
       });
       const result = await fixture.invoke(baseArgs);
-      assert.equal(result.isError, true);
+      assert.equal(result.isError, false);
       assert.equal(result.structuredContent.status_code, status);
       assert.deepEqual(result.structuredContent.body, body);
       assert.equal(fixture.calls.length, 1);
@@ -555,7 +557,17 @@ describe("Chutes source-reviewed inference and parameter execution", () => {
       );
     });
   test("an explicit empty reviewed parameter list refuses undeclared values without captured fallback", async () => {
-    const fixture = setup();
+    const model = rows.find((row) => row.id === modelsId)!;
+    const fixture = setup({
+      rows: [
+        {
+          ...model,
+          http: {
+            operations: [{ method: "GET", path: "/v1/models", parameters: [] }],
+          },
+        },
+      ],
+    });
     const result = await fixture.invoke(
       {
         surface_id: modelsId,
@@ -680,7 +692,7 @@ describe("Chutes source-reviewed inference and parameter execution", () => {
       ],
     );
   });
-  test("guide publishes seven operations and exact public auth/parameter metadata without network or schema reads", async () => {
+  test("guide publishes six inference operations and exact public auth/parameter metadata without network or schema reads", async () => {
     const fixture = setup();
     const result = await fixture.invoke({ netuid: 64 }, "how_do_i_call");
     assert.equal(result.isError, false);
@@ -699,8 +711,8 @@ describe("Chutes source-reviewed inference and parameter execution", () => {
     console.log(
       "CHUTES_DOCUMENTED_HTTP_FIXTURE",
       JSON.stringify({
-        documented_operations: 7,
-        admitted_operations: 7,
+        documented_operations: 6,
+        admitted_operations: 6,
         guide_catalog_reads: 1,
         guide_provider_requests: 0,
         guide_schema_reads: 0,

@@ -389,21 +389,8 @@
         "submitted_by": "dexterity104"
       },
       "schema_status": "not-captured",
-      "source_urls": [
-        "https://chutes.ai/llms.txt",
-        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/main.py",
-        "https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/invocation/router.py"
-      ],
-      "url": "https://llm.chutes.ai/v1/models",
-      "http": {
-        "operations": [
-          {
-            "method": "GET",
-            "path": "/v1/models",
-            "parameters": []
-          }
-        ]
-      }
+      "source_urls": ["https://chutes.ai/llms.txt"],
+      "url": "https://llm.chutes.ai/v1/models"
     },
     {
       "auth": {
@@ -438,6 +425,7 @@
       "probe": {
         "enabled": false,
         "expect": "any",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "http": {
@@ -1832,6 +1820,7 @@
       "probe": {
         "enabled": false,
         "expect": "any",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "http": {
@@ -1884,6 +1873,7 @@
       "probe": {
         "enabled": false,
         "expect": "any",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "http": {

@@ -217,9 +217,9 @@ captured-schema read for reviewed operations. These conventions follow the
 
 ## Chutes inference
 
-SN64 retains its public model list at `sn-64-chutes-subnet-api`, with an explicitly
-reviewed GET `/v1/models`. The existing `sn-64-chutes-sse` admits JSON POSTs to
-`/v1/chat/completions`, `/v1/completions`, `/tokenize` and `/detokenize` on
+SN64 retains its credential-free model list at `sn-64-chutes-subnet-api`, including
+its existing call without path/method. The existing `sn-64-chutes-sse` admits JSON
+POSTs to `/v1/chat/completions`, `/v1/completions`, `/tokenize` and `/detokenize` on
 `llm.chutes.ai`. `sn-64-chutes-embeddings` admits POST `/v1/embeddings` on
 `embed.chutes.ai`; `sn-64-chutes-image-generation` admits POST `/generate` on
 `image.chutes.ai`. Inference requires the caller's own Bearer API key and the
