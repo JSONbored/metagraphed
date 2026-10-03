@@ -145,6 +145,8 @@ describe("normalizeAgentCatalogDetail", () => {
       transport: "streamable-http",
       read_tools: ["read"],
       write_tools: ["write"],
+      read_prompts: ["plan"],
+      read_resources: ["fixture://taxonomy"],
     };
     const out = await normalizeAgentCatalogDetail(
       {
@@ -153,6 +155,8 @@ describe("normalizeAgentCatalogDetail", () => {
           { mcp: { ...mcp, transport: "stdio" } },
           { mcp: { ...mcp, read_tools: [""] } },
           { mcp: { ...mcp, write_tools: ["x".repeat(129)] } },
+          { mcp: { ...mcp, read_prompts: [""] } },
+          { mcp: { ...mcp, read_resources: ["x".repeat(1025)] } },
         ],
       },
       107,

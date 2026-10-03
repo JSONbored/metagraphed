@@ -39076,6 +39076,24 @@
       "McpSurfaceAdmission": {
         "additionalProperties": false,
         "properties": {
+          "read_prompts": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 512,
+            "type": "array"
+          },
+          "read_resources": {
+            "items": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 512,
+            "type": "array"
+          },
           "read_tools": {
             "items": {
               "maxLength": 128,

@@ -105,13 +105,42 @@ export async function withSubnetMcpFixture<T>(
                 structuredContent: { value: message.params.arguments.value },
               }
             : message.method === "prompts/list"
-              ? { prompts: [{ name: "plan", arguments: [{ name: "login", required: true }] }] }
+              ? {
+                  prompts: [
+                    {
+                      name: "plan",
+                      arguments: [{ name: "login", required: true }],
+                    },
+                  ],
+                }
               : message.method === "prompts/get"
-                ? { messages: [{ role: "user", content: { type: "text", text: "validator prompt fixture" } }] }
+                ? {
+                    messages: [
+                      {
+                        role: "user",
+                        content: {
+                          type: "text",
+                          text: "validator prompt fixture",
+                        },
+                      },
+                    ],
+                  }
                 : message.method === "resources/list"
-                  ? { resources: [{ name: "taxonomy", uri: "fixture://taxonomy" }] }
+                  ? {
+                      resources: [
+                        { name: "taxonomy", uri: "fixture://taxonomy" },
+                      ],
+                    }
                   : message.method === "resources/read"
-                    ? { contents: [{ uri: "fixture://taxonomy", mimeType: "application/json", text: '{"fixture":true}' }] }
+                    ? {
+                        contents: [
+                          {
+                            uri: "fixture://taxonomy",
+                            mimeType: "application/json",
+                            text: '{"fixture":true}',
+                          },
+                        ],
+                      }
                     : null;
     assert.ok(result, "Unmocked protocol method");
     return Response.json(

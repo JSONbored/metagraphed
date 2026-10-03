@@ -9575,6 +9575,8 @@ export interface components {
             testnet_only_count?: number;
         };
         McpSurfaceAdmission: {
+            read_prompts?: string[];
+            read_resources?: string[];
             read_tools: string[];
             /** @constant */
             transport: "streamable-http";

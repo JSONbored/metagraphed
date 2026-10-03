@@ -738,17 +738,27 @@ await withSubnetMcpFixture(env, async (fixtureEnv) => {
   assert.equal(discovered.tools.length, 2);
   assert.equal(discovered.prompts.length, 1);
   assert.equal(discovered.resources.length, 1);
-  const prompt = await callOk("get_subnet_mcp_prompt", {
-    surface_id: SUBNET_MCP_FIXTURE_ID,
-    prompt_name: "plan",
-    arguments: { login: "caller" },
-  }, options);
+  const prompt = await callOk(
+    "get_subnet_mcp_prompt",
+    {
+      surface_id: SUBNET_MCP_FIXTURE_ID,
+      prompt_name: "plan",
+      arguments: { login: "caller" },
+    },
+    options,
+  );
   assert.deepEqual(prompt.messages, [{ role: "user", content_index: 0 }]);
-  const resource = await callOk("read_subnet_mcp_resource", {
-    surface_id: SUBNET_MCP_FIXTURE_ID,
-    resource_uri: "fixture://taxonomy",
-  }, options);
-  assert.deepEqual(resource.resources, [{ uri: "fixture://taxonomy", content_index: 0 }]);
+  const resource = await callOk(
+    "read_subnet_mcp_resource",
+    {
+      surface_id: SUBNET_MCP_FIXTURE_ID,
+      resource_uri: "fixture://taxonomy",
+    },
+    options,
+  );
+  assert.deepEqual(resource.resources, [
+    { uri: "fixture://taxonomy", content_index: 0 },
+  ]);
   for (const [name, tool_name] of [
     ["read_subnet_mcp", "read"],
     ["write_subnet_mcp", "write"],

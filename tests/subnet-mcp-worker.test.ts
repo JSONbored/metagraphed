@@ -187,14 +187,41 @@ for (const mode of ["prompt", "resource"])
     const { result, error, calls } = await invoke(mode);
     assert.equal(error, undefined);
     assert.equal(result.kind, mode);
-    assert.deepEqual(result.result, mode === "prompt" ? {
-      messages: content.map((block, index) => ({ role: index ? "assistant" : "user", content: block })),
-    } : {
-      contents: [{ uri: "fixture://taxonomy", mimeType: "application/octet-stream", blob: "AAH/" }],
-    });
+    assert.deepEqual(
+      result.result,
+      mode === "prompt"
+        ? {
+            messages: content.map((block, index) => ({
+              role: index ? "assistant" : "user",
+              content: block,
+            })),
+          }
+        : {
+            contents: [
+              {
+                uri: "fixture://taxonomy",
+                mimeType: "application/octet-stream",
+                blob: "AAH/",
+              },
+            ],
+          },
+    );
     const prefix = mode === "prompt" ? "prompts" : "resources";
-    assert.deepEqual(calls.filter((call: Row) => call.message?.id !== undefined).map((call: Row) => call.message.method), ["initialize", `${prefix}/list`, `${prefix}/${mode === "prompt" ? "get" : "read"}`]);
-    assert.ok(calls.every((call: Row) => call.headers.authorization === "Bearer worker-fixture"));
+    assert.deepEqual(
+      calls
+        .filter((call: Row) => call.message?.id !== undefined)
+        .map((call: Row) => call.message.method),
+      [
+        "initialize",
+        `${prefix}/list`,
+        `${prefix}/${mode === "prompt" ? "get" : "read"}`,
+      ],
+    );
+    assert.ok(
+      calls.every(
+        (call: Row) => call.headers.authorization === "Bearer worker-fixture",
+      ),
+    );
     assert.ok(calls.some((call: Row) => call.method === "DELETE"));
   });
 

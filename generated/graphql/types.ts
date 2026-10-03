@@ -3123,6 +3123,8 @@ export type IntensityDistribution = {
 
 export type McpSurfaceAdmission = {
   __typename?: 'McpSurfaceAdmission';
+  read_prompts?: Maybe<Array<Scalars['String']['output']>>;
+  read_resources?: Maybe<Array<Scalars['String']['output']>>;
   read_tools: Array<Scalars['String']['output']>;
   transport: Scalars['String']['output'];
   write_tools: Array<Scalars['String']['output']>;
@@ -11937,6 +11939,8 @@ export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
 }
 
 export type McpSurfaceAdmissionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['McpSurfaceAdmission'] = ResolversParentTypes['McpSurfaceAdmission']> = ResolversObject<{
+  read_prompts?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  read_resources?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   read_tools?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
   transport?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   write_tools?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;

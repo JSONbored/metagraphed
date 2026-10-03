@@ -1250,6 +1250,8 @@ type McpSurfaceAdmission {
   transport: String!
   read_tools: [String!]!
   write_tools: [String!]!
+  read_prompts: [String!]
+  read_resources: [String!]
 }
 
 type Endpoint {

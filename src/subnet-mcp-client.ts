@@ -290,91 +290,122 @@ export async function runSubnetMcp(
       } while (cursor);
       return items;
     }
-    const listPrompts = () => listReviewed(
-      async (cursor) => {
-        const page = await client.listPrompts(cursor ? { cursor } : undefined, requestOptions);
-        return { items: page.prompts, nextCursor: page.nextCursor };
-      },
-      (prompt) => prompt.name,
-      options.readPrompts ?? [],
-    );
-    const listResources = () => listReviewed(
-      async (cursor) => {
-        const page = await client.listResources(cursor ? { cursor } : undefined, requestOptions);
-        return { items: page.resources, nextCursor: page.nextCursor };
-      },
-      (resource) => resource.uri,
-      options.readResources ?? [],
-    );
+    const listPrompts = () =>
+      listReviewed(
+        async (cursor) => {
+          const page = await client.listPrompts(
+            cursor ? { cursor } : undefined,
+            requestOptions,
+          );
+          return { items: page.prompts, nextCursor: page.nextCursor };
+        },
+        (prompt) => prompt.name,
+        options.readPrompts ?? [],
+      );
+    const listResources = () =>
+      listReviewed(
+        async (cursor) => {
+          const page = await client.listResources(
+            cursor ? { cursor } : undefined,
+            requestOptions,
+          );
+          return { items: page.resources, nextCursor: page.nextCursor };
+        },
+        (resource) => resource.uri,
+        options.readResources ?? [],
+      );
     if (operation.kind === "prompt") {
-      const prompt = (await listPrompts()).find((item) => item.name === operation.name);
+      const prompt = (await listPrompts()).find(
+        (item) => item.name === operation.name,
+      );
       if (!prompt)
-        throw new SubnetMcpError("not_found", "The admitted prompt is absent from the upstream MCP catalog.");
-      if (prompt.arguments?.some((arg) => arg.required && !Object.hasOwn(operation.arguments, arg.name)))
-        throw new SubnetMcpError("invalid_params", "A required upstream prompt argument is missing.");
+        throw new SubnetMcpError(
+          "not_found",
+          "The admitted prompt is absent from the upstream MCP catalog.",
+        );
+      if (
+        prompt.arguments?.some(
+          (arg) =>
+            arg.required && !Object.hasOwn(operation.arguments, arg.name),
+        )
+      )
+        throw new SubnetMcpError(
+          "invalid_params",
+          "A required upstream prompt argument is missing.",
+        );
       return {
         kind: "prompt",
-        result: await client.getPrompt({ name: operation.name, arguments: operation.arguments }, requestOptions),
+        result: await client.getPrompt(
+          { name: operation.name, arguments: operation.arguments },
+          requestOptions,
+        ),
       };
     }
     if (operation.kind === "resource") {
       const resources = await listResources();
       if (!resources.some((item) => item.uri === operation.uri))
-        throw new SubnetMcpError("not_found", "The admitted resource is absent from the upstream MCP catalog.");
+        throw new SubnetMcpError(
+          "not_found",
+          "The admitted resource is absent from the upstream MCP catalog.",
+        );
       return {
         kind: "resource",
-        result: await client.readResource({ uri: operation.uri }, requestOptions),
+        result: await client.readResource(
+          { uri: operation.uri },
+          requestOptions,
+        ),
       };
     }
     let cursor: string | undefined;
     const cursors = new Set<string>();
     const names = new Set<string>();
     const tools: (Tool & { access: "read" | "write" })[] = [];
-    if (allowed.size > 0) do {
-      const page = await client.listTools(
-        cursor ? { cursor } : undefined,
-        requestOptions,
-      );
-      for (const tool of page.tools) {
-        if (names.has(tool.name) || names.size === MAX_TOOLS)
-          throw new SubnetMcpError(
-            "invalid_catalog",
-            "The upstream MCP catalog repeats a tool or exceeds its limit.",
-          );
-        names.add(tool.name);
-        const access = allowed.get(tool.name);
-        if (access) tools.push({ ...tool, access });
-        if (operation.kind !== "discover" && tool.name === operation.name) {
-          const checked = validator.getValidator(tool.inputSchema)(
-            operation.arguments,
-          );
-          if (!checked.valid)
+    if (allowed.size > 0)
+      do {
+        const page = await client.listTools(
+          cursor ? { cursor } : undefined,
+          requestOptions,
+        );
+        for (const tool of page.tools) {
+          if (names.has(tool.name) || names.size === MAX_TOOLS)
             throw new SubnetMcpError(
-              "invalid_params",
-              "Arguments do not match the upstream MCP tool schema.",
+              "invalid_catalog",
+              "The upstream MCP catalog repeats a tool or exceeds its limit.",
             );
-          // listTools caches this page's output schemas inside the SDK. Call
-          // before another page replaces that cache, retaining SDK validation.
-          const result = await client.callTool(
-            { name: tool.name, arguments: operation.arguments },
-            CallToolResultSchema,
-            requestOptions,
-          );
-          // The SDK's inferred type also includes its legacy toolResult schema;
-          // the explicit modern schema above already validates native content.
-          return { kind: "call", result: result as CallToolResult };
+          names.add(tool.name);
+          const access = allowed.get(tool.name);
+          if (access) tools.push({ ...tool, access });
+          if (operation.kind !== "discover" && tool.name === operation.name) {
+            const checked = validator.getValidator(tool.inputSchema)(
+              operation.arguments,
+            );
+            if (!checked.valid)
+              throw new SubnetMcpError(
+                "invalid_params",
+                "Arguments do not match the upstream MCP tool schema.",
+              );
+            // listTools caches this page's output schemas inside the SDK. Call
+            // before another page replaces that cache, retaining SDK validation.
+            const result = await client.callTool(
+              { name: tool.name, arguments: operation.arguments },
+              CallToolResultSchema,
+              requestOptions,
+            );
+            // The SDK's inferred type also includes its legacy toolResult schema;
+            // the explicit modern schema above already validates native content.
+            return { kind: "call", result: result as CallToolResult };
+          }
         }
-      }
-      cursor = page.nextCursor;
-      if (cursor) {
-        if (cursors.has(cursor))
-          throw new SubnetMcpError(
-            "invalid_catalog",
-            "The upstream MCP catalog repeats a cursor.",
-          );
-        cursors.add(cursor);
-      }
-    } while (cursor);
+        cursor = page.nextCursor;
+        if (cursor) {
+          if (cursors.has(cursor))
+            throw new SubnetMcpError(
+              "invalid_catalog",
+              "The upstream MCP catalog repeats a cursor.",
+            );
+          cursors.add(cursor);
+        }
+      } while (cursor);
     if (operation.kind !== "discover")
       throw new SubnetMcpError(
         "not_found",
@@ -384,7 +415,9 @@ export async function runSubnetMcp(
       kind: "discover",
       tools,
       ...(options.readPrompts?.length ? { prompts: await listPrompts() } : {}),
-      ...(options.readResources?.length ? { resources: await listResources() } : {}),
+      ...(options.readResources?.length
+        ? { resources: await listResources() }
+        : {}),
     };
   };
   try {

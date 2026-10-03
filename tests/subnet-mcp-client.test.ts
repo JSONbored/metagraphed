@@ -70,7 +70,11 @@ function fixture(
       message.method === "initialize"
         ? {
             protocolVersion: overrides.protocol ?? "2025-11-25",
-            capabilities: overrides.capabilities ?? { tools: {}, prompts: {}, resources: {} },
+            capabilities: overrides.capabilities ?? {
+              tools: {},
+              prompts: {},
+              resources: {},
+            },
             serverInfo: { name: "fixture", version: "1" },
           }
         : message.method === "tools/list"
@@ -79,16 +83,23 @@ function fixture(
             })
           : message.method === "prompts/list"
             ? (overrides.prompts?.(message.params ?? {}) ?? {
-                prompts: [{ name: "plan", arguments: [{ name: "login", required: true }] }],
+                prompts: [
+                  {
+                    name: "plan",
+                    arguments: [{ name: "login", required: true }],
+                  },
+                ],
               })
             : message.method === "resources/list"
               ? (overrides.resources?.(message.params ?? {}) ?? {
                   resources: [{ name: "taxonomy", uri: "fixture://taxonomy" }],
                 })
               : (overrides.result ?? {
-              content: [{ type: "text", text: 'exact "quoted" response\n' }],
-              structuredContent: { value: message.params.arguments.value },
-            });
+                  content: [
+                    { type: "text", text: 'exact "quoted" response\n' },
+                  ],
+                  structuredContent: { value: message.params.arguments.value },
+                });
     const data = JSON.stringify({ jsonrpc: "2.0", id: message.id, result });
     const headers = new Headers({
       "content-type": overrides.sse
@@ -132,27 +143,79 @@ describe("isolated upstream MCP protocol", () => {
   for (const sse of [false, true])
     test(`prompt/resource ${sse ? "SSE" : "JSON"} discovery and native results`, async () => {
       const messages = [
-        { role: "user", content: { type: "text", text: 'provider "instructions"\n' } },
-        { role: "assistant", content: { type: "image", mimeType: "image/png", data: "AQIDBA==" } },
+        {
+          role: "user",
+          content: { type: "text", text: 'provider "instructions"\n' },
+        },
+        {
+          role: "assistant",
+          content: { type: "image", mimeType: "image/png", data: "AQIDBA==" },
+        },
       ];
-      const prompt = fixture({ sse, result: { description: "plan", messages, _meta: { exact: true } } });
+      const prompt = fixture({
+        sse,
+        result: { description: "plan", messages, _meta: { exact: true } },
+      });
       prompt.options.readPrompts = ["plan"];
-      const result = await runSubnetMcp(prompt.options, { kind: "prompt", name: "plan", arguments: { login: "caller" } });
-      assert.deepEqual(result, { kind: "prompt", result: { description: "plan", messages, _meta: { exact: true } } });
-      assert.deepEqual(prompt.calls.filter((call) => call.message?.id !== undefined).map((call) => call.message?.method), ["initialize", "prompts/list", "prompts/get"]);
+      const result = await runSubnetMcp(prompt.options, {
+        kind: "prompt",
+        name: "plan",
+        arguments: { login: "caller" },
+      });
+      assert.deepEqual(result, {
+        kind: "prompt",
+        result: { description: "plan", messages, _meta: { exact: true } },
+      });
+      assert.deepEqual(
+        prompt.calls
+          .filter((call) => call.message?.id !== undefined)
+          .map((call) => call.message?.method),
+        ["initialize", "prompts/list", "prompts/get"],
+      );
       const contents = [
-        { uri: "fixture://taxonomy", mimeType: "application/json", text: '{"exact":"18446744073709551615"}\n' },
-        { uri: "fixture://attachment", mimeType: "application/octet-stream", blob: "AAH/" },
+        {
+          uri: "fixture://taxonomy",
+          mimeType: "application/json",
+          text: '{"exact":"18446744073709551615"}\n',
+        },
+        {
+          uri: "fixture://attachment",
+          mimeType: "application/octet-stream",
+          blob: "AAH/",
+        },
       ];
-      const resource = fixture({ sse, result: { contents, _meta: { exact: true } } });
+      const resource = fixture({
+        sse,
+        result: { contents, _meta: { exact: true } },
+      });
       resource.options.readResources = ["fixture://taxonomy"];
-      assert.deepEqual(await runSubnetMcp(resource.options, { kind: "resource", uri: "fixture://taxonomy" }), { kind: "resource", result: { contents, _meta: { exact: true } } });
-      assert.deepEqual(resource.calls.filter((call) => call.message?.id !== undefined).map((call) => call.message?.method), ["initialize", "resources/list", "resources/read"]);
+      assert.deepEqual(
+        await runSubnetMcp(resource.options, {
+          kind: "resource",
+          uri: "fixture://taxonomy",
+        }),
+        { kind: "resource", result: { contents, _meta: { exact: true } } },
+      );
+      assert.deepEqual(
+        resource.calls
+          .filter((call) => call.message?.id !== undefined)
+          .map((call) => call.message?.method),
+        ["initialize", "resources/list", "resources/read"],
+      );
     });
   test("discovery filters and paginates reviewed prompts/resources without executing them", async () => {
     const { options, calls } = fixture({
-      prompts: (params) => params.cursor ? { prompts: [{ name: "plan" }] } : { prompts: [{ name: "unreviewed" }], nextCursor: "next" },
-      resources: (params) => params.cursor ? { resources: [{ name: "taxonomy", uri: "fixture://taxonomy" }] } : { resources: [{ name: "other", uri: "fixture://other" }], nextCursor: "next" },
+      prompts: (params) =>
+        params.cursor
+          ? { prompts: [{ name: "plan" }] }
+          : { prompts: [{ name: "unreviewed" }], nextCursor: "next" },
+      resources: (params) =>
+        params.cursor
+          ? { resources: [{ name: "taxonomy", uri: "fixture://taxonomy" }] }
+          : {
+              resources: [{ name: "other", uri: "fixture://other" }],
+              nextCursor: "next",
+            },
     });
     options.readPrompts = ["plan"];
     options.readResources = ["fixture://taxonomy"];
@@ -160,11 +223,22 @@ describe("isolated upstream MCP protocol", () => {
     assert.equal(result.kind, "discover");
     if (result.kind !== "discover") throw new Error("missing discovery");
     assert.deepEqual(result.prompts, [{ name: "plan" }]);
-    assert.deepEqual(result.resources, [{ name: "taxonomy", uri: "fixture://taxonomy" }]);
-    assert.equal(calls.some((call) => ["prompts/get", "resources/read", "tools/call"].includes(call.message?.method)), false);
+    assert.deepEqual(result.resources, [
+      { name: "taxonomy", uri: "fixture://taxonomy" },
+    ]);
+    assert.equal(
+      calls.some((call) =>
+        ["prompts/get", "resources/read", "tools/call"].includes(
+          call.message?.method,
+        ),
+      ),
+      false,
+    );
   });
   test("prompt/resource-only discovery does not require tools capability", async () => {
-    const { options, calls } = fixture({ capabilities: { prompts: {}, resources: {} } });
+    const { options, calls } = fixture({
+      capabilities: { prompts: {}, resources: {} },
+    });
     options.readTools = [];
     options.writeTools = [];
     options.readPrompts = ["plan"];
@@ -175,24 +249,42 @@ describe("isolated upstream MCP protocol", () => {
     assert.deepEqual(result.tools, []);
     assert.equal(result.prompts?.length, 1);
     assert.equal(result.resources?.length, 1);
-    assert.equal(calls.some((call) => call.message?.method.startsWith("tools/")), false);
+    assert.equal(
+      calls.some((call) => call.message?.method.startsWith("tools/")),
+      false,
+    );
   });
   test("unadmitted prompt/resource reject before traffic, including URL-shaped resource identifiers", async () => {
     const { options, calls } = fixture();
     for (const operation of [
       { kind: "prompt" as const, name: "plan", arguments: {} },
       { kind: "resource" as const, uri: "http://127.0.0.1/private" },
-    ]) await fails(options, operation, "operation_not_allowed");
+    ])
+      await fails(options, operation, "operation_not_allowed");
     assert.equal(calls.length, 0);
   });
   test("argument-free and optional prompts retain provider output without invented requirements", async () => {
     for (const argumentsList of [undefined, [{ name: "optional" }]]) {
       const { options } = fixture({
-        prompts: () => ({ prompts: [{ name: "plan", ...(argumentsList ? { arguments: argumentsList } : {}) }] }),
+        prompts: () => ({
+          prompts: [
+            {
+              name: "plan",
+              ...(argumentsList ? { arguments: argumentsList } : {}),
+            },
+          ],
+        }),
         result: { messages: [] },
       });
       options.readPrompts = ["plan"];
-      assert.deepEqual(await runSubnetMcp(options, { kind: "prompt", name: "plan", arguments: {} }), { kind: "prompt", result: { messages: [] } });
+      assert.deepEqual(
+        await runSubnetMcp(options, {
+          kind: "prompt",
+          name: "plan",
+          arguments: {},
+        }),
+        { kind: "prompt", result: { messages: [] } },
+      );
     }
   });
   test("SDK rejects malformed prompt and resource results", async () => {
@@ -200,22 +292,54 @@ describe("isolated upstream MCP protocol", () => {
       const { options } = fixture({ result: { unexpected: true } });
       options.readPrompts = ["plan"];
       options.readResources = ["fixture://taxonomy"];
-      await fails(options, kind === "prompt" ? { kind, name: "plan", arguments: { login: "caller" } } : { kind, uri: "fixture://taxonomy" }, "upstream_mcp_error");
+      await fails(
+        options,
+        kind === "prompt"
+          ? { kind, name: "plan", arguments: { login: "caller" } }
+          : { kind, uri: "fixture://taxonomy" },
+        "upstream_mcp_error",
+      );
     }
   });
   test("missing prompt arguments or catalog entries never reach get/read", async () => {
     const { options, calls } = fixture();
     options.readPrompts = ["plan", "missing"];
     options.readResources = ["fixture://missing"];
-    await fails(options, { kind: "prompt", name: "plan", arguments: {} }, "invalid_params");
-    await fails(options, { kind: "prompt", name: "missing", arguments: {} }, "not_found");
-    await fails(options, { kind: "resource", uri: "fixture://missing" }, "not_found");
-    assert.equal(calls.some((call) => ["prompts/get", "resources/read"].includes(call.message?.method)), false);
+    await fails(
+      options,
+      { kind: "prompt", name: "plan", arguments: {} },
+      "invalid_params",
+    );
+    await fails(
+      options,
+      { kind: "prompt", name: "missing", arguments: {} },
+      "not_found",
+    );
+    await fails(
+      options,
+      { kind: "resource", uri: "fixture://missing" },
+      "not_found",
+    );
+    assert.equal(
+      calls.some((call) =>
+        ["prompts/get", "resources/read"].includes(call.message?.method),
+      ),
+      false,
+    );
   });
   for (const malformed of ["entry", "cursor", "limit"])
     test(`prompt/resource ${malformed} catalog rejection`, async () => {
       const { options } = fixture({
-        prompts: () => ({ prompts: malformed === "limit" ? Array.from({ length: 513 }, (_, i) => ({ name: `prompt-${i}` })) : [{ name: "plan" }, ...(malformed === "entry" ? [{ name: "plan" }] : [])], ...(malformed === "cursor" ? { nextCursor: "loop" } : {}) }),
+        prompts: () => ({
+          prompts:
+            malformed === "limit"
+              ? Array.from({ length: 513 }, (_, i) => ({ name: `prompt-${i}` }))
+              : [
+                  { name: "plan" },
+                  ...(malformed === "entry" ? [{ name: "plan" }] : []),
+                ],
+          ...(malformed === "cursor" ? { nextCursor: "loop" } : {}),
+        }),
       });
       options.readPrompts = ["plan"];
       await fails(options, { kind: "discover" }, "invalid_catalog");
@@ -266,7 +390,8 @@ describe("isolated upstream MCP protocol", () => {
     const { options, calls } = fixture();
     await assert.rejects(
       runSubnetMcp(options, { ...read, name: "write" }),
-      (error: unknown) => error instanceof SubnetMcpError &&
+      (error: unknown) =>
+        error instanceof SubnetMcpError &&
         error.code === "operation_not_allowed" &&
         error.message === "This MCP operation is not admitted for this tool.",
     );
