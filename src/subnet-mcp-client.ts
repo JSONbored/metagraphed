@@ -1,7 +1,11 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { CfWorkerJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/cfworker";
-import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResultSchema,
+  type CallToolResult,
+  type Tool,
+} from "@modelcontextprotocol/sdk/types.js";
 import {
   MAX_RESPONSE_BYTES,
   redactCredentialValue,
@@ -258,10 +262,12 @@ export async function runSubnetMcp(
           // before another page replaces that cache, retaining SDK validation.
           const result = await client.callTool(
             { name: tool.name, arguments: operation.arguments },
-            undefined,
+            CallToolResultSchema,
             requestOptions,
           );
-          return { kind: "call", result };
+          // The SDK's inferred type also includes its legacy toolResult schema;
+          // the explicit modern schema above already validates native content.
+          return { kind: "call", result: result as CallToolResult };
         }
       }
       cursor = page.nextCursor;

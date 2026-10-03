@@ -3479,10 +3479,14 @@ async function requireCredentialStoreSurface(
   if (!SURFACE_ID_PATTERN.test(surfaceId)) {
     throw toolError("invalid_params", "Invalid surface_id format.");
   }
-  const surface =
-    (await findCataloguedSurface(ctx, surfaceId)) ??
-    (await findAdmittedMcpSurface(ctx, surfaceId));
+  const catalogued = await findCataloguedSurface(ctx, surfaceId);
+  const surface = catalogued ?? (await findAdmittedMcpSurface(ctx, surfaceId));
   if (!surface) throw await uncallableSurfaceError(ctx, surfaceId);
+  if (!catalogued && rowOf(surface.auth)?.location === "body")
+    throw toolError(
+      "credential_not_supported",
+      "MCP transport credentials must use a declared header, query or cookie location.",
+    );
   if (!surface.auth_required) {
     throw toolError(
       "invalid_params",

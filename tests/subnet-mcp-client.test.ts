@@ -203,6 +203,7 @@ describe("isolated upstream MCP protocol", () => {
     for (const result of [
       { content: [] },
       { content: [], structuredContent: { value: 42 } },
+      { toolResult: { value: read.arguments.value } },
     ]) {
       const { options } = fixture({ result });
       await fails(options, read, "upstream_mcp_error");

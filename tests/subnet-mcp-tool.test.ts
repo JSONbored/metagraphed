@@ -424,6 +424,34 @@ describe("subnet MCP public contract", () => {
       globalThis.fetch = previous;
     }
   });
+  test("MCP-only body credentials cannot be stored for an unusable transport", async () => {
+    const { readArtifact, calls } = setup([
+      {
+        ...surface,
+        auth_required: true,
+        auth: { scheme: "signature", location: "body", names: ["signature"] },
+      },
+    ]);
+    let writes = 0;
+    const env = {
+      OAUTH_KV: {
+        get: async () => null,
+        put: async () => {
+          writes++;
+        },
+      },
+      MCP_SURFACE_CREDENTIAL_SECRET: "fixture-encryption-key",
+    } as unknown as ConfiguredSurfaceCredentialEnv;
+    await assert.rejects(
+      definition("store_surface_credential").handler(
+        { surface_id: surface.id, credential: { signature: "signed" } },
+        { env, accountId: "7", readArtifact } as unknown as McpCtx,
+      ),
+      (error: Row) => error.code === "credential_not_supported",
+    );
+    assert.equal(writes, 0);
+    assert.equal(calls.length, 0);
+  });
   test("published surface and service projections share the admission contract", () => {
     assert.equal(
       McpSurfaceAdmissionSchema.safeParse(surface.mcp).success,
