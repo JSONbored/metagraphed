@@ -242,12 +242,16 @@ describe("captured header and cookie representations", () => {
   });
 
   test("header token keys retain own properties and require no Headers constructors", () => {
-    const original = globalThis.Headers;
-    globalThis.Headers = class {
-      constructor() {
-        throw new Error("Unnecessary header copy");
-      }
-    } as unknown as typeof Headers;
+    const original = Headers;
+    Reflect.set(
+      globalThis,
+      "Headers",
+      class {
+        constructor() {
+          throw new Error("Unnecessary header copy");
+        }
+      },
+    );
     try {
       const names = ["__proto__", "constructor", "x-percent"];
       const result = serializeDeclaredHttpParameters(
@@ -261,7 +265,7 @@ describe("captured header and cookie representations", () => {
         names.map((name) => [name, "literal%2C"]),
       );
     } finally {
-      globalThis.Headers = original;
+      Reflect.set(globalThis, "Headers", original);
     }
   });
 

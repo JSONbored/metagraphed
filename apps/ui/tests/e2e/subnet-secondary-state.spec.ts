@@ -437,6 +437,9 @@ for (const width of [375, 768, 1280]) {
       await gotoThroughRestart(page, "/subnets/19");
       await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
       await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
+      await page.evaluate(() => {
+        document.documentElement.style.scrollBehavior = "auto";
+      });
       await page
         .locator("#surfaces")
         .evaluate((element) => element.scrollIntoView({ block: "center" }));
