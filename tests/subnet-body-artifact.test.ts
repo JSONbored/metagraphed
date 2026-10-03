@@ -190,7 +190,7 @@ describe("public admitted write path", () => {
     const artifactArgs = { ...base, content_type, body_artifact: reference(bytes), credential: "Bearer fixture-secret" };
     const actual = await invoke(artifactArgs, bytes);
     assert.equal(actual.envelope.result.isError, false);
-    assert.deepEqual(actual.targetCalls[0]!.init.body, bytes);
+    assert.deepEqual(Buffer.from(actual.targetCalls[0]!.init.body as Uint8Array), Buffer.from(bytes));
     const inline = { ...base, content_type, body_base64: Buffer.from(bytes).toString("base64"), credential: "Bearer fixture-secret" };
     assert.ok(JSON.stringify(inline).length > MAX_MCP_BODY_BYTES);
     const refused = await invoke(inline, bytes);
