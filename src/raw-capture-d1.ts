@@ -8,9 +8,56 @@ const MAX_RAW = 32 * 1024 * 1024;
 const KEY = /^chain\/raw\/(testnet\/)?blocks\/(\d{12})-(\d{12})\.ndjson$/;
 const hash = (bytes: Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
-const SELECTION =
-  "SELECT sha256 FROM (SELECT sha256,captured_at FROM raw_capture_selected WHERE key=? UNION ALL SELECT sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1) ORDER BY captured_at DESC LIMIT 1";
+const PUBLICATION =
+  "SELECT sha256 FROM (SELECT b.sha256 FROM raw_capture_batches b JOIN raw_capture_publications p USING(key,sha256) WHERE b.key=? AND b.sha256=? AND b.complete=1 UNION ALL SELECT a.sha256 FROM raw_capture_archives a JOIN raw_capture_publications p USING(key,sha256) WHERE a.key=? AND a.sha256=? AND a.complete=1 AND a.native_sha256=a.compressed_sha256 AND a.native_key='chain/raw/native/v1/'||a.network||'/'||a.sha256||'/'||a.compressed_sha256||'.gz') LIMIT 1";
 type Db = Pick<D1Database, "prepare" | "batch">;
+
+/** Hash every original byte except each top-level captured_at numeric token. */
+function chainPayloadHash(value: string, rows: string[]): string {
+  const digest = createHash("sha256");
+  let rowStart = 0,
+    hashedThrough = 0;
+  for (const line of rows) {
+    let depth = 0;
+    let provenance: { start: number; end: number } | undefined;
+    // JSON.parse already validated this row. Skip quoted strings as a whole,
+    // including escaped quotes, so nested fields and SCALE/header bytes cannot
+    // be mistaken for the one top-level provenance key. Parse key strings only;
+    // never round or reserialize another payload field.
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === "{" || char === "[") depth++;
+      else if (char === "}" || char === "]") depth--;
+      else if (char === '"') {
+        const start = i;
+        for (;;) {
+          i = line.indexOf('"', i + 1);
+          let slashes = 0;
+          for (let j = i - 1; line[j] === "\\"; j--) slashes++;
+          if (slashes % 2 === 0) break;
+        }
+        if (
+          depth !== 1 ||
+          JSON.parse(line.slice(start, i + 1)) !== "captured_at"
+        )
+          continue;
+        const colon = /^\s*:\s*/.exec(line.slice(i + 1));
+        if (!colon) continue;
+        const tokenStart = i + 1 + colon[0].length;
+        const number = /^[0-9.eE+-]+/.exec(line.slice(tokenStart));
+        if (provenance || !number)
+          throw new Error("Raw capture provenance is ambiguous");
+        provenance = { start: tokenStart, end: tokenStart + number[0].length };
+      }
+    }
+    // The validated safe-integer field necessarily supplied this numeric token.
+    digest.update(value.slice(hashedThrough, rowStart + provenance!.start));
+    digest.update("0");
+    hashedThrough = rowStart + provenance!.end;
+    rowStart += line.length + 1;
+  }
+  return digest.update(value.slice(hashedThrough)).digest("hex");
+}
 
 /** Keep exact SCALE bytes in bounded D1 chunks; never acknowledge a partial batch. */
 export function rawCaptureD1(db: Db): RawCaptureStore {
@@ -43,6 +90,7 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
           throw new Error("Raw capture identity differs");
         capturedAt = Math.max(capturedAt, row.captured_at);
       }
+      const chainDigest = chainPayloadHash(value, rows);
       const compressed = gzipSync(raw, { level: 6 });
       // The reservation's compressed_bytes/parts CHECKs enforce the compressed
       // budget before any chunk is written; the input bound caps compression.
@@ -106,7 +154,10 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
         )
           throw new Error("Raw capture archive identity differs");
         const current = await retry(() =>
-          db.prepare(SELECTION).bind(key, key).first<{ sha256: string }>(),
+          db
+            .prepare(PUBLICATION)
+            .bind(key, digest, key, digest)
+            .first<{ sha256: string }>(),
         );
         if (current?.sha256 !== digest)
           throw new Error("Raw capture selection was not acknowledged");
@@ -182,10 +233,30 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
       // Hashing those same bytes again and inflating the local compression adds
       // no storage verification. Independent raw reconstruction remains in the
       // archive consumer before it can release any staging bytes.
-      // Mark complete and publish the pointer atomically. A newer capture of
-      // the same finalized range cannot be replaced by an older invocation.
-      await retry(() =>
-        db.batch([
+      // Completion, selection and its immutable receipt share one transaction.
+      // A receipt pins the selected version that acknowledged these exact bytes:
+      // either this version won selection, or its complete chain payload matched
+      // an already acknowledged selection byte-for-byte apart from provenance.
+      // A conflicting or unproven version receives no receipt. Both original
+      // captures stay intact, and receipts survive supersession and archival.
+      let publicationStarted = false;
+      await retry(async () => {
+        // A lost transaction reply may already have a durable receipt, even
+        // after native archival released all staging. Confirm it before replay:
+        // source chunks no longer exist after that successful handoff.
+        if (publicationStarted) {
+          const committed = await db
+            .prepare(PUBLICATION)
+            .bind(key, digest, key, digest)
+            .first<{ sha256: string }>();
+          if (committed) {
+            if (committed.sha256 !== digest)
+              throw new Error("Raw capture selection was not acknowledged");
+            return;
+          }
+        }
+        publicationStarted = true;
+        await db.batch([
           db
             .prepare(
               "UPDATE raw_capture_batches SET complete=1 WHERE key=? AND sha256=? AND parts=(SELECT count(*) FROM raw_capture_chunks WHERE key=? AND sha256=?) AND compressed_bytes=(SELECT sum(length(data)) FROM raw_capture_chunks WHERE key=? AND sha256=?)",
@@ -196,10 +267,18 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
               "INSERT INTO raw_capture_selected(key,sha256,network,last_block,captured_at) SELECT key,sha256,network,last_block,captured_at FROM raw_capture_batches b WHERE key=? AND sha256=? AND complete=1 AND NOT EXISTS(SELECT 1 FROM raw_capture_archives a WHERE a.key=b.key AND a.selected=1 AND a.sha256<>b.sha256 AND a.captured_at>=b.captured_at) ON CONFLICT(key) DO UPDATE SET sha256=excluded.sha256,network=excluded.network,last_block=excluded.last_block,captured_at=excluded.captured_at WHERE raw_capture_selected.captured_at<excluded.captured_at OR raw_capture_selected.sha256=excluded.sha256",
             )
             .bind(key, digest),
-        ]),
-      );
+          db
+            .prepare(
+              "INSERT INTO raw_capture_publications(key,sha256,selected_sha256,chain_sha256) SELECT b.key,b.sha256,c.sha256,? FROM raw_capture_batches b JOIN (SELECT s.key,s.sha256,s.captured_at FROM raw_capture_selected s JOIN raw_capture_batches r USING(key,sha256) WHERE s.key=? AND r.complete=1 UNION ALL SELECT key,sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1 AND complete=1 AND native_sha256=compressed_sha256 AND native_key='chain/raw/native/v1/'||network||'/'||sha256||'/'||compressed_sha256||'.gz' ORDER BY captured_at DESC LIMIT 1) c ON c.key=b.key LEFT JOIN raw_capture_publications p ON p.key=c.key AND p.sha256=c.sha256 WHERE b.key=? AND b.sha256=? AND b.complete=1 AND (c.sha256=b.sha256 OR p.chain_sha256=?) ON CONFLICT(key,sha256) DO NOTHING",
+            )
+            .bind(chainDigest, key, key, key, digest, chainDigest),
+        ]);
+      });
       const receipt = await retry(() =>
-        db.prepare(SELECTION).bind(key, key).first<{ sha256: string }>(),
+        db
+          .prepare(PUBLICATION)
+          .bind(key, digest, key, digest)
+          .first<{ sha256: string }>(),
       );
       if (receipt?.sha256 !== digest)
         throw new Error("Raw capture selection was not acknowledged");

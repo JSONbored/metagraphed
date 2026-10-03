@@ -24,6 +24,14 @@ const value = (at = 1000, extrinsics = ["0x00"]) =>
     events: null,
     captured_at: at,
   }) + "\n";
+const publicationMigration = readFileSync(
+  new URL(
+    "../migrations/d1/0038_raw_capture_publications.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+type WriteHook = (text: string, params: unknown[]) => void | Promise<void>;
 function fixture() {
   const sql = new DatabaseSync(":memory:");
   databases.push(sql);
@@ -40,8 +48,9 @@ function fixture() {
       "utf8",
     ),
   );
+  sql.exec(publicationMigration);
   let fail: ((text: string, params: unknown[]) => void) | undefined;
-  let afterWrite: typeof fail;
+  let afterWrite: WriteHook | undefined;
   let readback: ((text: string, result: unknown) => unknown) | undefined;
   const prepared = (text: string, params: unknown[] = []) => ({
     text,
@@ -62,7 +71,7 @@ function fixture() {
     async run() {
       fail?.(text, params);
       sql.prepare(text).run(...(params as never[]));
-      afterWrite?.(text, params);
+      await afterWrite?.(text, params);
       return { success: true };
     },
     async all() {
@@ -92,7 +101,7 @@ function fixture() {
         sql.exec("ROLLBACK");
         throw error;
       }
-      afterWrite?.(
+      await afterWrite?.(
         statements.map(({ text }) => text).join("\n"),
         statements.flatMap(({ params }) => params),
       );
@@ -154,6 +163,7 @@ test.each(
     "INSERT INTO raw_capture_chunks",
     "SELECT part,hex(data)",
     "UPDATE raw_capture_batches",
+    "INSERT INTO raw_capture_publications",
     "SELECT sha256 FROM (",
   ].flatMap((phase) => transientStorageErrors.map((error) => [phase, error])),
 )(
@@ -202,7 +212,7 @@ test.each(
     const pending = f.store.put(key(), value());
     await vi.runAllTimersAsync();
     await pending;
-    assert.equal(calls, 2);
+    assert.equal(calls, phase === "UPDATE raw_capture_batches" ? 1 : 2);
     assert.equal(
       f.selected(),
       createHash("sha256").update(value()).digest("hex"),
@@ -369,7 +379,10 @@ test("an older capture cannot displace an archived selection and newer captures 
   const f = fixture();
   await f.store.put(key(), value(2000));
   const old = archive(f);
-  await assert.rejects(f.store.put(key(), value(1000)), /selection/);
+  await assert.rejects(
+    f.store.put(key(), value(1000, ["0xffff"])),
+    /selection/,
+  );
   await f.store.put(key(), value(3000));
   const current = archive(f);
   assert.equal(
@@ -388,7 +401,341 @@ test("an older capture cannot displace an archived selection and newer captures 
       .get(current.sha256!)?.selected,
     1,
   );
-  await assert.rejects(f.store.put(key(), value(2000)), /selection/);
+  // This version really was published. Its receipt survives a newer archive.
+  await f.store.put(key(), value(2000));
+  assert.equal(
+    f.sql
+      .prepare("SELECT sha256 FROM raw_capture_archives WHERE selected=1")
+      .get()?.sha256,
+    current.sha256,
+  );
+});
+
+test.each([false, true])(
+  "overlapping committed writers acknowledge their own exact publication: testnet=%s",
+  async (testnet) => {
+    const f = fixture();
+    const objectKey = key(testnet);
+    const first = value(1000),
+      second = value(1049);
+    let overlapped = false;
+    f.failAfterWriteWith(async (text) => {
+      if (!text.startsWith("UPDATE raw_capture_batches")) return;
+      f.failAfterWriteWith();
+      await f.store.put(objectKey, second);
+      overlapped = true;
+    });
+    await f.store.put(objectKey, first);
+    assert(overlapped);
+    assert.equal(
+      f.selected(objectKey),
+      createHash("sha256").update(second).digest("hex"),
+    );
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+      2,
+    );
+    const originals = f.sql
+      .prepare(
+        "SELECT b.sha256,c.data FROM raw_capture_batches b JOIN raw_capture_chunks c USING(key,sha256) WHERE b.key=? ORDER BY b.captured_at,c.part",
+      )
+      .all(objectKey);
+    assert.equal(originals.length, 2);
+    assert.deepEqual(
+      originals.map((row) => gunzipSync(row.data as Uint8Array).toString()),
+      [first, second],
+    );
+  },
+);
+
+test("a lost committed reply remains retryable after a newer writer and archival", async () => {
+  vi.useFakeTimers();
+  const f = fixture();
+  const first = value(1000),
+    second = value(1089);
+  let lost = false;
+  f.failAfterWriteWith(async (text) => {
+    if (!text.startsWith("UPDATE raw_capture_batches")) return;
+    f.failAfterWriteWith();
+    await f.store.put(key(), second);
+    archive(f);
+    // The superseded original is also independently archived, selected=0.
+    const source = f.sql
+      .prepare(
+        "SELECT sha256,compressed_sha256 FROM raw_capture_batches WHERE key=?",
+      )
+      .get(key())!;
+    const nativeKey = `chain/raw/native/v1/mainnet/${source.sha256}/${source.compressed_sha256}.gz`;
+    f.sql
+      .prepare(
+        "INSERT INTO raw_capture_archives SELECT b.*,0,?, ?,compressed_sha256 FROM raw_capture_batches b WHERE b.key=?",
+      )
+      .run(nativeKey, "b".repeat(32), key());
+    lost = true;
+    throw new Error("D1_ERROR: Network connection lost.");
+  });
+  const pending = f.store.put(key(), first);
+  await vi.runAllTimersAsync();
+  await pending;
+  assert(lost);
+  await f.store.put(key(), first);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    2,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_archives").get()?.n,
+    2,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+  assert.equal(
+    f.sql
+      .prepare("SELECT sha256 FROM raw_capture_archives WHERE selected=1")
+      .get()?.sha256,
+    createHash("sha256").update(second).digest("hex"),
+  );
+});
+
+test("publication receipt failure rolls completion and selection back together", async () => {
+  const f = fixture();
+  await f.store.put(key(), value());
+  const prior = f.selected();
+  f.sql.exec(
+    "CREATE TRIGGER reject_publication BEFORE INSERT ON raw_capture_publications BEGIN SELECT RAISE(ABORT,'publication failed'); END",
+  );
+  await assert.rejects(f.store.put(key(), value(2000)), /publication failed/);
+  assert.equal(f.selected(), prior);
+  assert.equal(
+    f.sql
+      .prepare(
+        "SELECT complete FROM raw_capture_batches WHERE captured_at=2000",
+      )
+      .get()?.complete,
+    0,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    1,
+  );
+  f.sql.exec("DROP TRIGGER reject_publication");
+  await f.store.put(key(), value(2000));
+  assert.notEqual(f.selected(), prior);
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    2,
+  );
+});
+
+test("a mismatched committed receipt after a lost reply is fatal without another publication transaction", async () => {
+  vi.useFakeTimers();
+  const f = fixture();
+  let publications = 0;
+  f.failAfterWriteWith((text) => {
+    if (text.startsWith("UPDATE raw_capture_batches")) {
+      publications++;
+      throw new Error("D1_ERROR: Network connection lost.");
+    }
+  });
+  f.readWith((text, result) =>
+    text.startsWith("SELECT sha256 FROM (")
+      ? { sha256: "f".repeat(64) }
+      : result,
+  );
+  const rejected = assert.rejects(
+    f.store.put(key(), value()),
+    /selection was not acknowledged/,
+  );
+  await vi.runAllTimersAsync();
+  await rejected;
+  assert.equal(publications, 1);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    1,
+  );
+});
+
+test("complete but never selected conflicting data has no publication receipt", async () => {
+  const f = fixture();
+  await f.store.put(key(), value(2000));
+  const prior = f.selected();
+  await assert.rejects(
+    f.store.put(key(), value(1000, ["0xffff"])),
+    /selection was not acknowledged/,
+  );
+  assert.equal(f.selected(), prior);
+  assert.equal(
+    f.sql
+      .prepare(
+        "SELECT complete FROM raw_capture_batches WHERE captured_at=1000",
+      )
+      .get()?.complete,
+    1,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    1,
+  );
+});
+
+test.each([false, true])(
+  "an older complete matching capture pins the newer selection without replacing either original: archived=%s",
+  async (archived) => {
+    const f = fixture();
+    const newer = value(2000),
+      older = value(1000);
+    await f.store.put(key(), newer);
+    if (archived) archive(f);
+    await f.store.put(key(), older);
+    const receipt = f.sql
+      .prepare(
+        "SELECT selected_sha256,chain_sha256 FROM raw_capture_publications WHERE key=? AND sha256=?",
+      )
+      .get(key(), createHash("sha256").update(older).digest("hex"))!;
+    assert.equal(
+      receipt.selected_sha256,
+      createHash("sha256").update(newer).digest("hex"),
+    );
+    assert.equal(typeof receipt.chain_sha256, "string");
+    assert.equal(
+      archived
+        ? f.sql
+            .prepare("SELECT sha256 FROM raw_capture_archives WHERE selected=1")
+            .get()?.sha256
+        : f.selected(),
+      receipt.selected_sha256,
+    );
+    const chunk = f.sql
+      .prepare("SELECT data FROM raw_capture_chunks WHERE key=? AND sha256=?")
+      .get(key(), createHash("sha256").update(older).digest("hex"))!;
+    assert.equal(gunzipSync(chunk.data as Uint8Array).toString(), older);
+  },
+);
+
+test("chain identity masks only top-level provenance and preserves arbitrary original JSON bytes", async () => {
+  const f = fixture();
+  const payload =
+    String.raw`{ "captured_\u0061t" : 2e3, "block_number":10, "header":{"captured_at":7,"precise":9007199254740993,"text":"quote\" slash\\ [] {}"}, "label":"captured_at", "extrinsics":["0x00","0x01"], "events":null }` +
+    "\n\n";
+  await f.store.put(key(), payload);
+  const older = payload.replace("2e3", "1e3");
+  await f.store.put(key(), older);
+  const originals = f.sql
+    .prepare("SELECT data FROM raw_capture_chunks ORDER BY sha256")
+    .all()
+    .map((row) => gunzipSync(row.data as Uint8Array).toString())
+    .sort();
+  assert.deepEqual(originals, [payload, older].sort());
+  for (const changed of [
+    older.replace('"captured_at":7', '"captured_at":8'),
+    older.replace("9007199254740993", "9007199254740992"),
+    older.replace('["0x00","0x01"]', '["0x01","0x00"]'),
+    older.replace('"events":null', '"events":"0x00"'),
+    older.replace('"label":"captured_at"', '"label":"different"'),
+    older.replace(" }", "}"),
+  ])
+    await assert.rejects(
+      f.store.put(key(), changed),
+      /selection was not acknowledged/,
+    );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    2,
+  );
+});
+
+test.each(["1000", '"ambiguous"'])(
+  "duplicate top-level provenance fields fail before any reservation: %s",
+  async (earlier) => {
+    const f = fixture();
+    const raw = value(2000).replace(
+      '{"block_number"',
+      `{"captured_at":${earlier},"block_number"`,
+    );
+    await assert.rejects(f.store.put(key(), raw), /provenance is ambiguous/);
+    assert.equal(
+      f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+      0,
+    );
+  },
+);
+
+test("equivalent multi-block captures acknowledge every row without rounding or reordering", async () => {
+  const f = fixture();
+  const objectKey = key().replace("000000000010.ndjson", "000000000011.ndjson");
+  const newer =
+    value(2000) + value(2010).replace('"block_number":10', '"block_number":11');
+  const older =
+    value(1000) + value(1010).replace('"block_number":10', '"block_number":11');
+  await f.store.put(objectKey, newer);
+  await f.store.put(objectKey, older);
+  assert.equal(
+    f.selected(objectKey),
+    createHash("sha256").update(newer).digest("hex"),
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    2,
+  );
+});
+
+test.each([null, { sha256: "f".repeat(64) }])(
+  "missing or wrong publication receipts remain fatal: %s",
+  async (receipt) => {
+    const f = fixture();
+    f.readWith((text, result) =>
+      text.startsWith("SELECT sha256 FROM (") ? receipt : result,
+    );
+    await assert.rejects(
+      f.store.put(key(), value()),
+      /selection was not acknowledged/,
+    );
+  },
+);
+
+test.each([false, true])(
+  "migration attests only the existing complete current selection: archived=%s",
+  async (archived) => {
+    const f = fixture();
+    await f.store.put(key(), value(1000));
+    if (archived) archive(f);
+    await f.store.put(key(), value(2000));
+    if (archived) archive(f);
+    f.sql.exec("DROP TABLE raw_capture_publications");
+    f.sql.exec(publicationMigration);
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+      1,
+    );
+    await f.store.put(key(), value(2000));
+    await assert.rejects(
+      f.store.put(key(), value(1000)),
+      /selection was not acknowledged/,
+    );
+  },
+);
+
+test("a retained receipt without complete source bytes cannot acknowledge publication", async () => {
+  const f = fixture();
+  await f.store.put(key(), value());
+  const prior = f.selected();
+  f.sql.exec(
+    "UPDATE raw_capture_batches SET complete=0; DELETE FROM raw_capture_selected;",
+  );
+  f.failWith((text) => {
+    if (text.startsWith("UPDATE raw_capture_batches")) {
+      // Make completion's guarded census fail after source-byte readback.
+      f.sql.exec("DELETE FROM raw_capture_chunks");
+    }
+  });
+  await assert.rejects(
+    f.store.put(key(), value()),
+    /selection was not acknowledged/,
+  );
+  assert(prior);
+  assert.equal(f.selected(), undefined);
 });
 
 test("an archive with changed source metadata cannot release staging bytes", async () => {
@@ -496,7 +843,7 @@ test("older capture invocations cannot replace newer selected data", async () =>
   await f.store.put(key(), value(2000));
   const prior = f.selected();
   await assert.rejects(
-    f.store.put(key(), value(1000)),
+    f.store.put(key(), value(1000, ["0xffff"])),
     /selection was not acknowledged/,
   );
   assert.equal(f.selected(), prior);
