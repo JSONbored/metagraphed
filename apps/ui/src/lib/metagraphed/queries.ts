@@ -1793,8 +1793,7 @@ function normalizeAgentCatalogService(raw: unknown): AgentCatalogService | null 
   if (!isRecord(raw)) return null;
   const healthRaw = isRecord(raw.health) ? raw.health : undefined;
   const eligRaw = isRecord(raw.eligibility) ? raw.eligibility : undefined;
-  const mcp =
-    raw.mcp === undefined ? undefined : McpSurfaceAdmissionSchema.safeParse(raw.mcp);
+  const mcp = raw.mcp === undefined ? undefined : McpSurfaceAdmissionSchema.safeParse(raw.mcp);
   return {
     kind: coerceString(raw.kind),
     capability: coerceString(raw.capability),

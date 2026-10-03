@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { RegistryManifestSchema } from "../../schemas-src/registry-kv.ts";
+import { registryManifestKey, registryObjectKey } from "../../src/registry-kv.ts";
+import { METAGRAPH_LATEST_KEY } from "../../workers/config.ts";
 import type { Row } from "../row-type.ts";
 
 export const SUBNET_MCP_FIXTURE_ID = "sn-107-validator-mcp";
@@ -32,24 +36,33 @@ export async function withSubnetMcpFixture<T>(
       },
     ],
   };
+  const bytes = new TextEncoder().encode(JSON.stringify(surfaces));
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  const manifest = RegistryManifestSchema.parse({
+    version: 1,
+    artifacts: [
+      {
+        path: "/metagraph/surfaces.json",
+        sha256: digest,
+        size_bytes: bytes.byteLength,
+      },
+    ],
+  });
+  const manifestDigest = createHash("sha256")
+    .update(JSON.stringify(manifest))
+    .digest("hex");
   const fixtureEnv = {
     ...baseEnv,
-    ASSETS: {
-      fetch: async (request: Request) => {
-        if (new URL(request.url).pathname !== "/metagraph/surfaces.json")
-          return baseEnv.ASSETS.fetch(request);
-        return Response.json(surfaces);
-      },
-    },
-    // Match the existing local artifact environment's in-memory reader shape.
-    METAGRAPH_ARCHIVE: {
-      get: async (key: unknown) => {
-        if (String(key).replace(/^latest\//, "") !== "metagraph/surfaces.json")
-          return baseEnv.METAGRAPH_ARCHIVE.get(key);
-        return {
-          json: async () => surfaces,
-          text: async () => JSON.stringify(surfaces),
-        };
+    // Exercise the current immutable KV registry without a storage service.
+    METAGRAPH_ARCHIVE: undefined,
+    METAGRAPH_CONTROL: {
+      ...baseEnv.METAGRAPH_CONTROL,
+      get: async (key: string, options: unknown) => {
+        if (key === METAGRAPH_LATEST_KEY)
+          return { registry_manifest_sha256: manifestDigest };
+        if (key === registryManifestKey(manifestDigest)) return manifest;
+        if (key === registryObjectKey(digest)) return bytes.slice().buffer;
+        return baseEnv.METAGRAPH_CONTROL.get(key, options);
       },
     },
   };
