@@ -79,7 +79,7 @@ export default function SurfaceIntegrations({ surfaces }: { surfaces: Surface[] 
     .map((surface) => ({ surface, operations: surfaceIntegrationOperations(surface) }))
     .filter((entry) => entry.operations.length > 0);
   return (
-    <div id="surface-integrations" className="space-y-5">
+    <div id="surface-integrations" className="space-y-4">
       <p className="text-13 text-ink-muted">
         Reviewed operations · use your own provider credentials when required. Tool and prompt
         arguments come from live MCP discovery; fill HTTP body fields from the provider schema and
