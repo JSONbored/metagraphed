@@ -1408,6 +1408,7 @@ import {
   matchesBinaryRequestMediaType,
   resolveLocalRequestBody,
 } from "./subnet-http-body.ts";
+import { serializeDeclaredQuery, type SerializedQueryGroup } from "./subnet-http-query.ts";
 import {
   ECONOMIC_LEADERBOARD_BOARDS,
   formatLeaderboards,
@@ -6322,6 +6323,13 @@ async function subnetSurfaceCall(
       "`path` and `method` must be supplied together, or both omitted.",
     );
   }
+  if (
+    args.query_values !== undefined &&
+    !CallSubnetSurfaceInputSchema.shape.query_values.safeParse(args.query_values).success
+  ) throw toolError("invalid_params", "query_values must be an object of JSON values.");
+  const hasQueryValues = args.query_values !== undefined && Object.keys(args.query_values).length > 0;
+  if (hasQueryValues && !hasPath)
+    throw toolError("invalid_params", "query_values requires path and method for captured parameter serialization.");
   const hasJsonBodyArg = args.json_body !== undefined;
   const hasBase64BodyArg = args.body_base64 !== undefined;
   const hasLegacyBodyArg = args?.body !== undefined && args?.body !== null;
@@ -6454,6 +6462,7 @@ async function subnetSurfaceCall(
   }
   let requestBody;
   let requestContentType;
+  let serializedQuery: SerializedQueryGroup[] | undefined;
   if (reviewedHttp && !hasPath)
     throw toolError(
       "invalid_params",
@@ -6462,7 +6471,7 @@ async function subnetSurfaceCall(
   if (hasPath) {
     const schemaArtifactId =
       rowOf(surface.schema_source)?.surface_id || surface.surface_id;
-    const schema = reviewedHttp
+    const schema = reviewedHttp && !hasQueryValues
       ? null
       : await loadOptionalArtifact(
           ctx,
@@ -6487,6 +6496,7 @@ async function subnetSurfaceCall(
           rowOf(schema)?.document,
           args.path as string,
           normalizedMethod as string,
+          hasQueryValues,
         );
     if (!match) {
       throw toolError(
@@ -6495,6 +6505,21 @@ async function subnetSurfaceCall(
           ? `"${normalizedMethod} ${args.path}" is not admitted for this surface. Use how_do_i_call to see its reviewed HTTP operations.`
           : `"${normalizedMethod} ${args.path}" is not declared in this surface's captured schema. Fetch the schema with get_api_schema to see valid paths/methods.`,
       );
+    }
+    if (hasQueryValues) {
+      const queryMatch = reviewedHttp
+        ? matchSchemaOperation(rowOf(schema)?.document, args.path as string, normalizedMethod as string, true)
+        : match;
+      if (!schema || !queryMatch)
+        throw toolError("no_schema", "query_values requires this admitted operation's captured query parameter declarations; use query for pre-serialized fields.");
+      try {
+        serializedQuery = serializeDeclaredQuery(
+          rowOf(schema)?.document, queryMatch.pathItem, queryMatch.operation,
+          args.query_values!, args.query,
+        );
+      } catch (error) {
+        throw toolError("invalid_params", error instanceof Error ? error.message : "Invalid declared query values.");
+      }
     }
     const operationRequestBody = resolveLocalRequestBody(
       rowOf(schema)?.document,
@@ -6626,6 +6651,7 @@ async function subnetSurfaceCall(
     {
       query:
         args.query && typeof args.query === "object" ? args.query : undefined,
+      serializedQuery,
       path: hasPath ? args.path : undefined,
       method: hasPath ? normalizedMethod : undefined,
       body: requestBody,

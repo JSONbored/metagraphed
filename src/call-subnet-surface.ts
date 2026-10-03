@@ -20,6 +20,8 @@
 // mirrors the loop that applies it.
 import { createHash } from "node:crypto";
 import type { ContentBlock } from "@modelcontextprotocol/sdk/types.js";
+import { resolveLocalSchemaObject } from "./subnet-openapi-reference.ts";
+import { applySerializedQuery, type SerializedQueryGroup } from "./subnet-http-query.ts";
 
 const MAX_REDIRECTS = 5;
 // 256 KiB -- generous for a JSON API response, small enough that a
@@ -51,6 +53,8 @@ function classifyContentType(contentType: string | null): ContentTypeKind {
 function buildRequestUrl(
   baseUrl: string,
   query: Record<string, string | number | boolean> | undefined,
+  serializedQuery?: readonly SerializedQueryGroup[],
+  credentials: readonly [string, string][] = [],
 ): string {
   const url = new URL(baseUrl);
   if (query && typeof query === "object") {
@@ -59,6 +63,7 @@ function buildRequestUrl(
       url.searchParams.set(key, String(value));
     }
   }
+  if (serializedQuery?.length) applySerializedQuery(url, serializedQuery, credentials);
   return url.toString();
 }
 
@@ -174,6 +179,8 @@ export interface CallSubnetSurfaceOptions {
   protocolVersion?: string | null;
   // Query params merged onto the effective base URL.
   query?: Record<string, string | number | boolean>;
+  // Already serialized from the admitted captured operation, not user URL text.
+  serializedQuery?: readonly SerializedQueryGroup[];
   // MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER
   // (call_subnet_surface's tool handler) is responsible for confirming this
   // path is declared in the surface's captured schema via matchSchemaOperation
@@ -244,6 +251,7 @@ export async function callSubnetSurface(
 ): Promise<CallSubnetSurfaceResult> {
   const {
     query,
+    serializedQuery,
     path,
     method: methodOverride,
     body: requestBody,
@@ -278,9 +286,11 @@ export async function callSubnetSurface(
   let bodyCredentialFields: Record<string, string> | null = null;
   if (credential && credentialEntries.length > 0) {
     if (credential.location === "query") {
-      effectiveQuery = { ...(query || {}) };
-      for (const [name, value] of credentialEntries) {
-        effectiveQuery[name] = value;
+      if (!serializedQuery?.length) {
+        effectiveQuery = { ...(query || {}) };
+        for (const [name, value] of credentialEntries) {
+          effectiveQuery[name] = value;
+        }
       }
     } else if (credential.location === "header") {
       for (const [name, value] of credentialEntries) {
@@ -337,7 +347,10 @@ export async function callSubnetSurface(
     }
     baseUrl = resolved.toString();
   }
-  const requestUrl = buildRequestUrl(baseUrl, effectiveQuery);
+  const requestUrl = buildRequestUrl(
+    baseUrl, effectiveQuery, serializedQuery,
+    credential?.location === "query" ? credentialEntries : [],
+  );
   if (
     bodyCredentialFields &&
     requestBody !== undefined &&
@@ -639,6 +652,7 @@ async function readBodyCapped(
 export interface SchemaOperationMatch {
   operation: Record<string, unknown>;
   matchedTemplate: string;
+  pathItem?: Record<string, unknown>;
 }
 
 // Decides whether a concrete request `path` + `method` is declared in a
@@ -670,6 +684,7 @@ export function matchSchemaOperation(
   document: unknown,
   path: string,
   method: string,
+  includePathItem = false,
 ): SchemaOperationMatch | null {
   if (typeof path !== "string" || !path.startsWith("/")) {
     throw new Error(
@@ -688,15 +703,17 @@ export function matchSchemaOperation(
   for (const [template, pathItem] of Object.entries(
     paths as Record<string, unknown>,
   )) {
-    if (!pathItem || typeof pathItem !== "object") continue;
     if (!segmentsMatch(splitPathSegments(template), requestSegments)) {
       continue;
     }
-    const operation = (pathItem as Record<string, unknown>)[normalizedMethod];
+    const resolvedPathItem = resolveLocalSchemaObject(document, pathItem);
+    if (!resolvedPathItem) continue;
+    const operation = resolvedPathItem[normalizedMethod];
     if (!operation || typeof operation !== "object") continue;
     return {
       operation: operation as Record<string, unknown>,
       matchedTemplate: template,
+      ...(includePathItem ? { pathItem: resolvedPathItem } : {}),
     };
   }
   return null;

@@ -1,4 +1,4 @@
-import { recordOrNull } from "./read-store.ts";
+export { resolveLocalSchemaObject as resolveLocalRequestBody } from "./subnet-openapi-reference.ts";
 
 /** Byte requests can provide MIME parameters (notably a multipart boundary).
  * Legacy string/JSON requests retain their existing exact media matching. */
@@ -29,40 +29,4 @@ export function matchesBinaryRequestMediaType(
         range.slice(0, -1) === essence.split("/", 1)[0] + "/")
     );
   });
-}
-/** Resolve only references inside the captured document, without network access.
- * Cycles, missing targets and excessive chains cannot admit a request body. */
-export function resolveLocalRequestBody(
-  document: unknown,
-  requestBody: unknown,
-): Record<string, unknown> | null {
-  let current = recordOrNull(requestBody);
-  // Inline and absent bodies need no cycle state. Keep the captured object
-  // itself; only a reference chain needs tracking or document traversal.
-  if (!current || current.$ref === undefined) return current;
-  const visited = new Set<string>();
-  for (let hop = 0; hop < 32 && current; hop++) {
-    if (current.$ref === undefined) return current;
-    if (typeof current.$ref !== "string" || !current.$ref.startsWith("#/"))
-      return null;
-    const reference = current.$ref;
-    if (visited.has(reference)) return null;
-    visited.add(reference);
-    let pointer: string;
-    try {
-      pointer = decodeURIComponent(reference.slice(1));
-    } catch {
-      return null;
-    }
-    let target = document;
-    for (const token of pointer.slice(1).split("/")) {
-      if (/~(?:[^01]|$)/.test(token)) return null;
-      const key = token.replace(/~1/g, "/").replace(/~0/g, "~");
-      const parent = recordOrNull(target);
-      if (!parent || !Object.hasOwn(parent, key)) return null;
-      target = parent[key];
-    }
-    current = recordOrNull(target);
-  }
-  return null;
 }

@@ -10,11 +10,35 @@ beforeAll(async () => {
   const bundled = await build({
     stdin: {
       contents: `
-        import { callSubnetSurface } from './src/call-subnet-surface.ts';
+        import { callSubnetSurface, matchSchemaOperation } from './src/call-subnet-surface.ts';
+        import { serializeDeclaredQuery } from './src/subnet-http-query.ts';
         import { resolveLocalRequestBody, matchesBinaryRequestMediaType } from './src/subnet-http-body.ts';
         export default { async fetch(request) {
           globalThis.fetch = async () => { throw new Error('External network forbidden'); };
-          const { body_base64, content_type } = await request.json();
+          const { body_base64, content_type, query_values } = await request.json();
+          if (query_values) {
+            const pathItem = { get: { parameters: [
+              { name: 'ids', in: 'query', schema: { type: 'array' }, explode: false },
+              { name: 'color', in: 'query', schema: { type: 'object' } },
+              { name: 'filter', in: 'query', content: { 'application/json': { schema: {} } } }
+            ] } };
+            const document = { paths: { '/query': { $ref: '#/pathItems/0' } }, pathItems: [pathItem] };
+            const match = matchSchemaOperation(document, '/query', 'GET', true);
+            const calls = [];
+            const result = await callSubnetSurface({ url: 'https://subnet.example/api' }, {
+              path: '/query', method: 'GET',
+              serializedQuery: serializeDeclaredQuery(document, match.pathItem, match.operation, query_values),
+              credential: { location: 'query', name: 'api_key', value: 'fixture +&雪' },
+              isUnsafeUrl: async () => false,
+              fetchImpl: async (url, init) => {
+                const outgoing = new Request(url, init);
+                if (new URL(outgoing.url).origin !== 'https://subnet.example') throw new Error('Unmocked provider URL');
+                calls.push({ method: outgoing.method, url: outgoing.url });
+                return Response.json({ accepted: true });
+              }
+            });
+            return Response.json({ result, calls });
+          }
           const body = Buffer.from(body_base64, 'base64');
           const document = { components: { requestBodies: { upload: { content: { 'multipart/form-data': {} } } } } };
           const resolved = resolveLocalRequestBody(document, { $ref: '#/components/requestBodies/upload' });
@@ -105,4 +129,18 @@ test("workerd sends decoded nonUTF8 multipart bytes with the exact boundary head
   assert.deepEqual(calls, [
     { method: "POST", contentType: content_type, bytes: [...bytes] },
   ]);
+});
+
+test("workerd forwards joined arrays, exploded objects and JSON query values with credential precedence", async () => {
+  const response = await runtime.dispatchFetch("https://worker-fixture.example/", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query_values: { ids: ["a,b", "雪 /"], color: { api_key: "wrong", flag: false }, filter: { nested: [0, null] } } }),
+  });
+  assert.equal(response.status, 200);
+  const { result, calls } = (await response.json()) as Row;
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls, [{ method: "GET", url: "https://subnet.example/query?ids=a%2Cb,%E9%9B%AA%20%2F&flag=false&filter=%7B%22nested%22%3A%5B0%2Cnull%5D%7D&api_key=fixture+%2B%26%E9%9B%AA" }]);
+  assert.equal(JSON.stringify(result).includes("fixture"), false);
+  assert.equal(JSON.stringify(result).includes("wrong"), false);
 });

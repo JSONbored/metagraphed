@@ -47,6 +47,33 @@ Multipart templates require the complete encoded body and a matching boundary.
 Templates do not infer field values, attach credentials, upload files or execute
 provider requests. Optional bodies remain omitted.
 
+For declared query parameters, use `query_values` with their JSON values rather
+than escaping them into the path. Supply `path` and `method`; serialization uses
+the captured operation and its path-level declarations. Operation declarations
+override path declarations by query name. Local path-item and parameter references,
+including canonical array indices in JSON pointers, resolve within that document.
+Reviewed HTTP admission still independently restricts the allowed operation.
+An empty `query_values` object does not load another schema for reviewed calls.
+
+OpenAPI `form` supports repeated arrays and exploded objects, or comma joins with
+`explode:false`. `spaceDelimited` and `pipeDelimited` use their declared joins;
+`deepObject` uses bracketed scalar properties. Swagger 2 supports `csv`, `ssv`,
+`tsv`, `pipes` and `multi`. Query `content` with JSON media accepts every JSON root
+and serializes once, including nested filters. Other query content requires the
+caller's pre-serialized string. Style nulls and empty collections are omitted;
+JSON content retains null. Provider field validation remains with the provider.
+
+The original flat `query` field retains its existing encoding for pre-serialized
+fields. Do not overlap its keys with `query_values` or emitted object properties.
+Query credentials override all emitted pairs and retain existing redaction.
+Reserved expansion preserves permitted query characters and pre-encoded triples;
+query/fragment/form delimiters remain escaped. Nested style values and ambiguous
+space/pipe/tab items or bracketed deep-object keys require the provider's documented
+pre-escaping or declared JSON content. No undocumented nested-query convention is
+invented. These rules follow the
+[OpenAPI parameter serialization and encoding guidance](https://spec.openapis.org/oas/v3.2.0.html#parameter-object)
+and [Swagger 2 collection formats](https://spec.openapis.org/oas/v2.0.html#parameter-object).
+
 SN10 TaoFi admits the eight POST operations in its published
 [OpenAPI document](https://taofi-doc.web.app/openapi.yaml): `getBuyQuote`,
 `getBuyCall`, `getSellQuote`, `getSellCall`, `getRefundCall`, `getBalance`,
