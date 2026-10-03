@@ -89,6 +89,32 @@ invented. These rules follow the
 [OpenAPI parameter serialization and encoding guidance](https://spec.openapis.org/oas/v3.2.0.html#parameter-object)
 and [Swagger 2 collection formats](https://spec.openapis.org/oas/v2.0.html#parameter-object).
 
+Use `header_values` and `cookie_values` for captured custom parameters on that
+same operation. Path declarations and bounded local references apply; operation
+declarations override them. Header names compare without case, and header
+`simple` style leaves escaping to the provider's convention. Arrays use the
+declared join; objects honor `explode`. Swagger headers also support
+`csv`, `ssv`, `tsv` and `pipes`. Declared JSON header content accepts all JSON roots
+and uses JSON Unicode escapes when needed to retain the value in HTTP field bytes.
+
+Cookies use the declared `form` or OpenAPI 3.2 `cookie` style. Form style encodes
+values and retains its specified `&` joins for exploded collections; cookie
+style preserves already escaped values and joins pairs with `; `. Content-based
+cookies take the caller's already serialized string, since provider quoting and
+escaping conventions vary. No semicolon or line-break injection is allowed.
+Pre-escape delimiters in raw collections according to the provider's convention;
+do not supply nested style values. Provider field validation remains unchanged.
+
+Authentication uses `credential` or the existing session store. Header credentials
+override matching names regardless of case; cookie credentials override emitted
+cookie names. Host, framing, authentication and other transport-controlled headers
+use the dedicated request fields, rather than `header_values`. Unknown parameters
+and malformed values fail before provider traffic. Parameter values are scrubbed
+from fetch errors and stripped alongside credentials on cross-origin redirects.
+Empty parameter objects retain the existing request and do not require another
+captured-schema read for reviewed operations. These conventions follow the
+[OpenAPI parameter serialization contract](https://spec.openapis.org/oas/v3.2.0.html#parameter-object).
+
 SN10 TaoFi admits the eight POST operations in its published
 [OpenAPI document](https://taofi-doc.web.app/openapi.yaml): `getBuyQuote`,
 `getBuyCall`, `getSellQuote`, `getSellCall`, `getRefundCall`, `getBalance`,

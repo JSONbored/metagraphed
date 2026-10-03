@@ -151,18 +151,20 @@ function redactQueryCredential(
 export function redactCredentialValue(
   text: string,
   credential: CallSubnetSurfaceCredential | undefined,
+  parameterValues?: readonly string[],
 ): string {
-  if (!text || !credential) return text;
-  const values = credential.values
+  if (!text || (!credential && !parameterValues?.length)) return text;
+  const credentialValues = credential?.values
     ? Object.values(credential.values)
-    : credential.value
+    : credential?.value
       ? [credential.value]
       : [];
+  const values = parameterValues?.length ? [...credentialValues, ...parameterValues] : credentialValues;
   const redactions = new Set<string>();
   for (const value of values) {
     if (!value) continue;
     redactions.add(value);
-    if (credential.location === "query") {
+    if (credential?.location === "query") {
       // buildRequestUrl uses this exact form encoding. Fetch failures may echo
       // that URL, or render its spaces as %20, instead of the raw secret.
       const encoded = new URLSearchParams({ value }).toString().slice(6);
@@ -185,6 +187,9 @@ export interface CallSubnetSurfaceOptions {
   query?: Record<string, string | number | boolean>;
   // Already serialized from the admitted captured operation, not user URL text.
   serializedQuery?: readonly SerializedQueryGroup[];
+  requestHeaders?: Record<string, string>;
+  serializedCookies?: readonly import("./subnet-http-parameters.ts").SerializedCookieGroup[];
+  parameterRedactions?: readonly string[];
   // MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER
   // (call_subnet_surface's tool handler) is responsible for confirming this
   // path is declared in the surface's captured schema via matchSchemaOperation
@@ -255,6 +260,9 @@ export async function callSubnetSurface(
 ): Promise<CallSubnetSurfaceResult> {
   const {
     query,
+    requestHeaders,
+    serializedCookies,
+    parameterRedactions,
     serializedQuery,
     path,
     method: methodOverride,
@@ -286,7 +294,7 @@ export async function callSubnetSurface(
   // safetyCheckedFetch, and a body-location credential is ready to merge
   // into the outgoing JSON below.
   let effectiveQuery = query;
-  const extraHeaders: Record<string, string> = {};
+  const extraHeaders: Record<string, string> = requestHeaders ? Object.assign(Object.create(null), requestHeaders) : {};
   let bodyCredentialFields: Record<string, string> | null = null;
   if (credential && credentialEntries.length > 0) {
     if (credential.location === "query") {
@@ -298,6 +306,8 @@ export async function callSubnetSurface(
       }
     } else if (credential.location === "header") {
       for (const [name, value] of credentialEntries) {
+        if (requestHeaders) for (const key of Object.keys(extraHeaders))
+          if (key.toLowerCase() === name.toLowerCase()) delete extraHeaders[key];
         extraHeaders[name] = value;
       }
     } else if (credential.location === "cookie") {
@@ -307,6 +317,15 @@ export async function callSubnetSurface(
     } else if (credential.location === "body") {
       bodyCredentialFields = Object.fromEntries(credentialEntries);
     }
+  }
+  if (serializedCookies?.length) {
+    const headerNames = Object.keys(extraHeaders).filter((name) => name.toLowerCase() === "cookie");
+    const existingCookies = headerNames.map((name) => extraHeaders[name]!);
+    const credentialNames = new Set(existingCookies.flatMap((header) => header.split(";").map((part) => part.split("=", 1)[0]!.trim())));
+    const declared = serializedCookies.map((group) => group.pairs.filter((pair) => !credentialNames.has(pair.name)).map((pair) => pair.value).join(group.separator)).filter(Boolean);
+    for (const name of headerNames) delete extraHeaders[name];
+    const cookie = [...declared, ...existingCookies].join("; ");
+    if (cookie) extraHeaders.cookie = cookie;
   }
   const method =
     path && methodOverride
@@ -427,7 +446,7 @@ export async function callSubnetSurface(
           }
         : {}),
       ...(fetched.error
-        ? { error: redactCredentialValue(fetched.error, credential) }
+        ? { error: redactCredentialValue(fetched.error, credential, parameterRedactions) }
         : {}),
     };
   }

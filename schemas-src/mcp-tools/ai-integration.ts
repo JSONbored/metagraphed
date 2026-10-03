@@ -235,6 +235,7 @@ export const CALL_SURFACE_WRITE_METHODS = CALL_SURFACE_METHODS.filter(
  * accept for the parts that are genuinely identical -- the surface, where to
  * send the request, and the caller's own credential.
  */
+const DeclaredHttpValuesSchema = z.record(z.string(), z.json());
 const surfaceCallSharedShape = {
   surface_id: surfaceIdSchema(),
   response_mode: z
@@ -253,13 +254,18 @@ const surfaceCallSharedShape = {
         "supported — encode them into `path` or `body` instead.",
     )
     .meta({ examples: ["inference"] }),
-  query_values: z
-    .record(z.string(), z.json())
+  query_values: DeclaredHttpValuesSchema
     .optional()
     .describe(
       "Schema-declared query values, including arrays, objects and JSON-content parameters. Requires path/method and a captured operation; honors OpenAPI query styles/explode and Swagger 2 collectionFormat. Do not repeat a name in query. Use query for already serialized scalar fields. Style nulls/empty collections are omitted; JSON content preserves all JSON roots. Credentials override emitted names. Nested style values need declared JSON content.",
     )
     .meta({ examples: [{ color: ["blue", "black"] }] }),
+  header_values: DeclaredHttpValuesSchema.optional().describe(
+    "Captured custom headers; requires path/method. OpenAPI simple/explode, JSON content and Swagger collectionFormat. Names are case-insensitive; credentials take precedence. Transport/auth headers use dedicated fields.",
+  ),
+  cookie_values: DeclaredHttpValuesSchema.optional().describe(
+    "Captured cookies; requires path/method. OpenAPI form/cookie style. Cookie style needs provider-escaped values; content needs a serialized string. Credentials override names; cross-origin redirects strip values.",
+  ),
   path: z
     .string()
     .optional()

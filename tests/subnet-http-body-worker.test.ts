@@ -14,9 +14,33 @@ beforeAll(async () => {
         import { serializeDeclaredQuery } from './src/subnet-http-query.ts';
         import { resolveLocalRequestBody, matchesBinaryRequestMediaType } from './src/subnet-http-body.ts';
         import { resolveSwaggerRequestBody } from './src/subnet-swagger-body.ts';
+        import { serializeDeclaredHttpParameters } from './src/subnet-http-parameters.ts';
         export default { async fetch(request) {
           globalThis.fetch = async () => { throw new Error('External network forbidden'); };
-          const { body_base64, content_type, query_values, swagger_body } = await request.json();
+          const { body_base64, content_type, query_values, swagger_body, header_values, cookie_values } = await request.json();
+          if (header_values || cookie_values) {
+            const pathItem = { get: { parameters: [
+              { name: 'X-JSON', in: 'header', content: { 'application/json': {} } },
+              { name: 'color', in: 'cookie', style: 'cookie', schema: {} },
+              { name: 'keep', in: 'cookie', schema: {} }
+            ] } };
+            const document = { openapi: '3.2.0', paths: { '/params': pathItem } };
+            const match = matchSchemaOperation(document, '/params', 'GET', true);
+            const fields = serializeDeclaredHttpParameters(document, match.pathItem, match.operation, header_values, cookie_values);
+            const calls = [];
+            const result = await callSubnetSurface({ url: 'https://subnet.example/api' }, {
+              path: '/params', method: 'GET', requestHeaders: fields.headers, serializedCookies: fields.cookies, parameterRedactions: fields.redactions,
+              credential: { location: 'cookie', name: 'token', value: 'fixture-secret' },
+              isUnsafeUrl: async () => false,
+              fetchImpl: async (url, init) => {
+                const outgoing = new Request(url, init);
+                if (outgoing.url !== 'https://subnet.example/params') throw new Error('Unmocked provider URL');
+                calls.push({ method: outgoing.method, json: outgoing.headers.get('x-json'), cookie: outgoing.headers.get('cookie') });
+                return Response.json({ accepted: true });
+              }
+            });
+            return Response.json({ result, calls });
+          }
           if (query_values) {
             const pathItem = { get: { parameters: [
               { name: 'ids', in: 'query', schema: { type: 'array' }, explode: false },
@@ -109,6 +133,18 @@ beforeAll(async () => {
   });
 }, 60_000);
 afterAll(async () => runtime?.dispose());
+
+test("workerd preserves typed JSON header values, raw cookies and credential precedence", async () => {
+  const response = await runtime.dispatchFetch("https://worker-fixture.example/", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ header_values: { "x-json": { nested: [0, null, "雪😀"] } }, cookie_values: { color: { token: "wrong", R: "literal%2C" }, keep: "a +&雪" } }),
+  });
+  assert.equal(response.status, 200);
+  const { result, calls } = (await response.json()) as Row;
+  assert.equal(result.ok, true); assert.equal(calls.length, 1);
+  assert.deepEqual(JSON.parse(calls[0].json), { nested: [0, null, "雪😀"] });
+  assert.equal(calls[0].cookie, "R=literal%2C; keep=a%20%2B%26%E9%9B%AA; token=fixture-secret");
+});
 
 test("workerd sends decoded nonUTF8 multipart bytes with the exact boundary header", async () => {
   const bytes = Buffer.concat([
