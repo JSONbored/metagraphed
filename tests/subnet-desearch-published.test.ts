@@ -62,7 +62,7 @@ function unpack(blob: Buffer, id: string, integrity: string, files: Map<string, 
 async function publishedProvider(): Promise<Row> {
   const files = new Map<string, string>();
   for (const source of sources) {
-    const bytes = download("https://raw.githubusercontent.com/Desearch-ai/mcp-desearch/" + revision + "/src/" + source.name + ".ts", 65_536);
+    const bytes = download("https://raw.githubusercontent.com/Desearch-ai/mcp-desearch/" + revision + "/" + source.name + ".ts", 65_536);
     assert.equal(createHash("sha256").update(bytes).digest("hex"), source.sha);
     files.set("provider/" + source.name + ".js", decode(bytes));
   }
@@ -70,7 +70,12 @@ async function publishedProvider(): Promise<Row> {
   files.set("mock/undici", 'export const fetch = (...args) => globalThis.__desearchFetch(...args);');
   files.set("mock/http", 'export function createServer() { throw Error("fixture sockets forbidden"); }');
   const bundled = await build({
-    entryPoints: ["tests/fixtures/desearch-provider-runtime.ts"], bundle: true, write: false, platform: "browser", format: "iife", globalName: "desearchFixture",
+    stdin: {
+      contents: 'import { handleMcpHttpRequest } from "pinned-desearch-http"; import { qualifyDesearch } from "./tests/fixtures/desearch-provider-runtime.ts"; export const run = () => qualifyDesearch(handleMcpHttpRequest);',
+      resolveDir: process.cwd(),
+      loader: "js",
+    },
+    bundle: true, write: false, platform: "browser", format: "iife", globalName: "desearchFixture",
     define: { "process.env.NODE_ENV": '"production"' },
     plugins: [{
       name: "checksum-pinned-desearch",
@@ -100,7 +105,7 @@ async function publishedProvider(): Promise<Row> {
     }],
   });
   assert.equal(bundled.outputFiles.length, 1);
-  const code = bundled.outputFiles[0].text + "\ndesearchFixture.qualifyDesearch()";
+  const code = bundled.outputFiles[0].text + "\ndesearchFixture.run()";
   assert.ok(Buffer.byteLength(code) < 8 * 1024 * 1024);
   const runner = [
     'import { runInNewContext } from "node:vm";',

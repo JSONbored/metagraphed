@@ -41,8 +41,8 @@ SN22 Desearch's official hosted service, `sn-22-desearch-mcp`, admits all 15 rea
 tools in the pinned server: AI, web and X search; web and X link search; X posts,
 users, replies, retweeters and trends; page extraction; and legacy web crawling.
 Its [hosted setup](https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/README.md),
-[tool implementation](https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/src/server.ts)
-and [HTTP handler](https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/src/http.ts)
+[tool implementation](https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/server.ts)
+and [HTTP handler](https://github.com/Desearch-ai/mcp-desearch/blob/a99cfecd5d9242c407f1cca9ea73c2b2abec2c42/http.ts)
 establish public discovery and caller-key execution. Discover the service first,
 then supply your Desearch API key as `credential` or store it once; the declared
 placement is `x-api-key`. Provider charges and limits belong to that key. Live

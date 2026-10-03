@@ -3,9 +3,6 @@
 import { desearchCases, desearchJsonResult, desearchTextResult } from "./desearch-cases.ts";
 import type { Row } from "../row-type.ts";
 
-const provider = require("pinned-desearch-http") as {
-  handleMcpHttpRequest(request: Request): Promise<Response>;
-};
 function check(value: unknown, message: string): asserts value {
   if (!value) throw Error(message);
 }
@@ -15,7 +12,9 @@ function equal(actual: unknown, expected: unknown, label: string): void {
 type ApiCall = { url: string; method: string; headers: Record<string, string>; body: string | null };
 type Wire = { status: number; headers: Record<string, string>; body: Row | null };
 
-export async function qualifyDesearch() {
+export async function qualifyDesearch(
+  handleMcpHttpRequest: (request: Request) => Promise<Response>,
+) {
   const calls: ApiCall[] = [];
   let quota = false;
   Reflect.set(globalThis, "__desearchFetch", async (input: string | URL, init?: RequestInit) => {
@@ -30,7 +29,7 @@ export async function qualifyDesearch() {
       : Response.json(desearchJsonResult);
   });
   const request = async (method: string, params: Row, key?: string): Promise<Wire> => {
-    const response = await provider.handleMcpHttpRequest(new Request("https://mcp.desearch.ai/mcp", {
+    const response = await handleMcpHttpRequest(new Request("https://mcp.desearch.ai/mcp", {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "mcp-protocol-version": "2025-11-25", ...(key ? { "x-api-key": key } : {}) },
       body: JSON.stringify({ jsonrpc: "2.0", ...(method.startsWith("notifications/") ? {} : { id: 1 }), method, params }),
@@ -47,7 +46,7 @@ export async function qualifyDesearch() {
   const notification = await request("notifications/initialized", {});
   equal(notification.status, 202, "public initialized notification");
   const get = async (key?: string): Promise<Wire> => {
-    const response = await provider.handleMcpHttpRequest(new Request("https://mcp.desearch.ai/mcp", { headers: key ? { "x-api-key": key } : {} }));
+    const response = await handleMcpHttpRequest(new Request("https://mcp.desearch.ai/mcp", { headers: key ? { "x-api-key": key } : {} }));
     return { status: response.status, headers: Object.fromEntries(response.headers), body: await response.json() as Row };
   };
   const getPublic = await get();
