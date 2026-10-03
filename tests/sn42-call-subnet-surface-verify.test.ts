@@ -7,12 +7,10 @@
 //
 // The surface is the credentialed Gopher Data API live search endpoint
 // (sn-42-gopher-ai-subnet-api, https://data.gopher-ai.com/api/v1/search/live).
-// Issue #7056 lists it as HEAD / bearer auth / Phase 3 territory. Registry
-// already has auth_required:true, bearer Authorization, and probe.enabled:false
-// (method HEAD). Live-verified 2026-07-21: anonymous HEAD and GET both returned
-// HTTP 530 Cloudflare origin error ("error code: 1033") -- not anonymously
-// callable. Credential passthrough is Phase 3 (#7016), out of scope here.
-// Registry already matched reality -- no registry edit needed.
+// Caller bearer authentication remains required. Recurring read probes are
+// disabled independently of the reviewed POST submission and GET result
+// operations covered by subnet-http-admission.test.ts. These fixtures make
+// no provider request or current service-health claim.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -88,13 +86,11 @@ async function callToolWithSurface(
 }
 
 describe("SN42 Gopher call_subnet_surface verification (#7056)", () => {
-  describe("sn-42-gopher-ai-subnet-api (auth required -- Phase 3 territory)", () => {
+  describe("sn-42-gopher-ai-subnet-api (caller bearer auth required)", () => {
     test("registry surface exists and correctly declares bearer auth + disabled probe", () => {
       assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
       assert.equal(SURFACE.kind, "subnet-api");
-      // Live-confirmed: anonymous HEAD/GET return HTTP 530 (Cloudflare origin
-      // error 1033) -- not anonymously callable. auth_required:true + bearer
-      // match reality; credential passthrough is Phase 3 (#7016).
+      // Source-reviewed operations do not relax caller authentication.
       assert.equal(SURFACE.auth_required, true);
       assert.equal(SURFACE.auth?.scheme, "bearer");
       assert.equal(SURFACE.auth?.location, "header");
@@ -109,7 +105,7 @@ describe("SN42 Gopher call_subnet_surface verification (#7056)", () => {
       );
     });
 
-    test("the call_subnet_surface MCP tool rejects it outright without fetching upstream", async () => {
+    test("the call_subnet_surface MCP tool rejects a missing credential without fetching upstream", async () => {
       // In production this surface may never reach the auth gate if the
       // operational catalog filters probe.enabled:false surfaces (not_found).
       // This test injects the real registry config into a catalog fixture to

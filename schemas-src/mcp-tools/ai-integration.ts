@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { SurfaceVerifyArtifactSchema } from "../routes/ai-native.ts";
 import { McpSurfaceAdmissionSchema } from "../subnet-mcp-admission.ts";
+import { HttpSurfaceAdmissionSchema } from "../subnet-http-admission.ts";
 import {
   OpenArraySchema,
   OpenObjectSchema,
@@ -61,6 +62,8 @@ const HowDoICallServiceSchema = z
     callable: z.boolean(),
     mcp: McpSurfaceAdmissionSchema.optional(),
     mcp_discovery: z.string().optional(),
+    http: HttpSurfaceAdmissionSchema.optional(),
+    http_execution: z.string().optional(),
     auth: z
       .object({ required: z.boolean(), schemes: z.array(z.string()) })
       .strict(),

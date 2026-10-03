@@ -1,5 +1,7 @@
 import { resolveSurfaceAlias } from "./surface-aliases.ts";
 import { McpSurfaceAdmissionSchema } from "../schemas-src/subnet-mcp-admission.ts";
+import { HttpSurfaceAdmissionSchema } from "../schemas-src/subnet-http-admission.ts";
+import { matchReviewedHttpOperation } from "./subnet-http-admission.ts";
 import {
   DiscoverSubnetMcpInputSchema,
   DiscoverSubnetMcpOutputSchema,
@@ -3189,6 +3191,38 @@ async function findCataloguedSurface(
   return surface as Row | null;
 }
 
+async function findExecutionSurface(
+  ctx: McpCtx,
+  surfaceId: string,
+  knownCatalogued?: Row | null,
+) {
+  const catalogued = knownCatalogued === undefined
+    ? await findCataloguedSurface(ctx, surfaceId)
+    : knownCatalogued;
+  if (catalogued) return catalogued;
+  const registry = await loadOptionalArtifact(ctx, SURFACES_ARTIFACT);
+  const rows = rowsOf(registry?.surfaces);
+  let surface = rows.find((row) => row.id === surfaceId || row.key === surfaceId);
+  if (!surface) {
+    const aliases = await loadOptionalArtifact(ctx, SURFACE_ALIASES_PATH);
+    const alias = resolveSurfaceAlias(aliases, surfaceId);
+    if (alias)
+      surface = rows.find(
+        (row) => row.id === alias.current_id || row.key === alias.surface_key,
+      );
+  }
+  if (!surface || !surface.http) return null;
+  return { ...surface, surface_id: String(surface.id) };
+}
+
+function readHttpSurfaceAdmission(surface: Row) {
+  if (!surface.http) return null;
+  const admission = HttpSurfaceAdmissionSchema.safeParse(surface.http);
+  if (!admission.success || surface.public_safe !== true || surface.kind !== "subnet-api")
+    throw toolError("invalid_registry", "This surface has invalid HTTP admission metadata.");
+  return admission.data;
+}
+
 type AdmittedMcpSurface = Row & {
   surface_id: string;
   mcp: z.infer<typeof McpSurfaceAdmissionSchema>;
@@ -3570,9 +3604,10 @@ async function requireCredentialStoreSurface(
     throw toolError("invalid_params", "Invalid surface_id format.");
   }
   const catalogued = await findCataloguedSurface(ctx, surfaceId);
-  const surface = catalogued ?? (await findAdmittedMcpSurface(ctx, surfaceId));
+  const surface = catalogued ?? (await findAdmittedMcpSurface(ctx, surfaceId)) ?? (await findExecutionSurface(ctx, surfaceId, null));
   if (!surface) throw await uncallableSurfaceError(ctx, surfaceId);
-  if (!catalogued && rowOf(surface.auth)?.location === "body")
+  if (surface.http) readHttpSurfaceAdmission(surface);
+  if (!catalogued && surface.mcp && rowOf(surface.auth)?.location === "body")
     throw toolError(
       "credential_not_supported",
       "MCP transport credentials must use a declared header, query or cookie location.",
@@ -6333,7 +6368,7 @@ async function subnetSurfaceCall(
   const hasBodyMethod =
     normalizedMethod !== undefined &&
     (CALL_SURFACE_BODY_METHODS as readonly string[]).includes(normalizedMethod);
-  const surface = await findCataloguedSurface(ctx, args.surface_id);
+  const surface = await findExecutionSurface(ctx, args.surface_id);
   if (!surface) {
     throw await uncallableSurfaceError(ctx, args.surface_id);
   }
@@ -6343,6 +6378,7 @@ async function subnetSurfaceCall(
   // with; falling back to that one keeps the key a string rather than
   // storing a credential under `undefined` (#10782).
   const surfaceId = stringOf(surface.surface_id) ?? args.surface_id;
+  const reviewedHttp = readHttpSurfaceAdmission(surface);
   const {
     credentialPlacement,
     credentialSource,
@@ -6369,7 +6405,7 @@ async function subnetSurfaceCall(
       "`json_body` must be an object when credentials merge into the body without a declared envelope.",
     );
   }
-  if (rowOf(surface.probe)?.enabled === false) {
+  if (rowOf(surface.probe)?.enabled === false && !reviewedHttp) {
     throw toolError(
       "surface_unavailable",
       "This surface is flagged as not safe to call automatically (probe.enabled:false).",
@@ -6377,14 +6413,21 @@ async function subnetSurfaceCall(
   }
   let requestBody;
   let requestContentType;
+  if (reviewedHttp && !hasPath)
+    throw toolError(
+      "invalid_params",
+      "This surface requires an explicitly reviewed HTTP path and method. Use how_do_i_call to see its admitted operations.",
+    );
   if (hasPath) {
     const schemaArtifactId =
       rowOf(surface.schema_source)?.surface_id || surface.surface_id;
-    const schema = await loadOptionalArtifact(
-      ctx,
-      `/metagraph/schemas/${schemaArtifactId}.json`,
-    );
-    if (!schema) {
+    const schema = reviewedHttp
+      ? null
+      : await loadOptionalArtifact(
+          ctx,
+          `/metagraph/schemas/${schemaArtifactId}.json`,
+        );
+    if (!schema && !reviewedHttp) {
       throw toolError(
         "no_schema",
         "This surface has no captured schema, so path/method execution is not available for it -- omit path/method to call its single declared url instead.",
@@ -6393,17 +6436,27 @@ async function subnetSurfaceCall(
     // hasPath already proved args.path is a string; the `hasPath !==
     // hasMethod` check above guarantees normalizedMethod is set
     // whenever hasPath is true.
-    const match = matchSchemaOperation(
-      rowOf(schema)?.document,
-      args.path as string,
-      normalizedMethod as string,
-    );
+    const match = reviewedHttp
+      ? matchReviewedHttpOperation(reviewedHttp, args.path as string, normalizedMethod as string)
+      : matchSchemaOperation(
+          rowOf(schema)?.document,
+          args.path as string,
+          normalizedMethod as string,
+        );
     if (!match) {
       throw toolError(
         "path_not_declared",
-        `"${normalizedMethod} ${args.path}" is not declared in this surface's captured schema. Fetch the schema with get_api_schema to see valid paths/methods.`,
+        reviewedHttp
+          ? `"${normalizedMethod} ${args.path}" is not admitted for this surface. Use how_do_i_call to see its reviewed HTTP operations.`
+          : `"${normalizedMethod} ${args.path}" is not declared in this surface's captured schema. Fetch the schema with get_api_schema to see valid paths/methods.`,
       );
     }
+    if (
+      reviewedHttp &&
+      rowOf(match.operation.requestBody)?.required === true &&
+      !hasBodyArg
+    )
+      throw toolError("invalid_params", "This reviewed HTTP operation requires a request body.");
     if (hasBodyArg && hasBodyMethod) {
       const declaredContent = rowOf(
         rowOf(match.operation.requestBody)?.content,
@@ -15552,7 +15605,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         (s) => rowOf(s.eligibility)?.callable === true,
       );
       const mcpAdmissions = new Map<Row, AdmittedMcpSurface["mcp"]>();
+      const httpAdmissions = new Map<Row, z.infer<typeof HttpSurfaceAdmissionSchema>>();
       for (const service of services) {
+        if (service.http) {
+          const admission = HttpSurfaceAdmissionSchema.safeParse(service.http);
+          if (admission.success) httpAdmissions.set(service, admission.data);
+        }
         if (!service.mcp) continue;
         const admission = McpSurfaceAdmissionSchema.safeParse(service.mcp);
         if (admission.success) mcpAdmissions.set(service, admission.data);
@@ -15566,7 +15624,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         callable.length > 0
           ? services.filter(
               (s) =>
-                rowOf(s.eligibility)?.callable === true || mcpAdmissions.has(s),
+                rowOf(s.eligibility)?.callable === true || mcpAdmissions.has(s) || httpAdmissions.has(s),
             )
           : services;
       const steps = guideServices.map((s) => {
@@ -15588,6 +15646,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
                 mcp_discovery: `discover_subnet_mcp with surface_id ${s.surface_id}`,
               }
             : {}),
+          ...(httpAdmissions.has(s)
+            ? {
+                http: httpAdmissions.get(s),
+                http_execution: `write_subnet_surface for POST/PUT/PATCH/DELETE or call_subnet_surface for GET/HEAD, with surface_id ${s.surface_id}, an admitted path/method and its declared request body`,
+              }
+            : {}),
           auth: {
             required: Boolean(s.auth_required),
             schemes: itemsOf(s.auth_schemes),
@@ -15595,7 +15659,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           // Ready-to-run curl/Python/TS for a first call (issue #351).
           // Regenerate from base_url + auth so cleartext credential guards stay
           // current even when reading older catalogs with stored snippets.
-          snippets: s.mcp
+          snippets: s.mcp || s.http
             ? null
             : generateServiceSnippets(s) || s.snippets || null,
           schema: s.schema_artifact
@@ -15633,6 +15697,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const schemaStep = steps.find((s) => s.schema.available);
       const fixtureStep = steps.find((s) => s.fixture.available);
       const mcpStep = steps.find((s) => s.mcp_discovery);
+      const httpStep = steps.find((s) => s.http_execution);
       return {
         netuid,
         name: detail?.name,
@@ -15644,12 +15709,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         callable_count: callable.length,
         guidance: mcpStep
           ? "Use each MCP service's mcp_discovery instruction to negotiate its live schemas, then read_subnet_mcp or write_subnet_mcp according to its reviewed admission. For HTTP services, follow base_url, auth and schema fields. MCP discovery and recorded health are separate."
+          : httpStep
+            ? "Use each HTTP service's http_execution instruction and reviewed operations. Supply the declared request body and your own credential when required. Disabled health probes do not prevent these explicitly admitted calls; recorded health remains separate."
           : isCallable
             ? "Call a service's base_url below. Where auth.required is true, supply a credential per auth.schemes. Fetch the machine-readable schema via get_api_schema, and confirm live status with get_subnet_health before relying on it."
             : "This subnet exposes no callable services yet. Use get_subnet for its profile and gaps, or find_subnet_for_task to find an alternative that can do the job.",
         services: steps,
         next_steps: [
           ...(mcpStep ? [mcpStep.mcp_discovery] : []),
+          ...(httpStep ? [httpStep.http_execution] : []),
           ...(isCallable
             ? [
                 `get_subnet_health with netuid ${netuid} for live status`,
@@ -15767,7 +15835,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "call_subnet_surface",
     title: "Call a subnet's live API and return its response",
     description:
-      "Read a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. GET and HEAD only; to POST/PUT/PATCH/DELETE a declared operation, use write_subnet_surface. Both are the same implementation behind the same gate, split so a read never carries a write's risk. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (#7014). Supplying both `path` and `method` reads a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed (#7674, #7675). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, or cookie (#7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call. The response is bounded: JSON is parsed and returned structured, and other text is returned capped. Set `response_mode: attachment` for complete binary results as native MCP content with a compact size/checksum receipt; omitted mode retains binary rejection.",
+      "Read a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. GET and HEAD only; to POST/PUT/PATCH/DELETE a declared operation, use write_subnet_surface. Both are the same implementation behind the same gate, split so a read never carries a write's risk. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (#7014). Supplying both `path` and `method` reads a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's captured schema (fetch it with get_api_schema) or reviewed http.operations (see how_do_i_call) -- an undeclared operation is rejected outright, never guessed (#7674, #7675). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, or cookie (#7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call. The response is bounded: JSON is parsed and returned structured, and other text is returned capped. Set `response_mode: attachment` for complete binary results as native MCP content with a compact size/checksum receipt; omitted mode retains binary rejection.",
 
     inputSchema: inputJsonSchema(CallSubnetSurfaceInputSchema),
     async handler(
@@ -15787,7 +15855,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Call a declared write operation on a subnet's live API",
     description:
       "Use json_body for a direct JSON value (including arrays/scalars/null), or body for an object or pre-serialized text; supply only one. " +
-      "Issue a POST, PUT, PATCH or DELETE against a catalogued surface, and return its real response body. The write sibling of call_subnet_surface, which handles GET/HEAD -- see the MCP tool registry for that one. Both are the same implementation and enforce the same gate; they are separate tools so a read never carries a write's risk. `path` and `method` are REQUIRED: there is no curated write, so the operation is always named explicitly. The exact path+method must be declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright and never guessed (#7674, #7675, #11146). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. This grants no authority the caller lacks calling the API directly: the operation must be declared, and an authenticated surface still needs the caller's own credential. `body` is validated against the matched operation's declared request body -- rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) placed in a header, query param, cookie, or merged into the JSON body (#7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call. The response is bounded: JSON is parsed and returned structured, and other text is returned capped. Set `response_mode: attachment` for complete binary results as native MCP content with a compact size/checksum receipt; omitted mode retains binary rejection.",
+      "Issue a POST, PUT, PATCH or DELETE against a catalogued surface, and return its real response body. The write sibling of call_subnet_surface, which handles GET/HEAD -- see the MCP tool registry for that one. Both are the same implementation and enforce the same gate; they are separate tools so a read never carries a write's risk. `path` and `method` are REQUIRED: there is no curated write, so the operation is always named explicitly. The exact path+method must be declared in the surface's captured schema (fetch it with get_api_schema) or reviewed http.operations (see how_do_i_call) -- an undeclared operation is rejected outright and never guessed (#7674, #7675, #11146). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. This grants no authority the caller lacks calling the API directly: the operation must be declared, and an authenticated surface still needs the caller's own credential. `body` is validated against the matched operation's declared request body -- rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) placed in a header, query param, cookie, or merged into the JSON body (#7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call. The response is bounded: JSON is parsed and returned structured, and other text is returned capped. Set `response_mode: attachment` for complete binary results as native MCP content with a compact size/checksum receipt; omitted mode retains binary rejection.",
     inputSchema: inputJsonSchema(WriteSubnetSurfaceInputSchema),
     async handler(
       args: z.infer<typeof WriteSubnetSurfaceInputSchema>,

@@ -1,4 +1,5 @@
 import { McpSurfaceAdmissionSchema } from "../subnet-mcp-admission.ts";
+import { HttpSurfaceAdmissionSchema } from "../subnet-http-admission.ts";
 // GET /api/v1/subnets/{netuid} (types-epic A pilot route #2 of 5, #7859) —
 // single-entity envelope variant, with a live per-endpoint health overlay
 // merged onto the static artifact (workers/api.ts's liveHealthOverlay ->
@@ -664,6 +665,7 @@ export const SurfaceSchema = z
     kind: SurfaceKindSchema,
     last_verified_at: z.string().nullable().optional(),
     mcp: McpSurfaceAdmissionSchema.optional(),
+    http: HttpSurfaceAdmissionSchema.optional(),
     method: SurfaceMethodSchema.optional().meta({
       description:
         "HTTP method this surface is invoked with; absent means GET. A non-GET surface is a declared mutation (#11146): the prober never touches it (the manifest schema forbids an enabled probe on one), so it carries no probe-derived health -- reach it through call_subnet_surface's schema-gated execution.",
