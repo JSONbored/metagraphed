@@ -161,7 +161,9 @@
             "additionalProperties": false,
             "required": ["method", "path"],
             "properties": {
-              "method": { "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] },
+              "method": {
+                "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]
+              },
               "path": {
                 "type": "string",
                 "minLength": 1,

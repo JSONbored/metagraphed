@@ -6269,7 +6269,7 @@ export interface components {
                 http?: {
                     operations: {
                         /** @enum {string} */
-                        method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+                        method: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
                         path: string;
                         request_body_required?: boolean;
                         request_content_types?: string[];
@@ -14367,7 +14367,7 @@ export interface components {
             http?: {
                 operations: {
                     /** @enum {string} */
-                    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+                    method: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
                     path: string;
                     request_body_required?: boolean;
                     request_content_types?: string[];

@@ -19818,6 +19818,7 @@
                           "method": {
                             "enum": [
                               "GET",
+                              "HEAD",
                               "POST",
                               "PUT",
                               "PATCH",
@@ -64788,6 +64789,7 @@
                     "method": {
                       "enum": [
                         "GET",
+                        "HEAD",
                         "POST",
                         "PUT",
                         "PATCH",

@@ -102,7 +102,8 @@ compareSchemaEnum(
 );
 compareSchemaEnum(
   "subnet-manifest reviewed HTTP operation method",
-  subnetSchema.$defs.http_admission.properties.operations.items.properties.method.enum,
+  subnetSchema.$defs.http_admission.properties.operations.items.properties
+    .method.enum,
   QUERY_ENUMS.httpOperationMethod,
 );
 

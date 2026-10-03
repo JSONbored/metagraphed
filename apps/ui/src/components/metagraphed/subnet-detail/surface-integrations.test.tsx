@@ -187,7 +187,7 @@ describe("reviewed integration details", () => {
           ],
         },
       });
-      expect(rows).toHaveLength(1);
+      expect(rows).toHaveLength(Object.hasOwn(expected, "body_base64") ? 2 : 1);
       expect(rows[0].arguments).toEqual({ surface_id: http.id, method, path: "/run", ...expected });
       expect(rows[0].body_types).toEqual(request_content_types);
     }
