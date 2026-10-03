@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { RegistryManifestSchema } from "../../schemas-src/registry-kv.ts";
-import { registryManifestKey, registryObjectKey } from "../../src/registry-kv.ts";
+import {
+  registryManifestKey,
+  registryObjectKey,
+} from "../../src/registry-kv.ts";
 import { METAGRAPH_LATEST_KEY } from "../../workers/config.ts";
 import type { Row } from "../row-type.ts";
 
