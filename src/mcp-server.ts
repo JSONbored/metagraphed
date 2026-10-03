@@ -1408,6 +1408,7 @@ import {
   matchesBinaryRequestMediaType,
   resolveLocalRequestBody,
 } from "./subnet-http-body.ts";
+import { resolveSwaggerRequestBody } from "./subnet-swagger-body.ts";
 import {
   serializeDeclaredQuery,
   type SerializedQueryGroup,
@@ -6501,6 +6502,7 @@ async function subnetSurfaceCall(
     // hasPath already proved args.path is a string; the `hasPath !==
     // hasMethod` check above guarantees normalizedMethod is set
     // whenever hasPath is true.
+    const capturedDocument = rowOf(rowOf(schema)?.document);
     const match = reviewedHttp
       ? matchReviewedHttpOperation(
           reviewedHttp,
@@ -6511,7 +6513,7 @@ async function subnetSurfaceCall(
           rowOf(schema)?.document,
           args.path as string,
           normalizedMethod as string,
-          hasQueryValues,
+          hasQueryValues || (hasBodyArg && capturedDocument?.swagger === "2.0"),
         );
     if (!match) {
       throw toolError(
@@ -6552,10 +6554,19 @@ async function subnetSurfaceCall(
         );
       }
     }
-    const operationRequestBody = resolveLocalRequestBody(
-      rowOf(schema)?.document,
-      match.operation.requestBody,
-    );
+    const swaggerBody = hasBodyArg && !reviewedHttp && capturedDocument?.swagger === "2.0" && match.operation.requestBody === undefined;
+    let operationRequestBody;
+    // A body-free call has no body/media work to perform. Reviewed admission's
+    // required flag is still checked even when the caller omits the payload.
+    if (hasBodyArg || reviewedHttp) {
+      try {
+        operationRequestBody = swaggerBody
+          ? resolveSwaggerRequestBody(rowOf(schema)?.document, match.pathItem, match.operation)
+          : resolveLocalRequestBody(rowOf(schema)?.document, match.operation.requestBody);
+      } catch (error) {
+        throw toolError("invalid_params", error instanceof Error ? error.message : "Invalid captured request body.");
+      }
+    }
     if (reviewedHttp && operationRequestBody?.required === true && !hasBodyArg)
       throw toolError(
         "invalid_params",
@@ -6575,14 +6586,14 @@ async function subnetSurfaceCall(
       if (hasContentTypeArg) {
         // hasContentTypeArg already proved this is a non-empty string.
         const contentType = args.content_type as string;
-        if (!hasBase64BodyArg && !declaredMediaTypes.includes(contentType)) {
+        if (!hasBase64BodyArg && !(swaggerBody ? matchesBinaryRequestMediaType(contentType, declaredMediaTypes) : declaredMediaTypes.includes(contentType))) {
           throw toolError(
             "invalid_params",
             `content_type "${contentType}" is not declared for this operation. Declared: ${declaredMediaTypes.join(", ")}.`,
           );
         }
         requestContentType = contentType;
-      } else if (declaredMediaTypes.includes("application/json")) {
+      } else if (declaredMediaTypes.includes("application/json") || (swaggerBody && !hasBase64BodyArg && declaredMediaTypes.includes("*/*"))) {
         requestContentType = "application/json";
       } else if (declaredMediaTypes.length === 1) {
         requestContentType = declaredMediaTypes[0];
@@ -6592,11 +6603,13 @@ async function subnetSurfaceCall(
           `This operation declares multiple request body media types (${declaredMediaTypes.join(", ")}) and none is application/json -- supply content_type explicitly.`,
         );
       }
-      const bodyMediaType = hasJsonBodyArg
+      const bodyMediaType = hasJsonBodyArg || swaggerBody
         ? requestContentType.split(";", 1)[0]!.trim().toLowerCase()
         : requestContentType;
       const isJsonContentType =
         bodyMediaType === "application/json" || bodyMediaType.endsWith("+json");
+      if (swaggerBody && credentialPlacement?.location === "body" && !isJsonContentType)
+        throw toolError("invalid_params", "Non-JSON Swagger bodies cannot merge JSON body credentials.");
       if (hasJsonBodyArg && !isJsonContentType) {
         throw toolError(
           "invalid_params",

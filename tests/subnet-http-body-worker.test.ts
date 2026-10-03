@@ -13,9 +13,10 @@ beforeAll(async () => {
         import { callSubnetSurface, matchSchemaOperation } from './src/call-subnet-surface.ts';
         import { serializeDeclaredQuery } from './src/subnet-http-query.ts';
         import { resolveLocalRequestBody, matchesBinaryRequestMediaType } from './src/subnet-http-body.ts';
+        import { resolveSwaggerRequestBody } from './src/subnet-swagger-body.ts';
         export default { async fetch(request) {
           globalThis.fetch = async () => { throw new Error('External network forbidden'); };
-          const { body_base64, content_type, query_values } = await request.json();
+          const { body_base64, content_type, query_values, swagger_body } = await request.json();
           if (query_values) {
             const pathItem = { get: { parameters: [
               { name: 'ids', in: 'query', schema: { type: 'array' }, explode: false },
@@ -40,18 +41,24 @@ beforeAll(async () => {
             return Response.json({ result, calls });
           }
           const body = Buffer.from(body_base64, 'base64');
-          const document = { components: { requestBodies: { upload: { content: { 'multipart/form-data': {} } } } } };
-          const resolved = resolveLocalRequestBody(document, { $ref: '#/components/requestBodies/upload' });
+          const document = swagger_body
+            ? { swagger: '2.0', consumes: ['multipart/form-data'], parameters: { file: { name: 'file', in: 'formData', type: 'file' } }, paths: { '/upload': { parameters: [{ $ref: '#/parameters/file' }], post: {} } } }
+            : { components: { requestBodies: { upload: { content: { 'multipart/form-data': {} } } } } };
+          const match = swagger_body ? matchSchemaOperation(document, '/upload', 'POST', true) : null;
+          const resolved = swagger_body
+            ? resolveSwaggerRequestBody(document, match.pathItem, match.operation)
+            : resolveLocalRequestBody(document, { $ref: '#/components/requestBodies/upload' });
           if (!matchesBinaryRequestMediaType(content_type, Object.keys(resolved.content))) throw new Error('Undeclared MIME');
           const calls = [];
           const result = await callSubnetSurface({ url: 'https://subnet.example/api' }, {
             path: '/upload', method: 'POST', body, contentType: content_type,
+            credential: swagger_body ? { location: 'header', name: 'Authorization', value: 'Bearer fixture-token' } : undefined,
             isUnsafeUrl: async () => false,
             fetchImpl: async (url, init) => {
               if (String(url) !== 'https://subnet.example/upload') throw new Error('Unmocked provider URL');
               if (init.body !== body) throw new Error('Unexpected body copy');
               const outgoing = new Request(url, init);
-              calls.push({ method: outgoing.method, contentType: outgoing.headers.get('content-type'), bytes: Array.from(new Uint8Array(await outgoing.arrayBuffer())) });
+              calls.push({ method: outgoing.method, contentType: outgoing.headers.get('content-type'), bytes: Array.from(new Uint8Array(await outgoing.arrayBuffer())), ...(swagger_body ? { authorization: outgoing.headers.get('authorization') } : {}) });
               return Response.json({ accepted: true });
             }
           });
@@ -157,4 +164,22 @@ test("workerd forwards joined arrays, exploded objects and JSON query values wit
   ]);
   assert.equal(JSON.stringify(result).includes("fixture"), false);
   assert.equal(JSON.stringify(result).includes("wrong"), false);
+});
+
+test("workerd admits inherited Swagger formData and forwards exact file bytes with header auth", async () => {
+  const bytes = Buffer.concat([
+    Buffer.from('--fixture\r\nContent-Disposition: form-data; name="file"; filename="test.bin"\r\n\r\n'),
+    Buffer.from([0, 128, 255]),
+    Buffer.from("\r\n--fixture--\r\n"),
+  ]);
+  const content_type = 'multipart/form-data; boundary="fixture"';
+  const response = await runtime.dispatchFetch("https://worker-fixture.example/", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ swagger_body: true, body_base64: bytes.toString("base64"), content_type }),
+  });
+  assert.equal(response.status, 200);
+  const { result, calls } = (await response.json()) as Row;
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls, [{ method: "POST", contentType: content_type, bytes: [...bytes], authorization: "Bearer fixture-token" }]);
 });

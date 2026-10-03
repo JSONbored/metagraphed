@@ -306,14 +306,14 @@ const surfaceWriteBodyShape = {
     )
     .optional()
     .describe(
-      "Exact HTTP bytes as canonical padded base64, decoded once. Use only one of body_base64, json_body or body. Requires a declared request media type; multipart needs content_type with its boundary and an already encoded body. JSON body credentials cannot be merged. The 64 KiB complete MCP request limit includes base64 and envelope overhead.",
+      "Exact HTTP bytes as canonical padded base64, decoded once. Use only one of body_base64, json_body or body. Requires a captured/reviewed body declaration and concrete media type; multipart needs content_type with its boundary and an already encoded body. JSON body credentials cannot be merged. The 64 KiB complete MCP request limit includes base64 and envelope overhead.",
     )
     .meta({ contentEncoding: "base64", examples: ["AP+A"] }),
   json_body: z
     .json()
     .optional()
     .describe(
-      "JSON request value, including an array, string, number, boolean or null. Sent as JSON without pre-serializing or escaping it into a string. Use only one of json_body, body or body_base64. Requires a declared application/json or +json request media type; flat body credentials require an object, while a declared credential envelope preserves any JSON payload.",
+      "JSON request value, including an array, string, number, boolean or null. Sent as JSON without pre-serializing or escaping it into a string. Use only one of json_body, body or body_base64. Requires application/json or +json media through OpenAPI requestBody or Swagger 2 body/consumes; flat body credentials require an object, while a declared credential envelope preserves any JSON payload.",
     )
     .meta({ examples: [[{ op: "replace", path: "/name", value: "ada" }]] }),
   body: z
@@ -321,7 +321,7 @@ const surfaceWriteBodyShape = {
     .optional()
     .describe(
       "Request body: an object (sent as JSON) or a pre-serialized string. " +
-        "Validated against the matched operation's declared request body.",
+        "Matches the captured/reviewed operation's body/media declaration; the provider validates fields.",
     )
     .meta({ examples: [{ prompt: "hello" }] }),
   content_type: z

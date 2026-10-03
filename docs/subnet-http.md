@@ -39,6 +39,21 @@ These request representations follow the captured
 [OpenAPI media-type and request-body contract](https://spec.openapis.org/oas/v3.1.0.html#request-body-object)
 and the caller retains responsibility for the provider's field and file rules.
 
+Captured Swagger 2 operations use the same `json_body`, `body` and `body_base64`
+fields. Their path-level `body`/`formData` parameters and local parameter references
+are inherited; operation parameters override by name/location. The body parameter
+name does not wrap the payload. Operation `consumes` overrides the root list, and
+an empty list clears it. Without a media restriction, JSON/text bodies default to
+JSON or can supply a concrete `content_type`; byte bodies must choose a concrete
+type. Form parameters admit URL-encoded/multipart media. Forward an already
+encoded form string or exact multipart bytes, retaining empty/repeated fields,
+file bytes and boundary headers. Multiple media choices require `content_type`.
+Mixed body/form declarations, unresolved parameters and malformed media metadata
+are refused before provider traffic. JSON body credentials cannot reshape a
+non-JSON form/text payload. Existing body omission and OpenAPI 3 behavior are
+preserved; the provider retains field/file validation. These declarations follow
+the [Swagger 2 body/form and consumes contract](https://spec.openapis.org/oas/v2.0.html#parameter-object).
+
 The website's reviewed-operation view supplies fill-in templates for required
 JSON, text, byte and multipart bodies. A JSON template retains the declared
 media type when it is a JSON suffix or has parameters. Replace angle-bracket
