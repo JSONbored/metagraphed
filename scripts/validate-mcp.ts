@@ -260,10 +260,14 @@ async function call(
     Array.isArray(result.content) && result.content.length > 0,
     `${name}: result.content must be a non-empty array`,
   );
+  const expectedContentType =
+    name === "read_subnet_mcp_resource" && result.isError === false
+      ? "resource"
+      : "text";
   assert.equal(
     result.content[0].type,
-    "text",
-    `${name}: first content block must be text`,
+    expectedContentType,
+    `${name}: first content block must be ${expectedContentType}`,
   );
   return result;
 }
