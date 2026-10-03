@@ -39,6 +39,32 @@ These request representations follow the captured
 [OpenAPI media-type and request-body contract](https://spec.openapis.org/oas/v3.1.0.html#request-body-object)
 and the caller retains responsibility for the provider's field and file rules.
 
+For a larger prepared file request, use `body_artifact` with `url`, `sha256` and
+`bytes`. The public `raw.githubusercontent.com` URL must use a full 40-character
+commit and contain no credentials, query or fragment. Supply the lowercase
+SHA-256 and exact uncompressed byte count of the complete request payload,
+including multipart framing. The bound is 10,000,000 bytes; the same media and
+boundary rules apply. Use only one of `body_artifact`, `body_base64`, `json_body`
+or `body`. Empty payloads retain their Content-Type.
+
+The target operation, caller permission, credentials and URL are checked before
+the source is fetched. One credential-free GET resolves the artifact under the
+target fetch deadline. Source redirects are refused. Length, stream and checksum
+checks complete before a provider write; a mismatch or source failure sends no
+provider request. The verified byte view is forwarded once and reused on provider
+redirects, with existing credential stripping. Source transport error details and
+artifact telemetry fields are redacted. There is no persistent artifact storage.
+The inline 64 KiB MCP request limit and all response limits remain unchanged.
+
+The website offers an artifact call template beside required binary/multipart
+templates. Replace the URL, checksum and byte-count placeholders with your prepared
+public request artifact. This avoids file base64 in the conversation and adds one
+source GET per invocation. It does not establish provider availability, automate
+local file access or admit a provider's returned presigned upload URL; those flows
+require their own reviewed destination and file contract. Existing JSON fields
+that accept media URLs can also use that provider-native representation, as in
+[BitMind's published detection inputs](https://docs.bitmind.ai/api-reference/api/v1-detect.md).
+
 Captured Swagger 2 operations use the same `json_body`, `body` and `body_base64`
 fields. Their path-level `body`/`formData` parameters and local parameter references
 are inherited; operation parameters override by name/location. The body parameter

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { isBuiltin } from "node:module";
 import { build } from "esbuild";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, test } from "vitest";
-import type { Row } from "./row-type.ts";
+import { jsonBody, type Row } from "./row-type.ts";
 
 let runtime: Miniflare;
 beforeAll(async () => {
@@ -15,9 +16,34 @@ beforeAll(async () => {
         import { resolveLocalRequestBody, matchesBinaryRequestMediaType } from './src/subnet-http-body.ts';
         import { resolveSwaggerRequestBody } from './src/subnet-swagger-body.ts';
         import { serializeDeclaredHttpParameters } from './src/subnet-http-parameters.ts';
+        import { fetchSubnetBodyArtifact } from './src/subnet-body-artifact.ts';
+        import { createHash } from 'node:crypto';
         export default { async fetch(request) {
           globalThis.fetch = async () => { throw new Error('External network forbidden'); };
-          const { body_base64, content_type, query_values, swagger_body, header_values, cookie_values } = await request.json();
+          const { body_base64, body_artifact, content_type, query_values, swagger_body, header_values, cookie_values } = await request.json();
+          if (body_artifact) {
+            const calls = [];
+            const bytes = new Uint8Array(body_artifact.bytes).fill(0xa5);
+            const fetchImpl = async (url, init) => {
+              const outgoing = new Request(url, init);
+              if (String(url) === body_artifact.url) {
+                if (outgoing.headers.has('authorization')) throw new Error('Source credential leak');
+                calls.push({ kind: 'source', method: outgoing.method });
+                return new Response(bytes);
+              }
+              if (String(url) !== 'https://subnet.example/upload') throw new Error('Unmocked provider URL');
+              const sent = new Uint8Array(await outgoing.arrayBuffer());
+              calls.push({ kind: 'provider', method: outgoing.method, contentType: outgoing.headers.get('content-type'), authorization: outgoing.headers.get('authorization'), bytes: sent.length, sha256: createHash('sha256').update(sent).digest('hex') });
+              return Response.json({ accepted: true });
+            };
+            const result = await callSubnetSurface({ url: 'https://subnet.example/' }, {
+              path: '/upload', method: 'POST', contentType: content_type,
+              body: signal => fetchSubnetBodyArtifact(body_artifact, { signal, fetchImpl, isUnsafeUrl: async () => false }),
+              credential: { location: 'header', name: 'Authorization', value: 'Bearer worker-fixture-key' },
+              isUnsafeUrl: async () => false, fetchImpl,
+            });
+            return Response.json({ result, calls });
+          }
           if (header_values || cookie_values) {
             const pathItem = { get: { parameters: [
               { name: 'X-JSON', in: 'header', content: { 'application/json': {} } },
@@ -158,6 +184,27 @@ test("workerd preserves typed JSON header values, raw cookies and credential pre
     calls[0].cookie,
     "R=literal%2C; keep=a%20%2B%26%E9%9B%AA; token=fixture-secret",
   );
+});
+
+test("workerd verifies and forwards a compact referenced request larger than the MCP inline cap", async () => {
+  const bytes = new Uint8Array(131_072).fill(0xa5);
+  const body_artifact = {
+    url: `https://raw.githubusercontent.com/example/uploads/${"a".repeat(40)}/request.bin`,
+    bytes: bytes.length,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+  };
+  const content_type = 'multipart/form-data; boundary="fixture"';
+  for (const valid of [true, false]) {
+    const response = await runtime.dispatchFetch("https://worker-fixture.example/", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ body_artifact: { ...body_artifact, sha256: valid ? body_artifact.sha256 : "0".repeat(64) }, content_type }),
+    });
+    const { result, calls } = await jsonBody(response);
+    assert.equal(result.ok, valid);
+    assert.deepEqual(calls[0], { kind: "source", method: "GET" });
+    if (valid) assert.deepEqual(calls[1], { kind: "provider", method: "POST", contentType: content_type, authorization: "Bearer worker-fixture-key", bytes: bytes.length, sha256: body_artifact.sha256 });
+    assert.equal(calls.length, valid ? 2 : 1);
+  }
 });
 
 test("workerd sends decoded nonUTF8 multipart bytes with the exact boundary header", async () => {

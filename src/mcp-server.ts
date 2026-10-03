@@ -1409,6 +1409,7 @@ import {
   resolveLocalRequestBody,
 } from "./subnet-http-body.ts";
 import { resolveSwaggerRequestBody } from "./subnet-swagger-body.ts";
+import { fetchSubnetBodyArtifact } from "./subnet-body-artifact.ts";
 import {
   serializeDeclaredHttpParameters,
   type SerializedHttpParameters,
@@ -6388,6 +6389,8 @@ async function subnetSurfaceCall(
     );
   const hasJsonBodyArg = args.json_body !== undefined;
   const hasBase64BodyArg = args.body_base64 !== undefined;
+  const hasArtifactBodyArg = args.body_artifact !== undefined;
+  const hasByteBodyArg = hasBase64BodyArg || hasArtifactBodyArg;
   const hasLegacyBodyArg = args?.body !== undefined && args?.body !== null;
   if (hasJsonBodyArg && args.body !== undefined) {
     throw toolError("invalid_params", "Supply either `json_body` or `body`.");
@@ -6406,10 +6409,14 @@ async function subnetSurfaceCall(
       "invalid_params",
       "`body_base64` must be canonical padded base64.",
     );
+  if (hasArtifactBodyArg && (hasJsonBodyArg || hasBase64BodyArg || args.body !== undefined))
+    throw toolError("invalid_params", "Supply only one of `body_artifact`, `body_base64`, `json_body` or `body`.");
+  if (hasArtifactBodyArg && !WriteSubnetSurfaceInputSchema.shape.body_artifact.safeParse(args.body_artifact).success)
+    throw toolError("invalid_params", "`body_artifact` requires a public URL, lowercase SHA-256 and an exact byte count from 0 to 10,000,000.");
   // Presence matters: null, false, zero and an empty JSON string are bodies.
   // The legacy body:null behavior stays omitted when json_body is absent.
-  const hasBodyArg = hasJsonBodyArg || hasLegacyBodyArg || hasBase64BodyArg;
-  const bodyArgumentName = hasBase64BodyArg
+  const hasBodyArg = hasJsonBodyArg || hasLegacyBodyArg || hasByteBodyArg;
+  const bodyArgumentName = hasArtifactBodyArg ? "`body_artifact`" : hasBase64BodyArg
     ? "`body_base64`"
     : hasJsonBodyArg
       ? "`json_body`"
@@ -6492,10 +6499,10 @@ async function subnetSurfaceCall(
     hasPath,
     hasBodyMethod,
   );
-  if (hasBase64BodyArg && credentialPlacement?.location === "body")
+  if (hasByteBodyArg && credentialPlacement?.location === "body")
     throw toolError(
       "invalid_params",
-      "`body_base64` cannot merge JSON body credentials; use `json_body` or `body` for that declared credential placement.",
+      `${bodyArgumentName} cannot merge JSON body credentials; use \`json_body\` or \`body\` for that declared credential placement.`,
     );
   if (
     hasJsonBodyArg &&
@@ -6518,6 +6525,7 @@ async function subnetSurfaceCall(
   }
   let requestBody;
   let requestContentType;
+  const outboundUrlSafety = workerResolvedUrlSafetyGuard({ fetchImpl: globalThis.fetch });
   let serializedQuery: SerializedQueryGroup[] | undefined;
   let httpParameters: SerializedHttpParameters | undefined;
   if (reviewedHttp && !hasPath)
@@ -6671,7 +6679,7 @@ async function subnetSurfaceCall(
         // hasContentTypeArg already proved this is a non-empty string.
         const contentType = args.content_type as string;
         if (
-          !hasBase64BodyArg &&
+          !hasByteBodyArg &&
           !(swaggerBody
             ? matchesBinaryRequestMediaType(contentType, declaredMediaTypes)
             : declaredMediaTypes.includes(contentType))
@@ -6684,7 +6692,7 @@ async function subnetSurfaceCall(
         requestContentType = contentType;
       } else if (
         declaredMediaTypes.includes("application/json") ||
-        (swaggerBody && !hasBase64BodyArg && declaredMediaTypes.includes("*/*"))
+        (swaggerBody && !hasByteBodyArg && declaredMediaTypes.includes("*/*"))
       ) {
         requestContentType = "application/json";
       } else if (declaredMediaTypes.length === 1) {
@@ -6716,7 +6724,7 @@ async function subnetSurfaceCall(
           "`json_body` requires a declared application/json or +json content type.",
         );
       }
-      if (hasBase64BodyArg) {
+      if (hasByteBodyArg) {
         if (
           !matchesBinaryRequestMediaType(requestContentType, declaredMediaTypes)
         )
@@ -6724,7 +6732,11 @@ async function subnetSurfaceCall(
             "invalid_params",
             `content_type "${requestContentType}" must be concrete and declared for this byte request. Declared: ${declaredMediaTypes.join(", ")}.`,
           );
-        requestBody = Buffer.from(args.body_base64 as string, "base64");
+        requestBody = hasArtifactBodyArg
+          ? (signal: AbortSignal) => fetchSubnetBodyArtifact(args.body_artifact!, {
+              signal, fetchImpl: globalThis.fetch, isUnsafeUrl: outboundUrlSafety,
+            })
+          : Buffer.from(args.body_base64 as string, "base64");
       } else if (isJsonContentType) {
         // The MCP transport already parsed the JSON value. Serialize it once
         // at this HTTP boundary; strings here are JSON strings, not raw text.
@@ -6742,10 +6754,12 @@ async function subnetSurfaceCall(
         }
         requestBody = args.body;
       }
-      // No separate size ceiling here: MAX_MCP_BODY_BYTES (64 KiB) already
+      // Inline payloads need no separate size ceiling: MAX_MCP_BODY_BYTES (64 KiB) already
       // caps the ENTIRE inbound JSON-RPC request at the transport layer,
       // before this handler ever runs -- requestBody, as one field within
-      // that request, can never exceed it. A second, larger bound (e.g.
+      // that request, can never exceed it. Explicit artifacts instead carry
+      // their own length/checksum/stream bound outside the JSON envelope.
+      // A second, larger inline bound (e.g.
       // reusing MAX_RESPONSE_BYTES's 256 KiB) would be strictly weaker
       // than the transport cap and could never fire.
     }
@@ -6807,9 +6821,7 @@ async function subnetSurfaceCall(
       protocolVersion: ctx.protocolVersion,
       credential: credentialPlacement,
       fetchImpl: globalThis.fetch,
-      isUnsafeUrl: workerResolvedUrlSafetyGuard({
-        fetchImpl: globalThis.fetch,
-      }),
+      isUnsafeUrl: outboundUrlSafety,
     },
   );
   if (!result.ok) {
@@ -16088,7 +16100,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "write_subnet_surface",
     title: "Call a declared write operation on a subnet's live API",
     description:
-      "Supply only one body field: json_body for a direct JSON value (including arrays/scalars/null), body for an object or pre-serialized text, or body_base64 for exact file bytes or caller-encoded multipart. " +
+      "Supply only one body field: json_body for a direct JSON value (including arrays/scalars/null), body for an object or pre-serialized text, body_base64 for exact inline bytes, or body_artifact for checksum-bound commit-pinned public request bytes up to 10,000,000 bytes without file base64 in chat context. Multipart must already be encoded with its matching content_type boundary. " +
       "Issue a POST, PUT, PATCH or DELETE against a catalogued surface, and return its real response body. The write sibling of call_subnet_surface, which handles GET/HEAD -- see the MCP tool registry for that one. Both are the same implementation and enforce the same gate; they are separate tools so a read never carries a write's risk. `path` and `method` are REQUIRED: there is no curated write, so the operation is always named explicitly. The exact path+method must be declared in the surface's captured schema (fetch it with get_api_schema) or reviewed http.operations (see how_do_i_call) -- an undeclared operation is rejected outright and never guessed (#7674, #7675, #11146). A concrete value substitutes into a templated path, so `/workers/abc` reaches a declared `/workers/{worker_id}`. This grants no authority the caller lacks calling the API directly: the operation must be declared, and an authenticated surface still needs the caller's own credential. `body` is validated against the matched operation's declared request body -- rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) placed in a header, query param, cookie, or merged into the JSON body (#7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call. The response is bounded: JSON is parsed and returned structured, and other text is returned capped. Set `response_mode: attachment` for complete binary results as native MCP content with a compact size/checksum receipt; omitted mode retains binary rejection.",
     inputSchema: inputJsonSchema(WriteSubnetSurfaceInputSchema),
     async handler(

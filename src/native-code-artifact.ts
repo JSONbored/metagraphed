@@ -17,6 +17,7 @@ import {
 } from "./native-runtime-values.ts";
 import { nativeContractSimulationWork } from "./native-contract-simulation.ts";
 import { nativeEvmSimulationGas } from "./native-evm-simulation.ts";
+import { publicCommitArtifactUrl } from "./public-commit-artifact.ts";
 
 type Operation = z.infer<
   typeof NativeRuntimeRequestSchema
@@ -24,21 +25,7 @@ type Operation = z.infer<
 type Artifact = z.infer<typeof NativeCodeArtifactSchema>;
 
 function artifactUrl(value: string) {
-  const url = new URL(value);
-  if (
-    url.protocol !== "https:" ||
-    url.hostname !== "raw.githubusercontent.com" ||
-    url.username ||
-    url.password ||
-    url.port ||
-    url.search ||
-    url.hash ||
-    !/^\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+\/[0-9a-f]{40}\/[^%?#\\]+$/.test(
-      url.pathname,
-    )
-  )
-    throw new Error("Native code requires a public commit-pinned artifact URL");
-  return url.href;
+  return publicCommitArtifactUrl(value, "Native code requires a public commit-pinned artifact URL");
 }
 function byteVector(metadata: NativeMetadata, id: number) {
   const type = metadata.types.get(id)?.definition;

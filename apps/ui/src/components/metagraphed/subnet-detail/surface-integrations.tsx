@@ -100,6 +100,7 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
   }
   if (http.success) {
     for (const operation of http.data.operations) {
+      const bodyTemplate = requiredBodyTemplate(operation);
       rows.push({
         kind: operation.method,
         identifier: operation.path,
@@ -109,9 +110,27 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
           surface_id,
           path: operation.path,
           method: operation.method,
-          ...requiredBodyTemplate(operation),
+          ...bodyTemplate,
         },
       });
+      if (Object.hasOwn(bodyTemplate, "body_base64"))
+        rows.push({
+          kind: `${operation.method} from artifact`,
+          identifier: operation.path,
+          tool: "write_subnet_surface",
+          body_types: operation.request_content_types,
+          arguments: {
+            surface_id,
+            path: operation.path,
+            method: operation.method,
+            content_type: bodyTemplate.content_type,
+            body_artifact: {
+              url: "<public raw.githubusercontent.com URL with a full 40-character commit>",
+              sha256: "<lowercase SHA-256 of the complete request bytes>",
+              bytes: "<exact complete request byte count, at most 10000000>",
+            },
+          },
+        });
     }
   }
   return rows;

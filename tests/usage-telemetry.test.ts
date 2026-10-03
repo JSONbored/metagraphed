@@ -625,6 +625,14 @@ describe("recordMcpToolCallEvent", () => {
     });
   });
 
+  test("redacts a request body artifact before traversing its source fields", async () => {
+    const calls: Row[] = [];
+    const body_artifact = { url: "https://public.example/private-file", bytes: 3, sha256: "a".repeat(64) };
+    Object.defineProperty(body_artifact, "unreadable", { enumerable: true, get() { throw new Error("artifact subtree must not be traversed"); } });
+    await recordMcpToolCallEvent(CONFIGURED, { isError: false, durationMs: 1, parameters: { body_artifact } }, { fetch: fakeFetch({ onCall: call => calls.push(call) }) });
+    assert.deepEqual(calls[0].body.properties.$mcp_parameters, { body_artifact: "[redacted]" });
+  });
+
   // call_subnet_surface's signature-bundle shape (#7701): an object whose own
   // key names are caller-defined (the surface's auth.names) -- the whole
   // value is dropped rather than trying to redact by nested key name.

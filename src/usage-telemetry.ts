@@ -1170,7 +1170,7 @@ function assignMcpAttribution(
 // as X-Key. Redact the whole field instead of traversing those values.
 
 const MCP_SENSITIVE_KEY_PATTERN =
-  /authorization|cookie|password|token|secret|api[_-]?key|private[_-]?key|credential|header_values/i;
+  /authorization|cookie|password|token|secret|api[_-]?key|private[_-]?key|credential|header_values|body_artifact/i;
 
 const MCP_REDACTED_VALUE = "[redacted]";
 

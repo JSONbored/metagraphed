@@ -205,7 +205,7 @@ export interface CallSubnetSurfaceOptions {
   // Request body, already serialized or decoded by the caller. Forward the
   // same string or byte view without another conversion or copy. Ignored
   // unless `path` is also set; GET/HEAD never send a body regardless.
-  body?: string | Uint8Array<ArrayBuffer>;
+  body?: string | Uint8Array<ArrayBuffer> | ((signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>);
   // The `content-type` header to send alongside `body`. Ignored when `body`
   // is not set.
   contentType?: string;
@@ -825,7 +825,7 @@ async function safetyCheckedFetch(
     fetchImpl: typeof fetch;
     isUnsafeUrl: (url: string) => Promise<boolean>;
     timeoutMs: number;
-    body?: string | Uint8Array<ArrayBuffer>;
+    body?: string | Uint8Array<ArrayBuffer> | ((signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>);
     contentType?: string;
     extraHeaders?: Record<string, string>;
     hasBodyCredential?: boolean;
@@ -838,19 +838,23 @@ async function safetyCheckedFetch(
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const started = performance.now();
+  let started = performance.now();
   try {
+    // Deferred file bytes resolve only after the target is safe, inside the
+    // same fetch deadline. Redirects reuse these exact verified bytes once.
+    const resolvedBody = typeof body === "function" ? await body(controller.signal) : body;
+    if (typeof body === "function") started = performance.now();
     const response = await fetchImpl(url, {
       method,
       headers: {
         accept: "application/json, text/*;q=0.8, */*;q=0.5",
         "user-agent": "metagraphed-mcp-call-subnet-surface/0.0",
-        ...(body !== undefined && contentType
+        ...(resolvedBody !== undefined && contentType
           ? { "content-type": contentType }
           : {}),
         ...(extraHeaders || {}),
       },
-      ...(body !== undefined ? { body } : {}),
+      ...(resolvedBody !== undefined ? { body: resolvedBody } : {}),
       redirect: "manual",
       signal: controller.signal,
     });
@@ -896,7 +900,7 @@ async function safetyCheckedFetch(
         fetchImpl,
         isUnsafeUrl,
         timeoutMs,
-        body,
+        body: resolvedBody,
         contentType,
         extraHeaders: sameOrigin ? extraHeaders : undefined,
         hasBodyCredential,
