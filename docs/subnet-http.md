@@ -39,6 +39,14 @@ These request representations follow the captured
 [OpenAPI media-type and request-body contract](https://spec.openapis.org/oas/v3.1.0.html#request-body-object)
 and the caller retains responsibility for the provider's field and file rules.
 
+The website's reviewed-operation view supplies fill-in templates for required
+JSON, text, byte and multipart bodies. A JSON template retains the declared
+media type when it is a JSON suffix or has parameters. Replace angle-bracket
+values before calling; byte placeholders are not valid base64 payloads.
+Multipart templates require the complete encoded body and a matching boundary.
+Templates do not infer field values, attach credentials, upload files or execute
+provider requests. Optional bodies remain omitted.
+
 SN10 TaoFi admits the eight POST operations in its published
 [OpenAPI document](https://taofi-doc.web.app/openapi.yaml): `getBuyQuote`,
 `getBuyCall`, `getSellQuote`, `getSellCall`, `getRefundCall`, `getBalance`,

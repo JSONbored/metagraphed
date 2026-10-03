@@ -388,6 +388,9 @@ const surfaces = [
           request_body_required: true,
         },
         { method: "GET", path: "/search/live/result/{uuid}" },
+        { method: "PATCH", path: "/document", request_content_types: ["application/merge-patch+json"], request_body_required: true },
+        { method: "PUT", path: "/bytes", request_content_types: ["application/octet-stream"], request_body_required: true },
+        { method: "POST", path: "/multipart", request_content_types: ["multipart/form-data"], request_body_required: true },
       ],
     },
   },
@@ -395,7 +398,8 @@ const surfaces = [
 
 for (const width of [375, 768, 1280]) {
   for (const colorScheme of ["light", "dark"] as const) {
-    test(`reviewed integration details ${width}px ${colorScheme}`, async ({ page }) => {
+    test(`reviewed integration details ${width}px ${colorScheme}`, async ({ page, context }) => {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ colorScheme });
       const requests: string[] = [];
@@ -442,11 +446,23 @@ for (const width of [375, 768, 1280]) {
       await expect(details.getByText("write_subnet_mcp", { exact: true })).toBeVisible();
       await expect(details.getByText("get_subnet_mcp_prompt", { exact: true })).toBeVisible();
       await expect(details.getByText("read_subnet_mcp_resource", { exact: true })).toBeVisible();
-      await expect(details.getByText("write_subnet_surface", { exact: true })).toBeVisible();
+      await expect(details.getByText("write_subnet_surface", { exact: true }).first()).toBeVisible();
       await expect(details.getByText("call_subnet_surface", { exact: true })).toBeVisible();
       await expect(
         details.getByRole("button", { name: "Copy Fixture MCP MCP discovery", exact: true }),
       ).toBeVisible();
+      await expect(details.getByText(/multipart boundaries must match the encoded body/)).toBeVisible();
+      for (const [method, path, body] of [
+        ["PATCH", "/document", { json_body: {}, content_type: "application/merge-patch+json" }],
+        ["PUT", "/bytes", { content_type: "application/octet-stream", body_base64: "<canonical base64 of the exact request bytes>" }],
+        ["POST", "/multipart", { content_type: "multipart/form-data; boundary=REPLACE_WITH_YOUR_BOUNDARY", body_base64: "<canonical base64 of the complete multipart body with the matching boundary>" }],
+      ] as const) {
+        await details.getByRole("button", { name: `Copy ${method} ${path} call template`, exact: true }).click();
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(JSON.stringify({
+          name: "write_subnet_surface",
+          arguments: { surface_id: "sn-19-fixture-http", path, method, ...body },
+        }));
+      }
       expect(requests.filter((path) => path.includes("agent-catalog"))).toEqual([]);
       expect(requests.filter((path) => path === "/api/v1/subnets/19/surfaces").length).toBe(before);
       expect(

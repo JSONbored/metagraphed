@@ -37,6 +37,9 @@ export function resolveLocalRequestBody(
   requestBody: unknown,
 ): Record<string, unknown> | null {
   let current = recordOrNull(requestBody);
+  // Inline and absent bodies need no cycle state. Keep the captured object
+  // itself; only a reference chain needs tracking or document traversal.
+  if (!current || current.$ref === undefined) return current;
   const visited = new Set<string>();
   for (let hop = 0; hop < 32 && current; hop++) {
     if (current.$ref === undefined) return current;

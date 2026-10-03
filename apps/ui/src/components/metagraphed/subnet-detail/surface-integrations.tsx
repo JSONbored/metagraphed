@@ -1,6 +1,9 @@
 import { CopyButton, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
 import { McpSurfaceAdmissionSchema } from "../../../../../../schemas-src/subnet-mcp-admission.ts";
-import { HttpSurfaceAdmissionSchema } from "../../../../../../schemas-src/subnet-http-admission.ts";
+import {
+  HttpSurfaceAdmissionSchema,
+  type HttpSurfaceAdmission,
+} from "../../../../../../schemas-src/subnet-http-admission.ts";
 import type { Surface } from "@/lib/metagraphed/types";
 
 type Operation = {
@@ -35,6 +38,45 @@ const COLUMNS: DataTableColumn<Operation>[] = [
   },
 ];
 
+/** Fill-in templates never infer provider fields or encode a multipart file. */
+function requiredBodyTemplate(
+  operation: HttpSurfaceAdmission["operations"][number],
+): Record<string, unknown> {
+  if (
+    !operation.request_body_required ||
+    !["POST", "PUT", "PATCH"].includes(operation.method)
+  ) return {};
+  const declared = operation.request_content_types!;
+  const content_type = declared.includes("application/json")
+    ? "application/json"
+    : declared.find((type) => {
+        const essence = type.split(";", 1)[0]!.trim().toLowerCase();
+        return essence === "application/json" || essence.endsWith("+json");
+      }) ?? declared[0]!;
+  const essence = content_type.split(";", 1)[0]!.trim().toLowerCase();
+  if (essence.includes("*")) return {
+    content_type: "<replace with a concrete declared content type>",
+    body_base64: "<canonical base64 of the exact request bytes>",
+  };
+  if (essence === "application/json" || essence.endsWith("+json"))
+    return {
+      json_body: {},
+      ...(content_type === "application/json" ? {} : { content_type }),
+    };
+  if (
+    essence.startsWith("text/") || essence === "application/xml" ||
+    essence.endsWith("+xml") || essence === "application/x-www-form-urlencoded"
+  ) return { content_type, body: "<replace with the provider's encoded request body>" };
+  return {
+    content_type: essence === "multipart/form-data" && !content_type.includes(";")
+        ? `${content_type}; boundary=REPLACE_WITH_YOUR_BOUNDARY`
+        : content_type,
+    body_base64: essence === "multipart/form-data"
+      ? "<canonical base64 of the complete multipart body with the matching boundary>"
+      : "<canonical base64 of the exact request bytes>",
+  };
+}
+
 /** Canonical admission validation runs only after this deferred view is opened. */
 export function surfaceIntegrationOperations(surface: Surface): Operation[] {
   const mcp = McpSurfaceAdmissionSchema.safeParse(surface.mcp);
@@ -63,10 +105,7 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
           surface_id,
           path: operation.path,
           method: operation.method,
-          ...(operation.request_body_required &&
-          operation.request_content_types?.includes("application/json")
-            ? { json_body: {} }
-            : {}),
+          ...requiredBodyTemplate(operation),
         },
       });
     }
@@ -83,7 +122,9 @@ export default function SurfaceIntegrations({ surfaces }: { surfaces: Surface[] 
       <p className="text-13 text-ink-muted">
         Reviewed operations · use your own provider credentials when required. Tool and prompt
         arguments come from live MCP discovery; fill HTTP body fields from the provider schema and
-        replace path placeholders. Health and call permission are separate.
+        replace path placeholders. Templates with angle-bracket values need those values replaced;
+        byte bodies use canonical base64, and multipart boundaries must match the encoded body.
+        Health and call permission are separate.
       </p>
       {entries.length === 0 ? (
         <p className="text-13 text-ink-muted">

@@ -459,6 +459,43 @@ describe("exact subnet HTTP request bytes", () => {
 });
 
 describe("captured request-body reference resolution", () => {
+  test("inline and absent bodies allocate no reference-cycle tracking state", () => {
+    const direct = Object.freeze(mediaBody("application/json"));
+    const OriginalSet = globalThis.Set;
+    let allocations = 0;
+    const CountingSet = new Proxy(OriginalSet, {
+      construct(target, args, newTarget) {
+        allocations++;
+        return Reflect.construct(target, args, newTarget);
+      },
+    });
+    let inlineResult: unknown;
+    let absentResult: unknown;
+    let inlineAllocations: number;
+    let referenceAllocations: number;
+    try {
+      globalThis.Set = CountingSet;
+      for (let index = 0; index < 1000; index++) {
+        inlineResult = resolveLocalRequestBody(document, direct);
+        absentResult = resolveLocalRequestBody(document, undefined);
+      }
+      inlineAllocations = allocations;
+      resolveLocalRequestBody(document, uploadRef);
+      referenceAllocations = allocations - inlineAllocations;
+    } finally {
+      globalThis.Set = OriginalSet;
+    }
+    assert.equal(inlineResult, direct);
+    assert.equal(absentResult, null);
+    assert.equal(inlineAllocations, 0);
+    assert.equal(referenceAllocations, 1);
+    console.log("SUBNET_HTTP_REFERENCE_ALLOCATION", JSON.stringify({
+      fixture_calls: 2000,
+      inline_or_absent_sets: inlineAllocations,
+      referenced_body_sets: referenceAllocations,
+      provider_calls: 0,
+    }));
+  });
   test("direct bodies and escaped/percent-encoded local chains resolve without mutation", () => {
     const direct = mediaBody("application/json");
     assert.equal(resolveLocalRequestBody(null, direct), direct);
