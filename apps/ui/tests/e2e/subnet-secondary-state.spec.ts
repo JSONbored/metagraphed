@@ -410,11 +410,18 @@ for (const width of [375, 768, 1280]) {
           body: JSON.stringify({ ok: true, data: { surfaces } }),
         }),
       );
+      const surfaceRead = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/v1/subnets/19/surfaces" &&
+          response.status() === 200,
+      );
       await gotoThroughRestart(page, "/subnets/19");
       await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
       await page
         .locator("#surfaces")
         .evaluate((element) => element.scrollIntoView({ block: "center" }));
+      await surfaceRead;
       const toggle = page.getByRole("button", { name: "Show integration details" });
       await expect(toggle).toBeVisible();
       await expect(toggle).toHaveAttribute("aria-expanded", "false");
