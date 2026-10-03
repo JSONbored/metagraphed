@@ -86,7 +86,61 @@ media type when it is a JSON suffix or has parameters. Replace angle-bracket
 values before calling; byte placeholders are not valid base64 payloads.
 Multipart templates require the complete encoded body and a matching boundary.
 Templates do not infer field values, attach credentials, upload files or execute
-provider requests. Optional bodies remain omitted.
+provider requests. Choose a declared format before copying a template. Optional
+bodies remain omitted by default, with their declared formats available as explicit
+choices. JSON, text and multipart alternatives share the same operation row;
+public artifact alternatives use their own compact row.
+
+## BitMind detection
+
+SN34's reviewed HTTP declarations support the four currently documented standard
+operations and two enterprise operations. Each uses POST, requires the caller's
+Bearer credential and keeps recurring health probes disabled. Use the registered
+surface's exact operation with `write_subnet_surface`; `how_do_i_call` and the
+website's integration details expose its media contract.
+
+| Surface | Path | Declared request formats |
+| --- | --- | --- |
+| `sn-34-bitmind-detect-v1` | `/v1/detect` | JSON, plain text, multipart |
+| `sn-34-bitmind-detect-image` | `/detect-image` | JSON, multipart |
+| `sn-34-bitmind-detect-video` | `/detect-video` | JSON, multipart |
+| `sn-34-bitmind-detect-text` | `/detect-text` | JSON |
+| `sn-34-bitmind-enterprise-image` | `/image` | JSON, multipart |
+| `sn-34-bitmind-enterprise-video` | `/video` | JSON, multipart |
+
+The standard operations use `https://api.bitmind.ai`; enterprise operations use
+`https://enterprise.bitmind.ai`. Store credentials separately for each surface,
+or supply an explicit credential. The provider requires an enterprise key and
+account-enabled video access for enterprise calls; a stored standard key is not
+implicitly forwarded to an enterprise surface. See
+[BitMind authentication](https://docs.bitmind.ai/api-reference/authentication).
+
+For [unified detection](https://docs.bitmind.ai/api-reference/api/v1-detect), JSON
+can carry a media URL/data URI or text; plain text and an encoded multipart `file`
+are also documented. Optional routing, debug, source context and video trimming
+fields are forwarded as supplied. The response envelope is preserved. Image and
+video operations use their documented `image`/`video` fields, including multipart
+files, debug and video trim settings. For
+[text detection](https://docs.bitmind.ai/api-reference/api/detect-text), supply
+the documented text passage and optional context; provider verdicts are retained.
+The provider remains responsible for field validation, supported media, minimum
+text length, quotas and account access. Provider errors are returned with their
+status and body; no automatic replay is added.
+
+Prepared multipart bytes can use inline base64 or the public artifact option,
+under the unchanged request/response limits. The artifact bound applies to the
+complete encoded request, including framing. It does not increase the provider's
+[documented direct-video limit](https://docs.bitmind.ai/api-reference/api/detect-video).
+Public artifact sources are public; provider zero-retention claims for
+[enterprise image](https://docs.bitmind.ai/api-reference/enterprise-api/enterprise-image)
+and [video](https://docs.bitmind.ai/api-reference/enterprise-api/enterprise-video)
+do not establish retention for the caller's chosen source or the whole interaction.
+
+Source-reviewed request contracts and mocked forwarding fixtures do not establish
+live provider availability, detector accuracy or acceptance of a real file. Older
+document/liveness/preprocess/presigned-upload registrations have no newly granted
+permission; their current contracts and presigned destination flow still require
+qualification. No provider probes or production requests are used by these fixtures.
 
 For declared query parameters, use `query_values` with their JSON values rather
 than escaping them into the path. Supply `path` and `method`; serialization uses

@@ -1,4 +1,5 @@
-import { CopyButton, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
+import { useState } from "react";
+import { CopyButton, DataTable, FilterSelect, type DataTableColumn } from "@jsonbored/ui-kit";
 import { McpSurfaceAdmissionSchema } from "../../../../../../schemas-src/subnet-mcp-admission.ts";
 import {
   HttpSurfaceAdmissionSchema,
@@ -12,7 +13,39 @@ type Operation = {
   tool: string;
   arguments: Record<string, unknown>;
   body_types?: string[];
+  base_arguments?: Record<string, unknown>;
+  body_options?: { media?: string; body: Record<string, unknown> }[];
 };
+
+function CallTemplate({ row }: { row: Operation }) {
+  const [format, setFormat] = useState<string>();
+  const selected = row.body_options?.find((option) => option.media === format) ?? row.body_options?.[0];
+  const arguments_ = selected ? { ...row.base_arguments, ...selected.body } : row.arguments;
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      {row.body_options && row.body_options.length > 1 ? (
+        <FilterSelect
+          aria-label={`Request format ${row.kind} ${row.identifier}`}
+          className="h-11 min-w-0 flex-1"
+          value={selected?.media ?? ""}
+          onChange={(event) => setFormat(event.target.value)}
+        >
+          {row.body_options.map((option) => (
+            <option key={option.media ?? ""} value={option.media ?? ""}>
+              {option.media ?? "No body"}
+            </option>
+          ))}
+        </FilterSelect>
+      ) : null}
+      <CopyButton
+        key={selected?.media ?? ""}
+        compact
+        label={`${row.kind} ${row.identifier} call template`}
+        value={JSON.stringify({ name: row.tool, arguments: arguments_ })}
+      />
+    </div>
+  );
+}
 
 const COLUMNS: DataTableColumn<Operation>[] = [
   { key: "kind", label: "Operation", value: (row) => row.kind },
@@ -28,29 +61,12 @@ const COLUMNS: DataTableColumn<Operation>[] = [
     key: "copy",
     label: "Call template",
     value: (row) => JSON.stringify({ name: row.tool, arguments: row.arguments }),
-    render: (row) => (
-      <CopyButton
-        compact
-        label={`${row.kind} ${row.identifier} call template`}
-        value={JSON.stringify({ name: row.tool, arguments: row.arguments })}
-      />
-    ),
+    render: (row) => <CallTemplate row={row} />,
   },
 ];
 
 /** Fill-in templates never infer provider fields or encode a multipart file. */
-function requiredBodyTemplate(
-  operation: HttpSurfaceAdmission["operations"][number],
-): Record<string, unknown> {
-  if (!operation.request_body_required || !["POST", "PUT", "PATCH"].includes(operation.method))
-    return {};
-  const declared = operation.request_content_types!;
-  const content_type = declared.includes("application/json")
-    ? "application/json"
-    : (declared.find((type) => {
-        const essence = type.split(";", 1)[0]!.trim().toLowerCase();
-        return essence === "application/json" || essence.endsWith("+json");
-      }) ?? declared[0]!);
+function bodyTemplate(content_type: string): Record<string, unknown> {
   const essence = content_type.split(";", 1)[0]!.trim().toLowerCase();
   if (essence.includes("*"))
     return {
@@ -81,6 +97,22 @@ function requiredBodyTemplate(
   };
 }
 
+function requestBodyOptions(operation: HttpSurfaceAdmission["operations"][number]) {
+  if (!["POST", "PUT", "PATCH"].includes(operation.method) || !operation.request_content_types)
+    return [];
+  const declared = [...new Set(operation.request_content_types)];
+  const preferred = declared.includes("application/json")
+    ? "application/json"
+    : (declared.find((type) => {
+        const essence = type.split(";", 1)[0]!.trim().toLowerCase();
+        return essence === "application/json" || essence.endsWith("+json");
+      }) ?? declared[0]!);
+  return [preferred, ...declared.filter((type) => type !== preferred)].map((media) => ({
+    media,
+    body: bodyTemplate(media),
+  }));
+}
+
 /** Canonical admission validation runs only after this deferred view is opened. */
 export function surfaceIntegrationOperations(surface: Surface): Operation[] {
   const mcp = McpSurfaceAdmissionSchema.safeParse(surface.mcp);
@@ -100,7 +132,9 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
   }
   if (http.success) {
     for (const operation of http.data.operations) {
-      const bodyTemplate = requiredBodyTemplate(operation);
+      const options = requestBodyOptions(operation);
+      const defaultBody = operation.request_body_required ? (options[0]?.body ?? {}) : {};
+      const baseArguments = { surface_id, path: operation.path, method: operation.method };
       rows.push({
         kind: operation.method,
         identifier: operation.path,
@@ -109,30 +143,33 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
             ? "call_subnet_surface"
             : "write_subnet_surface",
         body_types: operation.request_content_types,
-        arguments: {
-          surface_id,
-          path: operation.path,
-          method: operation.method,
-          ...bodyTemplate,
-        },
+        arguments: { ...baseArguments, ...defaultBody },
+        base_arguments: baseArguments,
+        body_options: options.length
+          ? [...(operation.request_body_required ? [] : [{ body: {} }]), ...options]
+          : undefined,
       });
-      if (Object.hasOwn(bodyTemplate, "body_base64"))
-        rows.push({
-          kind: `${operation.method} from artifact`,
-          identifier: operation.path,
-          tool: "write_subnet_surface",
-          body_types: operation.request_content_types,
-          arguments: {
-            surface_id,
-            path: operation.path,
-            method: operation.method,
-            content_type: bodyTemplate.content_type,
+      const artifactOptions = options.filter((option) => Object.hasOwn(option.body, "body_base64"))
+        .map(({ media, body }) => ({
+          media,
+          body: {
+            content_type: body.content_type,
             body_artifact: {
               url: "<public raw.githubusercontent.com URL with a full 40-character commit>",
               sha256: "<lowercase SHA-256 of the complete request bytes>",
               bytes: "<exact complete request byte count, at most 10000000>",
             },
           },
+        }));
+      if (artifactOptions.length)
+        rows.push({
+          kind: `${operation.method} from artifact`,
+          identifier: operation.path,
+          tool: "write_subnet_surface",
+          body_types: operation.request_content_types,
+          arguments: { ...baseArguments, ...artifactOptions[0]!.body },
+          base_arguments: baseArguments,
+          body_options: artifactOptions,
         });
     }
   }
