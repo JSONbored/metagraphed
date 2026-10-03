@@ -95,7 +95,11 @@ export async function runSubnetMcp(
   if (!admitted) {
     throw new SubnetMcpError(
       "operation_not_allowed",
-      "This MCP operation is not admitted for this surface.",
+      operation.kind === "prompt"
+        ? "This MCP operation is not admitted for this prompt."
+        : operation.kind === "resource"
+          ? "This MCP operation is not admitted for this resource."
+          : "This MCP operation is not admitted for this tool.",
     );
   }
   const endpoint = new URL(options.url);

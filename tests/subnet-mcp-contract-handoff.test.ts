@@ -31,6 +31,8 @@ test.skipIf(process.env.GITHUB_EVENT_NAME !== "workflow_dispatch")(
       "tests/subnet-mcp-client.test.ts",
       "tests/subnet-mcp-tool.test.ts",
       "tests/subnet-mcp-worker.test.ts",
+      "tests/mcp-tool-annotations.test.ts",
+      "tests/subnet-mcp-contract-handoff.test.ts",
       "generated/metagraphed-client.ts",
       "generated/graphql/schema.ts",
       "generated/graphql/types.ts",
@@ -47,7 +49,10 @@ test.skipIf(process.env.GITHUB_EVENT_NAME !== "workflow_dispatch")(
         maxBuffer: 8 * 1024 * 1024,
       });
       const source = readFileSync(path, "utf8");
-      const bytes = Buffer.from(await format(source, {
+      const generated = path.startsWith("generated/") ||
+        path.startsWith("public/metagraph/") ||
+        path === "packages/contract/index.d.ts";
+      const bytes = Buffer.from(generated ? source : await format(source, {
         ...(await resolveConfig(path)),
         filepath: path,
       }));
@@ -65,5 +70,5 @@ test.skipIf(process.env.GITHUB_EVENT_NAME !== "workflow_dispatch")(
     }
     console.log("MCP_CAPABILITY_HANDOFF_END", JSON.stringify({ head, run_id, files: paths.length }));
   },
-  60_000,
+  120_000,
 );

@@ -130,8 +130,9 @@ describe("MCP tool annotations", () => {
     // Native metadata reads use the same external chain RPC as Root baskets.
     // Quote and preview now share a finalized runtime simulation, also outside
     // the served artifact boundary. Both retain all four safe-read hints.
-    // The three subnet MCP tools negotiate/call another provider's server.
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 32);
+    // The five subnet MCP tools negotiate/call another provider's server,
+    // including read-only prompts and resources; native reads remain unchanged.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 34);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,

@@ -264,7 +264,12 @@ describe("isolated upstream MCP protocol", () => {
   });
   test("write cannot be reached through read, regardless of provider annotations", async () => {
     const { options, calls } = fixture();
-    await fails(options, { ...read, name: "write" }, "operation_not_allowed");
+    await assert.rejects(
+      runSubnetMcp(options, { ...read, name: "write" }),
+      (error: unknown) => error instanceof SubnetMcpError &&
+        error.code === "operation_not_allowed" &&
+        error.message === "This MCP operation is not admitted for this tool.",
+    );
     await fails(options, { ...read, kind: "write" }, "operation_not_allowed");
     assert.equal(calls.length, 0);
     assert.equal(
