@@ -3,7 +3,7 @@ import { isBuiltin } from "node:module";
 import { build } from "esbuild";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, test } from "vitest";
-import { jsonBody } from "./row-type.ts";
+import type { Row } from "./row-type.ts";
 
 let runtime: Miniflare;
 beforeAll(async () => {
@@ -100,7 +100,7 @@ test("workerd sends decoded nonUTF8 multipart bytes with the exact boundary head
     },
   );
   assert.equal(response.status, 200);
-  const { result, calls } = await jsonBody(response);
+  const { result, calls } = (await response.json()) as Row;
   assert.equal(result.ok, true);
   assert.deepEqual(calls, [
     { method: "POST", contentType: content_type, bytes: [...bytes] },
