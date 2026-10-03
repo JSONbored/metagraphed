@@ -7,6 +7,7 @@ import {
   POSITION_INSERT_COLUMNS_WITH_SOURCE,
   NOMINATOR_POSITIONS_CONFLICT,
   POSITION_SOURCE_ALPHA,
+  POSITION_SOURCE_SELF_STAKE,
   NOMINATOR_POSITIONS_NEON_LANE,
   type NominatorPositionsInput,
   type NominatorPositionsMirrorOutcome,
@@ -14,6 +15,7 @@ import {
 import { NOMINATOR_SCAN_RECEIPTS_RETENTION_MS } from "./nominator-scan-receipts.ts";
 import type { ProducerStore, ProducerStatement } from "./producer-store.ts";
 import type { NeonWriteResult } from "./neon-write.ts";
+import { writeSelfStakeSnapshotD1 } from "./self-stake-snapshot-d1.ts";
 
 function passStatement(lane: string, pass: PassTallyInput): ProducerStatement {
   const table = PASS_TABLES[lane];
@@ -77,6 +79,16 @@ export async function writeNominatorPositionsD1(
   const source = input.source ?? POSITION_SOURCE_ALPHA;
   const parts: Record<string, NeonWriteResult> = {};
   try {
+    if (input.selfStakeSnapshot) {
+      if (source !== POSITION_SOURCE_SELF_STAKE)
+        throw new TypeError("Snapshot belongs to self-stake only");
+      return await writeSelfStakeSnapshotD1(
+        store,
+        input.rows,
+        input.selfStakeSnapshot,
+        Date.now(),
+      );
+    }
     const rows: Record<string, unknown>[] = input.rows.map((row) => ({
       ...row,
       source,
@@ -90,6 +102,10 @@ export async function writeNominatorPositionsD1(
           },
           rows,
           "nominator_positions.captured_at < excluded.captured_at",
+          source === POSITION_SOURCE_SELF_STAKE
+            ? `NOT EXISTS (SELECT 1 FROM self_stake_snapshot_passes WHERE completed_at IS NOT NULL
+                AND captured_at > json_extract(value,'$[${POSITION_INSERT_COLUMNS_WITH_SOURCE.indexOf("captured_at")}]'))`
+            : "true",
         )
       : [];
     parts.write = {
