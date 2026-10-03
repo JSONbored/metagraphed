@@ -5,16 +5,39 @@ import { surfaceIdSchema } from "./shared.ts";
 export const DiscoverSubnetMcpInputSchema = z
   .object({
     surface_id: surfaceIdSchema(),
-    credential: StoredSurfaceCredentialSchema.optional().meta({ examples: ["Bearer <token>"] }).describe(
-      "Caller credential in the registry's declared format. Authenticated callers can store it once with store_surface_credential and omit this argument.",
-    ),
-    timeout_ms: z.int().min(1).max(30_000).optional().meta({ examples: [10_000] }),
+    credential: StoredSurfaceCredentialSchema.optional()
+      .meta({ examples: ["Bearer <token>"] })
+      .describe(
+        "Caller credential in the registry's declared format. Authenticated callers can store it once with store_surface_credential and omit this argument.",
+      ),
+    timeout_ms: z
+      .int()
+      .min(1)
+      .max(30_000)
+      .optional()
+      .meta({ examples: [10_000] })
+      .describe(
+        "Total invocation deadline in milliseconds, including negotiation, tool discovery and execution. Defaults to 10000; maximum 30000.",
+      ),
   })
   .strict();
 
 export const CallSubnetMcpInputSchema = DiscoverSubnetMcpInputSchema.extend({
-  tool_name: z.string().min(1).max(128).meta({ examples: ["get_subnet_overview"] }),
-  arguments: z.record(z.string(), z.json()).optional().meta({ examples: [{}] }),
+  tool_name: z
+    .string()
+    .min(1)
+    .max(128)
+    .meta({ examples: ["get_subnet_overview"] })
+    .describe(
+      "Exact tool name returned by discover_subnet_mcp, admitted in the registry for this read or write operation.",
+    ),
+  arguments: z
+    .record(z.string(), z.json())
+    .optional()
+    .meta({ examples: [{}] })
+    .describe(
+      "JSON argument object validated against the provider's live input schema before calling the tool. Omitted arguments use an empty object.",
+    ),
 }).strict();
 
 export const DiscoverSubnetMcpOutputSchema = z

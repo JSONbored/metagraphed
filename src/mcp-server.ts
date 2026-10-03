@@ -3226,6 +3226,12 @@ async function executeSubnetMcp(
   ctx: McpCtx,
   kind: "discover" | "read" | "write",
 ) {
+  const parsed =
+    kind === "discover"
+      ? DiscoverSubnetMcpInputSchema.safeParse(args)
+      : CallSubnetMcpInputSchema.safeParse(args);
+  if (!parsed.success) throw toolError("invalid_params", parsed.error.message);
+  args = parsed.data;
   const surface = await findAdmittedMcpSurface(ctx, args.surface_id);
   if (!surface)
     throw toolError(

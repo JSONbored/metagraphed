@@ -424,15 +424,18 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   verify_integration: { operation: "surface-verify" },
   discover_subnet_mcp: {
     operation: null,
-    reason: "Negotiates a reviewed third-party MCP server and returns its live tool definitions; no REST route mirrors this protocol session.",
+    reason:
+      "Negotiates a reviewed third-party MCP server and returns its live tool definitions; no REST route mirrors this protocol session.",
   },
   read_subnet_mcp: {
     operation: null,
-    reason: "Calls an admitted read tool on a third-party MCP server; the provider's protocol and native result have no REST route twin.",
+    reason:
+      "Calls an admitted read tool on a third-party MCP server; the provider's protocol and native result have no REST route twin.",
   },
   write_subnet_mcp: {
     operation: null,
-    reason: "Calls an explicitly admitted write tool on a third-party MCP server after permission review; no REST route mirrors this session.",
+    reason:
+      "Calls an explicitly admitted write tool on a third-party MCP server after permission review; no REST route mirrors this session.",
   },
   call_subnet_surface: {
     operation: null,

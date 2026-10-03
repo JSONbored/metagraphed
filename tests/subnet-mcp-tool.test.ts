@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import { handleMcpRequest, MCP_TOOLS, listToolDefinitions } from "../src/mcp-server.ts";
+import {
+  handleMcpRequest,
+  MCP_TOOLS,
+  listToolDefinitions,
+} from "../src/mcp-server.ts";
 import { McpSurfaceAdmissionSchema } from "../schemas-src/subnet-mcp-admission.ts";
 import { SurfaceSchema } from "../schemas-src/routes/subnet-detail.ts";
 import { AgentCatalogServiceSchema } from "../schemas-src/routes/agent-catalog.ts";
@@ -169,7 +173,9 @@ describe("subnet MCP public contract", () => {
       upstream_meta: { source: "fixture" },
     });
     assert.equal(JSON.stringify(result).split("AQIDBA==").length - 1, 1);
-    const tool = listToolDefinitions().find(tool => tool.name === "read_subnet_mcp");
+    const tool = listToolDefinitions().find(
+      (tool) => tool.name === "read_subnet_mcp",
+    );
     assert.ok(tool?.outputSchema);
     assert.equal(
       new Ajv2020({ strict: false }).compile(tool.outputSchema!)(
@@ -239,11 +245,11 @@ describe("subnet MCP public contract", () => {
       ).isError,
       false,
     );
-    assert.equal(definition("read_subnet_mcp").annotations?.readOnlyHint, true);
-    assert.equal(
-      definition("write_subnet_mcp").annotations?.readOnlyHint,
-      false,
-    );
+    const published = listToolDefinitions();
+    const read = published.find((tool) => tool.name === "read_subnet_mcp");
+    const write = published.find((tool) => tool.name === "write_subnet_mcp");
+    assert.equal(read?.annotations?.readOnlyHint, true);
+    assert.equal(write?.annotations?.readOnlyHint, false);
   });
   test("public schemas exclude arbitrary endpoints and bound names, time and JSON arguments", async () => {
     const ajv = new Ajv2020({ strict: false });
@@ -256,12 +262,28 @@ describe("subnet MCP public contract", () => {
       { ...args, arguments: [] },
     ])
       assert.equal(validate(invalid), false);
-    const { call, calls } = setup();
-    assert.equal(
-      (await call("read_subnet_mcp", { ...args, timeout_ms: 30_001 })).isError,
-      true,
-    );
-    assert.equal(calls.length, 0);
+    for (const name of [
+      "read_subnet_mcp",
+      "write_subnet_mcp",
+      "discover_subnet_mcp",
+    ]) {
+      const { call, calls, artifacts } = setup();
+      const invalidArguments =
+        name === "discover_subnet_mcp"
+          ? [{ surface_id: surface.id, timeout_ms: 30_001 }]
+          : [
+              { ...args, timeout_ms: 30_001 },
+              { ...args, tool_name: "" },
+              { ...args, arguments: [] },
+            ];
+      for (const invalid of invalidArguments) {
+        const result = await call(name, invalid);
+        assert.equal(result.isError, true);
+        assert.equal(result.structuredContent.error.code, "invalid_params");
+      }
+      assert.equal(calls.length, 0);
+      assert.equal(artifacts.length, 0);
+    }
   });
   test("missing admission, invalid admission and unsafe metadata refuse network work", async () => {
     for (const [rows, code] of [
