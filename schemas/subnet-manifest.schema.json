@@ -176,7 +176,23 @@
                 "maxItems": 16,
                 "items": { "type": "string", "minLength": 1, "maxLength": 128 }
               },
-              "request_body_required": { "type": "boolean" }
+              "request_body_required": { "type": "boolean" },
+              "parameters": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["name", "in"],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+                    "in": { "enum": ["query", "header", "cookie"] },
+                    "style": { "enum": ["form", "simple", "spaceDelimited", "pipeDelimited", "deepObject", "cookie"] },
+                    "explode": { "type": "boolean" },
+                    "allowReserved": { "type": "boolean" }
+                  }
+                }
+              }
             },
             "allOf": [
               {

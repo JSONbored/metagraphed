@@ -257,17 +257,17 @@ const surfaceCallSharedShape = {
     .meta({ examples: ["inference"] }),
   query_values: DeclaredHttpValuesSchema.optional()
     .describe(
-      "Schema-declared query values, including arrays, objects and JSON-content parameters. Requires path/method and a captured operation; honors OpenAPI query styles/explode and Swagger 2 collectionFormat. Do not repeat a name in query. Use query for already serialized scalar fields. Style nulls/empty collections are omitted; JSON content preserves all JSON roots. Credentials override emitted names. Nested style values need declared JSON content.",
+      "Declared query values, including arrays and objects. Requires path/method and captured or reviewed parameters; honors OpenAPI query styles/explode and captured Swagger 2 collectionFormat/JSON content. Do not repeat a name in query. Use query for already serialized scalar fields. Style nulls/empty collections are omitted; JSON content preserves all JSON roots. Credentials override emitted names. Nested style values need declared JSON content.",
     )
     .meta({ examples: [{ color: ["blue", "black"] }] }),
   header_values: DeclaredHttpValuesSchema.optional()
     .describe(
-      "Captured custom headers; requires path/method. OpenAPI simple/explode, JSON content and Swagger collectionFormat. Names are case-insensitive; credentials take precedence. Transport/auth headers use dedicated fields.",
+      "Captured or reviewed custom headers; requires path/method. OpenAPI simple/explode, captured JSON content and Swagger collectionFormat. Names are case-insensitive; credentials take precedence. Transport/auth headers use dedicated fields.",
     )
     .meta({ examples: [{ "X-Request-Version": "1" }] }),
   cookie_values: DeclaredHttpValuesSchema.optional()
     .describe(
-      "Captured cookies; requires path/method. OpenAPI form/cookie style. Cookie style needs provider-escaped values; content needs a serialized string. Credentials override names; cross-origin redirects strip values.",
+      "Captured or reviewed cookies; requires path/method. OpenAPI form/cookie style. Cookie style needs provider-escaped values; captured content needs a serialized string. Credentials override names; cross-origin redirects strip values.",
     )
     .meta({ examples: [{ locale: "en" }] }),
   path: z

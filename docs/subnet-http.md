@@ -6,6 +6,15 @@ allowed method/path pairs, body media types and required bodies. This permission
 does not enable a probe, establish provider availability or grant access to other
 paths. Existing surfaces without this declaration keep their current behavior.
 
+An operation may also declare `parameters` with `name`, `in` (`query`, `header`
+or `cookie`) and optional OpenAPI `style`, `explode` and `allowReserved` flags.
+These source-reviewed declarations use the same serializers and transport/auth
+guards as captured parameters, without another schema artifact read. An explicit
+empty list admits no custom parameters. When the list is omitted, the existing
+captured-schema parameter path remains available, including local references,
+Swagger formats and content declarations. The website shows the declared optional
+names; its initial call templates leave their values unset.
+
 Use `how_do_i_call` to retrieve the exact admission and the provider's schema link.
 
 For a valid reviewed service, `auth.detail` reuses the public catalog descriptor:
@@ -154,7 +163,8 @@ qualification. No provider probes or production requests are used by these fixtu
 
 For declared query parameters, use `query_values` with their JSON values rather
 than escaping them into the path. Supply `path` and `method`; serialization uses
-the captured operation and its path-level declarations. Operation declarations
+the captured operation and its path-level declarations, or the explicitly reviewed
+parameter list. Captured operation declarations
 override path declarations by query name. Local path-item and parameter references,
 including canonical array indices in JSON pointers, resolve within that document.
 Reviewed HTTP admission still independently restricts the allowed operation.
@@ -179,7 +189,7 @@ invented. These rules follow the
 [OpenAPI parameter serialization and encoding guidance](https://spec.openapis.org/oas/v3.2.0.html#parameter-object)
 and [Swagger 2 collection formats](https://spec.openapis.org/oas/v2.0.html#parameter-object).
 
-Use `header_values` and `cookie_values` for captured custom parameters on that
+Use `header_values` and `cookie_values` for captured or reviewed custom parameters on that
 same operation. Path declarations and bounded local references apply; operation
 declarations override them. Header names compare without case, and header
 `simple` style leaves escaping to the provider's convention. Arrays use the
@@ -204,6 +214,41 @@ from fetch errors and stripped alongside credentials on cross-origin redirects.
 Empty parameter objects retain the existing request and do not require another
 captured-schema read for reviewed operations. These conventions follow the
 [OpenAPI parameter serialization contract](https://spec.openapis.org/oas/v3.2.0.html#parameter-object).
+
+## Chutes inference
+
+SN64 retains its public model list at `sn-64-chutes-subnet-api`, with an explicitly
+reviewed GET `/v1/models`. The existing `sn-64-chutes-sse` admits JSON POSTs to
+`/v1/chat/completions`, `/v1/completions`, `/tokenize` and `/detokenize` on
+`llm.chutes.ai`. `sn-64-chutes-embeddings` admits POST `/v1/embeddings` on
+`embed.chutes.ai`; `sn-64-chutes-image-generation` admits POST `/generate` on
+`image.chutes.ai`. Inference requires the caller's own Bearer API key and the
+provider's model/request fields. Each inference surface keeps probes disabled.
+
+The published gateway reads optional `X-TEE-Only` and `X-Chutes-Trace` headers;
+LLM calls also expose `X-Enable-Thinking`. Pass these in `header_values`, using
+boolean or provider-defined scalar values. Chat/completion calls also declare
+`stream` in `query_values`; the gateway gives the JSON body's `stream` field
+precedence. Provider routing, TEE availability, model access, quota errors and
+request validation remain provider-owned. No model-specific schema is invented.
+
+Nonstreamed JSON results retain all fields. Finite event-stream fixtures retain
+the exact events and terminal marker; streams remain bounded by the existing byte
+limit and deadline, with `truncated` reporting incomplete output. This is bounded
+MCP tool output, not a claim of live streaming performance. Image requests use
+`response_mode: "attachment"` for complete image bytes within the existing limit.
+The binary fixture qualifies forwarding, not generated-image quality or live
+provider acceptance. Store credentials independently per surface and account;
+an LLM stored key is not implicitly sent to embedding/image surfaces.
+
+These declarations are bound to the provider's
+[gateway routing source](https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/main.py),
+[invocation/authentication rules](https://github.com/chutesai/chutes-api/blob/3b5609f42f84e29dea374382ef1fa95b0fda329c/api/invocation/router.py),
+[LLM template](https://github.com/chutesai/chutes/blob/08d79872854a664de16b32b14cd0bf947e427517/chutes/chute/template/vllm.py),
+[embedding template](https://github.com/chutesai/chutes/blob/08d79872854a664de16b32b14cd0bf947e427517/chutes/chute/template/embedding.py)
+and [image template](https://github.com/chutesai/chutes/blob/08d79872854a664de16b32b14cd0bf947e427517/chutes/chute/template/diffusion.py).
+Source review and mocked regression traffic establish request contracts, without
+claiming live model availability, provider permission or retained inference data.
 
 SN10 TaoFi admits the eight POST operations in its published
 [OpenAPI document](https://taofi-doc.web.app/openapi.yaml): `getBuyQuote`,

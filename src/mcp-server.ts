@@ -6555,8 +6555,16 @@ async function subnetSurfaceCall(
   if (hasPath) {
     const schemaArtifactId =
       rowOf(surface.schema_source)?.surface_id || surface.surface_id;
+    const reviewedMatch = reviewedHttp
+      ? matchReviewedHttpOperation(
+          reviewedHttp,
+          args.path as string,
+          normalizedMethod as string,
+        )
+      : null;
+    const hasReviewedParameters = reviewedMatch?.operation.parameters !== undefined;
     const schema =
-      reviewedHttp && !hasDeclaredValues
+      reviewedHttp && (!hasDeclaredValues || hasReviewedParameters)
         ? null
         : await loadOptionalArtifact(
             ctx,
@@ -6573,11 +6581,7 @@ async function subnetSurfaceCall(
     // whenever hasPath is true.
     const capturedDocument = rowOf(rowOf(schema)?.document);
     const match = reviewedHttp
-      ? matchReviewedHttpOperation(
-          reviewedHttp,
-          args.path as string,
-          normalizedMethod as string,
-        )
+      ? reviewedMatch
       : matchSchemaOperation(
           rowOf(schema)?.document,
           args.path as string,
@@ -6594,7 +6598,7 @@ async function subnetSurfaceCall(
       );
     }
     const parameterMatch = hasDeclaredValues
-      ? reviewedHttp
+      ? reviewedHttp && !hasReviewedParameters
         ? matchSchemaOperation(
             rowOf(schema)?.document,
             args.path as string,
@@ -6603,15 +6607,16 @@ async function subnetSurfaceCall(
           )
         : match
       : null;
+    const parameterDocument = hasReviewedParameters ? undefined : capturedDocument;
     if (hasQueryValues) {
-      if (!schema || !parameterMatch)
+      if ((!schema && !hasReviewedParameters) || !parameterMatch)
         throw toolError(
           "no_schema",
           "query_values requires this admitted operation's captured query parameter declarations; use query for pre-serialized fields.",
         );
       try {
         serializedQuery = serializeDeclaredQuery(
-          rowOf(schema)?.document,
+          parameterDocument,
           parameterMatch.pathItem,
           parameterMatch.operation,
           args.query_values!,
@@ -6627,14 +6632,14 @@ async function subnetSurfaceCall(
       }
     }
     if (hasHttpValues) {
-      if (!schema || !parameterMatch)
+      if ((!schema && !hasReviewedParameters) || !parameterMatch)
         throw toolError(
           "no_schema",
           "header_values and cookie_values require this admitted operation's captured parameter declarations.",
         );
       try {
         httpParameters = serializeDeclaredHttpParameters(
-          capturedDocument,
+          parameterDocument,
           parameterMatch.pathItem,
           parameterMatch.operation,
           args.header_values,

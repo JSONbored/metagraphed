@@ -1,6 +1,19 @@
 import { z } from "zod";
 import { QUERY_ENUMS } from "./query-enums.ts";
 
+/** Reviewed parameter placement and serialization, using OpenAPI conventions. */
+const HttpSurfaceParameterSchema = z
+  .object({
+    name: z.string().min(1).max(128),
+    in: z.enum(["query", "header", "cookie"]),
+    style: z
+      .enum(["form", "simple", "spaceDelimited", "pipeDelimited", "deepObject", "cookie"])
+      .optional(),
+    explode: z.boolean().optional(),
+    allowReserved: z.boolean().optional(),
+  })
+  .strict();
+
 /** Source-reviewed HTTP calls. This declaration never enables health probes. */
 export const HttpSurfaceAdmissionSchema = z
   .object({
@@ -20,6 +33,7 @@ export const HttpSurfaceAdmissionSchema = z
               .max(16)
               .optional(),
             request_body_required: z.boolean().optional(),
+            parameters: z.array(HttpSurfaceParameterSchema).max(128).optional(),
           })
           .strict()
           .refine(

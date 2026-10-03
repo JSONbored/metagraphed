@@ -16,8 +16,10 @@ export function matchReviewedHttpOperation(
   const paths: Record<string, Record<string, object>> = {};
   for (const operation of admission.operations) {
     const item = (paths[operation.path] ??= {});
-    item[operation.method.toLowerCase()] = operation.request_content_types
-      ? {
+    item[operation.method.toLowerCase()] = {
+      ...(operation.parameters ? { parameters: operation.parameters } : {}),
+      ...(operation.request_content_types
+        ? {
           requestBody: {
             required: operation.request_body_required === true,
             content: Object.fromEntries(
@@ -25,7 +27,8 @@ export function matchReviewedHttpOperation(
             ),
           },
         }
-      : {};
+        : {}),
+    };
   }
   return matchSchemaOperation({ paths }, path, method);
 }

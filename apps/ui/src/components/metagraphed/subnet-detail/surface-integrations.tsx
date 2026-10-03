@@ -13,6 +13,7 @@ type Operation = {
   tool: string;
   arguments: Record<string, unknown>;
   body_types?: string[];
+  parameters?: HttpSurfaceAdmission["operations"][number]["parameters"];
   base_arguments?: Record<string, unknown>;
   body_options?: { media?: string; body: Record<string, unknown> }[];
 };
@@ -56,6 +57,12 @@ const COLUMNS: DataTableColumn<Operation>[] = [
     key: "body",
     label: "HTTP body",
     value: (row) => row.body_types?.join(", ") ?? "—",
+    wrap: true,
+  },
+  {
+    key: "parameters",
+    label: "Optional parameters",
+    value: (row) => row.parameters?.map((parameter) => `${parameter.in}: ${parameter.name}`).join(", ") || "—",
     wrap: true,
   },
   {
@@ -144,6 +151,7 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
             ? "call_subnet_surface"
             : "write_subnet_surface",
         body_types: operation.request_content_types,
+        parameters: operation.parameters,
         arguments: { ...baseArguments, ...defaultBody },
         base_arguments: baseArguments,
         body_options: options.length
@@ -169,6 +177,7 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
           identifier: operation.path,
           tool: "write_subnet_surface",
           body_types: operation.request_content_types,
+          parameters: operation.parameters,
           arguments: { ...baseArguments, ...artifactOptions[0]!.body },
           base_arguments: baseArguments,
           body_options: artifactOptions,
@@ -200,6 +209,7 @@ export default function SurfaceIntegrations({ surfaces }: { surfaces: Surface[] 
         arguments come from live MCP discovery; fill HTTP body fields from the provider schema and
         replace path placeholders. Templates with angle-bracket values need those values replaced;
         byte bodies use canonical base64, and multipart boundaries must match the encoded body.
+        Set optional parameters with header_values, query_values or cookie_values when needed.
         Health and call permission are separate.
       </p>
       {entries.length === 0 ? (
