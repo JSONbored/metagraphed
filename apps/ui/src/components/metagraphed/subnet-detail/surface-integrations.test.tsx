@@ -69,22 +69,80 @@ describe("reviewed integration details", () => {
   it.each([
     [["text/plain", "application/json"], { json_body: {} }],
     [["application/problem+json"], { json_body: {}, content_type: "application/problem+json" }],
-    [["application/json; charset=utf-8"], { json_body: {}, content_type: "application/json; charset=utf-8" }],
+    [
+      ["application/json; charset=utf-8"],
+      { json_body: {}, content_type: "application/json; charset=utf-8" },
+    ],
     [["Application/JSON"], { json_body: {}, content_type: "Application/JSON" }],
-    [["text/plain"], { content_type: "text/plain", body: "<replace with the provider's encoded request body>" }],
-    [["application/xml"], { content_type: "application/xml", body: "<replace with the provider's encoded request body>" }],
-    [["application/vendor+xml"], { content_type: "application/vendor+xml", body: "<replace with the provider's encoded request body>" }],
-    [["application/x-www-form-urlencoded"], { content_type: "application/x-www-form-urlencoded", body: "<replace with the provider's encoded request body>" }],
-    [["application/octet-stream"], { content_type: "application/octet-stream", body_base64: "<canonical base64 of the exact request bytes>" }],
-    [["image/*"], { content_type: "<replace with a concrete declared content type>", body_base64: "<canonical base64 of the exact request bytes>" }],
-    [["text/*"], { content_type: "<replace with a concrete declared content type>", body_base64: "<canonical base64 of the exact request bytes>" }],
-    [["multipart/form-data"], { content_type: "multipart/form-data; boundary=REPLACE_WITH_YOUR_BOUNDARY", body_base64: "<canonical base64 of the complete multipart body with the matching boundary>" }],
-    [["multipart/form-data; boundary=fixed"], { content_type: "multipart/form-data; boundary=fixed", body_base64: "<canonical base64 of the complete multipart body with the matching boundary>" }],
+    [
+      ["text/plain"],
+      { content_type: "text/plain", body: "<replace with the provider's encoded request body>" },
+    ],
+    [
+      ["application/xml"],
+      {
+        content_type: "application/xml",
+        body: "<replace with the provider's encoded request body>",
+      },
+    ],
+    [
+      ["application/vendor+xml"],
+      {
+        content_type: "application/vendor+xml",
+        body: "<replace with the provider's encoded request body>",
+      },
+    ],
+    [
+      ["application/x-www-form-urlencoded"],
+      {
+        content_type: "application/x-www-form-urlencoded",
+        body: "<replace with the provider's encoded request body>",
+      },
+    ],
+    [
+      ["application/octet-stream"],
+      {
+        content_type: "application/octet-stream",
+        body_base64: "<canonical base64 of the exact request bytes>",
+      },
+    ],
+    [
+      ["image/*"],
+      {
+        content_type: "<replace with a concrete declared content type>",
+        body_base64: "<canonical base64 of the exact request bytes>",
+      },
+    ],
+    [
+      ["text/*"],
+      {
+        content_type: "<replace with a concrete declared content type>",
+        body_base64: "<canonical base64 of the exact request bytes>",
+      },
+    ],
+    [
+      ["multipart/form-data"],
+      {
+        content_type: "multipart/form-data; boundary=REPLACE_WITH_YOUR_BOUNDARY",
+        body_base64: "<canonical base64 of the complete multipart body with the matching boundary>",
+      },
+    ],
+    [
+      ["multipart/form-data; boundary=fixed"],
+      {
+        content_type: "multipart/form-data; boundary=fixed",
+        body_base64: "<canonical base64 of the complete multipart body with the matching boundary>",
+      },
+    ],
   ])("makes a fill-in body template for declared media %j", (request_content_types, expected) => {
     for (const method of ["POST", "PUT", "PATCH"]) {
       const rows = surfaceIntegrationOperations({
         id: http.id,
-        http: { operations: [{ method, path: "/run", request_content_types, request_body_required: true }] },
+        http: {
+          operations: [
+            { method, path: "/run", request_content_types, request_body_required: true },
+          ],
+        },
       });
       expect(rows).toHaveLength(1);
       expect(rows[0].arguments).toEqual({ surface_id: http.id, method, path: "/run", ...expected });
@@ -97,11 +155,23 @@ describe("reviewed integration details", () => {
       { method: "POST", path: "/run" },
       { method: "PATCH", path: "/run", request_content_types: ["application/octet-stream"] },
       ...["GET", "HEAD", "DELETE"].map((method) => ({
-        method, path: "/run", request_content_types: ["application/json"], request_body_required: true,
+        method,
+        path: "/run",
+        request_content_types: ["application/json"],
+        request_body_required: true,
       })),
     ]) {
       const rows = surfaceIntegrationOperations({ id: http.id, http: { operations: [operation] } });
-      expect(rows[0].arguments).toEqual({ surface_id: http.id, method: operation.method, path: operation.path });
+      expect(rows[0].tool).toBe(
+        operation.method === "GET" || operation.method === "HEAD"
+          ? "call_subnet_surface"
+          : "write_subnet_surface",
+      );
+      expect(rows[0].arguments).toEqual({
+        surface_id: http.id,
+        method: operation.method,
+        path: operation.path,
+      });
     }
   });
 

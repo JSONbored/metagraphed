@@ -42,38 +42,42 @@ const COLUMNS: DataTableColumn<Operation>[] = [
 function requiredBodyTemplate(
   operation: HttpSurfaceAdmission["operations"][number],
 ): Record<string, unknown> {
-  if (
-    !operation.request_body_required ||
-    !["POST", "PUT", "PATCH"].includes(operation.method)
-  ) return {};
+  if (!operation.request_body_required || !["POST", "PUT", "PATCH"].includes(operation.method))
+    return {};
   const declared = operation.request_content_types!;
   const content_type = declared.includes("application/json")
     ? "application/json"
-    : declared.find((type) => {
+    : (declared.find((type) => {
         const essence = type.split(";", 1)[0]!.trim().toLowerCase();
         return essence === "application/json" || essence.endsWith("+json");
-      }) ?? declared[0]!;
+      }) ?? declared[0]!);
   const essence = content_type.split(";", 1)[0]!.trim().toLowerCase();
-  if (essence.includes("*")) return {
-    content_type: "<replace with a concrete declared content type>",
-    body_base64: "<canonical base64 of the exact request bytes>",
-  };
+  if (essence.includes("*"))
+    return {
+      content_type: "<replace with a concrete declared content type>",
+      body_base64: "<canonical base64 of the exact request bytes>",
+    };
   if (essence === "application/json" || essence.endsWith("+json"))
     return {
       json_body: {},
       ...(content_type === "application/json" ? {} : { content_type }),
     };
   if (
-    essence.startsWith("text/") || essence === "application/xml" ||
-    essence.endsWith("+xml") || essence === "application/x-www-form-urlencoded"
-  ) return { content_type, body: "<replace with the provider's encoded request body>" };
+    essence.startsWith("text/") ||
+    essence === "application/xml" ||
+    essence.endsWith("+xml") ||
+    essence === "application/x-www-form-urlencoded"
+  )
+    return { content_type, body: "<replace with the provider's encoded request body>" };
   return {
-    content_type: essence === "multipart/form-data" && !content_type.includes(";")
+    content_type:
+      essence === "multipart/form-data" && !content_type.includes(";")
         ? `${content_type}; boundary=REPLACE_WITH_YOUR_BOUNDARY`
         : content_type,
-    body_base64: essence === "multipart/form-data"
-      ? "<canonical base64 of the complete multipart body with the matching boundary>"
-      : "<canonical base64 of the exact request bytes>",
+    body_base64:
+      essence === "multipart/form-data"
+        ? "<canonical base64 of the complete multipart body with the matching boundary>"
+        : "<canonical base64 of the exact request bytes>",
   };
 }
 
@@ -99,7 +103,10 @@ export function surfaceIntegrationOperations(surface: Surface): Operation[] {
       rows.push({
         kind: operation.method,
         identifier: operation.path,
-        tool: operation.method === "GET" ? "call_subnet_surface" : "write_subnet_surface",
+        tool:
+          operation.method === "GET" || operation.method === "HEAD"
+            ? "call_subnet_surface"
+            : "write_subnet_surface",
         body_types: operation.request_content_types,
         arguments: {
           surface_id,

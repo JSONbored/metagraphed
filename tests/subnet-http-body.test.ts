@@ -489,12 +489,15 @@ describe("captured request-body reference resolution", () => {
     assert.equal(absentResult, null);
     assert.equal(inlineAllocations, 0);
     assert.equal(referenceAllocations, 1);
-    console.log("SUBNET_HTTP_REFERENCE_ALLOCATION", JSON.stringify({
-      fixture_calls: 2000,
-      inline_or_absent_sets: inlineAllocations,
-      referenced_body_sets: referenceAllocations,
-      provider_calls: 0,
-    }));
+    console.log(
+      "SUBNET_HTTP_REFERENCE_ALLOCATION",
+      JSON.stringify({
+        fixture_calls: 2000,
+        inline_or_absent_sets: inlineAllocations,
+        referenced_body_sets: referenceAllocations,
+        provider_calls: 0,
+      }),
+    );
   });
   test("direct bodies and escaped/percent-encoded local chains resolve without mutation", () => {
     const direct = mediaBody("application/json");
