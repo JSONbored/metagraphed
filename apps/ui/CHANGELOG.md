@@ -9,6 +9,37 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [1.5.0](https://github.com/JSONbored/metagraphed/compare/ui-v1.4.2...ui-v1.5.0) (2026-10-09)
+
+
+### Features
+
+* **mcp:** align OAuth consent with the website design ([7aad268](https://github.com/JSONbored/metagraphed/commit/7aad268f9175fec5662a005ffb4fff3fb3289232))
+* **mcp:** align OAuth consent with the website design ([26a26e7](https://github.com/JSONbored/metagraphed/commit/26a26e71512e259afccea81a19480f9c01976739))
+* **og:** redesign website previews around the current visual system ([#12117](https://github.com/JSONbored/metagraphed/issues/12117)) ([3fbda1a](https://github.com/JSONbored/metagraphed/commit/3fbda1aef69232c37b82e0e91d0f2f762e7e8ec0))
+
+
+### Bug Fixes
+
+* **deps:** remediate vulnerable workspace and worker dependencies ([#12380](https://github.com/JSONbored/metagraphed/issues/12380)) ([f7e1cd8](https://github.com/JSONbored/metagraphed/commit/f7e1cd84a4cbbb3d80caff4f321f0499a3febbda))
+* **mcp:** handle consent scope and IPv6 edge cases ([#12573](https://github.com/JSONbored/metagraphed/issues/12573)) ([a0cc0c7](https://github.com/JSONbored/metagraphed/commit/a0cc0c728dd57c7690135f928034e9fb559aaf44))
+* **og:** preserve readable entity identity in shared previews ([#12120](https://github.com/JSONbored/metagraphed/issues/12120)) ([6c4abe8](https://github.com/JSONbored/metagraphed/commit/6c4abe836c83708b4b82481cdbbeeda60b5c8bce))
+* **ui:** apply known-status filtering across the endpoint catalog ([#12108](https://github.com/JSONbored/metagraphed/issues/12108)) ([2d3eaad](https://github.com/JSONbored/metagraphed/commit/2d3eaadb8ddf5a8dddc69fda38913e2aee3b9b2c))
+* **ui:** bound rejected requests and preserve cancellation ([#12469](https://github.com/JSONbored/metagraphed/issues/12469)) ([8af6f33](https://github.com/JSONbored/metagraphed/commit/8af6f339026d31cf04a6f7ef1abee9b59bcfb765))
+* **ui:** coalesce sticky header resize publication ([#12468](https://github.com/JSONbored/metagraphed/issues/12468)) ([3d2a47e](https://github.com/JSONbored/metagraphed/commit/3d2a47ef8433eda3f056222027400f40e9e1bb41))
+* **ui:** exclude identified native browser bridge rejection ([#12477](https://github.com/JSONbored/metagraphed/issues/12477)) ([d24dbe6](https://github.com/JSONbored/metagraphed/commit/d24dbe65b4172570be2f30456802373f54aeabe7))
+* **ui:** preserve multilingual identities in shared previews ([#12124](https://github.com/JSONbored/metagraphed/issues/12124)) ([33c422f](https://github.com/JSONbored/metagraphed/commit/33c422f8754dc8c719cb2dc037e352d246408757))
+* **ui:** preserve native chart link keyboard navigation ([#12114](https://github.com/JSONbored/metagraphed/issues/12114)) ([68d1603](https://github.com/JSONbored/metagraphed/commit/68d1603c7c8687969a9aaeb297797e016e61177f))
+* **ui:** stabilize hydration timestamps and rapid endpoint search ([#12454](https://github.com/JSONbored/metagraphed/issues/12454)) ([59461f3](https://github.com/JSONbored/metagraphed/commit/59461f32712f88e622bb662b2649dab39de50b77))
+* **ui:** update PostHog browser SDK patch ([#12555](https://github.com/JSONbored/metagraphed/issues/12555)) ([c4ead44](https://github.com/JSONbored/metagraphed/commit/c4ead442fd884e0617cfb9a2c645d99fc65ad9dd))
+* **ui:** use recommended MCP discovery for setup ([#12546](https://github.com/JSONbored/metagraphed/issues/12546)) ([331defa](https://github.com/JSONbored/metagraphed/commit/331defa0af3872f9bd4e07ba24828fa01d338f3a))
+
+
+### Documentation
+
+* **ui:** explain required free MCP authentication ([#12593](https://github.com/JSONbored/metagraphed/issues/12593)) ([208bb9b](https://github.com/JSONbored/metagraphed/commit/208bb9bbd4829aec0996970f0af2b929a0debaca))
+* **ui:** recommend bounded MCP discovery for chat clients ([#12580](https://github.com/JSONbored/metagraphed/issues/12580)) ([1787f86](https://github.com/JSONbored/metagraphed/commit/1787f8624a9f8e4e9c39feabea28a2e62fea60d2))
+
 ## [1.4.2](https://github.com/JSONbored/metagraphed/compare/ui-v1.4.1...ui-v1.4.2) (2026-09-05)
 
 
