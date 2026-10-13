@@ -1135,9 +1135,7 @@
         "queue": "webhook-deliveries-dlq",
         "max_batch_size": 100,
         "max_batch_timeout": 30,
-        // Retries persist the terminal outcome; this handler never redelivers.
-        "max_retries": 100,
-        "retry_delay": 600,
+        "max_retries": 0,
         "max_concurrency": 1,
       },
     ],

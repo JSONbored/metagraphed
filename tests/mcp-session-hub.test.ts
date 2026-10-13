@@ -114,7 +114,16 @@ function createStubStorage(initial: Row = {}) {
 }
 
 function stubState(initial: Row = {}): DurableObjectState {
+  let pending = Promise.resolve();
   return {
+    blockConcurrencyWhile<T>(callback: () => Promise<T>): Promise<T> {
+      const work = pending.then(callback);
+      pending = work.then(
+        () => {},
+        () => {},
+      );
+      return work;
+    },
     storage: createStubStorage(initial),
   } as unknown as DurableObjectState;
 }
@@ -1158,6 +1167,7 @@ test("alarm: a thrown expiry is captured as an $exception and still propagates",
   try {
     // Storage that throws on read: hydrate() is the first thing alarm() does.
     const brokenState = {
+      ...stubState(),
       storage: {
         get: async () => {
           throw new Error("storage unreachable");
@@ -1600,4 +1610,65 @@ test("a restored invalid subscription refuses a stream without opening one", asy
   const response = await hub.fetch(new Request("https://hub.internal/stream"));
   assert.equal(response.status, 400);
   assert.equal(hub.streamController, null);
+});
+
+test("native lifecycle gating orders stream restoration and DELETE", async () => {
+  for (const streamFirst of [true, false]) {
+    let release: (() => void) | undefined;
+    let entered = false;
+    let blocked = true;
+    const paused = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const binding = {
+      idFromName: (name: string) => name,
+      get: () => ({
+        fetch: async () => {
+          if (blocked) {
+            blocked = false;
+            entered = true;
+            await paused;
+          }
+          return new Response(null, { status: 200 });
+        },
+      }),
+    };
+    const state = stubState({
+      sessionId: "session-1",
+      subscribedUris: [MCP_CHAIN_STREAM_RESOURCE_URI],
+    });
+    const hub = new McpSessionHub(
+      state,
+      mockEnv({ CHAIN_FIREHOSE_HUB: binding }),
+    );
+    const stream = () => hub.fetch(new Request("https://hub.internal/stream"));
+    const terminate = () =>
+      hub.fetch(
+        jsonRequest("https://hub.internal/terminate", {
+          sessionId: "session-1",
+        }),
+      );
+    const first = streamFirst ? stream() : terminate();
+    await vi.waitFor(() => assert.equal(entered, true));
+    const second = streamFirst ? terminate() : stream();
+    release!();
+    const [a, b] = await Promise.all([first, second]);
+    assert.equal(hub.terminated, true);
+    assert.equal(hub.streamController, null);
+    assert.equal(hub.streamKeepaliveTimer, null);
+    if (streamFirst) {
+      assert.equal(a.status, 200);
+      assert.equal(b.status, 200);
+      const reader = a.body!.getReader();
+      assert.equal((await reader.read()).done, true);
+    } else {
+      assert.equal(a.status, 200);
+      assert.equal(b.status, 404);
+    }
+    const restored = new McpSessionHub(state, mockEnv());
+    assert.equal(
+      (await restored.fetch(new Request("https://hub.internal/stream"))).status,
+      404,
+    );
+  }
 });

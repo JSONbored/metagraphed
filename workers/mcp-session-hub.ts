@@ -281,6 +281,13 @@ export class McpSessionHub implements DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    // Native input gating keeps register/subscribe/stream/DELETE/notify atomic
+    // with respect to one another, including awaited reverse membership calls.
+    // A stream response releases the gate; its open body is not awaited here.
+    return this.state.blockConcurrencyWhile(() => this.handleRequest(request));
+  }
+
+  private async handleRequest(request: Request): Promise<Response> {
     await this.hydrate();
     const url = new URL(request.url);
     const startedAt = Date.now();
@@ -780,6 +787,10 @@ export class McpSessionHub implements DurableObject {
   // ChainFirehoseHub.mcpSubscribedSessions never accumulates dead sessions
   // just because a client never explicitly unsubscribed/terminated.
   async alarm(): Promise<void> {
+    return this.state.blockConcurrencyWhile(() => this.expire());
+  }
+
+  private async expire(): Promise<void> {
     // #9446: a DO alarm that throws is retried by the platform and recorded
     // NOWHERE -- no request to fail, no caller to notice, and this file's one
     // capture site covers `deliver` only. An alarm stuck in a retry loop is
