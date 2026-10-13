@@ -1848,3 +1848,59 @@ test("credentialed binary refusal omits reflected content-type diagnostics", asy
   assert.equal(result.content_type, null);
   assert.ok(!JSON.stringify(result).includes(reflected));
 });
+
+describe("credentialed response metadata uses controlled diagnostics", () => {
+  for (const [contentType, expected] of [
+    ["application/json; echo=synthetic-secret", "application/json"],
+    ["application/synthetic-secret+json", "application/json"],
+    ["text/synthetic-secret; echo=synthetic-secret", "text/plain"],
+    [null, null],
+  ] as const) {
+    test(`accepted ${contentType} does not echo reflected metadata`, async () => {
+      const result = await callSubnetSurface(
+        { url: "https://example.com/api" },
+        {
+          credential: {
+            location: "header",
+            name: "token",
+            value: "synthetic-secret",
+          },
+          isUnsafeUrl: SAFE,
+          fetchImpl: async () =>
+            new Response(new TextEncoder().encode("{}"), {
+              headers: contentType ? { "content-type": contentType } : {},
+            }),
+        },
+      );
+      assert.equal(result.ok, true);
+      assert.equal(result.content_type, expected);
+      assert.ok(!JSON.stringify(result).includes("synthetic-secret"));
+    });
+  }
+
+  test("JSON parser diagnostics are controlled while response data remains intact", async () => {
+    const text = '{"synthetic-secret": invalid}';
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          name: "token",
+          value: "synthetic-secret",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () =>
+          new Response(text, {
+            headers: { "content-type": "application/json" },
+          }),
+      },
+    );
+    assert.equal(result.ok, true);
+    if (!result.ok) throw new Error("Expected an accepted response body");
+    assert.equal(result.body, text);
+    assert.equal(
+      result.parse_error,
+      "The upstream JSON response could not be parsed.",
+    );
+  });
+});

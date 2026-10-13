@@ -2457,6 +2457,38 @@ describe("surface credential store (#9009)", () => {
       }
     });
   }
+
+  test("stored-credential calls omit reflected accepted response metadata", async () => {
+    const env = credentialEnv();
+    const credential = "synthetic-secret";
+    await callAs(
+      7,
+      "store_surface_credential",
+      {
+        surface_id: "x:api:6",
+        credential,
+      },
+      env,
+    );
+    const result = await callAs(
+      7,
+      "call_subnet_surface",
+      {
+        surface_id: "x:api:6",
+      },
+      env,
+      async () =>
+        new Response("{}", {
+          headers: { "content-type": `application/json; echo=${credential}` },
+        }),
+    );
+    assert.equal(result.isError, false);
+    assert.equal(
+      (result.structuredContent as Row).content_type,
+      "application/json",
+    );
+    assert.ok(!JSON.stringify(result).includes(credential));
+  });
 });
 
 // #11568: arms of the shared handler that no fixture previously reached. They

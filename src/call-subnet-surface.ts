@@ -310,6 +310,15 @@ export async function callSubnetSurface(
   const { response, latencyMs, redirectTarget } = fetched;
   const contentType = response.headers.get("content-type") || null;
   const kind = classifyContentType(contentType);
+  // Do not echo a provider-controlled MIME subtype or parameter that can
+  // contain a credential. Preserve only the known response category.
+  const diagnosticContentType = !hasCredentials
+    ? contentType
+    : kind === "json"
+      ? "application/json"
+      : kind === "text"
+        ? "text/plain"
+        : null;
   if (kind === "binary") {
     await response.body?.cancel();
     return {
@@ -320,7 +329,7 @@ export async function callSubnetSurface(
         ? "unsupported content-type"
         : `unsupported content-type: ${contentType}`,
       status_code: response.status,
-      content_type: hasCredentials ? null : contentType,
+      content_type: diagnosticContentType,
       latency_ms: latencyMs,
     };
   }
@@ -336,7 +345,7 @@ export async function callSubnetSurface(
       ok: false,
       error: "The upstream response body could not be read.",
       status_code: response.status,
-      content_type: contentType,
+      content_type: diagnosticContentType,
       latency_ms: latencyMs,
     };
   }
@@ -346,14 +355,16 @@ export async function callSubnetSurface(
     try {
       body = JSON.parse(raw.text);
     } catch (err) {
-      parseError = (err as Error).message;
+      parseError = hasCredentials
+        ? "The upstream JSON response could not be parsed."
+        : (err as Error).message;
     }
   }
 
   return {
     ok: true,
     status_code: response.status,
-    content_type: contentType,
+    content_type: diagnosticContentType,
     latency_ms: latencyMs,
     // Same-origin redirects can reflect a secret in any URL component. For
     // credentialed calls report only the authorized origin, never a Location.
