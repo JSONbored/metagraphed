@@ -664,12 +664,10 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
   });
 
-  // #7687 (MCP execute Phase 3b): a query-location credential is part of the
-  // request URL itself, so it's the one placement that can leak back out
-  // through this function's own return value -- these confirm it's redacted
-  // everywhere a URL/error could carry it, while header/cookie placement
-  // (never echoed anywhere by this module) needs no equivalent redaction.
-  test("credential: query-location value is redacted in the successful response's url", async () => {
+  // Provider redirects and errors can reflect any credential placement.
+  // Credentialed diagnostics expose only the authorized origin and controlled
+  // failure details, avoiding encoding-dependent substitutions.
+  test("credential: query-location value is omitted in the successful response's url", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -679,11 +677,11 @@ describe("callSubnetSurface", () => {
       },
     );
     assert.equal(result.ok, true);
-    assert.equal(new URL(result.url).searchParams.get("api_key"), "<redacted>");
+    assert.equal(new URL(result.url).searchParams.get("api_key"), null);
     assert.ok(!result.url.includes("abc123"));
   });
 
-  test("credential: query-location value is redacted in the url after a followed redirect", async () => {
+  test("credential: query-location value is omitted in the url after a followed redirect", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -707,10 +705,10 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, true);
     assert.ok(!result.url.includes("abc123"));
-    assert.equal(new URL(result.url).searchParams.get("api_key"), "<redacted>");
+    assert.equal(new URL(result.url).searchParams.get("api_key"), null);
   });
 
-  test("credential: a redirect target with no credential-named param is returned unchanged (nothing to redact)", async () => {
+  test("credential: a credentialed redirect reports only the authorized origin", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -730,10 +728,10 @@ describe("callSubnetSurface", () => {
       },
     );
     assert.equal(result.ok, true);
-    assert.equal(result.url, "https://example.com/api/v2");
+    assert.equal(result.url, "https://example.com");
   });
 
-  test("credential: query-location value is redacted in a blocked-redirect's redirect_target", async () => {
+  test("credential: query-location value is omitted in a blocked-redirect's redirect_target", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -754,17 +752,11 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, false);
     assert.equal(result.private_redirect_blocked, true);
-    assert.ok(!result.redirect_target!.includes("abc123"));
-    assert.equal(
-      new URL(result.redirect_target!).searchParams.get("api_key"),
-      "<redacted>",
-    );
+    assert.equal(result.redirect_target, undefined);
   });
 
   test("credential: query-location value is not present when the surface has no query param matching auth.name", async () => {
-    // The redaction only touches a param actually named after the
-    // credential -- an unrelated same-named-looking query value some OTHER
-    // param happens to carry is left alone (nothing to redact there).
+    // No query diagnostics are returned for a credentialed call.
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -775,8 +767,8 @@ describe("callSubnetSurface", () => {
       },
     );
     assert.equal(result.ok, true);
-    assert.equal(new URL(result.url).searchParams.get("other"), "abc123");
-    assert.equal(new URL(result.url).searchParams.get("api_key"), "<redacted>");
+    assert.equal(new URL(result.url).searchParams.get("other"), null);
+    assert.equal(new URL(result.url).searchParams.get("api_key"), null);
   });
 
   test("credential: header/cookie-location values never appear in the response url (nothing to redact there)", async () => {
@@ -793,7 +785,7 @@ describe("callSubnetSurface", () => {
       },
     );
     assert.equal(result.ok, true);
-    assert.equal(result.url, "https://example.com/api");
+    assert.equal(result.url, "https://example.com");
   });
 
   test("credential: any placement's value is scrubbed from a network-error message", async () => {
@@ -815,7 +807,10 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, false);
     assert.ok(!result.error.includes("Bearer abc123"));
-    assert.ok(result.error.includes("<redacted>"));
+    assert.equal(
+      result.error,
+      "The credentialed surface request could not be completed.",
+    );
   });
 
   test("credential: no credential supplied leaves error messages untouched", async () => {
@@ -1028,7 +1023,7 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
   });
 
-  test("credential bundle: query values are all redacted in the returned url", async () => {
+  test("credential bundle: query values are omitted from the returned url", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -1045,12 +1040,9 @@ describe("callSubnetSurface", () => {
     assert.ok(!result.url.includes("0xabc"));
     assert.equal(
       new URL(result.url).searchParams.get("validator_hotkey"),
-      "<redacted>",
+      null,
     );
-    assert.equal(
-      new URL(result.url).searchParams.get("signature"),
-      "<redacted>",
-    );
+    assert.equal(new URL(result.url).searchParams.get("signature"), null);
   });
 
   test("credential bundle: every value is scrubbed from a network-error message", async () => {
@@ -1107,7 +1099,7 @@ describe("callSubnetSurface", () => {
     assert.equal(result.error, "connection refused");
   });
 
-  test("credential bundle: an empty-string value in the bundle is skipped during error scrubbing", async () => {
+  test("credential bundle: error details are omitted even with an empty bundle value", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -1123,7 +1115,10 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, false);
     assert.ok(!result.error.includes("5F-secret"));
-    assert.ok(result.error.includes("<redacted>"));
+    assert.equal(
+      result.error,
+      "The credentialed surface request could not be completed.",
+    );
   });
 
   test("credential bundle: preserved across a same-origin redirect, refused on cross-origin", async () => {
@@ -1770,4 +1765,60 @@ describe("credential redirect boundaries", () => {
     assert.equal(result.ok, false);
     assert.ok(!JSON.stringify(result).includes(encodeURIComponent(value)));
   });
+});
+
+describe("credential diagnostics do not echo provider strings", () => {
+  const secret = "synthetic secret/+";
+  const encodings = [
+    secret,
+    encodeURIComponent(secret),
+    "synthetic%20secret%2f%2b",
+    "synthetic%20secret%2f%2B",
+  ];
+  for (const location of ["header", "query", "cookie", "body"] as const) {
+    for (const reflected of encodings) {
+      for (const outcome of ["refused", "success", "error"] as const) {
+        test(`${location}: ${outcome} omits ${reflected}`, async () => {
+          let calls = 0;
+          const result = await callSubnetSurface(
+            { url: "https://example.com/api" },
+            {
+              path: "/api",
+              method: "POST",
+              body: "{}",
+              contentType: "application/json",
+              credential: { location, name: "token", value: secret },
+              isUnsafeUrl: SAFE,
+              fetchImpl: async () => {
+                calls += 1;
+                if (outcome === "error")
+                  throw new Error(`fetch failed: ${reflected}`);
+                if (calls === 1)
+                  return new Response(null, {
+                    status: 307,
+                    headers: {
+                      location: `https://${outcome === "success" ? "example.com" : "other.example"}/next?echo=${reflected}`,
+                    },
+                  });
+                return jsonResponse({ ok: true });
+              },
+            },
+          );
+          assert.ok(!JSON.stringify(result).includes(secret));
+          assert.ok(!JSON.stringify(result).includes(reflected));
+          if (outcome === "success") {
+            assert.equal(result.ok, true);
+            if (!result.ok) throw new Error("Expected success");
+            assert.equal(result.url, "https://example.com");
+            assert.equal(calls, 2);
+          } else {
+            assert.equal(result.ok, false);
+            if (result.ok) throw new Error("Expected refusal");
+            assert.equal(result.redirect_target, undefined);
+            assert.equal(calls, 1);
+          }
+        });
+      }
+    }
+  }
 });

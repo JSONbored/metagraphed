@@ -92,75 +92,6 @@ export interface CallSubnetSurfaceCredential {
   bodyEnvelope?: { payloadKey: string; credentialKey: string };
 }
 
-// metagraphed#7687 (MCP execute Phase 3b): a query-location credential is,
-// unavoidably, part of the request URL itself -- unlike a header/cookie
-// credential (which never appears in any response field, this module never
-// echoes request headers back), the URL is exactly what this module DOES
-// return to the caller on both success and some failure paths. Only a
-// query-location credential is ever redacted here; header/cookie/body
-// placement has nothing in the returned URL to redact. Handles both a
-// single-value credential (`name`) and a multi-value bundle (`values`,
-// metagraphed#7701's scheme:signature) -- every name in the bundle gets
-// redacted, not just the first.
-const REDACTED_CREDENTIAL_PLACEHOLDER = "<redacted>";
-function redactQueryCredential(
-  url: string,
-  credential: CallSubnetSurfaceCredential | undefined,
-): string {
-  if (!url || credential?.location !== "query") return url;
-  const names = credential.values
-    ? Object.keys(credential.values)
-    : credential.name
-      ? [credential.name]
-      : [];
-  if (names.length === 0) return url;
-  // No try/catch: `url` here is always the output of an earlier `new URL()`
-  // call within this same module (buildRequestUrl, or safetyCheckedFetch's
-  // own redirect-target construction) -- by the time it reaches here it has
-  // already been proven parseable, so a second parse can't newly fail.
-  const parsed = new URL(url);
-  let changed = false;
-  for (const name of names) {
-    if (parsed.searchParams.has(name)) {
-      parsed.searchParams.set(name, REDACTED_CREDENTIAL_PLACEHOLDER);
-      changed = true;
-    }
-  }
-  return changed ? parsed.toString() : url;
-}
-
-// Regardless of credential location, scrub every raw credential value out of
-// any free-form error string this module returns -- the underlying fetch
-// implementation's own error text (network/timeout/DNS failures) is outside
-// this module's control, and some implementations echo the request URL (or
-// occasionally other request details) into it. Handles both a single value
-// and a multi-value bundle.
-function redactCredentialValue(
-  text: string,
-  credential: CallSubnetSurfaceCredential | undefined,
-): string {
-  if (!text || !credential) return text;
-  const values = credential.values
-    ? Object.values(credential.values)
-    : credential.value
-      ? [credential.value]
-      : [];
-  let result = text;
-  for (const value of values) {
-    if (!value) continue;
-    for (const representation of new Set([
-      value,
-      encodeURIComponent(value),
-      new URLSearchParams({ value }).toString().slice("value=".length),
-    ])) {
-      result = result
-        .split(representation)
-        .join(REDACTED_CREDENTIAL_PLACEHOLDER);
-    }
-  }
-  return result;
-}
-
 export interface CallSubnetSurfaceOptions {
   // Query params merged onto the effective base URL.
   query?: Record<string, string | number | boolean>;
@@ -351,40 +282,28 @@ export async function callSubnetSurface(
         })
     : requestBody;
 
+  const hasCredentials = credentialEntries.length > 0;
   const fetched = await safetyCheckedFetch(requestUrl, {
     method,
     ...(canHaveBody && effectiveBody !== undefined
       ? { body: effectiveBody, contentType: requestContentType }
       : {}),
     extraHeaders,
-    credentialed: credentialEntries.length > 0,
+    credentialed: hasCredentials,
     fetchImpl,
     isUnsafeUrl,
     timeoutMs,
   });
   if (!fetched.ok) {
-    // metagraphed#7687: a query-location credential (extraHeaders never
-    // echoes back on any path, but a query param is part of the URL itself)
-    // must never appear in a URL this function hands back, including a
-    // blocked-redirect's own target -- redact it here, at the one place
-    // that knows both the credential and every URL field that could carry
-    // it, rather than trusting every caller to remember to scrub it.
-    // error is scrubbed too, regardless of credential location: some fetch
-    // implementations embed the request URL (or occasionally headers) in
-    // their own thrown error text, and that's outside this module's control.
+    if (!hasCredentials) return fetched;
+    // Provider error strings and Location values are untrusted and can echo a
+    // credential in arbitrary encodings. Do not return them for an authenticated
+    // call; numeric status and controlled flags still identify the failure.
+    const { redirect_target, ...diagnostics } = fetched;
+    void redirect_target;
     return {
-      ...fetched,
-      ...(fetched.redirect_target
-        ? {
-            redirect_target: redactCredentialValue(
-              redactQueryCredential(fetched.redirect_target, credential),
-              credential,
-            ),
-          }
-        : {}),
-      ...(fetched.error
-        ? { error: redactCredentialValue(fetched.error, credential) }
-        : {}),
+      ...diagnostics,
+      error: "The credentialed surface request could not be completed.",
     };
   }
 
@@ -397,9 +316,11 @@ export async function callSubnetSurface(
       ok: false,
       // contentType is guaranteed non-empty here: classifyContentType only
       // returns "binary" when it derived a non-empty type from it.
-      error: `unsupported content-type: ${contentType}`,
+      error: hasCredentials
+        ? "unsupported content-type"
+        : `unsupported content-type: ${contentType}`,
       status_code: response.status,
-      content_type: contentType,
+      content_type: hasCredentials ? null : contentType,
       latency_ms: latencyMs,
     };
   }
@@ -434,7 +355,11 @@ export async function callSubnetSurface(
     status_code: response.status,
     content_type: contentType,
     latency_ms: latencyMs,
-    url: redactQueryCredential(redirectTarget || requestUrl, credential),
+    // Same-origin redirects can reflect a secret in any URL component. For
+    // credentialed calls report only the authorized origin, never a Location.
+    url: hasCredentials
+      ? new URL(requestUrl).origin
+      : redirectTarget || requestUrl,
     body,
     truncated: raw.truncated,
     ...(parseError ? { parse_error: parseError } : {}),

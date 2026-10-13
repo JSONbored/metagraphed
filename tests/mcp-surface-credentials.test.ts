@@ -398,9 +398,12 @@ describe("surface credential identity", () => {
       "github-value",
     );
     const legacy = `${SURFACE_CREDENTIAL_KV_PREFIX}account:7:sn-2-x-api`;
-    kv.store.set(legacy, {
-      value: JSON.stringify({ v: 1, iv: "legacy", data: "legacy" }),
-    });
+    // Copy a valid decryptable envelope: an accidental legacy fallback would
+    // return the real synthetic credential, rather than fail decryption.
+    const valid = kv.store.get(
+      `${SURFACE_CREDENTIAL_KV_PREFIX}${github}:sn-1-x-api`,
+    )!;
+    kv.store.set(legacy, valid);
     assert.equal(await loadSurfaceCredential(env, rpc, "sn-2-x-api"), null);
     assert.equal(await loadSurfaceCredential(env, github, "sn-2-x-api"), null);
     assert.equal((await listSurfaceCredentials(env, github)).length, 1);

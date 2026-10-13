@@ -2408,6 +2408,55 @@ describe("surface credential store (#9009)", () => {
       globalThis.fetch = of;
     }
   });
+
+  for (const outcome of ["success", "error"] as const) {
+    test(`stored credential ${outcome} diagnostics omit reflected encoded values`, async () => {
+      const env = credentialEnv();
+      const credential = "synthetic secret/+";
+      const reflected = "synthetic%20secret%2f%2b";
+      await callAs(
+        7,
+        "store_surface_credential",
+        {
+          surface_id: "x:api:6",
+          credential,
+        },
+        env,
+      );
+      let calls = 0;
+      const result = await callAs(
+        7,
+        "call_subnet_surface",
+        {
+          surface_id: "x:api:6",
+        },
+        env,
+        async () => {
+          calls += 1;
+          if (outcome === "error")
+            throw new Error(`fetch failed: ${reflected}`);
+          if (calls === 1)
+            return new Response(null, {
+              status: 307,
+              headers: { location: `https://x.example/next?echo=${reflected}` },
+            });
+          return Response.json({ ok: true });
+        },
+      );
+      assert.ok(!JSON.stringify(result).includes(credential));
+      assert.ok(!JSON.stringify(result).includes(reflected));
+      if (outcome === "success") {
+        assert.equal(result.isError, false);
+        assert.equal(
+          (result.structuredContent as Row).url,
+          "https://x.example",
+        );
+      } else {
+        assert.equal(result.isError, true);
+        assert.equal(errorCode(result), "upstream_unavailable");
+      }
+    });
+  }
 });
 
 // #11568: arms of the shared handler that no fixture previously reached. They
