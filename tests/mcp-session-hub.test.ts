@@ -11,6 +11,8 @@ import { test, vi } from "vitest";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   MCP_SESSION_ID_MAX_LENGTH,
+  MCP_SESSION_CLEANUP_RETRY_MS,
+  MCP_SESSION_REVERSE_CALL_TIMEOUT_MS,
   MCP_SESSION_IDLE_TTL_MS,
   MCP_SESSION_KEEPALIVE_FRAME,
   MCP_SESSION_MAX_STREAM_DURATION_MS,
@@ -1157,7 +1159,7 @@ test("#8997: telemetry never fails the session operation", async () => {
 // file's one capture site covers `deliver` only. An alarm stuck in a retry
 // loop was therefore indistinguishable from a hub with no sessions to expire,
 // which is the state it is in almost all the time.
-test("alarm: a thrown expiry is captured as an $exception and still propagates", async () => {
+test("alarm: a failed expiry is captured and schedules a durable retry", async () => {
   const posted: Row[] = [];
   const original = globalThis.fetch;
   globalThis.fetch = (async (url: string, init?: RequestInit) => {
@@ -1165,6 +1167,7 @@ test("alarm: a thrown expiry is captured as an $exception and still propagates",
     return new Response("{}", { status: 200 });
   }) as unknown as typeof fetch;
   try {
+    let nextAlarm: number | Date | null = null;
     // Storage that throws on read: hydrate() is the first thing alarm() does.
     const brokenState = {
       ...stubState(),
@@ -1174,7 +1177,9 @@ test("alarm: a thrown expiry is captured as an $exception and still propagates",
         },
         put: async () => {},
         deleteAll: async () => {},
-        setAlarm: async () => {},
+        setAlarm: async (time: number | Date) => {
+          nextAlarm = time;
+        },
       },
     } as unknown as DurableObjectState;
     const hub = new McpSessionHub(
@@ -1182,7 +1187,10 @@ test("alarm: a thrown expiry is captured as an $exception and still propagates",
       mockEnv({ POSTHOG_PROJECT_TOKEN: "phc_test_token" }),
     );
 
-    await assert.rejects(hub.alarm(), /storage unreachable/);
+    await assert.doesNotReject(hub.alarm());
+    assert.ok(
+      Number(nextAlarm) >= Date.now() + MCP_SESSION_CLEANUP_RETRY_MS - 1_000,
+    );
 
     const exceptions = posted.filter(
       (p) => (p.body as Row).event === "$exception",
@@ -1580,10 +1588,15 @@ test("reverse unsubscription and termination remain retryable after refusal", as
           },
         }),
       };
-      const hub = new McpSessionHub(
-        stubState({ sessionId: "session-1", subscribedUris: [uri] }),
-        mockEnv({ CHAIN_FIREHOSE_HUB: binding, SUBNET_STATUS_HUB: binding }),
-      );
+      const state = stubState({
+        sessionId: "session-1",
+        subscribedUris: [uri],
+      });
+      const env = mockEnv({
+        CHAIN_FIREHOSE_HUB: binding,
+        SUBNET_STATUS_HUB: binding,
+      });
+      let hub = new McpSessionHub(state, env);
       const request = () =>
         jsonRequest(`https://hub.internal/${route}`, {
           sessionId: "session-1",
@@ -1593,6 +1606,9 @@ test("reverse unsubscription and termination remain retryable after refusal", as
       assert.equal(hub.terminated, false);
       assert.equal(hub.subscribedUris.has(uri), true);
       fail = false;
+      // A rejecting native input gate resets the object. Retry a fresh instance
+      // against the durable state rather than relying on the old instance.
+      hub = new McpSessionHub(state, env);
       assert.equal((await hub.fetch(request())).status, 200);
       assert.equal(calls, 2, "retry reaches the same reverse owner again");
     }
@@ -1671,4 +1687,125 @@ test("native lifecycle gating orders stream restoration and DELETE", async () =>
       404,
     );
   }
+});
+
+test("failed idle cleanup schedules durable retries beyond the native retry budget", async () => {
+  const state = stubState({
+    sessionId: "session-1",
+    subscribedUris: [MCP_CHAIN_STREAM_RESOURCE_URI],
+  });
+  const scheduled: number[] = [];
+  const schedule = state.storage.setAlarm.bind(state.storage);
+  state.storage.setAlarm = async (time: number | Date) => {
+    scheduled.push(Number(time));
+    await schedule(time);
+  };
+  let fail = true;
+  let removals = 0;
+  const binding = {
+    idFromName: (name: string) => name,
+    get: () => ({
+      fetch: async () => {
+        removals += 1;
+        return new Response(null, { status: fail ? 503 : 200 });
+      },
+    }),
+  };
+  const env = mockEnv({ CHAIN_FIREHOSE_HUB: binding });
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    // Each later scheduled alarm may construct a new object. No retry progress
+    // depends on the instance that saw the failed reverse owner.
+    const hub = new McpSessionHub(state, env);
+    const before = Date.now();
+    await hub.alarm();
+    assert.equal(hub.terminated, false);
+    assert.equal(hub.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI), true);
+    assert.equal(scheduled.length, attempt + 1);
+    assert.ok(scheduled[attempt] >= before + MCP_SESSION_CLEANUP_RETRY_MS);
+  }
+  fail = false;
+  await new McpSessionHub(state, env).alarm();
+  assert.equal(removals, 11);
+  assert.equal(scheduled.length, 10, "completed cleanup schedules no retry");
+  const restored = new McpSessionHub(state, env);
+  assert.equal(
+    (await restored.fetch(new Request("https://hub.internal/stream"))).status,
+    404,
+  );
+});
+
+test("reverse cleanup deadlines preserve retryable durable state", async () => {
+  const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation((ms) => {
+    assert.equal(ms, MCP_SESSION_REVERSE_CALL_TIMEOUT_MS);
+    const controller = new AbortController();
+    queueMicrotask(() => controller.abort(new Error("reverse owner deadline")));
+    return controller.signal;
+  });
+  try {
+    for (const operation of ["terminate", "alarm"]) {
+      const state = stubState({
+        sessionId: "session-1",
+        subscribedUris: [MCP_CHAIN_STREAM_RESOURCE_URI],
+      });
+      const env = mockEnv({
+        CHAIN_FIREHOSE_HUB: {
+          idFromName: (name: string) => name,
+          get: () => ({
+            fetch: async (_url: string, init: RequestInit) =>
+              new Promise<Response>((_resolve, reject) => {
+                assert.ok(init.signal);
+                init.signal.addEventListener(
+                  "abort",
+                  () => reject(init.signal!.reason),
+                  { once: true },
+                );
+              }),
+          }),
+        },
+      });
+      const hub = new McpSessionHub(state, env);
+      if (operation === "terminate") {
+        await assert.rejects(
+          () =>
+            hub.fetch(
+              jsonRequest("https://hub.internal/terminate", {
+                sessionId: "session-1",
+              }),
+            ),
+          /deadline/,
+        );
+      } else {
+        await assert.doesNotReject(hub.alarm());
+        assert.ok(Number((state.storage as Row).lastAlarmTime) > Date.now());
+      }
+      const restored = new McpSessionHub(state, env);
+      await restored.hydrate();
+      assert.equal(restored.terminated, false);
+      assert.equal(
+        restored.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI),
+        true,
+      );
+    }
+  } finally {
+    timeout.mockRestore();
+  }
+});
+
+test("a failed durable cleanup retry schedule remains a platform-visible failure", async () => {
+  const state = stubState({
+    sessionId: "session-1",
+    subscribedUris: [MCP_CHAIN_STREAM_RESOURCE_URI],
+  });
+  state.storage.setAlarm = async () => {
+    throw new Error("alarm storage unavailable");
+  };
+  const binding = {
+    idFromName: (name: string) => name,
+    get: () => ({ fetch: async () => new Response(null, { status: 503 }) }),
+  };
+  const hub = new McpSessionHub(
+    state,
+    mockEnv({ CHAIN_FIREHOSE_HUB: binding }),
+  );
+  await assert.rejects(hub.alarm(), /alarm storage unavailable/);
 });

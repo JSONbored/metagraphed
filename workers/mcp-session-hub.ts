@@ -118,6 +118,10 @@ export const MCP_SESSION_KEEPALIVE_FRAME = ": keepalive\n\n";
 // its SSE stream, per the "dropped connection ≠ implicit unsubscribe, but a
 // server MAY terminate at any time" spec allowance.
 export const MCP_SESSION_IDLE_TTL_MS = 30 * 60 * 1000;
+// A failed expiry schedules another native alarm instead of depending on the
+// platform's finite automatic retry budget. Only unfinished cleanup wakes again.
+export const MCP_SESSION_CLEANUP_RETRY_MS = 5 * 60 * 1000;
+export const MCP_SESSION_REVERSE_CALL_TIMEOUT_MS = 5_000;
 
 export interface ResourceUpdatedNotification {
   jsonrpc: "2.0";
@@ -411,6 +415,7 @@ export class McpSessionHub implements DurableObject {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ sessionId }),
+          signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
         },
       );
       if (!response.ok)
@@ -426,6 +431,7 @@ export class McpSessionHub implements DurableObject {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ sessionId, netuid: statusNetuid }),
+          signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
         },
       );
       if (!response.ok)
@@ -458,6 +464,7 @@ export class McpSessionHub implements DurableObject {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ sessionId }),
+          signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
         },
       );
       if (!response.ok) throw new Error("Chain unsubscription failed");
@@ -472,6 +479,7 @@ export class McpSessionHub implements DurableObject {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ sessionId, netuid: statusNetuid }),
+          signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
         },
       );
       if (!response.ok) throw new Error("Subnet unsubscription failed");
@@ -662,6 +670,7 @@ export class McpSessionHub implements DurableObject {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ sessionId: effectiveSessionId }),
+            signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
           },
         );
         if (!response.ok) throw new Error("Chain unsubscription failed");
@@ -676,6 +685,7 @@ export class McpSessionHub implements DurableObject {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ sessionId: effectiveSessionId }),
+            signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
           },
         );
         if (!response.ok) throw new Error("Subnet unsubscription failed");
@@ -797,9 +807,8 @@ export class McpSessionHub implements DurableObject {
     // therefore indistinguishable from a hub with no sessions to expire, which
     // is the state it is supposed to be in almost all the time.
     //
-    // Captured and rethrown: the platform's own retry behaviour is what makes
-    // a transient failure recoverable, so swallowing here would trade a
-    // retried alarm for a silently skipped expiry.
+    // Captured and rescheduled in native storage: automatic alarm retries are
+    // finite, so unfinished reverse cleanup must own its next wake-up.
     try {
       await this.hydrate();
       // Idle expiry, distinct from a client DELETE: same terminate path, but
@@ -824,7 +833,9 @@ export class McpSessionHub implements DurableObject {
         route: "mcp-session-hub:alarm",
         errorCode: "internal_error",
       });
-      throw error;
+      await this.state.storage.setAlarm(
+        Date.now() + MCP_SESSION_CLEANUP_RETRY_MS,
+      );
     }
   }
 }
