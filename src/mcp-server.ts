@@ -2035,6 +2035,7 @@ interface McpCtx {
   // with executionCtx.props.accountId (the OAuth path) this is what the
   // surface-credential store binds a registration to.
   accountId?: string | null;
+  accountKind?: AccountKind | null;
   readArtifact?: AnyFn;
   readHealthKv?: AnyFn;
   // props: set by @cloudflare/workers-oauth-provider on the ExecutionContext
@@ -18077,6 +18078,7 @@ async function buildContext(
   deps: McpDeps,
   authTier: string,
   accountId: string | null = null,
+  accountKind: AccountKind | null = null,
 ) {
   let domain;
   let profile: McpProfile = "discovery";
@@ -18150,6 +18152,7 @@ async function buildContext(
     // store's identity binding. The resolver reads this first and falls back
     // to executionCtx.props.accountId (the OAuth path).
     accountId,
+    accountKind,
     // #8994: set by handleMcpRequest for a single `initialize`, before
     // dispatch, so the initialize event can report the session it creates.
     // Declared here (not only assigned later) so the inferred context type
@@ -18244,6 +18247,7 @@ async function enforceMcpRateLimit(
   rejection: Response | null;
   authTier: string;
   accountId: string | null;
+  accountKind: AccountKind | null;
   oauthAccountMissing: boolean;
   quotaPending?: {
     accountId: string;
@@ -18325,6 +18329,7 @@ async function enforceMcpRateLimit(
   // credential tools can bind a registration without a second key
   // verification -- the same reasoning that made authTier a return value.
   const accountId = rateLimit.accountId ? String(rateLimit.accountId) : null;
+  const accountKind = accountId === null ? null : rateLimit.accountKind;
   if (!rateLimit.allowed) {
     // #8611: a blocked account gets 403 + its reason code. 429 would tell an
     // agent to retry shortly, which will never work and produces exactly the
@@ -18336,6 +18341,7 @@ async function enforceMcpRateLimit(
     return {
       authTier,
       accountId,
+      accountKind,
       oauthAccountMissing,
       rejection: jsonResponse(
         rpcError(null, RPC_INVALID_REQUEST, rejection.message),
@@ -18348,6 +18354,7 @@ async function enforceMcpRateLimit(
     rejection: null,
     authTier,
     accountId,
+    accountKind,
     oauthAccountMissing,
     quotaPending: rateLimit.quotaPending,
   };
@@ -19192,8 +19199,14 @@ async function dispatchMcpRequest(
   env: Env,
   deps: McpDeps = {},
 ) {
-  const { rejection, authTier, accountId, quotaPending, oauthAccountMissing } =
-    await enforceMcpRateLimit(request, env, deps.executionCtx);
+  const {
+    rejection,
+    authTier,
+    accountId,
+    accountKind,
+    quotaPending,
+    oauthAccountMissing,
+  } = await enforceMcpRateLimit(request, env, deps.executionCtx);
   if (rejection) return rejection;
 
   // Reuse the gate's verified identity: a header or session id is not proof
@@ -19270,6 +19283,7 @@ async function dispatchMcpRequest(
     protectedTools.length > 0 &&
     resolveSurfaceCredentialIdentity({
       accountId,
+      accountKind,
       executionCtx: deps.executionCtx,
     }) === null
   ) {
@@ -19293,7 +19307,14 @@ async function dispatchMcpRequest(
   const versionError = validateMcpProtocolVersionHeader(request);
   if (versionError) return versionError;
 
-  const ctx = await buildContext(request, env, deps, authTier, accountId);
+  const ctx = await buildContext(
+    request,
+    env,
+    deps,
+    authTier,
+    accountId,
+    accountKind,
+  );
   // Generated here, not inside dispatchMessage: mintMcpSessionHeaderIfNeeded
   // below needs the SAME value the initialize event reported, or the header and
   // the telemetry would disagree about which session was created.

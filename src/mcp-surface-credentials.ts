@@ -6,12 +6,14 @@
 // transcripts, and (but for redactMcpSensitiveFields) $mcp_parameters.
 //
 // Identity: both authentication paths ADR 0027 accepts on /mcp resolve to the
-// same rpc_accounts id -- a verified mg_ key via the tiered rate-limit gate
+// separate account namespaces -- a verified mg_ key via the tiered rate-limit
+// gate
 // (workers/tiered-rate-limit.ts hands it back as `accountId`), and an OAuth
 // bearer via @cloudflare/workers-oauth-provider's ctx.props.accountId
 // (src/github-oauth.ts sets it at completeAuthorization). So the store keys
-// uniformly on `account:<id>` and never needs to know which door the caller
-// came through. Anonymous callers have no identity to bind to and keep the
+// on `account:<kind>:<id>`. Legacy unqualified records are never read or
+// reassigned: owners must register again or reconcile them explicitly.
+// Anonymous callers have no identity to bind to and keep the
 // in-band `credential` argument (ADR 0027 Model B -- anonymous reach must not
 // shrink as a side effect of this cleanup).
 //
@@ -29,6 +31,7 @@
 // the caller as a typed tool error -- silently degrading to plaintext (or to
 // pretending a credential was stored) would be worse than refusing.
 
+import { asAccountKind } from "./account-kind.ts";
 import { StoredSurfaceCredentialSchema } from "../schemas-src/mcp-tools/ai-integration.ts";
 
 export const SURFACE_CREDENTIAL_KV_PREFIX = "mcp-surface-credential:";
@@ -114,26 +117,37 @@ export function isSurfaceCredentialStoreConfigured(
 /**
  * The caller's store identity, or null for anonymous callers. Prefers the
  * rate-limit gate's mg_-key accountId (present on every keyed request),
- * falling back to the OAuth provider's props.accountId -- both are the same
- * rpc_accounts id, namespaced here so a future second identity system can
- * coexist without key collisions.
+ * falling back to the OAuth provider's props.accountId. Each retains its
+ * account kind. A gate identity without a kind is refused,
+ * and no legacy unqualified record is selected.
  */
 export function resolveSurfaceCredentialIdentity(ctx: {
   accountId?: string | null;
+  accountKind?: unknown;
   executionCtx?: { props?: { accountId?: unknown } };
 }): string | null {
-  const candidate = ctx.accountId ?? ctx.executionCtx?.props?.accountId ?? null;
-  if (candidate === null || candidate === undefined) return null;
+  const fromGate = ctx.accountId !== null && ctx.accountId !== undefined;
+  const candidate = fromGate
+    ? ctx.accountId
+    : ctx.executionCtx?.props?.accountId;
+  const kind = fromGate ? asAccountKind(ctx.accountKind) : "github";
+  if (candidate === null || candidate === undefined || kind === null)
+    return null;
   const id = String(candidate).trim();
-  // Account ids are opaque here, but they become KV-key segments: reject
-  // anything empty or containing the key delimiter so one identity can never
-  // alias another's prefix.
   if (!id || id.includes(":")) return null;
-  return `account:${id}`;
+  return `account:${kind}:${id}`;
+}
+
+function credentialPrefix(identity: string): string {
+  if (!/^account:(rpc|github):[^:]+$/.test(identity))
+    throw new TypeError(
+      "Surface credentials require a qualified account identity",
+    );
+  return `${SURFACE_CREDENTIAL_KV_PREFIX}${identity}:`;
 }
 
 function credentialKvKey(identity: string, surfaceId: string): string {
-  return `${SURFACE_CREDENTIAL_KV_PREFIX}${identity}:${surfaceId}`;
+  return credentialPrefix(identity) + surfaceId;
 }
 
 async function deriveEncryptionKey(secret: string): Promise<CryptoKey> {
@@ -305,7 +319,7 @@ export async function listSurfaceCredentials(
   identity: string,
 ): Promise<SurfaceCredentialMetadata[]> {
   const kv = env.METAGRAPH_CONTROL;
-  const prefix = `${SURFACE_CREDENTIAL_KV_PREFIX}${identity}:`;
+  const prefix = credentialPrefix(identity);
   const results: SurfaceCredentialMetadata[] = [];
   let cursor: string | undefined;
   do {
