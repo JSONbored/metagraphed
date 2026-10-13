@@ -10,9 +10,14 @@ const uiRequire = createRequire(
 
 interface SerovalReader {
   fromJSON(value: unknown): unknown;
-  fromCrossJSON(value: unknown): unknown;
+  fromCrossJSON(
+    value: unknown,
+    options: { refs: Map<number, unknown> },
+  ): unknown;
   toJSON(value: unknown): unknown;
   toCrossJSON(value: unknown): unknown;
+  SerovalDeserializationError: new (cause: unknown) => Error;
+  SerovalMalformedNodeError: new (node: unknown) => Error;
 }
 
 for (const consumer of ["start-server-core", "start-client-core"]) {
@@ -20,6 +25,9 @@ for (const consumer of ["start-server-core", "start-client-core"]) {
     uiRequire.resolve(`@tanstack/${consumer}/package.json`),
   );
   const reader = consumerRequire("seroval") as SerovalReader;
+  const malformedNode = (error: unknown): boolean =>
+    error instanceof reader.SerovalDeserializationError &&
+    error.cause instanceof reader.SerovalMalformedNodeError;
 
   test(`${consumer}: Seroval rejects array-like objects as typed-array buffers`, () => {
     // Frozen Seroval wire shape: a Uint8Array whose backing node is a plain
@@ -33,15 +41,24 @@ for (const consumer of ["start-server-core", "start-client-core"]) {
       b: 0,
       l: 3,
     };
-    assert.throws(() => reader.fromJSON({ t: node, f: 127, m: [] }));
-    assert.throws(() => reader.fromCrossJSON(node));
+    assert.throws(
+      () => reader.fromJSON({ t: node, f: 127, m: [] }),
+      malformedNode,
+    );
+    assert.throws(
+      () => reader.fromCrossJSON(node, { refs: new Map() }),
+      malformedNode,
+    );
   });
 
   test(`${consumer}: Seroval retains ordinary typed-array and object round trips`, () => {
     const bytes = new Uint8Array([1, 2, 3]);
     assert.deepEqual(reader.fromJSON(reader.toJSON(bytes)), bytes);
     const object = { count: 7, label: "TAO" };
-    assert.deepEqual(reader.fromCrossJSON(reader.toCrossJSON(object)), object);
+    assert.deepEqual(
+      reader.fromCrossJSON(reader.toCrossJSON(object), { refs: new Map() }),
+      object,
+    );
   });
 }
 
