@@ -398,21 +398,31 @@ export class McpSessionHub implements DurableObject {
       const stub = this.env.CHAIN_FIREHOSE_HUB.get(
         this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
       );
-      await stub.fetch("https://chain-firehose-hub.internal/mcp-subscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      });
+      const response = await stub.fetch(
+        "https://chain-firehose-hub.internal/mcp-subscribe",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        },
+      );
+      if (!response.ok)
+        throw new Error("Chain subscription registration failed");
     }
     if (statusNetuid != null && this.env.SUBNET_STATUS_HUB) {
       const stub = this.env.SUBNET_STATUS_HUB.get(
         this.env.SUBNET_STATUS_HUB.idFromName("global"),
       );
-      await stub.fetch("https://subnet-status-hub.internal/mcp-subscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId, netuid: statusNetuid }),
-      });
+      const response = await stub.fetch(
+        "https://subnet-status-hub.internal/mcp-subscribe",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId, netuid: statusNetuid }),
+        },
+      );
+      if (!response.ok)
+        throw new Error("Subnet subscription registration failed");
     }
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -425,35 +435,37 @@ export class McpSessionHub implements DurableObject {
     if (!body) return badRequest("sessionId and uri are required");
     const { sessionId, uri } = body;
     this.sessionId = sessionId;
-    const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
     const statusNetuid = parseSubnetStatusResourceUri(uri);
     this.subscribedUris.delete(uri);
     this.pendingUris.delete(uri);
     await this.persist();
-    if (
-      hadChain &&
-      uri === MCP_CHAIN_STREAM_RESOURCE_URI &&
-      !this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI) &&
-      this.env.CHAIN_FIREHOSE_HUB
-    ) {
+    if (uri === MCP_CHAIN_STREAM_RESOURCE_URI && this.env.CHAIN_FIREHOSE_HUB) {
       const stub = this.env.CHAIN_FIREHOSE_HUB.get(
         this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
       );
-      await stub.fetch("https://chain-firehose-hub.internal/mcp-unsubscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      });
+      const response = await stub.fetch(
+        "https://chain-firehose-hub.internal/mcp-unsubscribe",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        },
+      );
+      if (!response.ok) throw new Error("Chain unsubscription failed");
     }
     if (statusNetuid != null && this.env.SUBNET_STATUS_HUB) {
       const stub = this.env.SUBNET_STATUS_HUB.get(
         this.env.SUBNET_STATUS_HUB.idFromName("global"),
       );
-      await stub.fetch("https://subnet-status-hub.internal/mcp-unsubscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId, netuid: statusNetuid }),
-      });
+      const response = await stub.fetch(
+        "https://subnet-status-hub.internal/mcp-unsubscribe",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId, netuid: statusNetuid }),
+        },
+      );
+      if (!response.ok) throw new Error("Subnet unsubscription failed");
     }
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -623,7 +635,6 @@ export class McpSessionHub implements DurableObject {
     }
     const effectiveSessionId = sessionId ?? this.sessionId;
     if (!this.terminated) {
-      this.terminated = true;
       this.closeStream();
       const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
       const hadStatus = [...this.subscribedUris].some(
@@ -633,7 +644,7 @@ export class McpSessionHub implements DurableObject {
         const stub = this.env.CHAIN_FIREHOSE_HUB.get(
           this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
         );
-        await stub.fetch(
+        const response = await stub.fetch(
           "https://chain-firehose-hub.internal/mcp-unsubscribe",
           {
             method: "POST",
@@ -641,12 +652,13 @@ export class McpSessionHub implements DurableObject {
             body: JSON.stringify({ sessionId: effectiveSessionId }),
           },
         );
+        if (!response.ok) throw new Error("Chain unsubscription failed");
       }
       if (hadStatus && effectiveSessionId && this.env.SUBNET_STATUS_HUB) {
         const stub = this.env.SUBNET_STATUS_HUB.get(
           this.env.SUBNET_STATUS_HUB.idFromName("global"),
         );
-        await stub.fetch(
+        const response = await stub.fetch(
           "https://subnet-status-hub.internal/mcp-unsubscribe-session",
           {
             method: "POST",
@@ -654,9 +666,11 @@ export class McpSessionHub implements DurableObject {
             body: JSON.stringify({ sessionId: effectiveSessionId }),
           },
         );
+        if (!response.ok) throw new Error("Subnet unsubscription failed");
       }
       this.subscribedUris.clear();
       this.pendingUris.clear();
+      this.terminated = true;
       await this.persist();
     }
     return new Response(JSON.stringify({ ok: true }), {
@@ -704,6 +718,16 @@ export class McpSessionHub implements DurableObject {
     // is strictly better in every case: if it was dead, the session is repaired;
     // if it was alive, that client just replaced its own channel, which is what
     // it asked to do.
+    for (const uri of this.subscribedUris) {
+      const response = await this.handleSubscribe(
+        new Request("https://mcp-session-hub.internal/subscribe", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId: this.sessionId, uri }),
+        }),
+      );
+      if (!response.ok) return response;
+    }
     this.closeStream();
     void this.touch();
     const stream = new ReadableStream({

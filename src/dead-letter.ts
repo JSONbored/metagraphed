@@ -1,12 +1,23 @@
 // Dead letters are reported separately from successful producer deliveries.
 // Sync payloads are preserved in D1 before acknowledgment so operators can
 // recover them after repairing the original write failure (#12270). Other
-// queue families keep their existing acknowledgment policy. No dead letter is
+// queue families keep their existing acknowledgment policy. Webhook outcomes
+// preserve event bytes in their existing delivery store. No dead letter is
 // automatically replayed into its failed business operation.
 
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { ProbeJobTypeSchema } from "../schemas-src/probe-jobs.ts";
 import { preserveSyncDeadLetter } from "./sync-dead-letter-store.ts";
+import {
+  validWebhookDeliveryMessage,
+  WEBHOOK_QUEUE_MAX_ATTEMPTS,
+} from "./webhook-queue.ts";
+import {
+  deliveryRecordFor,
+  deliveryStorageKey,
+  WEBHOOK_DELIVERY_TTL_SECONDS,
+} from "./webhooks.ts";
+import { recordOrNull } from "./read-store.ts";
 
 /** The two dead-letter queues, and the lane each reports under.
  *
@@ -188,7 +199,9 @@ export function summarizeDeadLetterBatch(
 
 /**
  * Preserve sync payloads before acknowledgment; never retry their business write.
- * Other queue families retain their existing acknowledgment policy.
+ * Webhook messages preserve terminal outcomes and event bytes in their existing
+ * KV delivery store. A failed persistence operation prevents acknowledgment.
+ * Probe messages retain their existing acknowledgment policy.
  */
 export async function handleDeadLetterBatch(
   batch: {
@@ -202,6 +215,7 @@ export async function handleDeadLetterBatch(
   db: LaneHealthDb | undefined,
   nowMs: number = Date.now(),
   quarantine?: Pick<D1Database, "prepare">,
+  webhookStore?: Pick<KVNamespace, "get" | "put">,
 ): Promise<string> {
   const detail = summarizeDeadLetterBatch(batch.queue, batch.messages);
   console.error(`dead-letter: ${detail}`);
@@ -221,6 +235,35 @@ export async function handleDeadLetterBatch(
   for (const message of batch.messages) {
     if (batch.queue === "sync-batches-dlq")
       await preserveSyncDeadLetter(quarantine, message, nowMs);
+    if (
+      batch.queue === "webhook-deliveries-dlq" &&
+      validWebhookDeliveryMessage(message.body)
+    ) {
+      if (!webhookStore)
+        throw new Error("Webhook delivery outcome storage is unavailable");
+      const { subscription_id, event_id, body } = message.body;
+      const key = deliveryStorageKey(subscription_id, event_id);
+      const previous = recordOrNull(
+        await webhookStore.get(key, { type: "json" }),
+      );
+      const record =
+        previous?.state === "dead"
+          ? previous
+          : deliveryRecordFor({
+              subscriptionId: subscription_id,
+              eventId: event_id,
+              result: { reason: "queue_retry_exhausted" },
+              disposition: "dead",
+              // DLQ attempts count persistence retries, not delivery rounds.
+              attempts: WEBHOOK_QUEUE_MAX_ATTEMPTS,
+              nowIso: new Date(nowMs).toISOString(),
+            });
+      await webhookStore.put(
+        key,
+        JSON.stringify({ ...record, event_body: body }),
+        { expirationTtl: WEBHOOK_DELIVERY_TTL_SECONDS },
+      );
+    }
     message.ack();
   }
   return detail;

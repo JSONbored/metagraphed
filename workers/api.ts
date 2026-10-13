@@ -1792,6 +1792,7 @@ export default {
         laneHealthStore(env),
         Date.now(),
         env.D1_STATE,
+        env.METAGRAPH_CONTROL,
       );
       return;
     }
@@ -2129,7 +2130,9 @@ export async function handleWebhookQueue(
       return;
     }
 
-    const subscription = (await env.METAGRAPH_CONTROL?.get(
+    if (!env.METAGRAPH_CONTROL?.get)
+      throw new Error("Webhook subscription storage is unavailable");
+    const subscription = (await env.METAGRAPH_CONTROL.get(
       subscriptionStorageKey(body.subscription_id),
       { type: "json" },
     )) as Record<string, unknown> | null;
@@ -2199,8 +2202,9 @@ export async function handleWebhookQueue(
     // these records, and it is part of the product -- a subscriber debugging a
     // missed event reads it. The PARKING is gone (the queue schedules retries
     // now), but the RECORD is not: this writes the outcome, it does not drive
-    // anything. Best-effort, because a KV hiccup must not turn a delivered
-    // event into a retried one.
+    // anything. Success reporting is best-effort so a KV hiccup does not retry
+    // an already delivered event. A terminal failure must be preserved before
+    // acknowledgment, including the exact event bytes needed for recovery.
     //
     // BUILT BY deliveryRecordFor, which sits next to the summariser that reads
     // it. Spelling the record out here is what let the two drift apart into
@@ -2208,10 +2212,12 @@ export async function handleWebhookQueue(
     const retryDelaySeconds = webhookRetryDelaySeconds(message.attempts);
     const nowIso = new Date().toISOString();
     try {
-      await env.METAGRAPH_CONTROL?.put?.(
+      if (!env.METAGRAPH_CONTROL?.put)
+        throw new Error("Webhook delivery outcome storage is unavailable");
+      await env.METAGRAPH_CONTROL.put(
         deliveryStorageKey(body.subscription_id, body.event_id),
-        JSON.stringify(
-          deliveryRecordFor({
+        JSON.stringify({
+          ...deliveryRecordFor({
             subscriptionId: body.subscription_id,
             eventId: body.event_id,
             result,
@@ -2222,18 +2228,21 @@ export async function handleWebhookQueue(
               Date.parse(nowIso) + retryDelaySeconds * 1000,
             ).toISOString(),
           }),
-        ),
+          ...(disposition === "dead" ? { event_body: body.body } : {}),
+        }),
         { expirationTtl: WEBHOOK_DELIVERY_TTL_SECONDS },
       );
     } catch {
-      /* status reporting must never change a delivery's disposition */
+      if (disposition === "dead") {
+        message.retry({ delaySeconds: retryDelaySeconds });
+        return;
+      }
     }
     if (disposition === "retry") {
       message.retry({ delaySeconds: retryDelaySeconds });
     } else {
-      // Delivered, or terminal. A terminal failure acks so the platform routes
-      // it to the dead-letter queue on the final attempt rather than spinning
-      // out the remaining budget on a 400 that will never become a 200.
+      // Delivered, or a durably recorded terminal failure. Acknowledgment
+      // removes the message; it does not route it to the dead-letter queue.
       message.ack();
     }
   }

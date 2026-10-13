@@ -1497,3 +1497,106 @@ test("hydrate: an empty object hydrates to defaults rather than throwing", async
   assert.equal(hub.sequence, 0);
   assert.equal(hub.terminated, false);
 });
+
+test("a restored stream repairs reverse membership before opening", async () => {
+  const firehose = fakeChainFirehoseHubBinding();
+  const hub = new McpSessionHub(
+    stubState({
+      sessionId: "session-1",
+      subscribedUris: [MCP_CHAIN_STREAM_RESOURCE_URI],
+    }),
+    mockEnv({ CHAIN_FIREHOSE_HUB: firehose }),
+  );
+  const response = await hub.fetch(
+    new Request("https://hub.internal/stream?sessionId=session-1"),
+  );
+  try {
+    assert.equal(response.status, 200);
+    assert.equal(firehose.calls.length, 1);
+    assert.match(firehose.calls[0].url, /mcp-subscribe$/);
+  } finally {
+    await response.body?.cancel();
+  }
+});
+
+test("a refused reverse registration cannot acknowledge a subscription", async () => {
+  for (const uri of [
+    MCP_CHAIN_STREAM_RESOURCE_URI,
+    buildSubnetStatusResourceUri(7),
+  ]) {
+    const binding = {
+      idFromName: (name: string) => name,
+      get: () => ({ fetch: async () => new Response(null, { status: 503 }) }),
+    };
+    const hub = new McpSessionHub(
+      stubState(),
+      mockEnv({ CHAIN_FIREHOSE_HUB: binding, SUBNET_STATUS_HUB: binding }),
+    );
+    await assert.rejects(
+      () =>
+        hub.fetch(
+          jsonRequest("https://hub.internal/subscribe", {
+            sessionId: "session-1",
+            uri,
+          }),
+        ),
+      /subscription registration failed/,
+    );
+    await assert.rejects(
+      () =>
+        hub.fetch(
+          new Request("https://hub.internal/stream?sessionId=session-1"),
+        ),
+      /subscription registration failed/,
+    );
+    assert.equal(hub.streamController, null);
+  }
+});
+
+test("reverse unsubscription and termination remain retryable after refusal", async () => {
+  for (const uri of [
+    MCP_CHAIN_STREAM_RESOURCE_URI,
+    buildSubnetStatusResourceUri(7),
+  ]) {
+    for (const route of ["unsubscribe", "terminate"]) {
+      let fail = true;
+      let calls = 0;
+      const binding = {
+        idFromName: (name: string) => name,
+        get: () => ({
+          fetch: async () => {
+            calls += 1;
+            return new Response(null, { status: fail ? 503 : 200 });
+          },
+        }),
+      };
+      const hub = new McpSessionHub(
+        stubState({ sessionId: "session-1", subscribedUris: [uri] }),
+        mockEnv({ CHAIN_FIREHOSE_HUB: binding, SUBNET_STATUS_HUB: binding }),
+      );
+      const request = () =>
+        jsonRequest(`https://hub.internal/${route}`, {
+          sessionId: "session-1",
+          uri,
+        });
+      await assert.rejects(() => hub.fetch(request()), /unsubscription failed/);
+      assert.equal(hub.terminated, false);
+      fail = false;
+      assert.equal((await hub.fetch(request())).status, 200);
+      assert.equal(calls, 2, "retry reaches the same reverse owner again");
+    }
+  }
+});
+
+test("a restored invalid subscription refuses a stream without opening one", async () => {
+  const hub = new McpSessionHub(
+    stubState({
+      sessionId: "session-1",
+      subscribedUris: ["metagraph://invalid"],
+    }),
+    mockEnv(),
+  );
+  const response = await hub.fetch(new Request("https://hub.internal/stream"));
+  assert.equal(response.status, 400);
+  assert.equal(hub.streamController, null);
+});

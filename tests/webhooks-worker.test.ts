@@ -1164,41 +1164,49 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
     // on batch.queue, an event a subscriber has already refused eight times
     // would be POSTed at them a ninth -- the DLQ turned back into the retry
     // loop it exists to end.
-    // `worker.queue` takes no injectable deliverer, so the observable proof is
-    // the DELIVERY RECORD: the live path writes one for every outcome, and the
-    // dead-letter path writes none. Asserting on a stubbed fetch would prove
-    // nothing here -- deliverChangeEvent closes over the global.
+    // The dead-letter path persists the failure without an outbound request.
     const { default: worker } = await import("../workers/api.ts");
     const kv = makeKv();
     const sub = await seedSubscription(kv, "https://hooks.example.com/a");
     const acts: string[] = [];
-    await worker.queue!(
-      {
-        queue: "webhook-deliveries-dlq",
-        messages: [
-          {
-            body: {
-              subscription_id: sub.id,
-              event_id: "evt_1",
-              body: JSON.stringify({ type: "metagraph.publish" }),
+    const outbound = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(
+        new Error("A dead letter must never make an outbound request"),
+      );
+    try {
+      await worker.queue!(
+        {
+          queue: "webhook-deliveries-dlq",
+          messages: [
+            {
+              body: {
+                subscription_id: sub.id,
+                event_id: "evt_1",
+                body: JSON.stringify({ type: "metagraph.publish" }),
+              },
+              attempts: 8,
+              ack: () => acts.push("ack"),
+              retry: () => acts.push("retry"),
             },
-            attempts: 8,
-            ack: () => acts.push("ack"),
-            retry: () => acts.push("retry"),
-          },
-        ],
-      } as never,
-      envWith(kv) as unknown as Env,
-      { waitUntil: (p: Promise<unknown>) => void p } as never,
-    );
-    assert.deepEqual(acts, ["ack"]);
-    assert.deepEqual(
-      [...kv.store.keys()].filter((key) =>
-        key.startsWith(`webhooks:delivery:${sub.id}`),
-      ),
-      [],
-      "recorded as a dead letter, not run through delivery again",
-    );
+          ],
+        } as never,
+        envWith(kv) as unknown as Env,
+        { waitUntil: (p: Promise<unknown>) => void p } as never,
+      );
+      assert.deepEqual(acts, ["ack"]);
+      assert.equal(outbound.mock.calls.length, 0);
+      const record = JSON.parse(
+        kv.store.get(`webhooks:delivery:${sub.id}:evt_1`)!,
+      );
+      assert.equal(record.state, "dead");
+      assert.equal(
+        record.event_body,
+        JSON.stringify({ type: "metagraph.publish" }),
+      );
+    } finally {
+      outbound.mockRestore();
+    }
   });
 
   test("a body that is not JSON is acked, because it never will be", async () => {
@@ -1640,4 +1648,102 @@ describe("the webhook cron trigger (metagraphed-infra#354)", () => {
     assert.equal(res.ok, true);
     assert.equal(res.reason, "not_provisioned", "no queue bound in this env");
   });
+});
+
+describe("terminal webhook persistence", () => {
+  for (const disposition of ["failed", "delivered"] as const) {
+    test(`a KV write failure after ${disposition} has the correct acknowledgment`, async () => {
+      const kv = makeKv();
+      const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+      const eventBody = '{"type":"metagraph.publish"}';
+      kv.put = async () => {
+        throw new Error("KV unavailable");
+      };
+      const actions: string[] = [];
+      const { handleWebhookQueue } = await import("../workers/api.ts");
+      await handleWebhookQueue(
+        {
+          messages: [
+            {
+              body: {
+                subscription_id: sub.id,
+                event_id: "evt-1",
+                body: eventBody,
+              },
+              attempts: 1,
+              ack: () => actions.push("ack"),
+              retry: () => actions.push("retry"),
+            },
+          ],
+        } as never,
+        envWith(kv) as unknown as Env,
+        {} as never,
+        (async () => ({ status: disposition, retryable: false })) as never,
+      );
+      assert.deepEqual(actions, [disposition === "failed" ? "retry" : "ack"]);
+    });
+  }
+
+  test("a terminal failure preserves exact event bytes before acknowledgment", async () => {
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    const eventBody = '{ "type": "metagraph.publish" }';
+    const { handleWebhookQueue } = await import("../workers/api.ts");
+    let acknowledged = false;
+    await handleWebhookQueue(
+      {
+        messages: [
+          {
+            body: {
+              subscription_id: sub.id,
+              event_id: "evt-1",
+              body: eventBody,
+            },
+            attempts: 8,
+            ack: () => {
+              const record = JSON.parse(
+                kv.store.get(`webhooks:delivery:${sub.id}:evt-1`)!,
+              );
+              assert.equal(record.state, "dead");
+              assert.equal(record.event_body, eventBody);
+              acknowledged = true;
+            },
+            retry: () => assert.fail("durably recorded failure must not retry"),
+          },
+        ],
+      } as never,
+      envWith(kv) as unknown as Env,
+      {} as never,
+      (async () => ({ status: "failed", retryable: true })) as never,
+    );
+    assert.equal(acknowledged, true);
+  });
+});
+
+test("missing webhook storage cannot be mistaken for a deleted subscription", async () => {
+  const { handleWebhookQueue } = await import("../workers/api.ts");
+  const actions: string[] = [];
+  await assert.rejects(
+    () =>
+      handleWebhookQueue(
+        {
+          messages: [
+            {
+              body: {
+                subscription_id: "sub-a",
+                event_id: "evt-a",
+                body: '{"a":1}',
+              },
+              attempts: 1,
+              ack: () => actions.push("ack"),
+              retry: () => actions.push("retry"),
+            },
+          ],
+        } as never,
+        envWith(undefined) as unknown as Env,
+        {} as never,
+      ),
+    /storage is unavailable/,
+  );
+  assert.deepEqual(actions, []);
 });
