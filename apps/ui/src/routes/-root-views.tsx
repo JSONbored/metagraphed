@@ -9,15 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, type CSSProperties, type ReactNode } from "react";
-import {
-  AnalyticsSection,
-  EntityHero,
-  Fact,
-  FactSentence,
-  Raw,
-  Toaster,
-} from "@jsonbored/ui-kit";
-import { AppShell } from "@/components/metagraphed/app-shell";
+import { EntityHero, Fact, FactSentence, Raw, Toaster } from "@jsonbored/ui-kit";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { initAnalytics, capturePageview, syncReplayPolicy } from "../lib/analytics";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
