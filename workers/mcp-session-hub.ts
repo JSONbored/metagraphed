@@ -435,11 +435,13 @@ export class McpSessionHub implements DurableObject {
     if (!body) return badRequest("sessionId and uri are required");
     const { sessionId, uri } = body;
     this.sessionId = sessionId;
+    const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
     const statusNetuid = parseSubnetStatusResourceUri(uri);
-    this.subscribedUris.delete(uri);
-    this.pendingUris.delete(uri);
-    await this.persist();
-    if (uri === MCP_CHAIN_STREAM_RESOURCE_URI && this.env.CHAIN_FIREHOSE_HUB) {
+    if (
+      hadChain &&
+      uri === MCP_CHAIN_STREAM_RESOURCE_URI &&
+      this.env.CHAIN_FIREHOSE_HUB
+    ) {
       const stub = this.env.CHAIN_FIREHOSE_HUB.get(
         this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
       );
@@ -467,6 +469,9 @@ export class McpSessionHub implements DurableObject {
       );
       if (!response.ok) throw new Error("Subnet unsubscription failed");
     }
+    this.subscribedUris.delete(uri);
+    this.pendingUris.delete(uri);
+    await this.persist();
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "content-type": "application/json" },

@@ -1581,6 +1581,7 @@ test("reverse unsubscription and termination remain retryable after refusal", as
         });
       await assert.rejects(() => hub.fetch(request()), /unsubscription failed/);
       assert.equal(hub.terminated, false);
+      assert.equal(hub.subscribedUris.has(uri), true);
       fail = false;
       assert.equal((await hub.fetch(request())).status, 200);
       assert.equal(calls, 2, "retry reaches the same reverse owner again");
