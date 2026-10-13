@@ -1809,3 +1809,55 @@ test("a failed durable cleanup retry schedule remains a platform-visible failure
   );
   await assert.rejects(hub.alarm(), /alarm storage unavailable/);
 });
+
+test("idle cleanup preserves its next alarm before stalled exception reporting", async () => {
+  const state = stubState({
+    sessionId: "session-1",
+    subscribedUris: [MCP_CHAIN_STREAM_RESOURCE_URI],
+  });
+  let reportingStarted = false;
+  let release!: () => void;
+  const reporting = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+    const event = JSON.parse(String(init?.body ?? "{}")) as Row;
+    if (event.event === "$exception") {
+      reportingStarted = true;
+      await reporting;
+    }
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  let work: Promise<void> | undefined;
+  try {
+    const hub = new McpSessionHub(
+      state,
+      telemetryEnv({
+        CHAIN_FIREHOSE_HUB: {
+          idFromName: (name: string) => name,
+          get: () => ({
+            fetch: async () => new Response(null, { status: 503 }),
+          }),
+        },
+      }),
+    );
+    work = hub.alarm();
+    await vi.waitFor(() => assert.equal(reportingStarted, true));
+    assert.ok(Number((state.storage as Row).lastAlarmTime) > Date.now());
+    const restored = new McpSessionHub(state, mockEnv());
+    await restored.hydrate();
+    assert.equal(restored.terminated, false);
+    assert.equal(
+      restored.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI),
+      true,
+    );
+  } finally {
+    release();
+    try {
+      await work;
+    } finally {
+      globalThis.fetch = original;
+    }
+  }
+});

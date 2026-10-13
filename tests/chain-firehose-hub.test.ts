@@ -2786,16 +2786,39 @@ test("malformed persisted MCP membership cannot be treated as empty", async () =
 });
 
 test("MCP membership hydration retries a failed storage read", async () => {
-  const state = stubState();
-  const read = state.storage.get.bind(state.storage);
-  state.storage.get = vi.fn().mockRejectedValue(new Error("read unavailable"));
-  const hub = new ChainFirehoseHub(state, mockEnv({}));
-  await assert.rejects(() => hub.hydrateMcpSubscriptions(), /read unavailable/);
-  await hub.broadcast({ table: "blocks", block_number: 42 });
-  assert.equal(hub.latestPayload?.block_number, 42);
-  state.storage.get = read;
-  await hub.updateMcpSubscription("s1", true);
-  assert.deepEqual([...hub.mcpSubscribedSessions], ["s1"]);
+  const cap = captureFirehoseTelemetry();
+  try {
+    const state = stubState();
+    const read = state.storage.get.bind(state.storage);
+    state.storage.get = vi
+      .fn()
+      .mockRejectedValue(new Error("read unavailable"));
+    const hub = new ChainFirehoseHub(state, mockEnv(FIREHOSE_TELEMETRY_ENV));
+    await assert.rejects(
+      () => hub.hydrateMcpSubscriptions(),
+      /read unavailable/,
+    );
+    await hub.broadcast({ table: "blocks", block_number: 42 });
+    await hub.broadcast({ table: "blocks", block_number: 43 });
+    assert.equal(hub.latestPayload?.block_number, 43);
+    assert.deepEqual(cap.routes(), [
+      "chain-firehose-hub:mcp-membership-unavailable",
+    ]);
+    state.storage.get = read;
+    await hub.updateMcpSubscription("s1", true);
+    assert.deepEqual([...hub.mcpSubscribedSessions], ["s1"]);
+    await hub.broadcast({ table: "blocks", block_number: 44 });
+    state.storage.get = vi.fn().mockRejectedValue(new Error("second outage"));
+    hub.mcpMembershipHydration = undefined;
+    await hub.broadcast({ table: "blocks", block_number: 45 });
+    assert.equal(hub.latestPayload?.block_number, 45);
+    assert.deepEqual(cap.routes(), [
+      "chain-firehose-hub:mcp-membership-unavailable",
+      "chain-firehose-hub:mcp-membership-unavailable",
+    ]);
+  } finally {
+    cap.restore();
+  }
 });
 
 test("MCP membership rejects an oversized durable value before writing it", async () => {

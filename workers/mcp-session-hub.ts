@@ -823,6 +823,11 @@ export class McpSessionHub implements DurableObject {
         }),
       );
     } catch (error) {
+      // Preserve the next wake-up before reporting: telemetry may wait on an
+      // external service, but recovery must not depend on it completing.
+      await this.state.storage.setAlarm(
+        Date.now() + MCP_SESSION_CLEANUP_RETRY_MS,
+      );
       // Awaited bare: recordExceptionEvent is contractually
       // no-throw (it swallows transport failures and returns
       // false), so a `.catch` here would be an unreachable
@@ -833,9 +838,6 @@ export class McpSessionHub implements DurableObject {
         route: "mcp-session-hub:alarm",
         errorCode: "internal_error",
       });
-      await this.state.storage.setAlarm(
-        Date.now() + MCP_SESSION_CLEANUP_RETRY_MS,
-      );
     }
   }
 }
