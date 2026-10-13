@@ -1126,7 +1126,7 @@ describe("callSubnetSurface", () => {
     assert.ok(result.error.includes("<redacted>"));
   });
 
-  test("credential bundle: preserved across a same-origin redirect, stripped on cross-origin", async () => {
+  test("credential bundle: preserved across a same-origin redirect, refused on cross-origin", async () => {
     let calls = 0;
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
@@ -1160,8 +1160,8 @@ describe("callSubnetSurface", () => {
         },
       },
     );
-    assert.equal(result.ok, true);
-    assert.equal(calls, 2);
+    assert.equal(result.ok, false);
+    assert.equal(calls, 1);
   });
 
   test("credential: cookie location sets a Cookie header formatted name=value", async () => {
@@ -1300,11 +1300,11 @@ describe("callSubnetSurface", () => {
         },
       },
     );
-    assert.equal(result.ok, true);
-    assert.equal(calls, 2);
+    assert.equal(result.ok, false);
+    assert.equal(calls, 1);
   });
 
-  test("credential: once stripped on a cross-origin hop, stays stripped on a further redirect back to the original origin", async () => {
+  test("credential: a refused cross-origin hop never reaches a redirect back", async () => {
     let calls = 0;
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
@@ -1342,8 +1342,8 @@ describe("callSubnetSurface", () => {
         },
       },
     );
-    assert.equal(result.ok, true);
-    assert.equal(calls, 3);
+    assert.equal(result.ok, false);
+    assert.equal(calls, 1);
   });
 
   test("without a path override, method falls back to Phase 1's probe-derived default even if a method option is set alone", async () => {
@@ -1670,5 +1670,103 @@ describe("body-read deadline (#8655)", () => {
       { isUnsafeUrl: SAFE, fetchImpl: async () => jsonResponse({ ok: true }) },
     );
     assert.notEqual((result as Row).truncated, true);
+  });
+});
+
+
+describe("credential redirect boundaries", () => {
+  for (const location of ["header", "query", "cookie", "body"] as const) {
+    for (const status of [301, 302, 303, 307, 308]) {
+      test(`${location} credentials refuse cross-origin ${status} before another fetch`, async () => {
+        let calls = 0;
+        const result = await callSubnetSurface(
+          { url: "https://example.com/api" },
+          {
+            path: "/api",
+            method: "POST",
+            body: '{"operation":"read"}',
+            contentType: "application/json",
+            credential: { location, values: { token: "synthetic-credential" } },
+            isUnsafeUrl: SAFE,
+            fetchImpl: async () => {
+              calls += 1;
+              return new Response(null, {
+                status,
+                headers: {
+                  location: "https://other.example/api?token=synthetic-credential",
+                },
+              });
+            },
+          },
+        );
+        assert.equal(result.ok, false);
+        assert.equal(calls, 1);
+        if (result.ok) throw new Error("Expected a refused redirect");
+        assert.equal(result.status_code, status);
+        assert.ok(!JSON.stringify(result).includes("synthetic-credential"));
+      });
+    }
+  }
+
+  for (const [status, method, expected] of [
+    [301, "POST", "GET"],
+    [302, "POST", "GET"],
+    [303, "PUT", "GET"],
+    [303, "GET", "GET"],
+    [303, "HEAD", "HEAD"],
+    [301, "PUT", "PUT"],
+    [307, "POST", "POST"],
+    [308, "PATCH", "PATCH"],
+  ] as const) {
+    test(`${status} preserves HTTP semantics for ${method}`, async () => {
+      let calls = 0;
+      const result = await callSubnetSurface(
+        { url: "https://example.com/api" },
+        {
+          path: "/api",
+          method,
+          body: "payload",
+          contentType: "text/plain",
+          isUnsafeUrl: SAFE,
+          fetchImpl: async (_url, init) => {
+            calls += 1;
+            if (calls === 1)
+              return new Response(null, {
+                status,
+                headers: { location: "https://example.com/next" },
+              });
+            assert.equal(init?.method, expected);
+            const dropsBody = expected === "GET" || expected === "HEAD";
+            assert.equal(init?.body, dropsBody ? undefined : "payload");
+            assert.equal(
+              new Headers(init?.headers).get("content-type"),
+              dropsBody ? null : "text/plain",
+            );
+            return jsonResponse({ ok: true });
+          },
+        },
+      );
+      assert.equal(result.ok, true);
+      assert.equal(calls, 2);
+    });
+  }
+
+  test("redirect diagnostics redact URL-encoded credential values", async () => {
+    const value = "synthetic secret/+";
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "header", name: "x-token", value },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => new Response(null, {
+          status: 307,
+          headers: {
+            location: `https://other.example/?token=${encodeURIComponent(value)}`,
+          },
+        }),
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.ok(!JSON.stringify(result).includes(encodeURIComponent(value)));
   });
 });

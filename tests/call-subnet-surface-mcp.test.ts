@@ -2317,14 +2317,8 @@ describe("surface credential store (#9009)", () => {
     assert.equal((second.structuredContent as Row).replaced, true);
   });
 
-  // The OTHER authentication door. Every test above binds via the OAuth
-  // props; this one goes through the mg_-key path, where the identity is
-  // resolved by the tiered rate-limit gate rather than the OAuth provider.
-  // Both must land on the same `account:<id>` — that equivalence is the whole
-  // reason the store keys on the shared rpc_accounts id instead of on
-  // whichever mechanism the caller used, and if it ever broke, a caller would
-  // silently lose access to their own registrations by switching clients.
-  test("an mg_ key resolves the same identity as the OAuth props", async () => {
+  // Separate identity namespaces must remain isolated through the transport gate.
+  test("an mg_ key cannot use a GitHub registration with the same account id", async () => {
     const env = {
       ...credentialEnv(),
       API_KEY_LOOKUP_INTERNAL_TOKEN: "synthetic-lookup",
@@ -2375,7 +2369,7 @@ describe("surface credential store (#9009)", () => {
       env,
     );
 
-    // …and resolved through the mg_-key door, same account.
+    // The independent API-key account must not resolve that registration.
     const of = globalThis.fetch;
     let sentHeader: string | undefined;
     globalThis.fetch = async (_url, init) => {
@@ -2407,12 +2401,9 @@ describe("surface credential store (#9009)", () => {
         deps,
       );
       const result = ((await response.json()) as Row).result as Row;
-      assert.equal(result.isError, false);
-      assert.equal(sentHeader, "Bearer abc123");
-      assert.equal(
-        (result.structuredContent as Row).credential_source,
-        "stored",
-      );
+      assert.equal(result.isError, true);
+      assert.equal(sentHeader, undefined);
+      assert.equal(errorCode(result), "auth_required");
     } finally {
       globalThis.fetch = of;
     }

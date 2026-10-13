@@ -147,8 +147,16 @@ function redactCredentialValue(
       : [];
   let result = text;
   for (const value of values) {
-    if (value)
-      result = result.split(value).join(REDACTED_CREDENTIAL_PLACEHOLDER);
+    if (!value) continue;
+    for (const representation of new Set([
+      value,
+      encodeURIComponent(value),
+      new URLSearchParams({ value }).toString().slice("value=".length),
+    ])) {
+      result = result
+        .split(representation)
+        .join(REDACTED_CREDENTIAL_PLACEHOLDER);
+    }
   }
   return result;
 }
@@ -349,6 +357,7 @@ export async function callSubnetSurface(
       ? { body: effectiveBody, contentType: requestContentType }
       : {}),
     extraHeaders,
+    credentialed: credentialEntries.length > 0,
     fetchImpl,
     isUnsafeUrl,
     timeoutMs,
@@ -367,8 +376,8 @@ export async function callSubnetSurface(
       ...fetched,
       ...(fetched.redirect_target
         ? {
-            redirect_target: redactQueryCredential(
-              fetched.redirect_target,
+            redirect_target: redactCredentialValue(
+              redactQueryCredential(fetched.redirect_target, credential),
               credential,
             ),
           }
@@ -626,6 +635,7 @@ async function safetyCheckedFetch(
     body,
     contentType,
     extraHeaders,
+    credentialed = false,
     redirectCount = 0,
   }: {
     method: string;
@@ -635,6 +645,7 @@ async function safetyCheckedFetch(
     body?: string;
     contentType?: string;
     extraHeaders?: Record<string, string>;
+    credentialed?: boolean;
     redirectCount?: number;
   },
 ): Promise<SafetyCheckedFetchResult> {
@@ -678,24 +689,28 @@ async function safetyCheckedFetch(
           status_code: response.status,
         };
       }
-      // metagraphed#7686: extraHeaders may carry a caller's credential
-      // (Authorization/api-key/Cookie) -- forwarding it across an origin
-      // boundary would hand it to a host the caller never authorized,
-      // exactly the class of leak real HTTP clients guard against by
-      // stripping Authorization on a cross-origin redirect. This code
-      // manually re-issues each hop (redirect: "manual"), so that stripping
-      // doesn't happen for free; drop extraHeaders the moment the redirect
-      // target's origin differs from the current hop's, and it stays
-      // dropped for every hop after (a stripped call never receives it back).
       const sameOrigin = new URL(redirectTarget).origin === new URL(url).origin;
+      if (credentialed && !sameOrigin) {
+        return {
+          ok: false,
+          error: "Credentialed requests cannot redirect to another origin",
+          status_code: response.status,
+          redirect_target: redirectTarget,
+        };
+      }
+      const switchToGet =
+        ((response.status === 301 || response.status === 302) &&
+          method === "POST") ||
+        (response.status === 303 && method !== "GET" && method !== "HEAD");
       return safetyCheckedFetch(redirectTarget, {
-        method,
+        method: switchToGet ? "GET" : method,
         fetchImpl,
         isUnsafeUrl,
         timeoutMs,
-        body,
-        contentType,
+        body: switchToGet ? undefined : body,
+        contentType: switchToGet ? undefined : contentType,
         extraHeaders: sameOrigin ? extraHeaders : undefined,
+        credentialed,
         redirectCount: redirectCount + 1,
       });
     }
