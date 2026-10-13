@@ -1822,3 +1822,29 @@ describe("credential diagnostics do not echo provider strings", () => {
     }
   }
 });
+
+test("credentialed binary refusal omits reflected content-type diagnostics", async () => {
+  const reflected = "synthetic%20secret%2f%2b";
+  const result = await callSubnetSurface(
+    { url: "https://example.com/api" },
+    {
+      credential: {
+        location: "header",
+        name: "token",
+        value: "synthetic secret/+",
+      },
+      isUnsafeUrl: SAFE,
+      fetchImpl: async () =>
+        new Response("opaque", {
+          headers: {
+            "content-type": `application/octet-stream; echo=${reflected}`,
+          },
+        }),
+    },
+  );
+  assert.equal(result.ok, false);
+  if (result.ok) throw new Error("Expected binary refusal");
+  assert.equal(result.error, "unsupported content-type");
+  assert.equal(result.content_type, null);
+  assert.ok(!JSON.stringify(result).includes(reflected));
+});
