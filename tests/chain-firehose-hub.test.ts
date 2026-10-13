@@ -656,7 +656,16 @@ function stubState(
   webSockets: Row[] = [],
   graphqlWsTaggedSockets: Row[] = [],
 ): DurableObjectState {
+  const data = new Map<string, unknown>();
   return {
+    storage: {
+      get: async (key: string) => data.get(key),
+      put: async (key: string, value: unknown) => {
+        data.set(key, value);
+      },
+      getAlarm: async () => null,
+      setAlarm: async () => {},
+    },
     getWebSockets: (tag?: string) => {
       if (tag === undefined) return webSockets;
       if (tag === GRAPHQL_WS_SOCKET_TAG) return graphqlWsTaggedSockets;
@@ -2732,4 +2741,92 @@ test("alarm: any OTHER setAlarm failure is still reported (#11021)", async () =>
   // `try` was propagating -- but it MUST still reach the error channel, or a
   // hub that has stopped scheduling looks exactly like a deploy.
   assert.match(JSON.stringify(errors), /storage quota exceeded/);
+});
+test("MCP reverse membership survives a fresh firehose object", async () => {
+  const state = stubState();
+  const first = new ChainFirehoseHub(state, mockEnv({}));
+  await Promise.all([
+    first.updateMcpSubscription("s1", true),
+    first.updateMcpSubscription("s2", true),
+  ]);
+  const restored = new ChainFirehoseHub(state, mockEnv({}));
+  await restored.hydrateMcpSubscriptions();
+  assert.deepEqual([...restored.mcpSubscribedSessions], ["s1", "s2"]);
+  await restored.updateMcpSubscription("s1", false);
+  const again = new ChainFirehoseHub(state, mockEnv({}));
+  await again.hydrateMcpSubscriptions();
+  assert.deepEqual([...again.mcpSubscribedSessions], ["s2"]);
+});
+
+test("MCP membership persistence failure refuses success and permits a later retry", async () => {
+  const state = stubState();
+  const write = state.storage.put.bind(state.storage);
+  state.storage.put = vi
+    .fn()
+    .mockRejectedValue(new Error("storage unavailable"));
+  const hub = new ChainFirehoseHub(state, mockEnv({}));
+  await assert.rejects(
+    () => hub.updateMcpSubscription("s1", true),
+    /unavailable/,
+  );
+  assert.equal(hub.mcpSubscribedSessions.size, 0);
+  state.storage.put = write;
+  await hub.updateMcpSubscription("s1", true);
+  assert.deepEqual([...hub.mcpSubscribedSessions], ["s1"]);
+});
+
+test("malformed persisted MCP membership cannot be treated as empty", async () => {
+  const state = stubState();
+  await state.storage.put("mcp:subscribed-sessions", ["s1", 7]);
+  const hub = new ChainFirehoseHub(state, mockEnv({}));
+  await assert.rejects(
+    () => hub.hydrateMcpSubscriptions(),
+    /Invalid persisted/,
+  );
+});
+
+test("MCP membership hydration retries a failed storage read", async () => {
+  const cap = captureFirehoseTelemetry();
+  try {
+    const state = stubState();
+    const read = state.storage.get.bind(state.storage);
+    state.storage.get = vi
+      .fn()
+      .mockRejectedValue(new Error("read unavailable"));
+    const hub = new ChainFirehoseHub(state, mockEnv(FIREHOSE_TELEMETRY_ENV));
+    await assert.rejects(
+      () => hub.hydrateMcpSubscriptions(),
+      /read unavailable/,
+    );
+    await hub.broadcast({ table: "blocks", block_number: 42 });
+    await hub.broadcast({ table: "blocks", block_number: 43 });
+    assert.equal(hub.latestPayload?.block_number, 43);
+    assert.deepEqual(cap.routes(), [
+      "chain-firehose-hub:mcp-membership-unavailable",
+    ]);
+    state.storage.get = read;
+    await hub.updateMcpSubscription("s1", true);
+    assert.deepEqual([...hub.mcpSubscribedSessions], ["s1"]);
+    await hub.broadcast({ table: "blocks", block_number: 44 });
+    state.storage.get = vi.fn().mockRejectedValue(new Error("second outage"));
+    hub.mcpMembershipHydration = undefined;
+    await hub.broadcast({ table: "blocks", block_number: 45 });
+    assert.equal(hub.latestPayload?.block_number, 45);
+    assert.deepEqual(cap.routes(), [
+      "chain-firehose-hub:mcp-membership-unavailable",
+      "chain-firehose-hub:mcp-membership-unavailable",
+    ]);
+  } finally {
+    cap.restore();
+  }
+});
+
+test("MCP membership rejects an oversized durable value before writing it", async () => {
+  const state = stubState();
+  const hub = new ChainFirehoseHub(state, mockEnv({}));
+  for (let n = 0; n < 2_000; n += 1)
+    hub.mcpSubscribeSession(`${n}-${"x".repeat(100)}`);
+  await assert.rejects(() => hub.updateMcpSubscription("new", true), /budget/);
+  assert.equal(hub.mcpSubscribedSessions.has("new"), false);
+  assert.equal(await state.storage.get("mcp:subscribed-sessions"), undefined);
 });

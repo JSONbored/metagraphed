@@ -118,6 +118,10 @@ export const MCP_SESSION_KEEPALIVE_FRAME = ": keepalive\n\n";
 // its SSE stream, per the "dropped connection ≠ implicit unsubscribe, but a
 // server MAY terminate at any time" spec allowance.
 export const MCP_SESSION_IDLE_TTL_MS = 30 * 60 * 1000;
+// A failed expiry schedules another native alarm instead of depending on the
+// platform's finite automatic retry budget. Only unfinished cleanup wakes again.
+export const MCP_SESSION_CLEANUP_RETRY_MS = 5 * 60 * 1000;
+export const MCP_SESSION_REVERSE_CALL_TIMEOUT_MS = 5_000;
 
 export interface ResourceUpdatedNotification {
   jsonrpc: "2.0";
@@ -281,6 +285,13 @@ export class McpSessionHub implements DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    // Native input gating keeps register/subscribe/stream/DELETE/notify atomic
+    // with respect to one another, including awaited reverse membership calls.
+    // A stream response releases the gate; its open body is not awaited here.
+    return this.state.blockConcurrencyWhile(() => this.handleRequest(request));
+  }
+
+  private async handleRequest(request: Request): Promise<Response> {
     await this.hydrate();
     const url = new URL(request.url);
     const startedAt = Date.now();
@@ -398,21 +409,33 @@ export class McpSessionHub implements DurableObject {
       const stub = this.env.CHAIN_FIREHOSE_HUB.get(
         this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
       );
-      await stub.fetch("https://chain-firehose-hub.internal/mcp-subscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      });
+      const response = await stub.fetch(
+        "https://chain-firehose-hub.internal/mcp-subscribe",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+          signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok)
+        throw new Error("Chain subscription registration failed");
     }
     if (statusNetuid != null && this.env.SUBNET_STATUS_HUB) {
       const stub = this.env.SUBNET_STATUS_HUB.get(
         this.env.SUBNET_STATUS_HUB.idFromName("global"),
       );
-      await stub.fetch("https://subnet-status-hub.internal/mcp-subscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId, netuid: statusNetuid }),
-      });
+      const response = await stub.fetch(
+        "https://subnet-status-hub.internal/mcp-subscribe",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId, netuid: statusNetuid }),
+          signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok)
+        throw new Error("Subnet subscription registration failed");
     }
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -427,34 +450,43 @@ export class McpSessionHub implements DurableObject {
     this.sessionId = sessionId;
     const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
     const statusNetuid = parseSubnetStatusResourceUri(uri);
-    this.subscribedUris.delete(uri);
-    this.pendingUris.delete(uri);
-    await this.persist();
     if (
       hadChain &&
       uri === MCP_CHAIN_STREAM_RESOURCE_URI &&
-      !this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI) &&
       this.env.CHAIN_FIREHOSE_HUB
     ) {
       const stub = this.env.CHAIN_FIREHOSE_HUB.get(
         this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
       );
-      await stub.fetch("https://chain-firehose-hub.internal/mcp-unsubscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      });
+      const response = await stub.fetch(
+        "https://chain-firehose-hub.internal/mcp-unsubscribe",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+          signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok) throw new Error("Chain unsubscription failed");
     }
     if (statusNetuid != null && this.env.SUBNET_STATUS_HUB) {
       const stub = this.env.SUBNET_STATUS_HUB.get(
         this.env.SUBNET_STATUS_HUB.idFromName("global"),
       );
-      await stub.fetch("https://subnet-status-hub.internal/mcp-unsubscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId, netuid: statusNetuid }),
-      });
+      const response = await stub.fetch(
+        "https://subnet-status-hub.internal/mcp-unsubscribe",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId, netuid: statusNetuid }),
+          signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok) throw new Error("Subnet unsubscription failed");
     }
+    this.subscribedUris.delete(uri);
+    this.pendingUris.delete(uri);
+    await this.persist();
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -623,7 +655,6 @@ export class McpSessionHub implements DurableObject {
     }
     const effectiveSessionId = sessionId ?? this.sessionId;
     if (!this.terminated) {
-      this.terminated = true;
       this.closeStream();
       const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
       const hadStatus = [...this.subscribedUris].some(
@@ -633,30 +664,35 @@ export class McpSessionHub implements DurableObject {
         const stub = this.env.CHAIN_FIREHOSE_HUB.get(
           this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
         );
-        await stub.fetch(
+        const response = await stub.fetch(
           "https://chain-firehose-hub.internal/mcp-unsubscribe",
           {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ sessionId: effectiveSessionId }),
+            signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
           },
         );
+        if (!response.ok) throw new Error("Chain unsubscription failed");
       }
       if (hadStatus && effectiveSessionId && this.env.SUBNET_STATUS_HUB) {
         const stub = this.env.SUBNET_STATUS_HUB.get(
           this.env.SUBNET_STATUS_HUB.idFromName("global"),
         );
-        await stub.fetch(
+        const response = await stub.fetch(
           "https://subnet-status-hub.internal/mcp-unsubscribe-session",
           {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ sessionId: effectiveSessionId }),
+            signal: AbortSignal.timeout(MCP_SESSION_REVERSE_CALL_TIMEOUT_MS),
           },
         );
+        if (!response.ok) throw new Error("Subnet unsubscription failed");
       }
       this.subscribedUris.clear();
       this.pendingUris.clear();
+      this.terminated = true;
       await this.persist();
     }
     return new Response(JSON.stringify({ ok: true }), {
@@ -704,6 +740,16 @@ export class McpSessionHub implements DurableObject {
     // is strictly better in every case: if it was dead, the session is repaired;
     // if it was alive, that client just replaced its own channel, which is what
     // it asked to do.
+    for (const uri of this.subscribedUris) {
+      const response = await this.handleSubscribe(
+        new Request("https://mcp-session-hub.internal/subscribe", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId: this.sessionId, uri }),
+        }),
+      );
+      if (!response.ok) return response;
+    }
     this.closeStream();
     void this.touch();
     const stream = new ReadableStream({
@@ -751,15 +797,18 @@ export class McpSessionHub implements DurableObject {
   // ChainFirehoseHub.mcpSubscribedSessions never accumulates dead sessions
   // just because a client never explicitly unsubscribed/terminated.
   async alarm(): Promise<void> {
+    return this.state.blockConcurrencyWhile(() => this.expire());
+  }
+
+  private async expire(): Promise<void> {
     // #9446: a DO alarm that throws is retried by the platform and recorded
     // NOWHERE -- no request to fail, no caller to notice, and this file's one
     // capture site covers `deliver` only. An alarm stuck in a retry loop is
     // therefore indistinguishable from a hub with no sessions to expire, which
     // is the state it is supposed to be in almost all the time.
     //
-    // Captured and rethrown: the platform's own retry behaviour is what makes
-    // a transient failure recoverable, so swallowing here would trade a
-    // retried alarm for a silently skipped expiry.
+    // Captured and rescheduled in native storage: automatic alarm retries are
+    // finite, so unfinished reverse cleanup must own its next wake-up.
     try {
       await this.hydrate();
       // Idle expiry, distinct from a client DELETE: same terminate path, but
@@ -774,6 +823,11 @@ export class McpSessionHub implements DurableObject {
         }),
       );
     } catch (error) {
+      // Preserve the next wake-up before reporting: telemetry may wait on an
+      // external service, but recovery must not depend on it completing.
+      await this.state.storage.setAlarm(
+        Date.now() + MCP_SESSION_CLEANUP_RETRY_MS,
+      );
       // Awaited bare: recordExceptionEvent is contractually
       // no-throw (it swallows transport failures and returns
       // false), so a `.catch` here would be an unreachable
@@ -784,7 +838,6 @@ export class McpSessionHub implements DurableObject {
         route: "mcp-session-hub:alarm",
         errorCode: "internal_error",
       });
-      throw error;
     }
   }
 }
