@@ -384,7 +384,10 @@ describe("surface credential identity", () => {
     })!;
     await storeSurfaceCredential(env, rpc, "sn-1-x-api", "rpc-value");
     await storeSurfaceCredential(env, github, "sn-1-x-api", "github-value");
-    assert.equal(await loadSurfaceCredential(env, rpc, "sn-1-x-api"), "rpc-value");
+    assert.equal(
+      await loadSurfaceCredential(env, rpc, "sn-1-x-api"),
+      "rpc-value",
+    );
     assert.equal(
       await loadSurfaceCredential(env, github, "sn-1-x-api"),
       "github-value",

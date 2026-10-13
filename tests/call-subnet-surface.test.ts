@@ -1673,7 +1673,6 @@ describe("body-read deadline (#8655)", () => {
   });
 });
 
-
 describe("credential redirect boundaries", () => {
   for (const location of ["header", "query", "cookie", "body"] as const) {
     for (const status of [301, 302, 303, 307, 308]) {
@@ -1693,7 +1692,8 @@ describe("credential redirect boundaries", () => {
               return new Response(null, {
                 status,
                 headers: {
-                  location: "https://other.example/api?token=synthetic-credential",
+                  location:
+                    "https://other.example/api?token=synthetic-credential",
                 },
               });
             },
@@ -1758,12 +1758,13 @@ describe("credential redirect boundaries", () => {
       {
         credential: { location: "header", name: "x-token", value },
         isUnsafeUrl: SAFE,
-        fetchImpl: async () => new Response(null, {
-          status: 307,
-          headers: {
-            location: `https://other.example/?token=${encodeURIComponent(value)}`,
-          },
-        }),
+        fetchImpl: async () =>
+          new Response(null, {
+            status: 307,
+            headers: {
+              location: `https://other.example/?token=${encodeURIComponent(value)}`,
+            },
+          }),
       },
     );
     assert.equal(result.ok, false);

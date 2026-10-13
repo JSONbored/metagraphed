@@ -127,9 +127,12 @@ export function resolveSurfaceCredentialIdentity(ctx: {
   executionCtx?: { props?: { accountId?: unknown } };
 }): string | null {
   const fromGate = ctx.accountId !== null && ctx.accountId !== undefined;
-  const candidate = fromGate ? ctx.accountId : ctx.executionCtx?.props?.accountId;
+  const candidate = fromGate
+    ? ctx.accountId
+    : ctx.executionCtx?.props?.accountId;
   const kind = fromGate ? asAccountKind(ctx.accountKind) : "github";
-  if (candidate === null || candidate === undefined || kind === null) return null;
+  if (candidate === null || candidate === undefined || kind === null)
+    return null;
   const id = String(candidate).trim();
   if (!id || id.includes(":")) return null;
   return `account:${kind}:${id}`;
