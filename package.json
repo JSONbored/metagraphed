@@ -253,6 +253,8 @@
     "ws": "^8.21.3",
     "@substrate/connect": "^2.1.8",
     "hono": "^4.13.7",
+    "seroval": "^1.6.9",
+    "source-map-js": "^1.2.2",
     "miniflare": {
       "sharp": "$sharp",
       "undici": "7.29.0"
