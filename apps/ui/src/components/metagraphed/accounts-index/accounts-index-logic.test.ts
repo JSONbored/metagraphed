@@ -64,20 +64,18 @@ describe("holderCards", () => {
   ];
 
   it("shows the reading it was ranked by, not always stake", () => {
-    expect(holderCards(accounts, "stake")[0]?.value).toBe("100.00τ");
+    expect(holderCards(accounts, "stake")).toEqual([]);
     expect(holderCards(accounts, "emission")[0]?.value).toBe("3.00τ");
     expect(holderCards(accounts, "reach")[0]?.value).toBe("7 subnets");
     expect(holderCards(accounts, "reach")[1]?.value).toBe("2 subnets");
   });
 
   it("links the coldkey, which is the account a reader can open", () => {
-    expect(holderCards(accounts, "stake")[0]?.href).toBe("/accounts/5AAAAAAAAAAAAAAAAAAA");
+    expect(holderCards(accounts, "reach")[0]?.href).toBe("/accounts/5AAAAAAAAAAAAAAAAAAA");
   });
 
   it("shows a share of complete priced registered stake", () => {
-    expect(holderCards(accounts, "stake", 18, 1_000)[0]?.sub).toBe(
-      "10.0% of priced stake · 7 subnets",
-    );
+    expect(holderCards(accounts, "reach", 18, 1_000)[0]?.sub).toBe("7 subnets");
   });
 
   it("drops a row with no address rather than linking nowhere", () => {
@@ -87,7 +85,7 @@ describe("holderCards", () => {
   });
 
   it("honours the limit", () => {
-    expect(holderCards(accounts, "stake", 1)).toHaveLength(1);
+    expect(holderCards(accounts, "reach", 1)).toHaveLength(1);
   });
 });
 
@@ -171,44 +169,18 @@ describe("lookupVerdict", () => {
   });
 });
 
-describe("holderCards carries each account's share of priced registered stake", () => {
+describe("holderCards preserve reach and withhold unsupported wealth", () => {
   const accounts = [
     { coldkey: "5A", total_stake_tao: 250, subnet_count: 3, uid_count: 3 },
     { coldkey: "5B", total_stake_tao: 750, subnet_count: 1, uid_count: 1 },
   ] as never;
-
-  it("states each account's network-wide share, share first", () => {
-    const [a, b] = holderCards(accounts, "stake", 18, 1000);
-    expect(a!.sub).toBe("25.0% of priced stake · 3 subnets");
-    expect(b!.sub).toBe("75.0% of priced stake · 1 subnet");
+  it("never publishes a wealth ranking from legacy totals or a supplied price denominator", () => {
+    for (const total of [null, 0, 1000])
+      expect(holderCards(accounts, "stake", 18, total)).toEqual([]);
   });
-
-  it("falls back to reach when there is no total to divide by", () => {
-    // A zero denominator is not "0%", it is "we cannot say" -- the card shows
-    // what it does know instead of a share of nothing.
-    const [a] = holderCards(accounts, "stake", 18, 0);
-    expect(a!.sub).toBe("3 subnets · 3 UIDs");
-  });
-
-  it("falls back when the stake itself is missing", () => {
-    const [a] = holderCards(
-      [{ coldkey: "5A", subnet_count: 2, uid_count: 2 }] as never,
-      "stake",
-      18,
-      1000,
-    );
-    expect(a!.sub).toBe("2 subnets · 2 UIDs");
-  });
-
-  it("uses one percent formatter, so two rows can never disagree", () => {
-    // The defect this replaced: the same account rendered "9%" in one section
-    // and "9.0%" in the other, 600px apart.
-    const [a] = holderCards(
-      [{ coldkey: "5A", total_stake_tao: 90, subnet_count: 1 }] as never,
-      "stake",
-      18,
-      1000,
-    );
-    expect(a!.sub.startsWith("9.0% of priced stake")).toBe(true);
+  it("retains observed reach and links without asserting a cross-token share", () => {
+    const cards = holderCards(accounts, "reach", 18, 1000);
+    expect(cards.map((row) => row.sub)).toEqual(["3 subnets", "1 subnet"]);
+    expect(cards[0]?.href).toBe("/accounts/5A");
   });
 });

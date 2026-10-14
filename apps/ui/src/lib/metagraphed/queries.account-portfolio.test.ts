@@ -59,13 +59,14 @@ describe("normalizePortfolioPosition", () => {
       uid: 42,
       role: "validator",
       active: true,
-      stake_alpha: 1250.5,
+      stake_alpha: null,
+      voting_weight: null,
       emission_alpha: 3.2,
       rank: 0.9,
       trust: 0.8,
       incentive: 0.5,
       dividends: 0.4,
-      yield: 0.00256,
+      yield: null,
     });
   });
 
@@ -87,6 +88,7 @@ describe("normalizePortfolioPosition", () => {
       role: null,
       active: undefined,
       stake_alpha: null,
+      voting_weight: null,
       emission_alpha: null,
       rank: null,
       trust: null,
@@ -198,13 +200,8 @@ describe("accountPortfolioQuery", () => {
     expect(result.data.ss58).toBe("5Server");
     expect(result.data.captured_at).toBe("2026-07-05T00:00:00Z");
     expect(result.data.positions).toHaveLength(1);
-    expect(result.data.positions[0]).toMatchObject({ netuid: 1, role: "validator", yield: 0.033 });
-    expect(result.data.stake_concentration).toEqual({
-      holders: 2,
-      gini: 0.5,
-      hhi_normalized: 0.6,
-      nakamoto_coefficient: 1,
-    });
+    expect(result.data.positions[0]).toMatchObject({ netuid: 1, role: "validator", yield: null });
+    expect(result.data.stake_concentration).toBeNull();
   });
 
   it("falls back to safe defaults when the body is a non-object (cold/absent)", async () => {

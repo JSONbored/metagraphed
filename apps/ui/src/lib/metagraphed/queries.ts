@@ -8462,7 +8462,13 @@ function normalizeGlobalValidatorSubnet(raw: unknown): GlobalValidatorSubnet | n
   return {
     netuid,
     uid,
-    stake_tao: coerceFiniteNumber(raw.stake_tao) ?? 0,
+    stake_tao: null,
+    voting_weight:
+      typeof raw.voting_weight === "number" &&
+      Number.isFinite(raw.voting_weight) &&
+      raw.voting_weight >= 0
+        ? raw.voting_weight
+        : null,
     emission_tao: coerceFiniteNumber(raw.emission_tao) ?? 0,
     validator_trust:
       raw.validator_trust == null ? null : (coerceFiniteNumber(raw.validator_trust) ?? null),
@@ -8498,8 +8504,7 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
     total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
     nominator_count: nullableNum(raw.nominator_count),
     apy_estimate: null,
-    apy_estimate_eligible_subnet_count:
-      coerceFiniteNumber(raw.apy_estimate_eligible_subnet_count) ?? 0,
+    apy_estimate_eligible_subnet_count: 0,
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),
     // On the wire since the leaderboard shipped, and dropped here until now --

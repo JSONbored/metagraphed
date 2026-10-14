@@ -78,9 +78,9 @@ describe("normalizeCompareValidators", () => {
     expect(result.validators[0]).toMatchObject({
       coldkey: BOB,
       take: 0.09,
-      apy_estimate: 0.123,
+      apy_estimate: null,
       nominator_count: 41,
-      total_stake_tao: 1200.5,
+      total_stake_tao: null,
       subnet_count: 5,
       subnet_context: null,
     });

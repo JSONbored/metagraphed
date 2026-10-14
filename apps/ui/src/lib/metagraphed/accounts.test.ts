@@ -143,16 +143,14 @@ describe("account holder directory", () => {
     });
 
     expect(data.account_count).toBe(42);
-    expect(data.priced_registered_stake_tao).toBe(1_000);
-    expect(data.rankings.stake).toEqual([
-      expect.objectContaining({ hotkey: "5Hot", stake_dominance: 0.1 }),
-    ]);
+    expect(data.priced_registered_stake_tao).toBeNull();
+    expect(data.rankings.stake).toEqual([]);
   });
 
   it("is schema-stable for malformed input and uses one cache lane", () => {
     expect(normalizeAccountHolderDirectory(null)).toMatchObject({
       account_count: 0,
-      priced_registered_stake_tao: 0,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     });
     expect(accountHolderDirectoryQuery().queryKey).toContain("account-holder-directory");

@@ -2786,17 +2786,16 @@ export interface SubnetValidators {
 export type GlobalValidatorSort =
   | "avg_validator_trust"
   | "max_validator_trust"
-  | "stake_dominance"
   | "subnet_count"
   | "total_emission"
-  | "total_stake"
   | "uid_count";
 
 /** One current subnet membership in the network-wide validator leaderboard. */
 export interface GlobalValidatorSubnet {
   netuid: number;
   uid: number;
-  stake_tao: number;
+  stake_tao: number | null;
+  voting_weight?: number | null;
   emission_tao: number;
   validator_trust: number | null;
 }
