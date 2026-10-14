@@ -74,11 +74,31 @@ WHEN NEW.alpha_evidence IS NULL AND EXISTS(SELECT 1 FROM alpha_snapshot_passes W
 BEGIN SELECT RAISE(ABORT,'Qualified Alpha snapshot requires its runtime evidence'); END;
 
 -- statement-breakpoint
-CREATE INDEX alpha_snapshot_pool ON alpha_snapshot_rows(captured_at,hotkey,netuid);
+CREATE TABLE alpha_snapshot_pools (
+  captured_at INTEGER NOT NULL REFERENCES alpha_snapshot_passes(captured_at),
+  hotkey TEXT NOT NULL,
+  netuid INTEGER NOT NULL,
+  evidence TEXT NOT NULL,
+  PRIMARY KEY(captured_at,hotkey,netuid)
+) WITHOUT ROWID;
 -- statement-breakpoint
 CREATE TRIGGER alpha_snapshot_pool_identity BEFORE INSERT ON alpha_snapshot_rows
-WHEN EXISTS(SELECT 1 FROM alpha_snapshot_rows r WHERE r.captured_at=NEW.captured_at AND r.hotkey=NEW.hotkey AND r.netuid=NEW.netuid
- AND (json_extract(r.alpha_evidence,'$.denominator') IS NOT json_extract(NEW.alpha_evidence,'$.denominator')
-  OR json_extract(r.alpha_evidence,'$.total_alpha_rao') IS NOT json_extract(NEW.alpha_evidence,'$.total_alpha_rao')
-  OR json_extract(r.alpha_evidence,'$.pool_epoch') IS NOT json_extract(NEW.alpha_evidence,'$.pool_epoch')))
-BEGIN SELECT RAISE(ABORT,'Alpha pool identity differs at the same snapshot'); END;
+BEGIN
+  INSERT INTO alpha_snapshot_pools(captured_at,hotkey,netuid,evidence)
+  VALUES(NEW.captured_at,NEW.hotkey,NEW.netuid,json_array(
+    json_extract(NEW.alpha_evidence,'$.denominator'),
+    json_extract(NEW.alpha_evidence,'$.total_alpha_rao'),
+    json_extract(NEW.alpha_evidence,'$.pool_epoch')))
+  ON CONFLICT(captured_at,hotkey,netuid) DO NOTHING;
+  SELECT CASE WHEN (SELECT evidence FROM alpha_snapshot_pools WHERE
+    captured_at=NEW.captured_at AND hotkey=NEW.hotkey AND netuid=NEW.netuid)
+    IS NOT json_array(json_extract(NEW.alpha_evidence,'$.denominator'),
+      json_extract(NEW.alpha_evidence,'$.total_alpha_rao'),json_extract(NEW.alpha_evidence,'$.pool_epoch'))
+    THEN RAISE(ABORT,'Alpha pool identity differs at the same snapshot') END;
+END;
+-- statement-breakpoint
+ALTER TABLE self_stake_snapshot_chunks ADD COLUMN source_rows INTEGER NOT NULL DEFAULT 0 CHECK(source_rows>=0);
+-- statement-breakpoint
+ALTER TABLE self_stake_snapshot_chunks ADD COLUMN shadowed_rows INTEGER NOT NULL DEFAULT 0 CHECK(shadowed_rows>=0);
+-- statement-breakpoint
+ALTER TABLE self_stake_snapshot_chunks ADD COLUMN alpha_captured_at INTEGER;

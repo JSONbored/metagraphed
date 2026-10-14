@@ -112,6 +112,20 @@ export async function writeSelfStakeSnapshotD1(
   const pending = `EXISTS (SELECT 1 FROM self_stake_snapshot_chunks c JOIN self_stake_snapshot_passes p USING(captured_at)
     WHERE c.captured_at=${at} AND c.batch_index=${index} AND c.sha256='${digest}' AND c.applied=0 AND p.completed_at IS NULL)
     AND NOT EXISTS (SELECT 1 FROM self_stake_snapshot_passes WHERE captured_at>${at} AND completed_at IS NOT NULL)`;
+  // Schema capability is explicit; a native read failure must not silently
+  // downgrade ownership. The pre-0042 receiver remains compatible with0039.
+  const alphaSchema = Boolean(
+    await store.first<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'",
+      [],
+    ),
+  );
+  const coldIndex = columns.indexOf("coldkey"),
+    hotIndex = columns.indexOf("hotkey"),
+    netIndex = columns.indexOf("netuid");
+  const overlap = `EXISTS(SELECT 1 FROM nominator_positions p WHERE
+    p.coldkey=json_extract(value,'$[${coldIndex}]') AND p.hotkey=json_extract(value,'$[${hotIndex}]')
+    AND p.netuid=json_extract(value,'$[${netIndex}]') AND p.alpha_evidence IS NOT NULL)`;
   const data = rows.length
     ? captureUpsertStatements(
         {
@@ -121,7 +135,7 @@ export async function writeSelfStakeSnapshotD1(
         },
         rows,
         "nominator_positions.captured_at < excluded.captured_at",
-        pending,
+        alphaSchema ? `(${pending}) AND NOT ${overlap}` : pending,
       )
     : [];
   const statements: ProducerStatement[] = [
@@ -151,6 +165,19 @@ export async function writeSelfStakeSnapshotD1(
         last,
       ],
     },
+    ...(alphaSchema
+      ? data.map((part) => ({
+          text: `UPDATE self_stake_snapshot_chunks SET
+        source_rows=source_rows+(SELECT COUNT(*) FROM json_each(?) WHERE NOT ${overlap}),
+        shadowed_rows=shadowed_rows+(SELECT COUNT(*) FROM json_each(?) WHERE ${overlap}),
+        alpha_captured_at=MAX(COALESCE(alpha_captured_at,0),COALESCE((SELECT MAX(p.captured_at)
+          FROM json_each(?) JOIN nominator_positions p ON p.coldkey=json_extract(value,'$[${coldIndex}]')
+          AND p.hotkey=json_extract(value,'$[${hotIndex}]') AND p.netuid=json_extract(value,'$[${netIndex}]')
+          WHERE p.alpha_evidence IS NOT NULL),0))
+        WHERE captured_at=? AND batch_index=? AND applied=0 AND sha256='${digest}'`,
+          values: [part.values[0], part.values[0], part.values[0], at, index],
+        }))
+      : []),
     ...data,
     {
       text: `DELETE FROM nominator_positions WHERE source='self-stake' AND ${pending}
@@ -163,7 +190,7 @@ export async function writeSelfStakeSnapshotD1(
       values: [rows.length, at, at, index, digest],
     },
     {
-      text: "UPDATE self_stake_snapshot_chunks SET applied=1 WHERE captured_at=? AND batch_index=? AND sha256=?",
+      text: `UPDATE self_stake_snapshot_chunks SET applied=${alphaSchema ? "CASE WHEN source_rows+shadowed_rows=row_count THEN 1 ELSE NULL END" : "1"} WHERE captured_at=? AND batch_index=? AND sha256=?`,
       values: [at, index, digest],
     },
     {
@@ -186,8 +213,11 @@ export async function writeSelfStakeSnapshotD1(
     received_rows: number;
     received_chunks: number;
     completed_at: number | null;
+    source_rows?: number;
+    shadowed_rows?: number;
+    alpha_captured_at?: number;
   }>(
-    `SELECT c.sha256,c.applied,p.received_rows,p.received_chunks,p.completed_at
+    `SELECT c.sha256,c.applied,p.received_rows,p.received_chunks,p.completed_at${alphaSchema ? ",c.source_rows,c.shadowed_rows,c.alpha_captured_at" : ""}
       FROM self_stake_snapshot_chunks c JOIN self_stake_snapshot_passes p USING(captured_at) WHERE c.captured_at=? AND c.batch_index=?`,
     [at, index],
   );
@@ -203,6 +233,13 @@ export async function writeSelfStakeSnapshotD1(
       statements: statements.length - data.length,
       ...snapshot,
       sha256: digest,
+      ...(alphaSchema
+        ? {
+            source_rows: receipt.source_rows,
+            shadowed_rows: receipt.shadowed_rows,
+            alpha_captured_at: receipt.alpha_captured_at,
+          }
+        : {}),
       received_rows: receipt.received_rows,
       received_chunks: receipt.received_chunks,
       completed_at: receipt.completed_at,

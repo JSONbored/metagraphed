@@ -45,10 +45,12 @@ function normalize(mantissa: bigint, exp: bigint): Decimal | null {
   while (mantissa > MAX_MANTISSA) {
     mantissa /= 10n;
     exp++;
+    if (exp > I64_MAX) return null;
   }
   while (mantissa <= MAX_MANTISSA / 10n) {
     mantissa *= 10n;
     exp--;
+    if (exp < I64_MIN) return null;
   }
   return exp < I64_MIN || exp > I64_MAX ? null : { mantissa, exponent: exp };
 }

@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Miniflare } from "miniflare";
 import { afterEach, test, vi } from "vitest";
+import { handleD1StateExport } from "../src/d1-state-export.ts";
+import { D1_EXPORT_COLUMNS } from "../src/d1-export-columns.ts";
+import { createD1Store } from "../src/d1-store.ts";
+import { writeSelfStakeSnapshotD1 } from "../src/self-stake-snapshot-d1.ts";
+import { NOMINATOR_POSITIONS_COVERAGE_SQL } from "../src/nominator-scan-coverage.ts";
 import { writeAlphaSnapshotD1 } from "../src/alpha-snapshot-d1.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import worker from "../workers/data-api.ts";
@@ -19,7 +24,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   for (const r of runtimes.splice(0)) await r.dispose();
 });
-async function fixture() {
+async function fixture(includeAlpha = true) {
   vi.useRealTimers();
   const runtime = new Miniflare({
     modules: true,
@@ -32,7 +37,8 @@ async function fixture() {
   for (const name of [
     "0010_ledger_state.sql",
     "0016_archive_export_revisions.sql",
-    "0042_alpha_runtime_snapshots.sql",
+    "0039_self_stake_snapshot_receipts.sql",
+    ...(includeAlpha ? ["0042_alpha_runtime_snapshots.sql"] : []),
   ])
     for (const statement of readFileSync(
       new URL(`../migrations/d1/${name}`, import.meta.url),
@@ -373,5 +379,169 @@ test("native receiver matches the shared producer digest/census golden and expor
     )?.revision,
     revision,
     "receipt replay does not trigger another unchanged serving export",
+  );
+});
+
+test("complete promotion owns coverage receipts and mixed self-stake delivery preserves canonical Alpha", async () => {
+  const db = await fixture();
+  await write(db, packet([row("alice"), row("bob")]));
+  const coverage = await db
+    .prepare(NOMINATOR_POSITIONS_COVERAGE_SQL)
+    .bind(baseAt - 86400000)
+    .first<Row>();
+  assert.equal(coverage?.covered, 2);
+  assert.equal(coverage?.received_rows, 2);
+  assert.equal(coverage?.expected_rows, 2);
+  assert.notEqual(coverage?.completed_at, null);
+  const at = baseAt + 1;
+  const incoming = [
+    {
+      coldkey: "alice",
+      hotkey: "hot",
+      netuid: 23,
+      share_fraction: 1,
+      shares: null,
+      captured_at: at,
+    },
+    {
+      coldkey: "carol",
+      hotkey: "other",
+      netuid: 23,
+      share_fraction: 1,
+      shares: null,
+      captured_at: at,
+    },
+  ];
+  const meta = {
+    captured_at: at,
+    scanned_pairs: 2,
+    total_rows: 2,
+    total_chunks: 1,
+    index: 0,
+  };
+  const reply = await writeSelfStakeSnapshotD1(
+    createD1Store(db),
+    incoming,
+    meta,
+    at + 1,
+  );
+  assert.equal(reply.snapshot.complete, true);
+  assert.equal(reply.snapshot.source_rows, 1);
+  assert.equal(reply.snapshot.shadowed_rows, 1);
+  assert.equal(reply.snapshot.alpha_captured_at, baseAt);
+  const current = await rowsOf(db);
+  assert.deepEqual(
+    current.map((r) => [r.coldkey, r.source, r.captured_at]),
+    [
+      ["alice", "alpha", baseAt],
+      ["bob", "alpha", baseAt],
+      ["carol", "self-stake", at],
+    ],
+  );
+  const again = await writeSelfStakeSnapshotD1(
+    createD1Store(db),
+    incoming,
+    meta,
+    at + 2,
+  );
+  assert.equal(again.snapshot.shadowed_rows, 1);
+  assert.equal(again.snapshot.source_rows, 1);
+});
+test("max-width positions stay inside native binding limits and use one pool owner", async () => {
+  const db = await fixture();
+  const rows = Array.from({ length: 2500 }, (_, i) =>
+    row(String(i).padStart(8, "0") + "x".repeat(120), "y".repeat(128)),
+  );
+  const maximum = {
+    legacy_bits: ((1n << 128n) - 1n).toString(),
+    v2: { mantissa: "1000000000000000000000", exponent: "9223372036854775807" },
+  };
+  for (const item of rows)
+    item.evidence = {
+      share: structuredClone(maximum),
+      denominator: structuredClone(maximum),
+      total_alpha_rao: "18446744073709551615",
+      pool_epoch: "18446744073709551615",
+      member_epoch: "18446744073709551615",
+    };
+  const lengths: number[] = [];
+  const bounded = {
+    prepare: db.prepare.bind(db),
+    batch: async (parts: D1PreparedStatement[]) => db.batch(parts),
+  };
+  // Capture binds while preserving the native statement implementation.
+  bounded.prepare = (sql: string) => {
+    const statement = db.prepare(sql);
+    const bind = statement.bind.bind(statement);
+    statement.bind = (...values: unknown[]) => {
+      for (const value of values)
+        if (typeof value === "string")
+          lengths.push(new TextEncoder().encode(value).byteLength);
+      return bind(...values);
+    };
+    return statement;
+  };
+  await write(bounded as D1StoreBinding, packet(rows, { scanned_v2: 2500 }));
+  assert.ok(Math.max(...lengths) < 2_000_000);
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS n FROM alpha_snapshot_pools").first())
+      ?.n,
+    0,
+  );
+  assert.equal((await rowsOf(db)).length, 2500);
+  const duplicate = packet([row(), row()]);
+  await assert.rejects(() => write(db, duplicate), /repeats a position/);
+});
+
+test("exporter upgrade precedes DDL and rollback is unsafe before first selection", async () => {
+  const db = await fixture(false);
+  const request = () =>
+    new Request("https://example.com/api/v1/internal/state-export", {
+      method: "POST",
+      headers: { "x-state-export-token": "secret" },
+      body: JSON.stringify({ table: "nominator_positions", kind: "schema" }),
+    });
+  const env = {
+    D1_STATE: db,
+    D1_STATE_TABLES: "nominator_positions",
+    D1_EXPORT_REVISIONS: "enabled",
+    STATE_EXPORT_SECRET: "secret",
+  };
+  assert.equal((await handleD1StateExport(request(), env)).status, 200);
+  for (const sql of readFileSync(
+    new URL(
+      "../migrations/d1/0042_alpha_runtime_snapshots.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ).split("-- statement-breakpoint"))
+    if (sql.trim()) await db.prepare(sql).run();
+  assert.equal(
+    (
+      await db
+        .prepare(
+          "SELECT COUNT(*) AS n FROM alpha_snapshot_passes WHERE selected=1",
+        )
+        .first()
+    )?.n,
+    0,
+  );
+  const policy = D1_EXPORT_COLUMNS as Record<string, string>;
+  const current = policy.nominator_positions;
+  try {
+    policy.nominator_positions = current.replace(
+      " alpha_rao alpha_evidence",
+      "",
+    );
+    assert.equal((await handleD1StateExport(request(), env)).status, 503);
+  } finally {
+    policy.nominator_positions = current;
+  }
+  const upgraded = await handleD1StateExport(request(), env);
+  assert.equal(upgraded.status, 200);
+  assert.ok(
+    (await upgraded.json<Row>()).columns.some(
+      (c: Row) => c.name === "alpha_rao",
+    ),
   );
 });

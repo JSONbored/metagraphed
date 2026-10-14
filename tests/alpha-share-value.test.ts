@@ -179,3 +179,44 @@ test("malformed or overbudget originals fail before bigint parsing or any lossy 
   );
   assert.throws(() => quoteAlphaPool(base(), 999 as 478));
 });
+
+test("normalization cannot repair an intermediate signed exponent overflow", () => {
+  for (const version of [454, 478] as const) {
+    const evidence = {
+      ...base(),
+      total_alpha_rao: "1",
+      share: {
+        legacy_bits: null,
+        v2: {
+          mantissa: "1000000000000000000000",
+          exponent: "9223372036854775807",
+        },
+      },
+      denominator: {
+        legacy_bits: null,
+        v2: { mantissa: "999999999999999999999", exponent: "-21" },
+      },
+    };
+    assert.equal(quoteAlphaPool(evidence, version).alphaRao, "0");
+    assert.equal(
+      quoteAlphaPool(
+        {
+          ...evidence,
+          share: {
+            legacy_bits: null,
+            v2: { mantissa: "1", exponent: "0" },
+          },
+          denominator: {
+            legacy_bits: null,
+            v2: {
+              mantissa: "1000000000000000000000",
+              exponent: "9223372036854775787",
+            },
+          },
+        },
+        version,
+      ).alphaRao,
+      "0",
+    );
+  }
+});

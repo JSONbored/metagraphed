@@ -40,7 +40,7 @@ rao never pass through Number. A nonfinite display ratio is unavailable.
 Migration0042 adds two optional serving columns and native metadata/pass/chunk/
 staging tables in the current state owner. Original runtime metadata is stored
 once by SHA, sent only in the first chunk and not duplicated per pass. Whole
-account-owner chunks are2500rows maximum with an8MB serialized UTF-8 request ceiling.
+account-owner chunks are2500rows maximum and512KiB of serialized rows; a single wider owner is refused before transmission. The8MB request ceiling includes the first packet’s metadata. The receiver independently packs transformed tuples into at most100rows/512KiB per native binding, below the2,000,000-byte D1 binding limit.
 The shared ordered context/original-component tuple hashes identically in the
 Rust producer and TypeScript receiver; the golden receipt exercises that wire
 contract. The private producer requires the exact receipt/census/completion,
@@ -49,12 +49,12 @@ receipt transport is shared with existing complete self-stake snapshots.
 
 Partial passes never modify serving rows or trigger unchanged serving exports.
 Exact chunk receipts prevent recounting/replacement and disjoint owner ranges
-refuse overlapping chunks. Same-block pool evidence must agree across members.
+refuse overlapping chunks. Same-block pool evidence has one canonical indexed owner per pool; inserts compare that record, never scan previous members.
 Once every declared row/chunk lands, one native transaction publishes the Alpha
-source, retires only its superseded source rows, updates completion and verifies
+source, retires only its superseded source rows, atomically writes the existing30-day account-owner coverage receipts, updates completion and verifies
 the selected target rows. Lower finalized blocks cannot replace higher selected
 ones despite later wall clocks. Old Alpha writers are fenced after selection;
-a legacy self-stake writer cannot erase an existing qualified Alpha row.
+a legacy self-stake writer cannot erase an existing qualified Alpha row. The updated native self-stake writer acknowledges all original observations, records source-assigned/shadowed row counts and the canonical Alpha capture in its exact chunk receipt, and writes only disjoint rows. Source-assigned counts are observation delivery, not a claim every row changed serving state; existing capture ordering still applies. Alpha owns overlaps, even when the self-stake scan is newer.
 
 Staging reserves at most two incomplete passes and an aggregate1million expected
 positions. Uncompleted originals are not silently purged to make room. An
@@ -86,3 +86,7 @@ space. Applied0038 and held0039/0040/0041 are preserved. No live DDL, capture,
 backfill, endpoint workload, fleet command, purchase or hosting decision is part
 of this source preparation. Rollback must fence producers and preserve selected
 originals; an old consumer/writer is not a safe implicit rollback after selection.
+
+The old exporter rejects the added columns immediately on DDL, before Alpha selection. Deploy and qualify the new backwards-compatible exporter/receiver first against the old schema, then apply0042 during a coherent schema/runtime cutover, and only then select the new producer. Rolling the exporter back after DDL is unsafe even before selection. After selection, old Alpha and self-stake writers are additionally fenced; rollback requires the retained compatible reader/receiver plus an explicit canonical ownership decision, not dropping originals.
+
+The full-source promotion and its verification still execute in one native batch. The1million admission ceiling is not a30-second performance guarantee. Release requires measured worst-case cardinality/pool-width promotion time, statement/row read/write counts, memory, physical headroom and concurrent serving impact within D1’s execution limits. No source fixture is authority to run this on the nearly full live owner.

@@ -1,3 +1,5 @@
+import { captureUpsertStatements } from "./capture-family-d1.ts";
+import { NOMINATOR_SCAN_RECEIPTS_RETENTION_MS } from "./nominator-scan-receipts.ts";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
@@ -226,11 +228,27 @@ export async function writeAlphaSnapshotD1(
         owners.at(-1) ?? null,
       ],
     },
-    {
-      text: `INSERT INTO alpha_snapshot_rows(captured_at,coldkey,hotkey,netuid,share_fraction,shares,alpha_rao,alpha_evidence)
-      SELECT ?,json_extract(value,'$.coldkey'),json_extract(value,'$.hotkey'),json_extract(value,'$.netuid'),json_extract(value,'$.share_fraction'),json_extract(value,'$.shares'),json_extract(value,'$.alpha_rao'),json_extract(value,'$.alpha_evidence') FROM json_each(?) WHERE ${pending}`,
-      values: [at, JSON.stringify(rows)],
-    },
+    ...(rows.length
+      ? captureUpsertStatements(
+          {
+            table: "alpha_snapshot_rows",
+            columns: [
+              "captured_at",
+              "coldkey",
+              "hotkey",
+              "netuid",
+              "share_fraction",
+              "shares",
+              "alpha_rao",
+              "alpha_evidence",
+            ],
+            conflict: ["captured_at", "coldkey", "hotkey", "netuid"],
+          },
+          rows,
+          undefined,
+          pending,
+        )
+      : []),
     {
       text: `UPDATE alpha_snapshot_passes SET received_rows=received_rows+?,received_chunks=received_chunks+1 WHERE captured_at=? AND ${pending}`,
       values: [rows.length, at],
@@ -254,6 +272,16 @@ export async function writeAlphaSnapshotD1(
       values: [at, s.total_rows, s.total_rows, now],
     },
     {
+      text: `DELETE FROM nominator_scan_receipts WHERE captured_at<? AND ${promote}`,
+      values: [at - NOMINATOR_SCAN_RECEIPTS_RETENTION_MS],
+    },
+    {
+      text: `INSERT INTO nominator_scan_receipts(captured_at,coldkey,row_count)
+        SELECT captured_at,coldkey,COUNT(*) FROM alpha_snapshot_rows WHERE captured_at=? AND ${promote}
+        GROUP BY captured_at,coldkey ON CONFLICT(captured_at,coldkey) DO UPDATE SET row_count=excluded.row_count`,
+      values: [at],
+    },
+    {
       text: `INSERT INTO archive_export_revisions(table_name,revision) SELECT 'nominator_positions',1 WHERE ${promote}
       ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1`,
       values: [],
@@ -274,6 +302,10 @@ export async function writeAlphaSnapshotD1(
     },
     {
       text: "DELETE FROM alpha_snapshot_rows WHERE captured_at IN (SELECT captured_at FROM alpha_snapshot_passes WHERE completed_at IS NOT NULL)",
+      values: [],
+    },
+    {
+      text: "DELETE FROM alpha_snapshot_pools WHERE captured_at IN (SELECT captured_at FROM alpha_snapshot_passes WHERE completed_at IS NOT NULL)",
       values: [],
     },
   ];
