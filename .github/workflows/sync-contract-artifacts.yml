@@ -115,8 +115,24 @@ jobs:
           npm run typecheck
           npm run build --workspace=packages/ui-kit
           npm run typecheck --workspace=apps/ui
-          npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts
-          npm run test --workspace=apps/ui
+
+      - name: Quantity backend contract regressions
+        if: inputs.prepare_only == true
+        id: quantity_backend
+        continue-on-error: true
+        run: npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts
+
+      - name: Complete UI quantity regressions
+        if: inputs.prepare_only == true
+        id: quantity_ui
+        continue-on-error: true
+        run: npm run test --workspace=apps/ui
+
+      - name: Require every quantity regression suite
+        if: inputs.prepare_only == true
+        run: |
+          test "${{ steps.quantity_backend.outcome }}" = success
+          test "${{ steps.quantity_ui.outcome }}" = success
 
       # Scoped to the contract artifacts on purpose. build.ts already
       # auto-reverts the deploy-owned pair (r2-manifest.json,

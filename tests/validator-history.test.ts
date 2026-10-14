@@ -445,9 +445,7 @@ describe("buildValidatorHistory — operator signals (#9390)", () => {
     // 2,118,872 / 3,899,868 = 0.54331890… -> 0.543319 at 6dp
     assert.equal(point.stake_share, null);
     // 0.546273 / 0.543319 = 1.005437 -> earning slightly above its stake share
-    assert.ok(
-      Math.abs((point.dividend_efficiency as number) - 1.005437) < 1e-5,
-    );
+    assert.equal(point.dividend_efficiency, null);
   });
 
   test("efficiency is null rather than Infinity when there is no stake", () => {

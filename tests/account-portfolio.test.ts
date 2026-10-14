@@ -103,8 +103,7 @@ describe("buildAccountPortfolio", () => {
 
   test("unsupported cross-token holdings concentration remains unknown", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
-    assert.equal((out.stake_concentration as Row).holders, 2); // zero-stake dropped
-    assert.equal((out.stake_concentration as Row).total, 1200);
+    assert.equal(out.stake_concentration, null);
   });
 
   test("drops positions with a non-numeric netuid; coerces numeric strings", () => {

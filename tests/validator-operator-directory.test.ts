@@ -134,7 +134,9 @@ describe("buildValidatorOperatorDirectory", () => {
     assert.equal(team.apy_estimate, null);
     assert.equal(team.stake_dominance, null);
 
-    const anonymous = directory.operators.slice(1);
+    const anonymous = directory.operators.filter(
+      (entry) => entry.ownership_basis === "unknown",
+    );
     assert.deepEqual(
       anonymous.map((entry) => entry.primary_hotkey),
       ["anonymous-a", "anonymous-b"],

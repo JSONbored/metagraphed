@@ -146,7 +146,8 @@ describe("buildAccountHolderDirectory", () => {
       ],
       { priceByNetuid: PRICES },
     );
-    assert.equal(zero.rankings.stake[0]?.stake_dominance, null);
+    assert.deepEqual(zero.rankings.stake, []);
+    assert.equal(zero.rankings.reach[0]?.stake_dominance, null);
   });
 
   test("bounds every ranking and breaks equal values by hotkey", () => {
