@@ -2753,8 +2753,14 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       assert.equal(body.data.validators[0].subnet_count, 0);
       assert.equal(body.data.netuid, null);
       assert.equal(typeof body.data.validator_count, "number");
-      assert.equal(body.data.validators[0].schema_version, 2);
-      assertValidatorQuantitiesUnavailable(body.data.validators[0]);
+      // Comparison rows project the detail; they have no nested version,
+      // root/Alpha split or subnets array. Assert their own published fields.
+      const validator = body.data.validators[0];
+      assert.equal(validator.total_stake_tao, null);
+      assert.equal(validator.apy_estimate, null);
+      assert.equal(validator.apy_estimate_eligible_subnet_count, 0);
+      assert.equal(typeof validator.total_emission_tao, "number");
+      assert.equal(validator.subnet_context, null, "no netuid was requested");
     },
   ],
   [
