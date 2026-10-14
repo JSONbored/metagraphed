@@ -1,0 +1,11 @@
+{
+  "scope": "Reviewed proposal and disposable native fixture only. No production authority.",
+  "install": [
+    "CREATE TRIGGER lane_health_retention_release_fence BEFORE DELETE ON lane_health BEGIN SELECT RAISE(ABORT,'Retention release fence'); END;",
+    "CREATE TRIGGER subnet_burn_retention_release_fence BEFORE DELETE ON subnet_burn_history BEGIN SELECT RAISE(ABORT,'Retention release fence'); END;"
+  ],
+  "release": [
+    "DROP TRIGGER lane_health_retention_release_fence;",
+    "DROP TRIGGER subnet_burn_retention_release_fence;"
+  ]
+}
