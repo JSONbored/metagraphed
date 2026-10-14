@@ -4047,7 +4047,7 @@ test("internal comparison batch uses five PostgreSQL reads and preserves single-
   ];
   await insertNeuron({ uid: 0, hotkey: keys[0], validator_permit: 1 });
   await insertNeuron({ uid: 1, hotkey: keys[1], validator_permit: 1 });
-  pg.queries.length = 0;
+  pg.control.queries.length = 0;
   const response = await call(
     req(
       `/api/v1/internal/validator-details?hotkeys=${keys[1]},${keys[0]},${keys[1]}`,
@@ -4055,7 +4055,7 @@ test("internal comparison batch uses five PostgreSQL reads and preserves single-
   );
   assert.equal(response.status, 200);
   const batch = await response.json<Row>();
-  assert.equal(pg.queries.length, 5);
+  assert.equal(pg.control.queries.length, 5);
   assert.deepEqual(
     batch.details.map((r: Row) => r.hotkey),
     [keys[1], keys[0]],
@@ -4078,22 +4078,23 @@ test("internal shared cards read one PostgreSQL population and preserve standalo
     { uid: 1, stake_tao: 50, validator_permit: 1 },
     { uid: 2, stake_tao: 50, validator_permit: 1 },
     { uid: 3, stake_tao: 200, validator_permit: 0 },
+    { uid: 4, stake_tao: null, validator_permit: 1 },
   ])
     await insertNeuron(row);
-  pg.queries.length = 0;
+  pg.control.queries.length = 0;
   const response = await call(req("/api/v1/internal/subnets/7/snapshot-cards"));
   assert.equal(response.status, 200);
   const shared = await response.json<Row>();
-  assert.equal(pg.queries.length, 1);
+  assert.equal(pg.control.queries.length, 1);
   for (const card of ["concentration", "performance", "validators"])
     assert.deepEqual(
       shared[card],
       await (await call(req(`/api/v1/subnets/7/${card}`))).json(),
     );
   assert.equal(shared.validators.validators[0].uid, 0);
-  assert.equal(shared.validators.validators[1].uid, 1);
-  assert.equal(shared.validators.validator_count, 3);
-  assert.equal(shared.performance.neuron_count, 4);
+  assert.equal(shared.validators.validators[1].uid, 4);
+  assert.equal(shared.validators.validator_count, 4);
+  assert.equal(shared.performance.neuron_count, 5);
   for (const netuid of [
     "65536",
     "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",

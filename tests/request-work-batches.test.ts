@@ -18,6 +18,7 @@ import {
 import { FEATURED_HOTKEY_SET } from "../generated/featured-validators.ts";
 import { loadValidatorDetailBatchTier } from "../src/validator-detail-batch-tier.ts";
 import { loadSubnetSnapshotCardsTier } from "../src/subnet-snapshot-cards-tier.ts";
+import { currentDataApiTierFallbackGeneration } from "../workers/data-api-tier.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import type { Row } from "./row-type.ts";
 const runtime = new Miniflare({
@@ -45,7 +46,7 @@ beforeAll(async () => {
     coldkey: `owner${uid}`,
     validator_permit: uid !== 15,
     active: uid % 2 === 0,
-    stake_tao: uid === 14 ? null : uid === 5 ? 4 : uid,
+    stake_tao: uid === 14 || uid === 12 ? null : uid === 5 ? 4 : uid,
     emission_tao: uid / 100,
     incentive: uid / 100,
     dividends: 0.01,
@@ -184,6 +185,7 @@ test("compound cards read one accepted population and preserve standalone full/m
     portable.validators,
     buildSubnetValidators(pgOrder, 7, { featuredHotkeys: FEATURED_HOTKEY_SET }),
   );
+  assert.ok(Array.isArray(cards.validators.validators));
   assert.equal(cards.validators.validators.length, 15);
   assert.equal(cards.validators.validators[0].hotkey, "validator13");
   assert.deepEqual(
@@ -250,4 +252,72 @@ test("service batches cost one call while malformed/old owners preserve bounded 
   assert.equal(calls.length, 5);
   assert.equal(cards.concentration.marker, "kept");
   assert.equal(cards.performance.netuid, 7);
+});
+
+test("malformed batch identities and mismatched subnet cards cannot become cacheable mixed results", async () => {
+  const malformed = [
+    { details: [null, { hotkey: "b" }] },
+    { details: ["a", { hotkey: "b" }] },
+    { details: [{ hotkey: "wrong" }, { hotkey: "b" }] },
+  ];
+  for (const body of malformed) {
+    const paths: string[] = [];
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async (request: Request) => {
+          const path = new URL(request.url).pathname;
+          paths.push(path);
+          return Response.json(
+            path.endsWith("validator-details")
+              ? body
+              : { hotkey: path.split("/").at(-1), marker: "correct" },
+          );
+        },
+      },
+    } as unknown as Env;
+    const before = currentDataApiTierFallbackGeneration();
+    const result = await loadValidatorDetailBatchTier(env, ["a", "b"]);
+    assert.equal(paths.length, 3);
+    assert.deepEqual(
+      result.map((r) => r.hotkey),
+      ["a", "b"],
+    );
+    assert.ok(currentDataApiTierFallbackGeneration() > before);
+  }
+  for (const body of [
+    {
+      concentration: { netuid: 8 },
+      performance: { netuid: 7 },
+      validators: { netuid: 7 },
+    },
+    {
+      concentration: { netuid: 7 },
+      performance: null,
+      validators: { netuid: 7 },
+    },
+  ]) {
+    const paths: string[] = [];
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async (request: Request) => {
+          const path = new URL(request.url).pathname;
+          paths.push(path);
+          return Response.json(
+            path.endsWith("snapshot-cards")
+              ? body
+              : { netuid: 7, marker: "correct" },
+          );
+        },
+      },
+    } as unknown as Env;
+    const before = currentDataApiTierFallbackGeneration();
+    const cards = await loadSubnetSnapshotCardsTier(env, 7);
+    assert.equal(paths.length, 4);
+    assert.equal(cards.concentration.marker, "correct");
+    assert.equal(cards.performance.marker, "correct");
+    assert.equal(cards.validators.marker, "correct");
+    assert.ok(currentDataApiTierFallbackGeneration() > before);
+  }
 });

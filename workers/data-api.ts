@@ -6839,7 +6839,7 @@ async function loadNominatorCountFromStore(
         ? "SELECT ? AS hotkey," +
             " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
             " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
-        : `WITH requested AS (${hotkeys.map(() => "SELECT ? AS hotkey").join(" UNION ALL ")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
+        : `WITH requested(hotkey) AS (VALUES ${hotkeys.map(() => "(?)").join(",")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
           SELECT r.hotkey,c.nominator_count,scan.scan_at FROM requested r CROSS JOIN scan
           LEFT JOIN validator_nominator_counts c ON c.hotkey=r.hotkey`,
       hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],

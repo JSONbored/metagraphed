@@ -6,7 +6,15 @@ import { buildConcentration } from "./concentration.ts";
 import { buildSubnetPerformance } from "./subnet-performance.ts";
 import { buildSubnetValidators } from "./metagraph-neurons.ts";
 
-export async function loadSubnetSnapshotCardsTier(env: Env, netuid: number) {
+type SnapshotCards = {
+  concentration: ReturnType<typeof buildConcentration>;
+  performance: ReturnType<typeof buildSubnetPerformance>;
+  validators: ReturnType<typeof buildSubnetValidators>;
+};
+export async function loadSubnetSnapshotCardsTier(
+  env: Env,
+  netuid: number,
+): Promise<SnapshotCards> {
   const request = (path: string) =>
     new Request(new URL(path, "https://data-api.internal"));
   const shared = await tryDataApiTier(
@@ -16,11 +24,12 @@ export async function loadSubnetSnapshotCardsTier(env: Env, netuid: number) {
   );
   if (
     shared &&
-    ["concentration", "performance", "validators"].every(
-      (key) => shared[key] && shared[key].netuid === netuid,
-    )
+    ["concentration", "performance", "validators"].every((key) => {
+      const card = shared[key] as Record<string, unknown> | undefined;
+      return card && card.netuid === netuid;
+    })
   )
-    return shared;
+    return shared as SnapshotCards;
   if (shared) markDataApiTierFallback();
   const [concentration, performance, validators] = await Promise.all([
     tryDataApiTier(
