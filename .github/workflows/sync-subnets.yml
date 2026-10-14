@@ -9,6 +9,11 @@ on:
   # backfill the registry/native snapshot until that refresh moves into the
   # publish pipeline (ADR 0006 migration step 2).
   workflow_dispatch:
+    inputs:
+      prepare_native_capture:
+        description: "Prepare only a public Finney source capture as a review artifact"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -44,6 +49,7 @@ jobs:
         run: npm ci
 
       - name: Refresh registry pipeline
+        if: inputs.prepare_native_capture != true
         run: npm run pipeline:refresh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -52,19 +58,46 @@ jobs:
           # fail loudly instead of silently shipping degraded adapter data.
           METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
 
+      # Source-only preparation uses the existing canonical SDK capture on the
+      # public Finney endpoint. It does not run surface probes, contact the
+      # revenue fleet, open/merge a PR or publish/deploy generated projections.
+      - name: Prepare native Finney source capture
+        if: inputs.prepare_native_capture == true
+        run: |
+          npm run sync:subnets
+          mkdir -p "$RUNNER_TEMP/native-finney-capture/registry/native"
+          git rev-parse HEAD > "$RUNNER_TEMP/native-finney-capture/source-head.txt"
+          cp registry/native/finney-subnets.json "$RUNNER_TEMP/native-finney-capture/registry/native/finney-subnets.json"
+          sha256sum registry/native/finney-subnets.json > "$RUNNER_TEMP/native-finney-capture/capture-sha256.txt"
+        env:
+          SUBTENSOR_RPC_URL: finney
+          METAGRAPH_SKIP_TESTNET_SYNC: "1"
+
+      - name: Upload native Finney source capture
+        if: inputs.prepare_native_capture == true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-finney-capture
+          path: ${{ runner.temp }}/native-finney-capture
+          if-no-files-found: error
+          retention-days: 1
+
       # Belt-and-suspenders for Finding 1: refuse to commit adapter snapshots that
       # degraded to broken auth / all-HTML-fallback during the refresh above.
       - name: Validate adapter data quality
+        if: inputs.prepare_native_capture != true
         run: npm run validate:adapters
         env:
           METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
 
       - name: Generate sync summary
+        if: inputs.prepare_native_capture != true
         run: |
           mkdir -p "$RUNNER_TEMP/sync-output"
           npm run sync:summary > "$RUNNER_TEMP/sync-output/metagraphed-sync-summary.md"
 
       - name: Capture generated changes
+        if: inputs.prepare_native_capture != true
         id: changes
         run: |
           allowed_paths=(
@@ -114,6 +147,7 @@ jobs:
           fi
 
       - name: Upload generated changes
+        if: inputs.prepare_native_capture != true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: subnet-registry-sync
@@ -124,7 +158,7 @@ jobs:
       # A failing sync (chain RPC rate-limits) is what starved the publish gate.
       # Opt-in: no-ops unless METAGRAPH_ALERT_WEBHOOK_URL is set.
       - name: Notify on failure
-        if: failure()
+        if: failure() && inputs.prepare_native_capture != true
         env:
           ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
         run: |
@@ -140,7 +174,7 @@ jobs:
   pull-request:
     runs-on: ubuntu-latest
     needs: sync
-    if: needs.sync.outputs.has_changes == 'true'
+    if: needs.sync.outputs.has_changes == 'true' && inputs.prepare_native_capture != true
     timeout-minutes: 15 # applies an already-generated patch and opens a PR, no network refresh
     permissions:
       actions: read

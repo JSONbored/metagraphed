@@ -126,14 +126,26 @@ describe("handleSubnetYieldHistory CSV export", () => {
     // Observed counts stay numeric; unavailable rates stay blank rather than zero.
     assert.equal(lines[1], "2026-06-20,4,2,0,,,,,,");
     assert.equal(lines[2], "2026-06-21,5,2,0,,,,,,");
-    const fields = lines[0].split(",");
+    const fields = [
+      "snapshot_date",
+      "neuron_count",
+      "validator_count",
+      "yield_count",
+      "subnet_yield",
+      "mean_yield",
+      "median_yield",
+      "p25_yield",
+      "p75_yield",
+      "p90_yield",
+    ] as const satisfies readonly (keyof (typeof payload.points)[number])[];
+    assert.deepEqual(lines[0].split(","), fields);
     const orderedPoints = [...json.data.points].sort((a: Row, b: Row) =>
       a.snapshot_date.localeCompare(b.snapshot_date),
     );
     for (const [index, point] of orderedPoints.entries()) {
       assert.deepEqual(
         lines[index + 1].split(","),
-        fields.map((field: string) =>
+        fields.map((field) =>
           point[field] == null ? "" : String(point[field]),
         ),
       );

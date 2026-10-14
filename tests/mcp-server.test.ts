@@ -17402,7 +17402,13 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.equal(data.positions[0].alpha_rao, null);
     assert.equal(data.positions[0].quantity_status, "unqualified");
     assert.equal(data.total_stake_alpha, null);
-    assert.match(queries[0]!, /FROM chain\.nominator_positions/);
+    const positionQuery = queries.find((sql) =>
+      /FROM chain\.nominator_positions/.test(sql),
+    );
+    assert.ok(
+      positionQuery,
+      "the lakehouse positions relationship query must run",
+    );
 
     // The compound card resolves through the SAME chain, so it cannot
     // disagree with the single-facet tool about what this coldkey holds.
@@ -23053,13 +23059,7 @@ describe("MCP get_account_snapshot", () => {
     globalThis.fetch = (async (_url: string, init?: RequestInit) => {
       const body = String(init?.body ?? "");
       if (body.includes("chain.nominator_positions"))
-        return Response.json(
-          buildAccountPortfolio(
-            [quantityNeuron({ netuid: 3 }), quantityNeuron({ netuid: 7 })],
-            SS58,
-            { priceByNetuid: NO_ALPHA_PRICES },
-          ),
-        );
+        return Response.json({ success: true, result: { rows: [] } });
       if (body.includes("chain.account_events")) {
         return {
           ok: true,
@@ -23123,12 +23123,13 @@ describe("MCP get_account_snapshot", () => {
         fetch: async (request: Request) => {
           const url = new URL(request.url);
           if (url.pathname === `/api/v1/accounts/${SS58}/portfolio`) {
-            return Response.json({
-              schema_version: 1,
-              ss58: SS58,
-              position_count: 2,
-              positions: [],
-            });
+            return Response.json(
+              buildAccountPortfolio(
+                [quantityNeuron({ netuid: 3 }), quantityNeuron({ netuid: 7 })],
+                SS58,
+                { priceByNetuid: NO_ALPHA_PRICES },
+              ),
+            );
           }
           if (url.pathname === `/api/v1/accounts/${SS58}/subnets`) {
             return Response.json({

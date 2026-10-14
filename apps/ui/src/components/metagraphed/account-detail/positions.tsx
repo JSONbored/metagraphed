@@ -52,24 +52,6 @@ export function PositionsSection({
       id="positions"
       name="Positions"
       question="Observed delegation relationships and qualified snapshot amounts."
-      visual={
-        query.isError && !query.data ? (
-          <ErrorState
-            error={query.error}
-            onRetry={() => void query.refetch()}
-            context="position relationships"
-          />
-        ) : null
-      }
-      empty={
-        query.isPending
-          ? false
-          : degraded
-            ? "Position coverage is unavailable."
-            : positions.length
-              ? false
-              : "No relationships recorded in this source."
-      }
       footnote="Amounts describe their captured block. Unknown amounts preserve relationships; Root coverage and live wallet completeness are unavailable. Different subnet tokens are not summed."
     >
       <DataTable
@@ -81,6 +63,21 @@ export function PositionsSection({
         source="account-position"
         pageSize={25}
         storageKey="account-positions-columns-v2"
+        loading={query.isPending}
+        error={
+          query.isError && !query.data ? (
+            <ErrorState
+              error={query.error}
+              onRetry={() => void query.refetch()}
+              context="position relationships"
+            />
+          ) : undefined
+        }
+        empty={
+          degraded
+            ? "Position coverage is unavailable."
+            : "No relationships recorded in this source."
+        }
         mobile="cards"
       />
     </AnalyticsSection>

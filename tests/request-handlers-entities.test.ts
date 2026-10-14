@@ -1325,7 +1325,7 @@ describe("handleAccountHolderDirectory", () => {
 
   test("forwards the one-pass data-tier projection without rebuilding it", async () => {
     const directory = buildAccountHolderDirectory(
-      [neuronRow({ hotkey: "hk-a", coldkey: "ck-a" })],
+      [neuronRow({ netuid: NETUID, hotkey: "hk-a", coldkey: "ck-a" })],
       { priceByNetuid: new Map([[NETUID, 1]]) },
     );
     let forwardedPath = "";

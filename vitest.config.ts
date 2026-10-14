@@ -107,6 +107,9 @@ export default defineConfig({
     ...(junitPath ? { outputFile: { junit: junitPath } } : {}),
     coverage: {
       provider: "v8",
+      // Failed tests still fail CI. Retain actual executed coverage so a held
+      // physical-schema check cannot erase the source coverage evidence.
+      reportOnFailure: true,
       // lcov for the Codecov upload (codecov/codecov-action reads
       // coverage/lcov.info); json-summary/text for local + CI readouts.
       reporter: ["text", "json-summary", "lcov"],

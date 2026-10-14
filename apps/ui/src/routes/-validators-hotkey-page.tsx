@@ -354,7 +354,7 @@ export function ValidatorDetailPage() {
           // Not a time series: /validators/{hotkey}/history publishes daily
           // NETWORK-WIDE totals with netuid: null, so there is no per-subnet
           // series to stack. Momentum below carries the time dimension.
-          footnote="Membership voting weight is observed below. Native holdings and a priced portfolio total are unavailable from this source."
+          footnote="Membership voting weight is observed below. Native holdings and a priced portfolio total are unavailable from this source. Voting weight describes a neuron's effective influence within its subnet and can include an inherited Root contribution. It does not identify the native tokens owned by this operator or delegated by any particular account. A holding amount needs a separate, qualified balance snapshot for the same account, subnet token and captured block. An unavailable stake value or annual yield therefore means the necessary balance evidence is missing, rather than a measured zero. Memberships, permits and trust still describe the operator's observed participation."
         />
         <AnalyticsSection
           id="memberships"
@@ -377,7 +377,7 @@ export function ValidatorDetailPage() {
           }
           footnote={`${formatNumber(permits)} of ${formatNumber(
             memberships.length,
-          )} carry a validator permit · chain-direct`}
+          )} carry a validator permit · chain-direct. Each row identifies an observed subnet membership. A permit records the validator role, while trust and dividends describe subnet-specific performance at the capture. Emission is expressed in the token of the named subnet; equal token counts on different subnets do not establish equal value. Voting weight is shown independently from emission and is never converted into a holding amount. Use these rows to inspect participation and rewards, rather than infer a wallet balance, a portfolio allocation or an investment return.`}
         />
         <AnalyticsSection
           id="nominators"

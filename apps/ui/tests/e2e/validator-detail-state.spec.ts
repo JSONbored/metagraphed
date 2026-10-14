@@ -43,16 +43,14 @@ test.describe("Validator detail secondary query states", () => {
 
     const nominators = page.getByRole("group", { name: "Nominators by stake moved" });
     const history = page.locator(`#validator-${HOTKEY}-stake .mg-line-plot`);
-    const peers = page.getByRole("group", { name: "Operators near this one by stake" });
+    const peers = page.getByRole("group", { name: "Operators near this one by address" });
 
     await expect(nominators).toHaveAttribute("aria-busy", "true");
     await expect(nominators.locator(".mg-rails-row--skeleton")).toHaveCount(10);
     await expect(history).toHaveAttribute("aria-busy", "true");
     await expect(peers).toHaveAttribute("aria-busy", "true");
     await expect(peers.locator(".mg-rank-grid-row--skeleton")).toHaveCount(4);
-    await expect(
-      page.getByText("neighboring operators by total stake · chain-direct"),
-    ).toBeVisible();
+    await expect(page.getByText("neighboring operators by address · chain-direct")).toBeVisible();
     expect(reads).toEqual({ nominators: 0, history: 0, peers: 0 });
 
     const dimensions = await page.evaluate(() => ({
@@ -141,7 +139,7 @@ test.describe("Validator detail secondary query states", () => {
     await peerError.getByRole("button", { name: "Retry", exact: true }).click();
     await expect(peerError).toHaveCount(0);
     await expect(
-      page.getByRole("group", { name: "Operators near this one by stake" }),
+      page.getByRole("group", { name: "Operators near this one by address" }),
     ).toBeVisible();
 
     const dimensions = await page.evaluate(() => ({

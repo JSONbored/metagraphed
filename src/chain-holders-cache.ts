@@ -21,10 +21,19 @@ export async function readRevisionedChainHolders(
   read: () => Promise<Row[]>,
 ): Promise<Row[]> {
   const config = env as CacheConfig | undefined;
-  const store =
-    config?.D1_EXPORT_REVISIONS === "enabled"
-      ? selectedD1Store(env, ALPHA_QUANTITY_TABLES)
-      : null;
+  let store;
+  try {
+    store =
+      config?.D1_EXPORT_REVISIONS === "enabled"
+        ? selectedD1Store(env, ALPHA_QUANTITY_TABLES)
+        : null;
+  } catch {
+    // Ownership qualification belongs to the caller. A cache cannot retain
+    // rows across a partial or unbound owner selection; let the caller's
+    // fresh, qualified read decide whether it can answer.
+    if (config?.D1_STATE) snapshots.delete(config.D1_STATE);
+    return read();
+  }
   if (!store) return read();
   const binding = config!.D1_STATE!; // selectedD1Store validates the binding.
   const revisions = await store

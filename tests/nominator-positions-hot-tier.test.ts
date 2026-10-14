@@ -93,7 +93,9 @@ function d1Stub(
     pg.control.rows =
       mode === "malformed" ? ("not-an-array" as never) : positions;
   };
-  return { calls, env: { ...pgMockEnv() } };
+  // No D1 tables are selected: snapshot and neuron observations both belong
+  // to this fixture's Neon connection.
+  return { calls, env: { ...pgMockEnv(), D1_STATE_TABLES: "" } };
 }
 
 function positionRow(hotkey: string, netuid: number, fraction: number) {

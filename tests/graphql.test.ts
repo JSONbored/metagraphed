@@ -10520,12 +10520,13 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
       DATA_API: {
         fetch: async (req: Request) => {
           paths.push(new URL(req.url).pathname);
-          return Response.json({
-            schema_version: 1,
-            hotkey: HOTKEY_A,
-            total_stake_tao: 42,
-            subnets: [],
-          });
+          return Response.json(
+            buildValidatorDetail(
+              [quantityNeuron({ hotkey: HOTKEY_A, netuid: 3, stake_tao: 42 })],
+              HOTKEY_A,
+              { priceByNetuid: NO_ALPHA_PRICES },
+            ),
+          );
         },
       },
     };
@@ -10540,7 +10541,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.equal(body.data.compare_validators.netuid, 3);
     assert.equal(
       body.data.compare_validators.validators[0].total_stake_tao,
-      42,
+      null,
     );
   });
 
@@ -24672,21 +24673,18 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
 
   test("validator_history forwards the take fields", async () => {
     const { body } = await gql(
-      `{ validator_history(hotkey: "5Validator") {
+      `{ validator_history(hotkey: "5Validator", netuid: 7, window: "90d") {
           take_u16 take_last_changed_date next_take_change_eligible_date take_change_observable
         } }`,
       api(
-        {
-          schema_version: 1,
-          hotkey: "5Validator",
-          window: "90d",
-          point_count: 0,
-          points: [],
-          take_u16: 11796,
-          take_last_changed_date: "2026-06-01",
-          next_take_change_eligible_date: "2026-07-01",
-          take_change_observable: true,
-        },
+        buildValidatorHistory(
+          [
+            { snapshot_date: "2026-06-01", netuid: 7, take: 0.18 },
+            { snapshot_date: "2026-05-31", netuid: 7, take: 0.1 },
+          ],
+          "5Validator",
+          { window: "90d", netuid: 7 },
+        ),
         neurons,
       ),
     );
