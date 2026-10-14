@@ -197,6 +197,8 @@ export interface NeonWriteResult {
   rows: number;
   statements: number;
   reason?: string;
+  /** A failed acknowledgement may follow commit; attempted rows are not proof. */
+  confirmation?: "unknown";
 }
 
 /**
@@ -679,7 +681,9 @@ export async function recordNeonWriteVerdict(
         buffered
         ? `${result.rows} row(s) enqueued in ${result.statements} statement(s)`
         : `${result.rows} row(s) in ${result.statements} statement(s)`
-      : `${result.rows} row(s) written before failure: ${result.reason ?? "unknown"}`,
+      : result.confirmation === "unknown"
+        ? `write not confirmed; commit state unknown: ${result.reason ?? "unknown"}`
+        : `${result.rows} row(s) written before failure: ${result.reason ?? "unknown"}`,
     checked_at: nowMs,
   });
   // Only a row that LANDED may suppress the next one. Recording the attempt

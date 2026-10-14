@@ -374,6 +374,33 @@ describe("recordNeonWriteVerdict", () => {
     assert.match(String(s.rows[0].detail), /deadlock detected/);
   });
 
+  test("an unconfirmed acknowledgement never claims the attempted count committed", async () => {
+    for (const reason of ["insert_capacity", undefined]) {
+      resetNeonWriteVerdictMemo();
+      const s = spy();
+      await recordNeonWriteVerdict(
+        s.db,
+        "neurons",
+        {
+          ok: false,
+          rows: 396,
+          statements: 0,
+          confirmation: "unknown",
+          reason,
+        },
+        NOW,
+      );
+      assert.equal(
+        s.rows[0].detail,
+        `write not confirmed; commit state unknown: ${reason ?? "unknown"}`,
+      );
+      assert.doesNotMatch(
+        String(s.rows[0].detail),
+        /396|written before failure/,
+      );
+    }
+  });
+
   test("age_ms is null rather than a fabricated number", async () => {
     // A write outcome has no meaningful "how far behind". Inventing one puts a
     // made-up value in the column triage reads.

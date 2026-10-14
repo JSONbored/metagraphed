@@ -562,6 +562,7 @@ test("selected ownership writes directly without Hyperdrive or the Neon buffer, 
     now: () => stamp,
     laneHealthDb,
   });
+  assert.equal(first.writePath, "d1");
   assert.equal(first.prune?.ok, true);
   assert.ok(lanes.includes("neon:neurons-prune"));
   assert.ok(Object.values(first.results).every((r) => r.ok));
@@ -587,6 +588,13 @@ test("selected ownership writes directly without Hyperdrive or the Neon buffer, 
   });
   assert.ok(Object.values(failed.results).every((r) => !r.ok));
   assert.equal(failed.results.neurons_passes.rows, 0);
+  assert.equal(failed.writePath, "d1");
+  assert.ok(
+    Object.values(failed.results).every(
+      (r) => r.reason === "insert_error" && r.confirmation === "unknown",
+    ),
+  );
+  assert.doesNotMatch(JSON.stringify(failed), /injected write failure/);
   await db.prepare("DROP TRIGGER fail_neurons").run();
 });
 test("invalid and oversized data fail before any transaction executes; empty captures are harmless", async () => {
