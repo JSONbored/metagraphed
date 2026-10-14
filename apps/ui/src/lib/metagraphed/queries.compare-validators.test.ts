@@ -119,7 +119,8 @@ describe("normalizeCompareValidators", () => {
     expect(result.validators[0].subnet_context).toEqual({
       netuid: 8,
       uid: 12,
-      stake_tao: 100.25,
+      stake_tao: null,
+      voting_weight: null,
       emission_tao: 0.5,
       validator_trust: 0.87,
     });

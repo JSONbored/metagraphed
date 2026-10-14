@@ -9886,7 +9886,7 @@ function normalizeCompareValidator(raw: unknown): CompareValidator | null {
     apy_estimate: null,
     apy_estimate_eligible_subnet_count: nullableNum(raw.apy_estimate_eligible_subnet_count),
     nominator_count: nullableNum(raw.nominator_count),
-    total_stake_tao: nullableNum(raw.total_stake_tao),
+    total_stake_tao: null,
     total_emission_tao: nullableNum(raw.total_emission_tao),
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),

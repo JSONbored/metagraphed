@@ -221,7 +221,7 @@ describe("accountPortfolioQuery", () => {
 
   it("caps the position list defensively", async () => {
     resolveWith({
-      positions: Array.from({ length: 300 }, (_, i) => ({
+      positions: Array.from({ length: 2100 }, (_, i) => ({
         netuid: i,
         uid: i,
         role: "miner",
@@ -233,8 +233,8 @@ describe("accountPortfolioQuery", () => {
 
     const result = await runQuery(CHARLIE);
 
-    expect(result.data.positions).toHaveLength(256);
+    expect(result.data.positions).toHaveLength(2000);
     // subnet_count/position_count fall back to the (capped) rendered length.
-    expect(result.data.position_count).toBe(256);
+    expect(result.data.position_count).toBe(2000);
   });
 });
