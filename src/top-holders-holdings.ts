@@ -65,10 +65,6 @@ import {
   latestCompleteAccountBalancesPass,
   mayRankAccountBalances,
 } from "./account-balances-completeness.ts";
-import {
-  latestCompleteHotkeyAlphaPass,
-  mayPriceHotkeyAlpha,
-} from "./hotkey-alpha-completeness.ts";
 
 /** The holdings sorts, in the order the artifact declares them. */
 export const TOP_HOLDERS_FREE_SORT = "free_tao";
@@ -115,44 +111,6 @@ export interface HoldingsLeg {
 }
 
 /**
- * The newest priced snapshot per subnet.
- *
- * `MAX(snapshot_date)` per netuid rather than a global newest date: subnets do
- * not all land on the same day, and a global cutoff would drop every subnet
- * whose newest row is a day behind the freshest one -- excluding real positions
- * for a reason that has nothing to do with their price being unusable.
- */
-const PRICE_CTE =
-  "price AS MATERIALIZED (" +
-  "SELECT s.netuid AS netuid, s.alpha_price_tao AS alpha_price_tao" +
-  " FROM subnet_snapshots s" +
-  " JOIN (SELECT netuid, MAX(snapshot_date) AS d FROM subnet_snapshots" +
-  " GROUP BY netuid) l ON l.netuid = s.netuid AND l.d = s.snapshot_date" +
-  " WHERE s.alpha_price_tao IS NOT NULL AND s.alpha_price_tao > 0)";
-
-/**
- * Positions valued against the proven pool pass.
- *
- * SCOPED TO ONE captured_at, unlike the balance ledger's read. That asymmetry
- * is deliberate: `account_balances` never prunes, so a later partial pass only
- * refreshes rows and scoping to a stamp would DROP accounts. Pool totals are
- * different -- mixing stamps values one coldkey's positions against totals read
- * at different blocks, which is a silently inconsistent sum rather than a merely
- * stale one.
- */
-const delegatedCte = (alphaCapturedAt: number) =>
-  "del AS (" +
-  "SELECT np.coldkey AS ss58," +
-  " SUM(np.share_fraction * ha.total_alpha * price.alpha_price_tao)" +
-  " AS delegated_tao" +
-  " FROM nominator_positions np" +
-  " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
-  " AND ha.netuid = np.netuid" +
-  ` AND ha.captured_at = ${alphaCapturedAt}` +
-  " JOIN price ON price.netuid = np.netuid" +
-  " GROUP BY np.coldkey)";
-
-/**
  * The balance ledger's own rows.
  *
  * NOT scoped to the complete pass's captured_at, matching
@@ -182,57 +140,15 @@ export function topHoldersHoldingsSql(
   },
   cap: number = TOP_HOLDERS_HOLDINGS_ROW_CAP,
 ): string {
-  const { free, delegated } = opts;
-  if (!free && !delegated) {
-    throw new Error("topHoldersHoldingsSql: at least one leg must be proven");
-  }
-  const ctes: string[] = [];
-  const unionParts: string[] = [];
-  if (delegated) {
-    ctes.push(PRICE_CTE, delegatedCte(opts.alphaCapturedAt as number));
-  }
-  if (free) {
-    ctes.push(FREE_CTE);
-    unionParts.push("SELECT ss58, free_tao, 0.0 AS delegated_tao FROM bal");
-  }
-  if (delegated) {
-    unionParts.push("SELECT ss58, 0.0 AS free_tao, delegated_tao FROM del");
-  }
-  ctes.push(`combined AS (${unionParts.join(" UNION ALL ")})`);
-
-  // Only the proven columns are selected. A leg that did not run contributes no
-  // column at all rather than a zero one, so an absent cell stays absent all the
-  // way to the payload.
-  const selected: string[] = [];
-  if (free) selected.push("SUM(free_tao) AS free_tao");
-  if (delegated) selected.push("SUM(delegated_tao) AS delegated_tao");
-  // total_tao only when BOTH addends are proven -- a sum over one proven and
-  // one unproven input is not a total, it is a lower bound wearing a total's
-  // name.
-  const total = free && delegated;
-  if (total) {
-    selected.push("SUM(free_tao) + SUM(delegated_tao) AS total_tao");
-  }
-  ctes.push(
-    `agg AS (SELECT ss58, ${selected.join(", ")} FROM combined GROUP BY ss58)`,
-  );
-
-  const keys = [
-    ...(free ? [TOP_HOLDERS_FREE_SORT] : []),
-    ...(delegated ? [TOP_HOLDERS_DELEGATED_SORT] : []),
-    ...(total ? [TOP_HOLDERS_TOTAL_SORT] : []),
-  ];
-  const picks = keys
-    .map(
-      (key) =>
-        `SELECT ss58 FROM (SELECT ss58 FROM agg ORDER BY ${key} DESC LIMIT ${cap})`,
-    )
-    .join(" UNION ");
-
-  return (
-    `WITH ${ctes.join(", ")} SELECT ss58, ${keys.join(", ")}` +
-    ` FROM agg WHERE ss58 IN (${picks})`
-  );
+  if (!opts.free || opts.delegated)
+    throw new TypeError("Native delegated valuation is unqualified");
+  if (
+    !Number.isSafeInteger(cap) ||
+    cap < 1 ||
+    cap > TOP_HOLDERS_HOLDINGS_ROW_CAP
+  )
+    throw new TypeError("Invalid bounded holdings page");
+  return `WITH ${FREE_CTE} SELECT ss58,free_tao FROM bal ORDER BY free_tao DESC,ss58 ASC LIMIT ${cap}`;
 }
 
 /** A finite, non-negative holdings figure, or null. Unlike a net flow, a
@@ -275,74 +191,26 @@ export async function topHoldersHoldings(
   // this module's OptionalRowStore names bind()/all(), the completeness readers name
   // first() -- so the casts go through unknown rather than widening either
   // interface to satisfy the other.
-  const asFirst = db;
-  const [balances, alpha] = await Promise.all([
-    latestCompleteAccountBalancesPass(asFirst),
-    latestCompleteHotkeyAlphaPass(db),
-  ]);
-  const free = mayRankAccountBalances(balances);
-  const delegated = mayPriceHotkeyAlpha(alpha);
-  if (!free && !delegated) return null;
-
-  let results: unknown[];
+  const balances = await latestCompleteAccountBalancesPass(db);
+  if (!mayRankAccountBalances(balances)) return null;
   try {
-    const sql = topHoldersHoldingsSql(
-      { free, delegated, alphaCapturedAt: alpha.capturedAt },
-      cap,
+    const results = await db.query<Record<string, unknown>>(
+      topHoldersHoldingsSql({ free: true, delegated: false }, cap),
     );
-    results = await db.query(sql);
+    const cells = new Map<string, HoldingsCells>();
+    for (const raw of results) {
+      const ss58 = typeof raw.ss58 === "string" ? raw.ss58 : null;
+      const free = holding(raw.free_tao);
+      if (ss58 && free !== null) cells.set(ss58, { free_tao: free });
+    }
+    return cells.size
+      ? {
+          cells,
+          sorts: [TOP_HOLDERS_FREE_SORT],
+          capturedAt: balances.capturedAt!,
+        }
+      : null;
   } catch {
-    // A missing table, an unbound DB and a failed read are one outcome: no
-    // holdings leg ran, so the artifact must not claim any of these sorts.
     return null;
   }
-  if (results.length === 0) return null;
-
-  const cells = new Map<string, HoldingsCells>();
-  for (const raw of results as Record<string, unknown>[]) {
-    const ss58 = typeof raw?.ss58 === "string" ? raw.ss58 : null;
-    if (!ss58) continue;
-    const entry: HoldingsCells = {};
-    if (free) {
-      const v = holding(raw.free_tao);
-      if (v !== null) entry.free_tao = v;
-    }
-    if (delegated) {
-      const v = holding(raw.delegated_tao);
-      if (v !== null) entry.delegated_tao = v;
-    }
-    if (free && delegated) {
-      const v = holding(raw.total_tao);
-      if (v !== null) entry.total_tao = v;
-    }
-    if (Object.keys(entry).length) cells.set(ss58, entry);
-  }
-  if (cells.size === 0) return null;
-
-  // A sort is declared only if some row actually carries it. A column every row
-  // dropped as unreadable would otherwise be announced as rankable and then
-  // rank on nothing -- the ss58-order defect this tier exists to remove.
-  const sorts = [
-    TOP_HOLDERS_FREE_SORT,
-    TOP_HOLDERS_DELEGATED_SORT,
-    TOP_HOLDERS_TOTAL_SORT,
-  ].filter((key) =>
-    [...cells.values()].some(
-      (entry) => typeof entry[key as keyof HoldingsCells] === "number",
-    ),
-  );
-  // No `sorts.length` guard here, and that is not an omission: an entry reaches
-  // `cells` only when at least one of its three keys is a number, so a non-empty
-  // map always declares at least one sort and the `cells.size === 0` return
-  // above IS that check. A second one would be a branch nothing can reach.
-  //
-  // Only the passes that actually backed a column count. `mayRankAccountBalances`
-  // / `mayPriceHotkeyAlpha` are the same predicates that decided whether the leg
-  // ran at all, so an unproven leg contributes no stamp rather than a null one
-  // that Math.min would read as 0 and report as 1970.
-  const stamps = [
-    ...(free ? [balances.capturedAt as number] : []),
-    ...(delegated ? [alpha.capturedAt as number] : []),
-  ];
-  return { cells, sorts, capturedAt: Math.min(...stamps) };
 }

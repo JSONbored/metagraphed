@@ -1372,6 +1372,7 @@ export interface PortfolioPosition {
   /** ALPHA on every non-root subnet (metagraphed#10514). The card's own
    * `total_stake_tao` IS priced TAO -- summing these will not reach it. */
   stake_alpha: number | null;
+  voting_weight?: number | null;
   emission_alpha: number | null;
   rank: number | null;
   trust: number | null;
@@ -1562,8 +1563,21 @@ export interface AccountPortfolio {
 export interface AccountPosition {
   hotkey: string;
   netuid: number;
-  share_fraction: number;
-  stake_tao: number;
+  share_fraction: number | null;
+  /** Deprecated; never a holdings amount. */
+  stake_tao: number | null;
+  alpha_rao?: string | null;
+  quantity_status?: "unqualified" | "qualified_snapshot";
+  provenance?: {
+    network: "finney";
+    captured_at: string;
+    block_number: number;
+    block_hash: string;
+    genesis_hash: string;
+    spec_version: 454 | 478;
+    code_hash: string;
+    metadata_sha256: string;
+  } | null;
 }
 
 /**
@@ -1584,7 +1598,7 @@ export interface AccountPositions {
    * nominator_positions holds only netuid != 0 rows and non-root stake is that
    * subnet's alpha token, so this sums different subnets' alpha.
    */
-  total_stake_alpha: number;
+  total_stake_alpha: null;
   positions: AccountPosition[];
   [key: string]: unknown;
 }
@@ -2817,9 +2831,9 @@ export interface GlobalValidator {
   uid_count: number;
   /** Validator take/commission (#2548), 0..1 fraction kept from delegator rewards. */
   take: number | null;
-  total_stake_tao: number;
-  root_stake_tao: number;
-  alpha_stake_tao: number;
+  total_stake_tao: number | null;
+  root_stake_tao: number | null;
+  alpha_stake_tao: number | null;
   total_emission_tao: number;
   /** Distinct coldkeys currently staking to this hotkey, network-wide (#2549). Null when the low-frequency source table has no row for this hotkey yet. */
   nominator_count: number | null;
@@ -2852,7 +2866,7 @@ export interface OperatorValidator {
   subnet_count: number;
   uid_count: number;
   take: number | null;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   total_emission_tao: number;
   nominator_count: number | null;
   apy_estimate: number | null;
@@ -2886,7 +2900,7 @@ export interface AccountListEntry {
   uid_count: number;
   validator_count: number;
   miner_count: number;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   total_emission_tao: number;
   stake_dominance: number | null;
   latest_captured_at: string | null;
@@ -2912,7 +2926,7 @@ export interface AccountHolderDirectory {
   block_number?: number;
   account_count: number;
   limit: number;
-  priced_registered_stake_tao: number;
+  priced_registered_stake_tao: number | null;
   rankings: {
     stake: AccountHolderDirectoryEntry[];
     emission: AccountHolderDirectoryEntry[];
@@ -2969,6 +2983,7 @@ export interface ValidatorDetailSubnet {
    * `total_stake_tao` IS priced TAO -- these rows will not sum to it. */
   emission_alpha?: number | null;
   stake_alpha?: number | null;
+  voting_weight?: number | null;
   registered_at_block?: number | null;
   is_immunity_period?: boolean | null;
   axon?: string | null;
@@ -2985,11 +3000,11 @@ export interface ValidatorDetail {
   subnet_count: number;
   take: number | null;
   nominator_count: number | null;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   /** Stake on netuid 0 (root), TAO-denominated 1:1, no AMM/price exposure (#2550). */
-  root_stake_tao: number;
+  root_stake_tao: number | null;
   /** total_stake_tao minus root_stake_tao — the alpha-token-denominated legs. */
-  alpha_stake_tao: number;
+  alpha_stake_tao: number | null;
   total_emission_tao: number;
   avg_validator_trust: number | null;
   max_validator_trust: number | null;

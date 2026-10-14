@@ -1,3 +1,5 @@
+import { alphaHolderCte } from "./alpha-holder-sql.ts";
+import { loadAlphaQuantityCapture } from "./alpha-quantity.ts";
 import { round9 } from "./lib/rao.ts";
 // The POSITIONS basis for /validators/{hotkey}/nominators (#9617).
 //
@@ -32,11 +34,6 @@ import { round9 } from "./lib/rao.ts";
 // underprices a nominator rather than dropping them, so a ranking built on it
 // is plausible and wrong.
 
-import {
-  latestCompleteHotkeyAlphaPass,
-  mayPriceHotkeyAlpha,
-} from "./hotkey-alpha-completeness.ts";
-
 type Row = Record<string, unknown>;
 
 /** The two questions this route can answer. */
@@ -48,7 +45,9 @@ export interface NominatorPositionsDb {
   first?(text: string, values?: unknown[]): Promise<unknown>;
 }
 
-export type NominatorPositionsDecline = "pool_totals_unproven" | "unavailable";
+export type NominatorPositionsDecline =
+  | "runtime_positions_unqualified"
+  | "unavailable";
 
 export interface NominatorPositionsRead {
   rows: Row[];
@@ -66,18 +65,8 @@ export interface NominatorPositionsRead {
  * of subnets and then the largest single-subnet holding, not a total.
  */
 export function nominatorPositionsSql(alphaCapturedAt: number): string {
-  return (
-    "SELECT np.coldkey AS coldkey, np.netuid AS netuid," +
-    " SUM(np.share_fraction * ha.total_alpha) AS alpha," +
-    " MAX(np.captured_at) AS positions_captured_at" +
-    " FROM nominator_positions np" +
-    " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
-    " AND ha.netuid = np.netuid" +
-    ` AND ha.captured_at = ${alphaCapturedAt}` +
-    " WHERE np.hotkey = ?" +
-    " GROUP BY np.coldkey, np.netuid" +
-    " ORDER BY alpha DESC"
-  );
+  return `WITH ${alphaHolderCte(alphaCapturedAt, "np.hotkey=?")}
+    SELECT coldkey,netuid,alpha,alpha_rao,positions_captured_at FROM holder ORDER BY netuid,coldkey`;
 }
 
 /** One validator's current delegators, or a decline. Never throws. */
@@ -90,19 +79,17 @@ export async function loadNominatorPositions(
   ): NominatorPositionsRead => ({ rows: [], capturedAt: null, decline });
   if (!db?.query) return declined("unavailable");
 
-  const alpha = await latestCompleteHotkeyAlphaPass(db);
-  if (!mayPriceHotkeyAlpha(alpha)) {
-    return declined(
-      alpha.reason === "unavailable" ? "unavailable" : "pool_totals_unproven",
-    );
+  const alpha = await loadAlphaQuantityCapture(db);
+  if (!alpha) {
+    return declined("runtime_positions_unqualified");
   }
   try {
-    const rows = await db.query<Row>(nominatorPositionsSql(alpha.capturedAt), [
+    const rows = await db.query<Row>(nominatorPositionsSql(alpha.captured_at), [
       hotkey,
     ]);
     return {
       rows,
-      capturedAt: alpha.capturedAt,
+      capturedAt: alpha.captured_at,
       decline: null,
     };
   } catch {
@@ -124,7 +111,7 @@ export function buildNominatorPositions(
   { limit, offset = 0 }: { limit?: number; offset?: number } = {},
 ): Row {
   const base = {
-    schema_version: 1,
+    schema_version: 2,
     hotkey,
     basis: "positions",
     limit: limit ?? null,
@@ -141,7 +128,10 @@ export function buildNominatorPositions(
     };
   }
 
-  const byColdkey = new Map<string, { netuid: number; alpha: number }[]>();
+  const byColdkey = new Map<
+    string,
+    { netuid: number; alpha: number; alpha_rao: string | null }[]
+  >();
   let positionsCapturedAt: number | null = null;
   for (const r of read.rows) {
     const coldkey = typeof r?.coldkey === "string" ? r.coldkey : null;
@@ -156,13 +146,17 @@ export function buildNominatorPositions(
     }
     if (coldkey === null || netuid === null || alpha === null) continue;
     const list = byColdkey.get(coldkey) ?? [];
-    list.push({ netuid, alpha: round9(alpha) });
+    list.push({
+      netuid,
+      alpha: round9(alpha),
+      alpha_rao: typeof r.alpha_rao === "string" ? r.alpha_rao : null,
+    });
     byColdkey.set(coldkey, list);
   }
 
   const nominators = [...byColdkey.entries()]
     .map(([coldkey, subnets]) => {
-      const sorted = [...subnets].sort((a, b) => b.alpha - a.alpha);
+      const sorted = [...subnets].sort((a, b) => a.netuid - b.netuid);
       return {
         coldkey,
         subnet_count: sorted.length,
@@ -173,7 +167,7 @@ export function buildNominatorPositions(
         // Not guarded on `sorted.length`: a coldkey only enters the map when a
         // row survived validation, so the list is non-empty by construction and
         // a guard here would be unreachable code pretending to be caution.
-        largest_position: { netuid: sorted[0].netuid, alpha: sorted[0].alpha },
+        largest_position: null,
         subnets: sorted,
       };
     })
@@ -181,9 +175,7 @@ export function buildNominatorPositions(
     // alpha: adding netuid 4's alpha to netuid 64's is the #8803 bug.
     .sort(
       (a, b) =>
-        b.subnet_count - a.subnet_count ||
-        b.largest_position.alpha - a.largest_position.alpha ||
-        a.coldkey.localeCompare(b.coldkey),
+        b.subnet_count - a.subnet_count || a.coldkey.localeCompare(b.coldkey),
     );
 
   return {

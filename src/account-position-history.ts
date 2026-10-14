@@ -1,4 +1,9 @@
-import { numberOrZero, round9 } from "./lib/rao.ts";
+import {
+  numberOrZero,
+  round9,
+  round9OrNull,
+  nonNegativeCellOrNull,
+} from "./lib/rao.ts";
 import { nonNegativeIntOrNull } from "./read-store.ts";
 // Per-account daily position HISTORY (block-explorer Tier-1, epic #4329/6.1).
 //
@@ -69,13 +74,6 @@ function toIso(ms: unknown): string | null {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-// Emission-per-stake return rate; null when stake is 0 (undefined return).
-// Mirrors computeYieldValue in account-portfolio.ts.
-function computeYieldValue(emission: number, stake: number): number | null {
-  if (!(stake > 0)) return null;
-  return round9(emission / stake);
-}
-
 // One day's position, in the same field shape as buildAccountPortfolio's
 // `positions[]` entries (minus netuid — see the read-path header comment).
 // Exported (unlike account-portfolio.ts's inline per-row mapping) so its
@@ -86,7 +84,8 @@ export interface AccountPositionEntry {
   coldkey: unknown;
   role: "validator" | "miner";
   active: boolean;
-  stake_tao: number;
+  stake_tao: null;
+  voting_weight: number | null;
   emission_tao: number;
   rank: number | null;
   trust: number | null;
@@ -99,7 +98,7 @@ export function formatAccountPosition(
   row: Record<string, unknown> | null | undefined,
 ): AccountPositionEntry | null {
   if (!row || typeof row !== "object") return null;
-  const stake = numberOrZero(row.stake_tao);
+  const stake = nonNegativeCellOrNull(row.stake_tao);
   const emission = numberOrZero(row.emission_tao);
   const isValidator = Number(row.validator_permit) === 1;
   return {
@@ -107,13 +106,14 @@ export function formatAccountPosition(
     coldkey: row.coldkey ?? null,
     role: isValidator ? "validator" : "miner",
     active: Number(row.active) === 1,
-    stake_tao: round9(stake),
+    stake_tao: null,
+    voting_weight: round9OrNull(stake),
     emission_tao: round9(emission),
     rank: nullableScore(row.rank),
     trust: nullableScore(row.trust),
     incentive: nullableScore(row.incentive),
     dividends: nullableScore(row.dividends),
-    yield: computeYieldValue(emission, stake),
+    yield: null,
   };
 }
 
@@ -154,7 +154,7 @@ export function buildAccountPositionHistory(
     })
     .filter((point): point is AccountPositionHistoryPoint => point !== null);
   return {
-    schema_version: 1,
+    schema_version: 2,
     ss58,
     netuid,
     window: window ?? null,

@@ -1,3 +1,7 @@
+import {
+  loadAlphaQuantityCapture,
+  type AlphaQuantityCapture,
+} from "./alpha-quantity.ts";
 // GET /api/v1/accounts/{ss58}/positions, served from D1 -- the HOT leg (#9273).
 //
 // The lakehouse reader (#9266) made this route answer again; it could not make
@@ -29,12 +33,8 @@
 import {
   annotatePositionsSnapshot,
   buildAccountPositions,
-  distinctHotkeys,
 } from "./account-nominator-positions.ts";
-import {
-  neuronStakeByHotkeys,
-  POSITION_SCAN_CAP,
-} from "./nominator-positions-cold-tier.ts";
+import { POSITION_SCAN_CAP } from "./nominator-positions-cold-tier.ts";
 import { readStore } from "./read-store.ts";
 import type { NominatorPositions } from "../generated/db/types.ts";
 
@@ -68,13 +68,15 @@ export async function loadAccountPositionsFromStore(
 
   let rows: Record<string, unknown>[];
   let ledgerCapturedAt: number | null;
+  let capture: AlphaQuantityCapture | null = null;
   try {
+    capture = await loadAlphaQuantityCapture(db);
     // Issued together: the ledger stamp is needed on the zero path and the
     // decline path alike, and serialising two independent point reads on a
     // request path buys nothing.
     const [positionsResult, latestRow] = await Promise.all([
       db.query<NominatorPositionRow>(
-        `SELECT ${POSITION_COLUMNS} FROM nominator_positions` +
+        `SELECT ${POSITION_COLUMNS}${capture ? ", source, alpha_rao, alpha_evidence" : ""} FROM nominator_positions` +
           ` WHERE coldkey = ? LIMIT ?`,
         // One row over the cap is enough to know the cap was exceeded, and
         // cheaper than a second counting query over the same predicate.
@@ -93,14 +95,14 @@ export async function loadAccountPositionsFromStore(
   if (ledgerCapturedAt === null) return null;
   if (rows.length > POSITION_SCAN_CAP) return null;
 
-  const stake = await neuronStakeByHotkeys(env, distinctHotkeys(rows));
-  if (stake === null) return null;
-
   // A zero here is a LIVE zero, so it needs no stake-event cross-check -- but
   // it still gets the ledger's stamp, so a caller can see the answer is
   // current rather than inheriting the null a rowless account used to get.
-  return annotatePositionsSnapshot(buildAccountPositions(rows, stake, ss58), {
-    snapshotCapturedAtMs: ledgerCapturedAt,
-    latestStakeEventMs: null,
-  });
+  return annotatePositionsSnapshot(
+    buildAccountPositions(rows, null, ss58, capture),
+    {
+      snapshotCapturedAtMs: ledgerCapturedAt,
+      latestStakeEventMs: null,
+    },
+  );
 }

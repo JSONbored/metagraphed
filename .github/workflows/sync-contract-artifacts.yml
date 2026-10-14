@@ -34,6 +34,11 @@ on:
   schedule:
     - cron: "40 5 * * *"
   workflow_dispatch:
+    inputs:
+      prepare_only:
+        description: "Generate reviewable source-branch artifacts without opening or merging a sync PR"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -79,6 +84,33 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Stage source-branch generated contracts
+        if: inputs.prepare_only == true
+        run: |
+          mkdir -p "$RUNNER_TEMP/source-contracts"
+          git rev-parse HEAD > "$RUNNER_TEMP/source-contracts/source-head.txt"
+          git diff --name-only -- public/metagraph generated packages/contract > "$RUNNER_TEMP/source-contracts/paths.txt"
+          while IFS= read -r file; do
+            test -f "$file"
+            mkdir -p "$RUNNER_TEMP/source-contracts/$(dirname "$file")"
+            cp "$file" "$RUNNER_TEMP/source-contracts/$file"
+          done < "$RUNNER_TEMP/source-contracts/paths.txt"
+
+      - name: Upload source-branch generated contracts
+        if: inputs.prepare_only == true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: source-contracts
+          path: ${{ runner.temp }}/source-contracts
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Qualify prepared quantity source
+        if: inputs.prepare_only == true
+        run: |
+          npx vitest run tests/quantity-contract.test.ts
+          npm run typecheck
+
       # Scoped to the contract artifacts on purpose. build.ts already
       # auto-reverts the deploy-owned pair (r2-manifest.json,
       # schemas/index.json, see DEPLOY_OWNED_ARTIFACTS in scripts/lib.ts), and
@@ -117,7 +149,7 @@ jobs:
           echo "files=$files" >> "$GITHUB_OUTPUT"
 
       - name: Open sync PR (no-op if unchanged)
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.diff.outputs.changed == 'true' && inputs.prepare_only != true
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         id: pr
         with:

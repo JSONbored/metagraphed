@@ -212,5 +212,16 @@ export async function tryDataApiTier(
     await captureDataApiTierFallback(err, flagName, env);
     return markDataApiTierFallback();
   }
+  // Mixed deployments must not forward the old inferred-balance contract.
+  // Flow nominators answer windowed movement and keep their existing contract.
+  const url = new URL(request.url);
+  const quantityPath =
+    /^\/api\/v1\/(?:validators(?:\/[^/]+(?:\/history)?)?|compare\/validators|accounts(?:\/directory)?|accounts\/[^/]+\/(?:positions|portfolio|subnets\/\d+\/history)|subnets\/\d+\/holders|chain\/holders)$/.test(
+      url.pathname,
+    ) ||
+    (/^\/api\/v1\/validators\/[^/]+\/nominators$/.test(url.pathname) &&
+      url.searchParams.get("basis") === "positions");
+  if (quantityPath && body.schema_version !== 2)
+    return markDataApiTierFallback();
   return body as Record<string, unknown>;
 }

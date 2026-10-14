@@ -29,6 +29,18 @@ import { z } from "zod";
 import { subnetHistoryArtifactSchema } from "../shared.ts";
 import { POSITIONS_DEGRADED_REASONS } from "../../src/account-nominator-positions.ts";
 
+const AlphaProvenanceSchema = z
+  .object({
+    network: z.literal("finney"),
+    captured_at: z.string(),
+    block_number: z.int().min(0),
+    block_hash: z.string(),
+    genesis_hash: z.string(),
+    spec_version: z.union([z.literal(454), z.literal(478)]),
+    code_hash: z.string(),
+    metadata_sha256: z.string(),
+  })
+  .strict();
 const NominatorPositionSchema = z
   .object({
     hotkey: z.string(),
@@ -36,20 +48,30 @@ const NominatorPositionSchema = z
     share_fraction: z
       .number()
       .min(0)
-      .max(1)
+      .nullable()
       .describe(
-        "This account's share of the hotkey's total alpha-pool shares on this subnet (0..1), not a TAO amount.",
+        "Observed display share ratio; not an asset balance or share of a subnet's total holdings.",
       ),
     stake_tao: z
       .number()
-      .min(0)
+      .nullable()
       .describe(
-        "This position's stake in the subnet named by the sibling `netuid`. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows, so this is always that subnet's alpha token (#2550). It is the per-row counterpart of `total_stake_alpha` above -- same denomination, kept under the on-chain column name deliberately (#8945).",
+        "Deprecated unsupported financial interpretation; always null. Neuron voting weight is not Alpha or TAO holdings.",
+      )
+      .meta({ deprecated: true }),
+    alpha_rao: z
+      .string()
+      .regex(/^(0|[1-9]\d*)$/)
+      .nullable()
+      .describe(
+        "Exact non-Root subnet Alpha in rao (1e9 rao per token) at this position's qualified snapshot. Each netuid identifies a different token; never sum across netuids.",
       ),
+    quantity_status: z.enum(["unqualified", "qualified_snapshot"]),
+    provenance: AlphaProvenanceSchema.nullable(),
   })
   .strict()
   .describe(
-    "One (hotkey, netuid) delegation this account holds, reconstructed from the nominator-positions ledger joined against the hotkey's live stake_tao for that netuid.",
+    "One observed delegation relationship. Unknown quantities preserve the relationship and carry null amounts; qualified quantities describe a finalized snapshot, not live wallet completeness.",
   );
 
 // #9273. Present ONLY when this payload's zero is not a measurement, so a
@@ -85,16 +107,17 @@ const AccountPositionsDegradedSchema = z
 
 export const AccountPositionsArtifactSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
     ss58: z.string(),
     captured_at: z.string().nullable(),
     position_count: z.int().min(0),
     total_stake_alpha: z
       .number()
-      .min(0)
+      .nullable()
       .describe(
-        "Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure.",
-      ),
+        "Deprecated cross-token aggregate; always null because different subnet Alpha tokens cannot be summed.",
+      )
+      .meta({ deprecated: true }),
     positions: z.array(NominatorPositionSchema),
     degraded: AccountPositionsDegradedSchema.optional(),
   })
@@ -116,8 +139,17 @@ const AccountPositionHistoryPointSchema = z
     active: z.boolean(),
     stake_tao: z
       .number()
+      .nullable()
       .describe(
-        "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).",
+        "Deprecated unsupported holdings interpretation; always null. Historical neuron data records voting weight, not native asset positions.",
+      )
+      .meta({ deprecated: true }),
+    voting_weight: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Observed historical effective voting weight; not a balance or asset denominator.",
       ),
     emission_tao: z
       .number()
@@ -128,7 +160,13 @@ const AccountPositionHistoryPointSchema = z
     trust: z.number().nullable(),
     incentive: z.number().nullable(),
     dividends: z.number().nullable(),
-    yield: z.number().nullable(),
+    yield: z
+      .number()
+      .nullable()
+      .describe(
+        "Unavailable: historical voting weight is not an asset balance and cannot establish holdings yield.",
+      )
+      .meta({ deprecated: true }),
   })
   .strict()
   .describe(

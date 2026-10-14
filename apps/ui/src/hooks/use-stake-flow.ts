@@ -19,7 +19,15 @@ import {
   accountPositionsQuery,
 } from "@/lib/metagraphed/queries";
 import type { SubnetStakeQuote, AccountPosition } from "@/lib/metagraphed/types";
-import { taoToRao, raoToTao, alphaToRawAlpha, asRao, type Rao } from "@/lib/metagraphed/units";
+import {
+  taoToRao,
+  raoToTao,
+  rawAlphaToAlpha,
+  asRawAlpha,
+  alphaToRawAlpha,
+  asRao,
+  type Rao,
+} from "@/lib/metagraphed/units";
 import {
   computeLimitPrice,
   buildAddStakeLimitParams,
@@ -42,7 +50,13 @@ import { computeIdempotencyKey } from "@/lib/metagraphed/broadcast";
 export type StakeFlowAction = "stake" | "unstake";
 export type StakeFlowUnit = "tao" | "alpha";
 export type StakeFlowPhase =
-  "connect" | "amount" | "confirm" | "signing" | "broadcasting" | "failed" | "done";
+  | "connect"
+  | "amount"
+  | "confirm"
+  | "signing"
+  | "broadcasting"
+  | "failed"
+  | "done";
 
 /** Per ADR 0018 §3. */
 export const DEFAULT_TOLERANCE_PCT = 5;
@@ -142,17 +156,19 @@ export function resolveUnstakeMaxAmountInput(
   unit: StakeFlowUnit,
   spotPriceTao: number,
 ): string | null {
-  if (position == null) return null;
-  if (unit === "alpha") {
-    return computeUnstakeAlphaCandidate(String(position.stake_tao), spotPriceTao);
-  }
-  // Rounded to 9 decimals like every other amount this hook ever displays or
-  // parses -- stake_tao is a server-computed float (share_fraction * live
-  // stake) and routinely carries more precision than a single rao can
-  // represent, which would otherwise surface as an ugly, over-precise
-  // prefilled value in the amount field.
-  // eslint-disable-next-line no-restricted-syntax -- transaction amount, not display
-  return position.stake_tao.toFixed(9);
+  if (
+    position?.quantity_status !== "qualified_snapshot" ||
+    position.netuid === 0 ||
+    typeof position.alpha_rao !== "string" ||
+    !/^(0|[1-9]\d{0,19})$/.test(position.alpha_rao)
+  )
+    return null;
+  const alpha = rawAlphaToAlpha(asRawAlpha(BigInt(position.alpha_rao)));
+  if (unit === "alpha") return alpha;
+  if (!Number.isFinite(spotPriceTao) || spotPriceTao <= 0) return null;
+  // A labeled snapshot candidate, superseded by the transaction's real quote.
+  // eslint-disable-next-line no-restricted-syntax -- transaction candidate precision
+  return (Number(alpha) * spotPriceTao).toFixed(9);
 }
 
 /** Root (netuid 0) has zero coverage in the nominator-positions source. */

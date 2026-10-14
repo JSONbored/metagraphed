@@ -51,7 +51,7 @@ function ApiSources() {
 
 export function AccountsPage() {
   const { h160 } = Route.useSearch();
-  const [metric, setMetric] = useState<HolderMetric>("stake");
+  const [metric, setMetric] = useState<HolderMetric>("reach");
   const [signerQuery, setSignerQuery] = useState("");
   const { ref: activeRef, nearViewport: activeNearViewport } = useNearViewport("0px 0px");
 
@@ -76,8 +76,7 @@ export function AccountsPage() {
     return query ? active.filter((row) => row.signer.toLowerCase().includes(query)) : active;
   }, [active, signerQuery]);
 
-  const topTen = accounts.slice(0, 10).reduce((acc, account) => acc + account.total_stake_tao, 0);
-  const topShare = pricedStakeTotal > 0 ? topTen / pricedStakeTotal : null;
+  const topShare = null;
 
   // A fixed tuple, not a spread: FactNodes caps a sentence at six facts by
   // TYPE, and a conditional spread erases the length the cap is checked on.
@@ -152,7 +151,7 @@ export function AccountsPage() {
           controls={
             <RangeControl
               label="Rank by"
-              options={HOLDER_METRICS}
+              options={HOLDER_METRICS.filter((option) => option.value !== "stake")}
               value={metric}
               onChange={(next) => setMetric(next as HolderMetric)}
             />

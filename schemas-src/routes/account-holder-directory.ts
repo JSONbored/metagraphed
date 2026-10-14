@@ -7,7 +7,13 @@ export const AccountHolderDirectoryEntrySchema = z
     coldkey: z.string().nullable(),
     subnet_count: z.int().min(0),
     uid_count: z.int().min(0),
-    total_stake_tao: z.number().min(0),
+    total_stake_tao: z
+      .number()
+      .nullable()
+      .describe(
+        "Deprecated unsupported financial quantity from neuron voting weight; always null.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z.number().min(0),
     stake_dominance: z.number().min(0).max(1).nullable(),
   })
@@ -19,12 +25,18 @@ const RankingSchema = z
 
 export const AccountHolderDirectoryArtifactSchema = z
   .object({
-    schema_version: z.literal(1),
+    schema_version: z.literal(2),
     captured_at: z.string().nullable(),
     block_number: z.int().min(0).nullable(),
     account_count: z.int().min(0),
     limit: z.literal(ACCOUNT_HOLDER_DIRECTORY_LIMIT),
-    priced_registered_stake_tao: z.number().min(0),
+    priced_registered_stake_tao: z
+      .number()
+      .nullable()
+      .describe(
+        "Deprecated unsupported financial quantity from neuron voting weight; always null.",
+      )
+      .meta({ deprecated: true }),
     rankings: z
       .object({
         stake: RankingSchema,

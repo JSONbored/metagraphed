@@ -201,12 +201,12 @@ export function ValidatorDetailPage() {
     },
     { key: "uid", label: "UID", kind: "number", sortable: true, value: (row) => row.uid },
     {
-      key: "stake_alpha",
-      label: "Stake (α)",
+      key: "voting_weight",
+      label: "Voting weight",
       kind: "number",
       sortable: true,
-      value: (row) => row.stake_alpha ?? null,
-      format: (value) => (typeof value === "number" ? fmtAlpha(value) : "—"),
+      value: (row) => row.voting_weight ?? null,
+      format: (value) => (typeof value === "number" ? formatNumber(value) : "Unavailable"),
     },
     {
       key: "emission_alpha",
@@ -327,7 +327,7 @@ export function ValidatorDetailPage() {
         <AnalyticsSection
           id="stake"
           name="Stake by subnet"
-          question="Raw alpha positions by subnet, alongside their native emission."
+          question="Native holdings cannot be inferred from this membership source."
           visual={
             stakeRails.length > 0 ? (
               <RankedRails
@@ -354,14 +354,12 @@ export function ValidatorDetailPage() {
           // Not a time series: /validators/{hotkey}/history publishes daily
           // NETWORK-WIDE totals with netuid: null, so there is no per-subnet
           // series to stack. Momentum below carries the time dimension.
-          footnote={`the ${formatNumber(stakeRails.length)} largest of ${formatNumber(
-            memberships.length,
-          )} raw α positions · units vary by subnet; the hero total is TAO-valued · a snapshot, not a series · chain-direct`}
+          footnote="Membership voting weight is observed below. Native holdings and a priced portfolio total are unavailable from this source."
         />
         <AnalyticsSection
           id="memberships"
           name="Per-subnet"
-          question="Every membership, ranked by raw α stake."
+          question="Every observed membership, with voting weight and subnet rewards."
           visual={
             <DataTable
               rows={memberships}

@@ -229,19 +229,13 @@ export function relatedKeys(
   parents: readonly AccountDelegationEdge[],
 ): KeyRow[] {
   const rows: KeyRow[] = [];
-  const hotkeys = new Map<string, number>();
-  for (const position of positions) {
-    if (!position.hotkey) continue;
-    const stake = typeof position.stake_tao === "number" ? position.stake_tao : 0;
-    hotkeys.set(position.hotkey, (hotkeys.get(position.hotkey) ?? 0) + stake);
-  }
-  for (const [hotkey, stake] of [...hotkeys.entries()].sort((a, b) => b[1] - a[1])) {
+  const hotkeys = new Set(positions.map((position) => position.hotkey).filter(Boolean));
+  for (const hotkey of [...hotkeys].sort()) {
     rows.push({
       key: hotkey,
       label: `${hotkey.slice(0, 6)}…${hotkey.slice(-4)}`,
       role: "stakes through",
       href: `/validators/${hotkey}`,
-      value: fmtCompactTao(stake),
     });
   }
   for (const [list, role] of [

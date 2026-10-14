@@ -281,10 +281,8 @@ export const NEURON_INSERT_COLUMNS = [
 export const GLOBAL_VALIDATOR_SORTS = [
   "avg_validator_trust",
   "max_validator_trust",
-  "stake_dominance",
   "subnet_count",
   "total_emission",
-  "total_stake",
   "uid_count",
 ];
 export const DEFAULT_GLOBAL_VALIDATOR_SORT = "subnet_count";
@@ -687,12 +685,6 @@ function coldkeyIdentity(
   return identity;
 }
 
-interface ApyAccumulator {
-  apyNumeratorRao: bigint;
-  apyDenominatorRao: bigint;
-  apyEligibleCount: number;
-}
-
 // Per-netuid TAO pricing for the cross-subnet sums (#9051, the Group B half
 // of #8945). A neuron's stake_tao/emission_tao on any netuid != 0 are that
 // subnet's ALPHA token (#2550), so summing rows across subnets used to add
@@ -721,57 +713,6 @@ function priceForNetuid(
     : null;
 }
 
-// Estimated annualized yield (#2551): mutates `acc` (either a
-// buildGlobalValidators per-hotkey entry or buildValidatorDetail's local
-// accumulator) with one subnet-membership row's contribution to
-// apy_estimate. `tempoByNetuid` is a netuid -> tempo(blocks) Map (loaded by
-// the caller from subnet_hyperparams); a membership whose netuid has no
-// resolvable tempo, or that holds no positive stake, is EXCLUDED from both
-// the numerator and denominator -- never defaulted to an assumed tempo,
-// mirroring this codebase's null-never-fabricated convention (see
-// nominator_count above). stake/emission are already-coerced
-// nonNegativeOrZero() results, matching every other call site in this file.
-//
-// Each eligible row's emission_tao (a single most-recently-captured
-// per-epoch reading, see NEURON_COLUMNS) is annualized using that row's own
-// subnet's tempo and projected across a full year, then accumulated in
-// rao-BigInt space alongside its stake so the final ratio (finalizeApy) is
-// algebraically a stake-weighted blend across every eligible membership,
-// computed as one sum-of-emission / sum-of-stake division rather than an
-// average of per-row ratios -- mirrors stakeTotalRao/emissionTotalRao's own
-// accumulate-then-convert-once pattern.
-function accumulateApyRow(
-  acc: ApyAccumulator,
-  netuid: number,
-  stake: number,
-  emission: number,
-  tempoByNetuid: Map<number, number>,
-): void {
-  const tempo = tempoByNetuid.get(netuid);
-  if (tempo == null) return; // unresolved tempo -- excluded, never defaulted
-  if (!(stake > 0)) return; // zero/negative-impossible stake -- excluded
-  const epochsPerYear = APY_SECONDS_PER_YEAR / (tempo * APY_SECONDS_PER_BLOCK);
-  const annualizedEmission = emission * epochsPerYear;
-  acc.apyNumeratorRao += toRaoBig(annualizedEmission);
-  acc.apyDenominatorRao += toRaoBig(stake);
-  acc.apyEligibleCount += 1;
-}
-
-// Reads the three fields accumulateApyRow above populates and produces the
-// two apy_estimate* output fields. Null (never 0) when no membership had a
-// resolvable tempo -- "no APY opinion" rather than "confirmed zero yield".
-function finalizeApy(acc: ApyAccumulator): Row {
-  if (acc.apyEligibleCount === 0 || acc.apyDenominatorRao <= 0n) {
-    return { apy_estimate: null, apy_estimate_eligible_subnet_count: 0 };
-  }
-  const apy =
-    raoBigToTao(acc.apyNumeratorRao) / raoBigToTao(acc.apyDenominatorRao);
-  return {
-    apy_estimate: round9OrNull(apy),
-    apy_estimate_eligible_subnet_count: acc.apyEligibleCount,
-  };
-}
-
 // Retained response keys for existing REST/MCP/SDK consumers (#12015).
 // A change in total delegated stake mixes deposits, withdrawals, rewards and
 // price moves. Two balance snapshots cannot isolate investment performance,
@@ -794,11 +735,7 @@ interface ValidatorAccumEntry {
   coldkeys: Map<string, number>;
   netuids: Set<number>;
   uidCount: number;
-  stakeTotalRao: bigint;
   emissionTotalRao: bigint;
-  apyNumeratorRao: bigint;
-  apyDenominatorRao: bigint;
-  apyEligibleCount: number;
   validatorTrustTotal: number;
   validatorTrustCount: number;
   maxValidatorTrust: number | null;
@@ -817,30 +754,10 @@ function buildGlobalValidatorEntry(
     entry.validatorTrustCount > 0
       ? entry.validatorTrustTotal / entry.validatorTrustCount
       : null;
-  // Root (netuid 0) stake is TAO-denominated with no AMM/price exposure;
-  // every other netuid's stake is that subnet's alpha token (#2550). Both
-  // legs are already present in entry.subnets -- one membership row per
-  // netuid, including netuid 0 when the hotkey holds root stake -- so the
-  // split needs no new ingestion, just separating the existing rao-precision
-  // total by whether a root membership row exists. Rao-BigInt subtraction
-  // (not float) keeps it exact, mirroring stakeTotalRao's own accumulation.
-  // Since #9051 stakeTotalRao is TAO-PRICED; root's leg passes through the
-  // pricing at exactly 1:1, so subtracting the raw root row still yields the
-  // priced alpha leg -- alpha_stake_tao is now genuinely TAO, the current
-  // market value of the non-root delegations the priced total covers.
-  // `stake_alpha` since #10514, and root's row is the one case where that name
-  // is a TAO figure -- netuid 0 stake IS TAO, which is exactly why it can be
-  // subtracted from the priced total without conversion.
-  const rootSubnet = entry.subnets.find((s) => s.netuid === 0) ?? null;
-  const rootStakeRao = rootSubnet
-    ? toRaoBig(rootSubnet.stake_alpha as number)
-    : 0n;
-  const alphaStakeRao = entry.stakeTotalRao - rootStakeRao;
+  // Neuron total_stake is voting weight, not a native asset position.
   const subnets = entry.subnets
     .sort(
       (a, b) =>
-        (b.stake_alpha as number) - (a.stake_alpha as number) ||
-        (b.emission_alpha as number) - (a.emission_alpha as number) ||
         (a.netuid as number) - (b.netuid as number) ||
         (a.uid as number) - (b.uid as number),
     )
@@ -855,9 +772,9 @@ function buildGlobalValidatorEntry(
     subnet_count: entry.netuids.size,
     uid_count: entry.uidCount,
     take: round(entry.take),
-    total_stake_tao: round9NonNegative(raoBigToTao(entry.stakeTotalRao)),
-    root_stake_tao: round9NonNegative(raoBigToTao(rootStakeRao)),
-    alpha_stake_tao: round9NonNegative(raoBigToTao(alphaStakeRao)),
+    total_stake_tao: null,
+    root_stake_tao: null,
+    alpha_stake_tao: null,
     total_emission_tao: round9NonNegative(raoBigToTao(entry.emissionTotalRao)),
     // #2549: from the separate validator_nominator_counts side table, joined
     // by hotkey. Null when that table has no row for this hotkey yet (cold
@@ -865,7 +782,8 @@ function buildGlobalValidatorEntry(
     // never fabricated as 0, which would misreport "confirmed zero
     // nominators" as opposed to "unknown."
     nominator_count: nominatorCounts.get(entry.hotkey) ?? null,
-    ...finalizeApy(entry),
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 0,
     ...unavailableRealizedReturns(),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
@@ -876,25 +794,7 @@ function buildGlobalValidatorEntry(
 }
 
 function applyStakeDominance(validators: Row[]): Row[] {
-  // Same rao-BigInt treatment as the per-hotkey accumulation above: summing
-  // every validator's already-rounded total_stake_tao (one per hotkey,
-  // network-wide) with plain `+=` reintroduces the same float-compounding risk
-  // this fix removed upstream. total_stake_tao is already rao-precision here
-  // (roundTao'd from an exact BigInt sum), so re-deriving its rao value is exact.
-  const networkStakeRao = validators.reduce(
-    (sum, entry) => sum + toRaoBig(entry.total_stake_tao as number),
-    0n,
-  );
-  const networkStakeTotal = raoBigToTao(networkStakeRao);
-  if (!(networkStakeTotal > 0) || !Number.isFinite(networkStakeTotal)) {
-    return validators.map((entry) => ({ ...entry, stake_dominance: null }));
-  }
-  return validators.map((entry) => ({
-    ...entry,
-    stake_dominance: round(
-      nonNegativeOrZero(entry.total_stake_tao) / networkStakeTotal,
-    ),
-  }));
+  return validators.map((entry) => ({ ...entry, stake_dominance: null }));
 }
 
 /** The explicit "there is nothing to price" map, for the cold/absent-tier
@@ -948,7 +848,6 @@ export function buildGlobalValidators(
     // see accumulateApyRow's own comment for why an unresolved netuid is
     // excluded rather than defaulted. A cold/absent map leaves every entry's
     // apy_estimate null, never throws.
-    tempoByNetuid = new Map<number, number>(),
   }: BuildGlobalValidatorsOptions,
 ): Row {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
@@ -987,11 +886,7 @@ export function buildGlobalValidators(
         coldkeys: new Map(),
         netuids: new Set(),
         uidCount: 0,
-        stakeTotalRao: 0n,
         emissionTotalRao: 0n,
-        apyNumeratorRao: 0n,
-        apyDenominatorRao: 0n,
-        apyEligibleCount: 0,
         validatorTrustTotal: 0,
         validatorTrustCount: 0,
         maxValidatorTrust: null,
@@ -1021,19 +916,7 @@ export function buildGlobalValidators(
     // an unpriceable row lands in the residuals instead (see priceForNetuid).
     const price = priceForNetuid(netuid, priceByNetuid);
     if (price != null) {
-      entry.stakeTotalRao += toRaoBig(stake * price);
       entry.emissionTotalRao += toRaoBig(emission * price);
-      // Priced values in the APY blend too: Σemission/Σstake across subnets
-      // is only a coherent stake-weighted rate when both sums share one
-      // denomination. An unpriceable membership is excluded, matching the
-      // helper's own unresolved-tempo exclusion rule.
-      accumulateApyRow(
-        entry,
-        netuid,
-        stake * price,
-        emission * price,
-        tempoByNetuid,
-      );
     }
     if (trust != null) {
       entry.validatorTrustTotal += trust;
@@ -1072,7 +955,8 @@ export function buildGlobalValidators(
       // ALPHA on every non-root subnet, and named so since #10514: the entry
       // carries a PRICED total_stake_tao, and a row field sharing that suffix
       // across a different unit is the trap the rename removes.
-      stake_alpha: round9NonNegative(stake),
+      stake_alpha: null,
+      voting_weight: round9OrNull(finiteCellOrNull(row.stake_tao)),
       emission_alpha: round9NonNegative(emission),
       validator_trust: round(trust),
     });
@@ -1093,7 +977,7 @@ export function buildGlobalValidators(
   );
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     sort: normalizedSort,
     limit: includeAll ? validators.length : normalizedLimit,
     captured_at: toIso(latestCapturedAt),
@@ -1303,25 +1187,17 @@ export function buildValidatorDetail(
     // netuid -> tempo(blocks) (#2551), sourced from subnet_hyperparams. See
     // accumulateApyRow's own comment. A cold/absent map leaves apy_estimate
     // null, never throws.
-    tempoByNetuid = new Map<number, number>(),
   }: BuildValidatorDetailOptions,
 ): Row {
   const coldkeys = new Map<string, number>();
-  let stakeTotalRao = 0n;
   // Root (netuid 0) stake is TAO-denominated with no AMM/price exposure;
   // every other netuid's stake is that subnet's alpha token (#2550) --
   // tracked separately here since the root membership row (when present) is
   // already one of `rows`, no new ingestion needed.
-  let rootStakeRao = 0n;
   let emissionTotalRao = 0n;
   // Plain object (not three separate `let`s) so it can be passed directly to
   // the shared accumulateApyRow/finalizeApy helpers buildGlobalValidators
   // also uses (#2551) -- one accumulation implementation, not duplicated.
-  const apyAcc: ApyAccumulator = {
-    apyNumeratorRao: 0n,
-    apyDenominatorRao: 0n,
-    apyEligibleCount: 0,
-  };
   let validatorTrustTotal = 0;
   let validatorTrustCount = 0;
   let maxValidatorTrust: number | null = null;
@@ -1348,7 +1224,6 @@ export function buildValidatorDetail(
       const rowTake = finiteCellOrNull(row?.take);
       if (rowTake != null) take = rowTake;
     }
-    const stake = nonNegativeOrZero(row?.stake_tao);
     const emission = nonNegativeOrZero(row?.emission_tao);
     // TAO-priced accumulation (#9051), mirroring buildGlobalValidators: each
     // membership converts through its own subnet's alpha price; an
@@ -1356,17 +1231,7 @@ export function buildValidatorDetail(
     // rootStakeRao stays the raw root leg either way.
     const price = priceForNetuid(netuid, priceByNetuid);
     if (price != null) {
-      const rowStakeRao = toRaoBig(stake * price);
-      stakeTotalRao += rowStakeRao;
-      if (netuid === 0) rootStakeRao += rowStakeRao;
       emissionTotalRao += toRaoBig(emission * price);
-      accumulateApyRow(
-        apyAcc,
-        netuid,
-        stake * price,
-        emission * price,
-        tempoByNetuid,
-      );
     }
     const trust = finiteCellOrNull(row?.validator_trust);
     if (trust != null) {
@@ -1404,7 +1269,8 @@ export function buildValidatorDetail(
     subnets.push({
       netuid,
       ...rest,
-      stake_alpha: rowStake ?? null,
+      stake_alpha: null,
+      voting_weight: rowStake ?? null,
       emission_alpha: rowEmission ?? null,
     });
   }
@@ -1419,21 +1285,20 @@ export function buildValidatorDetail(
   const coldkey = primaryColdkey(coldkeys);
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     hotkey,
     coldkey,
     coldkey_identity: coldkeyIdentity(coldkey, identityByColdkey),
     coldkey_count: coldkeys.size,
     subnet_count: subnets.length,
     take: round(take),
-    total_stake_tao: round9NonNegative(raoBigToTao(stakeTotalRao)),
-    root_stake_tao: round9NonNegative(raoBigToTao(rootStakeRao)),
-    alpha_stake_tao: round9NonNegative(
-      raoBigToTao(stakeTotalRao - rootStakeRao),
-    ),
+    total_stake_tao: null,
+    root_stake_tao: null,
+    alpha_stake_tao: null,
     total_emission_tao: round9NonNegative(raoBigToTao(emissionTotalRao)),
     nominator_count: nominatorCount,
-    ...finalizeApy(apyAcc),
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 0,
     ...unavailableRealizedReturns(),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(maxValidatorTrust),
@@ -1512,7 +1377,7 @@ export function composeValidatorComparison(
     return projected;
   });
   return {
-    schema_version: 1,
+    schema_version: 2,
     netuid,
     validator_count: validators.length,
     validators,

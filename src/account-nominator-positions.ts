@@ -1,35 +1,12 @@
-import { round9OrNull, nonNegativeCellOrNull } from "./lib/rao.ts";
-// Nominator-side (coldkey) position reconstruction (#5233): "what does this
-// coldkey actually hold, across every hotkey/subnet it delegates to" — the
-// coldkey-scoped counterpart to buildAccountPortfolio's hotkey-scoped view
-// (src/account-portfolio.ts), which only ever showed near-zero for a pure
-// delegator (its stake lives on someone ELSE's hotkey row, not its own).
-//
-// Sourced from nominator_positions (migration 0044, populated by the same
-// SubtensorModule::Alpha scan as validator_nominator_counts, #2549) joined
-// against the live neurons stake_tao for each referenced (hotkey, netuid) --
-// see that migration's header comment for why this table stores a
-// dimensionless share_fraction rather than a snapshotted TAO figure. Pure +
-// exported for tests; the Worker does the Postgres reads and calls
-// buildAccountPositions with both result sets.
-//
-// Known scope limitation (documented in the fetch script + migration too):
-// root (netuid 0) stake is NOT covered -- SubtensorModule::Alpha carries no
-// root data at all (root is TAO-denominated 1:1, no alpha pool, #2550), so a
-// coldkey that only holds root-delegated stake shows zero positions here,
-// not because it holds nothing but because this source can't see it yet.
-//
-// That same limitation is why the aggregate is `total_stake_alpha`, renamed
-// from total_stake_tao in #8803. Because root is excluded, EVERY position
-// here sits on a netuid != 0, and non-root neurons.stake_tao is that
-// subnet's alpha token rather than TAO (src/metagraph-neurons.ts, #2550) --
-// so the aggregate is a sum of different subnets' alpha, which is a count,
-// not a TAO value. It is named for what it is instead of being converted:
-// unlike /accounts/top-holders (#8803), nothing here adds it to real TAO, so
-// the only harm was the name, and a rename cannot silently change a number
-// under an existing consumer the way a conversion would. positions[] keeps
-// its per-row `stake_tao` -- that is the on-chain column name every
-// neurons-tier route uses, and renaming it repo-wide is its own change.
+import {
+  alphaPositionQuantity,
+  type AlphaQuantityCapture,
+} from "./alpha-quantity.ts";
+import { nonNegativeCellOrNull } from "./lib/rao.ts";
+// Account/hotkey/subnet relationships survive even when native amounts are
+// unknown. Only a completed selected runtime-qualified capture can supply
+// exact non-Root Alpha rao. Neuron voting weight never prices these rows.
+// Compatibility stake_tao and the cross-token total are deprecated nulls.
 
 export const NOMINATOR_POSITION_INSERT_COLUMNS = [
   "coldkey",
@@ -86,7 +63,10 @@ export interface AccountNominatorPosition {
   hotkey: string;
   netuid: number;
   share_fraction: number | null;
-  stake_tao: number;
+  stake_tao: null;
+  alpha_rao: string | null;
+  quantity_status: "unqualified" | "qualified_snapshot";
+  provenance: ReturnType<typeof alphaPositionQuantity>["provenance"];
 }
 
 /**
@@ -165,11 +145,11 @@ export interface AccountPositionsDegraded {
 }
 
 export interface AccountPositionsResult {
-  schema_version: 1;
+  schema_version: 2;
   ss58: string;
   captured_at: string | null;
   position_count: number;
-  total_stake_alpha: number;
+  total_stake_alpha: null;
   positions: AccountNominatorPosition[];
   /**
    * Present ONLY when this payload's zero is not a measurement. Absent on
@@ -188,81 +168,39 @@ export interface AccountPositionsResult {
 // same null-never-fabricated convention as nominator_count/apy_estimate.
 export function buildAccountPositions(
   positionRows: Array<Record<string, unknown>> | null | undefined,
-  hotkeyNetuidStake: Map<string, number> | null | undefined,
+  _hotkeyNetuidStake: Map<string, number> | null | undefined,
   ss58: string,
+  capture: AlphaQuantityCapture | null = null,
 ): AccountPositionsResult {
-  const rows = Array.isArray(positionRows) ? positionRows : [];
-  const stakeByKey =
-    hotkeyNetuidStake instanceof Map ? hotkeyNetuidStake : new Map();
   const positions: AccountNominatorPosition[] = [];
-  let totalStakeAlpha = 0;
   let latestCapturedAt: number | null = null;
-  // Rows the ledger holds that no live `neurons` row could price. Counted
-  // rather than merely skipped so the payload can say so -- see
-  // POSITIONS_DEGRADED_UNPRICEABLE.
-  let unpriceable = 0;
-
-  for (const row of rows) {
+  for (const row of Array.isArray(positionRows) ? positionRows : []) {
     const hotkey = typeof row?.hotkey === "string" ? row.hotkey : null;
     const netuid = nonNegativeInt(row?.netuid);
-    const fraction = nullableFraction(row?.share_fraction);
-    if (!hotkey || netuid == null || fraction == null) continue;
-
-    const hotkeyStake = stakeByKey.get(`${hotkey}|${netuid}`);
-    if (hotkeyStake == null) {
-      unpriceable += 1;
-      continue;
-    }
-
-    const stakeTao = round9OrNull(fraction * hotkeyStake);
-    if (stakeTao == null) continue;
-    totalStakeAlpha += stakeTao;
-
-    const capturedAt = nonNegativeInt(row?.captured_at);
-    if (
-      capturedAt != null &&
-      (latestCapturedAt == null || capturedAt > latestCapturedAt)
-    ) {
-      latestCapturedAt = capturedAt;
-    }
-
+    if (!hotkey || netuid == null) continue;
+    const at = nonNegativeInt(row.captured_at);
+    if (at != null && (latestCapturedAt == null || at > latestCapturedAt))
+      latestCapturedAt = at;
     positions.push({
       hotkey,
       netuid,
-      share_fraction: round6(fraction),
-      stake_tao: stakeTao,
+      share_fraction: round6(nullableFraction(row.share_fraction)),
+      stake_tao: null,
+      ...alphaPositionQuantity(row, capture),
     });
   }
-
-  // Biggest position first; tie-break by hotkey then netuid for a stable order.
+  // Relationship order is deterministic, never a ranking of incomparable tokens.
   positions.sort(
-    (a, b) =>
-      b.stake_tao - a.stake_tao ||
-      a.hotkey.localeCompare(b.hotkey) ||
-      a.netuid - b.netuid,
+    (a, b) => a.netuid - b.netuid || a.hotkey.localeCompare(b.hotkey),
   );
-
-  const result: AccountPositionsResult = {
-    schema_version: 1,
+  return {
+    schema_version: 2,
     ss58,
-    captured_at: latestCapturedAt != null ? toIso(latestCapturedAt) : null,
+    captured_at: latestCapturedAt == null ? null : toIso(latestCapturedAt),
     position_count: positions.length,
-    total_stake_alpha: round9OrNull(totalStakeAlpha) ?? 0,
+    total_stake_alpha: null,
     positions,
   };
-  // The two provenance stamps belong to the LEDGER and to this coldkey's chain
-  // activity, neither of which this pure builder can see -- the callers that
-  // do have them attach the stronger `snapshot_predates_stake_activity` reason
-  // over this one when it also applies, which is the right precedence: both
-  // say "do not trust this total", and that one says why more usefully.
-  if (unpriceable > 0) {
-    result.degraded = {
-      reason: POSITIONS_DEGRADED_UNPRICEABLE,
-      snapshot_captured_at: null,
-      latest_stake_event_at: null,
-    };
-  }
-  return result;
 }
 
 // Distinct, order-stable, non-empty hotkeys referenced by a coldkey's
