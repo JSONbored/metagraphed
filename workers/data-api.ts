@@ -3543,8 +3543,9 @@ async function handlePollerLaneHealthSync(request: Request, env: DataApiEnv) {
   }
 
   // recordLaneVerdict swallows its own failures by design -- an alarm whose
-  // recording can break the alarm is worse than the bug. So the count of rows
-  // that actually landed is reported rather than assumed.
+  // recording can break the alarm is worse than the bug. Count only inserts
+  // whose returned identity is confirmed. An error after commit is ambiguous,
+  // so a failed response is never proof that a whole batch is safe to replay.
   let written = 0;
   for (const row of incoming.map(coercePollerJobOutcome)) {
     if (await recordLaneVerdict(laneDb, row, { confirm: true })) written += 1;
