@@ -67,6 +67,7 @@ test("complete persistence acknowledges the exact original UTF-8 request", async
   assert.deepEqual(await response.json(), {
     ok: true,
     lane_health_written: 2,
+    lane_health_expected: 2,
     request_sha256: digest(body),
     stores: ["neon"],
   });
@@ -89,6 +90,7 @@ test("zero persisted verdicts return a failed acknowledgement with the original 
   assert.deepEqual(await response.json(), {
     ok: false,
     lane_health_written: 0,
+    lane_health_expected: 1,
     request_sha256: digest(body),
     stores: ["neon"],
   });
@@ -110,6 +112,7 @@ test("partial persistence reports its actual count and cannot be mistaken for no
   assert.deepEqual(await response.json(), {
     ok: false,
     lane_health_written: 1,
+    lane_health_expected: 2,
     request_sha256: digest(body),
     stores: ["neon"],
   });
@@ -132,6 +135,7 @@ test("a silently ignored insert cannot acknowledge persistence", async () => {
     assert.deepEqual(await response.json(), {
       ok: false,
       lane_health_written: rows.length - 1,
+      lane_health_expected: rows.length,
       request_sha256: digest(body),
       stores: ["neon"],
     });

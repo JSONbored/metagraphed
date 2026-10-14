@@ -36,6 +36,10 @@ import {
   type SelfHealthLane,
 } from "../schemas-src/routes/self-health.ts";
 import { safeIntOrNull } from "./read-store.ts";
+import {
+  classifyLaneHealthWriteError,
+  type LaneHealthWriteFailure,
+} from "./lane-health-write-diagnostics.ts";
 
 /**
  * How long a verdict is kept.
@@ -223,9 +227,20 @@ export interface LaneHealthRecord {
 export async function recordLaneVerdict(
   db: LaneHealthDb | null | undefined,
   record: LaneHealthRecord,
-  options: { confirm?: boolean } = {},
+  options: {
+    confirm?: boolean;
+    onFailure?: (reason: LaneHealthWriteFailure) => void;
+  } = {},
 ): Promise<boolean> {
-  if (!db?.run) return false;
+  const failed = (reason: LaneHealthWriteFailure): false => {
+    try {
+      options.onFailure?.(reason);
+    } catch {
+      // Optional diagnostics must not change the writer's never-throw contract.
+    }
+    return false;
+  };
+  if (!db?.run) return failed("missing_store");
   try {
     const text =
       "INSERT INTO lane_health (lane, verdict, age_ms, detail, checked_at) " +
@@ -246,8 +261,8 @@ export async function recordLaneVerdict(
         values,
       );
       const inserted = rows[0] as Record<string, unknown> | undefined;
+      if (rows.length !== 1) return failed("returned_count");
       if (
-        rows.length !== 1 ||
         !inserted ||
         !["lane", "verdict", "detail"].every(
           (key) => inserted[key] === record[key as keyof LaneHealthRecord],
@@ -260,13 +275,12 @@ export async function recordLaneVerdict(
           );
         })
       )
-        return false;
+        return failed("returned_identity");
     } else await db.run(text, values);
-  } catch {
-    // The insert is what this function promises. A missing binding, an unapplied
-    // migration, or any D1 error means the verdict was NOT recorded, and the caller
-    // is told so.
-    return false;
+  } catch (error) {
+    // A failed insert/confirmation is not an acknowledgement. An error can
+    // follow commit, so this false result never authorizes replaying the row.
+    return failed(classifyLaneHealthWriteError(error));
   }
   try {
     // Prune this lane's own expired rows on the way through, rather than from a
