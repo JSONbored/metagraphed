@@ -1,6 +1,5 @@
 import {
-  classifyLaneHealthWriteError,
-  LANE_HEALTH_WRITE_FAILURES,
+  classifyLaneHealthWriteReason,
   type LaneHealthWriteFailure,
 } from "./lane-health-write-diagnostics.ts";
 import type { NeuronMirrorOutcome } from "./neurons-neon-write.ts";
@@ -37,13 +36,7 @@ export function createNeuronWriteReporter(
         const reason = result?.reason;
         return [
           table,
-          result && !result.ok
-            ? LANE_HEALTH_WRITE_FAILURES.includes(
-                reason as LaneHealthWriteFailure,
-              )
-              ? reason
-              : classifyLaneHealthWriteError({ message: reason })
-            : null,
+          result && !result.ok ? classifyLaneHealthWriteReason(reason) : null,
         ];
       }),
     ) as Summary["failures"];

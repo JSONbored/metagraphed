@@ -53,6 +53,18 @@ export function classifyLaneHealthWriteError(
   return "insert_error";
 }
 
+/** Writer results can retain driver reasons internally. Every shared verdict
+ * sink must classify them before persistence or public health delivery. */
+export function classifyLaneHealthWriteReason(
+  reason: unknown,
+): LaneHealthWriteFailure {
+  if (reason === "unbound" || reason === "hyperdrive unbound")
+    return "missing_store";
+  if (LANE_HEALTH_WRITE_FAILURES.includes(reason as LaneHealthWriteFailure))
+    return reason as LaneHealthWriteFailure;
+  return classifyLaneHealthWriteError({ message: reason });
+}
+
 /** One fixed event at most per minute per isolate, across all lanes/reasons.
  * The route has already bounded its census to 50. No per-lane/hash map grows. */
 export function createLaneHealthWriteReporter(

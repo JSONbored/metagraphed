@@ -14,6 +14,8 @@
 //     failure on the very deploy that introduced it.
 import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "vitest";
+import { loadLatestLaneHealth } from "../src/lane-health.ts";
+import { buildSelfHealth, withLaneHealth } from "../src/self-health.ts";
 import {
   buildPgUpsert,
   PG_PARAM_BUDGET,
@@ -371,7 +373,7 @@ describe("recordNeonWriteVerdict", () => {
       String(s.rows[0].detail),
       /2978 row\(s\) written before failure/,
     );
-    assert.match(String(s.rows[0].detail), /deadlock detected/);
+    assert.match(String(s.rows[0].detail), /insert_error/);
   });
 
   test("an unconfirmed acknowledgement never claims the attempted count committed", async () => {
@@ -392,13 +394,48 @@ describe("recordNeonWriteVerdict", () => {
       );
       assert.equal(
         s.rows[0].detail,
-        `write not confirmed; commit state unknown: ${reason ?? "unknown"}`,
+        `write not confirmed; commit state unknown: ${reason ?? "insert_error"}`,
       );
       assert.doesNotMatch(
         String(s.rows[0].detail),
         /396|written before failure/,
       );
     }
+  });
+
+  test("raw PostgreSQL values never pass the shared verdict sink into public self-health", async () => {
+    const s = spy();
+    const marker = "credential-marker-do-not-expose";
+    const result = await writeRowsToNeon(
+      {
+        async unsafe() {
+          throw new Error(`invalid input syntax: ${marker}`);
+        },
+      },
+      "neurons",
+      ["uid"],
+      [{ uid: 1 }],
+      ["uid"],
+    );
+    assert.ok(
+      result.reason?.includes(marker),
+      "internal writer result remains available",
+    );
+    await recordNeonWriteVerdict(s.db, "neurons", result, NOW);
+    const latest = await loadLatestLaneHealth({
+      ...s.db,
+      async query() {
+        return s.rows.map((row) => ({ ...row, checked_at: NOW }));
+      },
+    });
+    const card = withLaneHealth(buildSelfHealth([], []), latest, {
+      nowMs: NOW,
+    });
+    assert.match(String(card.lanes?.[0]?.detail), /insert_error/);
+    assert.doesNotMatch(
+      JSON.stringify({ stored: s.rows, latest, card }),
+      new RegExp(marker),
+    );
   });
 
   test("age_ms is null rather than a fabricated number", async () => {
@@ -414,7 +451,7 @@ describe("recordNeonWriteVerdict", () => {
     assert.equal(s.rows[0].age_ms, null);
   });
 
-  test("names the reason as unknown rather than omitting it", async () => {
+  test("names an absent reason with the fixed generic class", async () => {
     const s = spy();
     await recordNeonWriteVerdict(
       s.db,
@@ -422,7 +459,7 @@ describe("recordNeonWriteVerdict", () => {
       { ok: false, rows: 0, statements: 0 },
       NOW,
     );
-    assert.match(String(s.rows[0].detail), /unknown/);
+    assert.match(String(s.rows[0].detail), /insert_error/);
   });
 
   test("a missing sink is reported, never thrown", async () => {

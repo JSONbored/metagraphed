@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import {
   classifyLaneHealthWriteError,
+  classifyLaneHealthWriteReason,
   createLaneHealthWriteReporter,
   LANE_HEALTH_WRITE_FAILURES,
 } from "../src/lane-health-write-diagnostics.ts";
@@ -51,6 +52,18 @@ test("driver failures become fixed classes without exporting their text", () => 
     }),
     "insert_error",
   );
+});
+
+test("shared verdict reasons preserve fixed classes and remove driver payloads", () => {
+  for (const [reason, expected] of [
+    ["unbound", "missing_store"],
+    ["hyperdrive unbound", "missing_store"],
+    ["insert_capacity", "insert_capacity"],
+    ["D1_ERROR: Exceeded maximum DB size. token=hidden", "insert_capacity"],
+    ["invalid input syntax: credential=hidden", "insert_error"],
+    [undefined, "insert_error"],
+  ] as const)
+    assert.equal(classifyLaneHealthWriteReason(reason), expected);
 });
 
 test("one isolate-wide time bucket bounds all failure reasons and packet identities", () => {
