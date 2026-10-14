@@ -89,6 +89,75 @@ beforeEach(async () => {
     await db.prepare("DELETE FROM " + name).run();
 });
 
+test("a populated0039 receipt survives0042 and exact lost-ack replay without inventing ownership counts", async () => {
+  for (const complete of [false, true]) {
+    const isolated = new Miniflare({
+      modules: true,
+      script: "export default {fetch(){return new Response('test')}}",
+      compatibilityDate: "2026-06-06",
+      d1Databases: ["DB"],
+    });
+    try {
+      const upgraded = await isolated.getD1Database("DB");
+      const apply = async (file: string) => {
+        for (const sql of readFileSync(
+          new URL("../migrations/d1/" + file, import.meta.url),
+          "utf8",
+        ).split("-- statement-breakpoint"))
+          if (sql.trim()) await upgraded.prepare(sql).run();
+      };
+      await apply("0010_ledger_state.sql");
+      await apply("0039_self_stake_snapshot_receipts.sql");
+      const native = createD1Store(upgraded);
+      const context = snapshot(0, complete ? 1 : 2, complete ? 1 : 2);
+      const original = await writeSelfStakeSnapshotD1(
+        native,
+        [row()],
+        context,
+        stamp + 20,
+      );
+      assert.equal(original.snapshot.complete, complete);
+      await apply("0042_alpha_runtime_snapshots.sql");
+      const before = await upgraded
+        .prepare("SELECT * FROM self_stake_snapshot_chunks")
+        .first();
+      const replay = await writeSelfStakeSnapshotD1(
+        native,
+        [row()],
+        context,
+        stamp + 21,
+      );
+      assert.equal(replay.snapshot.sha256, original.snapshot.sha256);
+      assert.equal(replay.snapshot.complete, complete);
+      assert.equal(replay.snapshot.received_rows, 1);
+      assert.equal(replay.snapshot.received_chunks, 1);
+      assert.equal(Object.hasOwn(replay.snapshot, "source_rows"), false);
+      assert.equal(Object.hasOwn(replay.snapshot, "shadowed_rows"), false);
+      assert.equal(Object.hasOwn(replay.snapshot, "alpha_captured_at"), false);
+      assert.deepEqual(
+        await upgraded
+          .prepare("SELECT * FROM self_stake_snapshot_chunks")
+          .first(),
+        before,
+      );
+      if (!complete) {
+        const next = await writeSelfStakeSnapshotD1(
+          native,
+          [row("b")],
+          snapshot(1, 2, 2),
+          stamp + 22,
+        );
+        assert.equal(next.snapshot.complete, true);
+        assert.equal(next.snapshot.received_rows, 2);
+        assert.equal(next.snapshot.source_rows, 1);
+        assert.equal(next.snapshot.shadowed_rows, 0);
+      }
+    } finally {
+      await isolated.dispose();
+    }
+  }
+});
+
 test("only a completely delivered snapshot retires absent and zero-stake owners; Alpha and newer positions survive", async () => {
   await seed("departed");
   await seed("a");
