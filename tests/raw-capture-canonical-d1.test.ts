@@ -218,6 +218,17 @@ test("canonical publication, proof and exact frontier CAS commit together", asyn
     /immutable/,
   );
   await assert.rejects(
+    f.db
+      .prepare("UPDATE raw_capture_publications SET chain_sha256=?")
+      .bind("f".repeat(64))
+      .run(),
+    /immutable/,
+  );
+  await assert.rejects(
+    f.db.prepare("DELETE FROM raw_capture_publications").run(),
+    /retained/,
+  );
+  await assert.rejects(
     f.db.prepare("DELETE FROM raw_capture_finality").run(),
     /retained/,
   );

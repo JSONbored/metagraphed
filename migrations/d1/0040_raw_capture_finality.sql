@@ -105,3 +105,13 @@ CREATE TRIGGER raw_capture_finality_commit AFTER INSERT ON raw_capture_finality 
     AND finalized_hash=NEW.finalized_hash)
     THEN RAISE(ABORT,'Raw capture frontier CAS refused') END;
 END;
+
+-- statement-breakpoint
+-- A canonical proof cannot survive mutations of the publication it certifies.
+CREATE TRIGGER raw_capture_canonical_publication_immutable BEFORE UPDATE ON raw_capture_publications
+WHEN EXISTS(SELECT 1 FROM raw_capture_finality f WHERE f.key=OLD.key AND (f.sha256=OLD.sha256 OR f.chain_sha256=OLD.chain_sha256))
+BEGIN SELECT RAISE(ABORT,'Canonical raw publication is immutable'); END;
+-- statement-breakpoint
+CREATE TRIGGER raw_capture_canonical_publication_preserve BEFORE DELETE ON raw_capture_publications
+WHEN EXISTS(SELECT 1 FROM raw_capture_finality f WHERE f.key=OLD.key AND (f.sha256=OLD.sha256 OR f.chain_sha256=OLD.chain_sha256))
+BEGIN SELECT RAISE(ABORT,'Canonical raw publication is retained'); END;

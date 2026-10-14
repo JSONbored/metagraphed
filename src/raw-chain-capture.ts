@@ -40,6 +40,8 @@ import type {
   FinalizedAnchor,
 } from "./raw-capture-provenance.ts";
 
+type FinalizedContext = Awaited<ReturnType<typeof finalizedCaptureContext>>;
+
 // DERIVED once in twox-storage-key.ts, beside the vectors that prove it.
 // Re-exported here because this module's callers and tests have always
 // addressed the key through it.
@@ -523,9 +525,7 @@ export async function captureTick(deps: {
   if (deps.canonical) {
     const network = deps.network ?? DEFAULT_CHAIN_NETWORK;
     const stored = await deps.canonical.read(network);
-    let context:
-      | Awaited<ReturnType<typeof finalizedCaptureContext>>
-      | undefined;
+    let context: FinalizedContext | undefined;
     let lastError: unknown;
     let candidates = endpoints;
     for (let round = 0; round < 2 && !context; round++) {

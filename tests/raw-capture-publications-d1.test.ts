@@ -305,12 +305,7 @@ test("D1 migration preserves existing descriptors and attests only current compl
     .all();
   await db.prepare("DROP TABLE raw_capture_publications").run();
   await apply("0038_raw_capture_publications.sql");
-  await db
-    .prepare(
-      "CREATE TABLE raw_capture_state(network TEXT PRIMARY KEY NOT NULL,last_contiguous_block INTEGER NOT NULL,updated_at INTEGER NOT NULL,stopped_at INTEGER,last_error TEXT)",
-    )
-    .run();
-  await apply("0040_raw_capture_finality.sql");
+
   assert.equal(await count("raw_capture_publications"), 1);
   assert.deepEqual(
     (

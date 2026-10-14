@@ -274,3 +274,43 @@ test("direct endpoint qualification rejects older fixed finality and foreign ide
   );
   assert.notEqual(RAW_CAPTURE_GENESIS.mainnet, RAW_CAPTURE_GENESIS.testnet);
 });
+
+test("the virtual predecessor is explicit at floor zero and endpoint qualification preserves it", async () => {
+  const f = await fixture(),
+    node = syntheticNode();
+  const transport = { fetchImpl: node.fetchImpl };
+  const context = await finalizedCaptureContext(
+    "https://fixture.example",
+    "mainnet",
+    null,
+    0,
+    transport,
+  );
+  assert.equal(context.previousHeight, -1);
+  assert.equal(context.previousHash, `0x${"00".repeat(32)}`);
+  const cp = await f.store.canonical!.bootstrap({
+    network: "mainnet",
+    previousHeight: null,
+    height: -1,
+    hash: context.previousHash,
+    genesis: context.genesis,
+    finalized: context.finalized,
+    now: 1000,
+  });
+  await qualifyCaptureEndpoint(
+    "https://fixture.example",
+    cp,
+    context.finalized,
+    transport,
+  );
+  const again = await finalizedCaptureContext(
+    "https://fixture.example",
+    "mainnet",
+    cp,
+    0,
+    transport,
+  );
+  assert.equal(again.previousHeight, -1);
+  assert.equal(cp.verifiedFrom, 0);
+  assert.equal(cp.revision, 0);
+});

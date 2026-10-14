@@ -7,6 +7,7 @@ import { handleRequest } from "../workers/api.ts";
 import { neonWatermark, runRawCaptureSync } from "../src/raw-capture-sync.ts";
 import { runSubnetDeregistrationDailyLane } from "../src/subnet-deregistration-daily.ts";
 import { loadEmissionChanges } from "../src/emission-gate-changes.ts";
+import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 import { createD1Store } from "../src/d1-store.ts";
 const runtime = new Miniflare({
   modules: true,
@@ -32,6 +33,19 @@ beforeAll(async () => {
     "utf8",
   ).split("-- statement-breakpoint"))
     if (sql.trim()) await db.prepare(sql).run();
+  for (const name of [
+    "0028_raw_capture_storage.sql",
+    "0029_raw_capture_archive.sql",
+    "0038_raw_capture_publications.sql",
+    "0040_raw_capture_finality.sql",
+  ]) {
+    const migration = readFileSync(
+      new URL(`../migrations/d1/${name}`, import.meta.url),
+      "utf8",
+    );
+    for (const sql of migration.split("-- statement-breakpoint"))
+      if (sql.trim()) await db.prepare(sql).run();
+  }
 });
 afterAll(async () => {
   await runtime.dispose();
@@ -54,11 +68,7 @@ test("capture cursor reads its own monotonic writes without Hyperdrive or an exe
       RAW_CAPTURE_STORAGE: "d1",
     },
     {
-      d1CaptureStore: {
-        async put() {
-          throw new Error("no capture expected");
-        },
-      },
+      d1CaptureStore: rawCaptureD1(db),
       fetchImpl: async () => {
         rpcCalls++;
         throw new Error("injected RPC failure");
@@ -70,6 +80,8 @@ test("capture cursor reads its own monotonic writes without Hyperdrive or an exe
   );
   assert.notEqual(result.reason, "watermark_unavailable");
   assert.ok(rpcCalls > 0);
+  assert.match(result.reason!, /injected RPC failure/);
+  assert.equal(await store.read(), 9120000);
 });
 function economics(count: number, block = 9000000) {
   return {
