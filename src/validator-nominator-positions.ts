@@ -62,7 +62,7 @@ export interface NominatorPositionsRead {
  * Alpha is summed PER SUBNET into `subnets[]` and never across them: each
  * subnet's alpha is a different token, and #8803 is what a cross-subnet alpha
  * sum produced last time. The per-coldkey ordering key is therefore the number
- * of subnets and then the largest single-subnet holding, not a total.
+ * of subnets and then account address; different tokens are not ranked against each other.
  */
 export function nominatorPositionsSql(alphaCapturedAt: number): string {
   return `WITH ${alphaHolderCte(alphaCapturedAt, "np.hotkey=?")}
@@ -87,6 +87,13 @@ export async function loadNominatorPositions(
     const rows = await db.query<Row>(nominatorPositionsSql(alpha.captured_at), [
       hotkey,
     ]);
+    const after = await loadAlphaQuantityCapture(db);
+    if (
+      !after ||
+      after.captured_at !== alpha.captured_at ||
+      after.block_hash !== alpha.block_hash
+    )
+      return declined("runtime_positions_unqualified");
     return {
       rows,
       capturedAt: alpha.captured_at,

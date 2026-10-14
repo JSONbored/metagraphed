@@ -738,10 +738,8 @@ export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
         [
           "avg_validator_trust",
           "max_validator_trust",
-          "stake_dominance",
           "subnet_count",
           "total_emission",
-          "total_stake",
           "uid_count",
         ] as const,
         "subnet_count",
@@ -758,15 +756,13 @@ export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
     z.object({
       sort: sortSchema(
         [
-          "total_stake",
           "total_emission",
           "subnet_count",
           "uid_count",
           "validator_count",
-          "stake_dominance",
           "last_active",
         ] as const,
-        "total_stake",
+        "subnet_count",
       ).optional(),
       limit: limitSchema(
         ACCOUNTS_LIST_LIMIT_MAX,
@@ -788,7 +784,7 @@ export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
         // from the route's declaration, and a copy for the schema builder is
         // exactly what a mutable-cast would have pretended not to make.
         [...TOP_HOLDERS_SORTS] as [string, ...string[]],
-        "total_tao",
+        "free_tao",
       ).optional(),
       limit: limitSchema(
         TOP_HOLDERS_LIMIT_MAX,

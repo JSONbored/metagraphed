@@ -41,7 +41,9 @@ export const AlphaQuantityCaptureSchema = z
 export type AlphaQuantityCapture = z.infer<typeof AlphaQuantityCaptureSchema>;
 
 /** A complete selected pass and its retained metadata owner. Missing old schema,
- * incomplete identity, or a failed read cannot qualify a legacy share fraction. */
+ * incomplete identity, or a failed read cannot qualify a legacy share fraction.
+ * selected records prior promotions cumulatively. Choose the latest canonical
+ * owner before joining metadata, so missing metadata cannot borrow an older pass. */
 export async function loadAlphaQuantityCapture(
   db: OptionalRowReader | null | undefined,
 ): Promise<AlphaQuantityCapture | null> {
@@ -49,9 +51,11 @@ export async function loadAlphaQuantityCapture(
   try {
     const parsed = AlphaQuantityCaptureSchema.safeParse(
       await db.first(
-        `SELECT p.* FROM alpha_snapshot_passes p JOIN alpha_runtime_metadata m
-       ON m.sha256=p.metadata_sha256 AND m.code_hash=p.code_hash AND m.spec_version=p.spec_version
-       WHERE p.selected=1 AND p.completed_at IS NOT NULL LIMIT 1`,
+        `SELECT p.* FROM (
+         SELECT * FROM alpha_snapshot_passes WHERE selected=1 AND completed_at IS NOT NULL
+         ORDER BY block_number DESC,captured_at DESC LIMIT 1
+       ) p JOIN alpha_runtime_metadata m
+       ON m.sha256=p.metadata_sha256 AND m.code_hash=p.code_hash AND m.spec_version=p.spec_version`,
       ),
     );
     return parsed.success ? parsed.data : null;

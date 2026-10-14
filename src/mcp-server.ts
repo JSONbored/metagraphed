@@ -12971,13 +12971,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "list_accounts",
-    title: "List the site-wide accounts leaderboard",
+    title: "List registered accounts",
     description:
-      "Fetch the site-wide accounts leaderboard: every currently-registered " +
-      "hotkey (miners included, not just validator_permit=1 rows), sortable by " +
-      "total_stake (default), total_emission, subnet_count, uid_count, " +
-      "validator_count, stake_dominance, or last_active. The all-accounts " +
-      "generalization of list_global_validators. Mirrors GET /api/v1/accounts.",
+      "Fetch observed registrations and scoped voting weights for hotkeys, including miners. Sort by subnet_count (default), total_emission, uid_count, validator_count or last_active. Unsupported holdings, dominance and portfolio values are null. Mirrors GET /api/v1/accounts.",
     inputSchema: inputJsonSchema(ListAccountsInputSchema),
     async handler(args: z.infer<typeof ListAccountsInputSchema>, ctx: McpCtx) {
       const sort =
@@ -13004,32 +13000,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "get_top_holders",
-    title: "Get the balance-based top-holder leaderboard",
+    title: "Get free-balance or stake-flow rankings",
     description:
-      "Fetch the balance-based top-holder leaderboard (#6741/#6743): every " +
-      "account (coldkey) with a nonzero free balance and/or delegated stake " +
-      "position, with free/delegated/total TAO columns list_accounts explicitly " +
-      "cannot derive. Sortable by total_tao (default), free_tao, delegated_tao, " +
-      "or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, " +
-      "net_flow_90d -- StakeAdded minus StakeRemoved, #6886/#6887). The " +
-      "coldkey/balance-centric counterpart to list_accounts. " +
-      "TWO TIERS, AND WHICH ONE ANSWERS DEPENDS ON THE SORT (#9469). " +
-      "net_flow_7d/30d/90d are LIVE: recomputed once a day from the " +
-      "account_events stake stream, signed (a real net outflow is negative), " +
-      "and captured_at advances with each pass. free_tao, delegated_tao and " +
-      "total_tao are NOT live yet -- they are served from a FIXED SNAPSHOT " +
-      "taken 2026-08-02, because account_balances has no rows yet (its D1 " +
-      "sink exists and the lane already composes free_tao, so that sort goes " +
-      "live the day its producer posts) and delegated_tao needs a " +
-      "per-(hotkey, netuid) alpha pool total that no current table holds. " +
-      "Sorting by one of those " +
-      "three returns the frozen ranking with captured_at stuck at that date: " +
-      "an account that has moved TAO since is misreported and one first funded " +
-      "since is absent entirely. On a net_flow_*-sorted page the three " +
-      "holdings columns come back NULL rather than zero -- the live tier has " +
-      "no balance source, and a zero there would read as an empty wallet. For " +
-      "current per-account balances use get_account_balance, which reads chain " +
-      "state live. Mirrors GET /api/v1/accounts/top-holders.",
+      "Fetch a qualified free-TAO snapshot ranking with sort=free_tao (default), or windowed stake flow with net_flow_7d, net_flow_30d or net_flow_90d. Delegated and portfolio-total quantities are unqualified and remain null. Snapshot freshness belongs to the returned capture; windowed flows are not balances. Mirrors GET /api/v1/accounts/top-holders.",
     inputSchema: inputJsonSchema(GetTopHoldersInputSchema),
     async handler(args: z.infer<typeof GetTopHoldersInputSchema>, ctx: McpCtx) {
       const sort =

@@ -96,7 +96,7 @@ describe("buildAccountHolderDirectory", () => {
       { priceByNetuid: PRICES },
     );
 
-    assert.equal(data.schema_version, 1);
+    assert.equal(data.schema_version, 2);
     assert.equal(data.account_count, 3);
     assert.equal(data.limit, ACCOUNT_HOLDER_DIRECTORY_LIMIT);
     assert.equal(data.captured_at, new Date(CAPTURED_AT).toISOString());
@@ -114,7 +114,7 @@ describe("buildAccountHolderDirectory", () => {
       data.rankings.reach.map((account) => account.hotkey),
       ["hk-c", "hk-b", "hk-a"],
     );
-    assert.equal(data.rankings.stake[0]?.stake_dominance, 0.555556);
+    assert.equal(data.rankings.stake[0]?.stake_dominance, null);
     assert.deepEqual(Object.keys(data.rankings.stake[0]!).sort(), [
       "coldkey",
       "hotkey",

@@ -126,7 +126,7 @@ describe("formatAccountPosition", () => {
     const out = formatAccountPosition(
       positionRow({ stake_tao: "garbage", emission_tao: undefined }),
     )!;
-    assert.equal(out.stake_tao, 0);
+    assert.equal(out.stake_tao, null);
     assert.equal(out.emission_tao, 0);
     assert.equal(out.yield, null);
   });
@@ -137,7 +137,7 @@ describe("buildAccountPositionHistory", () => {
     const data = buildAccountPositionHistory([positionRow()], SS58, 7, {
       window: "30d",
     });
-    assert.equal(data.schema_version, 1);
+    assert.equal(data.schema_version, 2);
     assert.equal(data.ss58, SS58);
     assert.equal(data.netuid, 7);
     assert.equal(data.window, "30d");

@@ -2,6 +2,15 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { Miniflare } from "miniflare";
 import { PGlite } from "@electric-sql/pglite";
+import {
+  loadNominatorPositions,
+  buildNominatorPositions,
+} from "../src/validator-nominator-positions.ts";
+import {
+  loadSubnetHolders,
+  buildSubnetHolders,
+} from "../src/subnet-holders.ts";
+import { loadChainHolders, buildChainHolders } from "../src/chain-holders.ts";
 import { alphaHolderCte } from "../src/alpha-holder-sql.ts";
 import {
   ALPHA_GENESIS,
@@ -274,5 +283,149 @@ test("both native SQL engines sum and rank exact rao beyond u64 and floating-poi
   } finally {
     await runtime.dispose();
     await pg.close();
+  }
+});
+
+test("native selected-pass publication between qualification and mutable-row reads cannot publish a false zero", async () => {
+  const runtime = new Miniflare({
+    modules: true,
+    script: "export default {fetch(){return new Response('fixture')}}",
+    compatibilityDate: "2026-06-06",
+    d1Databases: ["DB"],
+  });
+  try {
+    const db = await runtime.getD1Database("DB");
+    const columns = Object.keys(capture);
+    await db
+      .prepare(
+        `CREATE TABLE alpha_snapshot_passes(${columns.map((key) => `${key} ${typeof capture[key as keyof typeof capture] === "number" ? "BIGINT" : "TEXT"}`).join(",")})`,
+      )
+      .run();
+    await db
+      .prepare(
+        "CREATE TABLE alpha_runtime_metadata(sha256 TEXT,code_hash TEXT,spec_version INTEGER)",
+      )
+      .run();
+    await db
+      .prepare(
+        "CREATE TABLE nominator_positions(coldkey TEXT,hotkey TEXT,netuid INTEGER,alpha_rao TEXT,captured_at BIGINT,source TEXT)",
+      )
+      .run();
+    await db
+      .prepare("INSERT INTO alpha_runtime_metadata VALUES(?,?,?)")
+      .bind(capture.metadata_sha256, capture.code_hash, capture.spec_version)
+      .run();
+    const insert = (pass: typeof capture) =>
+      db
+        .prepare(
+          `INSERT INTO alpha_snapshot_passes VALUES(${columns.map(() => "?").join(",")})`,
+        )
+        .bind(...columns.map((key) => pass[key as keyof typeof pass]));
+    const original = { ...capture, expected_rows: 1, received_rows: 1 };
+    const next = {
+      ...original,
+      block_number: capture.block_number + 1,
+      captured_at: at + 1,
+      completed_at: at + 2,
+      block_hash: "0x" + "e".repeat(64),
+    };
+    for (const family of ["nominator", "subnet", "chain"] as const) {
+      for (const race of [false, true]) {
+        await db.batch([
+          db.prepare("DELETE FROM alpha_snapshot_passes"),
+          insert(original),
+          db.prepare("DELETE FROM nominator_positions"),
+          db
+            .prepare(
+              "INSERT INTO nominator_positions VALUES('c','h',1,'1',?,'alpha')",
+            )
+            .bind(at),
+        ]);
+        let published = false;
+        const store = {
+          first: (sql: string, values: unknown[] = []) =>
+            db
+              .prepare(sql)
+              .bind(...values)
+              .first(),
+          async query<Row>(
+            sql: string,
+            values: unknown[] = [],
+          ): Promise<Row[]> {
+            if (race && !published) {
+              published = true;
+              await db.batch([
+                insert(next),
+                db
+                  .prepare("UPDATE nominator_positions SET captured_at=?")
+                  .bind(next.captured_at),
+              ]);
+            }
+            return (
+              await db
+                .prepare(sql)
+                .bind(...values)
+                .all()
+            ).results as Row[];
+          },
+        };
+        const read =
+          family === "nominator"
+            ? await loadNominatorPositions(store, "h")
+            : family === "subnet"
+              ? await loadSubnetHolders(store, 1)
+              : await loadChainHolders(store);
+        const body =
+          family === "nominator"
+            ? buildNominatorPositions(read, "h")
+            : family === "subnet"
+              ? buildSubnetHolders(
+                  read as Awaited<ReturnType<typeof loadSubnetHolders>>,
+                  1,
+                )
+              : buildChainHolders(read);
+        const key =
+          family === "nominator"
+            ? "nominator_count"
+            : family === "subnet"
+              ? "holder_count"
+              : "subnet_count";
+        assert.equal(body[key], race ? null : 1);
+        assert.equal(
+          read.decline,
+          race ? "runtime_positions_unqualified" : null,
+        );
+        if (race)
+          assert.equal(
+            (body.degraded as { reason: string }).reason,
+            "runtime_positions_unqualified",
+          );
+      }
+    }
+    // Both historical receipts remain selected: canonical ownership follows
+    // block height explicitly, independent of insertion order or an index plan.
+    await db.batch([
+      db.prepare("DELETE FROM alpha_snapshot_passes"),
+      insert(original),
+      insert(next),
+    ]);
+    const direct = { first: (sql: string) => db.prepare(sql).first() };
+    assert.equal(
+      (await loadAlphaQuantityCapture(direct))?.block_hash,
+      next.block_hash,
+    );
+    await db
+      .prepare(
+        "UPDATE alpha_snapshot_passes SET metadata_sha256=? WHERE block_number=?",
+      )
+      .bind("f".repeat(64), next.block_number)
+      .run();
+    assert.equal(
+      await loadAlphaQuantityCapture(direct),
+      null,
+      "missing latest metadata must not fall back to an older promoted owner",
+    );
+  } finally {
+    await runtime.dispose();
   }
 });
