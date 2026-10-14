@@ -98,7 +98,14 @@ describe("pgLaneHealthDb", () => {
     // touched when the store moved. #9821 is what an unrewritten `?` costs.
     assert.match(f.log[0].text, /VALUES \(\$1, \$2, \$3, \$4, \$5\)/);
     assert.deepEqual(f.log[0].values, ["neon:probe", "ok", null, "d", 7]);
-    assert.match(f.log[1].text, /DELETE FROM lane_health WHERE lane = \$1/);
+    assert.match(f.log[1].text, /DELETE FROM lane_health WHERE ctid IN/);
+    assert.match(f.log[1].text, /WHERE lane = \$1 AND checked_at < \$2/);
+    assert.match(f.log[1].text, /lane = \$3/);
+    assert.deepEqual(f.log[1].values, [
+      "neon:probe",
+      7 - 90 * 86400000,
+      "neon:probe",
+    ]);
   });
 
   test("every operation opens AND closes its own connection", async () => {
@@ -166,6 +173,10 @@ describe("pgLaneHealthDb", () => {
       detail: "",
       checked_at: 1,
     });
-    assert.equal(ends, 1, "a thrown query must still release the connection");
+    assert.equal(
+      ends,
+      2,
+      "both failed insert and cleanup release their connections",
+    );
   });
 });

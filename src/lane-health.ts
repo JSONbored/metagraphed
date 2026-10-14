@@ -192,6 +192,8 @@ export function isRetiredLane(lane: string): boolean {
  * counts, no D1 envelope. Structural so every watchdog test keeps handing in
  * a plain object. */
 export interface LaneHealthDb {
+  /** Native identity used only inside one bounded retention statement. */
+  historyRowId?: "rowid" | "ctid";
   /** A materialized latest-per-lane read, maintained atomically by the store. */
   latest?(): Promise<unknown[]>;
   /** Indexed equivalents of the history queries, when the store maintains them. */
@@ -281,19 +283,28 @@ export async function recordLaneVerdict(
     // A failed insert/confirmation is not an acknowledgement. An error can
     // follow commit, so this false result never authorizes replaying the row.
     return failed(classifyLaneHealthWriteError(error));
-  }
-  try {
-    // Prune this lane's own expired rows on the way through, rather than from a
-    // separate cron that would be one more thing to wire and to notice breaking.
-    // Bounded and indexed: it touches one lane, by (lane, checked_at).
-    await db.run("DELETE FROM lane_health WHERE lane = ? AND checked_at < ?", [
-      record.lane,
-      record.checked_at - LANE_HEALTH_RETENTION_MS,
-    ]);
-  } catch {
-    // Deliberately swallowed, and deliberately NOT folded into the try above: the
-    // verdict is already committed, so a failed prune must not report the alarm as
-    // unrecorded. Retention is a housekeeping concern; the next tick retries it.
+  } finally {
+    try {
+      // Independent housekeeping also runs after a refused/ambiguous insert.
+      // Never replay the insert. Keep every latest-timestamp tie, so failure
+      // cannot erase the last signal or change its severity. The native row
+      // identity stays inside this statement; it is never a durable receipt.
+      const rowId = db.historyRowId ?? "rowid";
+      await db.run(
+        `DELETE FROM lane_health WHERE ${rowId} IN (
+          SELECT ${rowId} FROM lane_health WHERE lane = ? AND checked_at < ?
+            AND checked_at < (SELECT MAX(checked_at) FROM lane_health WHERE lane = ?)
+          ORDER BY checked_at LIMIT 200)`,
+        [
+          record.lane,
+          record.checked_at - LANE_HEALTH_RETENTION_MS,
+          record.lane,
+        ],
+      );
+    } catch {
+      // Cleanup cannot change the insertion acknowledgement. Limit direct
+      // deletions per tick; D1's existing projection triggers also do work.
+    }
   }
   return true;
 }

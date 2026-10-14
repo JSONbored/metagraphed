@@ -67,6 +67,7 @@ export function pgLaneHealthDb(
     }
   };
   return {
+    historyRowId: "ctid",
     async query<Row = Record<string, unknown>>(
       text: string,
       values: unknown[] = [],
