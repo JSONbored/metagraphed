@@ -155,17 +155,15 @@ jobs:
       - name: Quantity backend contract regressions
         if: inputs.prepare_only == true
         id: quantity_backend
-        continue-on-error: true
         run: npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts tests/account-nominator-positions.test.ts tests/published-query-bindings.test.ts tests/neon-sole-store-tables-exist.test.ts tests/neon-flag-config-parity.test.ts tests/read-store-tables-match-the-sql.test.ts tests/alpha-snapshot-d1.test.ts tests/self-stake-snapshot-d1.test.ts tests/openapi-sample.test.ts tests/search-quality.test.ts
 
       - name: Complete UI quantity regressions
-        if: inputs.prepare_only == true
+        if: ${{ !cancelled() && inputs.prepare_only == true }}
         id: quantity_ui
-        continue-on-error: true
         run: npm run test --workspace=apps/ui
 
       - name: Require every quantity regression suite
-        if: inputs.prepare_only == true
+        if: ${{ !cancelled() && inputs.prepare_only == true }}
         run: |
           test "${{ steps.quantity_backend.outcome }}" = success
           test "${{ steps.quantity_ui.outcome }}" = success
