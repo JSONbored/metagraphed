@@ -54,7 +54,7 @@ export async function writeLedgerD1(
 ): Promise<NeonWriteResult> {
   try {
     const plan = LEDGER_MIRROR_PLANS[lane];
-    const statements = rows.length
+    const statements: ProducerStatement[] = rows.length
       ? captureUpsertStatements(
           plan,
           rows,
@@ -93,7 +93,7 @@ export async function writeNominatorPositionsD1(
       ...row,
       source,
     }));
-    const statements = rows.length
+    const statements: ProducerStatement[] = rows.length
       ? captureUpsertStatements(
           {
             table: "nominator_positions",

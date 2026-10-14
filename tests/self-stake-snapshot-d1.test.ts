@@ -327,7 +327,10 @@ test("an oversized atomic capture is rejected before the native store receives a
   const builder = vi
     .spyOn(captureFamily, "captureUpsertStatements")
     .mockReturnValue(
-      Array.from({ length: 901 }, () => ({ text: "SELECT 1", values: [] })),
+      Array.from({ length: 901 }, () => ({
+        text: "SELECT 1",
+        values: ["[]"] as [string],
+      })),
     );
   try {
     await assert.rejects(
