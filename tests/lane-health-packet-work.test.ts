@@ -95,7 +95,7 @@ for (const reject of [false, true]) {
       }[] = [];
       for (const phase of ["before", "after"]) {
         if (phase === "after")
-          await apply("0043_lane_health_retention_trigger_bounds.sql");
+          await apply("0038_lane_health_retention_trigger_bounds.sql");
         metrics.length = 0;
         attempts = 0;
         failedCalls = 0;
@@ -174,7 +174,9 @@ for (const reject of [false, true]) {
             packet_rows: 50,
             rejected: reject,
             direct_deletions: 1000,
-            retained_samples: 132000,
+            fixture_initial_rows: 132000,
+            starting_rows: oldCount,
+            ending_rows: newCount,
             ...measured,
           }),
         );

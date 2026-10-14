@@ -54,7 +54,7 @@ async function assertProjections() {
   );
 }
 
-test("0043 preserves populated projections, then repairs ties, moves, middle and multirow deletions atomically", async () => {
+test("0038 preserves populated projections, then repairs ties, moves, middle and multirow deletions atomically", async () => {
   await db
     .prepare(
       `INSERT INTO lane_health(lane,verdict,age_ms,detail,checked_at) VALUES
@@ -70,7 +70,7 @@ test("0043 preserves populated projections, then repairs ties, moves, middle and
   );
   const statements = readFileSync(
     new URL(
-      "../migrations/d1/0043_lane_health_retention_trigger_bounds.sql",
+      "../migrations/d1/0038_lane_health_retention_trigger_bounds.sql",
       import.meta.url,
     ),
     "utf8",
@@ -92,7 +92,7 @@ test("0043 preserves populated projections, then repairs ties, moves, middle and
     "failed migration batches restore original triggers too",
   );
   await assertProjections();
-  await apply("0043_lane_health_retention_trigger_bounds.sql");
+  await apply("0038_lane_health_retention_trigger_bounds.sql");
   assert.deepEqual(
     await rows("SELECT * FROM lane_health ORDER BY rowid"),
     before,

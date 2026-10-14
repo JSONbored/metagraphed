@@ -1,4 +1,5 @@
--- Source-only sequence follows held 0038-0042; see docs/lane-health-retention.md.
+-- Next prefix on current main. Held 0038-0042 require coordinated renumbering;
+-- see docs/lane-health-retention.md before merging either source sequence.
 -- Functional prerequisites are 0001-0003. Keep historical migrations immutable.
 -- Repair one successor by its timestamp key, as the existing insert trigger does.
 DROP TRIGGER lane_health_clocks_delete;
