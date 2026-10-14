@@ -125,7 +125,10 @@ test("writer diagnostics distinguish missing stores, returned counts and identit
       false,
     );
     assert.deepEqual(failures, [reason]);
-    assert.doesNotMatch(JSON.stringify(failures), /hidden|private|password|payload/);
+    assert.doesNotMatch(
+      JSON.stringify(failures),
+      /hidden|private|password|payload/,
+    );
   }
   const missing: string[] = [];
   assert.equal(

@@ -23,15 +23,18 @@ export function classifyLaneHealthWriteError(
   try {
     for (let depth = 0; error && depth < 3; depth++) {
       if (typeof error !== "object") break;
-      const value = error as { code?: unknown; message?: unknown; cause?: unknown };
+      const value = error as {
+        code?: unknown;
+        message?: unknown;
+        cause?: unknown;
+      };
       const text = [value.code, value.message]
         .filter((part): part is string => typeof part === "string")
         .map((part) => part.slice(0, 2048))
         .join(" ");
       if (/\bSQLITE_FULL\b|\bdatabase or disk is full\b/i.test(text))
         return "insert_capacity";
-      if (/\bSQLITE_BUSY\b|\bSQLITE_LOCKED\b/i.test(text))
-        return "insert_busy";
+      if (/\bSQLITE_BUSY\b|\bSQLITE_LOCKED\b/i.test(text)) return "insert_busy";
       if (/\btimeout\b|\btimed out\b/i.test(text)) return "insert_timeout";
       if (/\bSQLITE_CONSTRAINT\b|\bconstraint failed\b/i.test(text))
         return "insert_constraint";
