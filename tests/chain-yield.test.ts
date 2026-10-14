@@ -9,8 +9,8 @@ import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
-// A network snapshot: two validators + two miners across two subnets, one miner
-// with zero stake (excluded from the return-rate distribution).
+// A network snapshot: two validators + two miners across independent Alpha
+// tokens. stake_tao is effective voting weight, so it cannot qualify holdings.
 const ROWS = [
   {
     validator_permit: 1,
@@ -51,6 +51,8 @@ describe("yieldDistribution", () => {
     assert.equal(d.p50, 0.05); // middle of [0.04, 0.05, 0.1]
     assert.ok(Math.abs(d.mean - 0.063333333) < 1e-6);
     assert.equal(d.p10, 0.04);
+    assert.equal(d.p25, 0.04);
+    assert.equal(d.p75, 0.1);
     assert.equal(d.p90, 0.1);
   });
 
@@ -60,7 +62,7 @@ describe("yieldDistribution", () => {
   });
 
   test("drops null cells; empty / all-null → null (schema-stable)", () => {
-    const d = yieldDistribution([0.5, null, 0.25, null])!;
+    const d = yieldDistribution([0.5, null, 0.25, undefined])!;
     assert.equal(d.count, 2);
     assert.equal(yieldDistribution([]), null);
     assert.equal(yieldDistribution([null, null]), null);
@@ -71,100 +73,94 @@ describe("yieldDistribution", () => {
   });
 });
 
+function assertUnknownFinancials(out: ReturnType<typeof buildChainYield>) {
+  assert.equal(out.schema_version, 2);
+  assert.equal(out.total_stake_alpha, null);
+  assert.equal(out.total_emission_alpha, null);
+  assert.equal(out.network_yield, null);
+  assert.equal(out.validator_yield, null);
+  assert.equal(out.miner_yield, null);
+  assert.equal(out.distribution, null);
+  assert.deepEqual(out.degraded, { reason: "holdings_unqualified" });
+}
+
 describe("buildChainYield", () => {
-  test("counts subnets/neurons/validators/miners and stamps the newest captured_at", () => {
-    const out = buildChainYield(ROWS);
-    assert.equal(out.schema_version, 1);
-    assert.equal(out.subnet_count, 2); // netuids 7 and 12
-    assert.equal(out.neuron_count, 4);
-    assert.equal(out.validator_count, 2);
+  test("counts subnet observations and stamps the newest captured_at", () => {
+    const newest = 1_750_000_001_000;
+    const out = buildChainYield([...ROWS, { ...ROWS[0], captured_at: newest }]);
+    assertUnknownFinancials(out);
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.neuron_count, 5);
+    assert.equal(out.validator_count, 3);
     assert.equal(out.miner_count, 2);
-    assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
+    assert.equal(out.captured_at, new Date(newest).toISOString());
   });
 
-  // #9040: a root neuron's stake_tao/emission_tao are genuine TAO, not a
-  // subnet alpha token, so root must not reach the cross-subnet alpha totals
-  // or the yield ratios built from them. These pin the exclusion at the
-  // builder, the one point REST, GraphQL and MCP all funnel through -- a
-  // caller that hands over unfiltered rows still gets a root-free aggregate.
+  // Root observations must not affect the non-root card, including freshness.
   const ROOT_ROW = {
     validator_permit: 1,
     stake_tao: 6_613_430,
     emission_tao: 9.5,
     netuid: 0,
-    captured_at: 1_750_000_000_000,
+    captured_at: 1_750_000_100_000,
   };
 
-  test("drops root (netuid 0) rows from every total, count and ratio", () => {
+  test("drops root rows from counts and captured_at", () => {
     const withRoot = buildChainYield([ROOT_ROW, ...ROWS]);
-    const withoutRoot = buildChainYield(ROWS);
-    assert.deepEqual(withRoot, withoutRoot);
-    // Specifically: root's 6.6M TAO never lands in the alpha sum, and it is
-    // not counted as one of the subnets the aggregate spans.
-    assert.equal(withRoot.total_stake_alpha, 1600);
+    assert.deepEqual(withRoot, buildChainYield(ROWS));
+    assertUnknownFinancials(withRoot);
     assert.equal(withRoot.subnet_count, 2);
     assert.equal(withRoot.neuron_count, 4);
     assert.equal(withRoot.validator_count, 2);
-    assert.equal(withRoot.network_yield, 0.05);
   });
 
-  test("a root-only snapshot yields the schema-stable zeroed card", () => {
+  test("a root-only snapshot has no non-root observations or timestamp", () => {
     const out = buildChainYield([ROOT_ROW]);
+    assertUnknownFinancials(out);
     assert.equal(out.subnet_count, 0);
     assert.equal(out.neuron_count, 0);
-    assert.equal(out.total_stake_alpha, 0);
-    assert.equal(out.total_emission_alpha, 0);
-    assert.equal(out.network_yield, null);
-    assert.equal(out.distribution, null);
-    // captured_at is the SNAPSHOT stamp, read before the root check, so a
-    // root row still dates the card rather than leaving it null.
-    assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
+    assert.equal(out.validator_count, 0);
+    assert.equal(out.miner_count, 0);
+    assert.equal(out.captured_at, null);
   });
 
-  test("aggregate network return and the validator/miner split", () => {
+  test("independent Alpha tokens never become a chain total or return rate", () => {
     const out = buildChainYield(ROWS);
-    assert.equal(out.total_stake_alpha, 1600);
-    assert.equal(out.total_emission_alpha, 80);
-    assert.equal(out.network_yield, 0.05); // 80 / 1600
-    assert.ok(Math.abs(out.validator_yield! - 70 / 1500) < 1e-6);
-    assert.equal(out.miner_yield, 0.1); // 10 / 100
+    assertUnknownFinancials(out);
+    // The tempting 80 / 1600 calculation mixes two tokens and weighted stake.
+    assert.equal(out.neuron_count, 4);
+    assert.equal(out.subnet_count, 2);
   });
 
-  test("distribution excludes the zero-stake neuron", () => {
-    const out = buildChainYield(ROWS);
-    assert.equal(out.distribution!.count, 3); // the 0-stake miner is dropped
-    assert.equal(out.distribution!.max, 0.1);
+  test("one subnet's weighted stake still cannot qualify investment yield", () => {
+    const out = buildChainYield(ROWS.filter((row) => row.netuid === 7));
+    assertUnknownFinancials(out);
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.validator_count, 2);
+    assert.equal(out.subnet_count, 1);
   });
 
   test("subnet_count accepts real ints + numeric strings, rejects blank/null/non-numeric", () => {
     const out = buildChainYield([
-      { stake_tao: 1, emission_tao: 0, netuid: 7 }, // integer
-      { stake_tao: 1, emission_tao: 0, netuid: "12" }, // numeric string → 12
-      { stake_tao: 1, emission_tao: 0, netuid: null }, // dropped
-      { stake_tao: 1, emission_tao: 0, netuid: "" }, // blank → NOT subnet 0
-      { stake_tao: 1, emission_tao: 0, netuid: false }, // false → NOT subnet 0
-      { stake_tao: 1, emission_tao: 0, netuid: "abc" }, // non-numeric → dropped
-      { stake_tao: 1, emission_tao: 0, netuid: -1 }, // negative → dropped
-      { stake_tao: 1, emission_tao: 0, netuid: 1.5 }, // non-integer → dropped
+      { netuid: 7 },
+      { netuid: "12" },
+      { netuid: null },
+      { netuid: "" },
+      { netuid: false },
+      { netuid: "abc" },
+      { netuid: -1 },
+      { netuid: 1.5 },
     ]);
-    assert.equal(out.subnet_count, 2); // only 7 and 12 — never a spurious subnet 0
-    assert.equal(out.neuron_count, 8);
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.neuron_count, 2);
   });
 
-  test("accepts a string (ISO) captured_at, ignoring null/unparseable stamps", () => {
+  test("accepts ISO captured_at, ignoring null/unparseable stamps", () => {
     const out = buildChainYield([
-      {
-        stake_tao: 1,
-        emission_tao: 0,
-        captured_at: "2026-06-14T00:00:00.000Z",
-      },
-      {
-        stake_tao: 1,
-        emission_tao: 0,
-        captured_at: "2026-06-15T00:00:00.000Z",
-      },
-      { stake_tao: 1, emission_tao: 0, captured_at: null }, // ignored
-      { stake_tao: 1, emission_tao: 0, captured_at: "not-a-date" }, // ignored
+      { netuid: 7, captured_at: "2026-06-14T00:00:00.000Z" },
+      { netuid: 7, captured_at: "2026-06-15T00:00:00.000Z" },
+      { netuid: 7, captured_at: null },
+      { netuid: 7, captured_at: "not-a-date" },
     ]);
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z");
   });
@@ -172,49 +168,29 @@ describe("buildChainYield", () => {
   test("accepts epoch-millisecond string captured_at values from Postgres", () => {
     const newest = 1_750_000_000_000;
     const out = buildChainYield([
-      { stake_tao: 1, emission_tao: 0, captured_at: "1700000000000" },
-      { stake_tao: 1, emission_tao: 0, captured_at: String(newest) },
+      { netuid: 7, captured_at: "1700000000000" },
+      { netuid: 7, captured_at: String(newest) },
     ]);
     assert.equal(out.captured_at, new Date(newest).toISOString());
   });
 
   test("ignores an all-digit captured_at string outside Date's representable range", () => {
-    // A digit string so large it represents a date beyond JS Date's
-    // +/-8.64e15ms range -- Number(value) stays finite, but
-    // new Date(ms).getTime() is NaN, so this must fall through rather
-    // than return an invalid timestamp.
     const out = buildChainYield([
-      {
-        stake_tao: 1,
-        emission_tao: 0,
-        captured_at: "100000000000000000000",
-      },
-      {
-        stake_tao: 1,
-        emission_tao: 0,
-        captured_at: "1750000000000",
-      },
+      { netuid: 7, captured_at: "100000000000000000000" },
+      { netuid: 7, captured_at: "1750000000000" },
     ]);
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
   test("ignores out-of-range numeric captured_at values", () => {
     const out = buildChainYield([
-      {
-        stake_tao: 1,
-        emission_tao: 0,
-        captured_at: 100_000_000_000_000_000_000,
-      },
-      {
-        stake_tao: 1,
-        emission_tao: 0,
-        captured_at: 1_750_000_000_000,
-      },
+      { netuid: 7, captured_at: 100_000_000_000_000_000_000 },
+      { netuid: 7, captured_at: 1_750_000_000_000 },
     ]);
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
-  test("coerces numeric-string stake/emission cells from D1", () => {
+  test("numeric-string role cells retain observations despite unreadable financial cells", () => {
     const out = buildChainYield([
       {
         validator_permit: "1",
@@ -223,112 +199,77 @@ describe("buildChainYield", () => {
         netuid: 3,
       },
       {
-        validator_permit: 0,
+        validator_permit: "0",
         stake_tao: "junk",
         emission_tao: "junk",
         netuid: 3,
       },
     ]);
-    assert.equal(out.neuron_count, 1);
-    assert.equal(out.total_stake_alpha, 200);
-    assert.equal(out.network_yield, 0.1);
+    assert.equal(out.neuron_count, 2);
     assert.equal(out.validator_count, 1);
+    assert.equal(out.miner_count, 1);
+    assertUnknownFinancials(out);
   });
 
-  test("reject blank stake_tao/emission_tao cells that coerce to 0", () => {
-    for (const blank of ["", "   "]) {
-      const skippedStake = buildChainYield([
-        { stake_tao: blank, emission_tao: 2, netuid: 1 },
-      ]);
-      assert.equal(
-        skippedStake.neuron_count,
-        0,
-        `stake ${JSON.stringify(blank)}`,
-      );
-
-      const blankEmission = buildChainYield([
-        { stake_tao: 10, emission_tao: blank, netuid: 1 },
-      ]);
-      assert.equal(blankEmission.neuron_count, 1);
-      assert.equal(blankEmission.total_emission_alpha, 0);
-      assert.equal(blankEmission.network_yield, null);
+  test("invalid weighted-stake and emission cells do not erase neuron observations", () => {
+    for (const invalid of ["", "   ", null, -1, "junk", Infinity]) {
+      for (const field of ["stake_tao", "emission_tao"]) {
+        const out = buildChainYield([
+          { netuid: 1, stake_tao: 10, emission_tao: 2, [field]: invalid },
+        ]);
+        assert.equal(out.neuron_count, 1, `${field}=${String(invalid)}`);
+        assertUnknownFinancials(out);
+      }
     }
-
-    const nullStake = buildChainYield([
-      { stake_tao: null, emission_tao: 2, netuid: 1 },
-    ]);
-    assert.equal(nullStake.neuron_count, 0);
-
-    const negativeStake = buildChainYield([
-      { stake_tao: -1, emission_tao: 2, netuid: 1 },
-    ]);
-    assert.equal(negativeStake.neuron_count, 0);
   });
 
-  test("network_yield ignores blank-emission stake in the aggregate denominator", () => {
+  test("blank-emission observations never produce a denominator or return rate", () => {
     const out = buildChainYield([
       { stake_tao: 100, emission_tao: "   ", netuid: 1, validator_permit: 0 },
       { stake_tao: 100, emission_tao: 10, netuid: 1, validator_permit: 0 },
     ]);
-    assert.equal(out.total_stake_alpha, 200);
-    assert.equal(out.total_emission_alpha, 10);
-    assert.equal(out.network_yield, 0.1);
-    assert.equal(out.miner_yield, 0.1);
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.miner_count, 2);
+    assertUnknownFinancials(out);
   });
 
-  test("subnet_count ignores skipped blank-stake rows", () => {
+  test("subnet_count retains subnets whose voting-weight cell is unavailable", () => {
     const out = buildChainYield([
       { stake_tao: "", emission_tao: 5, netuid: 7 },
       { stake_tao: 10, emission_tao: 1, netuid: 12 },
     ]);
-    assert.equal(out.subnet_count, 1);
-    assert.equal(out.neuron_count, 1);
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.neuron_count, 2);
   });
 
-  test("cold/empty network → schema-stable zero (yields + distribution null)", () => {
-    const out = buildChainYield([]);
-    assert.equal(out.subnet_count, 0);
-    assert.equal(out.neuron_count, 0);
-    assert.equal(out.captured_at, null);
-    assert.equal(out.total_stake_alpha, 0);
-    assert.equal(out.network_yield, null);
-    assert.equal(out.validator_yield, null);
-    assert.equal(out.miner_yield, null);
-    assert.equal(out.distribution, null);
+  test("cold/empty network has zero observations and unknown financials", () => {
+    for (const rows of [[], null, undefined]) {
+      const out = buildChainYield(rows);
+      assert.equal(out.subnet_count, 0);
+      assert.equal(out.neuron_count, 0);
+      assert.equal(out.captured_at, null);
+      assertUnknownFinancials(out);
+    }
   });
 
   test("null-safe on junk rows", () => {
     const out = buildChainYield("nope" as unknown as Row[]);
     assert.equal(out.neuron_count, 0);
-    assert.equal(out.network_yield, null);
-    assert.equal(out.distribution, null);
+    assertUnknownFinancials(out);
   });
 
-  test("sums thousands of rows in exact rao space, not compounding float error (#2922)", () => {
-    // Each row's stake carries a real sub-TAO fractional component (not a
-    // round number) -- plain `+=` float accumulation across many rows would
-    // drift from the true sum. Summing in rao BigInt space must not.
-    const rows: Row[] = [];
-    let expectedTotalRao = 0n;
-    for (let i = 0; i < 5000; i += 1) {
-      const stakeTao = 1234.987654321 + i * 0.000000001;
-      rows.push({
-        validator_permit: 0,
-        stake_tao: stakeTao,
-        emission_tao: 0,
-        // Non-root netuids only (1..128): this test is about float drift, and
-        // root rows are dropped outright (#9040), which would silently shrink
-        // the sum under test rather than exercise the rao accumulation.
-        netuid: (i % 128) + 1,
-        captured_at: 1_750_000_000_000,
-      });
-      expectedTotalRao += BigInt(Math.round(stakeTao * 1e9));
-    }
+  test("thousands of precise observations still cannot qualify cross-token sums", () => {
+    const rows: Row[] = Array.from({ length: 5000 }, (_, i) => ({
+      validator_permit: 0,
+      stake_tao: 1234.987654321 + i * 0.000000001,
+      emission_tao: 12.345678901 + i * 0.000000001,
+      netuid: (i % 128) + 1,
+      captured_at: 1_750_000_000_000,
+    }));
     const out = buildChainYield(rows);
-    const expectedTotal =
-      Number(expectedTotalRao / 1_000_000_000n) +
-      Number(expectedTotalRao % 1_000_000_000n) / 1e9;
-    assert.equal(out.total_stake_alpha, Math.round(expectedTotal * 1e9) / 1e9);
+    assert.equal(out.neuron_count, 5000);
+    assert.equal(out.subnet_count, 128);
+    assertUnknownFinancials(out);
   });
 
   test("loadChainYield reads every non-root subnet in one SELECT and shapes it", async () => {
@@ -339,12 +280,10 @@ describe("buildChainYield", () => {
     };
     const out = await loadChainYield(runner);
     assert.match(seen!.sql, /FROM neurons/);
-    // Root is filtered in SQL to avoid reading rows the builder would drop
-    // anyway (#9040) -- the correctness guarantee lives in buildChainYield.
     assert.match(seen!.sql, /WHERE netuid != 0/);
     assert.deepEqual(seen!.params, []);
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.network_yield, 0.05);
+    assert.deepEqual(out, buildChainYield(ROWS));
+    assertUnknownFinancials(out);
   });
 });
 

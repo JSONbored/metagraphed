@@ -3619,14 +3619,9 @@ const rootValue = {
       neuron_count: data.neuron_count ?? 0,
       validator_count: data.validator_count ?? 0,
       miner_count: data.miner_count ?? 0,
-      // THE PRODUCER (#10786). buildSubnetYield accumulates these in rao and
-      // converts once at the end, so an empty subnet yields 0 -- there is no
-      // arm on which it declines to answer, and `?? null` nulled the two
-      // totals the card is FOR. The fallback stays (unlike the sibling cards
-      // below, whose value never leaves this Worker) because the other leg is
-      // a DATA_API body, and the schema's own zero is what an empty subnet
-      // means -- matching the counts on the line above.
-      total_stake_alpha: data.total_stake_alpha ?? 0,
+      // Weighted neuron stake cannot establish holdings. Keep the producer's
+      // unknown amount distinct from independently observed subnet emissions.
+      total_stake_alpha: data.total_stake_alpha ?? null,
       total_emission_alpha: data.total_emission_alpha ?? 0,
       subnet_yield: data.subnet_yield ?? null,
       mean_yield: data.mean_yield ?? null,
@@ -6515,7 +6510,7 @@ const rootValue = {
       position_count: data.position_count ?? 0,
       validator_count: data.validator_count ?? 0,
       miner_count: data.miner_count ?? 0,
-      total_stake_tao: data.total_stake_tao ?? 0,
+      total_stake_tao: data.total_stake_tao ?? null,
       total_emission_tao: data.total_emission_tao ?? 0,
       overall_yield: data.overall_yield ?? null,
       stake_concentration: data.stake_concentration ?? null,
@@ -6564,7 +6559,7 @@ const rootValue = {
       ss58: data.ss58 ?? ss58,
       captured_at: data.captured_at ?? null,
       position_count: data.position_count ?? 0,
-      total_stake_alpha: data.total_stake_alpha ?? 0,
+      total_stake_alpha: data.total_stake_alpha ?? null,
       positions: data.positions || [],
       // The caveat that makes the zero readable. unavailableAccountPositions
       // sets this (`positions_unpriceable` / `tier_unavailable` /
@@ -9123,8 +9118,8 @@ const rootValue = {
       validator_count: data.validator_count ?? 0,
       miner_count: data.miner_count ?? 0,
       captured_at: data.captured_at ?? null,
-      total_stake_alpha: data.total_stake_alpha ?? 0,
-      total_emission_alpha: data.total_emission_alpha ?? 0,
+      total_stake_alpha: data.total_stake_alpha ?? null,
+      total_emission_alpha: data.total_emission_alpha ?? null,
       network_yield: data.network_yield ?? null,
       validator_yield: data.validator_yield ?? null,
       miner_yield: data.miner_yield ?? null,

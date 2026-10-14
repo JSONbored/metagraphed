@@ -72,7 +72,10 @@ export function buildSubnetYield(
       capturedAt = toIso(row?.captured_at);
       const rawBlock = row?.block_number;
       const block =
-        rawBlock == null || rawBlock === "" ? NaN : Number(rawBlock);
+        rawBlock == null ||
+        (typeof rawBlock === "string" && rawBlock.trim() === "")
+          ? NaN
+          : Number(rawBlock);
       blockNumber = Number.isSafeInteger(block) && block >= 0 ? block : null;
     }
     const emission = nonNegativeCellOrNull(row?.emission_tao);

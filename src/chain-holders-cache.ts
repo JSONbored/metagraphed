@@ -1,5 +1,5 @@
 import { selectedD1Store } from "./d1-store.ts";
-import { ALPHA_PRICING_TABLES } from "./read-store-tables.ts";
+import { ALPHA_QUANTITY_TABLES } from "./read-store-tables.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 
 type Row = Record<string, unknown>;
@@ -11,9 +11,10 @@ registerModuleStateReset("src/chain-holders-cache.ts", () => {
   snapshots = new WeakMap();
 });
 
-/** Both producers advance revisions atomically with their rows. Recheck both
- * on every request, even a hit, and include the proven pricing-pass identity.
- * Read revisions before data so a racing write cannot label old data as new. */
+/** The canonical position producer advances its revision atomically. Recheck
+ * on every hit and include the qualified capture identity; the caller also
+ * rechecks selected runtime metadata/completion. Retired pool totals are not a
+ * quantity owner. Read revisions before data so a race cannot relabel old rows. */
 export async function readRevisionedChainHolders(
   env: unknown,
   capturedAt: number,
@@ -22,18 +23,19 @@ export async function readRevisionedChainHolders(
   const config = env as CacheConfig | undefined;
   const store =
     config?.D1_EXPORT_REVISIONS === "enabled"
-      ? selectedD1Store(env, ALPHA_PRICING_TABLES)
+      ? selectedD1Store(env, ALPHA_QUANTITY_TABLES)
       : null;
   if (!store) return read();
   const binding = config!.D1_STATE!; // selectedD1Store validates the binding.
   const revisions = await store
     .query<Revision>(
       "SELECT table_name,revision FROM archive_export_revisions " +
-        "WHERE table_name IN ('hotkey_alpha','nominator_positions') ORDER BY table_name",
+        "WHERE table_name='nominator_positions'",
     )
     .catch(() => []);
   if (
-    revisions.length !== 2 ||
+    revisions.length !== 1 ||
+    revisions[0].table_name !== "nominator_positions" ||
     revisions.some(
       (row) => !Number.isSafeInteger(row.revision) || row.revision < 0,
     )

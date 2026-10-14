@@ -355,6 +355,21 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     reason: "written with validator_nominator_counts",
     producer: "validator_nominators",
   },
+  alpha_runtime_metadata: {
+    column: "",
+    kind: "ms",
+    maxAgeMs: null,
+    reason:
+      "content-addressed immutable runtime metadata; new identity appears only on a qualified runtime change, not on a periodic refresh",
+  },
+  alpha_snapshot_passes: {
+    column: "completed_at",
+    kind: "ms",
+    maxAgeMs: missedTicksMs("validator_nominators", 1.5),
+    reason:
+      "completed native Alpha receipt; pending reservations cannot advance freshness, and nominator_positions separately tracks serving capture age",
+    producer: "validator_nominators",
+  },
   nominator_positions: {
     column: "captured_at",
     kind: "ms",

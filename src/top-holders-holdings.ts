@@ -155,7 +155,8 @@ export function topHoldersHoldingsSql(
  * holding cannot be negative: a negative here is a broken read, not a
  * measurement. */
 function holding(value: unknown): number | null {
-  if (value == null) return null;
+  if (value == null || (typeof value === "string" && value.trim() === ""))
+    return null;
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? n : null;
 }

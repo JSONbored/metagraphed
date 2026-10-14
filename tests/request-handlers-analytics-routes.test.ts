@@ -36,6 +36,10 @@ import {
   handleTrajectory,
   handleUptime,
 } from "../workers/request-handlers/analytics-routes.ts";
+import {
+  buildValidatorDetail,
+  NO_ALPHA_PRICES,
+} from "../src/metagraph-neurons.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import {} from "../src/neuron-history.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -1145,12 +1149,21 @@ describe("handleCompareValidators", () => {
         requestedPaths.push(reqUrl.pathname);
         return Response.json({
           details: [
-            {
-              schema_version: 1,
-              hotkey: HOTKEY_A,
-              coldkey: "coldkey-1",
-              subnets: [{ netuid: 7, uid: 3, stake_tao: 100 }],
-            },
+            buildValidatorDetail(
+              [
+                {
+                  hotkey: HOTKEY_A,
+                  coldkey: "coldkey-1",
+                  netuid: 7,
+                  uid: 3,
+                  stake_tao: 100,
+                  emission_tao: 1,
+                  validator_permit: 1,
+                },
+              ],
+              HOTKEY_A,
+              { priceByNetuid: new Map([[7, 1]]) },
+            ),
           ],
         });
       },
@@ -1166,6 +1179,10 @@ describe("handleCompareValidators", () => {
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.validators[0].subnet_context.netuid, 7);
     assert.equal(body.data.validators[0].subnet_context.uid, 3);
+    assert.equal(body.data.schema_version, 2);
+    assert.equal(body.data.validators[0].total_stake_tao, null);
+    assert.equal(body.data.validators[0].apy_estimate, null);
+    assert.equal(body.data.validators[0].subnet_context.stake_alpha, null);
   });
 
   test("generated_at tracks the latest captured_at across mixed-order per-hotkey responses", async () => {
@@ -1181,11 +1198,10 @@ describe("handleCompareValidators", () => {
       fetch: async (request: Request) => {
         const hotkey = new URL(request.url).pathname.split("/").pop();
         return Response.json({
-          schema_version: 1,
-          hotkey,
+          ...buildValidatorDetail([], hotkey, {
+            priceByNetuid: NO_ALPHA_PRICES,
+          }),
           captured_at: capturedAtByHotkey[hotkey!],
-          subnet_count: 0,
-          subnets: [],
         });
       },
     };
@@ -1198,6 +1214,58 @@ describe("handleCompareValidators", () => {
         ),
       ),
     );
+    assert.equal(body.meta.generated_at, "2026-06-22T00:00:00.000Z");
+  });
+
+  test("an old batch child triggers bounded per-hotkey fallback and old details stay unavailable", async () => {
+    const env = createLocalArtifactEnv();
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
+    const paths: string[] = [];
+    const current = buildValidatorDetail([], HOTKEY_B, {
+      priceByNetuid: NO_ALPHA_PRICES,
+    });
+    const legacy = {
+      ...buildValidatorDetail([], HOTKEY_A, { priceByNetuid: NO_ALPHA_PRICES }),
+      schema_version: 1,
+      total_stake_tao: 42,
+      apy_estimate: 0.2,
+      captured_at: "2026-06-24T00:00:00.000Z",
+    };
+    env.DATA_API = {
+      fetch: async (request: Request) => {
+        const path = new URL(request.url).pathname;
+        paths.push(path);
+        if (path === "/api/v1/internal/validator-details")
+          return Response.json({ details: [legacy, current] });
+        return Response.json(
+          path.endsWith(HOTKEY_A)
+            ? legacy
+            : {
+                ...current,
+                captured_at: "2026-06-22T00:00:00.000Z",
+              },
+        );
+      },
+    };
+    const body = await json(
+      await handleCompareValidators(
+        req("/"),
+        mockEnv(env),
+        url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}`),
+      ),
+    );
+    assert.deepEqual(paths, [
+      "/api/v1/internal/validator-details",
+      `/api/v1/validators/${HOTKEY_A}`,
+      `/api/v1/validators/${HOTKEY_B}`,
+    ]);
+    assert.deepEqual(
+      body.data.validators.map((row: Row) => row.hotkey),
+      [HOTKEY_A, HOTKEY_B],
+    );
+    assert.equal(body.data.validators[0].total_stake_tao, null);
+    assert.equal(body.data.validators[0].apy_estimate, null);
+    assert.equal(body.data.validators[0].subnet_count, 0);
     assert.equal(body.meta.generated_at, "2026-06-22T00:00:00.000Z");
   });
 

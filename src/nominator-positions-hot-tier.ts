@@ -63,13 +63,12 @@ export async function loadAccountPositionsFromStore(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountPositions> | null> {
-  const db = readStore(env, ["nominator_positions"]);
-  if (!db?.query || !db?.first) return null;
-
   let rows: Record<string, unknown>[];
   let ledgerCapturedAt: number | null;
   let capture: AlphaQuantityCapture | null;
   try {
+    const db = readStore(env, ["nominator_positions"]);
+    if (!db?.query || !db?.first) return null;
     capture = await loadAlphaQuantityCaptureFromOwner(env);
     // Issued together: the ledger stamp is needed on the zero path and the
     // decline path alike, and serialising two independent point reads on a

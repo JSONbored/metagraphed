@@ -68,6 +68,13 @@ import {
   latestArtifactDate,
 } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
+import { handleGraphQLRequest } from "../src/graphql.ts";
+import { buildAccountPositions } from "../src/account-nominator-positions.ts";
+import {
+  syntheticAlphaCapture,
+  syntheticAlphaPosition,
+} from "./helpers/alpha-quantity-fixture.ts";
+import { ALPHA_QUANTITY_TABLES } from "../src/read-store-tables.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 import { buildStakeFlow } from "../src/stake-flow.ts";
@@ -86,7 +93,25 @@ import { buildSubnetRegistrations } from "../src/subnet-registrations.ts";
 import { buildSubnetWeights } from "../src/subnet-weights.ts";
 import { buildSubnetServing } from "../src/subnet-serving.ts";
 import { buildSubnetPrometheus } from "../src/subnet-prometheus.ts";
-import { buildSubnetYieldHistory } from "../src/subnet-yield.ts";
+import {
+  buildSubnetYield,
+  buildSubnetYieldHistory,
+} from "../src/subnet-yield.ts";
+import { buildChainYield } from "../src/chain-yield.ts";
+import {
+  buildGlobalValidators,
+  buildValidatorDetail,
+  GLOBAL_VALIDATOR_SORTS,
+  NO_ALPHA_PRICES,
+} from "../src/metagraph-neurons.ts";
+import {
+  buildAccountsList,
+  ACCOUNTS_LIST_SORTS,
+} from "../src/accounts-list.ts";
+import { TOP_HOLDERS_SORTS } from "../src/top-holders.ts";
+import { buildAccountPortfolio } from "../src/account-portfolio.ts";
+import { buildAccountPositionHistory } from "../src/account-position-history.ts";
+import { buildValidatorHistory } from "../src/validator-history.ts";
 import { buildChainTurnover } from "../src/chain-turnover.ts";
 import {
   buildAccountSummary,
@@ -104,6 +129,24 @@ import {
   buildBlockExtrinsics,
 } from "../src/extrinsics.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.ts";
+
+function quantityNeuron(overrides: Row = {}): Row {
+  return {
+    hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    coldkey: "5Cold",
+    netuid: 7,
+    uid: 3,
+    stake_tao: 800,
+    emission_tao: 5,
+    validator_permit: 1,
+    active: 1,
+    take: 0.18,
+    captured_at: 1_750_000_000_000,
+    block_number: 100,
+    ...overrides,
+  };
+}
+
 import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.ts";
 import {
   CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
@@ -12654,15 +12697,7 @@ describe("MCP economics + metagraph data tools", () => {
   // tests/metagraph-neurons.test.ts; this only proves each REST-supported
   // sort key is still accepted and echoed back with an empty leaderboard.
   test("list_global_validators accepts each REST-supported sort key with an empty leaderboard", async () => {
-    for (const sort of [
-      "subnet_count",
-      "uid_count",
-      "total_stake",
-      "total_emission",
-      "max_validator_trust",
-      "avg_validator_trust",
-      "stake_dominance",
-    ]) {
+    for (const sort of GLOBAL_VALIDATOR_SORTS) {
       const res = await callTool("list_global_validators", { sort, limit: 1 });
       const out = res.body.result.structuredContent;
       assert.equal(out.sort, sort, `sort echo for ${sort}`);
@@ -17334,7 +17369,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.match(queries[0]!, /ORDER BY last_observed DESC, coldkey ASC/);
   });
 
-  test("get_account_positions prices the lakehouse ledger off the neurons store", async () => {
+  test("get_account_positions preserves lakehouse relationships without pricing voting weight", async () => {
     const queries = lakeFetch([
       {
         hotkey: LAKE_EXTRINSIC.signer,
@@ -17343,10 +17378,8 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
         captured_at: 1785634702670,
       },
     ]);
-    // Per statement, because the two legs must answer differently: the HOT
-    // ledger is empty (the point of the test is that the LAKEHOUSE one is
-    // served) and the `neurons` read is what prices it. One shared row set
-    // would let the hot leg answer and the cold tier would never run.
+    // The hot ledger is empty so the lakehouse supplies relationships. Even
+    // with a neuron voting weight available, the holdings stay unknown.
     pg.control.answers = [
       { match: /FROM nominator_positions/i, rows: [] },
       {
@@ -17365,8 +17398,10 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     );
     const data = res.body.result.structuredContent;
     assert.equal(data.position_count, 1);
-    assert.equal(data.positions[0].stake_tao, 50);
-    assert.equal(data.total_stake_alpha, 50);
+    assert.equal(data.positions[0].stake_tao, null);
+    assert.equal(data.positions[0].alpha_rao, null);
+    assert.equal(data.positions[0].quantity_status, "unqualified");
+    assert.equal(data.total_stake_alpha, null);
     assert.match(queries[0]!, /FROM chain\.nominator_positions/);
 
     // The compound card resolves through the SAME chain, so it cannot
@@ -21981,7 +22016,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
       hotkeys: [HOTKEY, HOTKEY2],
     });
     const out = res.body.result.structuredContent;
-    assert.equal(out.schema_version, 1);
+    assert.equal(out.schema_version, 2);
     assert.equal(out.netuid, null);
     assert.equal(out.validator_count, 2);
     assert.deepEqual(
@@ -22035,22 +22070,13 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
           const hotkey = decodeURIComponent(
             new URL(req.url).pathname.split("/").pop() as string,
           );
-          return Response.json({
-            schema_version: 1,
-            hotkey,
-            coldkey: "5Cold",
-            coldkey_identity: { has_identity: true, name: "Alice" },
-            take: 0.18,
-            apy_estimate: 0.2,
-            apy_estimate_eligible_subnet_count: 1,
-            nominator_count: 42,
-            total_stake_alpha: 1000,
-            total_emission_tao: 5,
-            avg_validator_trust: 0.9,
-            max_validator_trust: 0.99,
-            subnet_count: 1,
-            subnets: [{ netuid: 7, uid: 3, stake_tao: 800 }],
-          });
+          return Response.json(
+            buildValidatorDetail([quantityNeuron({ hotkey })], hotkey, {
+              priceByNetuid: NO_ALPHA_PRICES,
+              nominatorCount: 42,
+              identityByColdkey: new Map([["5Cold", { name: "Alice" }]]),
+            }),
+          );
         },
       },
     };
@@ -22063,15 +22089,14 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.validators[0].take, 0.18);
     assert.equal(out.validators[0].nominator_count, 42);
-    assert.deepEqual(out.validators[0].coldkey_identity, {
-      has_identity: true,
-      name: "Alice",
-    });
-    assert.deepEqual(out.validators[0].subnet_context, {
-      netuid: 7,
-      uid: 3,
-      stake_tao: 800,
-    });
+    assert.equal(out.validators[0].coldkey_identity.has_identity, true);
+    assert.equal(out.validators[0].coldkey_identity.name, "Alice");
+    assert.equal(out.validators[0].apy_estimate, null);
+    assert.equal(out.validators[0].total_stake_tao, null);
+    assert.equal(out.validators[0].subnet_context.netuid, 7);
+    assert.equal(out.validators[0].subnet_context.uid, 3);
+    assert.equal(out.validators[0].subnet_context.stake_alpha, null);
+    assert.equal(out.validators[0].subnet_context.voting_weight, 800);
     // The raw detail's subnets[] is not passed through -- only the projection.
     assert.equal(out.validators[0].subnets, undefined);
   });
@@ -22850,7 +22875,7 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
     assert.equal(out.ss58, SS58);
     assert.equal(out.captured_at, null);
     assert.equal(out.position_count, 0);
-    assert.equal(out.total_stake_alpha, 0);
+    assert.equal(out.total_stake_alpha, null);
     assert.deepEqual(out.positions, []);
   });
 
@@ -23028,21 +23053,13 @@ describe("MCP get_account_snapshot", () => {
     globalThis.fetch = (async (_url: string, init?: RequestInit) => {
       const body = String(init?.body ?? "");
       if (body.includes("chain.nominator_positions"))
-        return Response.json({
-          success: true,
-          result: {
-            rows: body.includes("MAX(captured_at)")
-              ? [{ latest: 1750000000000 }]
-              : [
-                  {
-                    hotkey: POSITION_HOTKEY,
-                    netuid: 7,
-                    share_fraction: 0.25,
-                    captured_at: 1750000000000,
-                  },
-                ],
-          },
-        });
+        return Response.json(
+          buildAccountPortfolio(
+            [quantityNeuron({ netuid: 3 }), quantityNeuron({ netuid: 7 })],
+            SS58,
+            { priceByNetuid: NO_ALPHA_PRICES },
+          ),
+        );
       if (body.includes("chain.account_events")) {
         return {
           ok: true,
@@ -23068,12 +23085,8 @@ describe("MCP get_account_snapshot", () => {
         }),
       };
     }) as unknown as typeof globalThis.fetch;
-    // The positions view's own store (#10808). THREE reads, not one, and the
-    // order matters -- `answers` is first-match. The loader issues the position
-    // page and the ledger stamp together (an empty stamp is the pre-cutover
-    // state and DECLINES), then side-loads the hotkeys' stake off `neurons` to
-    // price the shares. Miss any of the three and it falls through to the cold
-    // tier and then to the unavailable card.
+    // The positions view reads its own ledger and capture stamp. A legacy
+    // relationship capture preserves the row without assigning a token amount.
     const POSITION_HOTKEY = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
     pg.control.answers = [
       { match: /MAX\(captured_at\)/i, rows: [{ latest: 1_750_000_000_000 }] },
@@ -23454,22 +23467,14 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
   test("list_accounts returns a schema-stable empty leaderboard (neurons D1 write path retired)", async () => {
     const res = await callTool("list_accounts", {});
     const out = res.body.result.structuredContent;
-    assert.equal(out.sort, "total_stake");
+    assert.equal(out.sort, "subnet_count");
     assert.equal(out.limit, 20);
     assert.equal(out.account_count, 0);
     assert.deepEqual(out.accounts, []);
   });
 
   test("list_accounts accepts each REST-supported sort key with an empty leaderboard", async () => {
-    for (const sort of [
-      "total_stake",
-      "total_emission",
-      "subnet_count",
-      "uid_count",
-      "validator_count",
-      "stake_dominance",
-      "last_active",
-    ]) {
+    for (const sort of ACCOUNTS_LIST_SORTS) {
       const res = await callTool("list_accounts", { sort, limit: 1 });
       const out = res.body.result.structuredContent;
       assert.equal(out.sort, sort);
@@ -23485,21 +23490,14 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
   test("get_top_holders returns a schema-stable empty leaderboard (cold/absent Postgres tier)", async () => {
     const res = await callTool("get_top_holders", {});
     const out = res.body.result.structuredContent;
-    assert.equal(out.sort, "total_tao");
+    assert.equal(out.sort, "free_tao");
     assert.equal(out.limit, 20);
     assert.equal(out.account_count, 0);
     assert.deepEqual(out.accounts, []);
   });
 
   test("get_top_holders accepts each REST-supported sort key with an empty leaderboard", async () => {
-    for (const sort of [
-      "total_tao",
-      "free_tao",
-      "delegated_tao",
-      "net_flow_7d",
-      "net_flow_30d",
-      "net_flow_90d",
-    ]) {
+    for (const sort of TOP_HOLDERS_SORTS) {
       const res = await callTool("get_top_holders", { sort, limit: 1 });
       const out = res.body.result.structuredContent;
       assert.equal(out.sort, sort);
@@ -23790,7 +23788,7 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
     {
       tool: "list_accounts",
       args: {},
-      path: "/api/v1/accounts?sort=total_stake&limit=20",
+      path: "/api/v1/accounts?sort=subnet_count&limit=20",
     },
     {
       tool: "get_validator_history",
@@ -23836,6 +23834,56 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
     },
   ];
 
+  function quantityCard(tool: string, args: Row): Row | null {
+    const rows = [quantityNeuron()];
+    switch (tool) {
+      case "get_chain_yield":
+        return buildChainYield(rows);
+      case "get_subnet_yield":
+        return buildSubnetYield(rows, args.netuid);
+      case "get_subnet_yield_history":
+        return buildSubnetYieldHistory(
+          [quantityNeuron({ snapshot_date: "2026-07-01" })],
+          args.netuid,
+          { window: String(args.window) },
+        );
+      case "list_global_validators":
+        return buildGlobalValidators(rows, { priceByNetuid: NO_ALPHA_PRICES });
+      case "get_validator_detail":
+        return buildValidatorDetail(rows, args.hotkey, {
+          priceByNetuid: NO_ALPHA_PRICES,
+        });
+      case "list_accounts":
+        return buildAccountsList(rows, { priceByNetuid: NO_ALPHA_PRICES });
+      case "get_validator_history":
+        return buildValidatorHistory(
+          [
+            {
+              snapshot_date: "2026-07-01",
+              subnet_count: 1,
+              total_stake_tao: 800,
+              total_emission_tao: 5,
+            },
+          ],
+          args.hotkey,
+          { window: args.window },
+        );
+      case "get_account_portfolio":
+        return buildAccountPortfolio(rows, String(args.ss58), {
+          priceByNetuid: NO_ALPHA_PRICES,
+        }) as unknown as Row;
+      case "get_account_position_history":
+        return buildAccountPositionHistory(
+          [quantityNeuron({ snapshot_date: "2026-07-01" })],
+          String(args.ss58),
+          Number(args.netuid),
+          { window: String(args.window) },
+        ) as unknown as Row;
+      default:
+        return null;
+    }
+  }
+
   for (const { tool, args, path } of CASES) {
     const label = path.includes("changes=true")
       ? `${tool} (changes=true)`
@@ -23851,22 +23899,73 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
           fetch: async (req: Request) => {
             const reqUrl = new URL(req.url);
             captured = reqUrl.pathname + reqUrl.search;
-            return Response.json({
-              schema_version: 1,
-              marker: "from-postgres",
-            });
+            return Response.json(
+              quantityCard(tool, args) ?? {
+                schema_version: 1,
+                marker: "from-postgres",
+              },
+            );
           },
         },
       };
       const res = await callTool(tool, args, { env });
       assert.equal(res.body.result.isError, false, label);
-      assert.equal(
-        res.body.result.structuredContent.marker,
-        "from-postgres",
-        label,
-      );
       assert.equal(captured, path, label);
+      const expected = quantityCard(tool, args);
+      if (!expected) {
+        assert.equal(
+          res.body.result.structuredContent.marker,
+          "from-postgres",
+          label,
+        );
+      }
+      if (expected) {
+        const card = res.body.result.structuredContent;
+        assert.equal(card.schema_version, 2, label);
+        for (const [key, value] of Object.entries(expected)) {
+          assert.deepEqual(card[key], value, `${label}: ${key}`);
+        }
+        const validate = new Ajv2020({ strict: false }).compile(
+          outputSchemaFor(tool),
+        );
+        assert.equal(validate(card), true, JSON.stringify(validate.errors));
+      }
     });
+
+    if (quantityCard(tool, args)) {
+      test(`${label}: rejects the legacy quantity contract`, async () => {
+        let captured: string | undefined;
+        const res = await callTool(tool, args, {
+          env: {
+            METAGRAPH_NEURONS_SOURCE: "data-api",
+            DATA_API: {
+              fetch: async (req: Request) => {
+                const url = new URL(req.url);
+                captured = url.pathname + url.search;
+                return Response.json({
+                  schema_version: 1,
+                  marker: "legacy",
+                  total_stake_tao: 800,
+                  total_stake_alpha: 800,
+                });
+              },
+            },
+          },
+        });
+        assert.equal(captured, path, label);
+        assert.equal(res.body.result.isError, false, label);
+        assert.equal(
+          res.body.result.structuredContent.schema_version,
+          2,
+          label,
+        );
+        assert.equal(
+          res.body.result.structuredContent.marker,
+          undefined,
+          label,
+        );
+      });
+    }
 
     test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
       const env = {
@@ -26156,4 +26255,122 @@ describe("unknown tools are a tool-execution error, deliberately (#9646)", () =>
       /no_such_tool_anywhere/,
     );
   });
+});
+
+describe("MCP quantity contract transport parity", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+  const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  for (const qualified of [true, false]) {
+    test(`positions: ${qualified ? "qualified exact snapshot" : "unqualified relationship"} agrees over REST, MCP and GraphQL`, async () => {
+      const at = Date.parse("2026-07-14T00:00:00.000Z");
+      const capture = syntheticAlphaCapture(at, {
+        expected_rows: 1,
+        received_rows: 1,
+      });
+      const row = syntheticAlphaPosition(
+        SS58,
+        HOTKEY,
+        7,
+        "9007199254740993",
+        at,
+      );
+      pg.control.answers = [
+        {
+          match: /FROM alpha_snapshot_passes/i,
+          rows: qualified ? [capture] : [],
+        },
+        { match: /MAX\(captured_at\)/i, rows: [{ latest: at }] },
+        { match: /FROM nominator_positions/i, rows: [row] },
+      ];
+      const env = pgMockEnv(ALPHA_QUANTITY_TABLES);
+      const expected = buildAccountPositions(
+        [row],
+        null,
+        SS58,
+        qualified ? capture : null,
+      );
+      const rest = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh/api/v1/accounts/${SS58}/positions`,
+        ),
+        env as unknown as Env,
+        {},
+      );
+      assert.equal(rest.status, 200);
+      const restCard = ((await rest.json()) as Row).data;
+      const mcp = await callTool(
+        "get_account_positions",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(mcp.body.result.isError, false);
+      const mcpCard = mcp.body.result.structuredContent;
+      assert.deepEqual(restCard, expected);
+      assert.deepEqual(mcpCard, expected);
+      const validate = new Ajv2020({ strict: false }).compile(
+        outputSchemaFor("get_account_positions"),
+      );
+      assert.equal(validate(mcpCard), true, JSON.stringify(validate.errors));
+      const response = await handleGraphQLRequest(
+        new Request("https://api.metagraph.sh/api/v1/graphql", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            query: `{ account_positions(ss58: "${SS58}") {
+          schema_version ss58 captured_at position_count total_stake_alpha
+          positions { hotkey netuid share_fraction stake_tao alpha_rao quantity_status
+            provenance { network captured_at block_number block_hash genesis_hash spec_version code_hash metadata_sha256 }
+          }
+        } }`,
+          }),
+        }),
+        env as unknown as Env,
+      );
+      const graph = (await response.json()) as Row;
+      assert.equal(response.status, 200);
+      assert.equal(graph.errors, undefined);
+      assert.deepEqual(graph.data.account_positions, expected);
+      assert.equal(expected.total_stake_alpha, null);
+      assert.equal(expected.positions[0].stake_tao, null);
+      assert.equal(
+        expected.positions[0].alpha_rao,
+        qualified ? "9007199254740993" : null,
+      );
+      assert.equal(
+        expected.positions[0].quantity_status,
+        qualified ? "qualified_snapshot" : "unqualified",
+      );
+    });
+  }
+
+  for (const [tool, sorts] of [
+    ["list_global_validators", ["total_stake", "stake_dominance"]],
+    ["list_accounts", ["total_stake", "stake_dominance"]],
+    ["get_top_holders", ["total_tao", "delegated_tao"]],
+  ] as const) {
+    for (const sort of sorts) {
+      test(`${tool}: rejects removed financial sort ${sort}`, async () => {
+        let reads = 0;
+        const res = await callTool(
+          tool,
+          { sort },
+          {
+            env: {
+              METAGRAPH_NEURONS_SOURCE: "data-api",
+              DATA_API: {
+                fetch: async () => {
+                  reads += 1;
+                  throw new Error("invalid sort reached the tier");
+                },
+              },
+            },
+          },
+        );
+        assert.equal(res.body.result.isError, true);
+        assert.match(res.body.result.content[0].text, /sort/i);
+        assert.equal(reads, 0);
+      });
+    }
+  }
 });

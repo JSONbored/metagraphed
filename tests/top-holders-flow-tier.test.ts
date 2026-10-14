@@ -34,6 +34,7 @@ import {
   TOP_HOLDERS_FLOW_WINDOW_DAYS,
   TOP_HOLDERS_LIVE_SORTS,
   topHoldersArtifactSorts,
+  loadTopHoldersFlowTier,
 } from "../src/top-holders-flow-tier.ts";
 
 const GENERATED_AT = Date.parse("2026-08-05T01:34:00.000Z");
@@ -62,9 +63,7 @@ function aggregate(
 function holdings(
   cells: Record<string, Record<string, number>>,
   sorts?: string[],
-  /** The leg's own vintage -- the OLDEST input pass it rests on (#9632).
-   * Distinct from GENERATED_AT by default so a test asserting one stamp cannot
-   * pass by reading the other. */
+  /** The complete balance pass's vintage, distinct from GENERATED_AT. */
   capturedAt: number = HOLDINGS_CAPTURED_AT,
 ) {
   const entries = Object.entries(cells);
@@ -73,32 +72,15 @@ function holdings(
     cells: new Map(entries),
     sorts:
       sorts ??
-      ["free_tao", "delegated_tao", "total_tao"].filter((key) =>
+      ["free_tao"].filter((key) =>
         entries.some(([, cell]) => typeof cell[key] === "number"),
       ),
   };
 }
 
-/**
- * A D1 stub whose one statement returns `rows` (or throws).
- *
- * Also answers the completeness probe (#9511), which runs BEFORE the balance
- * query: `topHoldersBalances` declines outright unless a pass has been recorded
- * complete, so a stub without it would make every balance test vacuously assert
- * the decline path. `pass` defaults to a completed one so the existing tests
- * keep testing what they were written to test; pass `null` for the ledger state
- * that must be refused.
- */
-/**
- * The store behind the holdings leg: a completeness pass that answers the two
- * probes, and `rows` for the ranking query.
- *
- * The dispatch runs in the double's `onQuery`, which fires before it consults
- * its canned answers -- so assigning `control.rows` there is what lets one
- * double answer both statements. A subscription rather than a read-back
- * because callers hold `seen` across the compute call; see
- * tests/helpers/pg-mock.ts.
- */
+/** The store behind the free leg: a complete-pass probe and a ranking read.
+ * Dispatch on recorded query text keeps the production store selector and pg
+ * result envelope in the path. Passing null simulates no completed pass. */
 function d1With(
   rows: unknown[] | null,
   opts: {
@@ -311,41 +293,53 @@ describe("buildTopHoldersFlowRows", () => {
       [aggregate("5Both", { net_flow_30d: -12 })],
       GENERATED_AT,
       10,
-      holdings({ "5Both": { free_tao: 42, delegated_tao: 8, total_tao: 50 } }),
+      holdings({ "5Both": { free_tao: 42 } }),
     );
     assert.equal(row!.free_tao, 42);
-    assert.equal(row!.delegated_tao, 8);
-    assert.equal(row!.total_tao, 50);
+    assert.equal("delegated_tao" in row!, false);
+    assert.equal("total_tao" in row!, false);
     assert.equal(row!.net_flow_30d, -12);
     assert.equal(row!.captured_at, GENERATED_AT);
   });
 
-  // Each holdings column becomes provable on its own day: free_tao needs a
-  // complete account_balances pass, delegated_tao a complete hotkey_alpha one.
-  // A leg proving only one must rank only that one.
-  test("ranks only the holdings sorts the leg proved", () => {
+  test("ranks the independent measured-free population without inventing financial sorts", () => {
     const rows = buildTopHoldersFlowRows(
       [aggregate("5Flow", { net_flow_7d: 1 })],
       GENERATED_AT,
       1,
-      holdings({
-        "5Pool": { delegated_tao: 81_185 },
-        "5Tiny": { delegated_tao: 1 },
-      }),
+      holdings({ "5Exchange": { free_tao: 81_185 }, "5Tiny": { free_tao: 1 } }),
     );
-    // delegated_tao ranked, so the larger of the two survives the cap of 1.
-    assert.ok(rows.some((r) => r.ss58 === "5Pool"));
-    assert.equal(
-      rows.some((r) => r.ss58 === "5Tiny"),
-      false,
+    assert.deepEqual(
+      rows.map((row) => row.ss58),
+      ["5Exchange", "5Flow"],
     );
-    // free_tao and total_tao were never proven, so no row carries either.
-    assert.equal(
-      JSON.stringify(rows).includes("free_tao"),
-      false,
-      "no free_tao column while its ledger is unproven",
-    );
+    assert.equal(rows[0]!.free_tao, 81_185);
+    assert.equal(rows[0]!.holdings_captured_at, HOLDINGS_CAPTURED_AT);
+    assert.equal(JSON.stringify(rows).includes("delegated_tao"), false);
     assert.equal(JSON.stringify(rows).includes("total_tao"), false);
+  });
+
+  test("financial guesses on aggregate rows cannot ride along with observed flows", () => {
+    const [row] = buildTopHoldersFlowRows(
+      [
+        {
+          coldkey: "5Legacy",
+          delegated_tao: 25_000_000,
+          total_tao: 25_000_010,
+          net_flow_7d: -5,
+          net_flow_30d: 0,
+          net_flow_90d: 9,
+        },
+      ],
+      GENERATED_AT,
+    );
+    assert.deepEqual(row, {
+      ss58: "5Legacy",
+      net_flow_7d: -5,
+      net_flow_30d: 0,
+      net_flow_90d: 9,
+      captured_at: GENERATED_AT,
+    });
   });
 
   test("a null holdings leg leaves every holdings column out entirely", () => {
@@ -390,16 +384,17 @@ describe("topHoldersArtifactSorts", () => {
       topHoldersArtifactSorts({ sorts: ["free_tao", "net_flow_7d"] }),
       ["free_tao", "net_flow_7d"],
     );
-    // Never rank on whatever a stored string asks for. total_tao IS a live
-    // sort now (#9502), so the example has to be something no leg can ever
-    // back -- otherwise this stops testing the drop.
+    // A legacy artifact may still declare financial sorts. The read path
+    // must filter them even when its cells contain plausible numbers.
     assert.deepEqual(
       topHoldersArtifactSorts({ sorts: ["reserved_tao", 7, null] }),
       [],
     );
     assert.deepEqual(
-      topHoldersArtifactSorts({ sorts: ["total_tao", "made_up"] }),
-      ["total_tao"],
+      topHoldersArtifactSorts({
+        sorts: ["total_tao", "delegated_tao", "made_up"],
+      }),
+      [],
     );
   });
 });
@@ -455,11 +450,72 @@ describe("computeTopHoldersFlow", () => {
     );
     assert.deepEqual(withHoldings?.sorts, TOP_HOLDERS_LIVE_SORTS);
     assert.equal(withHoldings?.row_count, 2);
+    const account = (withHoldings?.rows as Record<string, unknown>[]).find(
+      (row) => row.ss58 === "5Exchange",
+    )!;
+    assert.equal(account.free_tao, 900);
+    assert.equal("delegated_tao" in account, false);
+    assert.equal("total_tao" in account, false);
     const partial = await computeTopHoldersFlow(
       d1With([{ ss58: "5Exchange", free_tao: 900 }]).env as Env,
     );
     assert.deepEqual(partial?.sorts, [...TOP_HOLDERS_FLOW_SORTS, "free_tao"]);
   });
+  test("an incomplete balance pass leaves native flow observations and their ranking intact", async () => {
+    nativeFlowReader.mockResolvedValue({
+      generatedAt: GENERATED_AT,
+      rows: [
+        { coldkey: "5Flow", net_flow_7d: -5, net_flow_30d: 0, net_flow_90d: 9 },
+      ],
+    });
+    const { env, seen } = d1With([{ ss58: "5Exchange", free_tao: 900 }], {
+      pass: null,
+    });
+    const body = await computeTopHoldersFlow(env);
+    assert.deepEqual(body?.sorts, TOP_HOLDERS_FLOW_SORTS);
+    assert.deepEqual(body?.rows, [
+      {
+        ss58: "5Flow",
+        net_flow_7d: -5,
+        net_flow_30d: 0,
+        net_flow_90d: 9,
+        captured_at: GENERATED_AT,
+      },
+    ]);
+    assert.equal(
+      seen.length,
+      1,
+      "an incomplete pass must prevent the balance ranking read",
+    );
+  });
+
+  test("a failed or malformed balance read cannot suppress qualified native flows", async () => {
+    nativeFlowReader.mockResolvedValue({
+      generatedAt: GENERATED_AT,
+      rows: [
+        { coldkey: "5Flow", net_flow_7d: -5, net_flow_30d: 0, net_flow_90d: 9 },
+      ],
+    });
+    for (const setup of [
+      () => d1With([], { throws: true }),
+      () => d1With(null),
+    ]) {
+      const { env } = setup();
+      const body = await computeTopHoldersFlow(env);
+      assert.deepEqual(body?.sorts, TOP_HOLDERS_FLOW_SORTS);
+      assert.equal(body?.generated_at, new Date(GENERATED_AT).toISOString());
+      assert.deepEqual(body?.rows, [
+        {
+          ss58: "5Flow",
+          net_flow_7d: -5,
+          net_flow_30d: 0,
+          net_flow_90d: 9,
+          captured_at: GENERATED_AT,
+        },
+      ]);
+    }
+  });
+
   test("testnet never consults the mainnet balance ledger", async () => {
     nativeFlowReader.mockResolvedValue({
       generatedAt: Date.now(),
@@ -478,5 +534,67 @@ describe("computeTopHoldersFlow", () => {
       TOP_HOLDERS_FLOW_PROJECTION_KEY,
     );
     assert.equal(TOP_HOLDERS_FLOW_LANE.compute, computeTopHoldersFlow);
+  });
+});
+
+describe("stored projection compatibility", () => {
+  test("internal version 1 rows remain readable and other stored versions decline", () => {
+    const rows = [
+      {
+        ss58: "5A",
+        free_tao: 42,
+        delegated_tao: 8,
+        total_tao: 50,
+        net_flow_7d: -5,
+      },
+    ];
+    assert.deepEqual(topHoldersFlowRows({ schema_version: 1, rows }), rows);
+    for (const body of [
+      null,
+      {},
+      { schema_version: 2, rows },
+      { schema_version: 1, rows: "not-rows" },
+    ])
+      assert.equal(topHoldersFlowRows(body), null);
+  });
+
+  test("legacy declared financial sorts cannot answer and supported pages suppress their cells", async () => {
+    const body = {
+      schema_version: 1,
+      sorts: ["free_tao", "delegated_tao", "total_tao", "net_flow_7d"],
+      rows: [
+        {
+          ss58: "5A",
+          free_tao: 42,
+          delegated_tao: 8,
+          total_tao: 50,
+          net_flow_7d: -5,
+          captured_at: GENERATED_AT,
+          holdings_captured_at: HOLDINGS_CAPTURED_AT,
+        },
+      ],
+    };
+    const env = {
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            async json() {
+              return body;
+            },
+          };
+        },
+      },
+    } as unknown as Env;
+    for (const sort of ["delegated_tao", "total_tao"])
+      assert.equal(await loadTopHoldersFlowTier(env, { sort }), null);
+    for (const sort of ["free_tao", "net_flow_7d"]) {
+      const page = await loadTopHoldersFlowTier(env, { sort });
+      assert.equal(page?.schema_version, 2);
+      const [account] = page!.accounts as Record<string, unknown>[];
+      assert.equal(account!.free_tao, 42);
+      assert.equal(account!.net_flow_7d, -5);
+      assert.equal(account!.delegated_tao, null);
+      assert.equal(account!.total_tao, null);
+    }
   });
 });

@@ -18,10 +18,15 @@
 // support this" is a question only a database answers.
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import fs from "node:fs";
-import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import {
+  installAlphaQuantitySchema,
+  seedSyntheticAlphaPass,
+  syntheticAlphaCapture,
+  syntheticAlphaPosition,
+  insertSyntheticAlphaPosition,
+} from "./helpers/alpha-quantity-fixture.ts";
 
 // One store since #10179: the ROUTE/GraphQL/MCP surfaces reach it through
 // src/read-store.ts, which builds `new Client(...)` itself -- there is no
@@ -50,21 +55,8 @@ import { handleGraphQLRequest } from "../src/graphql.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
-const MIGRATIONS = [
-  "0011_nominator_positions.sql",
-  "0019_hotkey_alpha.sql",
-  "0021_hotkey_alpha_passes.sql",
-  "0022_nominator_positions_hotkey_netuid.sql",
-  "0023_nominator_positions_netuid.sql",
-].map((f) =>
-  fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema", f),
-    "utf8",
-  ),
-);
-
 const PASS = 1_785_900_000_000;
-const POSITIONS_AT = 1_785_953_674_407;
+const POSITIONS_AT = PASS;
 const ck = (n: number) => `5Coldkey${String(n).padStart(40, "0")}`;
 const hk = (n: number) => `5Hotkey0${String(n).padStart(40, "0")}`;
 
@@ -88,11 +80,10 @@ function storeHandle() {
 const env = () => ({ ...pgMockEnv() }) as unknown as Env;
 
 function completePass(capturedAt = PASS) {
-  db.prepare(
-    `INSERT INTO hotkey_alpha_passes (captured_at, expected_rows, received_rows, completed_at)
-     VALUES (?, ?, ?, ?)`,
-  ).run(capturedAt, 1, 1, capturedAt + 1000);
+  return seedSyntheticAlphaPass(db, capturedAt);
 }
+
+/** Legacy pool totals are decoys: exact quantities never derive from them. */
 function pool(hotkey: string, netuid: number, total: number, at = PASS) {
   db.prepare(
     `INSERT INTO hotkey_alpha (hotkey, netuid, total_alpha, captured_at) VALUES (?, ?, ?, ?)`,
@@ -102,12 +93,19 @@ function position(
   coldkey: string,
   hotkey: string,
   netuid: number,
-  frac: number,
+  alpha: number,
+  capturedAt = PASS,
 ) {
-  db.prepare(
-    `INSERT INTO nominator_positions (coldkey, hotkey, netuid, share_fraction, captured_at)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(coldkey, hotkey, netuid, frac, POSITIONS_AT);
+  insertSyntheticAlphaPosition(
+    db,
+    syntheticAlphaPosition(
+      coldkey,
+      hotkey,
+      netuid,
+      String(alpha * 1_000_000_000),
+      capturedAt,
+    ),
+  );
 }
 
 /**
@@ -119,19 +117,19 @@ function position(
 function threeSubnets() {
   completePass();
   pool(hk(1), 1, 1000);
-  position(ck(1), hk(1), 1, 1.0);
+  position(ck(1), hk(1), 1, 1000);
 
   pool(hk(2), 2, 1000);
-  position(ck(2), hk(2), 2, 0.6);
-  position(ck(3), hk(2), 2, 0.4);
+  position(ck(2), hk(2), 2, 600);
+  position(ck(3), hk(2), 2, 400);
 
   pool(hk(3), 3, 1000);
-  for (const c of [4, 5, 6, 7]) position(ck(c), hk(3), 3, 0.25);
+  for (const c of [4, 5, 6, 7]) position(ck(c), hk(3), 3, 250);
 }
 
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
-  for (const s of MIGRATIONS) db.exec(s);
+  installAlphaQuantitySchema(db);
   pg.control.queries.length = 0;
   pg.control.answers = [];
   pg.control.rows = null;
@@ -158,14 +156,32 @@ describe("loadChainHolders against real SQLite", () => {
     // erroring, which is what makes a small subnet comparable to a large one.
     assert.equal(byNetuid["3"].top5_alpha, 1000);
     assert.equal(byNetuid["1"].top_holder, ck(1));
+    assert.equal(read.capture?.captured_at, PASS);
+    const provenance = buildChainHolders(read).provenance as Row;
+    assert.equal(provenance.block_hash, read.capture?.block_hash);
+    assert.equal(provenance.metadata_sha256, read.capture?.metadata_sha256);
   });
 
-  test("scopes to the proven pass, ignoring a newer unproven one", async () => {
+  test("zero exact Alpha is measured while an empty qualified census remains empty", async () => {
+    completePass();
+    const empty = buildChainHolders(await loadChainHolders(storeHandle()));
+    assert.equal(empty.subnet_count, 0);
+    assert.equal(empty.degraded, undefined);
+    position(ck(1), hk(1), 1, 0);
+    const card = buildChainHolders(await loadChainHolders(storeHandle()));
+    assert.equal(card.subnet_count, 1);
+    assert.equal((card.subnets as Row[])[0].holder_count, 1);
+    assert.equal((card.subnets as Row[])[0].total_alpha, 0);
+    assert.equal((card.subnets as Row[])[0].top1_share, null);
+    assert.equal(card.degraded, undefined);
+  });
+
+  test("scopes positions to the qualified snapshot, ignoring a newer row capture", async () => {
     completePass();
     pool(hk(1), 1, 1000);
     pool(hk(2), 2, 500, PASS + 5000);
-    position(ck(1), hk(1), 1, 1.0);
-    position(ck(2), hk(2), 2, 1.0);
+    position(ck(1), hk(1), 1, 1000);
+    position(ck(2), hk(2), 2, 500, PASS + 5000);
     const read = await loadChainHolders(storeHandle());
     assert.deepEqual(
       read.rows.map((r) => r.netuid),
@@ -182,18 +198,18 @@ describe("loadChainHolders declines", () => {
 
   test("no complete pass declines rather than ranking a partial ledger", async () => {
     pool(hk(1), 1, 1000);
-    position(ck(1), hk(1), 1, 1.0);
+    position(ck(1), hk(1), 1, 1000);
     assert.equal(
       (await loadChainHolders(storeHandle())).decline,
       "runtime_positions_unqualified",
     );
   });
 
-  test("a missing passes table is unavailable", async () => {
-    db.exec("DROP TABLE hotkey_alpha_passes");
+  test("a missing quantity passes table is unqualified", async () => {
+    db.exec("DROP TABLE alpha_snapshot_passes");
     assert.equal(
       (await loadChainHolders(storeHandle())).decline,
-      "unavailable",
+      "runtime_positions_unqualified",
     );
   });
 
@@ -229,9 +245,12 @@ describe("the SQL states its own contract", () => {
     const sql = chainHoldersSql(PASS);
     assert.match(
       sql,
-      /ROW_NUMBER\(\) OVER \(PARTITION BY netuid ORDER BY alpha DESC\)/,
+      /ROW_NUMBER\(\) OVER \(PARTITION BY netuid ORDER BY alpha_key DESC,coldkey ASC\)/,
     );
-    assert.match(sql, new RegExp(`ha\\.captured_at = ${PASS}`));
+    assert.match(sql, new RegExp(`np\\.captured_at=${PASS}`));
+    assert.match(sql, /np\.source='alpha'/);
+    assert.match(sql, /np\.alpha_rao/);
+    assert.doesNotMatch(sql, /hotkey_alpha|share_fraction/);
     for (const n of [1, 5, 10, 20]) {
       assert.match(sql, new RegExp(`rn <= ${n} THEN alpha`));
     }
@@ -242,6 +261,10 @@ describe("buildChainHolders", () => {
   const read = (over: Partial<ChainHoldersRead> = {}): ChainHoldersRead => ({
     rows: [],
     capturedAt: PASS,
+    capture: syntheticAlphaCapture(PASS, {
+      expected_rows: over.rows?.length ?? 0,
+      received_rows: over.rows?.length ?? 0,
+    }),
     decline: null,
     ...over,
   });
@@ -255,6 +278,17 @@ describe("buildChainHolders", () => {
     top20_alpha: tops[3],
     top_holder: ck(netuid),
     positions_captured_at: POSITIONS_AT,
+  });
+
+  test("a missing or mismatched capture declines rather than claiming zero subnets", () => {
+    for (const capture of [null, syntheticAlphaCapture(PASS + 1)]) {
+      const card = buildChainHolders(read({ capture }));
+      assert.deepEqual(card.degraded, {
+        reason: "runtime_positions_unqualified",
+      });
+      assert.equal(card.subnet_count, null);
+      assert.deepEqual(card.subnets, []);
+    }
   });
 
   test("computes shares per subnet and never a cross-subnet total", () => {
@@ -642,9 +676,10 @@ describe("chain_holders over GraphQL and MCP", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          query: `{ chain_holders(limit: 2) { sort limit subnet_count
-            network { subnets_measured subnets_with_single_holder median_top1_share }
-            subnets { netuid holder_count total_alpha top1_share top_holder }
+          query: `{ chain_holders(limit: 2) { schema_version sort limit subnet_count captured_at positions_captured_at
+            provenance { network captured_at block_number block_hash genesis_hash spec_version code_hash metadata_sha256 }
+            network { subnets_measured subnets_with_majority_holder subnets_with_single_holder median_top1_share }
+            subnets { netuid holder_count total_alpha top1_share top5_share top10_share top20_share top_holder }
             degraded { reason } } }`,
         }),
       }),
@@ -655,6 +690,14 @@ describe("chain_holders over GraphQL and MCP", () => {
     assert.equal((card.subnets as Row[]).length, 2);
     assert.equal((card.network as Row).subnets_with_single_holder, 1);
     assert.equal(card.degraded, null);
+    const rest = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/holders?limit=2"),
+      env(),
+      {} as unknown as ExecutionContext,
+    );
+    assert.equal(rest.status, 200);
+    const { degraded: _degraded, ...graphqlCard } = card;
+    assert.deepEqual(graphqlCard, ((await rest.json()) as Row).data);
   });
 
   test("GraphQL rejects an unsupported sort and clamps an over-max limit", async () => {
@@ -731,6 +774,15 @@ describe("chain_holders over GraphQL and MCP", () => {
     assert.equal(card.limit, CHAIN_HOLDERS_LIMIT_MAX);
     assert.equal(card.subnet_count, 3);
     assert.match(tool.description, /degraded\.reason/);
+    const rest = await handleRequest(
+      new Request(
+        `https://api.metagraph.sh/api/v1/chain/holders?limit=${CHAIN_HOLDERS_LIMIT_MAX}`,
+      ),
+      env(),
+      {} as unknown as ExecutionContext,
+    );
+    assert.equal(rest.status, 200);
+    assert.deepEqual(card, ((await rest.json()) as Row).data);
   });
 
   test("the MCP tool defaults its sort and limit", async () => {

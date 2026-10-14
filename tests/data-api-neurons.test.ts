@@ -69,6 +69,8 @@ const MIGRATIONS = [
   // #10929: owner-capture joins the rollup to the declared owner, and
   // `subnet_ownership` arrives in its own later migration.
   "migrations/neon/0024_subnet_ownership.sql",
+  "migrations/neon/0025_nominator_positions_shares.sql",
+  "migrations/neon/0027_nominator_positions_source.sql",
   // #10933: the treasury readings store, exercised end to end because its
   // CHECK constraints are the only thing standing between a private extractor
   // and a published contradiction.
@@ -81,6 +83,8 @@ const MIGRATIONS = [
   // -- omitting it would test the extractor against a schema production no
   // longer has, which is the failure mode the hand-curated fixture set had.
   "migrations/neon/0030_compute_declarations_unscoped.sql",
+  // Read-side quantity columns and retained pass metadata use the actual schema.
+  "migrations/neon/0039_alpha_quantity_read_schema.sql",
 ]
   .map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"))
   // #11095: the emission-split USD legs read tao_usd_index, whose home
@@ -123,6 +127,8 @@ const SEEDED_TABLES = [
   "nominator_positions",
   "treasury_readings",
   "compute_declarations",
+  "alpha_snapshot_passes",
+  "alpha_runtime_metadata",
 ];
 
 let db: PGlite;
@@ -382,8 +388,8 @@ beforeEach(async () => {
     (await db.query(text, values as never[])).rows;
 });
 
-// netuid -> tempo(blocks), the row apy_estimate annualizes against. Values are
-// the real chain ones (SubtensorModule::Tempo): root 100, netuid 1 is 99.
+// Synthetic tempo observations vary the network evidence independently of
+// quantities, so effective neuron weight cannot become a financial APY basis.
 async function insertTempo(netuid: number, tempo: number | null) {
   await seed(
     "INSERT INTO subnet_hyperparams (netuid, tempo, captured_at) VALUES (?, ?, ?)",
@@ -501,7 +507,7 @@ test("the direct neurons path does not publish an incomplete declared pass", asy
 });
 
 test("neurons-sync upsert: a newer capture replaces the row, an older one is discarded by the captured_at guard", async () => {
-  insertNeuron({ stake_tao: 100, captured_at: CAPTURED_AT });
+  await insertNeuron({ stake_tao: 100, captured_at: CAPTURED_AT });
   // Older capture for the same (netuid, uid): the ON CONFLICT ... WHERE
   // captured_at <= excluded.captured_at guard must reject it.
   const stale = await postSync([
@@ -613,7 +619,7 @@ async function postBackfill(
 }
 
 test("backfill-neuron-daily writes neuron_daily + account_position_daily and never touches neurons", async () => {
-  insertNeuron({ netuid: 7, uid: 5, captured_at: CAPTURED_AT + 999_999 });
+  await insertNeuron({ netuid: 7, uid: 5, captured_at: CAPTURED_AT + 999_999 });
   const res = await postBackfill([
     syncRow(),
     syncRow({ uid: 1, hotkey: null }),
@@ -715,9 +721,9 @@ test("a failing read maps to the dispatcher's opaque 502, never a leaked DB erro
 // --- Per-UID metagraph tier ---------------------------------------------------
 
 test("GET /api/v1/subnets/:netuid/metagraph serves the snapshot store", async () => {
-  insertNeuron({ uid: 1, stake_tao: 50, validator_permit: 0 });
-  insertNeuron({ uid: 0, stake_tao: 100 });
-  insertNeuron({ netuid: 8, uid: 0 });
+  await insertNeuron({ uid: 1, stake_tao: 50, validator_permit: 0 });
+  await insertNeuron({ uid: 0, stake_tao: 100 });
+  await insertNeuron({ netuid: 8, uid: 0 });
   const res = await call(req("/api/v1/subnets/7/metagraph"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
@@ -730,8 +736,8 @@ test("GET /api/v1/subnets/:netuid/metagraph serves the snapshot store", async ()
 });
 
 test("GET /api/v1/subnets/:netuid/metagraph?validator_permit=true filters to permitted rows", async () => {
-  insertNeuron({ uid: 0, validator_permit: 1 });
-  insertNeuron({ uid: 1, validator_permit: 0 });
+  await insertNeuron({ uid: 0, validator_permit: 1 });
+  await insertNeuron({ uid: 1, validator_permit: 0 });
   const res = await call(
     req("/api/v1/subnets/7/metagraph?validator_permit=true"),
   );
@@ -742,7 +748,7 @@ test("GET /api/v1/subnets/:netuid/metagraph?validator_permit=true filters to per
 });
 
 test("GET /api/v1/subnets/:netuid/neurons/:uid resolves a detail and an unknown uid stays neuron:null", async () => {
-  insertNeuron({ uid: 3 });
+  await insertNeuron({ uid: 3 });
   const hit = await call(req("/api/v1/subnets/7/neurons/3"));
   assert.equal(hit.status, 200);
   const hitBody = (await hit.json()) as Row;
@@ -753,10 +759,10 @@ test("GET /api/v1/subnets/:netuid/neurons/:uid resolves a detail and an unknown 
 });
 
 test("GET /api/v1/subnets/:netuid/validators ranks by stake with the uid tiebreak", async () => {
-  insertNeuron({ uid: 0, stake_tao: 10, validator_permit: 1 });
-  insertNeuron({ uid: 1, stake_tao: 500, validator_permit: 1 });
-  insertNeuron({ uid: 2, stake_tao: 500, validator_permit: 1 });
-  insertNeuron({ uid: 3, stake_tao: 999, validator_permit: 0 });
+  await insertNeuron({ uid: 0, stake_tao: 10, validator_permit: 1 });
+  await insertNeuron({ uid: 1, stake_tao: 500, validator_permit: 1 });
+  await insertNeuron({ uid: 2, stake_tao: 500, validator_permit: 1 });
+  await insertNeuron({ uid: 3, stake_tao: 999, validator_permit: 0 });
   const res = await call(req("/api/v1/subnets/7/validators"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
@@ -779,9 +785,10 @@ async function insertIdentity(account: string, name: string) {
   );
 }
 
-test("GET /api/v1/validators keeps priced stake and identity without fabricated returns", async () => {
-  // Current state: one validator on root (price 1) with stake 200.
-  insertNeuron({
+test("GET /api/v1/validators preserves voting weight and identity without inventing holdings or returns", async () => {
+  // Root effective voting weight is observed, even though no native TAO
+  // ownership evidence accompanies this registered-neuron row.
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -791,7 +798,7 @@ test("GET /api/v1/validators keeps priced stake and identity without fabricated 
   });
   // Yesterday's balance cannot tell whether the increase was a delegation
   // deposit or performance, so the legacy return remains unavailable.
-  insertDaily({
+  await insertDaily({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -799,14 +806,18 @@ test("GET /api/v1/validators keeps priced stake and identity without fabricated 
     validator_permit: 1,
     snapshot_date: dayAgo(1),
   });
-  insertIdentity("5ColdVal", "Ventura Labs");
+  await insertIdentity("5ColdVal", "Ventura Labs");
   const res = await call(req("/api/v1/validators"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.validator_count, 1);
   const entry = (body.validators as Row[])[0];
   assert.equal(entry.hotkey, "5Val");
-  assert.equal(entry.total_stake_tao, 200);
+  assert.equal(body.schema_version, 2);
+  assert.equal(body.sort, "subnet_count");
+  assert.equal(entry.total_stake_tao, null);
+  assert.equal(entry.subnets[0].voting_weight, 200);
+  assert.equal(entry.subnets[0].stake_alpha, null);
   assert.equal(entry.realized_return_1d, null);
   assert.equal(entry.realized_return_1d_as_of, null);
   // The identity join is live again: the coldkey's account_identity row
@@ -853,7 +864,10 @@ test.each([
       assert.equal(response.status, 200);
       const body = (await response.json()) as Row;
       const entry = route === "/api/v1/validators" ? body.validators[0] : body;
-      assert.equal(entry.total_stake_tao, stake * 3);
+      assert.equal(body.schema_version, 2);
+      assert.equal(entry.total_stake_tao, null);
+      assert.equal(entry.subnets[0].voting_weight, stake);
+      assert.equal(entry.subnets[0].stake_alpha, null);
       for (const window of ["1d", "1w", "1m"]) {
         assert.equal(entry[`realized_return_${window}`], null);
         assert.equal(entry[`realized_return_${window}_as_of`], null);
@@ -867,34 +881,56 @@ test.each([
   },
 );
 
-test("GET /api/v1/validators honors an explicit sort and clamps a bogus limit", async () => {
-  insertNeuron({
+test("GET /api/v1/validators replaces the retired wealth sort with subnet reach and clamps a bogus limit", async () => {
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5A",
     stake_tao: 10,
     validator_permit: 1,
   });
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 1,
     hotkey: "5B",
     stake_tao: 20,
+    emission_tao: 20,
+    validator_permit: 1,
+  });
+  await insertNeuron({
+    netuid: 7,
+    uid: 0,
+    hotkey: "5A",
+    stake_tao: 1,
     validator_permit: 1,
   });
   const res = await call(req("/api/v1/validators?sort=total_stake&limit=0"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
-  assert.equal(body.sort, "total_stake");
+  assert.equal(body.sort, "subnet_count");
+  assert.equal(body.schema_version, 2);
+  assert.deepEqual(
+    body.validators.map((row: Row) => row.hotkey),
+    ["5A", "5B"],
+  );
+  assert.ok(body.validators.every((row: Row) => row.total_stake_tao === null));
   assert.equal(
     (body.validators as Row[]).length,
     2,
     "limit=0 fell back to the default",
   );
+  const explicit = await call(
+    req("/api/v1/validators?sort=total_emission&limit=1"),
+  );
+  const emission = await explicit.json<Row>();
+  assert.equal(emission.sort, "total_emission");
+  assert.equal(emission.validators.length, 1);
+  assert.equal(emission.validators[0].hotkey, "5B");
+  assert.equal(emission.validators[0].total_stake_tao, null);
 });
 
 test("GET /api/v1/validators/operators serves the grouped website projection", async () => {
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5TeamLarge",
@@ -903,7 +939,7 @@ test("GET /api/v1/validators/operators serves the grouped website projection", a
     emission_tao: 6,
     take: 0.1,
   });
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 1,
     hotkey: "5TeamSmall",
@@ -912,7 +948,7 @@ test("GET /api/v1/validators/operators serves the grouped website projection", a
     emission_tao: 2,
     take: 0.2,
   });
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 2,
     hotkey: "5Anonymous",
@@ -923,7 +959,7 @@ test("GET /api/v1/validators/operators serves the grouped website projection", a
   });
   await insertIdentity("5TeamColdLarge", "Tensor Team");
   await insertIdentity("5TeamColdSmall", "Tensor Team");
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 3,
     hotkey: "5SameOwner",
@@ -938,56 +974,88 @@ test("GET /api/v1/validators/operators serves the grouped website projection", a
   const body = (await res.json()) as Row;
   assert.equal(body.validator_count, 4);
   assert.equal(body.operator_count, 3);
+  assert.equal(body.schema_version, 2);
   const operators = body.operators as Row[];
-  assert.equal(operators[0]!.identity_name, "Tensor Team");
-  assert.equal(operators[0]!.operator_id, "coldkey:5TeamColdLarge");
-  assert.equal(operators[0]!.ownership_basis, "single_coldkey");
-  assert.equal(operators[0]!.hotkey_count, 2);
-  assert.equal(operators[0]!.primary_hotkey, "5TeamLarge");
-  assert.equal(operators[0]!.total_stake_tao, 85);
   assert.deepEqual(
-    (operators[0]!.hotkeys as Row[]).map((entry) => entry.hotkey),
-    ["5TeamLarge", "5SameOwner"],
+    operators.map((row) => row.primary_hotkey),
+    ["5Anonymous", "5SameOwner", "5TeamSmall"],
   );
-  assert.equal(operators[1]!.identity_name, null);
-  assert.equal(operators[1]!.primary_hotkey, "5Anonymous");
-  assert.deepEqual(operators[1]!.hotkeys, []);
-  assert.equal(operators[2]!.identity_name, "Tensor Team");
-  assert.equal(operators[2]!.operator_id, "coldkey:5TeamColdSmall");
-  assert.equal(operators[2]!.hotkey_count, 1);
+  const large = operators.find(
+    (row) => row.operator_id === "coldkey:5TeamColdLarge",
+  )!;
+  assert.equal(large.identity_name, "Tensor Team");
+  assert.equal(large.ownership_basis, "single_coldkey");
+  assert.equal(large.hotkey_count, 2);
+  assert.equal(large.primary_hotkey, "5SameOwner");
+  assert.deepEqual(
+    (large.hotkeys as Row[]).map((entry) => entry.hotkey),
+    ["5SameOwner", "5TeamLarge"],
+  );
+  assert.ok(
+    (large.hotkeys as Row[]).every((entry) => entry.total_stake_tao === null),
+  );
+  assert.ok(
+    operators.every(
+      (entry) =>
+        entry.total_stake_tao === null &&
+        entry.apy_estimate === null &&
+        entry.stake_dominance === null,
+    ),
+  );
+  const anonymous = operators.find(
+    (row) => row.primary_hotkey === "5Anonymous",
+  )!;
+  assert.equal(anonymous.identity_name, null);
+  assert.deepEqual(anonymous.hotkeys, []);
+  const small = operators.find(
+    (row) => row.operator_id === "coldkey:5TeamColdSmall",
+  )!;
+  assert.equal(small.identity_name, "Tensor Team");
+  assert.equal(small.hotkey_count, 1);
 });
 
-test("GET /api/v1/validators/:hotkey aggregates one hotkey across subnets with priced totals", async () => {
-  insertNeuron({
+test("GET /api/v1/validators/:hotkey retains per-subnet weights without cross-token wealth totals", async () => {
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
     stake_tao: 100,
     validator_permit: 1,
   });
-  insertNeuron({
+  await insertNeuron({
     netuid: 7,
     uid: 2,
     hotkey: "5Val",
     stake_tao: 100,
     validator_permit: 1,
   });
-  insertNeuron({
+  await insertNeuron({
     netuid: 7,
     uid: 3,
     hotkey: "5Other",
     stake_tao: 50,
     validator_permit: 1,
   });
-  insertPrice(7, dayAgo(0), 0.5);
-  insertIdentity("5Cold7-0", "Yuma");
+  await insertPrice(7, dayAgo(0), 0.5);
+  await insertIdentity("5Cold7-0", "Yuma");
   const res = await call(req("/api/v1/validators/5Val"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.hotkey, "5Val");
   assert.equal(body.subnet_count, 2);
-  // root 100 * 1 + netuid-7 100 * 0.5
-  assert.equal(body.total_stake_tao, 150);
+  assert.equal(body.schema_version, 2);
+  assert.equal(body.total_stake_tao, null);
+  assert.deepEqual(
+    body.subnets.map((row: Row) => [
+      row.netuid,
+      row.voting_weight,
+      row.stake_alpha,
+    ]),
+    [
+      [0, 100, null],
+      [7, 100, null],
+    ],
+  );
   // Detail carries the same identity join as the leaderboard.
   assert.equal((body.coldkey_identity as Row).name, "Yuma");
 });
@@ -1018,14 +1086,14 @@ async function insertNominatorCount(
 }
 
 test("GET /api/v1/validators fills nominator_count from D1; a STALE scan leaves the rest null", async () => {
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Counted",
     stake_tao: 200,
     validator_permit: 1,
   });
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 1,
     hotkey: "5Unscanned",
@@ -1048,7 +1116,7 @@ test("GET /api/v1/validators fills nominator_count from D1; a STALE scan leaves 
 });
 
 test("GET /api/v1/validators/:hotkey fills nominator_count for that one hotkey", async () => {
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -1067,7 +1135,7 @@ test("GET /api/v1/validators/:hotkey fills nominator_count for that one hotkey",
 test("GET /api/v1/validators/:hotkey reports a zero count as a real answer", async () => {
   // 0 is an ANSWER, not an absence -- the one case where the distinction the
   // rest of this lane preserves has to survive all the way to the payload.
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -1080,7 +1148,7 @@ test("GET /api/v1/validators/:hotkey reports a zero count as a real answer", asy
 });
 
 test("GET /api/v1/validators/:hotkey leaves nominator_count null when the hotkey has no row", async () => {
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -1100,14 +1168,14 @@ test("GET /api/v1/validators/:hotkey leaves nominator_count null when the hotkey
 // point of these tests is that the two cases stay apart.
 
 test("a permitted validator absent from a FRESH scan serves 0, not null", async () => {
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Counted",
     stake_tao: 200,
     validator_permit: 1,
   });
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 1,
     hotkey: "5NoNominators",
@@ -1132,14 +1200,14 @@ test("the same absence against a STALE scan stays null", async () => {
   // The gate that makes the inference above safe rather than reckless: with no
   // recent pass, absence means "we have not looked", and 0 would be a
   // confident wrong number.
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Counted",
     stake_tao: 200,
     validator_permit: 1,
   });
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 1,
     hotkey: "5Unknown",
@@ -1156,7 +1224,7 @@ test("the same absence against a STALE scan stays null", async () => {
 });
 
 test("the detail route applies the same fresh-vs-stale rule", async () => {
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -1178,7 +1246,7 @@ test("an entirely empty counts table never invents zeros", async () => {
   // No scan has ever run: there is no stamp to judge freshness by, so every
   // count is unknown. This is the cutover state, and inventing zeros here
   // would publish a wrong number for the whole network at once.
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -1194,7 +1262,7 @@ test("a failing counts read degrades to null rather than failing the request", a
   // The whole lane's failure posture: the leaderboard is the product, the
   // count is an enrichment. Dropping the table is the bluntest way to make the
   // read throw for real, rather than asserting a mocked rejection.
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -1218,8 +1286,8 @@ test("a failing counts read degrades to null rather than failing the request", a
 // --- Live-neurons analytics routes -------------------------------------------
 
 test("GET /api/v1/subnets/:netuid/concentration and /performance read the snapshot store", async () => {
-  insertNeuron({ uid: 0, stake_tao: 90, coldkey: "5C1" });
-  insertNeuron({ uid: 1, stake_tao: 10, coldkey: "5C2" });
+  await insertNeuron({ uid: 0, stake_tao: 90, coldkey: "5C1" });
+  await insertNeuron({ uid: 1, stake_tao: 10, coldkey: "5C2" });
   const conc = await call(req("/api/v1/subnets/7/concentration"));
   assert.equal(conc.status, 200);
   assert.equal(((await conc.json()) as Row).netuid, 7);
@@ -1229,8 +1297,8 @@ test("GET /api/v1/subnets/:netuid/concentration and /performance read the snapsh
 });
 
 test("GET /api/v1/chain/concentration and /chain/performance scan every subnet", async () => {
-  insertNeuron({ netuid: 7, uid: 0 });
-  insertNeuron({ netuid: 8, uid: 0 });
+  await insertNeuron({ netuid: 7, uid: 0 });
+  await insertNeuron({ netuid: 8, uid: 0 });
   const conc = await call(req("/api/v1/chain/concentration"));
   assert.equal(conc.status, 200);
   assert.equal(((await conc.json()) as Row).subnet_count, 2);
@@ -1242,10 +1310,10 @@ test("GET /api/v1/chain/concentration and /chain/performance scan every subnet",
 test("GET /api/v1/chain/concentration/subnets ranks per netuid off the same scan", async () => {
   // Two subnets with opposite reward shapes: netuid 7 spreads emission over
   // three holders, netuid 8 hands it all to one.
-  insertNeuron({ netuid: 7, uid: 0, coldkey: "a", emission_tao: 1 });
-  insertNeuron({ netuid: 7, uid: 1, coldkey: "b", emission_tao: 1 });
-  insertNeuron({ netuid: 7, uid: 2, coldkey: "c", emission_tao: 1 });
-  insertNeuron({ netuid: 8, uid: 0, coldkey: "whale", emission_tao: 99 });
+  await insertNeuron({ netuid: 7, uid: 0, coldkey: "a", emission_tao: 1 });
+  await insertNeuron({ netuid: 7, uid: 1, coldkey: "b", emission_tao: 1 });
+  await insertNeuron({ netuid: 7, uid: 2, coldkey: "c", emission_tao: 1 });
+  await insertNeuron({ netuid: 8, uid: 0, coldkey: "whale", emission_tao: 99 });
 
   const res = await call(req("/api/v1/chain/concentration/subnets"));
   assert.equal(res.status, 200);
@@ -1265,7 +1333,7 @@ test("GET /api/v1/chain/concentration/subnets ranks per netuid off the same scan
 });
 
 test("GET /api/v1/chain/concentration/subnets rejects a bad parameter before the scan", async () => {
-  insertNeuron({ netuid: 7, uid: 0 });
+  await insertNeuron({ netuid: 7, uid: 0 });
   for (const [qs, parameter] of [
     ["lens=vibes", "lens"],
     ["sort=whatever", "sort"],
@@ -1281,8 +1349,8 @@ test("GET /api/v1/chain/concentration/subnets rejects a bad parameter before the
 });
 
 test("GET /api/v1/subnets/:netuid/idle-stake and /chain/idle-stake fold dividends against stake", async () => {
-  insertNeuron({ uid: 0, stake_tao: 100, dividends: 0 });
-  insertNeuron({ uid: 1, stake_tao: 50, dividends: 0.5 });
+  await insertNeuron({ uid: 0, stake_tao: 100, dividends: 0 });
+  await insertNeuron({ uid: 1, stake_tao: 50, dividends: 0.5 });
   const subnet = await call(req("/api/v1/subnets/7/idle-stake"));
   assert.equal(subnet.status, 200);
   const subnetBody = (await subnet.json()) as Row;
@@ -1293,8 +1361,8 @@ test("GET /api/v1/subnets/:netuid/idle-stake and /chain/idle-stake fold dividend
 });
 
 test("GET /api/v1/chain/yield excludes root; /subnets/:netuid/yield ranks per UID", async () => {
-  insertNeuron({ netuid: 0, uid: 0, stake_tao: 100, emission_tao: 10 });
-  insertNeuron({ netuid: 7, uid: 0, stake_tao: 100, emission_tao: 1 });
+  await insertNeuron({ netuid: 0, uid: 0, stake_tao: 100, emission_tao: 10 });
+  await insertNeuron({ netuid: 7, uid: 0, stake_tao: 100, emission_tao: 1 });
   const chain = await call(req("/api/v1/chain/yield"));
   assert.equal(chain.status, 200);
   assert.equal(
@@ -1309,22 +1377,37 @@ test("GET /api/v1/chain/yield excludes root; /subnets/:netuid/yield ranks per UI
 
 // --- Account-scoped neurons routes -------------------------------------------
 
-test("GET /api/v1/accounts/:ss58/portfolio prices cross-subnet positions from snapshot stores", async () => {
-  insertNeuron({ netuid: 0, uid: 0, hotkey: "5Acct", stake_tao: 100 });
-  insertNeuron({ netuid: 7, uid: 4, hotkey: "5Acct", stake_tao: 10 });
-  insertPrice(7, dayAgo(0), 2);
+test("GET /api/v1/accounts/:ss58/portfolio retains registrations and weights while pool prices cannot establish holdings", async () => {
+  await insertNeuron({ netuid: 0, uid: 0, hotkey: "5Acct", stake_tao: 100 });
+  await insertNeuron({ netuid: 7, uid: 4, hotkey: "5Acct", stake_tao: 10 });
+  await insertPrice(7, dayAgo(0), 2);
   const res = await call(req("/api/v1/accounts/5Acct/portfolio"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.subnet_count, 2);
-  // root 100 * 1 + netuid-7 10 * 2
-  assert.equal(body.total_stake_tao, 120);
+  assert.equal(body.schema_version, 2);
+  assert.equal(body.position_count, 2);
+  assert.equal(body.total_stake_tao, null);
+  assert.equal(body.overall_yield, null);
+  assert.equal(body.stake_concentration, null);
+  assert.deepEqual(
+    body.positions.map((row: Row) => [
+      row.netuid,
+      row.voting_weight,
+      row.stake_alpha,
+      row.yield,
+    ]),
+    [
+      [0, 100, null, null],
+      [7, 10, null, null],
+    ],
+  );
 });
 
 test("GET /api/v1/accounts/:ss58/subnets lists the live registrations", async () => {
-  insertNeuron({ netuid: 7, uid: 0, hotkey: "5Acct" });
-  insertNeuron({ netuid: 8, uid: 1, hotkey: "5Acct" });
-  insertNeuron({ netuid: 9, uid: 2, hotkey: "5Someone" });
+  await insertNeuron({ netuid: 7, uid: 0, hotkey: "5Acct" });
+  await insertNeuron({ netuid: 8, uid: 1, hotkey: "5Acct" });
+  await insertNeuron({ netuid: 9, uid: 2, hotkey: "5Someone" });
   const res = await call(req("/api/v1/accounts/5Acct/subnets"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
@@ -1333,43 +1416,53 @@ test("GET /api/v1/accounts/:ss58/subnets lists the live registrations", async ()
 });
 
 test("GET /api/v1/accounts serves the leaderboard from D1", async () => {
-  insertNeuron({ netuid: 0, uid: 0, hotkey: "5A", stake_tao: 10 });
-  insertNeuron({ netuid: 0, uid: 1, hotkey: "5B", stake_tao: 20 });
-  insertNeuron({ netuid: 0, uid: 2, hotkey: null });
+  await insertNeuron({ netuid: 0, uid: 0, hotkey: "5A", stake_tao: 10 });
+  await insertNeuron({ netuid: 0, uid: 1, hotkey: "5B", stake_tao: 20 });
+  await insertNeuron({ netuid: 0, uid: 2, hotkey: null });
   const res = await call(req("/api/v1/accounts?limit=1"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
+  assert.equal(body.schema_version, 2);
+  assert.equal(body.sort, "subnet_count");
+  assert.equal(body.accounts[0].total_stake_tao, null);
+  assert.equal(body.accounts[0].subnets[0].voting_weight, 10);
   assert.equal(body.account_count, 2, "hotkey IS NOT NULL filter held");
   assert.equal((body.accounts as Row[]).length, 1, "explicit limit applied");
 });
 
 test("GET /api/v1/accounts falls back to the default limit for an absent param", async () => {
-  insertNeuron({ netuid: 0, uid: 0, hotkey: "5A", stake_tao: 10 });
+  await insertNeuron({ netuid: 0, uid: 0, hotkey: "5A", stake_tao: 10 });
   const res = await call(req("/api/v1/accounts"));
   assert.equal(res.status, 200);
   assert.equal((((await res.json()) as Row).accounts as Row[]).length, 1);
 });
 
-test("GET /api/v1/accounts/directory derives every website ranking from one snapshot", async () => {
-  insertNeuron({ netuid: 0, uid: 0, hotkey: "5Stake", stake_tao: 100 });
-  insertNeuron({
+test("GET /api/v1/accounts/directory preserves emission and reach from one snapshot without a wealth ranking", async () => {
+  await insertNeuron({ netuid: 0, uid: 0, hotkey: "5Stake", stake_tao: 100 });
+  await insertNeuron({
     netuid: 0,
     uid: 1,
     hotkey: "5Emission",
     stake_tao: 10,
     emission_tao: 20,
   });
-  insertNeuron({ netuid: 0, uid: 2, hotkey: "5Reach", stake_tao: 5 });
-  insertNeuron({ netuid: 7, uid: 0, hotkey: "5Reach", stake_tao: 5 });
-  insertPrice(7, dayAgo(0), 2);
+  await insertNeuron({ netuid: 0, uid: 2, hotkey: "5Reach", stake_tao: 5 });
+  await insertNeuron({ netuid: 7, uid: 0, hotkey: "5Reach", stake_tao: 5 });
+  await insertPrice(7, dayAgo(0), 2);
 
   const res = await call(req("/api/v1/accounts/directory"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.account_count, 3);
-  assert.equal(body.priced_registered_stake_tao, 125);
+  assert.equal(body.schema_version, 2);
+  assert.equal(body.priced_registered_stake_tao, null);
   const rankings = body.rankings as Row;
-  assert.equal((rankings.stake as Row[])[0]!.hotkey, "5Stake");
+  assert.deepEqual(rankings.stake, []);
+  assert.ok(
+    (rankings.reach as Row[]).every(
+      (row) => row.total_stake_tao === null && row.stake_dominance === null,
+    ),
+  );
   assert.equal((rankings.emission as Row[])[0]!.hotkey, "5Emission");
   assert.equal((rankings.reach as Row[])[0]!.hotkey, "5Reach");
 });
@@ -1377,8 +1470,8 @@ test("GET /api/v1/accounts/directory derives every website ranking from one snap
 // --- neuron_daily history routes ---------------------------------------------
 
 test("GET /api/v1/subnets/:netuid/neurons/:uid/history windows on snapshot_date and ?window=all lifts the bound", async () => {
-  insertDaily({ uid: 3, snapshot_date: dayAgo(1), stake_tao: 10 });
-  insertDaily({ uid: 3, snapshot_date: dayAgo(60), stake_tao: 5 });
+  await insertDaily({ uid: 3, snapshot_date: dayAgo(1), stake_tao: 10 });
+  await insertDaily({ uid: 3, snapshot_date: dayAgo(60), stake_tao: 5 });
   const windowed = await call(req("/api/v1/subnets/7/neurons/3/history"));
   assert.equal(windowed.status, 200);
   const windowedBody = (await windowed.json()) as Row;
@@ -1397,7 +1490,7 @@ test("GET /api/v1/subnets/:netuid/neurons/:uid/history windows on snapshot_date 
 // gap could only ever be caught by reading a real row back through the route.
 // Assert every column the builder consumes, so the next omission fails here.
 test("GET /api/v1/subnets/:netuid/neurons/:uid/history serves take (SELECT list must match NEURON_DAILY_READ_COLUMNS)", async () => {
-  insertDaily({ uid: 3, snapshot_date: dayAgo(1), take: 0.18 });
+  await insertDaily({ uid: 3, snapshot_date: dayAgo(1), take: 0.18 });
   const res = await call(req("/api/v1/subnets/7/neurons/3/history"));
   assert.equal(res.status, 200);
   const point = ((await res.json()) as Row).points as Row[];
@@ -1413,8 +1506,8 @@ test("GET /api/v1/subnets/:netuid/performance/history serves validator_trust_mea
   // Two permit-holding validators on one day: mean 0.6, median 0.6. Distinct
   // values so a mean/median computed over an all-undefined array (the bug)
   // cannot coincidentally match.
-  insertDaily({ uid: 0, snapshot_date: dayAgo(1), validator_trust: 0.4 });
-  insertDaily({ uid: 1, snapshot_date: dayAgo(1), validator_trust: 0.8 });
+  await insertDaily({ uid: 0, snapshot_date: dayAgo(1), validator_trust: 0.4 });
+  await insertDaily({ uid: 1, snapshot_date: dayAgo(1), validator_trust: 0.8 });
   const res = await call(req("/api/v1/subnets/7/performance/history"));
   assert.equal(res.status, 200);
   const points = ((await res.json()) as Row).points as Row[];
@@ -1428,21 +1521,21 @@ test("GET /api/v1/subnets/:netuid/performance/history serves validator_trust_mea
 });
 
 test("GET /api/v1/subnets/:netuid/history aggregates per day (SUM over 0/1 validator_permit)", async () => {
-  insertDaily({
+  await insertDaily({
     uid: 0,
     snapshot_date: dayAgo(1),
     validator_permit: 1,
     stake_tao: 10,
     emission_tao: 1,
   });
-  insertDaily({
+  await insertDaily({
     uid: 1,
     snapshot_date: dayAgo(1),
     validator_permit: 0,
     stake_tao: 20,
     emission_tao: 2,
   });
-  insertDaily({
+  await insertDaily({
     uid: 0,
     snapshot_date: dayAgo(60),
     validator_permit: 1,
@@ -1461,9 +1554,9 @@ test("GET /api/v1/subnets/:netuid/history aggregates per day (SUM over 0/1 valid
   assert.equal((((await all.json()) as Row).points as Row[]).length, 2);
 });
 
-test("GET /api/v1/validators/:hotkey/history prices each day at its own snapshot", async () => {
+test("GET /api/v1/validators/:hotkey/history preserves daily membership and emission without inferring wealth from prices", async () => {
   const day = dayAgo(1);
-  insertDaily({
+  await insertDaily({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -1472,7 +1565,7 @@ test("GET /api/v1/validators/:hotkey/history prices each day at its own snapshot
     emission_tao: 10,
     snapshot_date: day,
   });
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 1,
     hotkey: "5Val",
@@ -1481,22 +1574,24 @@ test("GET /api/v1/validators/:hotkey/history prices each day at its own snapshot
     emission_tao: 10,
     snapshot_date: day,
   });
-  insertPrice(7, day, 0.5);
+  await insertPrice(7, day, 0.5);
   const res = await call(req("/api/v1/validators/5Val/history"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   const points = body.points as Row[];
   assert.equal(points.length, 1);
   assert.equal(points[0].subnet_count, 2);
-  // root 100 * 1 + netuid-7 100 * 0.5
-  assert.equal(points[0].total_stake_tao, 150);
+  assert.equal(body.schema_version, 2);
+  assert.equal(points[0].total_stake_tao, null);
+  assert.equal(points[0].total_emission_tao, 15);
+  assert.equal(points[0].rewards_per_1000_tao, null);
   const all = await call(req("/api/v1/validators/5Val/history?window=all"));
   assert.equal(all.status, 200);
 });
 
 test("GET /api/v1/validators/:hotkey/history?netuid= scopes to one subnet (#9383)", async () => {
   const day = dayAgo(1);
-  insertDaily({
+  await insertDaily({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
@@ -1505,7 +1600,7 @@ test("GET /api/v1/validators/:hotkey/history?netuid= scopes to one subnet (#9383
     emission_tao: 10,
     snapshot_date: day,
   });
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 1,
     hotkey: "5Val",
@@ -1518,7 +1613,7 @@ test("GET /api/v1/validators/:hotkey/history?netuid= scopes to one subnet (#9383
     take: 0.18,
     snapshot_date: day,
   });
-  insertPrice(7, day, 0.5);
+  await insertPrice(7, day, 0.5);
 
   const res = await call(req("/api/v1/validators/5Val/history?netuid=7"));
   assert.equal(res.status, 200);
@@ -1528,10 +1623,16 @@ test("GET /api/v1/validators/:hotkey/history?netuid= scopes to one subnet (#9383
   assert.equal(points.length, 1, "root's row for the same day is excluded");
   assert.equal(points[0].netuid, 7);
   assert.equal(points[0].uid, 1);
-  // Alpha stays alpha; the TAO figure is the same value priced at 0.5.
-  assert.equal(points[0].stake_alpha, 100);
+  // Scoped observations retain effective weight and emissions; native amounts
+  // and derived wealth ratios need independent ownership evidence.
+  assert.equal(body.schema_version, 2);
+  assert.equal(points[0].voting_weight, 100);
+  assert.equal(points[0].stake_alpha, null);
   assert.equal(points[0].emission_alpha, 10);
-  assert.equal(points[0].total_stake_tao, 50);
+  assert.equal(points[0].total_stake_tao, null);
+  assert.equal(points[0].stake_share, null);
+  assert.equal(points[0].dividend_efficiency, null);
+  assert.equal(points[0].rewards_per_1000_alpha, null);
   assert.equal(points[0].total_emission_tao, 5);
   // The per-subnet facts the unscoped rollup sums away.
   assert.equal(points[0].validator_trust, 0.75);
@@ -1546,7 +1647,7 @@ test("GET /api/v1/validators/:hotkey/history?netuid= reports a lost permit (#938
   // into an absent day -- indistinguishable from a day the poller missed. Scoped,
   // the day is returned with the permit false.
   const day = dayAgo(1);
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 1,
     hotkey: "5NoPermit",
@@ -1555,7 +1656,7 @@ test("GET /api/v1/validators/:hotkey/history?netuid= reports a lost permit (#938
     emission_tao: 0,
     snapshot_date: day,
   });
-  insertPrice(7, day, 0.5);
+  await insertPrice(7, day, 0.5);
 
   const unscoped = (await (
     await call(req("/api/v1/validators/5NoPermit/history"))
@@ -1572,8 +1673,8 @@ test("GET /api/v1/validators/:hotkey/history?netuid= reports a lost permit (#938
 });
 
 test("GET /api/v1/subnets/:netuid/{concentration,performance,yield}/history serve windowed day series", async () => {
-  insertDaily({ uid: 0, snapshot_date: dayAgo(1) });
-  insertDaily({ uid: 1, snapshot_date: dayAgo(1) });
+  await insertDaily({ uid: 0, snapshot_date: dayAgo(1) });
+  await insertDaily({ uid: 1, snapshot_date: dayAgo(1) });
   for (const route of [
     "/api/v1/subnets/7/concentration/history",
     "/api/v1/subnets/7/performance/history",
@@ -2184,28 +2285,28 @@ test("THE CHECK CONSTRAINTS REFUSE A SELF-CONTRADICTING ROW", async () => {
 test("GET /api/v1/chain/turnover compares the window's boundary snapshots", async () => {
   const start = dayAgo(7);
   const end = dayAgo(1);
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 0,
     hotkey: "5A",
     validator_permit: 1,
     snapshot_date: start,
   });
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 1,
     hotkey: "5B",
     validator_permit: 1,
     snapshot_date: start,
   });
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 0,
     hotkey: "5A",
     validator_permit: 1,
     snapshot_date: end,
   });
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 1,
     hotkey: "5C",
@@ -2237,7 +2338,7 @@ test("GET /api/v1/chain/turnover excludes snapshots older than the window", asyn
   const start = dayAgo(5);
   const end = dayAgo(1);
   for (const snapshot_date of [ancient, start, end]) {
-    insertDaily({
+    await insertDaily({
       netuid: 7,
       uid: 0,
       hotkey: "5A",
@@ -2262,7 +2363,7 @@ test("GET /api/v1/subnets/:netuid/history excludes snapshots older than the wind
   const ancient = dayAgo(60);
   const start = dayAgo(5);
   for (const snapshot_date of [ancient, start, dayAgo(1)]) {
-    insertDaily({
+    await insertDaily({
       netuid: 7,
       uid: 0,
       hotkey: "5A",
@@ -2272,7 +2373,7 @@ test("GET /api/v1/subnets/:netuid/history excludes snapshots older than the wind
   }
   // A netuid the window must not reach across: its own bounds are computed
   // per-netuid, so a row here must not become subnet 7's start date.
-  insertDaily({
+  await insertDaily({
     netuid: 9,
     uid: 0,
     hotkey: "5Z",
@@ -2300,13 +2401,13 @@ test("GET /api/v1/chain/turnover on an empty store serves the schema-stable empt
 test("GET /api/v1/subnets/:netuid/turnover anchors the window to the subnet's own newest snapshot", async () => {
   const start = dayAgo(7);
   const end = dayAgo(1);
-  insertDaily({
+  await insertDaily({
     uid: 0,
     hotkey: "5A",
     validator_permit: 1,
     snapshot_date: start,
   });
-  insertDaily({
+  await insertDaily({
     uid: 0,
     hotkey: "5B",
     validator_permit: 1,
@@ -2324,13 +2425,13 @@ test("GET /api/v1/subnets/:netuid/turnover anchors the window to the subnet's ow
 test("GET /api/v1/subnets/:netuid/turnover?window=all&changes=true takes the unbounded branch and details the churn", async () => {
   const start = dayAgo(400);
   const end = dayAgo(1);
-  insertDaily({
+  await insertDaily({
     uid: 0,
     hotkey: "5A",
     validator_permit: 1,
     snapshot_date: start,
   });
-  insertDaily({
+  await insertDaily({
     uid: 0,
     hotkey: "5B",
     validator_permit: 1,
@@ -2348,14 +2449,14 @@ test("GET /api/v1/subnets/:netuid/turnover?window=all&changes=true takes the unb
 test("GET /api/v1/subnets/movers groups both boundary snapshots per netuid", async () => {
   const start = dayAgo(7);
   const end = dayAgo(1);
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 0,
     snapshot_date: start,
     stake_tao: 100,
     validator_permit: 1,
   });
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 0,
     snapshot_date: end,
@@ -2372,7 +2473,7 @@ test("GET /api/v1/subnets/movers groups both boundary snapshots per netuid", asy
 });
 
 test("GET /api/v1/subnets/movers with a single stored day stays empty (not comparable)", async () => {
-  insertDaily({ netuid: 7, uid: 0, snapshot_date: dayAgo(1) });
+  await insertDaily({ netuid: 7, uid: 0, snapshot_date: dayAgo(1) });
   const res = await call(req("/api/v1/subnets/movers"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
@@ -2405,13 +2506,16 @@ test("GET /api/v1/accounts/:ss58/subnets/:netuid/history reads account_position_
         CAPTURED_AT,
       ],
     );
-  insertPosition(dayAgo(1), 100);
-  insertPosition(dayAgo(60), 50);
+  await insertPosition(dayAgo(1), 100);
+  await insertPosition(dayAgo(60), 50);
   const res = await call(req("/api/v1/accounts/5Acct/subnets/7/history"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal((body.points as Row[]).length, 1, "30d default window");
-  assert.equal((body.points as Row[])[0].stake_tao, 100);
+  assert.equal(body.schema_version, 2);
+  assert.equal((body.points as Row[])[0].voting_weight, 100);
+  assert.equal((body.points as Row[])[0].stake_tao, null);
+  assert.equal((body.points as Row[])[0].yield, null);
   const all = await call(
     req("/api/v1/accounts/5Acct/subnets/7/history?window=all"),
   );
@@ -2421,14 +2525,14 @@ test("GET /api/v1/accounts/:ss58/subnets/:netuid/history reads account_position_
 // --- Enrichment degrade paths ------------------------------------------------
 
 test("windowed leaderboard params: an explicit valid limit is honored on /api/v1/validators", async () => {
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5A",
     stake_tao: 10,
     validator_permit: 1,
   });
-  insertNeuron({
+  await insertNeuron({
     netuid: 0,
     uid: 1,
     hotkey: "5B",
@@ -2442,8 +2546,8 @@ test("windowed leaderboard params: an explicit valid limit is honored on /api/v1
   assert.equal((body.validators as Row[]).length, 1);
 });
 
-test("a NULL alpha_price_tao snapshot excludes unpriceable stake without crashing", async () => {
-  insertNeuron({
+test("a NULL pool-price snapshot preserves observed voting weight without inventing holdings", async () => {
+  await insertNeuron({
     netuid: 7,
     uid: 0,
     hotkey: "5Val",
@@ -2459,8 +2563,11 @@ test("a NULL alpha_price_tao snapshot excludes unpriceable stake without crashin
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.validator_count, 1);
-  // A null price excludes the membership from the totals (never 1:1).
-  assert.equal((body.validators as Row[])[0].total_stake_tao, 0);
+  const entry = (body.validators as Row[])[0];
+  assert.equal(body.schema_version, 2);
+  assert.equal(entry.total_stake_tao, null);
+  assert.equal(entry.subnets[0].voting_weight, 100);
+  assert.equal(entry.subnet_count, 1);
 });
 
 test("chain turnover normalizes a bogus window and an explicit limit on an empty store", async () => {
@@ -2498,14 +2605,14 @@ test("movers normalizes a bogus window plus explicit sort/limit on an empty stor
 
 test("a missing subnet_snapshots table degrades prices, never the validators route", async () => {
   await db.exec("DROP TABLE subnet_snapshots");
-  insertNeuron({
+  await insertNeuron({
     netuid: 7,
     uid: 0,
     hotkey: "5Val",
     stake_tao: 100,
     validator_permit: 1,
   });
-  insertDaily({
+  await insertDaily({
     netuid: 7,
     uid: 0,
     hotkey: "5Val",
@@ -2518,185 +2625,89 @@ test("a missing subnet_snapshots table degrades prices, never the validators rou
   const body = (await res.json()) as Row;
   assert.equal(body.validator_count, 1);
   const entry = (body.validators as Row[])[0];
-  // Unpriceable non-root stake is EXCLUDED from the totals (never counted
-  // 1:1). Realized returns remain unavailable regardless of snapshot coverage.
-  assert.equal(entry.total_stake_tao, 0);
+  // A failed price enrichment must not delete the observed membership or
+  // reinterpret effective voting weight as an owned asset.
+  assert.equal(body.schema_version, 2);
+  assert.equal(entry.total_stake_tao, null);
+  assert.equal(entry.subnets[0].voting_weight, 100);
+  assert.equal(entry.subnet_count, 1);
   assert.equal(entry.realized_return_1d, null);
 });
 
-// --- apy_estimate (#9342) ----------------------------------------------------
-//
-// The computation was always correct; both handlers passed `tempoByNetuid:
-// new Map()`, so every lookup missed and apy_estimate was `null` on EVERY served
-// response. These pin the wiring, not the maths -- each one fails against the
-// empty-map placeholder.
+// Tempo and spot-price evidence describe network rewards, not wallet assets.
+// Vary both through real tables so an emission/voting-weight quotient cannot
+// silently reappear as financial APY on either validator representation.
+test.each([
+  { label: "ordinary tempo", netuid: 1, tempo: 99 },
+  { label: "ten times slower tempo", netuid: 1, tempo: 990 },
+  { label: "Root tempo", netuid: 0, tempo: 100 },
+  { label: "zero tempo", netuid: 1, tempo: 0 },
+  { label: "null tempo", netuid: 1, tempo: null },
+  { label: "missing tempo", netuid: 1, tempo: undefined },
+])(
+  "validator APY stays unavailable with $label while voting weight remains observable",
+  async ({ netuid, tempo }) => {
+    if (tempo !== undefined) await insertTempo(netuid, tempo);
+    if (netuid > 0) await insertPrice(netuid, dayAgo(0), 0.5);
+    await insertNeuron({
+      netuid,
+      uid: 0,
+      hotkey: "5Apy",
+      stake_tao: 100,
+      emission_tao: 1,
+      validator_permit: 1,
+    });
+    for (const route of ["/api/v1/validators", "/api/v1/validators/5Apy"]) {
+      const response = await call(req(route));
+      assert.equal(response.status, 200);
+      const body = await response.json<Row>();
+      const entry = route === "/api/v1/validators" ? body.validators[0] : body;
+      assert.equal(body.schema_version, 2);
+      assert.equal(entry.subnet_count, 1);
+      assert.equal(entry.subnets[0].netuid, netuid);
+      assert.equal(entry.subnets[0].voting_weight, 100);
+      assert.equal(entry.subnets[0].emission_alpha, 1);
+      assert.equal(entry.subnets[0].stake_alpha, null);
+      assert.equal(entry.total_stake_tao, null);
+      assert.equal(entry.apy_estimate, null);
+      assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+    }
+  },
+);
 
-test("GET /api/v1/validators resolves apy_estimate from the subnet_hyperparams tempo", async () => {
-  insertTempo(1, 99);
-  // A non-root membership needs a price or it is excluded from the totals
-  // entirely, before apy is ever reached.
-  insertPrice(1, dayAgo(0), 0.5);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Apy",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  assert.equal(res.status, 200);
-  const entry = ((await res.json()) as Row).validators as Row[];
-  assert.notEqual(
-    entry[0].apy_estimate,
-    null,
-    "an empty tempo map made this unconditionally null",
+test("mixed tempo coverage cannot turn per-subnet neuron weights into financial APY", async () => {
+  await insertTempo(1, 99);
+  for (const netuid of [1, 2]) {
+    await insertPrice(netuid, dayAgo(0), 0.5);
+    await insertNeuron({
+      netuid,
+      uid: 0,
+      hotkey: "5Mix",
+      stake_tao: 100,
+      emission_tao: 1,
+      validator_permit: 1,
+    });
+  }
+  const response = await call(req("/api/v1/validators"));
+  const body = await response.json<Row>();
+  const entry = body.validators[0];
+  assert.equal(entry.subnet_count, 2);
+  assert.deepEqual(
+    entry.subnets.map((row: Row) => [row.netuid, row.voting_weight]),
+    [
+      [1, 100],
+      [2, 100],
+    ],
   );
-  assert.equal(entry[0].apy_estimate_eligible_subnet_count, 1);
-});
-
-test("GET /api/v1/validators/:hotkey resolves apy_estimate too", async () => {
-  // The detail route had the same placeholder as the leaderboard, so fixing one
-  // and not the other would leave the two surfaces disagreeing about the same
-  // validator.
-  insertTempo(1, 99);
-  insertPrice(1, dayAgo(0), 0.5);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Apy",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators/5Apy"));
-  assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
-  assert.notEqual(body.apy_estimate, null);
-  assert.equal(body.apy_estimate_eligible_subnet_count, 1);
-});
-
-test("a shorter tempo annualizes to a higher apy for the same emission", async () => {
-  // The tempo has to actually reach the maths, not merely be non-empty: more
-  // epochs per year on the same per-epoch emission means more annual yield.
-  insertTempo(1, 99);
-  insertTempo(2, 990);
-  insertPrice(1, dayAgo(0), 0.5);
-  insertPrice(2, dayAgo(0), 0.5);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Fast",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  insertNeuron({
-    netuid: 2,
-    uid: 0,
-    hotkey: "5Slow",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const rows = ((await res.json()) as Row).validators as Row[];
-  const fast = rows.find((r) => r.hotkey === "5Fast") as Row;
-  const slow = rows.find((r) => r.hotkey === "5Slow") as Row;
-  assert.ok(
-    (fast.apy_estimate as number) > (slow.apy_estimate as number),
-    "10x the tempo must be ~1/10th the apy",
-  );
-});
-
-test("root counts toward apy_estimate — it is a real network with a real tempo", async () => {
-  // Verified against finney: NetworksAdded(0) is true and Tempo(0) is 100, so a
-  // root membership is not a capture artefact. Excluding it would drop the
-  // position of exactly the validators whose stake is mostly on root.
-  insertTempo(0, 100);
-  insertNeuron({
-    netuid: 0,
-    uid: 0,
-    hotkey: "5Root",
-    stake_tao: 500,
-    emission_tao: 2,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const entry = (((await res.json()) as Row).validators as Row[])[0];
-  assert.notEqual(entry.apy_estimate, null);
-  assert.equal(entry.apy_estimate_eligible_subnet_count, 1);
-});
-
-test("a membership whose tempo is missing is excluded, not defaulted", async () => {
-  // netuid 2 has no hyperparams row at all, so only netuid 1 is eligible -- the
-  // count is what says so, and a fabricated default would hide it.
-  insertTempo(1, 99);
-  insertPrice(1, dayAgo(0), 0.5);
-  insertPrice(2, dayAgo(0), 0.5);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Mix",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  insertNeuron({
-    netuid: 2,
-    uid: 0,
-    hotkey: "5Mix",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const entry = (((await res.json()) as Row).validators as Row[])[0];
-  assert.equal(entry.apy_estimate_eligible_subnet_count, 1);
-});
-
-test("a zero tempo is treated as unresolved rather than an infinite yield", async () => {
-  // tempo=0 would divide into an infinite epochsPerYear; tempoByNetuid drops it,
-  // so the row is excluded and apy_estimate stays null.
-  insertTempo(1, 0);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Zero",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const entry = (((await res.json()) as Row).validators as Row[])[0];
   assert.equal(entry.apy_estimate, null);
   assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+  assert.equal(entry.total_stake_tao, null);
 });
 
-test("apy_estimate stays null when the hyperparams table is cold", async () => {
-  // The degrade contract: no tempo rows at all means no APY opinion, which is
-  // what a caller got unconditionally before the read was wired.
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Cold",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const entry = (((await res.json()) as Row).validators as Row[])[0];
-  assert.equal(entry.apy_estimate, null);
-  assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
-});
-
-test("a missing subnet_hyperparams table degrades apy_estimate, never the validators route", async () => {
-  // Same degrade contract as the subnet_snapshots case above: the tempo read is
-  // an ENRICHMENT, so losing it costs the APY opinion and nothing else. A throw
-  // that escaped here would take down the whole leaderboard over a side table.
+test("a missing subnet_hyperparams table preserves validator observations and unavailable financial fields", async () => {
   await db.exec("DROP TABLE subnet_hyperparams");
-  insertPrice(1, dayAgo(0), 0.5);
-  insertNeuron({
+  await insertPrice(1, dayAgo(0), 0.5);
+  await insertNeuron({
     netuid: 1,
     uid: 0,
     hotkey: "5Val",
@@ -2704,15 +2715,16 @@ test("a missing subnet_hyperparams table degrades apy_estimate, never the valida
     emission_tao: 1,
     validator_permit: 1,
   });
-  const res = await call(req("/api/v1/validators"));
-  assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
-  assert.equal(body.validator_count, 1, "the route still serves");
-  const entry = (body.validators as Row[])[0];
-  // 100 alpha priced at 0.5 = 50 TAO. The point is that it is unchanged by the
-  // missing tempo table -- the stake path and the APY path are independent.
-  assert.equal(entry.total_stake_tao, 50, "the stake total is unaffected");
-  assert.equal(entry.apy_estimate, null, "only the APY opinion is lost");
+  const response = await call(req("/api/v1/validators"));
+  assert.equal(response.status, 200);
+  const body = await response.json<Row>();
+  assert.equal(body.schema_version, 2);
+  assert.equal(body.validator_count, 1);
+  const entry = body.validators[0];
+  assert.equal(entry.subnets[0].voting_weight, 100);
+  assert.equal(entry.subnets[0].emission_alpha, 1);
+  assert.equal(entry.total_stake_tao, null);
+  assert.equal(entry.apy_estimate, null);
   assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
 });
 
@@ -3247,16 +3259,16 @@ test("directory materializations reject malformed and mixed-snapshot values", ()
     schema_version: 1,
     captured_at: capturedAt,
     accounts: {
-      schema_version: 1,
+      schema_version: 2,
       captured_at: capturedAtIso,
       block_number: 8_600_000,
       account_count: 0,
       limit: 20,
-      priced_registered_stake_tao: 0,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     },
     validators: {
-      schema_version: 1,
+      schema_version: 2,
       captured_at: capturedAtIso,
       block_number: 8_600_000,
       validator_count: 0,
@@ -3265,6 +3277,21 @@ test("directory materializations reject malformed and mixed-snapshot values", ()
     },
   };
   assert.deepEqual(materializationFromUnknown(valid), valid);
+  assert.equal(
+    materializationFromUnknown({
+      ...valid,
+      accounts: { ...valid.accounts, schema_version: 1 },
+    }),
+    null,
+    "old wealth-directory schema cannot be reused as the current quantity contract",
+  );
+  assert.equal(
+    materializationFromUnknown({
+      ...valid,
+      validators: { ...valid.validators, schema_version: 1 },
+    }),
+    null,
+  );
   assert.equal(materializationFromUnknown(null), null);
   assert.equal(
     materializationFromUnknown({
@@ -3293,7 +3320,7 @@ test("a directory KV read failure falls back to the truthful live projection", a
   assert.equal(accounts.status, 200);
   const body = (await accounts.json()) as Row;
   assert.equal(body.account_count, 1);
-  assert.equal(((body.rankings as Row).stake as Row[])[0]!.hotkey, "5Live");
+  assert.equal(((body.rankings as Row).reach as Row[])[0]!.hotkey, "5Live");
   assert.equal(error.mock.calls.length, 1);
   error.mockRestore();
 });
@@ -3315,7 +3342,7 @@ test("a versioned directory payload read failure also falls back to live data", 
     env({ METAGRAPH_CONTROL: failingPayloadKv }),
   );
   assert.equal(
-    ((((await accounts.json()) as Row).rankings as Row).stake as Row[])[0]!
+    ((((await accounts.json()) as Row).rankings as Row).reach as Row[])[0]!
       .hotkey,
     "5Live",
   );
@@ -3341,16 +3368,16 @@ test("a pointer whose versioned payload has another stamp falls back to live dat
       schema_version: 1,
       captured_at: otherCapturedAt,
       accounts: {
-        schema_version: 1,
+        schema_version: 2,
         captured_at: new Date(otherCapturedAt).toISOString(),
         block_number: 8_600_000,
         account_count: 0,
         limit: 20,
-        priced_registered_stake_tao: 0,
+        priced_registered_stake_tao: null,
         rankings: { stake: [], emission: [], reach: [] },
       },
       validators: {
-        schema_version: 1,
+        schema_version: 2,
         captured_at: new Date(otherCapturedAt).toISOString(),
         block_number: 8_600_000,
         validator_count: 0,
@@ -3364,7 +3391,7 @@ test("a pointer whose versioned payload has another stamp falls back to live dat
     env({ METAGRAPH_CONTROL: kv }),
   );
   assert.equal(
-    ((((await accounts.json()) as Row).rankings as Row).stake as Row[])[0]!
+    ((((await accounts.json()) as Row).rankings as Row).reach as Row[])[0]!
       .hotkey,
     "5Live",
   );
@@ -3423,7 +3450,7 @@ test("a newer complete snapshot keeps the previous directory live while its repl
     materializedEnv,
   );
   assert.equal(
-    ((((await accounts.json()) as Row).rankings as Row).stake as Row[])[0]!
+    ((((await accounts.json()) as Row).rankings as Row).reach as Row[])[0]!
       .hotkey,
     "5New",
   );
@@ -3501,16 +3528,16 @@ test("a partial newer neuron write cannot replace the last complete directory", 
     schema_version: 1,
     captured_at: CAPTURED_AT,
     accounts: {
-      schema_version: 1,
+      schema_version: 2,
       captured_at: new Date(CAPTURED_AT).toISOString(),
       block_number: 8_600_000,
       account_count: 1,
       limit: 20,
-      priced_registered_stake_tao: 100,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     },
     validators: {
-      schema_version: 1,
+      schema_version: 2,
       captured_at: new Date(CAPTURED_AT).toISOString(),
       block_number: 8_600_000,
       validator_count: 1,

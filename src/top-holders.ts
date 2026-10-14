@@ -100,7 +100,8 @@ function nonNegativeOrNull(value: unknown): number | null {
 // Missing flow data must stay null (never coerce to 0) so sort keys can
 // distinguish "confirmed zero movers" from "no flow row in the window".
 function numberOrNullSigned(value: unknown): number | null {
-  if (value == null) return null;
+  if (value == null || (typeof value === "string" && value.trim() === ""))
+    return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }

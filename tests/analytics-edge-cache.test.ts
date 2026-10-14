@@ -1452,7 +1452,7 @@ describe("analytics edge cache", () => {
         async fetch(request: Request) {
           dataApiMethods.push(request.method);
           return Response.json({
-            schema_version: 1,
+            schema_version: 2,
             sort: "subnet_count",
             limit: 20,
             captured_at: null,
@@ -1479,6 +1479,52 @@ describe("analytics edge cache", () => {
     assert.equal(cache.matchCalls, 2);
   });
 
+  test("version 1 validator quantities decline without poisoning the edge cache", async () => {
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    let tierReads = 0;
+    const env = {
+      ...analyticsEnv([]),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        async fetch() {
+          tierReads += 1;
+          return Response.json({
+            schema_version: 1,
+            sort: "subnet_count",
+            limit: 20,
+            captured_at: null,
+            block_number: null,
+            validator_count: 1,
+            validators: [
+              { hotkey: "legacy", total_stake_tao: 42, apy_estimate: 0.2 },
+            ],
+          });
+        },
+      },
+    };
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await handleRequest(
+        new Request("https://api.metagraph.sh/api/v1/validators"),
+        env as unknown as Env,
+        ctx,
+      );
+      const body = (await response.json()) as Row;
+      assert.equal(body.data.schema_version, 2);
+      assert.deepEqual(body.data.validators, []);
+      assert.equal(
+        response.headers.get(DEGRADED_HEADER),
+        DEGRADED_TIER_UNAVAILABLE,
+      );
+      await Promise.resolve();
+    }
+    assert.equal(tierReads, 2);
+    assert.equal(cache.matchCalls, 2);
+    assert.deepEqual(cache.putKeys, []);
+    assert.equal(cache.store.size, 0);
+  });
+
   test("/api/v1/validators/operators caches within the bounded minute epoch", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
@@ -1486,7 +1532,7 @@ describe("analytics edge cache", () => {
     const paths: string[] = [];
     const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
     const directory = {
-      schema_version: 1,
+      schema_version: 2,
       captured_at: new Date().toISOString(),
       block_number: 8_950_000,
       validator_count: 0,
@@ -1537,12 +1583,12 @@ describe("analytics edge cache", () => {
     const paths: string[] = [];
     const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
     const directory = {
-      schema_version: 1,
+      schema_version: 2,
       captured_at: new Date().toISOString(),
       block_number: 8_950_000,
       account_count: 0,
       limit: 20,
-      priced_registered_stake_tao: 0,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     };
     const env = {

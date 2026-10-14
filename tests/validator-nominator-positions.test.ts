@@ -14,10 +14,15 @@
 // ignored, and alpha must never be summed across subnets.
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import fs from "node:fs";
-import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import {
+  installAlphaQuantitySchema,
+  seedSyntheticAlphaPass,
+  syntheticAlphaCapture,
+  syntheticAlphaPosition,
+  insertSyntheticAlphaPosition,
+} from "./helpers/alpha-quantity-fixture.ts";
 
 // The ROUTE reads its store through src/read-store.ts, which builds
 // `new Client(...)` from the `pg` module -- there is no binding to hand
@@ -41,22 +46,10 @@ import {
 import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
-const MIGRATIONS = [
-  "0011_nominator_positions.sql",
-  "0019_hotkey_alpha.sql",
-  "0021_hotkey_alpha_passes.sql",
-  "0022_nominator_positions_hotkey_netuid.sql",
-].map((f) =>
-  fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema", f),
-    "utf8",
-  ),
-);
-
 const HOTKEY = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 const OTHER_HOTKEY = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 const PASS = 1_785_900_000_000;
-const POSITIONS_AT = 1_785_953_674_407;
+const POSITIONS_AT = PASS;
 const ck = (n: number) => `5Coldkey${String(n).padStart(40, "0")}`;
 
 let db: InstanceType<typeof DatabaseSync>;
@@ -77,12 +70,11 @@ function storeHandle() {
  * looking at one set of rows. */
 const env = () => ({ ...pgMockEnv() }) as unknown as Env;
 
-function completePass() {
-  db.prepare(
-    `INSERT INTO hotkey_alpha_passes (captured_at, expected_rows, received_rows, completed_at)
-     VALUES (?, 1, 1, ?)`,
-  ).run(PASS, PASS + 1000);
+function completePass(capturedAt = PASS) {
+  return seedSyntheticAlphaPass(db, capturedAt);
 }
+
+/** Legacy pool totals are decoys: exact quantities never derive from them. */
 function pool(hotkey: string, netuid: number, total: number) {
   db.prepare(
     `INSERT INTO hotkey_alpha (hotkey, netuid, total_alpha, captured_at) VALUES (?, ?, ?, ?)`,
@@ -92,17 +84,24 @@ function position(
   coldkey: string,
   hotkey: string,
   netuid: number,
-  frac: number,
+  alpha: number,
+  capturedAt = PASS,
 ) {
-  db.prepare(
-    `INSERT INTO nominator_positions (coldkey, hotkey, netuid, share_fraction, captured_at)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(coldkey, hotkey, netuid, frac, POSITIONS_AT);
+  insertSyntheticAlphaPosition(
+    db,
+    syntheticAlphaPosition(
+      coldkey,
+      hotkey,
+      netuid,
+      String(alpha * 1_000_000_000),
+      capturedAt,
+    ),
+  );
 }
 
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
-  for (const s of MIGRATIONS) db.exec(s);
+  installAlphaQuantitySchema(db);
   pg.control.queries.length = 0;
   pg.control.answers = [];
   pg.control.rows = null;
@@ -116,9 +115,9 @@ describe("the positions basis reads the standing ledger", () => {
     completePass();
     pool(HOTKEY, 1, 1000);
     pool(HOTKEY, 2, 500);
-    position(ck(1), HOTKEY, 1, 0.5); // 500 alpha on netuid 1
-    position(ck(1), HOTKEY, 2, 0.4); // 200 alpha on netuid 2
-    position(ck(2), HOTKEY, 1, 0.25); // 250 alpha on netuid 1
+    position(ck(1), HOTKEY, 1, 500); // 500 alpha on netuid 1
+    position(ck(1), HOTKEY, 2, 200); // 200 alpha on netuid 2
+    position(ck(2), HOTKEY, 1, 250); // 250 alpha on netuid 1
     const card = buildNominatorPositions(
       await loadNominatorPositions(storeHandle(), HOTKEY),
       HOTKEY,
@@ -130,13 +129,50 @@ describe("the positions basis reads the standing ledger", () => {
     assert.equal(first.coldkey, ck(1));
     assert.equal(first.subnet_count, 2);
     assert.deepEqual(first.subnets, [
-      { netuid: 1, alpha: 500 },
-      { netuid: 2, alpha: 200 },
+      { netuid: 1, alpha: 500, alpha_rao: "500000000000" },
+      { netuid: 2, alpha: 200, alpha_rao: "200000000000" },
     ]);
-    // The largest single holding carries its netuid, because an alpha figure
-    // is only comparable within one subnet.
-    assert.deepEqual(first.largest_position, { netuid: 1, alpha: 500 });
+    // Different subnet tokens have no comparable largest position.
+    assert.equal(first.largest_position, null);
     assert.equal(second.coldkey, ck(2));
+    assert.equal(second.largest_position, null);
+    const provenance = card.provenance as Row;
+    assert.equal(provenance.block_hash, syntheticAlphaCapture(PASS).block_hash);
+    assert.equal(
+      provenance.metadata_sha256,
+      syntheticAlphaCapture(PASS).metadata_sha256,
+    );
+  });
+
+  test("a qualified empty census is zero delegators, distinct from an unknown count", async () => {
+    completePass();
+    const card = buildNominatorPositions(
+      await loadNominatorPositions(storeHandle(), HOTKEY),
+      HOTKEY,
+    );
+    assert.equal(card.nominator_count, 0);
+    assert.deepEqual(card.nominators, []);
+    assert.equal(card.degraded, undefined);
+    assert.equal(
+      (card.provenance as Row).captured_at,
+      new Date(PASS).toISOString(),
+    );
+  });
+
+  test("equal breadth is ordered by coldkey regardless of quantities in different tokens", async () => {
+    completePass();
+    position(ck(9), HOTKEY, 1, 1000);
+    position(ck(1), HOTKEY, 2, 1);
+    const card = buildNominatorPositions(
+      await loadNominatorPositions(storeHandle(), HOTKEY),
+      HOTKEY,
+    );
+    assert.deepEqual(
+      (card.nominators as Row[]).map((row) => row.coldkey),
+      [ck(1), ck(9)],
+    );
+    for (const nominator of card.nominators as Row[])
+      assert.equal(nominator.largest_position, null);
   });
 
   test("NEVER publishes a cross-subnet alpha total", async () => {
@@ -145,8 +181,8 @@ describe("the positions basis reads the standing ledger", () => {
     completePass();
     pool(HOTKEY, 1, 1000);
     pool(HOTKEY, 2, 1000);
-    position(ck(1), HOTKEY, 1, 0.5);
-    position(ck(1), HOTKEY, 2, 0.5);
+    position(ck(1), HOTKEY, 1, 500);
+    position(ck(1), HOTKEY, 2, 500);
     const card = buildNominatorPositions(
       await loadNominatorPositions(storeHandle(), HOTKEY),
       HOTKEY,
@@ -155,14 +191,15 @@ describe("the positions basis reads the standing ledger", () => {
     assert.equal("total_alpha" in nominator, false);
     assert.equal("alpha" in nominator, false);
     assert.equal("total_alpha" in card, false);
+    assert.equal(nominator.largest_position, null);
   });
 
   test("filters to the requested hotkey", async () => {
     completePass();
     pool(HOTKEY, 1, 1000);
     pool(OTHER_HOTKEY, 1, 1000);
-    position(ck(1), HOTKEY, 1, 0.5);
-    position(ck(2), OTHER_HOTKEY, 1, 0.5);
+    position(ck(1), HOTKEY, 1, 500);
+    position(ck(2), OTHER_HOTKEY, 1, 500);
     const card = buildNominatorPositions(
       await loadNominatorPositions(storeHandle(), HOTKEY),
       HOTKEY,
@@ -173,16 +210,19 @@ describe("the positions basis reads the standing ledger", () => {
 
   test("the SQL filters by hotkey and scopes to the proven pass", () => {
     const sql = nominatorPositionsSql(PASS);
-    assert.match(sql, /WHERE np\.hotkey = \?/);
-    assert.match(sql, new RegExp(`ha\\.captured_at = ${PASS}`));
-    assert.match(sql, /GROUP BY np\.coldkey, np\.netuid/);
+    assert.match(sql, /np\.hotkey=\?/);
+    assert.match(sql, new RegExp(`np\\.captured_at=${PASS}`));
+    assert.match(sql, /np\.source='alpha'/);
+    assert.match(sql, /np\.alpha_rao/);
+    assert.doesNotMatch(sql, /hotkey_alpha|share_fraction/);
+    assert.match(sql, /GROUP BY np\.netuid,np\.coldkey/);
   });
 });
 
 describe("the positions basis declines rather than guessing", () => {
   test("no complete pass declines", async () => {
     pool(HOTKEY, 1, 1000);
-    position(ck(1), HOTKEY, 1, 0.5);
+    position(ck(1), HOTKEY, 1, 500);
     assert.equal(
       (await loadNominatorPositions(storeHandle(), HOTKEY)).decline,
       "runtime_positions_unqualified",
@@ -202,11 +242,11 @@ describe("the positions basis declines rather than guessing", () => {
     );
   });
 
-  test("a missing passes table is unavailable", async () => {
-    db.exec("DROP TABLE hotkey_alpha_passes");
+  test("a missing quantity passes table is unqualified", async () => {
+    db.exec("DROP TABLE alpha_snapshot_passes");
     assert.equal(
       (await loadNominatorPositions(storeHandle(), HOTKEY)).decline,
-      "unavailable",
+      "runtime_positions_unqualified",
     );
   });
 
@@ -245,7 +285,22 @@ describe("buildNominatorPositions edges", () => {
   const read = (rows: Row[]): NominatorPositionsRead => ({
     rows,
     capturedAt: PASS,
+    capture: syntheticAlphaCapture(PASS, {
+      expected_rows: rows.length,
+      received_rows: rows.length,
+    }),
     decline: null,
+  });
+
+  test("a missing or mismatched capture cannot qualify a pure positions read", () => {
+    for (const capture of [null, syntheticAlphaCapture(PASS + 1)]) {
+      const card = buildNominatorPositions({ ...read([]), capture }, HOTKEY);
+      assert.deepEqual(card.degraded, {
+        reason: "runtime_positions_unqualified",
+      });
+      assert.equal(card.nominator_count, null);
+      assert.deepEqual(card.nominators, []);
+    }
   });
 
   test("an unreadable row is skipped without dropping its coldkey's others", () => {
@@ -255,6 +310,7 @@ describe("buildNominatorPositions edges", () => {
           coldkey: ck(1),
           netuid: 1,
           alpha: 100,
+          alpha_rao: "100000000000",
           positions_captured_at: POSITIONS_AT,
         },
         { coldkey: ck(1), netuid: null, alpha: 50 },
@@ -273,7 +329,7 @@ describe("buildNominatorPositions edges", () => {
     );
     assert.equal(card.nominator_count, 1);
     assert.deepEqual((card.nominators as Row[])[0].subnets, [
-      { netuid: 1, alpha: 100 },
+      { netuid: 1, alpha: 100, alpha_rao: "100000000000" },
     ]);
   });
 
@@ -282,6 +338,7 @@ describe("buildNominatorPositions edges", () => {
       coldkey: ck(n),
       netuid: 1,
       alpha: 100 - n,
+      alpha_rao: String((100 - n) * 1_000_000_000),
       positions_captured_at: POSITIONS_AT,
     }));
     const card = buildNominatorPositions(read(rows), HOTKEY, {
@@ -299,6 +356,7 @@ describe("buildNominatorPositions edges", () => {
       coldkey: ck(n),
       netuid: 1,
       alpha: 10 - n,
+      alpha_rao: String((10 - n) * 1_000_000_000),
       positions_captured_at: POSITIONS_AT,
     }));
     const card = buildNominatorPositions(read(rows), HOTKEY);
@@ -313,12 +371,14 @@ describe("buildNominatorPositions edges", () => {
           coldkey: ck(9),
           netuid: 1,
           alpha: 100,
+          alpha_rao: "100000000000",
           positions_captured_at: POSITIONS_AT,
         },
         {
           coldkey: ck(2),
           netuid: 1,
           alpha: 100,
+          alpha_rao: "100000000000",
           positions_captured_at: POSITIONS_AT,
         },
       ]),
@@ -337,12 +397,14 @@ describe("buildNominatorPositions edges", () => {
           coldkey: ck(1),
           netuid: 1,
           alpha: 1,
+          alpha_rao: "1000000000",
           positions_captured_at: POSITIONS_AT,
         },
         {
           coldkey: ck(2),
           netuid: 1,
           alpha: 1,
+          alpha_rao: "1000000000",
           positions_captured_at: POSITIONS_AT + 5,
         },
       ]),
@@ -381,7 +443,7 @@ describe("GET /api/v1/validators/{hotkey}/nominators?basis=", () => {
   test("serves the positions basis", async () => {
     completePass();
     pool(HOTKEY, 1, 1000);
-    position(ck(1), HOTKEY, 1, 0.5);
+    position(ck(1), HOTKEY, 1, 500);
     const data = await body(
       await get(`/api/v1/validators/${HOTKEY}/nominators?basis=positions`),
     );
@@ -440,7 +502,7 @@ describe("GET /api/v1/validators/{hotkey}/nominators?basis=", () => {
 
   test("an unproven pool ledger declines with a stated reason", async () => {
     pool(HOTKEY, 1, 1000);
-    position(ck(1), HOTKEY, 1, 0.5);
+    position(ck(1), HOTKEY, 1, 500);
     const data = await body(
       await get(`/api/v1/validators/${HOTKEY}/nominators?basis=positions`),
     );

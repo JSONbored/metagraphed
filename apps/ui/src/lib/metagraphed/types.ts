@@ -2784,11 +2784,7 @@ export interface SubnetValidators {
 
 /** Supported sort keys for GET /api/v1/validators. */
 export type GlobalValidatorSort =
-  | "avg_validator_trust"
-  | "max_validator_trust"
-  | "subnet_count"
-  | "total_emission"
-  | "uid_count";
+  "avg_validator_trust" | "max_validator_trust" | "subnet_count" | "total_emission" | "uid_count";
 
 /** One current subnet membership in the network-wide validator leaderboard. */
 export interface GlobalValidatorSubnet {

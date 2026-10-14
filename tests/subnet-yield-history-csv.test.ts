@@ -65,56 +65,79 @@ describe("handleSubnetYieldHistory CSV export", () => {
     assert.equal(lines.length, 1);
   });
 
-  test("sorts and exports real points ascending by snapshot_date via the Postgres tier", async () => {
+  test("exports dated counts ascending with unknown rates blank and JSON parity", async () => {
+    const payload = {
+      schema_version: 2,
+      netuid: NETUID,
+      window: "30d",
+      point_count: 2,
+      degraded: { reason: "holdings_unqualified" },
+      points: [
+        {
+          snapshot_date: "2026-06-21",
+          neuron_count: 5,
+          validator_count: 2,
+          yield_count: 0,
+          subnet_yield: null,
+          mean_yield: null,
+          median_yield: null,
+          p25_yield: null,
+          p75_yield: null,
+          p90_yield: null,
+        },
+        {
+          snapshot_date: "2026-06-20",
+          neuron_count: 4,
+          validator_count: 2,
+          yield_count: 0,
+          subnet_yield: null,
+          mean_yield: null,
+          median_yield: null,
+          p25_yield: null,
+          p75_yield: null,
+          p90_yield: null,
+        },
+      ],
+    };
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            netuid: NETUID,
-            window: "30d",
-            points: [
-              {
-                snapshot_date: "2026-06-21",
-                neuron_count: 5,
-                validator_count: 2,
-                yield_count: 5,
-                subnet_yield: 0.1,
-                mean_yield: 0.1,
-                median_yield: 0.1,
-                p25_yield: 0.05,
-                p75_yield: 0.15,
-                p90_yield: 0.2,
-              },
-              {
-                snapshot_date: "2026-06-20",
-                neuron_count: 4,
-                validator_count: 2,
-                yield_count: 4,
-                subnet_yield: 0.09,
-                mean_yield: 0.09,
-                median_yield: 0.09,
-                p25_yield: 0.04,
-                p75_yield: 0.14,
-                p90_yield: 0.19,
-              },
-            ],
-          }),
-      },
+      DATA_API: { fetch: async () => Response.json(payload) },
     };
-    const res = await handleSubnetYieldHistory(
-      req(`/api/v1/subnets/${NETUID}/yield/history`),
+    const path = `/api/v1/subnets/${NETUID}/yield/history`;
+    const jsonRes = await handleSubnetYieldHistory(
+      req(path),
       env as unknown as Env,
       NETUID,
-      url(`/api/v1/subnets/${NETUID}/yield/history?window=30d&format=csv`),
+      url(`${path}?window=30d&format=json`),
+    );
+    assert.equal(jsonRes.status, 200);
+    const json = (await jsonRes.json()) as Row;
+    assert.deepEqual(json.data, payload);
+
+    const res = await handleSubnetYieldHistory(
+      req(path),
+      env as unknown as Env,
+      NETUID,
+      url(`${path}?window=30d&format=csv`),
     );
     assert.equal(res.status, 200);
     const lines = (await res.text()).trim().split("\r\n");
     assert.equal(lines.length, 3);
-    // CSV export re-sorts newest-first `points` into ascending snapshot_date.
-    assert.match(lines[1], /^2026-06-20,/);
-    assert.match(lines[2], /^2026-06-21,/);
+    // Observed counts stay numeric; unavailable rates stay blank rather than zero.
+    assert.equal(lines[1], "2026-06-20,4,2,0,,,,,,");
+    assert.equal(lines[2], "2026-06-21,5,2,0,,,,,,");
+    const fields = lines[0].split(",");
+    const orderedPoints = [...json.data.points].sort((a: Row, b: Row) =>
+      a.snapshot_date.localeCompare(b.snapshot_date),
+    );
+    for (const [index, point] of orderedPoints.entries()) {
+      assert.deepEqual(
+        lines[index + 1].split(","),
+        fields.map((field: string) =>
+          point[field] == null ? "" : String(point[field]),
+        ),
+      );
+    }
   });
 
   test("rejects an unsupported format value", async () => {

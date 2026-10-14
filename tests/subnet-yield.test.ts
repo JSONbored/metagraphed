@@ -52,134 +52,165 @@ function neuron(
   };
 }
 
+function assertUnknownYield(data: Row) {
+  for (const field of [
+    "subnet_yield",
+    "mean_yield",
+    "median_yield",
+    "p25_yield",
+    "p75_yield",
+    "p90_yield",
+  ])
+    assert.equal(data[field], null, field);
+}
+
 describe("buildSubnetYield", () => {
-  test("cold / empty input yields a zeroed, schema-stable card", () => {
+  test("cold / empty input yields zero observations and unknown holdings", () => {
     for (const rows of [[], null, undefined]) {
       const d = buildSubnetYield(rows, 7);
-      assert.equal(d.schema_version, 1);
+      assert.equal(d.schema_version, 2);
       assert.equal(d.netuid, 7);
       assert.equal(d.captured_at, null);
       assert.equal(d.block_number, null);
       assert.equal(d.neuron_count, 0);
       assert.equal(d.validator_count, 0);
       assert.equal(d.miner_count, 0);
-      assert.equal(d.total_stake_alpha, 0);
-      assert.equal(d.subnet_yield, null);
-      assert.equal(d.mean_yield, null);
-      assert.equal(d.median_yield, null);
-      assert.equal(d.p25_yield, null);
+      assert.equal(d.total_stake_alpha, null);
+      assert.equal(d.total_emission_alpha, 0);
+      assertUnknownYield(d);
       assert.deepEqual(d.neurons, []);
+      assert.deepEqual(d.degraded, { reason: "holdings_unqualified" });
     }
   });
 
   const set = [
-    neuron(0, { validator: true, stake: 10, emission: 1 }), // yield 0.1
-    neuron(1, { validator: true, stake: 10, emission: 2 }), // yield 0.2
-    neuron(2, { stake: 10, emission: 3 }), // miner, yield 0.3
-    neuron(3, { stake: 10, emission: 4 }), // miner, yield 0.4
+    neuron(0, { validator: true, stake: 10, emission: 1 }),
+    neuron(1, { validator: true, stake: 10, emission: 2 }),
+    neuron(2, { stake: 10, emission: 3 }),
+    neuron(3, { stake: 10, emission: 4 }),
   ];
 
-  test("computes per-UID yield, role split, totals, and subnet aggregate yield", () => {
+  test("retains voting weights, role counts, subnet emission and snapshot metadata", () => {
     const d = buildSubnetYield(set, 7) as Row;
+    assert.equal(d.schema_version, 2);
     assert.equal(d.neuron_count, 4);
     assert.equal(d.validator_count, 2);
     assert.equal(d.miner_count, 2);
-    assert.equal(d.total_stake_alpha, 40);
+    assert.equal(d.total_stake_alpha, null);
     assert.equal(d.total_emission_alpha, 10);
-    assert.equal(d.subnet_yield, 0.25); // 10/40
     assert.equal(d.captured_at, new Date(CAPTURED).toISOString());
     assert.equal(d.block_number, 5000);
+    assertUnknownYield(d);
+    assert.deepEqual(d.degraded, { reason: "holdings_unqualified" });
     const u3 = d.neurons.find((n: Row) => n.uid === 3);
-    assert.equal(u3.yield, 0.4);
+    assert.equal(u3.voting_weight, 10);
+    assert.equal(u3.stake_tao, null);
+    assert.equal(u3.emission_tao, 4);
+    assert.equal(u3.yield, null);
+    assert.equal(u3.vs_median, null);
     assert.equal(u3.role, "miner");
   });
 
-  test("sums thousands of UIDs in exact rao space, not compounding float error (#2922)", () => {
-    // Each UID's stake/emission carries a real sub-TAO fractional component (not a
-    // round number) -- plain `+=` float accumulation across a large neuron set would
-    // drift from the true sum. Summing in rao BigInt space (the per-subnet analog of
-    // the network-wide chain-yield fix #2933) must not.
+  test("sums thousands of same-token emissions in exact rao space (#2922)", () => {
+    // Same-subnet emission remains an observation and keeps the exact-sum regression.
     const rows = [];
-    let expectedStakeRao = 0n;
     let expectedEmissionRao = 0n;
     for (let i = 0; i < 5000; i += 1) {
-      const stakeTao = 1234.987654321 + i * 0.000000001;
-      const emissionTao = 12.345678901 + i * 0.000000001;
-      rows.push(neuron(i, { stake: stakeTao, emission: emissionTao }));
-      expectedStakeRao += BigInt(Math.round(stakeTao * 1e9));
-      expectedEmissionRao += BigInt(Math.round(emissionTao * 1e9));
+      const emission = 12.345678901 + i * 0.000000001;
+      rows.push(
+        neuron(i, { stake: 1234.987654321 + i * 0.000000001, emission }),
+      );
+      expectedEmissionRao += BigInt(Math.round(emission * 1e9));
     }
-    const raoToTao = (rao: bigint) =>
-      Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
+    const expectedEmission =
+      Number(expectedEmissionRao / 1_000_000_000n) +
+      Number(expectedEmissionRao % 1_000_000_000n) / 1e9;
     const d = buildSubnetYield(rows, 7);
-    assert.equal(
-      d.total_stake_alpha,
-      Math.round(raoToTao(expectedStakeRao) * 1e9) / 1e9,
-    );
+    assert.equal(d.total_stake_alpha, null);
     assert.equal(
       d.total_emission_alpha,
-      Math.round(raoToTao(expectedEmissionRao) * 1e9) / 1e9,
+      Math.round(expectedEmission * 1e9) / 1e9,
     );
+    assert.equal(d.neuron_count, 5000);
+    assertUnknownYield(d);
   });
 
-  test("computes mean, conventional median, and nearest-rank percentiles", () => {
-    const d = buildSubnetYield(set, 7);
-    assert.equal(d.mean_yield, 0.25); // (0.1+0.2+0.3+0.4)/4
-    assert.equal(d.median_yield, 0.25); // even count -> (0.2+0.3)/2
-    assert.equal(d.p25_yield, 0.1); // p25/p75/p90 stay nearest-rank
-    assert.equal(d.p75_yield, 0.3);
-    assert.equal(d.p90_yield, 0.4);
+  test("weighted-stake scale changes observations without qualifying return statistics", () => {
+    const baseline = buildSubnetYield(set, 7) as Row;
+    const scaled = buildSubnetYield(
+      set.map((row) => ({ ...row, stake_tao: 1000 })),
+      7,
+    ) as Row;
+    assert.equal(scaled.total_emission_alpha, baseline.total_emission_alpha);
+    assert.deepEqual(
+      scaled.neurons.map((n: Row) => n.voting_weight),
+      [1000, 1000, 1000, 1000],
+    );
+    assert.equal(scaled.total_stake_alpha, null);
+    assertUnknownYield(baseline);
+    assertUnknownYield(scaled);
   });
 
-  test("labels each UID above/below/at the median and ranks by yield desc", () => {
-    // Odd count so the median is a real UID's yield, exercising all three labels.
+  test("orders UIDs without inventing above/below-median classifications", () => {
     const d = buildSubnetYield(
       [
-        neuron(0, { stake: 10, emission: 1 }), // yield 0.1
-        neuron(1, { stake: 10, emission: 2 }), // yield 0.2 (== median)
-        neuron(2, { stake: 10, emission: 3 }), // yield 0.3
+        neuron(2, { stake: 10, emission: 3 }),
+        neuron(0, { stake: 10, emission: 1 }),
+        neuron(1, { stake: 10, emission: 2 }),
       ],
       7,
     ) as Row;
-    assert.equal(d.median_yield, 0.2); // odd count -> middle value
     assert.deepEqual(
       d.neurons.map((n: Row) => n.uid),
-      [2, 1, 0], // yield desc
+      [0, 1, 2],
     );
-    assert.equal(d.neurons.find((n: Row) => n.uid === 0).vs_median, "below");
-    assert.equal(d.neurons.find((n: Row) => n.uid === 1).vs_median, "at");
-    assert.equal(d.neurons.find((n: Row) => n.uid === 2).vs_median, "above");
+    for (const row of d.neurons) {
+      assert.equal(row.stake_tao, null);
+      assert.equal(row.yield, null);
+      assert.equal(row.vs_median, null);
+    }
+    assertUnknownYield(d);
   });
 
-  test("median averages the two middle values for an even count (not lower-middle)", () => {
+  test("even-count observations cannot qualify a median or its classifications", () => {
     const d = buildSubnetYield(
       [
-        neuron(0, { stake: 10, emission: 2 }), // yield 0.2
-        neuron(1, { stake: 10, emission: 4 }), // yield 0.4
+        neuron(0, { stake: 10, emission: 2 }),
+        neuron(1, { stake: 10, emission: 4 }),
       ],
       7,
     ) as Row;
-    assert.equal(d.median_yield, 0.3); // (0.2 + 0.4) / 2, not the lower-middle 0.2
-    assert.equal(d.neurons.find((n: Row) => n.uid === 0).vs_median, "below"); // 0.2 < 0.3
-    assert.equal(d.neurons.find((n: Row) => n.uid === 1).vs_median, "above"); // 0.4 > 0.3
+    assertUnknownYield(d);
+    assert.deepEqual(
+      d.neurons.map((n: Row) => n.vs_median),
+      [null, null],
+    );
+    assert.deepEqual(
+      d.neurons.map((n: Row) => n.emission_tao),
+      [2, 4],
+    );
   });
 
-  test("zero-stake UIDs get a null yield, are excluded from the distribution, and sink last", () => {
+  test("a zero voting weight is an observed zero, while holdings and yield remain null", () => {
     const d = buildSubnetYield(
       [
-        neuron(0, { validator: true, stake: 10, emission: 2 }), // yield 0.2
-        neuron(1, { stake: 0, emission: 5 }), // no stake -> null yield
+        neuron(0, { validator: true, stake: 10, emission: 2 }),
+        neuron(1, { stake: 0, emission: 5 }),
       ],
       7,
     ) as Row;
     const u1 = d.neurons.find((n: Row) => n.uid === 1);
+    assert.equal(u1.voting_weight, 0);
+    assert.equal(u1.stake_tao, null);
+    assert.equal(u1.emission_tao, 5);
     assert.equal(u1.yield, null);
     assert.equal(u1.vs_median, null);
-    assert.equal(d.neurons[d.neurons.length - 1].uid, 1); // sinks to the bottom
-    assert.equal(d.median_yield, 0.2); // only the defined yield counts
+    assert.equal(d.neuron_count, 2);
+    assert.equal(d.total_emission_alpha, 7);
+    assertUnknownYield(d);
   });
 
-  test("skips a malformed uid and coerces non-numeric stamp to null", () => {
+  test("skips malformed UIDs but retains observations with unreadable quantity cells", () => {
     const d = buildSubnetYield(
       [
         { uid: null, validator_permit: 1, stake_tao: 9, emission_tao: 9 },
@@ -192,103 +223,88 @@ describe("buildSubnetYield", () => {
         }),
       ],
       7,
-    );
-    assert.equal(d.neuron_count, 0);
+    ) as Row;
+    assert.equal(d.neuron_count, 1);
+    assert.equal(d.neurons[0].uid, 2);
+    assert.equal(d.neurons[0].voting_weight, null);
+    assert.equal(d.neurons[0].emission_tao, null);
     assert.equal(d.captured_at, null);
     assert.equal(d.block_number, null);
   });
 
-  test("reject blank stake_tao/emission_tao cells that coerce to 0", () => {
-    for (const blank of ["", "   "]) {
-      const skippedStake = buildSubnetYield(
-        [neuron(1, { stake: blank, emission: 2 })],
-        7,
-      );
-      assert.equal(
-        skippedStake.neuron_count,
-        0,
-        `stake ${JSON.stringify(blank)}`,
-      );
-
-      const blankEmission = buildSubnetYield(
-        [neuron(2, { stake: 10, emission: blank })],
+  test("blank/null/negative/non-numeric quantity cells stay null without erasing UIDs", () => {
+    for (const invalid of ["", "   ", null, -1, "n/a", Infinity]) {
+      const weight = buildSubnetYield(
+        [neuron(1, { stake: invalid, emission: 2 })],
         7,
       ) as Row;
-      assert.equal(blankEmission.neuron_count, 1);
-      assert.equal(blankEmission.neurons[0].emission_tao, null);
-      assert.equal(blankEmission.neurons[0].yield, null);
-      assert.equal(blankEmission.total_emission_alpha, 0);
-      assert.equal(blankEmission.subnet_yield, null);
+      assert.equal(weight.neuron_count, 1, `weight=${String(invalid)}`);
+      assert.equal(weight.neurons[0].voting_weight, null);
+      assert.equal(weight.neurons[0].stake_tao, null);
+      assert.equal(weight.neurons[0].yield, null);
+      assert.equal(weight.total_emission_alpha, 2);
+
+      const emission = buildSubnetYield(
+        [neuron(2, { stake: 10, emission: invalid })],
+        7,
+      ) as Row;
+      assert.equal(emission.neuron_count, 1);
+      assert.equal(emission.neurons[0].voting_weight, 10);
+      assert.equal(emission.neurons[0].emission_tao, null);
+      assert.equal(emission.neurons[0].yield, null);
+      assert.equal(emission.total_emission_alpha, 0);
+      assertUnknownYield(emission);
     }
-
-    const nullStake = buildSubnetYield(
-      [neuron(3, { stake: null, emission: 2 })],
-      7,
-    );
-    assert.equal(nullStake.neuron_count, 0);
-
-    const nullEmission = buildSubnetYield(
-      [neuron(4, { stake: 10, emission: null })],
-      7,
-    ) as Row;
-    assert.equal(nullEmission.neuron_count, 1);
-    assert.equal(nullEmission.neurons[0].emission_tao, null);
-    assert.equal(nullEmission.neurons[0].yield, null);
-
-    const emissionSchema =
-      apiComponents.components.schemas.SubnetYieldArtifact.properties.neurons
-        .items.properties.emission_tao;
-    // Zod's z.toJSONSchema() emits a nullable number as anyOf:[{type:number},
-    // {type:null}], not the hand-written type:["number","null"] union form
-    // this asserted against pre-conversion -- same semantics, different JSON
-    // Schema idiom.
-    assert.deepEqual(emissionSchema.anyOf, [
-      { type: "number" },
-      { type: "null" },
-    ]);
-
-    const negativeStake = buildSubnetYield(
-      [neuron(5, { stake: -1, emission: 2 })],
-      7,
-    );
-    assert.equal(negativeStake.neuron_count, 0);
   });
 
-  test("subnet_yield ignores blank-emission stake in the aggregate denominator", () => {
+  test("published schema retains nullable observations and the version 2 degradation", () => {
+    const schema = apiComponents.components.schemas.SubnetYieldArtifact;
+    assert.equal(schema.properties.schema_version.const, 2);
+    assert.ok(schema.required.includes("degraded"));
+    const row = schema.properties.neurons.items;
+    for (const field of [
+      "emission_tao",
+      "voting_weight",
+      "stake_tao",
+      "yield",
+    ]) {
+      assert.deepEqual(row.properties[field].anyOf, [
+        { type: "number" },
+        { type: "null" },
+      ]);
+      assert.ok(row.required.includes(field));
+    }
+  });
+
+  test("blank emission contributes no observed emission or fabricated yield", () => {
     const d = buildSubnetYield(
       [
         neuron(1, { stake: 100, emission: "   " }),
         neuron(2, { stake: 100, emission: 10 }),
       ],
       7,
-    );
-    assert.equal(d.total_stake_alpha, 200);
+    ) as Row;
+    assert.equal(d.total_stake_alpha, null);
     assert.equal(d.total_emission_alpha, 10);
-    assert.equal(d.subnet_yield, 0.1);
+    assert.equal(d.neurons[0].emission_tao, null);
+    assertUnknownYield(d);
   });
 
-  test("a null D1 block_number stays null, not a fabricated genesis 0", () => {
-    // block_number is a nullable INTEGER; Number(null) === 0 must not surface
-    // as the real chain height 0 (the contract models it as ["integer","null"]).
+  test("a null block_number stays null, not a fabricated genesis 0", () => {
     const d = buildSubnetYield(
-      [neuron(0, { validator: true, stake: 10, emission: 1, block: null })],
+      [neuron(0, { stake: 10, emission: 1, block: null })],
       7,
     );
     assert.equal(d.block_number, null);
   });
 
   test("blank uid and block_number cells stay null (not uid/block 0)", () => {
-    // Mirrors the blank-cell guard in metagraph-neurons.ts (#3020).
     for (const blank of ["", "   "]) {
       const skipped = buildSubnetYield(
         [{ ...neuron(1, { stake: 1, emission: 1 }), uid: blank }],
         7,
       );
-      assert.equal(
-        skipped.neuron_count,
-        0,
-        `neuron_count for uid ${JSON.stringify(blank)}`,
-      );
+      assert.equal(skipped.neuron_count, 0, `uid=${JSON.stringify(blank)}`);
       const block = buildSubnetYield(
         [neuron(1, { stake: 1, emission: 1, block: blank })],
         7,
@@ -296,29 +312,22 @@ describe("buildSubnetYield", () => {
       assert.equal(
         block.block_number,
         null,
-        `block_number for ${JSON.stringify(blank)}`,
+        `block_number=${JSON.stringify(blank)}`,
       );
     }
   });
 
   test("coerces string-typed captured_at cells to ISO timestamps", () => {
     const d = buildSubnetYield(
-      [
-        neuron(0, {
-          validator: true,
-          stake: 10,
-          emission: 1,
-          captured: "1717000000000",
-        }),
-      ],
+      [neuron(0, { stake: 10, emission: 1, captured: "1717000000000" })],
       7,
     );
-    assert.equal(d.captured_at, new Date(1717000000000).toISOString());
+    assert.equal(d.captured_at, new Date(CAPTURED).toISOString());
   });
 
-  test("a null D1 captured_at stays null, not a fabricated epoch 1970", () => {
+  test("a null captured_at stays null, not a fabricated epoch 1970", () => {
     const d = buildSubnetYield(
-      [neuron(0, { validator: true, stake: 10, emission: 1, captured: null })],
+      [neuron(0, { stake: 10, emission: 1, captured: null })],
       7,
     );
     assert.equal(d.captured_at, null);
@@ -327,58 +336,65 @@ describe("buildSubnetYield", () => {
   test("drops blank or out-of-range captured_at strings to null", () => {
     for (const captured of ["", "   ", "not-a-date", "8640000000000001"]) {
       const d = buildSubnetYield(
-        [neuron(0, { validator: true, stake: 10, emission: 1, captured })],
+        [neuron(0, { stake: 10, emission: 1, captured })],
         7,
       );
       assert.equal(d.captured_at, null, `captured=${JSON.stringify(captured)}`);
     }
   });
 
-  test("ties break by uid, extra zero-stake UIDs sink, and a missing hotkey is null", () => {
+  test("UID order is independent of emission/weight ratios and missing hotkeys stay null", () => {
     const d = buildSubnetYield(
       [
-        neuron(5, { stake: 10, emission: 2 }), // yield 0.2
-        neuron(2, { stake: 5, emission: 1 }), // yield 0.2 (ties uid 5)
-        { uid: 7, stake_tao: 0, emission_tao: 1 }, // null yield, no hotkey field
-        neuron(9, { stake: 0, emission: 3 }), // null yield
+        neuron(5, { stake: 10, emission: 2 }),
+        neuron(2, { stake: 5, emission: 1 }),
+        { uid: 7, stake_tao: 0, emission_tao: 1 },
+        neuron(1, { stake: 0, emission: 3 }),
       ],
       7,
     ) as Row;
-    // equal yields rank by uid ascending
-    const defined = d.neurons
-      .filter((n: Row) => n.yield != null)
-      .map((n: Row) => n.uid);
-    assert.deepEqual(defined, [2, 5]);
-    // both null-yield UIDs sink to the bottom
-    const tail = d.neurons
-      .slice(-2)
-      .map((n: Row) => n.uid)
-      .sort((a: number, b: number) => a - b);
-    assert.deepEqual(tail, [7, 9]);
-    // a row with no hotkey field -> null
+    assert.deepEqual(
+      d.neurons.map((n: Row) => n.uid),
+      [1, 2, 5, 7],
+    );
     assert.equal(d.neurons.find((n: Row) => n.uid === 7).hotkey, null);
+    assert.deepEqual(
+      d.neurons.map((n: Row) => n.yield),
+      [null, null, null, null],
+    );
   });
 
-  test("reads validator_permit as SQLite 0/1: a numeric-string '0' stays a miner", () => {
+  test("numeric-string permit and quantity cells retain their observation semantics", () => {
     const d = buildSubnetYield(
       [
-        { uid: 0, validator_permit: "0", stake_tao: 10, emission_tao: 1 },
-        { uid: 1, validator_permit: 1, stake_tao: 10, emission_tao: 1 },
+        { uid: 0, validator_permit: "0", stake_tao: "10", emission_tao: "1" },
+        { uid: 1, validator_permit: "1", stake_tao: "20", emission_tao: "2" },
       ],
       7,
     ) as Row;
     assert.equal(d.validator_count, 1);
     assert.equal(d.miner_count, 1);
-    assert.equal(d.neurons.find((n: Row) => n.uid === 0).role, "miner");
-    assert.equal(d.neurons.find((n: Row) => n.uid === 1).role, "validator");
+    assert.equal(d.neurons[0].role, "miner");
+    assert.equal(d.neurons[1].role, "validator");
+    assert.deepEqual(
+      d.neurons.map((n: Row) => n.voting_weight),
+      [10, 20],
+    );
+    assert.deepEqual(
+      d.neurons.map((n: Row) => n.emission_tao),
+      [1, 2],
+    );
   });
 
-  test("rounds tao + yield to rao precision", () => {
+  test("rounds observed emissions to rao precision without deriving a yield", () => {
     const d = buildSubnetYield(
-      [neuron(0, { stake: 3, emission: 1 })], // yield 0.333333333
+      [neuron(0, { stake: 3, emission: 1.1234567894 })],
       7,
     ) as Row;
-    assert.equal(d.neurons[0].yield, 0.333333333);
+    assert.equal(d.neurons[0].emission_tao, 1.123456789);
+    assert.equal(d.total_emission_alpha, 1.123456789);
+    assert.equal(d.neurons[0].voting_weight, 3);
+    assert.equal(d.neurons[0].yield, null);
   });
 });
 
@@ -447,9 +463,9 @@ describe("parseSubnetYieldHistoryWindow", () => {
 });
 
 describe("buildSubnetYieldHistory", () => {
-  test("computes a per-day yield-distribution trend, newest first", () => {
-    // Rows arrive snapshot_date DESC. The newest day has a wider yield spread
-    // (0.1 vs 0.05) than the even older day (both 0.1).
+  test("retains per-day counts newest first, with unqualified rates null", () => {
+    // Rows arrive snapshot_date DESC; both days carry observations, but their
+    // weighted stake does not qualify investment return rates.
     const rows = [
       {
         snapshot_date: "2026-06-27",
@@ -477,35 +493,37 @@ describe("buildSubnetYieldHistory", () => {
       },
     ];
     const data = buildSubnetYieldHistory(rows, 7, { window: "30d" }) as Row;
-    assert.equal(data.schema_version, 1);
+    assert.equal(data.schema_version, 2);
     assert.equal(data.netuid, 7);
     assert.equal(data.window, "30d");
     assert.equal(data.point_count, 2);
-    assert.equal(data.points[0].snapshot_date, "2026-06-27"); // newest first
+    assert.deepEqual(
+      data.points.map((point: Row) => point.snapshot_date),
+      ["2026-06-27", "2026-06-26"],
+    );
     assert.equal(data.points[0].neuron_count, 2);
     assert.equal(data.points[0].validator_count, 1);
-    assert.equal(data.points[0].yield_count, 2);
-    // newest day yields 0.1 and 0.05 → median 0.075; older day both 0.1 → 0.1.
-    assert.equal(data.points[0].median_yield, 0.075);
-    assert.equal(data.points[1].median_yield, 0.1);
-    // subnet_yield = total emission / total stake = 15/200 on the newest day.
-    assert.equal(data.points[0].subnet_yield, 0.075);
-    assert.equal(typeof data.points[0].p25_yield, "number");
-    assert.equal(typeof data.points[0].p90_yield, "number");
+    assert.deepEqual(data.degraded, { reason: "holdings_unqualified" });
+    for (const point of data.points) {
+      assert.equal(point.yield_count, 0);
+      assert.equal(point.neuron_count, 2);
+      assert.equal(point.validator_count, 1);
+      assertUnknownYield(point);
+    }
   });
 
-  test("excludes zero-stake UIDs from the distribution but counts the neuron", () => {
+  test("zero and nonzero weighted-stake UIDs both remain counted without yield", () => {
     const data = buildSubnetYieldHistory(
       [
         { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 10 },
-        { snapshot_date: "2026-06-27", stake_tao: 0, emission_tao: 5 }, // no stake → no yield
+        { snapshot_date: "2026-06-27", stake_tao: 0, emission_tao: 5 }, // observed zero voting weight
       ],
       1,
       { window: "7d" },
     ) as Row;
     assert.equal(data.points[0].neuron_count, 2);
-    assert.equal(data.points[0].yield_count, 1); // only the staked UID
-    assert.equal(data.points[0].median_yield, 0.1);
+    assert.equal(data.points[0].yield_count, 0);
+    assertUnknownYield(data.points[0]);
   });
 
   test("drops the oldest (possibly partial) day when the read was capped", () => {
@@ -543,7 +561,7 @@ describe("buildSubnetYieldHistory", () => {
     }
   });
 
-  test("reject blank stake_tao/emission_tao cells in daily history points", () => {
+  test("blank quantity cells preserve dated observations without fabricated rates", () => {
     const data = buildSubnetYieldHistory(
       [
         { snapshot_date: "2026-06-27", stake_tao: null, emission_tao: 10 },
@@ -560,13 +578,13 @@ describe("buildSubnetYieldHistory", () => {
       { window: "7d" },
     ) as Row;
     assert.equal(data.point_count, 1);
-    assert.equal(data.points[0].neuron_count, 2);
-    assert.equal(data.points[0].yield_count, 1);
-    assert.equal(data.points[0].median_yield, 0.1);
-    assert.equal(data.points[0].subnet_yield, 0.1);
+    assert.equal(data.points[0].neuron_count, 4);
+    assert.equal(data.points[0].validator_count, 1);
+    assert.equal(data.points[0].yield_count, 0);
+    assertUnknownYield(data.points[0]);
   });
 
-  test("a day with no staked UIDs yields null distribution metrics", () => {
+  test("a day with zero voting weight retains counts and unknown rate metrics", () => {
     const data = buildSubnetYieldHistory(
       [{ snapshot_date: "2026-06-27", stake_tao: 0, emission_tao: 5 }],
       1,
@@ -575,7 +593,8 @@ describe("buildSubnetYieldHistory", () => {
     assert.equal(data.points[0].yield_count, 0);
     assert.equal(data.points[0].median_yield, null);
     assert.equal(data.points[0].mean_yield, null);
-    assert.equal(data.points[0].subnet_yield, null); // no stake
+    assert.equal(data.points[0].subnet_yield, null);
+    assert.equal(data.points[0].neuron_count, 1);
   });
 
   test("an omitted window is emitted as null", () => {

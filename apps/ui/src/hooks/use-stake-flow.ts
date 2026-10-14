@@ -50,13 +50,7 @@ import { computeIdempotencyKey } from "@/lib/metagraphed/broadcast";
 export type StakeFlowAction = "stake" | "unstake";
 export type StakeFlowUnit = "tao" | "alpha";
 export type StakeFlowPhase =
-  | "connect"
-  | "amount"
-  | "confirm"
-  | "signing"
-  | "broadcasting"
-  | "failed"
-  | "done";
+  "connect" | "amount" | "confirm" | "signing" | "broadcasting" | "failed" | "done";
 
 /** Per ADR 0018 §3. */
 export const DEFAULT_TOLERANCE_PCT = 5;

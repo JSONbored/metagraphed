@@ -38,7 +38,20 @@ import { ALL_TABLES, pgMockEnv, toQuestionMarks } from "./helpers/pg-mock.ts";
 import {
   buildSubnetMetagraph,
   buildSubnetValidators,
+  buildGlobalValidators,
+  buildValidatorDetail,
 } from "../src/metagraph-neurons.ts";
+import {
+  buildSubnetYield,
+  buildSubnetYieldHistory,
+} from "../src/subnet-yield.ts";
+import { buildChainYield } from "../src/chain-yield.ts";
+import { buildAccountPortfolio } from "../src/account-portfolio.ts";
+import { buildAccountsList } from "../src/accounts-list.ts";
+import { buildValidatorHistory } from "../src/validator-history.ts";
+import { buildAccountPositionHistory } from "../src/account-position-history.ts";
+import { buildAccountHolderDirectory } from "../src/account-holder-directory.ts";
+import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.ts";
@@ -167,10 +180,10 @@ function url(path: string) {
  * value, and asserting that it does would assert a property the surface does
  * not have. These tests want to know what a CALLER gets, which is unchanged.
  */
-function viaRouter(path: string) {
+function viaRouter(path: string, env: unknown = {}) {
   return handleRequest(
     new Request(`https://api.metagraph.sh${path}`),
-    {} as never,
+    env as never,
     {} as never,
   );
 }
@@ -1146,9 +1159,9 @@ describe("handleGlobalValidators", () => {
       subnet_count: 1,
       uid_count: 1,
       take: null,
-      total_stake_tao: 0,
-      root_stake_tao: 0,
-      alpha_stake_tao: 0,
+      total_stake_tao: null,
+      root_stake_tao: null,
+      alpha_stake_tao: null,
       total_emission_tao: 0,
       nominator_count: null,
       apy_estimate: null,
@@ -1176,7 +1189,7 @@ describe("handleGlobalValidators", () => {
       DATA_API: {
         fetch: async () =>
           Response.json({
-            schema_version: 1,
+            schema_version: 2,
             sort: "subnet_count",
             limit: 20,
             captured_at: null,
@@ -1208,8 +1221,8 @@ describe("handleGlobalValidators", () => {
       DATA_API: {
         fetch: async () =>
           Response.json({
-            schema_version: 1,
-            sort: "total_stake",
+            schema_version: 2,
+            sort: "uid_count",
             limit: 20,
             captured_at: null,
             block_number: null,
@@ -1222,9 +1235,9 @@ describe("handleGlobalValidators", () => {
       },
     };
     const res = await handleGlobalValidators(
-      req("/api/v1/validators?sort=total_stake"),
+      req("/api/v1/validators?sort=uid_count"),
       env as unknown as Env,
-      url("/api/v1/validators?sort=total_stake"),
+      url("/api/v1/validators?sort=uid_count"),
     );
     const body = await json(res);
     // The caller's explicit ranking is untouched...
@@ -1250,31 +1263,21 @@ describe("handleValidatorOperatorDirectory", () => {
   });
 
   test("forwards the grouped data-tier response without rebuilding it", async () => {
-    const directory = {
-      schema_version: 1,
+    const directory = buildValidatorOperatorDirectory({
       captured_at: "2026-08-29T00:00:00.000Z",
       block_number: 8_950_000,
-      validator_count: 1,
-      operator_count: 1,
-      operators: [
+      validators: [
         {
-          identity_name: null,
-          hotkeys: [],
-          hotkey_count: 1,
-          primary_hotkey: "hk-a",
+          hotkey: "hk-a",
           coldkey: "ck-a",
-          total_stake_tao: 42,
-          total_emission_tao: 1,
-          nominator_count: null,
-          membership_count: 2,
+          coldkey_count: 1,
+          coldkey_identity: { has_identity: true, name: "Operator A" },
+          subnet_count: 2,
           uid_count: 2,
-          take_min: null,
-          take_max: null,
-          apy_estimate: null,
-          stake_dominance: 1,
+          total_emission_tao: 1,
         },
       ],
-    };
+    });
     let forwardedPath = "";
     const env = {
       ...emptyEnv(),
@@ -1294,6 +1297,11 @@ describe("handleValidatorOperatorDirectory", () => {
     );
     assert.equal(forwardedPath, "/api/v1/validators/operators");
     assert.deepEqual(body.data, directory);
+    assert.equal(body.data.operator_count, 1);
+    assert.equal(body.data.operators[0].identity_name, "Operator A");
+    assert.equal(body.data.operators[0].membership_count, 2);
+    assert.equal(body.data.operators[0].total_stake_tao, null);
+    assert.equal(body.data.operators[0].apy_estimate, null);
     await assertValidComponent("ValidatorOperatorDirectoryArtifact", body.data);
   });
 });
@@ -1306,7 +1314,7 @@ describe("handleAccountHolderDirectory", () => {
       emptyEnv(),
     );
     assert.equal(body.data.account_count, 0);
-    assert.equal(body.data.priced_registered_stake_tao, 0);
+    assert.equal(body.data.priced_registered_stake_tao, null);
     assert.deepEqual(body.data.rankings, {
       stake: [],
       emission: [],
@@ -1316,15 +1324,10 @@ describe("handleAccountHolderDirectory", () => {
   });
 
   test("forwards the one-pass data-tier projection without rebuilding it", async () => {
-    const directory = {
-      schema_version: 1,
-      captured_at: "2026-08-29T00:00:00.000Z",
-      block_number: 8_950_000,
-      account_count: 1,
-      limit: 20,
-      priced_registered_stake_tao: 42,
-      rankings: { stake: [], emission: [], reach: [] },
-    };
+    const directory = buildAccountHolderDirectory(
+      [neuronRow({ hotkey: "hk-a", coldkey: "ck-a" })],
+      { priceByNetuid: new Map([[NETUID, 1]]) },
+    );
     let forwardedPath = "";
     const env = {
       ...emptyEnv(),
@@ -1344,7 +1347,79 @@ describe("handleAccountHolderDirectory", () => {
     );
     assert.equal(forwardedPath, "/api/v1/accounts/directory");
     assert.deepEqual(body.data, directory);
+    assert.equal(body.data.account_count, 1);
+    assert.equal(body.data.rankings.reach[0].hotkey, "hk-a");
+    assert.equal(body.data.rankings.reach[0].subnet_count, 1);
+    assert.equal(body.data.rankings.reach[0].total_stake_tao, null);
+    assert.equal(body.data.priced_registered_stake_tao, null);
+    assert.deepEqual(body.data.rankings.stake, []);
     await assertValidComponent("AccountHolderDirectoryArtifact", body.data);
+  });
+});
+
+describe("quantity service version boundaries", () => {
+  const routes = [
+    "/api/v1/validators",
+    `/api/v1/validators/${SS58}`,
+    "/api/v1/validators/operators",
+    "/api/v1/accounts/directory",
+    "/api/v1/accounts",
+    `/api/v1/accounts/${SS58}/portfolio`,
+    `/api/v1/validators/${SS58}/history`,
+    `/api/v1/accounts/${SS58}/subnets/${NETUID}/history`,
+    `/api/v1/subnets/${NETUID}/yield`,
+    `/api/v1/subnets/${NETUID}/yield/history`,
+    "/api/v1/chain/yield",
+  ];
+  for (const path of routes) {
+    test(`${path} rejects version 1 quantities from the service owner`, async () => {
+      let reads = 0;
+      const res = await viaRouter(path, {
+        METAGRAPH_NEURONS_SOURCE: "data-api",
+        DATA_API: {
+          fetch: async () => {
+            reads += 1;
+            return Response.json({
+              schema_version: 1,
+              marker: "legacy-inferred-wealth",
+              total_stake_tao: 42,
+              total_stake_alpha: 42,
+              apy_estimate: 0.2,
+            });
+          },
+        },
+      });
+      const body = await json(res);
+      assert.equal(reads, 1);
+      assert.equal(body.data.schema_version, 2);
+      assert.equal(body.data.marker, undefined);
+      for (const field of [
+        "total_stake_tao",
+        "total_stake_alpha",
+        "priced_registered_stake_tao",
+        "apy_estimate",
+      ]) {
+        if (field in body.data) assert.equal(body.data[field], null);
+      }
+    });
+  }
+
+  test("financial validator and account sorts are rejected before reading a tier", async () => {
+    for (const path of [
+      "/api/v1/validators?sort=total_stake",
+      "/api/v1/validators?sort=apy_estimate",
+      "/api/v1/accounts?sort=total_stake",
+    ]) {
+      const tier = forbiddenDataApi();
+      const body = await errorJson(
+        await viaRouter(path, {
+          METAGRAPH_NEURONS_SOURCE: "data-api",
+          DATA_API: tier.DATA_API,
+        }),
+      );
+      assert.equal(body.meta.parameter, "sort");
+      assert.deepEqual(tier.paths, []);
+    }
   });
 });
 
@@ -3124,7 +3199,7 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     assert.equal(defaulted.data.window, "30d");
   });
 
-  test("handleAccountPositions prices the lakehouse ledger off the neurons store", async () => {
+  test("handleAccountPositions retains legacy relationships without pricing voting weight", async () => {
     const q = lakeFetch([
       {
         hotkey: COUNTERPARTY,
@@ -3133,10 +3208,8 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
         captured_at: 1_785_634_702_670,
       },
     ]);
-    // Per statement, because the two legs must answer differently: the HOT
-    // ledger is empty (this test is about the COLD one being served) and the
-    // stake read is what prices it. One shared row set would let the hot leg
-    // answer and the cold tier would never run.
+    // The legacy ledger observes a relationship and a share fraction. Even a
+    // readable neuron voting weight cannot establish its native asset amount.
     pg.control.answers = [
       { match: /FROM nominator_positions/i, rows: [] },
       {
@@ -3156,16 +3229,24 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
       ),
     );
     assert.equal(body.data.position_count, 1);
-    assert.equal(body.data.positions[0].stake_tao, 50);
-    assert.equal(body.data.total_stake_alpha, 50);
+    assert.equal(body.data.schema_version, 2);
+    assert.equal(body.data.positions[0].hotkey, COUNTERPARTY);
+    assert.equal(body.data.positions[0].share_fraction, 0.5);
+    assert.equal(body.data.positions[0].stake_tao, null);
+    assert.equal(body.data.positions[0].alpha_rao, null);
+    assert.equal(body.data.positions[0].quantity_status, "unqualified");
+    assert.equal(body.data.total_stake_alpha, null);
+    assert.equal(
+      pg.control.queries.some((query) => /FROM neurons/i.test(query.text)),
+      false,
+    );
     const pageRead = q.find((query) => query.includes("coldkey ="));
     assert.match(pageRead!, /FROM chain\.nominator_positions/);
     assert.match(pageRead!, new RegExp(`coldkey = '${ADDR}'`));
   });
 
-  test("handleAccountPositions keeps the empty card when the stake leg is unreadable", async () => {
-    // No D1 binding: the reader declines rather than pricing a partial set,
-    // and the route serves the schema-stable empty it already had.
+  test("handleAccountPositions retains relationships when voting weight is unavailable", async () => {
+    // Unavailable voting weight must not erase an observed delegation relationship.
     lakeFetch([
       {
         hotkey: COUNTERPARTY,
@@ -3181,8 +3262,12 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
         ADDR,
       ),
     );
-    assert.equal(body.data.position_count, 0);
-    assert.equal(body.data.total_stake_alpha, 0);
+    assert.equal(body.data.position_count, 1);
+    assert.equal(body.data.positions[0].hotkey, COUNTERPARTY);
+    assert.equal(body.data.positions[0].alpha_rao, null);
+    assert.equal(body.data.positions[0].stake_tao, null);
+    assert.equal(body.data.positions[0].quantity_status, "unqualified");
+    assert.equal(body.data.total_stake_alpha, null);
   });
 });
 
@@ -5142,13 +5227,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
-        schema_version: 1,
-        sort: "subnet_count",
-        limit: 20,
-        captured_at: null,
-        block_number: null,
+        ...buildGlobalValidators([], { priceByNetuid: new Map() }),
         validator_count: 99,
-        validators: [],
       }),
     );
     const body = await json(
@@ -5167,18 +5247,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = dataApi(
       Response.json({
-        schema_version: 1,
-        hotkey: SS58,
-        coldkey: null,
-        coldkey_count: 0,
+        ...buildValidatorDetail([], SS58, { priceByNetuid: new Map() }),
         subnet_count: 99,
-        total_stake_tao: 0,
-        total_emission_tao: 0,
-        avg_validator_trust: null,
-        max_validator_trust: null,
-        captured_at: null,
-        block_number: null,
-        subnets: [],
       }),
     );
     const body = await json(
@@ -6110,7 +6180,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", neurons: [] }),
+        Response.json({ ...buildSubnetYield([], NETUID), marker: "pg" }),
     };
     const body = await json(
       await handleSubnetYield(
@@ -6199,7 +6269,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+      fetch: async () =>
+        Response.json({ ...buildChainYield([]), marker: "pg" }),
     };
     const body = await json(
       await handleChainYield(req("/api/v1/chain/yield"), env as unknown as Env),
@@ -6302,7 +6373,10 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", positions: [] }),
+        Response.json({
+          ...buildAccountPortfolio([], SS58, { priceByNetuid: new Map() }),
+          marker: "pg",
+        }),
     };
     const body = await json(
       await handleAccountPortfolio(
@@ -6378,7 +6452,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.ss58, SS58);
     assert.deepEqual(body.data.positions, []);
     assert.equal(body.data.position_count, 0);
-    assert.equal(body.data.total_stake_alpha, 0);
+    assert.equal(body.data.total_stake_alpha, null);
     assert.equal(body.data.degraded.reason, "tier_unavailable");
     assert.ok(
       captures.sql.some((sql: string) => /FROM nominator_positions/.test(sql)),
@@ -6391,7 +6465,10 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", accounts: [] }),
+        Response.json({
+          ...buildAccountsList([], { priceByNetuid: new Map() }),
+          marker: "pg",
+        }),
     };
     const body = await json(
       await handleAccountsList(
@@ -6425,7 +6502,10 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+        Response.json({
+          ...buildValidatorHistory([], SS58, { window: "30d" }),
+          marker: "pg",
+        }),
     };
     const body = await json(
       await handleValidatorHistory(
@@ -6521,7 +6601,10 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+        Response.json({
+          ...buildSubnetYieldHistory([], NETUID, { window: "30d" }),
+          marker: "pg",
+        }),
     };
     const body = await json(
       await handleSubnetYieldHistory(
@@ -6598,7 +6681,10 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
       fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+        Response.json({
+          ...buildAccountPositionHistory([], SS58, NETUID, { window: "30d" }),
+          marker: "pg",
+        }),
     };
     const body = await json(
       await handleAccountPositionHistory(
@@ -6621,9 +6707,18 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       fetch: async (request: Request) => {
         forwardedMethod = request.method;
         return Response.json({
-          schema_version: 1,
+          ...buildAccountPositionHistory(
+            [
+              {
+                captured_at: Date.parse("2026-07-13T00:00:00.000Z"),
+                snapshot_date: "2026-07-13",
+              },
+            ],
+            SS58,
+            NETUID,
+            { window: "30d" },
+          ),
           marker: "pg",
-          points: [{ captured_at: "2026-07-13T00:00:00.000Z" }],
         });
       },
     };

@@ -10779,10 +10779,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "with no UID -- the two disagree by design. IMPORTANT: alpha is NEVER " +
       "summed across subnets, because each subnet's alpha is a different " +
       "token; total_alpha is per subnet and the network block carries only " +
-      "counts plus the MEDIAN top-1 share. To compare holdings across subnets " +
-      "you must price each through its own alpha_price_tao -- get_top_holders " +
-      "already does that. sort is one of top1_share (default), top5_share, " +
-      "top10_share, top20_share, holder_count, total_alpha; a subnet whose " +
+      "counts plus the MEDIAN top-1 share. Exact alpha_rao and finalized " +
+      "provenance retain each subnet token's quantity. sort is one of " +
+      "top1_share (default), top5_share, top10_share, top20_share, holder_count; a subnet whose " +
       "share could not be computed sorts LAST rather than reading as the " +
       `least concentrated. limit caps the rows (default ${CHAIN_HOLDERS_LIMIT_DEFAULT}, max ${CHAIN_HOLDERS_LIMIT_MAX}), ` +
       "above the subnet count so ranking the whole network is one call. An " +
@@ -11079,14 +11078,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "positions and only 10 are registered there, so a registered-only source " +
       "misses most holders. Ranked in ALPHA, not TAO: within one subnet alpha " +
       "is already a common unit, so there is no price conversion and no price " +
-      "staleness -- multiply by the subnet's alpha_price_tao for TAO. limit " +
+      "staleness. Exact alpha_rao and finalized provenance identify the " +
+      "quantity snapshot; a spot-price estimate is not a wallet balance. limit " +
       `caps the rows (default ${SUBNET_HOLDERS_LIMIT_DEFAULT}, max ` +
       `${SUBNET_HOLDERS_LIMIT_MAX}); the aggregates are always computed over ` +
       "the FULL holder set, so holder_count is not the length of what you got " +
       "back. IMPORTANT: an empty `holders` list is NOT evidence that nobody " +
       "holds this subnet's alpha -- check `degraded.reason` first. " +
-      "`pool_totals_unproven` means the pool-total ledger has no complete pass " +
-      "yet and a ranking would silently underprice holders; " +
+      "`runtime_positions_unqualified` means there is no complete selected " +
+      "runtime-qualified Alpha capture; amounts cannot be inferred from weights. " +
       "`root_not_in_alpha_map` means netuid 0, which the chain's Alpha map does " +
       "not cover at all. Mainnet only. Mirrors GET " +
       "/api/v1/subnets/{netuid}/holders.",
