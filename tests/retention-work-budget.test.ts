@@ -24,18 +24,16 @@ const freshRuntime = () =>
   });
 
 for (const samples of [10000, 130000]) {
-  test(`lane retention measures ${samples} retained samples with all native projection triggers`, async () => {
+  test(`lane retention compares indexed trigger work at ${samples} samples`, async () => {
     const runtime = freshRuntime();
     try {
       const db = await runtime.getD1Database("DB");
-      // Seed before installing projections, then apply their real migrations.
-      // 10k covers 104 days at 15m; 130k covers 90.3 days at 1m.
-      // Both include an expired backlog and end at NOW, without future rows.
+      const apply = async (name: string) => {
+        for (const sql of ddl(name).split("-- statement-breakpoint"))
+          await db.prepare(sql).run();
+      };
       const tickMs = samples === 10000 ? 900000 : 60000;
-      for (const sql of ddl("0001_lane_health.sql").split(
-        "-- statement-breakpoint",
-      ))
-        await db.prepare(sql).run();
+      await apply("0001_lane_health.sql");
       await db
         .prepare(
           `WITH RECURSIVE n(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM n WHERE i<?)
@@ -44,75 +42,90 @@ for (const samples of [10000, 130000]) {
         )
         .bind(samples, NOW - samples * tickMs, tickMs)
         .run();
-      for (const name of [
-        "0002_lane_health_current.sql",
-        "0003_lane_health_history_indexes.sql",
-      ])
-        for (const sql of ddl(name).split("-- statement-breakpoint"))
-          await db.prepare(sql).run();
+      await apply("0002_lane_health_current.sql");
+      await apply("0003_lane_health_history_indexes.sql");
       const store = createD1Store(db);
-      let pruneSql = "";
-      let pruneValues: unknown[] = [];
-      let meta: D1Result["meta"] | undefined;
-      assert.equal(
-        await recordLaneVerdict(
-          {
-            ...store,
-            query: async () => {
-              throw new Error("capacity fixture");
+      const metrics: D1Result["meta"][] = [];
+      const plans: string[] = [];
+      for (const phase of ["before", "after"]) {
+        if (phase === "after")
+          await apply("0043_lane_health_retention_trigger_bounds.sql");
+        // Explain the actual installed trigger's old-clock successor update.
+        const trigger = await db
+          .prepare(
+            "SELECT sql FROM sqlite_master WHERE type='trigger' AND name='lane_health_clocks_delete'",
+          )
+          .first<string>("sql");
+        assert(trigger);
+        const update = trigger
+          .match(/UPDATE lane_health_clocks SET previous_at =[\s\S]*?;/)![0]
+          .replaceAll("OLD.lane", "'budget'")
+          .replaceAll(
+            "OLD.checked_at",
+            String(NOW - samples * tickMs + 21 * tickMs),
+          );
+        const plan = await db
+          .prepare(`EXPLAIN QUERY PLAN ${update}`)
+          .all<{ detail: string }>();
+        plans.push(plan.results.map((r) => r.detail).join("\n"));
+        let meta: D1Result["meta"] | undefined;
+        assert.equal(
+          await recordLaneVerdict(
+            {
+              ...store,
+              query: async () => {
+                throw new Error("capacity fixture");
+              },
+              run: async (sql, values = []) => {
+                const result = await db
+                  .prepare(sql)
+                  .bind(...values)
+                  .run();
+                meta = result.meta;
+                return { changes: result.meta.changes };
+              },
             },
-            run: async (sql, values = []) => {
-              pruneSql = sql;
-              pruneValues = values;
-              const result = await db
-                .prepare(sql)
-                .bind(...values)
-                .run();
-              meta = result.meta;
-              return { changes: result.meta.changes };
+            {
+              lane: "budget",
+              verdict: "stale",
+              age_ms: null,
+              detail: null,
+              checked_at: NOW,
             },
-          },
-          {
-            lane: "budget",
-            verdict: "stale",
-            age_ms: null,
-            detail: null,
-            checked_at: NOW,
-          },
-          { confirm: true },
-        ),
-        false,
+            { confirm: true },
+          ),
+          false,
+        );
+        assert(meta);
+        metrics.push(meta);
+        console.info(
+          "retention_work",
+          JSON.stringify({
+            family: "lane_health",
+            phase,
+            samples,
+            direct_limit: 20,
+            direct_deletions: 20,
+            plan: plans.at(-1),
+            ...meta,
+          }),
+        );
+        if (phase === "after") {
+          assert(meta.rows_read <= 800, JSON.stringify(meta));
+          assert(meta.rows_written <= 400, JSON.stringify(meta));
+        }
+      }
+      assert(metrics[0].rows_read > metrics[1].rows_read * 100);
+      assert.match(
+        plans[1],
+        /SEARCH lane_health_clocks USING PRIMARY KEY \(lane=\? AND checked_at=\?\)/,
       );
-      assert(meta);
-      // D1 changes includes trigger mutations. The history count below proves
-      // the 20 direct deletions separately from this projection work.
-      assert(meta.changes >= 20);
-      const plan = await db
-        .prepare(`EXPLAIN QUERY PLAN ${pruneSql}`)
-        .bind(...pruneValues)
-        .all<{ detail: string }>();
-      const details = plan.results.map((row) => row.detail).join("\n");
-      assert.match(details, /idx_lane_health_lane_checked/);
-      assert.doesNotMatch(details, /USE TEMP B-TREE/);
-      // Explicitly budget trigger amplification for the measured fixture size.
-      // This is not a claim that trigger reads are independent of history size.
-      assert(meta.rows_read <= 20 * (samples * 2 + 100), JSON.stringify(meta));
-      assert(meta.rows_written <= 20 * 20, JSON.stringify(meta));
-      console.info(
-        "retention_work",
-        JSON.stringify({
-          family: "lane_health",
-          samples,
-          direct_limit: 20,
-          direct_deletions: 20,
-          ...meta,
-        }),
-      );
+      assert.doesNotMatch(plans[1], /SCAN lane_health_clocks|USE TEMP B-TREE/);
       assert.equal(
         (await store.first<{ n: number }>(
           "SELECT count(*) AS n FROM lane_health WHERE lane='budget'",
         ))!.n,
-        samples - 20,
+        samples - 40,
       );
       const mismatch = await store.first<{
         n: number;

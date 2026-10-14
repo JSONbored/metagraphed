@@ -48,6 +48,7 @@ beforeAll(async () => {
     "0001_lane_health.sql",
     "0002_lane_health_current.sql",
     "0003_lane_health_history_indexes.sql",
+    "0043_lane_health_retention_trigger_bounds.sql",
   ]) {
     for (const sql of migration(`d1/${name}`).split("-- statement-breakpoint"))
       await db.prepare(sql).run();
@@ -374,5 +375,54 @@ test("PostgreSQL burn cleanup survives a lost commit reply and keeps capture unc
       )
     ).rows[0].n,
     1,
+  );
+});
+
+test("PostgreSQL packet confirms only exact replies across 50 attempts without replay", async () => {
+  await pg.query(
+    "INSERT INTO lane_health(lane,verdict,checked_at) SELECT 'pg-packet','stale',$1::bigint-i FROM generate_series(1,45) i",
+    [cutoff],
+  );
+  const native = pgHealth();
+  let attempts = 0;
+  let cleanups = 0;
+  let confirmed = 0;
+  const store = {
+    ...native,
+    query: async (sql: string, values?: unknown[]) => {
+      attempts++;
+      if (attempts > 26) throw new Error("rejected before commit");
+      const rows = await native.query(sql, values);
+      if (attempts === 26) throw new Error("lost committed reply");
+      return rows;
+    },
+    run: async (sql: string, values?: unknown[]) => {
+      cleanups++;
+      return native.run(sql, values);
+    },
+  };
+  for (let i = 0; i < 50; i++)
+    if (await recordLaneVerdict(store, verdict("pg-packet"), { confirm: true }))
+      confirmed++;
+  assert.equal(confirmed, 25);
+  assert.equal(attempts, 50);
+  assert.equal(cleanups, 50);
+  assert.equal(
+    (
+      await pg.query<{ n: number }>(
+        "SELECT count(*)::int AS n FROM lane_health WHERE lane='pg-packet' AND checked_at=$1",
+        [NOW],
+      )
+    ).rows[0].n,
+    26,
+  );
+  assert.equal(
+    (
+      await pg.query<{ n: number }>(
+        "SELECT count(*)::int AS n FROM lane_health WHERE lane='pg-packet' AND checked_at<$1",
+        [cutoff],
+      )
+    ).rows[0].n,
+    0,
   );
 });
