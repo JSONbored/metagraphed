@@ -78,7 +78,9 @@ function record(row: Intent, now: number): Row {
         : row.state,
     round: row.round,
     reason: uncertain
-      ? `outcome-unknown; at-least-once retry may repeat a remote effect${row.reason ? `; ${row.reason}` : ""}`
+      ? row.reason?.includes("outcome-unknown")
+        ? row.reason
+        : `outcome-unknown; at-least-once retry may repeat a remote effect${row.reason ? `; ${row.reason}` : ""}`
       : row.reason,
     status_code: row.status_code,
     last_attempt_at: iso(row.last_attempt_at),
@@ -504,14 +506,19 @@ export function webhookLedgerD1(db: D1StoreBinding) {
       if (events.length > 256)
         throw new Error("Webhook status ownership batch exceeds its budget");
       if (!events.length) return [];
-      const rows = await db
-        .prepare(
-          projection +
-            " WHERE i.subscription_id=? AND i.event_id IN (SELECT value FROM json_each(?)) AND i.expires_at>?",
-        )
-        .bind(s, JSON.stringify(events), now)
-        .all<ProvenIntent>();
-      return rows.results.map((r) => record(proven(r), now));
+      const rows: ProvenIntent[] = [];
+      for (let offset = 0; offset < events.length; offset += 98) {
+        const keys = events.slice(offset, offset + 98);
+        const result = await db
+          .prepare(
+            projection +
+              ` WHERE i.subscription_id=? AND i.event_id IN (${keys.map(() => "?").join(",")}) AND i.expires_at>?`,
+          )
+          .bind(s, ...keys, now)
+          .all<ProvenIntent>();
+        rows.push(...result.results);
+      }
+      return rows.map((r) => record(proven(r), now));
     },
     /** Queue+DLQ retention is at most14days each. Past32 inactive days,
      * no transport message can survive; retain a terminal unknown outcome.

@@ -41,7 +41,11 @@ async function setup() {
       return values.get(key) ?? null;
     },
     async put(key: string, value: string) {
-      values.set(key, JSON.parse(value));
+      try {
+        values.set(key, JSON.parse(value));
+      } catch {
+        values.set(key, value);
+      }
     },
     async list({ prefix }: { prefix: string }) {
       return {
