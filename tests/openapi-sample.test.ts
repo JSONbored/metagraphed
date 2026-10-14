@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { z } from "zod";
+import { AccountPositionsArtifactSchema } from "../schemas-src/routes/account-positions.ts";
+import { SubnetYieldArtifactSchema } from "../schemas-src/routes/subnet-yield.ts";
+import { buildSubnetYield } from "../src/subnet-yield.ts";
 import { describe, test } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
@@ -251,6 +255,53 @@ describe("sampleFromSchema", () => {
     // allOf whose only member is a scalar -> returns that scalar
     assert.equal(s({ allOf: [{ const: "x" }] }), "x");
     assert.equal(s({ allOf: [{ type: "string" }] }), "example");
+  });
+
+  test("subnet yield example preserves observed weights and withholds unsupported returns", () => {
+    const out = s(z.toJSONSchema(SubnetYieldArtifactSchema));
+    assert.deepEqual(
+      out,
+      buildSubnetYield(
+        [
+          {
+            uid: 0,
+            hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            validator_permit: 1,
+            stake_tao: 10,
+            emission_tao: 2,
+            captured_at: Date.parse("2026-06-01T00:00:00.000Z"),
+            block_number: 5000000,
+          },
+          {
+            uid: 1,
+            hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            validator_permit: 0,
+            stake_tao: 5,
+            emission_tao: 2,
+            captured_at: Date.parse("2026-06-01T00:00:00.000Z"),
+            block_number: 5000000,
+          },
+        ],
+        7,
+      ),
+    );
+    assert.equal(SubnetYieldArtifactSchema.safeParse(out).success, true);
+    assert.deepEqual(
+      out.neurons.map((row: Row) => row.voting_weight),
+      [10, 5],
+    );
+    assert.equal(out.subnet_yield, null);
+  });
+
+  test("position examples retain relationships without fabricated capture evidence", () => {
+    const out = s(z.toJSONSchema(AccountPositionsArtifactSchema));
+    assert.equal(AccountPositionsArtifactSchema.safeParse(out).success, true);
+    assert.equal(out.positions.length, 1);
+    assert.equal(out.total_stake_alpha, null);
+    assert.equal(out.positions[0].alpha_rao, null);
+    assert.equal(out.positions[0].stake_tao, null);
+    assert.equal(out.positions[0].quantity_status, "unqualified");
+    assert.equal(out.positions[0].provenance, null);
   });
 
   test("counterparty relationship samples keep totals consistent with evidence", () => {

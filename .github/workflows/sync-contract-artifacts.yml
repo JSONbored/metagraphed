@@ -84,6 +84,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Generate source-branch Worker binding types
+        if: inputs.prepare_only == true
+        run: npm run types:workers
+
       - name: Build source-branch SDK artifacts
         if: inputs.prepare_only == true
         run: npm run build --workspace=packages/client
@@ -121,7 +125,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/source-contracts"
           git rev-parse HEAD > "$RUNNER_TEMP/source-contracts/source-head.txt"
-          git diff --name-only -- public/metagraph/openapi.json public/metagraph/contracts.json public/metagraph/api-index.json public/metagraph/types.d.ts generated/graphql generated/metagraphed-client.ts packages/contract packages/client/dist apps/ui/content/docs/api-reference > "$RUNNER_TEMP/source-contracts/paths.txt"
+          git diff --name-only -- public/metagraph/openapi.json public/metagraph/contracts.json public/metagraph/api-index.json public/metagraph/types.d.ts generated/graphql generated/metagraphed-client.ts packages/contract packages/client/dist apps/ui/content/docs/api-reference workers/worker-configuration.d.ts workers/data-api.worker-configuration.d.ts workers/registry-sync-api.worker-configuration.d.ts workers/wss-lb.worker-configuration.d.ts > "$RUNNER_TEMP/source-contracts/paths.txt"
           while IFS= read -r file; do
             test -f "$file"
             mkdir -p "$RUNNER_TEMP/source-contracts/$(dirname "$file")"
@@ -148,7 +152,7 @@ jobs:
         if: inputs.prepare_only == true
         id: quantity_backend
         continue-on-error: true
-        run: npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts tests/account-nominator-positions.test.ts tests/published-query-bindings.test.ts tests/neon-sole-store-tables-exist.test.ts tests/neon-flag-config-parity.test.ts tests/read-store-tables-match-the-sql.test.ts tests/alpha-snapshot-d1.test.ts tests/self-stake-snapshot-d1.test.ts
+        run: npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts tests/account-nominator-positions.test.ts tests/published-query-bindings.test.ts tests/neon-sole-store-tables-exist.test.ts tests/neon-flag-config-parity.test.ts tests/read-store-tables-match-the-sql.test.ts tests/alpha-snapshot-d1.test.ts tests/self-stake-snapshot-d1.test.ts tests/openapi-sample.test.ts tests/search-quality.test.ts
 
       - name: Complete UI quantity regressions
         if: inputs.prepare_only == true

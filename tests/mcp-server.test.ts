@@ -23056,10 +23056,25 @@ describe("MCP get_account_snapshot", () => {
       alpha_amount: null,
       observed_at: 1_750_009_000_000,
     };
+    const POSITION = {
+      hotkey: "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+      netuid: 7,
+      share_fraction: 0.25,
+      captured_at: 1_750_000_000_000,
+    };
     globalThis.fetch = (async (_url: string, init?: RequestInit) => {
       const body = String(init?.body ?? "");
-      if (body.includes("chain.nominator_positions"))
+      if (body.includes("alpha_snapshot_passes"))
         return Response.json({ success: true, result: { rows: [] } });
+      if (body.includes("chain.nominator_positions"))
+        return Response.json({
+          success: true,
+          result: {
+            rows: body.includes("MAX(captured_at)")
+              ? [{ latest: POSITION.captured_at }]
+              : [POSITION],
+          },
+        });
       if (body.includes("chain.account_events")) {
         return {
           ok: true,
@@ -23085,26 +23100,14 @@ describe("MCP get_account_snapshot", () => {
         }),
       };
     }) as unknown as typeof globalThis.fetch;
-    // The positions view reads its own ledger and capture stamp. A legacy
-    // relationship capture preserves the row without assigning a token amount.
-    const POSITION_HOTKEY = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
+    // The active native fixture reads the relationship and ledger stamp over
+    // HTTP. No completed runtime capture qualifies an amount for this row.
     pg.control.answers = [
-      { match: /MAX\(captured_at\)/i, rows: [{ latest: 1_750_000_000_000 }] },
       {
-        match: /FROM neurons/i,
-        rows: [{ hotkey: POSITION_HOTKEY, netuid: 7, stake_tao: 100 }],
+        match: /MAX\(captured_at\)/i,
+        rows: [{ latest: POSITION.captured_at }],
       },
-      {
-        match: /FROM nominator_positions/i,
-        rows: [
-          {
-            hotkey: POSITION_HOTKEY,
-            netuid: 7,
-            share_fraction: 0.25,
-            captured_at: 1_750_000_000_000,
-          },
-        ],
-      },
+      { match: /FROM nominator_positions/i, rows: [POSITION] },
     ];
     const env = {
       ...pgMockEnv(["nominator_positions", "neurons"]),
@@ -23160,11 +23163,17 @@ describe("MCP get_account_snapshot", () => {
       assert.equal(out.ss58, SS58);
       assert.equal(out.balance.balance_tao, 2.5);
       assert.equal(out.portfolio.position_count, 2);
+      assert.equal(out.portfolio.schema_version, 2);
+      assert.equal(out.portfolio.total_stake_tao, null);
       assert.equal(out.subnets.subnet_count, 3);
       assert.equal(
         out.positions.position_count,
         1,
         "the positions view must come from the store, not a tier that 503s",
+      );
+      assert.deepEqual(
+        out.positions,
+        buildAccountPositions([POSITION], null, SS58),
       );
       assert.equal(
         out.recent_events.events[0].event_kind,

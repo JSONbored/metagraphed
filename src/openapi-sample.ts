@@ -8,6 +8,7 @@
 // responses rather than bare placeholders. Validity is enforced downstream by
 // scripts/validate-openapi-examples.ts (ajv against each operation's schema).
 
+import { buildSubnetYield } from "./subnet-yield.ts";
 import { LIVE_CRON_PROBER } from "./field-provenance.ts";
 export type Schema = Record<string, unknown>;
 type Sample = Record<string, unknown>;
@@ -242,42 +243,34 @@ function normalizeSubnetYieldSample(out: Sample): Sample {
   ) {
     return out;
   }
-  // A two-neuron, internally consistent worked example: a validator earning 0.2 and a
-  // miner earning 0.4 emission-per-stake. The derived distribution (subnet aggregate
-  // 4/15, mean 0.3, median/percentiles) and the per-UID vs-median labels all line up —
-  // the generic per-field generator cannot satisfy yield = emission/stake on its own.
-  out.neurons = [
-    {
-      uid: 1,
-      hotkey: SAMPLE_SS58,
-      role: "miner",
-      stake_tao: 5,
-      emission_tao: 2,
-      yield: 0.4,
-      vs_median: "above",
-    },
-    {
-      uid: 0,
-      hotkey: SAMPLE_SS58,
-      role: "validator",
-      stake_tao: 10,
-      emission_tao: 2,
-      yield: 0.2,
-      vs_median: "below",
-    },
-  ];
-  out.neuron_count = 2;
-  out.validator_count = 1;
-  out.miner_count = 1;
-  out.total_stake_alpha = 15;
-  out.total_emission_alpha = 4;
-  out.subnet_yield = 0.266666667;
-  out.mean_yield = 0.3;
-  // Conventional median of the two yields [0.2, 0.4] -> (0.2 + 0.4) / 2.
-  out.median_yield = 0.3;
-  out.p25_yield = 0.2;
-  out.p75_yield = 0.4;
-  out.p90_yield = 0.4;
+  // Reuse the serving builder: observed voting weight and scoped emissions
+  // survive, while unsupported holdings and investment yields stay unknown.
+  Object.assign(
+    out,
+    buildSubnetYield(
+      [
+        {
+          uid: 0,
+          hotkey: SAMPLE_SS58,
+          validator_permit: 1,
+          stake_tao: 10,
+          emission_tao: 2,
+          captured_at: Date.parse(ISO),
+          block_number: 5000000,
+        },
+        {
+          uid: 1,
+          hotkey: SAMPLE_SS58,
+          validator_permit: 0,
+          stake_tao: 5,
+          emission_tao: 2,
+          captured_at: Date.parse(ISO),
+          block_number: 5000000,
+        },
+      ],
+      out.netuid,
+    ),
+  );
   return out;
 }
 
@@ -873,6 +866,15 @@ function normalizeSubnetStakeTransfersSample(out: Sample): Sample {
 }
 
 function normalizeObjectSample(out: Sample): Sample {
+  // A generic schema sample carries no qualified runtime/capture evidence.
+  // Preserve the relationship without inventing an exact asset quantity.
+  if ("alpha_rao" in out) {
+    out.alpha_rao = null;
+    out.quantity_status = "unqualified";
+    out.provenance = null;
+    out.stake_tao = null;
+  }
+  if ("total_stake_alpha" in out) out.total_stake_alpha = null;
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
   normalizeAccountStakeFlowSample(out);

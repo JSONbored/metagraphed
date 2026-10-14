@@ -195,7 +195,7 @@ export async function topHoldersHoldings(
   const balances = await latestCompleteAccountBalancesPass(db);
   if (!mayRankAccountBalances(balances)) return null;
   try {
-    const results = await db.query<Record<string, unknown>>(
+    const results = await db.query<{ ss58: unknown; free_tao: unknown }>(
       topHoldersHoldingsSql({ free: true, delegated: false }, cap),
     );
     const cells = new Map<string, HoldingsCells>();

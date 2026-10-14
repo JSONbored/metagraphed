@@ -89,7 +89,27 @@ test.describe("Validator detail secondary query states", () => {
     ].map((path) => page.waitForResponse((response) => new URL(response.url()).pathname === path));
     release?.();
     await Promise.all(completedReads);
-    await expect(history).not.toHaveAttribute("aria-busy", "true");
+    // The read completes, but voting-weight history cannot supply native
+    // holdings or a yield denominator. Clear the loading chart and preserve
+    // explicit unknown values rather than plotting a balance or a zero.
+    await expect(history).toHaveCount(0);
+    const momentum = page.locator("#momentum");
+    await expect(
+      momentum.getByText("30d · daily observations · holdings and yield unavailable"),
+    ).toBeVisible();
+    await expect(
+      momentum.getByText("Loading 30d stake and yield history · chain-direct"),
+    ).toHaveCount(0);
+    await expect(momentum.getByRole("alert")).toHaveCount(0);
+    await expect(
+      momentum
+        .locator(".mg-fact")
+        .filter({ hasText: "Stake value 30d ago" })
+        .getByRole("definition"),
+    ).toHaveText("—");
+    await expect(
+      momentum.locator(".mg-fact").filter({ hasText: "Yield 30d ago" }).getByRole("definition"),
+    ).toHaveText("—");
     await expect(peers).not.toHaveAttribute("aria-busy", "true");
   });
 
