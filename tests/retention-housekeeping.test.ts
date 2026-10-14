@@ -203,7 +203,7 @@ test("lost verdict acknowledgement does not replay and cleanup retains the stric
 
 test("PostgreSQL uses a statement-local ctid and retains all latest ties after rejection", async () => {
   await pg.query(
-    "INSERT INTO lane_health(lane,verdict,checked_at) SELECT 'pg-failed','ok',$1-i FROM generate_series(1,250) i",
+    "INSERT INTO lane_health(lane,verdict,checked_at) SELECT 'pg-failed','ok',$1::bigint-i FROM generate_series(1,250) i",
     [cutoff - 1],
   );
   await pg.query(
@@ -327,7 +327,7 @@ test("failed burn transaction is atomic, expires only the bounded old slice and 
 
 test("PostgreSQL burn cleanup survives a lost commit reply and keeps capture unconfirmed", async () => {
   await pg.query(
-    "INSERT INTO subnet_burn_history(netuid,observed_at,burn_tao) SELECT 1,$1-i,1 FROM generate_series(1,2100) i",
+    "INSERT INTO subnet_burn_history(netuid,observed_at,burn_tao) SELECT 1,$1::bigint-i,1 FROM generate_series(1,2100) i",
     [cutoff],
   );
   let attempts = 0;
