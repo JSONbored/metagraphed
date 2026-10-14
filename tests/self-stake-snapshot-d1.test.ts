@@ -274,7 +274,13 @@ test("receipt acknowledgement fails closed on a missing, changed or unapplied re
   ])
     await assert.rejects(
       writeSelfStakeSnapshotD1(
-        { ...native, first: async () => receipt as never },
+        {
+          ...native,
+          first: async <Result>(text: string, values: unknown[] = []) =>
+            text.includes("sqlite_master")
+              ? native.first<Result>(text, values)
+              : (receipt as Result | null),
+        },
         [row()],
         snapshot(),
         stamp + 20,

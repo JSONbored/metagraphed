@@ -545,3 +545,20 @@ test("exporter upgrade precedes DDL and rollback is unsafe before first selectio
     ),
   );
 });
+
+test("a multi-chunk packet cannot exceed its whole-pass row census before native I/O", async () => {
+  const db = await fixture();
+  const read = vi.spyOn(db, "prepare");
+  await assert.rejects(
+    () =>
+      write(
+        db,
+        packet([row("a"), row("b"), row("c")], {
+          total_rows: 2,
+          total_chunks: 2,
+        }),
+      ),
+    /census/,
+  );
+  assert.equal(read.mock.calls.length, 0);
+});

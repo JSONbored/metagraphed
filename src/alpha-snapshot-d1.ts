@@ -87,6 +87,7 @@ function qualified(value: unknown, now: number) {
     !Number.isSafeInteger(now) ||
     now < s.captured_at ||
     s.index >= s.total_chunks ||
+    parsed.rows.length > s.total_rows ||
     s.total_rows > s.scanned_legacy + s.scanned_v2 ||
     s.total_rows > s.total_chunks * 2500 ||
     (s.total_rows === 0
