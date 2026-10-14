@@ -70,7 +70,10 @@ describe("recordLaneVerdict", () => {
         detail: inserted.detail,
       });
       const { db, calls } = fakeDb([{ ...inserted }]);
-      assert.equal(await recordLaneVerdict(db, source, { confirm: true }), true);
+      assert.equal(
+        await recordLaneVerdict(db, source, { confirm: true }),
+        true,
+      );
       assert.match(
         calls[0].sql,
         /RETURNING lane, verdict, age_ms, detail, checked_at$/,
@@ -109,7 +112,10 @@ describe("recordLaneVerdict", () => {
 
   test("a confirmed insert survives a failed retention prune", async () => {
     const { db } = fakeDb([{ ...record() }], { failOnRun: true });
-    assert.equal(await recordLaneVerdict(db, record(), { confirm: true }), true);
+    assert.equal(
+      await recordLaneVerdict(db, record(), { confirm: true }),
+      true,
+    );
   });
 
   test("writes the verdict with its lane, age and detail", async () => {
