@@ -654,6 +654,7 @@ test("receiver-owned pending identity survives restart and lost acknowledgements
     D1_STATE_TABLES: "nominator_positions",
     NOMINATOR_POSITIONS_SYNC_SECRET: "fixture-token",
   });
+  const ctx = {} as ExecutionContext;
   const request = (body: Row, secret = "fixture-token") =>
     new Request(
       "https://api.metagraph.sh/api/v1/internal/nominator-positions-sync",
@@ -664,12 +665,18 @@ test("receiver-owned pending identity survives restart and lost acknowledgements
       },
     );
   assert.equal(
-    (await worker.fetch(request({ alpha_snapshot_resume: true }, "wrong"), env))
-      .status,
+    (
+      await worker.fetch(
+        request({ alpha_snapshot_resume: true }, "wrong"),
+        env,
+        ctx,
+      )
+    ).status,
     401,
   );
   assert.equal(
-    (await worker.fetch(request({ alpha_snapshot_resume: false }), env)).status,
+    (await worker.fetch(request({ alpha_snapshot_resume: false }), env, ctx))
+      .status,
     400,
   );
   assert.equal(
@@ -677,13 +684,14 @@ test("receiver-owned pending identity survives restart and lost acknowledgements
       await worker.fetch(
         request({ alpha_snapshot_resume: true, rows: [] }),
         env,
+        ctx,
       )
     ).status,
     400,
   );
   assert.deepEqual(
     await (
-      await worker.fetch(request({ alpha_snapshot_resume: true }), env)
+      await worker.fetch(request({ alpha_snapshot_resume: true }), env, ctx)
     ).json(),
     { ok: true, alpha_snapshot_resume: null },
   );
@@ -692,6 +700,7 @@ test("receiver-owned pending identity survives restart and lost acknowledgements
       await worker.fetch(
         request({ alpha_snapshot_resume: true }),
         dataApiEnv({ NOMINATOR_POSITIONS_SYNC_SECRET: "fixture-token" }),
+        ctx,
       )
     ).status,
     503,
