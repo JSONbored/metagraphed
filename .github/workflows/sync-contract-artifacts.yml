@@ -125,7 +125,7 @@ jobs:
         if: inputs.prepare_only == true
         id: quantity_backend
         continue-on-error: true
-        run: npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts
+        run: npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts tests/account-nominator-positions.test.ts tests/published-query-bindings.test.ts tests/neon-sole-store-tables-exist.test.ts tests/neon-flag-config-parity.test.ts tests/read-store-tables-match-the-sql.test.ts
 
       - name: Complete UI quantity regressions
         if: inputs.prepare_only == true

@@ -28937,17 +28937,7 @@
             ]
           },
           "degraded": {
-            "additionalProperties": false,
-            "properties": {
-              "reason": {
-                "const": "holdings_unqualified",
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/HoldingsUnavailable"
           },
           "distribution": {
             "anyOf": [
@@ -38743,6 +38733,19 @@
           "netuid",
           "source",
           "windows"
+        ],
+        "type": "object"
+      },
+      "HoldingsUnavailable": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "const": "holdings_unqualified",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
         ],
         "type": "object"
       },
@@ -62126,17 +62129,7 @@
             ]
           },
           "degraded": {
-            "additionalProperties": false,
-            "properties": {
-              "reason": {
-                "const": "holdings_unqualified",
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/HoldingsUnavailable"
           },
           "mean_yield": {
             "anyOf": [
@@ -62363,17 +62356,7 @@
         "description": "Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup.",
         "properties": {
           "degraded": {
-            "additionalProperties": false,
-            "properties": {
-              "reason": {
-                "const": "holdings_unqualified",
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/HoldingsUnavailable"
           },
           "netuid": {
             "maximum": 9007199254740991,

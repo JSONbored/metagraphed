@@ -1976,7 +1976,7 @@ export type ChainWeightsSubnet = {
 export type ChainYield = {
   __typename?: 'ChainYield';
   captured_at?: Maybe<Scalars['String']['output']>;
-  degraded: ChainYieldArtifactDegraded;
+  degraded: DegradedInfo;
   distribution?: Maybe<YieldDistribution>;
   miner_count?: Maybe<Scalars['Int']['output']>;
   miner_yield?: Maybe<Scalars['Float']['output']>;
@@ -1991,11 +1991,6 @@ export type ChainYield = {
   total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
   validator_yield?: Maybe<Scalars['Float']['output']>;
-};
-
-export type ChainYieldArtifactDegraded = {
-  __typename?: 'ChainYieldArtifactDegraded';
-  reason: Scalars['String']['output'];
 };
 
 export type Changelog = {
@@ -7972,7 +7967,7 @@ export type SubnetYield = {
   __typename?: 'SubnetYield';
   block_number?: Maybe<Scalars['Int']['output']>;
   captured_at?: Maybe<Scalars['String']['output']>;
-  degraded: SubnetYieldArtifactDegraded;
+  degraded: DegradedInfo;
   mean_yield?: Maybe<Scalars['Float']['output']>;
   median_yield?: Maybe<Scalars['Float']['output']>;
   miner_count: Scalars['Int']['output'];
@@ -7990,26 +7985,16 @@ export type SubnetYield = {
   validator_count: Scalars['Int']['output'];
 };
 
-export type SubnetYieldArtifactDegraded = {
-  __typename?: 'SubnetYieldArtifactDegraded';
-  reason: Scalars['String']['output'];
-};
-
 /** Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup. */
 export type SubnetYieldHistory = {
   __typename?: 'SubnetYieldHistory';
-  degraded: SubnetYieldHistoryArtifactDegraded;
+  degraded: DegradedInfo;
   netuid: Scalars['Int']['output'];
   point_count: Scalars['Int']['output'];
   points: Array<SubnetYieldHistoryPoint>;
   schema_version: Scalars['Int']['output'];
   /** The resolved window label (7d/30d/90d). */
   window?: Maybe<Scalars['String']['output']>;
-};
-
-export type SubnetYieldHistoryArtifactDegraded = {
-  __typename?: 'SubnetYieldHistoryArtifactDegraded';
-  reason: Scalars['String']['output'];
 };
 
 export type SubnetYieldHistoryPoint = {
@@ -8713,7 +8698,6 @@ export type ResolversTypes = ResolversObject<{
   ChainWeightsNetwork: ResolverTypeWrapper<ChainWeightsNetwork>;
   ChainWeightsSubnet: ResolverTypeWrapper<ChainWeightsSubnet>;
   ChainYield: ResolverTypeWrapper<ChainYield>;
-  ChainYieldArtifactDegraded: ResolverTypeWrapper<ChainYieldArtifactDegraded>;
   Changelog: ResolverTypeWrapper<Changelog>;
   ChangelogArtifactArtifacts: ResolverTypeWrapper<ChangelogArtifactArtifacts>;
   ChangelogArtifactSubnets: ResolverTypeWrapper<ChangelogArtifactSubnets>;
@@ -8995,9 +8979,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetWeightSetters: ResolverTypeWrapper<SubnetWeightSetters>;
   SubnetWeights: ResolverTypeWrapper<SubnetWeights>;
   SubnetYield: ResolverTypeWrapper<SubnetYield>;
-  SubnetYieldArtifactDegraded: ResolverTypeWrapper<SubnetYieldArtifactDegraded>;
   SubnetYieldHistory: ResolverTypeWrapper<SubnetYieldHistory>;
-  SubnetYieldHistoryArtifactDegraded: ResolverTypeWrapper<SubnetYieldHistoryArtifactDegraded>;
   SubnetYieldHistoryPoint: ResolverTypeWrapper<SubnetYieldHistoryPoint>;
   SubnetYieldNeuron: ResolverTypeWrapper<SubnetYieldNeuron>;
   Subscription: ResolverTypeWrapper<Record<PropertyKey, never>>;
@@ -9189,7 +9171,6 @@ export type ResolversParentTypes = ResolversObject<{
   ChainWeightsNetwork: ChainWeightsNetwork;
   ChainWeightsSubnet: ChainWeightsSubnet;
   ChainYield: ChainYield;
-  ChainYieldArtifactDegraded: ChainYieldArtifactDegraded;
   Changelog: Changelog;
   ChangelogArtifactArtifacts: ChangelogArtifactArtifacts;
   ChangelogArtifactSubnets: ChangelogArtifactSubnets;
@@ -9470,9 +9451,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetWeightSetters: SubnetWeightSetters;
   SubnetWeights: SubnetWeights;
   SubnetYield: SubnetYield;
-  SubnetYieldArtifactDegraded: SubnetYieldArtifactDegraded;
   SubnetYieldHistory: SubnetYieldHistory;
-  SubnetYieldHistoryArtifactDegraded: SubnetYieldHistoryArtifactDegraded;
   SubnetYieldHistoryPoint: SubnetYieldHistoryPoint;
   SubnetYieldNeuron: SubnetYieldNeuron;
   Subscription: Record<PropertyKey, never>;
@@ -11033,7 +11012,7 @@ export type ChainWeightsSubnetResolvers<ContextType = GqlContext, ParentType ext
 
 export type ChainYieldResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainYield'] = ResolversParentTypes['ChainYield']> = ResolversObject<{
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  degraded?: Resolver<ResolversTypes['ChainYieldArtifactDegraded'], ParentType, ContextType>;
+  degraded?: Resolver<ResolversTypes['DegradedInfo'], ParentType, ContextType>;
   distribution?: Resolver<Maybe<ResolversTypes['YieldDistribution']>, ParentType, ContextType>;
   miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   miner_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -11045,10 +11024,6 @@ export type ChainYieldResolvers<ContextType = GqlContext, ParentType extends Res
   total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-}>;
-
-export type ChainYieldArtifactDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainYieldArtifactDegraded'] = ResolversParentTypes['ChainYieldArtifactDegraded']> = ResolversObject<{
-  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type ChangelogResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Changelog'] = ResolversParentTypes['Changelog']> = ResolversObject<{
@@ -14456,7 +14431,7 @@ export type SubnetWeightsResolvers<ContextType = GqlContext, ParentType extends 
 export type SubnetYieldResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYield'] = ResolversParentTypes['SubnetYield']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  degraded?: Resolver<ResolversTypes['SubnetYieldArtifactDegraded'], ParentType, ContextType>;
+  degraded?: Resolver<ResolversTypes['DegradedInfo'], ParentType, ContextType>;
   mean_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   median_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   miner_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -14473,21 +14448,13 @@ export type SubnetYieldResolvers<ContextType = GqlContext, ParentType extends Re
   validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
-export type SubnetYieldArtifactDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldArtifactDegraded'] = ResolversParentTypes['SubnetYieldArtifactDegraded']> = ResolversObject<{
-  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-}>;
-
 export type SubnetYieldHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldHistory'] = ResolversParentTypes['SubnetYieldHistory']> = ResolversObject<{
-  degraded?: Resolver<ResolversTypes['SubnetYieldHistoryArtifactDegraded'], ParentType, ContextType>;
+  degraded?: Resolver<ResolversTypes['DegradedInfo'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['SubnetYieldHistoryPoint']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type SubnetYieldHistoryArtifactDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldHistoryArtifactDegraded'] = ResolversParentTypes['SubnetYieldHistoryArtifactDegraded']> = ResolversObject<{
-  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type SubnetYieldHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldHistoryPoint'] = ResolversParentTypes['SubnetYieldHistoryPoint']> = ResolversObject<{
@@ -14999,7 +14966,6 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainWeightsNetwork?: ChainWeightsNetworkResolvers<ContextType>;
   ChainWeightsSubnet?: ChainWeightsSubnetResolvers<ContextType>;
   ChainYield?: ChainYieldResolvers<ContextType>;
-  ChainYieldArtifactDegraded?: ChainYieldArtifactDegradedResolvers<ContextType>;
   Changelog?: ChangelogResolvers<ContextType>;
   ChangelogArtifactArtifacts?: ChangelogArtifactArtifactsResolvers<ContextType>;
   ChangelogArtifactSubnets?: ChangelogArtifactSubnetsResolvers<ContextType>;
@@ -15277,9 +15243,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetWeightSetters?: SubnetWeightSettersResolvers<ContextType>;
   SubnetWeights?: SubnetWeightsResolvers<ContextType>;
   SubnetYield?: SubnetYieldResolvers<ContextType>;
-  SubnetYieldArtifactDegraded?: SubnetYieldArtifactDegradedResolvers<ContextType>;
   SubnetYieldHistory?: SubnetYieldHistoryResolvers<ContextType>;
-  SubnetYieldHistoryArtifactDegraded?: SubnetYieldHistoryArtifactDegradedResolvers<ContextType>;
   SubnetYieldHistoryPoint?: SubnetYieldHistoryPointResolvers<ContextType>;
   SubnetYieldNeuron?: SubnetYieldNeuronResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;

@@ -2552,7 +2552,7 @@ type SubnetYield {
   p75_yield: Float
   p90_yield: Float
   neurons: [SubnetYieldNeuron!]!
-  degraded: SubnetYieldArtifactDegraded!
+  degraded: DegradedInfo!
 }
 
 """
@@ -2577,10 +2577,6 @@ type SubnetYieldNeuron {
   vs_median: String
 }
 
-type SubnetYieldArtifactDegraded {
-  reason: String!
-}
-
 """
 Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup.
 """
@@ -2592,7 +2588,7 @@ type SubnetYieldHistory {
   window: String
   point_count: Int!
   points: [SubnetYieldHistoryPoint!]!
-  degraded: SubnetYieldHistoryArtifactDegraded!
+  degraded: DegradedInfo!
 }
 
 type SubnetYieldHistoryPoint {
@@ -2606,10 +2602,6 @@ type SubnetYieldHistoryPoint {
   p25_yield: Float
   p75_yield: Float
   p90_yield: Float
-}
-
-type SubnetYieldHistoryArtifactDegraded {
-  reason: String!
 }
 
 """
@@ -8170,7 +8162,7 @@ type ChainYield {
   validator_yield: Float
   miner_yield: Float
   distribution: YieldDistribution
-  degraded: ChainYieldArtifactDegraded!
+  degraded: DegradedInfo!
 }
 
 """
@@ -8186,10 +8178,6 @@ type YieldDistribution {
   p90: Float!
   max: Float!
   p10: Float!
-}
-
-type ChainYieldArtifactDegraded {
-  reason: String!
 }
 
 """

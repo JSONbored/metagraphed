@@ -7701,10 +7701,7 @@ export interface components {
         /** @description Network-wide emission-yield (return rate) card across every subnet's neurons. Aggregates are null on a cold store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/yield. */
         ChainYieldArtifact: {
             captured_at?: string | null;
-            degraded: {
-                /** @constant */
-                reason: "holdings_unqualified";
-            };
+            degraded: components["schemas"]["HoldingsUnavailable"];
             distribution: {
                 count: number;
                 max: number;
@@ -9466,6 +9463,10 @@ export interface components {
                     uptime_ratio: number | null;
                 };
             };
+        };
+        HoldingsUnavailable: {
+            /** @constant */
+            reason: "holdings_unqualified";
         };
         IndexerLagArtifact: {
             /** @description Blocks the distribution was computed over. Null only on a decline. */
@@ -13622,10 +13623,7 @@ export interface components {
         SubnetYieldArtifact: {
             block_number: number | null;
             captured_at: string | null;
-            degraded: {
-                /** @constant */
-                reason: "holdings_unqualified";
-            };
+            degraded: components["schemas"]["HoldingsUnavailable"];
             mean_yield: number | null;
             median_yield: number | null;
             miner_count: number;
@@ -13658,10 +13656,7 @@ export interface components {
         };
         /** @description Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup. */
         SubnetYieldHistoryArtifact: {
-            degraded: {
-                /** @constant */
-                reason: "holdings_unqualified";
-            };
+            degraded: components["schemas"]["HoldingsUnavailable"];
             netuid: number;
             point_count: number;
             points: {
