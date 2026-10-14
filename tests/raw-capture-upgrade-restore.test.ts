@@ -104,6 +104,8 @@ async function retainBytesAndArchive(
   };
 }
 
+type ArchiveReceipt = Awaited<ReturnType<typeof retainBytesAndArchive>>;
+
 test("actual pre0038 migration, prospective capture and closed native persistence restore preserve receipt/next-block ownership", async () => {
   vi.useRealTimers();
   const root = mkdtempSync(join(tmpdir(), "metagraph-raw-native-restore-"));
@@ -114,9 +116,7 @@ test("actual pre0038 migration, prospective capture and closed native persistenc
   const node = syntheticNode(),
     legacy = raw(rows(node, 5000)),
     bytes = gzipSync(legacy);
-  let legacyArchive:
-    | Awaited<ReturnType<typeof retainBytesAndArchive>>
-    | undefined;
+  let legacyArchive: ArchiveReceipt | undefined;
   const f = await nativeRawFixture(
     async (db) => {
       // This NULL receipt was created by the real applied0038 DDL, not UPDATE.
@@ -234,7 +234,7 @@ test("actual pre0038 migration, prospective capture and closed native persistenc
     script: "export default {fetch(){return new Response('test')}}",
     compatibilityDate: "2026-06-06",
     d1Databases: ["DB"],
-    d1Persist: restoredPersist,
+    resourcePersistencePath: restoredPersist,
   });
   runtimes.push(restored);
   const db = await restored.getD1Database("DB"),

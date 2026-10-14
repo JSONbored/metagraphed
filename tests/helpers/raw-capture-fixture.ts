@@ -21,7 +21,7 @@ export async function nativeRawFixture(
     script: "export default {fetch(){return new Response('test')}}",
     compatibilityDate: "2026-06-06",
     d1Databases: ["DB"],
-    d1Persist: options.persistDirectory,
+    resourcePersistencePath: options.persistDirectory,
   });
   const db = await runtime.getD1Database("DB");
   for (const name of [
