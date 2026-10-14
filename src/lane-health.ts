@@ -297,7 +297,7 @@ export async function recordLaneVerdict(
               SELECT ? AS bound UNION ALL
               SELECT MAX(checked_at) FROM lane_health WHERE lane = ?
             ) retention_bounds)
-          ORDER BY checked_at LIMIT 200)`,
+          ORDER BY checked_at LIMIT 20)`,
         [
           record.lane,
           record.checked_at - LANE_HEALTH_RETENTION_MS,
@@ -306,7 +306,8 @@ export async function recordLaneVerdict(
       );
     } catch {
       // Cleanup cannot change the insertion acknowledgement. Limit direct
-      // deletions per tick; D1's existing projection triggers also do work.
+      // deletions to 20 per tick: native 130k-history measurements exposed
+      // substantial work in D1's existing projection triggers.
     }
   }
   return true;

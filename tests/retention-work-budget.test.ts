@@ -85,8 +85,8 @@ for (const samples of [10000, 130000]) {
       );
       assert(meta);
       // D1 changes includes trigger mutations. The history count below proves
-      // the 200 direct deletions separately from this projection work.
-      assert(meta.changes >= 200);
+      // the 20 direct deletions separately from this projection work.
+      assert(meta.changes >= 20);
       const plan = await db
         .prepare(`EXPLAIN QUERY PLAN ${pruneSql}`)
         .bind(...pruneValues)
@@ -96,15 +96,15 @@ for (const samples of [10000, 130000]) {
       assert.doesNotMatch(details, /USE TEMP B-TREE/);
       // Explicitly budget trigger amplification for the measured fixture size.
       // This is not a claim that trigger reads are independent of history size.
-      assert(meta.rows_read <= 200 * (samples * 3 + 100), JSON.stringify(meta));
-      assert(meta.rows_written <= 200 * 20, JSON.stringify(meta));
+      assert(meta.rows_read <= 20 * (samples * 2 + 100), JSON.stringify(meta));
+      assert(meta.rows_written <= 20 * 20, JSON.stringify(meta));
       console.info(
         "retention_work",
         JSON.stringify({
           family: "lane_health",
           samples,
-          direct_limit: 200,
-          direct_deletions: 200,
+          direct_limit: 20,
+          direct_deletions: 20,
           ...meta,
         }),
       );
@@ -112,7 +112,7 @@ for (const samples of [10000, 130000]) {
         (await store.first<{ n: number }>(
           "SELECT count(*) AS n FROM lane_health WHERE lane='budget'",
         ))!.n,
-        samples - 200,
+        samples - 20,
       );
       const mismatch = await store.first<{
         n: number;

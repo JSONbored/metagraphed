@@ -89,10 +89,10 @@ const pgHealth = () =>
     }),
   });
 
-test("failed D1 verdicts expire at most 200 rows while preserving the last severity ties and projections", async () => {
+test("failed D1 verdicts expire at most 20 rows while preserving the last severity ties and projections", async () => {
   await db
     .prepare(
-      `WITH RECURSIVE n(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM n WHERE i<450)
+      `WITH RECURSIVE n(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM n WHERE i<45)
     INSERT INTO lane_health(lane,verdict,checked_at) SELECT 'failed','ok',?-i FROM n`,
     )
     .bind(cutoff - 1)
@@ -113,7 +113,7 @@ test("failed D1 verdicts expire at most 200 rows while preserving the last sever
       D1_STATE: db,
       D1_STATE_TABLES: "lane_health",
     })!;
-    for (const remaining of [252, 52, 2, 2]) {
+    for (const remaining of [27, 7, 2, 2]) {
       assert.equal(
         await recordLaneVerdict(store, verdict("failed"), { confirm: true }),
         false,
@@ -203,7 +203,7 @@ test("lost verdict acknowledgement does not replay and cleanup retains the stric
 
 test("PostgreSQL uses a statement-local ctid and retains all latest ties after rejection", async () => {
   await pg.query(
-    "INSERT INTO lane_health(lane,verdict,checked_at) SELECT 'pg-failed','ok',$1::bigint-i FROM generate_series(1,250) i",
+    "INSERT INTO lane_health(lane,verdict,checked_at) SELECT 'pg-failed','ok',$1::bigint-i FROM generate_series(1,25) i",
     [cutoff - 1],
   );
   await pg.query(
@@ -229,7 +229,7 @@ test("PostgreSQL uses a statement-local ctid and retains all latest ties after r
         "SELECT count(*)::int AS n FROM lane_health WHERE lane='pg-failed'",
       )
     ).rows[0].n,
-    52,
+    7,
   );
   assert.equal(
     await recordLaneVerdict(failed, verdict("pg-failed"), { confirm: true }),

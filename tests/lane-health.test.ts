@@ -138,13 +138,13 @@ describe("recordLaneVerdict", () => {
   });
 
   test("prunes only its own lane, only past the retention horizon", async () => {
-    // One lane and at most 200 direct deletions; native triggers also do work.
+    // One lane and at most 20 direct deletions; native triggers also do work.
     const { db, calls } = fakeDb();
     await recordLaneVerdict(db, record());
     const deletes = calls.filter((c) => c.sql.startsWith("DELETE FROM"));
     assert.equal(deletes.length, 1);
     assert.match(deletes[0].sql, /WHERE lane = \? AND checked_at < \(/);
-    assert.match(deletes[0].sql, /ORDER BY checked_at LIMIT 200/);
+    assert.match(deletes[0].sql, /ORDER BY checked_at LIMIT 20/);
     assert.deepEqual(deletes[0].values, [
       "chain-detail",
       NOW - LANE_HEALTH_RETENTION_MS,
