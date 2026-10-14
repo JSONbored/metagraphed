@@ -582,20 +582,23 @@ test("selected ownership writes directly without Hyperdrive or the Neon buffer, 
       "CREATE TRIGGER fail_neurons BEFORE UPDATE ON neurons_documents BEGIN SELECT RAISE(ABORT,'injected write failure'); END",
     )
     .run();
-  const failed = await mirrorNeuronSnapshotToNeon(env, null, {
-    ...capture(rows(stamp + 1)),
-    pass,
-  });
-  assert.ok(Object.values(failed.results).every((r) => !r.ok));
-  assert.equal(failed.results.neurons_passes.rows, 0);
-  assert.equal(failed.writePath, "d1");
-  assert.ok(
-    Object.values(failed.results).every(
-      (r) => r.reason === "insert_error" && r.confirmation === "unknown",
-    ),
-  );
-  assert.doesNotMatch(JSON.stringify(failed), /injected write failure/);
-  await db.prepare("DROP TRIGGER fail_neurons").run();
+  try {
+    const failed = await mirrorNeuronSnapshotToNeon(env, null, {
+      ...capture(rows(stamp + 1)),
+      pass,
+    });
+    assert.ok(Object.values(failed.results).every((r) => !r.ok));
+    assert.equal(failed.results.neurons_passes.rows, 0);
+    assert.equal(failed.writePath, "d1");
+    assert.ok(
+      Object.values(failed.results).every(
+        (r) => r.reason === "insert_constraint" && r.confirmation === "unknown",
+      ),
+    );
+    assert.doesNotMatch(JSON.stringify(failed), /injected write failure/);
+  } finally {
+    await db.prepare("DROP TRIGGER fail_neurons").run();
+  }
 });
 test("invalid and oversized data fail before any transaction executes; empty captures are harmless", async () => {
   assert.deepEqual(neuronDocumentStatements(empty()), []);
