@@ -546,6 +546,10 @@ type NeuronDailyPoint = {
 };
 
 import { recordLaneVerdict } from "../src/lane-health.ts";
+import {
+  createLaneHealthWriteReporter,
+  type LaneHealthWriteFailure,
+} from "../src/lane-health-write-diagnostics.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import {
   handleDeadLetterBatch,
@@ -3477,9 +3481,11 @@ async function handleHotkeyAlphaSync(
 const POLLER_LANE_HEALTH_TOKEN_HEADER = "x-poller-lane-health-sync-token";
 const POLLER_LANE_HEALTH_MAX_BODY_BYTES = 64_000;
 const POLLER_LANE_HEALTH_MAX_ROWS = 50;
+const reportLaneHealthWrite = createLaneHealthWriteReporter();
 
 async function handlePollerLaneHealthSync(request: Request, env: DataApiEnv) {
   if (!env.POLLER_LANE_HEALTH_SYNC_SECRET) {
+    reportLaneHealthWrite(null, 0, ["missing_secret"]);
     return writeJson(
       {
         error: "poller lane-health sync is not provisioned on this deployment",
@@ -3539,6 +3545,7 @@ async function handlePollerLaneHealthSync(request: Request, env: DataApiEnv) {
   // they would have stopped silently.
   const laneDb = laneHealthStore(env);
   if (!laneDb) {
+    reportLaneHealthWrite(incoming.length, 0, ["missing_store"]);
     return writeJson({ error: "no lane_health store bound" }, 503);
   }
 
@@ -3547,17 +3554,26 @@ async function handlePollerLaneHealthSync(request: Request, env: DataApiEnv) {
   // whose returned identity is confirmed. An error after commit is ambiguous,
   // so a failed response is never proof that a whole batch is safe to replay.
   let written = 0;
+  const failures: LaneHealthWriteFailure[] = [];
   for (const row of incoming.map(coercePollerJobOutcome)) {
-    if (await recordLaneVerdict(laneDb, row, { confirm: true })) written += 1;
+    if (
+      await recordLaneVerdict(laneDb, row, {
+        confirm: true,
+        onFailure: (reason) => failures.push(reason),
+      })
+    )
+      written += 1;
   }
   // Bind the acknowledgement to these exact request bytes. A health sender
   // must distinguish a landed verdict from a successful HTTP response, and a
   // partial batch must not be replayed as if nothing reached the store.
   const complete = written === incoming.length;
+  reportLaneHealthWrite(incoming.length, written, failures);
   return writeJson(
     {
       ok: complete,
       lane_health_written: written,
+      lane_health_expected: incoming.length,
       request_sha256: await sha256Hex(raw),
       // Retained vocabulary; laneHealthStore above selects the actual owner.
       stores: ["neon"],

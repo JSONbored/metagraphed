@@ -40,7 +40,7 @@ beforeEach(async () => {
   await db.prepare("DELETE FROM lane_health").run();
 });
 
-function send(body: string) {
+function send(body: string, overrides: Parameters<typeof dataApiEnv>[0] = {}) {
   return worker.fetch(
     new Request("https://fixture/api/v1/internal/poller-lane-health-sync", {
       method: "POST",
@@ -54,10 +54,25 @@ function send(body: string) {
       D1_STATE: db,
       D1_STATE_TABLES: "lane_health",
       POLLER_LANE_HEALTH_SYNC_SECRET: secret,
+      ...overrides,
     }),
     { waitUntil() {} } as unknown as ExecutionContext,
   );
 }
+
+test("an unprovisioned receiver fails before interpreting the request body", async () => {
+  const response = await send("not JSON", {
+    POLLER_LANE_HEALTH_SYNC_SECRET: undefined,
+  });
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    error: "poller lane-health sync is not provisioned on this deployment",
+  });
+  assert.equal(
+    await db.prepare("SELECT COUNT(*) n FROM lane_health").first("n"),
+    0,
+  );
+});
 
 test("complete persistence acknowledges the exact original UTF-8 request", async () => {
   const body =
@@ -67,6 +82,7 @@ test("complete persistence acknowledges the exact original UTF-8 request", async
   assert.deepEqual(await response.json(), {
     ok: true,
     lane_health_written: 2,
+    lane_health_expected: 2,
     request_sha256: digest(body),
     stores: ["neon"],
   });
@@ -89,6 +105,7 @@ test("zero persisted verdicts return a failed acknowledgement with the original 
   assert.deepEqual(await response.json(), {
     ok: false,
     lane_health_written: 0,
+    lane_health_expected: 1,
     request_sha256: digest(body),
     stores: ["neon"],
   });
@@ -110,6 +127,7 @@ test("partial persistence reports its actual count and cannot be mistaken for no
   assert.deepEqual(await response.json(), {
     ok: false,
     lane_health_written: 1,
+    lane_health_expected: 2,
     request_sha256: digest(body),
     stores: ["neon"],
   });
@@ -132,6 +150,7 @@ test("a silently ignored insert cannot acknowledge persistence", async () => {
     assert.deepEqual(await response.json(), {
       ok: false,
       lane_health_written: rows.length - 1,
+      lane_health_expected: rows.length,
       request_sha256: digest(body),
       stores: ["neon"],
     });
