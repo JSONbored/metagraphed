@@ -868,7 +868,7 @@ function normalizeSubnetStakeTransfersSample(out: Sample): Sample {
 function normalizeObjectSample(out: Sample): Sample {
   // A generic schema sample carries no qualified runtime/capture evidence.
   // Preserve the relationship without inventing an exact asset quantity.
-  if ("alpha_rao" in out) {
+  if ("quantity_status" in out) {
     out.alpha_rao = null;
     out.quantity_status = "unqualified";
     out.provenance = null;
