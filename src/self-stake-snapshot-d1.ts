@@ -190,7 +190,7 @@ export async function writeSelfStakeSnapshotD1(
       values: [rows.length, at, at, index, digest],
     },
     {
-      text: `UPDATE self_stake_snapshot_chunks SET applied=${alphaSchema ? "CASE WHEN source_rows+shadowed_rows=row_count THEN 1 ELSE NULL END" : "1"} WHERE captured_at=? AND batch_index=? AND sha256=?`,
+      text: `UPDATE self_stake_snapshot_chunks SET applied=${alphaSchema ? "CASE WHEN source_rows+shadowed_rows=row_count THEN 1 ELSE NULL END" : "1"} WHERE captured_at=? AND batch_index=? AND sha256=? AND applied=0`,
       values: [at, index, digest],
     },
     {
@@ -233,7 +233,11 @@ export async function writeSelfStakeSnapshotD1(
       statements: statements.length - data.length,
       ...snapshot,
       sha256: digest,
-      ...(alphaSchema
+      // A receipt committed before0042 has no recorded ownership census.
+      // Preserve its original acknowledgment without inventing source/shadow
+      // observations from the migration's zero defaults on exact replay.
+      ...(alphaSchema &&
+      receipt.source_rows! + receipt.shadowed_rows! === incoming.length
         ? {
             source_rows: receipt.source_rows,
             shadowed_rows: receipt.shadowed_rows,
