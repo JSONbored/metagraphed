@@ -326,3 +326,16 @@ export async function writeAlphaSnapshotD1(
     stores: ["d1"],
   };
 }
+
+/** Receiver-owned restart identity. Keep incomplete receipts and staged rows;
+ * the producer must replay this block/capture before reserving a newer pass.
+ * Missing historical state is a repair condition, never abandonment. */
+export async function readAlphaSnapshotResumeD1(binding: D1StoreBinding) {
+  const pending = await createD1Store(binding).first<Record<string, unknown>>(
+    `SELECT captured_at,block_number,block_hash,genesis_hash,spec_version,code_hash,
+      metadata_sha256,scanned_legacy,scanned_v2,expected_rows,expected_chunks
+      FROM alpha_snapshot_passes WHERE completed_at IS NULL ORDER BY captured_at LIMIT 1`,
+    [],
+  );
+  return { ok: true, alpha_snapshot_resume: pending };
+}

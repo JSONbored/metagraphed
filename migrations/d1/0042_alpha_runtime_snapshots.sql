@@ -102,3 +102,6 @@ ALTER TABLE self_stake_snapshot_chunks ADD COLUMN source_rows INTEGER NOT NULL D
 ALTER TABLE self_stake_snapshot_chunks ADD COLUMN shadowed_rows INTEGER NOT NULL DEFAULT 0 CHECK(shadowed_rows>=0);
 -- statement-breakpoint
 ALTER TABLE self_stake_snapshot_chunks ADD COLUMN alpha_captured_at INTEGER;
+
+-- statement-breakpoint
+CREATE INDEX alpha_snapshot_pending ON alpha_snapshot_passes(captured_at) WHERE completed_at IS NULL;
