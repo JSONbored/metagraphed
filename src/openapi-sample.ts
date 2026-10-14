@@ -874,7 +874,8 @@ function normalizeObjectSample(out: Sample): Sample {
     out.provenance = null;
     out.stake_tao = null;
   }
-  if ("total_stake_alpha" in out) out.total_stake_alpha = null;
+  if (out.schema_version === 2 && "total_stake_alpha" in out)
+    out.total_stake_alpha = null;
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
   normalizeAccountStakeFlowSample(out);

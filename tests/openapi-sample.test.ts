@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { z } from "zod";
+import { EconomicsSummarySchema } from "../schemas-src/routes/economics.ts";
 import { AccountPositionsArtifactSchema } from "../schemas-src/routes/account-positions.ts";
 import { SubnetYieldArtifactSchema } from "../schemas-src/routes/subnet-yield.ts";
 import { buildSubnetYield } from "../src/subnet-yield.ts";
@@ -293,6 +294,17 @@ describe("sampleFromSchema", () => {
       [10, 5],
     );
     assert.equal(out.subnet_yield, null);
+  });
+
+  test("unrelated economics summary keeps its exact decimal string contract", () => {
+    const out = s(z.toJSONSchema(EconomicsSummarySchema));
+    const parsed = EconomicsSummarySchema.parse(out);
+    assert.equal(parsed.total_stake_alpha, "327838334.635978200");
+    assert.equal(typeof parsed.total_stake_alpha, "string");
+    assert.deepEqual(
+      s({ type: "object", properties: { schema_version: { const: 2 } } }),
+      { schema_version: 2 },
+    );
   });
 
   test("position examples retain relationships without fabricated capture evidence", () => {
