@@ -101,11 +101,8 @@ describe("buildAccountHolderDirectory", () => {
     assert.equal(data.limit, ACCOUNT_HOLDER_DIRECTORY_LIMIT);
     assert.equal(data.captured_at, new Date(CAPTURED_AT).toISOString());
     assert.equal(data.block_number, 8_900_000);
-    assert.equal(data.priced_registered_stake_tao, 180);
-    assert.deepEqual(
-      data.rankings.stake.map((account) => account.hotkey),
-      ["hk-a", "hk-b", "hk-c"],
-    );
+    assert.equal(data.priced_registered_stake_tao, null);
+    assert.deepEqual(data.rankings.stake, []);
     assert.deepEqual(
       data.rankings.emission.map((account) => account.hotkey),
       ["hk-b", "hk-c", "hk-a"],
@@ -114,8 +111,8 @@ describe("buildAccountHolderDirectory", () => {
       data.rankings.reach.map((account) => account.hotkey),
       ["hk-c", "hk-b", "hk-a"],
     );
-    assert.equal(data.rankings.stake[0]?.stake_dominance, null);
-    assert.deepEqual(Object.keys(data.rankings.stake[0]!).sort(), [
+    assert.equal(data.rankings.reach[0]?.stake_dominance, null);
+    assert.deepEqual(Object.keys(data.rankings.reach[0]!).sort(), [
       "coldkey",
       "hotkey",
       "stake_dominance",
@@ -133,7 +130,7 @@ describe("buildAccountHolderDirectory", () => {
     assert.equal(cold.account_count, 0);
     assert.equal(cold.captured_at, null);
     assert.equal(cold.block_number, null);
-    assert.equal(cold.priced_registered_stake_tao, 0);
+    assert.equal(cold.priced_registered_stake_tao, null);
     assert.deepEqual(cold.rankings, { stake: [], emission: [], reach: [] });
 
     const zero = buildAccountHolderDirectory(
@@ -167,7 +164,8 @@ describe("buildAccountHolderDirectory", () => {
       priceByNetuid: PRICES,
     });
 
-    for (const ranking of Object.values(data.rankings)) {
+    assert.deepEqual(data.rankings.stake, []);
+    for (const ranking of [data.rankings.emission, data.rankings.reach]) {
       assert.equal(ranking.length, ACCOUNT_HOLDER_DIRECTORY_LIMIT);
       assert.equal(ranking[0]?.hotkey, "hk-00");
       assert.equal(ranking.at(-1)?.hotkey, "hk-19");

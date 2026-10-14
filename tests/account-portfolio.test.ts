@@ -85,7 +85,7 @@ describe("buildAccountPortfolio", () => {
     assert.equal(out.miner_count, 2);
     assert.equal(out.total_stake_tao, null);
     assert.equal(out.total_emission_tao, 80);
-    assert.ok(Math.abs(out.overall_yield! - 80 / 1200) < 1e-6);
+    assert.equal(out.overall_yield, null);
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
@@ -93,15 +93,15 @@ describe("buildAccountPortfolio", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
     assert.equal(out.positions[0].netuid, 7); // 1000 stake sorts first
     assert.equal(out.positions[0].role, "validator");
-    assert.equal(out.positions[0].yield, 0.05); // 50 / 1000
+    assert.equal(out.positions[0].yield, null); // 50 / 1000
     assert.equal(out.positions[0].trust, 0.8);
-    assert.equal(out.positions[1].yield, 0.15); // 30 / 200
+    assert.equal(out.positions[1].yield, null); // 30 / 200
     assert.equal(out.positions[2].yield, null); // zero-stake → null
     assert.equal(out.positions[2].rank, null); // absent cell → null
     assert.equal(out.positions[2].active, false);
   });
 
-  test("stake_concentration is over the positive-stake positions", () => {
+  test("unsupported cross-token holdings concentration remains unknown", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
     assert.equal((out.stake_concentration as Row).holders, 2); // zero-stake dropped
     assert.equal((out.stake_concentration as Row).total, 1200);

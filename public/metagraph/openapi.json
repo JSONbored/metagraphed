@@ -3432,6 +3432,16 @@
               "subnets_with_single_holder": 1
             },
             "positions_captured_at": "2026-06-01T00:00:00.000Z",
+            "provenance": {
+              "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "block_number": 5000000,
+              "captured_at": "2026-06-01T00:00:00.000Z",
+              "code_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "genesis_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "metadata_sha256": "example",
+              "network": "finney",
+              "spec_version": 454
+            },
             "schema_version": 2,
             "sort": "example",
             "subnet_count": 1,
@@ -4576,6 +4586,9 @@
         "value": {
           "data": {
             "captured_at": "2026-06-01T00:00:00.000Z",
+            "degraded": {
+              "reason": "holdings_unqualified"
+            },
             "distribution": {
               "count": 1,
               "max": 0.5,
@@ -4591,7 +4604,7 @@
             "miner_yield": 0.5,
             "network_yield": 0.5,
             "neuron_count": 1,
-            "schema_version": 1,
+            "schema_version": 2,
             "subnet_count": 1,
             "total_emission_alpha": 0.5,
             "total_stake_alpha": 0.5,
@@ -10552,6 +10565,16 @@
             "limit": 1,
             "netuid": 7,
             "positions_captured_at": "2026-06-01T00:00:00.000Z",
+            "provenance": {
+              "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "block_number": 5000000,
+              "captured_at": "2026-06-01T00:00:00.000Z",
+              "code_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "genesis_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "metadata_sha256": "example",
+              "network": "finney",
+              "spec_version": 454
+            },
             "schema_version": 2,
             "total_alpha": 0.5
           },
@@ -13470,6 +13493,9 @@
           "data": {
             "block_number": 5000000,
             "captured_at": "2026-06-01T00:00:00.000Z",
+            "degraded": {
+              "reason": "holdings_unqualified"
+            },
             "mean_yield": 0.3,
             "median_yield": 0.3,
             "miner_count": 1,
@@ -13498,7 +13524,7 @@
             "p25_yield": 0.2,
             "p75_yield": 0.4,
             "p90_yield": 0.4,
-            "schema_version": 1,
+            "schema_version": 2,
             "subnet_yield": 0.266666667,
             "total_emission_alpha": 4,
             "total_stake_alpha": 15,
@@ -13537,6 +13563,9 @@
       "SubnetYieldHistoryArtifactResponse": {
         "value": {
           "data": {
+            "degraded": {
+              "reason": "holdings_unqualified"
+            },
             "netuid": 7,
             "point_count": 1,
             "points": [
@@ -13544,7 +13573,7 @@
                 "snapshot_date": "example"
               }
             ],
-            "schema_version": 1,
+            "schema_version": 2,
             "window": "30d"
           },
           "meta": {
@@ -17023,56 +17052,7 @@
                 "provenance": {
                   "anyOf": [
                     {
-                      "additionalProperties": false,
-                      "properties": {
-                        "block_hash": {
-                          "type": "string"
-                        },
-                        "block_number": {
-                          "maximum": 9007199254740991,
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        "captured_at": {
-                          "type": "string"
-                        },
-                        "code_hash": {
-                          "type": "string"
-                        },
-                        "genesis_hash": {
-                          "type": "string"
-                        },
-                        "metadata_sha256": {
-                          "type": "string"
-                        },
-                        "network": {
-                          "const": "finney",
-                          "type": "string"
-                        },
-                        "spec_version": {
-                          "anyOf": [
-                            {
-                              "const": 454,
-                              "type": "number"
-                            },
-                            {
-                              "const": 478,
-                              "type": "number"
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "network",
-                        "captured_at",
-                        "block_number",
-                        "block_hash",
-                        "genesis_hash",
-                        "spec_version",
-                        "code_hash",
-                        "metadata_sha256"
-                      ],
-                      "type": "object"
+                      "$ref": "#/components/schemas/AlphaQuantityProvenance"
                     },
                     {
                       "type": "null"
@@ -20474,6 +20454,58 @@
         "required": [
           "id",
           "active"
+        ],
+        "type": "object"
+      },
+      "AlphaQuantityProvenance": {
+        "additionalProperties": false,
+        "properties": {
+          "block_hash": {
+            "type": "string"
+          },
+          "block_number": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "captured_at": {
+            "type": "string"
+          },
+          "code_hash": {
+            "type": "string"
+          },
+          "genesis_hash": {
+            "type": "string"
+          },
+          "metadata_sha256": {
+            "type": "string"
+          },
+          "network": {
+            "const": "finney",
+            "type": "string"
+          },
+          "spec_version": {
+            "anyOf": [
+              {
+                "const": 454,
+                "type": "number"
+              },
+              {
+                "const": 478,
+                "type": "number"
+              }
+            ]
+          }
+        },
+        "required": [
+          "network",
+          "captured_at",
+          "block_number",
+          "block_hash",
+          "genesis_hash",
+          "spec_version",
+          "code_hash",
+          "metadata_sha256"
         ],
         "type": "object"
       },
@@ -25804,6 +25836,16 @@
               }
             ]
           },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlphaQuantityProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "schema_version": {
             "const": 2,
             "type": "number"
@@ -25833,6 +25875,7 @@
         },
         "required": [
           "schema_version",
+          "provenance",
           "sort",
           "limit",
           "subnet_count",
@@ -28893,6 +28936,19 @@
               }
             ]
           },
+          "degraded": {
+            "additionalProperties": false,
+            "properties": {
+              "reason": {
+                "const": "holdings_unqualified",
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "type": "object"
+          },
           "distribution": {
             "anyOf": [
               {
@@ -28978,9 +29034,8 @@
             "type": "integer"
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "subnet_count": {
             "description": "How many subnets the aggregate spans. Root (netuid 0) is NOT one of them and is excluded from every figure below (#9040): root stake is TAO, not a subnet alpha token.",
@@ -28989,12 +29044,26 @@
             "type": "integer"
           },
           "total_emission_alpha": {
-            "description": "Sum of every neuron's emission across every NON-ROOT subnet, alpha-denominated for the same reason as total_stake_alpha and excluding root for the same reason (#8803, #9040). Alpha/alpha keeps the *_yield ratios below dimensionally valid.",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deprecated cross-token emission sum; always null. Different subnet Alpha tokens cannot be added."
           },
           "total_stake_alpha": {
-            "description": "Sum of every neuron's stake across every NON-ROOT subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Root (netuid 0) is excluded because root stake is genuine TAO and would mix denominations into this sum (#9040). Use it as the denominator of the yields below, not as a TAO figure.",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deprecated unsupported holdings aggregate; always null."
           },
           "validator_count": {
             "maximum": 9007199254740991,
@@ -29016,8 +29085,11 @@
           "schema_version",
           "subnet_count",
           "neuron_count",
+          "total_stake_alpha",
+          "total_emission_alpha",
           "network_yield",
-          "distribution"
+          "distribution",
+          "degraded"
         ],
         "type": "object"
       },
@@ -39754,7 +39826,7 @@
                         "type": "null"
                       }
                     ],
-                    "description": "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945)."
+                    "description": "Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield."
                   },
                   "take": {
                     "anyOf": [
@@ -40038,7 +40110,7 @@
                       "type": "null"
                     }
                   ],
-                  "description": "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945)."
+                  "description": "Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield."
                 },
                 "take": {
                   "anyOf": [
@@ -52773,6 +52845,16 @@
             ],
             "description": "When the positions ledger itself was last written, which advances on a different cadence than the pool totals."
           },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlphaQuantityProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "schema_version": {
             "const": 2,
             "type": "number"
@@ -52791,6 +52873,7 @@
         },
         "required": [
           "schema_version",
+          "provenance",
           "netuid",
           "limit",
           "holder_count",
@@ -54983,7 +55066,7 @@
                       "type": "null"
                     }
                   ],
-                  "description": "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945)."
+                  "description": "Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield."
                 },
                 "take": {
                   "anyOf": [
@@ -61231,7 +61314,7 @@
                       "type": "null"
                     }
                   ],
-                  "description": "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945)."
+                  "description": "Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield."
                 },
                 "take": {
                   "anyOf": [
@@ -62042,6 +62125,19 @@
               }
             ]
           },
+          "degraded": {
+            "additionalProperties": false,
+            "properties": {
+              "reason": {
+                "const": "holdings_unqualified",
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "type": "object"
+          },
           "mean_yield": {
             "anyOf": [
               {
@@ -62080,7 +62176,7 @@
           "neurons": {
             "items": {
               "additionalProperties": false,
-              "description": "One UID's emission-per-stake yield within a subnet's current metagraph snapshot.",
+              "description": "One UID observation. Voting weights are retained; native holdings and investment yield remain unqualified.",
               "properties": {
                 "emission_tao": {
                   "anyOf": [
@@ -62111,13 +62207,31 @@
                   "type": "string"
                 },
                 "stake_tao": {
-                  "description": "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).",
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Deprecated unsupported native holdings amount; always null."
                 },
                 "uid": {
                   "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
+                },
+                "voting_weight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Effective voting weight; unavailable cells remain null."
                 },
                 "vs_median": {
                   "anyOf": [
@@ -62149,6 +62263,7 @@
                 "uid",
                 "hotkey",
                 "role",
+                "voting_weight",
                 "stake_tao",
                 "emission_tao",
                 "yield",
@@ -62189,9 +62304,8 @@
             ]
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "subnet_yield": {
             "anyOf": [
@@ -62207,7 +62321,15 @@
             "type": "number"
           },
           "total_stake_alpha": {
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deprecated unsupported holdings total; always null."
           },
           "validator_count": {
             "maximum": 9007199254740991,
@@ -62231,7 +62353,8 @@
           "p25_yield",
           "p75_yield",
           "p90_yield",
-          "neurons"
+          "neurons",
+          "degraded"
         ],
         "type": "object"
       },
@@ -62239,6 +62362,19 @@
         "additionalProperties": false,
         "description": "Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup.",
         "properties": {
+          "degraded": {
+            "additionalProperties": false,
+            "properties": {
+              "reason": {
+                "const": "holdings_unqualified",
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "type": "object"
+          },
           "netuid": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -62340,9 +62476,8 @@
             "type": "array"
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "window": {
             "anyOf": [
@@ -62360,7 +62495,8 @@
           "schema_version",
           "netuid",
           "point_count",
-          "points"
+          "points",
+          "degraded"
         ],
         "type": "object"
       },
@@ -74035,19 +74171,17 @@
         "operationId": "accountsList",
         "parameters": [
           {
-            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_stake.",
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to subnet_count.",
             "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
-              "default": "total_stake",
+              "default": "subnet_count",
               "enum": [
-                "total_stake",
                 "total_emission",
                 "subnet_count",
                 "uid_count",
                 "validator_count",
-                "stake_dominance",
                 "last_active"
               ],
               "type": "string"
@@ -77689,12 +77823,12 @@
         "operationId": "topHolders",
         "parameters": [
           {
-            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_tao.",
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to free_tao.",
             "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
-              "default": "total_tao",
+              "default": "free_tao",
               "enum": [
                 "free_tao",
                 "net_flow_7d",
@@ -109379,10 +109513,8 @@
               "enum": [
                 "avg_validator_trust",
                 "max_validator_trust",
-                "stake_dominance",
                 "subnet_count",
                 "total_emission",
-                "total_stake",
                 "uid_count"
               ],
               "type": "string"

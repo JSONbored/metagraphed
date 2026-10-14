@@ -370,13 +370,18 @@ test("native actual promotions choose finalized ownership and decline publicatio
             : loadChainHolders(store);
       const shape = (read: Awaited<ReturnType<typeof readFamily>>) =>
         family === "nominator"
-          ? buildNominatorPositions(read, "h")
+          ? buildNominatorPositions(
+              read as Awaited<ReturnType<typeof loadNominatorPositions>>,
+              "h",
+            )
           : family === "subnet"
             ? buildSubnetHolders(
                 read as Awaited<ReturnType<typeof loadSubnetHolders>>,
                 23,
               )
-            : buildChainHolders(read);
+            : buildChainHolders(
+                read as Awaited<ReturnType<typeof loadChainHolders>>,
+              );
       const count =
         family === "nominator"
           ? "nominator_count"

@@ -358,10 +358,10 @@ describe("buildAccountsList", () => {
     assert.deepEqual(
       data.accounts[0].subnets.map((s) => [s.netuid, s.uid]),
       [
+        [1, 0],
         [2, 0],
         [3, 0],
         [4, 1],
-        [1, 0],
         [5, 0],
       ],
     );
@@ -520,7 +520,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
       DATA_API: {
         fetch: async () =>
           Response.json({
-            schema_version: 1,
+            schema_version: 2,
             sort: "total_stake",
             limit: 20,
             account_count: 1,
@@ -535,9 +535,9 @@ describe("GET /api/v1/accounts via the Worker", () => {
                 uid_count: 1,
                 validator_count: 1,
                 miner_count: 0,
-                total_stake_tao: 1000.5,
+                total_stake_tao: null,
                 total_emission_tao: 22.1,
-                stake_dominance: 1,
+                stake_dominance: null,
                 latest_captured_at: new Date(1750000000000).toISOString(),
                 latest_block_number: 8454388,
                 subnets: [{ netuid: 1, uid: 0 }],

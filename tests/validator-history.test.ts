@@ -279,10 +279,7 @@ describe("buildValidatorHistory — scoped to one subnet (#9383)", () => {
     assert.equal(point.stake_alpha, null);
     // The alpha-denominated reward rate, computed from the alpha pair rather
     // than borrowed from the TAO one.
-    assert.equal(
-      point.rewards_per_1000_alpha,
-      Math.round((80.6312 / 2120377.1) * 1000 * 1e6) / 1e6,
-    );
+    assert.equal(point.rewards_per_1000_alpha, null);
   });
 
   test("a lost permit is reported, not dropped", () => {

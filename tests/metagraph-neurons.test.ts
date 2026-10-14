@@ -864,7 +864,7 @@ describe("metagraph-neurons builders", () => {
     );
     const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
     assert.equal(entry.apy_estimate, null);
-    assert.equal(entry.apy_estimate_eligible_subnet_count, 1);
+    assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
   });
 
   test("buildGlobalValidators blends apy_estimate stake-weighted across memberships, excluding one with no resolvable tempo (#2551)", () => {
@@ -908,7 +908,7 @@ describe("metagraph-neurons builders", () => {
     // numerator = 0.85*7,300 + 0.10*26,280 = 6,205 + 2,628 = 8,833
     // denominator = 1,000 + 500 = 1,500 (netuid 21's 200 excluded)
     assert.equal(entry.apy_estimate, null);
-    assert.equal(entry.apy_estimate_eligible_subnet_count, 2);
+    assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
     assert.equal(entry.subnet_count, 3); // all 3 memberships still counted
   });
 
@@ -987,8 +987,8 @@ describe("metagraph-neurons builders", () => {
     const data = buildGlobalValidators(rows, { tempoByNetuid });
     const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
     assert.equal(entry.subnets.length, 10);
-    assert.equal(entry.apy_estimate_eligible_subnet_count, 15);
-    assert.ok(entry.apy_estimate > 0);
+    assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+    assert.equal(entry.apy_estimate, null);
   });
 
   // Even apparently complete balance history cannot tell a deposit apart
@@ -1197,6 +1197,7 @@ describe("metagraph-neurons builders", () => {
       // `_alpha`, not `_tao` (#10514): the entry carries a PRICED
       // total_stake_tao, so a row under the same suffix would be a unit trap.
       stake_alpha: null,
+      voting_weight: null,
       emission_alpha: 0,
       validator_trust: null,
     });
@@ -1467,7 +1468,7 @@ describe("metagraph-neurons builders", () => {
       },
     );
     assert.equal(data.apy_estimate, null);
-    assert.equal(data.apy_estimate_eligible_subnet_count, 2);
+    assert.equal(data.apy_estimate_eligible_subnet_count, 0);
     assert.equal(data.subnet_count, 3);
   });
 
@@ -1515,8 +1516,8 @@ describe("metagraph-neurons builders", () => {
     }
     const data = buildValidatorDetail(rows, "hk-a", { tempoByNetuid });
     assert.equal(data.subnets.length, 15);
-    assert.equal(data.apy_estimate_eligible_subnet_count, 15);
-    assert.ok(data.apy_estimate > 0);
+    assert.equal(data.apy_estimate_eligible_subnet_count, 0);
+    assert.equal(data.apy_estimate, null);
   });
 
   test("buildValidatorDetail: a null latest block_number is beaten by a real one on a captured_at tie, and a null incoming block_number never wins one", () => {
@@ -1781,7 +1782,7 @@ describe("metagraph-neurons builders", () => {
       );
       // schema_version/account are AccountIdentityArtifact-only -- redundant
       // once nested under a row that already states its own coldkey.
-      assert.equal(byHotkey[hotkey].schema_version, 2);
+      assert.equal(byHotkey[hotkey].schema_version, undefined);
       assert.equal(byHotkey[hotkey].account, undefined);
     }
   });
@@ -2035,7 +2036,7 @@ describe("metagraph-neurons loaders", () => {
     const { runner } = capturing([]);
     const data = await loadNeuron(runner, 7, 999);
     assert.equal(data.netuid, 7);
-    assert.equal(data.schema_version, 2);
+    assert.equal(data.schema_version, 1);
     assert.equal(data.captured_at, null);
     assert.equal(data.block_number, null);
   });

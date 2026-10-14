@@ -112,7 +112,9 @@ describe("buildValidatorOperatorDirectory", () => {
     assert.equal(directory.captured_at, "2026-08-29T00:00:00.000Z");
     assert.equal(directory.block_number, 8_950_000);
 
-    const team = directory.operators[0]!;
+    const team = directory.operators.find(
+      (entry) => entry.operator_id === "coldkey:ck-team",
+    )!;
     assert.equal(team.operator_id, "coldkey:ck-team");
     assert.equal(team.ownership_basis, "single_coldkey");
     assert.equal(team.identity_name, "Tensor Team");
@@ -235,7 +237,7 @@ describe("buildValidatorOperatorDirectory", () => {
     assert.equal(before.identity_name, "Old Name");
     assert.equal(after.identity_name, "New Name");
     assert.equal(before.primary_hotkey, "hk-a");
-    assert.equal(after.primary_hotkey, "hk-b");
+    assert.equal(after.primary_hotkey, "hk-a");
     assert.equal(after.hotkey_count, 2);
     assert.deepEqual(
       after.hotkeys.map(({ hotkey }) => hotkey).sort(),

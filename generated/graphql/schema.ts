@@ -2251,7 +2251,7 @@ type NeuronState {
   emission_tao: Float
 
   """
-  This row's stake in the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).
+  Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield.
   """
   stake_tao: Float
   registered_at_block: Int
@@ -2541,7 +2541,9 @@ type SubnetYield {
   neuron_count: Int!
   validator_count: Int!
   miner_count: Int!
-  total_stake_alpha: Float!
+
+  """Deprecated unsupported holdings total; always null."""
+  total_stake_alpha: Float
   total_emission_alpha: Float!
   subnet_yield: Float
   mean_yield: Float
@@ -2550,20 +2552,22 @@ type SubnetYield {
   p75_yield: Float
   p90_yield: Float
   neurons: [SubnetYieldNeuron!]!
+  degraded: SubnetYieldArtifactDegraded!
 }
 
 """
-One UID's emission-per-stake yield within a subnet's current metagraph snapshot.
+One UID observation. Voting weights are retained; native holdings and investment yield remain unqualified.
 """
 type SubnetYieldNeuron {
   uid: Int!
   hotkey: String
   role: String!
 
-  """
-  This row's stake in the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).
-  """
-  stake_tao: Float!
+  """Effective voting weight; unavailable cells remain null."""
+  voting_weight: Float
+
+  """Deprecated unsupported native holdings amount; always null."""
+  stake_tao: Float
 
   """
   This row's emission in the subnet named by the sibling \`netuid\`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's \`tempo\` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure.
@@ -2571,6 +2575,10 @@ type SubnetYieldNeuron {
   emission_tao: Float
   yield: Float
   vs_median: String
+}
+
+type SubnetYieldArtifactDegraded {
+  reason: String!
 }
 
 """
@@ -2584,6 +2592,7 @@ type SubnetYieldHistory {
   window: String
   point_count: Int!
   points: [SubnetYieldHistoryPoint!]!
+  degraded: SubnetYieldHistoryArtifactDegraded!
 }
 
 type SubnetYieldHistoryPoint {
@@ -2597,6 +2606,10 @@ type SubnetYieldHistoryPoint {
   p25_yield: Float
   p75_yield: Float
   p90_yield: Float
+}
+
+type SubnetYieldHistoryArtifactDegraded {
+  reason: String!
 }
 
 """
@@ -3513,6 +3526,7 @@ type SubnetConcentration {
 
 type SubnetHolders {
   schema_version: Int!
+  provenance: AlphaQuantityProvenance
   netuid: Int!
   limit: Int
 
@@ -3536,6 +3550,17 @@ type SubnetHolders {
   Present ONLY on a decline. Its absence is what says the ranking is real -- an empty holders list with no degraded block means the subnet genuinely has no measured holders.
   """
   degraded: DegradedInfo
+}
+
+type AlphaQuantityProvenance {
+  network: String!
+  captured_at: String!
+  block_number: Int!
+  block_hash: String!
+  genesis_hash: String!
+  spec_version: JSON!
+  code_hash: String!
+  metadata_sha256: String!
 }
 
 """
@@ -3576,6 +3601,7 @@ type SubnetHolder {
 
 type ChainHolders {
   schema_version: Int!
+  provenance: AlphaQuantityProvenance
   sort: String!
   limit: Int
 
@@ -4065,7 +4091,7 @@ type NeuronHistoryPoint {
   emission_tao: Float
 
   """
-  This row's stake in the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).
+  Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield.
   """
   stake_tao: Float
   registered_at_block: Int
@@ -6547,18 +6573,7 @@ type NominatorPosition {
   """
   alpha_rao: String
   quantity_status: String!
-  provenance: AccountPositionsArtifactPositionsProvenance
-}
-
-type AccountPositionsArtifactPositionsProvenance {
-  network: String!
-  captured_at: String!
-  block_number: Int!
-  block_hash: String!
-  genesis_hash: String!
-  spec_version: JSON!
-  code_hash: String!
-  metadata_sha256: String!
+  provenance: AlphaQuantityProvenance
 }
 
 type AccountPositionsDegraded {
@@ -8144,19 +8159,18 @@ type ChainYield {
   miner_count: Int
   captured_at: String
 
-  """
-  Sum of every neuron's stake across every NON-ROOT subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Root (netuid 0) is excluded because root stake is genuine TAO and would mix denominations into this sum (#9040). Use it as the denominator of the yields below, not as a TAO figure.
-  """
+  """Deprecated unsupported holdings aggregate; always null."""
   total_stake_alpha: Float
 
   """
-  Sum of every neuron's emission across every NON-ROOT subnet, alpha-denominated for the same reason as total_stake_alpha and excluding root for the same reason (#8803, #9040). Alpha/alpha keeps the *_yield ratios below dimensionally valid.
+  Deprecated cross-token emission sum; always null. Different subnet Alpha tokens cannot be added.
   """
   total_emission_alpha: Float
   network_yield: Float
   validator_yield: Float
   miner_yield: Float
   distribution: YieldDistribution
+  degraded: ChainYieldArtifactDegraded!
 }
 
 """
@@ -8172,6 +8186,10 @@ type YieldDistribution {
   p90: Float!
   max: Float!
   p10: Float!
+}
+
+type ChainYieldArtifactDegraded {
+  reason: String!
 }
 
 """

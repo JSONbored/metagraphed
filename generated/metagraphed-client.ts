@@ -813,7 +813,7 @@ export function createMetagraphedClient(
 export const QUERY_PARAMETER_ENUMS = {
   "/api/v1/accounts": {
     "format": ["json","csv"],
-    "sort": ["total_stake","total_emission","subnet_count","uid_count","validator_count","stake_dominance","last_active"],
+    "sort": ["total_emission","subnet_count","uid_count","validator_count","last_active"],
   },
   "/api/v1/accounts/top-holders": {
     "format": ["json","csv"],
@@ -1425,7 +1425,7 @@ export const QUERY_PARAMETER_ENUMS = {
   },
   "/api/v1/validators": {
     "format": ["json","csv"],
-    "sort": ["avg_validator_trust","max_validator_trust","stake_dominance","subnet_count","total_emission","total_stake","uid_count"],
+    "sort": ["avg_validator_trust","max_validator_trust","subnet_count","total_emission","uid_count"],
   },
   "/api/v1/validators/economics": {
     "sort": ["earning_floor_cost_tao","permit_floor_cost_tao","permit_to_earning_multiple","tao_inflow_per_day","validator_headroom"],

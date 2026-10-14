@@ -37,14 +37,15 @@ describe("formatAccountPosition", () => {
       coldkey: "5Cold",
       role: "validator",
       active: true,
-      stake_tao: 456.7,
+      stake_tao: null,
+      voting_weight: 456.7,
       emission_tao: 1.23,
       rank: 0.5,
       trust: 0.9,
       incentive: 0.6,
       dividends: 0.4,
       // round9(emission_tao / stake_tao) = round9(1.23 / 456.7).
-      yield: 0.002693234,
+      yield: null,
     });
   });
 

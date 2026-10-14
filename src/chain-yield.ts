@@ -11,6 +11,8 @@
 import { median, percentile } from "./lib/stats.ts";
 import { round9 } from "./lib/rao.ts";
 
+type Row = Record<string, unknown>;
+
 // The neurons-tier columns the network yield handler reads. `netuid` lets the
 // artifact report how many subnets the snapshot spans (mirrors
 // CHAIN_PERFORMANCE_READ_COLUMNS); no per-UID list is served, so only the economic

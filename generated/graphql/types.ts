@@ -474,18 +474,6 @@ export type AccountPositions = {
   total_stake_alpha?: Maybe<Scalars['Float']['output']>;
 };
 
-export type AccountPositionsArtifactPositionsProvenance = {
-  __typename?: 'AccountPositionsArtifactPositionsProvenance';
-  block_hash: Scalars['String']['output'];
-  block_number: Scalars['Int']['output'];
-  captured_at: Scalars['String']['output'];
-  code_hash: Scalars['String']['output'];
-  genesis_hash: Scalars['String']['output'];
-  metadata_sha256: Scalars['String']['output'];
-  network: Scalars['String']['output'];
-  spec_version: Scalars['JSON']['output'];
-};
-
 export type AccountPositionsDegraded = {
   __typename?: 'AccountPositionsDegraded';
   /** The newest StakeAdded/StakeRemoved this account has on chain, when that is what contradicts the zero. */
@@ -767,6 +755,18 @@ export type AdapterArtifactSnapshot = {
   slug?: Maybe<Scalars['String']['output']>;
   source?: Maybe<Scalars['String']['output']>;
   status?: Maybe<Scalars['String']['output']>;
+};
+
+export type AlphaQuantityProvenance = {
+  __typename?: 'AlphaQuantityProvenance';
+  block_hash: Scalars['String']['output'];
+  block_number: Scalars['Int']['output'];
+  captured_at: Scalars['String']['output'];
+  code_hash: Scalars['String']['output'];
+  genesis_hash: Scalars['String']['output'];
+  metadata_sha256: Scalars['String']['output'];
+  network: Scalars['String']['output'];
+  spec_version: Scalars['JSON']['output'];
 };
 
 export type AlphaUsdFieldSource = {
@@ -1429,6 +1429,7 @@ export type ChainHolders = {
   limit?: Maybe<Scalars['Int']['output']>;
   network: ChainHoldersNetwork;
   positions_captured_at?: Maybe<Scalars['String']['output']>;
+  provenance?: Maybe<AlphaQuantityProvenance>;
   schema_version: Scalars['Int']['output'];
   sort: Scalars['String']['output'];
   /** Subnets measured -- NOT the length of the subnets list when limit bites. */
@@ -1975,6 +1976,7 @@ export type ChainWeightsSubnet = {
 export type ChainYield = {
   __typename?: 'ChainYield';
   captured_at?: Maybe<Scalars['String']['output']>;
+  degraded: ChainYieldArtifactDegraded;
   distribution?: Maybe<YieldDistribution>;
   miner_count?: Maybe<Scalars['Int']['output']>;
   miner_yield?: Maybe<Scalars['Float']['output']>;
@@ -1983,12 +1985,17 @@ export type ChainYield = {
   schema_version: Scalars['Int']['output'];
   /** How many subnets the aggregate spans. Root (netuid 0) is NOT one of them and is excluded from every figure below (#9040): root stake is TAO, not a subnet alpha token. */
   subnet_count: Scalars['Int']['output'];
-  /** Sum of every neuron's emission across every NON-ROOT subnet, alpha-denominated for the same reason as total_stake_alpha and excluding root for the same reason (#8803, #9040). Alpha/alpha keeps the *_yield ratios below dimensionally valid. */
+  /** Deprecated cross-token emission sum; always null. Different subnet Alpha tokens cannot be added. */
   total_emission_alpha?: Maybe<Scalars['Float']['output']>;
-  /** Sum of every neuron's stake across every NON-ROOT subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Root (netuid 0) is excluded because root stake is genuine TAO and would mix denominations into this sum (#9040). Use it as the denominator of the yields below, not as a TAO figure. */
+  /** Deprecated unsupported holdings aggregate; always null. */
   total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
   validator_yield?: Maybe<Scalars['Float']['output']>;
+};
+
+export type ChainYieldArtifactDegraded = {
+  __typename?: 'ChainYieldArtifactDegraded';
+  reason: Scalars['String']['output'];
 };
 
 export type Changelog = {
@@ -3239,7 +3246,7 @@ export type NeuronHistoryPoint = {
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
   snapshot_date: Scalars['String']['output'];
-  /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
+  /** Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield. */
   stake_tao?: Maybe<Scalars['Float']['output']>;
   /** Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
   take?: Maybe<Scalars['Float']['output']>;
@@ -3275,7 +3282,7 @@ export type NeuronState = {
   /** 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
-  /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
+  /** Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield. */
   stake_tao?: Maybe<Scalars['Float']['output']>;
   /** Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
   take?: Maybe<Scalars['Float']['output']>;
@@ -3327,7 +3334,7 @@ export type NominatorPosition = {
   alpha_rao?: Maybe<Scalars['String']['output']>;
   hotkey: Scalars['String']['output'];
   netuid: Scalars['Int']['output'];
-  provenance?: Maybe<AccountPositionsArtifactPositionsProvenance>;
+  provenance?: Maybe<AlphaQuantityProvenance>;
   quantity_status: Scalars['String']['output'];
   /** Observed display share ratio; not an asset balance or share of a subnet's total holdings. */
   share_fraction?: Maybe<Scalars['Float']['output']>;
@@ -6810,6 +6817,7 @@ export type SubnetHolders = {
   netuid: Scalars['Int']['output'];
   /** When the positions ledger itself was last written, which advances on a different cadence than the pool totals. */
   positions_captured_at?: Maybe<Scalars['String']['output']>;
+  provenance?: Maybe<AlphaQuantityProvenance>;
   schema_version: Scalars['Int']['output'];
   total_alpha?: Maybe<Scalars['Float']['output']>;
 };
@@ -7964,6 +7972,7 @@ export type SubnetYield = {
   __typename?: 'SubnetYield';
   block_number?: Maybe<Scalars['Int']['output']>;
   captured_at?: Maybe<Scalars['String']['output']>;
+  degraded: SubnetYieldArtifactDegraded;
   mean_yield?: Maybe<Scalars['Float']['output']>;
   median_yield?: Maybe<Scalars['Float']['output']>;
   miner_count: Scalars['Int']['output'];
@@ -7976,19 +7985,31 @@ export type SubnetYield = {
   schema_version: Scalars['Int']['output'];
   subnet_yield?: Maybe<Scalars['Float']['output']>;
   total_emission_alpha: Scalars['Float']['output'];
-  total_stake_alpha: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings total; always null. */
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count: Scalars['Int']['output'];
+};
+
+export type SubnetYieldArtifactDegraded = {
+  __typename?: 'SubnetYieldArtifactDegraded';
+  reason: Scalars['String']['output'];
 };
 
 /** Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup. */
 export type SubnetYieldHistory = {
   __typename?: 'SubnetYieldHistory';
+  degraded: SubnetYieldHistoryArtifactDegraded;
   netuid: Scalars['Int']['output'];
   point_count: Scalars['Int']['output'];
   points: Array<SubnetYieldHistoryPoint>;
   schema_version: Scalars['Int']['output'];
   /** The resolved window label (7d/30d/90d). */
   window?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetYieldHistoryArtifactDegraded = {
+  __typename?: 'SubnetYieldHistoryArtifactDegraded';
+  reason: Scalars['String']['output'];
 };
 
 export type SubnetYieldHistoryPoint = {
@@ -8005,16 +8026,18 @@ export type SubnetYieldHistoryPoint = {
   yield_count?: Maybe<Scalars['Int']['output']>;
 };
 
-/** One UID's emission-per-stake yield within a subnet's current metagraph snapshot. */
+/** One UID observation. Voting weights are retained; native holdings and investment yield remain unqualified. */
 export type SubnetYieldNeuron = {
   __typename?: 'SubnetYieldNeuron';
   /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
   emission_tao?: Maybe<Scalars['Float']['output']>;
   hotkey?: Maybe<Scalars['String']['output']>;
   role: Scalars['String']['output'];
-  /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
-  stake_tao: Scalars['Float']['output'];
+  /** Deprecated unsupported native holdings amount; always null. */
+  stake_tao?: Maybe<Scalars['Float']['output']>;
   uid: Scalars['Int']['output'];
+  /** Effective voting weight; unavailable cells remain null. */
+  voting_weight?: Maybe<Scalars['Float']['output']>;
   vs_median?: Maybe<Scalars['String']['output']>;
   yield?: Maybe<Scalars['Float']['output']>;
 };
@@ -8572,7 +8595,6 @@ export type ResolversTypes = ResolversObject<{
   AccountPositionHistory: ResolverTypeWrapper<AccountPositionHistory>;
   AccountPositionHistoryPoint: ResolverTypeWrapper<AccountPositionHistoryPoint>;
   AccountPositions: ResolverTypeWrapper<AccountPositions>;
-  AccountPositionsArtifactPositionsProvenance: ResolverTypeWrapper<AccountPositionsArtifactPositionsProvenance>;
   AccountPositionsDegraded: ResolverTypeWrapper<AccountPositionsDegraded>;
   AccountPrometheus: ResolverTypeWrapper<AccountPrometheus>;
   AccountPrometheusSubnet: ResolverTypeWrapper<AccountPrometheusSubnet>;
@@ -8595,6 +8617,7 @@ export type ResolversTypes = ResolversObject<{
   AccountWeightSettersSubnet: ResolverTypeWrapper<AccountWeightSettersSubnet>;
   Adapter: ResolverTypeWrapper<Adapter>;
   AdapterArtifactSnapshot: ResolverTypeWrapper<AdapterArtifactSnapshot>;
+  AlphaQuantityProvenance: ResolverTypeWrapper<AlphaQuantityProvenance>;
   AlphaUsdFieldSource: ResolverTypeWrapper<AlphaUsdFieldSource>;
   AttributionEvidence: ResolverTypeWrapper<AttributionEvidence>;
   Block: ResolverTypeWrapper<Block>;
@@ -8690,6 +8713,7 @@ export type ResolversTypes = ResolversObject<{
   ChainWeightsNetwork: ResolverTypeWrapper<ChainWeightsNetwork>;
   ChainWeightsSubnet: ResolverTypeWrapper<ChainWeightsSubnet>;
   ChainYield: ResolverTypeWrapper<ChainYield>;
+  ChainYieldArtifactDegraded: ResolverTypeWrapper<ChainYieldArtifactDegraded>;
   Changelog: ResolverTypeWrapper<Changelog>;
   ChangelogArtifactArtifacts: ResolverTypeWrapper<ChangelogArtifactArtifacts>;
   ChangelogArtifactSubnets: ResolverTypeWrapper<ChangelogArtifactSubnets>;
@@ -8971,7 +8995,9 @@ export type ResolversTypes = ResolversObject<{
   SubnetWeightSetters: ResolverTypeWrapper<SubnetWeightSetters>;
   SubnetWeights: ResolverTypeWrapper<SubnetWeights>;
   SubnetYield: ResolverTypeWrapper<SubnetYield>;
+  SubnetYieldArtifactDegraded: ResolverTypeWrapper<SubnetYieldArtifactDegraded>;
   SubnetYieldHistory: ResolverTypeWrapper<SubnetYieldHistory>;
+  SubnetYieldHistoryArtifactDegraded: ResolverTypeWrapper<SubnetYieldHistoryArtifactDegraded>;
   SubnetYieldHistoryPoint: ResolverTypeWrapper<SubnetYieldHistoryPoint>;
   SubnetYieldNeuron: ResolverTypeWrapper<SubnetYieldNeuron>;
   Subscription: ResolverTypeWrapper<Record<PropertyKey, never>>;
@@ -9046,7 +9072,6 @@ export type ResolversParentTypes = ResolversObject<{
   AccountPositionHistory: AccountPositionHistory;
   AccountPositionHistoryPoint: AccountPositionHistoryPoint;
   AccountPositions: AccountPositions;
-  AccountPositionsArtifactPositionsProvenance: AccountPositionsArtifactPositionsProvenance;
   AccountPositionsDegraded: AccountPositionsDegraded;
   AccountPrometheus: AccountPrometheus;
   AccountPrometheusSubnet: AccountPrometheusSubnet;
@@ -9069,6 +9094,7 @@ export type ResolversParentTypes = ResolversObject<{
   AccountWeightSettersSubnet: AccountWeightSettersSubnet;
   Adapter: Adapter;
   AdapterArtifactSnapshot: AdapterArtifactSnapshot;
+  AlphaQuantityProvenance: AlphaQuantityProvenance;
   AlphaUsdFieldSource: AlphaUsdFieldSource;
   AttributionEvidence: AttributionEvidence;
   Block: Block;
@@ -9163,6 +9189,7 @@ export type ResolversParentTypes = ResolversObject<{
   ChainWeightsNetwork: ChainWeightsNetwork;
   ChainWeightsSubnet: ChainWeightsSubnet;
   ChainYield: ChainYield;
+  ChainYieldArtifactDegraded: ChainYieldArtifactDegraded;
   Changelog: Changelog;
   ChangelogArtifactArtifacts: ChangelogArtifactArtifacts;
   ChangelogArtifactSubnets: ChangelogArtifactSubnets;
@@ -9443,7 +9470,9 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetWeightSetters: SubnetWeightSetters;
   SubnetWeights: SubnetWeights;
   SubnetYield: SubnetYield;
+  SubnetYieldArtifactDegraded: SubnetYieldArtifactDegraded;
   SubnetYieldHistory: SubnetYieldHistory;
+  SubnetYieldHistoryArtifactDegraded: SubnetYieldHistoryArtifactDegraded;
   SubnetYieldHistoryPoint: SubnetYieldHistoryPoint;
   SubnetYieldNeuron: SubnetYieldNeuron;
   Subscription: Record<PropertyKey, never>;
@@ -9849,17 +9878,6 @@ export type AccountPositionsResolvers<ContextType = GqlContext, ParentType exten
   total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
-export type AccountPositionsArtifactPositionsProvenanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountPositionsArtifactPositionsProvenance'] = ResolversParentTypes['AccountPositionsArtifactPositionsProvenance']> = ResolversObject<{
-  block_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  block_number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  captured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  code_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  genesis_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  metadata_sha256?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  network?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  spec_version?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
-}>;
-
 export type AccountPositionsDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountPositionsDegraded'] = ResolversParentTypes['AccountPositionsDegraded']> = ResolversObject<{
   latest_stake_event_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -10083,6 +10101,17 @@ export type AdapterArtifactSnapshotResolvers<ContextType = GqlContext, ParentTyp
   slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type AlphaQuantityProvenanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AlphaQuantityProvenance'] = ResolversParentTypes['AlphaQuantityProvenance']> = ResolversObject<{
+  block_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  block_number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  captured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  code_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  genesis_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  metadata_sha256?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  network?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  spec_version?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
 }>;
 
 export type AlphaUsdFieldSourceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AlphaUsdFieldSource'] = ResolversParentTypes['AlphaUsdFieldSource']> = ResolversObject<{
@@ -10591,6 +10620,7 @@ export type ChainHoldersResolvers<ContextType = GqlContext, ParentType extends R
   limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainHoldersNetwork'], ParentType, ContextType>;
   positions_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  provenance?: Resolver<Maybe<ResolversTypes['AlphaQuantityProvenance']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -11003,6 +11033,7 @@ export type ChainWeightsSubnetResolvers<ContextType = GqlContext, ParentType ext
 
 export type ChainYieldResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainYield'] = ResolversParentTypes['ChainYield']> = ResolversObject<{
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  degraded?: Resolver<ResolversTypes['ChainYieldArtifactDegraded'], ParentType, ContextType>;
   distribution?: Resolver<Maybe<ResolversTypes['YieldDistribution']>, ParentType, ContextType>;
   miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   miner_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -11014,6 +11045,10 @@ export type ChainYieldResolvers<ContextType = GqlContext, ParentType extends Res
   total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type ChainYieldArtifactDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainYieldArtifactDegraded'] = ResolversParentTypes['ChainYieldArtifactDegraded']> = ResolversObject<{
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type ChangelogResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Changelog'] = ResolversParentTypes['Changelog']> = ResolversObject<{
@@ -12106,7 +12141,7 @@ export type NominatorPositionResolvers<ContextType = GqlContext, ParentType exte
   alpha_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  provenance?: Resolver<Maybe<ResolversTypes['AccountPositionsArtifactPositionsProvenance']>, ParentType, ContextType>;
+  provenance?: Resolver<Maybe<ResolversTypes['AlphaQuantityProvenance']>, ParentType, ContextType>;
   quantity_status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   share_fraction?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -13514,6 +13549,7 @@ export type SubnetHoldersResolvers<ContextType = GqlContext, ParentType extends 
   limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   positions_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  provenance?: Resolver<Maybe<ResolversTypes['AlphaQuantityProvenance']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
@@ -14420,6 +14456,7 @@ export type SubnetWeightsResolvers<ContextType = GqlContext, ParentType extends 
 export type SubnetYieldResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYield'] = ResolversParentTypes['SubnetYield']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  degraded?: Resolver<ResolversTypes['SubnetYieldArtifactDegraded'], ParentType, ContextType>;
   mean_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   median_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   miner_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -14432,16 +14469,25 @@ export type SubnetYieldResolvers<ContextType = GqlContext, ParentType extends Re
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_emission_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  total_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type SubnetYieldArtifactDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldArtifactDegraded'] = ResolversParentTypes['SubnetYieldArtifactDegraded']> = ResolversObject<{
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type SubnetYieldHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldHistory'] = ResolversParentTypes['SubnetYieldHistory']> = ResolversObject<{
+  degraded?: Resolver<ResolversTypes['SubnetYieldHistoryArtifactDegraded'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['SubnetYieldHistoryPoint']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetYieldHistoryArtifactDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldHistoryArtifactDegraded'] = ResolversParentTypes['SubnetYieldHistoryArtifactDegraded']> = ResolversObject<{
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type SubnetYieldHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldHistoryPoint'] = ResolversParentTypes['SubnetYieldHistoryPoint']> = ResolversObject<{
@@ -14461,8 +14507,9 @@ export type SubnetYieldNeuronResolvers<ContextType = GqlContext, ParentType exte
   emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   role?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  voting_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   vs_median?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
@@ -14836,7 +14883,6 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountPositionHistory?: AccountPositionHistoryResolvers<ContextType>;
   AccountPositionHistoryPoint?: AccountPositionHistoryPointResolvers<ContextType>;
   AccountPositions?: AccountPositionsResolvers<ContextType>;
-  AccountPositionsArtifactPositionsProvenance?: AccountPositionsArtifactPositionsProvenanceResolvers<ContextType>;
   AccountPositionsDegraded?: AccountPositionsDegradedResolvers<ContextType>;
   AccountPrometheus?: AccountPrometheusResolvers<ContextType>;
   AccountPrometheusSubnet?: AccountPrometheusSubnetResolvers<ContextType>;
@@ -14859,6 +14905,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountWeightSettersSubnet?: AccountWeightSettersSubnetResolvers<ContextType>;
   Adapter?: AdapterResolvers<ContextType>;
   AdapterArtifactSnapshot?: AdapterArtifactSnapshotResolvers<ContextType>;
+  AlphaQuantityProvenance?: AlphaQuantityProvenanceResolvers<ContextType>;
   AlphaUsdFieldSource?: AlphaUsdFieldSourceResolvers<ContextType>;
   AttributionEvidence?: AttributionEvidenceResolvers<ContextType>;
   Block?: BlockResolvers<ContextType>;
@@ -14952,6 +14999,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainWeightsNetwork?: ChainWeightsNetworkResolvers<ContextType>;
   ChainWeightsSubnet?: ChainWeightsSubnetResolvers<ContextType>;
   ChainYield?: ChainYieldResolvers<ContextType>;
+  ChainYieldArtifactDegraded?: ChainYieldArtifactDegradedResolvers<ContextType>;
   Changelog?: ChangelogResolvers<ContextType>;
   ChangelogArtifactArtifacts?: ChangelogArtifactArtifactsResolvers<ContextType>;
   ChangelogArtifactSubnets?: ChangelogArtifactSubnetsResolvers<ContextType>;
@@ -15229,7 +15277,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetWeightSetters?: SubnetWeightSettersResolvers<ContextType>;
   SubnetWeights?: SubnetWeightsResolvers<ContextType>;
   SubnetYield?: SubnetYieldResolvers<ContextType>;
+  SubnetYieldArtifactDegraded?: SubnetYieldArtifactDegradedResolvers<ContextType>;
   SubnetYieldHistory?: SubnetYieldHistoryResolvers<ContextType>;
+  SubnetYieldHistoryArtifactDegraded?: SubnetYieldHistoryArtifactDegradedResolvers<ContextType>;
   SubnetYieldHistoryPoint?: SubnetYieldHistoryPointResolvers<ContextType>;
   SubnetYieldNeuron?: SubnetYieldNeuronResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;

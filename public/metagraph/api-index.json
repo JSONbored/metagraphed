@@ -8157,10 +8157,8 @@
             "enum": [
               "avg_validator_trust",
               "max_validator_trust",
-              "stake_dominance",
               "subnet_count",
               "total_emission",
-              "total_stake",
               "uid_count"
             ],
             "type": "string"
@@ -8222,17 +8220,15 @@
       "query_filter_names": [],
       "query_parameters": [
         {
-          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_stake.",
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to subnet_count.",
           "name": "sort",
           "schema": {
-            "default": "total_stake",
+            "default": "subnet_count",
             "enum": [
-              "total_stake",
               "total_emission",
               "subnet_count",
               "uid_count",
               "validator_count",
-              "stake_dominance",
               "last_active"
             ],
             "type": "string"
@@ -8294,10 +8290,10 @@
       "query_filter_names": [],
       "query_parameters": [
         {
-          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_tao.",
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to free_tao.",
           "name": "sort",
           "schema": {
-            "default": "total_tao",
+            "default": "free_tao",
             "enum": [
               "free_tao",
               "net_flow_7d",
