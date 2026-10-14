@@ -870,6 +870,7 @@ import {
 import { buildTierPolicies } from "../src/api-tiers.ts";
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 
+import { coalescedReadMemo } from "../src/coalesced-read-memo.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { withAlphaUsdEconomics } from "../src/alpha-usd-overlay.ts";
 import { readTaoUsdCurrentKv } from "./tao-usd-current.ts";
@@ -5897,7 +5898,9 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       readHealthKv: (e: Env, key: string) =>
         key === KV_ECONOMICS_CURRENT
           ? readEconomicsCurrentKv(e)
-          : readHealthKv(e, key),
+          : key === KV_HEALTH_META
+            ? readHealthMetaKv(e)
+            : readHealthKv(e, key),
       executionCtx: ctx,
     });
   }
@@ -9210,24 +9213,16 @@ const subnetSlugIndexByNetwork = new Map(); // network.id -> { map, builtAt }
 // latestPointer (#367) and readRpcPoolArtifact (#1309). Null results are not
 // cached so a transient cold KV does not stay sticky.
 export const HEALTH_META_KV_TTL_MS = 60_000;
-let healthMetaKvMemo: { env: Env | null; value: unknown; expiresAt: number } = {
-  env: null,
-  value: null,
-  expiresAt: 0,
-};
+const healthMetaKvMemo = coalescedReadMemo(
+  (env: Env) => readHealthKv(env, KV_HEALTH_META),
+  HEALTH_META_KV_TTL_MS,
+);
 
 export async function readHealthMetaKv(
   env: Env,
   now: number = Date.now(),
 ): Promise<Row | null> {
-  if (healthMetaKvMemo.env === env && now < healthMetaKvMemo.expiresAt) {
-    return healthMetaKvMemo.value as Row | null;
-  }
-  const value = await readHealthKv(env, KV_HEALTH_META);
-  if (value !== null) {
-    healthMetaKvMemo = { env, value, expiresAt: now + HEALTH_META_KV_TTL_MS };
-  }
-  return value as Row | null;
+  return (await healthMetaKvMemo.read(env, now)) as Row | null;
 }
 
 // Wire the api.ts-local snapshot-meta reader into the extracted analytics module
@@ -9257,31 +9252,16 @@ configureRpcProxy({ readHealthMetaKv, recordApiKeyUsage });
 // stale blob can serve. Null results are not cached so a transient cold KV does
 // not stay sticky; keyed on env so tests / multi-binding callers never cross-read.
 export const ECONOMICS_CURRENT_KV_TTL_MS = 60_000;
-let economicsCurrentKvMemo: {
-  env: Env | null;
-  value: unknown;
-  expiresAt: number;
-} = { env: null, value: null, expiresAt: 0 };
+const economicsCurrentKvMemo = coalescedReadMemo(
+  (env: Env) => readHealthKv(env, KV_ECONOMICS_CURRENT),
+  ECONOMICS_CURRENT_KV_TTL_MS,
+);
 
 export async function readEconomicsCurrentKv(
   env: Env,
   now: number = Date.now(),
 ): Promise<Row | null> {
-  if (
-    economicsCurrentKvMemo.env === env &&
-    now < economicsCurrentKvMemo.expiresAt
-  ) {
-    return economicsCurrentKvMemo.value as Row | null;
-  }
-  const value = await readHealthKv(env, KV_ECONOMICS_CURRENT);
-  if (value !== null) {
-    economicsCurrentKvMemo = {
-      env,
-      value,
-      expiresAt: now + ECONOMICS_CURRENT_KV_TTL_MS,
-    };
-  }
-  return value as Row | null;
+  return (await economicsCurrentKvMemo.read(env, now)) as Row | null;
 }
 
 // Chain-event index heartbeat. Memoized per-isolate at a short TTL so repeated
@@ -9344,8 +9324,8 @@ configureAnalyticsRoutes({ readHealthMetaKv, readEconomicsCurrentKv });
 // handler module has dropped back to its unwired placeholders — leaving the
 // process in exactly the state a fresh import would produce.
 registerModuleStateReset("workers/api.ts", () => {
-  healthMetaKvMemo = { env: null, value: null, expiresAt: 0 };
-  economicsCurrentKvMemo = { env: null, value: null, expiresAt: 0 };
+  healthMetaKvMemo.reset();
+  economicsCurrentKvMemo.reset();
   chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
   subnetSlugIndexByNetwork.clear();
   configureAnalytics({ readHealthMetaKv, readEconomicsCurrentKv });
@@ -9602,12 +9582,14 @@ async function handleApiRequest(
     // integrity-checked); fall back to the committed R2 economics.json when KV is
     // cold/stale/invalid. Unlike health this keeps the R2 artifact as a real
     // fallback, so it can never 404.
-    artifact = await readArtifact(env, artifactPath);
     live = await resolveLiveEconomics({
       readHealthKv: (e) => readEconomicsCurrentKv(e),
       env,
       contractVersion: contractVersion(env),
     });
+    artifact = live
+      ? NO_STORED_ARTIFACT
+      : await readArtifact(env, artifactPath);
   } else {
     artifact = await readArtifact(env, artifactPath);
     live = await liveHealthOverlay(
