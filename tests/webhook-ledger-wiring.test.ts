@@ -638,7 +638,14 @@ test("declared DLQ retry policy survives a first native finalization outage with
   // The actual production configuration above supplies that budget.
   await worker.queue!(batch as never, f.env as unknown as Env, {} as never);
   assert(acked);
-  assert.equal((await f.ledger.recent(f.id, Date.now()))[0].state, "dead");
+  assert.equal(
+    (await f.ledger.recent(f.id, Date.now()))[0].state,
+    "pending",
+    "transport exhaustion preserves queued logical ownership",
+  );
+  const recovered = Date.now() + 33 * 86400000;
+  await f.ledger.recoverExpired(recovered);
+  assert.equal((await f.ledger.recent(f.id, recovered))[0].state, "dead");
 });
 
 test("committed admission with lost verification still preserves all seven recipients after changelog advances", async () => {
