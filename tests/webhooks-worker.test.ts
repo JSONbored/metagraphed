@@ -1187,6 +1187,115 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
     assert.deepEqual(acts, ["ack"], "no verdict is terminal, not a retry loop");
   });
 
+  test("a live delivery lease retries with bounded delay and never repeats HTTP", async () => {
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    const m = webhookMessage(String(sub.id));
+    const now = Date.now();
+    const claimed = await native.ledger.claim(m, String(sub.url), 1, now);
+    assert.equal(claimed.kind, "claimed");
+    const fetchFn = vi.fn(async () => {
+      throw new Error("must not repeat HTTP during a live lease");
+    });
+    const { handleWebhookQueue } = await import("../workers/api.ts");
+    const actions: string[] = [],
+      delays: number[] = [];
+    await handleWebhookQueue(
+      {
+        messages: [
+          {
+            body: m,
+            attempts: 2,
+            ack: () => actions.push("ack"),
+            retry: (options?: { delaySeconds?: number }) => {
+              actions.push("retry");
+              delays.push(options?.delaySeconds ?? -1);
+            },
+          },
+        ],
+      } as never,
+      envWith(kv) as unknown as Env,
+      {} as never,
+      fetchFn as never,
+    );
+    assert.deepEqual(actions, ["retry"]);
+    assert.deepEqual(
+      delays,
+      [600],
+      "a live lease has no scheduled retry timestamp; use the published attempt backoff",
+    );
+    assert.equal(fetchFn.mock.calls.length, 0);
+    const row = await native.db
+      .prepare(
+        "SELECT state,sequence FROM webhook_delivery_intents WHERE subscription_id=? AND event_id=?",
+      )
+      .bind(m.subscription_id, m.event_id)
+      .first();
+    assert.deepEqual(row, { state: "sending", sequence: 1 });
+  });
+
+  test("a legacy subscription without a target is terminal and cannot make an outbound request", async () => {
+    const kv = makeKv();
+    const id = "legacy-missing-target";
+    kv.store.set(
+      `webhooks:sub:${id}`,
+      JSON.stringify({ id, secret: "old-secret", filters: {} }),
+    );
+    const result = await runQueue(envWith(kv), webhookMessage(id));
+    assert.deepEqual(result.acts, ["ack"]);
+    const rows = await native.ledger.recent(id, Date.now());
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].state, "dead");
+    assert.notEqual(rows[0].reason, null);
+  });
+
+  test("dead letters decline an unbound ledger and acknowledge malformed envelopes without delivery", async () => {
+    const { default: worker } = await import("../workers/api.ts");
+    const actions: string[] = [];
+    const batch = (body: unknown, queue = "webhook-deliveries-dlq") => ({
+      queue,
+      messages: [
+        {
+          body,
+          attempts: 8,
+          ack: () => actions.push("ack"),
+          retry: () => actions.push("retry"),
+        },
+      ],
+    });
+    await assert.rejects(
+      worker.queue!(
+        batch(webhookMessage()) as never,
+        envWith(makeKv(), { D1_STATE: undefined }) as unknown as Env,
+        {} as never,
+      ),
+      /ledger is unbound/,
+    );
+    assert.deepEqual(
+      actions,
+      [],
+      "an unrecorded obligation must remain unacknowledged",
+    );
+    await worker.queue!(
+      batch({ malformed: true }) as never,
+      envWith(makeKv()) as unknown as Env,
+      {} as never,
+    );
+    assert.deepEqual(actions, ["ack"]);
+    actions.length = 0;
+    await worker.queue!(
+      batch({ malformed: true }, "probe-jobs-dlq") as never,
+      envWith(makeKv()) as unknown as Env,
+      {} as never,
+    );
+    assert.deepEqual(actions, ["ack"]);
+    assert.deepEqual(
+      await native.ledger.recent("sub", Date.now()),
+      [],
+      "malformed dead letters create no delivery claim",
+    );
+  });
+
   test("a dead-letter batch is acked and NOT delivered (metagraphed-infra#363)", async () => {
     // webhook-deliveries-dlq is bound to this same handler. Without the branch
     // on batch.queue, an event a subscriber has already refused eight times
@@ -1676,4 +1785,30 @@ describe("the webhook cron trigger (metagraphed-infra#354)", () => {
     assert.equal(res.ok, true);
     assert.equal(res.reason, "not_provisioned", "no queue bound in this env");
   });
+});
+
+test("unbound durable webhook ownership rejects dispatch before queue effects or checkpoints", async () => {
+  const kv = makeKv();
+  await seedSubscription(kv, "https://hooks.example.com/a");
+  const queue = makeQueue();
+  const env = envWith(kv, {
+    D1_STATE: undefined,
+    WEBHOOK_DELIVERIES: queue,
+    WEBHOOK_DISPATCH_SECRET: DISPATCH_TOKEN,
+  });
+  const { dispatchWebhooksFromChangelog } = await import("../workers/api.ts");
+  await assert.rejects(
+    dispatchWebhooksFromChangelog(env as unknown as Env, async () => ({
+      type: "metagraph.publish",
+      changes: { subnets: [7] },
+    })),
+    /ledger is unbound/,
+  );
+  const response = await dispatch(env, {
+    type: "metagraph.publish",
+    changes: { subnets: [7] },
+  });
+  assert.equal(response.status, 503);
+  assert.equal(queue.sent.length, 0);
+  assert.equal(kv.store.has("webhooks:last-dispatched"), false);
 });

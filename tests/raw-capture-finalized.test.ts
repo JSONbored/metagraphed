@@ -353,3 +353,163 @@ test("each fast failover spends a paced slot, and endpoint count cannot widen th
   assert.equal(refused.watermark, 9);
   assert.match(refused.reason!, /attempt budget exhausted/);
 });
+
+interface FixtureRpcCall {
+  id: number;
+  method: string;
+  params: unknown[];
+}
+interface FixtureRpcReply {
+  jsonrpc: string;
+  id: number;
+  result?: unknown;
+  error?: { code: number; message: string };
+}
+/** Preserve the node's request recorder while changing one semantic RPC reply. */
+function rewriteReply(
+  node: ReturnType<typeof syntheticNode>,
+  rewrite: (call: FixtureRpcCall, reply: FixtureRpcReply) => FixtureRpcReply,
+): typeof fetch {
+  return async (url, init) => {
+    const request = JSON.parse(String(init?.body)) as
+      | FixtureRpcCall
+      | FixtureRpcCall[];
+    const calls = Array.isArray(request) ? request : [request];
+    const response = await node.fetchImpl(url, init);
+    const payload = (await response.json()) as
+      | FixtureRpcReply
+      | FixtureRpcReply[];
+    const replies = (Array.isArray(payload) ? payload : [payload]).map(
+      (reply) => {
+        const call = calls.find((entry) => entry.id === reply.id);
+        assert.ok(call, "the fixture reply must retain its request identity");
+        return rewrite(call, reply);
+      },
+    );
+    return Response.json(Array.isArray(request) ? replies : replies[0]);
+  };
+}
+
+test("a failed finalized-anchor batch member cannot initialize a durable checkpoint", async () => {
+  const f = await fixture(),
+    node = syntheticNode();
+  const fetchImpl = rewriteReply(node, (call, reply) =>
+    call.method === "chain_getBlockHash" && call.params[0] === 0
+      ? {
+          jsonrpc: "2.0",
+          id: reply.id,
+          error: { code: -32000, message: "genesis lookup unavailable" },
+        }
+      : reply,
+  );
+  await assert.rejects(
+    run(f, node, { fetchImpl }),
+    /genesis lookup unavailable/,
+  );
+  assert.equal(await f.store.canonical!.read("mainnet"), null);
+  assert.equal(
+    new Set(node.requests.map((request) => request.request)).size,
+    1,
+  );
+  assert.equal(
+    node.requests.some((request) => request.method === "chain_getBlock"),
+    false,
+  );
+});
+
+test("a finalized hash whose returned header is a different valid block is rejected before bootstrap", async () => {
+  const f = await fixture(),
+    node = syntheticNode();
+  const fetchImpl = rewriteReply(node, (call, reply) =>
+    call.method === "chain_getHeader" && call.params[0] === node.hash(14)
+      ? { ...reply, result: node.headers.get(13) }
+      : reply,
+  );
+  await assert.rejects(
+    run(f, node, { fetchImpl }),
+    /finalized header hash differs/,
+  );
+  assert.equal(await f.store.canonical!.read("mainnet"), null);
+  assert.equal(
+    new Set(node.requests.map((request) => request.request)).size,
+    2,
+  );
+});
+
+test.each([11, 13])(
+  "a coherent lower finalized assertion refuses durable predecessor %i without changing its proof",
+  async (height) => {
+    const f = await fixture(),
+      node = syntheticNode();
+    const checkpoint = await f.store.canonical!.bootstrap({
+      network: "mainnet",
+      previousHeight: null,
+      height,
+      hash: node.hash(height),
+      genesis: RAW_CAPTURE_GENESIS.mainnet,
+      finalized: { height: 14, hash: node.hash(14) },
+      now: 1000,
+    });
+    // Keep all prior canonical hashes available. Only the newly asserted head
+    // regresses, so this reaches the finality guard rather than a missing hash.
+    const fetchImpl = rewriteReply(node, (call, reply) =>
+      call.method === "chain_getFinalizedHead"
+        ? { ...reply, result: node.hash(12) }
+        : reply,
+    );
+    await assert.rejects(
+      run(f, node, { fetchImpl }),
+      /finalized head regressed/,
+    );
+    assert.deepEqual(await f.store.canonical!.read("mainnet"), checkpoint);
+    assert.equal(
+      new Set(node.requests.map((request) => request.request)).size,
+      2,
+    );
+    assert.equal(
+      await f.db
+        .prepare("SELECT count(*) n FROM raw_capture_finality")
+        .first<number>("n"),
+      0,
+    );
+  },
+);
+
+test.each(["height", "hash"] as const)(
+  "a bootstrap predecessor header with a different %s cannot certify the legacy frontier",
+  async (field) => {
+    const f = await fixture(),
+      node = syntheticNode(),
+      other = syntheticNode({ seed: "other-predecessor" });
+    await f.db
+      .prepare(
+        "INSERT INTO raw_capture_state(network,last_contiguous_block,updated_at) VALUES('mainnet',9,7)",
+      )
+      .run();
+    const legacy = await f.store.canonical!.read("mainnet");
+    const fetchImpl = rewriteReply(node, (call, reply) =>
+      call.method === "chain_getHeader" && call.params[0] === node.hash(9)
+        ? {
+            ...reply,
+            result:
+              field === "height" ? node.headers.get(10) : other.headers.get(9),
+          }
+        : reply,
+    );
+    await assert.rejects(
+      run(f, node, { fetchImpl }),
+      /bootstrap header differs/,
+    );
+    assert.deepEqual(await f.store.canonical!.read("mainnet"), legacy);
+    assert.equal(
+      new Set(node.requests.map((request) => request.request)).size,
+      3,
+    );
+    assert.equal(
+      await f.db
+        .prepare("SELECT count(*) n FROM raw_capture_finality")
+        .first<number>("n"),
+      0,
+    );
+  },
+);

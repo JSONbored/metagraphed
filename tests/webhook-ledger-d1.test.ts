@@ -764,3 +764,304 @@ test("concurrent DLQ pre-read cannot terminalize a surviving copy's newly schedu
   assert.equal(current.next_attempt_at, new Date(NOW + 300002).toISOString());
   assert.equal((await f.ledger.claim(m, URL, 2, NOW + 300002)).kind, "claimed");
 });
+
+test("native adoption retains a valid legacy receipt and refuses ignored or lost ownership updates", async () => {
+  for (const mode of ["retained", "ignored", "removed"] as const) {
+    const f = await fixture(),
+      m = webhookMessage();
+    await f.ledger.ensure(m, NOW);
+    if (mode !== "retained")
+      await f.db
+        .prepare(
+          mode === "ignored"
+            ? "CREATE TRIGGER refused_legacy BEFORE UPDATE OF state ON webhook_delivery_intents WHEN NEW.state='delivered' BEGIN SELECT RAISE(IGNORE); END"
+            : "CREATE TRIGGER removed_legacy AFTER UPDATE OF state ON webhook_delivery_intents WHEN NEW.state='delivered' BEGIN DELETE FROM webhook_delivery_intents WHERE subscription_id=NEW.subscription_id AND event_id=NEW.event_id; END",
+        )
+        .run();
+    const legacy = {
+      subscription_id: m.subscription_id,
+      event_id: m.event_id,
+      state: "delivered",
+      status_code: 204,
+      last_attempt_at: new Date(NOW - 1).toISOString(),
+    };
+    if (mode === "retained") {
+      const receipt = await f.ledger.ensure(m, NOW + 1, legacy);
+      assert.equal(receipt.state, "delivered");
+      assert.equal(receipt.status_code, 204);
+      assert.equal(receipt.last_attempt_at, NOW - 1);
+      await f.ledger.enqueued(m.subscription_id, m.event_id, NOW + 2);
+      assert.deepEqual(await f.ledger.outbox(NOW + 3), []);
+    } else {
+      await assert.rejects(
+        f.ledger.ensure(m, NOW + 1, legacy),
+        /Legacy webhook success was not retained/,
+      );
+      assert.equal(
+        (
+          await f.db
+            .prepare("SELECT count(*) AS n FROM webhook_delivery_attempts")
+            .first()
+        )?.n,
+        0,
+      );
+    }
+  }
+  const f = await fixture(),
+    m = webhookMessage();
+  const receipt = await f.ledger.ensure(m, NOW, {
+    subscription_id: m.subscription_id,
+    event_id: m.event_id,
+    state: "delivered",
+    last_attempt_at: NOW - 1,
+  });
+  assert.equal(
+    receipt.last_attempt_at,
+    null,
+    "legacy epoch numbers cannot substitute for the receipt's declared ISO timestamp",
+  );
+});
+
+test("an active lease and exhausted sequence budget cannot admit another receiver effect", async () => {
+  const f = await fixture(),
+    { message } = await claimed(f);
+  assert.equal((await f.ledger.claim(message, URL, 2, NOW + 1)).kind, "busy");
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT count(*) AS n FROM webhook_delivery_attempts")
+        .first()
+    )?.n,
+    1,
+  );
+  await f.db
+    .prepare("UPDATE webhook_delivery_intents SET sequence=?")
+    .bind(Number.MAX_SAFE_INTEGER)
+    .run();
+  await assert.rejects(
+    f.ledger.claim(message, URL, 2, NOW + 60001),
+    /sequence exceeds its budget/,
+  );
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT count(*) AS n FROM webhook_delivery_attempts")
+        .first()
+    )?.n,
+    1,
+  );
+});
+
+test("a competing terminal owner wins the claim transaction without creating a second attempt", async () => {
+  for (const disposition of ["delivered", "dead"] as const) {
+    const f = await fixture(),
+      m = webhookMessage();
+    let competing = false;
+    const ledger = webhookLedgerD1({
+      prepare(sql: string) {
+        if (
+          sql.startsWith("UPDATE webhook_delivery_intents SET state='sending'")
+        )
+          competing = true;
+        return f.db.prepare(sql);
+      },
+      async batch(statements) {
+        if (competing) {
+          competing = false;
+          const winner = await f.ledger.claim(m, URL + "/winner", 1, NOW + 1);
+          assert(winner.kind === "claimed");
+          await f.ledger.finish(
+            winner.attempt,
+            disposition === "delivered" ? delivered : failed,
+            disposition,
+            NOW + 2,
+            null,
+          );
+        }
+        return f.db.batch(statements);
+      },
+    } as D1StoreBinding);
+    const loser = await ledger.claim(m, URL, 1, NOW);
+    assert.equal(loser.kind, disposition);
+    assert.equal(
+      (
+        await f.db
+          .prepare("SELECT count(*) AS n FROM webhook_delivery_attempts")
+          .first()
+      )?.n,
+      1,
+    );
+    assert.equal(
+      (
+        await f.db
+          .prepare("SELECT target_url FROM webhook_delivery_attempts")
+          .first()
+      )?.target_url,
+      URL + "/winner",
+    );
+  }
+});
+
+test("a removed claim intent is refused rather than returned as a send authorization", async () => {
+  const f = await fixture(),
+    m = webhookMessage();
+  await f.db
+    .prepare(
+      "CREATE TRIGGER removed_claim AFTER UPDATE OF state ON webhook_delivery_intents WHEN NEW.state='sending' BEGIN DELETE FROM webhook_delivery_intents WHERE subscription_id=NEW.subscription_id AND event_id=NEW.event_id; END",
+    )
+    .run();
+  await assert.rejects(
+    f.ledger.claim(m, URL, 1, NOW),
+    /Webhook claim was not committed/,
+  );
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT count(*) AS n FROM webhook_delivery_attempts")
+        .first()
+    )?.n,
+    0,
+  );
+});
+
+test("fanout rejects incomplete or mixed recipient sets before admitting any obligations", async () => {
+  const f = await fixture(),
+    m = webhookMessage();
+  await f.ledger.ensureFanout([], NOW);
+  await assert.rejects(
+    f.ledger.ensureFanout(
+      Array.from({ length: 1001 }, (_, n) => webhookMessage(`recipient-${n}`)),
+      NOW,
+    ),
+    /selected KV page budget/,
+  );
+  for (const event of [
+    { ...m, body: "" },
+    webhookMessage("sub", "é".repeat(65537)),
+    { ...m, event_id: "f".repeat(32) },
+  ])
+    await assert.rejects(
+      f.ledger.ensureFanout([event], NOW),
+      /fanout event identity differs/,
+    );
+  for (const recipient of [
+    webhookMessage("second", { type: "different-event" }),
+    { ...m, subscription_id: "second", event_id: "f".repeat(32) },
+    { ...m, subscription_id: 7 },
+    { ...m, subscription_id: "" },
+    { ...m, subscription_id: "x".repeat(129) },
+    m,
+    { ...m, subscription_id: "second", generation: 1 },
+  ])
+    await assert.rejects(
+      f.ledger.ensureFanout([m, recipient] as never, NOW),
+      /fanout recipient identity differs/,
+    );
+  assert.deepEqual(await f.ledger.outbox(NOW), []);
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT count(*) AS n FROM webhook_delivery_events")
+        .first()
+    )?.n,
+    0,
+  );
+});
+
+test("refused fanout publication cannot acknowledge a partial recipient set", async () => {
+  for (const refused of ["event", "recipient"] as const) {
+    const f = await fixture(),
+      messages = [webhookMessage("first"), webhookMessage("second")];
+    await f.db
+      .prepare(
+        refused === "event"
+          ? "CREATE TRIGGER refused_event BEFORE INSERT ON webhook_delivery_events BEGIN SELECT RAISE(IGNORE); END"
+          : "CREATE TRIGGER refused_recipient BEFORE INSERT ON webhook_delivery_intents WHEN NEW.subscription_id='second' BEGIN SELECT RAISE(IGNORE); END",
+      )
+      .run();
+    await assert.rejects(
+      f.ledger.ensureFanout(messages, NOW),
+      /complete fanout was not durably acknowledged/,
+    );
+    assert.equal(
+      (await f.ledger.outbox(NOW)).length,
+      refused === "event" ? 0 : 1,
+    );
+    if (refused === "recipient") {
+      await f.db.prepare("DROP TRIGGER refused_recipient").run();
+      await f.ledger.ensureFanout(messages, NOW + 1);
+      assert.deepEqual(
+        (await f.ledger.outbox(NOW + 1)).map((m) => m.subscription_id),
+        ["first", "second"],
+      );
+    }
+  }
+});
+
+test("status event ownership lookup stays bounded and an empty selection owns nothing", async () => {
+  const f = await fixture();
+  assert.deepEqual(await f.ledger.byEvents("sub", [], NOW), []);
+  await assert.rejects(
+    f.ledger.byEvents(
+      "sub",
+      Array.from({ length: 257 }, (_, n) => String(n)),
+      NOW,
+    ),
+    /ownership batch exceeds its budget/,
+  );
+});
+
+test("transport exhaustion refuses a lost owner instead of reporting a retained retry", async () => {
+  const f = await fixture(),
+    { message } = await claimed(f);
+  await f.db
+    .prepare(
+      "CREATE TRIGGER removed_ambiguous AFTER UPDATE OF outcome ON webhook_delivery_attempts WHEN NEW.outcome='ambiguous' BEGIN DELETE FROM webhook_delivery_intents WHERE subscription_id=NEW.subscription_id AND event_id=NEW.event_id; END",
+    )
+    .run();
+  await assert.rejects(
+    f.ledger.deadLetter(message, NOW + 60001),
+    /transport exhaustion was not retained/,
+  );
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT count(*) AS n FROM webhook_delivery_attempts")
+        .first()
+    )?.n,
+    0,
+  );
+});
+
+test("dead-letter finalization refuses a lost intent and respects a concurrent authorized replay", async () => {
+  const f = await fixture(),
+    m = webhookMessage();
+  await f.db
+    .prepare(
+      "CREATE TRIGGER removed_dead AFTER UPDATE OF state ON webhook_delivery_intents WHEN NEW.state='dead' BEGIN DELETE FROM webhook_delivery_intents WHERE subscription_id=NEW.subscription_id AND event_id=NEW.event_id; END",
+    )
+    .run();
+  await assert.rejects(
+    f.ledger.deadLetter(m, NOW),
+    /dead-letter record was not committed/,
+  );
+  await f.db.prepare("DROP TRIGGER removed_dead").run();
+  let competing = false;
+  const ledger = webhookLedgerD1({
+    prepare(sql: string) {
+      if (sql.startsWith("UPDATE webhook_delivery_intents SET state='dead'"))
+        competing = true;
+      return f.db.prepare(sql);
+    },
+    async batch(statements) {
+      if (competing) {
+        competing = false;
+        await f.ledger.deadLetter(m, NOW + 1);
+        await f.ledger.authorizeReplay(m, "operator-replay", NOW + 2);
+      }
+      return f.db.batch(statements);
+    },
+  } as D1StoreBinding);
+  assert.equal((await ledger.deadLetter(m, NOW)).state, "stale");
+  assert.deepEqual(await f.ledger.outbox(NOW + 4), [{ ...m, generation: 1 }]);
+});

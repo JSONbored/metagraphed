@@ -735,3 +735,104 @@ test("cross-language v2 receipts match actual native receiver for empty and floa
     }
   }
 });
+
+test("reordered legacy-only packets share one durable digest and preserve absent V2 evidence", async () => {
+  const db = await fixture();
+  const legacy = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/alpha-runtime/frozen-454.json", import.meta.url),
+      "utf8",
+    ),
+  ) as Row;
+  const evidence = legacy.members[0].evidence;
+  assert.equal(evidence.share.v2, null);
+  assert.equal(evidence.denominator.v2, null);
+  const observations = [row("bob"), row("alice")];
+  for (const observation of observations)
+    observation.evidence = structuredClone(evidence);
+  const body = packet(observations, {
+    ...legacy.alpha_snapshot,
+    captured_at: baseAt,
+    scanned_legacy: 2,
+    scanned_v2: 0,
+  });
+  const acknowledged = await write(db, body);
+  assert.equal(acknowledged.alpha_snapshot.complete, true);
+  assert.equal(acknowledged.alpha_snapshot.selected, 1);
+  assert.equal(acknowledged.alpha_snapshot.received_rows, 2);
+  const originalRows = await rowsOf(db);
+  assert.deepEqual(
+    originalRows.map((position) => position.coldkey),
+    ["alice", "bob"],
+  );
+  for (const position of originalRows) {
+    assert.equal(position.alpha_rao, legacy.members[0].expected_alpha_rao);
+    assert.equal(position.shares, evidence.share.legacy_bits);
+    assert.deepEqual(JSON.parse(position.alpha_evidence), evidence);
+  }
+  const revision = await db
+    .prepare(
+      "SELECT revision FROM archive_export_revisions WHERE table_name='nominator_positions'",
+    )
+    .first();
+  const replay = await write(db, {
+    ...body,
+    rows: [...observations].reverse(),
+  });
+  assert.equal(
+    replay.alpha_snapshot.sha256,
+    acknowledged.alpha_snapshot.sha256,
+  );
+  assert.equal(replay.alpha_snapshot.received_rows, 2);
+  assert.equal(replay.alpha_snapshot.received_chunks, 1);
+  assert.deepEqual(await rowsOf(db), originalRows);
+  assert.deepEqual(
+    await db
+      .prepare(
+        "SELECT revision FROM archive_export_revisions WHERE table_name='nominator_positions'",
+      )
+      .first(),
+    revision,
+  );
+});
+
+test("missing, mismatched or unapplied receipt readbacks refuse ACK without losing committed originals", async () => {
+  const db = await fixture();
+  const body = packet();
+  const acknowledged = await write(db, body);
+  const originalRows = await rowsOf(db);
+  for (const fault of ["missing", "digest", "unapplied"] as const) {
+    // Only the post-commit readback is faulted; the transaction and subsequent
+    // recovery read use the real native database and its durable originals.
+    const binding: D1StoreBinding = {
+      prepare(sql) {
+        if (sql.startsWith("SELECT c.sha256,c.applied,")) {
+          if (fault === "missing")
+            sql = sql.replace(
+              "WHERE c.captured_at=?",
+              "WHERE 0=1 AND c.captured_at=?",
+            );
+          else if (fault === "digest")
+            sql = sql.replace("c.sha256,", "'wrong' AS sha256,");
+          else sql = sql.replace("c.applied,", "0 AS applied,");
+        }
+        return db.prepare(sql);
+      },
+      batch: db.batch.bind(db),
+    };
+    await assert.rejects(
+      write(binding, body),
+      /Alpha snapshot chunk was not durably acknowledged/,
+    );
+    assert.deepEqual(await rowsOf(db), originalRows);
+    const replay = await write(db, body);
+    assert.equal(
+      replay.alpha_snapshot.sha256,
+      acknowledged.alpha_snapshot.sha256,
+    );
+    assert.equal(replay.alpha_snapshot.applied, 1);
+    assert.equal(replay.alpha_snapshot.received_rows, 1);
+    assert.equal(replay.alpha_snapshot.received_chunks, 1);
+    assert.equal(replay.alpha_snapshot.complete, true);
+  }
+});

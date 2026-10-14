@@ -6,6 +6,8 @@ import { gunzipSync } from "node:zlib";
 import { afterEach, test, vi } from "vitest";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 import { runRawCaptureSync } from "../src/raw-capture-sync.ts";
+import { syntheticNode } from "./helpers/raw-capture-fixture.ts";
+import { RAW_CAPTURE_GENESIS } from "../src/raw-capture-provenance.ts";
 
 const databases: DatabaseSync[] = [];
 afterEach(() => {
@@ -985,3 +987,134 @@ test("D1 selection with a missing database cannot fall through to an R2 writer",
   assert.equal(result.ok, false);
   assert.equal(writes, 0);
 });
+
+function canonicalInput() {
+  const f = fixture(),
+    node = syntheticNode({ head: 10 });
+  const header = node.headers.get(10)!;
+  const raw =
+    JSON.stringify({
+      block_number: 10,
+      block_hash: node.hash(10),
+      parent_hash: header.parentHash,
+      header,
+      extrinsics: ["0x0401"],
+      events: "0x00",
+      captured_at: 1000,
+    }) + "\n";
+  const bootstrap = () =>
+    f.store.canonical!.bootstrap({
+      network: "mainnet",
+      previousHeight: null,
+      height: 9,
+      hash: node.hash(9),
+      genesis: RAW_CAPTURE_GENESIS.mainnet,
+      finalized: { height: 10, hash: node.hash(10) },
+      now: 1000,
+    });
+  return { f, node, raw, bootstrap };
+}
+
+function assertOriginalCanonicalBytes(
+  f: ReturnType<typeof fixture>,
+  raw: string,
+) {
+  const digest = createHash("sha256").update(raw).digest("hex");
+  const chunks = f.sql
+    .prepare(
+      "SELECT data FROM raw_capture_chunks WHERE key=? AND sha256=? ORDER BY part",
+    )
+    .all(key(), digest) as { data: Uint8Array }[];
+  assert.equal(
+    gunzipSync(
+      Buffer.concat(chunks.map((row) => Buffer.from(row.data))),
+    ).toString(),
+    raw,
+  );
+  assert.equal(f.selected(), digest);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    1,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_finality").get()?.n,
+    1,
+  );
+}
+
+test("an archived legacy publication cannot acquire canonical acknowledgment from matching bytes", async () => {
+  const { f, node, raw, bootstrap } = canonicalInput();
+  await f.store.put(key(), raw);
+  const archived = archive(f);
+  const checkpoint = await bootstrap();
+  await assert.rejects(
+    f.store.canonical!.commit(key(), raw, {
+      checkpoint,
+      finalized: { height: 10, hash: node.hash(10) },
+    }),
+    /archive has no canonical acknowledgment/,
+  );
+  assert.equal((await f.store.canonical!.read("mainnet"))?.height, 9);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_finality").get()?.n,
+    0,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_publications").get()?.n,
+    1,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_batches").get()?.n,
+    0,
+  );
+  assert.equal(
+    f.sql
+      .prepare("SELECT sha256 FROM raw_capture_archives WHERE selected=1")
+      .get()?.sha256,
+    archived.sha256,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+});
+
+test.each(["publication", "caller"] as const)(
+  "a missing %s checkpoint acknowledgment refuses success but retains committed originals for retry",
+  async (phase) => {
+    const { f, node, raw, bootstrap } = canonicalInput();
+    const checkpoint = await bootstrap();
+    const proof = {
+      checkpoint,
+      finalized: { height: 10, hash: node.hash(10) },
+    };
+    let reads = 0;
+    f.readWith((text, result) => {
+      if (!text.startsWith("SELECT f.revision")) return result;
+      reads++;
+      // The first lookup precedes publication. Fail precisely the post-commit
+      // proof lookup or the caller's independent acknowledgment, not its bytes.
+      return reads === (phase === "publication" ? 2 : 3) ? null : result;
+    });
+    await assert.rejects(
+      f.store.canonical!.commit(key(), raw, proof),
+      phase === "publication"
+        ? /canonical checkpoint was not committed/
+        : /canonical checkpoint was not acknowledged/,
+    );
+    assert.equal(reads, phase === "publication" ? 2 : 3);
+    const persisted = await f.store.canonical!.read("mainnet");
+    assert.equal(persisted?.height, 10);
+    assert.equal(persisted?.hash, node.hash(10));
+    assertOriginalCanonicalBytes(f, raw);
+    f.readWith();
+    const acknowledged = await f.store.canonical!.commit(key(), raw, proof);
+    assert.equal(acknowledged.height, 10);
+    assert.equal(acknowledged.revision, 1);
+    assertOriginalCanonicalBytes(f, raw);
+    assert.equal(
+      f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+      1,
+    );
+  },
+);

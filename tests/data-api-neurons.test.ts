@@ -397,6 +397,103 @@ async function insertTempo(netuid: number, tempo: number | null) {
   );
 }
 
+/** A valid synthetic empty census carries the authentic retained runtime
+ * metadata. Its receipt may only be acknowledged by the selected native owner. */
+function emptyAlphaSyncPacket() {
+  const frozen = JSON.parse(
+    fs.readFileSync(
+      new URL("./fixtures/alpha-runtime/frozen-454.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  return {
+    alpha_snapshot: {
+      ...frozen.alpha_snapshot,
+      captured_at: CAPTURED_AT,
+      scanned_legacy: 0,
+      scanned_v2: 0,
+      total_rows: 0,
+      total_chunks: 1,
+      index: 0,
+    },
+    rows: [],
+  };
+}
+
+function postAlphaControl(body: unknown, overrides: Record<string, unknown>) {
+  const secret = "test-alpha-control-secret";
+  return call(
+    req("/api/v1/internal/nominator-positions-sync", {
+      method: "POST",
+      headers: { "x-nominator-positions-sync-token": secret },
+      body,
+    }),
+    env({ NOMINATOR_POSITIONS_SYNC_SECRET: secret, ...overrides }),
+  );
+}
+
+test.each([undefined, "", "neurons"])(
+  "Alpha control requests cannot borrow a bound native store without ownership declaration %s",
+  async (ownership) => {
+    const prepare = vi.fn(() => {
+      throw new Error("an unselected native binding must not be read");
+    });
+    const native = { prepare, batch: vi.fn(async () => []) };
+    for (const body of [
+      { alpha_snapshot_resume: true },
+      emptyAlphaSyncPacket(),
+    ]) {
+      const response = await postAlphaControl(body, {
+        D1_STATE: native,
+        D1_STATE_TABLES: ownership,
+      });
+      assert.equal(response.status, 503);
+      assert.match(
+        (await response.json<Row>()).error,
+        /native (?:state )?owner/,
+      );
+    }
+    assert.equal(prepare.mock.calls.length, 0);
+    assert.equal(native.batch.mock.calls.length, 0);
+    assert.equal(
+      pg.control.queries.length,
+      0,
+      "Neon cannot replace an undeclared Alpha owner",
+    );
+  },
+);
+
+test.each(["resume", "snapshot"] as const)(
+  "a selected native Alpha %s storage failure returns no successful receipt or Neon fallback",
+  async (operation) => {
+    const prepare = vi.fn(() => {
+      throw new Error("native Alpha storage unavailable");
+    });
+    const native = { prepare, batch: vi.fn(async () => []) };
+    const response = await postAlphaControl(
+      operation === "resume"
+        ? { alpha_snapshot_resume: true }
+        : emptyAlphaSyncPacket(),
+      {
+        D1_STATE: native,
+        D1_STATE_TABLES:
+          "nominator_positions,alpha_snapshot_passes,alpha_runtime_metadata",
+      },
+    );
+    assert.equal(response.status, 502);
+    assert.deepEqual(await response.json(), {
+      error: "Error: native Alpha storage unavailable",
+    });
+    assert.equal(prepare.mock.calls.length, 1);
+    assert.equal(native.batch.mock.calls.length, 0);
+    assert.equal(
+      pg.control.queries.length,
+      0,
+      "selected owner failure must not reach the Neon connection",
+    );
+  },
+);
+
 // --- POST /api/v1/internal/neurons-sync: the D1 write lane -------------------
 
 async function postSync(rows: Row[], envOverride: DataApiWorkerEnv = env()) {

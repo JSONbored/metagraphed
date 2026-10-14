@@ -19240,7 +19240,7 @@ export interface operations {
                      *             "registration_cost_tao": 0.5,
                      *             "subnet_volume_tao": 0.5,
                      *             "tao_in_pool_tao": 0.5,
-                     *             "total_stake_alpha": 0.5,
+                     *             "total_stake_alpha": null,
                      *             "validator_count": 1
                      *           }
                      *         ],
@@ -19251,7 +19251,7 @@ export interface operations {
                      *           "total_miners": 1,
                      *           "total_network_value_tao": "327838334.635978200",
                      *           "total_root_value_tao": "327838334.635978200",
-                     *           "total_stake_alpha": "327838334.635978200",
+                     *           "total_stake_alpha": null,
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
                      *         },
@@ -20679,7 +20679,7 @@ export interface operations {
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,
                      *           "tao_in_pool_tao": 0.5,
-                     *           "total_stake_alpha": 0.5,
+                     *           "total_stake_alpha": null,
                      *           "validator_count": 1
                      *         },
                      *         "endpoints": [
@@ -23476,27 +23476,18 @@ export interface operations {
                      *         "position_count": 1,
                      *         "positions": [
                      *           {
-                     *             "alpha_rao": "example",
+                     *             "alpha_rao": null,
                      *             "hotkey": "example",
                      *             "netuid": 7,
-                     *             "provenance": {
-                     *               "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *               "block_number": 5000000,
-                     *               "captured_at": "2026-06-01T00:00:00.000Z",
-                     *               "code_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *               "genesis_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *               "metadata_sha256": "example",
-                     *               "network": "finney",
-                     *               "spec_version": 454
-                     *             },
+                     *             "provenance": null,
                      *             "quantity_status": "unqualified",
                      *             "share_fraction": 0.5,
-                     *             "stake_tao": 0.5
+                     *             "stake_tao": null
                      *           }
                      *         ],
                      *         "schema_version": 2,
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                     *         "total_stake_alpha": 0.5
+                     *         "total_stake_alpha": null
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -32090,7 +32081,7 @@ export interface operations {
                      *         "schema_version": 2,
                      *         "subnet_count": 1,
                      *         "total_emission_alpha": 0.5,
-                     *         "total_stake_alpha": 0.5,
+                     *         "total_stake_alpha": null,
                      *         "validator_count": 1,
                      *         "validator_yield": 0.5
                      *       },
@@ -33836,7 +33827,7 @@ export interface operations {
                      *             "registration_cost_tao": 0.5,
                      *             "subnet_volume_tao": 0.5,
                      *             "tao_in_pool_tao": 0.5,
-                     *             "total_stake_alpha": 0.5,
+                     *             "total_stake_alpha": null,
                      *             "validator_count": 1
                      *           }
                      *         ],
@@ -33847,7 +33838,7 @@ export interface operations {
                      *           "total_miners": 1,
                      *           "total_network_value_tao": "327838334.635978200",
                      *           "total_root_value_tao": "327838334.635978200",
-                     *           "total_stake_alpha": "327838334.635978200",
+                     *           "total_stake_alpha": null,
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
                      *         },
@@ -43156,7 +43147,7 @@ export interface operations {
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,
                      *           "tao_in_pool_tao": 0.5,
-                     *           "total_stake_alpha": 0.5,
+                     *           "total_stake_alpha": null,
                      *           "validator_count": 1
                      *         },
                      *         "endpoints": [
@@ -52815,8 +52806,8 @@ export interface operations {
                      *         "degraded": {
                      *           "reason": "holdings_unqualified"
                      *         },
-                     *         "mean_yield": 0.3,
-                     *         "median_yield": 0.3,
+                     *         "mean_yield": null,
+                     *         "median_yield": null,
                      *         "miner_count": 1,
                      *         "netuid": 7,
                      *         "neuron_count": 2,
@@ -52824,29 +52815,31 @@ export interface operations {
                      *           {
                      *             "emission_tao": 2,
                      *             "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                     *             "role": "miner",
-                     *             "stake_tao": 5,
-                     *             "uid": 1,
-                     *             "vs_median": "above",
-                     *             "yield": 0.4
+                     *             "role": "validator",
+                     *             "stake_tao": null,
+                     *             "uid": 0,
+                     *             "voting_weight": 10,
+                     *             "vs_median": null,
+                     *             "yield": null
                      *           },
                      *           {
                      *             "emission_tao": 2,
                      *             "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                     *             "role": "validator",
-                     *             "stake_tao": 10,
-                     *             "uid": 0,
-                     *             "vs_median": "below",
-                     *             "yield": 0.2
+                     *             "role": "miner",
+                     *             "stake_tao": null,
+                     *             "uid": 1,
+                     *             "voting_weight": 5,
+                     *             "vs_median": null,
+                     *             "yield": null
                      *           }
                      *         ],
-                     *         "p25_yield": 0.2,
-                     *         "p75_yield": 0.4,
-                     *         "p90_yield": 0.4,
+                     *         "p25_yield": null,
+                     *         "p75_yield": null,
+                     *         "p90_yield": null,
                      *         "schema_version": 2,
-                     *         "subnet_yield": 0.266666667,
+                     *         "subnet_yield": null,
                      *         "total_emission_alpha": 4,
-                     *         "total_stake_alpha": 15,
+                     *         "total_stake_alpha": null,
                      *         "validator_count": 1
                      *       },
                      *       "meta": {

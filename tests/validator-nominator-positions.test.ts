@@ -292,6 +292,41 @@ describe("buildNominatorPositions edges", () => {
     decline: null,
   });
 
+  test("a numeric rao cell stays unknown while an exact string zero remains measured", () => {
+    const card = buildNominatorPositions(
+      read([
+        {
+          coldkey: ck(1),
+          netuid: 1,
+          alpha: 500,
+          alpha_rao: 500_000_000_000,
+          positions_captured_at: PASS,
+        },
+        {
+          coldkey: ck(1),
+          netuid: 2,
+          alpha: 0,
+          alpha_rao: "0",
+          positions_captured_at: PASS,
+        },
+      ]),
+      HOTKEY,
+    );
+    assert.equal(card.nominator_count, 1);
+    assert.equal(card.degraded, undefined);
+    const nominator = (card.nominators as Row[])[0];
+    assert.deepEqual(nominator.subnets, [
+      { netuid: 1, alpha: 500, alpha_rao: null },
+      { netuid: 2, alpha: 0, alpha_rao: "0" },
+    ]);
+    assert.equal(nominator.largest_position, null);
+    assert.equal("total_alpha" in nominator, false);
+    assert.equal(
+      (card.provenance as Row).captured_at,
+      new Date(PASS).toISOString(),
+    );
+  });
+
   test("a missing or mismatched capture cannot qualify a pure positions read", () => {
     for (const capture of [null, syntheticAlphaCapture(PASS + 1)]) {
       const card = buildNominatorPositions({ ...read([]), capture }, HOTKEY);

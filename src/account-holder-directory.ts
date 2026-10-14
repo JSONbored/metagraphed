@@ -39,9 +39,8 @@ export interface AccountHolderDirectory {
 
 function rankingValue(
   account: AccountsListEntry,
-  metric: AccountHolderRanking,
+  metric: Exclude<AccountHolderRanking, "stake">,
 ): number {
-  if (metric === "stake") return Number.NEGATIVE_INFINITY;
   if (metric === "emission") return account.total_emission_tao;
   return account.subnet_count;
 }
@@ -60,7 +59,7 @@ function compact(account: AccountsListEntry): AccountHolderDirectoryEntry {
 
 function ranking(
   accounts: readonly AccountsListEntry[],
-  metric: AccountHolderRanking,
+  metric: Exclude<AccountHolderRanking, "stake">,
 ): AccountHolderDirectoryEntry[] {
   return [...accounts]
     .sort(

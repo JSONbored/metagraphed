@@ -172,6 +172,23 @@ test("partial quantity ownership cannot retain a ranking across owners", async (
   assert.equal(f.state.checks, 0);
 });
 
+test("an unbound declared quantity owner bypasses retention and returns each fresh caller read", async () => {
+  const f = fixture();
+  const env = { ...f.env, D1_STATE: undefined };
+  let reads = 0;
+  const read = async (): Promise<Row[]> => [
+    { netuid: 7, read_number: ++reads },
+  ];
+  assert.deepEqual(await readRevisionedChainHolders(env, 100, read), [
+    { netuid: 7, read_number: 1 },
+  ]);
+  assert.deepEqual(await readRevisionedChainHolders(env, 100, read), [
+    { netuid: 7, read_number: 2 },
+  ]);
+  assert.equal(f.state.checks, 0);
+  assert.equal(reads, 2);
+});
+
 test("failed loads are retried and an older failure cannot evict a newer revision", async () => {
   const f = fixture();
   let reject!: (error: Error) => void;

@@ -15,6 +15,9 @@ import { Miniflare } from "miniflare";
 import { afterEach, test, vi } from "vitest";
 import { RAW_CAPTURE_GENESIS } from "../src/raw-capture-provenance.ts";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
+import { rawCheckpointD1 } from "../src/raw-capture-checkpoint-d1.ts";
+import type { D1StoreBinding } from "../src/d1-store.ts";
+import type { RawCaptureCheckpoint } from "../src/raw-capture-provenance.ts";
 import { captureTick, rawBatchKey } from "../src/raw-chain-capture.ts";
 import {
   nativeRawFixture,
@@ -285,3 +288,187 @@ test("actual pre0038 migration, prospective capture and closed native persistenc
   corrupt[0] = corrupt[0]! ^ 1;
   assert.notEqual(sha(corrupt), archive.compressed);
 });
+
+/** Model a restored reader handing back an incomplete checkpoint projection.
+ * No write is available: rejecting the record must precede any repair/bootstrap. */
+function restoredCheckpointReader(row: RawCaptureCheckpoint | null) {
+  const reads: { text: string; values: unknown[] }[] = [];
+  const binding = {
+    prepare(text: string) {
+      return {
+        bind(...values: unknown[]) {
+          return {
+            async first() {
+              reads.push({ text, values });
+              return row;
+            },
+          };
+        },
+      };
+    },
+    async batch() {
+      throw new Error("an unqualified restored checkpoint must not write");
+    },
+  } as unknown as D1StoreBinding;
+  return { store: rawCheckpointD1(binding, "SELECT 1"), reads };
+}
+
+const legacyCheckpoint: RawCaptureCheckpoint = {
+  network: "mainnet",
+  height: 9,
+  genesis: null,
+  hash: null,
+  verifiedFrom: null,
+  finalizedHeight: null,
+  finalizedHash: null,
+  revision: 0,
+};
+
+test.each([
+  { hash: `0x${"11".repeat(32)}` },
+  { verifiedFrom: 10 },
+  { finalizedHeight: 14 },
+  { finalizedHash: `0x${"22".repeat(32)}` },
+  { revision: 1 },
+])(
+  "a partially restored legacy checkpoint cannot acquire finality from %j",
+  async (over) => {
+    const { store, reads } = restoredCheckpointReader({
+      ...legacyCheckpoint,
+      ...over,
+    });
+    await assert.rejects(
+      store.read("mainnet"),
+      /Partial raw capture checkpoint/,
+    );
+    assert.equal(reads.length, 1);
+    assert.deepEqual(reads[0]!.values, ["mainnet"]);
+  },
+);
+
+test.each([
+  { verifiedFrom: -1 },
+  { verifiedFrom: 10.5 },
+  { verifiedFrom: 11 },
+  { finalizedHeight: 8 },
+  { finalizedHeight: 14.5 },
+  { finalizedHeight: 0x1_0000_0000 },
+])(
+  "a restored canonical checkpoint with impossible coverage %j is refused",
+  async (over) => {
+    const node = syntheticNode();
+    const checkpoint: RawCaptureCheckpoint = {
+      ...legacyCheckpoint,
+      genesis: RAW_CAPTURE_GENESIS.mainnet,
+      hash: node.hash(9),
+      verifiedFrom: 10,
+      finalizedHeight: 14,
+      finalizedHash: node.hash(14),
+      ...over,
+    };
+    await assert.rejects(
+      restoredCheckpointReader(checkpoint).store.read("mainnet"),
+      /Invalid raw capture checkpoint/,
+    );
+  },
+);
+
+test("a complete legacy restore remains unverified and an absent record remains absent", async () => {
+  assert.deepEqual(
+    await restoredCheckpointReader(legacyCheckpoint).store.read("mainnet"),
+    legacyCheckpoint,
+  );
+  assert.equal(
+    await restoredCheckpointReader(null).store.read("mainnet"),
+    null,
+  );
+});
+
+test.each(["missing", "genesis", "coverage", "revision"] as const)(
+  "a publication receipt cannot acknowledge a replacement restore owner with %s checkpoint state",
+  async (field) => {
+    vi.useRealTimers();
+    const f = await nativeRawFixture();
+    runtimes.push(f.runtime);
+    const replacement = await nativeRawFixture();
+    runtimes.push(replacement.runtime);
+    const node = syntheticNode();
+    const checkpoint = await f.store.canonical!.bootstrap({
+      network: "mainnet",
+      previousHeight: null,
+      height: 9,
+      hash: node.hash(9),
+      genesis: RAW_CAPTURE_GENESIS.mainnet,
+      finalized: { height: 14, hash: node.hash(14) },
+      now: 1000,
+    });
+    const proof = {
+      checkpoint,
+      finalized: { height: 14, hash: node.hash(14) },
+    };
+    const value = raw(rows(node, 1000));
+    const committed = await f.store.canonical!.commit(key, value, proof);
+    if (field !== "missing") {
+      // Every alternate owner has a structurally valid checkpoint, produced by
+      // its real bootstrap. The receipt's identity/frontier must still match.
+      await replacement.store.canonical!.bootstrap({
+        network: "mainnet",
+        previousHeight: null,
+        height: field === "coverage" ? 10 : 9,
+        hash: node.hash(field === "coverage" ? 10 : 9),
+        genesis:
+          field === "genesis"
+            ? RAW_CAPTURE_GENESIS.testnet
+            : RAW_CAPTURE_GENESIS.mainnet,
+        finalized: { height: 14, hash: node.hash(14) },
+        now: 2000,
+      });
+    }
+    const reads: string[] = [];
+    const binding: D1StoreBinding = {
+      prepare(text) {
+        reads.push(text);
+        // A restore/owner switch between receipt lookup and checkpoint read
+        // cannot turn an old publication's lost reply into an acknowledged
+        // write. Both stores execute their actual SQL and physical guards.
+        return text.startsWith("SELECT network,last_contiguous_block AS height")
+          ? replacement.db.prepare(text)
+          : f.db.prepare(text);
+      },
+      batch<T>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]> {
+        return f.db.batch<T>(statements);
+      },
+    };
+    await assert.rejects(
+      rawCaptureD1(binding).canonical!.commit(key, value, proof),
+      /checkpoint acknowledgment changed/,
+    );
+    assert.ok(
+      reads.some((text) => text.startsWith("SELECT f.revision")),
+      "a real retained publication receipt was found first",
+    );
+    assert.ok(
+      reads.some((text) =>
+        text.startsWith("SELECT network,last_contiguous_block AS height"),
+      ),
+    );
+    assert.deepEqual(await f.store.canonical!.read("mainnet"), committed);
+    assert.equal(
+      await f.db
+        .prepare("SELECT count(*) n FROM raw_capture_finality")
+        .first<number>("n"),
+      1,
+    );
+    assert.equal(
+      await replacement.db
+        .prepare("SELECT count(*) n FROM raw_capture_finality")
+        .first<number>("n"),
+      0,
+    );
+    assert.equal(
+      node.requests.length,
+      0,
+      "receipt recovery never starts a new source scan",
+    );
+  },
+);

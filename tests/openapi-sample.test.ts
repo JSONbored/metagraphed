@@ -287,7 +287,9 @@ describe("sampleFromSchema", () => {
     );
     assert.equal(SubnetYieldArtifactSchema.safeParse(out).success, true);
     assert.deepEqual(
-      out.neurons.map((row: Row) => row.voting_weight),
+      SubnetYieldArtifactSchema.parse(out).neurons.map(
+        (row) => row.voting_weight,
+      ),
       [10, 5],
     );
     assert.equal(out.subnet_yield, null);

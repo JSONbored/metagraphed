@@ -220,3 +220,84 @@ test("normalization cannot repair an intermediate signed exponent overflow", () 
     );
   }
 });
+
+test("legacy whole-plus-fraction normalization preserves exact originals and fractional value", () => {
+  const evidence = {
+    ...base(),
+    share: { legacy_bits: (3n << 63n).toString(), v2: null },
+    denominator: { legacy_bits: (3n << 64n).toString(), v2: null },
+    total_alpha_rao: "42",
+  };
+  for (const version of [454, 478] as const) {
+    const quote = quoteAlphaPool(evidence, version);
+    assert.equal(quote.alphaRao, "21");
+    assert.equal(quote.shareFraction, 0.5);
+    assert.equal(quote.shareLayout, "legacy-u64f64");
+    assert.deepEqual(quote.evidence, evidence);
+
+    const maximum = ((1n << 128n) - 1n).toString();
+    const fullPool = {
+      ...evidence,
+      share: { legacy_bits: maximum, v2: null },
+      denominator: { legacy_bits: maximum, v2: null },
+    };
+    const full = quoteAlphaPool(fullPool, version);
+    assert.equal(full.alphaRao, "42");
+    assert.equal(full.shareFraction, 1);
+    assert.deepEqual(full.evidence, fullPool);
+  }
+});
+
+test("zero denominator originals bypass division and never fabricate a nonzero pool value", () => {
+  for (const denominator of [
+    { legacy_bits: "0", v2: safe(1000000000000000000000n) },
+    { legacy_bits: null, v2: safe(0n) },
+    { legacy_bits: null, v2: null },
+  ]) {
+    const evidence = { ...base(), denominator };
+    for (const version of [454, 478] as const) {
+      const quote = quoteAlphaPool(evidence, version);
+      assert.equal(quote.alphaRao, "0");
+      assert.equal(quote.shareFraction, 0);
+      assert.deepEqual(quote.evidence, evidence);
+    }
+  }
+});
+
+test("signed exponent endpoints remain original evidence while checked value arithmetic fails closed", () => {
+  const exponent = "9223372036854775807";
+  const evidence = {
+    ...base(),
+    total_alpha_rao: "1",
+    share: {
+      legacy_bits: null,
+      v2: { mantissa: "1000000000000000000000", exponent },
+    },
+    denominator: {
+      legacy_bits: null,
+      v2: { mantissa: "1000000000000000000000", exponent: "0" },
+    },
+  };
+  const uncapped = quoteAlphaPool(evidence, 454);
+  assert.equal(uncapped.alphaRao, "18446744073709551615");
+  assert.equal(uncapped.shareFraction, null);
+  assert.deepEqual(uncapped.evidence, evidence);
+  const capped = quoteAlphaPool(evidence, 478);
+  assert.equal(capped.alphaRao, "1");
+  assert.equal(capped.shareFraction, 1);
+  assert.deepEqual(capped.evidence, evidence);
+
+  const underflow = {
+    ...evidence,
+    share: {
+      legacy_bits: null,
+      v2: { mantissa: "1", exponent: "-9223372036854775808" },
+    },
+  };
+  for (const version of [454, 478] as const) {
+    const quote = quoteAlphaPool(underflow, version);
+    assert.equal(quote.alphaRao, "0");
+    assert.equal(quote.shareFraction, 0);
+    assert.deepEqual(quote.evidence, underflow);
+  }
+});

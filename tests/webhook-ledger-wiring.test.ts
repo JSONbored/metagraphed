@@ -793,3 +793,55 @@ test("exhausted duplicate transport cannot terminate another copy's pending logi
   assert.equal(effects, 2);
   assert.equal((await f.ledger.recent(f.id, Date.now()))[0].state, "delivered");
 });
+
+test("REST and MCP refuse partial status when legacy-event ownership reconciliation is unavailable", async () => {
+  const f = await setup(),
+    m = webhookMessage(f.id);
+  const now = Date.now();
+  const claim = await f.ledger.claim(
+    m,
+    "https://hooks.example.com/event",
+    1,
+    now,
+  );
+  assert(claim.kind === "claimed");
+  await f.ledger.finish(
+    claim.attempt,
+    { status: "delivered", status_code: 204 },
+    "delivered",
+    now + 1,
+    null,
+  );
+  const { deliveryStorageKey } = await import("../src/webhooks.ts");
+  const old = webhookMessage(f.id, { legacy: true });
+  f.values.set(deliveryStorageKey(f.id, old.event_id), {
+    subscription_id: f.id,
+    event_id: old.event_id,
+    state: "dead",
+    last_attempt_at: new Date(now - 1).toISOString(),
+  });
+  const env = {
+    ...f.env,
+    D1_STATE: {
+      batch: f.db.batch.bind(f.db),
+      prepare(sql: string) {
+        if (sql.includes("i.event_id IN ("))
+          throw new Error("native ownership reconciliation unavailable");
+        return f.db.prepare(sql);
+      },
+    },
+  };
+  const rest = await status(env, f.id);
+  assert.equal(rest.status, 503);
+  assert.equal((await rest.json()).error.code, "webhooks_unavailable");
+  const rpc = await mcpStatus(env, f.id);
+  assert.equal(rpc.result.isError, true);
+  assert.equal(rpc.result.structuredContent.error.code, "webhooks_unavailable");
+  const retained = await f.ledger.recent(f.id, now + 2);
+  assert.equal(
+    retained[0].state,
+    "delivered",
+    "a failed status read cannot rewrite the successful receipt",
+  );
+  assert.equal(retained[0].status_code, 204);
+});
