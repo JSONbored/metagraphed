@@ -671,7 +671,7 @@ export function webhookLedgerD1(db: D1StoreBinding) {
             .bind(now, now, message.subscription_id, message.event_id, now),
           db
             .prepare(
-              "UPDATE webhook_delivery_intents SET state='dead',lease_token=NULL,lease_until=NULL,reason=CASE WHEN state='sending' THEN ?||'; outcome-unknown' ELSE COALESCE(reason,?) END,next_attempt_at=NULL,updated_at=?,expires_at=? WHERE subscription_id=? AND event_id=? AND state<>'delivered' AND NOT EXISTS(SELECT 1 FROM webhook_delivery_attempts a WHERE a.subscription_id=webhook_delivery_intents.subscription_id AND a.event_id=webhook_delivery_intents.event_id AND a.outcome='delivered') AND generation=? AND (state<>'sending' OR lease_until<=?)",
+              "UPDATE webhook_delivery_intents SET state='dead',lease_token=NULL,lease_until=NULL,reason=CASE WHEN state='sending' THEN ?||'; outcome-unknown' ELSE COALESCE(reason,?) END,next_attempt_at=NULL,updated_at=?,expires_at=? WHERE subscription_id=? AND event_id=? AND state<>'delivered' AND NOT EXISTS(SELECT 1 FROM webhook_delivery_attempts a WHERE a.subscription_id=webhook_delivery_intents.subscription_id AND a.event_id=webhook_delivery_intents.event_id AND a.outcome='delivered') AND generation=? AND (state<>'sending' OR lease_until<=?) AND (?<>'dead-letter' OR (state='ready' AND queued_at IS NULL AND sequence=?) OR (state='sending' AND round>=8 AND sequence=?))",
             )
             .bind(
               cause,
@@ -682,12 +682,25 @@ export function webhookLedgerD1(db: D1StoreBinding) {
               message.event_id,
               message.generation ?? 0,
               now,
+              cause,
+              r.sequence,
+              r.sequence,
             ),
         ]);
       }
       const current = await read(message.subscription_id, message.event_id);
       if (!current)
         throw new Error("Webhook dead-letter record was not committed");
+      if (
+        (message.generation ?? 0) !== current.generation ||
+        (cause === "dead-letter" &&
+          (current.state === "pending" ||
+            (current.state === "ready" && current.queued_at !== null) ||
+            (current.state === "sending" &&
+              current.lease_until! <= now &&
+              current.round < 8)))
+      )
+        return { ...record(current, now), state: "stale" };
       if (
         current.state !== "delivered" &&
         !(current.state === "sending" && current.lease_until! > now) &&

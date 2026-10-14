@@ -724,3 +724,43 @@ test("representative native cleanup uses expiry/event indexes and reports bounde
     }) + "\n",
   );
 });
+
+test("concurrent DLQ pre-read cannot terminalize a surviving copy's newly scheduled retry", async () => {
+  const f = await fixture(),
+    m = webhookMessage();
+  await f.ledger.ensure(m, NOW);
+  let start!: (value: void) => void,
+    resume!: (value: void) => void,
+    pause = false;
+  const started = new Promise<void>((resolve) => {
+      start = resolve;
+    }),
+    released = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+  const dlq = webhookLedgerD1({
+    prepare(sql: string) {
+      if (sql.startsWith("UPDATE webhook_delivery_intents SET state='dead'"))
+        pause = true;
+      return f.db.prepare(sql);
+    },
+    async batch(statements) {
+      if (pause) {
+        start();
+        await released;
+      }
+      return f.db.batch(statements);
+    },
+  } as D1StoreBinding);
+  const finishing = dlq.deadLetter(m, NOW + 3);
+  await started;
+  const claim = await f.ledger.claim(m, URL, 1, NOW + 1);
+  assert(claim.kind === "claimed");
+  await f.ledger.finish(claim.attempt, failed, "retry", NOW + 2, NOW + 300002);
+  resume();
+  assert.equal((await finishing).state, "stale");
+  const current = (await f.ledger.recent(m.subscription_id, NOW + 4))[0];
+  assert.equal(current.state, "pending");
+  assert.equal(current.next_attempt_at, new Date(NOW + 300002).toISOString());
+  assert.equal((await f.ledger.claim(m, URL, 2, NOW + 300002)).kind, "claimed");
+});
