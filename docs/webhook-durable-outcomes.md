@@ -8,7 +8,7 @@ so deletion stops delivery and repointing changes the next attempt's target.
 Targets are recorded per attempt; signing secrets are never stored in this
 ledger.
 
-Migration0041 adds shared event payloads, per-subscription intents and ordered
+Migration0042 adds shared event payloads, per-subscription intents and ordered
 attempt evidence to the existing database. Complete event identity is checked
 against both the existing32-hex event id and the full SHA256/body. A native
 atomic claim fences simultaneous attempts with a60-second lease. An expired
@@ -59,8 +59,8 @@ Native Miniflare fixtures apply the real DDL and exercise concurrent claims,
 ignored writes, lost replies, expired leases, late success, stale failure,
 dead-lettering, payload identity, retention, REST/MCP status and actual producer/
 consumer wiring. Source qualification is distinct from production acceptance.
-Migration0038 is already applied,0039/0040 are held preceding proposals, and
-0041 must not be merged or applied as an incidental source change.
+Migration0038 is already applied,0040/0041 are held preceding proposals, and
+0042 must not be merged or applied as an incidental source change.
 
 Before release, qualify current D1 write/space headroom, retained intent/payload
 growth, queue fanout and per-message database cost, coherent D1/control and

@@ -55,7 +55,7 @@ function fixture() {
   sql.exec(
     readFileSync(
       new URL(
-        "../migrations/d1/0040_raw_capture_finality.sql",
+        "../migrations/d1/0041_raw_capture_finality.sql",
         import.meta.url,
       ),
       "utf8",

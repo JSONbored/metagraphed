@@ -84,7 +84,7 @@ beforeAll(async () => {
   db = await runtime.getD1Database("DB");
   for (const file of [
     "0010_ledger_state.sql",
-    "0039_self_stake_snapshot_receipts.sql",
+    "0040_self_stake_snapshot_receipts.sql",
   ])
     for (const statement of readFileSync(
       new URL("../migrations/d1/" + file, import.meta.url),

@@ -37,7 +37,7 @@ member epoch and caps the resulting amount at the pool total;454 does neither.
 A display share ratio alone may be floating point; exact originals and resulting
 rao never pass through Number. A nonfinite display ratio is unavailable.
 
-Migration0042 adds two optional serving columns and native metadata/pass/chunk/
+Migration0043 adds two optional serving columns and native metadata/pass/chunk/
 staging tables in the current state owner. Original runtime metadata is stored
 once by SHA, sent only in the first chunk and not duplicated per pass. Whole
 account-owner chunks are2500rows maximum and512KiB of serialized rows; a single wider owner is refused before transmission. The8MB request ceiling includes the first packet’s metadata. The receiver independently packs transformed tuples into at most100rows/512KiB per native binding, below the2,000,000-byte D1 binding limit.
@@ -82,11 +82,11 @@ counted patch coverage, independent source review, physical schema introspection
 actual D1 space/write/index/transaction/memory/RPC qualification, coherent recovery
 and runtime/schema ordering. The final whole-source promotion cost is unmeasured
 at production cardinality. The reported near10GB D1 file size establishes no free
-space. Applied0038 and held0039/0040/0041 are preserved. No live DDL, capture,
+space. Applied0038 and held0040/0041/0042 are preserved. No live DDL, capture,
 backfill, endpoint workload, fleet command, purchase or hosting decision is part
 of this source preparation. Rollback must fence producers and preserve selected
 originals; an old consumer/writer is not a safe implicit rollback after selection.
 
-The old exporter rejects the added columns immediately on DDL, before Alpha selection. Deploy and qualify the new backwards-compatible exporter/receiver first against the old schema, then apply0042 during a coherent schema/runtime cutover, and only then select the new producer. Rolling the exporter back after DDL is unsafe even before selection. After selection, old Alpha and self-stake writers are additionally fenced; rollback requires the retained compatible reader/receiver plus an explicit canonical ownership decision, not dropping originals.
+The old exporter rejects the added columns immediately on DDL, before Alpha selection. Deploy and qualify the new backwards-compatible exporter/receiver first against the old schema, then apply0043 during a coherent schema/runtime cutover, and only then select the new producer. Rolling the exporter back after DDL is unsafe even before selection. After selection, old Alpha and self-stake writers are additionally fenced; rollback requires the retained compatible reader/receiver plus an explicit canonical ownership decision, not dropping originals.
 
 The full-source promotion and its verification still execute in one native batch. The1million admission ceiling is not a30-second performance guarantee. Release requires measured worst-case cardinality/pool-width promotion time, statement/row read/write counts, memory, physical headroom and concurrent serving impact within D1’s execution limits. No source fixture is authority to run this on the nearly full live owner.

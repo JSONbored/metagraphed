@@ -27,7 +27,7 @@ export async function nativeWebhookFixture(upgrade = false) {
   const db = prior?.db ?? (await runtime.getD1Database("DB"));
   const sql = readFileSync(
     new URL(
-      "../../migrations/d1/0041_webhook_delivery_ledger.sql",
+      "../../migrations/d1/0042_webhook_delivery_ledger.sql",
       import.meta.url,
     ),
     "utf8",

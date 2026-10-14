@@ -592,7 +592,7 @@ test("automatic duplicates cannot reopen rejection or bypass retry due time; exp
   );
 });
 
-test("held0039/0040 to0041 upgrade preserves prior owners and fences old messages", async () => {
+test("held0040/0041 to0042 upgrade preserves prior owners and fences old messages", async () => {
   const f = await nativeWebhookFixture(true);
   opened.push(f);
   const checkpoint = await f.db
