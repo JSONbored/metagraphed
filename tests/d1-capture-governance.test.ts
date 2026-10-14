@@ -37,7 +37,7 @@ beforeAll(async () => {
     "0028_raw_capture_storage.sql",
     "0029_raw_capture_archive.sql",
     "0038_raw_capture_publications.sql",
-    "0040_raw_capture_finality.sql",
+    "0041_raw_capture_finality.sql",
   ]) {
     const migration = readFileSync(
       new URL(`../migrations/d1/${name}`, import.meta.url),

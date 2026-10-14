@@ -33,12 +33,12 @@ export async function nativeRawFixture(
     "0028_raw_capture_storage.sql",
     "0029_raw_capture_archive.sql",
     "0038_raw_capture_publications.sql",
-    "0039_self_stake_snapshot_receipts.sql",
-    "0040_raw_capture_finality.sql",
+    "0040_self_stake_snapshot_receipts.sql",
+    "0041_raw_capture_finality.sql",
   ]) {
     if (name === "0038_raw_capture_publications.sql")
       await options.beforePublication?.(db);
-    if (name === "0040_raw_capture_finality.sql") await beforeFinality?.(db);
+    if (name === "0041_raw_capture_finality.sql") await beforeFinality?.(db);
     const sql = readFileSync(
       new URL(`../../migrations/d1/${name}`, import.meta.url),
       "utf8",
