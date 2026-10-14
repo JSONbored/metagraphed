@@ -19240,7 +19240,7 @@ export interface operations {
                      *             "registration_cost_tao": 0.5,
                      *             "subnet_volume_tao": 0.5,
                      *             "tao_in_pool_tao": 0.5,
-                     *             "total_stake_alpha": null,
+                     *             "total_stake_alpha": 0.5,
                      *             "validator_count": 1
                      *           }
                      *         ],
@@ -19251,7 +19251,7 @@ export interface operations {
                      *           "total_miners": 1,
                      *           "total_network_value_tao": "327838334.635978200",
                      *           "total_root_value_tao": "327838334.635978200",
-                     *           "total_stake_alpha": null,
+                     *           "total_stake_alpha": "327838334.635978200",
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
                      *         },
@@ -20679,7 +20679,7 @@ export interface operations {
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,
                      *           "tao_in_pool_tao": 0.5,
-                     *           "total_stake_alpha": null,
+                     *           "total_stake_alpha": 0.5,
                      *           "validator_count": 1
                      *         },
                      *         "endpoints": [
@@ -33827,7 +33827,7 @@ export interface operations {
                      *             "registration_cost_tao": 0.5,
                      *             "subnet_volume_tao": 0.5,
                      *             "tao_in_pool_tao": 0.5,
-                     *             "total_stake_alpha": null,
+                     *             "total_stake_alpha": 0.5,
                      *             "validator_count": 1
                      *           }
                      *         ],
@@ -33838,7 +33838,7 @@ export interface operations {
                      *           "total_miners": 1,
                      *           "total_network_value_tao": "327838334.635978200",
                      *           "total_root_value_tao": "327838334.635978200",
-                     *           "total_stake_alpha": null,
+                     *           "total_stake_alpha": "327838334.635978200",
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
                      *         },
@@ -43147,7 +43147,7 @@ export interface operations {
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,
                      *           "tao_in_pool_tao": 0.5,
-                     *           "total_stake_alpha": null,
+                     *           "total_stake_alpha": 0.5,
                      *           "validator_count": 1
                      *         },
                      *         "endpoints": [
