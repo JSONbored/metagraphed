@@ -93,6 +93,28 @@ jobs:
         working-directory: apps/ui
         run: node scripts/generate-openapi-docs.ts
 
+      - name: Prepare pinned source formatting
+        if: inputs.prepare_only == true
+        run: |
+          paths=(src/chain-holders.ts src/mcp-server.ts src/subnet-holders.ts src/validator-nominator-positions.ts workers/request-handlers/entities.ts apps/ui/src/hooks/use-stake-flow.ts apps/ui/src/lib/metagraphed/types.ts)
+          npx prettier --write "${paths[@]}"
+          mkdir -p "$RUNNER_TEMP/source-format"
+          git rev-parse HEAD > "$RUNNER_TEMP/source-format/source-head.txt"
+          printf '%s\n' "${paths[@]}" > "$RUNNER_TEMP/source-format/paths.txt"
+          for file in "${paths[@]}"; do
+            mkdir -p "$RUNNER_TEMP/source-format/$(dirname "$file")"
+            cp "$file" "$RUNNER_TEMP/source-format/$file"
+          done
+
+      - name: Upload pinned source formatting
+        if: inputs.prepare_only == true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: source-format
+          path: ${{ runner.temp }}/source-format
+          retention-days: 1
+          if-no-files-found: error
+
       - name: Stage source-branch generated contracts
         if: inputs.prepare_only == true
         run: |
@@ -125,7 +147,7 @@ jobs:
         if: inputs.prepare_only == true
         id: quantity_backend
         continue-on-error: true
-        run: npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts tests/account-nominator-positions.test.ts tests/published-query-bindings.test.ts tests/neon-sole-store-tables-exist.test.ts tests/neon-flag-config-parity.test.ts tests/read-store-tables-match-the-sql.test.ts
+        run: npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts tests/account-nominator-positions.test.ts tests/published-query-bindings.test.ts tests/neon-sole-store-tables-exist.test.ts tests/neon-flag-config-parity.test.ts tests/read-store-tables-match-the-sql.test.ts tests/alpha-snapshot-d1.test.ts tests/self-stake-snapshot-d1.test.ts
 
       - name: Complete UI quantity regressions
         if: inputs.prepare_only == true

@@ -166,9 +166,9 @@ export function resolveUnstakeMaxAmountInput(
   if (unit === "alpha") return alpha;
   if (spotPriceTao == null || !Number.isFinite(spotPriceTao) || spotPriceTao <= 0) return null;
   // A labeled snapshot candidate, superseded by the transaction's real quote.
-  // eslint-disable-next-line no-restricted-syntax -- transaction candidate precision
   const candidate = Number(alpha) * spotPriceTao;
   if (!Number.isFinite(candidate) || candidate > 18_446_744_073.70955) return null;
+  // eslint-disable-next-line no-restricted-syntax -- exact transaction candidate serialization
   return candidate.toFixed(9);
 }
 
