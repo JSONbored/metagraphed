@@ -99,7 +99,7 @@ describe("pgLaneHealthDb", () => {
     assert.match(f.log[0].text, /VALUES \(\$1, \$2, \$3, \$4, \$5\)/);
     assert.deepEqual(f.log[0].values, ["neon:probe", "ok", null, "d", 7]);
     assert.match(f.log[1].text, /DELETE FROM lane_health WHERE ctid IN/);
-    assert.match(f.log[1].text, /WHERE lane = \$1 AND checked_at < \$2/);
+    assert.match(f.log[1].text, /WHERE lane = \$1 AND checked_at < \(/);
     assert.match(f.log[1].text, /lane = \$3/);
     assert.deepEqual(f.log[1].values, [
       "neon:probe",

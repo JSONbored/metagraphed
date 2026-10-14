@@ -5,10 +5,7 @@ import { readFileSync } from "node:fs";
 import { Miniflare } from "miniflare";
 import { test } from "vitest";
 import { createD1Store } from "../src/d1-store.ts";
-import {
-  recordLaneVerdict,
-  LANE_HEALTH_RETENTION_MS,
-} from "../src/lane-health.ts";
+import { recordLaneVerdict } from "../src/lane-health.ts";
 import {
   captureSubnetBurnHistory,
   BURN_HISTORY_PRUNE_MAX_ROWS,
@@ -32,19 +29,20 @@ for (const samples of [10000, 130000]) {
     try {
       const db = await runtime.getD1Database("DB");
       // Seed before installing projections, then apply their real migrations.
-      // 10k approximates 90 days at 15m; 130k approximates 90 days at 1m.
+      // 10k covers 104 days at 15m; 130k covers 90.3 days at 1m.
+      // Both include an expired backlog and end at NOW, without future rows.
+      const tickMs = samples === 10000 ? 900000 : 60000;
       for (const sql of ddl("0001_lane_health.sql").split(
         "-- statement-breakpoint",
       ))
         await db.prepare(sql).run();
-      const cutoff = NOW - LANE_HEALTH_RETENTION_MS;
       await db
         .prepare(
           `WITH RECURSIVE n(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM n WHERE i<?)
         INSERT INTO lane_health(lane,verdict,checked_at)
-        SELECT 'budget',CASE WHEN i%3=0 THEN 'stale' WHEN i%3=1 THEN 'ok' ELSE 'unknown' END,?+i*60000 FROM n`,
+        SELECT 'budget',CASE WHEN i%3=0 THEN 'stale' WHEN i%3=1 THEN 'ok' ELSE 'unknown' END,?+i*? FROM n`,
         )
-        .bind(samples, cutoff - 201 * 60000)
+        .bind(samples, NOW - samples * tickMs, tickMs)
         .run();
       for (const name of [
         "0002_lane_health_current.sql",
@@ -127,6 +125,72 @@ for (const samples of [10000, 130000]) {
     }
   }, 120000);
 }
+
+test("an expired latest-timestamp tie pile needs only an indexed range seek", async () => {
+  const runtime = freshRuntime();
+  try {
+    const db = await runtime.getD1Database("DB");
+    for (const sql of ddl("0001_lane_health.sql").split(
+      "-- statement-breakpoint",
+    ))
+      await db.prepare(sql).run();
+    await db
+      .prepare(
+        `WITH RECURSIVE n(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM n WHERE i<10000)
+      INSERT INTO lane_health(lane,verdict,checked_at) SELECT 'ties','stale',1 FROM n`,
+      )
+      .run();
+    const store = createD1Store(db);
+    let reads = 0;
+    assert.equal(
+      await recordLaneVerdict(
+        {
+          ...store,
+          query: async () => {
+            throw new Error("refused");
+          },
+          run: async (sql, values = []) => {
+            const result = await db
+              .prepare(sql)
+              .bind(...values)
+              .run();
+            reads = result.meta.rows_read;
+            assert.equal(result.meta.changes, 0);
+            return { changes: 0 };
+          },
+        },
+        {
+          lane: "ties",
+          verdict: "ok",
+          age_ms: null,
+          detail: null,
+          checked_at: NOW,
+        },
+        { confirm: true },
+      ),
+      false,
+    );
+    assert(reads < 20, `latest ties scanned ${reads} rows`);
+    assert.equal(
+      (await store.first<{ n: number }>(
+        "SELECT count(*) AS n FROM lane_health WHERE lane='ties'",
+      ))!.n,
+      10000,
+    );
+    console.info(
+      "retention_work",
+      JSON.stringify({
+        family: "lane_health",
+        case: "all-latest-ties",
+        samples: 10000,
+        rows_read: reads,
+        changes: 0,
+      }),
+    );
+  } finally {
+    await runtime.dispose();
+  }
+});
 
 test("burn expiry keeps up with 396-row captures against a 380k-row fixture", async () => {
   const runtime = freshRuntime();

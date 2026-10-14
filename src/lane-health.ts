@@ -292,8 +292,11 @@ export async function recordLaneVerdict(
       const rowId = db.historyRowId ?? "rowid";
       await db.run(
         `DELETE FROM lane_health WHERE ${rowId} IN (
-          SELECT ${rowId} FROM lane_health WHERE lane = ? AND checked_at < ?
-            AND checked_at < (SELECT MAX(checked_at) FROM lane_health WHERE lane = ?)
+          SELECT ${rowId} FROM lane_health WHERE lane = ? AND checked_at < (
+            SELECT MIN(bound) FROM (
+              SELECT ? AS bound UNION ALL
+              SELECT MAX(checked_at) FROM lane_health WHERE lane = ?
+            ) retention_bounds)
           ORDER BY checked_at LIMIT 200)`,
         [
           record.lane,

@@ -143,7 +143,7 @@ describe("recordLaneVerdict", () => {
     await recordLaneVerdict(db, record());
     const deletes = calls.filter((c) => c.sql.startsWith("DELETE FROM"));
     assert.equal(deletes.length, 1);
-    assert.match(deletes[0].sql, /WHERE lane = \? AND checked_at < \?/);
+    assert.match(deletes[0].sql, /WHERE lane = \? AND checked_at < \(/);
     assert.match(deletes[0].sql, /ORDER BY checked_at LIMIT 200/);
     assert.deepEqual(deletes[0].values, [
       "chain-detail",
