@@ -331,7 +331,22 @@ export async function writeAlphaSnapshotD1(
  * the producer must replay this block/capture before reserving a newer pass.
  * Missing historical state is a repair condition, never abandonment. */
 export async function readAlphaSnapshotResumeD1(binding: D1StoreBinding) {
-  const pending = await createD1Store(binding).first<Record<string, unknown>>(
+  type ResumeRow = Pick<
+    z.infer<typeof packet>["alpha_snapshot"],
+    | "captured_at"
+    | "block_number"
+    | "block_hash"
+    | "genesis_hash"
+    | "spec_version"
+    | "code_hash"
+    | "metadata_sha256"
+    | "scanned_legacy"
+    | "scanned_v2"
+  > & {
+    expected_rows: number;
+    expected_chunks: number;
+  };
+  const pending = await createD1Store(binding).first<ResumeRow>(
     `SELECT captured_at,block_number,block_hash,genesis_hash,spec_version,code_hash,
       metadata_sha256,scanned_legacy,scanned_v2,expected_rows,expected_chunks
       FROM alpha_snapshot_passes WHERE completed_at IS NULL ORDER BY captured_at LIMIT 1`,
