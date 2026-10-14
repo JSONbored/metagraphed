@@ -1,3 +1,4 @@
+import { webhookDeliveryStatus } from "./webhook-delivery-status.ts";
 import { withRequestCounters } from "./request-counters.ts";
 import { requestTimings, withOperationTiming } from "./request-timing.ts";
 import { loadSubnetStatus } from "./subnet-status-read.ts";
@@ -356,9 +357,6 @@ import {
   isValidSubscriptionId,
   subscriptionStorageKey,
   publicSubscriptionView,
-  deliveryStoragePrefix,
-  summarizeDeliveryRecords,
-  WEBHOOK_REDELIVERY_LIST_LIMIT,
 } from "./webhooks.ts";
 import { ALERT_TRIGGER_OWNER_TOKEN_HEADER } from "./alert-triggers.ts";
 import {
@@ -3282,37 +3280,9 @@ function mcpNeuronsTierRequest(pathname: string, params: Row = {}) {
   return new Request(`https://d${pathname}${q ? `?${q}` : ""}`);
 }
 
-// Delivery health for get_webhook_subscription -- mirrors workers/api.ts's
-// readDeliveryStatus (the same helper the public GET /api/v1/webhooks/
-// subscriptions/{id} route uses), best-effort: a list/get hiccup or a store
-// without `list` (local dev KV mock) degrades to "ok" rather than failing
-// the whole lookup.
+// Shared native status reader retains legacy projections without hiding native failures.
 async function readMcpWebhookDeliveryStatus(env: Env, id: unknown) {
-  try {
-    if (typeof env.METAGRAPH_CONTROL.list !== "function") {
-      return summarizeDeliveryRecords([]);
-    }
-    const { keys } = await env.METAGRAPH_CONTROL.list({
-      prefix: deliveryStoragePrefix(id),
-      limit: WEBHOOK_REDELIVERY_LIST_LIMIT,
-    });
-    const records = await Promise.all(
-      keys
-        .slice(0, WEBHOOK_REDELIVERY_LIST_LIMIT)
-        // No `(entry: Row)` annotation: `list()` already types its keys, and
-        // restating the parameter as a bag was what picked `get`'s STRING
-        // overload -- so the records below were `(string | null)[]` and the
-        // `as Row[]` put them back (#10782).
-        .map((entry) =>
-          env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
-        ),
-    );
-    return summarizeDeliveryRecords(
-      records.filter((record): record is Row => rowOf(record) !== null),
-    );
-  } catch {
-    return summarizeDeliveryRecords([]);
-  }
+  return webhookDeliveryStatus(env, String(id));
 }
 
 // Synthetic GET /api/v1/accounts/{ss58}/identity-history{...} request, same
@@ -9637,10 +9607,17 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (!record) {
         throw toolError("not_found", `No such subscription: ${id}.`);
       }
-      return {
-        ...publicSubscriptionView(record as Row),
-        delivery: await readMcpWebhookDeliveryStatus(ctx.env, id),
-      };
+      try {
+        return {
+          ...publicSubscriptionView(record as Row),
+          delivery: await readMcpWebhookDeliveryStatus(ctx.env, id),
+        };
+      } catch {
+        throw toolError(
+          "webhooks_unavailable",
+          "Webhook delivery status unavailable.",
+        );
+      }
     },
   },
   {

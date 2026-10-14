@@ -1,8 +1,35 @@
 import assert from "node:assert/strict";
-import { describe, test, vi } from "vitest";
+import { beforeAll, beforeEach, afterAll, describe, test, vi } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
+import {
+  nativeWebhookFixture,
+  webhookMessage,
+} from "./helpers/webhook-ledger-fixture.ts";
+let native: Awaited<ReturnType<typeof nativeWebhookFixture>>;
+beforeAll(async () => {
+  vi.useRealTimers();
+  native = await nativeWebhookFixture();
+});
+beforeEach(async () => {
+  await native.db.batch([
+    native.db.prepare("DELETE FROM webhook_delivery_intents"),
+    native.db.prepare("DELETE FROM webhook_delivery_events"),
+  ]);
+});
+afterAll(async () => {
+  await native.runtime.dispose();
+});
+const contentMessage = (body: unknown) => {
+  if (!body || typeof body !== "object") return body;
+  const m = body as Row;
+  return typeof m.event_id === "string" &&
+    m.event_id &&
+    typeof m.body === "string"
+    ? { ...m, ...webhookMessage(String(m.subscription_id), m.body) }
+    : body;
+};
 
 // Minimal in-memory KV mock matching the Workers KV surface the worker uses.
 function makeKv() {
@@ -34,6 +61,7 @@ const SUBSCRIPTION_TOKEN = "test-webhook-subscription-token";
 const envWith = (kv: unknown, extra: Row = {}) =>
   createLocalArtifactEnv({
     METAGRAPH_CONTROL: kv,
+    D1_STATE: native.db,
     METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN: SUBSCRIPTION_TOKEN,
     ...extra,
   });
@@ -921,7 +949,7 @@ describe("webhook queue consumer", () => {
       {
         messages: [
           {
-            body,
+            body: contentMessage(body),
             attempts: (body as Row)?.__attempts ?? 1,
             ack: () => acts.push("ack"),
             retry: (opts?: { delaySeconds?: number }) => {
@@ -950,7 +978,7 @@ describe("webhook queue consumer", () => {
     // for -- the 12-hour retry window makes that a real interval.
     const { acts } = await runQueue(envWith(makeKv()), {
       subscription_id: "sub_deleted",
-      event_id: "evt_1",
+      event_id: webhookMessage().event_id,
       body: EVENT_BODY,
     });
     assert.deepEqual(acts, ["ack"]);
@@ -965,7 +993,7 @@ describe("webhook queue consumer", () => {
     try {
       const { acts } = await runQueue(envWith(kv), {
         subscription_id: sub.id,
-        event_id: "evt_1",
+        event_id: webhookMessage().event_id,
         body: EVENT_BODY,
       });
       assert.deepEqual(acts, ["ack"], "a delivered event is done");
@@ -984,7 +1012,7 @@ describe("webhook queue consumer", () => {
     try {
       const { acts, delays } = await runQueue(envWith(kv), {
         subscription_id: sub.id,
-        event_id: "evt_1",
+        event_id: webhookMessage().event_id,
         body: EVENT_BODY,
       });
       assert.deepEqual(acts, ["retry"]);
@@ -1108,7 +1136,7 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
       {
         messages: [
           {
-            ...msg(body),
+            ...msg(contentMessage(body)),
             ack: () => acts.push("ack"),
             retry: () => acts.push("retry"),
           },
@@ -1131,7 +1159,7 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
       kv,
       {
         subscription_id: sub.id,
-        event_id: "evt_1",
+        event_id: webhookMessage().event_id,
         body: JSON.stringify({ type: "metagraph.publish" }),
       },
       () => {
@@ -1151,7 +1179,7 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
       kv,
       {
         subscription_id: sub.id,
-        event_id: "evt_1",
+        event_id: webhookMessage().event_id,
         body: JSON.stringify({ type: "metagraph.publish" }),
       },
       async () => ({}),
@@ -1179,7 +1207,7 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
           {
             body: {
               subscription_id: sub.id,
-              event_id: "evt_1",
+              event_id: webhookMessage().event_id,
               body: JSON.stringify({ type: "metagraph.publish" }),
             },
             attempts: 8,
@@ -1208,7 +1236,7 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
     const sub = await seedSubscription(kv, "https://hooks.example.com/a");
     const acts = await run(kv, {
       subscription_id: sub.id,
-      event_id: "evt_1",
+      event_id: webhookMessage().event_id,
       body: "{not json",
     });
     assert.deepEqual(acts, ["ack"]);
@@ -1239,7 +1267,7 @@ describe("what the consumer writes is what the status surface reads", () => {
           {
             body: {
               subscription_id: subscriptionId,
-              event_id: "evt_1",
+              event_id: webhookMessage().event_id,
               body: JSON.stringify({ type: "metagraph.publish" }),
             },
             attempts,
@@ -1297,8 +1325,8 @@ describe("what the consumer writes is what the status surface reads", () => {
     assert.equal(delivery.status, "dead_letter");
     assert.equal(delivery.dead_letter, 1);
     assert.equal(delivery.pending, 0);
-    assert.equal(delivery.last_failure.event_id, "evt_1");
-    assert.equal(delivery.last_failure.reason, "http-400");
+    assert.equal(delivery.last_failure.event_id, webhookMessage().event_id);
+    assert.equal(delivery.last_failure.reason, "outcome-unknown: http-400");
     assert.equal(delivery.last_failure.status_code, 400);
     assert.equal(delivery.last_failure.state, "dead");
     assert.equal(
@@ -1322,7 +1350,7 @@ describe("what the consumer writes is what the status surface reads", () => {
     assert.equal(delivery.status, "retrying");
     assert.equal(delivery.pending, 1);
     assert.equal(delivery.dead_letter, 0);
-    assert.equal(delivery.last_failure.reason, "timeout");
+    assert.equal(delivery.last_failure.reason, "outcome-unknown: timeout");
     assert.equal(delivery.last_failure.attempts, 2, "the queue's own counter");
     // 5 min doubling per attempt: the second attempt waits 10 minutes.
     assert.equal(
@@ -1359,7 +1387,7 @@ describe("what the consumer writes is what the status surface reads", () => {
     );
 
     const delivery = await deliveryOf(kv, sub.id);
-    assert.equal(delivery.last_failure.event_id, "evt_1");
+    assert.equal(delivery.last_failure.event_id, webhookMessage().event_id);
     assert.equal(delivery.dead_letter, 1);
     assert.equal(delivery.pending, 0, "the delivered one is neither");
   });
@@ -1428,17 +1456,18 @@ describe("one subscriber cannot starve the batch (metagraphed-infra#354)", () =>
     return acts;
   }
 
-  const msg = (id: string, event = "e1") => ({
-    subscription_id: id,
-    event_id: event,
-    body: JSON.stringify({ type: "metagraph.publish" }),
-  });
+  const msg = (id: string, event = "e1") =>
+    webhookMessage(id, { type: "metagraph.publish", seq: event });
 
   test("a hanging subscriber does not hold up the others", async () => {
     const kv = makeKv();
     const slow = await seedSubscription(kv, "https://hooks.example.com/slow");
     const fast = await seedSubscription(kv, "https://hooks.example.com/fast");
     const finished: string[] = [];
+    let fastArrived: () => void = () => {};
+    const fastReady = new Promise<void>((resolve) => {
+      fastArrived = resolve;
+    });
     let releaseSlow: () => void = () => {};
     const slowHangs = new Promise<void>((resolve) => {
       releaseSlow = resolve;
@@ -1450,13 +1479,14 @@ describe("one subscriber cannot starve the batch (metagraphed-infra#354)", () =>
       async ({ subscription }: { subscription: Row }) => {
         if (subscription.id === slow.id) await slowHangs;
         finished.push(subscription.id as string);
+        if (subscription.id === fast.id) fastArrived();
         return { status: "delivered", status_code: 200 };
       },
     );
 
     // Let the microtask queue drain. Under the old serial loop the fast
     // subscriber could not even START until the slow one returned.
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await fastReady;
     assert.deepEqual(
       finished,
       [fast.id],
@@ -1578,6 +1608,12 @@ describe("the webhook cron trigger (metagraphed-infra#354)", () => {
     const queue = makeQueue();
     const after = await tick(kv, queue);
     assert.equal(after.enqueued, 1, "the event is still pending, not skipped");
+    assert.equal(
+      queue.sent.length,
+      2,
+      "outbox recovery and re-fanout preserve the same event identity",
+    );
+    assert.equal(queue.sent[0].event_id, queue.sent[1].event_id);
   });
 
   test("the default loader reads the published changelog", async () => {
