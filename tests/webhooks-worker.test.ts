@@ -1241,8 +1241,23 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
       `webhooks:sub:${id}`,
       JSON.stringify({ id, secret: "old-secret", filters: {} }),
     );
-    const result = await runQueue(envWith(kv), webhookMessage(id));
-    assert.deepEqual(result.acts, ["ack"]);
+    const { default: worker } = await import("../workers/api.ts");
+    const actions: string[] = [];
+    await worker.queue!(
+      {
+        messages: [
+          {
+            body: webhookMessage(id),
+            attempts: 1,
+            ack: () => actions.push("ack"),
+            retry: () => actions.push("retry"),
+          },
+        ],
+      } as never,
+      envWith(kv) as unknown as Env,
+      {} as never,
+    );
+    assert.deepEqual(actions, ["ack"]);
     const rows = await native.ledger.recent(id, Date.now());
     assert.equal(rows.length, 1);
     assert.equal(rows[0].state, "dead");
@@ -1808,7 +1823,9 @@ test("unbound durable webhook ownership rejects dispatch before queue effects or
     type: "metagraph.publish",
     changes: { subnets: [7] },
   });
-  assert.equal(response.status, 503);
+  assert.equal(response.status, 502);
+  const body = await response.json();
+  assert.equal(body.error.code, "webhook_dispatch_enqueue_failed");
   assert.equal(queue.sent.length, 0);
   assert.equal(kv.store.has("webhooks:last-dispatched"), false);
 });

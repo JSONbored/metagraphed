@@ -372,13 +372,11 @@ function rewriteReply(
 ): typeof fetch {
   return async (url, init) => {
     const request = JSON.parse(String(init?.body)) as
-      | FixtureRpcCall
-      | FixtureRpcCall[];
+      FixtureRpcCall | FixtureRpcCall[];
     const calls = Array.isArray(request) ? request : [request];
     const response = await node.fetchImpl(url, init);
     const payload = (await response.json()) as
-      | FixtureRpcReply
-      | FixtureRpcReply[];
+      FixtureRpcReply | FixtureRpcReply[];
     const replies = (Array.isArray(payload) ? payload : [payload]).map(
       (reply) => {
         const call = calls.find((entry) => entry.id === reply.id);

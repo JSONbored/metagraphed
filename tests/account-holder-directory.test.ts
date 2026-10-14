@@ -63,19 +63,54 @@ describe("buildAccountHolderDirectory", () => {
     const baseline = buildAccountHolderDirectory(rows, {
       priceByNetuid: PRICES,
     });
-    const changed = buildAccountHolderDirectory(
-      rows.map((entry) => ({
-        ...entry,
-        stake_tao: entry.hotkey === "hk-a" ? 1_000_000_000 : 0,
-      })),
-      {
-        priceByNetuid: new Map([
-          [1, 1_000_000],
-          [2, 0],
-        ]),
+    const changedWeights = rows.map((entry) => ({
+      ...entry,
+      stake_tao: entry.hotkey === "hk-a" ? 1_000_000_000 : 0,
+    }));
+    const reweighted = buildAccountHolderDirectory(changedWeights, {
+      priceByNetuid: PRICES,
+    });
+    assert.deepEqual(reweighted, baseline);
+
+    const changed = buildAccountHolderDirectory(changedWeights, {
+      priceByNetuid: new Map([
+        [1, 1_000_000],
+        [2, 0],
+      ]),
+    });
+    const withoutEmission = (directory: typeof baseline) => ({
+      ...directory,
+      rankings: {
+        ...directory.rankings,
+        emission: directory.rankings.emission.map(
+          ({ total_emission_tao: _emission, ...identity }) => identity,
+        ),
+        reach: directory.rankings.reach.map(
+          ({ total_emission_tao: _emission, ...identity }) => identity,
+        ),
       },
+    });
+    assert.deepEqual(withoutEmission(changed), withoutEmission(baseline));
+    assert.deepEqual(
+      baseline.rankings.emission.map((entry) => [
+        entry.hotkey,
+        entry.total_emission_tao,
+      ]),
+      [
+        ["hk-a", 10],
+        ["hk-b", 1],
+      ],
     );
-    assert.deepEqual(changed, baseline);
+    assert.deepEqual(
+      changed.rankings.emission.map((entry) => [
+        entry.hotkey,
+        entry.total_emission_tao,
+      ]),
+      [
+        ["hk-a", 10_000_000],
+        ["hk-b", 0],
+      ],
+    );
     assert.deepEqual(changed.rankings.stake, []);
     assert.deepEqual(
       changed.rankings.emission.map((entry) => entry.hotkey),
