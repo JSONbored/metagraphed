@@ -84,12 +84,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Build source-branch SDK artifacts
+        if: inputs.prepare_only == true
+        run: npm run build --workspace=packages/client
+
       - name: Stage source-branch generated contracts
         if: inputs.prepare_only == true
         run: |
           mkdir -p "$RUNNER_TEMP/source-contracts"
           git rev-parse HEAD > "$RUNNER_TEMP/source-contracts/source-head.txt"
-          git diff --name-only -- public/metagraph/openapi.json public/metagraph/contracts.json public/metagraph/api-index.json public/metagraph/types.d.ts generated/graphql generated/metagraphed-client.ts packages/contract > "$RUNNER_TEMP/source-contracts/paths.txt"
+          git diff --name-only -- public/metagraph/openapi.json public/metagraph/contracts.json public/metagraph/api-index.json public/metagraph/types.d.ts generated/graphql generated/metagraphed-client.ts packages/contract packages/client/dist > "$RUNNER_TEMP/source-contracts/paths.txt"
           while IFS= read -r file; do
             test -f "$file"
             mkdir -p "$RUNNER_TEMP/source-contracts/$(dirname "$file")"
@@ -108,11 +112,11 @@ jobs:
       - name: Qualify prepared quantity source
         if: inputs.prepare_only == true
         run: |
-          npx vitest run tests/quantity-contract.test.ts
+          npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts
           npm run typecheck
           npm run build --workspace=packages/ui-kit
           npm run typecheck --workspace=apps/ui
-          npm run test --workspace=apps/ui -- src/lib/metagraphed/queries.account-positions.test.ts src/hooks/use-stake-flow.test.ts
+          npm run test --workspace=apps/ui
 
       # Scoped to the contract artifacts on purpose. build.ts already
       # auto-reverts the deploy-owned pair (r2-manifest.json,
