@@ -26,12 +26,12 @@ export function captureUpsertStatements(
   rows: Record<string, unknown>[],
   guard?: string,
   filter = "true",
-): ProducerStatement[] {
+): Array<ProducerStatement & { values: [string] }> {
   const { table, columns, conflict } = plan;
   const updates = columns.filter((column) => !conflict.includes(column));
   const text = `INSERT INTO ${table}(${columns.join(",")}) SELECT ${columns.map((_, i) => `json_extract(value,'$[${i}]')`).join(",")} FROM json_each(?) WHERE ${filter}
     ON CONFLICT(${conflict.join(",")}) DO UPDATE SET ${updates.map((column) => `${column}=excluded.${column}`).join(",")}${guard ? ` WHERE ${guard}` : ""}`;
-  const statements: ProducerStatement[] = [];
+  const statements: Array<ProducerStatement & { values: [string] }> = [];
   let batch: string[] = [],
     bytes = 2;
   const flush = () => {
