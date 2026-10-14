@@ -1,4 +1,4 @@
-import { loadAlphaQuantityCapture } from "./alpha-quantity.ts";
+import { loadAlphaQuantityCaptureFromOwner } from "./alpha-quantity.ts";
 import { declineRetainedHistoryFailure } from "./retained-history-store.ts";
 // Account positions use the selected D1 ledger and indexed activity history.
 // Live neuron stakes price every position; selected owner failures decline
@@ -179,9 +179,7 @@ export async function loadAccountPositionsColdTier(
 
   // One row over the cap is enough to know the cap was exceeded, and cheaper
   // than a second counting query over the same predicate.
-  const capture = await loadAlphaQuantityCapture(
-    selectedD1Store(env, ["nominator_positions"]),
-  );
+  const capture = await loadAlphaQuantityCaptureFromOwner(env);
   const native = await nativePositionRows(
     env,
     `SELECT ${POSITION_COLUMNS}${capture ? ", source, alpha_rao, alpha_evidence" : ""} FROM nominator_positions WHERE coldkey = ? LIMIT ?`,

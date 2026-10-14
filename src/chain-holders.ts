@@ -1,5 +1,9 @@
 import { alphaHolderCte } from "./alpha-holder-sql.ts";
-import { loadAlphaQuantityCapture } from "./alpha-quantity.ts";
+import {
+  loadAlphaQuantityCapture,
+  alphaQuantityProvenance,
+  type AlphaQuantityCapture,
+} from "./alpha-quantity.ts";
 // GET /api/v1/chain/holders (#9607): every subnet ranked by how concentrated
 // its alpha ownership is.
 //
@@ -72,6 +76,7 @@ export type ChainHoldersDecline =
   | "unavailable";
 
 export interface ChainHoldersRead {
+  capture?: AlphaQuantityCapture | null;
   rows: Row[];
   capturedAt: number | null;
   decline: ChainHoldersDecline | null;
@@ -137,6 +142,7 @@ export async function loadChainHolders(
     return {
       rows,
       capturedAt: alpha.captured_at,
+      capture: alpha,
       decline: null,
     };
   } catch {
@@ -158,10 +164,16 @@ export function buildChainHolders(
 ): Row {
   const base = {
     schema_version: 2,
+    provenance: read.capture ? alphaQuantityProvenance(read.capture) : null,
     sort: sort ?? DEFAULT_CHAIN_HOLDERS_SORT,
     limit: limit ?? null,
   };
-  if (read.decline) {
+  const decline =
+    read.decline ??
+    (!read.capture || read.capture.captured_at !== read.capturedAt
+      ? "runtime_positions_unqualified"
+      : null);
+  if (decline) {
     return {
       ...base,
       subnet_count: null,
@@ -169,7 +181,7 @@ export function buildChainHolders(
       captured_at: null,
       positions_captured_at: null,
       subnets: [],
-      degraded: { reason: read.decline },
+      degraded: { reason: decline },
     };
   }
 

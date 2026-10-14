@@ -24,6 +24,7 @@ import type { Neurons } from "../generated/db/types.ts";
 import {
   round9NonNegative,
   finiteCellOrNull,
+  nonNegativeCellOrNull,
   nonNegativeOrZero,
   raoBigToTao,
   round9OrNull,
@@ -956,7 +957,7 @@ export function buildGlobalValidators(
       // carries a PRICED total_stake_tao, and a row field sharing that suffix
       // across a different unit is the trap the rename removes.
       stake_alpha: null,
-      voting_weight: round9OrNull(finiteCellOrNull(row.stake_tao)),
+      voting_weight: round9OrNull(nonNegativeCellOrNull(row.stake_tao)),
       emission_alpha: round9NonNegative(emission),
       validator_trust: round(trust),
     });
@@ -1270,7 +1271,7 @@ export function buildValidatorDetail(
       netuid,
       ...rest,
       stake_alpha: null,
-      voting_weight: rowStake ?? null,
+      voting_weight: nonNegativeCellOrNull(rowStake),
       emission_alpha: rowEmission ?? null,
     });
   }

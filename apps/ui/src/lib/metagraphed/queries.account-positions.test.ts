@@ -133,7 +133,7 @@ describe("accountPositionsQuery", () => {
 
   it("caps the position list defensively", async () => {
     resolveWith({
-      positions: Array.from({ length: 300 }, (_, i) => ({
+      positions: Array.from({ length: 2100 }, (_, i) => ({
         hotkey: `5Hotkey${i}`,
         netuid: i,
         share_fraction: 0.1,
@@ -143,8 +143,8 @@ describe("accountPositionsQuery", () => {
 
     const result = await runQuery(CHARLIE);
 
-    expect(result.data.positions).toHaveLength(256);
-    expect(result.data.position_count).toBe(256);
+    expect(result.data.positions).toHaveLength(2000);
+    expect(result.data.position_count).toBe(2000);
   });
 });
 

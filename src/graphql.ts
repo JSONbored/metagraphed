@@ -1,3 +1,4 @@
+import { alphaQuantityStore } from "./alpha-quantity.ts";
 import { loadSubnetStatus } from "./subnet-status-read.ts";
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
 import { asJsonObject } from "../schemas-src/json-request.ts";
@@ -951,7 +952,6 @@ import {
 import { loadRevenueObservations } from "./revenue-observations.ts";
 import { REVENUE_OBSERVATION_TABLES } from "./read-store-tables.ts";
 import {
-  ALPHA_PRICING_TABLES,
   CHAIN_CONCENTRATION_HISTORY_TABLES,
   EMISSION_CHANGES_TABLES,
   FAILURE_REASONS_TABLES,
@@ -3055,7 +3055,7 @@ const rootValue = {
       );
     }
     const read = await loadChainHolders(
-      readStore(context.env, ALPHA_PRICING_TABLES),
+      alphaQuantityStore(context.env),
       context.env,
     );
     return buildChainHolders(read, {
@@ -3161,7 +3161,7 @@ const rootValue = {
     }
     const safeLimit = limit ?? SUBNET_HOLDERS_LIMIT_DEFAULT;
     const read = await loadSubnetHolders(
-      readStore(context.env, ALPHA_PRICING_TABLES),
+      alphaQuantityStore(context.env),
       netuid,
       { limit: safeLimit },
     );
@@ -6074,7 +6074,7 @@ const rootValue = {
       // the alpha-pricing tables had already left -- and a frozen table answers
       // with a schema-stable wrong number rather than an error.
       const positions = await loadNominatorPositions(
-        readStore(context.env, ALPHA_PRICING_TABLES),
+        alphaQuantityStore(context.env),
         hotkey,
       );
       return buildNominatorPositions(positions, hotkey, {

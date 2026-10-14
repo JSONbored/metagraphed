@@ -112,10 +112,10 @@ jobs:
       - name: Qualify prepared quantity source
         if: inputs.prepare_only == true
         run: |
-          npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts
           npm run typecheck
           npm run build --workspace=packages/ui-kit
           npm run typecheck --workspace=apps/ui
+          npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts
           npm run test --workspace=apps/ui
 
       # Scoped to the contract artifacts on purpose. build.ts already

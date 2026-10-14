@@ -221,7 +221,14 @@ export async function tryDataApiTier(
     ) ||
     (/^\/api\/v1\/validators\/[^/]+\/nominators$/.test(url.pathname) &&
       url.searchParams.get("basis") === "positions");
-  if (quantityPath && (body as Record<string, unknown>).schema_version !== 2)
+  const yieldPath =
+    /^\/api\/v1\/(?:chain\/yield|subnets\/\d+\/yield(?:\/history)?)$/.test(
+      url.pathname,
+    );
+  if (
+    (quantityPath || yieldPath) &&
+    (body as Record<string, unknown>).schema_version !== 2
+  )
     return markDataApiTierFallback();
   return body as Record<string, unknown>;
 }

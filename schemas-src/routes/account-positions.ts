@@ -26,21 +26,10 @@
 // Bucket (c): captured_at fields drop format:date-time in favor of plain
 // z.string().nullable(), matching this epic's established convention.
 import { z } from "zod";
+import { AlphaProvenanceSchema } from "../alpha-quantity.ts";
 import { subnetHistoryArtifactSchema } from "../shared.ts";
 import { POSITIONS_DEGRADED_REASONS } from "../../src/account-nominator-positions.ts";
 
-const AlphaProvenanceSchema = z
-  .object({
-    network: z.literal("finney"),
-    captured_at: z.string(),
-    block_number: z.int().min(0),
-    block_hash: z.string(),
-    genesis_hash: z.string(),
-    spec_version: z.union([z.literal(454), z.literal(478)]),
-    code_hash: z.string(),
-    metadata_sha256: z.string(),
-  })
-  .strict();
 const NominatorPositionSchema = z
   .object({
     hotkey: z.string(),

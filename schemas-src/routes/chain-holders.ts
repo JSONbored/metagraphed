@@ -7,6 +7,7 @@
 // carries only counts and a median of within-subnet ratios, both of which
 // survive the mismatch.
 import { z } from "zod";
+import { AlphaProvenanceSchema } from "../alpha-quantity.ts";
 
 export const ChainHoldersSubnetSchema = z
   .object({
@@ -60,6 +61,7 @@ export const ChainHoldersNetworkSchema = z
 export const ChainHoldersArtifactSchema = z
   .object({
     schema_version: z.literal(2),
+    provenance: AlphaProvenanceSchema.nullable(),
     sort: z.string(),
     limit: z.int().min(1).nullable(),
     /** Subnets measured, which is NOT the length of `subnets` when limit bites. */

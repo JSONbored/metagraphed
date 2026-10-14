@@ -7,6 +7,7 @@ import {
   computeUnstakeAlphaCandidate,
   resolveStakeMaxRao,
   resolveUnstakeMaxAmountInput,
+  resolveUnstakeMaxSnapshot,
   isMaxUnavailableForNetuid,
   buildStakeCallParams,
   resolveUnstakeValidationAmountRao,
@@ -144,6 +145,20 @@ describe("resolveUnstakeMaxAmountInput", () => {
     );
     expect(resolveUnstakeMaxAmountInput({ ...position, alpha_rao: "0" }, "alpha", 2)).toBe("0");
   });
+  it("uses the selected position capture and never invents a missing price", () => {
+    const selected = {
+      ...position,
+      provenance: { ...position.provenance!, captured_at: "2026-10-01T00:00:00Z" },
+    };
+    const response = {
+      captured_at: "2026-10-13T00:00:00Z",
+      positions: [selected, { ...position, hotkey: "other" }],
+    };
+    const result = resolveUnstakeMaxSnapshot(response.positions[0], "tao", null);
+    expect(result).toEqual({ amountInput: null, capturedAt: "2026-10-01T00:00:00Z" });
+    expect(resolveUnstakeMaxSnapshot(selected, "alpha", null).amountInput).toBe("6.25");
+  });
+
   it("withholds unqualified, Root, malformed and overflowing inputs", () => {
     expect(resolveUnstakeMaxAmountInput(null, "tao", 2)).toBeNull();
     for (const bad of [
@@ -155,7 +170,7 @@ describe("resolveUnstakeMaxAmountInput", () => {
       { alpha_rao: "01" },
     ])
       expect(resolveUnstakeMaxAmountInput({ ...position, ...bad }, "alpha", 2)).toBeNull();
-    for (const price of [NaN, Infinity, 0, -1, 1e300])
+    for (const price of [null, undefined, NaN, Infinity, 0, -1, 1e300])
       expect(resolveUnstakeMaxAmountInput(position, "tao", price)).toBeNull();
   });
 });

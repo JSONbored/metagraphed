@@ -1,5 +1,5 @@
 import {
-  loadAlphaQuantityCapture,
+  loadAlphaQuantityCaptureFromOwner,
   type AlphaQuantityCapture,
 } from "./alpha-quantity.ts";
 // GET /api/v1/accounts/{ss58}/positions, served from D1 -- the HOT leg (#9273).
@@ -70,7 +70,7 @@ export async function loadAccountPositionsFromStore(
   let ledgerCapturedAt: number | null;
   let capture: AlphaQuantityCapture | null = null;
   try {
-    capture = await loadAlphaQuantityCapture(db);
+    capture = await loadAlphaQuantityCaptureFromOwner(env);
     // Issued together: the ledger stamp is needed on the zero path and the
     // decline path alike, and serialising two independent point reads on a
     // request path buys nothing.

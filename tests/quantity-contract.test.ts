@@ -1,4 +1,19 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createD1Store } from "../src/d1-store.ts";
+import { writeAlphaSnapshotD1 } from "../src/alpha-snapshot-d1.ts";
+import { alphaQuantityStore } from "../src/alpha-quantity.ts";
+import {
+  buildSubnetYield,
+  buildSubnetYieldHistory,
+} from "../src/subnet-yield.ts";
+import { buildChainYield } from "../src/chain-yield.ts";
+import {
+  SubnetYieldArtifactSchema,
+  SubnetYieldHistoryArtifactSchema,
+} from "../schemas-src/routes/subnet-yield.ts";
+import { ChainYieldArtifactSchema } from "../schemas-src/routes/chain-yield.ts";
+import { buildAccountsList } from "../src/accounts-list.ts";
 import { test } from "vitest";
 import { Miniflare } from "miniflare";
 import { PGlite } from "@electric-sql/pglite";
@@ -286,146 +301,259 @@ test("both native SQL engines sum and rank exact rao beyond u64 and floating-poi
   }
 });
 
-test("native selected-pass publication between qualification and mutable-row reads cannot publish a false zero", async () => {
-  const runtime = new Miniflare({
-    modules: true,
-    script: "export default {fetch(){return new Response('fixture')}}",
-    compatibilityDate: "2026-06-06",
-    d1Databases: ["DB"],
-  });
-  try {
-    const db = await runtime.getD1Database("DB");
-    const columns = Object.keys(capture);
-    await db
-      .prepare(
-        `CREATE TABLE alpha_snapshot_passes(${columns.map((key) => `${key} ${typeof capture[key as keyof typeof capture] === "number" ? "BIGINT" : "TEXT"}`).join(",")})`,
-      )
-      .run();
-    await db
-      .prepare(
-        "CREATE TABLE alpha_runtime_metadata(sha256 TEXT,code_hash TEXT,spec_version INTEGER)",
-      )
-      .run();
-    await db
-      .prepare(
-        "CREATE TABLE nominator_positions(coldkey TEXT,hotkey TEXT,netuid INTEGER,alpha_rao TEXT,captured_at BIGINT,source TEXT)",
-      )
-      .run();
-    await db
-      .prepare("INSERT INTO alpha_runtime_metadata VALUES(?,?,?)")
-      .bind(capture.metadata_sha256, capture.code_hash, capture.spec_version)
-      .run();
-    const insert = (pass: typeof capture) =>
-      db
+test("native actual promotions choose finalized ownership and decline publication races without rewriting historical receipts", async () => {
+  const frozen = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/alpha-runtime/frozen-478.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const at = frozen.alpha_snapshot.captured_at;
+  for (const family of ["nominator", "subnet", "chain"] as const) {
+    const runtime = new Miniflare({
+      modules: true,
+      script: "export default {fetch(){return new Response('fixture')}}",
+      compatibilityDate: "2026-06-06",
+      d1Databases: ["DB"],
+    });
+    try {
+      const db = await runtime.getD1Database("DB");
+      for (const file of [
+        "0010_ledger_state.sql",
+        "0016_archive_export_revisions.sql",
+        "0039_self_stake_snapshot_receipts.sql",
+        "0042_alpha_runtime_snapshots.sql",
+      ])
+        for (const sql of readFileSync(
+          new URL(`../migrations/d1/${file}`, import.meta.url),
+          "utf8",
+        ).split("-- statement-breakpoint"))
+          if (sql.trim()) await db.prepare(sql).run();
+      const packet = (
+        capturedAt: number,
+        block: number,
+        empty = false,
+        partial = false,
+      ) => ({
+        alpha_snapshot: {
+          ...frozen.alpha_snapshot,
+          captured_at: capturedAt,
+          block_number: block,
+          block_hash: "0x" + block.toString(16).padStart(64, "0"),
+          scanned_legacy: 0,
+          scanned_v2: 10,
+          total_rows: empty ? 0 : partial ? 2 : 1,
+          total_chunks: partial ? 2 : 1,
+          index: 0,
+        },
+        rows: empty
+          ? []
+          : [
+              {
+                coldkey: "c",
+                hotkey: "h",
+                netuid: 23,
+                evidence: frozen.members[0].evidence,
+              },
+            ],
+      });
+      const original = packet(at + 20, frozen.alpha_snapshot.block_number);
+      const next = packet(at + 10, frozen.alpha_snapshot.block_number + 1);
+      const write = (p: unknown) => writeAlphaSnapshotD1(db, p, at + 100000);
+      await write(original);
+      const direct = createD1Store(db);
+      const readFamily = (store: typeof direct) =>
+        family === "nominator"
+          ? loadNominatorPositions(store, "h")
+          : family === "subnet"
+            ? loadSubnetHolders(store, 23)
+            : loadChainHolders(store);
+      const shape = (read: Awaited<ReturnType<typeof readFamily>>) =>
+        family === "nominator"
+          ? buildNominatorPositions(read, "h")
+          : family === "subnet"
+            ? buildSubnetHolders(
+                read as Awaited<ReturnType<typeof loadSubnetHolders>>,
+                23,
+              )
+            : buildChainHolders(read);
+      const count =
+        family === "nominator"
+          ? "nominator_count"
+          : family === "subnet"
+            ? "holder_count"
+            : "subnet_count";
+      assert.equal(shape(await readFamily(direct))[count], 1);
+      let published = false;
+      const racing = {
+        ...direct,
+        async query<Row>(sql: string, values: unknown[] = []): Promise<Row[]> {
+          if (!published) {
+            published = true;
+            await write(next);
+          }
+          return direct.query<Row>(sql, values);
+        },
+      };
+      const raced = await readFamily(racing);
+      assert.equal(raced.decline, "runtime_positions_unqualified");
+      assert.equal(shape(raced)[count], null);
+      assert.equal(
+        await db
+          .prepare(
+            "SELECT COUNT(*) n FROM alpha_snapshot_passes WHERE selected=1",
+          )
+          .first("n"),
+        2,
+      );
+      await db.prepare("DROP INDEX alpha_snapshot_selected").run();
+      await db.prepare("PRAGMA reverse_unordered_selects=ON").run();
+      assert.equal(
+        (await loadAlphaQuantityCapture(direct))?.captured_at,
+        next.alpha_snapshot.captured_at,
+        "higher finalized block wins despite earlier capture time, retained receipts and changed unordered scans",
+      );
+      const stale = packet(at + 30, frozen.alpha_snapshot.block_number - 1);
+      await write(stale);
+      await write(
+        packet(at + 40, frozen.alpha_snapshot.block_number + 2, false, true),
+      );
+      assert.equal(
+        (await loadAlphaQuantityCapture(direct))?.captured_at,
+        next.alpha_snapshot.captured_at,
+        "newer incomplete and stale unselected receipts cannot replace current ownership",
+      );
+      await write(
+        packet(at + 50, frozen.alpha_snapshot.block_number + 3, true),
+      );
+      const zero = await readFamily(direct);
+      assert.equal(zero.decline, null);
+      assert.equal(
+        shape(zero)[count],
+        0,
+        "a genuinely empty current promoted census is measured zero",
+      );
+      await db
         .prepare(
-          `INSERT INTO alpha_snapshot_passes VALUES(${columns.map(() => "?").join(",")})`,
+          "UPDATE alpha_snapshot_passes SET completed_at=NULL WHERE block_number=?",
         )
-        .bind(...columns.map((key) => pass[key as keyof typeof pass]));
-    const original = { ...capture, expected_rows: 1, received_rows: 1 };
-    const next = {
-      ...original,
-      block_number: capture.block_number + 1,
-      captured_at: at + 1,
-      completed_at: at + 2,
-      block_hash: "0x" + "e".repeat(64),
-    };
-    for (const family of ["nominator", "subnet", "chain"] as const) {
-      for (const race of [false, true]) {
-        await db.batch([
-          db.prepare("DELETE FROM alpha_snapshot_passes"),
-          insert(original),
-          db.prepare("DELETE FROM nominator_positions"),
-          db
-            .prepare(
-              "INSERT INTO nominator_positions VALUES('c','h',1,'1',?,'alpha')",
-            )
-            .bind(at),
-        ]);
-        let published = false;
-        const store = {
-          first: (sql: string, values: unknown[] = []) =>
-            db
-              .prepare(sql)
-              .bind(...values)
-              .first(),
-          async query<Row>(
-            sql: string,
-            values: unknown[] = [],
-          ): Promise<Row[]> {
-            if (race && !published) {
-              published = true;
-              await db.batch([
-                insert(next),
-                db
-                  .prepare("UPDATE nominator_positions SET captured_at=?")
-                  .bind(next.captured_at),
-              ]);
-            }
-            return (
-              await db
-                .prepare(sql)
-                .bind(...values)
-                .all()
-            ).results as Row[];
-          },
-        };
-        const read =
-          family === "nominator"
-            ? await loadNominatorPositions(store, "h")
-            : family === "subnet"
-              ? await loadSubnetHolders(store, 1)
-              : await loadChainHolders(store);
-        const body =
-          family === "nominator"
-            ? buildNominatorPositions(read, "h")
-            : family === "subnet"
-              ? buildSubnetHolders(
-                  read as Awaited<ReturnType<typeof loadSubnetHolders>>,
-                  1,
-                )
-              : buildChainHolders(read);
-        const key =
-          family === "nominator"
-            ? "nominator_count"
-            : family === "subnet"
-              ? "holder_count"
-              : "subnet_count";
-        assert.equal(body[key], race ? null : 1);
-        assert.equal(
-          read.decline,
-          race ? "runtime_positions_unqualified" : null,
-        );
-        if (race)
-          assert.equal(
-            (body.degraded as { reason: string }).reason,
-            "runtime_positions_unqualified",
-          );
-      }
+        .bind(frozen.alpha_snapshot.block_number + 3)
+        .run();
+      assert.equal(
+        await loadAlphaQuantityCapture(direct),
+        null,
+        "a latest selected but incomplete owner must not borrow a prior receipt",
+      );
+      await db
+        .prepare(
+          "UPDATE alpha_snapshot_passes SET completed_at=? WHERE block_number=?",
+        )
+        .bind(at + 100000, frozen.alpha_snapshot.block_number + 3)
+        .run();
+      // Isolated corruption fixture: retain FK-valid metadata with a foreign identity.
+      await db
+        .prepare("INSERT INTO alpha_runtime_metadata VALUES(?,?,?,?)")
+        .bind("f".repeat(64), "0x" + "f".repeat(64), 478, "0x" + "00".repeat(6))
+        .run();
+      await db
+        .prepare(
+          "UPDATE alpha_snapshot_passes SET metadata_sha256=? WHERE block_number=?",
+        )
+        .bind("f".repeat(64), frozen.alpha_snapshot.block_number + 3)
+        .run();
+      assert.equal(
+        await loadAlphaQuantityCapture(direct),
+        null,
+        "invalid latest identity must not borrow an older promoted capture",
+      );
+      const broken = await readFamily(direct);
+      assert.equal(shape(broken)[count], null);
+    } finally {
+      await runtime.dispose();
     }
-    // Both historical receipts remain selected: canonical ownership follows
-    // block height explicitly, independent of insertion order or an index plan.
-    await db.batch([
-      db.prepare("DELETE FROM alpha_snapshot_passes"),
-      insert(original),
-      insert(next),
-    ]);
-    const direct = { first: (sql: string) => db.prepare(sql).first() };
-    assert.equal(
-      (await loadAlphaQuantityCapture(direct))?.block_hash,
-      next.block_hash,
-    );
-    await db
-      .prepare(
-        "UPDATE alpha_snapshot_passes SET metadata_sha256=? WHERE block_number=?",
-      )
-      .bind("f".repeat(64), next.block_number)
-      .run();
-    assert.equal(
-      await loadAlphaQuantityCapture(direct),
-      null,
-      "missing latest metadata must not fall back to an older promoted owner",
-    );
-  } finally {
-    await runtime.dispose();
   }
+});
+
+test("declared quantity ownership cannot span stores and missing weights remain unknown", () => {
+  const binding = {
+    prepare: () => {
+      throw Error("read not needed");
+    },
+    batch: async () => [],
+  };
+  for (const tables of [
+    "nominator_positions",
+    "nominator_positions,alpha_snapshot_passes",
+    "alpha_runtime_metadata",
+  ])
+    assert.equal(
+      alphaQuantityStore({ D1_STATE: binding, D1_STATE_TABLES: tables }),
+      undefined,
+    );
+  assert(
+    alphaQuantityStore({
+      D1_STATE: binding,
+      D1_STATE_TABLES:
+        "nominator_positions,alpha_snapshot_passes,alpha_runtime_metadata",
+    }),
+  );
+  for (const stake_tao of [null, undefined, "", "bad", -1]) {
+    const result = buildAccountsList(
+      [{ hotkey: "h", netuid: 1, uid: 0, stake_tao }],
+      { priceByNetuid: new Map() },
+    );
+    assert.equal(result.accounts[0].subnets[0].voting_weight, null);
+  }
+  const zero = buildAccountsList(
+    [{ hotkey: "h", netuid: 1, uid: 0, stake_tao: 0 }],
+    { priceByNetuid: new Map() },
+  );
+  assert.equal(zero.accounts[0].subnets[0].voting_weight, 0);
+});
+
+test("public snapshot and historical yield contracts preserve observations and withhold returns on voting-weight denominators", () => {
+  const rows = [
+    {
+      uid: 0,
+      hotkey: "h",
+      netuid: 1,
+      validator_permit: 1,
+      stake_tao: 100,
+      emission_tao: 10,
+      captured_at: at,
+      snapshot_date: "2026-10-13",
+    },
+    {
+      uid: 1,
+      hotkey: "other",
+      netuid: 1,
+      stake_tao: null,
+      emission_tao: null,
+      captured_at: at,
+      snapshot_date: "2026-10-13",
+    },
+  ];
+  const subnet = buildSubnetYield(rows, 1);
+  assert.equal(subnet.neuron_count, 2);
+  assert.equal(subnet.total_stake_alpha, null);
+  assert.equal(subnet.subnet_yield, null);
+  assert.deepEqual(
+    (subnet.neurons as Record<string, unknown>[]).map(
+      (row) => row.voting_weight,
+    ),
+    [100, null],
+  );
+  assert(SubnetYieldArtifactSchema.safeParse(subnet).success);
+  const chain = buildChainYield([...rows, { ...rows[0], netuid: 2 }]);
+  assert.equal(chain.total_stake_alpha, null);
+  assert.equal(chain.total_emission_alpha, null);
+  assert.equal(chain.network_yield, null);
+  assert.equal(chain.distribution, null);
+  assert(ChainYieldArtifactSchema.safeParse(chain).success);
+  const history = buildSubnetYieldHistory(rows, 1, { window: "30d" });
+  assert.equal(
+    (history.points as Record<string, unknown>[])[0].subnet_yield,
+    null,
+  );
+  assert(SubnetYieldHistoryArtifactSchema.safeParse(history).success);
 });

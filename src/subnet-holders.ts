@@ -1,5 +1,9 @@
 import { alphaHolderCte } from "./alpha-holder-sql.ts";
-import { loadAlphaQuantityCapture } from "./alpha-quantity.ts";
+import {
+  loadAlphaQuantityCapture,
+  alphaQuantityProvenance,
+  type AlphaQuantityCapture,
+} from "./alpha-quantity.ts";
 import { round9 } from "./lib/rao.ts";
 // GET /api/v1/subnets/{netuid}/holders (#9557): who owns one subnet's alpha.
 //
@@ -85,6 +89,7 @@ export interface SubnetHoldersAggregate {
 }
 
 export interface SubnetHoldersRead {
+  capture?: AlphaQuantityCapture | null;
   rows: Row[];
   aggregate: SubnetHoldersAggregate | null;
   /** captured_at of the pool pass every row was valued against. */
@@ -191,6 +196,7 @@ export async function loadSubnetHolders(
       rows: rowsRes,
       aggregate: readAggregate(aggRes as Row | null),
       capturedAt: alpha.captured_at,
+      capture: alpha,
       decline: null,
     };
   } catch {
@@ -228,10 +234,16 @@ export function buildSubnetHolders(
 ): Row {
   const base = {
     schema_version: 2,
+    provenance: read.capture ? alphaQuantityProvenance(read.capture) : null,
     netuid,
     limit: limit ?? null,
   };
-  if (read.decline) {
+  const decline =
+    read.decline ??
+    (!read.capture || read.capture.captured_at !== read.capturedAt
+      ? "runtime_positions_unqualified"
+      : null);
+  if (decline) {
     return {
       ...base,
       holder_count: null,
@@ -240,7 +252,7 @@ export function buildSubnetHolders(
       captured_at: null,
       positions_captured_at: null,
       holders: [],
-      degraded: { reason: read.decline },
+      degraded: { reason: decline },
     };
   }
 

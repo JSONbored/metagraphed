@@ -160,7 +160,7 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   AccountPositionsArtifact: "AccountPositions",
   AccountPositionsArtifactDegraded: "AccountPositionsDegraded",
   AccountPositionsArtifactPositions: "NominatorPosition",
-  AccountPositionsArtifactPositionsProvenance: "AlphaQuantityProvenance",
+  AlphaQuantityProvenance: "AlphaQuantityProvenance",
   AccountPrometheusArtifact: "AccountPrometheus",
   AccountPrometheusArtifactSubnets: "AccountPrometheusSubnet",
   AccountRegistrationsArtifact: "AccountRegistrations",

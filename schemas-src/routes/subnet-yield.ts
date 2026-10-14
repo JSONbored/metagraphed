@@ -14,11 +14,14 @@ const SubnetYieldNeuronSchema = z
     uid: z.int().min(0),
     hotkey: z.string().nullable(),
     role: z.enum(["validator", "miner"]),
+    voting_weight: z
+      .number()
+      .nullable()
+      .describe("Effective voting weight; unavailable cells remain null."),
     stake_tao: z
       .number()
-      .describe(
-        "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).",
-      ),
+      .nullable()
+      .describe("Deprecated unsupported native holdings amount; always null."),
     emission_tao: z
       .number()
       .nullable()
@@ -30,19 +33,22 @@ const SubnetYieldNeuronSchema = z
   })
   .strict()
   .describe(
-    "One UID's emission-per-stake yield within a subnet's current metagraph snapshot.",
+    "One UID observation. Voting weights are retained; native holdings and investment yield remain unqualified.",
   );
 
 export const SubnetYieldArtifactSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
     netuid: z.int().min(0),
     captured_at: z.iso.datetime().nullable(),
     block_number: z.int().nullable(),
     neuron_count: z.int().min(0),
     validator_count: z.int().min(0),
     miner_count: z.int().min(0),
-    total_stake_alpha: z.number(),
+    total_stake_alpha: z
+      .number()
+      .nullable()
+      .describe("Deprecated unsupported holdings total; always null."),
     total_emission_alpha: z.number(),
     subnet_yield: z.number().nullable(),
     mean_yield: z.number().nullable(),
@@ -51,6 +57,7 @@ export const SubnetYieldArtifactSchema = z
     p75_yield: z.number().nullable(),
     p90_yield: z.number().nullable(),
     neurons: z.array(SubnetYieldNeuronSchema),
+    degraded: z.object({ reason: z.literal("holdings_unqualified") }).strict(),
   })
   .strict();
 export type SubnetYieldArtifact = z.infer<typeof SubnetYieldArtifactSchema>;
@@ -72,9 +79,14 @@ const SubnetYieldHistoryPointSchema = z
 
 export const SubnetYieldHistoryArtifactSchema = subnetHistoryArtifactSchema(
   SubnetYieldHistoryPointSchema,
-).describe(
-  "Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup.",
-);
+)
+  .extend({
+    schema_version: z.literal(2),
+    degraded: z.object({ reason: z.literal("holdings_unqualified") }).strict(),
+  })
+  .describe(
+    "Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup.",
+  );
 export type SubnetYieldHistoryArtifact = z.infer<
   typeof SubnetYieldHistoryArtifactSchema
 >;

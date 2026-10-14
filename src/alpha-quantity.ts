@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { ALPHA_GENESIS, ALPHA_RUNTIMES } from "./alpha-runtime-identity.ts";
 import { quoteAlphaPool } from "./alpha-share-value.ts";
-import type { OptionalRowReader } from "./read-store.ts";
+import { readStore, type OptionalRowReader } from "./read-store.ts";
+import { ALPHA_QUANTITY_TABLES } from "./read-store-tables.ts";
 
 const safeInteger = z.preprocess(
   (value) =>
@@ -44,6 +45,20 @@ export type AlphaQuantityCapture = z.infer<typeof AlphaQuantityCaptureSchema>;
  * incomplete identity, or a failed read cannot qualify a legacy share fraction.
  * selected records prior promotions cumulatively. Choose the latest canonical
  * owner before joining metadata, so missing metadata cannot borrow an older pass. */
+/** Resolve the complete quantity family under one declared owner. A partial
+ * ownership rollout cannot borrow metadata from a different database. */
+export function alphaQuantityStore(env: unknown) {
+  try {
+    return readStore(env, ALPHA_QUANTITY_TABLES);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function loadAlphaQuantityCaptureFromOwner(env: unknown) {
+  return loadAlphaQuantityCapture(alphaQuantityStore(env));
+}
+
 export async function loadAlphaQuantityCapture(
   db: OptionalRowReader | null | undefined,
 ): Promise<AlphaQuantityCapture | null> {
@@ -52,7 +67,7 @@ export async function loadAlphaQuantityCapture(
     const parsed = AlphaQuantityCaptureSchema.safeParse(
       await db.first(
         `SELECT p.* FROM (
-         SELECT * FROM alpha_snapshot_passes WHERE selected=1 AND completed_at IS NOT NULL
+         SELECT * FROM alpha_snapshot_passes WHERE selected=1
          ORDER BY block_number DESC,captured_at DESC LIMIT 1
        ) p JOIN alpha_runtime_metadata m
        ON m.sha256=p.metadata_sha256 AND m.code_hash=p.code_hash AND m.spec_version=p.spec_version`,
@@ -62,6 +77,19 @@ export async function loadAlphaQuantityCapture(
   } catch {
     return null;
   }
+}
+
+export function alphaQuantityProvenance(capture: AlphaQuantityCapture) {
+  return {
+    network: "finney" as const,
+    captured_at: new Date(capture.captured_at).toISOString(),
+    block_number: capture.block_number,
+    block_hash: capture.block_hash,
+    genesis_hash: capture.genesis_hash,
+    spec_version: capture.spec_version,
+    code_hash: capture.code_hash,
+    metadata_sha256: capture.metadata_sha256,
+  };
 }
 
 export function alphaPositionQuantity(
@@ -95,16 +123,7 @@ export function alphaPositionQuantity(
     return {
       alpha_rao: quote.alphaRao,
       quantity_status: "qualified_snapshot" as const,
-      provenance: {
-        network: "finney" as const,
-        captured_at: new Date(capture.captured_at).toISOString(),
-        block_number: capture.block_number,
-        block_hash: capture.block_hash,
-        genesis_hash: capture.genesis_hash,
-        spec_version: capture.spec_version,
-        code_hash: capture.code_hash,
-        metadata_sha256: capture.metadata_sha256,
-      },
+      provenance: alphaQuantityProvenance(capture),
     };
   } catch {
     return unavailable;

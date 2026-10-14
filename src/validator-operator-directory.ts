@@ -143,7 +143,12 @@ export function buildValidatorOperatorDirectory(
       hotkey(a)!.localeCompare(hotkey(b)!),
     );
     const primary = keys[0]!;
-    const identityName = declaredIdentityName(primary);
+    const names = new Set(
+      keys
+        .map(declaredIdentityName)
+        .filter((name): name is string => name !== null),
+    );
+    const identityName = names.size === 1 ? [...names][0]! : null;
     const takes = keys
       .map((validator) => finite(validator.take))
       .filter((take): take is number => take !== null);

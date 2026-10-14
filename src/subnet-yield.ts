@@ -7,7 +7,6 @@
 // the most emission per unit of stake, and how is that return distributed across the set".
 // Null-safe: a cold/empty subnet yields a zeroed, empty-neuron card (never throws).
 
-import { median, percentile } from "./lib/stats.ts";
 import {
   nonNegativeCellOrNull,
   raoBigToTao,
@@ -17,21 +16,6 @@ import {
 
 type Row = Record<string, unknown>;
 type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
-
-// The shared median() returns its raw, unrounded value -- round it to rao precision
-// here, preserving null (an empty yield set) rather than coercing it to 0.
-function roundedMedian(ascending: number[]): number | null {
-  const m = median(ascending);
-  return m == null ? null : round9OrZero(m);
-}
-
-// A finite TAO cell, or null when absent/blank/non-numeric. Blank cells coerce via
-// Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
-// zero-yield readings (mirrors nullableNumber in metagraph-neurons.ts).
-
-// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
-// for why, and for the overflow guard that lived in only one of the nine copies
-// this used to be.
 
 // A non-negative integer uid, or null for a malformed/absent cell (Number(null) === 0,
 // so guard null explicitly rather than coercing it to uid 0).
@@ -59,23 +43,12 @@ function toIso(value: unknown): string | null {
   return n == null ? null : new Date(n).toISOString();
 }
 
-// Emission-per-stake return rate; null when stake is 0 (return is undefined with no
-// stake to earn on) or emission is unknown, so zero-stake / blank-emission UIDs are
-// excluded from the distribution.
-function computeYieldValue(
-  emission: number | null,
-  stake: number | null,
-): number | null {
-  if (!(stake != null && stake > 0)) return null;
-  if (emission == null) return null;
-  return round9OrZero(emission / stake);
-}
-
 interface YieldNeuron {
   uid: number;
   hotkey: unknown;
   role: "validator" | "miner";
-  stake_tao: number;
+  stake_tao: null;
+  voting_weight: number | null;
   emission_tao: number | null;
   yield: number | null;
   vs_median?: "above" | "below" | "at" | null;
@@ -88,116 +61,53 @@ export function buildSubnetYield(
   rows: Row[] | null | undefined,
   netuid: unknown,
 ): Row {
-  const list = Array.isArray(rows) ? rows : [];
   const neurons: YieldNeuron[] = [];
-  let totalStakeRao = 0n;
-  let totalEmissionRao = 0n;
-  let yieldStakeRao = 0n;
-  let yieldEmissionRao = 0n;
-  let validatorCount = 0;
   let capturedAt: string | null = null;
   let blockNumber: number | null = null;
-  for (const row of list) {
+  let totalEmissionRao = 0n;
+  for (const row of Array.isArray(rows) ? rows : []) {
     const uid = normalizedUid(row?.uid);
     if (uid == null) continue;
     if (capturedAt == null) {
       capturedAt = toIso(row?.captured_at);
-      // block_number is a nullable INTEGER; guard null before Number() since
-      // Number(null) === 0 would fabricate the genesis height 0 for a row whose
-      // block is absent (the contract models it as ["integer","null"]). A
-      // numeric string like "8454388" from the store must still pass.
       const rawBlock = row?.block_number;
-      if (
-        rawBlock == null ||
-        (typeof rawBlock === "string" && rawBlock.trim() === "")
-      ) {
-        blockNumber = null;
-      } else {
-        const block = Number(rawBlock);
-        blockNumber = Number.isFinite(block) ? block : null;
-      }
+      const block =
+        rawBlock == null || rawBlock === "" ? NaN : Number(rawBlock);
+      blockNumber = Number.isSafeInteger(block) && block >= 0 ? block : null;
     }
-    const stake = nonNegativeCellOrNull(row?.stake_tao);
-    if (stake == null) continue;
     const emission = nonNegativeCellOrNull(row?.emission_tao);
-    // Match the sibling neuron formatter's SQLite 0/1 convention: only an integer 1
-    // is a validator, so a numeric-string "0" cannot slip through as truthy.
-    const isValidator = Number(row?.validator_permit) === 1;
-    totalStakeRao += toRaoBig(stake);
-    if (emission != null) {
-      totalEmissionRao += toRaoBig(emission);
-      yieldStakeRao += toRaoBig(stake);
-      yieldEmissionRao += toRaoBig(emission);
-    }
-    if (isValidator) validatorCount += 1;
+    if (emission != null) totalEmissionRao += toRaoBig(emission);
     neurons.push({
       uid,
       hotkey: row?.hotkey ?? null,
-      role: isValidator ? "validator" : "miner",
-      stake_tao: round9OrZero(stake),
-      emission_tao: emission != null ? round9OrZero(emission) : null,
-      yield: computeYieldValue(emission, stake),
+      role: Number(row?.validator_permit) === 1 ? "validator" : "miner",
+      stake_tao: null,
+      voting_weight: nonNegativeCellOrNull(row?.stake_tao),
+      emission_tao: emission == null ? null : round9OrZero(emission),
+      yield: null,
+      vs_median: null,
     });
   }
-
-  // Convert the exact rao-space accumulators back to TAO once, at the end.
-  const totalStake = raoBigToTao(totalStakeRao);
-  const totalEmission = raoBigToTao(totalEmissionRao);
-  const yieldStake = raoBigToTao(yieldStakeRao);
-  const yieldEmission = raoBigToTao(yieldEmissionRao);
-
-  // Distribution over the UIDs that actually have a defined yield (stake > 0).
-  const definedYields = neurons
-    .map((n) => n.yield)
-    .filter((y): y is number => y != null)
-    .sort((a, b) => a - b);
-  const medianYield = roundedMedian(definedYields);
-  const meanYield =
-    definedYields.length > 0
-      ? round9OrZero(
-          definedYields.reduce((sum, y) => sum + y, 0) / definedYields.length,
-        )
-      : null;
-
-  // Per-UID classification vs the subnet median (over- vs under-performing on return).
-  for (const neuron of neurons) {
-    neuron.vs_median =
-      neuron.yield == null || medianYield == null
-        ? null
-        : neuron.yield > medianYield
-          ? "above"
-          : neuron.yield < medianYield
-            ? "below"
-            : "at";
-  }
-
-  // Highest yield first; zero-stake (null) UIDs sink to the bottom, tie-break by uid.
-  neurons.sort((a, b) => {
-    const ay = a.yield == null ? -Infinity : a.yield;
-    const by = b.yield == null ? -Infinity : b.yield;
-    return by - ay || a.uid - b.uid;
-  });
-
+  neurons.sort((a, b) => a.uid - b.uid);
+  const validators = neurons.filter((row) => row.role === "validator").length;
   return {
-    schema_version: 1,
+    schema_version: 2,
     netuid,
     captured_at: capturedAt,
     block_number: blockNumber,
     neuron_count: neurons.length,
-    validator_count: validatorCount,
-    miner_count: neurons.length - validatorCount,
-    total_stake_alpha: round9OrZero(totalStake),
-    total_emission_alpha: round9OrZero(totalEmission),
-    // Subnet-wide return over UIDs with known stake + emission only — blank-emission
-    // rows stay in the neuron list but must not dilute the aggregate as if emission were 0.
-    subnet_yield:
-      yieldStake > 0 ? round9OrZero(yieldEmission / yieldStake) : null,
-    mean_yield: meanYield,
-    median_yield: medianYield,
-    p25_yield: percentile(definedYields, 25),
-    p75_yield: percentile(definedYields, 75),
-    p90_yield: percentile(definedYields, 90),
+    validator_count: validators,
+    miner_count: neurons.length - validators,
+    total_stake_alpha: null,
+    total_emission_alpha: round9OrZero(raoBigToTao(totalEmissionRao)),
+    subnet_yield: null,
+    mean_yield: null,
+    median_yield: null,
+    p25_yield: null,
+    p75_yield: null,
+    p90_yield: null,
     neurons,
+    degraded: { reason: "holdings_unqualified" },
   };
 }
 
@@ -262,45 +172,19 @@ export function parseSubnetYieldHistoryWindow(
 // metrics, never throws. Uses the exact rao-space accumulation buildSubnetYield
 // uses so a day's subnet_yield matches the snapshot route.
 function yieldHistoryPoint(date: string, dayRows: Row[]): Row {
-  let yieldStakeRao = 0n;
-  let yieldEmissionRao = 0n;
-  let validatorCount = 0;
-  let neuronCount = 0;
-  const definedYields: number[] = [];
-  for (const row of dayRows) {
-    const stake = nonNegativeCellOrNull(row?.stake_tao);
-    if (stake == null) continue;
-    neuronCount += 1;
-    const emission = nonNegativeCellOrNull(row?.emission_tao);
-    if (emission != null) {
-      yieldStakeRao += toRaoBig(stake);
-      yieldEmissionRao += toRaoBig(emission);
-    }
-    if (Number(row?.validator_permit) === 1) validatorCount += 1;
-    const y = computeYieldValue(emission, stake);
-    if (y != null) definedYields.push(y);
-  }
-  definedYields.sort((a, b) => a - b);
-  const yieldStake = raoBigToTao(yieldStakeRao);
-  const yieldEmission = raoBigToTao(yieldEmissionRao);
-  const meanYield =
-    definedYields.length > 0
-      ? round9OrZero(
-          definedYields.reduce((sum, y) => sum + y, 0) / definedYields.length,
-        )
-      : null;
   return {
     snapshot_date: date,
-    neuron_count: neuronCount,
-    validator_count: validatorCount,
-    yield_count: definedYields.length,
-    subnet_yield:
-      yieldStake > 0 ? round9OrZero(yieldEmission / yieldStake) : null,
-    mean_yield: meanYield,
-    median_yield: roundedMedian(definedYields),
-    p25_yield: percentile(definedYields, 25),
-    p75_yield: percentile(definedYields, 75),
-    p90_yield: percentile(definedYields, 90),
+    neuron_count: dayRows.length,
+    validator_count: dayRows.filter(
+      (row) => Number(row?.validator_permit) === 1,
+    ).length,
+    yield_count: 0,
+    subnet_yield: null,
+    mean_yield: null,
+    median_yield: null,
+    p25_yield: null,
+    p75_yield: null,
+    p90_yield: null,
   };
 }
 
@@ -329,10 +213,11 @@ export function buildSubnetYieldHistory(
     yieldHistoryPoint(date, byDate.get(date) ?? []),
   );
   return {
-    schema_version: 1,
+    schema_version: 2,
     netuid,
     window: window ?? null,
     point_count: points.length,
     points,
+    degraded: { reason: "holdings_unqualified" },
   };
 }

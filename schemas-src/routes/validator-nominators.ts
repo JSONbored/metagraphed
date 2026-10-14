@@ -9,6 +9,7 @@
 // via repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
+import { AlphaProvenanceSchema } from "../alpha-quantity.ts";
 import { GLOBAL_VALIDATOR_LIMIT_MAX } from "../../src/route-limits.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
@@ -141,6 +142,7 @@ export const ValidatorNominatorPositionsSchema = z
     schema_version: z.literal(2),
     hotkey: z.unknown(),
     basis: z.literal("positions"),
+    provenance: AlphaProvenanceSchema.nullable(),
     limit: z.int().min(0).nullable(),
     offset: z.int().min(0),
     nominator_count: z

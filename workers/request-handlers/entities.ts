@@ -1,3 +1,4 @@
+import { alphaQuantityStore } from "../../src/alpha-quantity.ts";
 import { loadSubnetStatus } from "../../src/subnet-status-read.ts";
 import { metagraphMeta } from "../responses.ts";
 export {
@@ -524,7 +525,6 @@ import {
 } from "../../src/read-store.ts";
 import { laneHealthStore } from "../../src/lane-health-store.ts";
 import {
-  ALPHA_PRICING_TABLES,
   CHAIN_CONCENTRATION_HISTORY_TABLES,
   EMISSION_CHANGES_TABLES,
   FAILURE_REASONS_TABLES,
@@ -1607,7 +1607,7 @@ export async function handleValidatorNominators(
     const positionsLimit = pageLimit(url);
     const positionsOffset = routeInt(url, "offset") ?? 0;
     const read = await loadNominatorPositions(
-      readStore(env, ALPHA_PRICING_TABLES),
+      alphaQuantityStore(env),
       hotkey,
     );
     const positionsData = buildNominatorPositions(read, hotkey, {
@@ -6135,7 +6135,7 @@ export async function handleSubnetHolders(
   const limit = pageLimit(url);
 
   const read = await loadSubnetHolders(
-    readStore(env, ALPHA_PRICING_TABLES),
+    alphaQuantityStore(env),
     netuid,
     { limit: limit },
   );
@@ -6289,7 +6289,7 @@ export async function handleChainHolders(request: Request, env: Env, url: URL) {
   const limit = pageLimit(url);
 
   const read = await loadChainHolders(
-    readStore(env, ALPHA_PRICING_TABLES),
+    alphaQuantityStore(env),
     env,
   );
   const data = buildChainHolders(read, { sort, limit: limit });

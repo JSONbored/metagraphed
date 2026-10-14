@@ -98,7 +98,8 @@ export function operatorRows(validators: readonly OperatorValidator[]): Operator
   for (const [key, keys] of groups) {
     const sorted = [...keys].sort((a, b) => a.hotkey.localeCompare(b.hotkey));
     const primary = sorted[0]!;
-    const name = declaredName(primary);
+    const names = new Set(sorted.map(declaredName).filter((name): name is string => name !== null));
+    const name = names.size === 1 ? [...names][0]! : null;
     const named = name !== null;
     const takes = sorted
       .map((validator) => validator.take)

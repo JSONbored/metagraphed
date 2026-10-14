@@ -32,6 +32,7 @@ import { clampRowLimit } from "../workers/request-params.ts";
 import {
   round9NonNegative,
   nonNegativeOrZero,
+  nonNegativeCellOrNull,
   raoBigToTao,
   toRaoBig,
 } from "./lib/rao.ts";
@@ -94,7 +95,7 @@ export interface AccountsListSubnetEntry {
    * `total_stake_tao` on the entry above IS priced TAO, and two fields sharing
    * a `_tao` suffix across different units is the trap this rename removes. */
   stake_alpha: null;
-  voting_weight: number;
+  voting_weight: number | null;
   emission_alpha: number;
 }
 
@@ -221,7 +222,7 @@ export function buildAccountsSnapshot(
     const uid = nonNegativeInt(row?.uid);
     if (!hotkey || netuid == null || uid == null) continue;
 
-    const stake = nonNegativeOrZero(row?.stake_tao);
+    const stake = nonNegativeCellOrNull(row?.stake_tao);
     const emission = nonNegativeOrZero(row?.emission_tao);
     const isValidator = Number(row?.validator_permit) === 1;
     const capturedAt =
@@ -284,7 +285,7 @@ export function buildAccountsSnapshot(
       netuid,
       uid,
       stake_alpha: null,
-      voting_weight: round9NonNegative(stake),
+      voting_weight: stake == null ? null : round9NonNegative(stake),
       emission_alpha: round9NonNegative(emission),
     });
   }

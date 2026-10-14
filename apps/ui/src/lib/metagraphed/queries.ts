@@ -124,7 +124,6 @@ import type {
   ChainConcentration,
   ChainPerformance,
   ChainYield,
-  ChainYieldDistribution,
   ChainSigners,
   ChainWeightSetters,
   ChainWeightSetter,
@@ -369,7 +368,7 @@ const MAX_EXTRINSIC_VALUE_DEPTH = 8;
 const MAX_EXTRINSIC_COLLECTION_ENTRIES = 64;
 const MAX_EXTRINSIC_STRING_LENGTH = 2_000;
 const MAX_ACCOUNT_REGISTRATIONS = 100;
-const MAX_ACCOUNT_POSITIONS = 256;
+const MAX_ACCOUNT_POSITIONS = 2000;
 const MAX_ACCOUNT_STAKE_MOVES_SUBNETS = 128;
 const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
@@ -9317,26 +9316,6 @@ export const chainPerformanceQuery = () =>
     staleTime: STALE_MED,
   });
 
-function normalizeChainYieldDistribution(raw: unknown): ChainYieldDistribution | null {
-  if (!isRecord(raw)) return null;
-  const count = firstFiniteNumber(raw.count);
-  if (count == null) return null;
-  return {
-    count,
-    mean: firstFiniteNumber(raw.mean) ?? 0,
-    median: firstFiniteNumber(raw.p50) ?? 0,
-    min: firstFiniteNumber(raw.min) ?? 0,
-    max: firstFiniteNumber(raw.max) ?? 0,
-    p10: firstFiniteNumber(raw.p10) ?? 0,
-    p25: firstFiniteNumber(raw.p25) ?? 0,
-    p75: firstFiniteNumber(raw.p75) ?? 0,
-    p90: firstFiniteNumber(raw.p90) ?? 0,
-  };
-}
-
-// #3472: network-wide emission-yield aggregate — the return-rate companion to
-// /chain/performance. Counts coerce to 0; the three role yields fall through to
-// null (never NaN) when no neuron has both stake and emission.
 export function normalizeChainYield(raw: unknown): ChainYield {
   const rec = isRecord(raw) ? raw : {};
   return {
@@ -9346,12 +9325,12 @@ export function normalizeChainYield(raw: unknown): ChainYield {
     validator_count: firstFiniteNumber(rec.validator_count) ?? 0,
     miner_count: firstFiniteNumber(rec.miner_count) ?? 0,
     captured_at: firstString(rec.captured_at) ?? null,
-    total_stake_alpha: firstFiniteNumber(rec.total_stake_alpha) ?? 0,
-    total_emission_alpha: firstFiniteNumber(rec.total_emission_alpha) ?? 0,
-    network_yield: firstFiniteNumber(rec.network_yield) ?? null,
-    validator_yield: firstFiniteNumber(rec.validator_yield) ?? null,
-    miner_yield: firstFiniteNumber(rec.miner_yield) ?? null,
-    distribution: normalizeChainYieldDistribution(rec.distribution),
+    total_stake_alpha: null,
+    total_emission_alpha: null,
+    network_yield: null,
+    validator_yield: null,
+    miner_yield: null,
+    distribution: null,
   };
 }
 
@@ -9499,21 +9478,20 @@ function normalizeSubnetYieldNeuron(raw: unknown): SubnetYieldNeuron | undefined
   if (!isRecord(raw)) return undefined;
   const uid = coerceFiniteNumber(raw.uid);
   if (uid == null) return undefined;
-  const vs = raw.vs_median;
   return {
     uid,
     hotkey: coerceString(raw.hotkey) ?? null,
     role: raw.role === "validator" ? "validator" : "miner",
-    stake_tao: coerceFiniteNumber(raw.stake_tao) ?? 0,
+    stake_tao: null,
+    voting_weight: coerceFiniteNumber(raw.voting_weight) ?? null,
     emission_tao: coerceFiniteNumber(raw.emission_tao) ?? 0,
-    yield: coerceFiniteNumber(raw.yield) ?? null,
-    vs_median: vs === "above" || vs === "below" || vs === "at" ? vs : null,
+    yield: null,
+    vs_median: null,
   };
 }
 
 function normalizeSubnetYield(netuid: number, raw: unknown): SubnetYield {
   const d = isRecord(raw) ? raw : {};
-  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
   const neurons = Array.isArray(d.neurons)
     ? d.neurons.slice(0, MAX_NEURON_ROWS).flatMap((n) => {
         const normalized = normalizeSubnetYieldNeuron(n);
@@ -9527,14 +9505,14 @@ function normalizeSubnetYield(netuid: number, raw: unknown): SubnetYield {
     neuron_count: coerceFiniteNumber(d.neuron_count) ?? neurons.length,
     validator_count: coerceFiniteNumber(d.validator_count),
     miner_count: coerceFiniteNumber(d.miner_count),
-    total_stake_alpha: coerceFiniteNumber(d.total_stake_alpha),
+    total_stake_alpha: null,
     total_emission_alpha: coerceFiniteNumber(d.total_emission_alpha),
-    subnet_yield: nullableNum(d.subnet_yield),
-    mean_yield: nullableNum(d.mean_yield),
-    median_yield: nullableNum(d.median_yield),
-    p25_yield: nullableNum(d.p25_yield),
-    p75_yield: nullableNum(d.p75_yield),
-    p90_yield: nullableNum(d.p90_yield),
+    subnet_yield: null,
+    mean_yield: null,
+    median_yield: null,
+    p25_yield: null,
+    p75_yield: null,
+    p90_yield: null,
     neurons,
   };
 }
@@ -9543,19 +9521,18 @@ function normalizeYieldHistoryPoint(raw: unknown): YieldHistoryPoint | undefined
   if (!isRecord(raw)) return undefined;
   const snapshotDate = coerceString(raw.snapshot_date);
   if (!snapshotDate) return undefined;
-  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
   return {
     ...(raw as object),
     snapshot_date: snapshotDate,
     neuron_count: coerceFiniteNumber(raw.neuron_count),
     validator_count: coerceFiniteNumber(raw.validator_count),
     yield_count: coerceFiniteNumber(raw.yield_count),
-    subnet_yield: nullableNum(raw.subnet_yield),
-    mean_yield: nullableNum(raw.mean_yield),
-    median_yield: nullableNum(raw.median_yield),
-    p25_yield: nullableNum(raw.p25_yield),
-    p75_yield: nullableNum(raw.p75_yield),
-    p90_yield: nullableNum(raw.p90_yield),
+    subnet_yield: null,
+    mean_yield: null,
+    median_yield: null,
+    p25_yield: null,
+    p75_yield: null,
+    p90_yield: null,
   };
 }
 

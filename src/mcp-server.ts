@@ -1,3 +1,4 @@
+import { alphaQuantityStore } from "./alpha-quantity.ts";
 import { webhookDeliveryStatus } from "./webhook-delivery-status.ts";
 import { loadSubnetSnapshotCardsTier } from "./subnet-snapshot-cards-tier.ts";
 import { loadValidatorDetailBatchTier } from "./validator-detail-batch-tier.ts";
@@ -1830,7 +1831,6 @@ import {
 } from "./validator-nominator-positions.ts";
 import { numberOrNull, readStore, recordOrNull } from "./read-store.ts";
 import {
-  ALPHA_PRICING_TABLES,
   CHAIN_CONCENTRATION_HISTORY_TABLES,
   COMPARE_SUBNETS_TABLES,
   EMISSION_CHANGES_TABLES,
@@ -9687,7 +9687,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         }
         return buildNominatorPositions(
           await loadNominatorPositions(
-            readStore(ctx.env, ALPHA_PRICING_TABLES),
+            alphaQuantityStore(ctx.env),
             hotkey,
           ),
           hotkey,
@@ -10809,7 +10809,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_HOLDERS_LIMIT_MAX,
       );
       const read = await loadChainHolders(
-        readStore(ctx.env, ALPHA_PRICING_TABLES),
+        alphaQuantityStore(ctx.env),
         ctx.env,
       );
       return buildChainHolders(read, { sort, limit });
@@ -11118,7 +11118,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SUBNET_HOLDERS_LIMIT_MAX,
       );
       const read = await loadSubnetHolders(
-        readStore(ctx.env, ALPHA_PRICING_TABLES),
+        alphaQuantityStore(ctx.env),
         netuid,
         { limit },
       );

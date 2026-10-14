@@ -1,5 +1,9 @@
 import { alphaHolderCte } from "./alpha-holder-sql.ts";
-import { loadAlphaQuantityCapture } from "./alpha-quantity.ts";
+import {
+  loadAlphaQuantityCapture,
+  alphaQuantityProvenance,
+  type AlphaQuantityCapture,
+} from "./alpha-quantity.ts";
 import { round9 } from "./lib/rao.ts";
 // The POSITIONS basis for /validators/{hotkey}/nominators (#9617).
 //
@@ -50,6 +54,7 @@ export type NominatorPositionsDecline =
   | "unavailable";
 
 export interface NominatorPositionsRead {
+  capture?: AlphaQuantityCapture | null;
   rows: Row[];
   capturedAt: number | null;
   decline: NominatorPositionsDecline | null;
@@ -97,6 +102,7 @@ export async function loadNominatorPositions(
     return {
       rows,
       capturedAt: alpha.captured_at,
+      capture: alpha,
       decline: null,
     };
   } catch {
@@ -119,19 +125,25 @@ export function buildNominatorPositions(
 ): Row {
   const base = {
     schema_version: 2,
+    provenance: read.capture ? alphaQuantityProvenance(read.capture) : null,
     hotkey,
     basis: "positions",
     limit: limit ?? null,
     offset,
   };
-  if (read.decline) {
+  const decline =
+    read.decline ??
+    (!read.capture || read.capture.captured_at !== read.capturedAt
+      ? "runtime_positions_unqualified"
+      : null);
+  if (decline) {
     return {
       ...base,
       nominator_count: null,
       captured_at: null,
       positions_captured_at: null,
       nominators: [],
-      degraded: { reason: read.decline },
+      degraded: { reason: decline },
     };
   }
 

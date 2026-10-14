@@ -3221,7 +3221,8 @@ export interface SubnetYieldNeuron {
   uid: number;
   hotkey: string | null;
   role: "validator" | "miner";
-  stake_tao: number;
+  stake_tao: number | null;
+  voting_weight?: number | null;
   emission_tao: number;
   yield: number | null;
   vs_median: "above" | "below" | "at" | null;
@@ -3235,7 +3236,7 @@ export interface SubnetYield {
   neuron_count?: number;
   validator_count?: number;
   miner_count?: number;
-  total_stake_alpha?: number;
+  total_stake_alpha?: number | null;
   total_emission_alpha?: number;
   subnet_yield?: number | null;
   mean_yield?: number | null;
@@ -4198,9 +4199,9 @@ export interface ChainYield {
    * non-root neuron's stake is that subnet's alpha token, so this is a
    * cross-subnet alpha count. It is the *_yield denominator, not a TAO figure.
    */
-  total_stake_alpha: number;
+  total_stake_alpha: number | null;
   /** ALPHA, for the same reason (renamed from total_emission_tao, #8803). */
-  total_emission_alpha: number;
+  total_emission_alpha: number | null;
   network_yield: number | null;
   validator_yield: number | null;
   miner_yield: number | null;

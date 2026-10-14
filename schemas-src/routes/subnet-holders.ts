@@ -8,6 +8,7 @@
 // every count null -- so `0` in any of these fields is a MEASURED zero, and the
 // schema must not let a decline masquerade as one.
 import { z } from "zod";
+import { AlphaProvenanceSchema } from "../alpha-quantity.ts";
 
 export const SubnetHolderSchema = z
   .object({
@@ -87,6 +88,7 @@ export const SubnetHoldersDegradedSchema = z
 export const SubnetHoldersArtifactSchema = z
   .object({
     schema_version: z.literal(2),
+    provenance: AlphaProvenanceSchema.nullable(),
     netuid: z.int().min(0).max(65535),
     limit: z.int().min(1).nullable(),
     // Distinct coldkeys holding this subnet's alpha -- the whole set, not the
