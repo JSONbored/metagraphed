@@ -484,25 +484,25 @@ export function ValidatorDetailPage() {
           legend={<FactStrip cells={momentumCells} />}
           footnote={
             !momentumNearViewport
-              ? `${window} · daily stake and annualised simple yield · chain-direct`
+              ? `${window} · daily observations · holdings and yield unavailable`
               : historyLoading
                 ? `Loading ${window} stake and yield history · chain-direct`
                 : history.isError
                   ? "chain-direct · retry the affected record above"
-                  : `${window} · daily snapshots · yield annualised simply from the daily reward rate, not compounded`
+                  : `${window} · daily observations · holdings and yield unavailable`
           }
         />
         <AnalyticsSection
           id="peers"
           name="Peers"
-          question="The operators ranked either side of this one."
+          question="Nearby operators in address order."
           visualRef={peersRef}
           visual={
             !peersNearViewport || showPeersLoading ? (
               <RankGrid
                 items={[]}
                 cols={4}
-                ariaLabel="Operators near this one by stake"
+                ariaLabel="Operators near this one by address"
                 source="validator-peer"
                 loading
                 loadingItems={4}
@@ -511,7 +511,7 @@ export function ValidatorDetailPage() {
               <RankGrid
                 items={peers}
                 cols={4}
-                ariaLabel="Operators near this one by stake"
+                ariaLabel="Operators near this one by address"
                 source="validator-peer"
               />
             ) : allValidators.isError ? (
@@ -524,12 +524,12 @@ export function ValidatorDetailPage() {
           }
           footnote={
             !peersNearViewport
-              ? "neighboring operators by total stake · chain-direct"
+              ? "neighboring operators by address · chain-direct"
               : peersLoading
                 ? "Loading nearby operators · chain-direct"
                 : allValidators.isError
                   ? "chain-direct · retry the affected record above"
-                  : "by total stake across every subnet · chain-direct"
+                  : "address order · holdings quantities unavailable"
           }
         />
         <Raw rows={rawRows} title="Validator identifiers and API" />

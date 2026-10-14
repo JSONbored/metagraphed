@@ -3062,6 +3062,7 @@ export interface AccountPositionHistoryPoint {
   role: "validator" | "miner";
   active: boolean;
   stake_tao: number | null;
+  voting_weight?: number | null;
   emission_tao: number | null;
   rank: number | null;
   trust: number | null;

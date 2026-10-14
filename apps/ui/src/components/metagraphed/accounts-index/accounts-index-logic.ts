@@ -3,7 +3,7 @@
  */
 import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { AccountHolderDirectoryEntry, ChainSignerEntry } from "@/lib/metagraphed/types";
-import { formatAmount, formatPct } from "@/lib/metagraphed/format";
+import { formatAmount } from "@/lib/metagraphed/format";
 
 export type HolderMetric = "stake" | "emission" | "reach";
 

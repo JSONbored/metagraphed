@@ -143,14 +143,14 @@ export interface PeerRow {
 }
 
 /**
- * The operators ranked either side of this one by stake.
+ * Nearby operators in deterministic address order.
  *
  * A window centred on the subject, clamped at both ends -- "who am I next
  * to" has no answer at the top of a list otherwise, and showing the top N
  * instead would answer a question nobody asked.
  */
 export function peerWindow(
-  ranked: readonly { hotkey: string; name: string; totalStakeTao: number }[],
+  ranked: readonly { hotkey: string; name: string; totalStakeTao: number | null }[],
   hotkey: string,
   span = 11,
 ): PeerRow[] {

@@ -90,27 +90,9 @@ export const POSITIONS_DEGRADED_TIER_UNAVAILABLE = "tier_unavailable";
 export const POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY =
   "snapshot_predates_stake_activity";
 
-/**
- * The ledger HAS rows for this coldkey, but one or more of them could not be
- * priced, so they are absent from `positions` and from `total_stake_alpha`.
- *
- * Positions are priced off the live `neurons` table, which carries only
- * CURRENTLY-registered neurons, while the position ledger is a snapshot. A
- * hotkey that has since deregistered -- or that the ledger saw and `neurons`
- * has not -- prices to nothing, and the position is excluded rather than
- * reported with a fabricated 0 stake_tao (#9066's rule: no unpriced values).
- *
- * Excluding it is right. Saying nothing about it was not. Sampling eight
- * distinct hotkeys from the live ledger, only ONE was present in `neurons`, so
- * a coldkey whose positions all price to nothing published
- * `position_count: 0, total_stake_alpha: 0` with no marker at all -- a
- * confident zero over real holdings, indistinguishable from "delegates
- * nothing" (#9305).
- *
- * Fires whenever ANY row was dropped, not only when all of them were: a
- * partially-priced total understates the account's real position just as
- * silently, it is merely harder to notice.
- */
+/** Retained compatibility reason for a legacy tier that could not establish
+ * quantities. Current readers retain observed relationships and label each
+ * unsupported quantity unqualified rather than dropping its row. */
 export const POSITIONS_DEGRADED_UNPRICEABLE = "positions_unpriceable";
 
 /**
@@ -160,12 +142,8 @@ export interface AccountPositionsResult {
   degraded?: AccountPositionsDegraded;
 }
 
-// hotkeyNetuidStake: a Map keyed by "hotkey|netuid" -> stake_tao, built by
-// the caller (loadNeuronStakeByHotkey below) from a live neurons read. A
-// position whose hotkey+netuid isn't in the map (the hotkey deregistered,
-// or the daily neurons snapshot hasn't caught up to a brand-new stake
-// event) is excluded rather than reported with a fabricated 0 stake_tao --
-// same null-never-fabricated convention as nominator_count/apy_estimate.
+// The former neuron-pricing parameter remains for call compatibility; it is
+// deliberately ignored because voting weights cannot establish native holdings.
 export function buildAccountPositions(
   positionRows: Array<Record<string, unknown>> | null | undefined,
   _hotkeyNetuidStake: Map<string, number> | null | undefined,
@@ -177,7 +155,7 @@ export function buildAccountPositions(
   for (const row of Array.isArray(positionRows) ? positionRows : []) {
     const hotkey = typeof row?.hotkey === "string" ? row.hotkey : null;
     const netuid = nonNegativeInt(row?.netuid);
-    if (!hotkey || netuid == null) continue;
+    if (!hotkey || netuid == null || netuid > 65535) continue;
     const at = nonNegativeInt(row.captured_at);
     if (at != null && (latestCapturedAt == null || at > latestCapturedAt))
       latestCapturedAt = at;

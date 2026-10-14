@@ -1817,7 +1817,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch every subnet ranked by alpha-ownership concentration. Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. A cross-subnet total requires pricing each subnet's alpha through its own alpha_price_tao first, which is what /accounts/top-holders does. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while the hotkey_alpha pool ledger has no complete pass — an empty subnets array with degraded.reason pool_totals_unproven and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension. */
+        /** @description Fetch every subnet ranked by alpha-ownership concentration. Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. Cross-token holdings and priced portfolio totals require a separate qualified valuation source; legacy delegated/total holdings are unavailable. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while no completed selected runtime-qualified Alpha position capture is available — an empty subnets array with degraded.reason runtime_positions_unqualified and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension. */
         get: operations["chainHolders"];
         put?: never;
         post?: never;
@@ -5234,7 +5234,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. ?basis= selects WHICH QUESTION is answered (#9617), not how well it is answered. basis=flow (the DEFAULT, and everything above) is TAO MOVED within the window, so it cannot see a nominator who staked before the window and has not touched it since -- a dormant delegator is invisible and a long-standing one reads as smaller than they are. basis=positions instead reads the standing position ledger keyed (coldkey, hotkey, netuid): every coldkey (an ss58 address) currently delegating to this hotkey, and how much ALPHA each holds per subnet, whenever they staked. The two are different units over different time semantics -- TAO moved in a window versus alpha held now -- so they are not comparable and the default does not move. On the positions basis, window and sort are REJECTED rather than ignored, because accepting them would imply the snapshot honoured them; nominator_count is the whole delegator set rather than the returned page; and alpha is reported PER SUBNET with no cross-subnet total, since each subnet's alpha is a different token. Nominators are ranked by how many subnets they hold on, then by their largest single-subnet holding, for the same reason. The positions basis DECLINES with degraded.reason pool_totals_unproven while the hotkey_alpha pool ledger has no complete pass -- a partial ledger underprices a nominator rather than dropping them. */
+        /** @description Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. ?basis= selects WHICH QUESTION is answered (#9617), not how well it is answered. basis=flow (the DEFAULT, and everything above) is TAO MOVED within the window, so it cannot see a nominator who staked before the window and has not touched it since -- a dormant delegator is invisible and a long-standing one reads as smaller than they are. basis=positions instead reads the standing position ledger keyed (coldkey, hotkey, netuid): every coldkey (an ss58 address) currently delegating to this hotkey, and how much ALPHA each holds per subnet, whenever they staked. The two are different units over different time semantics -- TAO moved in a window versus alpha held now -- so they are not comparable and the default does not move. On the positions basis, window and sort are REJECTED rather than ignored, because accepting them would imply the snapshot honoured them; nominator_count is the whole delegator set rather than the returned page; and alpha is reported PER SUBNET with no cross-subnet total, since each subnet's alpha is a different token. Nominators are ranked by how many subnets they hold on, then by their largest single-subnet holding, for the same reason. The positions basis DECLINES with degraded.reason runtime_positions_unqualified while no completed selected runtime-qualified Alpha position capture is available -- a partial ledger underprices a nominator rather than dropping them. */
         get: operations["validatorNominators"];
         put?: never;
         post?: never;
@@ -13951,7 +13951,10 @@ export interface components {
         TopHoldersArtifact: {
             account_count: number;
             accounts: {
-                /** @description This account's delegated stake, valued in TAO. TAO-converted: each delegated position is multiplied by its own subnet's alpha_price_tao, taken from the latest daily subnet_snapshots row for that netuid, so cross-subnet alpha is never summed as if it were TAO (#8803). That table has a DAILY cadence, so the price can lag up to ~24h behind the live economics tier. A netuid whose latest snapshot carries no usable price is excluded from the sum rather than counted as zero. NULL on a net_flow_*-ranked page, which the live flow lane serves without holdings columns (#9469). */
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported native portfolio valuation; always null.
+                 */
                 delegated_tao: number | null;
                 /** @description Genuine free TAO from the System::Account chain-state scan. NULL when the tier that answered has no balance source for this row -- a page ranked by net_flow_* is served from the live flow lane, which carries no holdings columns at all (#9469). Null is never a zero balance: 0 is a measured zero. */
                 free_tao: number | null;
@@ -13964,15 +13967,19 @@ export interface components {
                 /** @description As net_flow_7d, over the trailing 90 days. */
                 net_flow_90d: number | null;
                 ss58: string;
-                /** @description free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort. NULL whenever either addend is null, rather than summing the half that is known -- a partial total would understate the account silently (#9469). */
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported native portfolio valuation; always null.
+                 */
                 total_tao: number | null;
             }[];
             /** @description How old THIS RANKING is: the newest last_updated across the accounts served, for the leg that backs the requested sort. A holdings-sorted page therefore reports its store refresh and a net_flow_*-sorted page its daily lakehouse scan -- one number for both would have to be wrong about one of them (#9632). Null when no row carries a usable stamp, which includes the cold/empty leaderboard. */
             captured_at?: string | null;
             limit: number;
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             /** @enum {string} */
-            sort: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
+            sort: "free_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
         };
         /** @description Present ONLY on a decline. An empty result WITHOUT this block is a measurement, not a decline. */
         UnavailableDegraded: {
@@ -14282,7 +14289,11 @@ export interface components {
                 hotkeys: {
                     hotkey: string;
                     take: number | null;
-                    total_stake_tao: number;
+                    /**
+                     * @deprecated
+                     * @description Deprecated inferred holdings value; always null because voting weight is not native assets.
+                     */
+                    total_stake_tao: number | null;
                 }[];
                 identity_name: string | null;
                 membership_count: number;
@@ -14300,11 +14311,15 @@ export interface components {
                 take_max: number | null;
                 take_min: number | null;
                 total_emission_tao: number;
-                total_stake_tao: number;
+                /**
+                 * @deprecated
+                 * @description Deprecated inferred holdings value; always null because voting weight is not native assets.
+                 */
+                total_stake_tao: number | null;
                 uid_count: number;
             }[];
             /** @constant */
-            schema_version: 1;
+            schema_version: 2;
             validator_count: number;
         };
         /** @description How well the derived permit rule still reproduces the permits the chain actually granted. Published so a caller can see when the model has drifted rather than trusting a floor it no longer supports. */
@@ -24999,7 +25014,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_tao. */
-                sort?: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
+                sort?: "free_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
@@ -25038,8 +25053,8 @@ export interface operations {
                      *         ],
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "limit": 1,
-                     *         "schema_version": 1,
-                     *         "sort": "total_tao"
+                     *         "schema_version": 2,
+                     *         "sort": "free_tao"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -54502,7 +54517,7 @@ export interface operations {
                      *             "uid_count": 1
                      *           }
                      *         ],
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "validator_count": 1
                      *       },
                      *       "meta": {

@@ -817,7 +817,7 @@ export const QUERY_PARAMETER_ENUMS = {
   },
   "/api/v1/accounts/top-holders": {
     "format": ["json","csv"],
-    "sort": ["total_tao","free_tao","delegated_tao","net_flow_7d","net_flow_30d","net_flow_90d"],
+    "sort": ["free_tao","net_flow_7d","net_flow_30d","net_flow_90d"],
   },
   "/api/v1/accounts/{ss58}/axon-removals": {
     "window": ["7d","30d","90d"],

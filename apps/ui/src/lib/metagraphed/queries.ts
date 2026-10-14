@@ -2860,7 +2860,7 @@ export function normalizePortfolioPosition(raw: unknown): PortfolioPosition | nu
     trust: firstFiniteNumber(raw.trust) ?? null,
     incentive: firstFiniteNumber(raw.incentive) ?? null,
     dividends: firstFiniteNumber(raw.dividends) ?? null,
-    yield: firstFiniteNumber(raw.yield) ?? null,
+    yield: null,
   };
 }
 
@@ -3551,13 +3551,14 @@ function normalizeAccountPositionHistoryPoint(raw: unknown): AccountPositionHist
     coldkey: firstString(raw.coldkey) ?? null,
     role: raw.role === "validator" ? "validator" : "miner",
     active: raw.active === true,
-    stake_tao: firstFiniteNumber(raw.stake_tao) ?? null,
+    stake_tao: null,
+    voting_weight: firstFiniteNumber(raw.voting_weight) ?? null,
     emission_tao: firstFiniteNumber(raw.emission_tao) ?? null,
     rank: firstFiniteNumber(raw.rank) ?? null,
     trust: firstFiniteNumber(raw.trust) ?? null,
     incentive: firstFiniteNumber(raw.incentive) ?? null,
     dividends: firstFiniteNumber(raw.dividends) ?? null,
-    yield: firstFiniteNumber(raw.yield) ?? null,
+    yield: null,
   };
 }
 
@@ -9188,9 +9189,9 @@ function normalizeValidatorHistoryPoint(raw: unknown): ValidatorHistoryPoint | n
   return {
     snapshot_date: snapshotDate,
     subnet_count: firstFiniteNumber(raw.subnet_count) ?? null,
-    total_stake_tao: firstFiniteNumber(raw.total_stake_tao) ?? null,
+    total_stake_tao: null,
     total_emission_tao: firstFiniteNumber(raw.total_emission_tao) ?? null,
-    rewards_per_1000_tao: firstFiniteNumber(raw.rewards_per_1000_tao) ?? null,
+    rewards_per_1000_tao: null,
   };
 }
 
