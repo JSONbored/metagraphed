@@ -7,7 +7,7 @@ import { buildSubnetPerformance } from "./subnet-performance.ts";
 import { buildSubnetValidators } from "./metagraph-neurons.ts";
 
 type SnapshotCards = {
-  concentration: ReturnType<typeof buildConcentration>;
+  concentration: Record<string, unknown>;
   performance: ReturnType<typeof buildSubnetPerformance>;
   validators: ReturnType<typeof buildSubnetValidators>;
 };
@@ -48,5 +48,5 @@ export async function loadSubnetSnapshotCardsTier(
       "METAGRAPH_NEURONS_SOURCE",
     ).then((v) => v ?? buildSubnetValidators([], netuid)),
   ]);
-  return { concentration, performance, validators };
+  return { concentration: { ...concentration }, performance, validators };
 }
