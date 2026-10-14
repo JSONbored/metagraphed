@@ -478,7 +478,7 @@ export function webhookLedgerD1(db: D1StoreBinding) {
       if (!r?.queued_at)
         throw new Error("Webhook enqueue acknowledgment was not committed");
     },
-    async outbox(now: number) {
+    async outbox(now: number): Promise<WebhookDeliveryMessage[]> {
       time(now);
       const r = await db
         .prepare(
