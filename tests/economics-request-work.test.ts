@@ -173,3 +173,59 @@ test("production health/economics cold misses share pending reads and reset clea
   assert.equal(reads.filter((k) => k === KV_HEALTH_META).length, 2);
   assert.equal(reads.filter((k) => k === KV_ECONOMICS_CURRENT).length, 2);
 });
+
+test("production MCP freshness batch shares health-meta and economics while retaining live source stamps", async () => {
+  const reads: string[] = [];
+  const stamp = new Date().toISOString();
+  const env = withMcpAccount({
+    METAGRAPH_CONTRACT_VERSION: contract,
+    METAGRAPH_DISABLE_REQUEST_LOGS: "true",
+    ASSETS: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          sources: [{ id: "surface-health", status: "stale" }],
+          summary: {},
+        }),
+    },
+    METAGRAPH_CONTROL: {
+      get: async (key: string) => {
+        reads.push(key);
+        if (key === KV_HEALTH_META) return { last_run_at: stamp };
+        if (key === KV_ECONOMICS_CURRENT) return blob();
+        return null;
+      },
+    },
+  });
+  const response = await handleRequest(
+    new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(
+        Array.from({ length: 10 }, (_, id) => ({
+          jsonrpc: "2.0",
+          id: id + 1,
+          method: "tools/call",
+          params: { name: "get_freshness", arguments: {} },
+        })),
+      ),
+    }),
+    env,
+    {
+      ...mcpAccountContext,
+      passThroughOnException() {},
+    } as unknown as ExecutionContext,
+  );
+  const replies = await response.json<Row[]>();
+  assert.equal(replies.length, 10);
+  for (const reply of replies) {
+    assert.notEqual(reply.result?.isError, true);
+    const source = reply.result.structuredContent.sources.find(
+      (s: Row) => s.id === "surface-health",
+    );
+    assert.equal(source.status, "current");
+    assert.equal(source.timestamp, stamp);
+  }
+  assert.equal(reads.filter((k) => k === KV_HEALTH_META).length, 1);
+  assert.equal(reads.filter((k) => k === KV_ECONOMICS_CURRENT).length, 1);
+});

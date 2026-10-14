@@ -321,3 +321,50 @@ test("malformed batch identities and mismatched subnet cards cannot become cache
     assert.ok(currentDataApiTierFallbackGeneration() > before);
   }
 });
+
+test("two-position nullable stake ordering matches both native and portable SQL in either UID order", async () => {
+  for (const [netuid, stakes] of [
+    [8, [null, 10]],
+    [9, [10, null]],
+  ] as const) {
+    const rows = stakes.map((stake_tao, uid) => ({
+      netuid,
+      uid,
+      hotkey: `null-order-${netuid}-${uid}`,
+      coldkey: "owner",
+      validator_permit: true,
+      stake_tao,
+      captured_at: at,
+      block_number: 9000000,
+    }));
+    await writeNeuronDocuments(createD1Store(db), {
+      ...neuronSnapshotWrite(rows, at + 1),
+      dailyRows: [],
+      positionRows: [],
+    });
+    for (const native of [true, false]) {
+      const env = dataApiEnv(
+        native ? { D1_STATE: db, D1_STATE_TABLES: "neurons" } : {},
+      );
+      const cards = await loadSubnetSnapshotCards(
+        createD1Sql(createD1Store(db)),
+        env,
+        netuid,
+      );
+      const expected = (
+        await db
+          .prepare(
+            `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid=? AND validator_permit=TRUE ORDER BY stake_tao DESC NULLS ${native ? "LAST" : "FIRST"},uid ASC`,
+          )
+          .bind(netuid)
+          .all<Row>()
+      ).results;
+      assert.deepEqual(
+        cards.validators,
+        buildSubnetValidators(expected, netuid, {
+          featuredHotkeys: FEATURED_HOTKEY_SET,
+        }),
+      );
+    }
+  }
+});
