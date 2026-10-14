@@ -82,14 +82,14 @@
           "coldkey": "d",
           "hotkey": "hot",
           "netuid": 1,
-          "share_fraction": 1e-07,
+          "share_fraction": 1e-7,
           "captured_at": 1790090000002
         },
         {
           "coldkey": "c",
           "hotkey": "hot",
           "netuid": 2,
-          "share_fraction": 1e-06,
+          "share_fraction": 1e-6,
           "captured_at": 1790090000002
         },
         {
