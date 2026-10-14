@@ -1,0 +1,141 @@
+[
+  {
+    "body": {
+      "rows": [],
+      "snapshot": {
+        "captured_at": 1790090000000,
+        "scanned_pairs": 10,
+        "total_rows": 0,
+        "total_chunks": 1,
+        "index": 0,
+        "digest_version": 2
+      }
+    },
+    "reply": {
+      "ok": true,
+      "self_stake_positions_written": 0,
+      "self_stake_snapshot": {
+        "captured_at": 1790090000000,
+        "scanned_pairs": 10,
+        "total_rows": 0,
+        "total_chunks": 1,
+        "index": 0,
+        "digest_version": 2,
+        "ok": true,
+        "sha256": "7b1d8b11a248cb33802014098e44fa77bce692f806bbfde24106e44ebbc197f2",
+        "source_rows": 0,
+        "shadowed_rows": 0,
+        "alpha_captured_at": null,
+        "received_rows": 0,
+        "received_chunks": 1,
+        "complete": true,
+        "completed_at": 1790090000001
+      }
+    }
+  },
+  {
+    "body": {
+      "rows": [
+        {
+          "coldkey": "d",
+          "hotkey": "hot",
+          "netuid": 1,
+          "share_fraction": 0.5,
+          "captured_at": 1790090000001
+        }
+      ],
+      "snapshot": {
+        "captured_at": 1790090000001,
+        "scanned_pairs": 10,
+        "total_rows": 1,
+        "total_chunks": 1,
+        "index": 0,
+        "digest_version": 2
+      }
+    },
+    "reply": {
+      "ok": true,
+      "self_stake_positions_written": 1,
+      "self_stake_snapshot": {
+        "captured_at": 1790090000001,
+        "scanned_pairs": 10,
+        "total_rows": 1,
+        "total_chunks": 1,
+        "index": 0,
+        "digest_version": 2,
+        "ok": true,
+        "sha256": "522527a58c677306d4f90d00146410df5f66c58f54f543990395028babf0278c",
+        "source_rows": 1,
+        "shadowed_rows": 0,
+        "alpha_captured_at": null,
+        "received_rows": 1,
+        "received_chunks": 1,
+        "complete": true,
+        "completed_at": 1790090000002
+      }
+    }
+  },
+  {
+    "body": {
+      "rows": [
+        {
+          "coldkey": "d",
+          "hotkey": "hot",
+          "netuid": 1,
+          "share_fraction": 1e-07,
+          "captured_at": 1790090000002
+        },
+        {
+          "coldkey": "c",
+          "hotkey": "hot",
+          "netuid": 2,
+          "share_fraction": 1e-06,
+          "captured_at": 1790090000002
+        },
+        {
+          "coldkey": "b",
+          "hotkey": "hot",
+          "netuid": 3,
+          "share_fraction": 0.3333333333333333,
+          "captured_at": 1790090000002
+        },
+        {
+          "coldkey": "a",
+          "hotkey": "hot",
+          "netuid": 4,
+          "share_fraction": 0.0,
+          "captured_at": 1790090000002
+        }
+      ],
+      "snapshot": {
+        "captured_at": 1790090000002,
+        "scanned_pairs": 10,
+        "total_rows": 4,
+        "total_chunks": 1,
+        "index": 0,
+        "digest_version": 2
+      }
+    },
+    "reply": {
+      "ok": true,
+      "self_stake_positions_written": 4,
+      "self_stake_snapshot": {
+        "captured_at": 1790090000002,
+        "scanned_pairs": 10,
+        "total_rows": 4,
+        "total_chunks": 1,
+        "index": 0,
+        "digest_version": 2,
+        "ok": true,
+        "sha256": "82954c8027f4205f3f5684ac2b5349bbf935764c2bf993295e2c4be3ab4bd458",
+        "source_rows": 4,
+        "shadowed_rows": 0,
+        "alpha_captured_at": null,
+        "received_rows": 4,
+        "received_chunks": 1,
+        "complete": true,
+        "completed_at": 1790090000003
+      }
+    }
+  }
+]

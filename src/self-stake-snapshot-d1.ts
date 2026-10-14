@@ -10,6 +10,8 @@ export interface SelfStakeSnapshot {
   total_rows: number;
   total_chunks: number;
   index: number;
+  /** Version2 hashes fraction IEEE754 bits, avoiding language float formatting. */
+  digest_version?: 2;
 }
 
 /** Full-scan metadata is optional for legacy callers. A producer sends it only
@@ -28,7 +30,10 @@ export function parseSelfStakeSnapshot(
     "index",
   ] as const;
   if (
-    Object.keys(value).length !== keys.length ||
+    Object.keys(value).length !==
+      keys.length + (Object.hasOwn(value, "digest_version") ? 1 : 0) ||
+    (Object.hasOwn(value, "digest_version") &&
+      (value as SelfStakeSnapshot).digest_version !== 2) ||
     !keys.every((key) => Object.hasOwn(value, key))
   )
     throw new TypeError("Invalid self-stake snapshot metadata fields");
@@ -102,7 +107,23 @@ export async function writeSelfStakeSnapshotD1(
     .update(
       JSON.stringify([
         [at, scanned, total, chunks, index],
-        ordered.map((row) => columns.map((column) => row[column] ?? null)),
+        ordered.map((row) =>
+          columns.map((column) => {
+            const cell = row[column] ?? null;
+            if (
+              snapshot.digest_version !== 2 ||
+              column !== "share_fraction" ||
+              cell === null
+            )
+              return cell;
+            const bytes = new DataView(new ArrayBuffer(8));
+            bytes.setFloat64(0, Number(cell), false);
+            return (
+              "f64:" +
+              bytes.getBigUint64(0, false).toString(16).padStart(16, "0")
+            );
+          }),
+        ),
       ]),
     )
     .digest("hex");

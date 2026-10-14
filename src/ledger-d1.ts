@@ -93,6 +93,22 @@ export async function writeNominatorPositionsD1(
       ...row,
       source,
     }));
+    // Partial owners have no full-census declaration, but canonical Alpha
+    // ownership still applies. Filter overlaps before INSERT so the evidence
+    // fence cannot roll back healthy, disjoint self-stake owners.
+    const alphaSchema =
+      source === POSITION_SOURCE_SELF_STAKE &&
+      Boolean(
+        await store.first<{ name: string }>(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'",
+          [],
+        ),
+      );
+    const overlapsAlpha = alphaSchema
+      ? `AND NOT EXISTS (SELECT 1 FROM nominator_positions p
+      WHERE p.coldkey=json_extract(value,'$[0]') AND p.hotkey=json_extract(value,'$[1]')
+      AND p.netuid=json_extract(value,'$[2]') AND p.alpha_evidence IS NOT NULL)`
+      : "";
     const statements: ProducerStatement[] = rows.length
       ? captureUpsertStatements(
           {
@@ -104,7 +120,7 @@ export async function writeNominatorPositionsD1(
           "nominator_positions.captured_at < excluded.captured_at",
           source === POSITION_SOURCE_SELF_STAKE
             ? `NOT EXISTS (SELECT 1 FROM self_stake_snapshot_passes WHERE completed_at IS NOT NULL
-                AND captured_at > json_extract(value,'$[${POSITION_INSERT_COLUMNS_WITH_SOURCE.indexOf("captured_at")}]'))`
+                AND captured_at > json_extract(value,'$[${POSITION_INSERT_COLUMNS_WITH_SOURCE.indexOf("captured_at")}]')) ${overlapsAlpha}`
             : "true",
         )
       : [];

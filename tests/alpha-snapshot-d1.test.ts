@@ -7,7 +7,11 @@ import { D1_EXPORT_COLUMNS } from "../src/d1-export-columns.ts";
 import { createD1Store } from "../src/d1-store.ts";
 import { writeSelfStakeSnapshotD1 } from "../src/self-stake-snapshot-d1.ts";
 import { NOMINATOR_POSITIONS_COVERAGE_SQL } from "../src/nominator-scan-coverage.ts";
-import { writeAlphaSnapshotD1 } from "../src/alpha-snapshot-d1.ts";
+import { writeNominatorPositionsD1 } from "../src/ledger-d1.ts";
+import {
+  writeAlphaSnapshotD1,
+  readAlphaSnapshotResumeD1,
+} from "../src/alpha-snapshot-d1.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import worker from "../workers/data-api.ts";
 import type { D1StoreBinding } from "../src/d1-store.ts";
@@ -561,4 +565,164 @@ test("a multi-chunk packet cannot exceed its whole-pass row census before native
     /census/,
   );
   assert.equal(read.mock.calls.length, 0);
+});
+
+test("partial self-stake owners preserve Alpha and refresh disjoint owners without claiming a full census", async () => {
+  const db = await fixture();
+  await write(db, packet([row("alice"), row("bob")]));
+  const at = baseAt + 1;
+  const incoming = [
+    {
+      coldkey: "alice",
+      hotkey: "hot",
+      netuid: 23,
+      share_fraction: 1,
+      captured_at: at,
+    },
+    {
+      coldkey: "carol",
+      hotkey: "other",
+      netuid: 23,
+      share_fraction: 1,
+      captured_at: at,
+    },
+  ];
+  const payload = {
+    rows: incoming,
+    source: "self-stake" as const,
+    coldkeyMaxCapturedAt: new Map([
+      ["alice", at],
+      ["carol", at],
+    ]),
+  };
+  const result = await writeNominatorPositionsD1(createD1Store(db), payload);
+  assert.equal(result.write?.ok, true);
+  assert.deepEqual(
+    (await rowsOf(db)).map((r) => [r.coldkey, r.source, r.captured_at]),
+    [
+      ["alice", "alpha", baseAt],
+      ["bob", "alpha", baseAt],
+      ["carol", "self-stake", at],
+    ],
+  );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS n FROM self_stake_snapshot_passes")
+        .first()
+    )?.n,
+    0,
+  );
+  assert.equal(
+    (await writeNominatorPositionsD1(createD1Store(db), payload)).write?.ok,
+    true,
+  );
+});
+
+test("receiver-owned pending identity survives restart and lost acknowledgements until exact replay completes", async () => {
+  const db = await fixture();
+  const first = packet([row("alice")], { total_rows: 2, total_chunks: 2 });
+  await write(db, first);
+  const saved = await readAlphaSnapshotResumeD1(db);
+  assert.equal(saved.alpha_snapshot_resume?.captured_at, baseAt);
+  assert.equal(saved.alpha_snapshot_resume?.expected_rows, 2);
+  assert.equal(saved.alpha_snapshot_resume?.expected_chunks, 2);
+  for (let restart = 0; restart < 4; restart++) {
+    assert.deepEqual(await readAlphaSnapshotResumeD1(db), saved);
+    const replay = await write(db, first);
+    assert.equal(replay.alpha_snapshot.received_rows, 1);
+    assert.equal(replay.alpha_snapshot.received_chunks, 1);
+  }
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS n FROM alpha_snapshot_passes")
+        .first()
+    )?.n,
+    1,
+  );
+  await write(
+    db,
+    packet([row("bob")], { total_rows: 2, total_chunks: 2, index: 1 }),
+  );
+  assert.deepEqual(await readAlphaSnapshotResumeD1(db), {
+    ok: true,
+    alpha_snapshot_resume: null,
+  });
+  const env = dataApiEnv({
+    D1_STATE: db,
+    D1_STATE_TABLES: "nominator_positions",
+    NOMINATOR_POSITIONS_SYNC_SECRET: "fixture-token",
+  });
+  const request = (body: Row, secret = "fixture-token") =>
+    new Request(
+      "https://api.metagraph.sh/api/v1/internal/nominator-positions-sync",
+      {
+        method: "POST",
+        headers: { "x-nominator-positions-sync-token": secret },
+        body: JSON.stringify(body),
+      },
+    );
+  assert.equal(
+    (await worker.fetch(request({ alpha_snapshot_resume: true }, "wrong"), env))
+      .status,
+    401,
+  );
+  assert.equal(
+    (await worker.fetch(request({ alpha_snapshot_resume: false }), env)).status,
+    400,
+  );
+  assert.equal(
+    (
+      await worker.fetch(
+        request({ alpha_snapshot_resume: true, rows: [] }),
+        env,
+      )
+    ).status,
+    400,
+  );
+  assert.deepEqual(
+    await (
+      await worker.fetch(request({ alpha_snapshot_resume: true }), env)
+    ).json(),
+    { ok: true, alpha_snapshot_resume: null },
+  );
+  assert.equal(
+    (
+      await worker.fetch(
+        request({ alpha_snapshot_resume: true }),
+        dataApiEnv({ NOMINATOR_POSITIONS_SYNC_SECRET: "fixture-token" }),
+      )
+    ).status,
+    503,
+  );
+});
+
+test("cross-language v2 receipts match actual native receiver for empty and float-format boundaries, including lost ACK replay", async () => {
+  const vectors = JSON.parse(
+    readFileSync(
+      new URL(
+        "./fixtures/alpha-runtime/self-stake-receipt-v2.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ) as Row[];
+  for (const { body, reply } of vectors) {
+    const db = await fixture();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const actual = await writeSelfStakeSnapshotD1(
+        createD1Store(db),
+        body.rows,
+        body.snapshot,
+        body.snapshot.captured_at + 1,
+      );
+      for (const [field, value] of Object.entries(reply.self_stake_snapshot))
+        assert.deepEqual(
+          actual.snapshot[field as keyof typeof actual.snapshot],
+          value,
+          field,
+        );
+    }
+  }
 });
