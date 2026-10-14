@@ -1063,8 +1063,9 @@
       // delivering. Without that branch this binding would POST an event at a
       // subscriber who has already refused it eight times.
       //
-      // "max_retries": 0 -- see the sync-batches-dlq consumer in
-      // wrangler.data.jsonc for the full argument; it is the same one.
+      // Bounded retries preserve a live lease or transient native-store failure.
+      // No recursive DLQ: originals survive in the native intent ledger, whose
+      // dispatcher finalizes inactive deliveries beyond the transport horizon.
       // THE FOUR PROBE LANES, ON ONE CONSUMER (#10894).
       //
       // A queue carries ONE consumer config, so collapsing four means choosing
@@ -1135,7 +1136,8 @@
         "queue": "webhook-deliveries-dlq",
         "max_batch_size": 100,
         "max_batch_timeout": 30,
-        "max_retries": 0,
+        "max_retries": 5,
+        "retry_delay": 300,
         "max_concurrency": 1,
       },
     ],

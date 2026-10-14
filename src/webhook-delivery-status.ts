@@ -45,6 +45,25 @@ export async function webhookDeliveryStatus(
   } catch {
     /* A legacy projection failure does not erase authoritative outcomes. */
   }
+  if (ledger && legacy.length) {
+    try {
+      const reconciled = await ledger.byEvents(
+        id,
+        [
+          ...new Set(
+            legacy
+              .map((r) => r.event_id)
+              .filter((v): v is string => typeof v === "string"),
+          ),
+        ],
+        Date.now(),
+      );
+      const included = new Set(native.map((r) => r.event_id));
+      native.push(...reconciled.filter((r) => !included.has(r.event_id)));
+    } catch {
+      throw new Error("Webhook delivery status unavailable");
+    }
+  }
   const owned = new Set(native.map((r) => r.event_id));
   return summarizeDeliveryRecords([
     ...native,

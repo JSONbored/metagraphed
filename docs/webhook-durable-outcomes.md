@@ -28,13 +28,25 @@ status. No new write fallback is introduced.
 Initial enqueue failure leaves reconstructable original bytes. The existing
 webhook dispatcher recovers at most four unqueued ready intents per tick before
 its usual change-feed dispatch. It does not schedule business retries beside
-the queue. Payloads, outcomes and deduplication evidence retain the existing
+the queue. Every selected recipient's intent is persisted before queue sends
+begin. Serialized UTF-8 envelope size is checked, including multibyte payloads;
+an existing unsendable outbox item becomes durably terminal without blocking
+other owed or new events. Payloads, outcomes and deduplication evidence retain the existing
 180-day status horizon, refreshed by activity. Bounded cleanup removes at most
-64 expired intents and64 orphaned payloads per tick. Once evidence expires,
+1024 expired intents and1024 orphaned payloads per tick. This is cleanup
+eligibility, not a strict physical lifetime: outages or arrivals beyond cleanup
+throughput can retain an expired backlog. At48 scheduled ticks/day the ceiling
+is49,152 intents/day; admission, deletion throughput and backlog still need
+measurement before release. No hand-maintained subscriber cap is introduced. Once evidence expires,
 redelivery may repeat an effect. This is not perpetual replay retention. Dead
-events remain terminal for the same queue delivery; a newly admitted normal
-queue message at round1 retains the previous manual requeue behavior. Known
-success is never readmitted within its retention horizon.
+events remain terminal across automatic queue duplicates. A persisted round
+must advance and its due time must pass before another automatic attempt can
+claim. Manual requeue first requires `authorizeReplay` on the native owner,
+called by an authenticated operator with a stable operation token, then sends
+the returned generation. No new unauthenticated replay route is introduced.
+Old queue messages and dead letters cannot claim or terminate that generation;
+lost authorization replies reuse the same token. Known success is never
+readmitted within its retention horizon.
 
 Exactly-once remote effects require receiver deduplication. A process can stop
 after a receiver acts and before local outcome persistence; the default retry
@@ -60,3 +72,21 @@ fence before live adoption. Old consumers bypass this protocol and cannot be a
 safe rollback while new retained delivery state is active. Rollback requires
 stopping/fencing delivery, preserving accepted outcomes and an explicitly
 qualified compatible image; deleting success evidence is not rollback.
+
+The DLQ has five bounded storage-finalization retries with a300-second default
+delay and no recursive DLQ. The dispatcher also finalizes at most four native
+queued intents inactive for32days without making an HTTP request. Cloudflare's
+[retry documentation](https://github.com/cloudflare/cloudflare-docs/blob/cd4a0dc718b360c96a5848f2a3e18f2777884885/src/content/docs/queues/configuration/batching-retries.mdx)
+states that retries beyond the maximum are deleted when no DLQ exists;
+[queue limits](https://developers.cloudflare.com/queues/platform/limits/)
+cap each queue's retention at14days. The32-day fence exceeds both delivery and
+DLQ horizons. The native original survives a transient/outlasting D1 outage,
+and a later healthy dispatcher exposes terminal uncertainty without restarting
+business retries. Finalization and recovery require the database and dispatcher
+to recover before the180-day evidence horizon. No finite transport retry count
+provides perpetual retention during an indefinite database outage.
+
+Status reconciles every included legacy event against native ownership, even
+outside the newest256 rows. An unresolved prior receiver effect remains
+`outcome-unknown` after a later no-request failure; later positive evidence
+resolves it. Never-attempted/null timestamps do not supersede real failures.

@@ -1,16 +1,30 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { Miniflare } from "miniflare";
+import { nativeRawFixture } from "./raw-capture-fixture.ts";
 import { webhookLedgerD1 } from "../../src/webhook-ledger-d1.ts";
 
-export async function nativeWebhookFixture() {
-  const runtime = new Miniflare({
-    modules: true,
-    script: "export default {fetch(){return new Response('test')}}",
-    compatibilityDate: "2026-06-06",
-    d1Databases: ["DB"],
-  });
-  const db = await runtime.getD1Database("DB");
+export async function nativeWebhookFixture(upgrade = false) {
+  const prior = upgrade
+    ? await nativeRawFixture(undefined, {
+        beforePublication: async (db) => {
+          await db
+            .prepare(
+              "INSERT INTO raw_capture_state(network,last_contiguous_block,updated_at) VALUES('mainnet',100,1)",
+            )
+            .run();
+        },
+      })
+    : null;
+  const runtime =
+    prior?.runtime ??
+    new Miniflare({
+      modules: true,
+      script: "export default {fetch(){return new Response('test')}}",
+      compatibilityDate: "2026-06-06",
+      d1Databases: ["DB"],
+    });
+  const db = prior?.db ?? (await runtime.getD1Database("DB"));
   const sql = readFileSync(
     new URL(
       "../../migrations/d1/0041_webhook_delivery_ledger.sql",

@@ -280,6 +280,7 @@ test("attempt insert refusal prevents a claim and invalid finish identity refuse
         eventId: m.event_id,
         sequence: 1,
         token: "absent",
+        round: 1,
       },
       delivered,
       "delivered",
@@ -315,8 +316,8 @@ test("failed, skipped and unknown outcomes remain durable with the original queu
     );
     assert.equal(
       (await f.ledger.claim(webhookMessage(), URL, 1, NOW + 3)).kind,
-      "claimed",
-      "normal queue re-admission retains existing replay policy",
+      "dead",
+      "duplicate automatic admission cannot reopen terminal outcomes",
     );
   }
 });
@@ -332,7 +333,7 @@ test("retry keeps ambiguity, next time and every immutable attempt", async () =>
     NOW + 300_001,
   );
   assert.equal(r.state, "pending");
-  assert.match(String(r.reason), /outcome-unknown: http-503/);
+  assert.match(String(r.reason), /outcome-unknown.*http-503/);
   assert.equal(r.next_attempt_at, new Date(NOW + 300_001).toISOString());
   const next = await f.ledger.claim(message, URL, 2, NOW + 300_001);
   assert(next.kind === "claimed");
@@ -368,8 +369,21 @@ test("dead-letter does not fence a live attempt, expiry records ambiguity, then 
     )?.outcome,
     "ambiguous",
   );
+  const replay = await f.ledger.authorizeReplay(
+    message,
+    "operator-request",
+    NOW + 60_002,
+  );
   assert.equal(
-    (await f.ledger.claim(message, URL, 1, NOW + 60_002)).kind,
+    (await f.ledger.claim(message, URL, 1, NOW + 60_003)).kind,
+    "stale",
+  );
+  assert.equal(
+    (await f.ledger.deadLetter(message, NOW + 60_003)).state,
+    "stale",
+  );
+  assert.equal(
+    (await f.ledger.claim(replay, URL, 1, NOW + 60_003)).kind,
     "claimed",
   );
 });
@@ -507,5 +521,122 @@ test("retention preserves the full180-day horizon then bounded cleanup cascades 
     (await f.ledger.claim(message, URL, 1, expiry + 1)).kind,
     "claimed",
     "expired success is outside the deduplication horizon",
+  );
+});
+
+test("automatic duplicates cannot reopen rejection or bypass retry due time; explicit replay is fenced", async () => {
+  const f = await fixture(),
+    { message, attempt } = await claimed(f);
+  await f.ledger.finish(attempt, failed, "retry", NOW + 1, NOW + 300001);
+  assert.equal((await f.ledger.claim(message, URL, 1, NOW + 2)).kind, "stale");
+  assert.equal((await f.ledger.claim(message, URL, 2, NOW + 2)).kind, "busy");
+  const retry = await f.ledger.claim(message, URL, 2, NOW + 300001);
+  assert(retry.kind === "claimed");
+  await f.ledger.finish(
+    retry.attempt,
+    { status: "failed", status_code: 400, reason: "http-400" },
+    "dead",
+    NOW + 300002,
+    null,
+  );
+  assert.equal(
+    (await f.ledger.claim(message, URL, 1, NOW + 300003)).kind,
+    "dead",
+  );
+  assert.equal(
+    (await f.ledger.claim(message, URL, 3, NOW + 300003)).kind,
+    "dead",
+  );
+  const replay = await f.ledger.authorizeReplay(
+    message,
+    "explicit-operation",
+    NOW + 300004,
+  );
+  assert.equal(replay.generation, 1);
+  assert.deepEqual(
+    await f.ledger.authorizeReplay(message, "explicit-operation", NOW + 300005),
+    replay,
+    "lost authorization reply is idempotent",
+  );
+  await assert.rejects(
+    f.ledger.authorizeReplay(message, "another-operation", NOW + 300005),
+  );
+  await assert.rejects(f.ledger.authorizeReplay(message, "", NOW + 300005));
+  assert.equal(
+    (await f.ledger.claim(message, URL, 8, NOW + 300006)).kind,
+    "stale",
+  );
+  assert.deepEqual(await f.ledger.outbox(NOW + 300006), [replay]);
+  await f.ledger.enqueued(
+    message.subscription_id,
+    message.event_id,
+    NOW + 300006,
+  );
+  assert.deepEqual(
+    await f.ledger.outbox(NOW + 300006),
+    [replay],
+    "old enqueue acknowledgment cannot erase replay outbox",
+  );
+  const admitted = await f.ledger.claim(replay, URL, 1, NOW + 300007);
+  assert(admitted.kind === "claimed");
+  await f.ledger.finish(
+    admitted.attempt,
+    delivered,
+    "delivered",
+    NOW + 300008,
+    null,
+  );
+  await assert.rejects(
+    f.ledger.authorizeReplay(replay, "repeat-success", NOW + 300009),
+  );
+});
+
+test("held0039/0040 to0041 upgrade preserves prior owners and fences old messages", async () => {
+  const f = await nativeWebhookFixture(true);
+  opened.push(f);
+  const checkpoint = await f.db
+    .prepare(
+      "SELECT last_contiguous_block,genesis_hash FROM raw_capture_state WHERE network='mainnet'",
+    )
+    .first();
+  assert.equal(checkpoint?.last_contiguous_block, 100);
+  assert.equal(checkpoint?.genesis_hash, null);
+  for (const table of [
+    "self_stake_snapshot_passes",
+    "self_stake_snapshot_chunks",
+    "raw_capture_finality",
+    "raw_capture_publications",
+  ])
+    assert.equal(
+      (
+        await f.db
+          .prepare("SELECT name FROM sqlite_master WHERE name=?")
+          .bind(table)
+          .first()
+      )?.name,
+      table,
+    );
+  const { message, attempt } = await claimed(f);
+  await f.ledger.finish(attempt, failed, "dead", NOW + 1, null);
+  const replay = await f.ledger.authorizeReplay(message, "operator", NOW + 2);
+  assert.equal((await f.ledger.deadLetter(message, NOW + 3)).state, "stale");
+  assert.equal((await f.ledger.claim(message, URL, 1, NOW + 3)).kind, "stale");
+  assert.equal((await f.ledger.claim(replay, URL, 1, NOW + 3)).kind, "claimed");
+});
+
+test("native finalization recovers a dropped DLQ beyond both transport retention horizons without resending", async () => {
+  const f = await fixture(),
+    { message, attempt } = await claimed(f);
+  await f.ledger.finish(attempt, failed, "retry", NOW + 1, NOW + 300001);
+  assert.equal(await f.ledger.recoverExpired(NOW + 31 * 86400000), 0);
+  assert.equal(await f.ledger.recoverExpired(NOW + 33 * 86400000), 1);
+  const record = (
+    await f.ledger.recent(message.subscription_id, NOW + 33 * 86400000)
+  )[0];
+  assert.equal(record.state, "dead");
+  assert.match(String(record.reason), /outcome-unknown/);
+  assert.equal(
+    (await f.ledger.claim(message, URL, 1, NOW + 33 * 86400000)).kind,
+    "dead",
   );
 });

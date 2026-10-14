@@ -15,6 +15,9 @@ interface Intent {
   idempotency_key: string;
   state: "ready" | "sending" | "pending" | "delivered" | "dead";
   sequence: number;
+  generation: number;
+  replay_token: string | null;
+  uncertain_history?: number;
   lease_token: string | null;
   lease_until: number | null;
   queued_at: number | null;
@@ -32,10 +35,11 @@ interface WebhookAttempt {
   eventId: string;
   sequence: number;
   token: string;
+  round: number;
 }
 type WebhookClaim =
   | { kind: "claimed"; attempt: WebhookAttempt }
-  | { kind: "delivered" | "dead" | "busy"; record: Row };
+  | { kind: "delivered" | "dead" | "busy" | "stale"; record: Row };
 const TTL = WEBHOOK_DELIVERY_TTL_SECONDS * 1000;
 const LEASE_MS = 60_000;
 const iso = (v: number | null) =>
@@ -49,7 +53,9 @@ function time(now: number) {
     throw new Error("Invalid webhook ledger clock");
 }
 function record(row: Intent, now: number): Row {
-  const uncertain = row.state === "sending" && row.lease_until! <= now;
+  const expired = row.state === "sending" && row.lease_until! <= now;
+  const uncertain =
+    row.state !== "delivered" && (expired || row.uncertain_history === 1);
   return {
     ...deliveryRecordFor({
       subscriptionId: row.subscription_id,
@@ -65,14 +71,14 @@ function record(row: Intent, now: number): Row {
       nowIso: iso(row.last_attempt_at) ?? new Date(now).toISOString(),
       nextAttemptAt: iso(row.next_attempt_at),
     }),
-    state: uncertain
+    state: expired
       ? "ambiguous"
       : row.state === "ready"
         ? "pending"
         : row.state,
     round: row.round,
     reason: uncertain
-      ? "outcome-unknown; at-least-once retry may repeat a remote effect"
+      ? `outcome-unknown; at-least-once retry may repeat a remote effect${row.reason ? `; ${row.reason}` : ""}`
       : row.reason,
     status_code: row.status_code,
     last_attempt_at: iso(row.last_attempt_at),
@@ -87,7 +93,7 @@ export function webhookLedgerD1(db: D1StoreBinding) {
     proven_status: number | null;
     proven_at: number | null;
   };
-  const projection = `SELECT i.*,a.sequence AS proven_sequence,a.status_code AS proven_status,a.finished_at AS proven_at
+  const projection = `SELECT i.*,a.sequence AS proven_sequence,a.status_code AS proven_status,a.finished_at AS proven_at,EXISTS(SELECT 1 FROM webhook_delivery_attempts u WHERE u.subscription_id=i.subscription_id AND u.event_id=i.event_id AND u.outcome='ambiguous') AS uncertain_history
     FROM webhook_delivery_intents i LEFT JOIN webhook_delivery_attempts a ON a.subscription_id=i.subscription_id AND a.event_id=i.event_id
     AND a.sequence=(SELECT sequence FROM webhook_delivery_attempts p WHERE p.subscription_id=i.subscription_id AND p.event_id=i.event_id AND p.outcome='delivered' ORDER BY sequence LIMIT 1)`;
   const proven = (row: ProvenIntent): Intent =>
@@ -120,6 +126,9 @@ export function webhookLedgerD1(db: D1StoreBinding) {
       typeof message.subscription_id !== "string" ||
       !message.subscription_id ||
       message.subscription_id.length > 128 ||
+      (message.generation !== undefined &&
+        (!Number.isSafeInteger(message.generation) ||
+          message.generation < 0)) ||
       typeof message.body !== "string" ||
       !message.body ||
       new TextEncoder().encode(message.body).byteLength > 128 * 1024 ||
@@ -224,12 +233,23 @@ export function webhookLedgerD1(db: D1StoreBinding) {
       typeof targetUrl !== "string" ||
       targetUrl.length > 8192 ||
       !Number.isSafeInteger(round) ||
-      round < 1
+      round < 1 ||
+      round > 8
     )
       throw new Error("Invalid webhook attempt");
     const row = await ensure(message, now, legacy);
-    if (row.state === "delivered" || (row.state === "dead" && round !== 1))
+    if ((message.generation ?? 0) !== row.generation)
+      return { kind: "stale", record: record(row, now) };
+    if (row.state === "delivered" || row.state === "dead")
       return { kind: row.state, record: record(row, now) };
+    if (row.state !== "ready" && round <= row.round)
+      return { kind: "stale", record: record(row, now) };
+    if (
+      row.state === "pending" &&
+      row.next_attempt_at !== null &&
+      row.next_attempt_at > now
+    )
+      return { kind: "busy", record: record(row, now) };
     if (row.state === "sending" && row.lease_until! > now)
       return { kind: "busy", record: record(row, now) };
     if (!Number.isSafeInteger(row.sequence + 1))
@@ -251,7 +271,7 @@ export function webhookLedgerD1(db: D1StoreBinding) {
         ),
       db
         .prepare(
-          "UPDATE webhook_delivery_intents SET state='sending',sequence=sequence+1,lease_token=?,lease_until=?,queued_at=COALESCE(queued_at,?),round=?,reason='outcome-pending',status_code=NULL,last_attempt_at=?,next_attempt_at=NULL,updated_at=?,expires_at=? WHERE subscription_id=? AND event_id=? AND sequence=? AND state<>'delivered' AND NOT EXISTS(SELECT 1 FROM webhook_delivery_attempts a WHERE a.subscription_id=webhook_delivery_intents.subscription_id AND a.event_id=webhook_delivery_intents.event_id AND a.outcome='delivered') AND (state<>'dead' OR ?=1) AND (state<>'sending' OR lease_until<=?)",
+          "UPDATE webhook_delivery_intents SET state='sending',sequence=sequence+1,lease_token=?,lease_until=?,queued_at=COALESCE(queued_at,?),round=?,reason='outcome-pending',status_code=NULL,last_attempt_at=?,next_attempt_at=NULL,updated_at=?,expires_at=? WHERE subscription_id=? AND event_id=? AND sequence=? AND state<>'delivered' AND NOT EXISTS(SELECT 1 FROM webhook_delivery_attempts a WHERE a.subscription_id=webhook_delivery_intents.subscription_id AND a.event_id=webhook_delivery_intents.event_id AND a.outcome='delivered') AND generation=? AND state<>'dead' AND (state='ready' OR round<?) AND (state<>'pending' OR next_attempt_at IS NULL OR next_attempt_at<=?) AND (state<>'sending' OR lease_until<=?)",
         )
         .bind(
           token,
@@ -264,12 +284,14 @@ export function webhookLedgerD1(db: D1StoreBinding) {
           message.subscription_id,
           message.event_id,
           row.sequence,
+          message.generation ?? 0,
           round,
+          now,
           now,
         ),
       db
         .prepare(
-          "INSERT INTO webhook_delivery_attempts(subscription_id,event_id,sequence,token,target_url,round,started_at) SELECT subscription_id,event_id,sequence,lease_token,?,round,? FROM webhook_delivery_intents WHERE subscription_id=? AND event_id=? AND lease_token=? ON CONFLICT(token) DO NOTHING",
+          "INSERT INTO webhook_delivery_attempts(subscription_id,event_id,sequence,token,target_url,generation,round,started_at) SELECT subscription_id,event_id,sequence,lease_token,?,generation,round,? FROM webhook_delivery_intents WHERE subscription_id=? AND event_id=? AND lease_token=? ON CONFLICT(token) DO NOTHING",
         )
         .bind(targetUrl, now, message.subscription_id, message.event_id, token),
     ]);
@@ -297,6 +319,7 @@ export function webhookLedgerD1(db: D1StoreBinding) {
         eventId: message.event_id,
         sequence: current.sequence,
         token,
+        round: current.round,
       },
     };
   };
@@ -400,17 +423,56 @@ export function webhookLedgerD1(db: D1StoreBinding) {
     ensure,
     claim,
     finish,
-    async enqueued(s: string, e: string, now: number) {
+    /** Called only by an authenticated operator replay action, never by queue
+     * redelivery. A stable request token resolves a lost authorization reply. */
+    async authorizeReplay(
+      message: WebhookDeliveryMessage,
+      requestToken: string,
+      now: number,
+    ) {
+      if (
+        typeof requestToken !== "string" ||
+        !requestToken ||
+        requestToken.length > 128
+      )
+        throw new Error("Invalid webhook replay authorization");
+      const previous = await ensure(message, now);
+      if (previous.replay_token !== requestToken) {
+        await db
+          .prepare(
+            "UPDATE webhook_delivery_intents SET generation=generation+1,replay_token=?,state='ready',round=0,queued_at=NULL,reason=NULL,status_code=NULL,last_attempt_at=NULL,next_attempt_at=NULL,updated_at=?,expires_at=? WHERE subscription_id=? AND event_id=? AND generation=? AND state='dead' AND NOT EXISTS(SELECT 1 FROM webhook_delivery_attempts a WHERE a.subscription_id=webhook_delivery_intents.subscription_id AND a.event_id=webhook_delivery_intents.event_id AND a.outcome='delivered')",
+          )
+          .bind(
+            requestToken,
+            now,
+            now + TTL,
+            message.subscription_id,
+            message.event_id,
+            message.generation ?? 0,
+          )
+          .run();
+      }
+      const current = await read(message.subscription_id, message.event_id);
+      if (
+        !current ||
+        current.replay_token !== requestToken ||
+        current.state === "delivered"
+      )
+        throw new Error("Webhook manual replay was not authorized");
+      return { ...message, generation: current.generation };
+    },
+    async enqueued(s: string, e: string, now: number, generation = 0) {
       time(now);
       const existing = await read(s, e);
       if (existing?.state === "delivered") return;
       await db
         .prepare(
-          "UPDATE webhook_delivery_intents SET queued_at=COALESCE(queued_at,?),updated_at=MAX(updated_at,?),expires_at=MAX(expires_at,?) WHERE subscription_id=? AND event_id=?",
+          "UPDATE webhook_delivery_intents SET queued_at=COALESCE(queued_at,?),updated_at=MAX(updated_at,?),expires_at=MAX(expires_at,?) WHERE subscription_id=? AND event_id=? AND generation=?",
         )
-        .bind(now, now, now + TTL, s, e)
+        .bind(now, now, now + TTL, s, e, generation)
         .run();
       const r = await read(s, e);
+      if (r && r.generation !== generation) return;
       if (!r?.queued_at)
         throw new Error("Webhook enqueue acknowledgment was not committed");
     },
@@ -418,11 +480,13 @@ export function webhookLedgerD1(db: D1StoreBinding) {
       time(now);
       const r = await db
         .prepare(
-          "SELECT i.subscription_id,i.event_id,e.body FROM webhook_delivery_intents i JOIN webhook_delivery_events e USING(event_id) WHERE i.state='ready' AND i.queued_at IS NULL AND i.expires_at>? AND NOT EXISTS(SELECT 1 FROM webhook_delivery_attempts a WHERE a.subscription_id=i.subscription_id AND a.event_id=i.event_id AND a.outcome='delivered') ORDER BY i.created_at,i.subscription_id,i.event_id LIMIT 4",
+          "SELECT i.subscription_id,i.event_id,i.generation,e.body FROM webhook_delivery_intents i JOIN webhook_delivery_events e USING(event_id) WHERE i.state='ready' AND i.queued_at IS NULL AND i.expires_at>? AND NOT EXISTS(SELECT 1 FROM webhook_delivery_attempts a WHERE a.subscription_id=i.subscription_id AND a.event_id=i.event_id AND a.outcome='delivered') ORDER BY i.created_at,i.subscription_id,i.event_id LIMIT 4",
         )
         .bind(now)
         .all<WebhookDeliveryMessage>();
-      return r.results;
+      return r.results.map(({ generation, ...message }) =>
+        generation ? { ...message, generation } : message,
+      );
     },
     async recent(s: string, now: number) {
       time(now);
@@ -435,12 +499,48 @@ export function webhookLedgerD1(db: D1StoreBinding) {
         .all<ProvenIntent>();
       return r.results.map((r) => record(proven(r), now));
     },
+    async byEvents(s: string, events: string[], now: number) {
+      time(now);
+      if (events.length > 256)
+        throw new Error("Webhook status ownership batch exceeds its budget");
+      if (!events.length) return [];
+      const rows = await db
+        .prepare(
+          projection +
+            " WHERE i.subscription_id=? AND i.event_id IN (SELECT value FROM json_each(?)) AND i.expires_at>?",
+        )
+        .bind(s, JSON.stringify(events), now)
+        .all<ProvenIntent>();
+      return rows.results.map((r) => record(proven(r), now));
+    },
+    /** Queue+DLQ retention is at most14days each. Past32 inactive days,
+     * no transport message can survive; retain a terminal unknown outcome.
+     * This finalizes evidence only and never sends or schedules HTTP. */
+    async recoverExpired(now: number): Promise<number> {
+      time(now);
+      const cutoff = now - 32 * 86400000;
+      const stale = await db
+        .prepare(
+          "SELECT i.subscription_id,i.event_id,i.generation,e.body FROM webhook_delivery_intents i JOIN webhook_delivery_events e USING(event_id) WHERE i.state IN ('pending','sending','ready') AND i.queued_at IS NOT NULL AND i.updated_at<? ORDER BY i.updated_at LIMIT 4",
+        )
+        .bind(cutoff)
+        .all<WebhookDeliveryMessage>();
+      for (const message of stale.results)
+        await this.deadLetter(
+          message,
+          now,
+          "queue-retention-expired; outcome-unknown",
+        );
+      return stale.results.length;
+    },
     async deadLetter(
       message: WebhookDeliveryMessage,
       now: number,
       cause = "dead-letter",
     ) {
       const r = await ensure(message, now);
+      if ((message.generation ?? 0) !== r.generation)
+        return { ...record(r, now), state: "stale" };
       if (
         r.state !== "delivered" &&
         !(r.state === "sending" && r.lease_until! > now)
@@ -453,7 +553,7 @@ export function webhookLedgerD1(db: D1StoreBinding) {
             .bind(now, now, message.subscription_id, message.event_id, now),
           db
             .prepare(
-              "UPDATE webhook_delivery_intents SET state='dead',lease_token=NULL,lease_until=NULL,reason=CASE WHEN state='sending' THEN ?||'; outcome-unknown' ELSE COALESCE(reason,?) END,next_attempt_at=NULL,updated_at=?,expires_at=? WHERE subscription_id=? AND event_id=? AND state<>'delivered' AND NOT EXISTS(SELECT 1 FROM webhook_delivery_attempts a WHERE a.subscription_id=webhook_delivery_intents.subscription_id AND a.event_id=webhook_delivery_intents.event_id AND a.outcome='delivered') AND (state<>'sending' OR lease_until<=?)",
+              "UPDATE webhook_delivery_intents SET state='dead',lease_token=NULL,lease_until=NULL,reason=CASE WHEN state='sending' THEN ?||'; outcome-unknown' ELSE COALESCE(reason,?) END,next_attempt_at=NULL,updated_at=?,expires_at=? WHERE subscription_id=? AND event_id=? AND state<>'delivered' AND NOT EXISTS(SELECT 1 FROM webhook_delivery_attempts a WHERE a.subscription_id=webhook_delivery_intents.subscription_id AND a.event_id=webhook_delivery_intents.event_id AND a.outcome='delivered') AND generation=? AND (state<>'sending' OR lease_until<=?)",
             )
             .bind(
               cause,
@@ -462,6 +562,7 @@ export function webhookLedgerD1(db: D1StoreBinding) {
               now + TTL,
               message.subscription_id,
               message.event_id,
+              message.generation ?? 0,
               now,
             ),
         ]);
@@ -482,12 +583,12 @@ export function webhookLedgerD1(db: D1StoreBinding) {
       await db.batch([
         db
           .prepare(
-            "DELETE FROM webhook_delivery_intents WHERE (subscription_id,event_id) IN (SELECT subscription_id,event_id FROM webhook_delivery_intents WHERE expires_at<=? ORDER BY expires_at LIMIT 64)",
+            "DELETE FROM webhook_delivery_intents WHERE (subscription_id,event_id) IN (SELECT subscription_id,event_id FROM webhook_delivery_intents WHERE expires_at<=? ORDER BY expires_at LIMIT 1024)",
           )
           .bind(now),
         db
           .prepare(
-            "DELETE FROM webhook_delivery_events WHERE event_id IN (SELECT e.event_id FROM webhook_delivery_events e WHERE e.expires_at<=? AND NOT EXISTS(SELECT 1 FROM webhook_delivery_intents i WHERE i.event_id=e.event_id) LIMIT 64)",
+            "DELETE FROM webhook_delivery_events WHERE event_id IN (SELECT e.event_id FROM webhook_delivery_events e WHERE e.expires_at<=? AND NOT EXISTS(SELECT 1 FROM webhook_delivery_intents i WHERE i.event_id=e.event_id) LIMIT 1024)",
           )
           .bind(now),
       ]);

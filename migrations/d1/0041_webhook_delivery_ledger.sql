@@ -18,6 +18,8 @@ CREATE TABLE webhook_delivery_intents (
   idempotency_key TEXT NOT NULL CHECK(length(idempotency_key)=64),
   state TEXT NOT NULL DEFAULT 'ready' CHECK(state IN ('ready','sending','pending','delivered','dead')),
   sequence INTEGER NOT NULL DEFAULT 0 CHECK(sequence>=0),
+  generation INTEGER NOT NULL DEFAULT 0 CHECK(generation>=0),
+  replay_token TEXT,
   lease_token TEXT,
   lease_until INTEGER,
   queued_at INTEGER,
@@ -37,11 +39,14 @@ CREATE INDEX webhook_delivery_recent ON webhook_delivery_intents(subscription_id
 -- statement-breakpoint
 CREATE INDEX webhook_delivery_ready ON webhook_delivery_intents(state,queued_at,created_at,subscription_id,event_id);
 -- statement-breakpoint
+CREATE INDEX webhook_delivery_recovery ON webhook_delivery_intents(updated_at,subscription_id,event_id)
+WHERE state IN ('pending','sending','ready') AND queued_at IS NOT NULL;
+-- statement-breakpoint
 CREATE INDEX webhook_delivery_expiry ON webhook_delivery_intents(expires_at,subscription_id,event_id);
 -- statement-breakpoint
 CREATE TRIGGER webhook_delivery_intent_identity BEFORE UPDATE ON webhook_delivery_intents
 WHEN NEW.subscription_id IS NOT OLD.subscription_id OR NEW.event_id IS NOT OLD.event_id OR NEW.idempotency_key IS NOT OLD.idempotency_key OR NEW.created_at IS NOT OLD.created_at
- OR (OLD.state='delivered' AND (NEW.state IS NOT OLD.state OR NEW.sequence IS NOT OLD.sequence OR NEW.reason IS NOT OLD.reason OR NEW.status_code IS NOT OLD.status_code OR NEW.last_attempt_at IS NOT OLD.last_attempt_at))
+ OR (OLD.state='delivered' AND (NEW.generation IS NOT OLD.generation OR NEW.replay_token IS NOT OLD.replay_token OR NEW.state IS NOT OLD.state OR NEW.sequence IS NOT OLD.sequence OR NEW.reason IS NOT OLD.reason OR NEW.status_code IS NOT OLD.status_code OR NEW.last_attempt_at IS NOT OLD.last_attempt_at))
 BEGIN SELECT RAISE(ABORT,'Webhook delivery identity/success is immutable'); END;
 -- statement-breakpoint
 CREATE TABLE webhook_delivery_attempts (
@@ -50,6 +55,7 @@ CREATE TABLE webhook_delivery_attempts (
   sequence INTEGER NOT NULL CHECK(sequence>0),
   token TEXT NOT NULL UNIQUE,
   target_url TEXT NOT NULL,
+  generation INTEGER NOT NULL CHECK(generation>=0),
   round INTEGER NOT NULL CHECK(round>0),
   started_at INTEGER NOT NULL CHECK(started_at>0),
   finished_at INTEGER,
@@ -62,7 +68,7 @@ CREATE TABLE webhook_delivery_attempts (
 ) WITHOUT ROWID;
 -- statement-breakpoint
 CREATE TRIGGER webhook_delivery_attempt_identity BEFORE UPDATE ON webhook_delivery_attempts
-WHEN NEW.subscription_id IS NOT OLD.subscription_id OR NEW.event_id IS NOT OLD.event_id OR NEW.sequence IS NOT OLD.sequence OR NEW.token IS NOT OLD.token OR NEW.target_url IS NOT OLD.target_url OR NEW.round IS NOT OLD.round OR NEW.started_at IS NOT OLD.started_at
+WHEN NEW.subscription_id IS NOT OLD.subscription_id OR NEW.event_id IS NOT OLD.event_id OR NEW.sequence IS NOT OLD.sequence OR NEW.token IS NOT OLD.token OR NEW.target_url IS NOT OLD.target_url OR NEW.generation IS NOT OLD.generation OR NEW.round IS NOT OLD.round OR NEW.started_at IS NOT OLD.started_at
  OR (OLD.outcome IN ('delivered','failed','skipped') AND (NEW.outcome IS NOT OLD.outcome OR NEW.finished_at IS NOT OLD.finished_at OR NEW.reason IS NOT OLD.reason OR NEW.status_code IS NOT OLD.status_code))
 BEGIN SELECT RAISE(ABORT,'Webhook attempt identity/outcome is immutable'); END;
 

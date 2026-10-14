@@ -847,7 +847,12 @@ export function summarizeDeliveryRecords(
     if (
       record.state !== "delivered" &&
       (!latest ||
-        (record.last_attempt_at as string) > (latest.last_attempt_at as string))
+        (typeof record.last_attempt_at === "string"
+          ? record.last_attempt_at
+          : "") >
+          (typeof latest.last_attempt_at === "string"
+            ? latest.last_attempt_at
+            : ""))
     ) {
       latest = record;
     }

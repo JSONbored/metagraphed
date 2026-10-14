@@ -553,6 +553,7 @@ import {
   webhookDeliveryDisposition,
   webhookRetryDelaySeconds,
   WEBHOOK_QUEUE_MAX_ATTEMPTS,
+  webhookMessageFitsQueue,
 } from "../src/webhook-queue.ts";
 import { buildSearchResolve } from "../src/identifier-resolver.ts";
 import {
@@ -1797,7 +1798,7 @@ export default {
               message.retry({ delaySeconds: 60 });
               continue;
             }
-            if (result.state === "delivered") {
+            if (result.state === "delivered" || result.state === "stale") {
               message.ack();
               continue;
             }
@@ -1940,15 +1941,25 @@ async function fanOutChangeEvent(
 
   const ledger = webhookLedgerForEnv(env);
   if (!ledger) throw new Error("Native webhook delivery ledger is unbound");
+  // Persist the complete selected recipient set before any queue-send failure
+  // can interrupt fanout. A later changelog may replace this event entirely.
   await mapBounded(messages, WEBHOOK_DELIVERY_CONCURRENCY, async (message) => {
     await ledger.ensure(message, Date.now());
-    await env.WEBHOOK_DELIVERIES!.send(message);
-    await ledger.enqueued(
-      message.subscription_id,
-      message.event_id,
-      Date.now(),
-    );
   });
+  let sendFailure: unknown;
+  await mapBounded(messages, WEBHOOK_DELIVERY_CONCURRENCY, async (message) => {
+    try {
+      await env.WEBHOOK_DELIVERIES!.send(message);
+      await ledger.enqueued(
+        message.subscription_id,
+        message.event_id,
+        Date.now(),
+      );
+    } catch (error) {
+      sendFailure ??= error;
+    }
+  });
+  if (sendFailure) throw sendFailure;
   return {
     eventId,
     subscriptions: subscriptions.length,
@@ -2007,9 +2018,23 @@ export async function dispatchWebhooksFromChangelog(
   const ledger = webhookLedgerForEnv(env);
   if (!ledger) throw new Error("Native webhook delivery ledger is unbound");
   for (const owed of await ledger.outbox(Date.now())) {
-    await env.WEBHOOK_DELIVERIES.send(owed);
-    await ledger.enqueued(owed.subscription_id, owed.event_id, Date.now());
+    if (!webhookMessageFitsQueue(owed)) {
+      await ledger.deadLetter(owed, Date.now(), "queue-envelope-oversize");
+      continue;
+    }
+    try {
+      await env.WEBHOOK_DELIVERIES.send(owed);
+      await ledger.enqueued(
+        owed.subscription_id,
+        owed.event_id,
+        Date.now(),
+        owed.generation ?? 0,
+      );
+    } catch {
+      /* Original intent remains owed; other deliveries still progress. */
+    }
   }
+  await ledger.recoverExpired(Date.now());
   await ledger.prune(Date.now());
   const event = await loadEvent(env);
 
@@ -2221,6 +2246,9 @@ export async function handleWebhookQueue(
           subscription_id: body.subscription_id,
           event_id: body.event_id,
           body: body.body,
+          ...(body.generation !== undefined
+            ? { generation: body.generation }
+            : {}),
         },
         String(subscription.url ?? ""),
         message.attempts,
@@ -2232,9 +2260,13 @@ export async function handleWebhookQueue(
       return;
     }
     if (claim.kind !== "claimed") {
-      if (claim.kind === "busy")
-        message.retry({ delaySeconds: retryDelaySeconds });
-      else message.ack();
+      if (claim.kind === "busy") {
+        const due = Date.parse(String(claim.record.next_attempt_at ?? ""));
+        const delay = Number.isFinite(due)
+          ? Math.max(1, Math.min(43200, Math.ceil((due - Date.now()) / 1000)))
+          : retryDelaySeconds;
+        message.retry({ delaySeconds: delay });
+      } else message.ack();
       return;
     }
     let result: Record<string, unknown>;
