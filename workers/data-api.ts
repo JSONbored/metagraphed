@@ -2628,7 +2628,10 @@ async function handleNominatorPositionsSync(
     return writeJson({ error: "body must be JSON" }, 400);
   }
   if (parsed?.alpha_snapshot_resume !== undefined) {
-    if (parsed.alpha_snapshot_resume !== true || Object.keys(parsed).length !== 1)
+    if (
+      parsed.alpha_snapshot_resume !== true ||
+      Object.keys(parsed).length !== 1
+    )
       return writeJson({ error: "invalid Alpha resume request" }, 400);
     if (
       !env.D1_STATE ||
@@ -2637,7 +2640,10 @@ async function handleNominatorPositionsSync(
         .map((v) => v.trim())
         .includes("nominator_positions")
     )
-      return writeJson({ error: "Alpha resume requires its native owner" }, 503);
+      return writeJson(
+        { error: "Alpha resume requires its native owner" },
+        503,
+      );
     try {
       return writeJson(await readAlphaSnapshotResumeD1(env.D1_STATE));
     } catch (error) {
