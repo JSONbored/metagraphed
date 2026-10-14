@@ -1,3 +1,4 @@
+import { loadValidatorDetailBatchTier } from "../../src/validator-detail-batch-tier.ts";
 // Analytics handlers extracted from workers/api.ts (#1763, continuation).
 // Trajectory, uptime, leaderboards, and compare share the registry-projection
 // + schema-stable-empty-payload pattern. D1 fully eliminated (2026-07-17):
@@ -59,11 +60,7 @@ import {
   parseCompareHotkeys,
   parseCompareNetuids,
 } from "../../src/analytics-live.ts";
-import {
-  buildValidatorDetail,
-  NO_ALPHA_PRICES,
-  composeValidatorComparison,
-} from "../../src/metagraph-neurons.ts";
+import { composeValidatorComparison } from "../../src/metagraph-neurons.ts";
 import {
   formatLeaderboards,
   formatTrajectory,
@@ -1064,17 +1061,6 @@ export async function handleDomainSummary(
   );
 }
 
-// A per-hotkey internal request pointed at /api/v1/validators/{hotkey},
-// synthesized from the incoming /api/v1/compare/validators request the same
-// way handleCompare's own health branch above builds its internal request --
-// tryDataApiTier just forwards whatever Request it's given.
-function validatorDetailRequest(request: Request, hotkey: string): Request {
-  const pgUrl = new URL(request.url);
-  pgUrl.pathname = `/api/v1/validators/${encodeURIComponent(hotkey)}`;
-  pgUrl.search = "";
-  return new Request(pgUrl);
-}
-
 // GET /api/v1/compare/validators?hotkeys=...&netuid= (#6325): place several
 // validators side by side for a stake/delegate decision, mirroring the
 // compare_validators MCP tool one-for-one -- same hotkey-list contract
@@ -1102,29 +1088,14 @@ export async function handleCompareValidators(
 
   const { netuid: requestedNetuid = null } = routeQuery(url);
 
-  // Sequential, not parallel -- matches compare_validators' own fan-out
-  // pattern exactly (N individual get_validator_detail-shaped loads), rather
-  // than diverging into a REST-only concurrency strategy.
-  const details: Array<ReturnType<typeof buildValidatorDetail>> = [];
+  const details = await loadValidatorDetailBatchTier(env, hotkeys, request.url);
   let latestCapturedAt: unknown = null;
-  for (const hotkey of hotkeys) {
-    const detail =
-      ((await tryDataApiTier(
-        env,
-        validatorDetailRequest(request, hotkey),
-        "METAGRAPH_NEURONS_SOURCE",
-      )) as ReturnType<typeof buildValidatorDetail> | null) ??
-      buildValidatorDetail([], hotkey, {
-        priceByNetuid: NO_ALPHA_PRICES,
-      });
-    details.push(detail);
+  for (const detail of details)
     if (
       detail.captured_at &&
       (latestCapturedAt == null || detail.captured_at > latestCapturedAt)
-    ) {
+    )
       latestCapturedAt = detail.captured_at;
-    }
-  }
 
   const data = composeValidatorComparison(details, {
     netuid: requestedNetuid,

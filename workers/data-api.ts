@@ -1,3 +1,7 @@
+import {
+  parseCompareHotkeys,
+  COMPARE_VALIDATORS_MAX,
+} from "../src/analytics-live.ts";
 import { withRequestCounters } from "../src/request-counters.ts";
 // metagraphed data Worker — store-backed serving, kept SEPARATE from the main
 // api.ts Worker (which is near its bundle budget); the main Worker routes the
@@ -6822,19 +6826,23 @@ async function loadNominatorCountsFromStore(
 // absence from a stale one stays null.
 async function loadNominatorCountFromStore(
   sql: PgSql,
-  hotkey: string,
+  hotkeys: readonly string[],
   env: DataApiEnv,
-): Promise<number | null> {
+): Promise<Map<string, number>> {
   try {
     const rows = await sql.unsafe<{
       hotkey: ValidatorNominatorCounts["hotkey"];
       nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
       scan_at: ValidatorNominatorCounts["captured_at"] | null;
     }>(
-      "SELECT ? AS hotkey," +
-        " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
-        " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at",
-      [hotkey, hotkey],
+      hotkeys.length === 1
+        ? "SELECT ? AS hotkey," +
+            " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
+            " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
+        : `WITH requested AS (${hotkeys.map(() => "SELECT ? AS hotkey").join(" UNION ALL ")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
+          SELECT r.hotkey,c.nominator_count,scan.scan_at FROM requested r CROSS JOIN scan
+          LEFT JOIN validator_nominator_counts c ON c.hotkey=r.hotkey`,
+      hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],
     );
     const counts = fillConfirmedZeros(
       rows,
@@ -6842,7 +6850,7 @@ async function loadNominatorCountFromStore(
       Date.now(),
       VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
     );
-    return counts.get(hotkey) ?? null;
+    return counts;
   } catch (err) {
     console.error("validator_nominator_counts detail query failed:", err);
     await captureDataApiError(
@@ -6850,8 +6858,78 @@ async function loadNominatorCountFromStore(
       "validator-nominator-count-detail-query",
       env,
     );
-    return null;
+    return new Map();
   }
+}
+
+/** The compound MCP card shares one accepted population and preserves each
+ * standalone builder's full-population/validator-only scope. */
+export async function loadSubnetSnapshotCards(
+  sql: PgSql,
+  env: DataApiEnv,
+  netuid: number,
+) {
+  const rows = await readSubnetNeuronRows(sql, env, netuid);
+  const native = Boolean(selectedD1Store(env, ["neurons"]));
+  const validators = rows
+    .filter((r) => r.validator_permit === true || r.validator_permit === 1)
+    .sort((a, b) => {
+      if (a.stake_tao == null || b.stake_tao == null) {
+        if (a.stake_tao !== b.stake_tao)
+          return a.stake_tao == null ? (native ? 1 : -1) : native ? -1 : 1;
+      } else {
+        const delta = Number(b.stake_tao) - Number(a.stake_tao);
+        if (delta) return delta;
+      }
+      return Number(a.uid) - Number(b.uid);
+    });
+  return {
+    concentration: buildConcentration(rows, netuid),
+    performance: buildSubnetPerformance(rows, netuid),
+    validators: buildSubnetValidators(validators, netuid, {
+      featuredHotkeys: FEATURED_HOTKEY_SET,
+    }),
+  };
+}
+
+/** Five reads regardless of compared-key count: one bounded neuron query and
+ * one read each for prices, counts, tempos and identities. Builders retain the
+ * exact single-detail formatting and per-key ordering. */
+export async function loadValidatorDetailsFromStore(
+  sql: PgSql,
+  env: DataApiEnv,
+  hotkeys: readonly string[],
+) {
+  if (hotkeys.length < 1 || hotkeys.length > COMPARE_VALIDATORS_MAX)
+    throw new RangeError("Validator detail batch exceeds its public bound");
+  const unique = [...new Set(hotkeys)];
+  const [rows, priceByNetuid, nominatorCounts, tempos, identityByColdkey] =
+    await Promise.all([
+      sql.unsafe<NeuronColumnsRow>(
+        unique.length === 1
+          ? `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`
+          : `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey IN (${unique.map(() => "?").join(",")}) AND validator_permit = TRUE ORDER BY hotkey ASC, netuid ASC, uid ASC`,
+        unique,
+      ),
+      loadStoreAlphaPricesByNetuid(sql, env),
+      loadNominatorCountFromStore(sql, unique, env),
+      loadSubnetTemposFromStore(sql, env),
+      loadIdentityByColdkeyMap((text, params) =>
+        sql.unsafe<AccountIdentityStoreRow>(text, params),
+      ),
+    ]);
+  return hotkeys.map((hotkey) =>
+    buildValidatorDetail(
+      unique.length === 1 ? rows : rows.filter((row) => row.hotkey === hotkey),
+      hotkey,
+      {
+        identityByColdkey,
+        priceByNetuid,
+        nominatorCount: nominatorCounts.get(hotkey) ?? null,
+        tempoByNetuid: tempos,
+      },
+    ),
+  );
 }
 
 // Pure matcher: resolves a pathname to its D1 route handler (or null for
@@ -7524,35 +7602,38 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     };
   }
 
-  // GET /api/v1/validators/:hotkey
+  if (url.pathname === "/api/v1/internal/validator-details") {
+    const hotkeys = parseCompareHotkeys(url.searchParams.get("hotkeys"));
+    if (!hotkeys)
+      return async () =>
+        json({ error: "Invalid bounded validator hotkey list" }, 400);
+    return async (sql, env) =>
+      json({ details: await loadValidatorDetailsFromStore(sql, env, hotkeys) });
+  }
+
+  // Single and comparison reads share their producer/store formatting owner.
   const validatorDetail = url.pathname.match(
     /^\/api\/v1\/validators\/([^/]+)$/,
   );
-  if (validatorDetail) {
-    return async (sql, env) => {
-      const hotkey = decodeURIComponent(validatorDetail[1]);
-      const [rows, priceByNetuid, nominatorCount, tempos, identityByColdkey] =
-        await Promise.all([
-          sql.unsafe<NeuronColumnsRow>(
-            `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
-            [hotkey],
-          ),
-          loadStoreAlphaPricesByNetuid(sql, env),
-          loadNominatorCountFromStore(sql, hotkey, env),
-          loadSubnetTemposFromStore(sql, env),
-          loadIdentityByColdkeyMap((s, p) =>
-            sql.unsafe<AccountIdentityStoreRow>(s, p),
-          ),
-        ]);
-      return json(
-        buildValidatorDetail(rows, hotkey, {
-          identityByColdkey,
-          priceByNetuid,
-          nominatorCount,
-          tempoByNetuid: tempos,
-        }),
+  if (validatorDetail)
+    return async (sql, env) =>
+      json(
+        (
+          await loadValidatorDetailsFromStore(sql, env, [
+            decodeURIComponent(validatorDetail[1]),
+          ])
+        )[0],
       );
-    };
+
+  const snapshotCards = url.pathname.match(
+    /^\/api\/v1\/internal\/subnets\/(\d+)\/snapshot-cards$/,
+  );
+  if (snapshotCards) {
+    const netuid = Number(snapshotCards[1]);
+    if (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535)
+      return async () => json({ error: "invalid subnet" }, 400);
+    return async (sql, env) =>
+      json(await loadSubnetSnapshotCards(sql, env, netuid));
   }
 
   // GET /api/v1/subnets/:netuid/concentration/history -- before the plain
