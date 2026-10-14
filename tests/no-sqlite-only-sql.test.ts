@@ -166,6 +166,9 @@ describe("store-neutral SQL", () => {
           // cannot enter the full-snapshot path. Actual D1 receipt tests cover
           // owner isolation, atomic retirement and delayed replay.
           "src/self-stake-snapshot-d1.ts",
+          // Explicit D1 binding only. Full fanout admission is an atomic native
+          // transaction and native tests cover committed-but-lost readbacks.
+          "src/webhook-ledger-d1.ts",
           "src/registry-sync-d1.ts",
           // The caller requires explicit api_usage_rollup D1 ownership;
           // native receipt tests cover rollback and committed-reply replay.

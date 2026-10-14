@@ -2,11 +2,15 @@ import type { D1StoreBinding } from "./d1-store.ts";
 import { sha256Hex } from "./sha256-hex.ts";
 import {
   deliveryRecordFor,
+  mapBounded,
   webhookEventId,
   webhookIdempotencyKey,
   WEBHOOK_DELIVERY_TTL_SECONDS,
 } from "./webhooks.ts";
-import type { WebhookDeliveryMessage } from "./webhook-queue.ts";
+import {
+  validWebhookDeliveryMessage,
+  type WebhookDeliveryMessage,
+} from "./webhook-queue.ts";
 
 type Row = Record<string, unknown>;
 interface Intent {
@@ -423,6 +427,93 @@ export function webhookLedgerD1(db: D1StoreBinding) {
   };
   return {
     ensure,
+    /** Admit the complete selected KV page in one native transaction. There
+     * is no partially committed recipient cursor to lose on a reply failure. */
+    async ensureFanout(messages: WebhookDeliveryMessage[], now: number) {
+      time(now);
+      if (messages.length > 1000)
+        throw new Error("Webhook fanout exceeds the selected KV page budget");
+      if (!messages.length) return;
+      const event = messages[0];
+      if (
+        !validWebhookDeliveryMessage(event) ||
+        new TextEncoder().encode(event.body).byteLength > 131072 ||
+        (await webhookEventId(event.body)) !== event.event_id
+      )
+        throw new Error("Webhook fanout event identity differs");
+      const seen = new Set<string>();
+      for (const message of messages) {
+        if (
+          message.body !== event.body ||
+          message.event_id !== event.event_id ||
+          typeof message.subscription_id !== "string" ||
+          !message.subscription_id ||
+          message.subscription_id.length > 128 ||
+          seen.has(message.subscription_id) ||
+          (message.generation ?? 0) !== 0
+        )
+          throw new Error("Webhook fanout recipient identity differs");
+        seen.add(message.subscription_id);
+      }
+      const digest = await sha256Hex(event.body);
+      const recipients = await mapBounded(messages, 6, async (message) => ({
+        id: message.subscription_id,
+        key: await webhookIdempotencyKey(message.subscription_id, event.body),
+      }));
+      const encoded = JSON.stringify(recipients);
+      await db.batch([
+        db
+          .prepare(
+            "INSERT INTO webhook_delivery_events(event_id,payload_sha256,body,created_at,expires_at) VALUES(?,?,?,?,?) ON CONFLICT(event_id) DO NOTHING",
+          )
+          .bind(event.event_id, digest, event.body, now, now + TTL),
+        db
+          .prepare(
+            "INSERT INTO webhook_delivery_intents(subscription_id,event_id,idempotency_key,created_at,updated_at,expires_at) SELECT json_extract(r.value,'$.id'),?,json_extract(r.value,'$.key'),?,?,? FROM json_each(?) r WHERE EXISTS(SELECT 1 FROM webhook_delivery_events WHERE event_id=? AND payload_sha256=? AND body=?) ON CONFLICT(subscription_id,event_id) DO NOTHING",
+          )
+          .bind(
+            event.event_id,
+            now,
+            now,
+            now + TTL,
+            encoded,
+            event.event_id,
+            digest,
+            event.body,
+          ),
+        db
+          .prepare(
+            "UPDATE webhook_delivery_intents SET updated_at=MAX(updated_at,?),expires_at=MAX(expires_at,?) WHERE event_id=? AND subscription_id IN (SELECT json_extract(value,'$.id') FROM json_each(?))",
+          )
+          .bind(now, now + TTL, event.event_id, encoded),
+        db
+          .prepare(
+            "UPDATE webhook_delivery_events SET expires_at=MAX(expires_at,?) WHERE event_id=?",
+          )
+          .bind(now + TTL, event.event_id),
+      ]);
+      const original = await db
+        .prepare(
+          "SELECT payload_sha256,body FROM webhook_delivery_events WHERE event_id=?",
+        )
+        .bind(event.event_id)
+        .first<{ payload_sha256: string; body: string }>();
+      const saved = await db
+        .prepare(
+          "SELECT subscription_id,idempotency_key FROM webhook_delivery_intents WHERE event_id=? AND subscription_id IN (SELECT json_extract(value,'$.id') FROM json_each(?))",
+        )
+        .bind(event.event_id, encoded)
+        .all<{ subscription_id: string; idempotency_key: string }>();
+      const identities = new Map(
+        saved.results.map((r) => [r.subscription_id, r.idempotency_key]),
+      );
+      if (
+        original?.payload_sha256 !== digest ||
+        original.body !== event.body ||
+        recipients.some((r) => identities.get(r.id) !== r.key)
+      )
+        throw new Error("Webhook complete fanout was not durably acknowledged");
+    },
     claim,
     finish,
     /** Called only by an authenticated operator replay action, never by queue

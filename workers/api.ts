@@ -1943,9 +1943,7 @@ async function fanOutChangeEvent(
   if (!ledger) throw new Error("Native webhook delivery ledger is unbound");
   // Persist the complete selected recipient set before any queue-send failure
   // can interrupt fanout. A later changelog may replace this event entirely.
-  await mapBounded(messages, WEBHOOK_DELIVERY_CONCURRENCY, async (message) => {
-    await ledger.ensure(message, Date.now());
-  });
+  await ledger.ensureFanout(messages, Date.now());
   let sendFailure: unknown;
   await mapBounded(messages, WEBHOOK_DELIVERY_CONCURRENCY, async (message) => {
     try {

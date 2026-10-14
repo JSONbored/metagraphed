@@ -640,3 +640,81 @@ test("declared DLQ retry policy survives a first native finalization outage with
   assert(acked);
   assert.equal((await f.ledger.recent(f.id, Date.now()))[0].state, "dead");
 });
+
+test("committed admission with lost verification still preserves all seven recipients after changelog advances", async () => {
+  const f = await setup();
+  for (let n = 1; n < 7; n++)
+    f.values.set(`webhooks:sub:subscriber-${n}`, {
+      id: `subscriber-${n}`,
+      url: "https://hooks.example.com/event",
+      filters: {},
+    });
+  let loseReply = true;
+  const db = {
+    batch: f.db.batch.bind(f.db),
+    prepare(sql: string) {
+      const statement = f.db.prepare(sql);
+      if (sql.startsWith("SELECT payload_sha256,body")) {
+        const bind = statement.bind.bind(statement);
+        return {
+          ...statement,
+          bind(...args: unknown[]) {
+            const bound = bind(...args);
+            return {
+              ...bound,
+              async first() {
+                if (loseReply)
+                  throw new Error("committed admission; readback unavailable");
+                return bound.first();
+              },
+            };
+          },
+        };
+      }
+      return statement;
+    },
+  } as unknown as D1StoreBinding;
+  const sent: Row[] = [];
+  const env = {
+    ...f.env,
+    D1_STATE: db,
+    WEBHOOK_DELIVERIES: {
+      async send(message: Row) {
+        sent.push(message);
+      },
+    },
+  };
+  const eventA = { type: "metagraph.publish", changes: { subnets: [17] } },
+    eventB = { type: "metagraph.publish", changes: { subnets: [18] } };
+  await assert.rejects(
+    dispatchWebhooksFromChangelog(env as unknown as Env, async () => eventA),
+  );
+  const id = webhookMessage(f.id, eventA).event_id;
+  const admitted = await f.db
+    .prepare(
+      "SELECT subscription_id FROM webhook_delivery_intents WHERE event_id=?",
+    )
+    .bind(id)
+    .all();
+  assert.equal(
+    admitted.results.length,
+    7,
+    "atomic admission has no unvisited seventh recipient",
+  );
+  assert.equal(sent.length, 0);
+  loseReply = false;
+  await dispatchWebhooksFromChangelog(
+    env as unknown as Env,
+    async () => eventB,
+  );
+  await dispatchWebhooksFromChangelog(
+    env as unknown as Env,
+    async () => eventB,
+  );
+  assert.equal(
+    new Set(sent.filter((m) => m.event_id === id).map((m) => m.subscription_id))
+      .size,
+    7,
+    "every original obligation survives a replaced changelog",
+  );
+});

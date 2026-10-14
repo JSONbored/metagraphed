@@ -28,8 +28,9 @@ status. No new write fallback is introduced.
 Initial enqueue failure leaves reconstructable original bytes. The existing
 webhook dispatcher recovers at most four unqueued ready intents per tick before
 its usual change-feed dispatch. It does not schedule business retries beside
-the queue. Every selected recipient's intent is persisted before queue sends
-begin. Serialized UTF-8 envelope size is checked, including multibyte payloads;
+the queue. Every selected recipient's intent is admitted in one native transaction
+before queue sends begin. A committed-but-lost verification reply retains the
+whole recipient set, rather than a prefix or an in-memory admission cursor. Serialized UTF-8 envelope size is checked, including multibyte payloads;
 an existing unsendable outbox item becomes durably terminal without blocking
 other owed or new events. Payloads, outcomes and deduplication evidence retain the existing
 180-day status horizon, refreshed by activity. Bounded cleanup removes at most
