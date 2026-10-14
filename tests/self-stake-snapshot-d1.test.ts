@@ -68,7 +68,7 @@ beforeAll(async () => {
   db = await runtime.getD1Database("DB");
   for (const file of [
     "0010_ledger_state.sql",
-    "0039_self_stake_snapshot_receipts.sql",
+    "0040_self_stake_snapshot_receipts.sql",
   ])
     for (const sql of readFileSync(
       new URL("../migrations/d1/" + file, import.meta.url),
@@ -107,7 +107,7 @@ test("a populated0039 receipt survives0042 and exact lost-ack replay without inv
           if (sql.trim()) await upgraded.prepare(sql).run();
       };
       await apply("0010_ledger_state.sql");
-      await apply("0039_self_stake_snapshot_receipts.sql");
+      await apply("0040_self_stake_snapshot_receipts.sql");
       const native = createD1Store(upgraded);
       const context = snapshot(0, complete ? 1 : 2, complete ? 1 : 2);
       const original = await writeSelfStakeSnapshotD1(
@@ -117,7 +117,7 @@ test("a populated0039 receipt survives0042 and exact lost-ack replay without inv
         stamp + 20,
       );
       assert.equal(original.snapshot.complete, complete);
-      await apply("0042_alpha_runtime_snapshots.sql");
+      await apply("0043_alpha_runtime_snapshots.sql");
       const before = await upgraded
         .prepare("SELECT * FROM self_stake_snapshot_chunks")
         .first();

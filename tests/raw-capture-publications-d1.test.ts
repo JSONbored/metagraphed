@@ -33,7 +33,7 @@ beforeAll(async () => {
       "CREATE TABLE raw_capture_state(network TEXT PRIMARY KEY NOT NULL,last_contiguous_block INTEGER NOT NULL,updated_at INTEGER NOT NULL,stopped_at INTEGER,last_error TEXT)",
     )
     .run();
-  await apply("0040_raw_capture_finality.sql");
+  await apply("0041_raw_capture_finality.sql");
 });
 afterAll(() => runtime.dispose());
 afterEach(() => {
