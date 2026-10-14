@@ -162,6 +162,10 @@ describe("store-neutral SQL", () => {
           "src/observations-d1.ts",
           "src/capture-family-d1.ts",
           "src/ledger-d1.ts",
+          // Selected D1 ownership is mandatory; partial/legacy Neon callers
+          // cannot enter the full-snapshot path. Actual D1 receipt tests cover
+          // owner isolation, atomic retirement and delayed replay.
+          "src/self-stake-snapshot-d1.ts",
           "src/registry-sync-d1.ts",
           // The caller requires explicit api_usage_rollup D1 ownership;
           // native receipt tests cover rollback and committed-reply replay.
