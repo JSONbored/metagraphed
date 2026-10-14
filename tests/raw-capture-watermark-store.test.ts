@@ -43,12 +43,10 @@ describe("neonWatermark", () => {
     assert.equal(await store.read(), null);
   });
 
-  // The write half cannot land against an unresolvable connection string
-  // either. What matters is that it does not THROW: runLane converts a failure
-  // into that lane's result, and a throw from the watermark would take the
-  // whole tick down rather than one lane's report.
-  test("a write that cannot reach the store does not throw", async () => {
+  // runLane catches independently per network. The adapter must propagate the
+  // failed write verdict so a tick cannot claim a frontier that never landed.
+  test("a write that cannot reach the store refuses acknowledgment", async () => {
     const store = neonWatermark(NEON_ENV, waitUntil, "finney", () => NOW);
-    await store.write(43);
+    await assert.rejects(store.write(43), /write was not acknowledged/);
   });
 });
