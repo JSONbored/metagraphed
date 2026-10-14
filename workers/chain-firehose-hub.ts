@@ -956,6 +956,9 @@ export class ChainFirehoseHub implements DurableObject {
   // name, not a live handle this class holds onto).
   latestPayload: ChainFirehoseIngestPayload | null;
   mcpSubscribedSessions: Set<string>;
+  mcpMembershipHydration?: Promise<void>;
+  mcpMembershipWrites: Promise<void> = Promise.resolve();
+  mcpMembershipUnavailableReported = false;
   graphqlWsServer: GraphqlWsServer<ChainEventsGraphqlWsExtra>;
   // #8364: the SSE Last-Event-ID resume buffer. nextSseEventId is the id the
   // NEXT recorded event will receive (so it also doubles as "one past the
@@ -1135,6 +1138,51 @@ export class ChainFirehoseHub implements DurableObject {
   // subscribes to metagraph://chain/stream, and on unsubscribe/termination.
   // Idempotent either way (Set semantics) -- a session double-subscribing or
   // unsubscribing something it never subscribed to is a harmless no-op.
+  async hydrateMcpSubscriptions(): Promise<void> {
+    if (!this.mcpMembershipHydration) {
+      this.mcpMembershipHydration = (async () => {
+        const stored = await this.state.storage.get("mcp:subscribed-sessions");
+        if (
+          stored !== undefined &&
+          (!Array.isArray(stored) ||
+            stored.some((id) => typeof id !== "string" || !id))
+        )
+          throw new Error("Invalid persisted MCP subscription membership");
+        if (Array.isArray(stored)) {
+          for (const id of stored) this.mcpSubscribedSessions.add(id);
+        }
+      })().catch((error) => {
+        this.mcpMembershipHydration = undefined;
+        throw error;
+      });
+    }
+    await this.mcpMembershipHydration;
+  }
+
+  async updateMcpSubscription(
+    sessionId: string,
+    subscribed: boolean,
+  ): Promise<void> {
+    const pending = this.mcpMembershipWrites.then(async () => {
+      await this.hydrateMcpSubscriptions();
+      const next = new Set(this.mcpSubscribedSessions);
+      if (subscribed) next.add(sessionId);
+      else next.delete(sessionId);
+      const value = [...next].sort();
+      if (
+        new TextEncoder().encode(JSON.stringify(value)).byteLength >
+        120 * 1024
+      )
+        throw new RangeError(
+          "MCP subscription membership exceeds storage budget",
+        );
+      await this.state.storage.put("mcp:subscribed-sessions", value);
+      this.mcpSubscribedSessions = next;
+    });
+    this.mcpMembershipWrites = pending.catch(() => {});
+    await pending;
+  }
+
   mcpSubscribeSession(sessionId: string) {
     this.mcpSubscribedSessions.add(sessionId);
   }
@@ -1207,7 +1255,7 @@ export class ChainFirehoseHub implements DurableObject {
         HubRequiredSessionIdBodySchema,
       );
       if (!body) return badRequest("sessionId is required");
-      this.mcpSubscribeSession(body.sessionId);
+      await this.updateMcpSubscription(body.sessionId, true);
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -1219,7 +1267,7 @@ export class ChainFirehoseHub implements DurableObject {
         HubRequiredSessionIdBodySchema,
       );
       if (!body) return badRequest("sessionId is required");
-      this.mcpUnsubscribeSession(body.sessionId);
+      await this.updateMcpSubscription(body.sessionId, false);
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -2009,7 +2057,22 @@ export class ChainFirehoseHub implements DurableObject {
     // loops above -- handleIngest returns 202 regardless, so this is a bounded
     // latency cost, not a correctness dependency. A session DO that's
     // unreachable/erroring here doesn't fail the ingest; see the try/catch.
-    if (this.mcpSubscribedSessions.size > 0 && this.env.MCP_SESSION_HUB) {
+    let mcpMembershipAvailable = true;
+    try {
+      await this.hydrateMcpSubscriptions();
+      this.mcpMembershipUnavailableReported = false;
+    } catch {
+      mcpMembershipAvailable = false;
+      if (!this.mcpMembershipUnavailableReported) {
+        this.emitTelemetry("mcp-membership-unavailable", false);
+        this.mcpMembershipUnavailableReported = true;
+      }
+    }
+    if (
+      mcpMembershipAvailable &&
+      this.mcpSubscribedSessions.size > 0 &&
+      this.env.MCP_SESSION_HUB
+    ) {
       await Promise.all(
         [...this.mcpSubscribedSessions].map(async (sessionId) => {
           try {

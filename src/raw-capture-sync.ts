@@ -375,8 +375,26 @@ export function neonWatermark(
   return {
     read: () => (read ? read() : Promise.resolve(null)),
     async write(value: number) {
-      await mirrorRawCaptureStateToNeon(env, waitUntil, network, value, now());
-      return undefined;
+      if (!read) throw new Error("Raw capture watermark store is unbound");
+      const outcome = await mirrorRawCaptureStateToNeon(
+        env,
+        waitUntil,
+        network,
+        value,
+        now(),
+      );
+      if (!outcome.result?.ok)
+        throw new Error("Raw capture watermark write was not acknowledged");
+      // A buffered submission or a statement that changed no row cannot
+      // establish the frontier. The existing indexed reader confirms it;
+      // a newer overlapping writer may already have advanced past this value.
+      const committed = await read();
+      if (
+        committed === null ||
+        !Number.isSafeInteger(committed) ||
+        committed < value
+      )
+        throw new Error("Raw capture watermark was not committed");
     },
   };
 }

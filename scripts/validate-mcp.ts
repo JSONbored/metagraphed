@@ -362,14 +362,27 @@ function fakeDoNamespace(makeInstance: (id: string) => DoStub) {
 // calls its factory lazily, by which point all bindings below are fully
 // initialized.
 const mcpSessionHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
-  () =>
-    new McpSessionHub(
-      { storage: keyedDoStorage(), waitUntil: detachedWaitUntil },
+  () => {
+    let pending = Promise.resolve();
+    return new McpSessionHub(
+      {
+        storage: keyedDoStorage(),
+        waitUntil: detachedWaitUntil,
+        blockConcurrencyWhile<T>(callback: () => Promise<T>): Promise<T> {
+          const work = pending.then(callback);
+          pending = work.then(
+            () => {},
+            () => {},
+          );
+          return work;
+        },
+      },
       apiEnv({
         CHAIN_FIREHOSE_HUB: chainFirehoseHubNS,
         SUBNET_STATUS_HUB: subnetStatusHubNS,
       }),
-    ),
+    );
+  },
 );
 const chainFirehoseHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
