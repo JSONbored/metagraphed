@@ -86,7 +86,7 @@ test("sixteen comparisons use five native SQL reads with single-detail parity an
   const keys = Array.from({ length: 16 }, (_, i) => `validator${15 - i}`);
   const f = counted();
   const batch = await loadValidatorDetailsFromStore(
-    createD1Sql(f.binding),
+    createD1Sql(createD1Store(f.binding)),
     env,
     keys,
   );
@@ -98,28 +98,43 @@ test("sixteen comparisons use five native SQL reads with single-detail parity an
   for (let i = 0; i < keys.length; i++)
     assert.deepEqual(
       batch[i],
-      (await loadValidatorDetailsFromStore(createD1Sql(db), env, [keys[i]]))[0],
+      (
+        await loadValidatorDetailsFromStore(
+          createD1Sql(createD1Store(db)),
+          env,
+          [keys[i]],
+        )
+      )[0],
     );
   assert.equal(batch.at(-1)?.nominator_count, 3);
   assert.equal(batch[1].nominator_count, 0);
-  const duplicates = await loadValidatorDetailsFromStore(createD1Sql(db), env, [
-    keys[0],
-    keys[0],
-  ]);
+  const duplicates = await loadValidatorDetailsFromStore(
+    createD1Sql(createD1Store(db)),
+    env,
+    [keys[0], keys[0]],
+  );
   assert.deepEqual(duplicates[0], duplicates[1]);
   await assert.rejects(
-    () => loadValidatorDetailsFromStore(createD1Sql(db), env, []),
+    () =>
+      loadValidatorDetailsFromStore(createD1Sql(createD1Store(db)), env, []),
     /bound/,
   );
   await assert.rejects(
     () =>
-      loadValidatorDetailsFromStore(createD1Sql(db), env, Array(17).fill("x")),
+      loadValidatorDetailsFromStore(
+        createD1Sql(createD1Store(db)),
+        env,
+        Array(17).fill("x"),
+      ),
     /bound/,
   );
   await db.prepare("UPDATE validator_nominator_counts SET captured_at=1").run();
   assert.equal(
-    (await loadValidatorDetailsFromStore(createD1Sql(db), env, ["missing"]))[0]
-      .nominator_count,
+    (
+      await loadValidatorDetailsFromStore(createD1Sql(createD1Store(db)), env, [
+        "missing",
+      ])
+    )[0].nominator_count,
     null,
   );
 });
@@ -127,7 +142,11 @@ test("sixteen comparisons use five native SQL reads with single-detail parity an
 test("compound cards read one accepted population and preserve standalone full/miner/validator scopes", async () => {
   const f = counted();
   const env = dataApiEnv({ D1_STATE: f.binding, D1_STATE_TABLES: "neurons" });
-  const cards = await loadSubnetSnapshotCards(createD1Sql(db), env, 7);
+  const cards = await loadSubnetSnapshotCards(
+    createD1Sql(createD1Store(db)),
+    env,
+    7,
+  );
   assert.equal(f.queries.length, 1);
   const rows = (
     await db
@@ -149,22 +168,41 @@ test("compound cards read one accepted population and preserve standalone full/m
       featuredHotkeys: FEATURED_HOTKEY_SET,
     }),
   );
+  const portable = await loadSubnetSnapshotCards(
+    createD1Sql(createD1Store(db)),
+    dataApiEnv({}),
+    7,
+  );
+  const pgOrder = (
+    await db
+      .prepare(
+        `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid=7 AND validator_permit=TRUE ORDER BY stake_tao DESC NULLS FIRST,uid ASC`,
+      )
+      .all<Row>()
+  ).results;
+  assert.deepEqual(
+    portable.validators,
+    buildSubnetValidators(pgOrder, 7, { featuredHotkeys: FEATURED_HOTKEY_SET }),
+  );
   assert.equal(cards.validators.validators.length, 15);
   assert.equal(cards.validators.validators[0].hotkey, "validator13");
-  assert.deepEqual(await loadSubnetSnapshotCards(createD1Sql(db), env, 999), {
-    concentration: buildConcentration([], 999),
-    performance: buildSubnetPerformance([], 999),
-    validators: buildSubnetValidators([], 999, {
-      featuredHotkeys: FEATURED_HOTKEY_SET,
-    }),
-  });
+  assert.deepEqual(
+    await loadSubnetSnapshotCards(createD1Sql(createD1Store(db)), env, 999),
+    {
+      concentration: buildConcentration([], 999),
+      performance: buildSubnetPerformance([], 999),
+      validators: buildSubnetValidators([], 999, {
+        featuredHotkeys: FEATURED_HOTKEY_SET,
+      }),
+    },
+  );
 });
 
 test("service batches cost one call while malformed/old owners preserve bounded per-card and per-key failures", async () => {
   const calls: string[] = [];
   let shared = true;
   const env = {
-    METAGRAPH_NEURONS_SOURCE: "postgres",
+    METAGRAPH_NEURONS_SOURCE: "data-api",
     DATA_API: {
       fetch: vi.fn(async (request: Request) => {
         const path = new URL(request.url).pathname;

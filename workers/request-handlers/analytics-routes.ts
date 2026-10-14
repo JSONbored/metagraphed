@@ -12,7 +12,6 @@ import { loadValidatorDetailBatchTier } from "../../src/validator-detail-batch-t
 // injected once at module-init so this file never imports api.ts back.
 
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
-import { tryDataApiTier } from "../data-api-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
 import { errorResponse } from "../http.ts";
 import { readArtifact } from "../storage.ts";
