@@ -359,7 +359,7 @@ test("dead-letter does not fence a live attempt, expiry records ambiguity, then 
     { message } = await claimed(f);
   assert.equal((await f.ledger.deadLetter(message, NOW + 1)).state, "sending");
   const r = await f.ledger.deadLetter(message, NOW + 60_001);
-  assert.equal(r.state, "dead");
+  assert.equal(r.state, "stale");
   assert.match(String(r.reason), /outcome-unknown/);
   assert.equal(
     (
@@ -369,21 +369,22 @@ test("dead-letter does not fence a live attempt, expiry records ambiguity, then 
     )?.outcome,
     "ambiguous",
   );
+  await f.ledger.recoverExpired(NOW + 33 * 86400000);
   const replay = await f.ledger.authorizeReplay(
     message,
     "operator-request",
-    NOW + 60_002,
+    NOW + 33 * 86400000 + 1,
   );
   assert.equal(
-    (await f.ledger.claim(message, URL, 1, NOW + 60_003)).kind,
+    (await f.ledger.claim(message, URL, 1, NOW + 33 * 86400000 + 2)).kind,
     "stale",
   );
   assert.equal(
-    (await f.ledger.deadLetter(message, NOW + 60_003)).state,
+    (await f.ledger.deadLetter(message, NOW + 33 * 86400000 + 2)).state,
     "stale",
   );
   assert.equal(
-    (await f.ledger.claim(replay, URL, 1, NOW + 60_003)).kind,
+    (await f.ledger.claim(replay, URL, 1, NOW + 33 * 86400000 + 2)).kind,
     "claimed",
   );
 });
@@ -638,5 +639,88 @@ test("native finalization recovers a dropped DLQ beyond both transport retention
   assert.equal(
     (await f.ledger.claim(message, URL, 1, NOW + 33 * 86400000)).kind,
     "dead",
+  );
+});
+
+test("representative native cleanup uses expiry/event indexes and reports bounded SQL work", async () => {
+  const f = await fixture();
+  await f.db
+    .prepare(
+      `WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<1100)
+    INSERT INTO webhook_delivery_events(event_id,payload_sha256,body,created_at,expires_at)
+    SELECT printf('%032x',x),?, '{}',1,2 FROM n`,
+    )
+    .bind("a".repeat(64))
+    .run();
+  await f.db
+    .prepare(
+      `INSERT INTO webhook_delivery_intents(subscription_id,event_id,idempotency_key,created_at,updated_at,expires_at)
+    SELECT 'subscriber',event_id,?,1,1,2 FROM webhook_delivery_events`,
+    )
+    .bind("b".repeat(64))
+    .run();
+  await f.db
+    .prepare(
+      `INSERT INTO webhook_delivery_attempts(subscription_id,event_id,sequence,token,target_url,generation,round,started_at,outcome)
+    SELECT subscription_id,event_id,1,event_id,'https://hooks.example.com',0,1,1,'ambiguous' FROM webhook_delivery_intents`,
+    )
+    .run();
+  const plan = (
+    await f.db
+      .prepare(
+        `EXPLAIN QUERY PLAN SELECT e.event_id FROM webhook_delivery_events e
+    WHERE e.expires_at<=? AND NOT EXISTS(SELECT 1 FROM webhook_delivery_intents i WHERE i.event_id=e.event_id)
+    ORDER BY e.expires_at,e.event_id LIMIT 1024`,
+      )
+      .bind(NOW)
+      .all()
+  ).results;
+  const details = plan.map((r) => String(r.detail)).join("\n");
+  assert.match(details, /webhook_delivery_event_expiry/);
+  assert.match(details, /webhook_delivery_intent_event/);
+  let measurements: unknown[] = [];
+  const measured = webhookLedgerD1({
+    prepare: f.db.prepare.bind(f.db),
+    async batch(statements) {
+      const result = await f.db.batch(statements);
+      measurements = result.map((r) => r.meta);
+      return result;
+    },
+  } as D1StoreBinding);
+  await measured.prune(NOW);
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT COUNT(*) AS n FROM webhook_delivery_intents")
+        .first()
+    )?.n,
+    76,
+  );
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT COUNT(*) AS n FROM webhook_delivery_attempts")
+        .first()
+    )?.n,
+    76,
+  );
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT COUNT(*) AS n FROM webhook_delivery_events")
+        .first()
+    )?.n,
+    76,
+  );
+  process.stdout.write(
+    JSON.stringify({
+      native_cleanup_fixture: {
+        initial_intents: 1100,
+        deleted_intents: 1024,
+        plan,
+        measurements,
+      },
+      production_capacity_proof: false,
+    }) + "\n",
   );
 });

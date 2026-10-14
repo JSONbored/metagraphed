@@ -639,6 +639,26 @@ export function webhookLedgerD1(db: D1StoreBinding) {
       const r = await ensure(message, now);
       if ((message.generation ?? 0) !== r.generation)
         return { ...record(r, now), state: "stale" };
+      // A duplicate transport can exhaust before another copy's logical
+      // retry. DLQ exhaustion is not ownership of that persisted retry.
+      if (
+        cause === "dead-letter" &&
+        (r.state === "pending" ||
+          (r.state === "ready" && r.queued_at !== null) ||
+          (r.state === "sending" && r.lease_until! <= now && r.round < 8))
+      ) {
+        if (r.state === "sending")
+          await db
+            .prepare(
+              "UPDATE webhook_delivery_attempts SET outcome='ambiguous',finished_at=?,ambiguous_at=COALESCE(ambiguous_at,?),reason='outcome-unknown' WHERE token=? AND outcome='sending'",
+            )
+            .bind(now, now, r.lease_token)
+            .run();
+        const current = await read(message.subscription_id, message.event_id);
+        if (!current)
+          throw new Error("Webhook transport exhaustion was not retained");
+        return { ...record(current, now), state: "stale" };
+      }
       if (
         r.state !== "delivered" &&
         !(r.state === "sending" && r.lease_until! > now)
@@ -686,7 +706,7 @@ export function webhookLedgerD1(db: D1StoreBinding) {
           .bind(now),
         db
           .prepare(
-            "DELETE FROM webhook_delivery_events WHERE event_id IN (SELECT e.event_id FROM webhook_delivery_events e WHERE e.expires_at<=? AND NOT EXISTS(SELECT 1 FROM webhook_delivery_intents i WHERE i.event_id=e.event_id) LIMIT 1024)",
+            "DELETE FROM webhook_delivery_events WHERE event_id IN (SELECT e.event_id FROM webhook_delivery_events e WHERE e.expires_at<=? AND NOT EXISTS(SELECT 1 FROM webhook_delivery_intents i WHERE i.event_id=e.event_id) ORDER BY e.expires_at,e.event_id LIMIT 1024)",
           )
           .bind(now),
       ]);

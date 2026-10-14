@@ -91,3 +91,14 @@ Status reconciles every included legacy event against native ownership, even
 outside the newest256 rows. An unresolved prior receiver effect remains
 `outcome-unknown` after a later no-request failure; later positive evidence
 resolves it. Never-attempted/null timestamps do not supersede real failures.
+
+Exhausting one duplicate transport is not authority to terminalize another
+copy's pending logical retry or a queued initial intent. DLQ handling preserves
+that native state and acknowledges the stale transport; expired in-flight
+attempts retain ambiguity. Only the native eighth effective round or the
+separate post-retention finalization fence may terminate such a retry. Failed
+subscription reads use the published delayed retry policy rather than an
+implicit immediate batch retry. Expiry and event-leading indexes support
+bounded cleanup and orphan checks; the deletion cap is not a production latency
+proof, and native representative query-plan/SQL-work measurements remain
+separate from actual D1 workload acceptance.

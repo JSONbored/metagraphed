@@ -2182,10 +2182,18 @@ export async function handleWebhookQueue(
       return;
     }
 
-    const subscription = (await env.METAGRAPH_CONTROL?.get(
-      subscriptionStorageKey(body.subscription_id),
-      { type: "json" },
-    )) as Record<string, unknown> | null;
+    let subscription: Record<string, unknown> | null;
+    try {
+      subscription = (await env.METAGRAPH_CONTROL?.get(
+        subscriptionStorageKey(body.subscription_id),
+        { type: "json" },
+      )) as Record<string, unknown> | null;
+    } catch {
+      message.retry({
+        delaySeconds: webhookRetryDelaySeconds(message.attempts),
+      });
+      return;
+    }
     // A deleted subscription is done, not failed: acking is how an unsubscribe
     // takes effect on a delivery already in flight.
     if (!subscription) {

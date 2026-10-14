@@ -718,3 +718,71 @@ test("committed admission with lost verification still preserves all seven recip
     "every original obligation survives a replaced changelog",
   );
 });
+
+test("exhausted duplicate transport cannot terminate another copy's pending logical retry", async () => {
+  const f = await setup(),
+    m = webhookMessage(f.id);
+  const start = Date.now();
+  const clock = vi.spyOn(Date, "now").mockReturnValue(start);
+  let effects = 0;
+  const fail = async () => {
+    effects++;
+    return {
+      status: "failed",
+      status_code: 503,
+      reason: "http-503",
+      retryable: true,
+    };
+  };
+  assert.deepEqual(await consume(f.env, m, fail), ["retry"]);
+  const failedRead = {
+    ...f.env,
+    METAGRAPH_CONTROL: {
+      ...f.kv,
+      async get(key: string) {
+        if (key.startsWith("webhooks:sub:"))
+          throw new Error("transient subscription read");
+        return f.kv.get(key);
+      },
+    },
+  };
+  for (let attempts = 1; attempts <= 8; attempts++)
+    assert.deepEqual(await consume(failedRead, m, fail, attempts), ["retry"]);
+  let acked = false;
+  await worker.queue!(
+    {
+      queue: "webhook-deliveries-dlq",
+      messages: [
+        {
+          body: m,
+          attempts: 1,
+          ack() {
+            acked = true;
+          },
+          retry() {
+            throw new Error("must not spin DLQ");
+          },
+        },
+      ],
+    } as never,
+    f.env as unknown as Env,
+    {} as never,
+  );
+  assert(acked);
+  assert.equal((await f.ledger.recent(f.id, start))[0].state, "pending");
+  clock.mockReturnValue(start + 300001);
+  assert.deepEqual(
+    await consume(
+      f.env,
+      m,
+      async () => {
+        effects++;
+        return { status: "delivered" };
+      },
+      2,
+    ),
+    ["ack"],
+  );
+  assert.equal(effects, 2);
+  assert.equal((await f.ledger.recent(f.id, Date.now()))[0].state, "delivered");
+});

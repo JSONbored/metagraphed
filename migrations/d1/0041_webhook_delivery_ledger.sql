@@ -74,3 +74,8 @@ BEGIN SELECT RAISE(ABORT,'Webhook attempt identity/outcome is immutable'); END;
 
 -- statement-breakpoint
 CREATE INDEX webhook_delivery_success ON webhook_delivery_attempts(subscription_id,event_id,sequence) WHERE outcome='delivered';
+
+-- statement-breakpoint
+CREATE INDEX webhook_delivery_event_expiry ON webhook_delivery_events(expires_at,event_id);
+-- statement-breakpoint
+CREATE INDEX webhook_delivery_intent_event ON webhook_delivery_intents(event_id,subscription_id);
