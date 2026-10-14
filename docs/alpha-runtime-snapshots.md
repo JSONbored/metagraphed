@@ -40,7 +40,7 @@ rao never pass through Number. A nonfinite display ratio is unavailable.
 Migration0042 adds two optional serving columns and native metadata/pass/chunk/
 staging tables in the current state owner. Original runtime metadata is stored
 once by SHA, sent only in the first chunk and not duplicated per pass. Whole
-coldkey chunks are2500rows maximum with an8MB serialized UTF-8 request ceiling.
+account-owner chunks are2500rows maximum with an8MB serialized UTF-8 request ceiling.
 The shared ordered context/original-component tuple hashes identically in the
 Rust producer and TypeScript receiver; the golden receipt exercises that wire
 contract. The private producer requires the exact receipt/census/completion,
