@@ -11,12 +11,17 @@ import { rawCaptureD1 } from "../../src/raw-capture-d1.ts";
 
 export async function nativeRawFixture(
   beforeFinality?: (db: D1Database) => Promise<void>,
+  options: {
+    persistDirectory?: string;
+    beforePublication?: (db: D1Database) => Promise<void>;
+  } = {},
 ) {
   const runtime = new Miniflare({
     modules: true,
     script: "export default {fetch(){return new Response('test')}}",
     compatibilityDate: "2026-06-06",
     d1Databases: ["DB"],
+    d1Persist: options.persistDirectory,
   });
   const db = await runtime.getD1Database("DB");
   for (const name of [
@@ -31,6 +36,8 @@ export async function nativeRawFixture(
     "0039_self_stake_snapshot_receipts.sql",
     "0040_raw_capture_finality.sql",
   ]) {
+    if (name === "0038_raw_capture_publications.sql")
+      await options.beforePublication?.(db);
     if (name === "0040_raw_capture_finality.sql") await beforeFinality?.(db);
     const sql = readFileSync(
       new URL(`../../migrations/d1/${name}`, import.meta.url),

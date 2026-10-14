@@ -106,3 +106,12 @@ full CI and coverage. Record the exact image/version that may resume capture aft
 Neither CI failure nor the automation order justifies a fabricated snapshot, gate waiver or live
 application during preparation. The pause/hold mechanics and their bounded operational approval
 remain release work, not an inferred action in this draft.
+
+The isolated native CI upgrade/restore regression creates legacy selected bytes and a legacy
+frontier before actual0038 DDL, then applies0038/0039/0040 in order. It verifies that0038 itself
+creates the NULL legacy chain receipt. After prospective capture it retains and independently
+checks real compressed/raw fixture bytes, archives them through native D1, closes workerd,
+copies the complete SQLite persistence tree and object files, then restarts a separate runtime.
+It checks the archived receipt, unchanged verification floor, old-SQL refusal and next-block
+resume. This qualifies a closed local native persistence fixture, not production Cloudflare
+Time Travel, an operator backup or the actual deployed asset-service recovery path.
