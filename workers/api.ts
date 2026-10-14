@@ -2172,23 +2172,14 @@ export async function handleWebhookQueue(
   async function deliverOne(
     message: (typeof batch.messages)[number],
   ): Promise<void> {
-    const body = message.body as {
-      subscription_id?: unknown;
-      event_id?: unknown;
-      body?: unknown;
-    } | null;
+    const body = message.body;
     // Unparseable is ACKED, not retried -- it will not parse on the eighth
     // attempt either, and the DLQ is more useful holding deliveries that might
     // still succeed. Same rule the sync-batches consumer follows.
     // `event_id` is checked here too, not just by validWebhookDeliveryMessage:
     // it keys the delivery record AND half the idempotency header, so a message
     // without one cannot be reported on even if it delivers.
-    if (
-      !body ||
-      typeof body.subscription_id !== "string" ||
-      typeof body.event_id !== "string" ||
-      typeof body.body !== "string"
-    ) {
+    if (!validWebhookDeliveryMessage(body)) {
       message.ack();
       return;
     }
