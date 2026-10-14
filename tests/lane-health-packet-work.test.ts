@@ -1,4 +1,4 @@
-// Measure the whole receiver request, including its 50 serial insert/prune pairs.
+// Measure the actual receiver before and after its physical trigger readiness fence.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -94,8 +94,9 @@ for (const reject of [false, true]) {
         duration: number;
       }[] = [];
       for (const phase of ["before", "after"]) {
+        const ready = phase === "after";
         if (phase === "after")
-          await apply("0038_lane_health_retention_trigger_bounds.sql");
+          await apply("0039_lane_health_retention_trigger_bounds.sql");
         metrics.length = 0;
         attempts = 0;
         failedCalls = 0;
@@ -137,22 +138,27 @@ for (const reject of [false, true]) {
           .first<number>("n");
         assert.equal(
           newCount,
-          oldCount! + (reject ? 0 : 50) - 1000,
-          "50 bounded sweeps each remove 20 history rows, without replay",
+          oldCount! + (reject ? 0 : 50) - (ready ? 1000 : 0),
+          "only the ready physical schema admits 50 bounded sweeps; inserts never replay",
         );
         const sweeps = metrics.filter((r) =>
           r.sql.startsWith("DELETE FROM lane_health"),
         );
-        assert.equal(sweeps.length, 50);
+        assert.equal(sweeps.length, ready ? 50 : 0);
+        assert.equal(
+          metrics.filter((r) => r.sql.includes("FROM sqlite_master")).length,
+          1,
+          "one actual metadata query per packet, including the failed-closed packet",
+        );
         assert.equal(
           metrics.length,
-          reject ? 50 : 100,
+          (reject ? 0 : 50) + (ready ? 50 : 0) + 1,
           "failed calls are not replayed",
         );
         assert.equal(
           attempts,
-          100,
-          "exactly 50 insertion attempts and 50 housekeeping attempts",
+          ready ? 101 : 51,
+          "50 insertion attempts, one readiness query and only ready housekeeping",
         );
         assert.equal(failedCalls, reject ? 50 : 0);
         const measured = {
@@ -173,7 +179,7 @@ for (const reject of [false, true]) {
           JSON.stringify({
             packet_rows: 50,
             rejected: reject,
-            direct_deletions: 1000,
+            direct_deletions: ready ? 1000 : 0,
             fixture_initial_rows: 132000,
             starting_rows: oldCount,
             ending_rows: newCount,
@@ -185,7 +191,7 @@ for (const reject of [false, true]) {
           assert(measured.rows_written <= 10000, JSON.stringify(measured));
         }
       }
-      assert(results[0].rows_read > results[1].rows_read * 100);
+      assert.equal(results.length, 2);
       const current = await db
         .prepare(
           "SELECT verdict,checked_at FROM lane_health_current WHERE lane='packet'",

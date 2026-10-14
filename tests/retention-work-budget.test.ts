@@ -49,7 +49,7 @@ for (const samples of [10000, 130000]) {
       const plans: string[] = [];
       for (const phase of ["before", "after"]) {
         if (phase === "after")
-          await apply("0038_lane_health_retention_trigger_bounds.sql");
+          await apply("0039_lane_health_retention_trigger_bounds.sql");
         // Explain the actual installed trigger's old-clock successor update.
         const trigger = await db
           .prepare(

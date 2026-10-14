@@ -48,7 +48,7 @@ beforeAll(async () => {
     "0001_lane_health.sql",
     "0002_lane_health_current.sql",
     "0003_lane_health_history_indexes.sql",
-    "0038_lane_health_retention_trigger_bounds.sql",
+    "0039_lane_health_retention_trigger_bounds.sql",
   ]) {
     for (const sql of migration(`d1/${name}`).split("-- statement-breakpoint"))
       await db.prepare(sql).run();

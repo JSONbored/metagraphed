@@ -194,6 +194,8 @@ export function isRetiredLane(lane: string): boolean {
 export interface LaneHealthDb {
   /** Native identity used only inside one bounded retention statement. */
   historyRowId?: "rowid" | "ctid";
+  /** D1 requires the repaired physical triggers before housekeeping can run. */
+  retentionReady?(): Promise<boolean>;
   /** A materialized latest-per-lane read, maintained atomically by the store. */
   latest?(): Promise<unknown[]>;
   /** Indexed equivalents of the history queries, when the store maintains them. */
@@ -285,25 +287,29 @@ export async function recordLaneVerdict(
     return failed(classifyLaneHealthWriteError(error));
   } finally {
     try {
-      // Independent housekeeping also runs after a refused/ambiguous insert.
-      // Never replay the insert. Keep every latest-timestamp tie, so failure
-      // cannot erase the last signal or change its severity. The native row
-      // identity stays inside this statement; it is never a durable receipt.
-      const rowId = db.historyRowId ?? "rowid";
-      await db.run(
-        `DELETE FROM lane_health WHERE ${rowId} IN (
-          SELECT ${rowId} FROM lane_health WHERE lane = ? AND checked_at < (
-            SELECT MIN(bound) FROM (
-              SELECT ? AS bound UNION ALL
-              SELECT MAX(checked_at) FROM lane_health WHERE lane = ?
-            ) retention_bounds)
-          ORDER BY checked_at LIMIT 20)`,
-        [
-          record.lane,
-          record.checked_at - LANE_HEALTH_RETENTION_MS,
-          record.lane,
-        ],
-      );
+      // Main publishes Workers and DDL independently. Never clean up against
+      // the old expensive triggers, or let this guard override the insert result.
+      if (!db.retentionReady || (await db.retentionReady())) {
+        // Independent housekeeping also runs after a refused/ambiguous insert.
+        // Never replay the insert. Keep every latest-timestamp tie, so failure
+        // cannot erase the last signal or change its severity. The native row
+        // identity stays inside this statement; it is never a durable receipt.
+        const rowId = db.historyRowId ?? "rowid";
+        await db.run(
+          `DELETE FROM lane_health WHERE ${rowId} IN (
+            SELECT ${rowId} FROM lane_health WHERE lane = ? AND checked_at < (
+              SELECT MIN(bound) FROM (
+                SELECT ? AS bound UNION ALL
+                SELECT MAX(checked_at) FROM lane_health WHERE lane = ?
+              ) retention_bounds)
+            ORDER BY checked_at LIMIT 20)`,
+          [
+            record.lane,
+            record.checked_at - LANE_HEALTH_RETENTION_MS,
+            record.lane,
+          ],
+        );
+      }
     } catch {
       // Cleanup cannot change the insertion acknowledgement. Limit direct
       // deletions to 20 per tick: native 130k-history measurements exposed

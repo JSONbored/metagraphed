@@ -1,5 +1,5 @@
--- Next prefix on current main. Held 0038-0042 require coordinated renumbering;
--- see docs/lane-health-retention.md before merging either source sequence.
+-- Applied 0038_raw_capture_publications.sql retains its exact identity.
+-- Health precedes only never-applied held schema units; see docs/lane-health-retention.md.
 -- Functional prerequisites are 0001-0003. Keep historical migrations immutable.
 -- Repair one successor by its timestamp key, as the existing insert trigger does.
 DROP TRIGGER lane_health_clocks_delete;
