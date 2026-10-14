@@ -71,7 +71,7 @@ export interface AccountPortfolioPosition {
 }
 
 export interface AccountPortfolioResult {
-  schema_version: 1;
+  schema_version: 2;
   ss58: string;
   captured_at: string | null;
   subnet_count: number;

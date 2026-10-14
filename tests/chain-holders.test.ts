@@ -185,7 +185,7 @@ describe("loadChainHolders declines", () => {
     position(ck(1), hk(1), 1, 1.0);
     assert.equal(
       (await loadChainHolders(storeHandle())).decline,
-      "pool_totals_unproven",
+      "runtime_positions_unqualified",
     );
   });
 
@@ -539,7 +539,7 @@ describe("buildChainHolders", () => {
     );
   });
 
-  test.each(["pool_totals_unproven", "unavailable"] as const)(
+  test.each(["runtime_positions_unqualified", "unavailable"] as const)(
     "a %s decline nulls every count",
     (reason) => {
       const card = buildChainHolders(read({ decline: reason }), { limit: 20 });
@@ -599,7 +599,9 @@ describe("GET /api/v1/chain/holders", () => {
 
   test("a decline is a 200 with a stated reason", async () => {
     const data = await body(await get("/api/v1/chain/holders"));
-    assert.deepEqual(data.degraded, { reason: "pool_totals_unproven" });
+    assert.deepEqual(data.degraded, {
+      reason: "runtime_positions_unqualified",
+    });
     assert.equal(data.subnet_count, null);
   });
 
@@ -711,7 +713,9 @@ describe("chain_holders over GraphQL and MCP", () => {
     const body_ = (await res.json()) as Row;
     assert.equal(body_.errors, undefined);
     const card = (body_.data as Row).chain_holders as Row;
-    assert.deepEqual(card.degraded, { reason: "pool_totals_unproven" });
+    assert.deepEqual(card.degraded, {
+      reason: "runtime_positions_unqualified",
+    });
     assert.equal(card.subnet_count, null);
   });
 

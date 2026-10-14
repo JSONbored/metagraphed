@@ -185,7 +185,7 @@ describe("the positions basis declines rather than guessing", () => {
     position(ck(1), HOTKEY, 1, 0.5);
     assert.equal(
       (await loadNominatorPositions(storeHandle(), HOTKEY)).decline,
-      "pool_totals_unproven",
+      "runtime_positions_unqualified",
     );
   });
 
@@ -228,12 +228,14 @@ describe("the positions basis declines rather than guessing", () => {
 
   test("a decline nulls the count rather than reporting zero delegators", () => {
     const card = buildNominatorPositions(
-      { rows: [], capturedAt: null, decline: "pool_totals_unproven" },
+      { rows: [], capturedAt: null, decline: "runtime_positions_unqualified" },
       HOTKEY,
       { limit: 20 },
     );
     assert.deepEqual(card.nominators, []);
-    assert.deepEqual(card.degraded, { reason: "pool_totals_unproven" });
+    assert.deepEqual(card.degraded, {
+      reason: "runtime_positions_unqualified",
+    });
     assert.equal(card.nominator_count, null);
     assert.equal(card.captured_at, null);
   });
@@ -442,7 +444,9 @@ describe("GET /api/v1/validators/{hotkey}/nominators?basis=", () => {
     const data = await body(
       await get(`/api/v1/validators/${HOTKEY}/nominators?basis=positions`),
     );
-    assert.deepEqual(data.degraded, { reason: "pool_totals_unproven" });
+    assert.deepEqual(data.degraded, {
+      reason: "runtime_positions_unqualified",
+    });
     assert.equal(data.nominator_count, null);
   });
 

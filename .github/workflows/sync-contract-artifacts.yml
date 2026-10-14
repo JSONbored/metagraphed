@@ -89,7 +89,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/source-contracts"
           git rev-parse HEAD > "$RUNNER_TEMP/source-contracts/source-head.txt"
-          git diff --name-only -- public/metagraph generated packages/contract > "$RUNNER_TEMP/source-contracts/paths.txt"
+          git diff --name-only -- public/metagraph/openapi.json public/metagraph/contracts.json public/metagraph/api-index.json public/metagraph/types.d.ts generated/graphql generated/metagraphed-client.ts packages/contract > "$RUNNER_TEMP/source-contracts/paths.txt"
           while IFS= read -r file; do
             test -f "$file"
             mkdir -p "$RUNNER_TEMP/source-contracts/$(dirname "$file")"
@@ -110,6 +110,7 @@ jobs:
         run: |
           npx vitest run tests/quantity-contract.test.ts
           npm run typecheck
+          npm run typecheck --workspace=apps/ui
 
       # Scoped to the contract artifacts on purpose. build.ts already
       # auto-reverts the deploy-owned pair (r2-manifest.json,

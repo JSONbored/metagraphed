@@ -518,7 +518,7 @@
                 }
               ]
             },
-            "schema_version": 1
+            "schema_version": 2
           },
           "meta": {
             "artifact_path": "example",
@@ -706,10 +706,11 @@
                 "stake_alpha": 0.5,
                 "trust": 0.5,
                 "uid": 1,
+                "voting_weight": 0.5,
                 "yield": 0.5
               }
             ],
-            "schema_version": 1,
+            "schema_version": 2,
             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
             "stake_concentration": {
               "entropy": 0.5,
@@ -776,6 +777,7 @@
                 "stake_tao": 0.5,
                 "trust": 0.5,
                 "uid": 1,
+                "voting_weight": 0.5,
                 "yield": 0.5
               }
             ],
@@ -822,13 +824,25 @@
             "position_count": 1,
             "positions": [
               {
+                "alpha_rao": "example",
                 "hotkey": "example",
                 "netuid": 7,
+                "provenance": {
+                  "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                  "block_number": 5000000,
+                  "captured_at": "2026-06-01T00:00:00.000Z",
+                  "code_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                  "genesis_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                  "metadata_sha256": "example",
+                  "network": "finney",
+                  "spec_version": 454
+                },
+                "quantity_status": "unqualified",
                 "share_fraction": 0.5,
                 "stake_tao": 0.5
               }
             ],
-            "schema_version": 1,
+            "schema_version": 2,
             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
             "total_stake_alpha": 0.5
           },
@@ -1087,7 +1101,8 @@
                     "emission_alpha": 0.5,
                     "netuid": 7,
                     "stake_alpha": 0.5,
-                    "uid": 1
+                    "uid": 1,
+                    "voting_weight": 0.5
                   }
                 ],
                 "total_emission_tao": 0.5,
@@ -1099,8 +1114,8 @@
             "block_number": 5000000,
             "captured_at": "2026-06-01T00:00:00.000Z",
             "limit": 1,
-            "schema_version": 1,
-            "sort": "total_stake"
+            "schema_version": 2,
+            "sort": "total_emission"
           },
           "meta": {
             "artifact_path": "example",
@@ -3407,7 +3422,7 @@
           "data": {
             "captured_at": "2026-06-01T00:00:00.000Z",
             "degraded": {
-              "reason": "pool_totals_unproven"
+              "reason": "runtime_positions_unqualified"
             },
             "limit": 1,
             "network": {
@@ -3417,7 +3432,7 @@
               "subnets_with_single_holder": 1
             },
             "positions_captured_at": "2026-06-01T00:00:00.000Z",
-            "schema_version": 1,
+            "schema_version": 2,
             "sort": "example",
             "subnet_count": 1,
             "subnets": [
@@ -4735,7 +4750,7 @@
         "value": {
           "data": {
             "netuid": 7,
-            "schema_version": 1,
+            "schema_version": 2,
             "validator_count": 1,
             "validators": [
               {
@@ -4776,7 +4791,8 @@
                   "trust": 0.5,
                   "uid": 1,
                   "validator_permit": false,
-                  "validator_trust": 0.5
+                  "validator_trust": 0.5,
+                  "voting_weight": 0.5
                 },
                 "subnet_count": 1,
                 "take": 0.5,
@@ -6517,7 +6533,7 @@
             "block_number": 5000000,
             "captured_at": "2026-06-01T00:00:00.000Z",
             "limit": 1,
-            "schema_version": 1,
+            "schema_version": 2,
             "sort": "avg_validator_trust",
             "validator_count": 1,
             "validators": [
@@ -6560,7 +6576,8 @@
                     "netuid": 7,
                     "stake_alpha": 0.5,
                     "uid": 1,
-                    "validator_trust": 0.5
+                    "validator_trust": 0.5,
+                    "voting_weight": 0.5
                   }
                 ],
                 "take": 0.5,
@@ -10520,12 +10537,13 @@
               "top5_share": 0.5
             },
             "degraded": {
-              "reason": "pool_totals_unproven"
+              "reason": "runtime_positions_unqualified"
             },
             "holder_count": 1,
             "holders": [
               {
                 "alpha": 0.5,
+                "alpha_rao": "example",
                 "coldkey": "example",
                 "hotkey_count": 1,
                 "share_of_total": 0.5
@@ -10534,7 +10552,7 @@
             "limit": 1,
             "netuid": 7,
             "positions_captured_at": "2026-06-01T00:00:00.000Z",
-            "schema_version": 1,
+            "schema_version": 2,
             "total_alpha": 0.5
           },
           "meta": {
@@ -13899,7 +13917,7 @@
             "realized_return_1w": 0.5,
             "realized_return_1w_as_of": "example",
             "root_stake_tao": 0.5,
-            "schema_version": 1,
+            "schema_version": 2,
             "subnet_count": 1,
             "subnets": [
               {
@@ -13921,7 +13939,8 @@
                 "trust": 0.5,
                 "uid": 1,
                 "validator_permit": false,
-                "validator_trust": 0.5
+                "validator_trust": 0.5,
+                "voting_weight": 0.5
               }
             ],
             "take": 0.5,
@@ -14070,7 +14089,7 @@
                 "total_stake_tao": 0.5
               }
             ],
-            "schema_version": 1,
+            "schema_version": 2,
             "take_change_observable": false,
             "take_last_changed_date": "example",
             "take_u16": 1,
@@ -15847,8 +15866,16 @@
             "type": "number"
           },
           "priced_registered_stake_tao": {
-            "minimum": 0,
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true,
+            "description": "Deprecated unsupported financial quantity from neuron voting weight; always null."
           },
           "rankings": {
             "additionalProperties": false,
@@ -15892,8 +15919,16 @@
                       "type": "number"
                     },
                     "total_stake_tao": {
-                      "minimum": 0,
-                      "type": "number"
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "deprecated": true,
+                      "description": "Deprecated unsupported financial quantity from neuron voting weight; always null."
                     },
                     "uid_count": {
                       "maximum": 9007199254740991,
@@ -15954,8 +15989,16 @@
                       "type": "number"
                     },
                     "total_stake_tao": {
-                      "minimum": 0,
-                      "type": "number"
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "deprecated": true,
+                      "description": "Deprecated unsupported financial quantity from neuron voting weight; always null."
                     },
                     "uid_count": {
                       "maximum": 9007199254740991,
@@ -16016,8 +16059,16 @@
                       "type": "number"
                     },
                     "total_stake_tao": {
-                      "minimum": 0,
-                      "type": "number"
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "deprecated": true,
+                      "description": "Deprecated unsupported financial quantity from neuron voting weight; always null."
                     },
                     "uid_count": {
                       "maximum": 9007199254740991,
@@ -16048,7 +16099,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 1,
+            "const": 2,
             "type": "number"
           }
         },
@@ -16487,7 +16538,8 @@
                 "type": "null"
               }
             ],
-            "description": "Priced emission per priced stake -- both sides in TAO (#9051), so the ratio is dimensionally coherent. Null with no priceable stake."
+            "deprecated": true,
+            "description": "Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return."
           },
           "position_count": {
             "maximum": 9007199254740991,
@@ -16549,8 +16601,17 @@
                   "type": "string"
                 },
                 "stake_alpha": {
-                  "description": "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO.",
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "deprecated": true,
+                  "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
                 },
                 "trust": {
                   "anyOf": [
@@ -16574,6 +16635,18 @@
                     }
                   ]
                 },
+                "voting_weight": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio."
+                },
                 "yield": {
                   "anyOf": [
                     {
@@ -16583,7 +16656,8 @@
                       "type": "null"
                     }
                   ],
-                  "description": "Emission over stake for this position; null when stake is 0."
+                  "deprecated": true,
+                  "description": "Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return."
                 }
               },
               "required": [
@@ -16592,6 +16666,7 @@
                 "role",
                 "active",
                 "stake_alpha",
+                "voting_weight",
                 "emission_alpha",
                 "rank",
                 "trust",
@@ -16604,9 +16679,8 @@
             "type": "array"
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "ss58": {
             "type": "string"
@@ -16632,8 +16706,17 @@
             "type": "number"
           },
           "total_stake_tao": {
-            "description": "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.",
-            "type": "number"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true,
+            "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
           },
           "validator_count": {
             "maximum": 9007199254740991,
@@ -16744,8 +16827,16 @@
                   "type": "string"
                 },
                 "stake_tao": {
-                  "description": "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).",
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "deprecated": true,
+                  "description": "Deprecated unsupported holdings interpretation; always null. Historical neuron data records voting weight, not native asset positions."
                 },
                 "trust": {
                   "anyOf": [
@@ -16769,6 +16860,18 @@
                     }
                   ]
                 },
+                "voting_weight": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Observed historical effective voting weight; not a balance or asset denominator."
+                },
                 "yield": {
                   "anyOf": [
                     {
@@ -16777,7 +16880,9 @@
                     {
                       "type": "null"
                     }
-                  ]
+                  ],
+                  "deprecated": true,
+                  "description": "Unavailable: historical voting weight is not an asset balance and cannot establish holdings yield."
                 }
               },
               "required": [
@@ -16788,6 +16893,7 @@
                 "role",
                 "active",
                 "stake_tao",
+                "voting_weight",
                 "emission_tao",
                 "rank",
                 "trust",
@@ -16892,8 +16998,20 @@
           "positions": {
             "items": {
               "additionalProperties": false,
-              "description": "One (hotkey, netuid) delegation this account holds, reconstructed from the nominator-positions ledger joined against the hotkey's live stake_tao for that netuid.",
+              "description": "One observed delegation relationship. Unknown quantities preserve the relationship and carry null amounts; qualified quantities describe a finalized snapshot, not live wallet completeness.",
               "properties": {
+                "alpha_rao": {
+                  "anyOf": [
+                    {
+                      "pattern": "^(0|[1-9]\\d*)$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Exact non-Root subnet Alpha in rao (1e9 rao per token) at this position's qualified snapshot. Each netuid identifies a different token; never sum across netuids."
+                },
                 "hotkey": {
                   "type": "string"
                 },
@@ -16902,40 +17020,128 @@
                   "minimum": 0,
                   "type": "integer"
                 },
+                "provenance": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "block_hash": {
+                          "type": "string"
+                        },
+                        "block_number": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "captured_at": {
+                          "type": "string"
+                        },
+                        "code_hash": {
+                          "type": "string"
+                        },
+                        "genesis_hash": {
+                          "type": "string"
+                        },
+                        "metadata_sha256": {
+                          "type": "string"
+                        },
+                        "network": {
+                          "const": "finney",
+                          "type": "string"
+                        },
+                        "spec_version": {
+                          "anyOf": [
+                            {
+                              "const": 454,
+                              "type": "number"
+                            },
+                            {
+                              "const": 478,
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "network",
+                        "captured_at",
+                        "block_number",
+                        "block_hash",
+                        "genesis_hash",
+                        "spec_version",
+                        "code_hash",
+                        "metadata_sha256"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "quantity_status": {
+                  "enum": [
+                    "unqualified",
+                    "qualified_snapshot"
+                  ],
+                  "type": "string"
+                },
                 "share_fraction": {
-                  "description": "This account's share of the hotkey's total alpha-pool shares on this subnet (0..1), not a TAO amount.",
-                  "maximum": 1,
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Observed display share ratio; not an asset balance or share of a subnet's total holdings."
                 },
                 "stake_tao": {
-                  "description": "This position's stake in the subnet named by the sibling `netuid`. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows, so this is always that subnet's alpha token (#2550). It is the per-row counterpart of `total_stake_alpha` above -- same denomination, kept under the on-chain column name deliberately (#8945).",
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "deprecated": true,
+                  "description": "Deprecated unsupported financial interpretation; always null. Neuron voting weight is not Alpha or TAO holdings."
                 }
               },
               "required": [
                 "hotkey",
                 "netuid",
                 "share_fraction",
-                "stake_tao"
+                "stake_tao",
+                "alpha_rao",
+                "quantity_status",
+                "provenance"
               ],
               "type": "object"
             },
             "type": "array"
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "ss58": {
             "type": "string"
           },
           "total_stake_alpha": {
-            "description": "Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure.",
-            "minimum": 0,
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true,
+            "description": "Deprecated cross-token aggregate; always null because different subnet Alpha tokens cannot be summed."
           }
         },
         "required": [
@@ -17644,20 +17850,40 @@
                         "type": "integer"
                       },
                       "stake_alpha": {
-                        "description": "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO.",
-                        "minimum": 0,
-                        "type": "number"
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "deprecated": true,
+                        "description": "Deprecated unsupported financial quantity from neuron voting weight; always null."
                       },
                       "uid": {
                         "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
+                      },
+                      "voting_weight": {
+                        "anyOf": [
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Observed effective neuron voting weight at this subnet capture, not native holdings."
                       }
                     },
                     "required": [
                       "netuid",
                       "uid",
                       "stake_alpha",
+                      "voting_weight",
                       "emission_alpha"
                     ],
                     "type": "object"
@@ -17671,9 +17897,16 @@
                   "type": "number"
                 },
                 "total_stake_tao": {
-                  "description": "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.",
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "deprecated": true,
+                  "description": "Deprecated unsupported financial quantity from neuron voting weight; always null."
                 },
                 "uid_count": {
                   "maximum": 9007199254740991,
@@ -17733,18 +17966,15 @@
             "type": "integer"
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "sort": {
             "enum": [
-              "total_stake",
               "total_emission",
               "subnet_count",
               "uid_count",
               "validator_count",
-              "stake_dominance",
               "last_active"
             ],
             "type": "string"
@@ -25536,7 +25766,7 @@
             "properties": {
               "reason": {
                 "enum": [
-                  "pool_totals_unproven",
+                  "runtime_positions_unqualified",
                   "unavailable"
                 ],
                 "type": "string"
@@ -25575,9 +25805,8 @@
             ]
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "sort": {
             "type": "string"
@@ -29424,9 +29653,8 @@
             "description": "The optional subnet context the comparison was scoped to."
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "validator_count": {
             "maximum": 9007199254740991,
@@ -29440,13 +29668,14 @@
                 "apy_estimate": {
                   "anyOf": [
                     {
-                      "minimum": 0,
                       "type": "number"
                     },
                     {
                       "type": "null"
                     }
-                  ]
+                  ],
+                  "deprecated": true,
+                  "description": "Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return."
                 },
                 "apy_estimate_eligible_subnet_count": {
                   "maximum": 9007199254740991,
@@ -29734,13 +29963,15 @@
                         "stake_alpha": {
                           "anyOf": [
                             {
+                              "minimum": 0,
                               "type": "number"
                             },
                             {
                               "type": "null"
                             }
                           ],
-                          "description": "This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion."
+                          "deprecated": true,
+                          "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
                         },
                         "take": {
                           "anyOf": [
@@ -29779,6 +30010,18 @@
                               "type": "null"
                             }
                           ]
+                        },
+                        "voting_weight": {
+                          "anyOf": [
+                            {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio."
                         }
                       },
                       "required": [
@@ -29796,6 +30039,7 @@
                         "dividends",
                         "emission_alpha",
                         "stake_alpha",
+                        "voting_weight",
                         "registered_at_block",
                         "is_immunity_period",
                         "axon",
@@ -29830,8 +30074,17 @@
                   "type": "number"
                 },
                 "total_stake_tao": {
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "deprecated": true,
+                  "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
                 }
               },
               "required": [
@@ -36489,18 +36742,15 @@
             "type": "integer"
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "sort": {
             "enum": [
               "avg_validator_trust",
               "max_validator_trust",
-              "stake_dominance",
               "subnet_count",
               "total_emission",
-              "total_stake",
               "uid_count"
             ],
             "type": "string"
@@ -36515,11 +36765,6 @@
               "additionalProperties": false,
               "properties": {
                 "alpha_stake_tao": {
-                  "description": "The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly.",
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "apy_estimate": {
                   "anyOf": [
                     {
                       "minimum": 0,
@@ -36528,7 +36773,21 @@
                     {
                       "type": "null"
                     }
-                  ]
+                  ],
+                  "deprecated": true,
+                  "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
+                },
+                "apy_estimate": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "deprecated": true,
+                  "description": "Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return."
                 },
                 "apy_estimate_eligible_subnet_count": {
                   "maximum": 9007199254740991,
@@ -36796,8 +37055,17 @@
                   "description": "Deprecated compatibility field; always null with realized_return_1w. No investment-return measurement window is available."
                 },
                 "root_stake_tao": {
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "deprecated": true,
+                  "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
                 },
                 "stake_dominance": {
                   "anyOf": [
@@ -36831,9 +37099,17 @@
                         "type": "integer"
                       },
                       "stake_alpha": {
-                        "description": "This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514: the entry's own `total_stake_tao` IS priced TAO, and two fields sharing the `_tao` suffix while carrying different units is a trap no description undoes. Never summable across subnets -- the priced total already did that conversion.",
-                        "minimum": 0,
-                        "type": "number"
+                        "anyOf": [
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "deprecated": true,
+                        "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
                       },
                       "uid": {
                         "maximum": 9007199254740991,
@@ -36849,12 +37125,25 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "voting_weight": {
+                        "anyOf": [
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio."
                       }
                     },
                     "required": [
                       "netuid",
                       "uid",
                       "stake_alpha",
+                      "voting_weight",
                       "emission_alpha",
                       "validator_trust"
                     ],
@@ -36879,9 +37168,17 @@
                   "type": "number"
                 },
                 "total_stake_tao": {
-                  "description": "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.",
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "deprecated": true,
+                  "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
                 },
                 "uid_count": {
                   "maximum": 9007199254740991,
@@ -52361,6 +52658,10 @@
             "minimum": 0,
             "type": "number"
           },
+          "alpha_rao": {
+            "description": "Exact sum of runtime-qualified position rao for this holder within this subnet; the sibling alpha is a display approximation.",
+            "type": "string"
+          },
           "coldkey": {
             "type": "string"
           },
@@ -52394,6 +52695,7 @@
         "required": [
           "coldkey",
           "alpha",
+          "alpha_rao",
           "share_of_total",
           "hotkey_count"
         ],
@@ -52472,9 +52774,8 @@
             "description": "When the positions ledger itself was last written, which advances on a different cadence than the pool totals."
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "total_alpha": {
             "anyOf": [
@@ -52555,7 +52856,7 @@
         "properties": {
           "reason": {
             "enum": [
-              "pool_totals_unproven",
+              "runtime_positions_unqualified",
               "root_not_in_alpha_map",
               "unavailable"
             ],
@@ -63911,11 +64212,6 @@
         "additionalProperties": false,
         "properties": {
           "alpha_stake_tao": {
-            "description": "The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly.",
-            "minimum": 0,
-            "type": "number"
-          },
-          "apy_estimate": {
             "anyOf": [
               {
                 "minimum": 0,
@@ -63924,7 +64220,21 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "deprecated": true,
+            "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
+          },
+          "apy_estimate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true,
+            "description": "Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return."
           },
           "apy_estimate_eligible_subnet_count": {
             "maximum": 9007199254740991,
@@ -64189,13 +64499,21 @@
             "description": "Deprecated compatibility field; always null with realized_return_1w. No investment-return measurement window is available."
           },
           "root_stake_tao": {
-            "minimum": 0,
-            "type": "number"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true,
+            "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "subnet_count": {
             "maximum": 9007199254740991,
@@ -64325,13 +64643,15 @@
                 "stake_alpha": {
                   "anyOf": [
                     {
+                      "minimum": 0,
                       "type": "number"
                     },
                     {
                       "type": "null"
                     }
                   ],
-                  "description": "This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion."
+                  "deprecated": true,
+                  "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
                 },
                 "take": {
                   "anyOf": [
@@ -64370,6 +64690,18 @@
                       "type": "null"
                     }
                   ]
+                },
+                "voting_weight": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio."
                 }
               },
               "required": [
@@ -64387,6 +64719,7 @@
                 "dividends",
                 "emission_alpha",
                 "stake_alpha",
+                "voting_weight",
                 "registered_at_block",
                 "is_immunity_period",
                 "axon",
@@ -64413,9 +64746,17 @@
             "type": "number"
           },
           "total_stake_tao": {
-            "description": "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.",
-            "minimum": 0,
-            "type": "number"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true,
+            "description": "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value."
           }
         },
         "required": [
@@ -64833,7 +65174,8 @@
                       "type": "null"
                     }
                   ],
-                  "description": "Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point."
+                  "deprecated": true,
+                  "description": "Deprecated native asset interpretation; always null."
                 },
                 "stake_share": {
                   "anyOf": [
@@ -64887,7 +65229,8 @@
                       "type": "null"
                     }
                   ],
-                  "description": "TAO-priced at this point's OWN snapshot_date (#9051): each day's cross-subnet total converts each membership through that day's alpha_price_tao (root at 1:1), so the series is a true TAO-value history. A day-row with no matching price is excluded from that day's sum."
+                  "deprecated": true,
+                  "description": "Deprecated holdings valuation from historical voting weight; always null."
                 },
                 "uid": {
                   "anyOf": [
@@ -64922,6 +65265,17 @@
                     }
                   ],
                   "description": "Per-subnet facts, null unless the query scoped a netuid: a cross-subnet average of these is a number the chain never computes."
+                },
+                "voting_weight": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Historical effective neuron voting weight for the scoped subnet, not a native balance."
                 }
               },
               "required": [
@@ -64936,9 +65290,8 @@
             "type": "array"
           },
           "schema_version": {
-            "maximum": 9007199254740991,
-            "minimum": -9007199254740991,
-            "type": "integer"
+            "const": 2,
+            "type": "number"
           },
           "take_change_observable": {
             "type": "boolean"

@@ -305,7 +305,7 @@ describe("loadSubnetHolders declines", () => {
     pool(hk(1), 1000);
     position(ck(1), hk(1), 0.25);
     const read = await loadSubnetHolders(storeHandle(), NETUID);
-    assert.equal(read.decline, "pool_totals_unproven");
+    assert.equal(read.decline, "runtime_positions_unqualified");
     assert.deepEqual(read.rows, []);
   });
 
@@ -319,7 +319,7 @@ describe("loadSubnetHolders declines", () => {
     position(ck(1), hk(1), 0.25);
     assert.equal(
       (await loadSubnetHolders(storeHandle(), NETUID)).decline,
-      "pool_totals_unproven",
+      "runtime_positions_unqualified",
     );
   });
 
@@ -497,7 +497,7 @@ describe("buildSubnetHolders", () => {
   });
 
   test.each([
-    "pool_totals_unproven",
+    "runtime_positions_unqualified",
     "root_not_in_alpha_map",
     "unavailable",
   ] as const)("a %s decline nulls every count", (reason) => {
@@ -607,7 +607,9 @@ describe("GET /api/v1/subnets/{netuid}/holders", () => {
   test("a decline is a 200 with a stated reason, never a 404", async () => {
     const data = await body(await get(`/api/v1/subnets/${NETUID}/holders`));
     assert.deepEqual(data.holders, []);
-    assert.deepEqual(data.degraded, { reason: "pool_totals_unproven" });
+    assert.deepEqual(data.degraded, {
+      reason: "runtime_positions_unqualified",
+    });
     assert.equal(data.holder_count, null);
     await assertValidComponent("SubnetHoldersArtifact", data);
   });
@@ -699,7 +701,9 @@ describe("get_subnet_holders (MCP)", () => {
   test("declines carry the reason a model must read before concluding zero", async () => {
     const card = await call({ netuid: NETUID });
     assert.deepEqual(card.holders, []);
-    assert.deepEqual(card.degraded, { reason: "pool_totals_unproven" });
+    assert.deepEqual(card.degraded, {
+      reason: "runtime_positions_unqualified",
+    });
     assert.equal(card.holder_count, null);
   });
 

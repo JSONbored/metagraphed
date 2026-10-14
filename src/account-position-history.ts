@@ -128,7 +128,7 @@ export interface AccountPositionHistoryPoint extends AccountPositionEntry {
 }
 
 export interface AccountPositionHistoryResult {
-  schema_version: 1;
+  schema_version: 2;
   ss58: string;
   netuid: number;
   window: string | null;

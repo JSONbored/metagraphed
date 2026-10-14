@@ -21,7 +21,7 @@ export interface AccountHolderDirectoryEntry {
   coldkey: string | null;
   subnet_count: number;
   uid_count: number;
-  total_stake_tao: null;
+  total_stake_tao: number | null;
   total_emission_tao: number;
   stake_dominance: number | null;
 }
@@ -33,7 +33,7 @@ export interface AccountHolderDirectory {
   account_count: number;
   limit: number;
   /** Total TAO-valued stake represented by rows with a usable subnet price. */
-  priced_registered_stake_tao: null;
+  priced_registered_stake_tao: number | null;
   rankings: Record<AccountHolderRanking, AccountHolderDirectoryEntry[]>;
 }
 
