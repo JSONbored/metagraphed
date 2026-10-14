@@ -8,9 +8,9 @@ or certify the existing height-only prefix. The explorer's current public contra
 
 - PR #12620 owns migration `0038_raw_capture_publications.sql`, already applied on 2026-10-03.
   Preserve its immutable exact-byte receipts, logical chain hash and native archive handoff.
-- PR #12621 reserves unapplied migration `0039_self_stake_snapshot_receipts.sql`. Its source and
+- PR #12621 reserves unapplied migration `0040_self_stake_snapshot_receipts.sql`. Its source and
   migration precede this proposal in the stack; this change does not rewrite that migration.
-- This proposal owns unapplied `0040_raw_capture_finality.sql`. Its nullable anchor columns leave
+- This proposal owns unapplied `0041_raw_capture_finality.sql`. Its nullable anchor columns leave
   all existing heights, timestamps and error details intact. `verified_from` starts at the old
   frontier plus one. The new proof ledger is retained across staging archival.
 
@@ -101,14 +101,14 @@ approval therefore does not authorize merging this draft.
 Before any owner-approved merge, define a coordinated capture pause and deployment hold that
 prevents new code reaching production before the schema/physical snapshot is qualified. Preserve
 both current frontiers and their byte/receipt estate, qualify native restore, inspect the exact
-0039/0040 application order, and determine how actual introspection is committed for the required
+0040/0041 application order, and determine how actual introspection is committed for the required
 full CI and coverage. Record the exact image/version that may resume capture after those gates.
 Neither CI failure nor the automation order justifies a fabricated snapshot, gate waiver or live
 application during preparation. The pause/hold mechanics and their bounded operational approval
 remain release work, not an inferred action in this draft.
 
 The isolated native CI upgrade/restore regression creates legacy selected bytes and a legacy
-frontier before actual0038 DDL, then applies0038/0039/0040 in order. It verifies that0038 itself
+frontier before actual0038 DDL, then applies0038/0040/0041 in order. It verifies that0038 itself
 creates the NULL legacy chain receipt. After prospective capture it retains and independently
 checks real compressed/raw fixture bytes, archives them through native D1, closes workerd,
 copies the complete SQLite persistence tree and object files, then restarts a separate runtime.
