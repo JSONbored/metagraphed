@@ -110,6 +110,7 @@ jobs:
         run: |
           npx vitest run tests/quantity-contract.test.ts
           npm run typecheck
+          npm run build --workspace=packages/ui-kit
           npm run typecheck --workspace=apps/ui
 
       # Scoped to the contract artifacts on purpose. build.ts already

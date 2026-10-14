@@ -4289,7 +4289,8 @@ function callerSuppliedArg(args: Row, name: string) {
   // `?window=` resolves to null and is not applied.
   if (args[name] === undefined || args[name] === null) return false;
   const defaulted = (args as Record<symbol, unknown>)[DEFAULTED_ARGS] as
-    Set<string> | undefined;
+    | Set<string>
+    | undefined;
   return !defaulted?.has(name);
 }
 
@@ -9453,15 +9454,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "list_global_validators",
     title: "List the network-wide validator leaderboard",
     description:
-      "Fetch the network-wide validator/operator leaderboard: validator-permit " +
-      "identities grouped by hotkey across all current subnet memberships, with " +
-      "trust metrics, cross-subnet stake/emission totals, stake dominance, and " +
-      "top membership rows. Sort by subnet_count (default), uid_count, " +
-      "avg_validator_trust, max_validator_trust, total_stake, total_emission, " +
-      `or stake_dominance; limit caps the list (default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}, ` +
-      `max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Use it to ` +
-      "find operators spanning many subnets or dominating network stake. Mirrors " +
-      "GET /api/v1/validators.",
+      "Observed validator identities and current memberships with trust, subnet/UID counts and captured rewards. Membership voting weight is not native holdings. Deprecated holdings, dominance and APY fields are null. Supported directory sorts are subnet_count, uid_count, avg_validator_trust, max_validator_trust and total_emission; this is not a wealth ranking.",
     inputSchema: inputJsonSchema(ListGlobalValidatorsInputSchema),
     async handler(
       args: z.infer<typeof ListGlobalValidatorsInputSchema>,
@@ -9493,12 +9486,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_validator_detail",
     title: "Get one validator's cross-subnet detail",
     description:
-      "Fetch a single validator identity's validator_permit rows aggregated " +
-      "across every subnet it operates in: coldkey, cross-subnet stake/emission " +
-      "totals, avg/max validator trust, and the full per-subnet membership list. " +
-      "The single-entity drill-in of list_global_validators. Returns a zeroed " +
-      "aggregate with an empty subnets list for a cold/absent hotkey, never an " +
-      "error. Mirrors GET /api/v1/validators/{hotkey}.",
+      "Observed validator identity, trust, rewards and per-subnet memberships. voting_weight records effective neuron weight including inherited Root, not Alpha or TAO holdings. Holdings valuations and APY are unavailable and their deprecated fields are null. A cold membership source does not establish zero wallet assets.",
     inputSchema: inputJsonSchema(GetValidatorDetailInputSchema),
     async handler(
       args: z.infer<typeof GetValidatorDetailInputSchema>,
@@ -10321,7 +10309,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       )) as { ok?: boolean; data?: Record<string, unknown> } | null;
       const entities = artifact?.ok
         ? (artifact.data?.entities as
-            Array<Record<string, unknown>> | undefined)
+            | Array<Record<string, unknown>>
+            | undefined)
         : undefined;
       const wallets = subnetWalletRows(
         netuid,
@@ -10342,7 +10331,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // one would be stating a finding nobody made.
         attribution_search: await loadSweepRecord(
           readStore(ctx.env, ATTRIBUTION_SWEEP_TABLES) as
-            SweepStoreDb | undefined,
+            | SweepStoreDb
+            | undefined,
           netuid,
         ),
         field_sources: SUBNET_WALLETS_FIELD_SOURCES,
@@ -10536,7 +10526,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             ALL_SURFACES_ARTIFACT,
           );
           return allSurfaces?.surfaces as
-            Array<Record<string, unknown>> | undefined;
+            | Array<Record<string, unknown>>
+            | undefined;
         } catch {
           return null;
         }
@@ -11697,12 +11688,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_account_portfolio",
     title: "Get a wallet's cross-subnet portfolio",
     description:
-      "A wallet's cross-subnet neuron portfolio (by SS58 hotkey): each position's " +
-      "economics (stake, emission, rank, trust, incentive, dividends, role) and " +
-      "emission/stake yield, plus aggregates (totals, subnet/validator counts, " +
-      "overall return, and how concentrated the wallet's stake is across subnets). " +
-      "Richer than get_account_subnets; computed live from the neurons tier. An " +
-      "unregistered address returns an empty portfolio, not an error.",
+      "Observed registered-neuron footprint for one account: memberships, role, captured voting weight, rewards and protocol scores. This source does not measure wallet holdings, portfolio value or investment return; deprecated financial fields are null. An unregistered account has no observed registrations here, not necessarily no assets.",
     inputSchema: inputJsonSchema(GetAccountPortfolioInputSchema),
     async handler(
       args: z.infer<typeof GetAccountPortfolioInputSchema>,
@@ -11725,15 +11711,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_account_positions",
     title: "Get an account's nominator-side positions",
     description:
-      "This account's reconstructed nominator-side positions (by SS58 coldkey): " +
-      "what it holds delegated across every hotkey/subnet — hotkey, netuid, " +
-      "share_fraction (0-1, this account's share of that hotkey's alpha-pool " +
-      "shares on that subnet), and the derived stake_tao. Distinct from " +
-      "get_account_portfolio's hotkey-scoped view — a pure delegator shows " +
-      "near-zero there since its stake lives on someone ELSE's hotkey row. Root " +
-      "(netuid 0) stake is not covered — root has no alpha pool. An address with " +
-      "no delegated positions returns an empty card, not an error. Mirrors " +
-      "GET /api/v1/accounts/{ss58}/positions.",
+      "Observed account/validator/subnet delegation relationships. schema_version2 preserves relationships with unknown amounts. alpha_rao is an exact non-Root amount only at a completed selected runtime-qualified snapshot with block/code/metadata provenance. stake_tao and the cross-token total are deprecated nulls. Different subnet Alpha tokens are not summed; Root holdings and live wallet completeness remain unavailable.",
     inputSchema: inputJsonSchema(GetAccountPositionsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountPositionsInputSchema>,
@@ -17348,7 +17326,8 @@ export function completeDegradedBlock(
     return data;
   }
   const declared = (outputSchema?.properties as Row | undefined)?.degraded as
-    Row | undefined;
+    | Row
+    | undefined;
   // A nullable object is published as anyOf[{object}, {null}], so the required
   // list can sit on a branch rather than at the top.
   const branches = [
@@ -17662,7 +17641,8 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
   const startedAt = Date.now();
   let dispatchOk = true;
   let protocolTelemetry:
-    { record: (ctx: McpCtx, event: Row) => void; event: Row } | undefined;
+    | { record: (ctx: McpCtx, event: Row) => void; event: Row }
+    | undefined;
   let protocolErrorCode: string | undefined;
   let protocolErrorMessage: string | undefined;
 

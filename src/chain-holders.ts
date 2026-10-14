@@ -55,7 +55,6 @@ export const CHAIN_HOLDERS_SORTS = [
   "top10_share",
   "top20_share",
   "holder_count",
-  "total_alpha",
 ] as const;
 export const DEFAULT_CHAIN_HOLDERS_SORT = "top1_share";
 

@@ -65,7 +65,6 @@ export function AccountsPage() {
     retry: 0,
   });
 
-  const accounts = directory.data.data.rankings.stake;
   const accountCount = directory.data.data.account_count;
   const ranked = directory.data.data.rankings[metric];
   const pricedStakeTotal = directory.data.data.priced_registered_stake_tao;
@@ -146,8 +145,8 @@ export function AccountsPage() {
       >
         <AnalyticsSection
           id="holders"
-          name="Holders"
-          question="The accounts holding the most."
+          name="Registered accounts"
+          question="Observed registration footprints and subnet rewards."
           controls={
             <RangeControl
               label="Rank by"

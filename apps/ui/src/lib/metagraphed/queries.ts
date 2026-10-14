@@ -8900,7 +8900,7 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
         const primaryHotkey = firstString(entry.primary_hotkey);
         if (!primaryHotkey) return [];
         const identityName = firstString(entry.identity_name) ?? null;
-        const totalStakeTao = coerceFiniteNumber(entry.total_stake_tao) ?? 0;
+        const totalStakeTao = null;
         const takeMin = coerceFiniteNumber(entry.take_min) ?? null;
         const takeMax = coerceFiniteNumber(entry.take_max) ?? null;
         const children = Array.isArray(entry.hotkeys)
@@ -8911,7 +8911,7 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
               return [
                 {
                   hotkey: childHotkey,
-                  totalStakeTao: coerceFiniteNumber(child.total_stake_tao) ?? 0,
+                  totalStakeTao: null,
                   take: coerceFiniteNumber(child.take) ?? null,
                 },
               ];
@@ -8941,8 +8941,8 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
             uidCount: coerceFiniteNumber(entry.uid_count) ?? 0,
             takeMin,
             takeMax,
-            apyEstimate: coerceFiniteNumber(entry.apy_estimate) ?? null,
-            dominance: coerceFiniteNumber(entry.stake_dominance) ?? null,
+            apyEstimate: null,
+            dominance: null,
           },
         ];
       })
@@ -8994,7 +8994,7 @@ function normalizeAccountListEntry(raw: unknown): AccountListEntry | null {
     miner_count: coerceFiniteNumber(raw.miner_count) ?? 0,
     total_stake_tao: null,
     total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
-    stake_dominance: coerceFiniteNumber(raw.stake_dominance) ?? null,
+    stake_dominance: null,
     latest_captured_at: firstString(raw.latest_captured_at) ?? null,
     latest_block_number: coerceFiniteNumber(raw.latest_block_number) ?? null,
   };
