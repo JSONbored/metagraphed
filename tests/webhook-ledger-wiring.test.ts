@@ -383,7 +383,6 @@ test("recovery and unchanged-checkpoint duplicates retain terminal rejection and
   for (const statusCode of [400, 500]) {
     const f = await setup();
     const event = { type: "metagraph.publish", changes: { subnets: [7] } };
-    const m = webhookMessage(f.id, event);
     const sent: unknown[] = [];
     let unavailable = true;
     const env = {
