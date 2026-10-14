@@ -1,1383 +1,330 @@
-// Wiring tests for src/raw-capture-sync.ts. The capture guarantee itself is
-// proven in tests/raw-chain-capture.test.ts; what matters here is that the
-// lane REFUSES to run when it could not honour that guarantee — an unbound
-// store or watermark must be a loud no-op, never a quiet one, because a lane
-// that silently does nothing looks exactly like a healthy one.
 import assert from "node:assert/strict";
-import { RAW_CAPTURE_CRON } from "../workers/config.ts";
-import { DatabaseSync } from "node:sqlite";
-import fs from "node:fs";
-import path from "node:path";
-import { beforeEach, describe, test, vi } from "vitest";
-import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { mirrorRawCaptureStateToNeon } from "../src/capture-state-neon-write.ts";
-import type { RawCaptureStore } from "../src/raw-chain-capture.ts";
-
-// The watermark's store is Postgres now (#10179): both halves of it --
-// neonWatermark's read and mirrorRawCaptureStateToNeon's write -- build their
-// own `new Client(...)`, so there is no handle a caller can inject. Mocking the
-// module is the seam, and the real SQLite fixture below is attached to the
-// controller so the watermark SQL is EXECUTED rather than merely recorded --
-// which is the whole point of this file's fixture: the one thing that can break
-// here is a column name, and a fake that records SQL never parses it.
-//
-// See tests/helpers/pg-mock.ts for why the controller has to be built inside
-// vi.hoisted: vi.mock is hoisted above every import, so a plain `const` is read
-// before initialisation.
-const { pg } = await vi.hoisted(async () => ({
-  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
-}));
-vi.mock("pg", () => pg.module);
-
+import { afterEach, test, vi } from "vitest";
 import {
-  watermarkRead,
-  RAW_CAPTURE_GENESIS_FLOOR,
-  RAW_CAPTURE_LANES,
-  cronStepMinutes,
-  MAX_CAPTURE_CHUNK_BLOCKS,
-  pacedLaneBudget,
-  REQUESTS_PER_CHUNK,
-  RPC_REQUESTS_PER_MINUTE_LIMIT,
   runRawCaptureSync,
-  TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
+  RAW_CAPTURE_LANES,
 } from "../src/raw-capture-sync.ts";
+import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
+import {
+  nativeRawFixture,
+  syntheticNode,
+} from "./helpers/raw-capture-fixture.ts";
 
-/**
- * The raw-capture migrations, IN ORDER — 0006 creates the table, 0013 rebuilds
- * it with a network dimension (#8700), and 0014 persists lane verdicts.
- *
- * Applied as a chain rather than as a single final schema on purpose. D1
- * migrations in this repo are applied BY HAND to production, so the thing worth
- * proving is not "the end state parses" but "0013 applies cleanly on top of a
- * live 0006 table and carries its row across" — 0013 drops and recreates the
- * table, and a mistake there silently resets the mainnet watermark to the
- * floor, which would re-capture ~3,000 blocks and briefly report a gap that
- * does not exist.
- */
-const MIGRATIONS = [
-  "0006_raw_capture.sql",
-  "0013_raw_capture_network.sql",
-  "0014_lane_health.sql",
-].map((name) =>
-  fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema", name),
-    "utf8",
-  ),
-);
-
-function applyMigrations(target: InstanceType<typeof DatabaseSync>) {
-  for (const sql of MIGRATIONS) target.exec(sql);
-}
-
-let db: InstanceType<typeof DatabaseSync>;
-beforeEach(() => {
-  db = new DatabaseSync(":memory:");
-  applyMigrations(db);
-  pg.control.db = db;
-  pg.control.queries.length = 0;
+const opened: Awaited<ReturnType<typeof nativeRawFixture>>[] = [];
+afterEach(async () => {
+  for (const f of opened.splice(0)) await f.runtime.dispose();
+  vi.useRealTimers();
 });
-
-/** A `first()/run()/query()` facade over the same real SQLite database.
- *
- * Still hand-built rather than taken from the mock, because `watermarkRead` is
- * a READ-ONLY helper that takes a handle -- the lakehouse-seam watchdog passes
- * it one from `readStore` -- so its tests exercise the function directly rather
- * than through a store the lane resolves for itself. */
-function runner() {
-  return {
-    first: async (sql: string, values: unknown[] = []) =>
-      (db.prepare(sql).get(...(values as never[])) ?? null) as Record<
-        string,
-        unknown
-      > | null,
-    run: async (sql: string, values: unknown[] = []) => {
-      db.prepare(sql).run(...(values as never[]));
-      return { changes: 1 };
-    },
-    query: async (sql: string, values: unknown[] = []) =>
-      db.prepare(sql).all(...(values as never[])) as Record<string, unknown>[],
-  };
+async function fixture() {
+  vi.useRealTimers();
+  const f = await nativeRawFixture();
+  opened.push(f);
+  return f;
 }
-
-/** One call's answer, or a whole-request HTTP failure. */
-type NodeReply =
-  { result?: unknown; error?: { message: string } } | { httpStatus: number };
-
-/**
- * Turns a per-CALL answer into a fetch that speaks BOTH wire forms the lane
- * uses: a single JSON-RPC request, and a BATCH array.
- *
- * Shared because every stub below needs both, and a stub that only understood
- * single requests would answer a batch with one envelope -- which the client
- * correctly refuses, so every capture assertion would fail for a reason that
- * has nothing to do with what it is testing.
- */
-function jsonRpcNode(
-  answer: (method: string, params: unknown[], url: string) => NodeReply,
-) {
-  return (async (url: unknown, init?: { body?: string }) => {
-    const body = JSON.parse(init?.body ?? "{}") as
-      | { method: string; params: unknown[] }
-      | { id: number; method: string; params: unknown[] }[];
-    const host = String(url);
-    const calls = Array.isArray(body) ? body : [body];
-    const replies = calls.map((call) => answer(call.method, call.params, host));
-    // A transport failure is a property of the REQUEST, so one bad call in a
-    // batch fails the whole thing -- which is what a real 503 does.
-    const failed = replies.find(
-      (reply): reply is { httpStatus: number } => "httpStatus" in reply,
-    );
-    if (failed) return { ok: false, status: failed.httpStatus } as Response;
-    if (!Array.isArray(body)) {
-      return { ok: true, json: async () => replies[0] } as unknown as Response;
-    }
-    return {
-      ok: true,
-      json: async () =>
-        body.map((call, index) => ({
-          id: call.id,
-          ...(replies[index] as object),
-        })),
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-}
-
-/** `chain_getBlockHash` answers a LIST for a list, a bare value otherwise. */
-function hashList(params: unknown[], tag = ""): NodeReply {
-  const first = params[0];
-  const wanted = (Array.isArray(first) ? first : [first]) as number[];
-  const hashes = wanted.map((n) => `0x${tag}h${n}`);
-  return { result: Array.isArray(first) ? hashes : hashes[0] };
-}
-
-/**
- * A chain stub that answers per ENDPOINT, not globally (#8700).
- *
- * The lane runs mainnet and testnet in one tick against different URLs, so a
- * URL-blind stub would give both the same head and make every single-lane
- * assertion below ambiguous. `testnetHead` defaults BELOW the testnet floor,
- * which makes that lane a legitimate no-op ("nothing to capture yet") rather
- * than a mocked-away one — the mainnet assertions then mean exactly what they
- * meant before testnet existed.
- */
-function rpcFetch(
-  head: number,
-  testnetHead: number = TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1,
-) {
-  return jsonRpcNode((method, params, url) => {
-    const isTestnet = url.includes("test.finney");
-    const chainHead = isTestnet ? testnetHead : head;
-    const tag = isTestnet ? "t" : "m";
-    if (method === "chain_getHeader")
-      return { result: { number: `0x${chainHead.toString(16)}` } };
-    // Hashes are tagged per chain so a test can prove the bytes under a
-    // testnet key came from the testnet endpoint.
-    if (method === "chain_getBlockHash") return hashList(params, tag);
-    if (method === "chain_getBlock")
-      return {
-        result: {
-          block: { header: { parentHash: `0x${tag}p` }, extrinsics: ["0xaa"] },
-        },
-      };
-    return { result: `0x${tag}events` };
-  });
-}
-
-const captureStores = new WeakMap<object, RawCaptureStore>();
-const captureDependencies = (env: object) => ({
-  d1CaptureStore: captureStores.get(env),
-});
-
-function envWith(over: Record<string, unknown> = {}) {
-  const puts = new Map<string, string>();
-  const env = {
-    RAW_CAPTURE_ENABLED: "true",
-    RAW_CAPTURE_STORAGE: "d1",
-    D1_STATE: {
-      prepare: () => {
-        throw new Error("the injected capture writer owns this database");
-      },
-    },
-    METAGRAPH_ARCHIVE: {
-      put: async () => {
-        throw new Error("retired R2 capture writer must never run");
-      },
-    },
-    ...pgMockEnv(),
-    // Narrowed to this lane, and stated here rather than left to the helper,
-    // because the two flags are NOT interchangeable and this lane is where
-    // that bites: the refusal gate reads NEON_SOLE_STORE_TABLES ("is there a
-    // durable watermark at all") while the write inside
-    // mirrorRawCaptureStateToNeon ran gated on the dual-write flag ("may this
-    // lane write"). Declare only the first and the lane runs, reports ok, and
-    // silently never persists a watermark -- so every tick re-captures from
-    // the genesis floor. Verified: dropping this line alone turns the
-    // resume-from-the-watermark test below into a 5-block re-capture.
+const noPool = { readArtifact: async () => ({ ok: false }) };
+function nodes(over: Partial<Parameters<typeof syntheticNode>[0]> = {}) {
+  const main = syntheticNode({
+    first: RAW_CAPTURE_LANES[0]!.genesisFloor,
     ...over,
-  };
-  captureStores.set(env, {
-    put: async (key, value) => void puts.set(key, value),
   });
-  return { env, puts };
+  const testnet = syntheticNode({
+    network: "testnet",
+    first: RAW_CAPTURE_LANES[1]!.genesisFloor,
+  });
+  const fetchImpl: typeof fetch = (url, init) =>
+    String(url).includes("test.finney")
+      ? testnet.fetchImpl(url, init)
+      : main.fetchImpl(url, init);
+  return { main, testnet, fetchImpl };
+}
+function options(
+  f: Awaited<ReturnType<typeof fixture>>,
+  fetchImpl = nodes().fetchImpl,
+) {
+  return {
+    d1CaptureStore: f.store,
+    fetchImpl,
+    now: () => 1000,
+    sleepFn: async () => {},
+    recordException: vi.fn(async () => false),
+    endpointDeps: noPool,
+  };
 }
 
-/** Pacing has its own tests; every other test skips the wait. */
-const noSleep = async () => {};
-
-/** The Worker's ExecutionContext, as this lane uses it: createPgSql hands the
- * pooled connection back through waitUntil, so the watermark's read and write
- * are both unreachable without one. workers/api.ts passes the real ctx. */
-const CTX = { waitUntil: () => {} };
-
-describe("runRawCaptureSync — refusal paths", () => {
-  test("disabled is a quiet no-op, not an error", async () => {
-    const captures: unknown[] = [];
-    const { env } = envWith({ RAW_CAPTURE_ENABLED: undefined });
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      recordException: (async (...a: unknown[]) => {
-        captures.push(a);
-        return true;
-      }) as never,
-    });
-    assert.deepEqual(result, { ok: false, skipped: true, reason: "disabled" });
-    assert.equal(captures.length, 0, "a deliberate off-state is not a fault");
+test("disabled and unbound D1 storage refuse before RPC; R2 cannot serve as a fallback", async () => {
+  const f = await fixture();
+  const rpc = vi.fn(async () => {
+    throw new Error("must refuse before RPC");
   });
-
-  test("an unbound D1 store refuses LOUDLY rather than dropping bytes", async () => {
-    const captures: { route?: string }[] = [];
-    const { env } = envWith({ D1_STATE: undefined });
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      recordException: (async (_e: unknown, ev: { route?: string }) => {
-        captures.push(ev);
-        return true;
-      }) as never,
-    });
-    assert.equal(result.reason, "store_unavailable");
-    assert.equal(captures.length, 1);
-    assert.equal(captures[0]?.route, "raw-capture-sync");
-  });
-
-  // TWO ways to have no watermark, and the lane has to refuse on both. The
-  // refusal is load-bearing rather than defensive: the capture resumes FROM
-  // the stored value, so a tick that runs without one starts at the genesis
-  // floor and re-captures the same blocks every five minutes, forever, while
-  // every other signal says the lane is healthy.
-  // The "not declared Neon's" arm retired with NEON_SOLE_STORE_TABLES
-  // (#10051); the binding is the one way left to have no watermark store.
-  for (const [what, over] of [
-    ["Hyperdrive is unbound", { HYPERDRIVE: undefined }],
-  ] as [string, Record<string, unknown>][]) {
-    test(`an unbound watermark refuses LOUDLY when ${what}`, async () => {
-      const captures: unknown[] = [];
-      const { env, puts } = envWith(over);
-      const result = await runRawCaptureSync(env as never, {
-        ...captureDependencies(env),
-        sleepFn: noSleep,
-        ctx: CTX,
-        fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
-        recordException: (async () => {
-          captures.push(1);
-          return true;
-        }) as never,
-      });
-      assert.equal(result.reason, "watermark_unavailable");
-      assert.equal(captures.length, 1);
-      // Refused BEFORE capturing, not after: bytes written under a watermark
-      // that cannot advance are bytes the next tick writes again.
-      assert.equal(puts.size, 0);
-    });
+  for (const [over, reason] of [
+    [{ RAW_CAPTURE_ENABLED: undefined }, "disabled"],
+    [{ RAW_CAPTURE_STORAGE: "r2" }, "store_unavailable"],
+    [{ RAW_CAPTURE_STORAGE: undefined }, "store_unavailable"],
+    [{ D1_STATE: undefined }, "store_unavailable"],
+    [
+      {
+        D1_STATE_TABLES: "lane_health",
+        HYPERDRIVE: { connectionString: "postgres://fixture" },
+      },
+      "watermark_unavailable",
+    ],
+  ] as const) {
+    const deps = options(f, rpc);
+    const result = await runRawCaptureSync(
+      { ...f.env, ...over } as never,
+      deps,
+    );
+    assert.equal(result.reason, reason);
+    assert.equal(result.skipped, true);
+    assert.equal(
+      deps.recordException.mock.calls.length,
+      reason === "disabled" ? 0 : 1,
+    );
   }
-
-  test("an RPC failure is contained and captured, never thrown at the scheduler", async () => {
-    const captures: { route?: string }[] = [];
-    const { env } = envWith();
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: (async () => {
-        throw new Error("rpc down");
-      }) as unknown as typeof fetch,
-      recordException: (async (_e: unknown, ev: { route?: string }) => {
-        captures.push(ev);
-        return true;
-      }) as never,
-    });
-    assert.equal(result.ok, false);
-    assert.match(String(result.reason), /rpc down/);
-    // One exception PER LANE, each attributed to its own network (#8700). A
-    // single un-tagged capture would make "both chains are down" and "testnet
-    // is down" the same alert.
-    assert.deepEqual(captures.map((c) => c.route).sort(), [
-      "raw-capture-sync:mainnet",
-      "raw-capture-sync:testnet",
-    ]);
-  });
+  assert.equal(rpc.mock.calls.length, 0);
+  assert.equal(await f.store.canonical!.read("mainnet"), null);
 });
 
-describe("runRawCaptureSync — capture", () => {
-  test("explicit D1 selection captures without an R2 binding and advances only its committed watermark", async () => {
-    const { env } = envWith({
-      RAW_CAPTURE_STORAGE: "d1",
-      METAGRAPH_ARCHIVE: undefined,
-      D1_STATE: {
-        prepare: () => {
-          throw new Error("injected writer owns its database");
-        },
-      },
-    });
-    const stored = new Map<string, string>();
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      now: () => 5000,
-      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
-      d1CaptureStore: {
-        put: async (key, value) => {
-          stored.set(key, value as string);
-        },
-      },
-    });
-    assert.equal(result.ok, true);
-    assert.equal(result.captured, 3);
-    assert.equal(result.watermark, RAW_CAPTURE_GENESIS_FLOOR + 2);
-    assert.equal(stored.size, 1);
-    assert.equal([...stored.values()][0]!.trim().split("\n").length, 3);
-    assert.equal(
-      db
-        .prepare(
-          "SELECT last_contiguous_block FROM raw_capture_state WHERE network='mainnet'",
-        )
-        .get()?.last_contiguous_block,
-      result.watermark,
-    );
-  });
-
-  test("a selected D1 binding without its writer cannot silently use the R2 binding", async () => {
-    const { env, puts } = envWith({
-      RAW_CAPTURE_STORAGE: "d1",
-      D1_STATE: { prepare: () => {} },
-    });
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      d1CaptureStore: undefined,
-      recordException: async () => false,
-    });
-    assert.equal(result.reason, "store_unavailable");
-    assert.equal(puts.size, 0);
-  });
-
-  test("first tick starts at the genesis floor and persists the watermark", async () => {
-    const { env, puts } = envWith();
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
-      now: () => 5000,
-    });
-    assert.equal(result.ok, true);
-    assert.equal(result.captured, 3);
-    assert.equal(result.watermark, RAW_CAPTURE_GENESIS_FLOOR + 2);
-    assert.equal(puts.size, 1);
-    const row = db
-      .prepare(
-        `SELECT last_contiguous_block, updated_at FROM raw_capture_state`,
-      )
-      .get() as Record<string, number>;
-    assert.equal(row.last_contiguous_block, RAW_CAPTURE_GENESIS_FLOOR + 2);
-    assert.equal(row.updated_at, 5000);
-  });
-
-  test("a second tick resumes from the persisted watermark, not the floor", async () => {
-    const { env, puts } = envWith();
-    await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 1),
-      now: () => 1,
-    });
-    const second = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 4),
-      now: () => 2,
-    });
-    assert.equal(second.captured, 3, "only the NEW blocks were captured");
-    assert.equal(second.watermark, RAW_CAPTURE_GENESIS_FLOOR + 4);
-    assert.equal(puts.size, 2, "two disjoint batches, no overlap");
-  });
-
-  test("caught up: no work and no write", async () => {
-    const { env, puts } = envWith();
-    await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR),
-      now: () => 1,
-    });
-    const again = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR),
-      now: () => 2,
-    });
-    assert.equal(again.captured, 0);
-    assert.equal(again.behind, 0);
-    assert.equal(puts.size, 1);
-    const health = db
-      .prepare(
-        "SELECT verdict, detail FROM lane_health WHERE lane = 'raw-capture:mainnet' AND checked_at = 2",
-      )
-      .get();
-    assert.equal(health?.verdict, "ok");
-    assert.equal(health?.detail, "0 captured, 0 behind, 1 endpoint(s)");
-  });
-
-  test("reports lag so a backlog is observable rather than inferred", async () => {
-    const { env } = envWith();
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 10_000),
-      now: () => 1,
-    });
-    // The DERIVED cap, not a literal: the budget follows the cron and the lane
-    // count, so restating it here would be the second hand-written number
-    // #9430 exists to remove.
-    assert.equal(
-      result.captured,
-      RAW_CAPTURE_LANES[0]!.maxPerTick,
-      "bounded per tick",
-    );
-    assert.ok(
-      (result.behind ?? 0) > 9000,
-      "still far behind, and says so — the next ticks drain it",
-    );
-  });
-
-  test.each([0, 1])(
-    "a stopped tick records health from its %i committed blocks",
-    async (captured) => {
-      const { env, puts } = envWith();
-      const warnings: string[] = [];
-      const realWarn = console.warn;
-      console.warn = (...a: unknown[]) => void warnings.push(a.join(" "));
-      // The head is reachable, but the first or second pending block fails.
-      // No progress with work remaining must stay stale; partial progress is ok.
-      const failAt = RAW_CAPTURE_GENESIS_FLOOR + captured;
-      const flaky = jsonRpcNode((method, params, url) => {
-        const isTestnet = url.includes("test.finney");
-        // Endpoint-aware for the same reason rpcFetch is: the testnet lane must
-        // be a no-op here so `puts.size` still counts only the mainnet batch.
-        if (method === "chain_getHeader")
-          return {
-            result: {
-              number: isTestnet
-                ? `0x${(TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`
-                : `0x${(RAW_CAPTURE_GENESIS_FLOOR + 5).toString(16)}`,
-            },
-          };
-        if (method === "chain_getBlockHash") return hashList(params);
-        if (method === "chain_getBlock") {
-          // A per-CALL refusal, which is how a node declines a height it cannot
-          // serve. The chunk keeps its prefix and stops there -- the safe
-          // partial-run path this test is about.
-          if (params[0] === `0xh${failAt}`) {
-            return {
-              error: { message: `state already discarded at ${failAt}` },
-            };
-          }
-          return {
-            result: {
-              block: { header: { parentHash: "0xp" }, extrinsics: ["0xaa"] },
-            },
-          };
-        }
-        return { result: "0xevents" };
-      });
-      try {
-        const result = await runRawCaptureSync(env as never, {
-          ...captureDependencies(env),
-          sleepFn: noSleep,
-          ctx: CTX,
-          fetchImpl: flaky,
-          now: () => 9,
-        });
-        assert.equal(result.ok, true, "a partial tick is not a failed tick");
-        assert.equal(result.captured, captured);
-        assert.equal(result.stoppedAt, failAt);
-        assert.equal(
-          result.watermark,
-          RAW_CAPTURE_GENESIS_FLOOR + captured - 1,
-        );
-        assert.equal(result.behind, 6 - captured);
-        assert.equal(puts.size, captured);
-        const health = db
-          .prepare(
-            "SELECT verdict, detail FROM lane_health WHERE lane = 'raw-capture:mainnet' AND checked_at = 9",
-          )
-          .get();
-        assert.equal(health?.verdict, captured > 0 ? "ok" : "stale");
-        assert.match(String(health?.detail), /state already discarded/);
-        assert.ok(
-          warnings.some((w) => w.includes(`stopped at ${failAt}`)),
-          "the stop is visible, so a stuck lane looks different from a slow one",
-        );
-      } finally {
-        console.warn = realWarn;
-      }
-    },
+test("a bound database also requires the native writer and canonical contract", async () => {
+  const f = await fixture();
+  const deps = options(f);
+  assert.equal(
+    (await runRawCaptureSync(f.env, { ...deps, d1CaptureStore: undefined }))
+      .reason,
+    "store_unavailable",
   );
-
-  test("a thrown non-Error still yields a reason instead of 'undefined'", async () => {
-    const { env } = envWith();
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: (async () => {
-        throw "string failure";
-      }) as unknown as typeof fetch,
-      recordException: (async () => true) as never,
-    });
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, "string failure");
-  });
-
-  test("head failure replaces old healthy status and later success restores it", async () => {
-    const { env } = envWith();
-    const normal = rpcFetch(RAW_CAPTURE_GENESIS_FLOOR);
-    const exceptions: string[] = [];
-    const run = (at: number, fetchImpl: typeof fetch) =>
-      runRawCaptureSync(env as never, {
-        ...captureDependencies(env),
-        sleepFn: noSleep,
-        ctx: CTX,
-        fetchImpl,
-        now: () => at,
-        recordException: (async (_env: unknown, event: { route: string }) => {
-          exceptions.push(event.route);
-          return true;
-        }) as never,
-      });
-    await run(1, normal);
-    await run(
-      2,
-      (async () => new Response(null, { status: 525 })) as typeof fetch,
-    );
-    const health = (at: number) =>
-      db
-        .prepare(
-          "SELECT verdict, detail FROM lane_health WHERE lane = 'raw-capture:mainnet' AND checked_at = ?",
-        )
-        .get(at);
-    assert.equal(health(1)?.verdict, "ok");
-    assert.equal(health(2)?.verdict, "stale");
-    assert.equal(
-      health(2)?.detail,
-      "capture failed: chain_getHeader: HTTP 525",
-    );
-    assert.deepEqual(exceptions.sort(), [
-      "raw-capture-sync:mainnet",
-      "raw-capture-sync:testnet",
-    ]);
-    await run(3, normal);
-    assert.equal(health(3)?.verdict, "ok");
-  });
+  assert.equal(
+    (
+      await runRawCaptureSync(f.env, {
+        ...deps,
+        d1CaptureStore: {
+          put: async () => {
+            throw new Error("legacy capture must not run");
+          },
+        },
+      })
+    ).reason,
+    "checkpoint_unavailable",
+  );
+  assert.equal(await f.store.canonical!.read("mainnet"), null);
 });
 
-// The read half of the watermark, which is all that survives as a standalone
-// helper: the WRITE goes through neonWatermark, and the lakehouse-seam watchdog
-// is the only caller that needs to read the row without writing it.
-//
-// Executed against a real engine rather than a recording fake, because the one
-// thing that can break here is the column names being wrong -- and a fake that
-// records SQL never parses it.
-describe("watermarkRead", () => {
-  test("returns null when no row exists yet", async () => {
-    assert.equal(await watermarkRead(runner() as never)(), null);
-  });
-
-  test("reads back the row the capture lane writes, per network", async () => {
-    db.prepare(
-      `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
-       VALUES (?, ?, ?)`,
-    ).run("mainnet", 42, 7);
-    db.prepare(
-      `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
-       VALUES (?, ?, ?)`,
-    ).run("testnet", 99, 7);
-    assert.equal(await watermarkRead(runner() as never, "mainnet")(), 42);
-    assert.equal(await watermarkRead(runner() as never, "testnet")(), 99);
-  });
-
-  // THE MONOTONIC GUARANTEE, executed rather than pattern-matched.
-  //
-  // Run against the real engine on purpose: the guard is a CASE inside the
-  // upsert, and a test that greps the statement text proves the string exists,
-  // not that the database honours it. Formatting alone would satisfy a regex.
-  test("a late, LOWER write cannot rewind the watermark", async () => {
-    // Measured in production 2026-08-16, minutes after #11406 removed the
-    // buffer that had been serialising these writes: the lane drained a steady
-    // 395 blocks/min for eight ticks, then jumped BACKWARDS ~2,795 blocks in
-    // one tick (5,683 behind -> 8,478 behind). A tick reads the watermark once
-    // at its start and writes once per chunk, so a tick that overruns the
-    // one-minute cron overlaps the next one and its late, lower writes clobber
-    // the newer tick's progress. Idempotent R2 keys meant no corruption -- just
-    // the lane spending its whole budget re-reading what it already had.
-    // Driven through the PRODUCTION writer, not a copy of its SQL: a test that
-    // re-types the statement proves SQLite honours the statement in the test,
-    // which is true no matter what mirrorRawCaptureStateToNeon actually sends.
-    const { env } = envWith();
-    const write = (block: number, at: number) =>
-      mirrorRawCaptureStateToNeon(env as never, CTX, "mainnet", block, at, {
-        laneHealthDb: null,
-      });
-    await write(8_850_529, 100);
-    // The overlapping tick, finishing late with the height it started from.
-    await write(8_847_734, 200);
-    assert.equal(
-      await watermarkRead(runner() as never, "mainnet")(),
-      8_850_529,
-      "the higher, already-durable height must survive the stale writer",
-    );
-    // ...and a genuinely NEW height still advances it, or the guard would have
-    // frozen the lane instead of protecting it.
-    await write(8_851_000, 300);
-    assert.equal(
-      await watermarkRead(runner() as never, "mainnet")(),
-      8_851_000,
-      "forward progress is unaffected",
-    );
-  });
-
-  // A value that is not a number is not a watermark of zero: the capture
-  // treats null as "start at the floor" and 0 as a real position, so
-  // conflating them would re-capture from block 0.
-  //
-  // ASSERTED AGAINST A STUB, not the fixture, and deliberately so: 0013
-  // declares `last_contiguous_block INTEGER NOT NULL`, and SQLite enforces it
-  // -- the row this guard is about cannot be inserted at all. What CAN reach
-  // the guard is a non-number from the driver: `pg` returns int8 as a STRING
-  // unless a type parser is installed, and `typeof "8756635"` is not "number".
-  // So the shapes below are the ones the store can actually hand back, which
-  // is what the type guard is for.
-  test("a non-numeric reading is null, never 0", async () => {
-    for (const value of [null, undefined, "8756635", {}]) {
-      const stub = {
-        prepare: () => ({
-          bind: () => ({
-            first: async () => ({ last_contiguous_block: value }),
-          }),
-        }),
-      };
-      assert.equal(
-        await watermarkRead(stub as never, "mainnet")(),
-        null,
-        JSON.stringify(value ?? null),
-      );
-    }
-  });
-});
-
-// #8700: the testnet capture lane. The property that matters is ISOLATION —
-// two chains writing block ranges into one bucket and one watermark table,
-// where a collision would silently overwrite one chain's bytes with the
-// other's and be invisible until someone decoded them.
-describe("the testnet capture lane", () => {
-  test("mainnet's R2 prefix and watermark row are untouched by testnet's", async () => {
-    const { env, puts } = envWith();
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: rpcFetch(
-        RAW_CAPTURE_GENESIS_FLOOR + 1,
-        TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
+test("production wiring captures each network through native receipts, resumes, and reports finalized lag", async () => {
+  const f = await fixture(),
+    n = nodes();
+  const result = await runRawCaptureSync(f.env, options(f, n.fetchImpl));
+  assert.equal(result.ok, true);
+  assert.equal(result.captured, 5);
+  for (const node of [n.main, n.testnet]) {
+    const cp = await f.store.canonical!.read(node.network);
+    assert.equal(cp?.height, node.head);
+    assert.equal(cp?.hash, node.hash(node.head));
+    assert.equal(cp?.verifiedFrom, node.first);
+    assert.equal(cp?.revision, 1);
+    assert.ok(
+      node.requests.every(
+        (r) => r.method !== "chain_getHeader" || r.params.length === 1,
       ),
-      now: () => 5000,
-    });
-    assert.equal(result.ok, true);
-
-    const keys = [...puts.keys()].sort();
-    assert.equal(keys.length, 2, "one batch object per network");
-    // Mainnet keeps the bare prefix the decode lane already lists.
-    assert.ok(
-      keys.some((k) => k.startsWith("chain/raw/blocks/")),
-      `no mainnet key in ${keys.join(", ")}`,
     );
-    assert.ok(
-      keys.some((k) => k.startsWith("chain/raw/testnet/blocks/")),
-      `no testnet key in ${keys.join(", ")}`,
-    );
-    // And neither is under the other's prefix.
-    assert.equal(
-      keys.filter((k) => k.startsWith("chain/raw/blocks/")).length,
-      1,
-      "testnet bytes must not land under the mainnet prefix",
-    );
-
-    // Spread to a plain object: node:sqlite returns null-prototype rows, which
-    // deepEqual rejects against object literals even when every value matches.
-    const rows = (
-      db
-        .prepare(
-          `SELECT network, last_contiguous_block FROM raw_capture_state ORDER BY network`,
-        )
-        .all() as Record<string, unknown>[]
-    ).map((row) => ({ ...row }));
-    assert.deepEqual(rows, [
-      {
-        network: "mainnet",
-        last_contiguous_block: RAW_CAPTURE_GENESIS_FLOOR + 1,
-      },
-      {
-        network: "testnet",
-        last_contiguous_block: TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
-      },
-    ]);
-  });
-
-  test("the bytes under a testnet key came from the testnet endpoint", async () => {
-    // The collision this guards against is not a crash — both chains produce
-    // well-formed blocks — so the only proof is provenance in the payload.
-    const { env, puts } = envWith();
-    await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: rpcFetch(
-        RAW_CAPTURE_GENESIS_FLOOR,
-        TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
-      ),
-      now: () => 1,
-    });
-    for (const [key, body] of puts) {
-      const first = JSON.parse(body.split("\n")[0]!) as {
-        block_hash: string;
-        events: string;
-      };
-      const expected = key.includes("/testnet/") ? "t" : "m";
-      assert.ok(
-        first.block_hash.startsWith(`0x${expected}h`),
-        `${key} holds ${first.block_hash}, which came from the wrong chain`,
-      );
-      assert.equal(first.events, `0x${expected}events`);
-    }
-  });
-
-  test("a testnet outage leaves the mainnet lane fully intact", async () => {
-    // The reason the lanes run in sequence with independent error handling.
-    const { env, puts } = envWith();
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: (async (url: unknown, init?: { body?: string }) => {
-        if (String(url).includes("test.finney"))
-          throw new Error("testnet down");
-        return rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 1)(
-          url as never,
-          init as never,
-        );
-      }) as unknown as typeof fetch,
-      now: () => 7,
-      recordException: (async () => true) as never,
-    });
-
-    assert.equal(
-      result.ok,
-      true,
-      "mainnet succeeded, so the tick is not a failure",
-    );
-    assert.equal(result.captured, 2, "mainnet captured its full batch");
-    assert.equal(result.watermark, RAW_CAPTURE_GENESIS_FLOOR + 1);
-
-    const lanes = result.lanes ?? [];
-    const mainnet = lanes.find((lane) => lane.network === "mainnet");
-    const testnet = lanes.find((lane) => lane.network === "testnet");
-    assert.equal(mainnet?.ok, true);
-    assert.equal(testnet?.ok, false);
-    assert.match(String(testnet?.reason), /testnet down/);
-
-    // Mainnet's watermark advanced and its bytes landed, despite the sibling.
-    assert.equal(
-      (
-        db
-          .prepare(
-            `SELECT last_contiguous_block FROM raw_capture_state WHERE network = 'mainnet'`,
-          )
-          .get() as Record<string, number>
-      ).last_contiguous_block,
-      RAW_CAPTURE_GENESIS_FLOOR + 1,
-    );
-    assert.equal([...puts.keys()].length, 1);
-    assert.equal(
-      db
-        .prepare(
-          `SELECT COUNT(*) AS n FROM raw_capture_state WHERE network = 'testnet'`,
-        )
-        .get()?.n,
-      0,
-      "a failed lane must not leave a watermark claiming bytes it never wrote",
-    );
-  });
-
-  test("every declared lane has a distinct network, endpoint and floor", () => {
-    // Cheap, but it is the assertion that would have caught a copy-paste lane
-    // pointing at mainnet's endpoint under a testnet label — which writes one
-    // chain's blocks under the other's key with no error anywhere.
-    const networks = RAW_CAPTURE_LANES.map((lane) => lane.network);
-    assert.equal(new Set(networks).size, networks.length);
-    const urls = RAW_CAPTURE_LANES.map((lane) => lane.defaultRpcUrl);
-    assert.equal(new Set(urls).size, urls.length);
-    const floors = RAW_CAPTURE_LANES.map((lane) => lane.genesisFloor);
-    assert.equal(new Set(floors).size, floors.length);
-    // The combined per-tick budget must stay inside the platform's
-    // 1000-subrequest ceiling. COUNTED IN REQUESTS, NOT CALLS: a chunk costs
-    // REQUESTS_PER_CHUNK however many blocks it carries, plus one head fetch
-    // per lane. Counting calls here is what made this read 1,602 against a
-    // ceiling of 1,000 for a tick that actually issues 66.
-    const subrequests = RAW_CAPTURE_LANES.reduce(
-      (total, lane) =>
-        total +
-        Math.ceil(lane.maxPerTick / MAX_CAPTURE_CHUNK_BLOCKS) *
-          REQUESTS_PER_CHUNK +
-        1,
-      0,
-    );
-    assert.ok(
-      subrequests < 1000,
-      `a tick would issue ${subrequests} subrequests, over the Worker ceiling`,
-    );
-  });
-
-  // This used to assert that a whole TICK fit inside one minute's allowance,
-  // and that premise is exactly what capped testnet at 32 blocks (#9430). An
-  // UNPACED tick fires its burst at network speed, so one minute bounds it
-  // however long the tick is. A paced one spends the tick, so the tick bounds
-  // it -- and what has to fit the limit is the RATE.
-  test("the paced rate across all lanes stays inside the measured limit", () => {
-    // MEASURED IN REQUESTS, because that is what the endpoint counts: one call
-    // per request 429'd after 103, while fifty calls per request carried 1,400
-    // through 140 requests untouched (2026-08-16). A gap between CHUNKS times
-    // the requests a chunk costs is the lane's real rate.
-    for (const lane of RAW_CAPTURE_LANES) {
-      assert.ok(lane.minGapMs > 0, `${lane.network} is not paced at all`);
-      const requestsPerMinute =
-        (60_000 / lane.minGapMs) *
-        REQUESTS_PER_CHUNK *
-        RAW_CAPTURE_LANES.length;
-      assert.ok(
-        requestsPerMinute < RPC_REQUESTS_PER_MINUTE_LIMIT,
-        `${lane.network} sustains ${requestsPerMinute.toFixed(0)} requests/min across ${RAW_CAPTURE_LANES.length} lanes, at or over ${RPC_REQUESTS_PER_MINUTE_LIMIT}/min`,
-      );
-    }
-  });
-
-  test("a paced tick finishes inside its own interval", () => {
-    // Lanes run CONCURRENTLY, so the wall time is one lane's, not the sum --
-    // but it still has to leave slack for jitter and a mid-tick redeploy.
-    //
-    // The gap is between CHUNK STARTS, so the span is the chunk COUNT times
-    // the gap. Multiplying by the block count instead reads 20 minutes for a
-    // tick that spends 45 seconds -- and would push the lane back to reading
-    // one block at a time to satisfy it.
-    const intervalMs = cronStepMinutes(RAW_CAPTURE_CRON) * 60_000;
-    for (const lane of RAW_CAPTURE_LANES) {
-      const chunks = Math.ceil(lane.maxPerTick / MAX_CAPTURE_CHUNK_BLOCKS);
-      const spendMs = chunks * lane.minGapMs;
-      assert.ok(
-        spendMs < intervalMs,
-        `${lane.network} would spend ${(spendMs / 60_000).toFixed(1)} min of a ${intervalMs / 60_000} min tick`,
-      );
-    }
-  });
-
-  // The paired positive: a budget test that only says "not too fast" is
-  // satisfied by a lane that never catches up.
-  test("the budget lets every lane outpace the chain it follows", () => {
-    const ticksPerHour = 60 / cronStepMinutes(RAW_CAPTURE_CRON);
-    for (const lane of RAW_CAPTURE_LANES) {
-      const perHour = lane.maxPerTick * ticksPerHour;
-      // Bittensor produces a block every 12 s on both chains.
-      assert.ok(
-        perHour > 3600 / 12,
-        `${lane.network} captures ${perHour}/h against a chain producing 300/h -- it can never catch up`,
-      );
-    }
-  });
-
-  test("a third network would narrow the shared allowance", () => {
-    const two = pacedLaneBudget(2, cronStepMinutes(RAW_CAPTURE_CRON));
-    const three = pacedLaneBudget(3, cronStepMinutes(RAW_CAPTURE_CRON));
-    assert.ok(three.maxBlocks < two.maxBlocks);
-    assert.ok(three.minGapMs > two.minGapMs);
-  });
-
-  test("an unreadable cron narrows the budget rather than widening it", () => {
-    assert.equal(cronStepMinutes("11,41 * * * *"), 5);
-    assert.equal(cronStepMinutes(""), 5);
-    assert.equal(cronStepMinutes("*/2 * * * *"), 2);
-  });
+  }
+  const proofs = await f.db
+    .prepare("SELECT network,key FROM raw_capture_finality ORDER BY network")
+    .all<{ network: string; key: string }>();
+  assert.equal(proofs.results.length, 2);
+  assert.match(proofs.results[0]!.key, /^chain\/raw\/blocks\//);
+  assert.match(proofs.results[1]!.key, /^chain\/raw\/testnet\/blocks\//);
+  const again = await runRawCaptureSync(f.env, options(f, n.fetchImpl));
+  assert.equal(again.captured, 0);
+  assert.equal(again.behind, 0);
+  assert.equal(
+    await f.db
+      .prepare("SELECT count(*) n FROM raw_capture_finality")
+      .first<number>("n"),
+    2,
+  );
 });
 
-// #9430. Concurrency is what turns the shared budget into throughput -- each
-// lane gets the whole interval instead of half -- but only if isolation still
-// holds, which now comes from runLane converting failures into results rather
-// than from ordering.
-describe("the lanes run concurrently, and stay isolated", () => {
-  test("one lane's endpoint failing does not stop the other", async () => {
-    const { env } = envWith();
-    // Only the testnet endpoint fails.
-    const result = (await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      now: () => 1,
-      fetchImpl: (async (url: string, init: RequestInit) => {
-        if (String(url).includes("test.finney")) {
-          throw new Error("testnet endpoint down");
-        }
-        return rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 100)(
-          url as never,
-          init as never,
-        );
-      }) as never,
-    })) as { lanes?: { network: string; ok: boolean; captured?: number }[] };
-    const lanes = result.lanes ?? [];
-    const mainnet = lanes.find((l) => l.network === "mainnet");
-    const testnet = lanes.find((l) => l.network === "testnet");
-    // The POSITIVE first: mainnet actually captured. An "isolation" test where
-    // neither lane ran passes for the wrong reason.
-    assert.ok(
-      (mainnet?.captured ?? 0) > 0,
-      "mainnet captured nothing, so isolation proves nothing",
-    );
-    assert.equal(
-      testnet?.ok,
-      false,
-      "the failing lane must report its failure",
-    );
+test("one failed network leaves the other intact and replaces its old healthy status", async () => {
+  const f = await fixture(),
+    n = nodes();
+  await runRawCaptureSync(f.env, options(f, n.fetchImpl));
+  const fetchImpl: typeof fetch = (url, init) =>
+    String(url).includes("test.finney")
+      ? Promise.reject(new Error("testnet unavailable"))
+      : n.main.fetchImpl(url, init);
+  const deps = { ...options(f, fetchImpl), now: () => 2000 };
+  const result = await runRawCaptureSync(f.env, deps);
+  assert.equal(result.ok, true);
+  assert.equal(result.lanes?.find((l) => l.network === "mainnet")?.ok, true);
+  assert.equal(result.lanes?.find((l) => l.network === "testnet")?.ok, false);
+  assert.equal(deps.recordException.mock.calls.length, 1);
+  const health = await f.db
+    .prepare(
+      "SELECT verdict FROM lane_health_current WHERE lane='raw-capture:testnet'",
+    )
+    .first<string>("verdict");
+  assert.equal(health, "stale");
+  await runRawCaptureSync(f.env, {
+    ...options(f, n.fetchImpl),
+    now: () => 3000,
   });
-
-  test("both lanes are attempted in one tick", async () => {
-    const { env } = envWith();
-    const seen = new Set<string>();
-    const result = (await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      now: () => 1,
-      fetchImpl: (async (url: string, init: RequestInit) => {
-        seen.add(String(url).includes("test.finney") ? "testnet" : "mainnet");
-        return rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 100)(
-          url as never,
-          init as never,
-        );
-      }) as never,
-    })) as { lanes?: { network: string }[] };
-    assert.deepEqual([...seen].sort(), ["mainnet", "testnet"]);
-    assert.equal((result.lanes ?? []).length, RAW_CAPTURE_LANES.length);
-  });
+  assert.equal(
+    await f.db
+      .prepare(
+        "SELECT verdict FROM lane_health_current WHERE lane='raw-capture:testnet'",
+      )
+      .first<string>("verdict"),
+    "ok",
+  );
 });
 
-/**
- * The pool widens the rotation — and the wiring that makes it do so.
- *
- * The measured ceiling on this lane is a PER-HOST rate limit, so one host was
- * the whole budget and the lane fell 8,409 blocks (~28 h) behind on 2026-08-16.
- * The endpoint lookup is DEFAULTED rather than injected in production, because
- * an injectable nothing injects is a feature that never runs — these prove it
- * reaches captureTick, and that a pool which cannot answer degrades to exactly
- * the single-endpoint lane this was before.
- */
-describe("the archive endpoints a lane reads from", () => {
-  const staticTestnetPool = {
+test("partial capture persists its valid prefix, reports stalled zero-progress, and recovers at the same height", async () => {
+  const f = await fixture();
+  const floor = RAW_CAPTURE_LANES[0]!.genesisFloor;
+  const n = nodes({ eventsAt: floor + 2 });
+  const first = await runRawCaptureSync(f.env, options(f, n.fetchImpl));
+  assert.equal(first.captured, 2);
+  assert.equal(first.watermark, floor + 1);
+  assert.equal(first.stoppedAt, floor + 2);
+  const next = await runRawCaptureSync(f.env, {
+    ...options(f, n.fetchImpl),
+    now: () => 2000,
+  });
+  assert.equal(next.captured, 0);
+  assert.equal(next.watermark, floor + 1);
+  assert.equal(
+    await f.db
+      .prepare(
+        "SELECT verdict FROM lane_health_current WHERE lane='raw-capture:mainnet'",
+      )
+      .first<string>("verdict"),
+    "stale",
+  );
+  const good = nodes();
+  const repaired = await runRawCaptureSync(f.env, {
+    ...options(f, good.fetchImpl),
+    now: () => 3000,
+  });
+  assert.equal(repaired.captured, 3);
+  assert.equal(repaired.watermark, floor + 4);
+});
+
+test("the real cron factory's native commit cannot acknowledge an ignored frontier update", async () => {
+  const f = await fixture();
+  await f.db
+    .prepare(
+      "CREATE TRIGGER refuse_mainnet BEFORE UPDATE ON raw_capture_state WHEN NEW.network='mainnet' AND NEW.last_contiguous_block>OLD.last_contiguous_block BEGIN SELECT RAISE(IGNORE); END",
+    )
+    .run();
+  const result = await runRawCaptureSync(f.env, {
+    ...options(f),
+    d1CaptureStore: rawCaptureD1(f.db),
+  });
+  assert.equal(result.lanes?.find((l) => l.network === "mainnet")?.ok, false);
+  assert.match(result.reason!, /frontier CAS refused/);
+  assert.equal(
+    (await f.store.canonical!.read("mainnet"))?.height,
+    RAW_CAPTURE_LANES[0]!.genesisFloor - 1,
+  );
+  assert.equal(
+    await f.db
+      .prepare(
+        "SELECT count(*) n FROM raw_capture_finality WHERE network='mainnet'",
+      )
+      .first<number>("n"),
+    0,
+  );
+  await f.db.prepare("DROP TRIGGER refuse_mainnet").run();
+  assert.equal((await runRawCaptureSync(f.env, options(f))).captured, 5);
+});
+
+test("a pool member is actually used after qualifying the fixed genesis/finality/frontier anchors", async () => {
+  const f = await fixture(),
+    floor = RAW_CAPTURE_LANES[0]!.genesisFloor;
+  const primary = nodes({ failAt: floor }),
+    secondary = nodes();
+  const fetchImpl: typeof fetch = (url, init) =>
+    String(url).includes("secondary.example")
+      ? secondary.main.fetchImpl(url, init)
+      : primary.fetchImpl(url, init);
+  const endpointDeps = {
     readArtifact: async () => ({
       ok: true,
       data: {
         pools: [
           {
-            id: "test-rpc",
+            id: "finney-rpc",
             endpoints: [
-              "https://test.finney.opentensor.ai",
-              "https://test.chain.opentensor.ai",
-            ].map((url) => ({
-              url,
-              pool_eligible: true,
-              archive_support: false,
-              health_source: "not-monitored",
-              status: "unknown",
-            })),
+              {
+                url: "https://secondary.example",
+                archive_support: true,
+                pool_eligible: true,
+              },
+            ],
           },
         ],
       },
     }),
-    readHealthKv: async () => ({ endpoints: [] }),
   };
-
-  for (const failure of ["head-timeout", "pruned-events"] as const) {
-    test(`the static testnet fallback captures complete bytes after ${failure}`, async () => {
-      const { env, puts } = envWith();
-      const asked: string[] = [];
-      const result = await runRawCaptureSync(env as never, {
-        ...captureDependencies(env),
-        ctx: CTX,
-        sleepFn: noSleep,
-        endpointDeps: staticTestnetPool,
-        now: () => 1_000,
-        fetchImpl: jsonRpcNode((method, params, url) => {
-          const isTestnet = new URL(url).hostname.startsWith("test.");
-          asked.push(new URL(url).hostname + ":" + method);
-          if (
-            failure === "head-timeout" &&
-            url.includes("test.finney") &&
-            method === "chain_getHeader"
-          ) {
-            const error = new Error("The operation was aborted due to timeout");
-            error.name = "TimeoutError";
-            throw error;
-          }
-          if (method === "chain_getHeader")
-            return {
-              result: {
-                number: `0x${(isTestnet ? TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1 : RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`,
-              },
-            };
-          if (method === "chain_getBlockHash") return hashList(params, "t");
-          if (method === "chain_getBlock")
-            return {
-              result: {
-                block: {
-                  header: { parentHash: "0xtp" },
-                  extrinsics: ["0xaa"],
-                },
-              },
-            };
-          return { result: url.includes("test.finney") ? null : "0x00" };
-        }),
-      });
-      const testnet = result.lanes?.find((lane) => lane.network === "testnet");
-      assert.equal(testnet?.ok, true);
-      assert.equal(testnet?.captured, 2);
-      assert.equal(testnet?.watermark, TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1);
-      assert.equal(testnet?.behind, 0);
-      assert.equal(puts.size, 1);
-      const [key, bytes] = [...puts][0]!;
-      assert.ok(key.startsWith("chain/raw/testnet/blocks/"));
-      const rows = bytes
-        .trim()
-        .split("\n")
-        .map((line) => JSON.parse(line));
-      assert.deepEqual(
-        rows.map((row) => [row.block_number, row.events, row.extrinsics]),
-        [
-          [TESTNET_RAW_CAPTURE_GENESIS_FLOOR, "0x00", ["0xaa"]],
-          [TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1, "0x00", ["0xaa"]],
-        ],
-      );
-      assert.equal(
-        await watermarkRead(runner() as never, "testnet")(),
-        TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
-      );
-      assert.equal(
-        asked.filter(
-          (call) => call === "test.finney.opentensor.ai:chain_getHeader",
-        ).length,
-        1,
-      );
-      assert.ok(asked.includes("test.chain.opentensor.ai:state_getStorage"));
-    });
-  }
-
-  test("a partial capture stops before missing events and the next tick resumes at exactly that height", async () => {
-    const { env, puts } = envWith();
-    const fetchImpl = jsonRpcNode((method, params, url) => {
-      const isTestnet = new URL(url).hostname.startsWith("test.");
-      if (method === "chain_getHeader")
-        return {
-          result: {
-            number: `0x${(isTestnet ? TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1 : RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`,
-          },
-        };
-      if (method === "chain_getBlockHash") return hashList(params, "t");
-      if (method === "chain_getBlock")
-        return {
-          result: {
-            block: { header: { parentHash: "0xtp" }, extrinsics: ["0xaa"] },
-          },
-        };
-      return {
-        result:
-          url.includes("test.chain") ||
-          params[1] === `0xth${TESTNET_RAW_CAPTURE_GENESIS_FLOOR}`
-            ? "0x00"
-            : null,
-      };
-    });
-    const options = {
-      ...captureDependencies(env),
-      ctx: CTX,
-      sleepFn: noSleep,
-      endpointDeps: staticTestnetPool,
-      fetchImpl,
-    };
-    const first = (await runRawCaptureSync(env as never, options)).lanes?.find(
-      (lane) => lane.network === "testnet",
-    );
-    assert.equal(first?.captured, 1);
-    assert.equal(first?.watermark, TESTNET_RAW_CAPTURE_GENESIS_FLOOR);
-    assert.equal(first?.stoppedAt, TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1);
-    const second = (await runRawCaptureSync(env as never, options)).lanes?.find(
-      (lane) => lane.network === "testnet",
-    );
-    assert.equal(second?.captured, 1);
-    assert.equal(second?.watermark, TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1);
-    assert.equal(second?.behind, 0);
-    assert.equal(puts.size, 2);
-    const rows = [...puts.values()].flatMap((bytes) =>
-      bytes
-        .trim()
-        .split("\n")
-        .map((line) => JSON.parse(line)),
-    );
-    assert.deepEqual(
-      rows.map((row) => [row.block_number, row.events]),
-      [
-        [TESTNET_RAW_CAPTURE_GENESIS_FLOOR, "0x00"],
-        [TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1, "0x00"],
-      ],
-    );
-    assert.equal(
-      await watermarkRead(runner() as never, "testnet")(),
-      TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
-    );
+  const result = await runRawCaptureSync(f.env, {
+    ...options(f, fetchImpl),
+    endpointDeps,
   });
-
-  test("two candidates with unavailable event storage cannot write bytes or advance the watermark", async () => {
-    const { env, puts } = envWith();
-    const hosts = new Set<string>();
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      ctx: CTX,
-      sleepFn: noSleep,
-      endpointDeps: staticTestnetPool,
-      fetchImpl: jsonRpcNode((method, params, url) => {
-        const isTestnet = new URL(url).hostname.startsWith("test.");
-        if (isTestnet) hosts.add(new URL(url).hostname);
-        if (method === "chain_getHeader")
-          return {
-            result: {
-              number: `0x${(isTestnet ? TESTNET_RAW_CAPTURE_GENESIS_FLOOR : RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`,
-            },
-          };
-        if (method === "chain_getBlockHash") return hashList(params, "t");
-        if (method === "chain_getBlock")
-          return {
-            result: {
-              block: { header: { parentHash: "0xtp" }, extrinsics: ["0xaa"] },
-            },
-          };
-        return { result: null };
-      }),
-    });
-    const testnet = result.lanes?.find((lane) => lane.network === "testnet");
-    assert.equal(testnet?.captured, 0);
-    assert.equal(testnet?.watermark, TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1);
-    assert.equal(testnet?.stoppedAt, TESTNET_RAW_CAPTURE_GENESIS_FLOOR);
-    assert.match(testnet?.reason ?? "", /events unavailable/);
-    assert.equal(puts.size, 0);
-    assert.equal(await watermarkRead(runner() as never, "testnet")(), null);
-    assert.deepEqual([...hosts].sort(), [
-      "test.chain.opentensor.ai",
-      "test.finney.opentensor.ai",
-    ]);
-  });
-
-  /** Answers RPC for any host, recording which hosts were asked. */
-  function hostTrackingFetch(hosts: Set<string>) {
-    return jsonRpcNode((method, params, url) => {
-      hosts.add(new URL(url).origin);
-      // Above BOTH lanes' genesis floors, or nextCaptureHeights yields nothing
-      // and the tick fetches no blocks at all -- which looks exactly like a
-      // rotation that never happened.
-      if (method === "chain_getHeader")
-        return { result: { number: "0x989680" } };
-      if (method === "chain_getBlockHash") return hashList(params);
-      if (method === "chain_getBlock") {
-        return {
-          result: {
-            block: {
-              header: { number: "0x1", parentHash: "0xp" },
-              extrinsics: ["0xaa"],
-            },
-          },
-        };
-      }
-      return { result: "0xevents" };
-    });
-  }
-
-  test("a pool member is ACTUALLY read, not merely resolved", async () => {
-    const hosts = new Set<string>();
-    const { env } = envWith();
-    await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: hostTrackingFetch(hosts),
-      endpointDeps: {
-        readArtifact: async () => ({
-          ok: true,
-          data: {
-            pools: [
-              {
-                id: "finney-rpc",
-                endpoints: [
-                  {
-                    id: "second",
-                    url: "https://second-archive.example",
-                    kind: "subtensor-rpc",
-                    auth_required: false,
-                    public_safe: true,
-                    pool_eligible: true,
-                    archive_support: true,
-                    status: "ok",
-                  },
-                ],
-              },
-            ],
-          },
-        }),
-      },
-    });
-    assert.ok(
-      hosts.has("https://second-archive.example"),
-      `the pool member was never read; hosts asked: ${[...hosts].join(", ")}`,
-    );
-  });
-
-  test("a pool that cannot answer leaves the configured host doing the work", async () => {
-    // The degrade path, which is what runs whenever R2 is unreachable. It must
-    // be the lane exactly as it was, never a tick that reads nothing.
-    const hosts = new Set<string>();
-    const { env } = envWith();
-    const result = await runRawCaptureSync(env as never, {
-      ...captureDependencies(env),
-      sleepFn: noSleep,
-      ctx: CTX,
-      fetchImpl: hostTrackingFetch(hosts),
-      endpointDeps: {
-        readArtifact: async () => {
-          throw new Error("r2 down");
-        },
-      },
-    });
-    assert.equal(result.ok, true);
-    // Both lanes run, so both configured hosts appear; what must NOT appear is
-    // any host the (unreadable) pool would have contributed.
-    assert.ok(hosts.has("https://archive.chain.opentensor.ai"));
-    assert.equal(hosts.size, RAW_CAPTURE_LANES.length);
-  });
+  assert.equal(result.captured, 5);
+  assert.ok(
+    secondary.main.requests.some((r) => r.method === "state_getStorage"),
+  );
+  assert.ok(
+    secondary.main.requests.some(
+      (r) => r.method === "chain_getBlockHash" && r.params[0] === 0,
+    ),
+  );
 });
 
-/**
- * The budget must not scale with how many endpoints the lane reads.
- *
- * This is the correction of a wrong premise, pinned so it cannot come back.
- * Adding hosts LOOKS like it should buy proportional throughput; #9378 measured
- * that it does not, because the limit is per CLIENT -- "probing
- * test.chain.opentensor.ai straight afterwards stopped after 4 blocks, because
- * the first probe had already spent the budget."
- *
- * A multiplier here does not raise the ceiling, it spends one minute's
- * allowance in a quarter of the minute and buys a 429 partway through the tick.
- * The rotation stays for FAILOVER and archive coverage; the rate is unchanged.
- */
-describe("the tick budget against the endpoint count", () => {
-  test("more endpoints do NOT widen the budget", async () => {
-    const hosts = new Set<string>();
-    const { env } = envWith();
-    const pool = (n: number) => ({
-      readArtifact: async () => ({
-        ok: true,
-        data: {
-          pools: [
-            {
-              id: "finney-rpc",
-              endpoints: Array.from({ length: n }, (_, i) => ({
-                id: `archive-${i}`,
-                url: `https://archive-${i}.example`,
-                kind: "subtensor-rpc",
-                auth_required: false,
-                public_safe: true,
-                pool_eligible: true,
-                archive_support: true,
-                status: "ok",
-              })),
-            },
-          ],
-        },
-      }),
-    });
-    const gaps: number[] = [];
-    for (const n of [1, 6]) {
-      hosts.clear();
-      await runRawCaptureSync(env as never, {
-        ...captureDependencies(env),
-        ctx: CTX,
-        endpointDeps: pool(n),
-        // PINNED, because the gap is now a CYCLE time: captureTick subtracts a
-        // read's own duration from it, so against a real clock the recorded
-        // sleeps come back 2999 and 3000 and this test would fail on the
-        // millisecond a fake fetch happened to take rather than on the budget.
-        now: () => 1_000,
-        // The paced gap IS the budget's observable half, so recording it is
-        // how this asserts the rate rather than the endpoint list.
-        sleepFn: async (ms) => {
-          gaps.push(ms);
-        },
-        fetchImpl: jsonRpcNode((method, params, url) => {
-          hosts.add(new URL(url).origin);
-          if (method === "chain_getHeader")
-            return { result: { number: "0x989680" } };
-          if (method === "chain_getBlockHash") return hashList(params);
-          if (method === "chain_getBlock") {
-            return {
-              result: {
-                block: {
-                  header: { number: "0x1", parentHash: "0xp" },
-                  extrinsics: ["0xaa"],
-                },
-              },
-            };
-          }
-          return { result: "0xevents" };
-        }),
-      });
-    }
-    // Six endpoints were genuinely read -- the rotation is live, so this is not
-    // passing because the pool arm never ran.
-    assert.ok(hosts.size > 1, `rotation did not engage: ${[...hosts].length}`);
-    const distinct = [...new Set(gaps)];
-    assert.equal(
-      distinct.length,
-      1,
-      `the per-block gap must not depend on the endpoint count; saw ${distinct.join(", ")}`,
-    );
+test("an unreadable pool falls back to configured endpoints and non-Error failures stay visible", async () => {
+  const f = await fixture(),
+    n = nodes();
+  const endpointDeps = {
+    readArtifact: async () => {
+      throw new Error("pool unavailable");
+    },
+  };
+  assert.equal(
+    (
+      await runRawCaptureSync(f.env, {
+        ...options(f, n.fetchImpl),
+        endpointDeps,
+      })
+    ).captured,
+    5,
+  );
+  const result = await runRawCaptureSync(f.env, {
+    ...options(f),
+    fetchImpl: async () => {
+      throw "plain failure";
+    },
   });
+  assert.equal(result.ok, false);
+  assert.match(result.reason!, /plain failure/);
+});
+
+test("both lanes enter transport concurrently before either one has completed", async () => {
+  const f = await fixture(),
+    n = nodes();
+  const seen = new Set<string>();
+  let release!: () => void;
+  const both = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const fetchImpl: typeof fetch = async (url, init) => {
+    seen.add(String(url));
+    if (seen.size >= 2) release();
+    await both;
+    return n.fetchImpl(url, init);
+  };
+  assert.equal(
+    (await runRawCaptureSync(f.env, options(f, fetchImpl))).ok,
+    true,
+  );
+  assert.equal(seen.size, 2);
 });

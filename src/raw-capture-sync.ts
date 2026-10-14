@@ -106,29 +106,11 @@ const DEFAULT_RPC_URL = "https://archive.chain.opentensor.ai";
  */
 // TESTNET_RAW_CAPTURE_GENESIS_FLOOR is declared in raw-capture-floors.ts.
 
-/**
- * The per-lane tick budget, DERIVED from the endpoint's own limit.
- *
- * THE PLATFORM CEILING is 1000 subrequests per invocation, and every lane runs
- * in ONE invocation, so the budgets are bounded together rather than
- * individually. Chunking put two orders of magnitude between the lane and this
- * ceiling: a full mainnet tick now issues 33 subrequests, not 1,201.
- *
- * THESE USED TO BE TWO HAND-WRITTEN NUMBERS (150 mainnet, 32 testnet), and
- * #9430 is what that cost. 32 was pinned just under the measured 429; 150 was
- * chosen when mainnet was the only lane. Together they sustained 109 calls/min
- * against a 100/min ceiling the moment a second lane existed -- over budget in
- * the worst case with nothing to say so -- while testnet saturated its own cap
- * every tick and sat ~92 hours from closing a gap the interval could close in
- * ~16.
- *
- * The limit is PER MINUTE, so that is what the budget reads. An unpaced tick is
- * bounded by one minute's allowance however long it runs; a paced one is
- * bounded by its own span. Both numbers below fall out of the same measured
- * inputs -- the ceiling, the requests a chunk costs, the blocks a chunk carries,
- * and the cron interval -- so a cadence change or a third network moves them
- * together instead of leaving one behind.
- */
+/** The paced budget counts canonical qualification, the hash-list read and
+ * the body/events read. Initial anchor qualification and failover retries also
+ * consume the per-lane hard HTTP cap in captureTick. Endpoint count cannot
+ * multiply this allowance. Native binding/SQL budgets need separate measured
+ * qualification; an HTTP bound alone does not establish the invocation total. */
 /**
  * HTTP REQUESTS the public RPC serves one client per minute, per backend node.
  *
@@ -161,6 +143,7 @@ export const RPC_REQUESTS_PER_MINUTE_LIMIT = 100;
 import {
   MAX_CAPTURE_CHUNK_BLOCKS,
   REQUESTS_PER_CHUNK,
+  CANONICAL_REQUESTS_PER_CHUNK,
 } from "./raw-chain-capture.ts";
 export { MAX_CAPTURE_CHUNK_BLOCKS, REQUESTS_PER_CHUNK };
 
@@ -233,7 +216,7 @@ export function pacedLaneBudget(
 ): { maxBlocks: number; minGapMs: number } {
   const requestsPerMinute =
     (limitPerMinute * RPC_BUDGET_UTILISATION) / laneCount;
-  const chunksPerMinute = requestsPerMinute / REQUESTS_PER_CHUNK;
+  const chunksPerMinute = requestsPerMinute / CANONICAL_REQUESTS_PER_CHUNK;
   const blocksPerMinute = chunksPerMinute * MAX_CAPTURE_CHUNK_BLOCKS;
   return {
     // Lanes run CONCURRENTLY, so each gets the whole spendable interval rather
@@ -465,15 +448,9 @@ export async function runRawCaptureSync(
       "Raw capture D1 storage is not bound; no capture watermark can advance.",
     );
   }
-  // A watermark this tick can READ AND WRITE (#10158). The refusal stays even
-  // though there is only one store left: without a durable watermark the next
-  // tick cannot know where to resume, which is exactly how a gap forms.
   // The selected owner must hold both halves of this cursor. A validation-only
   // D1 binding does not move the lane; explicit ownership does.
-  const hasCaptureState = Boolean(
-    selectedD1Store(env, ["raw_capture_state"]) ||
-    env?.HYPERDRIVE?.connectionString,
-  );
+  const hasCaptureState = Boolean(selectedD1Store(env, ["raw_capture_state"]));
   if (!hasCaptureState) {
     return loud(
       "watermark_unavailable",
@@ -482,9 +459,13 @@ export async function runRawCaptureSync(
   }
 
   const store = deps.d1CaptureStore;
+  if (!store.canonical)
+    return loud(
+      "checkpoint_unavailable",
+      "Canonical raw capture checkpoint/receipt writer is not bound; refusing legacy capture fallback.",
+    );
 
-  // Each lane is captured independently and IN ORDER, mainnet first.
-  //
+  // Each network has an independent checkpoint and failure verdict.
   // CONCURRENT, not sequential (#9430). Isolation is still the whole point:
   // testnet is a best-effort secondary lane, and a testnet RPC outage must not
   // stop mainnet capture. `runLane` already converts every failure into a
@@ -565,9 +546,6 @@ async function runLane(
       ? await resolveCaptureEndpoints(env, lane.network, ctx.endpointDeps)
       : [];
     const rpcUrls = captureEndpointList(configured, fromPool);
-    // The per-host limit is what was measured, so the budget scales with the
-    // hosts this tick actually has -- derived here rather than compiled in,
-    // because the pool's membership changes without a deploy.
     // NOT widened by `rpcUrls.length`. See pacedLaneBudget: the allowance is
     // per backend node, but two of the three mainnet names resolve to one
     // machine and batching already leaves the lane two orders of magnitude of
@@ -584,8 +562,9 @@ async function runLane(
       // missing event bytes. Keep the cursor pinned until a host supplies them.
       requireEvents: true,
       store,
-      // THE TABLE IS THE WATERMARK, so this store is the whole write path.
+      // Retained for the helper's legacy contract; canonical capture never calls it.
       watermark: neonWatermark(ctx.env, ctx.waitUntil, lane.network, now),
+      canonical: store.canonical,
       genesisFloor: lane.genesisFloor,
       // The lane's table values are the ONE-HOST budget, kept as the floor this
       // can never fall below; `budget` widens them when the pool offers more.

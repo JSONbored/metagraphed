@@ -49,6 +49,18 @@ function fixture() {
     ),
   );
   sql.exec(publicationMigration);
+  sql.exec(
+    "CREATE TABLE raw_capture_state(network TEXT PRIMARY KEY NOT NULL,last_contiguous_block INTEGER NOT NULL,updated_at INTEGER NOT NULL,stopped_at INTEGER,last_error TEXT)",
+  );
+  sql.exec(
+    readFileSync(
+      new URL(
+        "../migrations/d1/0040_raw_capture_finality.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
   let fail: ((text: string, params: unknown[]) => void) | undefined;
   let afterWrite: WriteHook | undefined;
   let readback: ((text: string, result: unknown) => unknown) | undefined;
