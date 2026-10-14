@@ -143,14 +143,8 @@ export function resolveStakeMaxRao(
   return asRao(max > 0n ? max : 0n);
 }
 
-/**
- * The stale-labeled Max prefill for unstake (see AccountPositions' doc
- * comment for why this is never authoritative). Unit-aware: alpha mode needs
- * no price at all (stake_tao itself is display-only there); TAO mode returns
- * the position's TAO figure directly. Reuses computeUnstakeAlphaCandidate for
- * the alpha-mode conversion -- the same best-effort estimate used for the
- * live TAO-mode quote candidate, not a second, differently-precise path.
- */
+/** A labeled snapshot prefill. Exact Alpha uses its recorded rao; the TAO
+ * candidate uses the current price and must be superseded by a real quote. */
 export function resolveUnstakeMaxAmountInput(
   position: AccountPosition | null,
   unit: StakeFlowUnit,
@@ -158,17 +152,24 @@ export function resolveUnstakeMaxAmountInput(
 ): string | null {
   if (
     position?.quantity_status !== "qualified_snapshot" ||
-    position.netuid === 0 ||
+    !Number.isInteger(position.netuid) ||
+    position.netuid <= 0 ||
+    !position.provenance ||
+    !Number.isFinite(Date.parse(position.provenance.captured_at)) ||
     typeof position.alpha_rao !== "string" ||
     !/^(0|[1-9]\d{0,19})$/.test(position.alpha_rao)
   )
     return null;
-  const alpha = rawAlphaToAlpha(asRawAlpha(BigInt(position.alpha_rao)));
+  const rao = BigInt(position.alpha_rao);
+  if (rao > 18446744073709551615n) return null;
+  const alpha = rawAlphaToAlpha(asRawAlpha(rao));
   if (unit === "alpha") return alpha;
   if (!Number.isFinite(spotPriceTao) || spotPriceTao <= 0) return null;
   // A labeled snapshot candidate, superseded by the transaction's real quote.
   // eslint-disable-next-line no-restricted-syntax -- transaction candidate precision
-  return (Number(alpha) * spotPriceTao).toFixed(9);
+  const candidate = Number(alpha) * spotPriceTao;
+  if (!Number.isFinite(candidate) || candidate > 18_446_744_073.70955) return null;
+  return candidate.toFixed(9);
 }
 
 /** Root (netuid 0) has zero coverage in the nominator-positions source. */

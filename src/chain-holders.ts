@@ -127,6 +127,13 @@ export async function loadChainHolders(
     const rows = await readRevisionedChainHolders(env, alpha.captured_at, () =>
       db.query!<Row>(chainHoldersSql(alpha.captured_at)),
     );
+    const after = await loadAlphaQuantityCapture(db);
+    if (
+      !after ||
+      after.captured_at !== alpha.captured_at ||
+      after.block_hash !== alpha.block_hash
+    )
+      return declined("runtime_positions_unqualified");
     return {
       rows,
       capturedAt: alpha.captured_at,

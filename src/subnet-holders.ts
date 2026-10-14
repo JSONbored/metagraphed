@@ -180,6 +180,13 @@ export async function loadSubnetHolders(
       db.query!<Row>(subnetHoldersRowsSql(alpha.captured_at, limit), [netuid]),
       db.first!(subnetHoldersAggregateSql(alpha.captured_at), [netuid]),
     ]);
+    const after = await loadAlphaQuantityCapture(db);
+    if (
+      !after ||
+      after.captured_at !== alpha.captured_at ||
+      after.block_hash !== alpha.block_hash
+    )
+      return declined("runtime_positions_unqualified");
     return {
       rows: rowsRes,
       aggregate: readAggregate(aggRes as Row | null),

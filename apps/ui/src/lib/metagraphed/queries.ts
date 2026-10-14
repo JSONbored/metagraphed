@@ -3619,7 +3619,7 @@ export const accountPortfolioQuery = (ss58: string) =>
           total_stake_tao: null,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? null,
           overall_yield: null,
-          stake_concentration: normalizePortfolioConcentration(d.stake_concentration),
+          stake_concentration: null,
           positions,
         } as AccountPortfolio,
         meta: res.meta,
@@ -3633,13 +3633,29 @@ export function normalizeAccountPosition(raw: unknown): AccountPosition | null {
   if (!isRecord(raw)) return null;
   const hotkey = firstString(raw.hotkey),
     netuid = firstFiniteNumber(raw.netuid);
-  if (!hotkey || netuid == null) return null;
+  if (!hotkey || netuid == null || !Number.isInteger(netuid) || netuid < 0 || netuid > 65535)
+    return null;
+  const provenance = isRecord(raw.provenance) ? raw.provenance : null;
   const qualified =
+    Number.isInteger(netuid) &&
     netuid > 0 &&
+    netuid <= 65535 &&
     raw.quantity_status === "qualified_snapshot" &&
     typeof raw.alpha_rao === "string" &&
     /^(0|[1-9]\d{0,19})$/.test(raw.alpha_rao) &&
-    isRecord(raw.provenance);
+    BigInt(raw.alpha_rao) <= 18446744073709551615n &&
+    provenance?.network === "finney" &&
+    typeof provenance.captured_at === "string" &&
+    Number.isFinite(Date.parse(provenance.captured_at)) &&
+    Number.isInteger(provenance.block_number) &&
+    (provenance.block_number as number) >= 0 &&
+    ["block_hash", "genesis_hash", "code_hash"].every(
+      (key) =>
+        typeof provenance[key] === "string" && /^0x[0-9a-f]{64}$/.test(provenance[key] as string),
+    ) &&
+    [454, 478].includes(provenance.spec_version as number) &&
+    typeof provenance.metadata_sha256 === "string" &&
+    /^[0-9a-f]{64}$/.test(provenance.metadata_sha256);
   return {
     hotkey,
     netuid,

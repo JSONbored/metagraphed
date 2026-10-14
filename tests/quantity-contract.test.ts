@@ -100,10 +100,37 @@ test("qualified exact rao retain zero and provenance; mismatched amount, source,
     { ...position, source: "self-stake" },
     { ...position, captured_at: at + 1 },
     { ...position, netuid: 0 },
+    { ...position, netuid: -1 },
+    { ...position, netuid: 1.5 },
+    { ...position, netuid: 65536 },
     { ...position, alpha_evidence: "{" },
   ])
     assert.equal(alphaPositionQuantity(row, capture).alpha_rao, null);
   assert.equal(alphaPositionQuantity(position, null).alpha_rao, null);
+  assert.equal(
+    alphaPositionQuantity({ ...position, captured_at: String(at) }, capture)
+      .alpha_rao,
+    position.alpha_rao,
+  );
+  for (const captured_at of [Number.MAX_SAFE_INTEGER, "", "1e12", "001", NaN])
+    assert(
+      !AlphaQuantityCaptureSchema.safeParse({ ...capture, captured_at })
+        .success,
+    );
+  assert.deepEqual(
+    AlphaQuantityCaptureSchema.parse(
+      Object.fromEntries(
+        Object.entries(capture).map(([key, value]) => [
+          key,
+          typeof value === "number" &&
+          !["spec_version", "selected"].includes(key)
+            ? String(value)
+            : value,
+        ]),
+      ),
+    ),
+    capture,
+  );
   const result = buildAccountPositions(
     [position, zero],
     null,

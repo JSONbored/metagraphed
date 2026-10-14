@@ -3,21 +3,31 @@ import { ALPHA_GENESIS, ALPHA_RUNTIMES } from "./alpha-runtime-identity.ts";
 import { quoteAlphaPool } from "./alpha-share-value.ts";
 import type { OptionalRowReader } from "./read-store.ts";
 
+const safeInteger = z.preprocess(
+  (value) =>
+    typeof value === "string" && /^(0|[1-9]\d*)$/.test(value)
+      ? Number(value)
+      : value,
+  z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+);
+const timestamp = safeInteger.refine(
+  (value) => value > 0 && value <= 8_640_000_000_000_000,
+);
 const hash = z.string().regex(/^0x[0-9a-f]{64}$/);
 export const AlphaQuantityCaptureSchema = z
   .object({
-    captured_at: z.number().int().positive(),
-    block_number: z.number().int().min(0).max(0xffffffff),
+    captured_at: timestamp,
+    block_number: safeInteger.refine((value) => value <= 0xffffffff),
     block_hash: hash,
     genesis_hash: z.literal(ALPHA_GENESIS),
     spec_version: z.union([z.literal(454), z.literal(478)]),
     code_hash: hash,
     metadata_sha256: z.string().regex(/^[0-9a-f]{64}$/),
-    expected_rows: z.number().int().min(0).max(1_000_000),
-    received_rows: z.number().int().min(0).max(1_000_000),
-    expected_chunks: z.number().int().positive().max(1000),
-    received_chunks: z.number().int().positive().max(1000),
-    completed_at: z.number().int().positive(),
+    expected_rows: safeInteger.refine((value) => value <= 1_000_000),
+    received_rows: safeInteger.refine((value) => value <= 1_000_000),
+    expected_chunks: safeInteger.refine((value) => value > 0 && value <= 1000),
+    received_chunks: safeInteger.refine((value) => value > 0 && value <= 1000),
+    completed_at: timestamp,
     selected: z.literal(1),
   })
   .refine(
@@ -59,11 +69,15 @@ export function alphaPositionQuantity(
     quantity_status: "unqualified" as const,
     provenance: null,
   };
+  const capturedAt = safeInteger.safeParse(row.captured_at);
   if (
     !capture ||
     row.source !== "alpha" ||
-    row.captured_at !== capture.captured_at ||
-    row.netuid === 0 ||
+    !capturedAt.success ||
+    capturedAt.data !== capture.captured_at ||
+    !Number.isInteger(row.netuid) ||
+    (row.netuid as number) <= 0 ||
+    (row.netuid as number) > 65535 ||
     typeof row.alpha_rao !== "string" ||
     typeof row.alpha_evidence !== "string"
   )

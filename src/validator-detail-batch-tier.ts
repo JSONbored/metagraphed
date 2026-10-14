@@ -26,7 +26,8 @@ export async function loadValidatorDetailBatchTier(
       (detail, index) =>
         detail &&
         typeof detail === "object" &&
-        detail.hotkey === hotkeys[index],
+        detail.hotkey === hotkeys[index] &&
+        detail.schema_version === 2,
     )
   )
     return batch.details as ReturnType<typeof buildValidatorDetail>[];

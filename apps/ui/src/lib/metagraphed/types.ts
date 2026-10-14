@@ -1553,13 +1553,9 @@ export interface AccountPortfolio {
   [key: string]: unknown;
 }
 
-/**
- * One reconstructed nominator-side (coldkey) position from
- * buildAccountPositions (src/account-nominator-positions.ts) -- share_fraction
- * is dimensionless (the coldkey's share of that hotkey+netuid's total stake),
- * not a snapshotted TAO figure; stake_tao is derived by multiplying it against
- * the live neurons stake_tao at read time.
- */
+/** One observed coldkey/hotkey/subnet relationship. Only a qualified snapshot
+ * supplies an exact Alpha rao amount; a share fraction and voting weight do
+ * not establish a holding. */
 export interface AccountPosition {
   hotkey: string;
   netuid: number;
