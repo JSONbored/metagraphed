@@ -12,6 +12,7 @@ import worker, {
 } from "../workers/api.ts";
 import { handleMcpRequest } from "../src/mcp-server.ts";
 import { webhookLedgerD1 } from "../src/webhook-ledger-d1.ts";
+import type { Row } from "./row-type.ts";
 import type { D1StoreBinding } from "../src/d1-store.ts";
 
 const opened: Awaited<ReturnType<typeof nativeWebhookFixture>>[] = [];
@@ -70,7 +71,7 @@ async function consume(
         },
       ],
     } as never,
-    env as Env,
+    env as unknown as Env,
     {} as never,
     deliver as never,
   );
@@ -79,7 +80,7 @@ async function consume(
 async function status(env: unknown, id: string) {
   return handleRequest(
     new Request(`https://metagraph.sh/api/v1/webhooks/subscriptions/${id}`),
-    env as Env,
+    env as unknown as Env,
     {},
   );
 }
@@ -95,9 +96,9 @@ async function mcpStatus(env: unknown, id: string) {
         params: { name: "get_webhook_subscription", arguments: { id } },
       }),
     }),
-    env as Env,
+    env as unknown as Env,
   );
-  return response.json();
+  return response.json() as Promise<Row>;
 }
 
 test("production consumer persists the exact attempt before HTTP, then native success precedes ack", async () => {
@@ -273,7 +274,7 @@ test("DLQ preserves known success, records never-sent failures, and defers an ac
         retry: () => actions.push("retry"),
       })),
     } as never,
-    f.env as Env,
+    f.env as unknown as Env,
     {} as never,
   );
   assert.deepEqual(actions, ["ack", "ack", "retry"]);
@@ -302,13 +303,13 @@ test("existing dispatcher recovers a failed initial enqueue from durable origina
       },
     },
   };
-  await dispatchWebhooksFromChangelog(env as Env, async () => ({
+  await dispatchWebhooksFromChangelog(env as unknown as Env, async () => ({
     type: "metagraph.publish",
     changes: {},
   }));
   assert.deepEqual(sent, [m]);
   assert.deepEqual(await f.ledger.outbox(now + 1), []);
-  await dispatchWebhooksFromChangelog(env as Env, async () => ({
+  await dispatchWebhooksFromChangelog(env as unknown as Env, async () => ({
     type: "metagraph.publish",
     changes: {},
   }));

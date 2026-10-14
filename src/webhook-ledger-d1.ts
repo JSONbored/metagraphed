@@ -482,11 +482,15 @@ export function webhookLedgerD1(db: D1StoreBinding) {
   };
 }
 
+type WebhookLedger = ReturnType<typeof webhookLedgerD1>;
+
 /** No legacy write fallback: native delivery needs this existing bound owner. */
 export function webhookLedgerForEnv(env: unknown): WebhookLedger | null {
   const db =
     env && typeof env === "object"
       ? (env as { D1_STATE?: D1StoreBinding }).D1_STATE
       : undefined;
-  return db?.prepare && db.batch ? webhookLedgerD1(db) : null;
+  return typeof db?.prepare === "function" && typeof db.batch === "function"
+    ? webhookLedgerD1(db)
+    : null;
 }
