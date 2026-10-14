@@ -50,8 +50,7 @@ export interface NominatorPositionsDb {
 }
 
 export type NominatorPositionsDecline =
-  | "runtime_positions_unqualified"
-  | "unavailable";
+  "runtime_positions_unqualified" | "unavailable";
 
 export interface NominatorPositionsRead {
   capture?: AlphaQuantityCapture | null;

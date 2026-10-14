@@ -72,8 +72,7 @@ export interface ChainHoldersDb {
 }
 
 export type ChainHoldersDecline =
-  | "runtime_positions_unqualified"
-  | "unavailable";
+  "runtime_positions_unqualified" | "unavailable";
 
 export interface ChainHoldersRead {
   capture?: AlphaQuantityCapture | null;

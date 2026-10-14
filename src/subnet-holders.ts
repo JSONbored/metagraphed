@@ -76,9 +76,7 @@ export const HOLDER_CONCENTRATION_RANKS = [5, 10, 20] as const;
 
 /** Why a ranking could not be produced, or null when one was. */
 export type SubnetHoldersDecline =
-  | "root_not_in_alpha_map"
-  | "runtime_positions_unqualified"
-  | "unavailable";
+  "root_not_in_alpha_map" | "runtime_positions_unqualified" | "unavailable";
 
 export interface SubnetHoldersAggregate {
   holderCount: number | null;

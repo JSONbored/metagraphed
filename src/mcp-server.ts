@@ -4291,8 +4291,7 @@ function callerSuppliedArg(args: Row, name: string) {
   // `?window=` resolves to null and is not applied.
   if (args[name] === undefined || args[name] === null) return false;
   const defaulted = (args as Record<symbol, unknown>)[DEFAULTED_ARGS] as
-    | Set<string>
-    | undefined;
+    Set<string> | undefined;
   return !defaulted?.has(name);
 }
 
@@ -9686,10 +9685,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           }
         }
         return buildNominatorPositions(
-          await loadNominatorPositions(
-            alphaQuantityStore(ctx.env),
-            hotkey,
-          ),
+          await loadNominatorPositions(alphaQuantityStore(ctx.env), hotkey),
           hotkey,
           // Its own page expressions rather than ones shared with the flow
           // path below, matching how handleValidatorNominators splits the two
@@ -10278,8 +10274,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       )) as { ok?: boolean; data?: Record<string, unknown> } | null;
       const entities = artifact?.ok
         ? (artifact.data?.entities as
-            | Array<Record<string, unknown>>
-            | undefined)
+            Array<Record<string, unknown>> | undefined)
         : undefined;
       const wallets = subnetWalletRows(
         netuid,
@@ -10300,8 +10295,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // one would be stating a finding nobody made.
         attribution_search: await loadSweepRecord(
           readStore(ctx.env, ATTRIBUTION_SWEEP_TABLES) as
-            | SweepStoreDb
-            | undefined,
+            SweepStoreDb | undefined,
           netuid,
         ),
         field_sources: SUBNET_WALLETS_FIELD_SOURCES,
@@ -10495,8 +10489,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             ALL_SURFACES_ARTIFACT,
           );
           return allSurfaces?.surfaces as
-            | Array<Record<string, unknown>>
-            | undefined;
+            Array<Record<string, unknown>> | undefined;
         } catch {
           return null;
         }
@@ -10808,10 +10801,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_HOLDERS_LIMIT_DEFAULT,
         CHAIN_HOLDERS_LIMIT_MAX,
       );
-      const read = await loadChainHolders(
-        alphaQuantityStore(ctx.env),
-        ctx.env,
-      );
+      const read = await loadChainHolders(alphaQuantityStore(ctx.env), ctx.env);
       return buildChainHolders(read, { sort, limit });
     },
   },
@@ -17268,8 +17258,7 @@ export function completeDegradedBlock(
     return data;
   }
   const declared = (outputSchema?.properties as Row | undefined)?.degraded as
-    | Row
-    | undefined;
+    Row | undefined;
   // A nullable object is published as anyOf[{object}, {null}], so the required
   // list can sit on a branch rather than at the top.
   const branches = [
@@ -17583,8 +17572,7 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
   const startedAt = Date.now();
   let dispatchOk = true;
   let protocolTelemetry:
-    | { record: (ctx: McpCtx, event: Row) => void; event: Row }
-    | undefined;
+    { record: (ctx: McpCtx, event: Row) => void; event: Row } | undefined;
   let protocolErrorCode: string | undefined;
   let protocolErrorMessage: string | undefined;
 
