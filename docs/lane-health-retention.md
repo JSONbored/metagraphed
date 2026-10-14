@@ -87,14 +87,40 @@ and compare the hashes with actual SQLite definitions. Previously retained full
 old-trigger packet measurements remain baseline evidence; the guarded receiver no
 longer executes that expensive baseline merely for measurement.
 
-Production rollout remains held. Before any approved merge/application, verify
-actual D1 allocation/headroom and retained projection parity, exact applied filename,
-absence of the new `0039`, and that the pending file set contains no held `0040`–`0043`.
-The owner must approve the automatic DDL and Worker effects explicitly. The native
-fence keeps a Worker arriving first from running cleanup until actual repaired
-triggers are visible. Observe maintenance completion and exact physical definitions
-before interpreting cleanup or requesting a bounded acceptance packet. Disposable
-CI is not production headroom or parity evidence.
+Production rollout remains held. The trigger-first sequence is concrete:
+
+1. Obtain separately scoped approval for the necessary bounded primary-ledger,
+   physical-definition, headroom and projection-parity acceptance. Existing receipts
+   do not prove present production free space or parity. Verify exact applied0038,
+   absent0039, the six trigger definitions and that pending files contain only0039.
+2. With the old main Worker still selected, run the existing native tracked migration
+   command at this exact reviewed branch: `npm run migrate:d1 -- --remote`.
+   The existing D1-maintenance workflow supports `workflow_dispatch` against that
+   branch; do not merge to main as the first DDL operation. Wrangler must skip the
+   already-tracked full0038 filename and apply only0039. The application replaces
+   three triggers and creates five; it neither rewrites history nor adds indexes.
+3. Capture the actual resulting schema with the existing credentialed
+   `snapshot:d1-schema -- --write` owner, review only the expected trigger delta,
+   commit that real capture and requalify the final source through full native CI.
+   The first maintenance run's verify-only step will report drift against the old
+   physical snapshot after DDL; that is an incomplete rollout, not a successful
+   acceptance or a waived guard. Preserve its exact application receipt and do not
+   replay an ambiguous write. No prospective snapshot may substitute for this step.
+4. Only after exact physical hashes, ledger, headroom/parity and full CI acceptance,
+   obtain approval for the main merge and its automatic Worker publishing/retention
+   effects. Main's maintenance run must now skip both tracked0038 and0039 and verify
+   the real committed snapshot. Worker builds still run independently; actual
+   trigger readiness additionally prevents cleanup against old/partial definitions.
+5. The new runtime permits at most20 health deletions per natural write attempt
+   (at most1000 in a50-row packet) and2000 burn-history deletions per valid nonempty
+   capture attempt. This includes failed/ambiguous inserts, preserves latest health
+   ties and acknowledges original writes truthfully. These are ongoing destructive
+   retention effects requiring explicit approval, not merely harmless metadata work.
+   Observe the existing natural ticks and their receipts first; a manually triggered
+   acceptance packet or additional production query needs its own stated scope.
+
+Disposable CI is not production headroom or parity evidence. The source patch alone
+authorizes none of these production steps.
 
 Rollback should first use the prior Worker while retaining compatible optimized
 triggers. Expired history cannot be recovered by source rollback. Any separately
