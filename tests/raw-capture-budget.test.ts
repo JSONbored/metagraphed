@@ -7,6 +7,9 @@ import {
   RPC_REQUESTS_PER_MINUTE_LIMIT,
   pacedLaneBudget,
   cronStepMinutes,
+  RAW_CAPTURE_GENESIS_FLOOR,
+  TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
+  REQUESTS_PER_CHUNK,
 } from "../src/raw-capture-sync.ts";
 import {
   CANONICAL_REQUESTS_PER_CHUNK,
@@ -22,6 +25,11 @@ test("every declared lane has a distinct network, endpoint and floor", () => {
   assert.equal(new Set(urls).size, urls.length);
   const floors = RAW_CAPTURE_LANES.map((lane) => lane.genesisFloor);
   assert.equal(new Set(floors).size, floors.length);
+  assert.deepEqual(floors, [
+    RAW_CAPTURE_GENESIS_FLOOR,
+    TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
+  ]);
+  assert.equal(CANONICAL_REQUESTS_PER_CHUNK, REQUESTS_PER_CHUNK + 1);
   // The combined per-tick budget must stay inside the platform's
   // 1000-subrequest ceiling. COUNTED IN REQUESTS, NOT CALLS: a chunk costs
   // CANONICAL_REQUESTS_PER_CHUNK however many blocks it carries, plus three anchor requests

@@ -78,3 +78,11 @@ Runtime rollback after anchoring cannot resume the old height-only writer: the d
 intentionally reject it. Disable capture while retaining the schema, receipts, checkpoint and bytes;
 restore the qualified canonical writer before resuming. DDL rollback or finalized-branch repair
 requires a separate reviewed preservation plan. Never delete anchors to make old code run.
+
+A serving-table export is not a backup of this control protocol: raw state and proof/publication
+ledgers are outside `D1_EXPORT_TABLES`. Restore acceptance must preserve the whole coherent native
+state set (`raw_capture_state`, `raw_capture_finality`, `raw_capture_publications`, selectors,
+staging descriptors/chunks and archive descriptors) plus the referenced native archive bytes.
+Qualify the actual native snapshot/SQL-export restore format and trigger creation order: ordinary
+application inserts intentionally cannot recreate an anchored frontier without its proofs. No
+ad-hoc row replay or independently timed partial exports are established as a restore procedure.
