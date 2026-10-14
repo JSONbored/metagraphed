@@ -1,7 +1,7 @@
+import { healthRetentionTestSql } from "./helpers/lane-health-retention-fixture.ts";
 // Measure real SQLite trigger work on disposable D1 databases in native CI.
 // A direct-row cap does not bound the existing per-row projection scans.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { Miniflare } from "miniflare";
 import { test } from "vitest";
 import { createD1Store } from "../src/d1-store.ts";
@@ -13,8 +13,7 @@ import {
 } from "../src/subnet-burn-history.ts";
 
 const NOW = 1790000000000;
-const ddl = (name: string) =>
-  readFileSync(new URL(`../migrations/d1/${name}`, import.meta.url), "utf8");
+const ddl = healthRetentionTestSql;
 const freshRuntime = () =>
   new Miniflare({
     modules: true,
@@ -48,8 +47,7 @@ for (const samples of [10000, 130000]) {
       const metrics: D1Result["meta"][] = [];
       const plans: string[] = [];
       for (const phase of ["before", "after"]) {
-        if (phase === "after")
-          await apply("0039_lane_health_retention_trigger_bounds.sql");
+        if (phase === "after") await apply("retention-trigger-repair.sql");
         // Explain the actual installed trigger's old-clock successor update.
         const trigger = await db
           .prepare(

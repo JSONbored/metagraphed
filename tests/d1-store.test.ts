@@ -1,5 +1,5 @@
+import { healthRetentionTestSql } from "./helpers/lane-health-retention-fixture.ts";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, test } from "vitest";
 import { Miniflare } from "miniflare";
 import {
@@ -45,12 +45,9 @@ beforeAll(async () => {
     "0001_lane_health.sql",
     "0002_lane_health_current.sql",
     "0003_lane_health_history_indexes.sql",
-    "0039_lane_health_retention_trigger_bounds.sql",
+    "retention-trigger-repair.sql",
   ]) {
-    const migration = readFileSync(
-      new URL(`../migrations/d1/${name}`, import.meta.url),
-      "utf8",
-    );
+    const migration = healthRetentionTestSql(name);
     for (const statement of migration.split("-- statement-breakpoint")) {
       await db.prepare(statement).run();
     }

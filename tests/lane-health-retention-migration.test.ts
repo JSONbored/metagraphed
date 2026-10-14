@@ -1,5 +1,5 @@
+import { healthRetentionTestSql } from "./helpers/lane-health-retention-fixture.ts";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, test } from "vitest";
 import { Miniflare } from "miniflare";
 
@@ -11,10 +11,7 @@ const runtime = new Miniflare({
 });
 let db: D1Database;
 async function apply(name: string) {
-  const sql = readFileSync(
-    new URL(`../migrations/d1/${name}`, import.meta.url),
-    "utf8",
-  );
+  const sql = healthRetentionTestSql(name);
   for (const statement of sql.split("-- statement-breakpoint"))
     await db.prepare(statement).run();
 }
@@ -54,7 +51,7 @@ async function assertProjections() {
   );
 }
 
-test("0039 preserves populated projections, then repairs ties, moves, middle and multirow deletions atomically", async () => {
+test("prospective repair preserves populated projections, then repairs ties, moves, middle and multirow deletions atomically", async () => {
   await db
     .prepare(
       `INSERT INTO lane_health(lane,verdict,age_ms,detail,checked_at) VALUES
@@ -68,12 +65,8 @@ test("0039 preserves populated projections, then repairs ties, moves, middle and
   const definitions = await rows(
     "SELECT name,sql FROM sqlite_master WHERE type='trigger' ORDER BY name",
   );
-  const statements = readFileSync(
-    new URL(
-      "../migrations/d1/0039_lane_health_retention_trigger_bounds.sql",
-      import.meta.url,
-    ),
-    "utf8",
+  const statements = healthRetentionTestSql(
+    "retention-trigger-repair.sql",
   ).split("-- statement-breakpoint");
   await assert.rejects(
     db.batch([
@@ -92,7 +85,7 @@ test("0039 preserves populated projections, then repairs ties, moves, middle and
     "failed migration batches restore original triggers too",
   );
   await assertProjections();
-  await apply("0039_lane_health_retention_trigger_bounds.sql");
+  await apply("retention-trigger-repair.sql");
   assert.deepEqual(
     await rows("SELECT * FROM lane_health ORDER BY rowid"),
     before,

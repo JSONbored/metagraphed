@@ -1,3 +1,4 @@
+import { healthRetentionTestSql } from "./helpers/lane-health-retention-fixture.ts";
 // Execute the real retention SQL against both owners. Capacity/ack failures are
 // injected at the writer boundary; only disposable native CI databases are used.
 import assert from "node:assert/strict";
@@ -21,7 +22,9 @@ import { toPositionalPlaceholders } from "../src/pg-sql.ts";
 const NOW = 1790000000000;
 const cutoff = NOW - LANE_HEALTH_RETENTION_MS;
 const migration = (name: string) =>
-  readFileSync(new URL(`../migrations/${name}`, import.meta.url), "utf8");
+  name === "d1/retention-trigger-repair.sql"
+    ? healthRetentionTestSql("retention-trigger-repair.sql")
+    : readFileSync(new URL(`../migrations/${name}`, import.meta.url), "utf8");
 const runtime = new Miniflare({
   modules: true,
   script: "export default {fetch(){return new Response('test')}}",
@@ -48,7 +51,7 @@ beforeAll(async () => {
     "0001_lane_health.sql",
     "0002_lane_health_current.sql",
     "0003_lane_health_history_indexes.sql",
-    "0039_lane_health_retention_trigger_bounds.sql",
+    "retention-trigger-repair.sql",
   ]) {
     for (const sql of migration(`d1/${name}`).split("-- statement-breakpoint"))
       await db.prepare(sql).run();

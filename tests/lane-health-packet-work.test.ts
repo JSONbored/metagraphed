@@ -1,7 +1,7 @@
+import { healthRetentionTestSql } from "./helpers/lane-health-retention-fixture.ts";
 // Measure the actual receiver before and after its physical trigger readiness fence.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { Miniflare } from "miniflare";
 import { test } from "vitest";
 import worker from "../workers/data-api.ts";
@@ -9,8 +9,7 @@ import { dataApiEnv } from "./helpers/worker-env.ts";
 
 const NOW = 1790000000000;
 const secret = "fixture-packet-health-secret";
-const ddl = (name: string) =>
-  readFileSync(new URL(`../migrations/d1/${name}`, import.meta.url), "utf8");
+const ddl = healthRetentionTestSql;
 for (const reject of [false, true]) {
   test(`full 50-row packet bounds trigger work with rejected inserts=${reject}`, async () => {
     const runtime = new Miniflare({
@@ -95,8 +94,7 @@ for (const reject of [false, true]) {
       }[] = [];
       for (const phase of ["before", "after"]) {
         const ready = phase === "after";
-        if (phase === "after")
-          await apply("0039_lane_health_retention_trigger_bounds.sql");
+        if (phase === "after") await apply("retention-trigger-repair.sql");
         metrics.length = 0;
         attempts = 0;
         failedCalls = 0;

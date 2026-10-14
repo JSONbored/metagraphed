@@ -1,6 +1,6 @@
+import { healthRetentionTestSql } from "./helpers/lane-health-retention-fixture.ts";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { Miniflare } from "miniflare";
 import { test } from "vitest";
 import {
@@ -10,14 +10,13 @@ import {
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
 
-const ddl = (name: string) =>
-  readFileSync(new URL(`../migrations/d1/${name}`, import.meta.url), "utf8");
+const ddl = healthRetentionTestSql;
 const names = Object.keys(LANE_HEALTH_RETENTION_TRIGGER_HASHES);
 const definitions = [
   ...ddl("0002_lane_health_current.sql").matchAll(
     /CREATE TRIGGER (\w+)\b[\s\S]*?END;/g,
   ),
-  ...ddl("0039_lane_health_retention_trigger_bounds.sql").matchAll(
+  ...ddl("retention-trigger-repair.sql").matchAll(
     /CREATE TRIGGER (\w+)\b[\s\S]*?END;/g,
   ),
 ]
@@ -155,7 +154,7 @@ test("native D1 metadata gates cleanup, caches once per store and refreshes on t
     assert.equal(await old.retentionReady!(), false);
     assert.equal(await old.retentionReady!(), false);
     assert.equal(queries, 1);
-    await apply("0039_lane_health_retention_trigger_bounds.sql");
+    await apply("retention-trigger-repair.sql");
     assert.equal(
       await old.retentionReady!(),
       false,
