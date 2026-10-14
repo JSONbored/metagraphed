@@ -4,6 +4,7 @@
 // buildSubnetYieldHistory(), cross-checked against the hand-edited
 // SubnetYieldArtifact/SubnetYieldHistoryArtifact components they replace.
 import { z } from "zod";
+import { HoldingsUnavailableSchema } from "../alpha-quantity.ts";
 import { subnetHistoryArtifactSchema } from "../shared.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
@@ -57,7 +58,7 @@ export const SubnetYieldArtifactSchema = z
     p75_yield: z.number().nullable(),
     p90_yield: z.number().nullable(),
     neurons: z.array(SubnetYieldNeuronSchema),
-    degraded: z.object({ reason: z.literal("holdings_unqualified") }).strict(),
+    degraded: HoldingsUnavailableSchema,
   })
   .strict();
 export type SubnetYieldArtifact = z.infer<typeof SubnetYieldArtifactSchema>;
@@ -82,7 +83,7 @@ export const SubnetYieldHistoryArtifactSchema = subnetHistoryArtifactSchema(
 )
   .extend({
     schema_version: z.literal(2),
-    degraded: z.object({ reason: z.literal("holdings_unqualified") }).strict(),
+    degraded: HoldingsUnavailableSchema,
   })
   .describe(
     "Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup.",

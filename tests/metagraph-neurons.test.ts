@@ -1702,7 +1702,6 @@ describe("metagraph-neurons builders", () => {
     // sub-TAO fractional stake -- plain `+=` float accumulation across many
     // rows would drift from the true sum. Summing in rao BigInt space must not.
     const rows = [];
-    let expectedTotalRao = 0n;
     for (let i = 0; i < 5000; i += 1) {
       const stakeTao = 1234.987654321 + i * 0.000000001;
       rows.push({
@@ -1716,15 +1715,11 @@ describe("metagraph-neurons builders", () => {
         stake_tao: stakeTao,
         emission_tao: 0,
       });
-      expectedTotalRao += BigInt(Math.round(stakeTao * 1e9));
     }
     const data = buildGlobalValidators(rows, {
       sort: "total_stake",
       limit: 10,
     });
-    const expectedTotal =
-      Number(expectedTotalRao / 1_000_000_000n) +
-      Number(expectedTotalRao % 1_000_000_000n) / 1e9;
     const entry = data.validators.find((v: Row) => v.hotkey === "hk-precision");
     assert.equal(entry.total_stake_tao, null);
   });

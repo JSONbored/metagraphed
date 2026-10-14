@@ -68,7 +68,7 @@ export async function loadAccountPositionsFromStore(
 
   let rows: Record<string, unknown>[];
   let ledgerCapturedAt: number | null;
-  let capture: AlphaQuantityCapture | null = null;
+  let capture: AlphaQuantityCapture | null;
   try {
     capture = await loadAlphaQuantityCaptureFromOwner(env);
     // Issued together: the ledger stamp is needed on the zero path and the

@@ -7,6 +7,7 @@
 // ChainYieldArtifact is its only referrer (verified via repo-wide $ref
 // grep), so the hand-edited component key becomes fully orphaned.
 import { z } from "zod";
+import { HoldingsUnavailableSchema } from "../alpha-quantity.ts";
 import { distributionStatsSchema } from "../shared.ts";
 
 /**
@@ -58,7 +59,7 @@ export const ChainYieldArtifactSchema = z
     validator_yield: z.number().nullable().optional(),
     miner_yield: z.number().nullable().optional(),
     distribution: YieldDistributionSchema,
-    degraded: z.object({ reason: z.literal("holdings_unqualified") }).strict(),
+    degraded: HoldingsUnavailableSchema,
   })
   .strict()
   .describe(

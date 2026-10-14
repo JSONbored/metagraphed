@@ -88,12 +88,17 @@ jobs:
         if: inputs.prepare_only == true
         run: npm run build --workspace=packages/client
 
+      - name: Generate source-branch API reference
+        if: inputs.prepare_only == true
+        working-directory: apps/ui
+        run: node scripts/generate-openapi-docs.ts
+
       - name: Stage source-branch generated contracts
         if: inputs.prepare_only == true
         run: |
           mkdir -p "$RUNNER_TEMP/source-contracts"
           git rev-parse HEAD > "$RUNNER_TEMP/source-contracts/source-head.txt"
-          git diff --name-only -- public/metagraph/openapi.json public/metagraph/contracts.json public/metagraph/api-index.json public/metagraph/types.d.ts generated/graphql generated/metagraphed-client.ts packages/contract packages/client/dist > "$RUNNER_TEMP/source-contracts/paths.txt"
+          git diff --name-only -- public/metagraph/openapi.json public/metagraph/contracts.json public/metagraph/api-index.json public/metagraph/types.d.ts generated/graphql generated/metagraphed-client.ts packages/contract packages/client/dist apps/ui/content/docs/api-reference > "$RUNNER_TEMP/source-contracts/paths.txt"
           while IFS= read -r file; do
             test -f "$file"
             mkdir -p "$RUNNER_TEMP/source-contracts/$(dirname "$file")"

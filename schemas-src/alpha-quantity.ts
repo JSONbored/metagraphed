@@ -12,3 +12,7 @@ export const AlphaProvenanceSchema = z
     metadata_sha256: z.string(),
   })
   .strict();
+
+export const HoldingsUnavailableSchema = z
+  .object({ reason: z.literal("holdings_unqualified") })
+  .strict();

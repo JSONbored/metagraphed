@@ -178,11 +178,6 @@ function subnetScopedFields(r: Row): Row {
   };
 }
 
-interface StakeShareView {
-  stake_share: number | null;
-  dividend_efficiency: number | null;
-}
-
 /**
  * This validator's share of the subnet's stake, and how its dividends compare to it.
  *

@@ -302,7 +302,6 @@ const APY_SECONDS_PER_BLOCK = 12;
 // protocol-derived figure. No prior art for "a year" exists elsewhere in
 // this repo (src/chain-yield.ts / src/subnet-yield.ts are explicitly
 // snapshot-only, never annualized) -- apy_estimate is the new precedent.
-const APY_SECONDS_PER_YEAR = 365 * 24 * 60 * 60; // 31,536,000
 
 function toIso(ms: unknown): string | null {
   // the store can return the INTEGER captured_at as a numeric string; a bare
@@ -874,7 +873,6 @@ export function buildGlobalValidators(
     const uid = nonNegativeInt(row?.uid);
     if (!hotkey || netuid == null || uid == null) continue;
 
-    const stake = nonNegativeOrZero(row?.stake_tao);
     const emission = nonNegativeOrZero(row?.emission_tao);
     const trust = finiteCellOrNull(row?.validator_trust);
     const capturedAt = finiteCellOrNull(row?.captured_at);
