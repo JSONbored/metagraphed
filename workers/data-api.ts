@@ -3,6 +3,7 @@ import {
   COMPARE_VALIDATORS_MAX,
 } from "../src/analytics-live.ts";
 import { withRequestCounters } from "../src/request-counters.ts";
+import { sha256Hex } from "../src/sha256-hex.ts";
 // metagraphed data Worker — store-backed serving, kept SEPARATE from the main
 // api.ts Worker (which is near its bundle budget); the main Worker routes the
 // relevant paths in via a service binding (DATA_API).
@@ -3542,19 +3543,27 @@ async function handlePollerLaneHealthSync(request: Request, env: DataApiEnv) {
   }
 
   // recordLaneVerdict swallows its own failures by design -- an alarm whose
-  // recording can break the alarm is worse than the bug. So the count of rows
-  // that actually landed is reported rather than assumed.
+  // recording can break the alarm is worse than the bug. Count only inserts
+  // whose returned identity is confirmed. An error after commit is ambiguous,
+  // so a failed response is never proof that a whole batch is safe to replay.
   let written = 0;
   for (const row of incoming.map(coercePollerJobOutcome)) {
-    if (await recordLaneVerdict(laneDb, row)) written += 1;
+    if (await recordLaneVerdict(laneDb, row, { confirm: true })) written += 1;
   }
-  return writeJson({
-    ok: true,
-    lane_health_written: written,
-    // "d1" left this ack with the flag (#10051): the answer was already a
-    // dead vocabulary reporting a deleted store.
-    stores: ["neon"],
-  });
+  // Bind the acknowledgement to these exact request bytes. A health sender
+  // must distinguish a landed verdict from a successful HTTP response, and a
+  // partial batch must not be replayed as if nothing reached the store.
+  const complete = written === incoming.length;
+  return writeJson(
+    {
+      ok: complete,
+      lane_health_written: written,
+      request_sha256: await sha256Hex(raw),
+      // Retained vocabulary; laneHealthStore above selects the actual owner.
+      stores: ["neon"],
+    },
+    complete ? 200 : 503,
+  );
 }
 
 function json(data: unknown, status: number = 200) {

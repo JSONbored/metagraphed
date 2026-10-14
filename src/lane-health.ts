@@ -223,20 +223,45 @@ export interface LaneHealthRecord {
 export async function recordLaneVerdict(
   db: LaneHealthDb | null | undefined,
   record: LaneHealthRecord,
+  options: { confirm?: boolean } = {},
 ): Promise<boolean> {
   if (!db?.run) return false;
   try {
-    await db.run(
+    const text =
       "INSERT INTO lane_health (lane, verdict, age_ms, detail, checked_at) " +
-        "VALUES (?, ?, ?, ?, ?)",
-      [
-        record.lane,
-        record.verdict,
-        record.age_ms,
-        record.detail,
-        record.checked_at,
-      ],
-    );
+      "VALUES (?, ?, ?, ?, ?)";
+    const values = [
+      record.lane,
+      record.verdict,
+      record.age_ms,
+      record.detail,
+      record.checked_at,
+    ];
+    if (options.confirm) {
+      // The HTTP acknowledgement needs the inserted identity, not a resolved
+      // run() with an assumed change count. Both D1 and PostgreSQL support this
+      // existing RETURNING shape; pg may represent BIGINT values as strings.
+      const rows = await db.query(
+        text + " RETURNING lane, verdict, age_ms, detail, checked_at",
+        values,
+      );
+      const inserted = rows[0] as Record<string, unknown> | undefined;
+      if (
+        rows.length !== 1 ||
+        !inserted ||
+        !["lane", "verdict", "detail"].every(
+          (key) => inserted[key] === record[key as keyof LaneHealthRecord],
+        ) ||
+        !["age_ms", "checked_at"].every((key) => {
+          const value = record[key as "age_ms" | "checked_at"];
+          return (
+            inserted[key] === value ||
+            (value !== null && inserted[key] === String(value))
+          );
+        })
+      )
+        return false;
+    } else await db.run(text, values);
   } catch {
     // The insert is what this function promises. A missing binding, an unapplied
     // migration, or any D1 error means the verdict was NOT recorded, and the caller

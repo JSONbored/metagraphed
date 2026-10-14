@@ -59,6 +59,65 @@ function fakeDb(
 }
 
 describe("recordLaneVerdict", () => {
+  test("confirmed writes require the exact returned identity, accepting pg BIGINT strings", async () => {
+    for (const inserted of [
+      record(),
+      { ...record(), age_ms: String(record().age_ms), checked_at: String(NOW) },
+      record({ age_ms: null, detail: null }),
+    ]) {
+      const source = record({
+        age_ms: inserted.age_ms === null ? null : record().age_ms,
+        detail: inserted.detail,
+      });
+      const { db, calls } = fakeDb([{ ...inserted }]);
+      assert.equal(
+        await recordLaneVerdict(db, source, { confirm: true }),
+        true,
+      );
+      assert.match(
+        calls[0].sql,
+        /RETURNING lane, verdict, age_ms, detail, checked_at$/,
+      );
+      assert.deepEqual(calls[0].values, Object.values(source));
+      assert.equal(calls.length, 2);
+      assert.match(calls[1].sql, /^DELETE FROM/);
+    }
+  });
+
+  test("confirmation refuses absent, repeated or changed inserted identities", async () => {
+    for (const rows of [
+      [],
+      [record(), record()],
+      [null],
+      [{ ...record(), lane: "another-lane" }],
+      [{ ...record(), verdict: "ok" }],
+      [{ ...record(), detail: null }],
+      [{ ...record(), age_ms: "014400000" }],
+      [{ ...record(), checked_at: NOW + 1 }],
+      new Error("insert failed"),
+    ]) {
+      const { db, calls } = fakeDb(rows as Record<string, unknown>[] | Error);
+      assert.equal(
+        await recordLaneVerdict(db, record(), { confirm: true }),
+        false,
+      );
+      assert.equal(calls.length, 1, "a refused insert must not prune history");
+    }
+    const { db } = fakeDb([{ ...record(), age_ms: "null" }]);
+    assert.equal(
+      await recordLaneVerdict(db, record({ age_ms: null }), { confirm: true }),
+      false,
+    );
+  });
+
+  test("a confirmed insert survives a failed retention prune", async () => {
+    const { db } = fakeDb([{ ...record() }], { failOnRun: true });
+    assert.equal(
+      await recordLaneVerdict(db, record(), { confirm: true }),
+      true,
+    );
+  });
+
   test("writes the verdict with its lane, age and detail", async () => {
     const { db, calls } = fakeDb();
     assert.equal(await recordLaneVerdict(db, record()), true);
