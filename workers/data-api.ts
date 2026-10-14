@@ -1,3 +1,5 @@
+import { ZodError } from "zod";
+import { writeAlphaSnapshotD1 } from "../src/alpha-snapshot-d1.ts";
 import { withRequestCounters } from "../src/request-counters.ts";
 // metagraphed data Worker — store-backed serving, kept SEPARATE from the main
 // api.ts Worker (which is near its bundle budget); the main Worker routes the
@@ -2617,6 +2619,32 @@ async function handleNominatorPositionsSync(
     parsed = JSON.parse(raw);
   } catch {
     return writeJson({ error: "body must be JSON" }, 400);
+  }
+  if (parsed?.alpha_snapshot !== undefined) {
+    if (
+      !env.D1_STATE ||
+      !String(env.D1_STATE_TABLES ?? "")
+        .split(",")
+        .map((v) => v.trim())
+        .includes("nominator_positions")
+    )
+      return writeJson(
+        { error: "Qualified Alpha snapshots require their native state owner" },
+        503,
+      );
+    try {
+      return writeJson(
+        await writeAlphaSnapshotD1(env.D1_STATE, parsed, Date.now()),
+      );
+    } catch (error) {
+      const invalid =
+        error instanceof TypeError ||
+        error instanceof RangeError ||
+        error instanceof ZodError;
+      // Validation errors are retry-refusing; storage failures never acknowledge
+      // a chunk. Source adapters cannot silently fall back to inferred shares.
+      return writeJson({ error: String(error) }, invalid ? 400 : 502);
+    }
   }
   const incoming = Array.isArray(parsed)
     ? parsed
@@ -9247,7 +9275,8 @@ export function decodeBlockHeader(
   payload: unknown,
 ): { blockTag: string; blockNumber: number; timestampSeconds: number } | null {
   const result = (payload as { result?: unknown })?.result as
-    { number?: unknown; timestamp?: unknown } | undefined;
+    | { number?: unknown; timestamp?: unknown }
+    | undefined;
   if (!result) return null;
   const { number: rawNumber, timestamp: rawTimestamp } = result;
   if (typeof rawNumber !== "string" || typeof rawTimestamp !== "string")

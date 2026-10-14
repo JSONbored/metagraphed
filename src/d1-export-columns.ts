@@ -17,7 +17,7 @@ export const D1_EXPORT_COLUMNS: Readonly<Record<string, string>> = {
   subnet_snapshots:
     "netuid snapshot_date completeness_score surface_count endpoint_count monitored_count candidate_count captured_at validator_count miner_count total_stake_tao alpha_price_tao emission_share tao_in_pool_tao alpha_in_pool alpha_out_pool subnet_volume_tao tao_in_emission_tao excess_tao alpha_in_emission alpha_out_emission miner_burned_fraction emission_enabled subtoken_enabled first_emission_block pipeline_block pipeline_block_hash",
   nominator_positions:
-    "coldkey hotkey netuid share_fraction captured_at shares source",
+    "coldkey hotkey netuid share_fraction captured_at shares source alpha_rao alpha_evidence",
   subnet_hyperparams: `netuid ${HYPERPARAMETER_FIELDS} block_number captured_at`,
   subnet_identity:
     "netuid block_number captured_at subnet_name symbol description github_repo subnet_url discord logo_url identity_hash",
