@@ -1,6 +1,7 @@
 import type { D1StoreBinding } from "./d1-store.ts";
 import { sha256Hex } from "./sha256-hex.ts";
 import {
+  deliveryRecordFor,
   webhookEventId,
   webhookIdempotencyKey,
   WEBHOOK_DELIVERY_TTL_SECONDS,
@@ -50,8 +51,20 @@ function time(now: number) {
 function record(row: Intent, now: number): Row {
   const uncertain = row.state === "sending" && row.lease_until! <= now;
   return {
-    subscription_id: row.subscription_id,
-    event_id: row.event_id,
+    ...deliveryRecordFor({
+      subscriptionId: row.subscription_id,
+      eventId: row.event_id,
+      result: { reason: row.reason, status_code: row.status_code },
+      disposition:
+        row.state === "delivered"
+          ? "delivered"
+          : row.state === "dead"
+            ? "dead"
+            : "retry",
+      attempts: row.round,
+      nowIso: iso(row.last_attempt_at) ?? new Date(now).toISOString(),
+      nextAttemptAt: iso(row.next_attempt_at),
+    }),
     state: uncertain
       ? "ambiguous"
       : row.state === "ready"
