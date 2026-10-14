@@ -180,13 +180,14 @@ test("production MCP freshness batch shares health-meta and economics while reta
   const env = withMcpAccount({
     METAGRAPH_CONTRACT_VERSION: contract,
     METAGRAPH_DISABLE_REQUEST_LOGS: "true",
-    ASSETS: {
-      fetch: async () =>
-        Response.json({
+    METAGRAPH_ARCHIVE: {
+      get: async () => ({
+        json: async () => ({
           schema_version: 1,
           sources: [{ id: "surface-health", status: "stale" }],
           summary: {},
         }),
+      }),
     },
     METAGRAPH_CONTROL: {
       get: async (key: string) => {
@@ -219,7 +220,7 @@ test("production MCP freshness batch shares health-meta and economics while reta
   const replies = await response.json<Row[]>();
   assert.equal(replies.length, 10);
   for (const reply of replies) {
-    assert.notEqual(reply.result?.isError, true);
+    assert.notEqual(reply.result?.isError, true, JSON.stringify(reply));
     const source = reply.result.structuredContent.sources.find(
       (s: Row) => s.id === "surface-health",
     );

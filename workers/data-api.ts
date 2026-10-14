@@ -7606,7 +7606,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     const hotkeys = parseCompareHotkeys(url.searchParams.get("hotkeys"));
     if (!hotkeys)
       return async () =>
-        json({ error: "Invalid bounded validator hotkey list" }, 400);
+        json({ error: "Invalid bounded validator address list" }, 400);
     return async (sql, env) =>
       json({ details: await loadValidatorDetailsFromStore(sql, env, hotkeys) });
   }
