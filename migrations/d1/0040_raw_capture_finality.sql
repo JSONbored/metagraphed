@@ -104,6 +104,17 @@ CREATE TRIGGER raw_capture_finality_commit AFTER INSERT ON raw_capture_finality 
     AND frontier_hash=NEW.frontier_hash AND finalized_height=NEW.finalized_height
     AND finalized_hash=NEW.finalized_hash)
     THEN RAISE(ABORT,'Raw capture frontier CAS refused') END;
+  -- Selection belongs to this same proof transaction. A previous runtime's
+  -- timestamp-based selector upsert has no proof and is refused by the guards.
+  INSERT INTO raw_capture_selected(key,sha256,network,last_block,captured_at)
+    SELECT key,sha256,network,last_block,captured_at FROM raw_capture_batches
+    WHERE key=NEW.key AND sha256=NEW.sha256 AND complete=1
+    ON CONFLICT(key) DO UPDATE SET sha256=excluded.sha256,network=excluded.network,
+      last_block=excluded.last_block,captured_at=excluded.captured_at;
+  UPDATE raw_capture_archives SET selected=0 WHERE key=NEW.key AND sha256<>NEW.sha256
+    AND NOT EXISTS(SELECT 1 FROM raw_capture_finality f WHERE f.key=raw_capture_archives.key AND f.sha256=raw_capture_archives.sha256);
+  SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM raw_capture_selected WHERE key=NEW.key AND sha256=NEW.sha256 AND network=NEW.network AND last_block=NEW.last_block)
+    THEN RAISE(ABORT,'Raw capture selector CAS refused') END;
 END;
 
 -- statement-breakpoint
@@ -115,3 +126,41 @@ BEGIN SELECT RAISE(ABORT,'Canonical raw publication is immutable'); END;
 CREATE TRIGGER raw_capture_canonical_publication_preserve BEFORE DELETE ON raw_capture_publications
 WHEN EXISTS(SELECT 1 FROM raw_capture_finality f WHERE f.key=OLD.key AND (f.sha256=OLD.sha256 OR f.chain_sha256=OLD.chain_sha256))
 BEGIN SELECT RAISE(ABORT,'Canonical raw publication is retained'); END;
+
+-- statement-breakpoint
+CREATE TRIGGER raw_capture_selected_canonical_insert BEFORE INSERT ON raw_capture_selected
+WHEN EXISTS(SELECT 1 FROM raw_capture_state c WHERE c.network=NEW.network AND c.genesis_hash IS NOT NULL)
+ AND NOT EXISTS(SELECT 1 FROM raw_capture_finality f
+   JOIN raw_capture_state c ON c.network=f.network AND c.genesis_hash=f.genesis_hash AND c.verified_from=f.verified_from AND c.checkpoint_revision>=f.revision AND c.last_contiguous_block>=f.last_block
+   JOIN raw_capture_publications p ON p.key=f.key AND p.sha256=f.sha256 AND p.chain_sha256=f.chain_sha256
+   JOIN raw_capture_batches b ON b.key=f.key AND b.sha256=f.sha256 AND b.complete=1
+   WHERE f.key=NEW.key AND f.sha256=NEW.sha256 AND f.network=NEW.network AND f.last_block=NEW.last_block AND b.captured_at=NEW.captured_at)
+BEGIN SELECT RAISE(ABORT,'Canonical raw selector proof required'); END;
+-- statement-breakpoint
+CREATE TRIGGER raw_capture_selected_canonical_update BEFORE UPDATE ON raw_capture_selected
+WHEN EXISTS(SELECT 1 FROM raw_capture_state c WHERE c.network IN (OLD.network,NEW.network) AND c.genesis_hash IS NOT NULL)
+ AND (NEW.key IS NOT OLD.key OR NOT EXISTS(SELECT 1 FROM raw_capture_finality f
+   JOIN raw_capture_state c ON c.network=f.network AND c.genesis_hash=f.genesis_hash AND c.verified_from=f.verified_from AND c.checkpoint_revision>=f.revision AND c.last_contiguous_block>=f.last_block
+   JOIN raw_capture_publications p ON p.key=f.key AND p.sha256=f.sha256 AND p.chain_sha256=f.chain_sha256
+   JOIN raw_capture_batches b ON b.key=f.key AND b.sha256=f.sha256 AND b.complete=1
+   WHERE f.key=NEW.key AND f.sha256=NEW.sha256 AND f.network=NEW.network AND f.last_block=NEW.last_block AND b.captured_at=NEW.captured_at))
+BEGIN SELECT RAISE(ABORT,'Canonical raw selector proof required'); END;
+-- statement-breakpoint
+CREATE TRIGGER raw_capture_selected_canonical_release BEFORE DELETE ON raw_capture_selected
+WHEN EXISTS(SELECT 1 FROM raw_capture_finality f WHERE f.key=OLD.key AND f.sha256=OLD.sha256)
+ AND NOT EXISTS(SELECT 1 FROM raw_capture_archives a WHERE a.key=OLD.key AND a.sha256=OLD.sha256 AND a.complete=1 AND a.selected=1
+   AND a.native_sha256=a.compressed_sha256 AND a.native_key='chain/raw/native/v1/'||a.network||'/'||a.sha256||'/'||a.compressed_sha256||'.gz')
+BEGIN SELECT RAISE(ABORT,'Canonical raw selector requires native archive handoff'); END;
+-- statement-breakpoint
+CREATE TRIGGER raw_capture_archive_canonical_insert BEFORE INSERT ON raw_capture_archives
+WHEN NEW.selected=1 AND EXISTS(SELECT 1 FROM raw_capture_finality f WHERE f.key=NEW.key AND f.sha256<>NEW.sha256)
+BEGIN SELECT RAISE(ABORT,'Canonical raw archive selection is immutable'); END;
+-- statement-breakpoint
+CREATE TRIGGER raw_capture_archive_canonical_update BEFORE UPDATE ON raw_capture_archives
+WHEN EXISTS(SELECT 1 FROM raw_capture_finality f WHERE f.key=OLD.key AND f.sha256=OLD.sha256)
+ OR (NEW.selected=1 AND EXISTS(SELECT 1 FROM raw_capture_finality f WHERE f.key=NEW.key AND f.sha256<>NEW.sha256))
+BEGIN SELECT RAISE(ABORT,'Canonical raw archive selection is immutable'); END;
+-- statement-breakpoint
+CREATE TRIGGER raw_capture_archive_canonical_preserve BEFORE DELETE ON raw_capture_archives
+WHEN EXISTS(SELECT 1 FROM raw_capture_finality f WHERE f.key=OLD.key AND f.sha256=OLD.sha256)
+BEGIN SELECT RAISE(ABORT,'Canonical raw archive is retained'); END;

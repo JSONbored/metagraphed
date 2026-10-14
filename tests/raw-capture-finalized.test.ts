@@ -314,3 +314,42 @@ test("the virtual predecessor is explicit at floor zero and endpoint qualificati
   assert.equal(cp.verifiedFrom, 0);
   assert.equal(cp.revision, 0);
 });
+
+test("each fast failover spends a paced slot, and endpoint count cannot widen the attempt budget", async () => {
+  const f = await fixture(),
+    primary = syntheticNode({ failAt: 10 }),
+    secondary = syntheticNode();
+  let clock = 1000;
+  const sleeps: number[] = [],
+    starts: { host: string; at: number }[] = [];
+  const fetchImpl: typeof fetch = (url, init) => {
+    starts.push({ host: String(url), at: clock });
+    return String(url).includes("secondary")
+      ? secondary.fetchImpl(url, init)
+      : primary.fetchImpl(url, init);
+  };
+  const result = await run(f, primary, {
+    rpcUrls: ["https://primary.example", "https://secondary.example"],
+    fetchImpl,
+    now: () => clock,
+    minGapMs: 100,
+    sleepFn: async (ms) => {
+      sleeps.push(ms);
+      clock += ms;
+    },
+    maxPerTick: 50,
+  });
+  assert.equal(result.captured, 5);
+  assert.deepEqual(sleeps, [100, 100]);
+  assert.equal(starts.find((x) => x.host.includes("secondary"))?.at, 1200);
+
+  const tight = await fixture();
+  const refused = await run(tight, primary, {
+    rpcUrls: ["https://primary.example", "https://secondary.example"],
+    fetchImpl,
+    maxPerTick: 25,
+  });
+  assert.equal(refused.captured, 0);
+  assert.equal(refused.watermark, 9);
+  assert.match(refused.reason!, /attempt budget exhausted/);
+});

@@ -310,7 +310,7 @@ test("a stale different range cannot publish or move the winning frontier", asyn
       checkpoint,
       finalized,
     }),
-    /not acknowledged|not committed/,
+    /not acknowledged|not committed|UNIQUE constraint failed|frontier CAS refused/,
   );
   assert.equal((await f.store.canonical!.read("mainnet"))?.height, 12);
   assert.equal(
@@ -477,7 +477,7 @@ test("overlapping native writers qualify the same bytes once; a different range 
       payload(rows.slice(0, 3)),
       proof,
     ),
-    /not acknowledged|not committed/,
+    /not acknowledged|not committed|UNIQUE constraint failed|frontier CAS refused/,
   );
   assert.equal((await f.store.canonical!.read("mainnet"))?.revision, 1);
 });
@@ -569,5 +569,240 @@ test("a pre-migration invalid legacy height is refused rather than interpreted a
   await assert.rejects(
     f.store.canonical!.read("mainnet"),
     /Invalid raw capture checkpoint/,
+  );
+});
+
+// Exact selector/receipt SQL from prior runtime de41e2eaca02e8f224c3eb333b6850f3a438c239.
+// This intentionally bypasses the NEW store.put's application-level guard.
+const priorSelectorSql =
+  "INSERT INTO raw_capture_selected(key,sha256,network,last_block,captured_at) SELECT key,sha256,network,last_block,captured_at FROM raw_capture_batches b WHERE key=? AND sha256=? AND complete=1 AND NOT EXISTS(SELECT 1 FROM raw_capture_archives a WHERE a.key=b.key AND a.selected=1 AND a.sha256<>b.sha256 AND a.captured_at>=b.captured_at) ON CONFLICT(key) DO UPDATE SET sha256=excluded.sha256,network=excluded.network,last_block=excluded.last_block,captured_at=excluded.captured_at WHERE raw_capture_selected.captured_at<excluded.captured_at OR raw_capture_selected.sha256=excluded.sha256";
+const priorPublicationSql =
+  "INSERT INTO raw_capture_publications(key,sha256,selected_sha256,chain_sha256) SELECT b.key,b.sha256,c.sha256,? FROM raw_capture_batches b JOIN (SELECT s.key,s.sha256,s.captured_at FROM raw_capture_selected s JOIN raw_capture_batches r USING(key,sha256) WHERE s.key=? AND r.complete=1 UNION ALL SELECT key,sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1 AND complete=1 AND native_sha256=compressed_sha256 AND native_key='chain/raw/native/v1/'||network||'/'||sha256||'/'||compressed_sha256||'.gz' ORDER BY captured_at DESC LIMIT 1) c ON c.key=b.key LEFT JOIN raw_capture_publications p ON p.key=c.key AND p.sha256=c.sha256 WHERE b.key=? AND b.sha256=? AND b.complete=1 AND (c.sha256=b.sha256 OR p.chain_sha256=?) ON CONFLICT(key,sha256) DO NOTHING";
+async function priorPublication(db: D1Database, key: string, digest: string) {
+  return db.batch([
+    db
+      .prepare(
+        "UPDATE raw_capture_batches SET complete=1 WHERE key=? AND sha256=? AND parts=(SELECT count(*) FROM raw_capture_chunks WHERE key=? AND sha256=?) AND compressed_bytes=(SELECT sum(length(data)) FROM raw_capture_chunks WHERE key=? AND sha256=?)",
+      )
+      .bind(key, digest, key, digest, key, digest),
+    db.prepare(priorSelectorSql).bind(key, digest),
+    db
+      .prepare(priorPublicationSql)
+      .bind("f".repeat(64), key, key, key, digest, "f".repeat(64)),
+  ]);
+}
+
+test.each([false, true])(
+  "prior runtime SQL cannot supersede canonical selected bytes (archived=%s)",
+  async (archived) => {
+    const { f, checkpoint, rows } = await setup();
+    const key = rawBatchKey(10, 14),
+      current = payload(rows),
+      proof = {
+        checkpoint,
+        finalized: { height: 14, hash: rows.at(-1)!.block_hash },
+      };
+    await f.store.canonical!.commit(key, current, proof);
+    if (archived) await archive(f.db, key, sha(current));
+    const alternate = payload(
+      rows.map((r) => ({ ...r, events: "0x01" })),
+      5000,
+    );
+    await assert.rejects(f.store.put(key, alternate), /not acknowledged/);
+    await assert.rejects(
+      priorPublication(f.db, key, sha(alternate)),
+      /selector proof required/,
+    );
+    assert.equal(
+      await f.db
+        .prepare(
+          "SELECT count(*) n FROM raw_capture_publications WHERE key=? AND sha256=?",
+        )
+        .bind(key, sha(alternate))
+        .first<number>("n"),
+      0,
+    );
+    assert.equal(
+      (await f.store.canonical!.read("mainnet"))?.hash,
+      rows.at(-1)!.block_hash,
+    );
+    if (archived) {
+      assert.equal(
+        await f.db
+          .prepare(
+            "SELECT selected FROM raw_capture_archives WHERE key=? AND sha256=?",
+          )
+          .bind(key, sha(current))
+          .first<number>("selected"),
+        1,
+      );
+      await assert.rejects(
+        f.db
+          .prepare(
+            "UPDATE raw_capture_archives SET selected=0 WHERE key=? AND sha256=?",
+          )
+          .bind(key, sha(current))
+          .run(),
+        /immutable/,
+      );
+      await assert.rejects(
+        f.db
+          .prepare("DELETE FROM raw_capture_archives WHERE key=? AND sha256=?")
+          .bind(key, sha(current))
+          .run(),
+        /retained/,
+      );
+    } else {
+      assert.equal(
+        await f.db
+          .prepare("SELECT sha256 FROM raw_capture_selected WHERE key=?")
+          .bind(key)
+          .first<string>("sha256"),
+        sha(current),
+      );
+      await assert.rejects(
+        f.db
+          .prepare("DELETE FROM raw_capture_selected WHERE key=?")
+          .bind(key)
+          .run(),
+        /native archive handoff/,
+      );
+    }
+  },
+);
+
+test("positive control: removing only selector guards lets prior runtime SQL replace canonical bytes before watermark refusal", async () => {
+  const { f, checkpoint, rows } = await setup();
+  const key = rawBatchKey(10, 14),
+    current = payload(rows),
+    alternate = payload(
+      rows.map((r) => ({ ...r, events: "0x01" })),
+      5000,
+    );
+  await f.store.canonical!.commit(key, current, {
+    checkpoint,
+    finalized: { height: 14, hash: rows.at(-1)!.block_hash },
+  });
+  await assert.rejects(f.store.put(key, alternate), /not acknowledged/);
+  for (const name of [
+    "raw_capture_selected_canonical_insert",
+    "raw_capture_selected_canonical_update",
+  ])
+    await f.db.prepare(`DROP TRIGGER ${name}`).run();
+  await priorPublication(f.db, key, sha(alternate));
+  assert.equal(
+    await f.db
+      .prepare("SELECT sha256 FROM raw_capture_selected WHERE key=?")
+      .bind(key)
+      .first<string>("sha256"),
+    sha(alternate),
+  );
+  await assert.rejects(
+    f.db
+      .prepare(
+        "INSERT INTO raw_capture_state(network,last_contiguous_block,updated_at) VALUES('mainnet',14,5000) ON CONFLICT(network) DO UPDATE SET last_contiguous_block=excluded.last_contiguous_block",
+      )
+      .run(),
+    /checkpoint/,
+  );
+  assert.equal((await f.store.canonical!.read("mainnet"))?.revision, 1);
+});
+
+test.each(["legacy-null", "different-bytes"])(
+  "an archived legacy future timestamp cannot defeat canonical publication: %s",
+  async (kind) => {
+    const f = await fixture(),
+      node = syntheticNode();
+    const rows: RawBlockCapture[] = [10, 11, 12, 13, 14].map((n) => ({
+      block_number: n,
+      block_hash: node.hash(n),
+      parent_hash: String(node.headers.get(n)!.parentHash),
+      header: node.headers.get(n),
+      extrinsics: ["0x0401"],
+      events: kind === "different-bytes" ? "0x01" : "0x00",
+      captured_at: 5000,
+    }));
+    const key = rawBatchKey(10, 14),
+      legacy = payload(rows, 5000);
+    await f.store.put(key, legacy);
+    if (kind === "legacy-null")
+      await f.db
+        .prepare(
+          "UPDATE raw_capture_publications SET chain_sha256=NULL WHERE key=? AND sha256=?",
+        )
+        .bind(key, sha(legacy))
+        .run();
+    await archive(f.db, key, sha(legacy));
+    const cp = await f.store.canonical!.bootstrap({
+      network: "mainnet",
+      previousHeight: null,
+      height: 9,
+      hash: node.hash(9),
+      genesis: RAW_CAPTURE_GENESIS.mainnet,
+      finalized: { height: 14, hash: node.hash(14) },
+      now: 1000,
+    });
+    const current = payload(
+      rows.map((r) => ({ ...r, events: "0x00" })),
+      1000,
+    );
+    const committed = await f.store.canonical!.commit(key, current, {
+      checkpoint: cp,
+      finalized: { height: 14, hash: node.hash(14) },
+    });
+    assert.equal(committed.height, 14);
+    assert.equal(
+      await f.db
+        .prepare("SELECT sha256 FROM raw_capture_selected WHERE key=?")
+        .bind(key)
+        .first<string>("sha256"),
+      sha(current),
+    );
+    assert.equal(
+      await f.db
+        .prepare(
+          "SELECT selected FROM raw_capture_archives WHERE key=? AND sha256=?",
+        )
+        .bind(key, sha(legacy))
+        .first<number>("selected"),
+      0,
+    );
+    assert.equal(
+      await f.db
+        .prepare("SELECT count(*) n FROM raw_capture_publications WHERE key=?")
+        .bind(key)
+        .first<number>("n"),
+      2,
+    );
+  },
+);
+
+test("an ignored selector transition aborts proof, publication and frontier together", async () => {
+  const { f, checkpoint, rows } = await setup(),
+    key = rawBatchKey(10, 14);
+  await f.db
+    .prepare(
+      "CREATE TRIGGER refuse_selector BEFORE INSERT ON raw_capture_selected BEGIN SELECT RAISE(IGNORE); END",
+    )
+    .run();
+  await assert.rejects(
+    f.store.canonical!.commit(key, payload(rows), {
+      checkpoint,
+      finalized: { height: 14, hash: rows.at(-1)!.block_hash },
+    }),
+    /selector CAS refused/,
+  );
+  assert.equal((await f.store.canonical!.read("mainnet"))?.height, 9);
+  assert.equal(
+    await f.db
+      .prepare("SELECT count(*) n FROM raw_capture_publications")
+      .first<number>("n"),
+    0,
+  );
+  assert.equal(
+    await f.db
+      .prepare("SELECT count(*) n FROM raw_capture_finality")
+      .first<number>("n"),
+    0,
   );
 });

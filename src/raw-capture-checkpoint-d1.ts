@@ -8,23 +8,6 @@ import type {
 } from "./raw-capture-provenance.ts";
 import { substrateHash } from "./substrate-header.ts";
 
-export const CHECKPOINT_MATCH =
-  "c.network=? AND c.last_contiguous_block=? AND c.genesis_hash=? AND c.frontier_hash=? AND c.verified_from=? AND c.finalized_height=? AND c.finalized_hash=? AND c.checkpoint_revision=?";
-export function checkpointValues(
-  c: CanonicalCaptureCheckpoint,
-): (string | number)[] {
-  return [
-    c.network,
-    c.height,
-    c.genesis,
-    c.hash,
-    c.verifiedFrom,
-    c.finalizedHeight,
-    c.finalizedHash,
-    c.revision,
-  ];
-}
-
 export function rawCheckpointD1(db: D1StoreBinding, publicationSql: string) {
   const read = async (
     network: ChainNetworkId,
@@ -187,7 +170,7 @@ export function rawCheckpointD1(db: D1StoreBinding, publicationSql: string) {
       db
         .prepare(
           `INSERT INTO raw_capture_finality(network,revision,key,sha256,chain_sha256,genesis_hash,first_block,last_block,parent_hash,frontier_hash,finalized_height,finalized_hash,verified_from)
-        SELECT ?,?,?,?,?,?,?,?,?,?,?,?,? FROM raw_capture_publications p WHERE p.key=? AND p.sha256=? AND p.chain_sha256=? AND EXISTS(SELECT 1 FROM raw_capture_state c WHERE ${CHECKPOINT_MATCH}) ON CONFLICT DO NOTHING`,
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(key,chain_sha256) DO NOTHING`,
         )
         .bind(
           c.network,
@@ -203,10 +186,6 @@ export function rawCheckpointD1(db: D1StoreBinding, publicationSql: string) {
           f.height,
           f.hash,
           c.verifiedFrom,
-          key,
-          digest,
-          chainDigest,
-          ...checkpointValues(c),
         ),
     ];
   };

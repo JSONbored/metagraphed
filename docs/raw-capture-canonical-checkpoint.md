@@ -37,8 +37,10 @@ upgrade boundaries, historical metadata/runtime availability and derived-data co
 separate acceptance work.
 
 Raw bytes are staged and independently compressed-byte checked. One native D1 batch marks the
-bytes complete, selects the publication, inserts its immutable receipt and inserts the canonical
-proof. The proof trigger performs an exact predecessor/revision compare-and-swap and aborts the
+bytes complete, inserts the canonical publication receipt and its proof, and lets the proof trigger
+advance the exact frontier and select those bytes. Canonical receipts do not choose archived legacy
+candidates by capture timestamp. Native selector/archive guards also refuse older runtime SQL;
+application-only checks are insufficient for an in-flight or rollback writer. The proof trigger performs an exact predecessor/revision compare-and-swap and aborts the
 batch if that frontier change did not occur, including a trigger that returns RAISE(IGNORE).
 A lost reply is resolved against a publication plus its qualified proof and guarded descendant
 frontier, including after native archival releases the staging chunks. A concurrent equal-chain
@@ -53,7 +55,8 @@ refusal, never permission to rewind or rewrite an existing finalized anchor.
 ## Budgets and production qualification
 
 The paced lane budget includes three HTTP requests per chunk: anchor qualification, hashes,
-and body/events. All RPC requests, including bootstrap and failover attempts, share a hard cap
+and body/events. Every bootstrap and failover attempt consumes a paced slot from the same
+planned chunk allowance, plus one startup slot; endpoint count cannot widen the invocation span. All RPC requests, including bootstrap and failover attempts, share a hard cap
 of 200 per network invocation. This cap does not prove a total Worker subrequest, native-query,
 CPU, compressed-byte or transaction budget. Qualify those separately with representative bytes,
 real binding limits and scheduled overlap before releasing. Endpoint count never multiplies the
@@ -86,3 +89,20 @@ staging descriptors/chunks and archive descriptors) plus the referenced native a
 Qualify the actual native snapshot/SQL-export restore format and trigger creation order: ordinary
 application inserts intentionally cannot recreate an anchored frontier without its proofs. No
 ad-hoc row replay or independently timed partial exports are established as a restore procedure.
+
+## Coordinated release requirement
+
+Merging this draft is itself a live-schema action: `.github/workflows/d1-maintenance.yml` runs
+`migrate:d1 -- --remote` on main pushes touching migrations, then introspects and validates the
+physical schema. Automatic native Worker builds also deploy main independently; the deployment
+script defaults to production and does not wait for that schema gate. A generic source-preparation
+approval therefore does not authorize merging this draft.
+
+Before any owner-approved merge, define a coordinated capture pause and deployment hold that
+prevents new code reaching production before the schema/physical snapshot is qualified. Preserve
+both current frontiers and their byte/receipt estate, qualify native restore, inspect the exact
+0039/0040 application order, and determine how actual introspection is committed for the required
+full CI and coverage. Record the exact image/version that may resume capture after those gates.
+Neither CI failure nor the automation order justifies a fabricated snapshot, gate waiver or live
+application during preparation. The pause/hold mechanics and their bounded operational approval
+remain release work, not an inferred action in this draft.

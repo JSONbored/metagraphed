@@ -518,6 +518,28 @@ export async function captureTick(deps: {
   // hostnames can share a backend limit; rotation buys failover and archive
   // coverage, while batching already exceeds the chain's production rate.
   const chunkGapMs = minGapMs;
+  // Failover spends the same paced slots as successful chunks. The extra
+  // startup slot covers initial fixed-finality qualification; endpoint count
+  // cannot extend this invocation's planned span or multiply its allowance.
+  const canonicalAttemptLimit =
+    1 +
+    Math.ceil(
+      Number.isFinite(deps.maxPerTick) && deps.maxPerTick > 0
+        ? deps.maxPerTick / flushEvery
+        : 0,
+    );
+  let canonicalAttempts = 0;
+  let previousCanonicalStartedAt: number | null = null;
+  const canonicalAttempt = async () => {
+    if (canonicalAttempts >= canonicalAttemptLimit)
+      throw new Error("Raw capture attempt budget exhausted");
+    if (previousCanonicalStartedAt !== null && chunkGapMs > 0) {
+      const remaining = chunkGapMs - (now() - previousCanonicalStartedAt);
+      if (remaining > 0) await sleepFn(remaining);
+    }
+    previousCanonicalStartedAt = now();
+    canonicalAttempts++;
+  };
   let checkpoint: CanonicalCaptureCheckpoint | undefined;
   let finalized: FinalizedAnchor | undefined;
   let lastContiguous: number;
@@ -532,6 +554,7 @@ export async function captureTick(deps: {
       const retry: string[] = [];
       for (const url of candidates) {
         try {
+          await canonicalAttempt();
           context = await finalizedCaptureContext(
             url,
             network,
@@ -694,7 +717,7 @@ export async function captureTick(deps: {
     const chunkHeights = heights.slice(offset, offset + flushEvery);
     // BEFORE the read, and never before the first: the gap belongs between two
     // chunks' bursts, so pacing never delays a tick that captures one chunk.
-    if (previousChunkStartedAt !== null && chunkGapMs > 0) {
+    if (!deps.canonical && previousChunkStartedAt !== null && chunkGapMs > 0) {
       const remaining = chunkGapMs - (now() - previousChunkStartedAt);
       if (remaining > 0) await sleepFn(remaining);
     }
@@ -705,11 +728,13 @@ export async function captureTick(deps: {
     for (let attempt = 0; attempt < endpoints.length; attempt += 1) {
       const url = endpoints[(chunkIndex + attempt) % endpoints.length]!;
       try {
-        if (deps.canonical)
+        if (deps.canonical) {
+          await canonicalAttempt();
           await qualifyCaptureEndpoint(url, checkpoint!, finalized!, {
             fetchImpl,
             admission: deps.admission,
           });
+        }
         const got = await fetchRawBlockChunk(
           url,
           chunkHeights,
