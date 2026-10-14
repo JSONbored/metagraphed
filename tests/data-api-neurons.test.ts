@@ -4039,3 +4039,68 @@ test("the bulk ranking excludes each subnet's burn sink and counts its miners (#
   // 20 and the miner's 10 -- two holders, not a 70% single-holder illusion.
   assert.equal(row.holders, 2);
 });
+
+test("internal comparison batch uses five PostgreSQL reads and preserves single-detail order", async () => {
+  const keys = [
+    "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+  ];
+  await insertNeuron({ uid: 0, hotkey: keys[0], validator_permit: 1 });
+  await insertNeuron({ uid: 1, hotkey: keys[1], validator_permit: 1 });
+  pg.queries.length = 0;
+  const response = await call(
+    req(
+      `/api/v1/internal/validator-details?hotkeys=${keys[1]},${keys[0]},${keys[1]}`,
+    ),
+  );
+  assert.equal(response.status, 200);
+  const batch = await response.json<Row>();
+  assert.equal(pg.queries.length, 5);
+  assert.deepEqual(
+    batch.details.map((r: Row) => r.hotkey),
+    [keys[1], keys[0]],
+  );
+  for (const detail of batch.details)
+    assert.deepEqual(
+      detail,
+      await (await call(req(`/api/v1/validators/${detail.hotkey}`))).json(),
+    );
+  assert.equal(
+    (await call(req("/api/v1/internal/validator-details?hotkeys=invalid")))
+      .status,
+    400,
+  );
+});
+
+test("internal shared cards read one PostgreSQL population and preserve standalone cards", async () => {
+  for (const row of [
+    { uid: 0, stake_tao: null, validator_permit: 1 },
+    { uid: 1, stake_tao: 50, validator_permit: 1 },
+    { uid: 2, stake_tao: 50, validator_permit: 1 },
+    { uid: 3, stake_tao: 200, validator_permit: 0 },
+  ])
+    await insertNeuron(row);
+  pg.queries.length = 0;
+  const response = await call(req("/api/v1/internal/subnets/7/snapshot-cards"));
+  assert.equal(response.status, 200);
+  const shared = await response.json<Row>();
+  assert.equal(pg.queries.length, 1);
+  for (const card of ["concentration", "performance", "validators"])
+    assert.deepEqual(
+      shared[card],
+      await (await call(req(`/api/v1/subnets/7/${card}`))).json(),
+    );
+  assert.equal(shared.validators.validators[0].uid, 0);
+  assert.equal(shared.validators.validators[1].uid, 1);
+  assert.equal(shared.validators.validator_count, 3);
+  assert.equal(shared.performance.neuron_count, 4);
+  for (const netuid of [
+    "65536",
+    "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+  ])
+    assert.equal(
+      (await call(req(`/api/v1/internal/subnets/${netuid}/snapshot-cards`)))
+        .status,
+      400,
+    );
+});

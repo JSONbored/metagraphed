@@ -45,7 +45,7 @@ beforeAll(async () => {
     coldkey: `owner${uid}`,
     validator_permit: uid !== 15,
     active: uid % 2 === 0,
-    stake_tao: uid === 14 ? null : uid,
+    stake_tao: uid === 14 ? null : uid === 5 ? 4 : uid,
     emission_tao: uid / 100,
     incentive: uid / 100,
     dividends: 0.01,
