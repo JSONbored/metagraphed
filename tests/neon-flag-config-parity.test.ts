@@ -35,7 +35,14 @@ for (const file of CONFIGS) {
     assert.ok(config.d1_databases?.some((b) => b.binding === "D1_STATE"));
     const owners = config.vars.D1_STATE_TABLES!.split(",");
     assert.equal(new Set(owners).size, owners.length);
-    assert.equal(owners.length, file === "wrangler.registry.jsonc" ? 7 : 73);
+    assert.equal(owners.length, file === "wrangler.registry.jsonc" ? 7 : 75);
+    if (file !== "wrangler.registry.jsonc") {
+      for (const table of [
+        "nominator_daily_captures",
+        "nominator_positions_daily",
+      ])
+        assert.ok(owners.includes(table));
+    }
     for (const lane of [
       "neurons",
       "account-balances",

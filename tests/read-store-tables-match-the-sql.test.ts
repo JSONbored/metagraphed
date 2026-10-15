@@ -27,7 +27,6 @@ import * as TABLES from "../src/read-store-tables.ts";
  * Checking one module would have declared that set over-broad and passed while
  * missing the two tables that actually matter. */
 const OWNER: Record<string, string[]> = {
-  ALPHA_DAILY_TABLES: ["src/nominator-daily-export.ts"],
   ALPHA_QUANTITY_TABLES: ["src/alpha-holder-sql.ts", "src/alpha-quantity.ts"],
   ALPHA_PRICING_TABLES: ["src/alpha-holder-sql.ts", "src/alpha-quantity.ts"],
   SUBNET_BURN_HISTORY_TABLES: ["src/subnet-burn-history.ts"],

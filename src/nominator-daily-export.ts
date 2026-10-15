@@ -3,12 +3,11 @@ import { createHash } from "node:crypto";
 import { ALPHA_RUNTIMES } from "./alpha-runtime-identity.ts";
 import { internalJson as reply } from "./internal-json.ts";
 import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
-import { ALPHA_DAILY_TABLES } from "./read-store-tables.ts";
 import {
   AlphaCompleteCaptureSchema,
   alphaPositionQuantity,
   alphaQuantityProvenance,
-} from "./alpha-quantity.ts";
+} from "./alpha-quantity-capture.ts";
 
 const date = z
   .string()
@@ -47,11 +46,25 @@ interface Env {
   D1_STATE_TABLES?: string;
 }
 
+// Native D1-only endpoint: this is not a readStore/Neon fallback family.
+export const ALPHA_DAILY_TABLES = [
+  "nominator_positions_daily",
+  "nominator_daily_captures",
+  "alpha_snapshot_passes",
+  "alpha_runtime_metadata",
+] as const;
 const MEMBER_FIELDS =
   "coldkey hotkey netuid snapshot_date share_fraction shares captured_at source alpha_rao alpha_evidence block_number block_hash genesis_hash spec_version code_hash metadata_sha256 updated_at".split(
     " ",
   );
 const projection = "alpha-daily-members-v1";
+function qualifyDay(row: Row, day: string) {
+  if (row.metadata_qualified !== 1) throw new Error("missing capture metadata");
+  const capture = AlphaCompleteCaptureSchema.parse(row);
+  if (new Date(capture.captured_at).toISOString().slice(0, 10) !== day)
+    throw new Error("capture day mismatch");
+  return capture;
+}
 /** Bounded logical reads behind the existing state-export credential. No
  * whole-source backup, receipt recovery or restore qualification is implied. */
 export async function handleNominatorDailyExport(
@@ -61,10 +74,10 @@ export async function handleNominatorDailyExport(
   const fail = (status: number, error: string) => reply({ error }, status);
   const parsed = schema.safeParse(input);
   if (!parsed.success) return fail(400, "invalid daily Alpha history request");
-  if (!selectedD1Store(env, ALPHA_DAILY_TABLES))
-    return fail(503, "daily Alpha history is not owned by D1");
   const value = parsed.data;
   try {
+    if (!selectedD1Store(env, ALPHA_DAILY_TABLES))
+      return fail(503, "daily Alpha history is not owned by D1");
     const db = env.D1_STATE!;
     if (value.operation === "metadata") {
       const metadata = await db
@@ -116,11 +129,7 @@ export async function handleNominatorDailyExport(
           days.push({ day, status: "missing_unobserved" });
           continue;
         }
-        if (row.metadata_qualified !== 1)
-          throw new Error("missing capture metadata");
-        const capture = AlphaCompleteCaptureSchema.parse(row);
-        if (new Date(capture.captured_at).toISOString().slice(0, 10) !== day)
-          throw new Error("capture day mismatch");
+        const capture = qualifyDay(row, day);
         days.push({
           day,
           status: "complete",
@@ -161,9 +170,7 @@ export async function handleNominatorDailyExport(
         404,
         "daily Alpha capture is missing or unobserved; pruning and unsupported coverage are not established",
       );
-    if (head.metadata_qualified !== 1)
-      throw new Error("missing capture metadata");
-    const capture = AlphaCompleteCaptureSchema.parse(head);
+    const capture = qualifyDay(head, value.day);
     if (
       value.captured_at !== undefined &&
       value.captured_at !== capture.captured_at

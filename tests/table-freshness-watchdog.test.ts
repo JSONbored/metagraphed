@@ -15,6 +15,7 @@ import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { describe, test } from "vitest";
 import { tablesInMigrations } from "../scripts/validate-declared-tables-exist.ts";
+import { stripJsonComments } from "../scripts/lib.ts";
 import {
   crossCheckSql,
   confirmRedirectedStale,
@@ -130,10 +131,20 @@ export function tableCensus(
   return new Set([...live, ...declared]);
 }
 
-function neonTables(): Set<string> {
+function declaredStateTables(): Set<string> {
+  const config = JSON.parse(
+    stripJsonComments(readFileSync("wrangler.jsonc", "utf8")),
+  );
+  const native = tablesInMigrations("migrations/d1");
+  const owners = config.vars.D1_STATE_TABLES.split(",") as string[];
+  for (const table of owners)
+    assert.ok(native.has(table), `${table} has no native migration`);
   return tableCensus(
     readFileSync(path.join(process.cwd(), "db/schema.sql"), "utf8"),
-    tablesInMigrations(path.join(process.cwd(), "migrations/neon")).keys(),
+    [
+      ...tablesInMigrations(path.join(process.cwd(), "migrations/neon")).keys(),
+      ...owners,
+    ],
   );
 }
 
@@ -178,13 +189,14 @@ describe("TABLE_FRESHNESS coverage", () => {
     // decided the freshness meaning of, and it would be swept by nothing --
     // exactly how the registry cluster went five days unnoticed (#9779).
     //
-    // THE CENSUS IS db/schema.sql UNION the migrations -- see neonTables. It
+    // The census includes legacy declarations and native serving owners.
+    // Native owners must also exist in a D1 migration. It
     // was tests/fixtures/sqlite-schema until #10817 (the frozen D1-era set: 49
     // tables, exactly the 49 the map classified, so it could never fail on a
     // Neon-era table however long it went unwatched -- fourteen had), and the
     // live snapshot alone until #11042, which could not see a table until its
     // migration had already applied.
-    const declared = neonTables();
+    const declared = declaredStateTables();
     assert.ok(
       declared.size >= 60,
       `only ${declared.size} tables parsed out of db/schema.sql plus ` +
@@ -225,7 +237,7 @@ describe("TABLE_FRESHNESS coverage", () => {
     // Reads the same union, so classifying a table in the commit that declares
     // it is allowed -- which is the whole point of #11042 -- while classifying
     // one nothing has ever declared still fails.
-    const declared = neonTables();
+    const declared = declaredStateTables();
     for (const table of Object.keys(TABLE_FRESHNESS)) {
       assert.ok(
         declared.has(table),

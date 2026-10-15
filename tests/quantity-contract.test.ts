@@ -439,6 +439,8 @@ test("native actual promotions choose finalized ownership and decline publicatio
         0,
         "a genuinely empty current promoted census is measured zero",
       );
+      // Explicitly disable the retention fence only for this isolated corruption fixture.
+      await db.prepare("DROP TRIGGER nominator_daily_pass_update_fence").run();
       await db
         .prepare(
           "UPDATE alpha_snapshot_passes SET completed_at=NULL WHERE block_number=?",

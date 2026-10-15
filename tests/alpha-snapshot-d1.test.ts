@@ -4,7 +4,7 @@ import { Miniflare } from "miniflare";
 import { afterEach, test, vi } from "vitest";
 import { handleD1StateExport } from "../src/d1-state-export.ts";
 import { D1_EXPORT_COLUMNS } from "../src/d1-export-columns.ts";
-import { ALPHA_DAILY_TABLES } from "../src/read-store-tables.ts";
+import { ALPHA_DAILY_TABLES } from "../src/nominator-daily-export.ts";
 import { createD1Store } from "../src/d1-store.ts";
 import { writeSelfStakeSnapshotD1 } from "../src/self-stake-snapshot-d1.ts";
 import { NOMINATOR_POSITIONS_COVERAGE_SQL } from "../src/nominator-scan-coverage.ts";
@@ -449,6 +449,11 @@ test("daily paging is bounded and a changed selection rejects continuation inste
 test("daily history rejects invalid ranges, partial ownership, unqualified metadata and malformed continuation", async () => {
   const db = await fixture();
   await write(db, packet());
+  assert.equal(
+    (await dailyRead(db, { operation: "capture", day: dayOf(baseAt) }, ""))
+      .status,
+    503,
+  );
   for (const input of [
     { operation: "days", from: "2026-01-01", to: "2026-02-01" },
     { operation: "days", from: "2026-02-01", to: "2026-01-01" },
@@ -556,6 +561,69 @@ test("daily logical reads fail closed on corrupt amounts, metadata pins and orig
     (await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })).status,
     503,
   );
+});
+
+test("daily member pagination seeks one selected capture through its existing primary key", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  const plan = (
+    await db
+      .prepare(
+        `EXPLAIN QUERY PLAN SELECT coldkey,hotkey,netuid FROM nominator_positions_daily
+    WHERE snapshot_date=? AND (coldkey,hotkey,netuid)>(?,?,?) ORDER BY coldkey,hotkey,netuid LIMIT 101`,
+      )
+      .bind(dayOf(baseAt), "", "", 0)
+      .all<Row>()
+  ).results.map((row) => String(row.detail));
+  assert.ok(
+    plan.some((detail) =>
+      /SEARCH r USING PRIMARY KEY.*captured_at.*coldkey.*>/.test(detail),
+    ),
+    plan.join("\n"),
+  );
+  assert.ok(!plan.some((detail) => /SCAN r\b/.test(detail)), plan.join("\n"));
+});
+
+test("inconsistent daily heads cannot relabel either read, including a zero-member capture", async () => {
+  for (const members of [[], [row()]]) {
+    const db = await fixture();
+    await write(db, packet(members));
+    const corrupt = <T>(rows: T[]) =>
+      rows.map(
+        (row) =>
+          ({
+            ...row,
+            captured_at: Number((row as Row).captured_at) - 86_400_000,
+          }) as T,
+      );
+    const inconsistent: D1StoreBinding = {
+      async batch<T>(statements: D1PreparedStatement[]) {
+        const results = await db.batch<T>(statements);
+        results[0].results = corrupt(results[0].results);
+        return results;
+      },
+      prepare(sql: string) {
+        const statement = db.prepare(sql);
+        if (!sql.startsWith("SELECT d.snapshot_date,p.*")) return statement;
+        return {
+          bind(...values: unknown[]) {
+            const bound = statement.bind(...values);
+            return {
+              async all() {
+                const result = await bound.all<Row>();
+                return { ...result, results: corrupt(result.results) };
+              },
+            } as D1PreparedStatement;
+          },
+        } as D1PreparedStatement;
+      },
+    };
+    for (const input of [
+      { operation: "days", from: dayOf(baseAt), to: dayOf(baseAt) },
+      { operation: "capture", day: dayOf(baseAt) },
+    ])
+      assert.equal((await dailyRead(inconsistent, input)).status, 503);
+  }
 });
 
 test("legacy-only originals survive exact native hashing and reversed owner order cannot change a receipt", async () => {
@@ -1075,7 +1143,7 @@ test("max-width positions stay inside native binding limits and use one pool own
   assert.equal(
     (await db.prepare("SELECT COUNT(*) AS n FROM alpha_snapshot_pools").first())
       ?.n,
-    0,
+    1,
   );
   assert.equal((await rowsOf(db)).length, 2500);
   const duplicate = packet([row(), row()]);
