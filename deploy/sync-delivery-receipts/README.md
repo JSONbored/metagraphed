@@ -22,7 +22,9 @@ packing. Identity hashes lane, capture, pass census and ordered keys. Content
 digest additionally pins the exact scalar payload, using versioned binary
 encoding shared by Rust and TypeScript golden vectors. Strings stay strings;
 null/absent object cells normalize together, booleans normalize to 0/1, finite
-numbers use big-endian IEEE754 and negative zero normalizes to zero.
+numbers use big-endian IEEE754 and negative zero normalizes to zero. Lone JavaScript
+surrogates are refused, matching Rust's valid UTF8 strings. Receipt identities and
+hex key intervals use explicit binary/C collation in both qualification schemas.
 
 V1 POSTs carry `delivery_rows`, `delivery` and `pass_total`, deliberately omitting
 legacy `rows`. An old receiver rejects this shape before writing. The receiver
@@ -64,7 +66,8 @@ row write. Qualification triggers do not repair that race. Do not activate
 without verified quiescence of those old writers.
 
 Before any activation, qualify both SQL dialects and actual concurrent PG
-connections, confirm capacity for receipts/indexes/WAL/backups, obtain independent
+connections, confirm capacity for receipts/indexes/WAL/backups and encoding CPU/peak memory at
+the authenticated route caps, obtain independent
 review, and record the exact receiver/schema versions. Deploy and verify the
 receiver/consumer first, quiesce old consumers, and require the producer's explicit
 capability echo. Never enable new producers against old consumers: those may

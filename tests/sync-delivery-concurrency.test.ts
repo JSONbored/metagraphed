@@ -385,29 +385,44 @@ describe.skipIf(!available)("concurrent delivery transactions", () => {
     assert.ok(verdicts.some((lane) => lane.includes("coverage")));
   });
   test("required native PostgreSQL prune failures roll back every new family and receipt", async () => {
-    const positions = positionInput();
-    positions.coldkeyMaxCapturedAt = new Map([["c", NaN]]);
-    const positionResult = await mirrorNominatorPositionsToNeon(
-      environment(),
-      null,
-      positions,
-      { laneHealthDb: ordinaryHealth },
+    await admin.query(
+      "INSERT INTO nominator_positions(coldkey,hotkey,netuid,shares,share_fraction,captured_at,source) VALUES('c','old',1,1,1,$1,'alpha')",
+      [stamp - 1],
     );
-    assert.equal(positionResult.write?.ok, false);
-    const neurons = neuronInput();
-    neurons.netuidMaxCapturedAt = new Map([[1, NaN]]);
-    const neuronResult = await mirrorNeuronSnapshotToNeon(
-      environment(),
-      null,
-      neurons,
-      { laneHealthDb: ordinaryHealth },
+    await admin.query(
+      "INSERT INTO neurons(netuid,uid,hotkey,captured_at) VALUES(1,9,'old',$1)",
+      [stamp - 1],
     );
-    assert.equal(neuronResult.results.neurons!.ok, false);
+    await admin.query(
+      "CREATE FUNCTION fixture_reject_prune() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected required prune failure'; END; $$",
+    );
+    for (const table of ["nominator_positions", "neurons"])
+      await admin.query(
+        `CREATE TRIGGER fixture_reject_prune BEFORE DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION fixture_reject_prune()`,
+      );
+    try {
+      const positionResult = await mirrorNominatorPositionsToNeon(
+        environment(),
+        null,
+        positionInput(),
+        { laneHealthDb: ordinaryHealth },
+      );
+      assert.equal(positionResult.write?.ok, false);
+      const neuronResult = await mirrorNeuronSnapshotToNeon(
+        environment(),
+        null,
+        neuronInput(),
+        { laneHealthDb: ordinaryHealth },
+      );
+      assert.equal(neuronResult.results.neurons!.ok, false);
+    } finally {
+      for (const table of ["nominator_positions", "neurons"])
+        await admin.query(`DROP TRIGGER fixture_reject_prune ON ${table}`);
+      await admin.query("DROP FUNCTION fixture_reject_prune()");
+    }
     for (const table of [
       "sync_delivery_receipts",
-      "nominator_positions",
       "nominator_scan_receipts",
-      "neurons",
       "neuron_daily",
       "account_position_daily",
     ])
@@ -415,6 +430,13 @@ describe.skipIf(!available)("concurrent delivery transactions", () => {
         (await admin.query(`SELECT COUNT(*)::int n FROM ${table}`)).rows[0].n,
         0,
       );
+    assert.deepEqual(
+      (await admin.query("SELECT hotkey FROM nominator_positions")).rows,
+      [{ hotkey: "old" }],
+    );
+    assert.deepEqual((await admin.query("SELECT uid FROM neurons")).rows, [
+      { uid: 9 },
+    ]);
     const changedRows = rows.map((row) => ({ ...row, free_tao: 2 }));
     const ledger = await mirrorLedgerToNeon(
       environment(),

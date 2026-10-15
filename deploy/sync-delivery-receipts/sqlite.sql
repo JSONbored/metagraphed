@@ -1,20 +1,20 @@
 -- Qualification schema only. Activation requires an ordered, reviewed migration
 -- after held 0039-0043, measured capacity and producer/consumer rollout receipts.
 CREATE TABLE sync_delivery_passes (
-  lane TEXT NOT NULL,
+  lane TEXT COLLATE BINARY NOT NULL,
   captured_at INTEGER NOT NULL,
   expected_rows INTEGER NOT NULL CHECK(expected_rows > 0),
   PRIMARY KEY(lane,captured_at)
 );
 CREATE TABLE sync_delivery_receipts (
-  lane TEXT NOT NULL,
+  lane TEXT COLLATE BINARY NOT NULL,
   captured_at INTEGER NOT NULL,
-  id TEXT NOT NULL,
-  sha256 TEXT NOT NULL,
-  parent_id TEXT NOT NULL,
-  parent_sha256 TEXT NOT NULL,
-  first_key TEXT NOT NULL,
-  last_key TEXT NOT NULL,
+  id TEXT COLLATE BINARY NOT NULL,
+  sha256 TEXT COLLATE BINARY NOT NULL,
+  parent_id TEXT COLLATE BINARY NOT NULL,
+  parent_sha256 TEXT COLLATE BINARY NOT NULL,
+  first_key TEXT COLLATE BINARY NOT NULL,
+  last_key TEXT COLLATE BINARY NOT NULL,
   row_count INTEGER NOT NULL CHECK(row_count > 0),
   PRIMARY KEY(lane,captured_at,id),
   FOREIGN KEY(lane,captured_at) REFERENCES sync_delivery_passes(lane,captured_at),

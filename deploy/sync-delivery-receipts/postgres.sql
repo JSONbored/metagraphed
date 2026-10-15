@@ -1,19 +1,19 @@
 -- Qualification schema only; not a migration or deployment instruction.
 CREATE TABLE sync_delivery_passes (
-  lane TEXT NOT NULL,
+  lane TEXT COLLATE "C" NOT NULL,
   captured_at BIGINT NOT NULL,
   expected_rows INTEGER NOT NULL CHECK(expected_rows > 0),
   PRIMARY KEY(lane,captured_at)
 );
 CREATE TABLE sync_delivery_receipts (
-  lane TEXT NOT NULL,
+  lane TEXT COLLATE "C" NOT NULL,
   captured_at BIGINT NOT NULL,
-  id TEXT NOT NULL,
-  sha256 TEXT NOT NULL,
-  parent_id TEXT NOT NULL,
-  parent_sha256 TEXT NOT NULL,
-  first_key TEXT NOT NULL,
-  last_key TEXT NOT NULL,
+  id TEXT COLLATE "C" NOT NULL,
+  sha256 TEXT COLLATE "C" NOT NULL,
+  parent_id TEXT COLLATE "C" NOT NULL,
+  parent_sha256 TEXT COLLATE "C" NOT NULL,
+  first_key TEXT COLLATE "C" NOT NULL,
+  last_key TEXT COLLATE "C" NOT NULL,
   row_count INTEGER NOT NULL CHECK(row_count > 0),
   PRIMARY KEY(lane,captured_at,id),
   FOREIGN KEY(lane,captured_at) REFERENCES sync_delivery_passes(lane,captured_at),

@@ -507,68 +507,71 @@ for (const dialect of ["sqlite", "postgres"] as const)
       );
       assert.ok(sends > 0);
     });
-  });
-test("republication cannot change the parent identity of a committed child", async () => {
-  const parent = makeSyncDelivery("account-balances", stamp, 4, rows);
-  const child = rows.slice(0, 2);
-  const delivery = makeSyncDelivery(
-    "account-balances",
-    stamp,
-    4,
-    child,
-    parent,
-  );
-  await commitSyncDelivery(
-    store,
-    "account-balances",
-    child,
-    { ...pass(child), delivery },
-    [],
-  );
-  for (const changed of [
-    { ...delivery, parent_id: "b".repeat(64) },
-    { ...delivery, parent_sha256: "b".repeat(64) },
-  ])
-    await assert.rejects(
-      commitSyncDelivery(
+
+    test("republication cannot change the parent identity of a committed child", async () => {
+      const parent = makeSyncDelivery("account-balances", stamp, 4, rows);
+      const child = rows.slice(0, 2);
+      const delivery = makeSyncDelivery(
+        "account-balances",
+        stamp,
+        4,
+        child,
+        parent,
+      );
+      await commitSyncDelivery(
         store,
         "account-balances",
         child,
-        { ...pass(child), delivery: changed },
+        { ...pass(child), delivery },
         [],
-      ),
-      /./,
-    );
-});
-test("a corrupt retained receipt cannot certify a retry after restore", async () => {
-  await write();
-  for (const [column, value] of [
-    ["first_key", "00"],
-    ["last_key", "ff"],
-    ["row_count", 3],
-  ] as const) {
-    const original = await store.first<Record<string, unknown>>(
-      `SELECT ${column} FROM sync_delivery_receipts`,
-    );
-    await store.run(`UPDATE sync_delivery_receipts SET ${column}=?`, [value]);
-    await assert.rejects(write(), /./);
-    await store.run(`UPDATE sync_delivery_receipts SET ${column}=?`, [
-      original![column],
-    ]);
-  }
-  await store.run("UPDATE sync_delivery_passes SET expected_rows=5");
-  await assert.rejects(write(), /./);
-});
-test("oversized atomic units fail without leaving a pass or receipt", async () => {
-  await assert.rejects(
-    write(
-      rows,
-      4,
-      stamp,
-      store,
-      Array.from({ length: 901 }, () => ({ text: "SELECT 1" })),
-    ),
-    /budget/,
-  );
-  assert.equal(await count("sync_delivery_receipts"), 0);
-});
+      );
+      for (const changed of [
+        { ...delivery, parent_id: "b".repeat(64) },
+        { ...delivery, parent_sha256: "b".repeat(64) },
+      ])
+        await assert.rejects(
+          commitSyncDelivery(
+            store,
+            "account-balances",
+            child,
+            { ...pass(child), delivery: changed },
+            [],
+          ),
+          /./,
+        );
+    });
+    test("a corrupt retained receipt cannot certify a retry after restore", async () => {
+      await write();
+      for (const [column, value] of [
+        ["first_key", "00"],
+        ["last_key", "ff"],
+        ["row_count", 3],
+      ] as const) {
+        const original = await store.first<Record<string, unknown>>(
+          `SELECT ${column} FROM sync_delivery_receipts`,
+        );
+        await store.run(`UPDATE sync_delivery_receipts SET ${column}=?`, [
+          value,
+        ]);
+        await assert.rejects(write(), /./);
+        await store.run(`UPDATE sync_delivery_receipts SET ${column}=?`, [
+          original![column],
+        ]);
+      }
+      await store.run("UPDATE sync_delivery_passes SET expected_rows=5");
+      await assert.rejects(write(), /./);
+    });
+    test("oversized atomic units fail without leaving a pass or receipt", async () => {
+      await assert.rejects(
+        write(
+          rows,
+          4,
+          stamp,
+          store,
+          Array.from({ length: 901 }, () => ({ text: "SELECT 1" })),
+        ),
+        /budget/,
+      );
+      assert.equal(await count("sync_delivery_receipts"), 0);
+    });
+  });
