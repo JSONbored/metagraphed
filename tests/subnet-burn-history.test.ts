@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   BURN_HISTORY_MAX_POINTS,
+  BURN_HISTORY_PRUNE_MAX_ROWS,
   BURN_HISTORY_RETENTION_MS,
   BURN_HISTORY_WINDOWS,
   DEFAULT_BURN_HISTORY_WINDOW,
@@ -187,7 +188,53 @@ describe("captureSubnetBurnHistory", () => {
     });
     const sweep = calls.find((c) => c.sql.startsWith("DELETE"))!;
     assert.match(sweep.sql, new RegExp(`FROM ${SUBNET_BURN_HISTORY_TABLE}`));
-    assert.deepEqual(sweep.values, [NOW - BURN_HISTORY_RETENTION_MS]);
+    assert.deepEqual(sweep.values, [
+      NOW - BURN_HISTORY_RETENTION_MS,
+      BURN_HISTORY_PRUNE_MAX_ROWS,
+    ]);
+    assert.match(sweep.sql, /ORDER BY observed_at LIMIT \?/);
+  });
+
+  test("a failed capture still sweeps once without replaying or claiming capture", async () => {
+    for (const failSweep of [false, true]) {
+      const { db, calls } = fakeDb({ failBatch: true, failSweep });
+      let attempts = 0;
+      const transaction = db.transaction;
+      db.transaction = async (statements) => {
+        attempts += 1;
+        return transaction(statements);
+      };
+      const result = await captureSubnetBurnHistory({} as never, {
+        db,
+        now: () => NOW,
+        load: card([{ netuid: 1, burn_tao: 1 }]) as never,
+      });
+      assert.equal(attempts, 1);
+      assert.equal(result.ok, false);
+      assert.equal(result.captured, 0);
+      assert.equal(result.pruned, !failSweep);
+      assert.match(result.reason!, /^write_failed:/);
+      assert.equal(calls.filter((c) => c.sql.startsWith("DELETE")).length, 1);
+    }
+  });
+
+  test("missing or empty upstream reads never trigger expiry", async () => {
+    for (const load of [
+      card([]),
+      async () => {
+        throw new Error("unavailable");
+      },
+    ]) {
+      const { db, calls } = fakeDb();
+      const result = await captureSubnetBurnHistory({} as never, {
+        db,
+        now: () => NOW,
+        load: load as never,
+      });
+      assert.equal(result.ok, false);
+      assert.equal(result.pruned, false);
+      assert.equal(calls.length, 0);
+    }
   });
 
   test("a failed sweep does not report the capture as failed", async () => {

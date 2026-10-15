@@ -101,7 +101,12 @@ describe("recordLaneVerdict", () => {
         await recordLaneVerdict(db, record(), { confirm: true }),
         false,
       );
-      assert.equal(calls.length, 1, "a refused insert must not prune history");
+      assert.equal(
+        calls.length,
+        2,
+        "a refused insert must still attempt expiry",
+      );
+      assert.match(calls[1].sql, /^DELETE FROM/);
     }
     const { db } = fakeDb([{ ...record(), age_ms: "null" }]);
     assert.equal(
@@ -133,16 +138,17 @@ describe("recordLaneVerdict", () => {
   });
 
   test("prunes only its own lane, only past the retention horizon", async () => {
-    // Bounded work per tick: one lane, indexed by (lane, checked_at). A prune that
-    // scanned every lane would make each watchdog pay for all the others.
+    // One lane and at most 20 direct deletions; native triggers also do work.
     const { db, calls } = fakeDb();
     await recordLaneVerdict(db, record());
     const deletes = calls.filter((c) => c.sql.startsWith("DELETE FROM"));
     assert.equal(deletes.length, 1);
-    assert.match(deletes[0].sql, /WHERE lane = \? AND checked_at < \?/);
+    assert.match(deletes[0].sql, /WHERE lane = \? AND checked_at < \(/);
+    assert.match(deletes[0].sql, /ORDER BY checked_at LIMIT 20/);
     assert.deepEqual(deletes[0].values, [
       "chain-detail",
       NOW - LANE_HEALTH_RETENTION_MS,
+      "chain-detail",
     ]);
   });
 
