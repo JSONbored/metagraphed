@@ -107,6 +107,9 @@ export default defineConfig({
     ...(junitPath ? { outputFile: { junit: junitPath } } : {}),
     coverage: {
       provider: "v8",
+      // Preserve diagnostic coverage when a test fails; its exit status stays
+      // red. CI still requires every shard report and the unchanged Codecov gate.
+      reportOnFailure: true,
       // lcov for the Codecov upload (codecov/codecov-action reads
       // coverage/lcov.info); json-summary/text for local + CI readouts.
       reporter: ["text", "json-summary", "lcov"],
