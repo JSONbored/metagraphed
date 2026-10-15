@@ -422,6 +422,69 @@ test("distinguishes copied argument previews from exact API text", async ({ page
   });
 });
 
+test("does not restore a late exact response after navigating away from a stalled read", async ({
+  page,
+}) => {
+  let release!: () => void;
+  let settled = false;
+  let entered = false;
+  const stalled = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`**/api/v1/extrinsics/${BOUNDED_ARGS_HASH}`, async (route) => {
+    entered = true;
+    await stalled;
+    try {
+      await route.fulfill({
+        contentType: "application/json",
+        body: '{"ok":true,"data":{"extrinsic":{"call_args":{"late":"old record"}}}}',
+      });
+    } catch {
+      // Navigation may have already cancelled the request in Chromium.
+    } finally {
+      settled = true;
+    }
+  });
+  await gotoThroughRestart(page, `/extrinsics/${BOUNDED_ARGS_HASH}`);
+  await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+  const marker = "stalled-raw-read-same-document";
+  await page.evaluate((value) => {
+    (window as unknown as { rawReadMarker: string }).rawReadMarker = value;
+  }, marker);
+  try {
+    await page.getByRole("button", { name: "Load exact API response", exact: true }).click();
+    await expect.poll(() => entered).toBe(true);
+    await expect(
+      page.getByRole("status").filter({ hasText: "Loading exact API response" }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Chain", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/chain$/);
+    expect(
+      await page.evaluate(() => (window as unknown as { rawReadMarker: string }).rawReadMarker),
+    ).toBe(marker);
+    release();
+    await expect.poll(() => settled).toBe(true);
+    await expect(page.getByLabel("exact API response text", { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Copy exact API response text", exact: true }),
+    ).toHaveCount(0);
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`/extrinsics/${BOUNDED_ARGS_HASH}$`));
+    expect(
+      await page.evaluate(() => (window as unknown as { rawReadMarker: string }).rawReadMarker),
+    ).toBe(marker);
+    await expect(
+      page.getByRole("button", { name: "Load exact API response", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("exact API response text", { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Copy exact API response text", exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    release();
+  }
+});
+
 test("keeps pruned exact API responses explicit and retryable", async ({ page }) => {
   await page.route(`**/api/v1/extrinsics/${BOUNDED_ARGS_HASH}`, (route) =>
     route.fulfill({
