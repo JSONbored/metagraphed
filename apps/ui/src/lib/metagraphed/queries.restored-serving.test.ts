@@ -100,6 +100,7 @@ it("preserves verified ordering, nullable counts, cursor requests and network-sc
   expect(first.data[0].event_count).toBe(0);
   const next = await runQuery(blocksQuery({ limit: 2, cursor: corpus.first_cursor }));
   expect(next.data.map((b) => b.block_number)).toEqual([9]);
+  expect(next.data[0].event_count).toBeNull();
   expect(new Set([...first.data, ...next.data].map((b) => b.block_hash)).size).toBe(3);
   const mainnetKey = blocksQuery({ limit: 2 }).queryKey;
   setNetwork("testnet");

@@ -23,7 +23,7 @@ type BlockFrame = {
   parent_hash: string;
   author: null;
   extrinsic_count: number | null;
-  event_count: number;
+  event_count: number | null;
   spec_version: number;
   observed_at: string;
 };
@@ -51,7 +51,10 @@ const runtime = new Miniflare({
 let source: D1Database, restored: D1Database;
 let sourceBlocks: D1Database, restoredBlocks: D1Database;
 let clock = corpus.now;
-const ctx = { waitUntil() {}, passThroughOnException() {} } as ExecutionContext;
+const ctx = {
+  waitUntil() {},
+  passThroughOnException() {},
+} as unknown as ExecutionContext;
 const tables = Object.keys(D1_EXPORT_TABLES).join(",");
 type Cell = { storage: string; value: string | null };
 type Snapshot = {
@@ -171,6 +174,7 @@ function env() {
     METAGRAPH_VALIDATE_RESPONSES: "true",
     D1_RETAINED_BLOCKS: restoredBlocks,
     RETAINED_BLOCKS_NETWORKS: "mainnet,testnet",
+    ICEBERG_BLOCKS_MAX: "11",
     METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
     DATA_API: {
       fetch: (request: Request) =>
