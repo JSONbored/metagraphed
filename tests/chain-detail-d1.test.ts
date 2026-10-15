@@ -25,8 +25,12 @@ import {
 } from "../src/blocks-cold-tier.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import worker, { neonOwnsChainDetail } from "../workers/data-api.ts";
-import { decompressSyncBatchMessage } from "../src/sync-batch-compress.ts";
 import {
+  compressSyncBatchMessage,
+  decompressSyncBatchMessage,
+} from "../src/sync-batch-compress.ts";
+import {
+  packMultiFamilyMessage,
   SYNC_BATCH_MAX_BYTES,
   validSyncBatchMessage,
 } from "../src/sync-batch-queue.ts";
@@ -524,6 +528,56 @@ test("configured HTTP queue preserves a wide block through rollback and replay",
       .first("call_args"),
     body.blocks[0].extrinsics[0].call_args,
   );
+});
+
+test("compressed family messages cannot downgrade an unsupported delivery identity to legacy writes", async () => {
+  const { blockRows, extrinsicRows, chainEventRows, accountEventRows } =
+    input();
+  const families = {
+    blockRows,
+    extrinsicRows,
+    chainEventRows,
+    accountEventRows,
+  };
+  const total = Object.values(families).reduce((n, rows) => n + rows.length, 0);
+  const packed = packMultiFamilyMessage({
+    lane: "chain-detail",
+    capturedAt: stamp,
+    families,
+  });
+  // Identified bulk delivery currently owns five single-family lanes. A
+  // family message must retain retry/repair evidence rather than fall back to
+  // a legacy write, with or without a purported pass census.
+  for (const declared of [false, true]) {
+    const body = {
+      ...packed,
+      ...(declared ? { pass_total: total } : {}),
+      delivery: {
+        version: 1 as const,
+        id: "f".repeat(64),
+        sha256: "e".repeat(64),
+      },
+    };
+    assert.equal(validSyncBatchMessage(body), true);
+    const calls: string[] = [];
+    await worker.queue(
+      {
+        queue: "sync-batches",
+        messages: [
+          {
+            body: await compressSyncBatchMessage(body, SYNC_BATCH_MAX_BYTES),
+            ack: () => calls.push("ack"),
+            retry: () => calls.push("retry"),
+          },
+        ],
+      } as unknown as MessageBatch,
+      { ...env(), SYNC_DELIVERY_V1_READY: "true" },
+      { waitUntil() {} } as unknown as ExecutionContext,
+    );
+    assert.deepEqual(calls, ["retry"]);
+    for (const table of chainDetailTables())
+      assert.equal(await count(table), 0);
+  }
 });
 
 test("the configured queue refuses oversized compressed bytes and failed sends", async () => {
