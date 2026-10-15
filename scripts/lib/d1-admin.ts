@@ -29,6 +29,7 @@ const PROVIDER_MESSAGES = new Map([
   ["exceeded maximum db size", "Exceeded maximum DB size"],
 ]);
 const ERROR_BODY_MAX_BYTES = 16 * 1024;
+type ProviderError = { code?: unknown; message?: unknown } | null | undefined;
 
 async function readErrorBody(response: Response): Promise<{
   text?: string;
@@ -52,7 +53,8 @@ async function readErrorBody(response: Response): Promise<{
       text += decoder.decode(part.value, { stream: true });
     }
     text += decoder.decode();
-    return bytes ? { state: "complete", text } : { state: "empty" };
+    if (bytes === 0) return { state: "empty" };
+    return { state: "complete", text };
   } catch {
     await reader?.cancel().catch(() => undefined);
     return { state: "unreadable" };
@@ -97,12 +99,8 @@ async function httpFailure(
       try {
         const payload = JSON.parse(body.text!) as { errors?: unknown } | null;
         const errors = payload?.errors;
-        const first = Array.isArray(errors)
-          ? (errors[0] as
-              | { code?: unknown; message?: unknown }
-              | null
-              | undefined)
-          : undefined;
+        let first: ProviderError;
+        if (Array.isArray(errors)) first = errors[0] as ProviderError;
         const code = first?.code;
         const message = first?.message;
         if (
@@ -114,17 +112,17 @@ async function httpFailure(
         )
           fields.push(`provider_code=${code}`);
         if (typeof message === "string") {
-          const known =
-            message.length <= 512
-              ? PROVIDER_MESSAGES.get(
-                  message.trim().replace(/\s+/g, " ").toLowerCase(),
-                )
-              : undefined;
-          fields.push(
-            `provider_message=${known && !echoesInput(known) ? known : "Provider message redacted"}`,
-          );
+          let known: string | undefined;
+          if (message.length <= 512)
+            known = PROVIDER_MESSAGES.get(
+              message.trim().replace(/\s+/g, " ").toLowerCase(),
+            );
+          let safeMessage = "Provider message redacted";
+          if (known && !echoesInput(known)) safeMessage = known;
+          fields.push(`provider_message=${safeMessage}`);
         }
-        state = first ? "json" : "unrecognized";
+        if (first) state = "json";
+        else state = "unrecognized";
       } catch {
         state = "malformed";
       }
