@@ -264,7 +264,7 @@ test("numeric neuron hoisting restores the original type before digest and nativ
   const rows = Array.from({ length: 300 }, (_, uid) => ({
     netuid: 2,
     uid,
-    hotkey: account,
+    hotkey: String(uid).padStart(48, "h"),
     coldkey: account,
     active: true,
     axon: JSON.stringify({ ip: 1, padding: "x".repeat(210) }),
@@ -297,5 +297,61 @@ test("numeric neuron hoisting restores the original type before digest and nativ
       .bind(at)
       .first("received_rows"),
     300,
+  );
+});
+
+test("malformed identified queue bodies retain repair evidence and an unqualified consumer cannot write", async () => {
+  let acknowledgements = 0,
+    retries = 0;
+  const rows = [
+    { ss58: account, free_tao: 1, reserved_tao: 0, captured_at: stamp + 3 },
+  ];
+  const delivery = makeSyncDelivery("account-balances", stamp + 3, 1, rows);
+  const bodies = [
+    { delivery },
+    null,
+    {
+      lane: "account-balances",
+      captured_at: stamp + 3,
+      pass_total: 1,
+      rows,
+      delivery,
+    },
+  ];
+  const messages = bodies.map((body, i) => ({
+    id: String(i),
+    timestamp: new Date(stamp),
+    attempts: 1,
+    body,
+    ack() {
+      acknowledgements++;
+    },
+    retry() {
+      retries++;
+    },
+  }));
+  await worker.queue!(
+    {
+      queue: "metagraphed-sync-batches",
+      metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
+      messages,
+      ackAll() {},
+      retryAll() {
+        assert.fail("batch retry");
+      },
+    },
+    { ...env(), SYNC_DELIVERY_V1_READY: undefined },
+    ctx,
+  );
+  assert.equal(acknowledgements, 1);
+  assert.equal(retries, 2);
+  assert.equal(
+    await db
+      .prepare(
+        "SELECT COUNT(*) n FROM sync_delivery_receipts WHERE captured_at=?",
+      )
+      .bind(stamp + 3)
+      .first("n"),
+    0,
   );
 });

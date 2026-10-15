@@ -10047,11 +10047,19 @@ export default {
       if (!validSyncBatchMessage(body)) {
         // Acked, not retried: a message that cannot parse will not parse on the
         // fifth attempt either, and burning the budget only delays the DLQ.
-        message.ack();
+        if (body && typeof body === "object" && "delivery" in body) {
+          // Preserve identified protocol failures for repair in the DLQ.
+          // They must never disappear through the legacy malformed-body ACK.
+          message.retry();
+        } else {
+          message.ack();
+        }
         continue;
       }
       try {
-        if (body.delivery !== undefined) requireSyncDeliveryQualification(env);
+        if (body.delivery !== undefined) {
+          requireSyncDeliveryQualification(env);
+        }
         await writeSyncBatch(body, writers, Date.now(), familyWriters);
         if (body.lane === "neurons" && body.pass_total !== undefined) {
           scheduleExplorerDirectoryRefresh(env, ctx, body.captured_at);

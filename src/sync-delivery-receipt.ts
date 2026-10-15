@@ -55,7 +55,7 @@ export function syncDeliveryBytes(value: unknown): Buffer {
   if (typeof value === "object") {
     const entries = Object.entries(value as Row)
       .filter(([, cell]) => cell !== null && cell !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+      .sort(([a], [b]) => (a < b ? -1 : 1));
     if (entries.some(([key]) => !/^[a-z0-9_]+$/.test(key)))
       throw new TypeError("Delivery object keys must be schema columns");
     return Buffer.concat([
