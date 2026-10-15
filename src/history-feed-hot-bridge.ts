@@ -125,8 +125,7 @@ export async function readHotHistoryTail(
   const subnet = netuids
     ? ` AND netuid IN (${netuids.map(() => "?").join(",")})`
     : "";
-  const text =
-    `WITH coverage AS (
+  const text = `WITH coverage AS (
        SELECT MIN(block_number) AS first, MAX(block_number) AS last, COUNT(*) AS rows
        FROM chain_detail_blocks WHERE block_number > ? AND block_number <= ?
      ), matching AS (
@@ -141,17 +140,29 @@ export async function readHotHistoryTail(
        ${groupBy ? "NULL, NULL, NULL" : `observed_at, block_number, ${index}`} FROM matching
      ORDER BY sequence, ${outerOrder}`;
   const values = [
-      through,
-      last,
-      through,
-      last,
-      ...(netuids ?? []),
-      ...predicate.values,
-      maximum + 1,
-    ];
-  const field = !groupBy && table !== "account_events" ? table === "extrinsics" ? "call_args" : "args" : undefined;
-  const snapshot = field ? await readChainDetailPayloadSnapshot(env, { text, values }, field, true) : undefined;
-  const result = (snapshot?.rows ?? await store.query(text, values)) as {first:number|null;last:number|null;rows:number|null;record:string|null}[];
+    through,
+    last,
+    through,
+    last,
+    ...(netuids ?? []),
+    ...predicate.values,
+    maximum + 1,
+  ];
+  const field =
+    !groupBy && table !== "account_events"
+      ? table === "extrinsics"
+        ? "call_args"
+        : "args"
+      : undefined;
+  const snapshot = field
+    ? await readChainDetailPayloadSnapshot(env, { text, values }, field, true)
+    : undefined;
+  const result = (snapshot?.rows ?? (await store.query(text, values))) as {
+    first: number | null;
+    last: number | null;
+    rows: number | null;
+    record: string | null;
+  }[];
   const coverage = result.shift();
   if (
     !coverage ||
@@ -167,7 +178,9 @@ export async function readHotHistoryTail(
   )
     throw new Error("Hot history tail exceeds byte budget");
   const rows = result.slice(0, maximum).map((item) => JSON.parse(item.record!));
-  return snapshot ? restoreChainDetailPayloads(env, rows, snapshot.parts) : rows;
+  return snapshot
+    ? restoreChainDetailPayloads(env, rows, snapshot.parts)
+    : rows;
 }
 
 /** Parse catalog numbers. */

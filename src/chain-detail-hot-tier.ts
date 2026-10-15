@@ -1,50 +1,7 @@
-// Block drill-down for the range the lakehouse has not decoded yet (#9208).
-//
-// THE SHAPE OF THE PROBLEM. `blocks_head` carries block HEADERS to chain tip,
-// so the block LIST is realtime; extrinsics and events exist only in the R2
-// lakehouse, and only once the hourly batch decoder has run. Measured in
-// production against head 8,762,608 (2026-08-03): block 8,759,000 answered 29
-// extrinsics and 100 events, block 8,762,600 answered 0 and 0. A block explorer
-// whose list is live and whose DETAIL is empty is the worst possible shape --
-// it looks healthy until someone clicks.
-//
-// So there are now two tiers per block, exactly as there already are for
-// headers, and this module is the hot one plus the routing between them:
-//
-//   block_number <= seam  ->  R2 lakehouse (verified history, full depth)
-//   block_number >  seam  ->  D1 chain_detail_* (the live-follow lane's window)
-//
-// ONE SEAM, AND IT IS THE SAME SEAM. `resolveBlocksSeam` (src/blocks-cold-tier.ts,
-// #9217) resolves the decoder's own published watermark, floored by the
-// configured constant. This module calls it and does not introduce a second
-// knob -- "how far is decoded" has exactly one derived answer, and a hot tier
-// with its own idea of that answer would be a second source of truth that
-// drifts silently in whichever direction nobody is watching.
-//
-// A GAP DECLINES. It never answers empty. Above the seam, an empty extrinsics
-// array is indistinguishable from a block that genuinely had none, and that
-// ambiguity IS the bug this whole issue exists to kill. So the hot tier's
-// answer is authoritative ONLY for a block present in `chain_detail_blocks` --
-// the coverage register the sync writes last. A block above the seam that the
-// register does not carry is outside the window (not yet followed, or pruned
-// past), and after giving the lakehouse its own chance to answer, the read
-// DECLINES. `answerBlockDetail` returns `{kind:"gap"}` and the caller turns it
-// into a 503 with a typed code, which a client can retry and a human can
-// diagnose; an empty 200 is neither.
-//
-// THE LAKEHOUSE STILL GETS ASKED above the seam, before any decline. The
-// published watermark is the MIN across four tables, so a run that committed
-// chain.extrinsics and died before chain.chain_events leaves real rows above
-// it -- src/extrinsics-cold-tier.ts's header makes exactly this argument for
-// why it refuses to gate on the seam at all. Refusing rows we hold would be the
-// same failure in a new place, so the order is: hot, then cold, then decline.
-//
-// There is one safe early decline: the watermark also carries each table's
-// individual decode ceiling. If the relevant table's published ceiling is
-// below a numeric block, it is impossible for its lakehouse query to answer --
-// not merely unlikely -- so the slow query is skipped. A per-table ceiling is
-// never positive evidence, and absent or stale diagnostics keep the full
-// hot-then-cold path.
+// Hot block/extrinsic/event detail uses the existing published-history seam.
+// A missing hot answer falls through to retained history and then a typed gap.
+// Payload rows and parts share one D1 snapshot. Historical routing rationale
+// is preserved in deploy/chain-detail-payloads/README.md.
 
 import { buildBlockExtrinsics, buildExtrinsic } from "./extrinsics.ts";
 import { buildBlockEvents, formatAccountEvent } from "./account-events.ts";
@@ -91,8 +48,16 @@ async function query(
   if (!binding?.query) return null;
   try {
     if (field && selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)) {
-      const snapshot = await readChainDetailPayloadSnapshot(env, { text: sql, values: params }, field);
-      return await restoreChainDetailPayloads(env, snapshot.rows, snapshot.parts);
+      const snapshot = await readChainDetailPayloadSnapshot(
+        env,
+        { text: sql, values: params },
+        field,
+      );
+      return await restoreChainDetailPayloads(
+        env,
+        snapshot.rows,
+        snapshot.parts,
+      );
     }
     return (await binding.query(sql, params)) as Row[];
   } catch {

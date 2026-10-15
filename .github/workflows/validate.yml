@@ -941,6 +941,7 @@ jobs:
       - name: Test (split passes, with coverage gate)
         env:
           VITEST_JUNIT_PATH: reports/junit/vitest.xml
+          METAGRAPH_RECLAMATION_EVIDENCE: ${{ runner.temp }}/payload-reclamation
         run: node scripts/run-ci-tests.ts ${{ matrix.args }}
 
       # Both passes must have produced a report -- an empty/missing one would
@@ -981,6 +982,15 @@ jobs:
           path: cov-out/
           retention-days: 1
           if-no-files-found: error
+
+      - name: Retain supplied reclamation cut
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: payload-reclamation-${{ matrix.id }}
+          path: ${{ runner.temp }}/payload-reclamation
+          retention-days: 7
+          if-no-files-found: ignore
 
   # ONE Codecov upload, over every leg's report (#10414).
   #
