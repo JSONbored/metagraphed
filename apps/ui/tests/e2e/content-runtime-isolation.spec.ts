@@ -37,7 +37,7 @@ test.describe("content route runtime isolation", () => {
     await expect.poll(() => openapiChunks.length).toBe(1);
   });
 
-  test("server-function input cannot replace internal result state", async ({ page }, testInfo) => {
+  test("server-function fields cannot override results", async ({ page }, testInfo) => {
     // Exercise the compiled public input boundary with benign JSON metadata.
     // A normal navigation supplies the current URL and a positive control;
     // no generated function ID, HTML payload or script execution is assumed.
