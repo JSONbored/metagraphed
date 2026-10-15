@@ -35,7 +35,7 @@ test("credentialed D1 maintenance installs without secrets, lifecycle scripts or
   );
   const privileged = [
     "npm run migrate:d1 -- --remote",
-    "npm run snapshot:d1-schema",
+    "npm run snapshot:d1-schema -- --verify-ledger",
   ];
   for (const [index, step] of steps.entries()) {
     if (privileged.includes(step.run ?? "")) {
@@ -51,4 +51,38 @@ test("credentialed D1 maintenance installs without secrets, lifecycle scripts or
     steps.filter((step) => privileged.includes(step.run ?? "")).length,
     2,
   );
+});
+
+test("scheduled and default manual verification cannot apply pending migrations", () => {
+  const workflow = parse(
+    readFileSync(
+      new URL("../.github/workflows/d1-maintenance.yml", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(workflow.on.workflow_dispatch.inputs.apply_migrations, {
+    description: "Apply pending tracked migrations before verification",
+    type: "boolean",
+    required: true,
+    default: false,
+  });
+  assert.ok(
+    workflow.on.push.paths.includes("scripts/lib/d1-migration-ledger.ts"),
+  );
+  const steps = workflow.jobs.maintenance.steps as {
+    run?: string;
+    if?: string;
+  }[];
+  const apply = steps.find(
+    (step) => step.run === "npm run migrate:d1 -- --remote",
+  );
+  assert.equal(
+    apply?.if,
+    "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.apply_migrations)",
+  );
+  const verify = steps.find(
+    (step) => step.run === "npm run snapshot:d1-schema -- --verify-ledger",
+  );
+  assert.ok(verify);
+  assert.equal(verify.if, undefined);
 });
