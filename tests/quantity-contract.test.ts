@@ -323,6 +323,7 @@ test("native actual promotions choose finalized ownership and decline publicatio
         "0016_archive_export_revisions.sql",
         "0040_self_stake_snapshot_receipts.sql",
         "0043_alpha_runtime_snapshots.sql",
+        "0044_nominator_daily_captures.sql",
       ])
         for (const sql of readFileSync(
           new URL(`../migrations/d1/${file}`, import.meta.url),

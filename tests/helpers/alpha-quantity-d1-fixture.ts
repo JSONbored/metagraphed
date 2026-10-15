@@ -10,6 +10,7 @@ export async function installAlphaQuantityD1Schema(db: D1Database) {
     "0010_ledger_state.sql",
     "0040_self_stake_snapshot_receipts.sql",
     "0043_alpha_runtime_snapshots.sql",
+    "0044_nominator_daily_captures.sql",
   ]) {
     const sql = readFileSync(
       new URL(`../../migrations/d1/${file}`, import.meta.url),

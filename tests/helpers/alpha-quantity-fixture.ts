@@ -43,6 +43,7 @@ export function installAlphaQuantitySchema(db: DatabaseSync) {
     "0010_ledger_state.sql",
     "0040_self_stake_snapshot_receipts.sql",
     "0043_alpha_runtime_snapshots.sql",
+    "0044_nominator_daily_captures.sql",
   ])
     db.exec(
       readFileSync(

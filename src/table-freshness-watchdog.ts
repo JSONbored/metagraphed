@@ -370,6 +370,21 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
       "completed native Alpha receipt; pending reservations cannot advance freshness, and nominator_positions separately tracks serving capture age",
     producer: "validator_nominators",
   },
+  nominator_daily_captures: {
+    column: "captured_at",
+    kind: "ms",
+    maxAgeMs: missedTicksMs("validator_nominators", 1.5),
+    reason:
+      "selected complete daily Alpha observation, including a qualified zero-member pass",
+    producer: "validator_nominators",
+  },
+  nominator_positions_daily: {
+    column: "",
+    kind: "ms",
+    maxAgeMs: null,
+    reason:
+      "derived retained members; nominator_daily_captures measures freshness even when membership is zero",
+  },
   nominator_positions: {
     column: "captured_at",
     kind: "ms",

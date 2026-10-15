@@ -4,6 +4,7 @@ import { Miniflare } from "miniflare";
 import { afterEach, test, vi } from "vitest";
 import { handleD1StateExport } from "../src/d1-state-export.ts";
 import { D1_EXPORT_COLUMNS } from "../src/d1-export-columns.ts";
+import { ALPHA_DAILY_TABLES } from "../src/read-store-tables.ts";
 import { createD1Store } from "../src/d1-store.ts";
 import { writeSelfStakeSnapshotD1 } from "../src/self-stake-snapshot-d1.ts";
 import { NOMINATOR_POSITIONS_COVERAGE_SQL } from "../src/nominator-scan-coverage.ts";
@@ -42,7 +43,12 @@ async function fixture(includeAlpha = true) {
     "0010_ledger_state.sql",
     "0016_archive_export_revisions.sql",
     "0040_self_stake_snapshot_receipts.sql",
-    ...(includeAlpha ? ["0043_alpha_runtime_snapshots.sql"] : []),
+    ...(includeAlpha
+      ? [
+          "0043_alpha_runtime_snapshots.sql",
+          "0044_nominator_daily_captures.sql",
+        ]
+      : []),
   ])
     for (const statement of readFileSync(
       new URL(`../migrations/d1/${name}`, import.meta.url),
@@ -78,6 +84,479 @@ const rowsOf = async (db: D1Database) =>
   ).results;
 const write = (db: D1StoreBinding, p: Row) =>
   writeAlphaSnapshotD1(db, p, baseAt + 100000);
+
+const dayOf = (at: number) => new Date(at).toISOString().slice(0, 10);
+const dailyRead = (
+  db: D1StoreBinding,
+  input: Row,
+  owners = ALPHA_DAILY_TABLES.join(","),
+) =>
+  handleD1StateExport(
+    new Request("https://fixture/export", {
+      method: "POST",
+      headers: { "x-state-export-token": "secret" },
+      body: JSON.stringify({ kind: "nominator-daily", ...input }),
+    }),
+    { D1_STATE: db, D1_STATE_TABLES: owners, STATE_EXPORT_SECRET: "secret" },
+  );
+const writeAt = (
+  db: D1StoreBinding,
+  at: number,
+  rows = [row()],
+  overrides: Row = {},
+) =>
+  writeAlphaSnapshotD1(
+    db,
+    packet(rows, { captured_at: at, ...overrides }),
+    at + 100_000,
+  );
+
+test("one daily complete pass replaces membership and retains exact historical departures without later pool joins", async () => {
+  const db = await fixture();
+  await writeAt(db, baseAt, [row("alice"), row("bob")]);
+  const next = baseAt + 86_400_000;
+  await writeAt(db, next, [row("bob")], {
+    block_number: frozen.alpha_snapshot.block_number + 1,
+  });
+  const old = await (
+    await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })
+  ).json<Row>();
+  const current = await (
+    await dailyRead(db, { operation: "capture", day: dayOf(next) })
+  ).json<Row>();
+  assert.deepEqual(
+    old.members.map((r: Row) => r.coldkey),
+    ["alice", "bob"],
+  );
+  assert.deepEqual(
+    current.members.map((r: Row) => r.coldkey),
+    ["bob"],
+  );
+  assert.equal(old.members[0].alpha_rao, "1633251152");
+  assert.deepEqual(
+    JSON.parse(old.members[0].alpha_evidence),
+    frozen.members[0].evidence,
+  );
+  assert.deepEqual(
+    (await rowsOf(db)).map((r) => r.coldkey),
+    ["bob"],
+  );
+  assert.equal(old.provenance.block_hash, frozen.alpha_snapshot.block_hash);
+  const metadata = await (
+    await dailyRead(db, {
+      operation: "metadata",
+      sha256: frozen.alpha_snapshot.metadata_sha256,
+    })
+  ).json<Row>();
+  assert.equal(
+    metadata.metadata.scale_hex,
+    frozen.alpha_snapshot.metadata_scale_hex,
+  );
+});
+
+test("partial midnight completion and delayed older days qualify independently of the current global head", async () => {
+  const db = await fixture();
+  const at = Date.parse(`${dayOf(baseAt)}T23:59:59Z`);
+  const first = packet([row("alice")], {
+    captured_at: at,
+    total_rows: 2,
+    total_chunks: 2,
+  });
+  await writeAlphaSnapshotD1(db, first, at + 500);
+  assert.equal(
+    (await dailyRead(db, { operation: "capture", day: dayOf(at) })).status,
+    404,
+  );
+  await writeAt(db, at + 86_400_000, [row("new")], {
+    block_number: frozen.alpha_snapshot.block_number + 10,
+  });
+  await writeAlphaSnapshotD1(
+    db,
+    packet([row("bob")], {
+      captured_at: at,
+      total_rows: 2,
+      total_chunks: 2,
+      index: 1,
+      metadata_scale_hex: undefined,
+    }),
+    at + 86_400_001,
+  );
+  const historic = await (
+    await dailyRead(db, { operation: "capture", day: dayOf(at) })
+  ).json<Row>();
+  assert.equal(historic.expected_rows, 2);
+  assert.equal(historic.day, dayOf(at));
+  assert.equal(
+    (
+      await db
+        .prepare(
+          "SELECT selected FROM alpha_snapshot_passes WHERE captured_at=?",
+        )
+        .bind(at)
+        .first<Row>()
+    )?.selected,
+    0,
+  );
+  assert.deepEqual(
+    (await rowsOf(db)).map((r) => r.coldkey),
+    ["new"],
+  );
+});
+
+test("same-day later complete capture reconciles departures, ignores partial competitors and survives superseded lost ACK replay", async () => {
+  const db = await fixture();
+  const first = packet([row("alice"), row("departed")]);
+  await write(db, first);
+  const at = baseAt + 1000;
+  await writeAt(db, at, [row("replacement")], {
+    block_number: frozen.alpha_snapshot.block_number + 1,
+  });
+  const partial = packet([row("partial")], {
+    captured_at: at + 1000,
+    total_rows: 2,
+    total_chunks: 2,
+    block_number: frozen.alpha_snapshot.block_number + 2,
+  });
+  await writeAlphaSnapshotD1(db, partial, at + 100_000);
+  const replay = await write(db, first);
+  assert.equal(replay.alpha_snapshot.complete, true);
+  assert.equal(replay.alpha_snapshot.received_rows, 2);
+  const response = await (
+    await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })
+  ).json<Row>();
+  assert.deepEqual(
+    response.members.map((r: Row) => r.coldkey),
+    ["replacement"],
+  );
+  assert.equal(
+    (
+      await db
+        .prepare(
+          "SELECT COUNT(*) n FROM alpha_snapshot_rows WHERE captured_at=?",
+        )
+        .bind(baseAt)
+        .first<Row>()
+    )?.n,
+    0,
+  );
+  assert.equal(
+    (
+      await db
+        .prepare(
+          "SELECT COUNT(*) n FROM alpha_snapshot_rows WHERE captured_at=?",
+        )
+        .bind(at + 1000)
+        .first<Row>()
+    )?.n,
+    1,
+  );
+  for (const table of [
+    "nominator_daily_captures",
+    "nominator_positions_daily",
+  ]) {
+    assert.equal(
+      (
+        await db
+          .prepare(
+            "SELECT revision FROM archive_export_revisions WHERE table_name=?",
+          )
+          .bind(table)
+          .first<Row>()
+      )?.revision,
+      2,
+    );
+  }
+});
+
+test("qualified zero-member dates remain visible and unobserved dates never become empty snapshots", async () => {
+  const db = await fixture();
+  await writeAt(db, baseAt, []);
+  const next = baseAt + 86_400_000;
+  const days = await (
+    await dailyRead(db, {
+      operation: "days",
+      from: dayOf(baseAt),
+      to: dayOf(next),
+    })
+  ).json<Row>();
+  assert.equal(days.days[0].status, "complete");
+  assert.equal(days.days[0].rows, 0);
+  assert.equal(days.days[1].status, "missing_unobserved");
+  const empty = await (
+    await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })
+  ).json<Row>();
+  assert.equal(empty.expected_rows, 0);
+  assert.deepEqual(empty.members, []);
+  assert.equal(
+    (await dailyRead(db, { operation: "capture", day: dayOf(next) })).status,
+    404,
+  );
+});
+
+test("three observation dates retain independent daily membership cuts", async () => {
+  const db = await fixture();
+  for (let index = 0; index < 3; index++)
+    await writeAt(
+      db,
+      baseAt + index * 86_400_000,
+      index === 2 ? [] : [row(`member${index}`)],
+      { block_number: frozen.alpha_snapshot.block_number + index },
+    );
+  const days = await (
+    await dailyRead(db, {
+      operation: "days",
+      from: dayOf(baseAt),
+      to: dayOf(baseAt + 2 * 86_400_000),
+    })
+  ).json<Row>();
+  assert.deepEqual(
+    days.days.map((day: Row) => [day.status, day.rows]),
+    [
+      ["complete", 1],
+      ["complete", 1],
+      ["complete", 0],
+    ],
+  );
+});
+
+test("daily selection rejects a conflicting equal-height block and ignores regressing observations", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  await assert.rejects(
+    writeAt(db, baseAt + 1000, [row("fork")], {
+      block_hash: `0x${"ab".repeat(32)}`,
+    }),
+    /Daily Alpha capture block identity conflicts/,
+  );
+  await writeAt(db, baseAt + 1000, [row("same block differing originals")]);
+  await writeAt(db, baseAt + 2000, [row("older block")], {
+    block_number: frozen.alpha_snapshot.block_number - 1,
+  });
+  const result = await (
+    await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })
+  ).json<Row>();
+  assert.deepEqual(
+    result.members.map((member: Row) => member.coldkey),
+    ["alice"],
+  );
+});
+
+test("daily census and export revision failures roll back every publication effect", async () => {
+  for (const target of [
+    "nominator_daily_captures",
+    "archive_export_revisions",
+  ]) {
+    const db = await fixture();
+    await db
+      .prepare(
+        `CREATE TRIGGER fail_daily BEFORE INSERT ON ${target} BEGIN SELECT RAISE(ABORT,'forced daily failure'); END`,
+      )
+      .run();
+    await assert.rejects(write(db, packet()), /forced daily failure/);
+    for (const table of [
+      "alpha_snapshot_passes",
+      "alpha_snapshot_chunks",
+      "alpha_snapshot_rows",
+      "nominator_daily_captures",
+      "nominator_positions",
+    ]) {
+      assert.equal(
+        (await db.prepare(`SELECT COUNT(*) n FROM ${table}`).first<Row>())?.n,
+        0,
+      );
+    }
+  }
+  const db = await fixture();
+  await db
+    .prepare(
+      "CREATE TRIGGER drop_daily_row AFTER INSERT ON alpha_snapshot_rows BEGIN DELETE FROM alpha_snapshot_rows WHERE captured_at=NEW.captured_at; END",
+    )
+    .run();
+  await assert.rejects(
+    write(db, packet()),
+    /Daily Alpha capture census is incomplete/,
+  );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) n FROM nominator_daily_captures")
+        .first<Row>()
+    )?.n,
+    0,
+  );
+});
+
+test("selected daily originals fence old receiver cleanup, mutation and unapproved expiry", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  for (const sql of [
+    "DELETE FROM alpha_snapshot_rows",
+    "DELETE FROM alpha_snapshot_pools",
+    "DELETE FROM nominator_daily_captures",
+    "UPDATE alpha_snapshot_rows SET alpha_rao='0'",
+    "UPDATE alpha_snapshot_pools SET evidence='[]'",
+    "DELETE FROM alpha_snapshot_passes",
+    "UPDATE alpha_snapshot_passes SET block_number=block_number+1",
+    "DELETE FROM alpha_runtime_metadata",
+    "INSERT INTO alpha_snapshot_rows SELECT captured_at,'extra',hotkey,netuid,share_fraction,shares,alpha_rao,alpha_evidence FROM alpha_snapshot_rows",
+  ])
+    await assert.rejects(db.prepare(sql).run(), /Daily Alpha/);
+  assert.equal(
+    (await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })).status,
+    200,
+  );
+});
+
+test("daily paging is bounded and a changed selection rejects continuation instead of mixing captures", async () => {
+  const db = await fixture();
+  const rows = Array.from({ length: 101 }, (_, i) =>
+    row(`member${String(i).padStart(3, "0")}`),
+  );
+  await writeAt(db, baseAt, rows, { scanned_v2: 101 });
+  const first = await (
+    await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })
+  ).json<Row>();
+  assert.equal(first.members.length, 100);
+  const next = await (
+    await dailyRead(db, {
+      operation: "capture",
+      day: dayOf(baseAt),
+      captured_at: first.captured_at,
+      cursor: first.next_cursor,
+    })
+  ).json<Row>();
+  assert.deepEqual(
+    next.members.map((r: Row) => r.coldkey),
+    ["member100"],
+  );
+  assert.equal(next.next_cursor, null);
+  await writeAt(db, baseAt + 1000, [row()], {
+    block_number: frozen.alpha_snapshot.block_number + 1,
+  });
+  assert.equal(
+    (
+      await dailyRead(db, {
+        operation: "capture",
+        day: dayOf(baseAt),
+        captured_at: first.captured_at,
+        cursor: first.next_cursor,
+      })
+    ).status,
+    412,
+  );
+});
+
+test("daily history rejects invalid ranges, partial ownership, unqualified metadata and malformed continuation", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  for (const input of [
+    { operation: "days", from: "2026-01-01", to: "2026-02-01" },
+    { operation: "days", from: "2026-02-01", to: "2026-01-01" },
+    { operation: "capture", day: "2026-02-30" },
+    { operation: "capture", day: dayOf(baseAt), cursor: ["a", "b", 1] },
+  ])
+    assert.equal((await dailyRead(db, input)).status, 400);
+  assert.equal(
+    (
+      await dailyRead(
+        db,
+        { operation: "capture", day: dayOf(baseAt) },
+        "nominator_positions_daily",
+      )
+    ).status,
+    503,
+  );
+  assert.equal(
+    (await dailyRead(db, { operation: "metadata", sha256: "0".repeat(64) }))
+      .status,
+    404,
+  );
+  await db.prepare("DROP TRIGGER alpha_runtime_metadata_identity").run();
+  await db
+    .prepare("UPDATE alpha_runtime_metadata SET code_hash=?")
+    .bind(`0x${"00".repeat(32)}`)
+    .run();
+  assert.equal(
+    (await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })).status,
+    503,
+  );
+  assert.equal(
+    (
+      await dailyRead(db, {
+        operation: "days",
+        from: dayOf(baseAt),
+        to: dayOf(baseAt),
+      })
+    ).status,
+    503,
+  );
+});
+
+test("daily logical reads fail closed on corrupt amounts, metadata pins and original bytes", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  await db.prepare("DROP TRIGGER nominator_daily_rows_update_fence").run();
+  await db.prepare("UPDATE alpha_snapshot_rows SET alpha_rao='0'").run();
+  assert.equal(
+    (await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })).status,
+    503,
+  );
+  await db.prepare("DROP TRIGGER alpha_runtime_metadata_identity").run();
+  await db
+    .prepare("UPDATE alpha_runtime_metadata SET code_hash=?")
+    .bind(`0x${"00".repeat(32)}`)
+    .run();
+  assert.equal(
+    (
+      await dailyRead(db, {
+        operation: "metadata",
+        sha256: frozen.alpha_snapshot.metadata_sha256,
+      })
+    ).status,
+    503,
+  );
+  await db
+    .prepare(
+      "UPDATE alpha_runtime_metadata SET code_hash=?,scale_hex='0x6d6574610e00'",
+    )
+    .bind(frozen.alpha_snapshot.code_hash)
+    .run();
+  assert.equal(
+    (
+      await dailyRead(db, {
+        operation: "metadata",
+        sha256: frozen.alpha_snapshot.metadata_sha256,
+      })
+    ).status,
+    503,
+  );
+  await db
+    .prepare(
+      "INSERT INTO alpha_runtime_metadata(sha256,code_hash,spec_version,scale_hex) VALUES(?,?,478,'0x6d6574610e00')",
+    )
+    .bind("0".repeat(64), frozen.alpha_snapshot.code_hash)
+    .run();
+  assert.equal(
+    (await dailyRead(db, { operation: "metadata", sha256: "0".repeat(64) }))
+      .status,
+    503,
+  );
+  assert.equal(
+    (
+      await dailyRead(db, {
+        operation: "days",
+        from: "2026-99-99",
+        to: "2026-99-99",
+      })
+    ).status,
+    400,
+  );
+  await db.prepare("DROP VIEW nominator_positions_daily").run();
+  assert.equal(
+    (await dailyRead(db, { operation: "capture", day: dayOf(baseAt) })).status,
+    503,
+  );
+});
 
 test("legacy-only originals survive exact native hashing and reversed owner order cannot change a receipt", async () => {
   const db = await fixture();
@@ -236,7 +715,7 @@ test("partial and replayed chunks do not expose new serving rows or invent a com
   assert.equal(
     (await db.prepare("SELECT COUNT(*) AS n FROM alpha_snapshot_rows").first())
       ?.n,
-    0,
+    2,
   );
   await write(db, first);
   assert.deepEqual(

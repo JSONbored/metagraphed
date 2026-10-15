@@ -15,7 +15,7 @@ const timestamp = safeInteger.refine(
   (value) => value > 0 && value <= 8_640_000_000_000_000,
 );
 const hash = z.string().regex(/^0x[0-9a-f]{64}$/);
-export const AlphaQuantityCaptureSchema = z
+export const AlphaCompleteCaptureSchema = z
   .object({
     captured_at: timestamp,
     block_number: safeInteger.refine((value) => value <= 0xffffffff),
@@ -29,7 +29,7 @@ export const AlphaQuantityCaptureSchema = z
     expected_chunks: safeInteger.refine((value) => value > 0 && value <= 1000),
     received_chunks: safeInteger.refine((value) => value > 0 && value <= 1000),
     completed_at: timestamp,
-    selected: z.literal(1),
+    selected: z.union([z.literal(0), z.literal(1)]),
   })
   .refine(
     (p) =>
@@ -39,6 +39,10 @@ export const AlphaQuantityCaptureSchema = z
       p.code_hash === ALPHA_RUNTIMES[p.spec_version].code &&
       p.metadata_sha256 === ALPHA_RUNTIMES[p.spec_version].metadata,
   );
+export type AlphaCompleteCapture = z.infer<typeof AlphaCompleteCaptureSchema>;
+export const AlphaQuantityCaptureSchema = AlphaCompleteCaptureSchema.refine(
+  (p) => p.selected === 1,
+);
 export type AlphaQuantityCapture = z.infer<typeof AlphaQuantityCaptureSchema>;
 
 /** A complete selected pass and its retained metadata owner. Missing old schema,
@@ -79,7 +83,7 @@ export async function loadAlphaQuantityCapture(
   }
 }
 
-export function alphaQuantityProvenance(capture: AlphaQuantityCapture) {
+export function alphaQuantityProvenance(capture: AlphaCompleteCapture) {
   return {
     network: "finney" as const,
     captured_at: new Date(capture.captured_at).toISOString(),
@@ -94,7 +98,7 @@ export function alphaQuantityProvenance(capture: AlphaQuantityCapture) {
 
 export function alphaPositionQuantity(
   row: Record<string, unknown>,
-  capture: AlphaQuantityCapture | null,
+  capture: AlphaCompleteCapture | null,
 ) {
   const unavailable = {
     alpha_rao: null,

@@ -45,6 +45,12 @@ export const ALPHA_QUANTITY_TABLES = [
   "alpha_snapshot_passes",
   "alpha_runtime_metadata",
 ] as const;
+export const ALPHA_DAILY_TABLES = [
+  "nominator_positions_daily",
+  "nominator_daily_captures",
+  "alpha_snapshot_passes",
+  "alpha_runtime_metadata",
+] as const;
 // Compatibility name for callers; holdings no longer use the legacy pricing trio.
 export const ALPHA_PRICING_TABLES = ALPHA_QUANTITY_TABLES;
 

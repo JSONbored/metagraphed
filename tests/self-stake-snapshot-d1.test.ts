@@ -118,6 +118,7 @@ test("a populated0039 receipt survives0042 and exact lost-ack replay without inv
       );
       assert.equal(original.snapshot.complete, complete);
       await apply("0043_alpha_runtime_snapshots.sql");
+      await apply("0044_nominator_daily_captures.sql");
       const before = await upgraded
         .prepare("SELECT * FROM self_stake_snapshot_chunks")
         .first();
