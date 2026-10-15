@@ -1620,7 +1620,15 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts
       - name: Observe actual Workerd queue execution
-        run: node scripts/qualify-chain-detail-resource.ts
+        run: |
+          set -euo pipefail
+          node_binary="$(command -v node)"
+          sudo --preserve-env=CI,WRANGLER_SEND_METRICS systemd-run --scope --same-dir \
+            --unit="metagraphed-resource-${{ github.run_id }}" \
+            --property=MemoryMax=536870912 --property=MemorySwapMax=0 \
+            --property=TasksMax=128 --property=CPUQuota=200% \
+            timeout --signal=TERM --kill-after=15s 600s \
+            "$node_binary" scripts/qualify-chain-detail-resource.ts
         env:
           WRANGLER_SEND_METRICS: "false"
           CI: "true"

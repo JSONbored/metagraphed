@@ -98,9 +98,9 @@
   // schema.sql is applied.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-data-api",
-  // metagraphed#7766: Sentry's deploy-entry wrapper removed (Sentry fully
-  // decommissioned) -- "main" now points straight at the raw handler.
-  "main": "workers/data-api.ts",
+  // Register only the default handler. Implementation exports include test
+  // constants, which native Workerd cannot register as service entrypoints.
+  "main": "workers/data-api.entry.ts",
   // Reached only through the main Worker's DATA_API service binding. Wrangler
   // defaults workers.dev to enabled when a Worker has no public routes, so keep
   // both public and preview URLs disabled for this private data tier.
@@ -504,7 +504,9 @@
   // stopped a partial ledger publishing a leaderboard missing its #2.
   //
   // max_batch_size / max_concurrency ARE the backpressure. They replace the
-  // hand-rolled sleep, and are deliberately conservative until measured against
+  // hand-rolled sleep. One message and one invocation bound admitted expansion
+  // while resource qualification is held. These are native queue controls,
+  // with no application scheduler. They remain conservative until measured against
   // real traffic: the failure this exists to prevent is overwhelming D1, so
   // starting slow and raising on evidence is the whole point.
   "queues": {
@@ -512,10 +514,10 @@
     "consumers": [
       {
         "queue": "sync-batches",
-        "max_batch_size": 10,
+        "max_batch_size": 1,
         "max_batch_timeout": 5,
         "max_retries": 5,
-        "max_concurrency": 2,
+        "max_concurrency": 1,
         "dead_letter_queue": "sync-batches-dlq",
       },
       // THE DEAD LETTER, finally read (metagraphed-infra#354/#363). It was

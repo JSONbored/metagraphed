@@ -16,6 +16,8 @@ import { Miniflare } from "miniflare";
 import { parseChainDetailSync } from "../src/chain-detail-sync-payload.ts";
 import { restoreChainDetailPayloads } from "../src/chain-detail-payloads.ts";
 import { chainDetailTables } from "../src/chain-detail-neon-write.ts";
+import { stripJsonComments } from "./lib.ts";
+import { gzipSync } from "node:zlib";
 import {
   compressSyncBatchMessage,
   SYNC_BATCH_MAX_DECODED_BYTES,
@@ -38,12 +40,12 @@ const report: Record<string, unknown> = {
     "production workload representativeness",
   ],
   batches: {
-    messages: 10,
-    simultaneous_calls: 2,
+    messages: 1,
+    simultaneous_calls: 1,
     scheduling: "driver-imposed, not Miniflare max_concurrency",
   },
   load_identity:
-    "all messages repeat the same synthetic block; no fresh-insert throughput claim",
+    "finite first insert, distinct fresh insert, changed-row rollback, repair and oversized DLQ recovery",
   observations: [],
 };
 const observations = report.observations as unknown[];
@@ -51,10 +53,61 @@ const save = () =>
   writeFile(path.join(output, "report.json"), JSON.stringify(report, null, 2));
 const hash = (bytes: Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
+// Linux's process high-water mark survives missed synchronous allocations.
+// This includes every isolate and native allocation in the Workerd process;
+// it is an upper observation, not Cloudflare's per-isolate accounting.
+async function processMemory() {
+  const results = [];
+  for (const pid of (await readdir("/proc")).filter((name) =>
+    /^\d+$/.test(name),
+  )) {
+    try {
+      const command = await readFile(`/proc/${pid}/cmdline`, "utf8");
+      if (!command.split("\0")[0].endsWith("/workerd")) continue;
+      const status = await readFile(`/proc/${pid}/status`, "utf8");
+      const fields = Object.fromEntries(
+        [...status.matchAll(/^(VmRSS|VmHWM|Threads):\s+(\d+)/gm)].map(
+          (match) => [match[1], Number(match[2])],
+        ),
+      );
+      results.push({
+        pid: Number(pid),
+        rss_kib: fields.VmRSS,
+        high_water_kib: fields.VmHWM,
+        threads: fields.Threads,
+      });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  assert.equal(results.length, 1, "one native Workerd process required");
+  return results[0];
+}
+
+async function nativeLimits() {
+  const membership = await readFile("/proc/self/cgroup", "utf8");
+  const relative = membership.trim().match(/^0::(\/.*)$/m)?.[1];
+  assert.ok(relative && !relative.includes(".."), "cgroup v2 scope required");
+  const root = path.join("/sys/fs/cgroup", relative);
+  const fields: Record<string, string> = {};
+  for (const name of [
+    "memory.max",
+    "memory.swap.max",
+    "memory.peak",
+    "memory.events",
+    "pids.max",
+    "cpu.max",
+  ])
+    fields[name] = (await readFile(path.join(root, name), "utf8")).trim();
+  assert.equal(fields["memory.max"], "536870912");
+  assert.equal(fields["memory.swap.max"], "0");
+  assert.equal(fields["pids.max"], "128");
+  return { scope: relative, fields };
+}
+
 const stamp = 1_790_090_000_000;
 
-function payload(shape: string) {
-  const block = 9_000_001;
+function payload(shape: string, block = 9_000_001) {
   const parsed = parseChainDetailSync(
     {
       blocks: [
@@ -245,11 +298,12 @@ async function inspector(url: string) {
 
 await save();
 try {
+  report.native_limits_start = await nativeLimits();
   // Same native bundler as deploy qualification; --dry-run never uploads.
   execFileSync(
-    "npx",
+    process.execPath,
     [
-      "wrangler",
+      "node_modules/wrangler/bin/wrangler.js",
       "deploy",
       "--dry-run",
       "--config",
@@ -265,21 +319,9 @@ try {
   assert.equal(modules.length, 1, "expected one data-api entry");
   const scriptPath = path.join(temporary, modules[0]);
   report.bundle_sha256 = hash(await readFile(scriptPath));
-  // Workerd treats every export of the entry module as a service entrypoint.
-  // The raw deploy bundle also exposes test constants. Import it unchanged as
-  // a child module; this facade adds no handler or controller of its own.
-  const facade = `export { default } from ${JSON.stringify(`./${modules[0]}`)};\n`;
-  const facadePath = path.join(temporary, "measurement-entry.js");
-  await writeFile(facadePath, facade);
-  report.entry_facade = {
-    source: facade,
-    sha256: hash(Buffer.from(facade)),
-    limitation:
-      "raw configured entry rejected by pinned Workerd; production entrypoint parity is unqualified",
-    raw_entry_failure_run: 38741940703,
-  };
+  // Consume the configured dry-run entry exactly; no measurement-only facade.
+  report.configured_entry = "workers/data-api.entry.ts";
   const nativeModules = [
-    { type: "ESModule" as const, path: facadePath },
     { type: "ESModule" as const, path: scriptPath },
     ...(await readdir(temporary, { recursive: true }))
       .filter((name) => name.endsWith(".wasm"))
@@ -297,11 +339,20 @@ try {
   );
   report.lock_sha256 = hash(await readFile("package-lock.json"));
   report.config_sha256 = hash(await readFile("wrangler.data.jsonc"));
+  const configured = JSON.parse(
+    stripJsonComments(await readFile("wrangler.data.jsonc", "utf8")),
+  );
+  assert.equal(configured.main, "workers/data-api.entry.ts");
+  const policy = configured.queues.consumers.find(
+    (item: { queue: string }) => item.queue === "sync-batches",
+  );
+  assert.equal(policy.max_batch_size, 1);
+  assert.equal(policy.max_concurrency, 1);
+  report.native_admission = policy;
   for (const shape of ["small", "string", "objects"]) {
     const message = payload(shape);
     const decoded = Buffer.byteLength(JSON.stringify(message));
     assert.ok(decoded <= SYNC_BATCH_MAX_DECODED_BYTES);
-    const bytes = await compressSyncBatchMessage(message, 128 * 1024);
     const runtime = new Miniflare({
       name: "chain-detail-resource",
       modules: nativeModules,
@@ -329,6 +380,7 @@ try {
         "0016_archive_export_revisions.sql",
         "0024_chain_detail_payload_chunks.sql",
         "0039_lane_health_retention_trigger_bounds.sql",
+        "0025_sync_dead_letters.sql",
       ]) {
         for (const statement of (
           await readFile(`migrations/d1/${migration}`, "utf8")
@@ -361,7 +413,22 @@ try {
       const isolate = await cdp.request("Runtime.getIsolateId");
       await cdp.request("Profiler.enable");
       await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
-      for (const phase of ["first", "warm", "late-failure", "repair-replay"]) {
+      let priorRows: unknown;
+      for (const phase of [
+        "first",
+        "fresh-insert",
+        "late-failure",
+        "repair-replay",
+      ]) {
+        const current =
+          phase === "fresh-insert"
+            ? payload(shape, 9_000_002)
+            : structuredClone(message);
+        if (phase === "late-failure" || phase === "repair-replay") {
+          for (const rows of Object.values(current.families))
+            for (const row of rows) row.observed_at = stamp + 1;
+        }
+        const admitted = await compressSyncBatchMessage(current, 128 * 1024);
         if (phase === "late-failure")
           await db
             .prepare(
@@ -383,8 +450,9 @@ try {
           while (!finished) {
             assert.ok(samples.length < 5_000, "heap observation count bound");
             samples.push({
-              at_ms: performance.now(),
+              request_started_ms: performance.now(),
               ...(await cdp!.request("Runtime.getHeapUsage")),
+              reply_received_ms: performance.now(),
             });
             if (!finished)
               await new Promise((resolve) => setTimeout(resolve, 25));
@@ -397,14 +465,14 @@ try {
         try {
           results = await deadline(
             Promise.all(
-              Array.from({ length: 2 }, (_, batch) =>
+              Array.from({ length: 1 }, (_, batch) =>
                 worker.queue(
                   "sync-batches",
-                  Array.from({ length: 10 }, (_, i) => ({
+                  Array.from({ length: 1 }, (_, i) => ({
                     id: `${shape}-${phase}-${batch}-${i}`,
                     timestamp: new Date(stamp),
                     attempts: 1,
-                    body: bytes,
+                    body: admitted,
                   })),
                 ),
               ),
@@ -429,9 +497,39 @@ try {
         const resultsExpected = phase === "late-failure" ? "retry" : "ack";
         for (const result of results) {
           if (resultsExpected === "retry")
-            assert.equal(result.retryMessages.length, 10);
-          else assert.ok(result.ackAll || result.explicitAcks.length === 10);
+            assert.equal(result.retryMessages.length, 1);
+          else assert.ok(result.ackAll || result.explicitAcks.length === 1);
         }
+        const actualRows = await Promise.all(
+          [...chainDetailTables(), "chain_detail_payload_chunks"].map(
+            async (table) => ({
+              table,
+              rows: (
+                await db.prepare(`SELECT * FROM ${table} ORDER BY 1,2`).all()
+              ).results,
+            }),
+          ),
+        );
+        if (phase === "late-failure")
+          assert.deepEqual(
+            actualRows,
+            priorRows,
+            "failed changed-row transaction must preserve every prior family value",
+          );
+        if (phase === "repair-replay") {
+          for (const family of actualRows.filter(
+            (item) => item.table !== "chain_detail_payload_chunks",
+          ))
+            for (const row of family.rows.filter(
+              (row) => row.block_number === 9_000_001,
+            ))
+              assert.equal(
+                row.observed_at,
+                stamp + 1,
+                "repaired changed rows must publish atomically",
+              );
+        }
+        priorRows = actualRows;
         const census = await db
           .prepare(
             "SELECT (SELECT count(*) FROM chain_detail_blocks) blocks,(SELECT count(*) FROM chain_detail_extrinsics) extrinsics,(SELECT count(*) FROM chain_detail_chain_events) events,(SELECT count(*) FROM chain_detail_account_events) accounts",
@@ -440,10 +538,12 @@ try {
         assert.deepEqual(
           census,
           {
-            blocks: 1,
-            extrinsics: 1,
-            events: message.families.chainEventRows.length,
-            accounts: 1,
+            blocks: phase === "first" ? 1 : 2,
+            extrinsics: phase === "first" ? 1 : 2,
+            events:
+              message.families.chainEventRows.length *
+              (phase === "first" ? 1 : 2),
+            accounts: phase === "first" ? 1 : 2,
           },
           "an ACK must correspond to the actual four-family durable census",
         );
@@ -473,7 +573,7 @@ try {
           phase,
           isolate,
           target_id: subjects[0].id,
-          wire_bytes: bytes.byteLength,
+          wire_bytes: admitted.byteLength,
           decoded_bytes: decoded,
           family_rows: Object.fromEntries(
             Object.entries(message.families).map(([key, value]) => [
@@ -498,7 +598,118 @@ try {
             Number(after.usedSize),
             ...samples.map((sample) => Number(sample.usedSize)),
           ),
+          changed_rows_rolled_back: phase === "late-failure" ? true : null,
+          workerd_process: await processMemory(),
+          native_limits: await nativeLimits(),
           true_peak_qualified: false,
+        });
+        await save();
+      }
+      if (shape === "small") {
+        // An older sender accepted two whole blocks as one oversized expansion.
+        // Quarantine preserves that exact transport; repair splits only between
+        // blocks and keeps every block's four families together.
+        const originals = [
+          payload("string", 9_000_003),
+          payload("string", 9_000_004),
+        ];
+        for (const original of originals)
+          original.families.extrinsicRows[0].call_args = JSON.stringify({
+            s: "q".repeat(2_100_000),
+          });
+        const oversized = {
+          lane: "chain-detail",
+          captured_at: stamp,
+          families: Object.fromEntries(
+            Object.keys(message.families).map((name) => [
+              name,
+              originals.flatMap(
+                (original) =>
+                  original.families[name as keyof typeof original.families],
+              ),
+            ]),
+          ),
+        };
+        const raw = JSON.stringify(oversized);
+        assert.ok(Buffer.byteLength(raw) > SYNC_BATCH_MAX_DECODED_BYTES);
+        const refused = gzipSync(raw);
+        assert.ok(refused.length < 128 * 1024);
+        const envelope = [
+          {
+            id: "oversized-original",
+            timestamp: new Date(stamp),
+            attempts: 6,
+            body: refused,
+          },
+        ];
+        const refusal = await deadline(
+          worker.queue("sync-batches", envelope),
+          30_000,
+        );
+        assert.equal(refusal.retryMessages.length, 1);
+        assert.equal(refusal.explicitAcks.length, 0);
+        assert.equal(
+          await db
+            .prepare("SELECT count(*) n FROM chain_detail_blocks")
+            .first("n"),
+          2,
+        );
+        const quarantined = await deadline(
+          worker.queue("sync-batches-dlq", envelope),
+          30_000,
+        );
+        assert.ok(quarantined.ackAll || quarantined.explicitAcks.length === 1);
+        const receipt = await db
+          .prepare(
+            "SELECT body_sha256,encoding,payload FROM sync_dead_letters WHERE message_id='oversized-original'",
+          )
+          .first<{ body_sha256: string; encoding: string; payload: string }>();
+        assert.equal(receipt?.body_sha256, hash(refused));
+        assert.equal(receipt.encoding, "base64");
+        assert.deepEqual(Buffer.from(receipt.payload, "base64"), refused);
+        for (const original of originals) {
+          const result = await deadline(
+            worker.queue("sync-batches", [
+              {
+                id: `repaired-${original.families.blockRows[0].block_number}`,
+                timestamp: new Date(stamp),
+                attempts: 1,
+                body: await compressSyncBatchMessage(original, 128 * 1024),
+              },
+            ]),
+            30_000,
+          );
+          assert.ok(result.ackAll || result.explicitAcks.length === 1);
+          const [restored] = await restoreChainDetailPayloads(
+            { D1_STATE: db },
+            [
+              (await db
+                .prepare(
+                  "SELECT call_args FROM chain_detail_extrinsics WHERE block_number=? AND extrinsic_index=0",
+                )
+                .bind(original.families.blockRows[0].block_number)
+                .first<Record<string, unknown>>()) ?? {},
+            ],
+          );
+          assert.equal(
+            restored.call_args,
+            original.families.extrinsicRows[0].call_args,
+          );
+        }
+        assert.equal(
+          await db
+            .prepare("SELECT count(*) n FROM chain_detail_blocks")
+            .first("n"),
+          4,
+        );
+        observations.push({
+          shape: "oversized-expansion",
+          retry_without_ack: true,
+          exact_dlq_sha256: receipt.body_sha256,
+          repaired_whole_blocks: 2,
+          original_retained: true,
+          workerd_process: await processMemory(),
+          native_limits: await nativeLimits(),
         });
         await save();
       }
@@ -507,7 +718,8 @@ try {
       await deadline(runtime.dispose(), 10_000);
     }
   }
-  report.status = "observed-not-capacity-qualified";
+  report.native_limits_end = await nativeLimits();
+  report.status = "bounded-native-observations";
 } catch (error) {
   report.error = error instanceof Error ? error.message : String(error);
   process.exitCode = 1;
