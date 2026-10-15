@@ -33,6 +33,7 @@ import { toPositionalPlaceholders } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 import { hyperdriveConnectionString } from "./read-store.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import { laneHealthRetentionReady } from "./lane-health-retention-ready.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
 export interface LaneHealthPgClient {
@@ -67,6 +68,7 @@ export function pgLaneHealthDb(
     }
   };
   return {
+    historyRowId: "ctid",
     async query<Row = Record<string, unknown>>(
       text: string,
       values: unknown[] = [],
@@ -103,9 +105,11 @@ export function laneHealthStore(
 ): LaneHealthDb | undefined {
   if (injected) return injected;
   const d1 = selectedD1Store(env, ["lane_health"]);
-  if (d1)
+  if (d1) {
+    let readiness: Promise<boolean> | undefined;
     return {
       ...d1,
+      retentionReady: () => (readiness ??= laneHealthRetentionReady(d1.query)),
       latest: () =>
         d1.query(
           "SELECT lane, verdict, age_ms, detail, checked_at FROM lane_health_current",
@@ -134,6 +138,7 @@ export function laneHealthStore(
           [verdict],
         ),
     };
+  }
   const connectionString = hyperdriveConnectionString(env);
   return connectionString ? pgLaneHealthDb(connectionString, deps) : undefined;
 }

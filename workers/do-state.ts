@@ -62,6 +62,7 @@ export interface KeyedDoStorage {
 
 /** What `McpSessionHub` uses: keyed storage plus the idle-expiry alarm. */
 export interface McpSessionHubState extends HubStateBase {
+  blockConcurrencyWhile<T>(callback: () => Promise<T>): Promise<T>;
   storage: KeyedDoStorage & {
     setAlarm(scheduledTime: number | Date): Promise<void>;
   };

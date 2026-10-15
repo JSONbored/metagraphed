@@ -1,3 +1,5 @@
+import { loadSubnetSnapshotCardsTier } from "./subnet-snapshot-cards-tier.ts";
+import { loadValidatorDetailBatchTier } from "./validator-detail-batch-tier.ts";
 import { withRequestCounters } from "./request-counters.ts";
 import { requestTimings, withOperationTiming } from "./request-timing.ts";
 import { loadSubnetStatus } from "./subnet-status-read.ts";
@@ -2035,6 +2037,7 @@ interface McpCtx {
   // with executionCtx.props.accountId (the OAuth path) this is what the
   // surface-credential store binds a registration to.
   accountId?: string | null;
+  accountKind?: AccountKind | null;
   readArtifact?: AnyFn;
   readHealthKv?: AnyFn;
   // props: set by @cloudflare/workers-oauth-provider on the ExecutionContext
@@ -6647,45 +6650,31 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         10,
         1000,
       );
-      const [hyperparams, concentration, performance, validators, events] =
-        await Promise.all([
-          tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/hyperparameters`),
-            "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
-          ).then((data) => data ?? buildSubnetHyperparams(null, netuid)),
-          tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/concentration`),
-            "METAGRAPH_NEURONS_SOURCE",
-          ).then((data) => data ?? buildConcentration([], netuid)),
-          tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/performance`),
-            "METAGRAPH_NEURONS_SOURCE",
-          ).then((data) => data ?? buildSubnetPerformance([], netuid)),
-          tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/validators`),
-            "METAGRAPH_NEURONS_SOURCE",
-          ).then((data) => data ?? buildSubnetValidators([], netuid)),
-          // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
-          // in wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so the
-          // promise this composer awaited resolved to null on every call -- the
-          // composer's own cold rung has been the answer.
-          //
-          // THE COLD RUNG, via the composer that owns the ladder (#10320). This
-          // card fell straight from the retired tier to `buildSubnetEvents([])`,
-          // so the snapshot served `event_count: 0` while its own standalone twin
-          // served ten rows for the same subnet in the same minute -- verified
-          // live on SN64, 2026-08-09. A card was wired and its embedded copy was
-          // not, which is precisely the class the widened tier-cascade gate now
-          // catches on all three surfaces.
-          answerSubnetEvents(ctx.env, netuid, null, {
-            limit: recentEventsLimit,
-            offset: 0,
-          }),
-        ]);
+      const [hyperparams, cards, events] = await Promise.all([
+        tryDataApiTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/hyperparameters`),
+          "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+        ).then((data) => data ?? buildSubnetHyperparams(null, netuid)),
+        loadSubnetSnapshotCardsTier(ctx.env, netuid),
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
+        // in wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so the
+        // promise this composer awaited resolved to null on every call -- the
+        // composer's own cold rung has been the answer.
+        //
+        // THE COLD RUNG, via the composer that owns the ladder (#10320). This
+        // card fell straight from the retired tier to `buildSubnetEvents([])`,
+        // so the snapshot served `event_count: 0` while its own standalone twin
+        // served ten rows for the same subnet in the same minute -- verified
+        // live on SN64, 2026-08-09. A card was wired and its embedded copy was
+        // not, which is precisely the class the widened tier-cascade gate now
+        // catches on all three surfaces.
+        answerSubnetEvents(ctx.env, netuid, null, {
+          limit: recentEventsLimit,
+          offset: 0,
+        }),
+      ]);
+      const { concentration, performance, validators } = cards;
       // list_subnet_validators' own limit post-filter (the loader already
       // ranks by stake_tao DESC, so slicing after is a no-op re-sort) --
       // mirrored here rather than exported, since it's three lines.
@@ -9573,26 +9562,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       const netuid = optionalNonNegativeInt(args, "netuid");
-      // One detail load per hotkey, each via the exact Postgres-tier-or-empty
-      // path get_validator_detail uses -- no new data source, just the same
-      // cross-subnet aggregate fetched for each compared validator, then
-      // projected side by side. Sequential (not parallel) to keep the
-      // fan-out's request pattern identical to N get_validator_detail calls.
-      const details = [];
-      for (const hotkey of hotkeys) {
-        details.push(
-          (await tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(
-              `/api/v1/validators/${encodeURIComponent(hotkey)}`,
-            ),
-            "METAGRAPH_NEURONS_SOURCE",
-          )) ??
-            buildValidatorDetail([], hotkey, {
-              priceByNetuid: NO_ALPHA_PRICES,
-            }),
-        );
-      }
+      const details = await loadValidatorDetailBatchTier(ctx.env, hotkeys);
       return composeValidatorComparison(details, { netuid });
     },
   },
@@ -18077,6 +18047,7 @@ async function buildContext(
   deps: McpDeps,
   authTier: string,
   accountId: string | null = null,
+  accountKind: AccountKind | null = null,
 ) {
   let domain;
   let profile: McpProfile = "discovery";
@@ -18150,6 +18121,7 @@ async function buildContext(
     // store's identity binding. The resolver reads this first and falls back
     // to executionCtx.props.accountId (the OAuth path).
     accountId,
+    accountKind,
     // #8994: set by handleMcpRequest for a single `initialize`, before
     // dispatch, so the initialize event can report the session it creates.
     // Declared here (not only assigned later) so the inferred context type
@@ -18244,6 +18216,7 @@ async function enforceMcpRateLimit(
   rejection: Response | null;
   authTier: string;
   accountId: string | null;
+  accountKind: AccountKind | null;
   oauthAccountMissing: boolean;
   quotaPending?: {
     accountId: string;
@@ -18325,6 +18298,7 @@ async function enforceMcpRateLimit(
   // credential tools can bind a registration without a second key
   // verification -- the same reasoning that made authTier a return value.
   const accountId = rateLimit.accountId ? String(rateLimit.accountId) : null;
+  const accountKind = accountId === null ? null : rateLimit.accountKind;
   if (!rateLimit.allowed) {
     // #8611: a blocked account gets 403 + its reason code. 429 would tell an
     // agent to retry shortly, which will never work and produces exactly the
@@ -18336,6 +18310,7 @@ async function enforceMcpRateLimit(
     return {
       authTier,
       accountId,
+      accountKind,
       oauthAccountMissing,
       rejection: jsonResponse(
         rpcError(null, RPC_INVALID_REQUEST, rejection.message),
@@ -18348,6 +18323,7 @@ async function enforceMcpRateLimit(
     rejection: null,
     authTier,
     accountId,
+    accountKind,
     oauthAccountMissing,
     quotaPending: rateLimit.quotaPending,
   };
@@ -19192,8 +19168,14 @@ async function dispatchMcpRequest(
   env: Env,
   deps: McpDeps = {},
 ) {
-  const { rejection, authTier, accountId, quotaPending, oauthAccountMissing } =
-    await enforceMcpRateLimit(request, env, deps.executionCtx);
+  const {
+    rejection,
+    authTier,
+    accountId,
+    accountKind,
+    quotaPending,
+    oauthAccountMissing,
+  } = await enforceMcpRateLimit(request, env, deps.executionCtx);
   if (rejection) return rejection;
 
   // Reuse the gate's verified identity: a header or session id is not proof
@@ -19270,6 +19252,7 @@ async function dispatchMcpRequest(
     protectedTools.length > 0 &&
     resolveSurfaceCredentialIdentity({
       accountId,
+      accountKind,
       executionCtx: deps.executionCtx,
     }) === null
   ) {
@@ -19293,7 +19276,14 @@ async function dispatchMcpRequest(
   const versionError = validateMcpProtocolVersionHeader(request);
   if (versionError) return versionError;
 
-  const ctx = await buildContext(request, env, deps, authTier, accountId);
+  const ctx = await buildContext(
+    request,
+    env,
+    deps,
+    authTier,
+    accountId,
+    accountKind,
+  );
   // Generated here, not inside dispatchMessage: mintMcpSessionHeaderIfNeeded
   // below needs the SAME value the initialize event reported, or the header and
   // the telemetry would disagree about which session was created.

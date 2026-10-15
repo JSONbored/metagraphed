@@ -134,6 +134,7 @@ export default defineConfig({
         "workers/**/*.{mjs,ts}",
         "scripts/{artifact-budgets,lib,openapi-components,registry-identity}.{mjs,ts}",
         "scripts/lib/{build-readiness,economics-artifacts,endpoint-artifacts,enrichment-queue-artifacts,formatting,readme-links}.{mjs,ts}",
+        "scripts/lib/d1-migration-ledger.ts",
         // types-epic A (metagraphed#7859): schema definitions only (no
         // runtime import from any Worker entry yet, by that issue's own
         // scope), exercised in-process by tests/zod-schemas.test.ts.

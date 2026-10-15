@@ -227,9 +227,9 @@ export const LANE_ALARM_MAX_VERDICT_AGE_MS = LANE_ALARM_CADENCE_WINDOW_MS;
  *
  * `lane revenue-probes-dlq is stale: 41.0h (producer cadence 1.0h)` reads as
  * FORTY-ONE MISSED CYCLES, and it is not that. A DLQ writes `stale` when a
- * message is lost and never writes `ok`, because nothing un-loses one -- so
- * the duration is "how long ago something was lost and nobody looked", and the
- * cadence has nothing to do with it. It ages out after seven days on its own.
+ * handler observes a batch and never writes `ok`. Its timestamp is not a
+ * unique message identity, preservation receipt or permanent-loss receipt;
+ * the producer cadence has nothing to do with it.
  *
  * The cadence suffix therefore does to this lane exactly what the bare
  * duration did to a producer: invites a confident wrong reading. Measured
@@ -239,7 +239,7 @@ export const LANE_ALARM_MAX_VERDICT_AGE_MS = LANE_ALARM_CADENCE_WINDOW_MS;
  * What a reader needs here is the SUBJECT, and the alarm has been carrying it
  * in `detail` unread since #10739 taught the summariser to name it (`2
  * dead-lettered message(s) on revenue-probes-dlq (sn-64-...)`). Same lesson as
- * the drift alarm two floors down: the thing that was lost IS the diagnosis.
+ * the drift alarm two floors down: the observed subject helps diagnosis.
  */
 export function laneAlarmSummary(alarm: LaneAlarm, nowMs: number): string {
   const elapsed = humanDuration(nowMs - alarm.since);
@@ -626,8 +626,9 @@ export interface LaneAlarmPlanInput {
    *
    * AN ACKNOWLEDGEMENT, and only a dead-letter lane needs one. Every other lane
    * closes itself: an `ok` verdict arrives and the alarm shuts. A `*-dlq` lane
-   * has no `ok` path, so closing its issue is a human saying "these losses are
-   * handled" -- and with nothing recording that, the next tick saw a stale row
+   * has no `ok` path, so closing its issue acknowledges the incident, without
+   * proving payload recovery. With nothing recording that, the next tick saw
+   * a stale row
    * and no open issue and filed a fresh one.
    *
    * Measured 2026-08-15: #11272 was closed at 08:32 with all three causes fixed
@@ -663,45 +664,15 @@ export interface LaneAlarmPlan {
    * record: an entry only exists because a record said `ok`. */
   close: { lane: string; issue: number; record: LaneHealthRecord }[];
   /**
-   * Losses to report into an alarm issue that is ALREADY OPEN (#11248's blind
-   * spot, found once the alarm could finally write).
+   * New DLQ handler observations for an ALREADY OPEN incident (#11248).
+   * The handler records before quarantine, so failed preservation and repeated
+   * or partial redelivery can produce new rows for the same messages. Neither
+   * the row count nor checked_at establishes unique messages or permanent loss.
    *
-   * ## WHY AN OPEN ISSUE IS NOT THE END OF THE STORY
-   *
-   * `fresh` below drops every lane that already has one, which is right for a
-   * producer: an issue saying "this lane is stale" stays true while it stays
-   * stale, and a second issue every half hour is the noise that gets an alarm
-   * muted.
-   *
-   * A DEAD-LETTER LANE IS NOT THAT SHAPE. Nothing writes it a row except
-   * `handleDeadLetterBatch`, and only when a message has just been lost -- so
-   * its rows are EVENTS, not a repeated verdict about one condition. And
-   * nothing ever writes it `ok`: a lost message is not un-lost, so the close
-   * loop below can never fire for one, and the issue stays open by design.
-   *
-   * Those two facts together made a hole: the first loss opened an issue, and
-   * from that moment every FURTHER loss on that queue was reported nowhere. The
-   * lane was already in `openAlarms`, so `fresh` dropped it; the issue was
-   * already open, so nothing reopened it; no `ok` ever arrived, so nothing
-   * closed it either. The alarm went quiet exactly as the queue got worse --
-   * the failure mode the whole file is shaped against, reached from the other
-   * direction.
-   *
-   * ## THE TEST, AND WHY IT NEEDS NO STATE
-   *
-   * A dead-letter lane writes only on loss, so "a row newer than the last time
-   * we wrote to the issue" IS "a loss we have not reported". GitHub stamps
-   * `updated_at` on every write including the alarm's own comment, so the
-   * comparison de-duplicates itself: one comment per loss, and the comment
-   * moves the mark.
-   *
-   * A human commenting on the issue in the same window also moves it, and can
-   * therefore swallow one report. That is the acceptable direction: it costs a
-   * comment precisely when somebody is already reading the issue, whereas the
-   * alternative -- keeping our own high-water mark -- is durable state this
-   * reader has deliberately never had. An unreadable `updated_at` declines for
-   * the same reason: no mark means no way to tell a new loss from an old one,
-   * and commenting on every tick is worse than commenting on none.
+   * GitHub updated_at is only a notification watermark. A newer observation
+   * earns a comment; our comment advances the mark. A human write can advance
+   * it too, and an unreadable mark declines to comment. This is not a durable
+   * receipt for every delivery, preservation or business acceptance.
    *
    * Bounded without a cap: at most one comment per dead-letter lane per tick,
    * and `DEAD_LETTER_LANES` has five entries.
@@ -852,11 +823,11 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
   qualified.sort((a, b) => a.since - b.since);
   const fresh = qualified
     .filter((alarm) => !(alarm.lane in openAlarms))
-    // ALREADY ANSWERED FOR. A dead-letter lane's loss that predates the close
+    // ALREADY ANSWERED FOR. A dead-letter observation that predates the close
     // of its last alarm has been acknowledged, and re-filing it is churn on a
     // row nothing will ever revise.
     //
-    // STRICTLY NEWER re-alarms, so this cannot mute a real recurrence: a loss
+    // STRICTLY NEWER re-alarms, so this cannot mute a new observation: a row
     // after the close opens a fresh issue on the very next tick, which is the
     // behaviour the alarm body promises in as many words.
     //
@@ -927,7 +898,7 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     close.push({ lane, issue: open.issue, record });
   }
 
-  // Further losses on a queue whose alarm is already open. See
+  // Further delivery observations on a queue whose alarm is already open. See
   // LaneAlarmPlan.update for the whole argument.
   //
   // Gated on `qualified` -- not merely on having a row -- so a second report
@@ -971,16 +942,15 @@ function humanDuration(ms: number): string {
  * site so the compiler checks the set: `LaneAlarmKind` is derived from the
  * published schema, and a fourth member stops this switch compiling.
  *
- * A DEAD-LETTER LANE OUTRANKS ITS KIND. Its rows are losses, not ticks, so
- * "reported stale on every tick (89 consecutive verdicts)" -- measured on the
- * first issue this alarm ever filed -- described 89 separate lost messages as
- * one condition observed 89 times.
+ * A dead-letter row observes a handler invocation, before preservation. Its
+ * count must not claim distinct messages, successful ACKs or permanent loss.
  */
 function issueOpening(alarm: LaneAlarm, forHow: string): string {
   if (isDeadLetterLane(alarm.lane)) {
     return (
-      `\`${alarm.lane}\` has dead-lettered **${alarm.ticks} time(s)** in the **${forHow}** since the first loss. ` +
-      "Each one is a batch whose messages exhausted their retries and were acked to keep them out of a second-order queue -- so this is a count of losses, not of ticks."
+      `\`${alarm.lane}\` has **${alarm.ticks} retained dead-letter observation(s)** spanning **${forHow}**. ` +
+      "These count handler observations, not unique messages or confirmed permanent losses. " +
+      "Redeliveries can repeat messages; preservation and acknowledgement outcomes are not recorded here."
     );
   }
   switch (alarm.kind) {
@@ -1019,7 +989,7 @@ export function laneAlarmIssueBody(alarm: LaneAlarm, nowMs: number): string {
     "| | |",
     "| --- | --- |",
     `| fault | \`${alarm.kind}\` |`,
-    `| since | ${new Date(alarm.since).toISOString()} |`,
+    `| ${isDeadLetterLane(alarm.lane) ? "retained observations since" : "since"} | ${new Date(alarm.since).toISOString()} |`,
   ];
   if (alarm.age_ms !== null) {
     lines.push(`| lane was behind by | ${humanDuration(alarm.age_ms)} |`);
@@ -1047,9 +1017,9 @@ export function laneAlarmIssueBody(alarm: LaneAlarm, nowMs: number): string {
     "```",
     "",
     // Producer recovery also requires its failure rate to clear. Dead-letter
-    // lanes instead need acknowledgement because nothing can un-lose a message.
+    // lanes retain explicit incident acknowledgement, not inferred recovery.
     isDeadLetterLane(alarm.lane)
-      ? "This will NOT close itself: nothing writes a dead-letter lane `ok`, because\nnothing un-loses a message. Closing it is a decision, and the next loss after\nit closes opens a fresh alarm. Until then, further losses arrive here as\ncomments."
+      ? "This will NOT close itself: dead-letter lanes do not report `ok`.\nClosing acknowledges the incident; it does not prove payload recovery.\nA new delivery observation after closure can open a fresh alarm.\nUntil then, further observations arrive here as comments."
       : "Closed automatically after a fresh `ok` verdict with no active alarm condition and readable fault-rate history.",
     "Opened by the lane-health reader (`src/lane-alarm.ts`); the record it reads",
     "is also served at `GET /api/v1/self-health`.",
@@ -1058,11 +1028,9 @@ export function laneAlarmIssueBody(alarm: LaneAlarm, nowMs: number): string {
 }
 
 /**
- * The comment a FURTHER loss earns on an alarm issue that is already open.
- *
- * States the loss and then says why it arrived as a comment rather than as its
- * own issue, because the alternative reading -- "the alarm re-fired for the
- * same thing" -- is what would get these muted. See LaneAlarmPlan.update.
+ * Report a newer DLQ handler observation into the existing incident.
+ * Keep the exported name and historical error code for caller compatibility;
+ * neither is evidence that this observation establishes a further loss.
  */
 export function laneAlarmLossComment(
   lane: string,
@@ -1070,11 +1038,11 @@ export function laneAlarmLossComment(
 ): string {
   const detail = record.detail ? `: \`${record.detail}\`` : "";
   return (
-    `\`${lane}\` lost more at ${new Date(record.checked_at).toISOString()}${detail}.\n\n` +
+    `\`${lane}\` reported a dead-letter delivery observation at ${new Date(record.checked_at).toISOString()}${detail}.\n\n` +
+    "Delivery attempts may repeat previously seen messages. This observation does not establish unique-message counts, durable preservation or confirmed permanent loss.\n\n" +
     "Reported here rather than as a new issue because this one is still open. " +
-    "A dead-letter lane never reports `ok` -- nothing un-loses a message -- so " +
-    "this issue will not close itself; closing it is a decision, and the next " +
-    "loss after it closes opens a fresh alarm."
+    "A dead-letter lane never reports `ok`, so this issue will not close itself. " +
+    "Closing acknowledges the incident without proving recovery; a new delivery observation after closure can open a fresh alarm."
   );
 }
 
@@ -1150,7 +1118,8 @@ export interface LaneAlarmGitHub {
   listAcknowledged(): Promise<Record<string, number>>;
   open(alarm: LaneAlarm, title: string, body: string): Promise<number | null>;
   /** Say something on an issue that stays open. Its own method rather than a
-   * flag on `close`, because reporting a further loss and closing on recovery
+   * flag on `close`, because reporting a newer observation and closing on
+   * recovery
    * are opposite outcomes that happen to share a request. */
   comment(issue: number, body: string): Promise<boolean>;
   close(issue: number, comment: string): Promise<boolean>;
@@ -1507,12 +1476,11 @@ export async function runLaneAlarm(
     }
     for (const entry of plan.update) {
       // Recorded to PostHog too, and for the same reason the opens are: the
-      // GitHub write is one channel, and a loss nobody can see is the thing
-      // this whole list exists to end. Its own code, because "more was lost on
-      // a queue already alarming" is a different event from the first loss.
+      // GitHub write is one channel. Keep the legacy analytics code while
+      // reporting only the handler observation this record actually proves.
       await record(env, {
         error: new Error(
-          `lane ${entry.lane} lost more while already alarming` +
+          `lane ${entry.lane} reported another dead-letter delivery observation while already alarming` +
             (entry.record.detail ? ` -- ${entry.record.detail}` : ""),
         ),
         route: "watchdog:lane-alarm",

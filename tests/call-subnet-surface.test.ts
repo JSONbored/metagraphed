@@ -664,12 +664,10 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
   });
 
-  // #7687 (MCP execute Phase 3b): a query-location credential is part of the
-  // request URL itself, so it's the one placement that can leak back out
-  // through this function's own return value -- these confirm it's redacted
-  // everywhere a URL/error could carry it, while header/cookie placement
-  // (never echoed anywhere by this module) needs no equivalent redaction.
-  test("credential: query-location value is redacted in the successful response's url", async () => {
+  // Provider redirects and errors can reflect any credential placement.
+  // Credentialed diagnostics expose only the authorized origin and controlled
+  // failure details, avoiding encoding-dependent substitutions.
+  test("credential: query-location value is omitted in the successful response's url", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -679,11 +677,11 @@ describe("callSubnetSurface", () => {
       },
     );
     assert.equal(result.ok, true);
-    assert.equal(new URL(result.url).searchParams.get("api_key"), "<redacted>");
+    assert.equal(new URL(result.url).searchParams.get("api_key"), null);
     assert.ok(!result.url.includes("abc123"));
   });
 
-  test("credential: query-location value is redacted in the url after a followed redirect", async () => {
+  test("credential: query-location value is omitted in the url after a followed redirect", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -707,10 +705,10 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, true);
     assert.ok(!result.url.includes("abc123"));
-    assert.equal(new URL(result.url).searchParams.get("api_key"), "<redacted>");
+    assert.equal(new URL(result.url).searchParams.get("api_key"), null);
   });
 
-  test("credential: a redirect target with no credential-named param is returned unchanged (nothing to redact)", async () => {
+  test("credential: a credentialed redirect reports only the authorized origin", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -730,10 +728,10 @@ describe("callSubnetSurface", () => {
       },
     );
     assert.equal(result.ok, true);
-    assert.equal(result.url, "https://example.com/api/v2");
+    assert.equal(result.url, "https://example.com");
   });
 
-  test("credential: query-location value is redacted in a blocked-redirect's redirect_target", async () => {
+  test("credential: query-location value is omitted in a blocked-redirect's redirect_target", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -754,17 +752,11 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, false);
     assert.equal(result.private_redirect_blocked, true);
-    assert.ok(!result.redirect_target!.includes("abc123"));
-    assert.equal(
-      new URL(result.redirect_target!).searchParams.get("api_key"),
-      "<redacted>",
-    );
+    assert.equal(result.redirect_target, undefined);
   });
 
   test("credential: query-location value is not present when the surface has no query param matching auth.name", async () => {
-    // The redaction only touches a param actually named after the
-    // credential -- an unrelated same-named-looking query value some OTHER
-    // param happens to carry is left alone (nothing to redact there).
+    // No query diagnostics are returned for a credentialed call.
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -775,8 +767,8 @@ describe("callSubnetSurface", () => {
       },
     );
     assert.equal(result.ok, true);
-    assert.equal(new URL(result.url).searchParams.get("other"), "abc123");
-    assert.equal(new URL(result.url).searchParams.get("api_key"), "<redacted>");
+    assert.equal(new URL(result.url).searchParams.get("other"), null);
+    assert.equal(new URL(result.url).searchParams.get("api_key"), null);
   });
 
   test("credential: header/cookie-location values never appear in the response url (nothing to redact there)", async () => {
@@ -793,7 +785,7 @@ describe("callSubnetSurface", () => {
       },
     );
     assert.equal(result.ok, true);
-    assert.equal(result.url, "https://example.com/api");
+    assert.equal(result.url, "https://example.com");
   });
 
   test("credential: any placement's value is scrubbed from a network-error message", async () => {
@@ -815,7 +807,10 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, false);
     assert.ok(!result.error.includes("Bearer abc123"));
-    assert.ok(result.error.includes("<redacted>"));
+    assert.equal(
+      result.error,
+      "The credentialed surface request could not be completed.",
+    );
   });
 
   test("credential: no credential supplied leaves error messages untouched", async () => {
@@ -1028,7 +1023,7 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
   });
 
-  test("credential bundle: query values are all redacted in the returned url", async () => {
+  test("credential bundle: query values are omitted from the returned url", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -1045,12 +1040,9 @@ describe("callSubnetSurface", () => {
     assert.ok(!result.url.includes("0xabc"));
     assert.equal(
       new URL(result.url).searchParams.get("validator_hotkey"),
-      "<redacted>",
+      null,
     );
-    assert.equal(
-      new URL(result.url).searchParams.get("signature"),
-      "<redacted>",
-    );
+    assert.equal(new URL(result.url).searchParams.get("signature"), null);
   });
 
   test("credential bundle: every value is scrubbed from a network-error message", async () => {
@@ -1107,7 +1099,7 @@ describe("callSubnetSurface", () => {
     assert.equal(result.error, "connection refused");
   });
 
-  test("credential bundle: an empty-string value in the bundle is skipped during error scrubbing", async () => {
+  test("credential bundle: error details are omitted even with an empty bundle value", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
@@ -1123,10 +1115,13 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, false);
     assert.ok(!result.error.includes("5F-secret"));
-    assert.ok(result.error.includes("<redacted>"));
+    assert.equal(
+      result.error,
+      "The credentialed surface request could not be completed.",
+    );
   });
 
-  test("credential bundle: preserved across a same-origin redirect, stripped on cross-origin", async () => {
+  test("credential bundle: preserved across a same-origin redirect, refused on cross-origin", async () => {
     let calls = 0;
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
@@ -1160,8 +1155,8 @@ describe("callSubnetSurface", () => {
         },
       },
     );
-    assert.equal(result.ok, true);
-    assert.equal(calls, 2);
+    assert.equal(result.ok, false);
+    assert.equal(calls, 1);
   });
 
   test("credential: cookie location sets a Cookie header formatted name=value", async () => {
@@ -1300,11 +1295,11 @@ describe("callSubnetSurface", () => {
         },
       },
     );
-    assert.equal(result.ok, true);
-    assert.equal(calls, 2);
+    assert.equal(result.ok, false);
+    assert.equal(calls, 1);
   });
 
-  test("credential: once stripped on a cross-origin hop, stays stripped on a further redirect back to the original origin", async () => {
+  test("credential: a refused cross-origin hop never reaches a redirect back", async () => {
     let calls = 0;
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
@@ -1342,8 +1337,8 @@ describe("callSubnetSurface", () => {
         },
       },
     );
-    assert.equal(result.ok, true);
-    assert.equal(calls, 3);
+    assert.equal(result.ok, false);
+    assert.equal(calls, 1);
   });
 
   test("without a path override, method falls back to Phase 1's probe-derived default even if a method option is set alone", async () => {
@@ -1670,5 +1665,242 @@ describe("body-read deadline (#8655)", () => {
       { isUnsafeUrl: SAFE, fetchImpl: async () => jsonResponse({ ok: true }) },
     );
     assert.notEqual((result as Row).truncated, true);
+  });
+});
+
+describe("credential redirect boundaries", () => {
+  for (const location of ["header", "query", "cookie", "body"] as const) {
+    for (const status of [301, 302, 303, 307, 308]) {
+      test(`${location} credentials refuse cross-origin ${status} before another fetch`, async () => {
+        let calls = 0;
+        const result = await callSubnetSurface(
+          { url: "https://example.com/api" },
+          {
+            path: "/api",
+            method: "POST",
+            body: '{"operation":"read"}',
+            contentType: "application/json",
+            credential: { location, values: { token: "synthetic-credential" } },
+            isUnsafeUrl: SAFE,
+            fetchImpl: async () => {
+              calls += 1;
+              return new Response(null, {
+                status,
+                headers: {
+                  location:
+                    "https://other.example/api?token=synthetic-credential",
+                },
+              });
+            },
+          },
+        );
+        assert.equal(result.ok, false);
+        assert.equal(calls, 1);
+        if (result.ok) throw new Error("Expected a refused redirect");
+        assert.equal(result.status_code, status);
+        assert.ok(!JSON.stringify(result).includes("synthetic-credential"));
+      });
+    }
+  }
+
+  for (const [status, method, expected] of [
+    [301, "POST", "GET"],
+    [302, "POST", "GET"],
+    [303, "PUT", "GET"],
+    [303, "GET", "GET"],
+    [303, "HEAD", "HEAD"],
+    [301, "PUT", "PUT"],
+    [307, "POST", "POST"],
+    [308, "PATCH", "PATCH"],
+  ] as const) {
+    test(`${status} preserves HTTP semantics for ${method}`, async () => {
+      let calls = 0;
+      const result = await callSubnetSurface(
+        { url: "https://example.com/api" },
+        {
+          path: "/api",
+          method,
+          body: "payload",
+          contentType: "text/plain",
+          isUnsafeUrl: SAFE,
+          fetchImpl: async (_url, init) => {
+            calls += 1;
+            if (calls === 1)
+              return new Response(null, {
+                status,
+                headers: { location: "https://example.com/next" },
+              });
+            assert.equal(init?.method, expected);
+            const dropsBody = expected === "GET" || expected === "HEAD";
+            assert.equal(init?.body, dropsBody ? undefined : "payload");
+            assert.equal(
+              new Headers(init?.headers).get("content-type"),
+              dropsBody ? null : "text/plain",
+            );
+            return jsonResponse({ ok: true });
+          },
+        },
+      );
+      assert.equal(result.ok, true);
+      assert.equal(calls, 2);
+    });
+  }
+
+  test("redirect diagnostics redact URL-encoded credential values", async () => {
+    const value = "synthetic secret/+";
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "header", name: "x-token", value },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () =>
+          new Response(null, {
+            status: 307,
+            headers: {
+              location: `https://other.example/?token=${encodeURIComponent(value)}`,
+            },
+          }),
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.ok(!JSON.stringify(result).includes(encodeURIComponent(value)));
+  });
+});
+
+describe("credential diagnostics do not echo provider strings", () => {
+  const secret = "synthetic secret/+";
+  const encodings = [
+    secret,
+    encodeURIComponent(secret),
+    "synthetic%20secret%2f%2b",
+    "synthetic%20secret%2f%2B",
+  ];
+  for (const location of ["header", "query", "cookie", "body"] as const) {
+    for (const reflected of encodings) {
+      for (const outcome of ["refused", "success", "error"] as const) {
+        test(`${location}: ${outcome} omits ${reflected}`, async () => {
+          let calls = 0;
+          const result = await callSubnetSurface(
+            { url: "https://example.com/api" },
+            {
+              path: "/api",
+              method: "POST",
+              body: "{}",
+              contentType: "application/json",
+              credential: { location, name: "token", value: secret },
+              isUnsafeUrl: SAFE,
+              fetchImpl: async () => {
+                calls += 1;
+                if (outcome === "error")
+                  throw new Error(`fetch failed: ${reflected}`);
+                if (calls === 1)
+                  return new Response(null, {
+                    status: 307,
+                    headers: {
+                      location: `https://${outcome === "success" ? "example.com" : "other.example"}/next?echo=${reflected}`,
+                    },
+                  });
+                return jsonResponse({ ok: true });
+              },
+            },
+          );
+          assert.ok(!JSON.stringify(result).includes(secret));
+          assert.ok(!JSON.stringify(result).includes(reflected));
+          if (outcome === "success") {
+            assert.equal(result.ok, true);
+            if (!result.ok) throw new Error("Expected success");
+            assert.equal(result.url, "https://example.com");
+            assert.equal(calls, 2);
+          } else {
+            assert.equal(result.ok, false);
+            if (result.ok) throw new Error("Expected refusal");
+            assert.equal(result.redirect_target, undefined);
+            assert.equal(calls, 1);
+          }
+        });
+      }
+    }
+  }
+});
+
+test("credentialed binary refusal omits reflected content-type diagnostics", async () => {
+  const reflected = "synthetic%20secret%2f%2b";
+  const result = await callSubnetSurface(
+    { url: "https://example.com/api" },
+    {
+      credential: {
+        location: "header",
+        name: "token",
+        value: "synthetic secret/+",
+      },
+      isUnsafeUrl: SAFE,
+      fetchImpl: async () =>
+        new Response("opaque", {
+          headers: {
+            "content-type": `application/octet-stream; echo=${reflected}`,
+          },
+        }),
+    },
+  );
+  assert.equal(result.ok, false);
+  if (result.ok) throw new Error("Expected binary refusal");
+  assert.equal(result.error, "unsupported content-type");
+  assert.equal(result.content_type, null);
+  assert.ok(!JSON.stringify(result).includes(reflected));
+});
+
+describe("credentialed response metadata uses controlled diagnostics", () => {
+  for (const [contentType, expected] of [
+    ["application/json; echo=synthetic-secret", "application/json"],
+    ["application/synthetic-secret+json", "application/json"],
+    ["text/synthetic-secret; echo=synthetic-secret", "text/plain"],
+    [null, null],
+  ] as const) {
+    test(`accepted ${contentType} does not echo reflected metadata`, async () => {
+      const result = await callSubnetSurface(
+        { url: "https://example.com/api" },
+        {
+          credential: {
+            location: "header",
+            name: "token",
+            value: "synthetic-secret",
+          },
+          isUnsafeUrl: SAFE,
+          fetchImpl: async () =>
+            new Response(new TextEncoder().encode("{}"), {
+              headers: contentType ? { "content-type": contentType } : {},
+            }),
+        },
+      );
+      assert.equal(result.ok, true);
+      assert.equal(result.content_type, expected);
+      assert.ok(!JSON.stringify(result).includes("synthetic-secret"));
+    });
+  }
+
+  test("JSON parser diagnostics are controlled while response data remains intact", async () => {
+    const text = '{"synthetic-secret": invalid}';
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          name: "token",
+          value: "synthetic-secret",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () =>
+          new Response(text, {
+            headers: { "content-type": "application/json" },
+          }),
+      },
+    );
+    assert.equal(result.ok, true);
+    if (!result.ok) throw new Error("Expected an accepted response body");
+    assert.equal(result.body, text);
+    assert.equal(
+      result.parse_error,
+      "The upstream JSON response could not be parsed.",
+    );
   });
 });
