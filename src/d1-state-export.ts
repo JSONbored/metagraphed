@@ -47,18 +47,20 @@ const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
 // either INTEGER 1 or TEXT '1'; its PRAGMA type alone cannot distinguish them.
 const losslessCell = (expression: string) =>
   `json_object('storage',typeof(${expression}),'value',CASE typeof(${expression}) WHEN 'integer' THEN CAST(${expression} AS TEXT) WHEN 'real' THEN printf('%!.26g',${expression}) WHEN 'blob' THEN hex(${expression}) ELSE ${expression} END)`;
+function createCellSchema() {
+  return z.discriminatedUnion("storage", [
+    z.object({ storage: z.literal("null"), value: z.null() }).strict(),
+    z
+      .object({
+        storage: z.enum(["integer", "real", "text", "blob"]),
+        value: z.string(),
+      })
+      .strict(),
+  ]);
+}
+const cellSchema = createCellSchema();
 function checkedCell(encoded: string) {
-  const cell = z
-    .discriminatedUnion("storage", [
-      z.object({ storage: z.literal("null"), value: z.null() }).strict(),
-      z
-        .object({
-          storage: z.enum(["integer", "real", "text", "blob"]),
-          value: z.string(),
-        })
-        .strict(),
-    ])
-    .parse(JSON.parse(encoded));
+  const cell = cellSchema.parse(JSON.parse(encoded));
   if (cell.storage === "real" && !Number.isFinite(Number(cell.value)))
     throw new Error("non-finite export cell");
   return cell;
@@ -234,6 +236,7 @@ export async function handleD1StateExport(
                   handleD1StateExport.toString(),
                   logicalType.toString(),
                   losslessCell.toString(),
+                  createCellSchema.toString(),
                   checkedCell.toString(),
                   quote.toString(),
                   [...BOOLEANS],
