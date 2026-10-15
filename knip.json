@@ -8,7 +8,7 @@
     ".": {
       "entry": [
         "workers/api.entry.ts",
-        "workers/data-api.ts",
+        "workers/data-api.entry.ts",
         "workers/chain-firehose-hub.ts",
         "workers/mcp-session-hub.ts",
         "workers/alerter-hub.ts",

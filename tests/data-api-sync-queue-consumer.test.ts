@@ -25,7 +25,7 @@ const { pg } = await vi.hoisted(async () => ({
 }));
 vi.mock("pg", () => pg.module);
 
-const { default: worker } = await import("../workers/data-api.ts");
+const { default: worker } = await import("../workers/data-api.entry.ts");
 
 const SCHEMA =
   fs.readFileSync(
