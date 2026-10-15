@@ -1,10 +1,21 @@
 // Physical D1 schema drift, separate from generated/db/schema.json's logical
 // row contract. JSON-backed views do not expose their logical numeric types
 // through SQLite introspection, so replacing that contract would lose types.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
 import { d1AdminBatch } from "./lib/d1-admin.ts";
+import {
+  assertRecordedD1Migrations,
+  assertTrackedD1Migrations,
+  d1SchemaVerificationFailure,
+} from "./lib/d1-migration-ledger.ts";
 
 export interface SchemaObject {
   type: string;
@@ -56,6 +67,25 @@ export function schemaChanges(
         JSON.stringify(old.get(name)) !== JSON.stringify(current.get(name)),
     );
 }
+/** Verify recorded filenames only; the physical snapshot checks DDL separately. */
+export async function verifyD1MigrationLedger(
+  batch = d1AdminBatch,
+  root = repoRoot,
+): Promise<void> {
+  const files = readdirSync(path.join(root, "migrations/d1"))
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
+  assertTrackedD1Migrations(files);
+  // One extra row detects an untracked successor without scanning its history.
+  const result = await batch([
+    {
+      sql: "SELECT name FROM d1_migrations ORDER BY name LIMIT ?",
+      params: [String(files.length + 1)],
+    },
+  ]);
+  assertRecordedD1Migrations(files, result[0]?.results);
+  console.log(`D1 migration ledger verified: ${files.length} recorded files`);
+}
 export async function snapshotD1Schema(
   write: boolean,
   batch = d1AdminBatch,
@@ -92,12 +122,18 @@ export async function snapshotD1Schema(
   console.log(`D1 physical schema verified: ${schema.length} objects`);
 }
 if (process.argv[1]?.endsWith("snapshot-d1-schema.ts")) {
-  if (process.argv.slice(2).some((arg) => arg !== "--write"))
-    throw new Error("Only --write is supported");
-  snapshotD1Schema(process.argv.includes("--write")).catch(() => {
-    console.error(
-      "D1 schema verification failed; run the credentialed snapshot command and review its diff",
-    );
+  const args = process.argv.slice(2);
+  if (
+    args.some((arg) => !["--write", "--verify-ledger"].includes(arg)) ||
+    (args.includes("--write") && args.includes("--verify-ledger"))
+  )
+    throw new Error("Use --write or --verify-ledger separately");
+  const verify = async () => {
+    if (args.includes("--verify-ledger")) await verifyD1MigrationLedger();
+    await snapshotD1Schema(args.includes("--write"));
+  };
+  verify().catch((error: unknown) => {
+    console.error(d1SchemaVerificationFailure(error));
     process.exitCode = 1;
   });
 }

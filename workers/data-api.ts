@@ -1,3 +1,6 @@
+import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
+import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
+const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import {
   parseCompareHotkeys,
   COMPARE_VALIDATORS_MAX,
@@ -254,6 +257,7 @@ const explorerDirectoryRefreshes = new Map<number, Promise<boolean>>();
 // this reset is here because the state genuinely leaks, not because the gate
 // demanded it.
 registerModuleStateReset("workers/data-api.ts", () => {
+  reportAccountIdentitySyncFailure.reset();
   capturedSchemaDrift.clear();
   explorerDirectoryRefreshes.clear();
 });
@@ -305,7 +309,12 @@ async function captureDataApiError(
 ): Promise<boolean> {
   if (shouldSkipDriftCapture(err, route)) return false;
   await recordExceptionEvent(env, {
-    error: err,
+    // Keep the original driver metadata for drift dedupe above. Only the
+    // emitted identity history telemetry receives the safe replacement.
+    error:
+      route === "account-identity-sync-history"
+        ? new Error(classifyLaneHealthWriteError(err))
+        : err,
     route,
     errorCode: "internal_error",
   });
@@ -435,6 +444,7 @@ import {
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
+import { createNeuronWriteReporter } from "../src/neuron-write-diagnostics.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
 import { mirrorChainDetailToNeon } from "../src/chain-detail-neon-write.ts";
 import {
@@ -744,6 +754,8 @@ function stripClientSnapshotDate(row: Row) {
 
 // --- Neurons-family READS on the store (box decommission; tests/fixtures/sqlite-schema/0007) ------
 //
+const reportNeuronWriteFailure = createNeuronWriteReporter();
+
 async function handleNeuronsSync(
   request: Request,
   env: DataApiEnv,
@@ -927,7 +939,11 @@ async function handleNeuronsSync(
   // tell the producer its rows are safe when nothing holds them.
   const failed = Object.entries(neon.results).filter(([, r]) => !r.ok);
   if (!neon.attempted || failed.length > 0) {
-    console.error("data-api neurons-sync Neon write failed:", failed);
+    reportNeuronWriteFailure(neon, {
+      neurons: rows.length,
+      neuron_daily: dailyRows.length,
+      account_position_daily: positionRows.length,
+    });
     await captureDataApiError(
       new Error(
         failed.length > 0
@@ -1953,7 +1969,7 @@ async function handleAccountIdentitySync(
     neonHistoryRows = historyRows as Row[];
     historyAppended = historyRows.length;
   } catch (err) {
-    console.error("data-api account-identity-sync history read failed:", err);
+    reportAccountIdentitySyncFailure({ stage: "history_read", error: err });
     await captureDataApiError(err, "account-identity-sync-history", env);
     return writeJson({ error: "history read failed" }, 502);
   }
@@ -1966,13 +1982,9 @@ async function handleAccountIdentitySync(
   // AUTHORITATIVE -- see the hyperparams sync for the reasoning.
   const failed = failedTables(neon);
   if (!neon.attempted || (failed && failed.length > 0)) {
-    console.error("data-api account-identity-sync Neon write failed:", failed);
+    reportAccountIdentitySyncFailure({ stage: "family_write", outcome: neon });
     await captureDataApiError(
-      new Error(
-        failed && failed.length > 0
-          ? `neon write failed: ${failed.join(", ")}`
-          : "neon write not attempted",
-      ),
+      new Error("account identity family write failed"),
       "account-identity-sync-neon",
       env,
     );
