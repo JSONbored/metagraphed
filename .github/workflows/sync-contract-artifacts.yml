@@ -90,7 +90,7 @@ jobs:
           npm audit fix --ignore-scripts --workspaces --include-workspace-root || fix_status=$?
           test "$fix_status" -le 1
           npm dedupe --ignore-scripts --workspaces --include-workspace-root
-          npm ls @modelcontextprotocol/sdk @tanstack/react-start @tanstack/react-router @tanstack/router-core @tanstack/router-plugin @tanstack/start-server-core posthog-js dompurify undici --all --workspaces --include-workspace-root --json > "$RUNNER_TEMP/dependency-security/installed-security-tree.json"
+          npm ls @tanstack/react-router-ssr-query @tanstack/router-ssr-query-core @tanstack/react-query @tanstack/query-core @modelcontextprotocol/sdk @tanstack/react-start @tanstack/react-router @tanstack/router-core @tanstack/router-plugin @tanstack/start-server-core posthog-js dompurify undici --all --workspaces --include-workspace-root --json > "$RUNNER_TEMP/dependency-security/installed-security-tree.json"
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
@@ -213,6 +213,27 @@ jobs:
       - name: Qualify dependency UI production build
         if: inputs.prepare_only == true && inputs.dependency_security_fix == true
         run: npm run build:worker:e2e --workspace=apps/ui
+
+      - name: Install dependency browser smoke runtime
+        if: inputs.prepare_only == true && inputs.dependency_security_fix == true
+        working-directory: apps/ui
+        run: npx playwright install --with-deps chromium
+
+      - name: Qualify dependency compiled SSR and transport
+        if: inputs.prepare_only == true && inputs.dependency_security_fix == true
+        run: npm run test:e2e --workspace=apps/ui -- --grep '/blocks/8713384|server-function fields cannot override results'
+
+      - name: Retain dependency browser smoke
+        if: always() && inputs.prepare_only == true && inputs.dependency_security_fix == true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dependency-ui-smoke
+          path: |
+            apps/ui/test-results/**
+            apps/ui/playwright-report/**
+            ~/.config/.wrangler/logs/*.log
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Qualify API quantity assertions
         if: inputs.prepare_only == true
