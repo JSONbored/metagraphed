@@ -94,7 +94,19 @@ jobs:
           }
           fs.writeFileSync("package-lock.json", JSON.stringify(lock, null, 2) + "\n");
           NODE
-          npm install --package-lock-only --ignore-scripts --workspaces --include-workspace-root
+          npm install --ignore-scripts --workspaces --include-workspace-root
+          fix_status=0
+          npm audit fix --ignore-scripts --workspaces --include-workspace-root || fix_status=$?
+          test "$fix_status" -le 1
+          npm ls dompurify undici --all --json > "$RUNNER_TEMP/dependency-security/installed-security-tree.json"
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
+          const sanitizer = Object.entries(lock.packages).filter(([key]) => /node_modules\/dompurify$/.test(key));
+          if (sanitizer.length === 0 || sanitizer.some(([, pkg]) => !/^3\.4\.(1[6-9]|[2-9][0-9])$/.test(pkg.version) || !pkg.integrity)) {
+            throw new Error("Patched DOMPurify bytes must be explicitly locked with integrity");
+          }
+          NODE
           full_audit_status=0
           npm audit --json > "$RUNNER_TEMP/dependency-security/full-after.json" || full_audit_status=$?
           test "$full_audit_status" -le 1
