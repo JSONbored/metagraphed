@@ -1970,11 +1970,7 @@ async function handleAccountIdentitySync(
     historyAppended = historyRows.length;
   } catch (err) {
     reportAccountIdentitySyncFailure({ stage: "history_read", error: err });
-    await captureDataApiError(
-      err,
-      "account-identity-sync-history",
-      env,
-    );
+    await captureDataApiError(err, "account-identity-sync-history", env);
     return writeJson({ error: "history read failed" }, 502);
   }
 
