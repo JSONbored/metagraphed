@@ -1,9 +1,21 @@
-import { readD1Snapshot, type D1StoreBinding } from "./d1-store.ts";
+import { readD1Snapshot, selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
+import type { ExtrinsicsRow, ChainEventsRow } from "../generated/lakehouse/types.ts";
 import {
   NATIVE_PAYLOAD_PREFIX,
   type NativePayloadParts,
 } from "./chain-detail-native-payloads.ts";
 import type { ProducerStatement } from "./producer-store.ts";
+
+type PayloadRow = Partial<Omit<ExtrinsicsRow, "success" | "fee_tao" | "tip_tao"> & ChainEventsRow> & {
+  success?: number | null;
+  fee_tao?: string | number | null;
+  tip_tao?: string | number | null;
+  record?: string | null;
+  first?: number | null;
+  last?: number | null;
+  rows?: number | null;
+};
+type ChunkRow = { sha256: string; part: number; data: string };
 
 /** One D1 batch owns both the selection and its exact chunk bytes. No lease,
  * clock grace or later database lookup can substitute for this snapshot. */
@@ -12,14 +24,16 @@ export async function readChainDetailPayloadSnapshot(
   statement: ProducerStatement,
   field: "call_args" | "args",
   records = false,
-): Promise<{ rows: Record<string, unknown>[]; parts: NativePayloadParts }> {
+): Promise<{ rows: PayloadRow[]; parts: NativePayloadParts }> {
+  const owner = field === "call_args" ? "chain_detail_extrinsics" : "chain_detail_chain_events";
+  if (!selectedD1Store(env, [owner])) throw new Error("Native payload snapshot requires selected D1 ownership");
   const db = (env as { D1_STATE: D1StoreBinding }).D1_STATE;
   const cell = records ? `json_extract(record,'$.${field}')` : field;
   const prefix = Array.from(
     new TextEncoder().encode(NATIVE_PAYLOAD_PREFIX),
     (b) => b.toString(16).padStart(2, "0"),
   ).join("");
-  const [rows, chunks] = await readD1Snapshot(db, [
+  const [rows, chunks] = await readD1Snapshot<PayloadRow, ChunkRow>(db, [
     statement,
     {
       text: `WITH selected AS (${statement.text}), selected_refs AS (
@@ -40,9 +54,9 @@ export async function readChainDetailPayloadSnapshot(
   // Corrupt/over-budget selections remain bounded and fail existing hydration.
   const parts = new Map<string, { part: number; data: string }[]>();
   for (const row of chunks) {
-    const hash = row.sha256 as string;
+    const hash = row.sha256;
     const group = parts.get(hash) ?? [];
-    group.push({ part: row.part as number, data: row.data as string });
+    group.push({ part: row.part, data: row.data });
     parts.set(hash, group);
   }
   return { rows, parts };

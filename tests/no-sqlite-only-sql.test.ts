@@ -179,6 +179,10 @@ describe("store-neutral SQL", () => {
           "src/root-basket-capture-d1.ts",
           "src/d1-state-export.ts",
           "src/d1-store.ts",
+          // Dedicated native adapters require selected D1 ownership before SQL;
+          // reclamation tests reject absent, portable and mixed owners.
+          "src/chain-detail-payload-snapshot.ts",
+          "src/chain-detail-payload-prune.ts",
           // Dedicated D1 binding and credential; never accepts a generic
           // store runner. Native receiver tests cover atomic source selection.
           "src/retained-blocks-sync.ts",

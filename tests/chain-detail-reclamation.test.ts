@@ -198,6 +198,23 @@ beforeEach(async () => {
 });
 afterAll(async () => runtime.dispose());
 
+test("prepared reclamation refuses portable, mixed and unbound owners before native SQL", async () => {
+  let calls = 0;
+  const poison = {
+    prepare() { calls++; throw new Error("wrong owner reached native SQL"); },
+    batch() { calls++; throw new Error("wrong owner reached native SQL"); },
+  } as unknown as D1Database;
+  const statement = { text: "SELECT call_args FROM chain_detail_extrinsics" };
+  for (const tables of ["", "chain_detail_chain_events"]) {
+    const wrong = { ...env(poison), D1_STATE_TABLES: tables };
+    await assert.rejects(readChainDetailPayloadSnapshot(wrong, statement, "call_args"), /ownership/);
+  }
+  await assert.rejects(readChainDetailPayloadSnapshot({ ...env(), D1_STATE: undefined }, statement, "call_args"), /unbound/);
+  await assert.rejects(pruneChainDetailPayloads({ ...env(poison), D1_STATE_TABLES: "chain_detail_extrinsics" }), /spans D1 and Neon/);
+  await pruneChainDetailPayloads({ ...env(poison), D1_STATE_TABLES: "" });
+  assert.equal(calls, 0);
+});
+
 test("prepared reclamation captures immutable bytes before replacement or row pruning", async () => {
   const value = JSON.stringify({ blob: randomBytes(1600000).toString("hex") });
   await publish(value);

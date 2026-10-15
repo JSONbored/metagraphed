@@ -69,20 +69,27 @@ function prepareD1Statement(
   return values.length ? statement.bind(...values.map(bindValue)) : statement;
 }
 
-/** Selected rows and their dependent immutable parts share one read snapshot.
- * Preparing the entire batch first preserves the normal binding admission. */
-export async function readD1Snapshot(
+async function executeD1Batch<Row>(
   db: D1StoreBinding,
   statements: readonly ProducerStatement[],
-): Promise<Record<string, unknown>[][]> {
+) {
   const prepared = statements.map((statement) =>
     prepareD1Statement(db, statement),
   );
   const results = await timed(TIMING_D1, () =>
-    db.batch<Record<string, unknown>>(prepared),
+    db.batch<Row>(prepared),
   );
   results.forEach(markD1SqlExecution);
-  return results.map((result) => result.results);
+  return results;
+}
+
+/** Heterogeneous typed reads share the same atomic batch as native writes. */
+export async function readD1Snapshot<Rows, Parts>(
+  db: D1StoreBinding,
+  statements: readonly [ProducerStatement, ProducerStatement],
+): Promise<[Rows[], Parts[]]> {
+  const results = await executeD1Batch<Rows | Parts>(db, statements);
+  return [results[0].results as Rows[], results[1].results as Parts[]];
 }
 
 export function createD1Store(
@@ -102,18 +109,16 @@ export function createD1Store(
     return result.results;
   };
   const batch = async (statements: readonly ProducerStatement[]) => {
-    const prepared = statements.map(prepare);
+    const planned = [...statements];
     if (revisions.length)
-      prepared.push(
-        prepare({
+      planned.push({
           text: `INSERT INTO archive_export_revisions(table_name,revision)
         SELECT value,1 FROM json_each(?) WHERE true
         ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1`,
           values: [JSON.stringify(revisions)],
-        }),
-      );
-    const result = await timed(TIMING_D1, () => db.batch(prepared));
-    result.forEach(markD1SqlExecution);
+        });
+    // Mutations return change metadata, never query rows.
+    const result = await executeD1Batch<never>(db, planned);
     return result.slice(0, statements.length);
   };
   return {
