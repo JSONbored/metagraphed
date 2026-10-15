@@ -58,7 +58,7 @@
     "tw-animate-css": "^1.3.4",
     "vite-tsconfig-paths": "^6.0.2",
     "workers-og": "^0.0.27",
-    "zod": "^4.4.3"
+    "zod": "4.4.3"
   },
   "optionalDependencies": {
     "@posthog/rollup-plugin": "^1.4.9"
