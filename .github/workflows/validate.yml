@@ -15,6 +15,10 @@ on:
         description: "Run finite synthetic native Workerd resource observations"
         type: boolean
         default: false
+      resource_combined_diagnostic:
+        description: "Reproduce combined-process pressure (diagnostic-only; cannot qualify source)"
+        type: boolean
+        default: false
       resource_probe_only:
         description: "Diagnostic resource probe only; skip ordinary source/test qualification"
         type: boolean
@@ -1609,11 +1613,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shape: [small, string, objects, objects-max, blocks16]
+        shape: ${{ inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","blocks16"]') }}
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify_chain_detail_resources }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Require diagnostic disposition for combined pressure
+        if: ${{ inputs.resource_combined_diagnostic && !inputs.resource_probe_only }}
+        run: |
+          echo "::error::Combined pressure reproduction requires diagnostic-only mode."
+          exit 1
       - name: Checkout exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Node

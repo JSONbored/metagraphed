@@ -403,11 +403,22 @@ try {
   const shape = process.env.CHAIN_DETAIL_RESOURCE_SHAPE;
   assert.ok(
     shape &&
-      ["small", "string", "objects", "objects-max", "blocks16"].includes(shape),
+      [
+        "small",
+        "string",
+        "objects",
+        "objects-max",
+        "blocks16",
+        "combined",
+      ].includes(shape),
     "one explicit finite diagnostic shape required",
   );
   report.shape = shape;
-  for (const selectedShape of [shape]) {
+  const shapes =
+    shape === "combined"
+      ? ["small", "string", "objects", "objects-max", "blocks16"]
+      : [shape];
+  for (const selectedShape of shapes) {
     const shape = selectedShape;
     const message = payload(shape);
     const decoded = Buffer.byteLength(JSON.stringify(message));
