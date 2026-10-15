@@ -276,6 +276,7 @@ try {
       name: "chain-detail-resource",
       modules: true,
       scriptPath,
+      modulesRoot: temporary,
       compatibilityDate: "2026-06-06",
       compatibilityFlags: ["nodejs_compat"],
       inspectorPort: 0,
