@@ -342,6 +342,14 @@ test("distinguishes copied argument previews from exact API text", async ({ page
       },
     });
   });
+  // This synthetic extrinsic has no pallet-level records. Do not attach the
+  // unrelated captured block's events to its visual evidence.
+  await page.route("**/api/v1/chain-events?*", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: { events: [], next_cursor: null } }),
+    }),
+  );
   let rawReads = 0;
   let pruned = false;
   const exactText =
@@ -387,6 +395,12 @@ test("distinguishes copied argument previews from exact API text", async ({ page
     .toBe(exactText);
   expect(rawReads).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+  await page.evaluate(() => {
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, 0);
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.screenshot({
     path: test.info().outputPath("explorer-evidence-exact-arguments-375.png"),
     fullPage: true,
@@ -400,6 +414,8 @@ test("distinguishes copied argument previews from exact API text", async ({ page
     page.getByRole("button", { name: "Copy exact API response text", exact: true }),
   ).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.screenshot({
     path: test.info().outputPath("explorer-evidence-partial-arguments-375.png"),
     fullPage: true,

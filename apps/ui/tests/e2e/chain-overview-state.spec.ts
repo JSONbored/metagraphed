@@ -250,6 +250,9 @@ test("compares only closed UTC fee days and keeps missing observations unknown a
   await expect(section).toContainText("3.0000τ");
   await expect(section).toContainText("1 partial day(s) excluded");
   await expect(section).toContainText("calendar closure does not certify indexed coverage");
+  await section.screenshot({
+    path: test.info().outputPath("explorer-evidence-fee-totals-closed-days.png"),
+  });
   await page.clock.setFixedTime(new Date("2026-10-16T00:00:01Z"));
   // Clock rollover cannot promote yesterday's unfinished reading.
   const staleRefresh = page.waitForResponse(
@@ -272,11 +275,17 @@ test("compares only closed UTC fee days and keeps missing observations unknown a
   const bars = section.getByRole("group", { name: /Daily fee totals/ });
   await expect(bars).toBeVisible();
   await expect(section.locator(".mg-stack-col")).toHaveCount(2);
-  await expect(section.locator(".mg-stack-axis")).toContainText("2026-10-13");
-  await expect(section.locator(".mg-stack-axis")).toContainText("2026-10-15");
-  await page.screenshot({
+  await expect(section.locator(".mg-stack-axis")).toContainText("10-13");
+  await expect(section.locator(".mg-stack-axis")).toContainText("10-15");
+  await section.screenshot({
     path: test.info().outputPath("explorer-evidence-fee-totals-missing-day.png"),
-    fullPage: true,
+  });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await expect(section.locator(".mg-stack-axis")).toContainText("10-13");
+  await expect(section.locator(".mg-stack-axis")).toContainText("10-15");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await section.screenshot({
+    path: test.info().outputPath("explorer-evidence-fee-totals-missing-day-375.png"),
   });
   observed = null;
   await page.getByRole("button", { name: "refresh", exact: true }).click();

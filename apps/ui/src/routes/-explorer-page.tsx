@@ -429,6 +429,7 @@ export function ExplorerPage() {
                 columns={points.map((point) => ({
                   key: String(point.t),
                   label: new Date(point.t).toISOString().slice(0, 10),
+                  axisLabel: new Date(point.t).toISOString().slice(5, 10),
                   total: point.v,
                   segments: [{ key: "fees", label: "Fees", value: point.v }],
                 }))}
