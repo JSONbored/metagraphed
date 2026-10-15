@@ -1266,12 +1266,16 @@ async function handleNeuronDailyBackfill(
     return writeJson({ error: "unsupported historical receipt version" }, 400);
   }
   let raw: string;
+  let originalBytes: Uint8Array | undefined;
   if (receiptVersion !== null) {
-    const bounded = await readBoundedRequestText(request, 512 * 1024);
+    const bounded = await readBoundedRequestText(request, 512 * 1024, true);
     if (!bounded.ok) {
-      return writeJson({ error: "historical body exceeds 524288 bytes" }, 413);
+      return writeJson({ error: bounded.invalidUtf8
+        ? "historical body must be valid UTF-8 without a leading BOM"
+        : "historical body exceeds 524288 bytes" }, bounded.invalidUtf8 ? 400 : 413);
     }
     raw = bounded.text;
+    originalBytes = bounded.originalBytes;
   } else {
     raw = await request.text();
   }
@@ -1368,7 +1372,7 @@ async function handleNeuronDailyBackfill(
         503,
       );
     }
-    const bodySha256 = await sha256Hex(raw);
+    const bodySha256 = await sha256Hex(originalBytes!);
     let confirmed = false;
     try {
       await writeNeuronHistory(

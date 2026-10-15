@@ -261,18 +261,22 @@ export function ifNoneMatchSatisfied(
 export async function readBoundedRequestText(
   request: Request,
   maxBytes: number,
-) {
+  exactUtf8 = false,
+): Promise<{ ok: boolean; text: string; originalBytes?: Uint8Array; invalidUtf8?: boolean }> {
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > maxBytes) {
     return { ok: false, text: "" };
   }
 
   if (!request.body) {
-    return { ok: true, text: "" };
+    return exactUtf8 ? { ok: true, text: "", originalBytes: new Uint8Array() } : { ok: true, text: "" };
   }
 
   const reader = request.body.getReader();
   const decoder = new TextDecoder();
+  // Exact mode has one fixed byte budget, not one object per stream chunk.
+  // Legacy callers keep their existing decoding and allocation behavior.
+  const original = exactUtf8 ? new Uint8Array(maxBytes) : null;
   let bytes = 0;
   let text = "";
 
@@ -289,6 +293,7 @@ export async function readBoundedRequestText(
         void reader.cancel().catch(() => undefined);
         return { ok: false, text: "" };
       }
+      original?.set(chunk, bytes - chunk.byteLength);
       text += decoder.decode(chunk, { stream: true });
     }
   } finally {
@@ -296,5 +301,13 @@ export async function readBoundedRequestText(
   }
 
   text += decoder.decode();
-  return { ok: true, text };
+  if (!original) return { ok: true, text };
+  const admitted = original.slice(0, bytes);
+  const roundtrip = new TextEncoder().encode(text);
+  // Reject malformed UTF-8 and a stripped leading BOM before parsing/hashing.
+  // No unsupported fatal-decoder option is required by the Worker runtime.
+  if (roundtrip.length !== bytes || roundtrip.some((byte, index) => byte !== admitted[index])) {
+    return { ok: false, text: "", invalidUtf8: true };
+  }
+  return { ok: true, text, originalBytes: admitted };
 }

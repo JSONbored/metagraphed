@@ -754,6 +754,43 @@ async function postHistorical(
   );
 }
 
+test("prepared historical receiver rejects BOM and malformed wire bytes and hashes valid split UTF-8 exactly", async () => {
+  const { createHash } = await import("node:crypto");
+  const encoder = new TextEncoder();
+  const text = JSON.stringify({ rows: [syncRow({ axon: "XYZ-é" })] });
+  const raw = encoder.encode(text);
+  const headers = { "x-neuron-daily-backfill-token": BACKFILL_SECRET,
+    "x-metagraph-backfill-receipt": "historical-neuron-v1" };
+  const marker = raw.indexOf(88);
+  const malformed = raw.slice(); malformed[marker] = 255;
+  const combined = new Uint8Array(raw.length + 3);
+  combined.set([239, 187, 191]); combined.set(raw, 3);
+  combined.set([255, 226, 130], marker + 3);
+  assert.equal(encoder.encode(new TextDecoder().decode(combined)).length, combined.length);
+  for (const bytes of [new Uint8Array([239, 187, 191, ...raw]), malformed, combined]) {
+    const response = await call(new Request("https://d/api/v1/internal/backfill-neuron-daily", {
+      method: "POST", headers, body: bytes,
+    }), env());
+    assert.equal(response.status, 400);
+    assert.equal((await response.json() as Row).backfill_receipt, undefined);
+  }
+  assert.equal(await count("neuron_daily"), 0);
+  assert.equal((await call(new Request("https://d/api/v1/internal/backfill-neuron-daily", {
+    method: "POST", headers,
+  }), env())).status, 400);
+  const split = raw.indexOf(195) + 1;
+  const body = new ReadableStream<Uint8Array>({ start(controller) {
+    controller.enqueue(raw.slice(0, split)); controller.enqueue(raw.slice(split)); controller.close();
+  } });
+  const response = await call(new Request("https://d/api/v1/internal/backfill-neuron-daily", {
+    method: "POST", headers, body, duplex: "half",
+  } as RequestInit), env());
+  assert.equal(response.status, 200);
+  assert.equal((await response.json() as Row).backfill_receipt.body_sha256,
+    createHash("sha256").update(raw).digest("hex"));
+  assert.equal((await one("SELECT axon FROM neuron_daily")).axon, "XYZ-é");
+});
+
 test("prepared historical receiver verifies both family orders, exact replay and stable write stamps", async () => {
   const base = syncRow({ stake_tao: null });
   for (const first of [null, 12.5]) {
