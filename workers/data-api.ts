@@ -17,6 +17,8 @@ import {
 } from "../src/analytics-live.ts";
 import { withRequestCounters } from "../src/request-counters.ts";
 import { sha256Hex } from "../src/sha256-hex.ts";
+import { writeNeuronHistory } from "../src/neuron-history-write.ts";
+import { recordNeonWriteVerdict } from "../src/neon-write.ts";
 // metagraphed data Worker — store-backed serving, kept SEPARATE from the main
 // api.ts Worker (which is near its bundle budget); the main Worker routes the
 // relevant paths in via a service binding (DATA_API).
@@ -1259,7 +1261,20 @@ async function handleNeuronDailyBackfill(
     );
   }
 
-  const raw = await request.text();
+  const receiptVersion = request.headers.get("x-metagraph-backfill-receipt");
+  if (receiptVersion !== null && receiptVersion !== "historical-neuron-v1") {
+    return writeJson({ error: "unsupported historical receipt version" }, 400);
+  }
+  let raw: string;
+  if (receiptVersion !== null) {
+    const bounded = await readBoundedRequestText(request, 512 * 1024);
+    if (!bounded.ok) {
+      return writeJson({ error: "historical body exceeds 524288 bytes" }, 413);
+    }
+    raw = bounded.text;
+  } else {
+    raw = await request.text();
+  }
   if (utf8Bytes(raw).length > NEURONS_SYNC_MAX_BODY_BYTES) {
     return writeJson(
       { error: `body exceeds ${NEURONS_SYNC_MAX_BODY_BYTES} bytes` },
@@ -1283,9 +1298,10 @@ async function handleNeuronDailyBackfill(
       400,
     );
   }
-  if (incoming.length > NEURONS_SYNC_MAX_ROWS) {
+  const maxRows = receiptVersion !== null ? 1000 : NEURONS_SYNC_MAX_ROWS;
+  if (incoming.length > maxRows) {
     return writeJson(
-      { error: `at most ${NEURONS_SYNC_MAX_ROWS} rows per request` },
+      { error: `at most ${maxRows} rows per request` },
       413,
     );
   }
@@ -1340,6 +1356,49 @@ async function handleNeuronDailyBackfill(
   // after validation for the same 400-before-503 reasoning.
   if (!neonOwnsNeuronsSnapshot(env)) {
     return writeJson({ error: "no store bound for this route" }, 503);
+  }
+
+  // Prepared historical jobs explicitly request a stronger contract. Keep
+  // legacy callers unchanged and refuse an unknown version or a D1 selection;
+  // this protocol verifies the existing PostgreSQL tables on one connection.
+  if (receiptVersion !== null) {
+    if (
+      selectedD1Store(env, [...NEURONS_SNAPSHOT_TABLES, "neurons_passes"]) ||
+      !env.HYPERDRIVE?.connectionString
+    ) {
+      return writeJson({ error: "historical receipt needs the PostgreSQL owner" }, 503);
+    }
+    const bodySha256 = await sha256Hex(raw);
+    let confirmed = false;
+    try {
+      await writeNeuronHistory(env.HYPERDRIVE.connectionString, dailyRows, positionRows);
+      confirmed = true;
+    } catch {
+      // A rejected COMMIT can already have committed. Preserve that ambiguity;
+      // the same input can safely replay and must obtain a new confirmation.
+    }
+    for (const [table, count] of [["neuron_daily", dailyRows.length],
+      ["account_position_daily", positionRows.length]] as const) {
+      await recordNeonWriteVerdict(laneHealthStore(env), table, {
+        ok: confirmed, rows: count, statements: confirmed ? 2 : 0,
+        ...(confirmed ? {} : { reason: "historical write unconfirmed", confirmation: "unknown" as const }),
+      }, Date.now());
+    }
+    if (!confirmed) return writeJson({ error: "historical write unconfirmed" }, 502);
+    return writeJson({
+      ok: true,
+      neuron_daily_written: dailyRows.length,
+      account_position_daily_written: positionRows.length,
+      stores: ["neon"],
+      backfill_receipt: {
+        format: "metagraphed-neuron-history-receipt/v1",
+        body_sha256: bodySha256,
+        confirmation: "committed",
+        projection: "same-capture-null-stake-enrichment/v1",
+        neuron_daily_rows: dailyRows.length,
+        account_position_daily_rows: positionRows.length,
+      },
+    });
   }
 
   // THE SECOND WRITER, mirrored too (#9717).
