@@ -6,6 +6,7 @@ import {
   useRouteContext,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, type CSSProperties, type ReactNode } from "react";
@@ -31,8 +32,9 @@ import {
  * `Raw` block every other page uses, so it reads as this site rather than as
  * a browser error page.
  */
-export function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+export function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
+  const message = typeof error === "string" ? error : "Unexpected route error";
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   useEffect(() => {
@@ -66,7 +68,7 @@ export function ErrorComponent({ error, reset }: { error: Error; reset: () => vo
         <Raw
           rows={[
             { label: "path", value: pathname },
-            { label: "error", value: error.message },
+            { label: "error", value: error instanceof Error ? error.message : message },
           ]}
         />
         <nav aria-label="Elsewhere" className="flex flex-wrap gap-3">
