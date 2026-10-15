@@ -435,6 +435,7 @@ import {
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
+import { createNeuronWriteReporter } from "../src/neuron-write-diagnostics.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
 import { mirrorChainDetailToNeon } from "../src/chain-detail-neon-write.ts";
 import {
@@ -744,6 +745,8 @@ function stripClientSnapshotDate(row: Row) {
 
 // --- Neurons-family READS on the store (box decommission; tests/fixtures/sqlite-schema/0007) ------
 //
+const reportNeuronWriteFailure = createNeuronWriteReporter();
+
 async function handleNeuronsSync(
   request: Request,
   env: DataApiEnv,
@@ -927,7 +930,11 @@ async function handleNeuronsSync(
   // tell the producer its rows are safe when nothing holds them.
   const failed = Object.entries(neon.results).filter(([, r]) => !r.ok);
   if (!neon.attempted || failed.length > 0) {
-    console.error("data-api neurons-sync Neon write failed:", failed);
+    reportNeuronWriteFailure(neon, {
+      neurons: rows.length,
+      neuron_daily: dailyRows.length,
+      account_position_daily: positionRows.length,
+    });
     await captureDataApiError(
       new Error(
         failed.length > 0
