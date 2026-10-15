@@ -758,7 +758,7 @@ try {
       nativeOracle
         ? {
             inspectorPort: 0,
-            ...(separateHttpPhases ? { d1Persist: persistence } : {}),
+            ...(separateHttpPhases ? { resourcePersistencePath: persistence } : {}),
             workers: [
               apiOptions,
               oracleOptions,
@@ -1136,7 +1136,7 @@ try {
             await save();
             runtime = new Miniflare({
               inspectorPort: 0,
-              d1Persist: persistence,
+              resourcePersistencePath: persistence,
               workers: [oracleOptions],
             });
             db = await verificationDb();
