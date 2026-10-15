@@ -15,9 +15,13 @@ export async function hotHistoryFixture(
     d1Databases: ["DB"],
   });
   const db = await runtime.getD1Database("DB");
-  for (const file of ["0014_recent_chain_state.sql", "0024_chain_detail_payload_chunks.sql"])
+  for (const file of [
+    "0014_recent_chain_state.sql",
+    "0024_chain_detail_payload_chunks.sql",
+  ])
     for (const sql of readFileSync(
-      new URL(`../migrations/d1/${file}`, import.meta.url), "utf8",
+      new URL(`../migrations/d1/${file}`, import.meta.url),
+      "utf8",
     ).split("-- statement-breakpoint"))
       if (sql.trim()) await db.prepare(sql).run();
   for (let block = through + 1; block <= last; block++)

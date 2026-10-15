@@ -76,9 +76,7 @@ async function executeD1Batch<Row>(
   const prepared = statements.map((statement) =>
     prepareD1Statement(db, statement),
   );
-  const results = await timed(TIMING_D1, () =>
-    db.batch<Row>(prepared),
-  );
+  const results = await timed(TIMING_D1, () => db.batch<Row>(prepared));
   results.forEach(markD1SqlExecution);
   return results;
 }
@@ -112,11 +110,11 @@ export function createD1Store(
     const planned = [...statements];
     if (revisions.length)
       planned.push({
-          text: `INSERT INTO archive_export_revisions(table_name,revision)
+        text: `INSERT INTO archive_export_revisions(table_name,revision)
         SELECT value,1 FROM json_each(?) WHERE true
         ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1`,
-          values: [JSON.stringify(revisions)],
-        });
+        values: [JSON.stringify(revisions)],
+      });
     // Mutations return change metadata, never query rows.
     const result = await executeD1Batch<never>(db, planned);
     return result.slice(0, statements.length);

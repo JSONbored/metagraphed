@@ -1,12 +1,21 @@
-import { readD1Snapshot, selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
-import type { ExtrinsicsRow, ChainEventsRow } from "../generated/lakehouse/types.ts";
+import {
+  readD1Snapshot,
+  selectedD1Store,
+  type D1StoreBinding,
+} from "./d1-store.ts";
+import type {
+  ExtrinsicsRow,
+  ChainEventsRow,
+} from "../generated/lakehouse/types.ts";
 import {
   NATIVE_PAYLOAD_PREFIX,
   type NativePayloadParts,
 } from "./chain-detail-native-payloads.ts";
 import type { ProducerStatement } from "./producer-store.ts";
 
-type PayloadRow = Partial<Omit<ExtrinsicsRow, "success" | "fee_tao" | "tip_tao"> & ChainEventsRow> & {
+type PayloadRow = Partial<
+  Omit<ExtrinsicsRow, "success" | "fee_tao" | "tip_tao"> & ChainEventsRow
+> & {
   success?: number | null;
   fee_tao?: string | number | null;
   tip_tao?: string | number | null;
@@ -25,8 +34,12 @@ export async function readChainDetailPayloadSnapshot(
   field: "call_args" | "args",
   records = false,
 ): Promise<{ rows: PayloadRow[]; parts: NativePayloadParts }> {
-  const owner = field === "call_args" ? "chain_detail_extrinsics" : "chain_detail_chain_events";
-  if (!selectedD1Store(env, [owner])) throw new Error("Native payload snapshot requires selected D1 ownership");
+  const owner =
+    field === "call_args"
+      ? "chain_detail_extrinsics"
+      : "chain_detail_chain_events";
+  if (!selectedD1Store(env, [owner]))
+    throw new Error("Native payload snapshot requires selected D1 ownership");
   const db = (env as { D1_STATE: D1StoreBinding }).D1_STATE;
   const cell = records ? `json_extract(record,'$.${field}')` : field;
   const prefix = Array.from(
