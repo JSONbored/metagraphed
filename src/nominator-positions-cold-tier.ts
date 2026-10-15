@@ -1,3 +1,4 @@
+import { loadAlphaQuantityCaptureFromOwner } from "./alpha-quantity.ts";
 import { declineRetainedHistoryFailure } from "./retained-history-store.ts";
 // Account positions use the selected D1 ledger and indexed activity history.
 // Live neuron stakes price every position; selected owner failures decline
@@ -6,7 +7,6 @@ import { declineRetainedHistoryFailure } from "./retained-history-store.ts";
 import {
   annotatePositionsSnapshot,
   buildAccountPositions,
-  distinctHotkeys,
   stakeByHotkeyNetuid,
 } from "./account-nominator-positions.ts";
 import { accountHistoryFloorMs } from "./account-summary-projection.ts";
@@ -179,17 +179,16 @@ export async function loadAccountPositionsColdTier(
 
   // One row over the cap is enough to know the cap was exceeded, and cheaper
   // than a second counting query over the same predicate.
+  const capture = await loadAlphaQuantityCaptureFromOwner(env);
   const native = await nativePositionRows(
     env,
-    `SELECT ${POSITION_COLUMNS} FROM nominator_positions WHERE coldkey = ? LIMIT ?`,
+    `SELECT ${POSITION_COLUMNS}${capture ? ", source, alpha_rao, alpha_evidence" : ""} FROM nominator_positions WHERE coldkey = ? LIMIT ?`,
     [coldkey, POSITION_SCAN_CAP + 1],
   );
   const rows = native;
   if (rows == null || rows.length > POSITION_SCAN_CAP) return null;
 
-  const stake = await neuronStakeByHotkeys(env, distinctHotkeys(rows));
-  if (stake === null) return null;
-  const result = buildAccountPositions(rows, stake, ss58);
+  const result = buildAccountPositions(rows, null, ss58, capture);
 
   // Only a ZERO needs explaining; a result with positions already carries its
   // own stamp and is not the answer this issue is about.

@@ -13,6 +13,131 @@ export interface D1AdminCredentials {
   databaseId: string;
   apiToken: string;
 }
+
+// Match the write diagnostics' fixed-vocabulary convention. Never return raw
+// provider text: SQL, bindings and credentials can be echoed inside an error.
+const PROVIDER_MESSAGES = new Map([
+  ["authentication error", "Authentication error"],
+  ["unauthorized", "Unauthorized"],
+  ["forbidden", "Forbidden"],
+  ["access denied", "Access denied"],
+  ["permission denied", "Permission denied"],
+  ["invalid api token", "Invalid API token"],
+  ["invalid access token", "Invalid access token"],
+  ["token has expired", "Token has expired"],
+  ["request is not authorized", "Request is not authorized"],
+  ["exceeded maximum db size", "Exceeded maximum DB size"],
+]);
+const ERROR_BODY_MAX_BYTES = 16 * 1024;
+type ProviderError = { code?: unknown; message?: unknown } | null | undefined;
+
+async function readErrorBody(response: Response): Promise<{
+  text?: string;
+  state: "complete" | "empty" | "oversized" | "unreadable";
+}> {
+  if (!response.body) return { state: "empty" };
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  try {
+    reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+    let bytes = 0,
+      text = "";
+    for (;;) {
+      const part = await reader.read();
+      if (part.done) break;
+      bytes += part.value.byteLength;
+      if (bytes > ERROR_BODY_MAX_BYTES) {
+        // Cleanup cannot hold the HTTP result open if a custom transport's
+        // cancellation never settles. Native fetch retains its request deadline.
+        void reader.cancel().catch(() => undefined);
+        return { state: "oversized" };
+      }
+      text += decoder.decode(part.value, { stream: true });
+    }
+    text += decoder.decode();
+    if (bytes === 0) return { state: "empty" };
+    return { state: "complete", text };
+  } catch {
+    void reader?.cancel().catch(() => undefined);
+    return { state: "unreadable" };
+  } finally {
+    reader?.releaseLock();
+  }
+}
+
+async function httpFailure(
+  response: Response,
+  statements: readonly D1AdminStatement[],
+  credentials: D1AdminCredentials,
+): Promise<Error> {
+  const prefix = `D1 maintenance request failed with HTTP ${response.status}`;
+  try {
+    const fields: string[] = [];
+    const privateValues = [
+      credentials.apiToken,
+      credentials.accountId,
+      credentials.databaseId,
+      ...statements.flatMap(({ sql, params = [] }) => [sql, ...params]),
+    ];
+    const echoesInput = (value: string) =>
+      privateValues.some(
+        (input) =>
+          input.length > 0 &&
+          input.length <= value.length &&
+          value.toLowerCase().includes(input.toLowerCase()),
+      );
+    // Only a validated opaque Ray ID is retained, never response headers.
+    const ray = response.headers.get("cf-ray");
+    if (
+      ray &&
+      (ray.length === 16 || ray.length === 20) &&
+      /^[a-fA-F0-9]{16}(?:-[A-Z]{3})?$/.test(ray) &&
+      !echoesInput(ray)
+    )
+      fields.push(`request_id=${ray}`);
+    const body = await readErrorBody(response);
+    let state: string = body.state;
+    if (body.state === "complete") {
+      try {
+        const payload = JSON.parse(body.text!) as { errors?: unknown } | null;
+        const errors = payload?.errors;
+        let first: ProviderError;
+        if (Array.isArray(errors)) first = errors[0] as ProviderError;
+        const code = first?.code;
+        const message = first?.message;
+        if (
+          typeof code === "number" &&
+          Number.isSafeInteger(code) &&
+          code >= 0 &&
+          code <= 2_147_483_647 &&
+          !echoesInput(String(code))
+        )
+          fields.push(`provider_code=${code}`);
+        if (typeof message === "string") {
+          let known: string | undefined;
+          if (message.length <= 512)
+            known = PROVIDER_MESSAGES.get(
+              message.trim().replace(/\s+/g, " ").toLowerCase(),
+            );
+          let safeMessage = "Provider message redacted";
+          if (known && !echoesInput(known)) safeMessage = known;
+          fields.push(`provider_message=${safeMessage}`);
+        }
+        if (first) state = "json";
+        else state = "unrecognized";
+      } catch {
+        state = "malformed";
+      }
+    }
+    fields.push(`error_body=${state}`);
+    return new Error(`${prefix}; ${fields.join("; ")}`);
+  } catch {
+    // Best-effort diagnostics, including cancellation and lock cleanup, must
+    // never replace the original HTTP classification with another exception.
+    return new Error(`${prefix}; error_body=unavailable`);
+  }
+}
+
 export function d1AdminCredentials(
   env: Record<string, string | undefined> = process.env,
 ): D1AdminCredentials {
@@ -57,9 +182,7 @@ export async function d1AdminBatch(
     );
   }
   if (!response.ok || !response.body)
-    throw new Error(
-      `D1 maintenance request failed with HTTP ${response.status}`,
-    );
+    throw await httpFailure(response, statements, credentials);
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
   let bytes = 0,

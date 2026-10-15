@@ -1817,7 +1817,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch every subnet ranked by alpha-ownership concentration. Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. A cross-subnet total requires pricing each subnet's alpha through its own alpha_price_tao first, which is what /accounts/top-holders does. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while the hotkey_alpha pool ledger has no complete pass — an empty subnets array with degraded.reason pool_totals_unproven and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension. */
+        /** @description Fetch every subnet ranked by alpha-ownership concentration. Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. Cross-token holdings and priced portfolio totals require a separate qualified valuation source; legacy delegated/total holdings are unavailable. ?sort=top1_share (default), top5_share, top10_share, top20_share, or holder_count; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while no completed selected runtime-qualified Alpha position capture is available — an empty subnets array with degraded.reason runtime_positions_unqualified and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension. */
         get: operations["chainHolders"];
         put?: never;
         post?: never;
@@ -4341,7 +4341,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of /accounts/{ss58}/positions, which reads the same ledger one coldkey (one account) at a time. Distinct from /subnets/{netuid}/concentration, which computes its scalars off neurons.stake_tao and therefore sees REGISTERED UIDs only: this reads nominator_positions, keyed on (coldkey, hotkey, netuid) whether or not the hotkey holds a UID on the subnet, so alpha staked to UNREGISTERED hotkeys is included — on netuid 74, 92 hotkeys carry positions and 10 are registered there, which is the part no other public source reaches without a full-chain map scan. Valued as share_fraction x hotkey_alpha.total_alpha against ONE proven pool pass, and ranked in ALPHA rather than TAO: within a single subnet alpha is already a common unit, so there is no subnet_snapshots price join and none of its up-to-24h staleness — multiply by the subnet's alpha_price_tao for TAO. limit caps the returned rows (default 20, max 100); holder_count, total_alpha and the three concentration shares are computed across the FULL holder set and then sliced, never over the capped rows, because the top of a sum is not contained in the union of the tops of its addends. TWO STATES DECLINE rather than answer, both with holders:[] plus a degraded.reason and NULL counts: pool_totals_unproven while no hotkey_alpha pass is recorded complete (a partially loaded pool ledger silently UNDERPRICES holders rather than visibly dropping them, so the ranking would be plausible and wrong), and root_not_in_alpha_map for netuid 0, which SubtensorModule::Alpha does not cover at all. A zero in any count is therefore a measured zero, never a decline. Mainnet-only: neither source table carries a network dimension. */
+        /** @description Fetch who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of /accounts/{ss58}/positions, which reads the same ledger one coldkey (one account) at a time. Distinct from /subnets/{netuid}/concentration, which computes its scalars off neurons.stake_tao and therefore sees REGISTERED UIDs only: this reads nominator_positions, keyed on (coldkey, hotkey, netuid) whether or not the hotkey holds a UID on the subnet, so alpha staked to UNREGISTERED hotkeys is included — on netuid 74, 92 hotkeys carry positions and 10 are registered there, which is the part no other public source reaches without a full-chain map scan. Computed from exact Alpha rao in ONE complete selected runtime-qualified capture, and ranked in ALPHA rather than TAO: within a single subnet alpha is already a common unit, so there is no subnet_snapshots price join and none of its up-to-24h staleness — multiply by the subnet's alpha_price_tao for TAO. limit caps the returned rows (default 20, max 100); holder_count, total_alpha and the three concentration shares are computed across the FULL holder set and then sliced, never over the capped rows, because the top of a sum is not contained in the union of the tops of its addends. TWO STATES DECLINE rather than answer, both with holders:[] plus a degraded.reason and NULL counts: runtime_positions_unqualified while no complete selected runtime-qualified capture is available, and root_not_in_alpha_map for netuid 0, which SubtensorModule::Alpha does not cover at all. A zero in any count is therefore a measured zero, never a decline. Mainnet-only: neither source table carries a network dimension. */
         get: operations["subnetHolders"];
         put?: never;
         post?: never;
@@ -5234,7 +5234,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. ?basis= selects WHICH QUESTION is answered (#9617), not how well it is answered. basis=flow (the DEFAULT, and everything above) is TAO MOVED within the window, so it cannot see a nominator who staked before the window and has not touched it since -- a dormant delegator is invisible and a long-standing one reads as smaller than they are. basis=positions instead reads the standing position ledger keyed (coldkey, hotkey, netuid): every coldkey (an ss58 address) currently delegating to this hotkey, and how much ALPHA each holds per subnet, whenever they staked. The two are different units over different time semantics -- TAO moved in a window versus alpha held now -- so they are not comparable and the default does not move. On the positions basis, window and sort are REJECTED rather than ignored, because accepting them would imply the snapshot honoured them; nominator_count is the whole delegator set rather than the returned page; and alpha is reported PER SUBNET with no cross-subnet total, since each subnet's alpha is a different token. Nominators are ranked by how many subnets they hold on, then by their largest single-subnet holding, for the same reason. The positions basis DECLINES with degraded.reason pool_totals_unproven while the hotkey_alpha pool ledger has no complete pass -- a partial ledger underprices a nominator rather than dropping them. */
+        /** @description Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. ?basis= selects WHICH QUESTION is answered (#9617), not how well it is answered. basis=flow (the DEFAULT, and everything above) is TAO MOVED within the window, so it cannot see a nominator who staked before the window and has not touched it since -- a dormant delegator is invisible and a long-standing one reads as smaller than they are. basis=positions instead reads the standing position ledger keyed (coldkey, hotkey, netuid): every coldkey (an ss58 address) currently delegating to this hotkey, and how much ALPHA each holds per subnet, whenever they staked. The two are different units over different time semantics -- TAO moved in a window versus alpha held now -- so they are not comparable and the default does not move. On the positions basis, window and sort are REJECTED rather than ignored, because accepting them would imply the snapshot honoured them; nominator_count is the whole delegator set rather than the returned page; and alpha is reported PER SUBNET with no cross-subnet total, since each subnet's alpha is a different token. Nominators are ordered by observed subnet breadth and then account address; quantities from different subnet tokens are never compared. The positions basis DECLINES with degraded.reason runtime_positions_unqualified while no completed selected runtime-qualified Alpha position capture is available -- a partial ledger underprices a nominator rather than dropping them. */
         get: operations["validatorNominators"];
         put?: never;
         post?: never;
@@ -5522,7 +5522,11 @@ export interface components {
             captured_at: string | null;
             /** @constant */
             limit: 20;
-            priced_registered_stake_tao: number;
+            /**
+             * @deprecated
+             * @description Deprecated unsupported financial quantity from neuron voting weight; always null.
+             */
+            priced_registered_stake_tao: number | null;
             rankings: {
                 emission: {
                     coldkey: string | null;
@@ -5530,7 +5534,11 @@ export interface components {
                     stake_dominance: number | null;
                     subnet_count: number;
                     total_emission_tao: number;
-                    total_stake_tao: number;
+                    /**
+                     * @deprecated
+                     * @description Deprecated unsupported financial quantity from neuron voting weight; always null.
+                     */
+                    total_stake_tao: number | null;
                     uid_count: number;
                 }[];
                 reach: {
@@ -5539,7 +5547,11 @@ export interface components {
                     stake_dominance: number | null;
                     subnet_count: number;
                     total_emission_tao: number;
-                    total_stake_tao: number;
+                    /**
+                     * @deprecated
+                     * @description Deprecated unsupported financial quantity from neuron voting weight; always null.
+                     */
+                    total_stake_tao: number | null;
                     uid_count: number;
                 }[];
                 stake: {
@@ -5548,12 +5560,16 @@ export interface components {
                     stake_dominance: number | null;
                     subnet_count: number;
                     total_emission_tao: number;
-                    total_stake_tao: number;
+                    /**
+                     * @deprecated
+                     * @description Deprecated unsupported financial quantity from neuron voting weight; always null.
+                     */
+                    total_stake_tao: number | null;
                     uid_count: number;
                 }[];
             };
             /** @constant */
-            schema_version: 1;
+            schema_version: 2;
         };
         AccountIdentityArtifact: {
             account: string;
@@ -5616,7 +5632,10 @@ export interface components {
         AccountPortfolioArtifact: {
             captured_at: string | null;
             miner_count: number;
-            /** @description Priced emission per priced stake -- both sides in TAO (#9051), so the ratio is dimensionally coherent. Null with no priceable stake. */
+            /**
+             * @deprecated
+             * @description Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return.
+             */
             overall_yield: number | null;
             position_count: number;
             positions: {
@@ -5629,22 +5648,34 @@ export interface components {
                 rank: number | null;
                 /** @enum {string} */
                 role: "validator" | "miner";
-                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO. */
-                stake_alpha: number;
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+                 */
+                stake_alpha: number | null;
                 trust: number | null;
                 uid: number | null;
-                /** @description Emission over stake for this position; null when stake is 0. */
+                /** @description Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio. */
+                voting_weight: number | null;
+                /**
+                 * @deprecated
+                 * @description Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return.
+                 */
                 yield: number | null;
             }[];
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             ss58: string;
             /** @description How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions. */
             stake_concentration: components["schemas"]["ConcentrationMetrics"] | null;
             subnet_count: number;
             /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
             total_emission_tao: number;
-            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
-            total_stake_tao: number;
+            /**
+             * @deprecated
+             * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+             */
+            total_stake_tao: number | null;
             validator_count: number;
         };
         /** @description One account's per-subnet position history over a lookback window, one point per neuron_daily snapshot. Mirrors GET /api/v1/accounts/{ss58}/subnets/{netuid}/history. */
@@ -5663,10 +5694,19 @@ export interface components {
                 /** @enum {string} */
                 role: "validator" | "miner";
                 snapshot_date: string;
-                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
-                stake_tao: number;
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported holdings interpretation; always null. Historical neuron data records voting weight, not native asset positions.
+                 */
+                stake_tao: number | null;
                 trust: number | null;
                 uid: number | null;
+                /** @description Observed historical effective voting weight; not a balance or asset denominator. */
+                voting_weight: number | null;
+                /**
+                 * @deprecated
+                 * @description Unavailable: historical voting weight is not an asset balance and cannot establish holdings yield.
+                 */
                 yield: number | null;
             }[];
             schema_version: number;
@@ -5690,17 +5730,29 @@ export interface components {
             };
             position_count: number;
             positions: {
+                /** @description Exact non-Root subnet Alpha in rao (1e9 rao per token) at this position's qualified snapshot. Each netuid identifies a different token; never sum across netuids. */
+                alpha_rao: string | null;
                 hotkey: string;
                 netuid: number;
-                /** @description This account's share of the hotkey's total alpha-pool shares on this subnet (0..1), not a TAO amount. */
-                share_fraction: number;
-                /** @description This position's stake in the subnet named by the sibling `netuid`. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows, so this is always that subnet's alpha token (#2550). It is the per-row counterpart of `total_stake_alpha` above -- same denomination, kept under the on-chain column name deliberately (#8945). */
-                stake_tao: number;
+                provenance: components["schemas"]["AlphaQuantityProvenance"] | null;
+                /** @enum {string} */
+                quantity_status: "unqualified" | "qualified_snapshot";
+                /** @description Observed display share ratio; not an asset balance or share of a subnet's total holdings. */
+                share_fraction: number | null;
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported financial interpretation; always null. Neuron voting weight is not Alpha or TAO holdings.
+                 */
+                stake_tao: number | null;
             }[];
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             ss58: string;
-            /** @description Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure. */
-            total_stake_alpha: number;
+            /**
+             * @deprecated
+             * @description Deprecated cross-token aggregate; always null because different subnet Alpha tokens cannot be summed.
+             */
+            total_stake_alpha: number | null;
         };
         /** @description One account's Prometheus telemetry-serving footprint (#5703) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/prometheus. */
         AccountPrometheusArtifact: {
@@ -5805,23 +5857,32 @@ export interface components {
                     /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
                     emission_alpha: number;
                     netuid: number;
-                    /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO. */
-                    stake_alpha: number;
+                    /**
+                     * @deprecated
+                     * @description Deprecated unsupported financial quantity from neuron voting weight; always null.
+                     */
+                    stake_alpha: number | null;
                     uid: number;
+                    /** @description Observed effective neuron voting weight at this subnet capture, not native holdings. */
+                    voting_weight: number | null;
                 }[];
                 /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
                 total_emission_tao: number;
-                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
-                total_stake_tao: number;
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported financial quantity from neuron voting weight; always null.
+                 */
+                total_stake_tao: number | null;
                 uid_count: number;
                 validator_count: number;
             }[];
             block_number?: number | null;
             captured_at?: string | null;
             limit: number;
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             /** @enum {string} */
-            sort: "total_stake" | "total_emission" | "subnet_count" | "uid_count" | "validator_count" | "stake_dominance" | "last_active";
+            sort: "total_emission" | "subnet_count" | "uid_count" | "validator_count" | "last_active";
         };
         /** @description One account's StakeAdded/StakeRemoved staking-behavior scorecard (#5706) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/stake-flow. */
         AccountStakeFlowArtifact: {
@@ -6267,6 +6328,17 @@ export interface components {
             netuid?: number | null;
             table_filter?: string | null;
             updated_at?: string | null;
+        };
+        AlphaQuantityProvenance: {
+            block_hash: string;
+            block_number: number;
+            captured_at: string;
+            code_hash: string;
+            genesis_hash: string;
+            metadata_sha256: string;
+            /** @constant */
+            network: "finney";
+            spec_version: 454 | 478;
         };
         ApiIndexArtifact: {
             artifact_contracts: {
@@ -7119,12 +7191,14 @@ export interface components {
             /** @description Present ONLY on a decline. An empty subnets list WITHOUT this block is a measurement. */
             degraded?: {
                 /** @enum {string} */
-                reason: "pool_totals_unproven" | "unavailable";
+                reason: "runtime_positions_unqualified" | "unavailable";
             };
             limit: number | null;
             network: components["schemas"]["ChainHoldersNetwork"];
             positions_captured_at: string | null;
-            schema_version: number;
+            provenance: components["schemas"]["AlphaQuantityProvenance"] | null;
+            /** @constant */
+            schema_version: 2;
             sort: string;
             /** @description Subnets measured -- NOT the length of the subnets list when limit bites. */
             subnet_count: number | null;
@@ -7627,6 +7701,7 @@ export interface components {
         /** @description Network-wide emission-yield (return rate) card across every subnet's neurons. Aggregates are null on a cold store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/yield. */
         ChainYieldArtifact: {
             captured_at?: string | null;
+            degraded: components["schemas"]["HoldingsUnavailable"];
             distribution: {
                 count: number;
                 max: number;
@@ -7642,13 +7717,14 @@ export interface components {
             miner_yield?: number | null;
             network_yield: number | null;
             neuron_count: number;
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             /** @description How many subnets the aggregate spans. Root (netuid 0) is NOT one of them and is excluded from every figure below (#9040): root stake is TAO, not a subnet alpha token. */
             subnet_count: number;
-            /** @description Sum of every neuron's emission across every NON-ROOT subnet, alpha-denominated for the same reason as total_stake_alpha and excluding root for the same reason (#8803, #9040). Alpha/alpha keeps the *_yield ratios below dimensionally valid. */
-            total_emission_alpha?: number;
-            /** @description Sum of every neuron's stake across every NON-ROOT subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Root (netuid 0) is excluded because root stake is genuine TAO and would mix denominations into this sum (#9040). Use it as the denominator of the yields below, not as a TAO figure. */
-            total_stake_alpha?: number;
+            /** @description Deprecated cross-token emission sum; always null. Different subnet Alpha tokens cannot be added. */
+            total_emission_alpha: number | null;
+            /** @description Deprecated unsupported holdings aggregate; always null. */
+            total_stake_alpha: number | null;
             validator_count?: number;
             validator_yield?: number | null;
         };
@@ -7751,9 +7827,14 @@ export interface components {
         CompareValidatorsArtifact: {
             /** @description The optional subnet context the comparison was scoped to. */
             netuid: number | null;
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             validator_count: number;
             validators: {
+                /**
+                 * @deprecated
+                 * @description Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return.
+                 */
                 apy_estimate: number | null;
                 apy_estimate_eligible_subnet_count: number;
                 avg_validator_trust: number | null;
@@ -7790,18 +7871,27 @@ export interface components {
                     netuid: number;
                     rank: number | null;
                     registered_at_block: number | null;
-                    /** @description This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion. */
+                    /**
+                     * @deprecated
+                     * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+                     */
                     stake_alpha: number | null;
                     take: number | null;
                     trust: number | null;
                     uid: number;
                     validator_permit: boolean;
                     validator_trust: number | null;
+                    /** @description Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio. */
+                    voting_weight: number | null;
                 } | null;
                 subnet_count: number;
                 take: number | null;
                 total_emission_tao: number;
-                total_stake_tao: number;
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+                 */
+                total_stake_tao: number | null;
             }[];
         };
         /** @description One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column). */
@@ -9026,13 +9116,21 @@ export interface components {
             block_number: number | null;
             captured_at: string | null;
             limit: number;
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             /** @enum {string} */
-            sort: "avg_validator_trust" | "max_validator_trust" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count";
+            sort: "avg_validator_trust" | "max_validator_trust" | "subnet_count" | "total_emission" | "uid_count";
             validator_count: number;
             validators: {
-                /** @description The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly. */
-                alpha_stake_tao: number;
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+                 */
+                alpha_stake_tao: number | null;
+                /**
+                 * @deprecated
+                 * @description Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return.
+                 */
                 apy_estimate: number | null;
                 apy_estimate_eligible_subnet_count: number;
                 avg_validator_trust: number | null;
@@ -9086,23 +9184,35 @@ export interface components {
                  * @description Deprecated compatibility field; always null with realized_return_1w. No investment-return measurement window is available.
                  */
                 realized_return_1w_as_of: string | null;
-                root_stake_tao: number;
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+                 */
+                root_stake_tao: number | null;
                 stake_dominance: number | null;
                 subnet_count: number;
                 subnets: {
                     /** @description This row's emission on the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field. Renamed from `emission_tao` in #10514. */
                     emission_alpha: number;
                     netuid: number;
-                    /** @description This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514: the entry's own `total_stake_tao` IS priced TAO, and two fields sharing the `_tao` suffix while carrying different units is a trap no description undoes. Never summable across subnets -- the priced total already did that conversion. */
-                    stake_alpha: number;
+                    /**
+                     * @deprecated
+                     * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+                     */
+                    stake_alpha: number | null;
                     uid: number;
                     validator_trust: number | null;
+                    /** @description Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio. */
+                    voting_weight: number | null;
                 }[];
                 take: number | null;
                 /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
                 total_emission_tao: number;
-                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
-                total_stake_tao: number;
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+                 */
+                total_stake_tao: number | null;
                 uid_count: number;
             }[];
         };
@@ -9354,6 +9464,10 @@ export interface components {
                 };
             };
         };
+        HoldingsUnavailable: {
+            /** @constant */
+            reason: "holdings_unqualified";
+        };
         IndexerLagArtifact: {
             /** @description Blocks the distribution was computed over. Null only on a decline. */
             block_count: number | null;
@@ -9543,7 +9657,7 @@ export interface components {
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
-                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
+                /** @description Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield. */
                 stake_tao?: number | null;
                 /** @description Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
                 take?: number | null;
@@ -9588,7 +9702,7 @@ export interface components {
                 rank?: number | null;
                 registered_at_block?: number | null;
                 snapshot_date: string;
-                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
+                /** @description Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield. */
                 stake_tao?: number | null;
                 /** @description Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
                 take?: number | null;
@@ -11927,6 +12041,8 @@ export interface components {
         SubnetHolder: {
             /** @description ALPHA, not TAO. Within one subnet alpha is already a common unit, so there is no price conversion and none of its staleness -- multiply by the subnet's alpha_price_tao for TAO. */
             alpha: number;
+            /** @description Exact sum of runtime-qualified position rao for this holder within this subnet; the sibling alpha is a display approximation. */
+            alpha_rao: string;
             coldkey: string;
             /** @description Distinct hotkeys this `coldkey` holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses. */
             hotkey_count: number | null;
@@ -11946,7 +12062,9 @@ export interface components {
             netuid: number;
             /** @description When the positions ledger itself was last written, which advances on a different cadence than the pool totals. */
             positions_captured_at: string | null;
-            schema_version: number;
+            provenance: components["schemas"]["AlphaQuantityProvenance"] | null;
+            /** @constant */
+            schema_version: 2;
             total_alpha: number | null;
         };
         /** @description Concentration of a subnet's alpha, each rank summed over the top N of the FULL holder set rather than the returned page. */
@@ -11958,7 +12076,7 @@ export interface components {
         /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
         SubnetHoldersDegraded: {
             /** @enum {string} */
-            reason: "pool_totals_unproven" | "root_not_in_alpha_map" | "unavailable";
+            reason: "runtime_positions_unqualified" | "root_not_in_alpha_map" | "unavailable";
         };
         /** @description Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations. */
         SubnetHyperparametersArtifact: {
@@ -12254,7 +12372,7 @@ export interface components {
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
-                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
+                /** @description Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield. */
                 stake_tao?: number | null;
                 /** @description Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
                 take?: number | null;
@@ -13369,7 +13487,7 @@ export interface components {
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
-                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
+                /** @description Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield. */
                 stake_tao?: number | null;
                 /** @description Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
                 take?: number | null;
@@ -13505,6 +13623,7 @@ export interface components {
         SubnetYieldArtifact: {
             block_number: number | null;
             captured_at: string | null;
+            degraded: components["schemas"]["HoldingsUnavailable"];
             mean_yield: number | null;
             median_yield: number | null;
             miner_count: number;
@@ -13516,23 +13635,28 @@ export interface components {
                 hotkey: string | null;
                 /** @enum {string} */
                 role: "validator" | "miner";
-                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
-                stake_tao: number;
+                /** @description Deprecated unsupported native holdings amount; always null. */
+                stake_tao: number | null;
                 uid: number;
+                /** @description Effective voting weight; unavailable cells remain null. */
+                voting_weight: number | null;
                 vs_median: ("above" | "below" | "at") | null;
                 yield: number | null;
             }[];
             p25_yield: number | null;
             p75_yield: number | null;
             p90_yield: number | null;
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             subnet_yield: number | null;
             total_emission_alpha: number;
-            total_stake_alpha: number;
+            /** @description Deprecated unsupported holdings total; always null. */
+            total_stake_alpha: number | null;
             validator_count: number;
         };
         /** @description Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup. */
         SubnetYieldHistoryArtifact: {
+            degraded: components["schemas"]["HoldingsUnavailable"];
             netuid: number;
             point_count: number;
             points: {
@@ -13547,7 +13671,8 @@ export interface components {
                 validator_count?: number;
                 yield_count?: number;
             }[];
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
         };
@@ -13842,7 +13967,10 @@ export interface components {
         TopHoldersArtifact: {
             account_count: number;
             accounts: {
-                /** @description This account's delegated stake, valued in TAO. TAO-converted: each delegated position is multiplied by its own subnet's alpha_price_tao, taken from the latest daily subnet_snapshots row for that netuid, so cross-subnet alpha is never summed as if it were TAO (#8803). That table has a DAILY cadence, so the price can lag up to ~24h behind the live economics tier. A netuid whose latest snapshot carries no usable price is excluded from the sum rather than counted as zero. NULL on a net_flow_*-ranked page, which the live flow lane serves without holdings columns (#9469). */
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported native portfolio valuation; always null.
+                 */
                 delegated_tao: number | null;
                 /** @description Genuine free TAO from the System::Account chain-state scan. NULL when the tier that answered has no balance source for this row -- a page ranked by net_flow_* is served from the live flow lane, which carries no holdings columns at all (#9469). Null is never a zero balance: 0 is a measured zero. */
                 free_tao: number | null;
@@ -13855,15 +13983,19 @@ export interface components {
                 /** @description As net_flow_7d, over the trailing 90 days. */
                 net_flow_90d: number | null;
                 ss58: string;
-                /** @description free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort. NULL whenever either addend is null, rather than summing the half that is known -- a partial total would understate the account silently (#9469). */
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported native portfolio valuation; always null.
+                 */
                 total_tao: number | null;
             }[];
             /** @description How old THIS RANKING is: the newest last_updated across the accounts served, for the leg that backs the requested sort. A holdings-sorted page therefore reports its store refresh and a net_flow_*-sorted page its daily lakehouse scan -- one number for both would have to be wrong about one of them (#9632). Null when no row carries a usable stamp, which includes the cold/empty leaderboard. */
             captured_at?: string | null;
             limit: number;
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             /** @enum {string} */
-            sort: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
+            sort: "free_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
         };
         /** @description Present ONLY on a decline. An empty result WITHOUT this block is a measurement, not a decline. */
         UnavailableDegraded: {
@@ -13928,8 +14060,15 @@ export interface components {
             window?: string | null;
         };
         ValidatorDetailArtifact: {
-            /** @description The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly. */
-            alpha_stake_tao: number;
+            /**
+             * @deprecated
+             * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+             */
+            alpha_stake_tao: number | null;
+            /**
+             * @deprecated
+             * @description Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return.
+             */
             apy_estimate: number | null;
             apy_estimate_eligible_subnet_count: number;
             avg_validator_trust: number | null;
@@ -13982,8 +14121,13 @@ export interface components {
              * @description Deprecated compatibility field; always null with realized_return_1w. No investment-return measurement window is available.
              */
             realized_return_1w_as_of: string | null;
-            root_stake_tao: number;
-            schema_version: number;
+            /**
+             * @deprecated
+             * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+             */
+            root_stake_tao: number | null;
+            /** @constant */
+            schema_version: 2;
             subnet_count: number;
             /** @description Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet. */
             subnets: {
@@ -14002,19 +14146,27 @@ export interface components {
                 netuid: number;
                 rank: number | null;
                 registered_at_block: number | null;
-                /** @description This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion. */
+                /**
+                 * @deprecated
+                 * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+                 */
                 stake_alpha: number | null;
                 take: number | null;
                 trust: number | null;
                 uid: number;
                 validator_permit: boolean;
                 validator_trust: number | null;
+                /** @description Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio. */
+                voting_weight: number | null;
             }[];
             take: number | null;
             /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
             total_emission_tao: number;
-            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
-            total_stake_tao: number;
+            /**
+             * @deprecated
+             * @description Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.
+             */
+            total_stake_tao: number | null;
         };
         /** @description One subnet the ranking dropped, and why, so that a caller can tell an omitted subnet from an absent one without re-deriving the ranking. */
         ValidatorEconomicsExclusion: {
@@ -14080,21 +14232,30 @@ export interface components {
                 rewards_per_1000_alpha?: number | null;
                 rewards_per_1000_tao: number | null;
                 snapshot_date: string;
-                /** @description Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point. */
+                /**
+                 * @deprecated
+                 * @description Deprecated native asset interpretation; always null.
+                 */
                 stake_alpha?: number | null;
                 stake_share?: number | null;
                 subnet_count: number | null;
                 take?: number | null;
                 total_emission_tao: number | null;
-                /** @description TAO-priced at this point's OWN snapshot_date (#9051): each day's cross-subnet total converts each membership through that day's alpha_price_tao (root at 1:1), so the series is a true TAO-value history. A day-row with no matching price is excluded from that day's sum. */
+                /**
+                 * @deprecated
+                 * @description Deprecated holdings valuation from historical voting weight; always null.
+                 */
                 total_stake_tao: number | null;
                 uid?: number | null;
                 /** @description Whether the permit was held that day. The scoped series reports a lost permit rather than dropping the day, so 'lost the permit' stays distinguishable from 'no data'. */
                 validator_permit?: boolean | null;
                 /** @description Per-subnet facts, null unless the query scoped a netuid: a cross-subnet average of these is a number the chain never computes. */
                 validator_trust?: number | null;
+                /** @description Historical effective neuron voting weight for the scoped subnet, not a native balance. */
+                voting_weight?: number | null;
             }[];
-            schema_version: number;
+            /** @constant */
+            schema_version: 2;
             take_change_observable: boolean;
             take_last_changed_date: string | null;
             take_u16: number | null;
@@ -14144,7 +14305,11 @@ export interface components {
                 hotkeys: {
                     hotkey: string;
                     take: number | null;
-                    total_stake_tao: number;
+                    /**
+                     * @deprecated
+                     * @description Deprecated inferred holdings value; always null because voting weight is not native assets.
+                     */
+                    total_stake_tao: number | null;
                 }[];
                 identity_name: string | null;
                 membership_count: number;
@@ -14162,11 +14327,15 @@ export interface components {
                 take_max: number | null;
                 take_min: number | null;
                 total_emission_tao: number;
-                total_stake_tao: number;
+                /**
+                 * @deprecated
+                 * @description Deprecated inferred holdings value; always null because voting weight is not native assets.
+                 */
+                total_stake_tao: number | null;
                 uid_count: number;
             }[];
             /** @constant */
-            schema_version: 1;
+            schema_version: 2;
             validator_count: number;
         };
         /** @description How well the derived permit rule still reproduces the permits the chain actually granted. Published so a caller can see when the model has drifted rather than trusting a floor it no longer supports. */
@@ -21240,8 +21409,8 @@ export interface operations {
     accountsList: {
         parameters: {
             query?: {
-                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_stake. */
-                sort?: "total_stake" | "total_emission" | "subnet_count" | "uid_count" | "validator_count" | "stake_dominance" | "last_active";
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to subnet_count. */
+                sort?: "total_emission" | "subnet_count" | "uid_count" | "validator_count" | "last_active";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
@@ -21281,7 +21450,8 @@ export interface operations {
                      *                 "emission_alpha": 0.5,
                      *                 "netuid": 7,
                      *                 "stake_alpha": 0.5,
-                     *                 "uid": 1
+                     *                 "uid": 1,
+                     *                 "voting_weight": 0.5
                      *               }
                      *             ],
                      *             "total_emission_tao": 0.5,
@@ -21293,8 +21463,8 @@ export interface operations {
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "limit": 1,
-                     *         "schema_version": 1,
-                     *         "sort": "total_stake"
+                     *         "schema_version": 2,
+                     *         "sort": "total_emission"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -23168,10 +23338,11 @@ export interface operations {
                      *             "stake_alpha": 0.5,
                      *             "trust": 0.5,
                      *             "uid": 1,
+                     *             "voting_weight": 0.5,
                      *             "yield": 0.5
                      *           }
                      *         ],
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *         "stake_concentration": {
                      *           "entropy": 0.5,
@@ -23305,15 +23476,18 @@ export interface operations {
                      *         "position_count": 1,
                      *         "positions": [
                      *           {
+                     *             "alpha_rao": null,
                      *             "hotkey": "example",
                      *             "netuid": 7,
+                     *             "provenance": null,
+                     *             "quantity_status": "unqualified",
                      *             "share_fraction": 0.5,
-                     *             "stake_tao": 0.5
+                     *             "stake_tao": null
                      *           }
                      *         ],
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                     *         "total_stake_alpha": 0.5
+                     *         "total_stake_alpha": null
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -24348,6 +24522,7 @@ export interface operations {
                      *             "stake_tao": 0.5,
                      *             "trust": 0.5,
                      *             "uid": 1,
+                     *             "voting_weight": 0.5,
                      *             "yield": 0.5
                      *           }
                      *         ],
@@ -24763,7 +24938,7 @@ export interface operations {
                      *             }
                      *           ]
                      *         },
-                     *         "schema_version": 1
+                     *         "schema_version": 2
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -24845,8 +25020,8 @@ export interface operations {
     topHolders: {
         parameters: {
             query?: {
-                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_tao. */
-                sort?: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to free_tao. */
+                sort?: "free_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
@@ -24885,8 +25060,8 @@ export interface operations {
                      *         ],
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "limit": 1,
-                     *         "schema_version": 1,
-                     *         "sort": "total_tao"
+                     *         "schema_version": 2,
+                     *         "sort": "free_tao"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -29209,7 +29384,7 @@ export interface operations {
                      *       "data": {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "degraded": {
-                     *           "reason": "pool_totals_unproven"
+                     *           "reason": "runtime_positions_unqualified"
                      *         },
                      *         "limit": 1,
                      *         "network": {
@@ -29219,7 +29394,17 @@ export interface operations {
                      *           "subnets_with_single_holder": 1
                      *         },
                      *         "positions_captured_at": "2026-06-01T00:00:00.000Z",
-                     *         "schema_version": 1,
+                     *         "provenance": {
+                     *           "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "block_number": 5000000,
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "code_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "genesis_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "example",
+                     *           "network": "finney",
+                     *           "spec_version": 454
+                     *         },
+                     *         "schema_version": 2,
                      *         "sort": "example",
                      *         "subnet_count": 1,
                      *         "subnets": [
@@ -31875,6 +32060,9 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "degraded": {
+                     *           "reason": "holdings_unqualified"
+                     *         },
                      *         "distribution": {
                      *           "count": 1,
                      *           "max": 0.5,
@@ -31890,10 +32078,10 @@ export interface operations {
                      *         "miner_yield": 0.5,
                      *         "network_yield": 0.5,
                      *         "neuron_count": 1,
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "subnet_count": 1,
                      *         "total_emission_alpha": 0.5,
-                     *         "total_stake_alpha": 0.5,
+                     *         "total_stake_alpha": null,
                      *         "validator_count": 1,
                      *         "validator_yield": 0.5
                      *       },
@@ -32262,7 +32450,7 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "netuid": 7,
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "validator_count": 1,
                      *         "validators": [
                      *           {
@@ -32303,7 +32491,8 @@ export interface operations {
                      *               "trust": 0.5,
                      *               "uid": 1,
                      *               "validator_permit": false,
-                     *               "validator_trust": 0.5
+                     *               "validator_trust": 0.5,
+                     *               "voting_weight": 0.5
                      *             },
                      *             "subnet_count": 1,
                      *             "take": 0.5,
@@ -46449,12 +46638,13 @@ export interface operations {
                      *           "top5_share": 0.5
                      *         },
                      *         "degraded": {
-                     *           "reason": "pool_totals_unproven"
+                     *           "reason": "runtime_positions_unqualified"
                      *         },
                      *         "holder_count": 1,
                      *         "holders": [
                      *           {
                      *             "alpha": 0.5,
+                     *             "alpha_rao": "example",
                      *             "coldkey": "example",
                      *             "hotkey_count": 1,
                      *             "share_of_total": 0.5
@@ -46463,7 +46653,17 @@ export interface operations {
                      *         "limit": 1,
                      *         "netuid": 7,
                      *         "positions_captured_at": "2026-06-01T00:00:00.000Z",
-                     *         "schema_version": 1,
+                     *         "provenance": {
+                     *           "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "block_number": 5000000,
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "code_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "genesis_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "metadata_sha256": "example",
+                     *           "network": "finney",
+                     *           "spec_version": 454
+                     *         },
+                     *         "schema_version": 2,
                      *         "total_alpha": 0.5
                      *       },
                      *       "meta": {
@@ -52603,8 +52803,11 @@ export interface operations {
                      *       "data": {
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
-                     *         "mean_yield": 0.3,
-                     *         "median_yield": 0.3,
+                     *         "degraded": {
+                     *           "reason": "holdings_unqualified"
+                     *         },
+                     *         "mean_yield": null,
+                     *         "median_yield": null,
                      *         "miner_count": 1,
                      *         "netuid": 7,
                      *         "neuron_count": 2,
@@ -52612,29 +52815,31 @@ export interface operations {
                      *           {
                      *             "emission_tao": 2,
                      *             "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                     *             "role": "miner",
-                     *             "stake_tao": 5,
-                     *             "uid": 1,
-                     *             "vs_median": "above",
-                     *             "yield": 0.4
+                     *             "role": "validator",
+                     *             "stake_tao": null,
+                     *             "uid": 0,
+                     *             "voting_weight": 10,
+                     *             "vs_median": null,
+                     *             "yield": null
                      *           },
                      *           {
                      *             "emission_tao": 2,
                      *             "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                     *             "role": "validator",
-                     *             "stake_tao": 10,
-                     *             "uid": 0,
-                     *             "vs_median": "below",
-                     *             "yield": 0.2
+                     *             "role": "miner",
+                     *             "stake_tao": null,
+                     *             "uid": 1,
+                     *             "voting_weight": 5,
+                     *             "vs_median": null,
+                     *             "yield": null
                      *           }
                      *         ],
-                     *         "p25_yield": 0.2,
-                     *         "p75_yield": 0.4,
-                     *         "p90_yield": 0.4,
-                     *         "schema_version": 1,
-                     *         "subnet_yield": 0.266666667,
+                     *         "p25_yield": null,
+                     *         "p75_yield": null,
+                     *         "p90_yield": null,
+                     *         "schema_version": 2,
+                     *         "subnet_yield": null,
                      *         "total_emission_alpha": 4,
-                     *         "total_stake_alpha": 15,
+                     *         "total_stake_alpha": null,
                      *         "validator_count": 1
                      *       },
                      *       "meta": {
@@ -52751,6 +52956,9 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "reason": "holdings_unqualified"
+                     *         },
                      *         "netuid": 7,
                      *         "point_count": 1,
                      *         "points": [
@@ -52758,7 +52966,7 @@ export interface operations {
                      *             "snapshot_date": "example"
                      *           }
                      *         ],
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "window": "30d"
                      *       },
                      *       "meta": {
@@ -53520,7 +53728,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to subnet_count. */
-                sort?: "avg_validator_trust" | "max_validator_trust" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count";
+                sort?: "avg_validator_trust" | "max_validator_trust" | "subnet_count" | "total_emission" | "uid_count";
                 /** @description Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
@@ -53547,7 +53755,7 @@ export interface operations {
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "limit": 1,
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "sort": "avg_validator_trust",
                      *         "validator_count": 1,
                      *         "validators": [
@@ -53590,7 +53798,8 @@ export interface operations {
                      *                 "netuid": 7,
                      *                 "stake_alpha": 0.5,
                      *                 "uid": 1,
-                     *                 "validator_trust": 0.5
+                     *                 "validator_trust": 0.5,
+                     *                 "voting_weight": 0.5
                      *               }
                      *             ],
                      *             "take": 0.5,
@@ -53738,7 +53947,7 @@ export interface operations {
                      *         "realized_return_1w": 0.5,
                      *         "realized_return_1w_as_of": "example",
                      *         "root_stake_tao": 0.5,
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "subnet_count": 1,
                      *         "subnets": [
                      *           {
@@ -53760,7 +53969,8 @@ export interface operations {
                      *             "trust": 0.5,
                      *             "uid": 1,
                      *             "validator_permit": false,
-                     *             "validator_trust": 0.5
+                     *             "validator_trust": 0.5,
+                     *             "voting_weight": 0.5
                      *           }
                      *         ],
                      *         "take": 0.5,
@@ -53889,7 +54099,7 @@ export interface operations {
                      *             "total_stake_tao": 0.5
                      *           }
                      *         ],
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "take_change_observable": false,
                      *         "take_last_changed_date": "example",
                      *         "take_u16": 1,
@@ -54345,7 +54555,7 @@ export interface operations {
                      *             "uid_count": 1
                      *           }
                      *         ],
-                     *         "schema_version": 1,
+                     *         "schema_version": 2,
                      *         "validator_count": 1
                      *       },
                      *       "meta": {

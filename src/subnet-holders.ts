@@ -1,3 +1,9 @@
+import { alphaHolderCte } from "./alpha-holder-sql.ts";
+import {
+  loadAlphaQuantityCapture,
+  alphaQuantityProvenance,
+  type AlphaQuantityCapture,
+} from "./alpha-quantity.ts";
 import { round9 } from "./lib/rao.ts";
 // GET /api/v1/subnets/{netuid}/holders (#9557): who owns one subnet's alpha.
 //
@@ -43,10 +49,6 @@ import { round9 } from "./lib/rao.ts";
 //      rank -- distinct from a subnet that genuinely has no holders.
 
 import {
-  latestCompleteHotkeyAlphaPass,
-  mayPriceHotkeyAlpha,
-} from "./hotkey-alpha-completeness.ts";
-import {
   SUBNET_HOLDERS_LIMIT_DEFAULT,
   SUBNET_HOLDERS_LIMIT_MAX,
 } from "./route-limits.ts";
@@ -74,7 +76,7 @@ export const HOLDER_CONCENTRATION_RANKS = [5, 10, 20] as const;
 
 /** Why a ranking could not be produced, or null when one was. */
 export type SubnetHoldersDecline =
-  "root_not_in_alpha_map" | "pool_totals_unproven" | "unavailable";
+  "root_not_in_alpha_map" | "runtime_positions_unqualified" | "unavailable";
 
 export interface SubnetHoldersAggregate {
   holderCount: number | null;
@@ -85,6 +87,7 @@ export interface SubnetHoldersAggregate {
 }
 
 export interface SubnetHoldersRead {
+  capture?: AlphaQuantityCapture | null;
   rows: Row[];
   aggregate: SubnetHoldersAggregate | null;
   /** captured_at of the pool pass every row was valued against. */
@@ -100,18 +103,8 @@ export interface SubnetHoldersRead {
  * positions against totals read at different blocks, which is a silently
  * inconsistent sum rather than a merely stale one.
  */
-const holderCte = (alphaCapturedAt: number) =>
-  "holder AS (" +
-  "SELECT np.coldkey AS coldkey," +
-  " SUM(np.share_fraction * ha.total_alpha) AS alpha," +
-  " COUNT(DISTINCT np.hotkey) AS hotkey_count," +
-  " MAX(np.captured_at) AS positions_captured_at" +
-  " FROM nominator_positions np" +
-  " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
-  " AND ha.netuid = np.netuid" +
-  ` AND ha.captured_at = ${alphaCapturedAt}` +
-  " WHERE np.netuid = ?" +
-  " GROUP BY np.coldkey)";
+const holderCte = (capturedAt: number) =>
+  alphaHolderCte(capturedAt, "np.netuid=?");
 
 /**
  * The ranked page.
@@ -126,8 +119,8 @@ export function subnetHoldersRowsSql(
 ): string {
   return (
     `WITH ${holderCte(alphaCapturedAt)}` +
-    " SELECT coldkey, alpha, hotkey_count FROM holder" +
-    ` ORDER BY alpha DESC, coldkey ASC LIMIT ${limit}`
+    " SELECT coldkey, alpha, alpha_rao, hotkey_count FROM holder" +
+    ` ORDER BY alpha_key DESC, coldkey ASC LIMIT ${limit}`
   );
 }
 
@@ -141,7 +134,7 @@ export function subnetHoldersRowsSql(
 export function subnetHoldersAggregateSql(alphaCapturedAt: number): string {
   const tops = HOLDER_CONCENTRATION_RANKS.map(
     (n) =>
-      `(SELECT SUM(alpha) FROM (SELECT alpha FROM holder ORDER BY alpha DESC` +
+      `(SELECT SUM(alpha) FROM (SELECT alpha FROM holder ORDER BY alpha_key DESC` +
       ` LIMIT ${n})) AS top${n}_alpha`,
   );
   return (
@@ -177,25 +170,31 @@ export async function loadSubnetHolders(
   if (netuid === ROOT_NETUID) return declined("root_not_in_alpha_map");
   if (!db?.query) return declined("unavailable");
 
-  const alpha = await latestCompleteHotkeyAlphaPass(db);
-  if (!mayPriceHotkeyAlpha(alpha)) {
+  const alpha = await loadAlphaQuantityCapture(db);
+  if (!alpha) {
     // "The table is missing" and "no pass has completed" are the same fact to a
     // caller -- the pool totals are not proven -- so `unavailable` is reported
     // only for the binding itself, which the caller can act on differently.
-    return declined(
-      alpha.reason === "unavailable" ? "unavailable" : "pool_totals_unproven",
-    );
+    return declined("runtime_positions_unqualified");
   }
 
   try {
     const [rowsRes, aggRes] = await Promise.all([
-      db.query!<Row>(subnetHoldersRowsSql(alpha.capturedAt, limit), [netuid]),
-      db.first!(subnetHoldersAggregateSql(alpha.capturedAt), [netuid]),
+      db.query!<Row>(subnetHoldersRowsSql(alpha.captured_at, limit), [netuid]),
+      db.first!(subnetHoldersAggregateSql(alpha.captured_at), [netuid]),
     ]);
+    const after = await loadAlphaQuantityCapture(db);
+    if (
+      !after ||
+      after.captured_at !== alpha.captured_at ||
+      after.block_hash !== alpha.block_hash
+    )
+      return declined("runtime_positions_unqualified");
     return {
       rows: rowsRes,
       aggregate: readAggregate(aggRes as Row | null),
-      capturedAt: alpha.capturedAt,
+      capturedAt: alpha.captured_at,
+      capture: alpha,
       decline: null,
     };
   } catch {
@@ -232,11 +231,17 @@ export function buildSubnetHolders(
   { limit }: { limit?: number } = {},
 ): Row {
   const base = {
-    schema_version: 1,
+    schema_version: 2,
+    provenance: read.capture ? alphaQuantityProvenance(read.capture) : null,
     netuid,
     limit: limit ?? null,
   };
-  if (read.decline) {
+  const decline =
+    read.decline ??
+    (!read.capture || read.capture.captured_at !== read.capturedAt
+      ? "runtime_positions_unqualified"
+      : null);
+  if (decline) {
     return {
       ...base,
       holder_count: null,
@@ -245,7 +250,7 @@ export function buildSubnetHolders(
       captured_at: null,
       positions_captured_at: null,
       holders: [],
-      degraded: { reason: read.decline },
+      degraded: { reason: decline },
     };
   }
 
@@ -254,6 +259,7 @@ export function buildSubnetHolders(
     .map((r) => ({
       coldkey: typeof r?.coldkey === "string" ? r.coldkey : null,
       alpha: nonNegativeOrNull(r?.alpha),
+      alpha_rao: typeof r?.alpha_rao === "string" ? r.alpha_rao : null,
       hotkey_count: nonNegativeOrNull(r?.hotkey_count),
     }))
     .filter((h) => h.coldkey !== null && h.alpha !== null)

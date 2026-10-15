@@ -72,7 +72,7 @@ export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 type Row = Record<string, unknown>;
 
 export const TOP_HOLDERS_SORTS = TOP_HOLDERS_SORT_VALUES;
-export const DEFAULT_TOP_HOLDERS_SORT = "total_tao";
+export const DEFAULT_TOP_HOLDERS_SORT = "free_tao";
 
 function toIso(ms: unknown): string | null {
   if (ms == null) return null;
@@ -100,7 +100,8 @@ function nonNegativeOrNull(value: unknown): number | null {
 // Missing flow data must stay null (never coerce to 0) so sort keys can
 // distinguish "confirmed zero movers" from "no flow row in the window".
 function numberOrNullSigned(value: unknown): number | null {
-  if (value == null) return null;
+  if (value == null || (typeof value === "string" && value.trim() === ""))
+    return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -148,7 +149,7 @@ function rowStamp(row: Row, stampKey: string): unknown {
 
 function buildTopHoldersEntry(row: Row, stampKey: string): TopHoldersEntry {
   const freeTao = nonNegativeOrNull(row?.free_tao);
-  const delegatedTao = nonNegativeOrNull(row?.delegated_tao);
+  const delegatedTao = null;
   return {
     ss58: row.ss58 as string,
     free_tao: freeTao,
@@ -156,8 +157,7 @@ function buildTopHoldersEntry(row: Row, stampKey: string): TopHoldersEntry {
     // Only a sum of two MEASURED addends is a total. If either side is absent
     // the sum would silently understate the account by the missing side, and
     // "5,448,995 TAO free" vs "0" is not a rounding difference.
-    total_tao:
-      freeTao === null || delegatedTao === null ? null : freeTao + delegatedTao,
+    total_tao: null,
     net_flow_7d: numberOrNullSigned(row?.net_flow_7d),
     net_flow_30d: numberOrNullSigned(row?.net_flow_30d),
     net_flow_90d: numberOrNullSigned(row?.net_flow_90d),
@@ -230,7 +230,7 @@ export function buildTopHoldersList(
     .sort((a, b) => compareTopHoldersSort(a, b, normalizedSort));
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     sort: normalizedSort,
     limit: normalizedLimit,
     captured_at: toIso(latestCapturedAt),

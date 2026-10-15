@@ -11,9 +11,7 @@ import type { ChainNetworkId } from "./chain-network.ts";
 import { loadNativeTopHoldersFlow } from "./top-holders-native-flow.ts";
 import { buildTopHoldersList } from "./top-holders.ts";
 import {
-  TOP_HOLDERS_DELEGATED_SORT,
   TOP_HOLDERS_FREE_SORT,
-  TOP_HOLDERS_TOTAL_SORT,
   topHoldersHoldings,
   type HoldingsLeg,
 } from "./top-holders-holdings.ts";
@@ -44,11 +42,7 @@ export const TOP_HOLDERS_FLOW_SORTS = [
  * actually backs is a property of the WRITTEN artifact, not of this module --
  * see `sorts` in the body the lane emits.
  */
-export const TOP_HOLDERS_HOLDINGS_SORTS = [
-  TOP_HOLDERS_FREE_SORT,
-  TOP_HOLDERS_DELEGATED_SORT,
-  TOP_HOLDERS_TOTAL_SORT,
-];
+export const TOP_HOLDERS_HOLDINGS_SORTS = [TOP_HOLDERS_FREE_SORT];
 
 /** Sort key -> lookback in days. The key IS the column the artifact carries,
  * so a new window is one entry here plus one entry in TOP_HOLDERS_SORTS. */

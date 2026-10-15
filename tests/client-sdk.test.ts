@@ -25,6 +25,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  expect("clock" in globalThis.setTimeout).toBe(false);
 });
 
 describe("metagraphedFetch", () => {
@@ -292,6 +293,10 @@ describe("createMetagraphedClient", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
     } finally {
+      // Restore the spy while its fake clock is still installed. Restoring it
+      // after useRealTimers reinstalls the captured fake setTimeout while
+      // Vitest reports real timers, hanging later shared-registry retries.
+      vi.restoreAllMocks();
       vi.useRealTimers();
     }
   });

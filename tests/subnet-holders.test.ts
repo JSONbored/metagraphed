@@ -18,10 +18,15 @@
 // rank the full set or they do not, and only a database can answer that.
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import fs from "node:fs";
-import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import {
+  installAlphaQuantitySchema,
+  seedSyntheticAlphaPass,
+  syntheticAlphaCapture,
+  syntheticAlphaPosition,
+  insertSyntheticAlphaPosition,
+} from "./helpers/alpha-quantity-fixture.ts";
 
 // One store since #10179: the ROUTE/GraphQL/MCP surfaces reach it through
 // src/read-store.ts, which builds `new Client(...)` itself -- there is no
@@ -55,22 +60,9 @@ import type { Row } from "./row-type.ts";
 
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
-const MIGRATIONS = [
-  "0011_nominator_positions.sql",
-  "0019_hotkey_alpha.sql",
-  "0021_hotkey_alpha_passes.sql",
-  "0022_nominator_positions_hotkey_netuid.sql",
-  "0023_nominator_positions_netuid.sql",
-].map((file) =>
-  fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema", file),
-    "utf8",
-  ),
-);
-
 const NETUID = 74;
 const PASS = 1_785_900_000_000;
-const POSITIONS_AT = 1_785_953_674_407;
+const POSITIONS_AT = PASS;
 
 /** Deterministic, distinguishable ss58-shaped keys. */
 const ck = (n: number) => `5Coldkey${String(n).padStart(40, "0")}`;
@@ -102,13 +94,10 @@ function env(overrides: Record<string, unknown> = {}): Env {
 }
 
 function completePass(capturedAt = PASS) {
-  db.prepare(
-    `INSERT INTO hotkey_alpha_passes
-       (captured_at, expected_rows, received_rows, completed_at)
-     VALUES (?, ?, ?, ?)`,
-  ).run(capturedAt, 3, 3, capturedAt + 1000);
+  return seedSyntheticAlphaPass(db, capturedAt);
 }
 
+/** Legacy pool totals are decoys: exact quantities never derive from them. */
 function pool(hotkey: string, totalAlpha: number, capturedAt = PASS) {
   db.prepare(
     `INSERT INTO hotkey_alpha (hotkey, netuid, total_alpha, captured_at)
@@ -119,29 +108,35 @@ function pool(hotkey: string, totalAlpha: number, capturedAt = PASS) {
 function position(
   coldkey: string,
   hotkey: string,
-  shareFraction: number,
+  alpha: number,
   netuid = NETUID,
+  capturedAt = PASS,
 ) {
-  db.prepare(
-    `INSERT INTO nominator_positions
-       (coldkey, hotkey, netuid, share_fraction, captured_at)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(coldkey, hotkey, netuid, shareFraction, POSITIONS_AT);
+  insertSyntheticAlphaPosition(
+    db,
+    syntheticAlphaPosition(
+      coldkey,
+      hotkey,
+      netuid,
+      String(alpha * 1_000_000_000),
+      capturedAt,
+    ),
+  );
 }
 
 /**
- * Five holders on one hotkey pool of 1,000 alpha, deliberately NOT in insert
+ * Five synthetic exact quantities on one hotkey, deliberately NOT in insert
  * order: 250 / 200 / 150 / 100 / 50. Any ranking that leans on row order rather
  * than on `alpha` gets a different answer.
  */
 function fiveHolders() {
   completePass();
   pool(hk(1), 1000);
-  position(ck(3), hk(1), 0.15);
-  position(ck(1), hk(1), 0.25);
-  position(ck(5), hk(1), 0.05);
-  position(ck(2), hk(1), 0.2);
-  position(ck(4), hk(1), 0.1);
+  position(ck(3), hk(1), 150);
+  position(ck(1), hk(1), 250);
+  position(ck(5), hk(1), 50);
+  position(ck(2), hk(1), 200);
+  position(ck(4), hk(1), 100);
 }
 
 async function assertValidComponent(
@@ -180,7 +175,7 @@ async function body(res: Response): Promise<Row> {
 
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
-  for (const schema of MIGRATIONS) db.exec(schema);
+  installAlphaQuantitySchema(db);
   pg.control.queries.length = 0;
   pg.control.answers = [];
   pg.control.rows = null;
@@ -190,7 +185,7 @@ beforeEach(() => {
 });
 
 describe("loadSubnetHolders against real SQLite", () => {
-  test("ranks coldkeys by alpha, valued against the proven pool pass", async () => {
+  test("ranks coldkeys by exact alpha rao in one qualified snapshot", async () => {
     fiveHolders();
     const read = await loadSubnetHolders(storeHandle(), NETUID, { limit: 3 });
     assert.equal(read.decline, null);
@@ -207,6 +202,53 @@ describe("loadSubnetHolders against real SQLite", () => {
     assert.equal(read.aggregate?.holderCount, 5);
     assert.equal(read.aggregate?.totalAlpha, 750);
     assert.equal(read.aggregate?.positionsCapturedAt, POSITIONS_AT);
+    assert.deepEqual(
+      read.rows.map((r) => r.alpha_rao),
+      ["250000000000", "200000000000", "150000000000"],
+    );
+    const card = buildSubnetHolders(read, NETUID);
+    assert.equal((card.provenance as Row).block_hash, read.capture?.block_hash);
+    assert.equal(
+      (card.provenance as Row).metadata_sha256,
+      read.capture?.metadata_sha256,
+    );
+    for (const holder of card.holders as Row[]) {
+      assert.equal("stake_tao" in holder, false);
+      assert.equal("apy_estimate" in holder, false);
+    }
+  });
+
+  test("exact adjacent rao rank correctly when Number display values coincide", async () => {
+    completePass();
+    for (const [coldkey, hotkey, alphaRao] of [
+      [ck(1), hk(1), "18446744073709551614"],
+      [ck(9), hk(9), "18446744073709551615"],
+    ])
+      insertSyntheticAlphaPosition(
+        db,
+        syntheticAlphaPosition(coldkey, hotkey, NETUID, alphaRao, PASS),
+      );
+    const read = await loadSubnetHolders(storeHandle(), NETUID);
+    assert.deepEqual(
+      read.rows.map((r) => [r.coldkey, r.alpha_rao]),
+      [
+        [ck(9), "18446744073709551615"],
+        [ck(1), "18446744073709551614"],
+      ],
+    );
+    assert.equal(read.rows[0].alpha, read.rows[1].alpha);
+  });
+
+  test("a selected runtime 478 snapshot carries its own exact provenance", async () => {
+    const capture = seedSyntheticAlphaPass(db, PASS, { spec_version: 478 });
+    position(ck(1), hk(1), 250);
+    const read = await loadSubnetHolders(storeHandle(), NETUID);
+    assert.equal(read.decline, null);
+    assert.equal(read.capture?.spec_version, 478);
+    assert.equal(
+      (buildSubnetHolders(read, NETUID).provenance as Row).metadata_sha256,
+      capture.metadata_sha256,
+    );
   });
 
   test("aggregates rank the FULL holder set, not the returned page", async () => {
@@ -226,8 +268,8 @@ describe("loadSubnetHolders against real SQLite", () => {
     completePass();
     pool(hk(1), 100);
     pool(hk(2), 100);
-    position(ck(1), hk(1), 0.5);
-    position(ck(1), hk(2), 0.25);
+    position(ck(1), hk(1), 50);
+    position(ck(1), hk(2), 25);
     const read = await loadSubnetHolders(storeHandle(), NETUID);
     assert.deepEqual(
       read.rows.map((r) => [r.coldkey, r.alpha, r.hotkey_count]),
@@ -238,8 +280,8 @@ describe("loadSubnetHolders against real SQLite", () => {
   test("excludes positions on other subnets", async () => {
     completePass();
     pool(hk(1), 1000);
-    position(ck(1), hk(1), 0.25);
-    position(ck(2), hk(1), 0.5, NETUID + 1);
+    position(ck(1), hk(1), 250);
+    position(ck(2), hk(1), 500, NETUID + 1);
     const read = await loadSubnetHolders(storeHandle(), NETUID);
     assert.deepEqual(
       read.rows.map((r) => r.coldkey),
@@ -248,14 +290,13 @@ describe("loadSubnetHolders against real SQLite", () => {
     assert.equal(read.aggregate?.holderCount, 1);
   });
 
-  test("excludes pool totals from a different pass stamp", async () => {
+  test("excludes exact positions from a different capture", async () => {
     completePass();
     pool(hk(1), 1000);
-    // A newer, UNPROVEN pass for a second hotkey. Mixing stamps would value one
-    // subnet's holders against totals read at two different blocks.
+    // Even exact-looking rows from a different capture cannot join this ranking.
     pool(hk(2), 500, PASS + 5000);
-    position(ck(1), hk(1), 0.25);
-    position(ck(2), hk(2), 0.5);
+    position(ck(1), hk(1), 250);
+    position(ck(2), hk(2), 250, NETUID, PASS + 5000);
     const read = await loadSubnetHolders(storeHandle(), NETUID);
     assert.deepEqual(
       read.rows.map((r) => [r.coldkey, r.alpha]),
@@ -275,6 +316,38 @@ describe("loadSubnetHolders against real SQLite", () => {
 });
 
 describe("loadSubnetHolders declines", () => {
+  test("the latest canonical pass cannot borrow an older pass's retained metadata", async () => {
+    fiveHolders();
+    const newest = seedSyntheticAlphaPass(db, PASS + 5000, {
+      spec_version: 478,
+      block_number: 9_000_001,
+    });
+    // Simulate a damaged retained metadata owner, preserving both selected passes.
+    db.exec("PRAGMA foreign_keys=OFF");
+    db.prepare("DELETE FROM alpha_runtime_metadata WHERE sha256=?").run(
+      newest.metadata_sha256,
+    );
+    db.exec("PRAGMA foreign_keys=ON");
+    const read = await loadSubnetHolders(storeHandle(), NETUID);
+    assert.equal(read.decline, "runtime_positions_unqualified");
+    assert.deepEqual(read.rows, []);
+    assert.equal(buildSubnetHolders(read, NETUID).holder_count, null);
+  });
+
+  test("completed legacy pool totals never qualify a share-only position", async () => {
+    pool(hk(1), 1000);
+    db.prepare(`INSERT INTO hotkey_alpha_passes VALUES (?,1,1,?)`).run(
+      PASS,
+      PASS + 1,
+    );
+    db.prepare(
+      `INSERT INTO nominator_positions
+      (coldkey,hotkey,netuid,share_fraction,captured_at) VALUES (?,?,?,?,?)`,
+    ).run(ck(1), hk(1), NETUID, 0.25, PASS);
+    const read = await loadSubnetHolders(storeHandle(), NETUID);
+    assert.equal(read.decline, "runtime_positions_unqualified");
+    assert.equal(buildSubnetHolders(read, NETUID).total_alpha, null);
+  });
   test("root declines before the binding is even consulted", async () => {
     const read = await loadSubnetHolders(null, ROOT_NETUID);
     assert.equal(read.decline, "root_not_in_alpha_map");
@@ -303,31 +376,31 @@ describe("loadSubnetHolders declines", () => {
   test("no complete pass declines rather than ranking a partial ledger", async () => {
     // Rows exist and would rank perfectly well -- that is exactly the danger.
     pool(hk(1), 1000);
-    position(ck(1), hk(1), 0.25);
+    position(ck(1), hk(1), 250);
     const read = await loadSubnetHolders(storeHandle(), NETUID);
-    assert.equal(read.decline, "pool_totals_unproven");
+    assert.equal(read.decline, "runtime_positions_unqualified");
     assert.deepEqual(read.rows, []);
   });
 
   test("an in-flight pass is not a complete one", async () => {
+    completePass();
     db.prepare(
-      `INSERT INTO hotkey_alpha_passes
-         (captured_at, expected_rows, received_rows, completed_at)
-       VALUES (?, ?, ?, NULL)`,
-    ).run(PASS, 3, 1);
+      `UPDATE alpha_snapshot_passes SET completed_at=NULL,
+      expected_rows=3,received_rows=1,received_chunks=0 WHERE captured_at=?`,
+    ).run(PASS);
     pool(hk(1), 1000);
-    position(ck(1), hk(1), 0.25);
+    position(ck(1), hk(1), 250);
     assert.equal(
       (await loadSubnetHolders(storeHandle(), NETUID)).decline,
-      "pool_totals_unproven",
+      "runtime_positions_unqualified",
     );
   });
 
-  test("a missing passes table is unavailable, not a silent zero", async () => {
-    db.exec("DROP TABLE hotkey_alpha_passes");
+  test("a missing quantity passes table is unqualified, not a silent zero", async () => {
+    db.exec("DROP TABLE alpha_snapshot_passes");
     assert.equal(
       (await loadSubnetHolders(storeHandle(), NETUID)).decline,
-      "unavailable",
+      "runtime_positions_unqualified",
     );
   });
 
@@ -360,9 +433,12 @@ describe("loadSubnetHolders declines", () => {
 describe("the SQL states its own contract", () => {
   test("rows are scoped to the pass, ordered by alpha, and capped", () => {
     const sql = subnetHoldersRowsSql(PASS, 7);
-    assert.match(sql, new RegExp(`ha\\.captured_at = ${PASS}`));
-    assert.match(sql, /WHERE np\.netuid = \?/);
-    assert.match(sql, /ORDER BY alpha DESC, coldkey ASC LIMIT 7/);
+    assert.match(sql, new RegExp(`np\\.captured_at=${PASS}`));
+    assert.match(sql, /np\.source='alpha'/);
+    assert.match(sql, /np\.alpha_rao/);
+    assert.doesNotMatch(sql, /hotkey_alpha|share_fraction/);
+    assert.match(sql, /np\.netuid=\?/);
+    assert.match(sql, /ORDER BY alpha_key DESC, coldkey ASC LIMIT 7/);
   });
 
   test("every concentration rank is a LIMIT over the full holder set", () => {
@@ -371,7 +447,7 @@ describe("the SQL states its own contract", () => {
       assert.match(
         sql,
         new RegExp(
-          `SELECT SUM\\(alpha\\) FROM \\(SELECT alpha FROM holder ORDER BY alpha DESC LIMIT ${n}\\)`,
+          `SELECT SUM\\(alpha\\) FROM \\(SELECT alpha FROM holder ORDER BY alpha_key DESC LIMIT ${n}\\)`,
         ),
       );
     }
@@ -388,17 +464,42 @@ describe("buildSubnetHolders", () => {
   const read = (over: Partial<SubnetHoldersRead> = {}): SubnetHoldersRead => ({
     rows: [],
     aggregate: null,
-    capturedAt: null,
+    capturedAt: PASS,
+    capture: syntheticAlphaCapture(PASS, {
+      expected_rows: over.rows?.length ?? 0,
+      received_rows: over.rows?.length ?? 0,
+    }),
     decline: null,
     ...over,
+  });
+
+  test("a missing or mismatched capture cannot authorize a pure read fixture", () => {
+    for (const capture of [null, syntheticAlphaCapture(PASS + 1)]) {
+      const card = buildSubnetHolders(read({ capture }), NETUID);
+      assert.deepEqual(card.degraded, {
+        reason: "runtime_positions_unqualified",
+      });
+      assert.equal(card.holder_count, null);
+      assert.deepEqual(card.holders, []);
+    }
   });
 
   test("shares are taken over the subnet total, not the page", () => {
     const card = buildSubnetHolders(
       read({
         rows: [
-          { coldkey: ck(1), alpha: 250, hotkey_count: 2 },
-          { coldkey: ck(2), alpha: 200, hotkey_count: 1 },
+          {
+            coldkey: ck(1),
+            alpha: 250,
+            alpha_rao: "250000000000",
+            hotkey_count: 2,
+          },
+          {
+            coldkey: ck(2),
+            alpha: 200,
+            alpha_rao: "200000000000",
+            hotkey_count: 1,
+          },
         ],
         aggregate: {
           holderCount: 5,
@@ -435,7 +536,7 @@ describe("buildSubnetHolders", () => {
   test("a zero total yields null shares, never zero or Infinity", () => {
     const card = buildSubnetHolders(
       read({
-        rows: [{ coldkey: ck(1), alpha: 0, hotkey_count: 1 }],
+        rows: [{ coldkey: ck(1), alpha: 0, alpha_rao: "0", hotkey_count: 1 }],
         aggregate: {
           holderCount: 1,
           totalAlpha: 0,
@@ -466,11 +567,21 @@ describe("buildSubnetHolders", () => {
     const card = buildSubnetHolders(
       read({
         rows: [
-          { coldkey: ck(1), alpha: 10, hotkey_count: 1 },
-          { coldkey: 42, alpha: 10, hotkey_count: 1 },
+          {
+            coldkey: ck(1),
+            alpha: 10,
+            alpha_rao: "10000000000",
+            hotkey_count: 1,
+          },
+          { coldkey: 42, alpha: 10, alpha_rao: "10000000000", hotkey_count: 1 },
           { coldkey: ck(2), alpha: null, hotkey_count: 1 },
           { coldkey: ck(3), alpha: -5, hotkey_count: 1 },
-          { coldkey: ck(4), alpha: 5, hotkey_count: null },
+          {
+            coldkey: ck(4),
+            alpha: 5,
+            alpha_rao: "5000000000",
+            hotkey_count: null,
+          },
         ],
         aggregate: {
           holderCount: 5,
@@ -497,7 +608,7 @@ describe("buildSubnetHolders", () => {
   });
 
   test.each([
-    "pool_totals_unproven",
+    "runtime_positions_unqualified",
     "root_not_in_alpha_map",
     "unavailable",
   ] as const)("a %s decline nulls every count", (reason) => {
@@ -531,7 +642,16 @@ describe("buildSubnetHolders", () => {
     // failure mode if it guessed instead would be a zero holder_count on a
     // subnet it never counted.
     const card = buildSubnetHolders(
-      read({ rows: [{ coldkey: ck(1), alpha: 10, hotkey_count: 1 }] }),
+      read({
+        rows: [
+          {
+            coldkey: ck(1),
+            alpha: 10,
+            alpha_rao: "10000000000",
+            hotkey_count: 1,
+          },
+        ],
+      }),
       NETUID,
     );
     assert.equal(card.holder_count, null);
@@ -607,7 +727,9 @@ describe("GET /api/v1/subnets/{netuid}/holders", () => {
   test("a decline is a 200 with a stated reason, never a 404", async () => {
     const data = await body(await get(`/api/v1/subnets/${NETUID}/holders`));
     assert.deepEqual(data.holders, []);
-    assert.deepEqual(data.degraded, { reason: "pool_totals_unproven" });
+    assert.deepEqual(data.degraded, {
+      reason: "runtime_positions_unqualified",
+    });
     assert.equal(data.holder_count, null);
     await assertValidComponent("SubnetHoldersArtifact", data);
   });
@@ -675,6 +797,10 @@ describe("get_subnet_holders (MCP)", () => {
     // and a client cannot be told different things about the same subnet.
     assert.equal(card.holder_count, 5);
     await assertValidComponent("SubnetHoldersArtifact", card);
+    assert.deepEqual(
+      card,
+      await body(await get(`/api/v1/subnets/${NETUID}/holders?limit=3`)),
+    );
   });
 
   test("an absent limit uses the shared default", async () => {
@@ -699,7 +825,9 @@ describe("get_subnet_holders (MCP)", () => {
   test("declines carry the reason a model must read before concluding zero", async () => {
     const card = await call({ netuid: NETUID });
     assert.deepEqual(card.holders, []);
-    assert.deepEqual(card.degraded, { reason: "pool_totals_unproven" });
+    assert.deepEqual(card.degraded, {
+      reason: "runtime_positions_unqualified",
+    });
     assert.equal(card.holder_count, null);
   });
 

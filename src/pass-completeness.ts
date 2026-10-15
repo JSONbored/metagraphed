@@ -1,4 +1,5 @@
 import type { OptionalRowReader } from "./read-store.ts";
+import type { SyncDelivery } from "./sync-delivery-receipt.ts";
 // "Did this lane's whole scan arrive?" — one implementation (metagraphed-infra#346).
 //
 // THE QUESTION A ROW COUNT CANNOT ANSWER. `ORDER BY … LIMIT n` over a partial
@@ -147,6 +148,7 @@ export interface PassTallyInput {
   expectedRows: number;
   receivedRows: number;
   nowMs: number;
+  delivery?: SyncDelivery;
 }
 
 // passTallyStatement retired here (#10909): the D1-era statement builder's

@@ -7,6 +7,7 @@ import {
   computeUnstakeAlphaCandidate,
   resolveStakeMaxRao,
   resolveUnstakeMaxAmountInput,
+  resolveUnstakeMaxSnapshot,
   isMaxUnavailableForNetuid,
   buildStakeCallParams,
   resolveUnstakeValidationAmountRao,
@@ -122,30 +123,55 @@ describe("resolveUnstakeMaxAmountInput", () => {
     hotkey: HOTKEY,
     netuid: 4,
     share_fraction: 0.5,
-    stake_tao: 12.5,
+    stake_tao: null,
+    alpha_rao: "6250000000",
+    quantity_status: "qualified_snapshot",
+    provenance: {
+      network: "finney",
+      captured_at: "2026-10-13T00:00:00Z",
+      block_number: 9000000,
+      block_hash: "0x" + "a".repeat(64),
+      genesis_hash: "0x" + "b".repeat(64),
+      spec_version: 454,
+      code_hash: "0x" + "c".repeat(64),
+      metadata_sha256: "d".repeat(64),
+    },
   };
-
-  it("returns null when there's no position on record", () => {
-    expect(resolveUnstakeMaxAmountInput(null, "tao", 2)).toBeNull();
-  });
-
-  it("returns the position's TAO figure, rounded to 9 decimals, in TAO mode", () => {
+  it("keeps Alpha exact and labels a price-based TAO candidate", () => {
     expect(resolveUnstakeMaxAmountInput(position, "tao", 2)).toBe("12.500000000");
-  });
-
-  it("rounds an over-precise server float to 9 decimals rather than passing it through raw", () => {
-    // A real regression: a server-computed stake_tao (share_fraction * live
-    // stake) routinely carries more than 9 fractional digits, and the raw
-    // float->string would later crash taoToRao's strict parse if fed
-    // straight through unrounded.
-    const overPrecise: AccountPosition = { ...position, stake_tao: 4.997553120472154 };
-    expect(resolveUnstakeMaxAmountInput(overPrecise, "tao", 2)).toBe("4.997553120");
-  });
-
-  it("converts through computeUnstakeAlphaCandidate's own price estimate in alpha mode", () => {
-    expect(resolveUnstakeMaxAmountInput(position, "alpha", 2)).toBe(
-      computeUnstakeAlphaCandidate("12.5", 2),
+    expect(resolveUnstakeMaxAmountInput(position, "alpha", NaN)).toBe("6.25");
+    expect(resolveUnstakeMaxAmountInput({ ...position, alpha_rao: "1" }, "alpha", 2)).toBe(
+      "0.000000001",
     );
+    expect(resolveUnstakeMaxAmountInput({ ...position, alpha_rao: "0" }, "alpha", 2)).toBe("0");
+  });
+  it("uses the selected position capture and never invents a missing price", () => {
+    const selected = {
+      ...position,
+      provenance: { ...position.provenance!, captured_at: "2026-10-01T00:00:00Z" },
+    };
+    const response = {
+      captured_at: "2026-10-13T00:00:00Z",
+      positions: [selected, { ...position, hotkey: "other" }],
+    };
+    const result = resolveUnstakeMaxSnapshot(response.positions[0], "tao", null);
+    expect(result).toEqual({ amountInput: null, capturedAt: "2026-10-01T00:00:00Z" });
+    expect(resolveUnstakeMaxSnapshot(selected, "alpha", null).amountInput).toBe("6.25");
+  });
+
+  it("withholds unqualified, Root, malformed and overflowing inputs", () => {
+    expect(resolveUnstakeMaxAmountInput(null, "tao", 2)).toBeNull();
+    for (const bad of [
+      { quantity_status: "unqualified" as const },
+      { netuid: 0 },
+      { netuid: -1 },
+      { provenance: null },
+      { alpha_rao: "18446744073709551616" },
+      { alpha_rao: "01" },
+    ])
+      expect(resolveUnstakeMaxAmountInput({ ...position, ...bad }, "alpha", 2)).toBeNull();
+    for (const price of [null, undefined, NaN, Infinity, 0, -1, 1e300])
+      expect(resolveUnstakeMaxAmountInput(position, "tao", price)).toBeNull();
   });
 });
 

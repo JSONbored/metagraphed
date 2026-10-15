@@ -13,6 +13,8 @@ import {
   tryDataApiTier,
 } from "../workers/data-api-tier.ts";
 import { mockEnv, type AnyFn } from "./row-type.ts";
+import { buildNominatorPositions } from "../src/validator-nominator-positions.ts";
+import { buildValidatorNominators } from "../src/validator-nominators.ts";
 
 // The flag these branch tests pass is a stand-in -- only its membership in
 // membership is the TYPE now (#10190), not a runtime set. METAGRAPH_HEALTH_SOURCE
@@ -240,6 +242,63 @@ test("tryDataApiTier: a successful JSON object response is returned as-is withou
   assert.deepEqual(result, { schema_version: 1, block_count: 5 });
   assert.equal(currentDataApiTierFallbackGeneration(), before);
 });
+
+test.each([
+  { query: "?basis=positions", version: 1, accepted: false },
+  { query: "?basis=positions", version: 2, accepted: true },
+  { query: "?basis=flow", version: 1, accepted: true },
+  { query: "", version: 1, accepted: true },
+])(
+  "tryDataApiTier: nominators $query preserves its basis contract at version $version",
+  async ({ query, version, accepted }) => {
+    const hotkey = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
+    const positions = buildNominatorPositions(
+      { rows: [], capturedAt: null, decline: "runtime_positions_unqualified" },
+      hotkey,
+    );
+    const payload =
+      query === "?basis=positions"
+        ? version === 2
+          ? positions
+          : {
+              ...positions,
+              schema_version: 1,
+              nominator_count: 1,
+              nominators: [{ coldkey: "legacy-holder", total_alpha: 5 }],
+            }
+        : buildValidatorNominators([], hotkey, { window: "7d" });
+    const before = currentDataApiTierFallbackGeneration();
+    const forwarded = vi.fn(async () => Response.json(payload));
+    const env = mockEnv({
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: dataApi(forwarded),
+    });
+    const result = await tryDataApiTier(
+      env,
+      new Request(
+        `https://api.metagraph.sh/api/v1/validators/${hotkey}/nominators${query}`,
+      ),
+      "METAGRAPH_NEURONS_SOURCE",
+    );
+    assert.equal(
+      forwarded.mock.calls.length,
+      1,
+      "a successful transport is not retried over a contract mismatch",
+    );
+    assert.deepEqual(result, accepted ? payload : null);
+    assert.equal(
+      currentDataApiTierFallbackGeneration(),
+      before + (accepted ? 0 : 1),
+    );
+    if (accepted && query === "?basis=positions") {
+      assert.equal(result!.nominator_count, null);
+      assert.equal(result!.provenance, null);
+      assert.deepEqual(result!.degraded, {
+        reason: "runtime_positions_unqualified",
+      });
+    }
+  },
+);
 
 test("tryDataApiTier: rewrites a HEAD request to GET before forwarding to DATA_API", async () => {
   let receivedMethod: string | undefined;

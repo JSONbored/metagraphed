@@ -121,7 +121,7 @@ describe("buildAccountsList", () => {
     assert.equal(top.uid_count, 3);
     assert.equal(top.validator_count, 2);
     assert.equal(top.miner_count, 1);
-    assert.equal(top.total_stake_tao, 151.123456789);
+    assert.equal(top.total_stake_tao, null);
     assert.equal(top.total_emission_tao, 16);
     assert.equal(top.latest_captured_at, new Date(1750000001000).toISOString());
     assert.equal(top.latest_block_number, 12);
@@ -178,15 +178,15 @@ describe("buildAccountsList", () => {
     assert.equal(data.account_count, 0);
   });
 
-  test("rolls up stake/emission totals and stake dominance across accounts", () => {
+  test("preserves observed emissions while withholding unsupported holdings and dominance across accounts", () => {
     const data = buildAccountsList([
       { ...ROW, hotkey: "hk-a", netuid: 1, uid: 0, stake_tao: 300 },
       { ...ROW, hotkey: "hk-b", netuid: 1, uid: 1, stake_tao: 100 },
     ]);
     const a = data.accounts.find((e) => e.hotkey === "hk-a")!;
     const b = data.accounts.find((e) => e.hotkey === "hk-b")!;
-    assert.equal(a.stake_dominance, 0.75);
-    assert.equal(b.stake_dominance, 0.25);
+    assert.equal(a.stake_dominance, null);
+    assert.equal(b.stake_dominance, null);
   });
 
   test("nulls stake dominance when network stake is zero", () => {
@@ -265,7 +265,7 @@ describe("buildAccountsList", () => {
     const data = buildAccountsList([
       { ...ROW, hotkey: "hk-a", stake_tao: -5, emission_tao: "not-a-number" },
     ]);
-    assert.equal(data.accounts[0].total_stake_tao, 0);
+    assert.equal(data.accounts[0].total_stake_tao, null);
     assert.equal(data.accounts[0].total_emission_tao, 0);
   });
 
@@ -358,10 +358,10 @@ describe("buildAccountsList", () => {
     assert.deepEqual(
       data.accounts[0].subnets.map((s) => [s.netuid, s.uid]),
       [
+        [1, 0],
         [2, 0],
         [3, 0],
         [4, 1],
-        [1, 0],
         [5, 0],
       ],
     );
@@ -520,7 +520,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
       DATA_API: {
         fetch: async () =>
           Response.json({
-            schema_version: 1,
+            schema_version: 2,
             sort: "total_stake",
             limit: 20,
             account_count: 1,
@@ -535,9 +535,9 @@ describe("GET /api/v1/accounts via the Worker", () => {
                 uid_count: 1,
                 validator_count: 1,
                 miner_count: 0,
-                total_stake_tao: 1000.5,
+                total_stake_tao: null,
                 total_emission_tao: 22.1,
-                stake_dominance: 1,
+                stake_dominance: null,
                 latest_captured_at: new Date(1750000000000).toISOString(),
                 latest_block_number: 8454388,
                 subnets: [{ netuid: 1, uid: 0 }],
@@ -585,7 +585,7 @@ describe("TAO-priced accounts leaderboard (#9051)", () => {
       },
     );
     const acct = data.accounts[0] as unknown as Record<string, number>;
-    assert.equal(acct.total_stake_tao, 110); // 10 root + 400*0.25
+    assert.equal(acct.total_stake_tao, null); // 10 root + 400*0.25
     assert.equal(acct.total_emission_tao, 6); // 1 + 20*0.25
     assert.equal(acct.subnet_count, 3); // membership footprint is unaffected
   });

@@ -18,10 +18,15 @@
 // where that distinction has been lost before.
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import fs from "node:fs";
-import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import {
+  installAlphaQuantitySchema,
+  seedSyntheticAlphaPass,
+  syntheticAlphaCapture,
+  syntheticAlphaPosition,
+  insertSyntheticAlphaPosition,
+} from "./helpers/alpha-quantity-fixture.ts";
 
 // One store since #10179: the ROUTE/GraphQL/MCP surfaces reach it through
 // src/read-store.ts, which builds `new Client(...)` itself -- there is no
@@ -39,22 +44,8 @@ import { SUBNET_HOLDERS_LIMIT_MAX } from "../src/subnet-holders.ts";
 import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
-const MIGRATIONS = [
-  "0011_nominator_positions.sql",
-  "0019_hotkey_alpha.sql",
-  "0021_hotkey_alpha_passes.sql",
-  "0022_nominator_positions_hotkey_netuid.sql",
-  "0023_nominator_positions_netuid.sql",
-].map((file) =>
-  fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema", file),
-    "utf8",
-  ),
-);
-
 const NETUID = 74;
 const PASS = 1_785_900_000_000;
-const POSITIONS_AT = 1_785_953_674_407;
 const ck = (n: number) => `5Coldkey${String(n).padStart(40, "0")}`;
 const hk = (n: number) => `5Hotkey0${String(n).padStart(40, "0")}`;
 
@@ -78,36 +69,27 @@ async function gql(query: string, e: Env = env()) {
   return (await res.json()) as Row;
 }
 
-/** The same five holders the REST suite uses: 250/200/150/100/50 on a 1,000
- * alpha pool, inserted out of rank order. */
+/** Synthetic exact quantities, inserted out of rank order under one capture. */
 function fiveHolders() {
-  db.prepare(
-    `INSERT INTO hotkey_alpha_passes
-       (captured_at, expected_rows, received_rows, completed_at)
-     VALUES (?, ?, ?, ?)`,
-  ).run(PASS, 1, 1, PASS + 1000);
-  db.prepare(
-    `INSERT INTO hotkey_alpha (hotkey, netuid, total_alpha, captured_at)
-     VALUES (?, ?, ?, ?)`,
-  ).run(hk(1), NETUID, 1000, PASS);
-  for (const [coldkey, fraction] of [
-    [ck(3), 0.15],
-    [ck(1), 0.25],
-    [ck(5), 0.05],
-    [ck(2), 0.2],
-    [ck(4), 0.1],
-  ] as [string, number][]) {
-    db.prepare(
-      `INSERT INTO nominator_positions
-         (coldkey, hotkey, netuid, share_fraction, captured_at)
-       VALUES (?, ?, ?, ?, ?)`,
-    ).run(coldkey, hk(1), NETUID, fraction, POSITIONS_AT);
+  seedSyntheticAlphaPass(db, PASS);
+  for (const [coldkey, alphaRao] of [
+    [ck(3), "150000000000"],
+    [ck(1), "250000000000"],
+    [ck(5), "50000000000"],
+    [ck(2), "200000000000"],
+    [ck(4), "100000000000"],
+  ]) {
+    insertSyntheticAlphaPosition(
+      db,
+      syntheticAlphaPosition(coldkey, hk(1), NETUID, alphaRao, PASS),
+    );
   }
 }
 
 const FULL_QUERY = (netuid: number, limit?: number) => `{
   subnet_holders(netuid: ${netuid}${limit === undefined ? "" : `, limit: ${limit}`}) {
     schema_version
+    provenance { network captured_at block_number block_hash genesis_hash spec_version code_hash metadata_sha256 }
     netuid
     limit
     holder_count
@@ -115,14 +97,14 @@ const FULL_QUERY = (netuid: number, limit?: number) => `{
     concentration { top5_share top10_share top20_share }
     captured_at
     positions_captured_at
-    holders { coldkey alpha share_of_total hotkey_count }
+    holders { coldkey alpha alpha_rao share_of_total hotkey_count }
     degraded { reason }
   }
 }`;
 
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
-  for (const schema of MIGRATIONS) db.exec(schema);
+  installAlphaQuantitySchema(db);
   pg.control.queries.length = 0;
   pg.control.answers = [];
   pg.control.rows = null;
@@ -158,6 +140,18 @@ describe("subnet_holders agrees with REST over the same database", () => {
     // wrong answers cannot pass.
     assert.equal(viaGraphql.holder_count, 5);
     assert.equal(viaGraphql.total_alpha, 750);
+    assert.equal(
+      (viaGraphql.provenance as Row).block_hash,
+      syntheticAlphaCapture(PASS).block_hash,
+    );
+    assert.equal(
+      (viaGraphql.provenance as Row).metadata_sha256,
+      syntheticAlphaCapture(PASS).metadata_sha256,
+    );
+    assert.deepEqual(
+      (viaGraphql.holders as Row[]).map((h) => h.alpha_rao),
+      ["250000000000", "200000000000", "150000000000"],
+    );
     assert.deepEqual(
       (viaGraphql.holders as Row[]).map((h) => [h.coldkey, h.alpha]),
       [
@@ -188,13 +182,15 @@ describe("subnet_holders agrees with REST over the same database", () => {
 });
 
 describe("subnet_holders declines rather than answering zero", () => {
-  test("an unproven pool ledger carries a reason, not an empty ranking", async () => {
+  test("an unqualified runtime snapshot carries a reason, not an empty ranking", async () => {
     // Rows exist and would rank perfectly well — that is the danger. An empty
     // list with no reason would read as "nobody holds this subnet's alpha".
     const card = ((await gql(FULL_QUERY(NETUID))).data as Row)
       .subnet_holders as Row;
     assert.deepEqual(card.holders, []);
-    assert.deepEqual(card.degraded, { reason: "pool_totals_unproven" });
+    assert.deepEqual(card.degraded, {
+      reason: "runtime_positions_unqualified",
+    });
     assert.equal(card.holder_count, null);
     assert.equal(card.total_alpha, null);
     assert.deepEqual(card.concentration, {

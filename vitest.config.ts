@@ -107,6 +107,9 @@ export default defineConfig({
     ...(junitPath ? { outputFile: { junit: junitPath } } : {}),
     coverage: {
       provider: "v8",
+      // Preserve diagnostic coverage when a test fails; its exit status stays
+      // red. CI still requires every shard report and the unchanged Codecov gate.
+      reportOnFailure: true,
       // lcov for the Codecov upload (codecov/codecov-action reads
       // coverage/lcov.info); json-summary/text for local + CI readouts.
       reporter: ["text", "json-summary", "lcov"],
@@ -135,6 +138,7 @@ export default defineConfig({
         "scripts/{artifact-budgets,lib,openapi-components,registry-identity}.{mjs,ts}",
         "scripts/lib/{build-readiness,economics-artifacts,endpoint-artifacts,enrichment-queue-artifacts,formatting,readme-links}.{mjs,ts}",
         "scripts/lib/d1-migration-ledger.ts",
+        "scripts/lib/d1-admin.ts",
         // types-epic A (metagraphed#7859): schema definitions only (no
         // runtime import from any Worker entry yet, by that issue's own
         // scope), exercised in-process by tests/zod-schemas.test.ts.

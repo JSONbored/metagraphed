@@ -7,6 +7,7 @@
 // ChainYieldArtifact is its only referrer (verified via repo-wide $ref
 // grep), so the hand-edited component key becomes fully orphaned.
 import { z } from "zod";
+import { HoldingsUnavailableSchema } from "../alpha-quantity.ts";
 import { distributionStatsSchema } from "../shared.ts";
 
 /**
@@ -33,7 +34,7 @@ const YieldDistributionSchema = distributionStatsSchema(z.number())
 
 export const ChainYieldArtifactSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
     subnet_count: z
       .int()
       .min(0)
@@ -46,20 +47,19 @@ export const ChainYieldArtifactSchema = z
     captured_at: z.string().nullable().optional(),
     total_stake_alpha: z
       .number()
-      .optional()
-      .describe(
-        "Sum of every neuron's stake across every NON-ROOT subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Root (netuid 0) is excluded because root stake is genuine TAO and would mix denominations into this sum (#9040). Use it as the denominator of the yields below, not as a TAO figure.",
-      ),
+      .nullable()
+      .describe("Deprecated unsupported holdings aggregate; always null."),
     total_emission_alpha: z
       .number()
-      .optional()
+      .nullable()
       .describe(
-        "Sum of every neuron's emission across every NON-ROOT subnet, alpha-denominated for the same reason as total_stake_alpha and excluding root for the same reason (#8803, #9040). Alpha/alpha keeps the *_yield ratios below dimensionally valid.",
+        "Deprecated cross-token emission sum; always null. Different subnet Alpha tokens cannot be added.",
       ),
     network_yield: z.number().nullable(),
     validator_yield: z.number().nullable().optional(),
     miner_yield: z.number().nullable().optional(),
     distribution: YieldDistributionSchema,
+    degraded: HoldingsUnavailableSchema,
   })
   .strict()
   .describe(

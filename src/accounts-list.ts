@@ -32,6 +32,7 @@ import { clampRowLimit } from "../workers/request-params.ts";
 import {
   round9NonNegative,
   nonNegativeOrZero,
+  nonNegativeCellOrNull,
   raoBigToTao,
   toRaoBig,
 } from "./lib/rao.ts";
@@ -45,15 +46,13 @@ import {
 import { recordOrNull } from "./read-store.ts";
 export { ACCOUNTS_LIST_LIMIT_DEFAULT, ACCOUNTS_LIST_LIMIT_MAX };
 export const ACCOUNTS_LIST_SORTS = [
-  "total_stake",
   "total_emission",
   "subnet_count",
   "uid_count",
   "validator_count",
-  "stake_dominance",
   "last_active",
 ];
-export const DEFAULT_ACCOUNTS_LIST_SORT = "total_stake";
+export const DEFAULT_ACCOUNTS_LIST_SORT = "subnet_count";
 // Cap the per-account subnets[] slice the same way buildGlobalValidators caps
 // GlobalValidatorSubnet — an account registered on 100+ subnets should not
 // balloon this leaderboard's payload; the account-portfolio/validator-detail
@@ -82,15 +81,6 @@ function nonNegativeInt(value: unknown): number | null {
 // for why, and for the overflow guard that lived in only one of the nine copies
 // this used to be.
 
-function round(value: number | null, dp = 6): number | null {
-  /* v8 ignore next -- defensive: this module's one caller (applyStakeDominance)
-     only ever divides a nonNegativeOrZero() result by an already-Number.isFinite-
-     and->0-checked denominator, so this branch is provably unreachable today. */
-  if (value == null || !Number.isFinite(value)) return null;
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
-
 function primaryColdkey(coldkeys: Map<string, number>): string | null {
   const ranked = [...coldkeys.entries()].sort(
     (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
@@ -104,7 +94,8 @@ export interface AccountsListSubnetEntry {
   /** ALPHA on every non-root subnet, and named so (#10514). The sibling
    * `total_stake_tao` on the entry above IS priced TAO, and two fields sharing
    * a `_tao` suffix across different units is the trap this rename removes. */
-  stake_alpha: number;
+  stake_alpha: null;
+  voting_weight: number | null;
   emission_alpha: number;
 }
 
@@ -114,7 +105,6 @@ interface AccountAccumulator {
   netuids: Set<number>;
   uidCount: number;
   validatorCount: number;
-  stakeTotalRao: bigint;
   emissionTotalRao: bigint;
   latestCapturedAt: number | null;
   latestBlockNumber: number | null;
@@ -129,7 +119,7 @@ export interface AccountsListEntry {
   uid_count: number;
   validator_count: number;
   miner_count: number;
-  total_stake_tao: number;
+  total_stake_tao: null;
   total_emission_tao: number;
   latest_captured_at: string | null;
   latest_block_number: number | null;
@@ -149,13 +139,7 @@ function nullablePositivePrice(
 
 function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
   const subnets = entry.subnets
-    .sort(
-      (a, b) =>
-        b.stake_alpha - a.stake_alpha ||
-        b.emission_alpha - a.emission_alpha ||
-        a.netuid - b.netuid ||
-        a.uid - b.uid,
-    )
+    .sort((a, b) => a.netuid - b.netuid || a.uid - b.uid)
     .slice(0, ACCOUNTS_LIST_SUBNET_LIMIT);
   return {
     hotkey: entry.hotkey,
@@ -165,7 +149,7 @@ function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
     uid_count: entry.uidCount,
     validator_count: entry.validatorCount,
     miner_count: entry.uidCount - entry.validatorCount,
-    total_stake_tao: round9NonNegative(raoBigToTao(entry.stakeTotalRao)),
+    total_stake_tao: null,
     total_emission_tao: round9NonNegative(raoBigToTao(entry.emissionTotalRao)),
     latest_captured_at: toIso(entry.latestCapturedAt),
     latest_block_number: entry.latestBlockNumber,
@@ -180,20 +164,7 @@ function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
 function applyStakeDominance(
   accounts: AccountsListEntry[],
 ): AccountsListEntry[] {
-  const networkStakeRao = accounts.reduce(
-    (sum, entry) => sum + toRaoBig(entry.total_stake_tao),
-    0n,
-  );
-  const networkStakeTotal = raoBigToTao(networkStakeRao);
-  if (!(networkStakeTotal > 0) || !Number.isFinite(networkStakeTotal)) {
-    return accounts.map((entry) => ({ ...entry, stake_dominance: null }));
-  }
-  return accounts.map((entry) => ({
-    ...entry,
-    stake_dominance: round(
-      nonNegativeOrZero(entry.total_stake_tao) / networkStakeTotal,
-    ),
-  }));
+  return accounts.map((entry) => ({ ...entry, stake_dominance: null }));
 }
 
 const ACCOUNTS_LIST_SORT_FIELDS: Record<string, string> = {
@@ -211,7 +182,7 @@ function accountSortValue(row: AccountsListEntry, key: string): number {
 }
 
 export interface AccountsListResult {
-  schema_version: 1;
+  schema_version: 2;
   sort: string;
   limit: number;
   captured_at: string | null;
@@ -251,7 +222,7 @@ export function buildAccountsSnapshot(
     const uid = nonNegativeInt(row?.uid);
     if (!hotkey || netuid == null || uid == null) continue;
 
-    const stake = nonNegativeOrZero(row?.stake_tao);
+    const stake = nonNegativeCellOrNull(row?.stake_tao);
     const emission = nonNegativeOrZero(row?.emission_tao);
     const isValidator = Number(row?.validator_permit) === 1;
     const capturedAt =
@@ -266,7 +237,6 @@ export function buildAccountsSnapshot(
         netuids: new Set(),
         uidCount: 0,
         validatorCount: 0,
-        stakeTotalRao: 0n,
         emissionTotalRao: 0n,
         latestCapturedAt: null,
         latestBlockNumber: null,
@@ -286,7 +256,6 @@ export function buildAccountsSnapshot(
     const price =
       netuid === 0 ? 1 : nullablePositivePrice(priceByNetuid.get(netuid));
     if (price != null) {
-      entry.stakeTotalRao += toRaoBig(stake * price);
       entry.emissionTotalRao += toRaoBig(emission * price);
     }
     if (capturedAt != null && Number.isFinite(capturedAt) && capturedAt > 0) {
@@ -315,7 +284,8 @@ export function buildAccountsSnapshot(
     entry.subnets.push({
       netuid,
       uid,
-      stake_alpha: round9NonNegative(stake),
+      stake_alpha: null,
+      voting_weight: stake == null ? null : round9NonNegative(stake),
       emission_alpha: round9NonNegative(emission),
     });
   }
@@ -365,7 +335,7 @@ export function buildAccountsList(
   );
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     sort: normalizedSort,
     limit: normalizedLimit,
     captured_at: snapshot.captured_at,

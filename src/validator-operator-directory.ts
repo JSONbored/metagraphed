@@ -13,7 +13,7 @@ type Row = Record<string, unknown>;
 
 export interface ValidatorOperatorKey {
   hotkey: string;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   take: number | null;
 }
 
@@ -29,7 +29,7 @@ export interface ValidatorOperatorEntry {
   hotkey_count: number;
   primary_hotkey: string;
   coldkey: string | null;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   total_emission_tao: number;
   nominator_count: number | null;
   /** Sum of subnet memberships across the operator's validator hotkeys. */
@@ -43,7 +43,7 @@ export interface ValidatorOperatorEntry {
 }
 
 export interface ValidatorOperatorDirectory {
-  schema_version: 1;
+  schema_version: 2;
   captured_at: string | null;
   block_number: number | null;
   validator_count: number;
@@ -139,33 +139,22 @@ export function buildValidatorOperatorDirectory(
 
   const operators: ValidatorOperatorEntry[] = [];
   for (const [operatorId, unsorted] of grouped) {
-    const keys = [...unsorted].sort(
-      (a, b) =>
-        nonNegative(b.total_stake_tao) - nonNegative(a.total_stake_tao) ||
-        hotkey(a)!.localeCompare(hotkey(b)!),
+    const keys = [...unsorted].sort((a, b) =>
+      hotkey(a)!.localeCompare(hotkey(b)!),
     );
     const primary = keys[0]!;
-    const identityName = declaredIdentityName(primary);
+    const names = new Set(
+      keys
+        .map(declaredIdentityName)
+        .filter((name): name is string => name !== null),
+    );
+    const identityName = names.size === 1 ? [...names][0]! : null;
     const takes = keys
       .map((validator) => finite(validator.take))
       .filter((take): take is number => take !== null);
-    const totalStake = keys.reduce(
-      (sum, validator) => sum + nonNegative(validator.total_stake_tao),
-      0,
-    );
-    let weightedApy = 0;
-    let apyWeight = 0;
-    for (const validator of keys) {
-      const apy = finite(validator.apy_estimate);
-      if (apy === null) continue;
-      const stake = nonNegative(validator.total_stake_tao);
-      weightedApy += apy * stake;
-      apyWeight += stake;
-    }
-
     const operatorKeys = keys.map((validator) => ({
       hotkey: hotkey(validator)!,
-      total_stake_tao: nonNegative(validator.total_stake_tao),
+      total_stake_tao: null,
       take: finite(validator.take),
     }));
     operators.push({
@@ -176,7 +165,7 @@ export function buildValidatorOperatorDirectory(
       hotkey_count: operatorKeys.length,
       primary_hotkey: hotkey(primary)!,
       coldkey: nullableString(primary.coldkey),
-      total_stake_tao: totalStake,
+      total_stake_tao: null,
       total_emission_tao: keys.reduce(
         (sum, validator) => sum + nonNegative(validator.total_emission_tao),
         0,
@@ -196,28 +185,16 @@ export function buildValidatorOperatorDirectory(
       ),
       take_min: takes.length > 0 ? Math.min(...takes) : null,
       take_max: takes.length > 0 ? Math.max(...takes) : null,
-      apy_estimate: apyWeight > 0 ? weightedApy / apyWeight : null,
+      apy_estimate: null,
       stake_dominance: null,
     });
   }
 
-  operators.sort(
-    (a, b) =>
-      b.total_stake_tao - a.total_stake_tao ||
-      a.primary_hotkey.localeCompare(b.primary_hotkey),
-  );
-  const listedStake = operators.reduce(
-    (sum, operator) => sum + operator.total_stake_tao,
-    0,
-  );
-  const ranked = operators.map((operator) => ({
-    ...operator,
-    stake_dominance:
-      listedStake > 0 ? operator.total_stake_tao / listedStake : null,
-  }));
+  operators.sort((a, b) => a.primary_hotkey.localeCompare(b.primary_hotkey));
+  const ranked = operators;
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     captured_at: nullableString(globalValidators?.captured_at),
     block_number:
       finite(globalValidators?.block_number) !== null

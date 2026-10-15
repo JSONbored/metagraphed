@@ -17,10 +17,23 @@ export const CompareValidatorEntrySchema = z
       "The `coldkey`'s self-declared on-chain identity; opaque JSON, matching the REST/MCP shape.",
     ),
     take: z.number().nullable(),
-    apy_estimate: z.number().min(0).nullable(),
+    apy_estimate: z
+      .number()
+      .nullable()
+      .describe(
+        "Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return.",
+      )
+      .meta({ deprecated: true }),
     apy_estimate_eligible_subnet_count: z.int().min(0),
     nominator_count: z.int().min(0).nullable(),
-    total_stake_tao: z.number().min(0),
+    total_stake_tao: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z.number().min(0),
     avg_validator_trust: z.number().nullable(),
     max_validator_trust: z.number().nullable(),
@@ -33,7 +46,7 @@ export const CompareValidatorEntrySchema = z
 
 export const CompareValidatorsArtifactSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
     netuid: z
       .int()
       .min(0)

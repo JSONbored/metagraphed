@@ -40,11 +40,13 @@
  * is in the same set because the pricing read gates on the newest COMPLETE
  * pass; reading that from the other store would price against a scan the alpha
  * rows do not belong to. */
-export const ALPHA_PRICING_TABLES = [
+export const ALPHA_QUANTITY_TABLES = [
   "nominator_positions",
-  "hotkey_alpha",
-  "hotkey_alpha_passes",
+  "alpha_snapshot_passes",
+  "alpha_runtime_metadata",
 ] as const;
+// Compatibility name for callers; holdings no longer use the legacy pricing trio.
+export const ALPHA_PRICING_TABLES = ALPHA_QUANTITY_TABLES;
 
 /** topHoldersHoldings -- the alpha-pricing set, plus the balances leg and the
  * snapshot prices its SQL joins against.
@@ -55,10 +57,8 @@ export const ALPHA_PRICING_TABLES = [
  * ledgers are in because each leg gates on its own newest COMPLETE pass --
  * pricing against a scan the rows do not belong to is the failure #9832 was. */
 export const TOP_HOLDERS_HOLDINGS_TABLES = [
-  ...ALPHA_PRICING_TABLES,
   "account_balances",
   "account_balances_passes",
-  "subnet_snapshots",
 ] as const;
 
 /** loadSubnetTempo, in the weight-setters loader. */

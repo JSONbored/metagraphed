@@ -23,12 +23,51 @@ import { taoToRao } from "../src/emission-decomposition.ts";
 import {} from "../workers/request-params.ts";
 import { apiEnv } from "./lib/worker-env.ts";
 import { addAjvFormats } from "./lib/ajv-formats.ts";
+import {
+  ALPHA_GENESIS,
+  ALPHA_RUNTIMES,
+} from "../src/alpha-runtime-identity.ts";
 
 // OpenAPI document + Worker response bodies are dynamic JSON read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
 // readJson/readArtifactJson precedent in lib.ts.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
+
+function assertAlphaProvenance(provenance: Row) {
+  assert.ok(provenance && typeof provenance === "object");
+  assert.equal(provenance.network, "finney");
+  assert.equal(provenance.genesis_hash, ALPHA_GENESIS);
+  assert.ok([454, 478].includes(provenance.spec_version));
+  const runtime =
+    provenance.spec_version === 454 ? ALPHA_RUNTIMES[454] : ALPHA_RUNTIMES[478];
+  assert.equal(provenance.code_hash, runtime.code);
+  assert.equal(provenance.metadata_sha256, runtime.metadata);
+  assert.match(provenance.block_hash, /^0x[0-9a-f]{64}$/);
+  assert.ok(
+    Number.isSafeInteger(provenance.block_number) &&
+      provenance.block_number >= 0,
+  );
+  assert.ok(Number.isFinite(Date.parse(provenance.captured_at)));
+}
+
+function assertValidatorQuantitiesUnavailable(validator: Row) {
+  for (const field of [
+    "total_stake_tao",
+    "root_stake_tao",
+    "alpha_stake_tao",
+    "apy_estimate",
+  ])
+    assert.equal(validator[field], null, field);
+  assert.equal(validator.apy_estimate_eligible_subnet_count, 0);
+  assert.equal(typeof validator.total_emission_tao, "number");
+  for (const subnet of validator.subnets as Row[]) {
+    assert.equal(subnet.stake_alpha, null);
+    assert.ok(
+      subnet.voting_weight === null || typeof subnet.voting_weight === "number",
+    );
+  }
+}
 
 // #8744: the committed economics artifact is built with no chain reads, so it
 // carries no `chain_state` and /api/v1/chain/emission-pipeline would 503 here
@@ -828,19 +867,57 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
   [
     "/api/v1/subnets/7/yield",
     (body) => {
+      assert.equal(body.data.schema_version, 2);
       assert.equal(body.data.netuid, 7);
       assert.equal(Array.isArray(body.data.neurons), true);
       assert.equal(typeof body.data.neuron_count, "number");
       assert.equal(typeof body.data.validator_count, "number");
       assert.equal(typeof body.data.miner_count, "number");
+      assert.equal(body.data.neuron_count, body.data.neurons.length);
+      assert.equal(body.data.total_stake_alpha, null);
+      assert.equal(typeof body.data.total_emission_alpha, "number");
+      for (const field of [
+        "subnet_yield",
+        "mean_yield",
+        "median_yield",
+        "p25_yield",
+        "p75_yield",
+        "p90_yield",
+      ])
+        assert.equal(body.data[field], null, field);
+      assert.deepEqual(body.data.degraded, { reason: "holdings_unqualified" });
+      for (const neuron of body.data.neurons as Row[]) {
+        assert.equal(neuron.stake_tao, null);
+        assert.equal(neuron.yield, null);
+        assert.equal(neuron.vs_median, null);
+        assert.ok(
+          neuron.voting_weight === null ||
+            typeof neuron.voting_weight === "number",
+        );
+      }
     },
   ],
   [
     "/api/v1/subnets/7/yield/history?window=7d",
     (body) => {
+      assert.equal(body.data.schema_version, 2);
       assert.equal(body.data.netuid, 7);
       assert.equal(Array.isArray(body.data.points), true);
       assert.equal(typeof body.data.point_count, "number");
+      assert.equal(body.data.point_count, body.data.points.length);
+      assert.deepEqual(body.data.degraded, { reason: "holdings_unqualified" });
+      for (const point of body.data.points as Row[]) {
+        assert.equal(point.yield_count, 0);
+        for (const field of [
+          "subnet_yield",
+          "mean_yield",
+          "median_yield",
+          "p25_yield",
+          "p75_yield",
+          "p90_yield",
+        ])
+          assert.equal(point[field], null, field);
+      }
     },
   ],
   [
@@ -966,47 +1043,91 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
   [
     "/api/v1/validators?sort=uid_count&limit=3",
     (body) => {
+      assert.equal(body.data.schema_version, 2);
       assert.equal(body.data.sort, "uid_count");
       assert.equal(body.data.limit, 3);
       assert.equal(Array.isArray(body.data.validators), true);
       assert.equal(typeof body.data.validator_count, "number");
+      for (const validator of body.data.validators as Row[])
+        assertValidatorQuantitiesUnavailable(validator);
     },
   ],
   [
     "/api/v1/validators/operators",
     (body) => {
+      assert.equal(body.data.schema_version, 2);
       assert.equal(typeof body.data.validator_count, "number");
       assert.equal(typeof body.data.operator_count, "number");
       assert.equal(Array.isArray(body.data.operators), true);
       assert.equal(body.data.operator_count, body.data.operators.length);
+      for (const operator of body.data.operators as Row[]) {
+        assert.equal(operator.total_stake_tao, null);
+        assert.equal(operator.apy_estimate, null);
+        assert.equal(operator.stake_dominance, null);
+        assert.equal(typeof operator.total_emission_tao, "number");
+        for (const hotkey of operator.hotkeys as Row[])
+          assert.equal(hotkey.total_stake_tao, null);
+      }
     },
   ],
   [
     "/api/v1/accounts/directory",
     (body) => {
+      assert.equal(body.data.schema_version, 2);
       assert.equal(typeof body.data.account_count, "number");
-      assert.equal(typeof body.data.priced_registered_stake_tao, "number");
-      assert.equal(Array.isArray(body.data.rankings?.stake), true);
+      assert.equal(body.data.priced_registered_stake_tao, null);
+      assert.deepEqual(body.data.rankings.stake, []);
       assert.equal(Array.isArray(body.data.rankings?.emission), true);
       assert.equal(Array.isArray(body.data.rankings?.reach), true);
+      for (const ranking of [
+        body.data.rankings.emission,
+        body.data.rankings.reach,
+      ]) {
+        for (const account of ranking as Row[]) {
+          assert.equal(account.total_stake_tao, null);
+          assert.equal(account.stake_dominance, null);
+          assert.equal(typeof account.total_emission_tao, "number");
+        }
+      }
     },
   ],
   [
     "/api/v1/accounts?sort=uid_count&limit=3",
     (body) => {
+      assert.equal(body.data.schema_version, 2);
       assert.equal(body.data.sort, "uid_count");
       assert.equal(body.data.limit, 3);
       assert.equal(Array.isArray(body.data.accounts), true);
       assert.equal(typeof body.data.account_count, "number");
+      for (const account of body.data.accounts as Row[]) {
+        assert.equal(account.total_stake_tao, null);
+        assert.equal(account.stake_dominance, null);
+        assert.equal(typeof account.total_emission_tao, "number");
+        for (const subnet of account.subnets as Row[]) {
+          assert.equal(subnet.stake_alpha, null);
+          assert.ok(
+            subnet.voting_weight === null ||
+              typeof subnet.voting_weight === "number",
+          );
+        }
+      }
     },
   ],
   [
     "/api/v1/accounts/top-holders?sort=free_tao&limit=3",
     (body) => {
+      assert.equal(body.data.schema_version, 2);
       assert.equal(body.data.sort, "free_tao");
       assert.equal(body.data.limit, 3);
       assert.equal(Array.isArray(body.data.accounts), true);
       assert.equal(typeof body.data.account_count, "number");
+      for (const account of body.data.accounts as Row[]) {
+        assert.equal(account.delegated_tao, null);
+        assert.equal(account.total_tao, null);
+        assert.ok(
+          account.free_tao === null || typeof account.free_tao === "number",
+        );
+      }
     },
   ],
   [
@@ -1016,9 +1137,11 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
         body.data.hotkey,
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       );
-      // Cold harness (no store) → zeroed aggregate, never 404.
+      // A cold membership source does not establish zero wallet holdings.
+      assert.equal(body.data.schema_version, 2);
       assert.equal(Array.isArray(body.data.subnets), true);
       assert.equal(typeof body.data.subnet_count, "number");
+      assertValidatorQuantitiesUnavailable(body.data);
     },
   ],
   [
@@ -1028,7 +1151,8 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
         body.data.hotkey,
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       );
-      // Cold harness (no store) → empty list, never 404.
+      // The default flow basis retains its independent windowed contract.
+      assert.equal(body.data.schema_version, 1);
       assert.equal(Array.isArray(body.data.nominators), true);
       assert.equal(typeof body.data.nominator_count, "number");
     },
@@ -1040,9 +1164,19 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
         body.data.hotkey,
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       );
+      assert.equal(body.data.schema_version, 2);
       // Cold harness (no store) → empty points, never 404.
       assert.equal(Array.isArray(body.data.points), true);
       assert.equal(typeof body.data.point_count, "number");
+      assert.equal(body.data.point_count, body.data.points.length);
+      for (const point of body.data.points as Row[]) {
+        assert.equal(point.total_stake_tao, null);
+        assert.equal(point.rewards_per_1000_tao, null);
+        assert.ok(
+          point.total_emission_tao === null ||
+            typeof point.total_emission_tao === "number",
+        );
+      }
     },
   ],
   [
@@ -1205,32 +1339,55 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
   [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/portfolio",
     (body) => {
-      assert.equal(body.data.schema_version, 1);
+      assert.equal(body.data.schema_version, 2);
       assert.equal(Array.isArray(body.data.positions), true);
       assert.equal(typeof body.data.position_count, "number");
-      assert.ok(
-        body.data.stake_concentration === null ||
-          typeof body.data.stake_concentration === "object",
-      );
+      assert.equal(body.data.total_stake_tao, null);
+      assert.equal(body.data.overall_yield, null);
+      assert.equal(body.data.stake_concentration, null);
+      assert.equal(typeof body.data.total_emission_tao, "number");
+      assert.equal(body.data.position_count, body.data.positions.length);
+      for (const position of body.data.positions as Row[]) {
+        assert.equal(position.stake_alpha, null);
+        assert.equal(position.yield, null);
+        assert.ok(
+          position.voting_weight === null ||
+            typeof position.voting_weight === "number",
+        );
+        assert.equal(typeof position.emission_alpha, "number");
+      }
     },
   ],
   [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/positions",
     (body) => {
-      assert.equal(body.data.schema_version, 1);
+      assert.equal(body.data.schema_version, 2);
       assert.equal(
         body.data.ss58,
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       );
       assert.equal(Array.isArray(body.data.positions), true);
       assert.equal(typeof body.data.position_count, "number");
-      assert.equal(typeof body.data.total_stake_alpha, "number");
+      assert.equal(body.data.total_stake_alpha, null);
+      assert.equal(body.data.position_count, body.data.positions.length);
+      for (const position of body.data.positions as Row[]) {
+        assert.equal(position.stake_tao, null);
+        if (position.quantity_status === "qualified_snapshot") {
+          assert.ok(position.netuid > 0);
+          assert.match(position.alpha_rao, /^(0|[1-9]\d*)$/);
+          assertAlphaProvenance(position.provenance);
+        } else {
+          assert.equal(position.quantity_status, "unqualified");
+          assert.equal(position.alpha_rao, null);
+          assert.equal(position.provenance, null);
+        }
+      }
     },
   ],
   [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets/7/history?window=30d",
     (body) => {
-      assert.equal(body.data.schema_version, 1);
+      assert.equal(body.data.schema_version, 2);
       assert.equal(
         body.data.ss58,
         "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
@@ -1239,6 +1396,16 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       assert.equal(body.data.window, "30d");
       assert.equal(Array.isArray(body.data.points), true);
       assert.equal(typeof body.data.point_count, "number");
+      assert.equal(body.data.point_count, body.data.points.length);
+      for (const point of body.data.points as Row[]) {
+        assert.equal(point.stake_tao, null);
+        assert.equal(point.yield, null);
+        assert.ok(
+          point.voting_weight === null ||
+            typeof point.voting_weight === "number",
+        );
+        assert.equal(typeof point.emission_tao, "number");
+      }
     },
   ],
   [
@@ -1487,21 +1654,28 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
   [
     "/api/v1/subnets/7/holders",
     (body) => {
-      // #9557. The route never 404s and never serves a bare empty ranking: either
-      // `holders` is a real list, or it is empty WITH a degraded.reason saying why.
-      // An empty array on its own would read as "nobody holds this subnet's alpha",
-      // which is a measurement this route may not make while its inputs are unproven.
+      // An unqualified source declines with unknown counts. A qualified
+      // empty census remains a valid measurement with its runtime provenance.
+      assert.equal(body.data.schema_version, 2);
       assert.equal(body.data.netuid, 7);
       assert.equal(Array.isArray(body.data.holders), true);
-      if (body.data.holders.length === 0) {
+      if (body.data.provenance === null) {
         assert.equal(typeof body.data.degraded?.reason, "string");
+        assert.deepEqual(body.data.holders, []);
+        assert.equal(body.data.holder_count, null);
+        assert.equal(body.data.total_alpha, null);
+      } else {
+        assertAlphaProvenance(body.data.provenance);
+        assert.equal(body.data.captured_at, body.data.provenance.captured_at);
       }
-      // Ranked by alpha, descending -- asserted as ordering rather than truthiness,
-      // since a holder with a genuine zero is still a holder.
-      const alpha = body.data.holders.map((h: { alpha: number }) => h.alpha);
+      // Rank exact rao, including values beyond Number's integer precision.
+      const amounts = (body.data.holders as Row[]).map((holder) => {
+        assert.match(holder.alpha_rao, /^(0|[1-9]\d*)$/);
+        return BigInt(holder.alpha_rao);
+      });
       assert.deepEqual(
-        alpha,
-        [...alpha].sort((a: number, b: number) => b - a),
+        amounts,
+        [...amounts].sort((a, b) => (a > b ? -1 : a < b ? 1 : 0)),
       );
       // The aggregates describe the WHOLE subnet, so holder_count is never bounded
       // by the returned page -- that is the invariant a `?limit=` slice must not break.
@@ -1885,12 +2059,17 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
   [
     "/api/v1/chain/holders",
     (body) => {
-      // #9607. Never 404s and never serves a bare empty ranking: either
-      // `subnets` is real, or it is empty WITH a degraded.reason. An empty array
-      // alone would read as "no subnet has any holders".
+      // A cold owner cannot claim zero holdings. A complete empty census is
+      // distinguished by its runtime provenance rather than a fabricated count.
+      assert.equal(body.data.schema_version, 2);
       assert.equal(Array.isArray(body.data.subnets), true);
-      if (body.data.subnets.length === 0) {
+      if (body.data.provenance === null) {
         assert.equal(typeof body.data.degraded?.reason, "string");
+        assert.deepEqual(body.data.subnets, []);
+        assert.equal(body.data.subnet_count, null);
+      } else {
+        assertAlphaProvenance(body.data.provenance);
+        assert.equal(body.data.captured_at, body.data.provenance.captured_at);
       }
       // Ranked by the requested sort, descending, nulls last.
       const shares = body.data.subnets
@@ -2401,20 +2580,21 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
   [
     "/api/v1/chain/yield",
     (body) => {
-      assert.equal(body.data.schema_version, 1);
+      assert.equal(body.data.schema_version, 2);
       assert.equal(typeof body.data.subnet_count, "number");
       assert.equal(typeof body.data.neuron_count, "number");
-      // aggregate yield + distribution are a number/object or null on cold store.
-      assert.equal(
-        body.data.network_yield === null ||
-          typeof body.data.network_yield === "number",
-        true,
-      );
-      assert.equal(
-        body.data.distribution === null ||
-          typeof body.data.distribution === "object",
-        true,
-      );
+      // Voting weights and distinct Alpha tokens cannot establish a network
+      // holdings denominator or investment return, even on a warm store.
+      for (const field of [
+        "total_stake_alpha",
+        "total_emission_alpha",
+        "network_yield",
+        "validator_yield",
+        "miner_yield",
+        "distribution",
+      ])
+        assert.equal(body.data[field], null, field);
+      assert.deepEqual(body.data.degraded, { reason: "holdings_unqualified" });
     },
   ],
   [
@@ -2562,6 +2742,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
   [
     "/api/v1/compare/validators?hotkeys=5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
     (body) => {
+      assert.equal(body.data.schema_version, 2);
       assert.equal(Array.isArray(body.data.validators), true);
       assert.equal(body.data.validators.length, 1);
       assert.equal(
@@ -2572,6 +2753,14 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       assert.equal(body.data.validators[0].subnet_count, 0);
       assert.equal(body.data.netuid, null);
       assert.equal(typeof body.data.validator_count, "number");
+      // Comparison rows project the detail; they have no nested version,
+      // root/Alpha split or subnets array. Assert their own published fields.
+      const validator = body.data.validators[0];
+      assert.equal(validator.total_stake_tao, null);
+      assert.equal(validator.apy_estimate, null);
+      assert.equal(validator.apy_estimate_eligible_subnet_count, 0);
+      assert.equal(typeof validator.total_emission_tao, "number");
+      assert.equal(validator.subnet_context, null, "no netuid was requested");
     },
   ],
   [

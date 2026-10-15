@@ -1,12 +1,6 @@
-// The hot leg for /accounts/{ss58}/positions (#9273) and the honest-zero
-// primitives it shares with the lakehouse leg.
-//
-// The properties that matter: the cutover is a property of the DATA (an empty
-// ledger declines so the lakehouse still answers), a coldkey with no rows in a
-// POPULATED ledger is a real live zero and carries the ledger's stamp rather
-// than a null, the IN-list stays inside the 100-bound-parameter chunk this
-// reader was written against, and every failure declines rather than publishing
-// a total that is quietly too small.
+// The selected ledger preserves relationships and distinguishes unavailable,
+// empty and populated sources. Neuron weights cannot establish holdings;
+// exact Alpha requires a complete runtime-qualified pass and original evidence.
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
@@ -21,7 +15,18 @@ const { pg } = await vi.hoisted(async () => ({
 vi.mock("pg", () => pg.module);
 
 import { loadAccountPositionsFromStore } from "../src/nominator-positions-hot-tier.ts";
-import { POSITION_SCAN_CAP } from "../src/nominator-positions-cold-tier.ts";
+import {
+  POSITION_SCAN_CAP,
+  neuronStakeByHotkeys,
+} from "../src/nominator-positions-cold-tier.ts";
+import {
+  syntheticAlphaCapture,
+  syntheticAlphaPosition,
+} from "./helpers/alpha-quantity-fixture.ts";
+import {
+  alphaQuantityProvenance,
+  type AlphaQuantityCapture,
+} from "../src/alpha-quantity.ts";
 import {
   POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
   POSITIONS_DEGRADED_TIER_UNAVAILABLE,
@@ -41,22 +46,14 @@ interface Stake {
   stake_tao: number;
 }
 
-/**
- * A store stub that answers the three statements this reader issues: the
- * coldkey's position rows, the ledger's MAX(captured_at), and the chunked
- * `neurons` IN-lists. `mode` forces the failure shapes.
- *
- * The dispatch runs in the double's `onQuery`, which fires before it consults
- * its canned answers -- so assigning `control.rows` there is what lets one
- * double answer three different statements. A subscription rather than a
- * read-back because every caller destructures `calls` and reads it after the
- * loader has already run; see tests/helpers/pg-mock.ts.
- */
+/** Explicit SQL dispatch keeps snapshot identity separate from relationship
+ * rows and legacy neuron observations, including read-failure shapes. */
 function d1Stub(
   positions: Record<string, unknown>[],
   ledgerCapturedAt: number | null,
   stakes: Stake[],
-  mode: "ok" | "throw" | "malformed" | "stake-throw" = "ok",
+  mode: "ok" | "throw" | "malformed" | "stake-throw" | "capture-throw" = "ok",
+  capture: AlphaQuantityCapture | null = null,
 ) {
   const calls: { sql: string; params: unknown[] }[] = [];
   pg.control.queries.length = 0;
@@ -78,6 +75,14 @@ function d1Stub(
       pg.control.failNext = new Error("store down");
       return;
     }
+    if (text.includes("FROM alpha_snapshot_passes")) {
+      if (mode === "capture-throw") {
+        pg.control.failNext = new Error("metadata unavailable");
+        return;
+      }
+      pg.control.rows = capture ? [capture] : [];
+      return;
+    }
     if (text.includes("MAX(captured_at)")) {
       pg.control.rows = [{ latest: ledgerCapturedAt }];
       return;
@@ -88,7 +93,9 @@ function d1Stub(
     pg.control.rows =
       mode === "malformed" ? ("not-an-array" as never) : positions;
   };
-  return { calls, env: { ...pgMockEnv() } };
+  // No D1 tables are selected: snapshot and neuron observations both belong
+  // to this fixture's Neon connection.
+  return { calls, env: { ...pgMockEnv(), D1_STATE_TABLES: "" } };
 }
 
 function positionRow(hotkey: string, netuid: number, fraction: number) {
@@ -101,7 +108,7 @@ function positionRow(hotkey: string, netuid: number, fraction: number) {
 }
 
 describe("loadAccountPositionsFromStore", () => {
-  test("prices the ledger's share fractions off the live neurons table", async () => {
+  test("retains legacy share relationships without valuing them from neuron weights", async () => {
     const { calls, env } = d1Stub(
       [positionRow(HOTKEY_A, 18, 0.5), positionRow(HOTKEY_B, 4, 0.25)],
       CAPTURED_AT,
@@ -126,10 +133,164 @@ describe("loadAccountPositionsFromStore", () => {
     );
 
     assert.equal(data!.position_count, 2);
-    assert.equal(data!.total_stake_alpha, 60);
-    assert.equal(data!.positions[0]!.stake_tao, 50);
+    assert.equal(data!.schema_version, 2);
+    assert.equal(data!.total_stake_alpha, null);
+    assert.deepEqual(
+      data!.positions.map((row) => [row.netuid, row.share_fraction]),
+      [
+        [4, 0.25],
+        [18, 0.5],
+      ],
+    );
+    assert.ok(
+      data!.positions.every(
+        (row) =>
+          row.alpha_rao === null &&
+          row.quantity_status === "unqualified" &&
+          row.provenance === null,
+      ),
+    );
+    assert.equal(
+      calls.filter((call) => call.sql.includes("FROM neurons")).length,
+      0,
+    );
+    assert.equal(data!.positions[0]!.stake_tao, null);
     assert.equal(data!.captured_at, new Date(CAPTURED_AT).toISOString());
     assert.ok(!("degraded" in data!), "a real answer carries no degraded flag");
+  });
+
+  test.each([454, 478] as const)(
+    "exact quantities use the selected runtime %s evidence and never neuron amounts",
+    async (spec) => {
+      const capture = syntheticAlphaCapture(CAPTURED_AT, {
+        spec_version: spec,
+        expected_rows: 2,
+        received_rows: 2,
+      });
+      const rows = [
+        syntheticAlphaPosition(
+          COLDKEY,
+          HOTKEY_A,
+          18,
+          "9007199254740993",
+          CAPTURED_AT,
+        ),
+        syntheticAlphaPosition(COLDKEY, HOTKEY_B, 4, "7", CAPTURED_AT),
+      ];
+      const { calls, env } = d1Stub(
+        rows,
+        CAPTURED_AT,
+        [],
+        "stake-throw",
+        capture,
+      );
+      const result = await loadAccountPositionsFromStore(env as never, COLDKEY);
+      assert.equal(result?.position_count, 2);
+      assert.deepEqual(
+        result.positions.map((row) => row.alpha_rao),
+        ["7", "9007199254740993"],
+      );
+      for (const row of result.positions) {
+        assert.equal(row.quantity_status, "qualified_snapshot");
+        assert.deepEqual(row.provenance, alphaQuantityProvenance(capture));
+        assert.equal(row.stake_tao, null);
+      }
+      assert.equal(result.total_stake_alpha, null);
+      const identityRead = calls.find((call) =>
+        call.sql.includes("FROM alpha_snapshot_passes"),
+      )!;
+      assert.match(identityRead.sql, /JOIN alpha_runtime_metadata/);
+      assert.equal(
+        calls.filter((call) => call.sql.includes("FROM neurons")).length,
+        0,
+      );
+    },
+  );
+  test("mixed pass stamps, Root and forged quantities retain relationships as unknown", async () => {
+    const capture = syntheticAlphaCapture(CAPTURED_AT, {
+      expected_rows: 2,
+      received_rows: 2,
+    });
+    const rows = [
+      syntheticAlphaPosition(COLDKEY, HOTKEY_A, 18, "7", CAPTURED_AT - 1),
+      {
+        ...syntheticAlphaPosition(COLDKEY, HOTKEY_B, 0, "7", CAPTURED_AT),
+        source: "self_stake",
+      },
+      syntheticAlphaPosition(COLDKEY, HOTKEY_B, 9, "9", CAPTURED_AT),
+      {
+        ...syntheticAlphaPosition(COLDKEY, HOTKEY_A, 4, "7", CAPTURED_AT),
+        alpha_rao: "8",
+      },
+    ];
+    const { env } = d1Stub(rows, CAPTURED_AT, [], "ok", capture);
+    const result = await loadAccountPositionsFromStore(env as never, COLDKEY);
+    assert.equal(result?.position_count, 4);
+    assert.deepEqual(
+      result.positions.map((row) => [
+        row.netuid,
+        row.alpha_rao,
+        row.quantity_status,
+      ]),
+      [
+        [0, null, "unqualified"],
+        [4, null, "unqualified"],
+        [9, "9", "qualified_snapshot"],
+        [18, null, "unqualified"],
+      ],
+    );
+    assert.deepEqual(
+      result.positions[2].provenance,
+      alphaQuantityProvenance(capture),
+    );
+    assert.ok(
+      result.positions
+        .filter((row) => row.netuid !== 9)
+        .every((row) => row.provenance === null),
+    );
+  });
+
+  test("a failed runtime-evidence read retains observed relationships as unqualified", async () => {
+    const { env } = d1Stub(
+      [positionRow(HOTKEY_A, 18, 0.5)],
+      CAPTURED_AT,
+      [],
+      "capture-throw",
+    );
+    const result = await loadAccountPositionsFromStore(env as never, COLDKEY);
+    assert.equal(result?.position_count, 1);
+    assert.equal(result.positions[0].share_fraction, 0.5);
+    assert.equal(result.positions[0].quantity_status, "unqualified");
+    assert.equal(result.positions[0].alpha_rao, null);
+    assert.equal(result.positions[0].provenance, null);
+  });
+  test("legacy neuron observation helper still bounds each independent IN-list at 100 parameters", async () => {
+    const hotkeys = Array.from({ length: 250 }, (_, i) => `hotkey-${i}`);
+    const { calls, env } = d1Stub(
+      [],
+      CAPTURED_AT,
+      hotkeys.map((hotkey) => ({ hotkey, netuid: 7, stake_tao: 2 })),
+    );
+    const observations = await neuronStakeByHotkeys(env, hotkeys);
+    const queries = calls.filter((call) => call.sql.includes("FROM neurons"));
+    assert.equal(queries.length, 3);
+    assert.ok(queries.every((call) => call.params.length <= 100));
+    assert.equal(observations?.size, 250);
+  });
+  test("the full 2000-relationship boundary remains available", async () => {
+    assert.equal(POSITION_SCAN_CAP, 2000);
+    const { env } = d1Stub(
+      Array.from({ length: POSITION_SCAN_CAP }, (_, i) =>
+        positionRow(HOTKEY_A, i, 1),
+      ),
+      CAPTURED_AT,
+      [],
+    );
+    assert.equal(
+      (await loadAccountPositionsFromStore(env as never, COLDKEY))
+        ?.position_count,
+      POSITION_SCAN_CAP,
+    );
   });
 
   test("an EMPTY ledger declines so the lakehouse still answers", async () => {
@@ -149,7 +310,7 @@ describe("loadAccountPositionsFromStore", () => {
     const { calls, env } = d1Stub([], CAPTURED_AT, []);
     const data = await loadAccountPositionsFromStore(env as never, COLDKEY);
     assert.equal(data!.position_count, 0);
-    assert.equal(data!.total_stake_alpha, 0);
+    assert.equal(data!.total_stake_alpha, null);
     assert.equal(
       data!.captured_at,
       new Date(CAPTURED_AT).toISOString(),
@@ -166,10 +327,9 @@ describe("loadAccountPositionsFromStore", () => {
     );
   });
 
-  test("chunks the neurons IN-list at D1's 100-bound-parameter binding limit", async () => {
-    // The binding rejects a statement over 100 parameters even though
-    // `wrangler d1 execute` accepts 1,200 from the CLI. The limit is asserted
-    // rather than a count, because the count grows with the network.
+  test("serves hundreds of relationships without a neuron IN-list or quantity approximation", async () => {
+    // Hundreds of relationship keys require only the bounded coldkey scan.
+    // The old observation IN-list remains independently covered above.
     const hotkeys = Array.from(
       { length: 250 },
       (_unused, i) => `${HOTKEY_A.slice(0, 44)}${String(i).padStart(4, "0")}`,
@@ -181,9 +341,11 @@ describe("loadAccountPositionsFromStore", () => {
     );
     const data = await loadAccountPositionsFromStore(env as never, COLDKEY);
     const stakeCalls = calls.filter((c) => c.sql.includes("FROM neurons"));
-    assert.equal(stakeCalls.length, 3);
-    for (const call of stakeCalls) assert.ok(call.params.length <= 100);
+    assert.equal(stakeCalls.length, 0);
+
     assert.equal(data!.position_count, 250);
+    assert.equal(data!.total_stake_alpha, null);
+    assert.ok(data!.positions.every((row) => row.alpha_rao === null));
   });
 
   test("declines a coldkey past the scan cap rather than under-reporting its total", async () => {
@@ -200,25 +362,20 @@ describe("loadAccountPositionsFromStore", () => {
     );
   });
 
-  test("declines with no binding, a throwing read, a malformed result, or a failed stake leg", async () => {
+  test("declines with no binding or a throwing selected ledger; unavailable neurons cannot remove relationships", async () => {
     assert.equal(
       await loadAccountPositionsFromStore({} as never, COLDKEY),
       null,
     );
     assert.equal(await loadAccountPositionsFromStore(null, COLDKEY), null);
-    // Hyperdrive bound, but this deployment has not declared nominator_positions
-    // Neon's -- readStore returns nothing rather than reading a table it was
-    // not told the store owns.
     assert.equal(
       await loadAccountPositionsFromStore(
-        {
-          HYPERDRIVE: { connectionString: "postgresql://mock/db" },
-        } as never,
+        { D1_STATE_TABLES: "nominator_positions" } as never,
         COLDKEY,
       ),
       null,
+      "a declared but unbound ledger must decline rather than throw or fall back",
     );
-
     const thrown = d1Stub([], CAPTURED_AT, [], "throw");
     assert.equal(
       await loadAccountPositionsFromStore(thrown.env as never, COLDKEY),
@@ -231,17 +388,24 @@ describe("loadAccountPositionsFromStore", () => {
     // decline on. A driver answering nonsense reads as zero rows, which
     // tests/account-summary-card.test.ts pins directly against the store.
 
-    // A partial stake map silently DROPS the positions it could not price,
-    // and buildAccountPositions cannot tell that from a deregistered hotkey.
+    // Voting-weight availability is independent of whether the ledger observed
+    // this relationship. It must neither drop the row nor fabricate an amount.
     const stakeDown = d1Stub(
       [positionRow(HOTKEY_A, 18, 1)],
       CAPTURED_AT,
       [],
       "stake-throw",
     );
+    const retained = await loadAccountPositionsFromStore(
+      stakeDown.env as never,
+      COLDKEY,
+    );
+    assert.equal(retained?.position_count, 1);
+    assert.equal(retained?.positions[0].alpha_rao, null);
     assert.equal(
-      await loadAccountPositionsFromStore(stakeDown.env as never, COLDKEY),
-      null,
+      stakeDown.calls.filter((call) => call.sql.includes("FROM neurons"))
+        .length,
+      0,
     );
   });
 
@@ -259,7 +423,8 @@ describe("the honest-zero primitives", () => {
     const data = unavailableAccountPositions(COLDKEY);
     assert.equal(data.ss58, COLDKEY);
     assert.equal(data.position_count, 0);
-    assert.equal(data.total_stake_alpha, 0);
+    assert.equal(data.schema_version, 2);
+    assert.equal(data.total_stake_alpha, null);
     assert.deepEqual(data.degraded, {
       reason: POSITIONS_DEGRADED_TIER_UNAVAILABLE,
       snapshot_captured_at: null,
@@ -339,8 +504,8 @@ describe("the honest-zero primitives", () => {
   });
 
   test("an existing captured_at is never overwritten by the ledger stamp", () => {
-    // A result whose own rows were all dropped by the stake join still knows
-    // when it was captured; the ledger stamp only FILLS a null.
+    // The ledger stamp only fills a null; an existing relationship vintage
+    // remains visible even on an empty snapshot.
     const zeroWithStamp = {
       ...buildAccountPositions([], new Map(), COLDKEY),
       captured_at: "2020-01-01T00:00:00.000Z",

@@ -9,12 +9,9 @@
 // envelope. Null-safe: an empty snapshot yields a schema-stable zeroed card.
 
 import { median, percentile } from "./lib/stats.ts";
-import {
-  nonNegativeCellOrNull,
-  raoBigToTao,
-  round9,
-  toRaoBig,
-} from "./lib/rao.ts";
+import { round9 } from "./lib/rao.ts";
+
+type Row = Record<string, unknown>;
 
 // The neurons-tier columns the network yield handler reads. `netuid` lets the
 // artifact report how many subnets the snapshot spans (mirrors
@@ -74,18 +71,6 @@ function captureStamp(value: unknown): CaptureStamp | null {
   return null;
 }
 
-// Emission-per-stake return rate; null when stake is 0 (the return is undefined
-// with no stake to earn on) or emission is unknown, so zero-stake / blank-emission
-// neurons are excluded from the spread.
-function computeYieldValue(
-  emission: number | null,
-  stake: number,
-): number | null {
-  if (!(stake > 0)) return null;
-  if (emission == null) return null;
-  return round9(emission / stake);
-}
-
 export interface YieldDistribution {
   count: number;
   mean: number;
@@ -131,18 +116,19 @@ export function yieldDistribution(
 // alpha/alpha the ratios stay dimensionally coherent and their values
 // unchanged; the rename just stops the two absolutes claiming to be TAO.
 export interface ChainYieldResult {
-  schema_version: 1;
+  schema_version: 2;
   subnet_count: number;
   neuron_count: number;
   validator_count: number;
   miner_count: number;
   captured_at: string | null;
-  total_stake_alpha: number;
-  total_emission_alpha: number;
+  total_stake_alpha: null;
+  total_emission_alpha: null;
   network_yield: number | null;
   validator_yield: number | null;
   miner_yield: number | null;
   distribution: YieldDistribution | null;
+  degraded: { reason: "holdings_unqualified" };
 }
 
 // Shape EVERY subnet's neurons-tier rows into the network yield artifact: the
@@ -152,93 +138,36 @@ export interface ChainYieldResult {
 // neuron/validator/miner counts. Null-safe on junk/sparse rows — an empty array
 // yields a schema-stable zeroed card (aggregate yields null, distribution null).
 export function buildChainYield(
-  rows: Array<Record<string, unknown>> | null | undefined,
+  rows: Row[] | null | undefined,
 ): ChainYieldResult {
-  const list = Array.isArray(rows) ? rows : [];
-  let capturedAt: CaptureStamp | null = null;
-  let validatorCount = 0;
-  let neuronCount = 0;
-  let totalStakeRao = 0n;
-  let totalEmissionRao = 0n;
-  let yieldStakeRao = 0n;
-  let yieldEmissionRao = 0n;
-  let yieldValidatorStakeRao = 0n;
-  let yieldValidatorEmissionRao = 0n;
-  let yieldMinerStakeRao = 0n;
-  let yieldMinerEmissionRao = 0n;
   const netuids = new Set<number>();
-  const yields: number[] = [];
-  for (const row of list) {
-    const captured = captureStamp(row?.captured_at);
-    if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
-      capturedAt = captured;
-    }
+  let neuronCount = 0,
+    validatorCount = 0;
+  let capturedAt: CaptureStamp | null = null;
+  for (const row of Array.isArray(rows) ? rows : []) {
     const netuid = subnetNetuid(row?.netuid);
-    // Root (netuid 0) is excluded from every aggregate below (#9040). A root
-    // neuron's stake_tao/emission_tao are genuine TAO, not a subnet's alpha
-    // token, so including root would mix TAO into the cross-subnet alpha sums
-    // AND put a TAO numerator over a mostly-alpha denominator in the three
-    // yield ratios. Live proof: at block 8755038 root held 6,613,430 TAO --
-    // 1.94% of the published total_stake_alpha -- against 9.54 emission, a
-    // low-return block dragging the network denominator with it. Dropped
-    // before `netuids`/`neuronCount` too, so subnet_count and neuron_count
-    // describe exactly the population the totals were computed over.
-    if (netuid === 0) continue;
-    const stake = nonNegativeCellOrNull(row?.stake_tao);
-    if (stake == null) continue;
-    if (netuid != null) netuids.add(netuid);
+    if (netuid == null || netuid === 0) continue;
+    netuids.add(netuid);
     neuronCount += 1;
-    const emission = nonNegativeCellOrNull(row?.emission_tao);
-    // Match the neuron formatter's SQLite 0/1 convention: only an integer 1 is a
-    // validator, so a numeric-string "0" cannot slip through as truthy.
-    const isValidator = Number(row?.validator_permit) === 1;
-    totalStakeRao += toRaoBig(stake);
-    if (emission != null) {
-      totalEmissionRao += toRaoBig(emission);
-      if (stake > 0) {
-        yieldStakeRao += toRaoBig(stake);
-        yieldEmissionRao += toRaoBig(emission);
-        if (isValidator) {
-          yieldValidatorStakeRao += toRaoBig(stake);
-          yieldValidatorEmissionRao += toRaoBig(emission);
-        } else {
-          yieldMinerStakeRao += toRaoBig(stake);
-          yieldMinerEmissionRao += toRaoBig(emission);
-        }
-      }
-    }
-    if (isValidator) validatorCount += 1;
-    const value = computeYieldValue(emission, stake);
-    if (value != null) yields.push(value);
+    if (Number(row?.validator_permit) === 1) validatorCount += 1;
+    const captured = captureStamp(row?.captured_at);
+    if (captured && (!capturedAt || captured.ms > capturedAt.ms))
+      capturedAt = captured;
   }
-  const totalStake = raoBigToTao(totalStakeRao);
-  const totalEmission = raoBigToTao(totalEmissionRao);
-  const yieldStake = raoBigToTao(yieldStakeRao);
-  const yieldEmission = raoBigToTao(yieldEmissionRao);
-  const yieldValidatorStake = raoBigToTao(yieldValidatorStakeRao);
-  const yieldValidatorEmission = raoBigToTao(yieldValidatorEmissionRao);
-  const yieldMinerStake = raoBigToTao(yieldMinerStakeRao);
-  const yieldMinerEmission = raoBigToTao(yieldMinerEmissionRao);
   return {
-    schema_version: 1,
+    schema_version: 2,
     subnet_count: netuids.size,
     neuron_count: neuronCount,
     validator_count: validatorCount,
     miner_count: neuronCount - validatorCount,
     captured_at: capturedAt?.value ?? null,
-    total_stake_alpha: round9(totalStake),
-    total_emission_alpha: round9(totalEmission),
-    // Network aggregate return over neurons with known stake + emission only.
-    network_yield: yieldStake > 0 ? round9(yieldEmission / yieldStake) : null,
-    // The same aggregate return split by role.
-    validator_yield:
-      yieldValidatorStake > 0
-        ? round9(yieldValidatorEmission / yieldValidatorStake)
-        : null,
-    miner_yield:
-      yieldMinerStake > 0 ? round9(yieldMinerEmission / yieldMinerStake) : null,
-    // Distribution of the per-neuron return rate across the whole network.
-    distribution: yieldDistribution(yields),
+    total_stake_alpha: null,
+    total_emission_alpha: null,
+    network_yield: null,
+    validator_yield: null,
+    miner_yield: null,
+    distribution: null,
+    degraded: { reason: "holdings_unqualified" },
   };
 }
 

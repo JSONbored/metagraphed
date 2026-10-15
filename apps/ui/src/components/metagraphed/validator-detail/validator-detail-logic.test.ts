@@ -39,40 +39,13 @@ describe("formatters", () => {
 });
 
 describe("stakeBySubnet", () => {
-  const memberships = [
-    membership({ netuid: 1, stake_alpha: 10, emission_alpha: 1 }),
-    membership({ netuid: 2, stake_alpha: 50, emission_alpha: 5 }),
-    membership({ netuid: 3, stake_alpha: 0, emission_alpha: 0 }),
-  ];
-  const fmt = (value: number) => `${value} a`;
-
-  it("orders by stake and carries both legs on every row", () => {
-    const rails = stakeBySubnet(memberships, nameOf, fmt);
-    expect(rails.map((rail) => rail.key)).toEqual(["sn-2", "sn-1"]);
-    expect(rails[0]).toMatchObject({ value: 50, secondary: 5 });
-  });
-
-  it("names and links the row rather than leaving it to an axis label", () => {
-    // Stacked columns thinned the axis like dates and labelled two of twelve.
-    expect(stakeBySubnet(memberships, nameOf, fmt)[0]).toMatchObject({
-      label: nameOf(2),
-      href: "/subnets/2",
-    });
-  });
-
-  it("carries stake and emission for the tooltip", () => {
-    expect(stakeBySubnet(memberships, nameOf, fmt)[0]?.detail).toEqual([
-      { key: "stake", label: "Stake", value: "50 a" },
-      { key: "emission", label: "Emission", value: "5 a" },
-    ]);
-  });
-
-  it("drops a membership holding and earning nothing", () => {
-    expect(stakeBySubnet(memberships, nameOf, fmt).some((rail) => rail.key === "sn-3")).toBe(false);
-  });
-
-  it("honours the ceiling so a 116-membership validator draws a chart, not a wall", () => {
-    expect(stakeBySubnet(memberships, nameOf, fmt, 1)).toHaveLength(1);
+  it("withholds portfolio allocations inferred from incomparable subnet tokens and voting weights", () => {
+    const memberships = [
+      membership({ netuid: 1, stake_alpha: 10, emission_alpha: 1 }),
+      membership({ netuid: 2, stake_alpha: 50, emission_alpha: 5 }),
+    ];
+    expect(stakeBySubnet(memberships, nameOf, (value) => String(value))).toEqual([]);
+    expect(stakeBySubnet(memberships, nameOf, (value) => String(value), 1)).toEqual([]);
   });
 });
 
@@ -93,7 +66,7 @@ describe("historyPoints / apyPoints / changeOver", () => {
     // Rounding here is the ASSERTION's, not the app's -- it compares floats
     // without pinning IEEE-754 noise, so it is arithmetic rather than display.
     // eslint-disable-next-line no-restricted-syntax -- float comparison, not display
-    expect(apyPoints(points).map((p) => Number(p.v.toFixed(4)))).toEqual([0.365, 0.73]);
+    expect(apyPoints(points)).toEqual([]);
   });
 
   it("measures first to last, and refuses a zero baseline", () => {

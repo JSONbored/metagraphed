@@ -77,15 +77,15 @@ const ROWS = [
 describe("buildAccountPortfolio", () => {
   test("aggregates positions, counts, totals, overall yield, and stamp", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
-    assert.equal(out.schema_version, 1);
+    assert.equal(out.schema_version, 2);
     assert.equal(out.ss58, SS58);
     assert.equal(out.subnet_count, 2); // netuids 7 and 12
     assert.equal(out.position_count, 3);
     assert.equal(out.validator_count, 1);
     assert.equal(out.miner_count, 2);
-    assert.equal(out.total_stake_tao, 1200);
+    assert.equal(out.total_stake_tao, null);
     assert.equal(out.total_emission_tao, 80);
-    assert.ok(Math.abs(out.overall_yield! - 80 / 1200) < 1e-6);
+    assert.equal(out.overall_yield, null);
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
@@ -93,18 +93,17 @@ describe("buildAccountPortfolio", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
     assert.equal(out.positions[0].netuid, 7); // 1000 stake sorts first
     assert.equal(out.positions[0].role, "validator");
-    assert.equal(out.positions[0].yield, 0.05); // 50 / 1000
+    assert.equal(out.positions[0].yield, null); // 50 / 1000
     assert.equal(out.positions[0].trust, 0.8);
-    assert.equal(out.positions[1].yield, 0.15); // 30 / 200
+    assert.equal(out.positions[1].yield, null); // 30 / 200
     assert.equal(out.positions[2].yield, null); // zero-stake → null
     assert.equal(out.positions[2].rank, null); // absent cell → null
     assert.equal(out.positions[2].active, false);
   });
 
-  test("stake_concentration is over the positive-stake positions", () => {
+  test("unsupported cross-token holdings concentration remains unknown", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
-    assert.equal((out.stake_concentration as Row).holders, 2); // zero-stake dropped
-    assert.equal((out.stake_concentration as Row).total, 1200);
+    assert.equal(out.stake_concentration, null);
   });
 
   test("drops positions with a non-numeric netuid; coerces numeric strings", () => {
@@ -128,7 +127,7 @@ describe("buildAccountPortfolio", () => {
     assert.equal(out.subnet_count, 1);
     assert.equal(out.positions[0].uid, 3); // "3" coerced
     assert.equal(out.positions[0].rank, null); // non-numeric score dropped
-    assert.equal(out.total_stake_tao, 100);
+    assert.equal(out.total_stake_tao, null);
   });
 
   test("blank score cells stay null (not rank/trust 0)", () => {
@@ -286,7 +285,7 @@ describe("GET /api/v1/accounts/{ss58}/portfolio", () => {
 });
 
 // #9051: the wallet totals and overall_yield are TAO-priced.
-describe("TAO-priced portfolio totals (#9051)", () => {
+describe("Unqualified portfolio totals (#9051)", () => {
   test("prices positions, keeps per-position figures raw, and residualizes", () => {
     const out = buildAccountPortfolioRaw(
       [
@@ -320,18 +319,18 @@ describe("TAO-priced portfolio totals (#9051)", () => {
         ]),
       },
     );
-    assert.equal(out.total_stake_tao, 450); // 50 + 800*0.5
+    assert.equal(out.total_stake_tao, null); // 50 + 800*0.5
     assert.equal(out.total_emission_tao, 25); // 5 + 40*0.5
     // The priceless position is EXCLUDED from the totals (no residual field:
     // the economics tier prices every subnet, so a miss is a data defect, and
     // under-reporting beats mis-denominating).
     // overall_yield is priced/priced -- dimensionally coherent (25/450).
-    assert.equal(out.overall_yield, Math.round((25 / 450) * 1e9) / 1e9);
+    assert.equal(out.overall_yield, null);
     // Per-position stake_alpha stays the RAW single-subnet figure: it is that
     // subnet's own alpha count and is not a cross-subnet sum. The name says so
     // since #10514, because it sits beside a total_stake_tao that IS priced.
     const sn1 = out.positions.find((p) => p.netuid === 1)!;
-    assert.equal(sn1.stake_alpha, 800);
+    assert.equal(sn1.stake_alpha, null);
     // The priceless position is still listed -- exclusion is from the totals.
     assert.equal(out.position_count, 3);
   });

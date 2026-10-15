@@ -908,6 +908,7 @@ jobs:
       # Both passes must have produced a report -- an empty/missing one would
       # otherwise upload a partial denominator and silently understate coverage.
       - name: Verify coverage reports exist
+        if: ${{ !cancelled() }}
         run: |
           test -s ${{ matrix.cov }}/lcov.info
 
@@ -928,12 +929,14 @@ jobs:
       # identical paths on different runners, which merge-multiple would
       # collapse into whichever landed last.
       - name: Stage coverage + results for the merge job
+        if: ${{ !cancelled() }}
         run: |
           mkdir -p cov-out
           cp ${{ matrix.cov }}/lcov.info cov-out/lcov-${{ matrix.id }}.info
           cp reports/junit/vitest${{ matrix.junit }}.xml cov-out/vitest-${{ matrix.id }}.xml
 
       - name: Upload coverage artifact
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-${{ matrix.id }}

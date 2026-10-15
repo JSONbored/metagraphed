@@ -43,17 +43,17 @@ describe("buildValidatorHistory", () => {
       HOTKEY,
       { window: "90d" },
     ) as Row;
-    assert.equal(out.schema_version, 1);
+    assert.equal(out.schema_version, 2);
     assert.equal(out.hotkey, HOTKEY);
     assert.equal(out.window, "90d");
     assert.equal(out.point_count, 1);
     assert.equal(out.points[0].snapshot_date, "2026-06-20");
     assert.equal(out.points[0].subnet_count, 3);
-    assert.equal(out.points[0].total_stake_tao, 1000);
+    assert.equal(out.points[0].total_stake_tao, null);
     assert.equal(out.points[0].total_emission_tao, 12.3);
   });
 
-  test("computes rewards_per_1000_tao from the day's totals", () => {
+  test("withholds rewards per native holding because the denominator is unqualified", () => {
     const out = buildValidatorHistory(
       [
         {
@@ -66,7 +66,7 @@ describe("buildValidatorHistory", () => {
       HOTKEY,
     ) as Row;
     // 10 / 2000 * 1000 = 5
-    assert.equal(out.points[0].rewards_per_1000_tao, 5);
+    assert.equal(out.points[0].rewards_per_1000_tao, null);
   });
 
   test("rewards_per_1000_tao is null when stake is zero, negative, or absent", () => {
@@ -114,7 +114,7 @@ describe("buildValidatorHistory", () => {
       ],
       HOTKEY,
     ) as Row;
-    assert.equal(out.points[0].total_stake_tao, 0.3);
+    assert.equal(out.points[0].total_stake_tao, null);
     assert.equal(out.points[0].total_emission_tao, 3.01);
   });
 
@@ -273,16 +273,13 @@ describe("buildValidatorHistory — scoped to one subnet (#9383)", () => {
     const point = (
       buildValidatorHistory([scopedRow], HOTKEY, { netuid: 64 }).points as Row[]
     )[0];
-    assert.equal(point.stake_alpha, 2120377.1);
+    assert.equal(point.stake_alpha, null);
     assert.equal(point.emission_alpha, 80.6312);
-    assert.equal(point.total_stake_tao, 179750.8);
-    assert.notEqual(point.stake_alpha, point.total_stake_tao);
+    assert.equal(point.total_stake_tao, null);
+    assert.equal(point.stake_alpha, null);
     // The alpha-denominated reward rate, computed from the alpha pair rather
     // than borrowed from the TAO one.
-    assert.equal(
-      point.rewards_per_1000_alpha,
-      Math.round((80.6312 / 2120377.1) * 1000 * 1e6) / 1e6,
-    );
+    assert.equal(point.rewards_per_1000_alpha, null);
   });
 
   test("a lost permit is reported, not dropped", () => {
@@ -308,7 +305,7 @@ describe("buildValidatorHistory — scoped to one subnet (#9383)", () => {
     assert.ok(!("consensus" in point));
     assert.ok(!("stake_alpha" in point));
     // The cross-subnet fields it DOES own are untouched.
-    assert.equal(point.total_stake_tao, 179750.8);
+    assert.equal(point.total_stake_tao, null);
     assert.equal(point.subnet_count, 1);
   });
 
@@ -446,11 +443,9 @@ describe("buildValidatorHistory — operator signals (#9390)", () => {
       ).points as Row[]
     )[0];
     // 2,118,872 / 3,899,868 = 0.54331890… -> 0.543319 at 6dp
-    assert.equal(point.stake_share, 0.543319);
+    assert.equal(point.stake_share, null);
     // 0.546273 / 0.543319 = 1.005437 -> earning slightly above its stake share
-    assert.ok(
-      Math.abs((point.dividend_efficiency as number) - 1.005437) < 1e-5,
-    );
+    assert.equal(point.dividend_efficiency, null);
   });
 
   test("efficiency is null rather than Infinity when there is no stake", () => {

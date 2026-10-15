@@ -3,7 +3,7 @@
  */
 import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { AccountHolderDirectoryEntry, ChainSignerEntry } from "@/lib/metagraphed/types";
-import { formatAmount, formatPct } from "@/lib/metagraphed/format";
+import { formatAmount } from "@/lib/metagraphed/format";
 
 export type HolderMetric = "stake" | "emission" | "reach";
 
@@ -48,16 +48,8 @@ export interface HolderCard {
  * `25.9% of listed · 119 subnets` -- the share first, because that is the
  * reading the retired Concentration section existed to give.
  */
-function shareSub(
-  account: AccountHolderDirectoryEntry,
-  pricedRegisteredStakeTotal: number,
-): string {
-  const subnets = plural(account.subnet_count ?? 0, "subnet");
-  const stake = account.total_stake_tao;
-  if (!pricedRegisteredStakeTotal || typeof stake !== "number" || !Number.isFinite(stake)) {
-    return `${subnets} · ${plural(account.uid_count ?? 0, "UID")}`;
-  }
-  return `${formatPct(stake / pricedRegisteredStakeTotal, 1)} of priced stake · ${subnets}`;
+function shareSub(account: AccountHolderDirectoryEntry, _pricedTotal: number | null): string {
+  return plural(account.subnet_count ?? 0, "subnet");
 }
 
 export function holderCards(
@@ -76,17 +68,16 @@ export function holderCards(
    * share -- was already a fact cell in the hero. What it uniquely carried was
    * the per-account share, so that moved here.
    */
-  pricedRegisteredStakeTotal = 0,
+  pricedRegisteredStakeTotal: number | null = null,
 ): HolderCard[] {
+  if (metric === "stake") return [];
   return accounts.slice(0, limit).flatMap((account) => {
     const address = account.coldkey ?? account.hotkey;
     if (!address) return [];
     const value =
-      metric === "stake"
-        ? fmtTaoCompact(account.total_stake_tao)
-        : metric === "emission"
-          ? fmtTaoCompact(account.total_emission_tao)
-          : plural(account.subnet_count ?? 0, "subnet");
+      metric === "emission"
+        ? fmtTaoCompact(account.total_emission_tao)
+        : plural(account.subnet_count ?? 0, "subnet");
     return [
       {
         key: address,

@@ -28,9 +28,7 @@
 import { z } from "zod";
 
 export const TOP_HOLDERS_SORT_VALUES = [
-  "total_tao",
   "free_tao",
-  "delegated_tao",
   "net_flow_7d",
   "net_flow_30d",
   "net_flow_90d",
@@ -50,11 +48,7 @@ export const TOP_HOLDERS_SORT_VALUES = [
  * only wanted to shape a row. tests/top-holders-holdings-refresh.test.ts pins
  * this against the lane's own three constants, so the copy cannot drift.
  */
-export const TOP_HOLDERS_HOLDINGS_SORT_VALUES = [
-  "free_tao",
-  "delegated_tao",
-  "total_tao",
-] as const;
+export const TOP_HOLDERS_HOLDINGS_SORT_VALUES = ["free_tao"] as const;
 
 const TopHoldersEntrySchema = z
   .object({
@@ -68,18 +62,18 @@ const TopHoldersEntrySchema = z
       ),
     delegated_tao: z
       .number()
-      .min(0)
       .nullable()
       .describe(
-        "This account's delegated stake, valued in TAO. TAO-converted: each delegated position is multiplied by its own subnet's alpha_price_tao, taken from the latest daily subnet_snapshots row for that netuid, so cross-subnet alpha is never summed as if it were TAO (#8803). That table has a DAILY cadence, so the price can lag up to ~24h behind the live economics tier. A netuid whose latest snapshot carries no usable price is excluded from the sum rather than counted as zero. NULL on a net_flow_*-ranked page, which the live flow lane serves without holdings columns (#9469).",
-      ),
+        "Deprecated unsupported native portfolio valuation; always null.",
+      )
+      .meta({ deprecated: true }),
     total_tao: z
       .number()
-      .min(0)
       .nullable()
       .describe(
-        "free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort. NULL whenever either addend is null, rather than summing the half that is known -- a partial total would understate the account silently (#9469).",
-      ),
+        "Deprecated unsupported native portfolio valuation; always null.",
+      )
+      .meta({ deprecated: true }),
     net_flow_7d: z
       .number()
       .nullable()
@@ -105,7 +99,7 @@ const TopHoldersEntrySchema = z
 
 export const TopHoldersArtifactSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
     sort: z.enum(TOP_HOLDERS_SORT_VALUES),
     limit: z.int().min(1).max(100),
     captured_at: z

@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import { beforeAll, afterAll, afterEach, test, vi } from "vitest";
+import { syntheticAlphaPosition } from "./helpers/alpha-quantity-fixture.ts";
+import { seedAlphaQuantityD1Pass } from "./helpers/alpha-quantity-d1-fixture.ts";
+import {
+  alphaQuantityProvenance,
+  type AlphaQuantityCapture,
+} from "../src/alpha-quantity.ts";
 import { Miniflare } from "miniflare";
 import {
   ledgerCapturedAt,
@@ -110,10 +116,12 @@ const runtime = new Miniflare({
   d1Databases: ["DB"],
 });
 let db: D1Database;
+let capture: AlphaQuantityCapture;
 const env = (bucket = archive()) => ({
   NATIVE_PROJECTIONS: "enabled",
   D1_STATE: db,
-  D1_STATE_TABLES: "nominator_positions,neurons",
+  D1_STATE_TABLES:
+    "nominator_positions,alpha_snapshot_passes,alpha_runtime_metadata,neurons",
   NATIVE_HISTORY_FIXTURE: "cfut_test",
   METAGRAPH_ARCHIVE: bucket,
 });
@@ -124,6 +132,8 @@ beforeAll(async () => {
     "0020_neuron_axon_projection.sql",
     "0030_neuron_axon_insert_projection.sql",
     "0010_ledger_state.sql",
+    "0040_self_stake_snapshot_receipts.sql",
+    "0043_alpha_runtime_snapshots.sql",
   ]) {
     for (const sql of readFileSync(
       new URL(`../migrations/d1/${file}`, import.meta.url),
@@ -131,12 +141,10 @@ beforeAll(async () => {
     ).split("-- statement-breakpoint"))
       if (sql.trim()) await db.prepare(sql).run();
   }
-  await db
-    .prepare(
-      "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at) VALUES(?,?,7,0.5,9000),(?,?,8,0.25,9000)",
-    )
-    .bind(account, other, account, other)
-    .run();
+  capture = await seedAlphaQuantityD1Pass(db, 9000, [
+    syntheticAlphaPosition(account, other, 7, "50000000001", 9000),
+    syntheticAlphaPosition(account, other, 8, "10000000002", 9000),
+  ]);
   for (const netuid of [7, 8]) {
     await db
       .prepare(
@@ -164,11 +172,21 @@ function forbidSql() {
   vi.stubGlobal("fetch", fetch);
   return fetch;
 }
-test("D1 position fallbacks keep exact live stake pricing and current capture stamps", async () => {
+test("D1 position reads preserve exact runtime-qualified quantities independently of neuron weights and current capture stamps", async () => {
   const fetch = forbidSql();
   const value = await loadAccountPositionsColdTier(env(), account);
   assert.equal(value?.position_count, 2);
-  assert.equal(value?.total_stake_alpha, 60);
+  assert.equal(value?.schema_version, 2);
+  assert.equal(value?.total_stake_alpha, null);
+  assert.deepEqual(
+    value?.positions.map((row) => row.alpha_rao),
+    ["50000000001", "10000000002"],
+  );
+  for (const row of value!.positions) {
+    assert.equal(row.stake_tao, null);
+    assert.equal(row.quantity_status, "qualified_snapshot");
+    assert.deepEqual(row.provenance, alphaQuantityProvenance(capture));
+  }
   assert.equal(await ledgerCapturedAt(env()), 9000);
   const empty = await loadAccountPositionsColdTier(env(), other);
   assert.equal(empty?.position_count, 0);
@@ -211,11 +229,11 @@ test("selected ledger failures decline even when a fallback token exists", async
   }
   assert.equal(fetch.mock.calls.length, 0);
 });
-test("a native ledger beyond the position cap declines before pricing a partial set", async () => {
+test("a native ledger beyond the position cap declines before publishing a partial relationship set", async () => {
   const fetch = forbidSql();
   await db
     .prepare(
-      "WITH RECURSIVE n(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM n WHERE i<2001) INSERT INTO nominator_positions(coldkey,hotkey,netuid,captured_at) SELECT ?, 'cap-'||i, 7, 8000 FROM n",
+      "WITH RECURSIVE n(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM n WHERE i<2001) INSERT INTO nominator_positions(coldkey,hotkey,netuid,captured_at,source) SELECT ?, 'cap-'||i, 7, 8000, 'self_stake' FROM n",
     )
     .bind(other)
     .run();

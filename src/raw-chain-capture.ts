@@ -8,28 +8,18 @@
 // into a permanent hole: the chain only serves recent state cheaply, so bytes
 // not captured near head become expensive-to-impossible to recover later.
 //
-// So this module captures the bytes VERBATIM -- block header, the extrinsics
-// array exactly as the node returns it, and the System.Events storage blob at
-// that block hash -- and lands them in R2 before anything is decoded. Decode
-// is a pure function of those bytes plus runtime metadata, so it can be
-// re-run, corrected, and re-run again. A missed block cannot.
+// Capture preserves the header, ordered SCALE extrinsics and System.Events
+// value. Production wiring requires the native canonical store: one D1 batch
+// publishes immutable bytes and advances the exact predecessor checkpoint.
+// The endpoint's finalized assertion bounds each tick; SCALE header rehashing,
+// parent linkage, genesis and persisted anchor checks reject inconsistent bytes.
+// This is RPC trust, not an independently verified consensus or trie proof.
 //
-// THE NO-GAP GUARANTEE, and why it holds:
-//   - A single durable watermark, `last_contiguous_block`, means "every block
-//     at or below this height is durably in R2". It is the ONLY thing that
-//     advances, and it advances ONLY across a prefix that was actually
-//     written this tick.
-//   - Capture starts at watermark+1 every time. A tick that fails at height H
-//     advances the watermark to H-1 at most, so the next tick retries H. There
-//     is no cursor that can skip forward past a failure.
-//   - Writes are idempotent: the R2 key is derived from the block range, so a
-//     retried batch overwrites rather than duplicating.
-//   - Therefore "are there gaps?" is answerable by a QUERY -- compare the
-//     watermark against the chain head -- rather than by trusting a log.
-//
-// Cadence and bounds are the caller's (a Worker cron); this module is pure
-// apart from the injected fetch and store, so the whole guarantee is testable
-// without a chain or a bucket.
+// Existing height-only frontiers remain legacy/unverified. verifiedFrom marks
+// the first prospectively checked block; it never certifies earlier history.
+// A missing body/event or failed commit leaves the next height retryable. The
+// pure legacy helper remains available for independent callers and regressions;
+// the scheduled production wrapper refuses it.
 
 import {
   chainRpc,
@@ -38,6 +28,19 @@ import {
 } from "./chain-rpc.ts";
 import type { ChainRpcAdmission } from "./chain-rpc-admission.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import { canonicalRawBlock } from "./substrate-header.ts";
+
+import {
+  finalizedCaptureContext,
+  qualifyCaptureEndpoint,
+} from "./raw-capture-finalized-rpc.ts";
+import type {
+  CanonicalCaptureCheckpoint,
+  CanonicalCaptureStore,
+  FinalizedAnchor,
+} from "./raw-capture-provenance.ts";
+
+type FinalizedContext = Awaited<ReturnType<typeof finalizedCaptureContext>>;
 
 // DERIVED once in twox-storage-key.ts, beside the vectors that prove it.
 // Re-exported here because this module's callers and tests have always
@@ -109,6 +112,11 @@ export const RPC_CALLS_PER_BLOCK = 2;
  * addressed by hash, and the hashes are what the first request returns.
  */
 export const REQUESTS_PER_CHUNK = 2;
+// Canonical capture requalifies genesis/finality/predecessor in one extra batch.
+export const CANONICAL_REQUESTS_PER_CHUNK = REQUESTS_PER_CHUNK + 1;
+// Two concurrently paced lanes leave HTTP budget for native storage/telemetry.
+// Binding/query limits still require their own production qualification.
+export const CANONICAL_MAX_RPC_REQUESTS = 200;
 
 /**
  * Most blocks one chunk may carry, from the two numbers above.
@@ -219,6 +227,7 @@ export async function fetchRawBlockChunk(
   now: () => number = Date.now,
   requireEvents = false,
   admission?: ChainRpcAdmission,
+  expectedParent?: string,
 ): Promise<RawBlockChunk> {
   if (heights.length === 0) return { blocks: [], stopped: null };
 
@@ -311,6 +320,21 @@ export async function fetchRawBlockChunk(
       stopped = { at: height, reason: assembled.error };
       break;
     }
+    if (expectedParent !== undefined) {
+      try {
+        expectedParent = canonicalRawBlock(
+          assembled.block,
+          height,
+          expectedParent,
+        );
+      } catch (error) {
+        stopped = {
+          at: height,
+          reason: String((error as Error)?.message ?? error),
+        };
+        break;
+      }
+    }
     blocks.push(assembled.block);
   }
   return { blocks, stopped };
@@ -363,6 +387,7 @@ export function rawBatchKey(
 /** The minimal slice of the R2 binding this module uses — structural so tests
  * can pass a plain object. */
 export interface RawCaptureStore {
+  canonical?: CanonicalCaptureStore;
   put(key: string, value: string): Promise<unknown>;
 }
 
@@ -420,6 +445,7 @@ export async function captureTick(deps: {
   requireEvents?: boolean;
   store: RawCaptureStore;
   watermark: WatermarkStore;
+  canonical?: CanonicalCaptureStore;
   genesisFloor: number;
   maxPerTick: number;
   /** Which chain these bytes came from. Decides the R2 key prefix only —
@@ -460,7 +486,15 @@ export async function captureTick(deps: {
    * timer is not dependable under the shared-registry pass (#9123). */
   sleepFn?: (ms: number) => Promise<void>;
 }): Promise<CaptureResult> {
-  const fetchImpl = deps.fetchImpl ?? fetch;
+  const underlyingFetch = deps.fetchImpl ?? fetch;
+  let rpcRequests = 0;
+  const fetchImpl: typeof fetch = deps.canonical
+    ? async (input, init) => {
+        if (++rpcRequests > CANONICAL_MAX_RPC_REQUESTS)
+          throw new Error("Raw capture RPC request budget exhausted");
+        return underlyingFetch(input, init);
+      }
+    : underlyingFetch;
   const now = deps.now ?? Date.now;
   const minGapMs = deps.minGapMs ?? 0;
   // CLAMPED to what the node will actually answer, whatever the caller asks.
@@ -484,72 +518,154 @@ export async function captureTick(deps: {
   // hostnames can share a backend limit; rotation buys failover and archive
   // coverage, while batching already exceeds the chain's production rate.
   const chunkGapMs = minGapMs;
-  const stored = await deps.watermark.read();
-  // An unset watermark starts just below the floor, so the first tick captures
-  // the floor block itself rather than skipping it.
-  const lastContiguous =
-    typeof stored === "number" && Number.isInteger(stored)
-      ? stored
-      : deps.genesisFloor - 1;
-
-  // The head comes from whichever endpoint answers FIRST, not from a fixed one:
-  // a tick must not be lost because the preferred host is down when every other
-  // host could have served the whole run.
-  let head: number | null = null;
-  let headError: unknown = null;
-  let candidates = endpoints;
-  // Fail over first, then retry transient upstream failures once. Testnet can
-  // have only one archive endpoint; one TLS/proxy blip must not lose a tick.
-  for (let round = 0; round < 2 && head === null; round += 1) {
-    const retry: string[] = [];
-    for (const url of candidates) {
-      try {
-        const value = (await rpc(
-          url,
-          "chain_getHeader",
-          [],
-          fetchImpl,
-          deps.admission,
-        )) as {
-          number?: unknown;
-        } | null;
-        const hex = value?.number;
-        const number =
-          typeof hex === "string" && /^0x[0-9a-fA-F]+$/.test(hex)
-            ? Number.parseInt(hex, 16)
-            : NaN;
-        if (!Number.isSafeInteger(number)) {
-          throw new Error("chain_getHeader: unusable head number");
-        }
-        head = number;
-        break;
-      } catch (error) {
-        headError = error;
-        if (
-          error instanceof Error &&
-          (error.name === "TimeoutError" ||
-            /^chain_getHeader: HTTP (502|503|504|520|522|523|524|525)$/.test(
-              error.message,
-            ))
-        )
-          retry.push(url);
-      }
-    }
-    if (head !== null || round === 1 || retry.length === 0) break;
-    await sleepFn(2_000);
-    candidates = retry;
-  }
-  if (head === null) {
-    const detail = String((headError as Error)?.message ?? headError);
-    // One endpoint's failure IS the lane's failure, and its message is already
-    // the whole story -- rewrapping it would only bury the cause a caller
-    // greps for. The "no endpoint answered" framing is a claim about a SET, so
-    // it is only made when there was one.
-    throw new Error(
-      endpoints.length > 1
-        ? `chain_getHeader: no endpoint answered (${detail})`
-        : detail,
+  // Failover spends the same paced slots as successful chunks. The extra
+  // startup slot covers initial fixed-finality qualification; endpoint count
+  // cannot extend this invocation's planned span or multiply its allowance.
+  const canonicalAttemptLimit =
+    1 +
+    Math.ceil(
+      Number.isFinite(deps.maxPerTick) && deps.maxPerTick > 0
+        ? deps.maxPerTick / flushEvery
+        : 0,
     );
+  let canonicalAttempts = 0;
+  let previousCanonicalStartedAt: number | null = null;
+  const canonicalAttempt = async () => {
+    if (canonicalAttempts >= canonicalAttemptLimit)
+      throw new Error("Raw capture attempt budget exhausted");
+    if (previousCanonicalStartedAt !== null && chunkGapMs > 0) {
+      const remaining = chunkGapMs - (now() - previousCanonicalStartedAt);
+      if (remaining > 0) await sleepFn(remaining);
+    }
+    previousCanonicalStartedAt = now();
+    canonicalAttempts++;
+  };
+  let checkpoint: CanonicalCaptureCheckpoint | undefined;
+  let finalized: FinalizedAnchor | undefined;
+  let lastContiguous: number;
+  let head: number | null = null;
+  if (deps.canonical) {
+    const network = deps.network ?? DEFAULT_CHAIN_NETWORK;
+    const stored = await deps.canonical.read(network);
+    let context: FinalizedContext | undefined;
+    let lastError: unknown;
+    let candidates = endpoints;
+    for (let round = 0; round < 2 && !context; round++) {
+      const retry: string[] = [];
+      for (const url of candidates) {
+        try {
+          await canonicalAttempt();
+          context = await finalizedCaptureContext(
+            url,
+            network,
+            stored,
+            deps.genesisFloor,
+            { fetchImpl, admission: deps.admission },
+          );
+          break;
+        } catch (error) {
+          lastError = error;
+          if (
+            error instanceof Error &&
+            (error.name === "TimeoutError" ||
+              /^(?:chain_getHeader|batch\(\d+\)): HTTP (502|503|504|520|522|523|524|525)$/.test(
+                error.message,
+              ))
+          )
+            retry.push(url);
+        }
+      }
+      if (context || round === 1 || !retry.length) break;
+      await sleepFn(2_000);
+      candidates = retry;
+    }
+    if (!context) throw lastError;
+    finalized = context.finalized;
+    checkpoint = stored?.genesis
+      ? (stored as CanonicalCaptureCheckpoint)
+      : await deps.canonical.bootstrap({
+          network,
+          previousHeight: stored?.height ?? null,
+          height: context.previousHeight,
+          hash: context.previousHash,
+          genesis: context.genesis,
+          finalized,
+          now: now(),
+        });
+    if (
+      checkpoint.height > finalized.height ||
+      checkpoint.finalizedHeight > finalized.height
+    )
+      throw new Error("Raw capture finalized head regressed");
+    lastContiguous = checkpoint.height;
+    head = finalized.height;
+  } else {
+    const stored = await deps.watermark.read();
+    // An unset watermark starts just below the floor, so the first tick captures
+    // the floor block itself rather than skipping it.
+    lastContiguous =
+      typeof stored === "number" && Number.isInteger(stored)
+        ? stored
+        : deps.genesisFloor - 1;
+
+    // The head comes from whichever endpoint answers FIRST, not from a fixed one:
+    // a tick must not be lost because the preferred host is down when every other
+    // host could have served the whole run.
+    let headError: unknown = null;
+    let candidates = endpoints;
+    // Fail over first, then retry transient upstream failures once. Testnet can
+    // have only one archive endpoint; one TLS/proxy blip must not lose a tick.
+    for (let round = 0; round < 2 && head === null; round += 1) {
+      const retry: string[] = [];
+      for (const url of candidates) {
+        try {
+          const value = (await rpc(
+            url,
+            "chain_getHeader",
+            [],
+            fetchImpl,
+            deps.admission,
+          )) as {
+            number?: unknown;
+          } | null;
+          const hex = value?.number;
+          const number =
+            typeof hex === "string" && /^0x[0-9a-fA-F]+$/.test(hex)
+              ? Number.parseInt(hex, 16)
+              : NaN;
+          if (!Number.isSafeInteger(number)) {
+            throw new Error("chain_getHeader: unusable head number");
+          }
+          head = number;
+          break;
+        } catch (error) {
+          headError = error;
+          if (
+            error instanceof Error &&
+            (error.name === "TimeoutError" ||
+              /^chain_getHeader: HTTP (502|503|504|520|522|523|524|525)$/.test(
+                error.message,
+              ))
+          )
+            retry.push(url);
+        }
+      }
+      if (head !== null || round === 1 || retry.length === 0) break;
+      await sleepFn(2_000);
+      candidates = retry;
+    }
+    if (head === null) {
+      const detail = String((headError as Error)?.message ?? headError);
+      // One endpoint's failure IS the lane's failure, and its message is already
+      // the whole story -- rewrapping it would only bury the cause a caller
+      // greps for. The "no endpoint answered" framing is a claim about a SET, so
+      // it is only made when there was one.
+      throw new Error(
+        endpoints.length > 1
+          ? `chain_getHeader: no endpoint answered (${detail})`
+          : detail,
+      );
+    }
   }
   const heights = nextCaptureHeights(lastContiguous, head, deps.maxPerTick);
   if (heights.length === 0) {
@@ -575,11 +691,16 @@ export async function captureTick(deps: {
   const flush = async (batch: RawBlockCapture[]) => {
     const first = batch[0]!.block_number;
     const last = batch[batch.length - 1]!.block_number;
-    await deps.store.put(
-      rawBatchKey(first, last, deps.network),
-      batch.map((b) => JSON.stringify(b)).join("\n") + "\n",
-    );
-    // Only now -- the bytes are durable, so the watermark may claim them.
+    const key = rawBatchKey(first, last, deps.network);
+    const value = batch.map((b) => JSON.stringify(b)).join("\n") + "\n";
+    if (deps.canonical) {
+      checkpoint = await deps.canonical.commit(key, value, {
+        checkpoint: checkpoint!,
+        finalized: finalized!,
+      });
+      return checkpoint.height;
+    }
+    await deps.store.put(key, value);
     await deps.watermark.write(last);
     return last;
   };
@@ -596,7 +717,7 @@ export async function captureTick(deps: {
     const chunkHeights = heights.slice(offset, offset + flushEvery);
     // BEFORE the read, and never before the first: the gap belongs between two
     // chunks' bursts, so pacing never delays a tick that captures one chunk.
-    if (previousChunkStartedAt !== null && chunkGapMs > 0) {
+    if (!deps.canonical && previousChunkStartedAt !== null && chunkGapMs > 0) {
       const remaining = chunkGapMs - (now() - previousChunkStartedAt);
       if (remaining > 0) await sleepFn(remaining);
     }
@@ -607,6 +728,13 @@ export async function captureTick(deps: {
     for (let attempt = 0; attempt < endpoints.length; attempt += 1) {
       const url = endpoints[(chunkIndex + attempt) % endpoints.length]!;
       try {
+        if (deps.canonical) {
+          await canonicalAttempt();
+          await qualifyCaptureEndpoint(url, checkpoint!, finalized!, {
+            fetchImpl,
+            admission: deps.admission,
+          });
+        }
         const got = await fetchRawBlockChunk(
           url,
           chunkHeights,
@@ -614,6 +742,7 @@ export async function captureTick(deps: {
           now,
           deps.requireEvents,
           deps.admission,
+          deps.canonical ? checkpoint!.hash : undefined,
         );
         chunk = got;
         if (got.blocks.length > 0) break;
@@ -646,6 +775,10 @@ export async function captureTick(deps: {
     // Durable FIRST, watermark after -- the ordering the guarantee rests on.
     watermark = await flush(chunk.blocks);
     captured += chunk.blocks.length;
+    // A concurrent writer's qualified descendant may already be ahead. Stop
+    // this stale range plan rather than submitting overlapping next chunks.
+    if (deps.canonical && watermark !== chunk.blocks.at(-1)!.block_number)
+      break;
 
     // A short chunk means the run ended inside it. Its prefix is written; the
     // height it stopped at is where the next tick resumes.
@@ -669,7 +802,7 @@ export async function captureTick(deps: {
   return {
     captured,
     watermark,
-    behind: head - watermark,
+    behind: Math.max(0, head - watermark),
     stoppedAt,
     reason,
   };

@@ -12,8 +12,9 @@ const ValidatorHistoryPointSchema = z
       .number()
       .nullable()
       .describe(
-        "TAO-priced at this point's OWN snapshot_date (#9051): each day's cross-subnet total converts each membership through that day's alpha_price_tao (root at 1:1), so the series is a true TAO-value history. A day-row with no matching price is excluded from that day's sum.",
-      ),
+        "Deprecated holdings valuation from historical voting weight; always null.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z.number().nullable(),
     rewards_per_1000_tao: z.number().nullable(),
     // #9383, per-subnet scope. OPTIONAL rather than nullable: these are absent
@@ -32,8 +33,14 @@ const ValidatorHistoryPointSchema = z
       .number()
       .nullable()
       .optional()
+      .describe("Deprecated native asset interpretation; always null.")
+      .meta({ deprecated: true }),
+    voting_weight: z
+      .number()
+      .nullable()
+      .optional()
       .describe(
-        "Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point.",
+        "Historical effective neuron voting weight for the scoped subnet, not a native balance.",
       ),
     emission_alpha: z.number().nullable().optional(),
     validator_trust: z
@@ -69,7 +76,7 @@ const ValidatorHistoryPointSchema = z
 
 export const ValidatorHistoryArtifactSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
     hotkey: z.string(),
     window: z.string().nullable(),
     // The subnet this series was scoped to; null for the cross-subnet rollup, so a

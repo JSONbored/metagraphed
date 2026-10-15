@@ -1,3 +1,5 @@
+import { webhookLedgerForEnv } from "../src/webhook-ledger-d1.ts";
+import { webhookDeliveryStatus } from "../src/webhook-delivery-status.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
@@ -522,9 +524,7 @@ import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-p
 import {
   buildChangeEvent,
   deliverChangeEvent,
-  deliveryRecordFor,
   deliveryStorageKey,
-  deliveryStoragePrefix,
   eventMatchesFilters,
   webhookEventId,
   WEBHOOK_KV_PREFIX,
@@ -535,8 +535,6 @@ import {
   isValidSubscriptionId,
   publicSubscriptionView,
   subscriptionStorageKey,
-  summarizeDeliveryRecords,
-  WEBHOOK_REDELIVERY_LIST_LIMIT,
   timingSafeEqual,
   validateSubscriptionInput,
   WEBHOOK_DELIVERY_TTL_SECONDS,
@@ -547,6 +545,7 @@ import {
 } from "../src/webhooks.ts";
 import {
   classifyWebhookBatch,
+  validWebhookDeliveryMessage,
   groupWebhookBatchBySubscription,
   planWebhookFanOut,
   shouldDispatchChangeEvent,
@@ -556,6 +555,7 @@ import {
   webhookDeliveryDisposition,
   webhookRetryDelaySeconds,
   WEBHOOK_QUEUE_MAX_ATTEMPTS,
+  webhookMessageFitsQueue,
 } from "../src/webhook-queue.ts";
 import { buildSearchResolve } from "../src/identifier-resolver.ts";
 import {
@@ -1790,6 +1790,31 @@ export default {
       // The dead-letter record is a lane verdict, so it goes where the other
       // 27 do (#10158). recordLaneVerdict swallows failures, so a dead letter
       // written to a store nobody reads is a message lost twice over.
+      if (batch.queue === "webhook-deliveries-dlq") {
+        const ledger = webhookLedgerForEnv(env);
+        if (!ledger)
+          throw new Error("Native webhook delivery ledger is unbound");
+        for (const message of batch.messages) {
+          if (validWebhookDeliveryMessage(message.body)) {
+            const result = await ledger.deadLetter(message.body, Date.now());
+            if (result.state === "sending") {
+              message.retry({ delaySeconds: 60 });
+              continue;
+            }
+            if (result.state === "delivered" || result.state === "stale") {
+              message.ack();
+              continue;
+            }
+          }
+          await handleDeadLetterBatch(
+            { ...batch, messages: [message] },
+            laneHealthStore(env),
+            Date.now(),
+            env.D1_STATE,
+          );
+        }
+        return;
+      }
       await handleDeadLetterBatch(
         batch,
         laneHealthStore(env),
@@ -1917,9 +1942,25 @@ async function fanOutChangeEvent(
       ),
   });
 
-  await Promise.all(
-    messages.map((message) => env.WEBHOOK_DELIVERIES!.send(message)),
-  );
+  const ledger = webhookLedgerForEnv(env);
+  if (!ledger) throw new Error("Native webhook delivery ledger is unbound");
+  // Persist the complete selected recipient set before any queue-send failure
+  // can interrupt fanout. A later changelog may replace this event entirely.
+  await ledger.ensureFanout(messages, Date.now());
+  let sendFailure: unknown;
+  await mapBounded(messages, WEBHOOK_DELIVERY_CONCURRENCY, async (message) => {
+    try {
+      await env.WEBHOOK_DELIVERIES!.send(message);
+      await ledger.enqueued(
+        message.subscription_id,
+        message.event_id,
+        Date.now(),
+      );
+    } catch (error) {
+      sendFailure ??= error;
+    }
+  });
+  if (sendFailure) throw sendFailure;
   return {
     eventId,
     subscriptions: subscriptions.length,
@@ -1975,6 +2016,27 @@ export async function dispatchWebhooksFromChangelog(
   if (!env.WEBHOOK_DELIVERIES || !env.METAGRAPH_CONTROL?.list) {
     return { ok: true, reason: "not_provisioned" };
   }
+  const ledger = webhookLedgerForEnv(env);
+  if (!ledger) throw new Error("Native webhook delivery ledger is unbound");
+  for (const owed of await ledger.outbox(Date.now())) {
+    if (!webhookMessageFitsQueue(owed)) {
+      await ledger.deadLetter(owed, Date.now(), "queue-envelope-oversize");
+      continue;
+    }
+    try {
+      await env.WEBHOOK_DELIVERIES.send(owed);
+      await ledger.enqueued(
+        owed.subscription_id,
+        owed.event_id,
+        Date.now(),
+        owed.generation ?? 0,
+      );
+    } catch {
+      /* Original intent remains owed; other deliveries still progress. */
+    }
+  }
+  await ledger.recoverExpired(Date.now());
+  await ledger.prune(Date.now());
   const event = await loadEvent(env);
 
   const eventId = await webhookEventId(JSON.stringify(event));
@@ -2111,31 +2173,30 @@ export async function handleWebhookQueue(
   async function deliverOne(
     message: (typeof batch.messages)[number],
   ): Promise<void> {
-    const body = message.body as {
-      subscription_id?: unknown;
-      event_id?: unknown;
-      body?: unknown;
-    } | null;
+    const body = message.body;
     // Unparseable is ACKED, not retried -- it will not parse on the eighth
     // attempt either, and the DLQ is more useful holding deliveries that might
     // still succeed. Same rule the sync-batches consumer follows.
     // `event_id` is checked here too, not just by validWebhookDeliveryMessage:
     // it keys the delivery record AND half the idempotency header, so a message
     // without one cannot be reported on even if it delivers.
-    if (
-      !body ||
-      typeof body.subscription_id !== "string" ||
-      typeof body.event_id !== "string" ||
-      typeof body.body !== "string"
-    ) {
+    if (!validWebhookDeliveryMessage(body)) {
       message.ack();
       return;
     }
 
-    const subscription = (await env.METAGRAPH_CONTROL?.get(
-      subscriptionStorageKey(body.subscription_id),
-      { type: "json" },
-    )) as Record<string, unknown> | null;
+    let subscription: Record<string, unknown> | null;
+    try {
+      subscription = (await env.METAGRAPH_CONTROL?.get(
+        subscriptionStorageKey(body.subscription_id),
+        { type: "json" },
+      )) as Record<string, unknown> | null;
+    } catch {
+      message.retry({
+        delaySeconds: webhookRetryDelaySeconds(message.attempts),
+      });
+      return;
+    }
     // A deleted subscription is done, not failed: acking is how an unsubscribe
     // takes effect on a delivery already in flight.
     if (!subscription) {
@@ -2161,6 +2222,53 @@ export async function handleWebhookQueue(
       return;
     }
 
+    const ledger = webhookLedgerForEnv(env);
+    const retryDelaySeconds = webhookRetryDelaySeconds(message.attempts);
+    if (!ledger) {
+      console.error("Native webhook delivery ledger is unbound");
+      message.retry({ delaySeconds: retryDelaySeconds });
+      return;
+    }
+    // The event id is content-derived on the real producer. Reject a changed
+    // body before any remote effect or durable success can be attributed to it.
+    if ((await webhookEventId(body.body)) !== body.event_id) {
+      message.ack();
+      return;
+    }
+    let claim: Awaited<ReturnType<typeof ledger.claim>>;
+    try {
+      const legacy = await env.METAGRAPH_CONTROL?.get(
+        deliveryStorageKey(body.subscription_id, body.event_id),
+        { type: "json" },
+      );
+      claim = await ledger.claim(
+        {
+          subscription_id: body.subscription_id,
+          event_id: body.event_id,
+          body: body.body,
+          ...(body.generation !== undefined
+            ? { generation: body.generation }
+            : {}),
+        },
+        String(subscription.url ?? ""),
+        message.attempts,
+        Date.now(),
+        legacy as Row | null,
+      );
+    } catch {
+      message.retry({ delaySeconds: retryDelaySeconds });
+      return;
+    }
+    if (claim.kind !== "claimed") {
+      if (claim.kind === "busy") {
+        const due = Date.parse(String(claim.record.next_attempt_at ?? ""));
+        const delay = Number.isFinite(due)
+          ? Math.max(1, Math.min(43200, Math.ceil((due - Date.now()) / 1000)))
+          : retryDelaySeconds;
+        message.retry({ delaySeconds: delay });
+      } else message.ack();
+      return;
+    }
     let result: Record<string, unknown>;
     try {
       result = (await deliver({
@@ -2197,39 +2305,34 @@ export async function handleWebhookQueue(
       WEBHOOK_QUEUE_MAX_ATTEMPTS,
     );
 
-    // THE STATUS SURFACE STILL HAS TO ANSWER. GET
-    // /api/v1/webhooks/subscriptions/{id} reports recent delivery outcomes from
-    // these records, and it is part of the product -- a subscriber debugging a
-    // missed event reads it. The PARKING is gone (the queue schedules retries
-    // now), but the RECORD is not: this writes the outcome, it does not drive
-    // anything. Best-effort, because a KV hiccup must not turn a delivered
-    // event into a retried one.
-    //
-    // BUILT BY deliveryRecordFor, which sits next to the summariser that reads
-    // it. Spelling the record out here is what let the two drift apart into
-    // disjoint vocabularies while every test still passed.
-    const retryDelaySeconds = webhookRetryDelaySeconds(message.attempts);
-    const nowIso = new Date().toISOString();
+    const nowMs = Date.now();
+    let durable: Row;
+    try {
+      durable = await ledger.finish(
+        claim.attempt,
+        result,
+        disposition,
+        nowMs,
+        nowMs + retryDelaySeconds * 1000,
+      );
+    } catch {
+      // Unknown commit outcome is retried; replay consults durable success
+      // before HTTP and cannot overwrite it with a later failure/DLQ result.
+      message.retry({ delaySeconds: retryDelaySeconds });
+      return;
+    }
     try {
       await env.METAGRAPH_CONTROL?.put?.(
         deliveryStorageKey(body.subscription_id, body.event_id),
-        JSON.stringify(
-          deliveryRecordFor({
-            subscriptionId: body.subscription_id,
-            eventId: body.event_id,
-            result,
-            disposition,
-            attempts: message.attempts,
-            nowIso,
-            nextAttemptAt: new Date(
-              Date.parse(nowIso) + retryDelaySeconds * 1000,
-            ).toISOString(),
-          }),
-        ),
+        JSON.stringify(durable),
         { expirationTtl: WEBHOOK_DELIVERY_TTL_SECONDS },
       );
     } catch {
-      /* status reporting must never change a delivery's disposition */
+      /* Native status/attempts remain authoritative. */
+    }
+    if (durable.state === "delivered") {
+      message.ack();
+      return;
     }
     if (disposition === "retry") {
       message.retry({ delaySeconds: retryDelaySeconds });
@@ -10456,34 +10559,23 @@ async function getWebhookSubscription(env: Env, id: string) {
       },
     );
   }
-  return dataResponse(env, {
-    ...publicSubscriptionView(record),
-    delivery: await readDeliveryStatus(env, id),
-  });
+  try {
+    return dataResponse(env, {
+      ...publicSubscriptionView(record),
+      delivery: await readDeliveryStatus(env, id),
+    });
+  } catch {
+    return errorResponse(
+      "webhooks_unavailable",
+      "Webhook delivery status unavailable.",
+      503,
+    );
+  }
 }
 
-// Delivery health for the public GET, summarized from the parked records.
-// Best-effort — a list/get hiccup or a store without `list` degrades to "ok".
+// Native status is authoritative; retained legacy outcomes remain visible.
 async function readDeliveryStatus(env: Env, id: string) {
-  try {
-    if (typeof env.METAGRAPH_CONTROL.list !== "function") {
-      return summarizeDeliveryRecords([]); // local dev: KV mock without list()
-    }
-    const { keys } = await env.METAGRAPH_CONTROL.list({
-      prefix: deliveryStoragePrefix(id),
-      limit: WEBHOOK_REDELIVERY_LIST_LIMIT,
-    });
-    const records = await Promise.all(
-      keys
-        .slice(0, WEBHOOK_REDELIVERY_LIST_LIMIT)
-        .map((entry) =>
-          env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
-        ),
-    );
-    return summarizeDeliveryRecords(records as Row[]);
-  } catch {
-    return summarizeDeliveryRecords([]); // best-effort: never break the read
-  }
+  return webhookDeliveryStatus(env, id);
 }
 
 async function deleteWebhookSubscription(

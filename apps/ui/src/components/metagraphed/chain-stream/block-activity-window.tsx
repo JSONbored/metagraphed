@@ -15,7 +15,7 @@ import { arrivedBlock, blockActivityEntries } from "./block-activity-window-logi
 
 const useBrowserLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-function countLabel(value: number | undefined, noun: string): string {
+function countLabel(value: number | null | undefined, noun: string): string {
   if (typeof value !== "number") return `${noun} unavailable`;
   return `${formatNumber(value)} ${noun}${value === 1 ? "" : "s"}`;
 }

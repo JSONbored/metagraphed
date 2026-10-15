@@ -212,7 +212,12 @@ test("service batches cost one call while malformed/old owners preserve bounded 
         if (path.endsWith("validator-details"))
           return Response.json(
             shared
-              ? { details: [{ hotkey: "a" }, { hotkey: "b" }] }
+              ? {
+                  details: [
+                    { hotkey: "a", schema_version: 2 },
+                    { hotkey: "b", schema_version: 2 },
+                  ],
+                }
               : { details: [] },
           );
         if (path.endsWith("snapshot-cards"))
@@ -227,7 +232,7 @@ test("service batches cost one call while malformed/old owners preserve bounded 
           return new Response("failed", { status: 502 });
         return Response.json(
           path.endsWith("/a")
-            ? { hotkey: "a", marker: "kept" }
+            ? { hotkey: "a", schema_version: 2, marker: "kept" }
             : { netuid: 7, marker: "kept" },
         );
       }),
@@ -256,6 +261,12 @@ test("service batches cost one call while malformed/old owners preserve bounded 
 
 test("malformed batch identities and mismatched subnet cards cannot become cacheable mixed results", async () => {
   const malformed = [
+    {
+      details: [
+        { hotkey: "a", schema_version: 1, total_stake_tao: 99 },
+        { hotkey: "b", schema_version: 2 },
+      ],
+    },
     { details: [null, { hotkey: "b" }] },
     { details: ["a", { hotkey: "b" }] },
     { details: [{ hotkey: "wrong" }, { hotkey: "b" }] },
@@ -271,7 +282,11 @@ test("malformed batch identities and mismatched subnet cards cannot become cache
           return Response.json(
             path.endsWith("validator-details")
               ? body
-              : { hotkey: path.split("/").at(-1), marker: "correct" },
+              : {
+                  hotkey: path.split("/").at(-1),
+                  schema_version: 2,
+                  marker: "correct",
+                },
           );
         },
       },

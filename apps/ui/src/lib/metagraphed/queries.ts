@@ -124,7 +124,6 @@ import type {
   ChainConcentration,
   ChainPerformance,
   ChainYield,
-  ChainYieldDistribution,
   ChainSigners,
   ChainWeightSetters,
   ChainWeightSetter,
@@ -369,7 +368,7 @@ const MAX_EXTRINSIC_VALUE_DEPTH = 8;
 const MAX_EXTRINSIC_COLLECTION_ENTRIES = 64;
 const MAX_EXTRINSIC_STRING_LENGTH = 2_000;
 const MAX_ACCOUNT_REGISTRATIONS = 100;
-const MAX_ACCOUNT_POSITIONS = 256;
+const MAX_ACCOUNT_POSITIONS = 2000;
 const MAX_ACCOUNT_STAKE_MOVES_SUBNETS = 128;
 const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
@@ -2035,8 +2034,9 @@ function normalizeBlock(raw: unknown): Block | null {
     block_hash: blockHash ?? "",
     parent_hash: firstString(blockData.parent_hash),
     author: typeof blockData.author === "string" ? blockData.author : null,
-    extrinsic_count: firstFiniteNumber(blockData.extrinsic_count),
-    event_count: firstFiniteNumber(blockData.event_count),
+    extrinsic_count:
+      blockData.extrinsic_count === null ? null : firstFiniteNumber(blockData.extrinsic_count),
+    event_count: blockData.event_count === null ? null : firstFiniteNumber(blockData.event_count),
     observed_at: firstString(blockData.observed_at),
     prev_block_number: typeof prevBlock === "number" ? prevBlock : null,
     next_block_number: typeof nextBlock === "number" ? nextBlock : null,
@@ -2853,13 +2853,14 @@ export function normalizePortfolioPosition(raw: unknown): PortfolioPosition | nu
     uid: firstFiniteNumber(raw.uid) ?? null,
     role: role === "validator" || role === "miner" ? role : null,
     active: booleanValue(raw.active),
-    stake_alpha: firstFiniteNumber(raw.stake_alpha) ?? null,
+    stake_alpha: null,
+    voting_weight: firstFiniteNumber(raw.voting_weight) ?? null,
     emission_alpha: firstFiniteNumber(raw.emission_alpha) ?? null,
     rank: firstFiniteNumber(raw.rank) ?? null,
     trust: firstFiniteNumber(raw.trust) ?? null,
     incentive: firstFiniteNumber(raw.incentive) ?? null,
     dividends: firstFiniteNumber(raw.dividends) ?? null,
-    yield: firstFiniteNumber(raw.yield) ?? null,
+    yield: null,
   };
 }
 
@@ -3550,13 +3551,14 @@ function normalizeAccountPositionHistoryPoint(raw: unknown): AccountPositionHist
     coldkey: firstString(raw.coldkey) ?? null,
     role: raw.role === "validator" ? "validator" : "miner",
     active: raw.active === true,
-    stake_tao: firstFiniteNumber(raw.stake_tao) ?? null,
+    stake_tao: null,
+    voting_weight: firstFiniteNumber(raw.voting_weight) ?? null,
     emission_tao: firstFiniteNumber(raw.emission_tao) ?? null,
     rank: firstFiniteNumber(raw.rank) ?? null,
     trust: firstFiniteNumber(raw.trust) ?? null,
     incentive: firstFiniteNumber(raw.incentive) ?? null,
     dividends: firstFiniteNumber(raw.dividends) ?? null,
-    yield: firstFiniteNumber(raw.yield) ?? null,
+    yield: null,
   };
 }
 
@@ -3615,10 +3617,10 @@ export const accountPortfolioQuery = (ss58: string) =>
           position_count: firstFiniteNumber(d.position_count) ?? positions.length,
           validator_count: firstFiniteNumber(d.validator_count) ?? 0,
           miner_count: firstFiniteNumber(d.miner_count) ?? 0,
-          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? null,
+          total_stake_tao: null,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? null,
-          overall_yield: firstFiniteNumber(d.overall_yield) ?? null,
-          stake_concentration: normalizePortfolioConcentration(d.stake_concentration),
+          overall_yield: null,
+          stake_concentration: null,
           positions,
         } as AccountPortfolio,
         meta: res.meta,
@@ -3630,12 +3632,40 @@ export const accountPortfolioQuery = (ss58: string) =>
 
 export function normalizeAccountPosition(raw: unknown): AccountPosition | null {
   if (!isRecord(raw)) return null;
-  const hotkey = firstString(raw.hotkey);
-  const netuid = firstFiniteNumber(raw.netuid);
-  const shareFraction = firstFiniteNumber(raw.share_fraction);
-  const stakeTao = firstFiniteNumber(raw.stake_tao);
-  if (!hotkey || netuid == null || shareFraction == null || stakeTao == null) return null;
-  return { hotkey, netuid, share_fraction: shareFraction, stake_tao: stakeTao };
+  const hotkey = firstString(raw.hotkey),
+    netuid = firstFiniteNumber(raw.netuid);
+  if (!hotkey || netuid == null || !Number.isInteger(netuid) || netuid < 0 || netuid > 65535)
+    return null;
+  const provenance = isRecord(raw.provenance) ? raw.provenance : null;
+  const qualified =
+    Number.isInteger(netuid) &&
+    netuid > 0 &&
+    netuid <= 65535 &&
+    raw.quantity_status === "qualified_snapshot" &&
+    typeof raw.alpha_rao === "string" &&
+    /^(0|[1-9]\d{0,19})$/.test(raw.alpha_rao) &&
+    BigInt(raw.alpha_rao) <= 18446744073709551615n &&
+    provenance?.network === "finney" &&
+    typeof provenance.captured_at === "string" &&
+    Number.isFinite(Date.parse(provenance.captured_at)) &&
+    Number.isInteger(provenance.block_number) &&
+    (provenance.block_number as number) >= 0 &&
+    ["block_hash", "genesis_hash", "code_hash"].every(
+      (key) =>
+        typeof provenance[key] === "string" && /^0x[0-9a-f]{64}$/.test(provenance[key] as string),
+    ) &&
+    [454, 478].includes(provenance.spec_version as number) &&
+    typeof provenance.metadata_sha256 === "string" &&
+    /^[0-9a-f]{64}$/.test(provenance.metadata_sha256);
+  return {
+    hotkey,
+    netuid,
+    share_fraction: firstFiniteNumber(raw.share_fraction) ?? null,
+    stake_tao: null,
+    alpha_rao: qualified ? (raw.alpha_rao as string) : null,
+    quantity_status: qualified ? "qualified_snapshot" : "unqualified",
+    provenance: qualified ? (raw.provenance as AccountPosition["provenance"]) : null,
+  };
 }
 
 /**
@@ -3664,7 +3694,8 @@ export const accountPositionsQuery = (ss58: string) =>
           ss58: firstString(d.ss58) ?? ss58,
           captured_at: firstString(d.captured_at) ?? null,
           position_count: firstFiniteNumber(d.position_count) ?? positions.length,
-          total_stake_alpha: firstFiniteNumber(d.total_stake_alpha) ?? 0,
+          total_stake_alpha: null,
+          degraded: isRecord(d.degraded) ? d.degraded : undefined,
           positions,
         } as AccountPositions,
         meta: res.meta,
@@ -8432,7 +8463,13 @@ function normalizeGlobalValidatorSubnet(raw: unknown): GlobalValidatorSubnet | n
   return {
     netuid,
     uid,
-    stake_tao: coerceFiniteNumber(raw.stake_tao) ?? 0,
+    stake_tao: null,
+    voting_weight:
+      typeof raw.voting_weight === "number" &&
+      Number.isFinite(raw.voting_weight) &&
+      raw.voting_weight >= 0
+        ? raw.voting_weight
+        : null,
     emission_tao: coerceFiniteNumber(raw.emission_tao) ?? 0,
     validator_trust:
       raw.validator_trust == null ? null : (coerceFiniteNumber(raw.validator_trust) ?? null),
@@ -8462,14 +8499,13 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
     subnet_count: coerceFiniteNumber(raw.subnet_count) ?? 0,
     uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
     take: nullableNum(raw.take),
-    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
-    root_stake_tao: coerceFiniteNumber(raw.root_stake_tao) ?? 0,
-    alpha_stake_tao: coerceFiniteNumber(raw.alpha_stake_tao) ?? 0,
+    total_stake_tao: null,
+    root_stake_tao: null,
+    alpha_stake_tao: null,
     total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
     nominator_count: nullableNum(raw.nominator_count),
-    apy_estimate: nullableNum(raw.apy_estimate),
-    apy_estimate_eligible_subnet_count:
-      coerceFiniteNumber(raw.apy_estimate_eligible_subnet_count) ?? 0,
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 0,
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),
     // On the wire since the leaderboard shipped, and dropped here until now --
@@ -8479,7 +8515,7 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
     realized_return_1d: nullableNum(raw.realized_return_1d),
     realized_return_1w: nullableNum(raw.realized_return_1w),
     realized_return_1m: nullableNum(raw.realized_return_1m),
-    stake_dominance: nullableNum(raw.stake_dominance),
+    stake_dominance: null,
     latest_captured_at: typeof raw.latest_captured_at === "string" ? raw.latest_captured_at : null,
     latest_block_number: nullableNum(raw.latest_block_number),
     subnets,
@@ -8886,7 +8922,7 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
         const primaryHotkey = firstString(entry.primary_hotkey);
         if (!primaryHotkey) return [];
         const identityName = firstString(entry.identity_name) ?? null;
-        const totalStakeTao = coerceFiniteNumber(entry.total_stake_tao) ?? 0;
+        const totalStakeTao = null;
         const takeMin = coerceFiniteNumber(entry.take_min) ?? null;
         const takeMax = coerceFiniteNumber(entry.take_max) ?? null;
         const children = Array.isArray(entry.hotkeys)
@@ -8897,7 +8933,7 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
               return [
                 {
                   hotkey: childHotkey,
-                  totalStakeTao: coerceFiniteNumber(child.total_stake_tao) ?? 0,
+                  totalStakeTao: null,
                   take: coerceFiniteNumber(child.take) ?? null,
                 },
               ];
@@ -8927,8 +8963,8 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
             uidCount: coerceFiniteNumber(entry.uid_count) ?? 0,
             takeMin,
             takeMax,
-            apyEstimate: coerceFiniteNumber(entry.apy_estimate) ?? null,
-            dominance: coerceFiniteNumber(entry.stake_dominance) ?? null,
+            apyEstimate: null,
+            dominance: null,
           },
         ];
       })
@@ -8978,9 +9014,9 @@ function normalizeAccountListEntry(raw: unknown): AccountListEntry | null {
     uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
     validator_count: coerceFiniteNumber(raw.validator_count) ?? 0,
     miner_count: coerceFiniteNumber(raw.miner_count) ?? 0,
-    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
+    total_stake_tao: null,
     total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
-    stake_dominance: coerceFiniteNumber(raw.stake_dominance) ?? null,
+    stake_dominance: null,
     latest_captured_at: firstString(raw.latest_captured_at) ?? null,
     latest_block_number: coerceFiniteNumber(raw.latest_block_number) ?? null,
   };
@@ -9016,9 +9052,9 @@ export function normalizeAccountHolderDirectory(raw: unknown): AccountHolderDire
     block_number: coerceFiniteNumber(data.block_number),
     account_count: coerceFiniteNumber(data.account_count) ?? 0,
     limit: coerceFiniteNumber(data.limit) ?? 0,
-    priced_registered_stake_tao: coerceFiniteNumber(data.priced_registered_stake_tao) ?? 0,
+    priced_registered_stake_tao: null,
     rankings: {
-      stake: normalizeRanking(rankings.stake),
+      stake: [],
       emission: normalizeRanking(rankings.emission),
       reach: normalizeRanking(rankings.reach),
     },
@@ -9058,7 +9094,8 @@ function normalizeValidatorDetailSubnet(raw: unknown): ValidatorDetailSubnet | n
     incentive: firstFiniteNumber(raw.incentive) ?? null,
     dividends: firstFiniteNumber(raw.dividends) ?? null,
     emission_alpha: firstFiniteNumber(raw.emission_alpha) ?? null,
-    stake_alpha: firstFiniteNumber(raw.stake_alpha) ?? null,
+    stake_alpha: null,
+    voting_weight: firstFiniteNumber(raw.voting_weight) ?? null,
     registered_at_block: firstFiniteNumber(raw.registered_at_block) ?? null,
     is_immunity_period: booleanValue(raw.is_immunity_period) ?? null,
     axon: firstString(raw.axon) ?? null,
@@ -9091,12 +9128,12 @@ export const validatorDetailQuery = (hotkey: string) =>
           subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
           take: firstFiniteNumber(d.take) ?? null,
           nominator_count: firstFiniteNumber(d.nominator_count) ?? null,
-          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? 0,
-          root_stake_tao: firstFiniteNumber(d.root_stake_tao) ?? 0,
-          alpha_stake_tao: firstFiniteNumber(d.alpha_stake_tao) ?? 0,
+          total_stake_tao: null,
+          root_stake_tao: null,
+          alpha_stake_tao: null,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? 0,
           avg_validator_trust: firstFiniteNumber(d.avg_validator_trust) ?? null,
-          apy_estimate: firstFiniteNumber(d.apy_estimate) ?? null,
+          apy_estimate: null,
           apy_estimate_eligible_subnet_count:
             firstFiniteNumber(d.apy_estimate_eligible_subnet_count) ?? 0,
           realized_return_1d: firstFiniteNumber(d.realized_return_1d) ?? null,
@@ -9157,9 +9194,9 @@ function normalizeValidatorHistoryPoint(raw: unknown): ValidatorHistoryPoint | n
   return {
     snapshot_date: snapshotDate,
     subnet_count: firstFiniteNumber(raw.subnet_count) ?? null,
-    total_stake_tao: firstFiniteNumber(raw.total_stake_tao) ?? null,
+    total_stake_tao: null,
     total_emission_tao: firstFiniteNumber(raw.total_emission_tao) ?? null,
-    rewards_per_1000_tao: firstFiniteNumber(raw.rewards_per_1000_tao) ?? null,
+    rewards_per_1000_tao: null,
   };
 }
 
@@ -9285,26 +9322,6 @@ export const chainPerformanceQuery = () =>
     staleTime: STALE_MED,
   });
 
-function normalizeChainYieldDistribution(raw: unknown): ChainYieldDistribution | null {
-  if (!isRecord(raw)) return null;
-  const count = firstFiniteNumber(raw.count);
-  if (count == null) return null;
-  return {
-    count,
-    mean: firstFiniteNumber(raw.mean) ?? 0,
-    median: firstFiniteNumber(raw.p50) ?? 0,
-    min: firstFiniteNumber(raw.min) ?? 0,
-    max: firstFiniteNumber(raw.max) ?? 0,
-    p10: firstFiniteNumber(raw.p10) ?? 0,
-    p25: firstFiniteNumber(raw.p25) ?? 0,
-    p75: firstFiniteNumber(raw.p75) ?? 0,
-    p90: firstFiniteNumber(raw.p90) ?? 0,
-  };
-}
-
-// #3472: network-wide emission-yield aggregate — the return-rate companion to
-// /chain/performance. Counts coerce to 0; the three role yields fall through to
-// null (never NaN) when no neuron has both stake and emission.
 export function normalizeChainYield(raw: unknown): ChainYield {
   const rec = isRecord(raw) ? raw : {};
   return {
@@ -9314,12 +9331,12 @@ export function normalizeChainYield(raw: unknown): ChainYield {
     validator_count: firstFiniteNumber(rec.validator_count) ?? 0,
     miner_count: firstFiniteNumber(rec.miner_count) ?? 0,
     captured_at: firstString(rec.captured_at) ?? null,
-    total_stake_alpha: firstFiniteNumber(rec.total_stake_alpha) ?? 0,
-    total_emission_alpha: firstFiniteNumber(rec.total_emission_alpha) ?? 0,
-    network_yield: firstFiniteNumber(rec.network_yield) ?? null,
-    validator_yield: firstFiniteNumber(rec.validator_yield) ?? null,
-    miner_yield: firstFiniteNumber(rec.miner_yield) ?? null,
-    distribution: normalizeChainYieldDistribution(rec.distribution),
+    total_stake_alpha: null,
+    total_emission_alpha: null,
+    network_yield: null,
+    validator_yield: null,
+    miner_yield: null,
+    distribution: null,
   };
 }
 
@@ -9467,21 +9484,20 @@ function normalizeSubnetYieldNeuron(raw: unknown): SubnetYieldNeuron | undefined
   if (!isRecord(raw)) return undefined;
   const uid = coerceFiniteNumber(raw.uid);
   if (uid == null) return undefined;
-  const vs = raw.vs_median;
   return {
     uid,
     hotkey: coerceString(raw.hotkey) ?? null,
     role: raw.role === "validator" ? "validator" : "miner",
-    stake_tao: coerceFiniteNumber(raw.stake_tao) ?? 0,
+    stake_tao: null,
+    voting_weight: coerceFiniteNumber(raw.voting_weight) ?? null,
     emission_tao: coerceFiniteNumber(raw.emission_tao) ?? 0,
-    yield: coerceFiniteNumber(raw.yield) ?? null,
-    vs_median: vs === "above" || vs === "below" || vs === "at" ? vs : null,
+    yield: null,
+    vs_median: null,
   };
 }
 
 function normalizeSubnetYield(netuid: number, raw: unknown): SubnetYield {
   const d = isRecord(raw) ? raw : {};
-  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
   const neurons = Array.isArray(d.neurons)
     ? d.neurons.slice(0, MAX_NEURON_ROWS).flatMap((n) => {
         const normalized = normalizeSubnetYieldNeuron(n);
@@ -9495,14 +9511,14 @@ function normalizeSubnetYield(netuid: number, raw: unknown): SubnetYield {
     neuron_count: coerceFiniteNumber(d.neuron_count) ?? neurons.length,
     validator_count: coerceFiniteNumber(d.validator_count),
     miner_count: coerceFiniteNumber(d.miner_count),
-    total_stake_alpha: coerceFiniteNumber(d.total_stake_alpha),
+    total_stake_alpha: null,
     total_emission_alpha: coerceFiniteNumber(d.total_emission_alpha),
-    subnet_yield: nullableNum(d.subnet_yield),
-    mean_yield: nullableNum(d.mean_yield),
-    median_yield: nullableNum(d.median_yield),
-    p25_yield: nullableNum(d.p25_yield),
-    p75_yield: nullableNum(d.p75_yield),
-    p90_yield: nullableNum(d.p90_yield),
+    subnet_yield: null,
+    mean_yield: null,
+    median_yield: null,
+    p25_yield: null,
+    p75_yield: null,
+    p90_yield: null,
     neurons,
   };
 }
@@ -9511,19 +9527,18 @@ function normalizeYieldHistoryPoint(raw: unknown): YieldHistoryPoint | undefined
   if (!isRecord(raw)) return undefined;
   const snapshotDate = coerceString(raw.snapshot_date);
   if (!snapshotDate) return undefined;
-  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
   return {
     ...(raw as object),
     snapshot_date: snapshotDate,
     neuron_count: coerceFiniteNumber(raw.neuron_count),
     validator_count: coerceFiniteNumber(raw.validator_count),
     yield_count: coerceFiniteNumber(raw.yield_count),
-    subnet_yield: nullableNum(raw.subnet_yield),
-    mean_yield: nullableNum(raw.mean_yield),
-    median_yield: nullableNum(raw.median_yield),
-    p25_yield: nullableNum(raw.p25_yield),
-    p75_yield: nullableNum(raw.p75_yield),
-    p90_yield: nullableNum(raw.p90_yield),
+    subnet_yield: null,
+    mean_yield: null,
+    median_yield: null,
+    p25_yield: null,
+    p75_yield: null,
+    p90_yield: null,
   };
 }
 
@@ -9869,10 +9884,10 @@ function normalizeCompareValidator(raw: unknown): CompareValidator | null {
     coldkey: coerceString(raw.coldkey) ?? null,
     coldkey_identity: normalizeColdkeyIdentity(raw.coldkey_identity),
     take: nullableNum(raw.take),
-    apy_estimate: nullableNum(raw.apy_estimate),
+    apy_estimate: null,
     apy_estimate_eligible_subnet_count: nullableNum(raw.apy_estimate_eligible_subnet_count),
     nominator_count: nullableNum(raw.nominator_count),
-    total_stake_tao: nullableNum(raw.total_stake_tao),
+    total_stake_tao: null,
     total_emission_tao: nullableNum(raw.total_emission_tao),
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),

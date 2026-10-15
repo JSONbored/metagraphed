@@ -88,7 +88,7 @@
     "D1_EXPORT_REVISIONS": "enabled",
     // Retained history copied and qualified before this ownership switch.
     // Writers and readers move together; other tables keep their existing owner.
-    "D1_STATE_TABLES": "account_balances,account_balances_passes,account_identity,account_identity_history,account_position_daily,api_key_blocks,api_key_usage_daily,api_keys,api_quota_daily,api_usage_rollup,attribution_candidates,attribution_sweeps,blocks_head,chain_alert_deliveries,chain_alert_triggers,chain_concentration_daily,chain_detail_account_events,chain_detail_blocks,chain_detail_chain_events,chain_detail_extrinsics,compute_declarations,emission_flow_watch,emission_gate_param_history,github_accounts,hotkey_alpha,hotkey_alpha_passes,lane_health,neuron_daily,neurons,neurons_passes,nominator_positions,nominator_positions_passes,nominator_scan_receipts,origin_reachability,providers,raw_capture_state,revenue_observations,revenue_probe_failures,root_basket_capture_completions,root_basket_capture_pages,root_basket_captures,root_basket_current,root_basket_fund_snapshots,root_basket_holdings,root_basket_targets,rpc_accounts,self_health_checks,self_health_daily,subnet_burn_history,subnet_deregistration_daily,subnet_emission_enabled_history,subnet_hyperparams,subnet_hyperparams_history,subnet_identity,subnet_identity_history,subnet_lifecycle,subnet_ownership,subnet_ownership_history,subnet_snapshots,subnets,surface_checks,surface_failure_daily,surface_history,surface_status,surface_uptime_daily,surfaces,tao_usd_index,treasury_readings,validator_nominator_counts,validator_nominator_counts_passes,watch_push_subscriptions",
+    "D1_STATE_TABLES": "alpha_runtime_metadata,alpha_snapshot_passes,account_balances,account_balances_passes,account_identity,account_identity_history,account_position_daily,api_key_blocks,api_key_usage_daily,api_keys,api_quota_daily,api_usage_rollup,attribution_candidates,attribution_sweeps,blocks_head,chain_alert_deliveries,chain_alert_triggers,chain_concentration_daily,chain_detail_account_events,chain_detail_blocks,chain_detail_chain_events,chain_detail_extrinsics,compute_declarations,emission_flow_watch,emission_gate_param_history,github_accounts,hotkey_alpha,hotkey_alpha_passes,lane_health,neuron_daily,neurons,neurons_passes,nominator_positions,nominator_positions_passes,nominator_scan_receipts,origin_reachability,providers,raw_capture_state,revenue_observations,revenue_probe_failures,root_basket_capture_completions,root_basket_capture_pages,root_basket_captures,root_basket_current,root_basket_fund_snapshots,root_basket_holdings,root_basket_targets,rpc_accounts,self_health_checks,self_health_daily,subnet_burn_history,subnet_deregistration_daily,subnet_emission_enabled_history,subnet_hyperparams,subnet_hyperparams_history,subnet_identity,subnet_identity_history,subnet_lifecycle,subnet_ownership,subnet_ownership_history,subnet_snapshots,subnets,surface_checks,surface_failure_daily,surface_history,surface_status,surface_uptime_daily,surfaces,tao_usd_index,treasury_readings,validator_nominator_counts,validator_nominator_counts_passes,watch_push_subscriptions",
     // infra#629: where x402 payments settle, and on which chain.
     //
     // IN VERSION CONTROL, NOT A SECRET. The address is public by nature -- a
@@ -1063,8 +1063,9 @@
       // delivering. Without that branch this binding would POST an event at a
       // subscriber who has already refused it eight times.
       //
-      // "max_retries": 0 -- see the sync-batches-dlq consumer in
-      // wrangler.data.jsonc for the full argument; it is the same one.
+      // Bounded retries preserve a live lease or transient native-store failure.
+      // No recursive DLQ: originals survive in the native intent ledger, whose
+      // dispatcher finalizes inactive deliveries beyond the transport horizon.
       // THE FOUR PROBE LANES, ON ONE CONSUMER (#10894).
       //
       // A queue carries ONE consumer config, so collapsing four means choosing
@@ -1135,7 +1136,8 @@
         "queue": "webhook-deliveries-dlq",
         "max_batch_size": 100,
         "max_batch_timeout": 30,
-        "max_retries": 0,
+        "max_retries": 5,
+        "retry_delay": 300,
         "max_concurrency": 1,
       },
     ],

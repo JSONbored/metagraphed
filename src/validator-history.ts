@@ -27,13 +27,6 @@ function toNonNegativeInt(v: unknown): number | null {
 // emission / stake scaled to a per-1000-TAO reward rate for that day -- null
 // when stake is zero/absent (the rate is undefined with nothing staked),
 // mirroring the yield-metric null convention in src/subnet-yield.ts.
-function rewardsPer1000Tao(
-  stakeTao: number | null,
-  emissionTao: number | null,
-): number | null {
-  if (!(stakeTao != null && stakeTao > 0) || emissionTao == null) return null;
-  return Math.round((emissionTao / stakeTao) * 1000 * 1e6) / 1e6;
-}
 
 // Points arrive newest-first (the handler queries `ORDER BY snapshot_date
 // DESC LIMIT MAX_HISTORY_POINTS`), one point per snapshot_date. Null-safe:
@@ -168,7 +161,8 @@ function subnetScopedFields(r: Row): Row {
     // chain actually emits in, and it is what an operator compares day over day.
     // Named `_alpha` because #8945 is the standing reminder of what happens when an
     // alpha value is carried in a `*_tao` field.
-    stake_alpha: stakeAlpha,
+    stake_alpha: null,
+    voting_weight: stakeAlpha,
     emission_alpha: emissionAlpha,
     validator_trust: toRateOrNull(r.validator_trust),
     consensus: toRateOrNull(r.consensus),
@@ -178,18 +172,10 @@ function subnetScopedFields(r: Row): Row {
     // operator needs to see; dropping the row would make it indistinguishable from
     // a day the poller missed.
     validator_permit: r.validator_permit == null ? null : !!r.validator_permit,
-    rewards_per_1000_alpha: rewardsPer1000Tao(stakeAlpha, emissionAlpha),
-    ...stakeShareView(
-      stakeAlpha,
-      r.subnet_total_stake,
-      toRateOrNull(r.dividends),
-    ),
+    rewards_per_1000_alpha: null,
+    stake_share: null,
+    dividend_efficiency: null,
   };
-}
-
-interface StakeShareView {
-  stake_share: number | null;
-  dividend_efficiency: number | null;
 }
 
 /**
@@ -211,26 +197,6 @@ interface StakeShareView {
  *
  * Both sides are the same unit (alpha for non-root subnets), so the ratio is unit-free.
  */
-function stakeShareView(
-  stakeAlpha: number | null,
-  subnetTotal: unknown,
-  dividends: number | null,
-): StakeShareView {
-  const total = toFiniteOrNull(subnetTotal);
-  if (stakeAlpha === null || total === null || total <= 0) {
-    return { stake_share: null, dividend_efficiency: null };
-  }
-  const share = stakeAlpha / total;
-  const rounded = Math.round(share * 1e6) / 1e6;
-  return {
-    stake_share: rounded,
-    // Undefined with no stake: a validator holding nothing has no share to out-earn.
-    dividend_efficiency:
-      dividends === null || share <= 0
-        ? null
-        : Math.round((dividends / share) * 1e6) / 1e6,
-  };
-}
 
 export function buildValidatorHistory(
   rows: Row[] | null | undefined,
@@ -241,7 +207,6 @@ export function buildValidatorHistory(
   const points = (Array.isArray(rows) ? rows : [])
     .filter((r) => r && typeof r === "object")
     .map((r) => {
-      const totalStakeTao = roundDpOrNull(toFiniteOrNull(r.total_stake_tao), 6);
       const totalEmissionTao = roundDpOrNull(
         toFiniteOrNull(r.total_emission_tao),
         6,
@@ -249,17 +214,14 @@ export function buildValidatorHistory(
       return {
         snapshot_date: r.snapshot_date,
         subnet_count: toNonNegativeInt(r.subnet_count),
-        total_stake_tao: totalStakeTao,
+        total_stake_tao: null,
         total_emission_tao: totalEmissionTao,
-        rewards_per_1000_tao: rewardsPer1000Tao(
-          totalStakeTao,
-          totalEmissionTao,
-        ),
+        rewards_per_1000_tao: null,
         ...(scoped ? subnetScopedFields(r) : {}),
       };
     });
   return {
-    schema_version: 1,
+    schema_version: 2,
     hotkey,
     // Null rather than absent when unscoped, so the field's presence never has to
     // be probed to know which shape the points carry.

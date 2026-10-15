@@ -201,12 +201,12 @@ export function ValidatorDetailPage() {
     },
     { key: "uid", label: "UID", kind: "number", sortable: true, value: (row) => row.uid },
     {
-      key: "stake_alpha",
-      label: "Stake (α)",
+      key: "voting_weight",
+      label: "Voting weight",
       kind: "number",
       sortable: true,
-      value: (row) => row.stake_alpha ?? null,
-      format: (value) => (typeof value === "number" ? fmtAlpha(value) : "—"),
+      value: (row) => row.voting_weight ?? null,
+      format: (value) => (typeof value === "number" ? formatNumber(value) : "Unavailable"),
     },
     {
       key: "emission_alpha",
@@ -327,7 +327,7 @@ export function ValidatorDetailPage() {
         <AnalyticsSection
           id="stake"
           name="Stake by subnet"
-          question="Raw alpha positions by subnet, alongside their native emission."
+          question="Native holdings cannot be inferred from this membership source."
           visual={
             stakeRails.length > 0 ? (
               <RankedRails
@@ -354,14 +354,12 @@ export function ValidatorDetailPage() {
           // Not a time series: /validators/{hotkey}/history publishes daily
           // NETWORK-WIDE totals with netuid: null, so there is no per-subnet
           // series to stack. Momentum below carries the time dimension.
-          footnote={`the ${formatNumber(stakeRails.length)} largest of ${formatNumber(
-            memberships.length,
-          )} raw α positions · units vary by subnet; the hero total is TAO-valued · a snapshot, not a series · chain-direct`}
+          footnote="Membership voting weight is observed below. Native holdings and a priced portfolio total are unavailable from this source. Voting weight describes a neuron's effective influence within its subnet and can include an inherited Root contribution. It does not identify the native tokens owned by this operator or delegated by any particular account. A holding amount needs a separate, qualified balance snapshot for the same account, subnet token and captured block. An unavailable stake value or annual yield therefore means the necessary balance evidence is missing, rather than a measured zero. Memberships, permits and trust still describe the operator's observed participation."
         />
         <AnalyticsSection
           id="memberships"
           name="Per-subnet"
-          question="Every membership, ranked by raw α stake."
+          question="Every observed membership, with voting weight and subnet rewards."
           visual={
             <DataTable
               rows={memberships}
@@ -379,7 +377,7 @@ export function ValidatorDetailPage() {
           }
           footnote={`${formatNumber(permits)} of ${formatNumber(
             memberships.length,
-          )} carry a validator permit · chain-direct`}
+          )} carry a validator permit · chain-direct. Each row identifies an observed subnet membership. A permit records the validator role, while trust and dividends describe subnet-specific performance at the capture. Emission is expressed in the token of the named subnet; equal token counts on different subnets do not establish equal value. Voting weight is shown independently from emission and is never converted into a holding amount. Use these rows to inspect participation and rewards, rather than infer a wallet balance, a portfolio allocation or an investment return.`}
         />
         <AnalyticsSection
           id="nominators"
@@ -486,25 +484,25 @@ export function ValidatorDetailPage() {
           legend={<FactStrip cells={momentumCells} />}
           footnote={
             !momentumNearViewport
-              ? `${window} · daily stake and annualised simple yield · chain-direct`
+              ? `${window} · daily observations · holdings and yield unavailable`
               : historyLoading
                 ? `Loading ${window} stake and yield history · chain-direct`
                 : history.isError
                   ? "chain-direct · retry the affected record above"
-                  : `${window} · daily snapshots · yield annualised simply from the daily reward rate, not compounded`
+                  : `${window} · daily observations · holdings and yield unavailable`
           }
         />
         <AnalyticsSection
           id="peers"
           name="Peers"
-          question="The operators ranked either side of this one."
+          question="Nearby operators in address order."
           visualRef={peersRef}
           visual={
             !peersNearViewport || showPeersLoading ? (
               <RankGrid
                 items={[]}
                 cols={4}
-                ariaLabel="Operators near this one by stake"
+                ariaLabel="Operators near this one by address"
                 source="validator-peer"
                 loading
                 loadingItems={4}
@@ -513,7 +511,7 @@ export function ValidatorDetailPage() {
               <RankGrid
                 items={peers}
                 cols={4}
-                ariaLabel="Operators near this one by stake"
+                ariaLabel="Operators near this one by address"
                 source="validator-peer"
               />
             ) : allValidators.isError ? (
@@ -526,12 +524,12 @@ export function ValidatorDetailPage() {
           }
           footnote={
             !peersNearViewport
-              ? "neighboring operators by total stake · chain-direct"
+              ? "neighboring operators by address · chain-direct"
               : peersLoading
                 ? "Loading nearby operators · chain-direct"
                 : allValidators.isError
                   ? "chain-direct · retry the affected record above"
-                  : "by total stake across every subnet · chain-direct"
+                  : "address order · holdings quantities unavailable"
           }
         />
         <Raw rows={rawRows} title="Validator identifiers and API" />

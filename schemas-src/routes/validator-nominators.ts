@@ -9,6 +9,7 @@
 // via repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
+import { AlphaProvenanceSchema } from "../alpha-quantity.ts";
 import { GLOBAL_VALIDATOR_LIMIT_MAX } from "../../src/route-limits.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
@@ -106,6 +107,12 @@ export type ValidatorNominatorsArtifact = z.infer<
  */
 const ValidatorNominatorPositionSchema = z
   .object({
+    alpha_rao: z
+      .string()
+      .nullable()
+      .describe(
+        "Exact runtime-qualified Alpha rao within this subnet; sibling alpha is a display approximation.",
+      ),
     netuid: z.int().min(0),
     alpha: z.number().min(0),
   })
@@ -118,7 +125,11 @@ const ValidatorNominatorPositionEntrySchema = z
     // The largest SINGLE holding, netuid attached. Each subnet's alpha is a
     // different token, so a cross-subnet total is not computed here and a bare
     // number would invite one -- the netuid rides with it for that reason.
-    largest_position: ValidatorNominatorPositionSchema,
+    largest_position: ValidatorNominatorPositionSchema.nullable()
+      .describe(
+        "Deprecated cross-token largest comparison; always null. Compare exact amounts only within one subnet token.",
+      )
+      .meta({ deprecated: true }),
     subnets: z.array(ValidatorNominatorPositionSchema),
   })
   .strict()
@@ -128,9 +139,10 @@ const ValidatorNominatorPositionEntrySchema = z
 
 export const ValidatorNominatorPositionsSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
     hotkey: z.unknown(),
     basis: z.literal("positions"),
+    provenance: AlphaProvenanceSchema.nullable(),
     limit: z.int().min(0).nullable(),
     offset: z.int().min(0),
     nominator_count: z

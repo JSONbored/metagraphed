@@ -13,17 +13,17 @@ import {
 const capturedAt = new Date().toISOString();
 
 const accounts = {
-  schema_version: 1 as const,
+  schema_version: 2 as const,
   captured_at: capturedAt,
   block_number: 8_950_000,
   account_count: 0,
   limit: 20 as const,
-  priced_registered_stake_tao: 0,
+  priced_registered_stake_tao: null,
   rankings: { stake: [], emission: [], reach: [] },
 };
 
 const validators = {
-  schema_version: 1 as const,
+  schema_version: 2 as const,
   captured_at: capturedAt,
   block_number: 8_950_000,
   validator_count: 0,
@@ -93,4 +93,23 @@ test("old or future directory snapshots fall through to the source repair path",
       null,
     );
   }
+});
+
+test("version 1 directory snapshots cannot restore inferred wealth", async () => {
+  assert.equal(
+    await readCurrentAccountDirectory({
+      get: async () => ({
+        ...accounts,
+        schema_version: 1,
+        priced_registered_stake_tao: 42,
+      }),
+    }),
+    null,
+  );
+  assert.equal(
+    await readCurrentValidatorDirectory({
+      get: async () => ({ ...validators, schema_version: 1 }),
+    }),
+    null,
+  );
 });

@@ -1,3 +1,9 @@
+import { alphaHolderCte } from "./alpha-holder-sql.ts";
+import {
+  loadAlphaQuantityCapture,
+  alphaQuantityProvenance,
+  type AlphaQuantityCapture,
+} from "./alpha-quantity.ts";
 // GET /api/v1/chain/holders (#9607): every subnet ranked by how concentrated
 // its alpha ownership is.
 //
@@ -33,10 +39,6 @@
 // built on it is plausible and wrong. See src/hotkey-alpha-completeness.ts.
 
 import {
-  latestCompleteHotkeyAlphaPass,
-  mayPriceHotkeyAlpha,
-} from "./hotkey-alpha-completeness.ts";
-import {
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
 } from "./route-limits.ts";
@@ -57,7 +59,6 @@ export const CHAIN_HOLDERS_SORTS = [
   "top10_share",
   "top20_share",
   "holder_count",
-  "total_alpha",
 ] as const;
 export const DEFAULT_CHAIN_HOLDERS_SORT = "top1_share";
 
@@ -70,9 +71,11 @@ export interface ChainHoldersDb {
   first?(text: string, values?: unknown[]): Promise<unknown>;
 }
 
-export type ChainHoldersDecline = "pool_totals_unproven" | "unavailable";
+export type ChainHoldersDecline =
+  "runtime_positions_unqualified" | "unavailable";
 
 export interface ChainHoldersRead {
+  capture?: AlphaQuantityCapture | null;
   rows: Row[];
   capturedAt: number | null;
   decline: ChainHoldersDecline | null;
@@ -96,17 +99,9 @@ export function chainHoldersSql(alphaCapturedAt: number): string {
     (n) => `SUM(CASE WHEN rn <= ${n} THEN alpha ELSE 0 END) AS top${n}_alpha`,
   ).join(", ");
   return (
-    "WITH holder AS (" +
-    "SELECT np.netuid AS netuid, np.coldkey AS coldkey," +
-    " SUM(np.share_fraction * ha.total_alpha) AS alpha," +
-    " MAX(np.captured_at) AS positions_captured_at" +
-    " FROM nominator_positions np" +
-    " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
-    " AND ha.netuid = np.netuid" +
-    ` AND ha.captured_at = ${alphaCapturedAt}` +
-    " GROUP BY np.netuid, np.coldkey), " +
+    `WITH ${alphaHolderCte(alphaCapturedAt)}, ` +
     "ranked AS (SELECT netuid, coldkey, alpha, positions_captured_at," +
-    " ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY alpha DESC) AS rn" +
+    " ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY alpha_key DESC,coldkey ASC) AS rn" +
     " FROM holder) " +
     "SELECT netuid, COUNT(*) AS holder_count, SUM(alpha) AS total_alpha," +
     ` ${prefixes},` +
@@ -128,19 +123,25 @@ export async function loadChainHolders(
   });
   if (!db?.query) return declined("unavailable");
 
-  const alpha = await latestCompleteHotkeyAlphaPass(db);
-  if (!mayPriceHotkeyAlpha(alpha)) {
-    return declined(
-      alpha.reason === "unavailable" ? "unavailable" : "pool_totals_unproven",
-    );
+  const alpha = await loadAlphaQuantityCapture(db);
+  if (!alpha) {
+    return declined("runtime_positions_unqualified");
   }
   try {
-    const rows = await readRevisionedChainHolders(env, alpha.capturedAt, () =>
-      db.query!<Row>(chainHoldersSql(alpha.capturedAt)),
+    const rows = await readRevisionedChainHolders(env, alpha.captured_at, () =>
+      db.query!<Row>(chainHoldersSql(alpha.captured_at)),
     );
+    const after = await loadAlphaQuantityCapture(db);
+    if (
+      !after ||
+      after.captured_at !== alpha.captured_at ||
+      after.block_hash !== alpha.block_hash
+    )
+      return declined("runtime_positions_unqualified");
     return {
       rows,
-      capturedAt: alpha.capturedAt,
+      capturedAt: alpha.captured_at,
+      capture: alpha,
       decline: null,
     };
   } catch {
@@ -161,11 +162,17 @@ export function buildChainHolders(
   { sort, limit }: { sort?: string; limit?: number } = {},
 ): Row {
   const base = {
-    schema_version: 1,
+    schema_version: 2,
+    provenance: read.capture ? alphaQuantityProvenance(read.capture) : null,
     sort: sort ?? DEFAULT_CHAIN_HOLDERS_SORT,
     limit: limit ?? null,
   };
-  if (read.decline) {
+  const decline =
+    read.decline ??
+    (!read.capture || read.capture.captured_at !== read.capturedAt
+      ? "runtime_positions_unqualified"
+      : null);
+  if (decline) {
     return {
       ...base,
       subnet_count: null,
@@ -173,7 +180,7 @@ export function buildChainHolders(
       captured_at: null,
       positions_captured_at: null,
       subnets: [],
-      degraded: { reason: read.decline },
+      degraded: { reason: decline },
     };
   }
 

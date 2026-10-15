@@ -49,6 +49,8 @@ export interface WebhookDeliveryMessage {
    * body, and a subscriber verifying it against a re-serialised payload with
    * different key order would see a valid delivery as a forgery. */
   body: string;
+  /** Native authorized manual replay generation; ordinary fanout uses zero. */
+  generation?: number;
 }
 
 /**
@@ -107,6 +109,11 @@ export function validWebhookDeliveryMessage(
   if (typeof m.subscription_id !== "string" || !m.subscription_id) return false;
   if (typeof m.event_id !== "string" || !m.event_id) return false;
   if (typeof m.body !== "string" || !m.body) return false;
+  if (
+    m.generation !== undefined &&
+    (!Number.isSafeInteger(m.generation) || m.generation < 0)
+  )
+    return false;
   return true;
 }
 
@@ -129,6 +136,16 @@ export function classifyWebhookBatch(
  * result was a lane that stopped rather than degraded.
  */
 export const WEBHOOK_QUEUE_MESSAGE_MAX_BYTES = 128 * 1024;
+
+/** The transport caps the serialized UTF-8 envelope, not JavaScript code units. */
+export function webhookMessageFitsQueue(
+  message: WebhookDeliveryMessage,
+  maxBytes = WEBHOOK_QUEUE_MESSAGE_MAX_BYTES,
+) {
+  return (
+    new TextEncoder().encode(JSON.stringify(message)).byteLength <= maxBytes
+  );
+}
 
 /**
  * What a subscriber is owed for one published event, as queue messages.
@@ -177,7 +194,7 @@ export function planWebhookFanOut({
       event_id: eventId,
       body: bodyText,
     };
-    if (JSON.stringify(message).length > maxBytes) {
+    if (!webhookMessageFitsQueue(message, maxBytes)) {
       oversize += 1;
       continue;
     }

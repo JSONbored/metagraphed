@@ -58,13 +58,14 @@ function leg(
     capturedAt,
     sorts:
       sorts ??
-      ["free_tao", "delegated_tao", "total_tao"].filter((key) =>
+      ["free_tao"].filter((key) =>
         entries.some(([, cell]) => typeof cell[key] === "number"),
       ),
   };
 }
 
-/** The artifact as the daily lane wrote it this morning. */
+/** A stored internal version 1 artifact carrying legacy financial cells.
+ * Refresh must replace those guesses with the proven free balance alone. */
 function publishedBody(
   rows: unknown[] = [
     {
@@ -198,22 +199,24 @@ describe("publishedFlowGeneratedAt", () => {
 });
 
 describe("computeTopHoldersHoldingsRefresh", () => {
-  test("republishes the holdings columns and leaves the flow ones alone", async () => {
+  test("republishes exact free TAO, suppresses legacy wealth and preserves observed flows", async () => {
     const body = await refresh(
       envWith(publishedBody()),
       leg({
-        [TOP]: {
-          free_tao: LIVE_FREE,
-          delegated_tao: 12,
-          total_tao: LIVE_FREE + 12,
-        },
+        [TOP]: { free_tao: LIVE_FREE },
       }),
     );
     assert.ok(body);
     const [row] = body.rows as Record<string, unknown>[];
     // The measured drift from the issue, now gone.
     assert.equal(row!.free_tao, LIVE_FREE);
-    assert.equal(row!.delegated_tao, 12);
+    assert.equal("delegated_tao" in row!, false);
+    assert.equal("total_tao" in row!, false);
+    assert.equal(
+      body.schema_version,
+      1,
+      "the stored projection contract remains version 1",
+    );
     // Every flow cell survives, values AND vintage.
     assert.equal(row!.net_flow_7d, -1_200.5);
     assert.equal(row!.net_flow_30d, 4_000);
@@ -358,7 +361,7 @@ describe("computeTopHoldersHoldingsRefresh", () => {
       );
     });
 
-    // Rewriting WITHOUT the holdings columns would drop three live sorts to
+    // Rewriting WITHOUT the free balance would drop its supported sort to
     // make a stamp move -- strictly worse than the object already published.
     test("when the holdings leg proves nothing", async () => {
       assert.equal(await refresh(envWith(publishedBody()), null), null);
@@ -417,11 +420,7 @@ describe("computeTopHoldersHoldingsRefresh", () => {
     const body = await refresh(
       envWith(publishedBody()),
       leg({
-        [TOP]: {
-          free_tao: LIVE_FREE,
-          delegated_tao: 12,
-          total_tao: LIVE_FREE + 12,
-        },
+        [TOP]: { free_tao: LIVE_FREE },
       }),
     );
     assert.deepEqual(topHoldersArtifactSorts(body), [
@@ -429,20 +428,24 @@ describe("computeTopHoldersHoldingsRefresh", () => {
       "net_flow_30d",
       "net_flow_90d",
       "free_tao",
-      "delegated_tao",
-      "total_tao",
     ]);
     // And the two vintages reach the envelope: a holdings-sorted page reports
     // the balance pass, a flow-sorted page reports the daily scan.
     const rows = body!.rows as Record<string, unknown>[];
     assert.equal(
-      buildTopHoldersList(rows, { sort: "total_tao" }).captured_at,
+      buildTopHoldersList(rows, { sort: "free_tao" }).captured_at,
       new Date(BALANCES_AT).toISOString(),
     );
     assert.equal(
       buildTopHoldersList(rows, { sort: "net_flow_30d" }).captured_at,
       FLOW_AT,
     );
+    const page = buildTopHoldersList(rows, { sort: "free_tao" });
+    assert.equal(page.schema_version, 2);
+    const [account] = page.accounts as Record<string, unknown>[];
+    assert.equal(account!.free_tao, LIVE_FREE);
+    assert.equal(account!.delegated_tao, null);
+    assert.equal(account!.total_tao, null);
   });
 });
 
@@ -524,7 +527,7 @@ describe("the lane and its cron", () => {
 // Postgres read path. tests/read-store-tables-match-the-sql.test.ts is the
 // same idea for a different copy: state it once, then pin it.
 describe("the holdings sort list is single-sourced in effect", () => {
-  test("the schema's partition matches the lane's own three constants", () => {
+  test("the schema and lane both declare only the measured free sort", () => {
     assert.deepEqual(
       [...TOP_HOLDERS_HOLDINGS_SORT_VALUES].sort(),
       [...TOP_HOLDERS_HOLDINGS_SORTS].sort(),

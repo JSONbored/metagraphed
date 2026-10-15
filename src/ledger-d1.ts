@@ -7,6 +7,7 @@ import {
   POSITION_INSERT_COLUMNS_WITH_SOURCE,
   NOMINATOR_POSITIONS_CONFLICT,
   POSITION_SOURCE_ALPHA,
+  POSITION_SOURCE_SELF_STAKE,
   NOMINATOR_POSITIONS_NEON_LANE,
   type NominatorPositionsInput,
   type NominatorPositionsMirrorOutcome,
@@ -14,6 +15,8 @@ import {
 import { NOMINATOR_SCAN_RECEIPTS_RETENTION_MS } from "./nominator-scan-receipts.ts";
 import type { ProducerStore, ProducerStatement } from "./producer-store.ts";
 import type { NeonWriteResult } from "./neon-write.ts";
+import { writeSelfStakeSnapshotD1 } from "./self-stake-snapshot-d1.ts";
+import { commitSyncDelivery } from "./sync-delivery-receipt.ts";
 
 function passStatement(lane: string, pass: PassTallyInput): ProducerStatement {
   const table = PASS_TABLES[lane];
@@ -52,7 +55,7 @@ export async function writeLedgerD1(
 ): Promise<NeonWriteResult> {
   try {
     const plan = LEDGER_MIRROR_PLANS[lane];
-    const statements = rows.length
+    const statements: ProducerStatement[] = rows.length
       ? captureUpsertStatements(
           plan,
           rows,
@@ -63,7 +66,9 @@ export async function writeLedgerD1(
         )
       : [];
     if (pass) statements.push(passStatement(lane, pass));
-    await commit(store, statements);
+    if (pass?.delivery)
+      await commitSyncDelivery(store, lane, rows, pass, statements);
+    else await commit(store, statements);
     return { ok: true, rows: rows.length, statements: statements.length };
   } catch (error) {
     return { ok: false, rows: 0, statements: 0, reason: String(error) };
@@ -77,11 +82,37 @@ export async function writeNominatorPositionsD1(
   const source = input.source ?? POSITION_SOURCE_ALPHA;
   const parts: Record<string, NeonWriteResult> = {};
   try {
+    if (input.selfStakeSnapshot) {
+      if (source !== POSITION_SOURCE_SELF_STAKE)
+        throw new TypeError("Snapshot belongs to self-stake only");
+      return await writeSelfStakeSnapshotD1(
+        store,
+        input.rows,
+        input.selfStakeSnapshot,
+        Date.now(),
+      );
+    }
     const rows: Record<string, unknown>[] = input.rows.map((row) => ({
       ...row,
       source,
     }));
-    const statements = rows.length
+    // Partial owners have no full-census declaration, but canonical Alpha
+    // ownership still applies. Filter overlaps before INSERT so the evidence
+    // fence cannot roll back healthy, disjoint self-stake owners.
+    const alphaSchema =
+      source === POSITION_SOURCE_SELF_STAKE &&
+      Boolean(
+        await store.first<{ name: string }>(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'",
+          [],
+        ),
+      );
+    const overlapsAlpha = alphaSchema
+      ? `AND NOT EXISTS (SELECT 1 FROM nominator_positions p
+      WHERE p.coldkey=json_extract(value,'$[0]') AND p.hotkey=json_extract(value,'$[1]')
+      AND p.netuid=json_extract(value,'$[2]') AND p.alpha_evidence IS NOT NULL)`
+      : "";
+    const statements: ProducerStatement[] = rows.length
       ? captureUpsertStatements(
           {
             table: "nominator_positions",
@@ -90,6 +121,10 @@ export async function writeNominatorPositionsD1(
           },
           rows,
           "nominator_positions.captured_at < excluded.captured_at",
+          source === POSITION_SOURCE_SELF_STAKE
+            ? `NOT EXISTS (SELECT 1 FROM self_stake_snapshot_passes WHERE completed_at IS NOT NULL
+                AND captured_at > json_extract(value,'$[${POSITION_INSERT_COLUMNS_WITH_SOURCE.indexOf("captured_at")}]')) ${overlapsAlpha}`
+            : "true",
         )
       : [];
     parts.write = {
@@ -178,7 +213,15 @@ export async function writeNominatorPositionsD1(
       );
       parts.pass = { ok: true, rows: 1, statements: 1 };
     }
-    await commit(store, statements);
+    if (input.pass?.delivery)
+      await commitSyncDelivery(
+        store,
+        NOMINATOR_POSITIONS_NEON_LANE,
+        input.rows,
+        input.pass,
+        statements,
+      );
+    else await commit(store, statements);
     return { attempted: true, ...parts };
   } catch (error) {
     const failure = {

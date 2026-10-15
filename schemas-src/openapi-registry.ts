@@ -51,6 +51,10 @@
 // This is the ONLY intentionally-dropped component name in this file; every
 // other component the hand-edited schemas named standalone is registered
 // above, name for name.
+import {
+  AlphaProvenanceSchema,
+  HoldingsUnavailableSchema,
+} from "./alpha-quantity.ts";
 import { z } from "zod";
 import {
   BittensorNetworkSchema,
@@ -774,6 +778,8 @@ register(
   AccountIdentityHistoryArtifactSchema,
   "AccountIdentityHistoryArtifact",
 );
+register(AlphaProvenanceSchema, "AlphaQuantityProvenance");
+register(HoldingsUnavailableSchema, "HoldingsUnavailable");
 register(AccountPositionsArtifactSchema, "AccountPositionsArtifact");
 register(
   AccountPositionHistoryArtifactSchema,

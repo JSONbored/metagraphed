@@ -19,7 +19,15 @@ import {
   accountPositionsQuery,
 } from "@/lib/metagraphed/queries";
 import type { SubnetStakeQuote, AccountPosition } from "@/lib/metagraphed/types";
-import { taoToRao, raoToTao, alphaToRawAlpha, asRao, type Rao } from "@/lib/metagraphed/units";
+import {
+  taoToRao,
+  raoToTao,
+  rawAlphaToAlpha,
+  asRawAlpha,
+  alphaToRawAlpha,
+  asRao,
+  type Rao,
+} from "@/lib/metagraphed/units";
 import {
   computeLimitPrice,
   buildAddStakeLimitParams,
@@ -129,30 +137,49 @@ export function resolveStakeMaxRao(
   return asRao(max > 0n ? max : 0n);
 }
 
-/**
- * The stale-labeled Max prefill for unstake (see AccountPositions' doc
- * comment for why this is never authoritative). Unit-aware: alpha mode needs
- * no price at all (stake_tao itself is display-only there); TAO mode returns
- * the position's TAO figure directly. Reuses computeUnstakeAlphaCandidate for
- * the alpha-mode conversion -- the same best-effort estimate used for the
- * live TAO-mode quote candidate, not a second, differently-precise path.
- */
+/** A labeled snapshot prefill. Exact Alpha uses its recorded rao; the TAO
+ * candidate uses the current price and must be superseded by a real quote. */
 export function resolveUnstakeMaxAmountInput(
   position: AccountPosition | null,
   unit: StakeFlowUnit,
-  spotPriceTao: number,
+  spotPriceTao: number | null | undefined,
 ): string | null {
-  if (position == null) return null;
-  if (unit === "alpha") {
-    return computeUnstakeAlphaCandidate(String(position.stake_tao), spotPriceTao);
-  }
-  // Rounded to 9 decimals like every other amount this hook ever displays or
-  // parses -- stake_tao is a server-computed float (share_fraction * live
-  // stake) and routinely carries more precision than a single rao can
-  // represent, which would otherwise surface as an ugly, over-precise
-  // prefilled value in the amount field.
-  // eslint-disable-next-line no-restricted-syntax -- transaction amount, not display
-  return position.stake_tao.toFixed(9);
+  if (
+    position?.quantity_status !== "qualified_snapshot" ||
+    !Number.isInteger(position.netuid) ||
+    position.netuid <= 0 ||
+    !position.provenance ||
+    !Number.isFinite(Date.parse(position.provenance.captured_at)) ||
+    typeof position.alpha_rao !== "string" ||
+    !/^(0|[1-9]\d{0,19})$/.test(position.alpha_rao)
+  )
+    return null;
+  const rao = BigInt(position.alpha_rao);
+  if (rao > 18446744073709551615n) return null;
+  const alpha = rawAlphaToAlpha(asRawAlpha(rao));
+  if (unit === "alpha") return alpha;
+  if (spotPriceTao == null || !Number.isFinite(spotPriceTao) || spotPriceTao <= 0) return null;
+  // A labeled snapshot candidate, superseded by the transaction's real quote.
+  const candidate = Number(alpha) * spotPriceTao;
+  if (!Number.isFinite(candidate) || candidate > 18_446_744_073.70955) return null;
+  // eslint-disable-next-line no-restricted-syntax -- exact transaction candidate serialization
+  return candidate.toFixed(9);
+}
+
+/** Keep the age attached to the selected amount, never to a newer unrelated
+ * relationship in the same account response. */
+export function resolveUnstakeMaxSnapshot(
+  position: AccountPosition | null,
+  unit: StakeFlowUnit,
+  spotPriceTao: number | null | undefined,
+) {
+  const capturedAt =
+    position?.quantity_status === "qualified_snapshot" &&
+    position.provenance &&
+    Number.isFinite(Date.parse(position.provenance.captured_at))
+      ? position.provenance.captured_at
+      : null;
+  return { amountInput: resolveUnstakeMaxAmountInput(position, unit, spotPriceTao), capturedAt };
 }
 
 /** Root (netuid 0) has zero coverage in the nominator-positions source. */
@@ -394,9 +421,8 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
 
   const maxStakeRao = freeBalanceRao != null ? resolveStakeMaxRao(freeBalanceRao) : null;
   const maxUnstakeUnavailable = isMaxUnavailableForNetuid(netuid);
-  const maxUnstakeAmountInput = maxUnstakeUnavailable
-    ? null
-    : resolveUnstakeMaxAmountInput(position, unit, spotPriceTao ?? 1);
+  const maxSnapshot = resolveUnstakeMaxSnapshot(position, unit, spotPriceTao);
+  const maxUnstakeAmountInput = maxUnstakeUnavailable ? null : maxSnapshot.amountInput;
 
   // Fee dry-run for the PreSignConfirmation screen -- only ever fetched once
   // the user has reached "confirm" with a resolved, idle tx, so an amount
@@ -461,7 +487,7 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     maxStakeRao,
     maxUnstakeAmountInput,
     maxUnstakeUnavailable,
-    positionCapturedAt: positionsQ.data?.data.captured_at ?? null,
+    positionCapturedAt: maxSnapshot.capturedAt,
     applyMaxStake,
     applyMaxUnstake,
     params,

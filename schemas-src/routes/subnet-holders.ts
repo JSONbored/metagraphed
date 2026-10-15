@@ -8,6 +8,7 @@
 // every count null -- so `0` in any of these fields is a MEASURED zero, and the
 // schema must not let a decline masquerade as one.
 import { z } from "zod";
+import { AlphaProvenanceSchema } from "../alpha-quantity.ts";
 
 export const SubnetHolderSchema = z
   .object({
@@ -20,6 +21,11 @@ export const SubnetHolderSchema = z
       .min(0)
       .describe(
         "ALPHA, not TAO. Within one subnet alpha is already a common unit, so there is no price conversion and none of its staleness -- multiply by the subnet's alpha_price_tao for TAO.",
+      ),
+    alpha_rao: z
+      .string()
+      .describe(
+        "Exact sum of runtime-qualified position rao for this holder within this subnet; the sibling alpha is a display approximation.",
       ),
     // This holder's alpha over the subnet's FULL measured total, so it means the
     // same thing at ?limit=5 and ?limit=100. Null when the total is zero: with
@@ -66,7 +72,7 @@ export const SubnetHoldersDegradedSchema = z
       // No hotkey_alpha pass has completed, so pool totals cannot be trusted to
       // rank anything -- a partial ledger underprices rather than visibly
       // dropping rows, which is why this declines instead of serving.
-      "pool_totals_unproven",
+      "runtime_positions_unqualified",
       // netuid 0: SubtensorModule::Alpha carries no root data at all, so there
       // is no holder set here rather than an empty one.
       "root_not_in_alpha_map",
@@ -81,7 +87,8 @@ export const SubnetHoldersDegradedSchema = z
 
 export const SubnetHoldersArtifactSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
+    provenance: AlphaProvenanceSchema.nullable(),
     netuid: z.int().min(0).max(65535),
     limit: z.int().min(1).nullable(),
     // Distinct coldkeys holding this subnet's alpha -- the whole set, not the

@@ -190,8 +190,8 @@ describe("relatedKeys", () => {
       [edge("5DDDDDDDDD", null)],
     );
     expect(rows.map((r) => [r.key, r.role])).toEqual([
-      ["5BBBBBBBBB", "stakes through"],
       ["5AAAAAAAAA", "stakes through"],
+      ["5BBBBBBBBB", "stakes through"],
       ["5CCCCCCCCC", "delegates to"],
       ["5DDDDDDDDD", "delegated by"],
     ]);

@@ -1,3 +1,5 @@
+import { alphaQuantityStore } from "./alpha-quantity.ts";
+import { webhookDeliveryStatus } from "./webhook-delivery-status.ts";
 import { loadSubnetSnapshotCardsTier } from "./subnet-snapshot-cards-tier.ts";
 import { loadValidatorDetailBatchTier } from "./validator-detail-batch-tier.ts";
 import { withRequestCounters } from "./request-counters.ts";
@@ -286,6 +288,7 @@ import { applyMcpQueryFilters } from "./mcp-list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
   currentDataApiTierFallbackGeneration,
+  markDataApiTierFallback,
   tryDataApiTier,
 } from "../workers/data-api-tier.ts";
 import { answerBlock, answerBlockFeed } from "./blocks-answer.ts";
@@ -358,9 +361,6 @@ import {
   isValidSubscriptionId,
   subscriptionStorageKey,
   publicSubscriptionView,
-  deliveryStoragePrefix,
-  summarizeDeliveryRecords,
-  WEBHOOK_REDELIVERY_LIST_LIMIT,
 } from "./webhooks.ts";
 import { ALERT_TRIGGER_OWNER_TOKEN_HEADER } from "./alert-triggers.ts";
 import {
@@ -1832,7 +1832,6 @@ import {
 } from "./validator-nominator-positions.ts";
 import { numberOrNull, readStore, recordOrNull } from "./read-store.ts";
 import {
-  ALPHA_PRICING_TABLES,
   CHAIN_CONCENTRATION_HISTORY_TABLES,
   COMPARE_SUBNETS_TABLES,
   EMISSION_CHANGES_TABLES,
@@ -3284,37 +3283,9 @@ function mcpNeuronsTierRequest(pathname: string, params: Row = {}) {
   return new Request(`https://d${pathname}${q ? `?${q}` : ""}`);
 }
 
-// Delivery health for get_webhook_subscription -- mirrors workers/api.ts's
-// readDeliveryStatus (the same helper the public GET /api/v1/webhooks/
-// subscriptions/{id} route uses), best-effort: a list/get hiccup or a store
-// without `list` (local dev KV mock) degrades to "ok" rather than failing
-// the whole lookup.
+// Shared native status reader retains legacy projections without hiding native failures.
 async function readMcpWebhookDeliveryStatus(env: Env, id: unknown) {
-  try {
-    if (typeof env.METAGRAPH_CONTROL.list !== "function") {
-      return summarizeDeliveryRecords([]);
-    }
-    const { keys } = await env.METAGRAPH_CONTROL.list({
-      prefix: deliveryStoragePrefix(id),
-      limit: WEBHOOK_REDELIVERY_LIST_LIMIT,
-    });
-    const records = await Promise.all(
-      keys
-        .slice(0, WEBHOOK_REDELIVERY_LIST_LIMIT)
-        // No `(entry: Row)` annotation: `list()` already types its keys, and
-        // restating the parameter as a bag was what picked `get`'s STRING
-        // overload -- so the records below were `(string | null)[]` and the
-        // `as Row[]` put them back (#10782).
-        .map((entry) =>
-          env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
-        ),
-    );
-    return summarizeDeliveryRecords(
-      records.filter((record): record is Row => rowOf(record) !== null),
-    );
-  } catch {
-    return summarizeDeliveryRecords([]);
-  }
+  return webhookDeliveryStatus(env, String(id));
 }
 
 // Synthetic GET /api/v1/accounts/{ss58}/identity-history{...} request, same
@@ -8209,17 +8180,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "/api/v1/blocks/summary.",
     inputSchema: inputJsonSchema(GetBlocksSummaryInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
-      // Mirrors REST's handleBlocksSummary: try Postgres first, fall back to
-      // the schema-stable zeroed card now that blocks' store write path is
-      // retired (#4772) and the table is dropped in production.
-      return (
-        // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-        // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-        // on every request.
-        // #9146: same blocks-summary projection REST reads, so the tool and
-        // the route cannot report different block-production numbers.
-        (await loadBlocksSummaryFromArtifact(ctx.env)) ?? buildBlocksSummary([])
-      );
+      const projected = await loadBlocksSummaryFromArtifact(ctx.env);
+      // Match REST's unavailable marker; an unreadable selected object has
+      // not measured zero blocks. Reuse the request-scoped protocol owner.
+      if (!projected) markDataApiTierFallback();
+      return projected ?? buildBlocksSummary([]);
     },
   },
   {
@@ -9471,15 +9436,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "list_global_validators",
     title: "List the network-wide validator leaderboard",
     description:
-      "Fetch the network-wide validator/operator leaderboard: validator-permit " +
-      "identities grouped by hotkey across all current subnet memberships, with " +
-      "trust metrics, cross-subnet stake/emission totals, stake dominance, and " +
-      "top membership rows. Sort by subnet_count (default), uid_count, " +
-      "avg_validator_trust, max_validator_trust, total_stake, total_emission, " +
-      `or stake_dominance; limit caps the list (default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}, ` +
-      `max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Use it to ` +
-      "find operators spanning many subnets or dominating network stake. Mirrors " +
-      "GET /api/v1/validators.",
+      "Observed validator identities and current memberships with trust, subnet/UID counts and captured rewards. Membership voting weight is not native holdings. Deprecated holdings, dominance and APY fields are null. Supported directory sorts are subnet_count, uid_count, avg_validator_trust, max_validator_trust and total_emission; this is not a wealth ranking.",
     inputSchema: inputJsonSchema(ListGlobalValidatorsInputSchema),
     async handler(
       args: z.infer<typeof ListGlobalValidatorsInputSchema>,
@@ -9511,12 +9468,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_validator_detail",
     title: "Get one validator's cross-subnet detail",
     description:
-      "Fetch a single validator identity's validator_permit rows aggregated " +
-      "across every subnet it operates in: coldkey, cross-subnet stake/emission " +
-      "totals, avg/max validator trust, and the full per-subnet membership list. " +
-      "The single-entity drill-in of list_global_validators. Returns a zeroed " +
-      "aggregate with an empty subnets list for a cold/absent hotkey, never an " +
-      "error. Mirrors GET /api/v1/validators/{hotkey}.",
+      "Observed validator identity, trust, rewards and per-subnet memberships. voting_weight records effective neuron weight including inherited Root, not Alpha or TAO holdings. Holdings valuations and APY are unavailable and their deprecated fields are null. A cold membership source does not establish zero wallet assets.",
     inputSchema: inputJsonSchema(GetValidatorDetailInputSchema),
     async handler(
       args: z.infer<typeof GetValidatorDetailInputSchema>,
@@ -9606,10 +9558,17 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (!record) {
         throw toolError("not_found", `No such subscription: ${id}.`);
       }
-      return {
-        ...publicSubscriptionView(record as Row),
-        delivery: await readMcpWebhookDeliveryStatus(ctx.env, id),
-      };
+      try {
+        return {
+          ...publicSubscriptionView(record as Row),
+          delivery: await readMcpWebhookDeliveryStatus(ctx.env, id),
+        };
+      } catch {
+        throw toolError(
+          "webhooks_unavailable",
+          "Webhook delivery status unavailable.",
+        );
+      }
     },
   },
   {
@@ -9721,10 +9680,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           }
         }
         return buildNominatorPositions(
-          await loadNominatorPositions(
-            readStore(ctx.env, ALPHA_PRICING_TABLES),
-            hotkey,
-          ),
+          await loadNominatorPositions(alphaQuantityStore(ctx.env), hotkey),
           hotkey,
           // Its own page expressions rather than ones shared with the flow
           // path below, matching how handleValidatorNominators splits the two
@@ -10818,10 +10774,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "with no UID -- the two disagree by design. IMPORTANT: alpha is NEVER " +
       "summed across subnets, because each subnet's alpha is a different " +
       "token; total_alpha is per subnet and the network block carries only " +
-      "counts plus the MEDIAN top-1 share. To compare holdings across subnets " +
-      "you must price each through its own alpha_price_tao -- get_top_holders " +
-      "already does that. sort is one of top1_share (default), top5_share, " +
-      "top10_share, top20_share, holder_count, total_alpha; a subnet whose " +
+      "counts plus the MEDIAN top-1 share. Exact alpha_rao and finalized " +
+      "provenance retain each subnet token's quantity. sort is one of " +
+      "top1_share (default), top5_share, top10_share, top20_share, holder_count; a subnet whose " +
       "share could not be computed sorts LAST rather than reading as the " +
       `least concentrated. limit caps the rows (default ${CHAIN_HOLDERS_LIMIT_DEFAULT}, max ${CHAIN_HOLDERS_LIMIT_MAX}), ` +
       "above the subnet count so ranking the whole network is one call. An " +
@@ -10840,10 +10795,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_HOLDERS_LIMIT_DEFAULT,
         CHAIN_HOLDERS_LIMIT_MAX,
       );
-      const read = await loadChainHolders(
-        readStore(ctx.env, ALPHA_PRICING_TABLES),
-        ctx.env,
-      );
+      const read = await loadChainHolders(alphaQuantityStore(ctx.env), ctx.env);
       return buildChainHolders(read, { sort, limit });
     },
   },
@@ -11121,14 +11073,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "positions and only 10 are registered there, so a registered-only source " +
       "misses most holders. Ranked in ALPHA, not TAO: within one subnet alpha " +
       "is already a common unit, so there is no price conversion and no price " +
-      "staleness -- multiply by the subnet's alpha_price_tao for TAO. limit " +
+      "staleness. Exact alpha_rao and finalized provenance identify the " +
+      "quantity snapshot; a spot-price estimate is not a wallet balance. limit " +
       `caps the rows (default ${SUBNET_HOLDERS_LIMIT_DEFAULT}, max ` +
       `${SUBNET_HOLDERS_LIMIT_MAX}); the aggregates are always computed over ` +
       "the FULL holder set, so holder_count is not the length of what you got " +
       "back. IMPORTANT: an empty `holders` list is NOT evidence that nobody " +
       "holds this subnet's alpha -- check `degraded.reason` first. " +
-      "`pool_totals_unproven` means the pool-total ledger has no complete pass " +
-      "yet and a ranking would silently underprice holders; " +
+      "`runtime_positions_unqualified` means there is no complete selected " +
+      "runtime-qualified Alpha capture; amounts cannot be inferred from weights. " +
       "`root_not_in_alpha_map` means netuid 0, which the chain's Alpha map does " +
       "not cover at all. Mainnet only. Mirrors GET " +
       "/api/v1/subnets/{netuid}/holders.",
@@ -11150,7 +11103,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SUBNET_HOLDERS_LIMIT_MAX,
       );
       const read = await loadSubnetHolders(
-        readStore(ctx.env, ALPHA_PRICING_TABLES),
+        alphaQuantityStore(ctx.env),
         netuid,
         { limit },
       );
@@ -11689,12 +11642,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_account_portfolio",
     title: "Get a wallet's cross-subnet portfolio",
     description:
-      "A wallet's cross-subnet neuron portfolio (by SS58 hotkey): each position's " +
-      "economics (stake, emission, rank, trust, incentive, dividends, role) and " +
-      "emission/stake yield, plus aggregates (totals, subnet/validator counts, " +
-      "overall return, and how concentrated the wallet's stake is across subnets). " +
-      "Richer than get_account_subnets; computed live from the neurons tier. An " +
-      "unregistered address returns an empty portfolio, not an error.",
+      "Observed registered-neuron footprint for one account: memberships, role, captured voting weight, rewards and protocol scores. This source does not measure wallet holdings, portfolio value or investment return; deprecated financial fields are null. An unregistered account has no observed registrations here, not necessarily no assets.",
     inputSchema: inputJsonSchema(GetAccountPortfolioInputSchema),
     async handler(
       args: z.infer<typeof GetAccountPortfolioInputSchema>,
@@ -11717,15 +11665,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_account_positions",
     title: "Get an account's nominator-side positions",
     description:
-      "This account's reconstructed nominator-side positions (by SS58 coldkey): " +
-      "what it holds delegated across every hotkey/subnet — hotkey, netuid, " +
-      "share_fraction (0-1, this account's share of that hotkey's alpha-pool " +
-      "shares on that subnet), and the derived stake_tao. Distinct from " +
-      "get_account_portfolio's hotkey-scoped view — a pure delegator shows " +
-      "near-zero there since its stake lives on someone ELSE's hotkey row. Root " +
-      "(netuid 0) stake is not covered — root has no alpha pool. An address with " +
-      "no delegated positions returns an empty card, not an error. Mirrors " +
-      "GET /api/v1/accounts/{ss58}/positions.",
+      "Observed account/validator/subnet delegation relationships. schema_version2 preserves relationships with unknown amounts. alpha_rao is an exact non-Root amount only at a completed selected runtime-qualified snapshot with block/code/metadata provenance. stake_tao and the cross-token total are deprecated nulls. Different subnet Alpha tokens are not summed; Root holdings and live wallet completeness remain unavailable.",
     inputSchema: inputJsonSchema(GetAccountPositionsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountPositionsInputSchema>,
@@ -13016,13 +12956,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "list_accounts",
-    title: "List the site-wide accounts leaderboard",
+    title: "List registered accounts",
     description:
-      "Fetch the site-wide accounts leaderboard: every currently-registered " +
-      "hotkey (miners included, not just validator_permit=1 rows), sortable by " +
-      "total_stake (default), total_emission, subnet_count, uid_count, " +
-      "validator_count, stake_dominance, or last_active. The all-accounts " +
-      "generalization of list_global_validators. Mirrors GET /api/v1/accounts.",
+      "Fetch observed registrations and scoped voting weights for hotkeys, including miners. Sort by subnet_count (default), total_emission, uid_count, validator_count or last_active. Unsupported holdings, dominance and portfolio values are null. Mirrors GET /api/v1/accounts.",
     inputSchema: inputJsonSchema(ListAccountsInputSchema),
     async handler(args: z.infer<typeof ListAccountsInputSchema>, ctx: McpCtx) {
       const sort =
@@ -13049,32 +12985,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "get_top_holders",
-    title: "Get the balance-based top-holder leaderboard",
+    title: "Get free-balance or stake-flow rankings",
     description:
-      "Fetch the balance-based top-holder leaderboard (#6741/#6743): every " +
-      "account (coldkey) with a nonzero free balance and/or delegated stake " +
-      "position, with free/delegated/total TAO columns list_accounts explicitly " +
-      "cannot derive. Sortable by total_tao (default), free_tao, delegated_tao, " +
-      "or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, " +
-      "net_flow_90d -- StakeAdded minus StakeRemoved, #6886/#6887). The " +
-      "coldkey/balance-centric counterpart to list_accounts. " +
-      "TWO TIERS, AND WHICH ONE ANSWERS DEPENDS ON THE SORT (#9469). " +
-      "net_flow_7d/30d/90d are LIVE: recomputed once a day from the " +
-      "account_events stake stream, signed (a real net outflow is negative), " +
-      "and captured_at advances with each pass. free_tao, delegated_tao and " +
-      "total_tao are NOT live yet -- they are served from a FIXED SNAPSHOT " +
-      "taken 2026-08-02, because account_balances has no rows yet (its D1 " +
-      "sink exists and the lane already composes free_tao, so that sort goes " +
-      "live the day its producer posts) and delegated_tao needs a " +
-      "per-(hotkey, netuid) alpha pool total that no current table holds. " +
-      "Sorting by one of those " +
-      "three returns the frozen ranking with captured_at stuck at that date: " +
-      "an account that has moved TAO since is misreported and one first funded " +
-      "since is absent entirely. On a net_flow_*-sorted page the three " +
-      "holdings columns come back NULL rather than zero -- the live tier has " +
-      "no balance source, and a zero there would read as an empty wallet. For " +
-      "current per-account balances use get_account_balance, which reads chain " +
-      "state live. Mirrors GET /api/v1/accounts/top-holders.",
+      "Fetch a qualified free-TAO snapshot ranking with sort=free_tao (default), or windowed stake flow with net_flow_7d, net_flow_30d or net_flow_90d. Delegated and portfolio-total quantities are unqualified and remain null. Snapshot freshness belongs to the returned capture; windowed flows are not balances. Mirrors GET /api/v1/accounts/top-holders.",
     inputSchema: inputJsonSchema(GetTopHoldersInputSchema),
     async handler(args: z.infer<typeof GetTopHoldersInputSchema>, ctx: McpCtx) {
       const sort =

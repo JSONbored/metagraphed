@@ -1,0 +1,351 @@
+[
+  {
+    "lane": "account-balances",
+    "keys": ["ss58"],
+    "valid": {
+      "ss58": "1",
+      "free_tao": 1,
+      "reserved_tao": 0
+    },
+    "invalid": [
+      {
+        "ss58": 1
+      },
+      {
+        "ss58": true
+      },
+      {
+        "ss58": [1]
+      },
+      {
+        "ss58": {}
+      },
+      {
+        "ss58": ""
+      },
+      {
+        "ss58": "a\u0000b"
+      },
+      {
+        "ss58": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      {
+        "ss58": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      {
+        "ss58": null
+      }
+    ]
+  },
+  {
+    "lane": "hotkey-alpha",
+    "keys": ["hotkey", "netuid"],
+    "valid": {
+      "hotkey": "1",
+      "netuid": 1,
+      "total_alpha": 1
+    },
+    "invalid": [
+      {
+        "hotkey": 1
+      },
+      {
+        "hotkey": true
+      },
+      {
+        "hotkey": [1]
+      },
+      {
+        "hotkey": {}
+      },
+      {
+        "hotkey": ""
+      },
+      {
+        "hotkey": "a\u0000b"
+      },
+      {
+        "hotkey": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      {
+        "hotkey": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      {
+        "hotkey": null
+      },
+      {
+        "netuid": "1"
+      },
+      {
+        "netuid": "01"
+      },
+      {
+        "netuid": "+1"
+      },
+      {
+        "netuid": "1.0"
+      },
+      {
+        "netuid": "1e0"
+      },
+      {
+        "netuid": " 1 "
+      },
+      {
+        "netuid": true
+      },
+      {
+        "netuid": 1.5
+      },
+      {
+        "netuid": -1
+      },
+      {
+        "netuid": 65536
+      },
+      {
+        "netuid": null
+      },
+      {
+        "netuid": [1]
+      },
+      {
+        "netuid": {}
+      }
+    ]
+  },
+  {
+    "lane": "validator-nominator-counts",
+    "keys": ["hotkey"],
+    "valid": {
+      "hotkey": "1",
+      "nominator_count": 1
+    },
+    "invalid": [
+      {
+        "hotkey": 1
+      },
+      {
+        "hotkey": true
+      },
+      {
+        "hotkey": [1]
+      },
+      {
+        "hotkey": {}
+      },
+      {
+        "hotkey": ""
+      },
+      {
+        "hotkey": "a\u0000b"
+      },
+      {
+        "hotkey": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      {
+        "hotkey": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      {
+        "hotkey": null
+      }
+    ]
+  },
+  {
+    "lane": "nominator-positions",
+    "keys": ["coldkey", "hotkey", "netuid"],
+    "valid": {
+      "coldkey": "1",
+      "hotkey": "1",
+      "netuid": 1,
+      "shares": "1",
+      "share_fraction": 1
+    },
+    "invalid": [
+      {
+        "coldkey": 1
+      },
+      {
+        "coldkey": true
+      },
+      {
+        "coldkey": [1]
+      },
+      {
+        "coldkey": {}
+      },
+      {
+        "coldkey": ""
+      },
+      {
+        "coldkey": "a\u0000b"
+      },
+      {
+        "coldkey": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      {
+        "coldkey": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      {
+        "coldkey": null
+      },
+      {
+        "hotkey": 1
+      },
+      {
+        "hotkey": true
+      },
+      {
+        "hotkey": [1]
+      },
+      {
+        "hotkey": {}
+      },
+      {
+        "hotkey": ""
+      },
+      {
+        "hotkey": "a\u0000b"
+      },
+      {
+        "hotkey": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      {
+        "hotkey": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      {
+        "hotkey": null
+      },
+      {
+        "netuid": "1"
+      },
+      {
+        "netuid": "01"
+      },
+      {
+        "netuid": "+1"
+      },
+      {
+        "netuid": "1.0"
+      },
+      {
+        "netuid": "1e0"
+      },
+      {
+        "netuid": " 1 "
+      },
+      {
+        "netuid": true
+      },
+      {
+        "netuid": 1.5
+      },
+      {
+        "netuid": -1
+      },
+      {
+        "netuid": 65536
+      },
+      {
+        "netuid": null
+      },
+      {
+        "netuid": [1]
+      },
+      {
+        "netuid": {}
+      }
+    ]
+  },
+  {
+    "lane": "neurons",
+    "keys": ["netuid", "uid"],
+    "valid": {
+      "netuid": 1,
+      "uid": 1,
+      "hotkey": "h",
+      "coldkey": "c",
+      "active": true
+    },
+    "invalid": [
+      {
+        "netuid": "1"
+      },
+      {
+        "netuid": "01"
+      },
+      {
+        "netuid": "+1"
+      },
+      {
+        "netuid": "1.0"
+      },
+      {
+        "netuid": "1e0"
+      },
+      {
+        "netuid": " 1 "
+      },
+      {
+        "netuid": true
+      },
+      {
+        "netuid": 1.5
+      },
+      {
+        "netuid": -1
+      },
+      {
+        "netuid": 65536
+      },
+      {
+        "netuid": null
+      },
+      {
+        "netuid": [1]
+      },
+      {
+        "netuid": {}
+      },
+      {
+        "uid": "1"
+      },
+      {
+        "uid": "01"
+      },
+      {
+        "uid": "+1"
+      },
+      {
+        "uid": "1.0"
+      },
+      {
+        "uid": "1e0"
+      },
+      {
+        "uid": " 1 "
+      },
+      {
+        "uid": true
+      },
+      {
+        "uid": 1.5
+      },
+      {
+        "uid": -1
+      },
+      {
+        "uid": 65536
+      },
+      {
+        "uid": null
+      },
+      {
+        "uid": [1]
+      },
+      {
+        "uid": {}
+      }
+    ]
+  }
+]

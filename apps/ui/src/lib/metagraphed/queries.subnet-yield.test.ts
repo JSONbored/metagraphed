@@ -83,17 +83,18 @@ describe("subnetYieldQuery", () => {
 
     const res = await runYieldQuery(1);
     expect(res.data.netuid).toBe(1);
-    expect(res.data.subnet_yield).toBe(0.00003);
-    expect(res.data.median_yield).toBe(0.000016);
+    expect(res.data.subnet_yield).toBeNull();
+    expect(res.data.median_yield).toBeNull();
     expect(res.data.validator_count).toBe(1);
     expect(res.data.miner_count).toBe(2);
     expect(res.data.neurons).toHaveLength(2);
     expect(res.data.neurons[0]).toMatchObject({
       uid: 176,
       role: "miner",
-      stake_tao: 19.53,
-      yield: 0.0589,
-      vs_median: "above",
+      stake_tao: null,
+      voting_weight: null,
+      yield: null,
+      vs_median: null,
     });
     // null-safe: missing hotkey → null, null yield preserved, unknown vs → null.
     expect(res.data.neurons[1]).toMatchObject({
@@ -118,7 +119,7 @@ describe("subnetYieldQuery", () => {
 
     const res = await runYieldQuery(1);
     expect(res.data.neurons).toHaveLength(1);
-    expect(res.data.neurons[0]).toMatchObject({ uid: 7, role: "miner", vs_median: "below" });
+    expect(res.data.neurons[0]).toMatchObject({ uid: 7, role: "miner", vs_median: null });
   });
 
   it("returns a schema-stable empty shape for a cold subnet", async () => {
@@ -160,8 +161,8 @@ describe("subnetYieldHistoryQuery", () => {
     expect(res.data.points).toHaveLength(1);
     expect(res.data.points[0]).toMatchObject({
       snapshot_date: "2026-07-04",
-      subnet_yield: 0.0000323,
-      median_yield: 0.0000159,
+      subnet_yield: null,
+      median_yield: null,
       yield_count: 23,
     });
   });

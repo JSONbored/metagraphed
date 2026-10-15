@@ -7,6 +7,7 @@
 // carries only counts and a median of within-subnet ratios, both of which
 // survive the mismatch.
 import { z } from "zod";
+import { AlphaProvenanceSchema } from "../alpha-quantity.ts";
 
 export const ChainHoldersSubnetSchema = z
   .object({
@@ -59,7 +60,8 @@ export const ChainHoldersNetworkSchema = z
 
 export const ChainHoldersArtifactSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
+    provenance: AlphaProvenanceSchema.nullable(),
     sort: z.string(),
     limit: z.int().min(1).nullable(),
     /** Subnets measured, which is NOT the length of `subnets` when limit bites. */
@@ -76,7 +78,9 @@ export const ChainHoldersArtifactSchema = z
     subnets: z.array(ChainHoldersSubnetSchema),
     /** Present ONLY on a decline; its absence says the ranking is real. */
     degraded: z
-      .object({ reason: z.enum(["pool_totals_unproven", "unavailable"]) })
+      .object({
+        reason: z.enum(["runtime_positions_unqualified", "unavailable"]),
+      })
       .strict()
       .describe(
         "An event-derived result could not be measured because its source is unavailable, its stream was never emitted, or its derivation could not answer this request. Absent on measured answers, including successfully read quiet windows.",

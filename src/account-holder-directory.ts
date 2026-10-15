@@ -11,7 +11,6 @@ import {
   buildAccountsSnapshot,
   type AccountsListEntry,
 } from "./accounts-list.ts";
-import { raoBigToTao, toRaoBig } from "./lib/rao.ts";
 
 export const ACCOUNT_HOLDER_DIRECTORY_LIMIT = 20;
 export const ACCOUNT_HOLDER_RANKINGS = ["stake", "emission", "reach"] as const;
@@ -22,27 +21,26 @@ export interface AccountHolderDirectoryEntry {
   coldkey: string | null;
   subnet_count: number;
   uid_count: number;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   total_emission_tao: number;
   stake_dominance: number | null;
 }
 
 export interface AccountHolderDirectory {
-  schema_version: 1;
+  schema_version: 2;
   captured_at: string | null;
   block_number: number | null;
   account_count: number;
   limit: number;
   /** Total TAO-valued stake represented by rows with a usable subnet price. */
-  priced_registered_stake_tao: number;
+  priced_registered_stake_tao: number | null;
   rankings: Record<AccountHolderRanking, AccountHolderDirectoryEntry[]>;
 }
 
 function rankingValue(
   account: AccountsListEntry,
-  metric: AccountHolderRanking,
+  metric: Exclude<AccountHolderRanking, "stake">,
 ): number {
-  if (metric === "stake") return account.total_stake_tao;
   if (metric === "emission") return account.total_emission_tao;
   return account.subnet_count;
 }
@@ -61,7 +59,7 @@ function compact(account: AccountsListEntry): AccountHolderDirectoryEntry {
 
 function ranking(
   accounts: readonly AccountsListEntry[],
-  metric: AccountHolderRanking,
+  metric: Exclude<AccountHolderRanking, "stake">,
 ): AccountHolderDirectoryEntry[] {
   return [...accounts]
     .sort(
@@ -78,20 +76,16 @@ export function buildAccountHolderDirectory(
   { priceByNetuid }: { priceByNetuid: Map<number, number | null> },
 ): AccountHolderDirectory {
   const snapshot = buildAccountsSnapshot(rows, { priceByNetuid });
-  const pricedStakeRao = snapshot.accounts.reduce(
-    (sum, account) => sum + toRaoBig(account.total_stake_tao),
-    0n,
-  );
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     captured_at: snapshot.captured_at,
     block_number: snapshot.block_number,
     account_count: snapshot.accounts.length,
     limit: ACCOUNT_HOLDER_DIRECTORY_LIMIT,
-    priced_registered_stake_tao: raoBigToTao(pricedStakeRao),
+    priced_registered_stake_tao: null,
     rankings: {
-      stake: ranking(snapshot.accounts, "stake"),
+      stake: [],
       emission: ranking(snapshot.accounts, "emission"),
       reach: ranking(snapshot.accounts, "reach"),
     },

@@ -2,26 +2,36 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { readRevisionedChainHolders } from "../src/chain-holders-cache.ts";
 import { loadChainHolders } from "../src/chain-holders.ts";
+import { syntheticAlphaCapture } from "./helpers/alpha-quantity-fixture.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
 
 beforeEach(() => resetModuleState());
 afterEach(() => vi.restoreAllMocks());
 type Row = Record<string, unknown>;
 function fixture() {
-  const state = { revisions: [1, 1], fail: false, checks: 0, loads: 0 };
+  const state = {
+    revisions: [1],
+    revisionTable: "nominator_positions",
+    legacyPoolRevision: 1,
+    fail: false,
+    checks: 0,
+    loads: 0,
+  };
   const binding = {
     batch() {
       throw new Error("Read path must not write");
     },
     prepare(text: string) {
       assert.match(text, /archive_export_revisions/);
+      assert.match(text, /nominator_positions/);
+      assert.doesNotMatch(text, /hotkey_alpha/);
       return {
         async all() {
           state.checks++;
           if (state.fail) throw new Error("Revision unavailable");
           return {
-            results: state.revisions.map((revision, i) => ({
-              table_name: ["hotkey_alpha", "nominator_positions"][i],
+            results: state.revisions.map((revision) => ({
+              table_name: state.revisionTable,
               revision,
             })),
             meta: {},
@@ -33,7 +43,8 @@ function fixture() {
   const env = {
     D1_STATE: binding,
     D1_EXPORT_REVISIONS: "enabled",
-    D1_STATE_TABLES: "hotkey_alpha,nominator_positions,hotkey_alpha_passes",
+    D1_STATE_TABLES:
+      "nominator_positions,alpha_snapshot_passes,alpha_runtime_metadata",
   };
   const read = async (): Promise<Row[]> => {
     state.loads++;
@@ -44,7 +55,7 @@ function fixture() {
   return { state, env, read };
 }
 
-test("every hit checks both producer revisions and the selected complete pass", async () => {
+test("every hit checks the canonical position revision and selected capture", async () => {
   const f = fixture();
   const first = await readRevisionedChainHolders(f.env, 100, f.read);
   first[0]!.total_alpha = 999;
@@ -55,12 +66,16 @@ test("every hit checks both producer revisions and the selected complete pass", 
   ]);
   assert.equal(f.state.loads, 1);
   assert.equal(f.state.checks, 2);
+  // This source never reads the retired pool ledger's revision.
+  f.state.legacyPoolRevision++;
+  await readRevisionedChainHolders(f.env, 100, f.read);
+  assert.equal(f.state.loads, 1);
+  assert.equal(f.state.checks, 3);
   f.state.revisions[0]++;
   await readRevisionedChainHolders(f.env, 100, f.read);
-  f.state.revisions[1]++;
-  await readRevisionedChainHolders(f.env, 100, f.read);
+  assert.equal(f.state.loads, 2);
   await readRevisionedChainHolders(f.env, 101, f.read);
-  assert.equal(f.state.loads, 4);
+  assert.equal(f.state.loads, 3);
   const other = fixture();
   await readRevisionedChainHolders(other.env, 101, other.read);
   assert.equal(other.state.loads, 1);
@@ -89,16 +104,38 @@ test("concurrent callers share a load, with bounded lifetime and module reset", 
 test("unavailable or invalid revision evidence never serves a retained snapshot", async () => {
   const f = fixture();
   await readRevisionedChainHolders(f.env, 100, f.read);
-  for (const revisions of [[], [1], [NaN, 1], [-1, 1], [1, 0.5]]) {
+  for (const revisions of [
+    [],
+    [NaN],
+    [-1],
+    [0.5],
+    [Number.MAX_SAFE_INTEGER + 1],
+    [1, 1],
+  ]) {
     f.state.revisions = revisions;
     await readRevisionedChainHolders(f.env, 100, f.read);
+    await readRevisionedChainHolders(f.env, 100, f.read);
   }
-  f.state.revisions = [1, 1];
+  f.state.revisions = [1];
   f.state.fail = true;
+  await readRevisionedChainHolders(f.env, 100, f.read);
   await readRevisionedChainHolders(f.env, 100, f.read);
   f.state.fail = false;
   await readRevisionedChainHolders(f.env, 100, f.read);
-  assert.equal(f.state.loads, 8);
+  assert.equal(f.state.loads, 16);
+});
+
+test("an unrelated table's revision cannot stand in for missing position evidence", async () => {
+  const f = fixture();
+  await readRevisionedChainHolders(f.env, 100, f.read);
+  f.state.revisionTable = "hotkey_alpha";
+  await readRevisionedChainHolders(f.env, 100, f.read);
+  await readRevisionedChainHolders(f.env, 100, f.read);
+  assert.equal(f.state.loads, 3);
+  f.state.revisionTable = "nominator_positions";
+  await readRevisionedChainHolders(f.env, 100, f.read);
+  await readRevisionedChainHolders(f.env, 100, f.read);
+  assert.equal(f.state.loads, 4);
 });
 
 test("disabled and non-D1 selections bypass revision reads", async () => {
@@ -114,6 +151,42 @@ test("disabled and non-D1 selections bypass revision reads", async () => {
   }
   assert.equal(f.state.loads, 8);
   assert.equal(f.state.checks, 0);
+});
+
+test("partial quantity ownership cannot retain a ranking across owners", async () => {
+  const f = fixture();
+  const tables = [
+    "nominator_positions",
+    "alpha_snapshot_passes",
+    "alpha_runtime_metadata",
+  ];
+  for (const missing of tables) {
+    const env = {
+      ...f.env,
+      D1_STATE_TABLES: tables.filter((table) => table !== missing).join(","),
+    };
+    await readRevisionedChainHolders(env, 100, f.read);
+    await readRevisionedChainHolders(env, 100, f.read);
+  }
+  assert.equal(f.state.loads, 6);
+  assert.equal(f.state.checks, 0);
+});
+
+test("an unbound declared quantity owner bypasses retention and returns each fresh caller read", async () => {
+  const f = fixture();
+  const env = { ...f.env, D1_STATE: undefined };
+  let reads = 0;
+  const read = async (): Promise<Row[]> => [
+    { netuid: 7, read_number: ++reads },
+  ];
+  assert.deepEqual(await readRevisionedChainHolders(env, 100, read), [
+    { netuid: 7, read_number: 1 },
+  ]);
+  assert.deepEqual(await readRevisionedChainHolders(env, 100, read), [
+    { netuid: 7, read_number: 2 },
+  ]);
+  assert.equal(f.state.checks, 0);
+  assert.equal(reads, 2);
 });
 
 test("failed loads are retried and an older failure cannot evict a newer revision", async () => {
@@ -165,13 +238,9 @@ test("oversized answers remain available without being retained", async () => {
   }
 });
 
-test("the shared loader still requires a proven pool pass on every call", async () => {
+test("the shared loader still requires a runtime-qualified exact quantity pass on every call", async () => {
   const f = fixture();
-  let pass: Record<string, unknown> | null = {
-    captured_at: 100,
-    expected_rows: 1,
-    received_rows: 1,
-  };
+  let pass: Record<string, unknown> | null = syntheticAlphaCapture(100);
   let queries = 0;
   const db = {
     async first() {
@@ -188,7 +257,7 @@ test("the shared loader still requires a proven pool pass on every call", async 
   pass = null;
   assert.equal(
     (await loadChainHolders(db, f.env)).decline,
-    "pool_totals_unproven",
+    "runtime_positions_unqualified",
   );
   assert.equal(queries, 1);
 });

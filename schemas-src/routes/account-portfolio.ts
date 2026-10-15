@@ -31,8 +31,18 @@ const PortfolioPositionSchema = z
     active: z.boolean(),
     stake_alpha: z
       .number()
+      .min(0)
+      .nullable()
       .describe(
-        "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO.",
+        "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.",
+      )
+      .meta({ deprecated: true }),
+    voting_weight: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio.",
       ),
     emission_alpha: z
       .number()
@@ -46,7 +56,10 @@ const PortfolioPositionSchema = z
     yield: z
       .number()
       .nullable()
-      .describe("Emission over stake for this position; null when stake is 0."),
+      .describe(
+        "Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return.",
+      )
+      .meta({ deprecated: true }),
   })
   .strict()
   .describe(
@@ -55,7 +68,7 @@ const PortfolioPositionSchema = z
 
 export const AccountPortfolioArtifactSchema = z
   .object({
-    schema_version: z.int(),
+    schema_version: z.literal(2),
     ss58: z.string(),
     captured_at: z.string().nullable(),
     subnet_count: z.int().min(0),
@@ -64,9 +77,12 @@ export const AccountPortfolioArtifactSchema = z
     miner_count: z.int().min(0),
     total_stake_tao: z
       .number()
+      .min(0)
+      .nullable()
       .describe(
-        "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.",
-      ),
+        "Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z
       .number()
       .describe(
@@ -76,11 +92,9 @@ export const AccountPortfolioArtifactSchema = z
       .number()
       .nullable()
       .describe(
-        "Priced emission per priced stake -- both sides in TAO (#9051), so the ratio is dimensionally coherent. Null with no priceable stake.",
-      ),
-    // NULLABLE, as its own description says -- "null with no positions". A
-    // wallet with nothing staked has no concentration to report, and the
-    // zeroed-card fallback returns exactly that (#10772).
+        "Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return.",
+      )
+      .meta({ deprecated: true }),
     stake_concentration: ConcentrationMetricsSchema.nullable().describe(
       "How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions.",
     ),

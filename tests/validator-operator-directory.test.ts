@@ -112,7 +112,9 @@ describe("buildValidatorOperatorDirectory", () => {
     assert.equal(directory.captured_at, "2026-08-29T00:00:00.000Z");
     assert.equal(directory.block_number, 8_950_000);
 
-    const team = directory.operators[0]!;
+    const team = directory.operators.find(
+      (entry) => entry.operator_id === "coldkey:ck-team",
+    )!;
     assert.equal(team.operator_id, "coldkey:ck-team");
     assert.equal(team.ownership_basis, "single_coldkey");
     assert.equal(team.identity_name, "Tensor Team");
@@ -122,17 +124,19 @@ describe("buildValidatorOperatorDirectory", () => {
       team.hotkeys.map((key) => key.hotkey),
       ["hk-large", "hk-small"],
     );
-    assert.equal(team.total_stake_tao, 100);
+    assert.equal(team.total_stake_tao, null);
     assert.equal(team.total_emission_tao, 8);
     assert.equal(team.nominator_count, null);
     assert.equal(team.membership_count, 6);
     assert.equal(team.uid_count, 8);
     assert.equal(team.take_min, 0.1);
     assert.equal(team.take_max, 0.2);
-    assert.equal(team.apy_estimate, 0.25);
-    assert.equal(team.stake_dominance, 0.625);
+    assert.equal(team.apy_estimate, null);
+    assert.equal(team.stake_dominance, null);
 
-    const anonymous = directory.operators.slice(1);
+    const anonymous = directory.operators.filter(
+      (entry) => entry.ownership_basis === "unknown",
+    );
     assert.deepEqual(
       anonymous.map((entry) => entry.primary_hotkey),
       ["anonymous-a", "anonymous-b"],
@@ -235,7 +239,7 @@ describe("buildValidatorOperatorDirectory", () => {
     assert.equal(before.identity_name, "Old Name");
     assert.equal(after.identity_name, "New Name");
     assert.equal(before.primary_hotkey, "hk-a");
-    assert.equal(after.primary_hotkey, "hk-b");
+    assert.equal(after.primary_hotkey, "hk-a");
     assert.equal(after.hotkey_count, 2);
     assert.deepEqual(
       after.hotkeys.map(({ hotkey }) => hotkey).sort(),
@@ -417,7 +421,7 @@ describe("buildValidatorOperatorDirectory", () => {
       ["hk-a", "operator-b", "operator-c"],
     );
     assert.equal(directory.operators[0]!.hotkey_count, 2);
-    assert.equal(directory.operators[0]!.total_stake_tao, 0);
+    assert.equal(directory.operators[0]!.total_stake_tao, null);
     assert.equal(directory.operators[0]!.total_emission_tao, 0);
     assert.equal(directory.operators[0]!.nominator_count, null);
     assert.equal(directory.operators[0]!.membership_count, 0);
@@ -436,7 +440,7 @@ describe("buildValidatorOperatorDirectory", () => {
   test("returns a schema-valid cold directory", () => {
     const directory = buildValidatorOperatorDirectory(null);
     assert.deepEqual(directory, {
-      schema_version: 1,
+      schema_version: 2,
       captured_at: null,
       block_number: null,
       validator_count: 0,

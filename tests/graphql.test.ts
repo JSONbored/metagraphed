@@ -63,7 +63,21 @@ import {
   schema as chainEventsSchema,
 } from "../src/graphql.ts";
 import { LEADERBOARD_BOARDS } from "../src/health-serving.ts";
-import { GLOBAL_VALIDATOR_LIMIT_MAX } from "../src/metagraph-neurons.ts";
+import {
+  GLOBAL_VALIDATOR_LIMIT_MAX,
+  buildGlobalValidators,
+  buildValidatorDetail,
+  NO_ALPHA_PRICES,
+} from "../src/metagraph-neurons.ts";
+import { buildAccountsList } from "../src/accounts-list.ts";
+import { buildAccountPortfolio } from "../src/account-portfolio.ts";
+import { buildAccountPositionHistory } from "../src/account-position-history.ts";
+import { buildValidatorHistory } from "../src/validator-history.ts";
+import { buildChainYield } from "../src/chain-yield.ts";
+import {
+  buildSubnetYield,
+  buildSubnetYieldHistory,
+} from "../src/subnet-yield.ts";
 import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.ts";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.ts";
@@ -160,6 +174,25 @@ function fixtureEnv(fixtures: Row = {}, { reads, kv, kvReads }: Row = {}) {
     };
   }
   return env;
+}
+
+// Stored neuron stake is voting weight. Construct current tier cards from the
+// pure producers so a fixture cannot accidentally reintroduce legacy money.
+function quantityNeuron(overrides: Row = {}): Row {
+  return {
+    hotkey: "5Validator",
+    coldkey: "5Coldkey",
+    netuid: 1,
+    uid: 5,
+    validator_permit: 1,
+    active: 1,
+    stake_tao: 1000,
+    emission_tao: 5,
+    validator_trust: 0.9,
+    captured_at: Date.parse("2026-07-14T00:00:00.000Z"),
+    block_number: 100,
+    ...overrides,
+  };
 }
 
 // The controller is module state shared by every test in the file, so a set of
@@ -5800,72 +5833,35 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          sort: "total_stake",
-          limit: 20,
-          captured_at: "2026-07-14T00:00:00.000Z",
-          block_number: 100,
-          validator_count: 1,
-          validators: [
-            {
-              hotkey: "5Validator",
-              featured: true,
-              coldkey: "5Coldkey",
-              coldkey_identity: { has_identity: false },
-              coldkey_count: 1,
-              subnet_count: 1,
-              uid_count: 1,
-              take: 0.1,
-              total_stake_tao: 1000,
-              root_stake_tao: 0,
-              alpha_stake_tao: 1000,
-              total_emission_tao: 5,
-              nominator_count: 3,
-              apy_estimate: 0.12,
-              apy_estimate_eligible_subnet_count: 1,
-              realized_return_1d: 0.25,
-              realized_return_1w: 1,
-              realized_return_1m: null,
-              avg_validator_trust: 0.9,
-              max_validator_trust: 0.9,
-              latest_captured_at: "2026-07-14T00:00:00.000Z",
-              latest_block_number: 100,
-              subnets: [
-                {
-                  netuid: 1,
-                  uid: 5,
-                  stake_alpha: 1000,
-                  emission_alpha: 5,
-                  validator_trust: 0.9,
-                },
-              ],
-            },
-          ],
-        }),
+        Response.json(
+          buildGlobalValidators([quantityNeuron()], {
+            priceByNetuid: NO_ALPHA_PRICES,
+            featuredHotkeys: new Set(["5Validator"]),
+            nominatorCounts: new Map([["5Validator", 3]]),
+          }),
+        ),
       ),
     };
     const { status, body } = await gql(
-      '{ validators(sort: "total_stake", limit: 5) { items { hotkey featured coldkey nominator_count realized_return_1d realized_return_1w realized_return_1m captured_at block_number subnets { netuid uid stake_alpha } } total sort captured_at block_number } }',
+      '{ validators(sort: "subnet_count", limit: 5) { items { hotkey featured coldkey nominator_count realized_return_1d realized_return_1w realized_return_1m captured_at block_number subnets { netuid uid stake_alpha } } total sort captured_at block_number } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.validators.total, 1);
-    assert.equal(body.data.validators.sort, "total_stake");
+    assert.equal(body.data.validators.sort, "subnet_count");
     assert.equal(body.data.validators.captured_at, "2026-07-14T00:00:00.000Z");
     assert.equal(body.data.validators.block_number, 100);
     const item = body.data.validators.items[0];
     assert.equal(item.hotkey, "5Validator");
     assert.equal(item.featured, true);
     assert.equal(item.nominator_count, 3);
-    // #7228: realized_return_* flow through the Postgres tier verbatim, null
-    // preserved for a window with no neuron_daily row far enough back.
-    assert.equal(item.realized_return_1d, 0.25);
-    assert.equal(item.realized_return_1w, 1);
+    // Snapshot voting weights cannot establish realized returns.
+    assert.equal(item.realized_return_1d, null);
+    assert.equal(item.realized_return_1w, null);
     assert.equal(item.realized_return_1m, null);
     assert.equal(item.captured_at, "2026-07-14T00:00:00.000Z");
     assert.equal(item.block_number, 100);
-    assert.deepEqual(item.subnets, [{ netuid: 1, uid: 5, stake_alpha: 1000 }]);
+    assert.deepEqual(item.subnets, [{ netuid: 1, uid: 5, stake_alpha: null }]);
   });
 
   // #8251: GLOBAL_VALIDATOR_LIMIT_MAX went 100 -> 2000 so the /validators UI
@@ -5884,7 +5880,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
-            schema_version: 1,
+            schema_version: 2,
             sort: "uid_count",
             limit: GLOBAL_VALIDATOR_LIMIT_MAX,
             captured_at: null,
@@ -5912,7 +5908,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
-            schema_version: 1,
+            schema_version: 2,
             sort: "subnet_count",
             limit: GLOBAL_VALIDATOR_LIMIT_MAX,
             captured_at: null,
@@ -5932,28 +5928,14 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
   });
 
   test("validators: paginate with a hotkey cursor", async () => {
-    const payload = {
-      schema_version: 1,
-      sort: "subnet_count",
-      limit: 100,
-      captured_at: null,
-      block_number: null,
-      validator_count: 2,
-      validators: [
-        {
-          hotkey: "5Alpha",
-          featured: false,
-          subnet_count: 2,
-          subnets: [],
-        },
-        {
-          hotkey: "5Beta",
-          featured: false,
-          subnet_count: 1,
-          subnets: [],
-        },
+    const payload = buildGlobalValidators(
+      [
+        quantityNeuron({ hotkey: "5Alpha", netuid: 1 }),
+        quantityNeuron({ hotkey: "5Alpha", netuid: 2 }),
+        quantityNeuron({ hotkey: "5Beta", netuid: 1 }),
       ],
-    };
+      { priceByNetuid: NO_ALPHA_PRICES },
+    );
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
@@ -6034,7 +6016,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       // is schema-stable and never null -- is unchanged.
       featured: null,
       subnet_count: 0,
-      total_stake_tao: 0,
+      total_stake_tao: null,
       captured_at: null,
       block_number: null,
       subnets: [],
@@ -6045,30 +6027,26 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          hotkey: "5Validator",
-          coldkey: "5Coldkey",
-          coldkey_identity: { has_identity: false },
-          coldkey_count: 1,
-          subnet_count: 2,
-          take: 0.1,
-          total_stake_tao: 2000,
-          root_stake_tao: 500,
-          alpha_stake_tao: 1500,
-          total_emission_tao: 8,
-          nominator_count: null,
-          apy_estimate: null,
-          apy_estimate_eligible_subnet_count: 0,
-          avg_validator_trust: 0.8,
-          max_validator_trust: 0.85,
-          captured_at: "2026-07-14T01:00:00.000Z",
-          block_number: 200,
-          subnets: [
-            { netuid: 1, uid: 5, stake_alpha: 500, emission_alpha: 2 },
-            { netuid: 3, uid: 9, stake_alpha: 1500, emission_alpha: 6 },
-          ],
-        }),
+        Response.json(
+          buildValidatorDetail(
+            [
+              quantityNeuron({
+                stake_tao: 500,
+                captured_at: Date.parse("2026-07-14T01:00:00.000Z"),
+                block_number: 200,
+              }),
+              quantityNeuron({
+                netuid: 3,
+                uid: 9,
+                stake_tao: 1500,
+                captured_at: Date.parse("2026-07-14T01:00:00.000Z"),
+                block_number: 200,
+              }),
+            ],
+            "5Validator",
+            { priceByNetuid: NO_ALPHA_PRICES },
+          ),
+        ),
       ),
     };
     const { status, body } = await gql(
@@ -6081,8 +6059,8 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.equal(body.data.validator.captured_at, "2026-07-14T01:00:00.000Z");
     assert.equal(body.data.validator.block_number, 200);
     assert.deepEqual(body.data.validator.subnets, [
-      { netuid: 1, stake_alpha: 500 },
-      { netuid: 3, stake_alpha: 1500 },
+      { netuid: 1, stake_alpha: null },
+      { netuid: 3, stake_alpha: null },
     ]);
   });
 
@@ -6105,7 +6083,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       // is schema-stable and never null -- is unchanged.
       featured: null,
       subnet_count: 0,
-      total_stake_tao: 0,
+      total_stake_tao: null,
       captured_at: null,
       block_number: null,
       subnets: [],
@@ -6120,12 +6098,13 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          hotkey: "5Validator",
-          subnet_count: 3,
-          subnets: [{ netuid: 1 }, { netuid: 2 }, { netuid: 3 }],
-        }),
+        Response.json(
+          buildValidatorDetail(
+            [1, 2, 3].map((netuid) => quantityNeuron({ netuid })),
+            "5Validator",
+            { priceByNetuid: NO_ALPHA_PRICES },
+          ),
+        ),
       ),
     };
     const { status, body } = await gql(
@@ -6148,10 +6127,12 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
         Response.json({
-          schema_version: 1,
-          hotkey: "5Validator",
+          ...buildValidatorDetail(
+            [1, 2].map((netuid) => quantityNeuron({ netuid })),
+            "5Validator",
+            { priceByNetuid: NO_ALPHA_PRICES },
+          ),
           uid_count: 9,
-          subnets: [{ netuid: 1 }, { netuid: 2 }],
         }),
       ),
     };
@@ -6183,7 +6164,7 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.account_position_history, {
-      schema_version: 1,
+      schema_version: 2,
       ss58: SS58,
       netuid: 1,
       window: "30d",
@@ -6196,30 +6177,26 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          netuid: 5,
-          window: "90d",
-          point_count: 1,
-          points: [
-            {
-              snapshot_date: "2026-07-01",
-              captured_at: "2026-07-01T00:00:00.000Z",
-              uid: 3,
-              coldkey: "5Cold",
-              role: "validator",
-              active: true,
-              stake_tao: 1000,
-              emission_tao: 4,
-              rank: 0.1,
-              trust: 0.2,
-              incentive: 0.3,
-              dividends: 0.4,
-              yield: 0.004,
-            },
-          ],
-        }),
+        Response.json(
+          buildAccountPositionHistory(
+            [
+              quantityNeuron({
+                snapshot_date: "2026-07-01",
+                captured_at: Date.parse("2026-07-01T00:00:00.000Z"),
+                uid: 3,
+                coldkey: "5Cold",
+                emission_tao: 4,
+                rank: 0.1,
+                trust: 0.2,
+                incentive: 0.3,
+                dividends: 0.4,
+              }),
+            ],
+            SS58,
+            5,
+            { window: "90d" },
+          ),
+        ),
       ),
     };
     const { status, body } = await gql(
@@ -6236,8 +6213,8 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
     assert.equal(r.window, "90d");
     assert.equal(r.point_count, 1);
     assert.equal(r.points[0].role, "validator");
-    assert.equal(r.points[0].stake_tao, 1000);
-    assert.equal(r.points[0].yield, 0.004);
+    assert.equal(r.points[0].stake_tao, null);
+    assert.equal(r.points[0].yield, null);
   });
 
   test("an invalid ss58 is BAD_USER_INPUT and never reaches the tier", async () => {
@@ -6297,7 +6274,7 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.account_position_history, {
-      schema_version: 1,
+      schema_version: 2,
       ss58: SS58,
       netuid: 3,
       window: "30d",
@@ -7203,7 +7180,7 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.validator_history, {
-      schema_version: 1,
+      schema_version: 2,
       hotkey: "5NoRows",
       window: "30d",
       point_count: 0,
@@ -7215,21 +7192,20 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          hotkey: "5Validator",
-          window: "90d",
-          point_count: 1,
-          points: [
-            {
-              snapshot_date: "2026-07-01",
-              subnet_count: 2,
-              total_stake_tao: 1000,
-              total_emission_tao: 4,
-              rewards_per_1000_tao: 4,
-            },
-          ],
-        }),
+        Response.json(
+          buildValidatorHistory(
+            [
+              {
+                snapshot_date: "2026-07-01",
+                subnet_count: 2,
+                total_stake_tao: 1000,
+                total_emission_tao: 4,
+              },
+            ],
+            "5Validator",
+            { window: "90d" },
+          ),
+        ),
       ),
     };
     const { status, body } = await gql(
@@ -7248,9 +7224,9 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
       {
         snapshot_date: "2026-07-01",
         subnet_count: 2,
-        total_stake_tao: 1000,
+        total_stake_tao: null,
         total_emission_tao: 4,
-        rewards_per_1000_tao: 4,
+        rewards_per_1000_tao: null,
       },
     ]);
   });
@@ -7287,7 +7263,7 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.validator_history, {
-      schema_version: 1,
+      schema_version: 2,
       hotkey: "5Validator",
       window: "30d",
       point_count: 0,
@@ -7578,7 +7554,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     assert.deepEqual(body.data.accounts, {
       items: [],
       total: 0,
-      sort: "total_stake",
+      sort: "subnet_count",
       captured_at: null,
       block_number: null,
     });
@@ -7589,54 +7565,48 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            sort: "total_stake",
-            limit: 5,
-            captured_at: "2026-07-15T00:00:00.000Z",
-            block_number: 300,
-            account_count: 1,
-            accounts: [
-              {
-                hotkey: "5Account",
-                coldkey: "5Coldkey",
-                coldkey_count: 1,
-                subnet_count: 2,
-                uid_count: 2,
-                validator_count: 1,
-                miner_count: 1,
-                total_stake_tao: 1500,
-                total_emission_tao: 7,
-                stake_dominance: 0.42,
-                latest_captured_at: "2026-07-15T00:00:00.000Z",
-                latest_block_number: 300,
-                subnets: [
-                  { netuid: 1, uid: 5, stake_alpha: 1000, emission_alpha: 5 },
-                  { netuid: 3, uid: 9, stake_alpha: 500, emission_alpha: 2 },
-                ],
-              },
-            ],
-          }),
+          Response.json(
+            buildAccountsList(
+              [
+                quantityNeuron({
+                  hotkey: "5Account",
+                  captured_at: Date.parse("2026-07-15T00:00:00.000Z"),
+                  block_number: 300,
+                }),
+                quantityNeuron({
+                  hotkey: "5Account",
+                  netuid: 3,
+                  uid: 9,
+                  stake_tao: 500,
+                  emission_tao: 2,
+                  validator_permit: 0,
+                  captured_at: Date.parse("2026-07-15T00:00:00.000Z"),
+                  block_number: 300,
+                }),
+              ],
+              { priceByNetuid: NO_ALPHA_PRICES, limit: 5 },
+            ),
+          ),
       },
     };
     const { status, body } = await gql(
-      '{ accounts(sort: "total_stake", limit: 5) { items { hotkey coldkey subnet_count total_stake_tao stake_dominance latest_captured_at latest_block_number subnets { netuid uid stake_alpha emission_alpha } } total sort captured_at block_number } }',
+      '{ accounts(sort: "subnet_count", limit: 5) { items { hotkey coldkey subnet_count total_stake_tao stake_dominance latest_captured_at latest_block_number subnets { netuid uid stake_alpha emission_alpha } } total sort captured_at block_number } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.accounts.total, 1);
-    assert.equal(body.data.accounts.sort, "total_stake");
+    assert.equal(body.data.accounts.sort, "subnet_count");
     assert.equal(body.data.accounts.captured_at, "2026-07-15T00:00:00.000Z");
     assert.equal(body.data.accounts.block_number, 300);
     const item = body.data.accounts.items[0];
     assert.equal(item.hotkey, "5Account");
     assert.equal(item.coldkey, "5Coldkey");
     assert.equal(item.subnet_count, 2);
-    assert.equal(item.total_stake_tao, 1500);
-    assert.equal(item.stake_dominance, 0.42);
+    assert.equal(item.total_stake_tao, null);
+    assert.equal(item.stake_dominance, null);
     assert.deepEqual(item.subnets, [
-      { netuid: 1, uid: 5, stake_alpha: 1000, emission_alpha: 5 },
-      { netuid: 3, uid: 9, stake_alpha: 500, emission_alpha: 2 },
+      { netuid: 1, uid: 5, stake_alpha: null, emission_alpha: 5 },
+      { netuid: 3, uid: 9, stake_alpha: null, emission_alpha: 2 },
     ]);
   });
 
@@ -7648,7 +7618,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
-            schema_version: 1,
+            schema_version: 2,
             sort: "uid_count",
             limit: 5,
             captured_at: null,
@@ -7673,8 +7643,8 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
-            schema_version: 1,
-            sort: "total_stake",
+            schema_version: 2,
+            sort: "subnet_count",
             limit: 20,
             captured_at: null,
             block_number: null,
@@ -7685,7 +7655,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
       },
     };
     await gql("{ accounts { total } }", env);
-    assert.equal(capturedUrl!.searchParams.get("sort"), "total_stake");
+    assert.equal(capturedUrl!.searchParams.get("sort"), "subnet_count");
     assert.equal(capturedUrl!.searchParams.get("limit"), "20");
   });
 
@@ -7702,7 +7672,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     assert.deepEqual(body.data.accounts, {
       items: [],
       total: 0,
-      sort: "total_stake",
+      sort: "subnet_count",
       captured_at: null,
       block_number: null,
     });
@@ -8277,14 +8247,14 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.account_portfolio, {
-      schema_version: 1,
+      schema_version: 2,
       ss58: SS58,
       captured_at: null,
       subnet_count: 0,
       position_count: 0,
       validator_count: 0,
       miner_count: 0,
-      total_stake_tao: 0,
+      total_stake_tao: null,
       total_emission_tao: 0,
       overall_yield: null,
       stake_concentration: null,
@@ -8297,55 +8267,44 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
         fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            captured_at: "2026-07-10T00:00:00.000Z",
-            subnet_count: 2,
-            position_count: 2,
-            validator_count: 1,
-            miner_count: 1,
-            total_stake_tao: 1500,
-            total_emission_tao: 6,
-            overall_yield: 0.004,
-            stake_concentration: { holders: 2, gini: 0.2, hhi: 0.52 },
-            positions: [
-              {
-                netuid: 3,
-                uid: 5,
-                role: "validator",
-                active: true,
-                stake_alpha: 1000,
-                emission_alpha: 4,
-                rank: 0.8,
-                trust: 0.9,
-                incentive: 0.1,
-                dividends: 0.05,
-                yield: 0.004,
-              },
-              {
-                netuid: 7,
-                uid: 9,
-                role: "miner",
-                active: true,
-                stake_alpha: 500,
-                emission_alpha: 2,
-                rank: 0.5,
-                trust: 0.5,
-                incentive: 0.2,
-                dividends: 0,
-                yield: 0.004,
-              },
-            ],
-          }),
+          Response.json(
+            buildAccountPortfolio(
+              [
+                quantityNeuron({
+                  netuid: 3,
+                  uid: 5,
+                  emission_tao: 4,
+                  rank: 0.8,
+                  trust: 0.9,
+                  incentive: 0.1,
+                  dividends: 0.05,
+                }),
+                quantityNeuron({
+                  netuid: 7,
+                  uid: 9,
+                  validator_permit: 0,
+                  stake_tao: 500,
+                  emission_tao: 2,
+                  rank: 0.5,
+                  trust: 0.5,
+                  incentive: 0.2,
+                  dividends: 0,
+                }),
+              ],
+              SS58,
+              { priceByNetuid: NO_ALPHA_PRICES },
+            ),
+          ),
       },
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     const p = body.data.account_portfolio;
     assert.equal(p.subnet_count, 2);
-    assert.equal(p.total_stake_tao, 1500);
-    assert.equal(p.stake_concentration.holders, 2);
+    assert.equal(p.total_stake_tao, null);
+    assert.equal(p.stake_concentration, null);
+    assert.equal(p.overall_yield, null);
+    assert.equal(p.positions[0].stake_alpha, null);
     assert.equal(p.positions[0].netuid, 3);
     assert.equal(p.positions[0].role, "validator");
     assert.equal(p.positions[1].role, "miner");
@@ -8359,7 +8318,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
-            schema_version: 1,
+            schema_version: 2,
             ss58: SS58,
             positions: [],
           });
@@ -8378,14 +8337,14 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_portfolio, {
-      schema_version: 1,
+      schema_version: 2,
       ss58: SS58,
       captured_at: null,
       subnet_count: 0,
       position_count: 0,
       validator_count: 0,
       miner_count: 0,
-      total_stake_tao: 0,
+      total_stake_tao: null,
       total_emission_tao: 0,
       overall_yield: null,
       stake_concentration: null,
@@ -8436,11 +8395,11 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.account_positions, {
-      schema_version: 1,
+      schema_version: 2,
       ss58: SS58,
       captured_at: null,
       position_count: 0,
-      total_stake_alpha: 0,
+      total_stake_alpha: null,
       positions: [],
     });
   });
@@ -8486,11 +8445,11 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_positions, {
-      schema_version: 1,
+      schema_version: 2,
       ss58: SS58,
       captured_at: null,
       position_count: 0,
-      total_stake_alpha: 0,
+      total_stake_alpha: null,
       positions: [],
     });
   });
@@ -8576,8 +8535,8 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
       assert.equal(body.errors, undefined);
       const p = body.data.account_positions;
       assert.equal(p.position_count, 1);
-      assert.equal(p.positions[0].stake_tao, 100);
-      assert.equal(p.total_stake_alpha, 100);
+      assert.equal(p.positions[0].stake_tao, null);
+      assert.equal(p.total_stake_alpha, null);
       assert.match(capturedQuery, /FROM chain\.nominator_positions/);
     } finally {
       globalThis.fetch = realFetch;
@@ -10561,12 +10520,13 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
       DATA_API: {
         fetch: async (req: Request) => {
           paths.push(new URL(req.url).pathname);
-          return Response.json({
-            schema_version: 1,
-            hotkey: HOTKEY_A,
-            total_stake_tao: 42,
-            subnets: [],
-          });
+          return Response.json(
+            buildValidatorDetail(
+              [quantityNeuron({ hotkey: HOTKEY_A, netuid: 3, stake_tao: 42 })],
+              HOTKEY_A,
+              { priceByNetuid: NO_ALPHA_PRICES },
+            ),
+          );
         },
       },
     };
@@ -10581,7 +10541,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.equal(body.data.compare_validators.netuid, 3);
     assert.equal(
       body.data.compare_validators.validators[0].total_stake_tao,
-      42,
+      null,
     );
   });
 
@@ -13220,7 +13180,7 @@ describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-sta
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.subnet_yield_history, {
-      schema_version: 1,
+      schema_version: 2,
       netuid: 5,
       window: "30d",
       point_count: 0,
@@ -13232,38 +13192,28 @@ describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-sta
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 7,
-          window: "7d",
-          point_count: 2,
-          points: [
-            {
-              snapshot_date: "2026-07-02",
-              neuron_count: 4,
-              validator_count: 2,
-              yield_count: 4,
-              subnet_yield: 0.0123,
-              mean_yield: 0.0131,
-              median_yield: 0.0129,
-              p25_yield: 0.011,
-              p75_yield: 0.015,
-              p90_yield: 0.017,
-            },
-            {
-              snapshot_date: "2026-07-01",
-              neuron_count: 3,
-              validator_count: 1,
-              yield_count: 3,
-              subnet_yield: 0.0119,
-              mean_yield: 0.0125,
-              median_yield: 0.0124,
-              p25_yield: 0.0105,
-              p75_yield: 0.0145,
-              p90_yield: 0.0166,
-            },
-          ],
-        }),
+        Response.json(
+          buildSubnetYieldHistory(
+            [
+              ...[0, 1, 2, 3].map((uid) =>
+                quantityNeuron({
+                  snapshot_date: "2026-07-02",
+                  uid,
+                  validator_permit: uid < 2 ? 1 : 0,
+                }),
+              ),
+              ...[0, 1, 2].map((uid) =>
+                quantityNeuron({
+                  snapshot_date: "2026-07-01",
+                  uid,
+                  validator_permit: uid === 0 ? 1 : 0,
+                }),
+              ),
+            ],
+            7,
+            { window: "7d" },
+          ),
+        ),
       ),
     };
     const { status, body } = await gql(
@@ -13281,10 +13231,10 @@ describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-sta
     assert.equal(h.point_count, 2);
     assert.equal(h.points.length, 2);
     assert.equal(h.points[0].snapshot_date, "2026-07-02");
-    assert.equal(h.points[0].subnet_yield, 0.0123);
-    assert.equal(h.points[0].yield_count, 4);
-    assert.equal(h.points[1].median_yield, 0.0124);
-    assert.equal(h.points[1].p90_yield, 0.0166);
+    assert.equal(h.points[0].subnet_yield, null);
+    assert.equal(h.points[0].yield_count, 0);
+    assert.equal(h.points[1].median_yield, null);
+    assert.equal(h.points[1].p90_yield, null);
   });
 
   test("forwards the window to the yield/history Postgres path", async () => {
@@ -13728,7 +13678,7 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const y = body.data.subnet_yield;
-    assert.equal(y.schema_version, 1);
+    assert.equal(y.schema_version, 2);
     assert.equal(y.netuid, 5);
     assert.equal(y.neuron_count, 0);
     assert.equal(y.validator_count, 0);
@@ -13741,41 +13691,28 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 5,
-          captured_at: "2026-07-01T00:00:00.000Z",
-          block_number: 8621331,
-          neuron_count: 2,
-          validator_count: 1,
-          miner_count: 1,
-          total_stake_alpha: 1500.5,
-          total_emission_alpha: 12.25,
-          subnet_yield: 0.0081,
-          mean_yield: 0.009,
-          median_yield: 0.009,
-          p25_yield: 0.005,
-          p75_yield: 0.013,
-          p90_yield: 0.02,
-          neurons: [
-            {
-              uid: 0,
-              hotkey: "5Val",
-              role: "validator",
-              stake_tao: 1000.5,
-              emission_tao: 9.1,
-              yield: 0.0091,
-            },
-            {
-              uid: 1,
-              hotkey: "5Min",
-              role: "miner",
-              stake_tao: 500,
-              emission_tao: null,
-              yield: null,
-            },
-          ],
-        }),
+        Response.json(
+          buildSubnetYield(
+            [
+              quantityNeuron({
+                uid: 0,
+                hotkey: "5Val",
+                stake_tao: 1000.5,
+                emission_tao: 9.1,
+                captured_at: Date.parse("2026-07-01T00:00:00.000Z"),
+                block_number: 8621331,
+              }),
+              quantityNeuron({
+                uid: 1,
+                hotkey: "5Min",
+                stake_tao: 500,
+                emission_tao: null,
+                validator_permit: 0,
+              }),
+            ],
+            5,
+          ),
+        ),
       ),
     };
     const { status, body } = await gql(
@@ -13793,15 +13730,15 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
     assert.equal(y.block_number, 8621331);
     assert.equal(y.neuron_count, 2);
     assert.equal(y.validator_count, 1);
-    assert.equal(y.subnet_yield, 0.0081);
+    assert.equal(y.subnet_yield, null);
     assert.equal(y.neurons.length, 2);
     assert.deepEqual(y.neurons[0], {
       uid: 0,
       hotkey: "5Val",
       role: "validator",
-      stake_tao: 1000.5,
+      stake_tao: null,
       emission_tao: 9.1,
-      yield: 0.0091,
+      yield: null,
     });
     // A stakeless/blank-emission neuron keeps its nulls, not a coerced 0.
     assert.equal(y.neurons[1].emission_tao, null);
@@ -13825,7 +13762,7 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.subnet_yield, {
-      schema_version: 1,
+      schema_version: 2,
       netuid: 9,
       captured_at: null,
       block_number: null,
@@ -20328,14 +20265,14 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_yield, {
-      schema_version: 1,
+      schema_version: 2,
       subnet_count: 0,
       neuron_count: 0,
       validator_count: 0,
       miner_count: 0,
       captured_at: null,
-      total_stake_alpha: 0,
-      total_emission_alpha: 0,
+      total_stake_alpha: null,
+      total_emission_alpha: null,
       network_yield: null,
       validator_yield: null,
       miner_yield: null,
@@ -20343,34 +20280,26 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
     });
   });
 
-  test("resolves the Postgres-tier card, including the nested distribution", async () => {
+  test("resolves observed membership counts while withholding cross-token yield and distribution", async () => {
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          subnet_count: 3,
-          neuron_count: 500,
-          validator_count: 40,
-          miner_count: 460,
-          captured_at: "2026-07-15T00:00:00.000Z",
-          total_stake_alpha: 1200000,
-          total_emission_alpha: 84,
-          network_yield: 0.00007,
-          validator_yield: 0.00009,
-          miner_yield: 0.00002,
-          distribution: {
-            count: 460,
-            mean: 0.00006,
-            median: 0.00005,
-            min: 0.000001,
-            max: 0.0009,
-            p10: 0.000005,
-            p25: 0.00002,
-            p75: 0.00008,
-            p90: 0.0002,
-          },
-        }),
+        Response.json(
+          buildChainYield(
+            [1, 2, 3].flatMap((netuid) => [
+              quantityNeuron({
+                netuid,
+                captured_at: Date.parse("2026-07-15T00:00:00.000Z"),
+              }),
+              quantityNeuron({
+                netuid,
+                uid: 6,
+                validator_permit: 0,
+                captured_at: Date.parse("2026-07-15T00:00:00.000Z"),
+              }),
+            ]),
+          ),
+        ),
       ),
     };
     const { status, body } = await gql(
@@ -20384,16 +20313,14 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
     assert.equal(status, 200);
     const c = body.data.chain_yield;
     assert.equal(c.subnet_count, 3);
-    assert.equal(c.neuron_count, 500);
-    assert.equal(c.validator_count, 40);
-    assert.equal(c.miner_count, 460);
+    assert.equal(c.neuron_count, 6);
+    assert.equal(c.validator_count, 3);
+    assert.equal(c.miner_count, 3);
     assert.equal(c.captured_at, "2026-07-15T00:00:00.000Z");
-    assert.equal(c.network_yield, 0.00007);
-    assert.equal(c.validator_yield, 0.00009);
-    assert.equal(c.miner_yield, 0.00002);
-    assert.equal(c.distribution.count, 460);
-    assert.equal(c.distribution.mean, 0.00006);
-    assert.equal(c.distribution.p90, 0.0002);
+    assert.equal(c.network_yield, null);
+    assert.equal(c.validator_yield, null);
+    assert.equal(c.miner_yield, null);
+    assert.equal(c.distribution, null);
   });
 
   test("forwards to /api/v1/chain/yield with no query params", async () => {
@@ -20403,7 +20330,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
       DATA_API: {
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
-          return Response.json({ schema_version: 1, subnet_count: 0 });
+          return Response.json({ schema_version: 2, subnet_count: 0 });
         },
       },
     };
@@ -20428,14 +20355,14 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_yield, {
-      schema_version: 1,
+      schema_version: 2,
       subnet_count: 0,
       neuron_count: 0,
       validator_count: 0,
       miner_count: 0,
       captured_at: null,
-      total_stake_alpha: 0,
-      total_emission_alpha: 0,
+      total_stake_alpha: null,
+      total_emission_alpha: null,
       network_yield: null,
       validator_yield: null,
       miner_yield: null,
@@ -20443,31 +20370,20 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
     });
   });
 
-  test("a distribution present but missing individual fields degrades those to zero, not null, since the field is non-null", async () => {
+  test("a legacy yield distribution is rejected instead of manufacturing zero statistics", async () => {
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          distribution: {},
-        }),
-      ),
+      DATA_API: dataApi(Response.json({ schema_version: 1, distribution: {} })),
     };
     const { status, body } = await gql(
-      `{ chain_yield { distribution { count mean p50 min max p10 p25 p75 p90 } } }`,
+      `{ chain_yield { schema_version distribution { count mean p50 min max p10 p25 p75 p90 } } }`,
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.deepEqual(body.data.chain_yield.distribution, {
-      count: 0,
-      mean: 0,
-      p50: 0,
-      min: 0,
-      max: 0,
-      p10: 0,
-      p25: 0,
-      p75: 0,
-      p90: 0,
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_yield, {
+      schema_version: 2,
+      distribution: null,
     });
   });
 
@@ -24757,21 +24673,18 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
 
   test("validator_history forwards the take fields", async () => {
     const { body } = await gql(
-      `{ validator_history(hotkey: "5Validator") {
+      `{ validator_history(hotkey: "5Validator", netuid: 7, window: "90d") {
           take_u16 take_last_changed_date next_take_change_eligible_date take_change_observable
         } }`,
       api(
-        {
-          schema_version: 1,
-          hotkey: "5Validator",
-          window: "90d",
-          point_count: 0,
-          points: [],
-          take_u16: 11796,
-          take_last_changed_date: "2026-06-01",
-          next_take_change_eligible_date: "2026-07-01",
-          take_change_observable: true,
-        },
+        buildValidatorHistory(
+          [
+            { snapshot_date: "2026-06-01", netuid: 7, take: 0.18 },
+            { snapshot_date: "2026-05-31", netuid: 7, take: 0.1 },
+          ],
+          "5Validator",
+          { window: "90d", netuid: 7 },
+        ),
         neurons,
       ),
     );
@@ -25378,4 +25291,157 @@ describe("deleted resolver guards: the dispatch still refuses, with its own sent
     assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
     assert.match(errors[0]?.message ?? "", /must differ from ss58/);
   });
+});
+
+describe("graphql — quantity contract transport guards", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+  const cases = [
+    {
+      field: "validators",
+      path: "/api/v1/validators",
+      query: "{ validators { total items { hotkey total_stake_tao } } }",
+      count: "total",
+    },
+    {
+      field: "validator",
+      path: `/api/v1/validators/${SS58}`,
+      query: `{ validator(hotkey: "${SS58}") { subnet_count total_stake_tao } }`,
+      count: "subnet_count",
+    },
+    {
+      field: "accounts",
+      path: "/api/v1/accounts",
+      query: "{ accounts { total items { hotkey total_stake_tao } } }",
+      count: "total",
+    },
+    {
+      field: "account_portfolio",
+      path: `/api/v1/accounts/${SS58}/portfolio`,
+      query: `{ account_portfolio(ss58: "${SS58}") { schema_version position_count total_stake_tao overall_yield } }`,
+      count: "position_count",
+    },
+    {
+      field: "validator_history",
+      path: `/api/v1/validators/${SS58}/history`,
+      query: `{ validator_history(hotkey: "${SS58}") { schema_version point_count points { total_stake_tao } } }`,
+      count: "point_count",
+    },
+    {
+      field: "account_position_history",
+      path: `/api/v1/accounts/${SS58}/subnets/7/history`,
+      query: `{ account_position_history(ss58: "${SS58}", netuid: 7) { schema_version point_count points { stake_tao yield } } }`,
+      count: "point_count",
+    },
+    {
+      field: "chain_yield",
+      path: "/api/v1/chain/yield",
+      query:
+        "{ chain_yield { schema_version neuron_count total_stake_alpha total_emission_alpha network_yield distribution { count } } }",
+      count: "neuron_count",
+    },
+    {
+      field: "subnet_yield",
+      path: "/api/v1/subnets/7/yield",
+      query:
+        "{ subnet_yield(netuid: 7) { schema_version neuron_count total_stake_alpha subnet_yield } }",
+      count: "neuron_count",
+    },
+    {
+      field: "subnet_yield_history",
+      path: "/api/v1/subnets/7/yield/history",
+      query:
+        "{ subnet_yield_history(netuid: 7) { schema_version point_count points { subnet_yield } } }",
+      count: "point_count",
+    },
+  ];
+
+  for (const { field, path, query, count } of cases) {
+    test(`${field}: REST and GraphQL reject a legacy quantity producer`, async () => {
+      const paths: string[] = [];
+      const env = {
+        METAGRAPH_NEURONS_SOURCE: "data-api",
+        DATA_API: {
+          fetch: async (req: Request) => {
+            paths.push(new URL(req.url).pathname);
+            return Response.json({
+              schema_version: 1,
+              hotkey: SS58,
+              ss58: SS58,
+              validator_count: 1,
+              account_count: 1,
+              subnet_count: 1,
+              position_count: 1,
+              point_count: 1,
+              neuron_count: 1,
+              total_stake_tao: 1000,
+              total_stake_alpha: 1000,
+              total_emission_alpha: 5,
+              overall_yield: 0.005,
+              network_yield: 0.005,
+              validators: [{ hotkey: SS58, total_stake_tao: 1000 }],
+              accounts: [{ hotkey: SS58, total_stake_tao: 1000 }],
+              subnets: [{ netuid: 7, uid: 3, stake_alpha: 1000 }],
+              positions: [{ netuid: 7, uid: 3, stake_alpha: 1000 }],
+              points: [
+                {
+                  snapshot_date: "2026-07-01",
+                  stake_tao: 1000,
+                  total_stake_tao: 1000,
+                  yield: 0.005,
+                },
+              ],
+            });
+          },
+        },
+      };
+      const rest = await handleRequest(
+        new Request(`https://api.metagraph.sh${path}`),
+        env as unknown as Env,
+        {},
+      );
+      assert.equal(rest.status, 200);
+      const restCard = ((await rest.json()) as Row).data;
+      assert.equal(restCard.schema_version, 2);
+      const result = await gql(query, env);
+      assert.equal(result.status, 200);
+      assert.equal(result.body.errors, undefined);
+      const card = result.body.data[field];
+      assert.equal(card[count], 0);
+      for (const financial of [
+        "total_stake_tao",
+        "total_stake_alpha",
+        "overall_yield",
+        "network_yield",
+        "distribution",
+      ]) {
+        if (Object.hasOwn(card, financial)) assert.equal(card[financial], null);
+      }
+      assert.ok(paths.length >= 2);
+      assert.ok(paths.every((observed) => observed === path));
+    });
+  }
+
+  for (const field of ["validators", "accounts"]) {
+    for (const sort of ["total_stake", "stake_dominance"]) {
+      test(`${field}: rejects the removed ${sort} financial sort before forwarding`, async () => {
+        let reads = 0;
+        const result = await gql(`{ ${field}(sort: "${sort}") { total } }`, {
+          METAGRAPH_NEURONS_SOURCE: "data-api",
+          DATA_API: {
+            fetch: async () => {
+              reads += 1;
+              throw new Error("invalid sort reached the tier");
+            },
+          },
+        });
+        assert.equal(result.body.data, null);
+        assert.ok(
+          result.body.errors.some(
+            (error: Row) => error.extensions?.code === "BAD_USER_INPUT",
+          ),
+        );
+        assert.equal(reads, 0);
+      });
+    }
+  }
 });

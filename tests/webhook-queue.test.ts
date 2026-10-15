@@ -13,6 +13,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  webhookMessageFitsQueue,
   classifyWebhookBatch,
   groupWebhookBatchBySubscription,
   WEBHOOK_DELIVERY_CONCURRENCY,
@@ -360,4 +361,25 @@ describe("groupWebhookBatchBySubscription (metagraphed-infra#354 fairness)", () 
     // were promised are eight POSTs and not twenty-four.
     assert.equal(WEBHOOK_DELIVERY_HTTP_ATTEMPTS, 1);
   });
+});
+
+test("serializedUTF8 envelope boundary includes Unicode and replay generation", () => {
+  const m = { subscription_id: "sub", event_id: "a".repeat(32), body: "é" };
+  const bytes = new TextEncoder().encode(JSON.stringify(m)).byteLength;
+  assert(webhookMessageFitsQueue(m, bytes));
+  assert(!webhookMessageFitsQueue(m, bytes - 1));
+  assert(!webhookMessageFitsQueue({ ...m, generation: 1 }, bytes));
+  assert.equal(
+    planWebhookFanOut({
+      subscriptions: [{ id: "sub" }],
+      eventId: m.event_id,
+      bodyText: m.body,
+      matches: () => true,
+      maxBytes: bytes - 1,
+    }).oversize,
+    1,
+  );
+  for (const generation of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1])
+    assert(!validWebhookDeliveryMessage({ ...m, generation }));
+  assert(validWebhookDeliveryMessage({ ...m, generation: 0 }));
 });

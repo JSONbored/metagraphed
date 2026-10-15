@@ -23,7 +23,7 @@ test.describe("account detail query states", () => {
 
     await gotoThroughRestart(page, ROUTE);
 
-    const positions = page.getByRole("group", { name: "Stake by subnet" });
+    const positions = page.getByRole("table", { name: /^Observed positions/ });
     const flow = page.getByRole("group", { name: "Stake moved per subnet" });
     const counterparties = page.getByRole("group", {
       name: "Transfer counterparties by volume moved",
@@ -32,6 +32,7 @@ test.describe("account detail query states", () => {
     const keys = page.getByRole("group", { name: "Related keys" });
 
     await expect(positions).toHaveAttribute("aria-busy", "true");
+    await expect(positions.locator(".mg-dt-skeleton")).toHaveCount(8);
     await expect(flow).toHaveAttribute("aria-busy", "true");
     await expect(counterparties).toHaveAttribute("aria-busy", "true");
     await expect(activity.locator(".mg-dt-skeleton")).toHaveCount(8);
@@ -41,7 +42,7 @@ test.describe("account detail query states", () => {
     await expect(
       page.getByText("gross transfer volume by counterparty · chain-direct"),
     ).toBeVisible();
-    await expect(page.getByText("No positions recorded for this account.")).toHaveCount(0);
+    await expect(page.getByText("No relationships recorded in this source.")).toHaveCount(0);
     await expect(page.getByText("No transfers recorded for this account.")).toHaveCount(0);
     expect(requested).not.toContain(`/api/v1/accounts/${SS58}/counterparties`);
     expect(requested).not.toContain(`/api/v1/accounts/${SS58}/events`);
@@ -97,7 +98,7 @@ test.describe("account detail query states", () => {
     await gotoThroughRestart(page, ROUTE);
 
     await expect(page.getByRole("alert")).toHaveCount(2);
-    await expect(page.getByText("Couldn't load live positions")).toBeVisible();
+    await expect(page.getByText("Couldn't load position relationships")).toBeVisible();
     await expect(page.getByText("Couldn't load stake movement")).toBeVisible();
     await expect(page.getByText("Couldn't load transfer counterparties")).toHaveCount(0);
     await expect(page.getByText("Couldn't load account events")).toHaveCount(0);
@@ -112,14 +113,14 @@ test.describe("account detail query states", () => {
     await page.locator("#keys").scrollIntoViewIfNeeded();
     await expect(page.getByText("Couldn't load related key relationships")).toBeVisible();
     await expect(page.getByRole("alert")).toHaveCount(5);
-    await expect(page.getByText("No positions recorded for this account.")).toHaveCount(0);
+    await expect(page.getByText("No relationships recorded in this source.")).toHaveCount(0);
     await expect(page.getByText("No transfers recorded for this account.")).toHaveCount(0);
     await expect(page.getByText("No events match this filter.")).toHaveCount(0);
 
     shouldFail = false;
-    const positionsError = page.getByRole("alert").filter({ hasText: "live positions" });
+    const positionsError = page.getByRole("alert").filter({ hasText: "position relationships" });
     await positionsError.getByRole("button", { name: "Retry", exact: true }).click();
     await expect(positionsError).toHaveCount(0);
-    await expect(page.getByRole("group", { name: "Stake by subnet" })).toBeVisible();
+    await expect(page.getByRole("table", { name: /^Observed positions/ })).toBeVisible();
   });
 });

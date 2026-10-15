@@ -1,3 +1,4 @@
+import { writeIdentifiedPostgres } from "./sync-delivery-postgres.ts";
 // The nominator-positions lane's Neon mirror (metagraphed-infra#336).
 //
 // TWO CALL SITES, BOTH MIRRORED, and that is the point rather than an
@@ -47,6 +48,7 @@ import {
 } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
+import type { SelfStakeSnapshot } from "./self-stake-snapshot-d1.ts";
 
 /** The lane name this writer files its `lane_health` verdict under (`neon:<lane>`). */
 export const NOMINATOR_POSITIONS_NEON_LANE = "nominator-positions";
@@ -93,6 +95,15 @@ export interface NominatorPositionsMirrorOutcome {
    * writer -- took nothing. A completeness ledger nobody can tell is empty is
    * worse than no ledger. */
   pass?: NeonWriteResult;
+  snapshot?: NeonWriteResult &
+    SelfStakeSnapshot & {
+      sha256: string;
+      received_rows: number;
+      received_chunks: number;
+      completed_at: number | null;
+      complete: boolean;
+      positions_retired: number;
+    };
 }
 
 export interface NominatorPositionsMirrorDeps {
@@ -103,6 +114,7 @@ export interface NominatorPositionsMirrorDeps {
 
 export type NominatorPositionsInput = {
   rows: Row[];
+  selfStakeSnapshot?: SelfStakeSnapshot;
   coldkeyMaxCapturedAt: ReadonlyMap<string, number>;
   /** This chunk's completeness tally (#10056). Written last, and only when
    * both the upsert and the prune succeeded -- see below. */
@@ -147,12 +159,29 @@ export async function mirrorNominatorPositionsToNeon(
     "nominator_positions_passes",
     "nominator_scan_receipts",
   ]);
+  if (
+    input.selfStakeSnapshot &&
+    (!d1 || source !== POSITION_SOURCE_SELF_STAKE)
+  ) {
+    return {
+      attempted: true,
+      write: {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason:
+          "Full self-stake snapshots require their native D1 source domain",
+      },
+    };
+  }
   if (d1) {
     const outcome = await writeNominatorPositionsD1(d1, input);
     const laneDb = laneHealthStore(env, deps.laneHealthDb);
     const now = deps.now ?? Date.now;
     for (const [key, result] of Object.entries(outcome)) {
-      if (key === "attempted") continue;
+      // The snapshot is a receipt for this same atomic write/prune, not a
+      // separately scheduled producer with an independent silence cadence.
+      if (key === "attempted" || key === "snapshot") continue;
       const name = key === "write" ? lane : `${lane}-${key}`;
       await recordNeonWriteVerdict(
         laneDb,
@@ -173,6 +202,59 @@ export async function mirrorNominatorPositionsToNeon(
         true,
       );
     return outcome;
+  }
+  if (input.pass?.delivery) {
+    try {
+      const outcome = await writeIdentifiedPostgres(
+        env?.HYPERDRIVE?.connectionString,
+        lane,
+        input.rows,
+        input.pass,
+        (sql, legacy) =>
+          mirrorNominatorPositionsToNeon(
+            null,
+            null,
+            { ...input, pass: legacy },
+            { sql, laneHealthDb: null },
+          ),
+      );
+      const laneDb = laneHealthStore(env, deps.laneHealthDb);
+      const now = (deps.now ?? Date.now)();
+      for (const [key, result] of Object.entries(outcome)) {
+        if (key !== "attempted")
+          await recordNeonWriteVerdict(
+            laneDb,
+            key === "write" ? lane : `${lane}-${key}`,
+            result as NeonWriteResult,
+            now,
+            false,
+            key !== "write",
+          );
+      }
+      await recordNeonWriteVerdict(
+        laneDb,
+        `${NOMINATOR_POSITIONS_NEON_LANE}-normalize`,
+        outcome.pass!,
+        now,
+        false,
+        true,
+      );
+      return outcome;
+    } catch (error) {
+      const failure = {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: String(error),
+      };
+      await recordNeonWriteVerdict(
+        laneHealthStore(env, deps.laneHealthDb),
+        lane,
+        failure,
+        (deps.now ?? Date.now)(),
+      );
+      return { attempted: true, write: failure, prune: failure, pass: failure };
+    }
   }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF

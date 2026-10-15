@@ -14,6 +14,7 @@ import {
   completeDegradedBlock,
   listToolDefinitions,
 } from "../src/mcp-server.ts";
+import { unavailableAccountPositions } from "../src/account-nominator-positions.ts";
 import type { Row } from "./row-type.ts";
 
 function schemaFor(name: string): Row {
@@ -35,14 +36,9 @@ describe("completeDegradedBlock (#9910)", () => {
     // shown to change something -- a negative assertion that passes on nothing
     // proves nothing (#9689).
     const stamped = {
-      schema_version: 1,
-      ss58: "5GP7c3fFazW9GXK8Up3qgu2DJBk8inu4aK9TZy3RuoSWVCMi",
-      // Required at the top level too -- the fixture is the whole card
-      // unavailableAccountPositions() builds, not just its degraded block.
-      captured_at: null,
-      position_count: 0,
-      total_stake_alpha: 0,
-      positions: [],
+      ...unavailableAccountPositions(
+        "5GP7c3fFazW9GXK8Up3qgu2DJBk8inu4aK9TZy3RuoSWVCMi",
+      ),
       degraded: { reason: "tier_unavailable" },
     };
     assert.equal(validates(positions(), stamped), false);
@@ -54,6 +50,21 @@ describe("completeDegradedBlock (#9910)", () => {
       snapshot_captured_at: null,
       latest_stake_event_at: null,
     });
+  });
+
+  test("completing stamps never upgrades a legacy quantity contract", () => {
+    const legacy = {
+      ...unavailableAccountPositions(
+        "5GP7c3fFazW9GXK8Up3qgu2DJBk8inu4aK9TZy3RuoSWVCMi",
+      ),
+      schema_version: 1,
+      total_stake_alpha: 0,
+      degraded: { reason: "tier_unavailable" },
+    };
+    const completed = completeDegradedBlock(legacy, positions()) as Row;
+    assert.equal(completed.schema_version, 1);
+    assert.equal(completed.total_stake_alpha, 0);
+    assert.equal(validates(positions(), completed), false);
   });
 
   test("a block the handler already completed is returned untouched", () => {

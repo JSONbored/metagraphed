@@ -62,22 +62,12 @@ describe("normalizeChainYield", () => {
       validator_count: 10,
       miner_count: 90,
       captured_at: "2026-07-01T00:00:00Z",
-      total_stake_alpha: 1000,
-      total_emission_alpha: 5,
-      network_yield: 0.005,
-      validator_yield: 0.004,
-      miner_yield: 0.02,
-      distribution: {
-        count: 80,
-        mean: 0.01,
-        median: 0.002,
-        min: 0,
-        max: 5,
-        p10: 0,
-        p25: 0.001,
-        p75: 0.01,
-        p90: 0.05,
-      },
+      total_stake_alpha: null,
+      total_emission_alpha: null,
+      network_yield: null,
+      validator_yield: null,
+      miner_yield: null,
+      distribution: null,
     });
   });
 
@@ -118,6 +108,6 @@ describe("chainYieldQuery", () => {
       expect.objectContaining({ signal: expect.anything() }),
     );
     expect(res.data.neuron_count).toBe(3);
-    expect(res.data.network_yield).toBe(0.01);
+    expect(res.data.network_yield).toBeNull();
   });
 });

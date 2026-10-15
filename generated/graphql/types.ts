@@ -216,8 +216,8 @@ export type AccountEntry = {
   subnets: Array<AccountSubnet>;
   /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
   total_emission_tao: Scalars['Float']['output'];
-  /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
-  total_stake_tao: Scalars['Float']['output'];
+  /** Deprecated unsupported financial quantity from neuron voting weight; always null. */
+  total_stake_tao?: Maybe<Scalars['Float']['output']>;
   uid_count: Scalars['Int']['output'];
   validator_count: Scalars['Int']['output'];
 };
@@ -389,7 +389,7 @@ export type AccountPortfolio = {
   __typename?: 'AccountPortfolio';
   captured_at?: Maybe<Scalars['String']['output']>;
   miner_count: Scalars['Int']['output'];
-  /** Priced emission per priced stake -- both sides in TAO (#9051), so the ratio is dimensionally coherent. Null with no priceable stake. */
+  /** Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return. */
   overall_yield?: Maybe<Scalars['Float']['output']>;
   position_count: Scalars['Int']['output'];
   positions: Array<AccountPortfolioPosition>;
@@ -400,8 +400,8 @@ export type AccountPortfolio = {
   subnet_count: Scalars['Int']['output'];
   /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
   total_emission_tao: Scalars['Float']['output'];
-  /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
-  total_stake_tao: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value. */
+  total_stake_tao?: Maybe<Scalars['Float']['output']>;
   validator_count: Scalars['Int']['output'];
 };
 
@@ -416,11 +416,13 @@ export type AccountPortfolioPosition = {
   netuid: Scalars['Int']['output'];
   rank?: Maybe<Scalars['Float']['output']>;
   role: Scalars['String']['output'];
-  /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO. */
-  stake_alpha: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value. */
+  stake_alpha?: Maybe<Scalars['Float']['output']>;
   trust?: Maybe<Scalars['Float']['output']>;
   uid?: Maybe<Scalars['Int']['output']>;
-  /** Emission over stake for this position; null when stake is 0. */
+  /** Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio. */
+  voting_weight?: Maybe<Scalars['Float']['output']>;
+  /** Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return. */
   yield?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -449,10 +451,13 @@ export type AccountPositionHistoryPoint = {
   rank?: Maybe<Scalars['Float']['output']>;
   role: Scalars['String']['output'];
   snapshot_date: Scalars['String']['output'];
-  /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
-  stake_tao: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings interpretation; always null. Historical neuron data records voting weight, not native asset positions. */
+  stake_tao?: Maybe<Scalars['Float']['output']>;
   trust?: Maybe<Scalars['Float']['output']>;
   uid?: Maybe<Scalars['Int']['output']>;
+  /** Observed historical effective voting weight; not a balance or asset denominator. */
+  voting_weight?: Maybe<Scalars['Float']['output']>;
+  /** Unavailable: historical voting weight is not an asset balance and cannot establish holdings yield. */
   yield?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -465,8 +470,8 @@ export type AccountPositions = {
   positions: Array<NominatorPosition>;
   schema_version: Scalars['Int']['output'];
   ss58: Scalars['String']['output'];
-  /** Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure. */
-  total_stake_alpha: Scalars['Float']['output'];
+  /** Deprecated cross-token aggregate; always null because different subnet Alpha tokens cannot be summed. */
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
 };
 
 export type AccountPositionsDegraded = {
@@ -635,9 +640,11 @@ export type AccountSubnet = {
   /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
   emission_alpha: Scalars['Float']['output'];
   netuid: Scalars['Int']['output'];
-  /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO. */
-  stake_alpha: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value. */
+  stake_alpha?: Maybe<Scalars['Float']['output']>;
   uid?: Maybe<Scalars['Int']['output']>;
+  /** Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio. */
+  voting_weight?: Maybe<Scalars['Float']['output']>;
 };
 
 /** One account's live cross-subnet registration footprint (the neurons snapshot), backing account_subnets. The lightweight sibling of AccountPortfolio -- registration facts only, no economics rollup. */
@@ -748,6 +755,18 @@ export type AdapterArtifactSnapshot = {
   slug?: Maybe<Scalars['String']['output']>;
   source?: Maybe<Scalars['String']['output']>;
   status?: Maybe<Scalars['String']['output']>;
+};
+
+export type AlphaQuantityProvenance = {
+  __typename?: 'AlphaQuantityProvenance';
+  block_hash: Scalars['String']['output'];
+  block_number: Scalars['Int']['output'];
+  captured_at: Scalars['String']['output'];
+  code_hash: Scalars['String']['output'];
+  genesis_hash: Scalars['String']['output'];
+  metadata_sha256: Scalars['String']['output'];
+  network: Scalars['String']['output'];
+  spec_version: Scalars['JSON']['output'];
 };
 
 export type AlphaUsdFieldSource = {
@@ -1410,6 +1429,7 @@ export type ChainHolders = {
   limit?: Maybe<Scalars['Int']['output']>;
   network: ChainHoldersNetwork;
   positions_captured_at?: Maybe<Scalars['String']['output']>;
+  provenance?: Maybe<AlphaQuantityProvenance>;
   schema_version: Scalars['Int']['output'];
   sort: Scalars['String']['output'];
   /** Subnets measured -- NOT the length of the subnets list when limit bites. */
@@ -1956,6 +1976,7 @@ export type ChainWeightsSubnet = {
 export type ChainYield = {
   __typename?: 'ChainYield';
   captured_at?: Maybe<Scalars['String']['output']>;
+  degraded: DegradedInfo;
   distribution?: Maybe<YieldDistribution>;
   miner_count?: Maybe<Scalars['Int']['output']>;
   miner_yield?: Maybe<Scalars['Float']['output']>;
@@ -1964,9 +1985,9 @@ export type ChainYield = {
   schema_version: Scalars['Int']['output'];
   /** How many subnets the aggregate spans. Root (netuid 0) is NOT one of them and is excluded from every figure below (#9040): root stake is TAO, not a subnet alpha token. */
   subnet_count: Scalars['Int']['output'];
-  /** Sum of every neuron's emission across every NON-ROOT subnet, alpha-denominated for the same reason as total_stake_alpha and excluding root for the same reason (#8803, #9040). Alpha/alpha keeps the *_yield ratios below dimensionally valid. */
+  /** Deprecated cross-token emission sum; always null. Different subnet Alpha tokens cannot be added. */
   total_emission_alpha?: Maybe<Scalars['Float']['output']>;
-  /** Sum of every neuron's stake across every NON-ROOT subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Root (netuid 0) is excluded because root stake is genuine TAO and would mix denominations into this sum (#9040). Use it as the denominator of the yields below, not as a TAO figure. */
+  /** Deprecated unsupported holdings aggregate; always null. */
   total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
   validator_yield?: Maybe<Scalars['Float']['output']>;
@@ -2111,17 +2132,20 @@ export type CompareValidatorsArtifactValidatorsSubnetContext = {
   netuid: Scalars['Int']['output'];
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
-  /** This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion. */
+  /** Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value. */
   stake_alpha?: Maybe<Scalars['Float']['output']>;
   take?: Maybe<Scalars['Float']['output']>;
   trust?: Maybe<Scalars['Float']['output']>;
   uid: Scalars['Int']['output'];
   validator_permit: Scalars['Boolean']['output'];
   validator_trust?: Maybe<Scalars['Float']['output']>;
+  /** Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio. */
+  voting_weight?: Maybe<Scalars['Float']['output']>;
 };
 
 export type ComparedValidator = {
   __typename?: 'ComparedValidator';
+  /** Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return. */
   apy_estimate?: Maybe<Scalars['Float']['output']>;
   apy_estimate_eligible_subnet_count: Scalars['Int']['output'];
   avg_validator_trust?: Maybe<Scalars['Float']['output']>;
@@ -2136,7 +2160,8 @@ export type ComparedValidator = {
   subnet_count: Scalars['Int']['output'];
   take?: Maybe<Scalars['Float']['output']>;
   total_emission_tao: Scalars['Float']['output'];
-  total_stake_tao: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value. */
+  total_stake_tao?: Maybe<Scalars['Float']['output']>;
 };
 
 /** Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy. */
@@ -3216,7 +3241,7 @@ export type NeuronHistoryPoint = {
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
   snapshot_date: Scalars['String']['output'];
-  /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
+  /** Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield. */
   stake_tao?: Maybe<Scalars['Float']['output']>;
   /** Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
   take?: Maybe<Scalars['Float']['output']>;
@@ -3252,7 +3277,7 @@ export type NeuronState = {
   /** 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
-  /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
+  /** Legacy observation column: effective voting weight from Metagraph.total_stake, including inherited Alpha and weighted inherited TAO. It is not a measured native Alpha/TAO holding and must not establish portfolio value or investment yield. */
   stake_tao?: Maybe<Scalars['Float']['output']>;
   /** Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
   take?: Maybe<Scalars['Float']['output']>;
@@ -3297,15 +3322,19 @@ export type NominatorList = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
-/** One (hotkey, netuid) delegation this account holds, reconstructed from the nominator-positions ledger joined against the hotkey's live stake_tao for that netuid. */
+/** One observed delegation relationship. Unknown quantities preserve the relationship and carry null amounts; qualified quantities describe a finalized snapshot, not live wallet completeness. */
 export type NominatorPosition = {
   __typename?: 'NominatorPosition';
+  /** Exact non-Root subnet Alpha in rao (1e9 rao per token) at this position's qualified snapshot. Each netuid identifies a different token; never sum across netuids. */
+  alpha_rao?: Maybe<Scalars['String']['output']>;
   hotkey: Scalars['String']['output'];
   netuid: Scalars['Int']['output'];
-  /** This account's share of the hotkey's total alpha-pool shares on this subnet (0..1), not a TAO amount. */
-  share_fraction: Scalars['Float']['output'];
-  /** This position's stake in the subnet named by the sibling `netuid`. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows, so this is always that subnet's alpha token (#2550). It is the per-row counterpart of `total_stake_alpha` above -- same denomination, kept under the on-chain column name deliberately (#8945). */
-  stake_tao: Scalars['Float']['output'];
+  provenance?: Maybe<AlphaQuantityProvenance>;
+  quantity_status: Scalars['String']['output'];
+  /** Observed display share ratio; not an asset balance or share of a subnet's total holdings. */
+  share_fraction?: Maybe<Scalars['Float']['output']>;
+  /** Deprecated unsupported financial interpretation; always null. Neuron voting weight is not Alpha or TAO holdings. */
+  stake_tao?: Maybe<Scalars['Float']['output']>;
 };
 
 /** The economic opportunity boards, ranked. The same ranking /api/v1/registry/leaderboards serves, re-keyed to GraphQL field names. */
@@ -6760,6 +6789,8 @@ export type SubnetHolder = {
   __typename?: 'SubnetHolder';
   /** ALPHA, not TAO. Within one subnet alpha is already a common unit, so there is no price conversion and none of its staleness -- multiply by the subnet's alpha_price_tao for TAO. */
   alpha: Scalars['Float']['output'];
+  /** Exact sum of runtime-qualified position rao for this holder within this subnet; the sibling alpha is a display approximation. */
+  alpha_rao: Scalars['String']['output'];
   coldkey: Scalars['String']['output'];
   /** Distinct hotkeys this `coldkey` holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses. */
   hotkey_count?: Maybe<Scalars['Int']['output']>;
@@ -6781,6 +6812,7 @@ export type SubnetHolders = {
   netuid: Scalars['Int']['output'];
   /** When the positions ledger itself was last written, which advances on a different cadence than the pool totals. */
   positions_captured_at?: Maybe<Scalars['String']['output']>;
+  provenance?: Maybe<AlphaQuantityProvenance>;
   schema_version: Scalars['Int']['output'];
   total_alpha?: Maybe<Scalars['Float']['output']>;
 };
@@ -7935,6 +7967,7 @@ export type SubnetYield = {
   __typename?: 'SubnetYield';
   block_number?: Maybe<Scalars['Int']['output']>;
   captured_at?: Maybe<Scalars['String']['output']>;
+  degraded: DegradedInfo;
   mean_yield?: Maybe<Scalars['Float']['output']>;
   median_yield?: Maybe<Scalars['Float']['output']>;
   miner_count: Scalars['Int']['output'];
@@ -7947,13 +7980,15 @@ export type SubnetYield = {
   schema_version: Scalars['Int']['output'];
   subnet_yield?: Maybe<Scalars['Float']['output']>;
   total_emission_alpha: Scalars['Float']['output'];
-  total_stake_alpha: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings total; always null. */
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count: Scalars['Int']['output'];
 };
 
 /** Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily rollup. */
 export type SubnetYieldHistory = {
   __typename?: 'SubnetYieldHistory';
+  degraded: DegradedInfo;
   netuid: Scalars['Int']['output'];
   point_count: Scalars['Int']['output'];
   points: Array<SubnetYieldHistoryPoint>;
@@ -7976,16 +8011,18 @@ export type SubnetYieldHistoryPoint = {
   yield_count?: Maybe<Scalars['Int']['output']>;
 };
 
-/** One UID's emission-per-stake yield within a subnet's current metagraph snapshot. */
+/** One UID observation. Voting weights are retained; native holdings and investment yield remain unqualified. */
 export type SubnetYieldNeuron = {
   __typename?: 'SubnetYieldNeuron';
   /** This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. */
   emission_tao?: Maybe<Scalars['Float']['output']>;
   hotkey?: Maybe<Scalars['String']['output']>;
   role: Scalars['String']['output'];
-  /** This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
-  stake_tao: Scalars['Float']['output'];
+  /** Deprecated unsupported native holdings amount; always null. */
+  stake_tao?: Maybe<Scalars['Float']['output']>;
   uid: Scalars['Int']['output'];
+  /** Effective voting weight; unavailable cells remain null. */
+  voting_weight?: Maybe<Scalars['Float']['output']>;
   vs_median?: Maybe<Scalars['String']['output']>;
   yield?: Maybe<Scalars['Float']['output']>;
 };
@@ -8207,8 +8244,9 @@ export type UptimeSurface = {
 
 export type Validator = {
   __typename?: 'Validator';
-  /** The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly. */
-  alpha_stake_tao: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value. */
+  alpha_stake_tao?: Maybe<Scalars['Float']['output']>;
+  /** Unavailable: voting weight is not the native asset denominator required for a holdings yield. Null does not mean zero return. */
   apy_estimate?: Maybe<Scalars['Float']['output']>;
   apy_estimate_eligible_subnet_count: Scalars['Int']['output'];
   avg_validator_trust?: Maybe<Scalars['Float']['output']>;
@@ -8234,7 +8272,8 @@ export type Validator = {
   realized_return_1w?: Maybe<Scalars['Float']['output']>;
   /** Deprecated compatibility field; always null with realized_return_1w. No investment-return measurement window is available. */
   realized_return_1w_as_of?: Maybe<Scalars['String']['output']>;
-  root_stake_tao: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value. */
+  root_stake_tao?: Maybe<Scalars['Float']['output']>;
   schema_version?: Maybe<Scalars['Int']['output']>;
   stake_dominance?: Maybe<Scalars['Float']['output']>;
   subnet_count: Scalars['Int']['output'];
@@ -8243,8 +8282,8 @@ export type Validator = {
   take?: Maybe<Scalars['Float']['output']>;
   /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
   total_emission_tao: Scalars['Float']['output'];
-  /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
-  total_stake_tao: Scalars['Float']['output'];
+  /** Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value. */
+  total_stake_tao?: Maybe<Scalars['Float']['output']>;
   uid_count?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -8330,19 +8369,21 @@ export type ValidatorHistoryPoint = {
   rewards_per_1000_alpha?: Maybe<Scalars['Float']['output']>;
   rewards_per_1000_tao?: Maybe<Scalars['Float']['output']>;
   snapshot_date: Scalars['String']['output'];
-  /** Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point. */
+  /** Deprecated native asset interpretation; always null. */
   stake_alpha?: Maybe<Scalars['Float']['output']>;
   stake_share?: Maybe<Scalars['Float']['output']>;
   subnet_count?: Maybe<Scalars['Int']['output']>;
   take?: Maybe<Scalars['Float']['output']>;
   total_emission_tao?: Maybe<Scalars['Float']['output']>;
-  /** TAO-priced at this point's OWN snapshot_date (#9051): each day's cross-subnet total converts each membership through that day's alpha_price_tao (root at 1:1), so the series is a true TAO-value history. A day-row with no matching price is excluded from that day's sum. */
+  /** Deprecated holdings valuation from historical voting weight; always null. */
   total_stake_tao?: Maybe<Scalars['Float']['output']>;
   uid?: Maybe<Scalars['Int']['output']>;
   /** Whether the permit was held that day. The scoped series reports a lost permit rather than dropping the day, so 'lost the permit' stays distinguishable from 'no data'. */
   validator_permit?: Maybe<Scalars['Boolean']['output']>;
   /** Per-subnet facts, null unless the query scoped a netuid: a cross-subnet average of these is a number the chain never computes. */
   validator_trust?: Maybe<Scalars['Float']['output']>;
+  /** Historical effective neuron voting weight for the scoped subnet, not a native balance. */
+  voting_weight?: Maybe<Scalars['Float']['output']>;
 };
 
 export type ValidatorList = {
@@ -8391,13 +8432,15 @@ export type ValidatorSubnet = {
   netuid: Scalars['Int']['output'];
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
-  /** This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion. */
+  /** Deprecated unsupported holdings interpretation; always null. Neuron total_stake is effective voting weight, including inherited Root contribution, and cannot establish native Alpha, TAO holdings or portfolio value. */
   stake_alpha?: Maybe<Scalars['Float']['output']>;
   take?: Maybe<Scalars['Float']['output']>;
   trust?: Maybe<Scalars['Float']['output']>;
   uid: Scalars['Int']['output'];
   validator_permit?: Maybe<Scalars['Boolean']['output']>;
   validator_trust?: Maybe<Scalars['Float']['output']>;
+  /** Observed effective neuron voting weight at the membership capture, including inherited/weighted Root. Not an asset amount and never priced or summed as a portfolio. */
+  voting_weight?: Maybe<Scalars['Float']['output']>;
 };
 
 /** The commission picture across permit-holders. The sorted vector is published because the shape is the information: it is genuinely bimodal, with a cohort competing at or near zero against a median at the effective ceiling, and validators earning at both ends. */
@@ -8559,6 +8602,7 @@ export type ResolversTypes = ResolversObject<{
   AccountWeightSettersSubnet: ResolverTypeWrapper<AccountWeightSettersSubnet>;
   Adapter: ResolverTypeWrapper<Adapter>;
   AdapterArtifactSnapshot: ResolverTypeWrapper<AdapterArtifactSnapshot>;
+  AlphaQuantityProvenance: ResolverTypeWrapper<AlphaQuantityProvenance>;
   AlphaUsdFieldSource: ResolverTypeWrapper<AlphaUsdFieldSource>;
   AttributionEvidence: ResolverTypeWrapper<AttributionEvidence>;
   Block: ResolverTypeWrapper<Block>;
@@ -9032,6 +9076,7 @@ export type ResolversParentTypes = ResolversObject<{
   AccountWeightSettersSubnet: AccountWeightSettersSubnet;
   Adapter: Adapter;
   AdapterArtifactSnapshot: AdapterArtifactSnapshot;
+  AlphaQuantityProvenance: AlphaQuantityProvenance;
   AlphaUsdFieldSource: AlphaUsdFieldSource;
   AttributionEvidence: AttributionEvidence;
   Block: Block;
@@ -9605,7 +9650,7 @@ export type AccountEntryResolvers<ContextType = GqlContext, ParentType extends R
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['AccountSubnet']>, ParentType, ContextType>;
   total_emission_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  total_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
@@ -9757,7 +9802,7 @@ export type AccountPortfolioResolvers<ContextType = GqlContext, ParentType exten
   stake_concentration?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_emission_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  total_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -9769,9 +9814,10 @@ export type AccountPortfolioPositionResolvers<ContextType = GqlContext, ParentTy
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   role?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  voting_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
@@ -9794,9 +9840,10 @@ export type AccountPositionHistoryPointResolvers<ContextType = GqlContext, Paren
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   role?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  voting_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
@@ -9807,7 +9854,7 @@ export type AccountPositionsResolvers<ContextType = GqlContext, ParentType exten
   positions?: Resolver<Array<ResolversTypes['NominatorPosition']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  total_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type AccountPositionsDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountPositionsDegraded'] = ResolversParentTypes['AccountPositionsDegraded']> = ResolversObject<{
@@ -9942,8 +9989,9 @@ export type AccountStakeMovesResolvers<ContextType = GqlContext, ParentType exte
 export type AccountSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountSubnet'] = ResolversParentTypes['AccountSubnet']> = ResolversObject<{
   emission_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  voting_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type AccountSubnetsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountSubnets'] = ResolversParentTypes['AccountSubnets']> = ResolversObject<{
@@ -10032,6 +10080,17 @@ export type AdapterArtifactSnapshotResolvers<ContextType = GqlContext, ParentTyp
   slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type AlphaQuantityProvenanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AlphaQuantityProvenance'] = ResolversParentTypes['AlphaQuantityProvenance']> = ResolversObject<{
+  block_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  block_number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  captured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  code_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  genesis_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  metadata_sha256?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  network?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  spec_version?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
 }>;
 
 export type AlphaUsdFieldSourceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AlphaUsdFieldSource'] = ResolversParentTypes['AlphaUsdFieldSource']> = ResolversObject<{
@@ -10540,6 +10599,7 @@ export type ChainHoldersResolvers<ContextType = GqlContext, ParentType extends R
   limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainHoldersNetwork'], ParentType, ContextType>;
   positions_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  provenance?: Resolver<Maybe<ResolversTypes['AlphaQuantityProvenance']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -10952,6 +11012,7 @@ export type ChainWeightsSubnetResolvers<ContextType = GqlContext, ParentType ext
 
 export type ChainYieldResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainYield'] = ResolversParentTypes['ChainYield']> = ResolversObject<{
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  degraded?: Resolver<ResolversTypes['DegradedInfo'], ParentType, ContextType>;
   distribution?: Resolver<Maybe<ResolversTypes['YieldDistribution']>, ParentType, ContextType>;
   miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   miner_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -11092,6 +11153,7 @@ export type CompareValidatorsArtifactValidatorsSubnetContextResolvers<ContextTyp
   uid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   validator_permit?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  voting_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type ComparedValidatorResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ComparedValidator'] = ResolversParentTypes['ComparedValidator']> = ResolversObject<{
@@ -11107,7 +11169,7 @@ export type ComparedValidatorResolvers<ContextType = GqlContext, ParentType exte
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   take?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_emission_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  total_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type ConcentrationMetricsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ConcentrationMetrics'] = ResolversParentTypes['ConcentrationMetrics']> = ResolversObject<{
@@ -12051,10 +12113,13 @@ export type NominatorListResolvers<ContextType = GqlContext, ParentType extends 
 }>;
 
 export type NominatorPositionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NominatorPosition'] = ResolversParentTypes['NominatorPosition']> = ResolversObject<{
+  alpha_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  share_fraction?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  provenance?: Resolver<Maybe<ResolversTypes['AlphaQuantityProvenance']>, ParentType, ContextType>;
+  quantity_status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  share_fraction?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type OpportunityBoardsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['OpportunityBoards'] = ResolversParentTypes['OpportunityBoards']> = ResolversObject<{
@@ -13444,6 +13509,7 @@ export type SubnetHistoryPointResolvers<ContextType = GqlContext, ParentType ext
 
 export type SubnetHolderResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHolder'] = ResolversParentTypes['SubnetHolder']> = ResolversObject<{
   alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  alpha_rao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   coldkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   hotkey_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   share_of_total?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -13458,6 +13524,7 @@ export type SubnetHoldersResolvers<ContextType = GqlContext, ParentType extends 
   limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   positions_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  provenance?: Resolver<Maybe<ResolversTypes['AlphaQuantityProvenance']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
@@ -14364,6 +14431,7 @@ export type SubnetWeightsResolvers<ContextType = GqlContext, ParentType extends 
 export type SubnetYieldResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYield'] = ResolversParentTypes['SubnetYield']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  degraded?: Resolver<ResolversTypes['DegradedInfo'], ParentType, ContextType>;
   mean_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   median_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   miner_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -14376,11 +14444,12 @@ export type SubnetYieldResolvers<ContextType = GqlContext, ParentType extends Re
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_emission_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  total_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type SubnetYieldHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldHistory'] = ResolversParentTypes['SubnetYieldHistory']> = ResolversObject<{
+  degraded?: Resolver<ResolversTypes['DegradedInfo'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['SubnetYieldHistoryPoint']>, ParentType, ContextType>;
@@ -14405,8 +14474,9 @@ export type SubnetYieldNeuronResolvers<ContextType = GqlContext, ParentType exte
   emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   role?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  voting_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   vs_median?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
@@ -14571,7 +14641,7 @@ export type UptimeSurfaceResolvers<ContextType = GqlContext, ParentType extends 
 }>;
 
 export type ValidatorResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Validator'] = ResolversParentTypes['Validator']> = ResolversObject<{
-  alpha_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  alpha_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   apy_estimate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   apy_estimate_eligible_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   avg_validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -14590,14 +14660,14 @@ export type ValidatorResolvers<ContextType = GqlContext, ParentType extends Reso
   realized_return_1m_as_of?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   realized_return_1w?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   realized_return_1w_as_of?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  root_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  root_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   stake_dominance?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ValidatorSubnet']>, ParentType, ContextType>;
   take?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_emission_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  total_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
@@ -14671,6 +14741,7 @@ export type ValidatorHistoryPointResolvers<ContextType = GqlContext, ParentType 
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_permit?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  voting_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type ValidatorListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorList'] = ResolversParentTypes['ValidatorList']> = ResolversObject<{
@@ -14717,6 +14788,7 @@ export type ValidatorSubnetResolvers<ContextType = GqlContext, ParentType extend
   uid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   validator_permit?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  voting_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type ValidatorTakeDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorTakeDistribution'] = ResolversParentTypes['ValidatorTakeDistribution']> = ResolversObject<{
@@ -14800,6 +14872,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountWeightSettersSubnet?: AccountWeightSettersSubnetResolvers<ContextType>;
   Adapter?: AdapterResolvers<ContextType>;
   AdapterArtifactSnapshot?: AdapterArtifactSnapshotResolvers<ContextType>;
+  AlphaQuantityProvenance?: AlphaQuantityProvenanceResolvers<ContextType>;
   AlphaUsdFieldSource?: AlphaUsdFieldSourceResolvers<ContextType>;
   AttributionEvidence?: AttributionEvidenceResolvers<ContextType>;
   Block?: BlockResolvers<ContextType>;

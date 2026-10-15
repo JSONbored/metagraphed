@@ -7,9 +7,13 @@
 // (netuid/uid/stake/permit/active). Pure + exported for unit tests; the Worker
 // does the store read + envelope. Null-safe: no positions -> schema-stable empty card.
 
-import { computeConcentration } from "./concentration.ts";
 import { loadStoreAlphaPricesByNetuid } from "./metagraph-neurons.ts";
-import { numberOrZero, round9 } from "./lib/rao.ts";
+import {
+  numberOrZero,
+  round9,
+  round9OrNull,
+  nonNegativeCellOrNull,
+} from "./lib/rao.ts";
 import { nonNegativeIntOrNull } from "./read-store.ts";
 
 // The neurons-tier columns the portfolio reads for one hotkey.
@@ -51,18 +55,13 @@ function captureStamp(value: unknown): CaptureStamp | null {
   return { ms, value: date.toISOString() };
 }
 
-// Emission-per-stake return rate; null when stake is 0 (undefined return).
-function computeYieldValue(emission: number, stake: number): number | null {
-  if (!(stake > 0)) return null;
-  return round9(emission / stake);
-}
-
 export interface AccountPortfolioPosition {
   netuid: number;
   uid: number | null;
   role: "validator" | "miner";
   active: boolean;
-  stake_alpha: number;
+  stake_alpha: null;
+  voting_weight: number | null;
   emission_alpha: number;
   rank: number | null;
   trust: number | null;
@@ -72,14 +71,14 @@ export interface AccountPortfolioPosition {
 }
 
 export interface AccountPortfolioResult {
-  schema_version: 1;
+  schema_version: 2;
   ss58: string;
   captured_at: string | null;
   subnet_count: number;
   position_count: number;
   validator_count: number;
   miner_count: number;
-  total_stake_tao: number;
+  total_stake_tao: null;
   total_emission_tao: number;
   overall_yield: number | null;
   stake_concentration: unknown;
@@ -102,10 +101,8 @@ export function buildAccountPortfolio(
 ): AccountPortfolioResult {
   const list = Array.isArray(rows) ? rows : [];
   const positions: AccountPortfolioPosition[] = [];
-  const pricedStakeByPosition: number[] = [];
   const netuids = new Set<number>();
   let validatorCount = 0;
-  let totalStake = 0;
   let totalEmission = 0;
   let capturedAt: CaptureStamp | null = null;
   for (const row of list) {
@@ -116,7 +113,7 @@ export function buildAccountPortfolio(
     if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
       capturedAt = captured;
     }
-    const stake = numberOrZero(row?.stake_tao);
+    const stake = nonNegativeCellOrNull(row?.stake_tao);
     const emission = numberOrZero(row?.emission_tao);
     const isValidator = Number(row?.validator_permit) === 1;
     if (isValidator) validatorCount += 1;
@@ -130,46 +127,43 @@ export function buildAccountPortfolio(
           ? rowPrice
           : null;
     if (price != null) {
-      totalStake += stake * price;
       totalEmission += emission * price;
-      pricedStakeByPosition.push(stake * price);
     }
     positions.push({
       netuid,
       uid: nonNegativeIntOrNull(row?.uid),
       role: isValidator ? "validator" : "miner",
       active: Number(row?.active) === 1,
-      stake_alpha: round9(stake),
+      stake_alpha: null,
+      voting_weight: round9OrNull(stake),
       emission_alpha: round9(emission),
       rank: nullableScore(row?.rank),
       trust: nullableScore(row?.trust),
       incentive: nullableScore(row?.incentive),
       dividends: nullableScore(row?.dividends),
-      yield: computeYieldValue(emission, stake),
+      yield: null,
     });
   }
   // Biggest position first; tie-break by netuid for a stable order.
-  positions.sort(
-    (a, b) => b.stake_alpha - a.stake_alpha || a.netuid - b.netuid,
-  );
+  positions.sort((a, b) => a.netuid - b.netuid);
   return {
-    schema_version: 1,
+    schema_version: 2,
     ss58,
     captured_at: capturedAt?.value ?? null,
     subnet_count: netuids.size,
     position_count: positions.length,
     validator_count: validatorCount,
     miner_count: positions.length - validatorCount,
-    total_stake_tao: round9(totalStake),
+    total_stake_tao: null,
     total_emission_tao: round9(totalEmission),
     // Overall wallet return: priced emission per priced stake -- both sides
     // in TAO, so the ratio is dimensionally coherent for the first time
     // (#9051). Null with no priceable stake.
-    overall_yield: totalStake > 0 ? round9(totalEmission / totalStake) : null,
+    overall_yield: null,
     // How concentrated the wallet's VALUE is across its priceable positions
     // (Gini/HHI/etc.) -- priced legs only, since mixing different alpha
     // units would weight the concentration by token count, not value.
-    stake_concentration: computeConcentration(pricedStakeByPosition),
+    stake_concentration: null,
     positions,
   };
 }

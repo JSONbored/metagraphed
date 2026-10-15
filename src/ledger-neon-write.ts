@@ -1,3 +1,4 @@
+import { writeIdentifiedPostgres } from "./sync-delivery-postgres.ts";
 // The three flat ledgers' Neon mirror (metagraphed-infra#336).
 //
 // `account_balances`, `hotkey_alpha` and `validator_nominator_counts` share one
@@ -240,6 +241,51 @@ export async function mirrorLedgerToNeon(
         true,
       );
     return { attempted: true, result };
+  }
+  if (pass?.delivery) {
+    try {
+      const outcome = await writeIdentifiedPostgres(
+        env?.HYPERDRIVE?.connectionString,
+        lane,
+        rows,
+        pass,
+        (sql, legacy) =>
+          mirrorLedgerToNeon(
+            null,
+            null,
+            lane,
+            rows,
+            { sql, laneHealthDb: null },
+            legacy,
+          ),
+      );
+      const laneDb = laneHealthStore(env, deps.laneHealthDb);
+      const now = (deps.now ?? Date.now)();
+      await recordNeonWriteVerdict(laneDb, lane, outcome.result!, now, false);
+      await recordNeonWriteVerdict(
+        laneDb,
+        `${lane}-pass`,
+        outcome.result!,
+        now,
+        false,
+        true,
+      );
+      return outcome;
+    } catch (error) {
+      const result = {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: String(error),
+      };
+      await recordNeonWriteVerdict(
+        laneHealthStore(env, deps.laneHealthDb),
+        lane,
+        result,
+        (deps.now ?? Date.now)(),
+      );
+      return { attempted: true, result };
+    }
   }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF

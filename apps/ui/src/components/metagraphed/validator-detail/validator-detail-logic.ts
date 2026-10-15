@@ -50,26 +50,13 @@ export function stakeBySubnet(
   fmt: (value: number) => string,
   top = 12,
 ): StakeRail[] {
-  return subnets
-    .map((subnet) => ({
-      netuid: subnet.netuid,
-      stake: typeof subnet.stake_alpha === "number" ? subnet.stake_alpha : 0,
-      emission: typeof subnet.emission_alpha === "number" ? subnet.emission_alpha : 0,
-    }))
-    .filter((row) => row.stake > 0 || row.emission > 0)
-    .sort((a, b) => b.stake - a.stake)
-    .slice(0, top)
-    .map((row) => ({
-      key: `sn-${row.netuid}`,
-      label: nameOf(row.netuid),
-      value: row.stake,
-      secondary: row.emission,
-      href: `/subnets/${row.netuid}`,
-      detail: [
-        { key: "stake", label: "Stake", value: fmt(row.stake) },
-        { key: "emission", label: "Emission", value: fmt(row.emission) },
-      ],
-    }));
+  // This membership source is voting weight, not a holdings series. Preserve
+  // memberships in the table; an unsupported Alpha composition has no rail.
+  void subnets;
+  void nameOf;
+  void fmt;
+  void top;
+  return [];
 }
 
 /** History points → chronological line points for one measured field. */
@@ -97,11 +84,9 @@ export function historyPoints(
  * validator did not produce.
  */
 export function apyPoints(points: readonly ValidatorHistoryPoint[]): { t: number; v: number }[] {
-  return historyPoints(points, (point) =>
-    typeof point.rewards_per_1000_tao === "number"
-      ? (point.rewards_per_1000_tao / 1000) * 365
-      : null,
-  );
+  // Historical voting weight cannot establish the native balance denominator.
+  void points;
+  return [];
 }
 
 /** Fractional change across a series, or null when it cannot be measured. */
@@ -158,14 +143,14 @@ export interface PeerRow {
 }
 
 /**
- * The operators ranked either side of this one by stake.
+ * Nearby operators in deterministic address order.
  *
  * A window centred on the subject, clamped at both ends -- "who am I next
  * to" has no answer at the top of a list otherwise, and showing the top N
  * instead would answer a question nobody asked.
  */
 export function peerWindow(
-  ranked: readonly { hotkey: string; name: string; totalStakeTao: number }[],
+  ranked: readonly { hotkey: string; name: string; totalStakeTao: number | null }[],
   hotkey: string,
   span = 11,
 ): PeerRow[] {

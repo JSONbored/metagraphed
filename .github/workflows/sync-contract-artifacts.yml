@@ -34,6 +34,11 @@ on:
   schedule:
     - cron: "40 5 * * *"
   workflow_dispatch:
+    inputs:
+      prepare_only:
+        description: "Generate reviewable source-branch artifacts without opening or merging a sync PR"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -79,6 +84,90 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Generate source-branch Worker binding types
+        if: inputs.prepare_only == true
+        run: npm run types:workers
+
+      - name: Build source-branch SDK artifacts
+        if: inputs.prepare_only == true
+        run: npm run build --workspace=packages/client
+
+      - name: Generate source-branch API reference
+        if: inputs.prepare_only == true
+        working-directory: apps/ui
+        run: node scripts/generate-openapi-docs.ts
+
+      - name: Prepare pinned source formatting
+        if: inputs.prepare_only == true
+        run: |
+          paths=(scripts/validate-api.ts src/openapi-sample.ts src/account-holder-directory.ts tests/openapi-sample.test.ts tests/search-quality.test.ts tests/alpha-share-value.test.ts tests/raw-chain-capture.test.ts tests/raw-capture-d1.test.ts tests/raw-capture-finalized.test.ts tests/raw-capture-upgrade-restore.test.ts tests/account-holder-directory.test.ts tests/data-api-tier.test.ts tests/webhook-ledger-d1.test.ts tests/webhook-ledger-wiring.test.ts tests/webhooks-worker.test.ts src/chain-holders.ts src/mcp-server.ts src/subnet-holders.ts src/validator-nominator-positions.ts workers/request-handlers/entities.ts src/graphql.ts src/subnet-yield.ts src/table-freshness-watchdog.ts src/top-holders-holdings.ts src/top-holders.ts src/chain-holders-cache.ts src/nominator-positions-hot-tier.ts src/alpha-snapshot-d1.ts src/self-stake-snapshot-d1.ts src/ledger-d1.ts workers/data-api.ts tests/alpha-snapshot-d1.test.ts tests/helpers/alpha-quantity-fixture.ts tests/helpers/alpha-quantity-d1-fixture.ts tests/subnet-holders.test.ts tests/chain-holders.test.ts tests/validator-nominator-positions.test.ts tests/graphql-subnet-holders.test.ts tests/chain-holders-cache.test.ts tests/chain-yield.test.ts tests/subnet-yield.test.ts tests/subnet-yield-history-csv.test.ts tests/top-holders.test.ts tests/top-holders-holdings.test.ts tests/top-holders-flow-tier.test.ts tests/top-holders-holdings-refresh.test.ts tests/graphql.test.ts tests/mcp-server.test.ts tests/mcp-degraded-marker-completeness.test.ts tests/analytics-edge-cache.test.ts tests/request-handlers-analytics-routes.test.ts tests/request-handlers-entities.test.ts tests/explorer-directory-materialization.test.ts tests/nominator-positions-cold-tier.test.ts tests/nominator-positions-hot-tier.test.ts tests/native-position-readers.test.ts tests/data-api-neurons.test.ts apps/ui/src/hooks/use-stake-flow.ts apps/ui/src/lib/metagraphed/types.ts)
+          npx prettier --write scripts/validate-api.ts src/openapi-sample.ts src/account-holder-directory.ts tests/openapi-sample.test.ts tests/search-quality.test.ts tests/alpha-share-value.test.ts tests/raw-chain-capture.test.ts tests/raw-capture-d1.test.ts tests/raw-capture-finalized.test.ts tests/raw-capture-upgrade-restore.test.ts tests/account-holder-directory.test.ts tests/data-api-tier.test.ts tests/webhook-ledger-d1.test.ts tests/webhook-ledger-wiring.test.ts tests/webhooks-worker.test.ts src/chain-holders.ts src/mcp-server.ts src/subnet-holders.ts src/validator-nominator-positions.ts workers/request-handlers/entities.ts src/graphql.ts src/subnet-yield.ts src/table-freshness-watchdog.ts src/top-holders-holdings.ts src/top-holders.ts src/chain-holders-cache.ts src/nominator-positions-hot-tier.ts src/alpha-snapshot-d1.ts src/self-stake-snapshot-d1.ts src/ledger-d1.ts workers/data-api.ts tests/alpha-snapshot-d1.test.ts tests/helpers/alpha-quantity-fixture.ts tests/helpers/alpha-quantity-d1-fixture.ts tests/subnet-holders.test.ts tests/chain-holders.test.ts tests/validator-nominator-positions.test.ts tests/graphql-subnet-holders.test.ts tests/chain-holders-cache.test.ts tests/chain-yield.test.ts tests/subnet-yield.test.ts tests/subnet-yield-history-csv.test.ts tests/top-holders.test.ts tests/top-holders-holdings.test.ts tests/top-holders-flow-tier.test.ts tests/top-holders-holdings-refresh.test.ts tests/graphql.test.ts tests/mcp-server.test.ts tests/mcp-degraded-marker-completeness.test.ts tests/analytics-edge-cache.test.ts tests/request-handlers-analytics-routes.test.ts tests/request-handlers-entities.test.ts tests/explorer-directory-materialization.test.ts tests/nominator-positions-cold-tier.test.ts tests/nominator-positions-hot-tier.test.ts tests/native-position-readers.test.ts tests/data-api-neurons.test.ts
+          (cd apps/ui && npx prettier --write src/hooks/use-stake-flow.ts src/lib/metagraphed/types.ts)
+          mkdir -p "$RUNNER_TEMP/source-format"
+          git rev-parse HEAD > "$RUNNER_TEMP/source-format/source-head.txt"
+          printf '%s\n' "${paths[@]}" > "$RUNNER_TEMP/source-format/paths.txt"
+          for file in "${paths[@]}"; do
+            mkdir -p "$RUNNER_TEMP/source-format/$(dirname "$file")"
+            cp "$file" "$RUNNER_TEMP/source-format/$file"
+          done
+
+      - name: Upload pinned source formatting
+        if: inputs.prepare_only == true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: source-format
+          path: ${{ runner.temp }}/source-format
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Stage source-branch generated contracts
+        if: inputs.prepare_only == true
+        run: |
+          mkdir -p "$RUNNER_TEMP/source-contracts"
+          git rev-parse HEAD > "$RUNNER_TEMP/source-contracts/source-head.txt"
+          git diff --name-only -- public/metagraph/openapi.json public/metagraph/contracts.json public/metagraph/api-index.json public/metagraph/types.d.ts generated/graphql generated/metagraphed-client.ts packages/contract packages/client/dist apps/ui/content/docs/api-reference workers/worker-configuration.d.ts workers/data-api.worker-configuration.d.ts workers/registry-sync-api.worker-configuration.d.ts workers/wss-lb.worker-configuration.d.ts > "$RUNNER_TEMP/source-contracts/paths.txt"
+          while IFS= read -r file; do
+            test -f "$file"
+            mkdir -p "$RUNNER_TEMP/source-contracts/$(dirname "$file")"
+            cp "$file" "$RUNNER_TEMP/source-contracts/$file"
+          done < "$RUNNER_TEMP/source-contracts/paths.txt"
+
+      - name: Upload source-branch generated contracts
+        if: inputs.prepare_only == true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: source-contracts
+          path: ${{ runner.temp }}/source-contracts
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Qualify prepared quantity source
+        if: inputs.prepare_only == true
+        run: |
+          npm run typecheck
+          npm run build --workspace=packages/ui-kit
+          npm run typecheck --workspace=apps/ui
+
+      - name: Qualify API quantity assertions
+        if: inputs.prepare_only == true
+        run: npm run validate:api
+
+      - name: Quantity backend contract regressions
+        if: inputs.prepare_only == true
+        id: quantity_backend
+        run: npx vitest run tests/quantity-contract.test.ts tests/request-work-batches.test.ts tests/metagraph-neurons.test.ts tests/accounts-list.test.ts tests/account-portfolio.test.ts tests/account-position-history.test.ts tests/validator-history.test.ts tests/validator-operator-directory.test.ts tests/account-holder-directory.test.ts tests/account-nominator-positions.test.ts tests/published-query-bindings.test.ts tests/neon-sole-store-tables-exist.test.ts tests/neon-flag-config-parity.test.ts tests/read-store-tables-match-the-sql.test.ts tests/alpha-snapshot-d1.test.ts tests/self-stake-snapshot-d1.test.ts tests/openapi-sample.test.ts tests/search-quality.test.ts
+
+      - name: Complete UI quantity regressions
+        if: ${{ !cancelled() && inputs.prepare_only == true }}
+        id: quantity_ui
+        run: npm run test --workspace=apps/ui
+
+      - name: Require every quantity regression suite
+        if: ${{ !cancelled() && inputs.prepare_only == true }}
+        run: |
+          test "${{ steps.quantity_backend.outcome }}" = success
+          test "${{ steps.quantity_ui.outcome }}" = success
+
       # Scoped to the contract artifacts on purpose. build.ts already
       # auto-reverts the deploy-owned pair (r2-manifest.json,
       # schemas/index.json, see DEPLOY_OWNED_ARTIFACTS in scripts/lib.ts), and
@@ -117,7 +206,7 @@ jobs:
           echo "files=$files" >> "$GITHUB_OUTPUT"
 
       - name: Open sync PR (no-op if unchanged)
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.diff.outputs.changed == 'true' && inputs.prepare_only != true
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         id: pr
         with:

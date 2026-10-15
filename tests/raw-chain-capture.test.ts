@@ -4,7 +4,15 @@
 // height. A test that only proved the happy path would pass while the module
 // silently skipped blocks.
 import assert from "node:assert/strict";
-import { describe, test, vi } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
+import { createHash } from "node:crypto";
+import { gunzipSync } from "node:zlib";
+import {
+  nativeRawFixture,
+  syntheticNode,
+} from "./helpers/raw-capture-fixture.ts";
+import { RAW_CAPTURE_GENESIS } from "../src/raw-capture-provenance.ts";
+import { finalizedCaptureContext } from "../src/raw-capture-finalized-rpc.ts";
 import { createChainRpcAdmission } from "../src/chain-rpc-admission.ts";
 import {
   captureTick,
@@ -1399,5 +1407,301 @@ describe("captureTick — reading across several endpoints", () => {
       }),
       /rpcUrls is empty/,
     );
+  });
+});
+
+describe("captureTick — canonical failure boundaries and concurrent frontiers", () => {
+  const opened: Awaited<ReturnType<typeof nativeRawFixture>>[] = [];
+  afterEach(async () => {
+    for (const f of opened.splice(0)) await f.runtime.dispose();
+  });
+  async function fixture() {
+    const f = await nativeRawFixture();
+    opened.push(f);
+    return f;
+  }
+  const noLegacy: WatermarkStore = {
+    read: async () =>
+      assert.fail("canonical capture must not read a legacy frontier"),
+    write: async () =>
+      assert.fail("canonical capture must not advance a legacy frontier"),
+  };
+  function canonicalTick(
+    f: Awaited<ReturnType<typeof nativeRawFixture>>,
+    node: ReturnType<typeof syntheticNode>,
+    overrides: Partial<Parameters<typeof captureTick>[0]> = {},
+  ) {
+    return captureTick({
+      rpcUrls: ["https://fixture.example"],
+      store: f.store,
+      canonical: f.store.canonical,
+      watermark: noLegacy,
+      // The omitted network exercises the default chain identity, not just key spelling.
+      genesisFloor: node.first,
+      maxPerTick: 3,
+      flushEvery: 1,
+      fetchImpl: node.fetchImpl,
+      now: () => 1000,
+      sleepFn: async () => {},
+      ...overrides,
+    });
+  }
+
+  test.each([0, Number.POSITIVE_INFINITY])(
+    "an unusable tick allowance %s captures no bytes and does not advance the frontier",
+    async (maxPerTick) => {
+      const { store, puts } = memoryStore();
+      const { watermark, get } = memoryWatermark(99);
+      const result = await captureTick({
+        rpcUrls: ["https://rpc"],
+        store,
+        watermark,
+        genesisFloor: 100,
+        maxPerTick,
+        fetchImpl: rpcFetch({ head: 101 }),
+      });
+      assert.equal(result.captured, 0);
+      assert.equal(result.watermark, 99);
+      assert.equal(get(), 99);
+      assert.equal(puts.size, 0);
+    },
+  );
+
+  test("non-Error head failures across every endpoint retain the original frontier and cause", async () => {
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    let requests = 0;
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://first", "https://second"],
+        store,
+        watermark,
+        genesisFloor: 100,
+        maxPerTick: 2,
+        sleepFn: async () =>
+          assert.fail("a non-transient failure must not be retried"),
+        fetchImpl: async () => {
+          requests++;
+          throw "transport disconnected";
+        },
+      }),
+      /no endpoint answered \(transport disconnected\)/,
+    );
+    assert.equal(requests, 2);
+    assert.equal(get(), 99);
+    assert.equal(puts.size, 0);
+  });
+
+  test("a non-Error header validation failure stops at that block and preserves its valid prefix", async () => {
+    const node = syntheticNode();
+    const fetchImpl: typeof fetch = async (url, init) => {
+      const response = await node.fetchImpl(url, init);
+      const calls = JSON.parse(String(init?.body));
+      if (
+        !Array.isArray(calls) ||
+        !calls.some((call) => call.method === "chain_getBlock")
+      )
+        return response;
+      const replies = (await response.json()) as {
+        result?: { block?: { header?: Record<string, unknown> } };
+      }[];
+      const failed = replies.find(
+        (reply) => reply.result?.block?.header?.number === "0xb",
+      );
+      assert(failed?.result?.block?.header);
+      // A transport decoder can fail lazily while the original header is validated.
+      Object.defineProperty(failed.result.block.header, "stateRoot", {
+        get: () => {
+          throw "header decoder failed";
+        },
+      });
+      return { ok: true, json: async () => replies } as Response;
+    };
+    const result = await fetchRawBlockChunk(
+      "https://fixture.example",
+      [10, 11, 12],
+      fetchImpl,
+      () => 1000,
+      true,
+      undefined,
+      node.hash(9),
+    );
+    assert.deepEqual(
+      result.blocks.map((block) => block.block_number),
+      [10],
+    );
+    assert.deepEqual(result.blocks[0]!.header, node.headers.get(10));
+    assert.deepEqual(result.stopped, {
+      at: 11,
+      reason: "header decoder failed",
+    });
+  });
+
+  test.each(["height", "finalizedHeight"] as const)(
+    "a concurrent bootstrap's %s beyond this tick's fixed finality ends the stale plan",
+    async (field) => {
+      const f = await fixture(),
+        node = syntheticNode(),
+        concurrent = syntheticNode({ head: 15 });
+      const canonical = f.store.canonical!;
+      const last = field === "height" ? 15 : 10;
+      let original = "";
+      await assert.rejects(
+        canonicalTick(f, node, {
+          canonical: {
+            ...canonical,
+            bootstrap: async (input) => {
+              const checkpoint = await canonical.bootstrap(input);
+              // A second writer qualifies newer finality against the persisted
+              // anchors, then actually commits it before this tick resumes.
+              const context = await finalizedCaptureContext(
+                "https://concurrent.example",
+                "mainnet",
+                checkpoint,
+                concurrent.first,
+                { fetchImpl: concurrent.fetchImpl },
+              );
+              original =
+                Array.from({ length: last - 9 }, (_, index) => {
+                  const height = 10 + index,
+                    header = concurrent.headers.get(height)!;
+                  return JSON.stringify({
+                    block_number: height,
+                    block_hash: concurrent.hash(height),
+                    parent_hash: header.parentHash,
+                    header,
+                    extrinsics: ["0x0401"],
+                    events: "0x00",
+                    captured_at: 2000,
+                  });
+                }).join("\n") + "\n";
+              return canonical.commit(rawBatchKey(10, last), original, {
+                checkpoint,
+                finalized: context.finalized,
+              });
+            },
+          },
+        }),
+        /finalized head regressed/,
+      );
+      const persisted = await canonical.read("mainnet");
+      assert.equal(persisted?.height, last);
+      assert.equal(persisted?.finalizedHeight, 15);
+      assert.equal(persisted?.hash, concurrent.hash(last));
+      assert.equal(
+        await f.db
+          .prepare("SELECT count(*) n FROM raw_capture_publications")
+          .first<number>("n"),
+        1,
+      );
+      const chunks = await f.db
+        .prepare("SELECT hex(data) data FROM raw_capture_chunks ORDER BY part")
+        .all<{ data: string }>();
+      assert.equal(
+        gunzipSync(
+          Buffer.concat(
+            chunks.results.map((row) => Buffer.from(row.data, "hex")),
+          ),
+        ).toString(),
+        original,
+      );
+      assert.equal(
+        node.requests.some((call) => call.method === "chain_getBlock"),
+        false,
+      );
+    },
+  );
+
+  test("canonical qualification slower than its pacing gap adds no further sleep", async () => {
+    const f = await fixture(),
+      node = syntheticNode();
+    let clock = 1000;
+    const sleeps: number[] = [];
+    const result = await canonicalTick(f, node, {
+      maxPerTick: 1,
+      minGapMs: 1000,
+      now: () => clock,
+      fetchImpl: async (url, init) => {
+        const response = await node.fetchImpl(url, init);
+        clock += 1000;
+        return response;
+      },
+      sleepFn: async (ms) => {
+        sleeps.push(ms);
+        clock += ms;
+      },
+    });
+    assert.equal(result.captured, 1);
+    assert.equal(result.watermark, 10);
+    assert.deepEqual(sleeps, []);
+    const checkpoint = await f.store.canonical!.read("mainnet");
+    assert.equal(checkpoint?.genesis, RAW_CAPTURE_GENESIS.mainnet);
+    assert.equal(checkpoint?.hash, node.hash(10));
+  });
+
+  test("a concurrent writer's qualified descendant ends the stale tick plan without replacing either receipt", async () => {
+    const f = await fixture(),
+      node = syntheticNode();
+    const canonical = f.store.canonical!;
+    const originals: { key: string; value: string }[] = [];
+    const result = await canonicalTick(f, node, {
+      canonical: {
+        ...canonical,
+        commit: async (key, value, proof) => {
+          const own = await canonical.commit(key, value, proof);
+          originals.push({ key, value });
+          const header = node.headers.get(11)!;
+          const descendant =
+            JSON.stringify({
+              block_number: 11,
+              block_hash: node.hash(11),
+              parent_hash: header.parentHash,
+              header,
+              extrinsics: ["0x0401"],
+              events: "0x00",
+              captured_at: 2000,
+            }) + "\n";
+          const descendantKey = rawBatchKey(11, 11);
+          originals.push({ key: descendantKey, value: descendant });
+          return canonical.commit(descendantKey, descendant, {
+            checkpoint: own,
+            finalized: proof.finalized,
+          });
+        },
+      },
+    });
+    assert.equal(result.captured, 1);
+    assert.equal(result.watermark, 11);
+    assert.equal(result.behind, 3);
+    assert.equal((await canonical.read("mainnet"))?.hash, node.hash(11));
+    assert.deepEqual(
+      node.requests
+        .filter((call) => call.method === "chain_getBlock")
+        .map((call) => call.params[0]),
+      [node.hash(10)],
+    );
+    assert.equal(
+      await f.db
+        .prepare("SELECT count(*) n FROM raw_capture_publications")
+        .first<number>("n"),
+      2,
+    );
+    for (const original of originals) {
+      const digest = createHash("sha256").update(original.value).digest("hex");
+      const chunks = await f.db
+        .prepare(
+          "SELECT hex(data) data FROM raw_capture_chunks WHERE key=? AND sha256=? ORDER BY part",
+        )
+        .bind(original.key, digest)
+        .all<{ data: string }>();
+      assert.equal(
+        gunzipSync(
+          Buffer.concat(
+            chunks.results.map((row) => Buffer.from(row.data, "hex")),
+          ),
+        ).toString(),
+        original.value,
+      );
+    }
   });
 });

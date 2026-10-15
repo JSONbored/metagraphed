@@ -10,28 +10,52 @@ import {
   TOP_HOLDERS_LIMIT_MAX,
 } from "../src/top-holders.ts";
 import { handleRequest } from "../workers/api.ts";
+import { TopHoldersArtifactSchema } from "../schemas-src/routes/top-holders.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
 
-// A row from the FULL OUTER JOIN query (ss58, free_tao, delegated_tao,
-// captured_at) -- free_tao/delegated_tao are already COALESCEd to 0 by the
-// SQL, never null.
+// A stored row with a measured free balance and legacy financial guesses.
+// The formatter must preserve free TAO while suppressing unsupported wealth.
 const ROW = {
   ss58: "5Whale1",
   free_tao: 1000.5,
   delegated_tao: 250.25,
+  total_tao: 1250.75,
   captured_at: 1750000000000,
 };
 
 describe("buildTopHoldersList", () => {
-  test("computes total_tao as free + delegated", () => {
+  test("publishes measured free TAO in version 2 and suppresses legacy wealth", () => {
     const data = buildTopHoldersList([ROW]) as Row;
-    assert.equal(data.accounts[0].total_tao, 1250.75);
+    assert.equal(data.schema_version, 2);
+    assert.equal(data.sort, "free_tao");
+    assert.equal(data.accounts[0].free_tao, 1000.5);
+    assert.equal(data.accounts[0].delegated_tao, null);
+    assert.equal(data.accounts[0].total_tao, null);
   });
 
-  test("an account present from account_balances alone still appears (delegated_tao 0)", () => {
+  test("the public quantity contract accepts version 2 and rejects a legacy financial envelope", () => {
+    const current = buildTopHoldersList([ROW]);
+    assert.equal(TopHoldersArtifactSchema.safeParse(current).success, true);
+    assert.equal(
+      TopHoldersArtifactSchema.safeParse({
+        ...current,
+        schema_version: 1,
+        sort: "total_tao",
+        accounts: [{ ...ROW, total_tao: 1250.75 }],
+      }).success,
+      false,
+    );
+    assert.equal(
+      TopHoldersArtifactSchema.safeParse({ ...current, schema_version: 1 })
+        .success,
+      false,
+    );
+  });
+
+  test("an account present from account_balances alone retains free TAO without invented wealth", () => {
     const data = buildTopHoldersList([
       {
         ss58: "5FreeOnly",
@@ -41,26 +65,27 @@ describe("buildTopHoldersList", () => {
       },
     ]) as Row;
     assert.equal(data.account_count, 1);
-    assert.equal(data.accounts[0].delegated_tao, 0);
-    assert.equal(data.accounts[0].total_tao, 500);
+    assert.equal(data.accounts[0].free_tao, 500);
+    assert.equal(data.accounts[0].delegated_tao, null);
+    assert.equal(data.accounts[0].total_tao, null);
   });
 
-  test("an account present from nominator_positions alone still appears (free_tao 0)", () => {
+  test("a legacy delegated-only row cannot manufacture free TAO or total wealth", () => {
     const data = buildTopHoldersList([
       {
         ss58: "5DelegatedOnly",
-        free_tao: 0,
         delegated_tao: 300,
         captured_at: null,
       },
     ]) as Row;
     assert.equal(data.account_count, 1);
-    assert.equal(data.accounts[0].free_tao, 0);
-    assert.equal(data.accounts[0].total_tao, 300);
+    assert.equal(data.accounts[0].free_tao, null);
+    assert.equal(data.accounts[0].delegated_tao, null);
+    assert.equal(data.accounts[0].total_tao, null);
     assert.equal(data.accounts[0].last_updated, null);
   });
 
-  test("sorts by total_tao (default), descending, tie-broken by ss58", () => {
+  test("sorts by measured free_tao by default, descending, tie-broken by ss58", () => {
     const data = buildTopHoldersList([
       { ss58: "5B", free_tao: 100, delegated_tao: 0, captured_at: 1 },
       { ss58: "5A", free_tao: 100, delegated_tao: 0, captured_at: 1 },
@@ -88,20 +113,35 @@ describe("buildTopHoldersList", () => {
     assert.equal(data.accounts[0].ss58, "5HighFree");
   });
 
-  test("sorts by delegated_tao when requested", () => {
-    const data = buildTopHoldersList(
-      [
-        { ss58: "5HighFree", free_tao: 500, delegated_tao: 0, captured_at: 1 },
-        {
-          ss58: "5HighDelegated",
-          free_tao: 10,
-          delegated_tao: 1000,
-          captured_at: 1,
-        },
-      ],
-      { sort: "delegated_tao" },
-    ) as Row;
-    assert.equal(data.accounts[0].ss58, "5HighDelegated");
+  test("unsupported financial sort values fall back to free TAO without ranking on guesses", () => {
+    for (const sort of ["delegated_tao", "total_tao"]) {
+      const data = buildTopHoldersList(
+        [
+          {
+            ss58: "5HighFree",
+            free_tao: 500,
+            delegated_tao: 0,
+            total_tao: 500,
+          },
+          {
+            ss58: "5HighGuess",
+            free_tao: 10,
+            delegated_tao: 1000,
+            total_tao: 1010,
+          },
+        ],
+        { sort },
+      ) as Row;
+      assert.equal(data.sort, "free_tao");
+      assert.deepEqual(
+        (data.accounts as Row[]).map((row) => row.ss58),
+        ["5HighFree", "5HighGuess"],
+      );
+      for (const row of data.accounts as Row[]) {
+        assert.equal(row.delegated_tao, null);
+        assert.equal(row.total_tao, null);
+      }
+    }
   });
 
   test("falls back to the default sort for an unrecognized value", () => {
@@ -165,7 +205,7 @@ describe("buildTopHoldersList", () => {
     ];
 
     test("a holdings-sorted page reports the holdings vintage", () => {
-      for (const sort of ["total_tao", "free_tao", "delegated_tao"]) {
+      for (const sort of ["free_tao"]) {
         const data = buildTopHoldersList(rows, { sort }) as Row;
         assert.equal(
           data.captured_at,
@@ -190,11 +230,11 @@ describe("buildTopHoldersList", () => {
     // A body written before the split carries no `holdings_captured_at` at
     // all. Falling back to `captured_at` is what keeps such an artifact
     // answering exactly as it did, rather than reporting a null vintage for
-    // three of six sorts the moment this deploys.
+    // the supported free sort the moment this deploys.
     test("a pre-split row falls back to its one stamp", () => {
       const data = buildTopHoldersList(
         [{ ss58: "5A", free_tao: 10, delegated_tao: 1, captured_at: FLOW_AT }],
-        { sort: "total_tao" },
+        { sort: "free_tao" },
       ) as Row;
       assert.equal(data.captured_at, new Date(FLOW_AT).toISOString());
     });
@@ -207,9 +247,7 @@ describe("buildTopHoldersList", () => {
           TOP_HOLDERS_SORTS.map((s) => [s, topHoldersStampKey(s)]),
         ),
         {
-          total_tao: "holdings_captured_at",
           free_tao: "holdings_captured_at",
-          delegated_tao: "holdings_captured_at",
           net_flow_7d: "captured_at",
           net_flow_30d: "captured_at",
           net_flow_90d: "captured_at",
@@ -253,7 +291,7 @@ describe("buildTopHoldersList", () => {
 
   // #9469 changed this from 0 to null, and the change is the point: a row the
   // answering tier cannot read is not a row worth 0 TAO. A zero ranks and
-  // sums; a null ranks last and refuses to be summed into total_tao.
+  // ranks; a null ranks last and cannot become a measured balance.
   test("a negative or non-finite balance value degrades to null, not 0", () => {
     const data = buildTopHoldersList([
       {
@@ -270,18 +308,18 @@ describe("buildTopHoldersList", () => {
 
   // The distinction the null exists for: a MEASURED zero still behaves like a
   // number everywhere a null does not.
-  test("a measured 0 is kept as 0 and still sums into total_tao", () => {
+  test("a measured free 0 stays 0 while unsupported financial zeros become null", () => {
     const data = buildTopHoldersList([
       { ss58: "5Zeroed", free_tao: 0, delegated_tao: 0, captured_at: 1 },
     ]) as Row;
     assert.equal(data.accounts[0].free_tao, 0);
-    assert.equal(data.accounts[0].delegated_tao, 0);
-    assert.equal(data.accounts[0].total_tao, 0);
+    assert.equal(data.accounts[0].delegated_tao, null);
+    assert.equal(data.accounts[0].total_tao, null);
   });
 
   // A flow-lane row carries no holdings columns at all. total_tao must not
   // quietly become "the half we happen to know".
-  test("total_tao is null when either addend is absent, never a partial sum", () => {
+  test("a known free balance cannot become an unsupported partial total", () => {
     const data = buildTopHoldersList([
       { ss58: "5FlowOnly", net_flow_7d: 12.5, captured_at: 1 },
       { ss58: "5HalfKnown", free_tao: 500, captured_at: 1 },
@@ -305,6 +343,43 @@ describe("buildTopHoldersList", () => {
     assert.equal(data.accounts[0].delegated_tao, null);
   });
 
+  test("missing and blank flow cells stay null while numeric zero and signed strings remain observations", () => {
+    for (const missing of [
+      null,
+      undefined,
+      "",
+      "  ",
+      "\t",
+      NaN,
+      Infinity,
+      "not-a-number",
+    ]) {
+      const data = buildTopHoldersList([
+        {
+          ss58: "5Missing",
+          net_flow_7d: missing,
+          net_flow_30d: missing,
+          net_flow_90d: missing,
+        },
+      ]) as Row;
+      for (const key of ["net_flow_7d", "net_flow_30d", "net_flow_90d"])
+        assert.equal(data.accounts[0][key], null, `${key}: ${String(missing)}`);
+    }
+    const data = buildTopHoldersList([
+      {
+        ss58: "5Measured",
+        free_tao: "0",
+        net_flow_7d: "0",
+        net_flow_30d: "-5.125",
+        net_flow_90d: "9.25",
+      },
+    ]) as Row;
+    assert.equal(data.accounts[0].free_tao, 0);
+    assert.equal(data.accounts[0].net_flow_7d, 0);
+    assert.equal(data.accounts[0].net_flow_30d, -5.125);
+    assert.equal(data.accounts[0].net_flow_90d, 9.25);
+  });
+
   test("captured_at of 0 or negative degrades to a null last_updated, distinct from a missing captured_at", () => {
     const data = buildTopHoldersList([
       { ss58: "5Zero", free_tao: 1, delegated_tao: 0, captured_at: 0 },
@@ -320,11 +395,9 @@ describe("buildTopHoldersList", () => {
     assert.equal(data.accounts[0].last_updated, null);
   });
 
-  test("TOP_HOLDERS_SORTS matches the six real sort keys", () => {
+  test("TOP_HOLDERS_SORTS contains only free TAO and the three observed flows", () => {
     assert.deepEqual(TOP_HOLDERS_SORTS, [
-      "total_tao",
       "free_tao",
-      "delegated_tao",
       "net_flow_7d",
       "net_flow_30d",
       "net_flow_90d",
@@ -441,8 +514,8 @@ describe("compareTopHoldersSort", () => {
   const num = {
     ss58: "5Num",
     free_tao: 0,
-    delegated_tao: 0,
-    total_tao: 0,
+    delegated_tao: null,
+    total_tao: null,
     net_flow_7d: -5,
     net_flow_30d: null,
     net_flow_90d: null,
@@ -451,8 +524,8 @@ describe("compareTopHoldersSort", () => {
   const missing = {
     ss58: "5Null",
     free_tao: 0,
-    delegated_tao: 0,
-    total_tao: 0,
+    delegated_tao: null,
+    total_tao: null,
     net_flow_7d: null,
     net_flow_30d: null,
     net_flow_90d: null,
@@ -474,6 +547,8 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
     );
     assert.equal(res.status, 200);
     const body = await res.json();
+    assert.equal(body.data.schema_version, 2);
+    assert.equal(body.data.sort, "free_tao");
     assert.equal(body.data.account_count, 0);
   });
 
@@ -489,6 +564,91 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
     const body = await res.json();
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "sort");
+  });
+
+  test("rejects deprecated financial rankings rather than silently serving a guessed order", async () => {
+    for (const sort of ["delegated_tao", "total_tao"]) {
+      const res = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh/api/v1/accounts/top-holders?sort=${sort}`,
+        ),
+        createLocalArtifactEnv() as unknown as Env,
+        ctx,
+      );
+      assert.equal(res.status, 400, sort);
+      const body = await res.json();
+      assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "sort");
+    }
+  });
+
+  test("a stored version 1 projection serves version 2 free and flow pages with wealth guesses suppressed", async () => {
+    const flowAt = 1_750_000_000_000;
+    const holdingsAt = flowAt + 3_600_000;
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            json: async () => ({
+              schema_version: 1,
+              generated_at: new Date(flowAt).toISOString(),
+              sorts: ["free_tao", "delegated_tao", "total_tao", "net_flow_30d"],
+              rows: [
+                {
+                  ss58: "5HighFree",
+                  free_tao: 500.125,
+                  delegated_tao: 1,
+                  total_tao: 501.125,
+                  net_flow_30d: -5,
+                  captured_at: flowAt,
+                  holdings_captured_at: holdingsAt,
+                },
+                {
+                  ss58: "5HighGuess",
+                  free_tao: 10,
+                  delegated_tao: 25_000_000,
+                  total_tao: 25_000_010,
+                  net_flow_30d: 9,
+                  captured_at: flowAt,
+                  holdings_captured_at: holdingsAt,
+                },
+              ],
+            }),
+          };
+        },
+      },
+    };
+    for (const [sort, ids, stamp] of [
+      ["free_tao", ["5HighFree", "5HighGuess"], holdingsAt],
+      ["net_flow_30d", ["5HighGuess", "5HighFree"], flowAt],
+    ] as const) {
+      const res = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh/api/v1/accounts/top-holders?sort=${sort}`,
+        ),
+        env as unknown as Env,
+        ctx,
+      );
+      assert.equal(res.status, 200);
+      const { data } = await res.json();
+      assert.equal(data.schema_version, 2);
+      assert.equal(data.sort, sort);
+      assert.deepEqual(
+        data.accounts.map((row: Row) => row.ss58),
+        ids,
+      );
+      assert.equal(data.captured_at, new Date(stamp).toISOString());
+      for (const account of data.accounts as Row[]) {
+        assert.equal(account.delegated_tao, null);
+        assert.equal(account.total_tao, null);
+      }
+      const highFree = (data.accounts as Row[]).find(
+        (row) => row.ss58 === "5HighFree",
+      )!;
+      assert.equal(highFree.free_tao, 500.125);
+      assert.equal(highFree.net_flow_30d, -5);
+    }
   });
 
   test("rejects a ?limit above the max with 400", async () => {
@@ -541,7 +701,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
           return {
             json: async () => ({
               schema_version: 1,
-              generated_at: "x",
+              generated_at: new Date(1750000000000).toISOString(),
               row_count: 1,
               sorts: ["net_flow_7d", "net_flow_30d", "net_flow_90d"],
               rows: [
@@ -553,7 +713,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
                   net_flow_7d: -50,
                   net_flow_30d: 200,
                   net_flow_90d: 900,
-                  last_updated: new Date(1750000000000).toISOString(),
+                  captured_at: 1750000000000,
                 },
               ],
             }),
@@ -575,7 +735,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
     // net_flow_7d (-50) gets a leading `'` -- the formula-injection guard for
     // CSV cells starting with -/+/=/@ (workers/csv.ts), same as any other
     // negative-leading cell in this codebase's CSV exports.
-    assert.match(lines[1], /^5Whale1,1000\.5,250\.25,1250\.75,'-50,200,900,/);
+    assert.match(lines[1], /^5Whale1,1000\.5,,,'-50,200,900,/);
   });
 
   test("testnet has no variant (mainnet-only leaderboard)", async () => {
@@ -590,122 +750,73 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
   });
 });
 
-// #8803: delegated_tao used to be a raw cross-subnet SUM of alpha, added to
-// genuine System::Account free_tao. Production's top row reported 14,984,421
-// "TAO" -- 71% of a supply hard-capped at 21,000,000 -- and the top five rows
-// summed to 1.57x max supply. The conversion itself lives in the SQL
-// aggregate (tests/data-api.test.ts asserts that query's shape); these tests
-// pin the two consequences that made the bug matter: the leaderboard ORDER
-// was wrong, and the headline number was not a quantity that exists.
-describe("delegated_tao is TAO, not cross-subnet alpha (#8803)", () => {
-  const TAO_MAX_SUPPLY = 21_000_000;
-
-  // Two accounts, each with 1,000,000 alpha of delegated stake, but on
-  // subnets whose alpha prices differ by 150x -- the real spread (~0.002 to
-  // ~0.3 TAO) that makes the overstatement non-uniform rather than a scaling
-  // error a reader could mentally correct for.
-  const CHEAP_ALPHA_PRICE = 0.002;
-  const RICH_ALPHA_PRICE = 0.3;
-  const positions = [
-    // 5CheapWhale holds MORE alpha, all of it on the cheap subnet. 25M is a
-    // deliberately unremarkable alpha balance and an IMPOSSIBLE TAO one --
-    // one subnet's alpha supply is a different token, not bounded by TAO's
-    // 21M cap, which is exactly why summing alpha as TAO breaks the cap.
+// Native portfolio valuation is not established by multiplying pool weights or
+// dimensionless shares by a spot price. Even numerically plausible legacy cells
+// must stay null; suppression cannot depend on whether the guess exceeds supply.
+describe("legacy financial cells are suppressed", () => {
+  const guesses = [
     {
-      ss58: "5CheapWhale",
-      netuid: 12,
-      alpha: 25_000_000,
-      price: CHEAP_ALPHA_PRICE,
+      ss58: "5RawAlpha",
+      free_tao: 10,
+      delegated_tao: 25_000_000,
+      total_tao: 25_000_010,
     },
-    // 5RichHolder holds LESS alpha, on the expensive subnet -- and is worth
-    // ~29x more in real TAO.
-    { ss58: "5RichHolder", netuid: 4, alpha: 200_000, price: RICH_ALPHA_PRICE },
+    {
+      ss58: "5SpotPrice",
+      free_tao: 20,
+      delegated_tao: 50_000,
+      total_tao: 50_020,
+    },
+    { ss58: "5Shares", free_tao: 30, delegated_tao: 0.55 * 100, total_tao: 85 },
+    { ss58: "5ZeroGuess", free_tao: 0, delegated_tao: 0, total_tao: 0 },
   ];
 
-  // What the query produced BEFORE the fix: alpha summed raw, no price.
-  const unconvertedRows = positions.map((p) => ({
-    ss58: p.ss58,
-    free_tao: 0,
-    delegated_tao: p.alpha,
-    captured_at: 1750000000000,
-  }));
-  // What it produces AFTER: each position valued at its own netuid's price.
-  const convertedRows = positions.map((p) => ({
-    ss58: p.ss58,
-    free_tao: 0,
-    delegated_tao: p.alpha * p.price,
-    captured_at: 1750000000000,
-  }));
-
-  test("the price-weighted sum is not the raw sum", () => {
-    const converted = buildTopHoldersList(convertedRows) as Row;
-    const byId = new Map(
-      (converted.accounts as Row[]).map((a: Row) => [a.ss58, a]),
-    );
-    assert.equal(byId.get("5CheapWhale")?.delegated_tao, 50000);
-    assert.equal(byId.get("5RichHolder")?.delegated_tao, 60000);
-    // The raw sums the old query returned, for contrast.
-    assert.equal(unconvertedRows[0].delegated_tao, 25_000_000);
-    assert.equal(unconvertedRows[1].delegated_tao, 200_000);
-  });
-
-  test("the default total_tao ordering FLIPS versus the unconverted sum", () => {
-    // Before: whoever holds the most alpha tokens wins, regardless of value.
-    const before = buildTopHoldersList(unconvertedRows) as Row;
+  test("raw alpha, spot-price guesses, share guesses and guessed zero are all null", () => {
+    const data = buildTopHoldersList(guesses) as Row;
     assert.deepEqual(
-      (before.accounts as Row[]).map((a: Row) => a.ss58),
-      ["5CheapWhale", "5RichHolder"],
+      (data.accounts as Row[]).map((row) => row.ss58),
+      ["5Shares", "5SpotPrice", "5RawAlpha", "5ZeroGuess"],
     );
-    // After: whoever holds the most TAO wins. This flip -- not the magnitude
-    // -- is why a flat multiplier would not have fixed anything.
-    const after = buildTopHoldersList(convertedRows) as Row;
-    assert.deepEqual(
-      (after.accounts as Row[]).map((a: Row) => a.ss58),
-      ["5RichHolder", "5CheapWhale"],
-    );
-  });
-
-  test("a netuid with no usable alpha price is excluded, never counted as 0", () => {
-    // The SQL's WHERE drops that netuid's rows from the aggregate, so the
-    // account still appears with the value of its PRICED positions -- it is
-    // not zeroed, and it is not silently credited with unpriced alpha.
-    const withUnpricedNetuid = [
-      {
-        ss58: "5PartlyPriced",
-        free_tao: 10,
-        // Only the priced netuid contributes: 200_000 * 0.3. The unpriced
-        // netuid's 5,000,000 alpha is absent from the sum entirely.
-        delegated_tao: 200_000 * RICH_ALPHA_PRICE,
-        captured_at: 1750000000000,
-      },
-    ];
-    const data = buildTopHoldersList(withUnpricedNetuid) as Row;
-    assert.equal(data.accounts[0].delegated_tao, 60000);
-    assert.equal(data.accounts[0].total_tao, 60010);
-    // A silent 0 for the unpriced netuid would look identical to a real
-    // zero-value position; exclusion keeps the priced part honest.
-    assert.notEqual(data.accounts[0].delegated_tao, 0);
-  });
-
-  test("no account reports more TAO than can exist", () => {
-    // A hard assertion, deliberately NOT a runtime clamp: a clamp would round
-    // a future regression away instead of failing CI. Every account in the
-    // converted leaderboard must sit under the 21M hard cap; the unconverted
-    // one blows straight through it, which is exactly what production did.
-    const after = buildTopHoldersList(convertedRows) as Row;
-    for (const account of after.accounts as Row[]) {
-      assert.ok(
-        (account.total_tao as number) <= TAO_MAX_SUPPLY,
-        `${account.ss58} reports ${account.total_tao} TAO, above the ${TAO_MAX_SUPPLY} hard cap`,
+    for (const account of data.accounts as Row[]) {
+      assert.equal(account.delegated_tao, null, account.ss58);
+      assert.equal(account.total_tao, null, account.ss58);
+      assert.equal(
+        account.free_tao,
+        guesses.find((row) => row.ss58 === account.ss58)!.free_tao,
       );
     }
-    // Sanity: the same fixture through the OLD raw-alpha aggregate really
-    // does break the cap, so the bound above is a live check and not a
-    // vacuous one. Production's five top rows summed to 33,036,023 this way.
-    const before = buildTopHoldersList(unconvertedRows) as Row;
-    assert.ok(
-      (before.accounts[0].total_tao as number) > TAO_MAX_SUPPLY,
-      "sanity: the unconverted sum really is impossible",
+  });
+
+  test("numeric-string financial guesses are suppressed while numeric-string free TAO remains measured", () => {
+    const data = buildTopHoldersList([
+      {
+        ss58: "5Stored",
+        free_tao: "42.125",
+        delegated_tao: "8",
+        total_tao: "50.125",
+      },
+    ]) as Row;
+    assert.equal(data.accounts[0].free_tao, 42.125);
+    assert.equal(data.accounts[0].delegated_tao, null);
+    assert.equal(data.accounts[0].total_tao, null);
+  });
+
+  test("legacy wealth cannot reorder a page ranked by an observed flow", () => {
+    const data = buildTopHoldersList(
+      [
+        { ...guesses[0], net_flow_30d: -5 },
+        { ...guesses[1], net_flow_30d: 0 },
+        { ...guesses[2], net_flow_30d: 3 },
+      ],
+      { sort: "net_flow_30d" },
+    ) as Row;
+    assert.deepEqual(
+      (data.accounts as Row[]).map((row) => row.ss58),
+      ["5Shares", "5SpotPrice", "5RawAlpha"],
+    );
+    assert.deepEqual(
+      (data.accounts as Row[]).map((row) => row.net_flow_30d),
+      [3, 0, -5],
     );
   });
 });

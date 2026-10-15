@@ -3,7 +3,13 @@ import { z } from "zod";
 export const ValidatorOperatorKeySchema = z
   .object({
     hotkey: z.string(),
-    total_stake_tao: z.number().min(0),
+    total_stake_tao: z
+      .number()
+      .nullable()
+      .describe(
+        "Deprecated inferred holdings value; always null because voting weight is not native assets.",
+      )
+      .meta({ deprecated: true }),
     take: z.number().nullable(),
   })
   .strict();
@@ -32,7 +38,13 @@ export const ValidatorOperatorDirectoryEntrySchema = z
       .describe(
         "The source-selected owner account of the primary hotkey. Common to all members only when ownership_basis is single_coldkey; otherwise this is a representative source field, not evidence of shared ownership.",
       ),
-    total_stake_tao: z.number().min(0),
+    total_stake_tao: z
+      .number()
+      .nullable()
+      .describe(
+        "Deprecated inferred holdings value; always null because voting weight is not native assets.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z.number().min(0),
     nominator_count: z
       .int()
@@ -52,7 +64,7 @@ export const ValidatorOperatorDirectoryEntrySchema = z
 
 export const ValidatorOperatorDirectoryArtifactSchema = z
   .object({
-    schema_version: z.literal(1),
+    schema_version: z.literal(2),
     captured_at: z.string().nullable(),
     block_number: z.int().min(0).nullable(),
     validator_count: z.int().min(0),

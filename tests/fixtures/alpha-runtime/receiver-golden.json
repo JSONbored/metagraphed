@@ -1,0 +1,71 @@
+{
+  "provenance": "Synthetic recipient names/capture clock and protocol receipt over authentic runtime478 original share components. Canonical digest is the ordered context/position tuple, not object-key serialization. No chain transition or full census claim.",
+  "packet": {
+    "alpha_snapshot": {
+      "captured_at": 1791900000000,
+      "block_number": 9277292,
+      "block_hash": "0xcf03d42fa022e83cb8e058a129b5205a4469d26b771661ce57a69994861bab95",
+      "genesis_hash": "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03",
+      "spec_version": 478,
+      "code_hash": "0x7e722b3aa5c9192c98665a5d65fa91364bf9055e21fc90efce6d59bf4ef414e1",
+      "metadata_sha256": "2513780705c9e9c1b9fb7e701670fee88cf8419b945100fc26ab87218b03e35a",
+      "scanned_legacy": 0,
+      "scanned_v2": 10,
+      "total_rows": 1,
+      "total_chunks": 1,
+      "index": 0
+    },
+    "rows": [
+      {
+        "coldkey": "alice",
+        "hotkey": "hot",
+        "netuid": 23,
+        "evidence": {
+          "share": {
+            "legacy_bits": null,
+            "v2": {
+              "mantissa": "163325115200000000000",
+              "exponent": "-11"
+            }
+          },
+          "denominator": {
+            "legacy_bits": null,
+            "v2": {
+              "mantissa": "163325115200000000000",
+              "exponent": "-11"
+            }
+          },
+          "total_alpha_rao": "1633251152",
+          "pool_epoch": null,
+          "member_epoch": null
+        }
+      }
+    ]
+  },
+  "reply": {
+    "ok": true,
+    "alpha_snapshot": {
+      "captured_at": 1791900000000,
+      "block_number": 9277292,
+      "block_hash": "0xcf03d42fa022e83cb8e058a129b5205a4469d26b771661ce57a69994861bab95",
+      "genesis_hash": "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03",
+      "spec_version": 478,
+      "code_hash": "0x7e722b3aa5c9192c98665a5d65fa91364bf9055e21fc90efce6d59bf4ef414e1",
+      "metadata_sha256": "2513780705c9e9c1b9fb7e701670fee88cf8419b945100fc26ab87218b03e35a",
+      "scanned_legacy": 0,
+      "scanned_v2": 10,
+      "total_rows": 1,
+      "total_chunks": 1,
+      "index": 0,
+      "sha256": "4dc4fedebfe76ee7187b10cf2a0f8024c5b641edf4f67231891fe04f5bd1605e",
+      "applied": 1,
+      "received_rows": 1,
+      "received_chunks": 1,
+      "completed_at": 1791900100000,
+      "selected": 1,
+      "complete": true
+    },
+    "nominator_positions_written": 1,
+    "stores": ["d1"]
+  }
+}
