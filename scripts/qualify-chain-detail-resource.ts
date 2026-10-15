@@ -872,6 +872,7 @@ try {
         });
       return {
         client: cdp,
+        applicationTargetId: subjects[0]?.id,
         isolate: await cdp?.request("Runtime.getIsolateId"),
       };
     }
@@ -926,7 +927,9 @@ try {
       const attached = await attachInspectors(true);
       cdp = attached.client;
       let isolate = attached.isolate;
+      const applicationTargetId = attached.applicationTargetId;
       assert.ok(cdp);
+      assert.ok(applicationTargetId);
       if (cpuProfiles) {
         await cdp.request("Profiler.enable");
         await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
@@ -2105,7 +2108,7 @@ try {
           shape,
           phase,
           isolate,
-          target_id: subjects[0].id,
+          target_id: applicationTargetId,
           wire_bytes: admitted?.byteLength,
           decoded_bytes: direct ? undefined : decoded,
           http_request_bytes: httpRequestBytes,
