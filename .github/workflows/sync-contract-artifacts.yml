@@ -85,8 +85,13 @@ jobs:
           audit_status=0
           npm audit --omit=dev --json > "$RUNNER_TEMP/dependency-security/before.json" || audit_status=$?
           test "$audit_status" -le 1
-          npm audit fix --package-lock-only --ignore-scripts --omit=dev
+          npm update @modelcontextprotocol/sdk dompurify fast-uri ip-address proxy-addr --package-lock-only --ignore-scripts --workspaces --include-workspace-root
           npm audit --omit=dev --json > "$RUNNER_TEMP/dependency-security/after.json"
+
+      - name: Stage dependency security evidence
+        if: always() && inputs.prepare_only == true && inputs.dependency_security_fix == true
+        shell: bash
+        run: |
           cp package.json package-lock.json "$RUNNER_TEMP/dependency-security/"
           git diff -- package.json package-lock.json > "$RUNNER_TEMP/dependency-security/dependency.patch"
 
