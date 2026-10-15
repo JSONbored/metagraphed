@@ -102,8 +102,14 @@ export interface ArgRow {
  * would invent structure the call does not have.
  */
 export function argRows(args: Extrinsic["call_args"]): ArgRow[] {
-  if (!Array.isArray(args)) return [];
-  return args.map((arg, i) => {
+  // The API also retains older named-object call arguments. Keep those
+  // names and nested values instead of claiming that the call took none.
+  const entries = Array.isArray(args)
+    ? args
+    : args && typeof args === "object"
+      ? Object.entries(args).map(([name, value]) => ({ name, value }))
+      : [];
+  return entries.map((arg, i) => {
     const record = (arg ?? {}) as Record<string, unknown>;
     const name = typeof record.name === "string" && record.name ? record.name : `arg ${i}`;
     return {
