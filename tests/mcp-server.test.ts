@@ -5940,6 +5940,55 @@ describe("MCP get_subnet_snapshot", () => {
     assert.deepEqual(out.recent_events.events, []);
   });
 
+  test("shared snapshot cards preserve MCP slicing and the independent hyperparameter/event owners", async () => {
+    const paths: string[] = [];
+    const res = await callTool(
+      "get_subnet_snapshot",
+      { netuid: 7, top_validators_limit: 1 },
+      {
+        env: {
+          METAGRAPH_NEURONS_SOURCE: "data-api",
+          METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
+          DATA_API: {
+            fetch: async (request: Request) => {
+              const path = new URL(request.url).pathname;
+              paths.push(path);
+              if (path.endsWith("snapshot-cards"))
+                return Response.json({
+                  concentration: { netuid: 7, neuron_count: 4 },
+                  performance: { netuid: 7, neuron_count: 4 },
+                  validators: {
+                    netuid: 7,
+                    validator_count: 2,
+                    validators: [{ hotkey: "first" }, { hotkey: "second" }],
+                  },
+                });
+              return Response.json({
+                netuid: 7,
+                hyperparameters: { tempo: 99 },
+              });
+            },
+          },
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.top_validators.validator_count, 1);
+    assert.deepEqual(out.top_validators.validators, [{ hotkey: "first" }]);
+    assert.equal(out.concentration.neuron_count, 4);
+    assert.equal(out.performance.neuron_count, 4);
+    assert.equal(out.hyperparameters.hyperparameters.tempo, 99);
+    assert.equal(out.recent_events.event_count, 0);
+    assert.deepEqual(
+      paths.sort(),
+      [
+        "/api/v1/internal/subnets/7/snapshot-cards",
+        "/api/v1/subnets/7/hyperparameters",
+      ].sort(),
+    );
+  });
+
   // A DATA_API stub that dispatches on pathname, mirroring the compare_subnets
   // multi-path mock pattern above -- one binding standing in for the five
   // distinct /api/v1/subnets/:netuid/* routes the compound handler fans out to.

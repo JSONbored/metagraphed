@@ -36,6 +36,10 @@ import {
   type SelfHealthLane,
 } from "../schemas-src/routes/self-health.ts";
 import { safeIntOrNull } from "./read-store.ts";
+import {
+  classifyLaneHealthWriteError,
+  type LaneHealthWriteFailure,
+} from "./lane-health-write-diagnostics.ts";
 
 /**
  * How long a verdict is kept.
@@ -188,6 +192,10 @@ export function isRetiredLane(lane: string): boolean {
  * counts, no D1 envelope. Structural so every watchdog test keeps handing in
  * a plain object. */
 export interface LaneHealthDb {
+  /** Native identity used only inside one bounded retention statement. */
+  historyRowId?: "rowid" | "ctid";
+  /** D1 requires the repaired physical triggers before housekeeping can run. */
+  retentionReady?(): Promise<boolean>;
   /** A materialized latest-per-lane read, maintained atomically by the store. */
   latest?(): Promise<unknown[]>;
   /** Indexed equivalents of the history queries, when the store maintains them. */
@@ -223,38 +231,90 @@ export interface LaneHealthRecord {
 export async function recordLaneVerdict(
   db: LaneHealthDb | null | undefined,
   record: LaneHealthRecord,
+  options: {
+    confirm?: boolean;
+    onFailure?: (reason: LaneHealthWriteFailure) => void;
+  } = {},
 ): Promise<boolean> {
-  if (!db?.run) return false;
-  try {
-    await db.run(
-      "INSERT INTO lane_health (lane, verdict, age_ms, detail, checked_at) " +
-        "VALUES (?, ?, ?, ?, ?)",
-      [
-        record.lane,
-        record.verdict,
-        record.age_ms,
-        record.detail,
-        record.checked_at,
-      ],
-    );
-  } catch {
-    // The insert is what this function promises. A missing binding, an unapplied
-    // migration, or any D1 error means the verdict was NOT recorded, and the caller
-    // is told so.
+  const failed = (reason: LaneHealthWriteFailure): false => {
+    try {
+      options.onFailure?.(reason);
+    } catch {
+      // Optional diagnostics must not change the writer's never-throw contract.
+    }
     return false;
-  }
+  };
+  if (!db?.run) return failed("missing_store");
   try {
-    // Prune this lane's own expired rows on the way through, rather than from a
-    // separate cron that would be one more thing to wire and to notice breaking.
-    // Bounded and indexed: it touches one lane, by (lane, checked_at).
-    await db.run("DELETE FROM lane_health WHERE lane = ? AND checked_at < ?", [
+    const text =
+      "INSERT INTO lane_health (lane, verdict, age_ms, detail, checked_at) " +
+      "VALUES (?, ?, ?, ?, ?)";
+    const values = [
       record.lane,
-      record.checked_at - LANE_HEALTH_RETENTION_MS,
-    ]);
-  } catch {
-    // Deliberately swallowed, and deliberately NOT folded into the try above: the
-    // verdict is already committed, so a failed prune must not report the alarm as
-    // unrecorded. Retention is a housekeeping concern; the next tick retries it.
+      record.verdict,
+      record.age_ms,
+      record.detail,
+      record.checked_at,
+    ];
+    if (options.confirm) {
+      // The HTTP acknowledgement needs the inserted identity, not a resolved
+      // run() with an assumed change count. Both D1 and PostgreSQL support this
+      // existing RETURNING shape; pg may represent BIGINT values as strings.
+      const rows = await db.query(
+        text + " RETURNING lane, verdict, age_ms, detail, checked_at",
+        values,
+      );
+      const inserted = rows[0] as Record<string, unknown> | undefined;
+      if (rows.length !== 1) return failed("returned_count");
+      if (
+        !inserted ||
+        !["lane", "verdict", "detail"].every(
+          (key) => inserted[key] === record[key as keyof LaneHealthRecord],
+        ) ||
+        !["age_ms", "checked_at"].every((key) => {
+          const value = record[key as "age_ms" | "checked_at"];
+          return (
+            inserted[key] === value ||
+            (value !== null && inserted[key] === String(value))
+          );
+        })
+      )
+        return failed("returned_identity");
+    } else await db.run(text, values);
+  } catch (error) {
+    // A failed insert/confirmation is not an acknowledgement. An error can
+    // follow commit, so this false result never authorizes replaying the row.
+    return failed(classifyLaneHealthWriteError(error));
+  } finally {
+    try {
+      // Main publishes Workers and DDL independently. Never clean up against
+      // the old expensive triggers, or let this guard override the insert result.
+      if (!db.retentionReady || (await db.retentionReady())) {
+        // Independent housekeeping also runs after a refused/ambiguous insert.
+        // Never replay the insert. Keep every latest-timestamp tie, so failure
+        // cannot erase the last signal or change its severity. The native row
+        // identity stays inside this statement; it is never a durable receipt.
+        const rowId = db.historyRowId ?? "rowid";
+        await db.run(
+          `DELETE FROM lane_health WHERE ${rowId} IN (
+            SELECT ${rowId} FROM lane_health WHERE lane = ? AND checked_at < (
+              SELECT MIN(bound) FROM (
+                SELECT ? AS bound UNION ALL
+                SELECT MAX(checked_at) FROM lane_health WHERE lane = ?
+              ) retention_bounds)
+            ORDER BY checked_at LIMIT 20)`,
+          [
+            record.lane,
+            record.checked_at - LANE_HEALTH_RETENTION_MS,
+            record.lane,
+          ],
+        );
+      }
+    } catch {
+      // Cleanup cannot change the insertion acknowledgement. Limit direct
+      // deletions to 20 per tick: native 130k-history measurements exposed
+      // substantial work in D1's existing projection triggers.
+    }
   }
   return true;
 }

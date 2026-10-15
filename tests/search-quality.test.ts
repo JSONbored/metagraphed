@@ -6,8 +6,10 @@ import { handleRequest } from "../workers/api.ts";
 import {
   cleanDescription,
   createLocalArtifactEnv,
+  loadNativeSnapshot,
   readJson,
   repoRoot,
+  subnetLifecycle,
 } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -23,6 +25,7 @@ function loadArtifact(relative: string): Promise<Row> {
 
 const search = await loadArtifact("search.json");
 const subnetsArtifact = await loadArtifact("subnets.json");
+const nativeSnapshot = await loadNativeSnapshot();
 
 // Semantic invariants for the discovery layer (TS1/TS5): the search corpus must
 // carry real subnet descriptions and must NOT be polluted by URL-fragment
@@ -127,9 +130,12 @@ describe("search corpus invariants", () => {
 });
 
 describe("registry lifecycle truth (TS4)", () => {
-  const subnets = subnetsArtifact.subnets;
-  const byNetuid = new Map<number, Row>(
-    subnets.map((subnet: Row): [number, Row] => [subnet.netuid, subnet]),
+  const subnets = subnetsArtifact.subnets as Row[];
+  const nativeByNetuid = new Map<number, Row>(
+    (nativeSnapshot.subnets as Row[]).map((subnet): [number, Row] => [
+      subnet.netuid,
+      subnet,
+    ]),
   );
 
   test("every subnet carries a valid lifecycle", () => {
@@ -142,25 +148,64 @@ describe("registry lifecycle truth (TS4)", () => {
     }
   });
 
-  test("chain-deprecated/parked/pending subnets are not reported as live", () => {
-    // Netuid 39 remains chain-deprecated, 73 is Parked, and 94 is
-    // "pending..." — they must NOT carry lifecycle "active".
-    //
-    // 3 and 81 used to be deprecated too, but their owners have since renamed
-    // them on chain to Teutonic and Reliquary. A fresh capture must let those
-    // records return to active instead of pinning lifecycle to old test data.
-    assert.equal(byNetuid.get(39)?.lifecycle, "deprecated");
-    assert.equal(byNetuid.get(73)?.lifecycle, "parked");
-    assert.equal(byNetuid.get(94)?.lifecycle, "pending");
-    assert.equal(byNetuid.get(3)?.lifecycle, "active");
-    assert.equal(byNetuid.get(81)?.lifecycle, "active");
+  test("artifact lifecycle follows the current captured identity, independently of registration status", () => {
+    // A netuid can keep its registration while its owner changes the identity
+    // from pending to a live product. Compare with the exact native capture
+    // the build consumes, rather than pinning a netuid to a past identity.
+    assert.ok(subnets.length > 0, "expected captured subnets to validate");
+    for (const subnet of subnets) {
+      const native = nativeByNetuid.get(subnet.netuid);
+      assert.ok(
+        native,
+        `subnet ${subnet.netuid} has no captured native identity`,
+      );
+      assert.equal(
+        subnet.lifecycle,
+        subnetLifecycle(native),
+        `subnet ${subnet.netuid} lifecycle must follow its captured identity`,
+      );
+      assert.equal(
+        subnet.status,
+        native.status,
+        `subnet ${subnet.netuid} status must preserve chain registration`,
+      );
+    }
   });
 
-  test("lifecycle is distinct from chain-registration status", () => {
-    // status stays the chain-registration truth ("active"); lifecycle carries
-    // the team's declared state.
-    const deprecated = byNetuid.get(39) as Row;
-    assert.equal(deprecated.lifecycle, "deprecated");
-    assert.equal(deprecated.status, "active");
+  test("registered deprecated, parked and pending identities stay distinct from active products", () => {
+    // Explicit fixtures keep every lifecycle covered even when a fresh network
+    // capture contains no pending products. Registration is active in all cases.
+    for (const [name, lifecycle] of [
+      ["deprecated", "deprecated"],
+      ["Parked", "parked"],
+      ["pending...", "pending"],
+      ["Cathedral", "active"],
+      ["Pending Rewards", "active"],
+    ]) {
+      const native = {
+        status: "active",
+        chain_identity: {
+          subnet_name: name,
+          description: "patent pending; not deprecated",
+        },
+      };
+      assert.equal(subnetLifecycle(native), lifecycle, name);
+      assert.equal(native.status, "active", name);
+    }
+  });
+
+  test("a registered pending subnet becomes active when its identity changes", () => {
+    // Synthetic before/after captures of the same netuid reproduce the stale
+    // pending assumption without claiming that its current identity is fixed.
+    const pending = {
+      netuid: 94,
+      status: "active",
+      chain_identity: { subnet_name: "pending..." },
+    };
+    const named = { ...pending, chain_identity: { subnet_name: "Cathedral" } };
+    assert.equal(subnetLifecycle(pending), "pending");
+    assert.equal(subnetLifecycle(named), "active");
+    assert.equal(named.netuid, pending.netuid);
+    assert.equal(named.status, "active");
   });
 });
