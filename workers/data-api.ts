@@ -1,3 +1,6 @@
+import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
+import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
+const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import {
   parseCompareHotkeys,
   COMPARE_VALIDATORS_MAX,
@@ -254,6 +257,7 @@ const explorerDirectoryRefreshes = new Map<number, Promise<boolean>>();
 // this reset is here because the state genuinely leaks, not because the gate
 // demanded it.
 registerModuleStateReset("workers/data-api.ts", () => {
+  reportAccountIdentitySyncFailure.reset();
   capturedSchemaDrift.clear();
   explorerDirectoryRefreshes.clear();
 });
@@ -305,7 +309,12 @@ async function captureDataApiError(
 ): Promise<boolean> {
   if (shouldSkipDriftCapture(err, route)) return false;
   await recordExceptionEvent(env, {
-    error: err,
+    // Keep the original driver metadata for drift dedupe above. Only the
+    // emitted identity history telemetry receives the safe replacement.
+    error:
+      route === "account-identity-sync-history"
+        ? new Error(classifyLaneHealthWriteError(err))
+        : err,
     route,
     errorCode: "internal_error",
   });
@@ -1960,7 +1969,7 @@ async function handleAccountIdentitySync(
     neonHistoryRows = historyRows as Row[];
     historyAppended = historyRows.length;
   } catch (err) {
-    console.error("data-api account-identity-sync history read failed:", err);
+    reportAccountIdentitySyncFailure({ stage: "history_read", error: err });
     await captureDataApiError(err, "account-identity-sync-history", env);
     return writeJson({ error: "history read failed" }, 502);
   }
@@ -1973,13 +1982,9 @@ async function handleAccountIdentitySync(
   // AUTHORITATIVE -- see the hyperparams sync for the reasoning.
   const failed = failedTables(neon);
   if (!neon.attempted || (failed && failed.length > 0)) {
-    console.error("data-api account-identity-sync Neon write failed:", failed);
+    reportAccountIdentitySyncFailure({ stage: "family_write", outcome: neon });
     await captureDataApiError(
-      new Error(
-        failed && failed.length > 0
-          ? `neon write failed: ${failed.join(", ")}`
-          : "neon write not attempted",
-      ),
+      new Error("account identity family write failed"),
       "account-identity-sync-neon",
       env,
     );

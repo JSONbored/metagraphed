@@ -6,7 +6,9 @@
 // mirrors). The downstream sync logic itself is covered by
 // tests/data-api.test.ts.
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { beforeEach, test, vi } from "vitest";
+import { resetModuleState } from "../src/module-state-registry.ts";
+beforeEach(() => resetModuleState());
 import { handleRequest } from "../workers/api.ts";
 
 function post({ method = "POST" } = {}) {
@@ -113,4 +115,45 @@ test("returns 502 when the upstream response body is unreadable", async () => {
     (await res.json()).error.code,
     "account_identity_sync_unavailable",
   );
+});
+
+test("unreadable identity response reports safe stage and never replays the write", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const clock = vi.spyOn(Date, "now").mockReturnValue(9_000_000_000_000);
+  let calls = 0;
+  try {
+    const response = await handleRequest(
+      post(),
+      {
+        DATA_API: {
+          fetch() {
+            calls++;
+            return new Response("private payload token=secret", {
+              status: 503,
+            });
+          },
+        },
+      } as unknown as Env,
+      {},
+    );
+    assert.equal(response.status, 502);
+    assert.equal(calls, 1);
+    const events = warn.mock.calls.filter(
+      ([label]) => label === "account_identity_sync_failure",
+    );
+    assert.deepEqual(events, [
+      [
+        "account_identity_sync_failure",
+        {
+          stage: "upstream_response",
+          reasons: ["unreadable_response"],
+          upstream_status: 503,
+          confirmed_rows: null,
+        },
+      ],
+    ]);
+  } finally {
+    warn.mockRestore();
+    clock.mockRestore();
+  }
 });
