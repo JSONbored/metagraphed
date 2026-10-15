@@ -23,6 +23,19 @@ on:
         description: "Only HTTP envelope/concurrent and nonempty chunk diagnostics (requires probe-only)"
         type: boolean
         default: false
+      resource_focused_shape:
+        description: "One diagnostic case (requires probe-only)"
+        type: choice
+        default: none
+        options:
+          [
+            none,
+            mixed-lanes,
+            chunks,
+            chunks-http,
+            http-envelope,
+            http-concurrent,
+          ]
       resource_native_oracle:
         description: "Use native SQL verification; false retains Node binding-proxy comparison"
         type: boolean
@@ -1625,13 +1638,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shape: ${{ inputs.resource_extended_diagnostic && fromJSON('["chunks","chunks-http","http-envelope","http-concurrent"]') || inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","objects-admitted","blocks16"]') }}
+        shape: ${{ inputs.resource_focused_shape && inputs.resource_focused_shape != 'none' && fromJSON(format('["{0}"]', inputs.resource_focused_shape)) || inputs.resource_extended_diagnostic && fromJSON('["chunks","chunks-http","http-envelope","http-concurrent"]') || inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","objects-admitted","blocks16"]') }}
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify_chain_detail_resources }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Require diagnostic disposition for combined pressure
-        if: ${{ (inputs.resource_combined_diagnostic || inputs.resource_extended_diagnostic) && !inputs.resource_probe_only }}
+        if: ${{ (inputs.resource_combined_diagnostic || inputs.resource_extended_diagnostic || (inputs.resource_focused_shape && inputs.resource_focused_shape != 'none')) && !inputs.resource_probe_only }}
         run: |
           echo "::error::Extended/combined pressure reproduction requires diagnostic-only mode."
           exit 1

@@ -16,7 +16,13 @@ import { Miniflare } from "miniflare";
 import { CHAIN_DETAIL_SYNC_MAX_BODY_BYTES } from "../src/chain-detail-sync-payload.ts";
 import { parseChainDetailSync } from "../src/chain-detail-sync-payload.ts";
 import { restoreChainDetailPayloads } from "../src/chain-detail-payloads.ts";
-import { SYNC_BATCH_MAX_BYTES } from "../src/sync-batch-queue.ts";
+import {
+  packSyncBatchMessages,
+  type SyncBatchLane,
+  SYNC_BATCH_MAX_BYTES,
+} from "../src/sync-batch-queue.ts";
+import { makeSyncDelivery } from "../src/sync-delivery-receipt.ts";
+import { PASS_TABLES } from "../src/pass-completeness.ts";
 import { chainDetailTables } from "../src/chain-detail-neon-write.ts";
 import { stripJsonComments } from "./lib.ts";
 import { gzipSync, gunzipSync } from "node:zlib";
@@ -540,6 +546,7 @@ try {
         "blocks16",
         "chunks",
         "chunks-http",
+        "mixed-lanes",
         "http-envelope",
         "http-concurrent",
         "combined",
@@ -567,6 +574,22 @@ try {
     const decoded = Buffer.byteLength(JSON.stringify(message));
     if (!shape.startsWith("http-"))
       assert.ok(decoded <= SYNC_BATCH_MAX_DECODED_BYTES);
+    const mixed = shape === "mixed-lanes";
+    const schemaFiles = mixed
+      ? (await readdir("migrations/d1"))
+          .filter((name) => name.endsWith(".sql"))
+          .sort()
+      : [];
+    const schemaSources = await Promise.all(
+      schemaFiles.map((name) => readFile(`migrations/d1/${name}`, "utf8")),
+    );
+    const mixedTables = schemaSources.flatMap((sql) =>
+      [
+        ...sql.matchAll(
+          /CREATE TABLE(?: IF NOT EXISTS)?\s+([A-Za-z_][A-Za-z_0-9]*)/gi,
+        ),
+      ].map((match) => match[1]),
+    );
     const apiOptions = {
       name: "chain-detail-resource",
       modules: nativeModules,
@@ -577,11 +600,20 @@ try {
       d1Databases: ["D1_STATE"],
       queueProducers: { SYNC_BATCHES: "sync-batches" },
       bindings: {
-        D1_STATE_TABLES: [...chainDetailTables(), "lane_health"].join(","),
+        D1_STATE_TABLES: mixed
+          ? [
+              ...mixedTables,
+              "sync_delivery_passes",
+              "sync_delivery_receipts",
+            ].join(",")
+          : [...chainDetailTables(), "lane_health"].join(","),
+        SYNC_DELIVERY_V1_READY: mixed ? "true" : "false",
         D1_EXPORT_REVISIONS: "enabled",
         ARCHIVE_OBJECT_STORAGE: "native",
         CHAIN_DETAIL_SYNC_SECRET: "synthetic-only",
-        SYNC_QUEUE_LANES: "chain-detail",
+        SYNC_QUEUE_LANES: mixed
+          ? configured.vars.SYNC_QUEUE_LANES
+          : "chain-detail",
       },
       // No network service, credentials, external store or live queue binding.
       outboundService: { network: { allow: [] } },
@@ -677,21 +709,31 @@ try {
             },
           }
         : await deadline(runtime.getD1Database("D1_STATE"), 30_000);
-      for (const migration of [
-        "0001_lane_health.sql",
-        "0002_lane_health_current.sql",
-        "0003_lane_health_history_indexes.sql",
-        "0014_recent_chain_state.sql",
-        "0016_archive_export_revisions.sql",
-        "0024_chain_detail_payload_chunks.sql",
-        "0039_lane_health_retention_trigger_bounds.sql",
-        "0025_sync_dead_letters.sql",
-      ]) {
+      for (const migration of mixed
+        ? schemaFiles
+        : [
+            "0001_lane_health.sql",
+            "0002_lane_health_current.sql",
+            "0003_lane_health_history_indexes.sql",
+            "0014_recent_chain_state.sql",
+            "0016_archive_export_revisions.sql",
+            "0024_chain_detail_payload_chunks.sql",
+            "0039_lane_health_retention_trigger_bounds.sql",
+            "0025_sync_dead_letters.sql",
+          ]) {
         for (const statement of (
           await readFile(`migrations/d1/${migration}`, "utf8")
         ).split("-- statement-breakpoint")) {
           if (statement.trim()) await db.prepare(statement).run();
         }
+      }
+      if (mixed) {
+        for (const statement of (
+          await readFile("deploy/sync-delivery-receipts/sqlite.sql", "utf8")
+        )
+          .split(/(?<=;)\n(?=CREATE|--|\n)/)
+          .filter((sql) => sql.trim()))
+          await db.prepare(statement).run();
       }
       const worker = await runtime.getWorker();
       const targetUrl = new URL(
@@ -749,6 +791,404 @@ try {
           scope: "older accepted consumer body; not current producer admission",
         };
         await save();
+      }
+      if (mixed) {
+        report.mixed_cpu_profiles_collected = false;
+        report.mixed_cpu_scope =
+          "wall/service times only; this branch never starts CPU profile collection";
+        const lanes = String(configured.vars.SYNC_QUEUE_LANES).split(",");
+        assert.deepEqual(
+          [...lanes].sort(),
+          [
+            "account-balances",
+            "chain-detail",
+            "hotkey-alpha",
+            "nominator-positions",
+            "validator-nominator-counts",
+          ].sort(),
+          "measure every configured shared lane; changed roster needs an explicit fixture",
+        );
+        const account = (index: number) =>
+          `5${"A".repeat(43)}${String(index).padStart(4, "0")}`;
+        // Explicit warm-state dependency: hotkey-alpha only admits owners
+        // present in positions. This bootstrap is not measured tape work.
+        const eligibility = Array.from({ length: 1000 }, (_, index) => ({
+          coldkey: "bootstrap-owner",
+          hotkey: account(index),
+          netuid: 1,
+          shares: "1",
+          share_fraction: 1,
+          captured_at: stamp - 1000,
+          source: "alpha",
+        }));
+        await db
+          .prepare(
+            "INSERT INTO nominator_positions(coldkey,hotkey,netuid,shares,share_fraction,captured_at,source) SELECT json_extract(value,'$.coldkey'),json_extract(value,'$.hotkey'),json_extract(value,'$.netuid'),json_extract(value,'$.shares'),json_extract(value,'$.share_fraction'),json_extract(value,'$.captured_at'),json_extract(value,'$.source') FROM json_each(?)",
+          )
+          .bind(JSON.stringify(eligibility))
+          .run();
+        assert.equal(
+          await db
+            .prepare(
+              "SELECT count(*) n FROM nominator_positions WHERE coldkey='bootstrap-owner'",
+            )
+            .first<number>("n"),
+          1000,
+        );
+        const tape: Array<{
+          lane: string;
+          round: number;
+          body: unknown;
+          rows: number;
+          enqueued_ms: number;
+          pass_at?: number;
+        }> = [];
+        // Finite synthetic round-robin arrival tape, including a wide admitted
+        // chain block. One real native queue invocation per message. This is
+        // an explicit driver order, not Cloudflare scheduler/fairness parity.
+        const chainArguments = new Map<number, string>();
+        for (let round = 0; round < 4; round++) {
+          const capturedAt = stamp + round * 1000;
+          for (const laneName of lanes) {
+            const lane = laneName as SyncBatchLane;
+            if (lane === "chain-detail") {
+              const chainMessage = payload(
+                "objects-admitted",
+                9_100_001 + round,
+              );
+              chainArguments.set(
+                9_100_001 + round,
+                hash(
+                  Buffer.from(
+                    String(chainMessage.families.extrinsicRows[0].call_args),
+                  ),
+                ),
+              );
+              const body = await compressSyncBatchMessage(
+                chainMessage,
+                SYNC_BATCH_MAX_BYTES,
+              );
+              tape.push({
+                lane,
+                round,
+                body,
+                rows: 5000,
+                enqueued_ms: performance.now(),
+              });
+              continue;
+            }
+            const rows: Record<string, unknown>[] = Array.from(
+              { length: lane === "nominator-positions" ? 100 : 1000 },
+              (_, index) => {
+                const key = account(index);
+                switch (lane) {
+                  case "account-balances":
+                    return {
+                      ss58: key,
+                      free_tao: round + 1,
+                      reserved_tao: 0,
+                      captured_at: capturedAt,
+                    };
+                  case "hotkey-alpha":
+                    return {
+                      hotkey: key,
+                      netuid: 1,
+                      total_alpha: round + 1,
+                      captured_at: capturedAt,
+                    };
+                  case "validator-nominator-counts":
+                    return {
+                      hotkey: key,
+                      nominator_count: round + 1,
+                      captured_at: capturedAt,
+                    };
+                  case "nominator-positions":
+                    return {
+                      coldkey: account(9999),
+                      hotkey: key,
+                      netuid: 1,
+                      shares: String(index + 1),
+                      share_fraction: 0.01,
+                      captured_at: capturedAt,
+                    };
+                  default:
+                    throw new Error("configured lane lacks diagnostic rows");
+                }
+              },
+            );
+            const delivery = makeSyncDelivery(
+              lane,
+              capturedAt,
+              rows.length,
+              rows,
+            );
+            const messages = packSyncBatchMessages({
+              lane,
+              capturedAt,
+              passTotal: rows.length,
+              delivery,
+              rows,
+            });
+            assert.ok(messages.length > 0);
+            for (const body of messages)
+              tape.push({
+                lane,
+                round,
+                body,
+                rows: body.rows.length,
+                enqueued_ms: performance.now(),
+                pass_at: capturedAt,
+              });
+          }
+        }
+        report.mixed_tape = {
+          messages: tape.length,
+          rows: tape.reduce((sum, item) => sum + item.rows, 0),
+          configured_lanes: lanes,
+          rounds: 4,
+          serial_native_calls: 1,
+          native_batch_size: 1,
+          scheduling:
+            "driver round-robin; native Cloudflare scheduling/fairness not established",
+          arrival_model:
+            "all finite messages queued in driver before serial drain; no production arrival rate supplied",
+        };
+        await save();
+        const drainStarted = performance.now();
+        const retry: typeof tape = [];
+        for (const [index, item] of tape.entries()) {
+          const fail =
+            item.lane === "account-balances" &&
+            item.round === 1 &&
+            !retry.length;
+          if (fail)
+            await db
+              .prepare(
+                "CREATE TRIGGER resource_mixed_reject BEFORE INSERT ON account_balances BEGIN SELECT RAISE(ABORT,'synthetic mixed failure'); END",
+              )
+              .run();
+          const start = performance.now();
+          const result = await deadline(
+            worker.queue("sync-batches", [
+              {
+                id: `mixed-${index}`,
+                timestamp: new Date(stamp),
+                attempts: 1,
+                body: item.body,
+              },
+            ]),
+            120_000,
+          );
+          const end = performance.now();
+          if (fail) {
+            assert.equal(result.explicitAcks.length, 0);
+            assert.equal(result.retryMessages.length, 1);
+            const credited = await db
+              .prepare(
+                "SELECT count(*) n FROM sync_delivery_receipts WHERE lane=? AND captured_at=?",
+              )
+              .bind(item.lane, item.pass_at)
+              .first<number>("n");
+            assert.equal(
+              credited,
+              0,
+              "failed transaction must not claim receipt credit",
+            );
+            const unchanged = await db
+              .prepare(
+                "SELECT count(*) rows,sum(free_tao) amount,min(captured_at) oldest,max(captured_at) newest FROM account_balances",
+              )
+              .first();
+            assert.deepEqual(
+              unchanged,
+              { rows: 1000, amount: 1000, oldest: stamp, newest: stamp },
+              "injected failed transaction must preserve prior business rows",
+            );
+            await db.prepare("DROP TRIGGER resource_mixed_reject").run();
+            retry.push(item);
+          } else {
+            assert.ok(result.ackAll || result.explicitAcks.length === 1);
+            assert.equal(result.retryMessages.length, 0);
+          }
+          observations.push({
+            shape,
+            phase: "serial-drain",
+            lane: item.lane,
+            round: item.round,
+            rows: item.rows,
+            queued_before_drain_ms: item.enqueued_ms,
+            started_ms: start,
+            finished_ms: end,
+            driver_wait_ms: start - item.enqueued_ms,
+            service_wall_ms: end - start,
+            driver_remaining: tape.length - index - 1,
+            result,
+            deliberate_retry: fail,
+            native_limits: await nativeLimits(),
+          });
+          await save();
+        }
+        const primaryDrainWallMs = performance.now() - drainStarted;
+        assert.equal(
+          retry.length,
+          1,
+          "finite tape must include exactly one failed message",
+        );
+        for (const item of retry) {
+          const result = await deadline(
+            worker.queue("sync-batches", [
+              {
+                id: "mixed-repair",
+                timestamp: new Date(stamp),
+                attempts: 2,
+                body: item.body,
+              },
+            ]),
+            120_000,
+          );
+          assert.ok(result.ackAll || result.explicitAcks.length === 1);
+          assert.equal(result.retryMessages.length, 0);
+          observations.push({
+            shape,
+            phase: "retry-repair",
+            lane: item.lane,
+            round: item.round,
+            result,
+          });
+          await save();
+        }
+        // Exact receipt replay must not double credit a pass, even after newer
+        // observations have arrived. Then check all16 business-pass totals.
+        for (const item of tape.filter(
+          (entry) => entry.lane !== "chain-detail",
+        )) {
+          const result = await deadline(
+            worker.queue("sync-batches", [
+              {
+                id: "mixed-replay",
+                timestamp: new Date(stamp),
+                attempts: 2,
+                body: item.body,
+              },
+            ]),
+            120_000,
+          );
+          assert.ok(result.ackAll || result.explicitAcks.length === 1);
+          assert.equal(result.retryMessages.length, 0);
+        }
+        const passes = [];
+        for (let round = 0; round < 4; round++)
+          for (const lane of lanes.filter(
+            (value: string) => value !== "chain-detail",
+          )) {
+            const expected = lane === "nominator-positions" ? 100 : 1000;
+            const row = await db
+              .prepare(
+                `SELECT expected_rows,received_rows,completed_at FROM ${PASS_TABLES[lane]} WHERE captured_at=?`,
+              )
+              .bind(stamp + round * 1000)
+              .first<{
+                expected_rows: number;
+                received_rows: number;
+                completed_at: number;
+              }>();
+            assert.ok(row);
+            assert.equal(row.expected_rows, expected);
+            assert.equal(row.received_rows, expected);
+            assert.ok(row.completed_at);
+            passes.push({ lane, round, ...row });
+          }
+        const chain = await db
+          .prepare(
+            "SELECT (SELECT count(*) FROM chain_detail_blocks) blocks,(SELECT count(*) FROM chain_detail_extrinsics) extrinsics,(SELECT count(*) FROM chain_detail_chain_events) events,(SELECT count(*) FROM chain_detail_account_events) accounts",
+          )
+          .first();
+        assert.deepEqual(chain, {
+          blocks: 4,
+          extrinsics: 4,
+          events: 19992,
+          accounts: 4,
+        });
+        for (const [block, expectedHash] of chainArguments) {
+          const row = await db
+            .prepare(
+              "SELECT call_args FROM chain_detail_extrinsics WHERE block_number=? AND extrinsic_index=0",
+            )
+            .bind(block)
+            .first<Record<string, unknown>>();
+          assert.ok(row);
+          const [restored] = await restoreChainDetailPayloads(
+            { D1_STATE: db },
+            [row],
+          );
+          assert.equal(
+            hash(Buffer.from(String(restored.call_args))),
+            expectedHash,
+            "each mixed chain block must retain exact full argument bytes",
+          );
+        }
+        const business = [];
+        for (const [table, value] of [
+          ["account_balances", "free_tao"],
+          ["hotkey_alpha", "total_alpha"],
+          ["validator_nominator_counts", "nominator_count"],
+        ]) {
+          const latest = await db
+            .prepare(
+              `SELECT count(*) rows,sum(${value}) amount,min(captured_at) oldest,max(captured_at) newest FROM ${table}`,
+            )
+            .first();
+          assert.deepEqual(
+            latest,
+            {
+              rows: 1000,
+              amount: 4000,
+              oldest: stamp + 3000,
+              newest: stamp + 3000,
+            },
+            "late retry/replay must preserve latest business values",
+          );
+          business.push({ table, ...latest });
+        }
+        const positions = await db
+          .prepare(
+            "SELECT count(*) rows,sum(CAST(shares AS INTEGER)) shares,min(captured_at) oldest,max(captured_at) newest FROM nominator_positions WHERE coldkey=?",
+          )
+          .bind(account(9999))
+          .first();
+        assert.deepEqual(positions, {
+          rows: 100,
+          shares: 5050,
+          oldest: stamp + 3000,
+          newest: stamp + 3000,
+        });
+        assert.equal(
+          await db
+            .prepare(
+              "SELECT count(*) n FROM nominator_positions WHERE coldkey='bootstrap-owner'",
+            )
+            .first<number>("n"),
+          1000,
+        );
+        report.mixed_completed = {
+          passes,
+          chain,
+          business,
+          measured_positions: positions,
+          eligible_bootstrap_positions: 1000,
+          deliberate_failures: 1,
+          repaired: 1,
+          replay_credit_unchanged: true,
+          serial_drain_wall_ms: primaryDrainWallMs,
+          total_including_repair_replay_verification_ms:
+            performance.now() - drainStarted,
+          workerd_process: await processMemory(),
+          driver_memory: process.memoryUsage(),
+          native_limits: await nativeLimits(),
+          production_freshness_or_fairness_qualified: false,
+        };
+        await save();
+        continue;
       }
       let retainedOriginal = message;
       if (shape === "objects" || shape === "objects-max") {
