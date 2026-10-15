@@ -98,7 +98,10 @@ test("lossless Alpha generation refuses an old physical schema while legacy anal
     { ...env(), D1_STATE: legacy },
   );
   assert.equal(response.status, 503);
-  assert.match((await response.json<{ error: string }>()).error, /incomplete/);
+  assert.equal(
+    (await response.json<{ error: string }>()).error,
+    "D1 export unavailable; no snapshot was acknowledged",
+  );
 });
 
 test("all 34 archive schemas and empty exports use native D1 with logical types", async () => {
