@@ -85,15 +85,20 @@ test.describe("Deferred preferences", () => {
     await expect(trigger).toBeFocused();
   });
 
-  test("a failed preferences chunk offers a working reload recovery", async ({ page }) => {
+  test("a failed preferences chunk offers a working reload recovery", async ({ page }, testInfo) => {
+    const events: unknown[] = [];
+    page.on("framenavigated", (frame) => { if (frame === page.mainFrame()) events.push({ navigation: frame.url() }); });
+    page.on("pageerror", (error) => events.push({ error: error.message }));
+    page.on("console", (message) => { if (message.type() === "error") events.push({ console: message.text() }); });
     let unavailable = true;
     await page.route(SETTINGS_CHUNK, async (route) => {
+      events.push({ abort: unavailable, url: route.request().url() });
       if (unavailable) await route.abort("failed");
       else await route.continue();
     });
     await openPage(page, 1280);
     await page.getByRole("button", { name: "Settings", exact: true }).click();
-    await expect(page.getByRole("alert")).toContainText("Settings could not load.");
+    await expect(page.getByRole("alert")).toContainText("Settings could not load.").finally(async () => { await testInfo.attach("preferences-local-events", { contentType: "application/json", body: JSON.stringify(events) }); });
     const reload = page.getByRole("button", { name: "Reload settings", exact: true });
     await expect(reload).toBeFocused();
     unavailable = false;

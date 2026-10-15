@@ -221,7 +221,9 @@ jobs:
 
       - name: Qualify dependency compiled SSR and transport
         if: inputs.prepare_only == true && inputs.dependency_security_fix == true
-        run: npm run test:e2e --workspace=apps/ui -- --grep '/blocks/8713384|server-function fields cannot override results'
+        run: |
+          npm run test:e2e --workspace=apps/ui -- --project=overflow --grep '/blocks/8713384'
+          npm run test:e2e --workspace=apps/ui -- --project=interaction --no-deps --grep 'server-function fields cannot override results|stays under the HTML ratchet|a failed preferences chunk'
 
       - name: Retain dependency browser smoke
         if: always() && inputs.prepare_only == true && inputs.dependency_security_fix == true

@@ -640,8 +640,9 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
   };
 
   for (const path of Object.keys(HUB_COPY) as Array<keyof typeof HUB_COPY>) {
-    test(`${path} stays under the HTML ratchet`, async ({ request }) => {
+    test(`${path} stays under the HTML ratchet`, async ({ request }, testInfo) => {
       const html = await (await request.get(path)).text();
+      await testInfo.attach("synthetic-ssr-document", { contentType: "text/html", body: html });
       const kib = Math.round(Buffer.byteLength(html, "utf8") / 1024);
       expect(
         kib,
@@ -707,6 +708,7 @@ test.describe("sitewide payload and entry-bundle ratchets", () => {
   for (const [path, ceiling] of Object.entries(ROUTE_FAMILY_HTML_KIB)) {
     test(`${path} stays under its route-family HTML ratchet`, async ({ request }) => {
       const html = await (await request.get(path)).text();
+      await testInfo.attach("synthetic-ssr-document", { contentType: "text/html", body: html });
       const kib = Math.round(Buffer.byteLength(html, "utf8") / 1024);
       expect(
         kib,
