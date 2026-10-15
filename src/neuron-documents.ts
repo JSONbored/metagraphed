@@ -11,6 +11,7 @@ import {
   neuronPassWrite,
   retryNeuronCapture,
 } from "./neuron-capture-receipt.ts";
+import { commitSyncDelivery } from "./sync-delivery-receipt.ts";
 
 type Row = Record<string, unknown>;
 type Family = "neurons" | "neuron_daily" | "account_position_daily";
@@ -237,9 +238,10 @@ function neuronDocumentWrite(input: NeuronMirrorInput) {
       values: [value, value, value],
     });
   }
-  const passWrite = input.pass
-    ? neuronPassWrite(input.pass, input.rows)
-    : undefined;
+  const passWrite =
+    input.pass && !input.pass.delivery
+      ? neuronPassWrite(input.pass, input.rows)
+      : undefined;
   if (passWrite) statements.push(...passWrite.statements);
   if (statements.length > 900)
     throw new RangeError("Neuron capture exceeds atomic statement budget");
@@ -258,7 +260,13 @@ export async function writeNeuronDocuments(
 ): Promise<number> {
   const { statements, passWrite } = neuronDocumentWrite(input);
   await retryNeuronCapture(async () => {
-    await store.transaction(statements);
+    await commitSyncDelivery(
+      store,
+      "neurons",
+      input.rows,
+      input.pass,
+      statements,
+    );
     if (passWrite) await passWrite.acknowledge(store);
   });
   return statements.length;

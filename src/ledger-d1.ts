@@ -14,6 +14,7 @@ import {
 import { NOMINATOR_SCAN_RECEIPTS_RETENTION_MS } from "./nominator-scan-receipts.ts";
 import type { ProducerStore, ProducerStatement } from "./producer-store.ts";
 import type { NeonWriteResult } from "./neon-write.ts";
+import { commitSyncDelivery } from "./sync-delivery-receipt.ts";
 
 function passStatement(lane: string, pass: PassTallyInput): ProducerStatement {
   const table = PASS_TABLES[lane];
@@ -63,7 +64,9 @@ export async function writeLedgerD1(
         )
       : [];
     if (pass) statements.push(passStatement(lane, pass));
-    await commit(store, statements);
+    if (pass?.delivery)
+      await commitSyncDelivery(store, lane, rows, pass, statements);
+    else await commit(store, statements);
     return { ok: true, rows: rows.length, statements: statements.length };
   } catch (error) {
     return { ok: false, rows: 0, statements: 0, reason: String(error) };
@@ -178,7 +181,15 @@ export async function writeNominatorPositionsD1(
       );
       parts.pass = { ok: true, rows: 1, statements: 1 };
     }
-    await commit(store, statements);
+    if (input.pass?.delivery)
+      await commitSyncDelivery(
+        store,
+        NOMINATOR_POSITIONS_NEON_LANE,
+        input.rows,
+        input.pass,
+        statements,
+      );
+    else await commit(store, statements);
     return { attempted: true, ...parts };
   } catch (error) {
     const failure = {

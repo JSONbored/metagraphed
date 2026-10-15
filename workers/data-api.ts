@@ -1,3 +1,8 @@
+import {
+  makeSyncDelivery,
+  requireSyncDeliveryQualification,
+  verifySyncDelivery,
+} from "../src/sync-delivery-receipt.ts";
 import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
@@ -790,9 +795,13 @@ async function handleNeuronsSync(
   }
   const incoming = Array.isArray(parsed)
     ? parsed
-    : Array.isArray(parsed?.rows)
-      ? parsed.rows
-      : null;
+    : Array.isArray(parsed?.delivery_rows) &&
+        parsed?.delivery !== undefined &&
+        parsed?.rows === undefined
+      ? parsed.delivery_rows
+      : Array.isArray(parsed?.rows) && parsed?.delivery === undefined
+        ? parsed.rows
+        : null;
   if (!incoming) {
     return writeJson(
       { error: "body must be a JSON array of neuron rows (or {rows:[...]})" },
@@ -864,6 +873,15 @@ async function handleNeuronsSync(
     return writeJson({ error: neuronsTally.error }, 400);
   }
   const pass = neuronsTally.pass ?? null;
+  const deliveryError = attachSyncDelivery(
+    env,
+    parsed,
+    incoming,
+    rows,
+    pass,
+    "neurons",
+  );
+  if (deliveryError) return writeJson({ error: deliveryError }, 400);
 
   // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
   //
@@ -880,7 +898,9 @@ async function handleNeuronsSync(
       await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "neurons",
         capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
-        ...(pass ? { passTotal: pass.expectedRows } : {}),
+        ...(pass
+          ? { passTotal: pass.expectedRows, delivery: pass.delivery }
+          : {}),
         rows,
       });
     } catch (err) {
@@ -895,6 +915,7 @@ async function handleNeuronsSync(
       account_position_daily_written: positionRows.length,
       netuids_covered: netuids.length,
       stores: ["queue"],
+      ...(pass?.delivery ? { delivery: pass.delivery } : {}),
     });
   }
 
@@ -970,6 +991,7 @@ async function handleNeuronsSync(
     account_position_daily_written: positionRows.length,
     netuids_covered: netuids.length,
     stores: ["neon"],
+    ...(pass?.delivery ? { delivery: pass.delivery } : {}),
     neon: neon.results,
   });
 }
@@ -2424,9 +2446,13 @@ async function handleValidatorNominatorCountsSync(
   // route here speaks and a mismatch is not worth a failed cycle.
   const incoming = Array.isArray(parsed)
     ? parsed
-    : Array.isArray(parsed?.rows)
-      ? parsed.rows
-      : null;
+    : Array.isArray(parsed?.delivery_rows) &&
+        parsed?.delivery !== undefined &&
+        parsed?.rows === undefined
+      ? parsed.delivery_rows
+      : Array.isArray(parsed?.rows) && parsed?.delivery === undefined
+        ? parsed.rows
+        : null;
   if (!incoming) {
     return writeJson(
       {
@@ -2473,6 +2499,15 @@ async function handleValidatorNominatorCountsSync(
     return writeJson({ error: countsTally.error }, 400);
   }
   const pass = countsTally.pass ?? null;
+  const deliveryError = attachSyncDelivery(
+    env,
+    parsed,
+    incoming,
+    rows,
+    pass,
+    "validator-nominator-counts",
+  );
+  if (deliveryError) return writeJson({ error: deliveryError }, 400);
 
   // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
   if (syncLaneUsesQueue(env, "validator-nominator-counts")) {
@@ -2480,7 +2515,9 @@ async function handleValidatorNominatorCountsSync(
       await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "validator-nominator-counts",
         capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
-        ...(pass ? { passTotal: pass.expectedRows } : {}),
+        ...(pass
+          ? { passTotal: pass.expectedRows, delivery: pass.delivery }
+          : {}),
         rows,
       });
     } catch (err) {
@@ -2493,6 +2530,7 @@ async function handleValidatorNominatorCountsSync(
       nominator_counts_written: rows.length,
       stores: ["queue"],
       pass_total: pass?.expectedRows ?? null,
+      ...(pass?.delivery ? { delivery: pass.delivery } : {}),
     });
   }
 
@@ -2534,6 +2572,7 @@ async function handleValidatorNominatorCountsSync(
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,
+    ...(pass?.delivery ? { delivery: pass.delivery } : {}),
   });
 }
 
@@ -2637,9 +2676,13 @@ async function handleNominatorPositionsSync(
   }
   const incoming = Array.isArray(parsed)
     ? parsed
-    : Array.isArray(parsed?.rows)
-      ? parsed.rows
-      : null;
+    : Array.isArray(parsed?.delivery_rows) &&
+        parsed?.delivery !== undefined &&
+        parsed?.rows === undefined
+      ? parsed.delivery_rows
+      : Array.isArray(parsed?.rows) && parsed?.delivery === undefined
+        ? parsed.rows
+        : null;
   if (!incoming) {
     return writeJson(
       {
@@ -2693,6 +2736,15 @@ async function handleNominatorPositionsSync(
     return writeJson({ error: positionsTally.error }, 400);
   }
   const pass = positionsTally.pass ?? null;
+  const deliveryError = attachSyncDelivery(
+    env,
+    parsed,
+    incoming,
+    rows,
+    pass,
+    "nominator-positions",
+  );
+  if (deliveryError) return writeJson({ error: deliveryError }, 400);
 
   // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
   //
@@ -2716,7 +2768,9 @@ async function handleNominatorPositionsSync(
       await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "nominator-positions",
         capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
-        ...(pass ? { passTotal: pass.expectedRows } : {}),
+        ...(pass
+          ? { passTotal: pass.expectedRows, delivery: pass.delivery }
+          : {}),
         rows,
       });
     } catch (err) {
@@ -2729,6 +2783,7 @@ async function handleNominatorPositionsSync(
       nominator_positions_written: rows.length,
       stores: ["queue"],
       pass_total: pass?.expectedRows ?? null,
+      ...(pass?.delivery ? { delivery: pass.delivery } : {}),
     });
   }
 
@@ -2778,6 +2833,7 @@ async function handleNominatorPositionsSync(
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,
+    ...(pass?.delivery ? { delivery: pass.delivery } : {}),
   });
 }
 
@@ -3025,6 +3081,34 @@ function declaredPassTotal(
  * happened to pick, and a reader would trust a total that was never delivered
  * under that key. Same rule handleAccountBalancesSync applies to its own lane.
  */
+function attachSyncDelivery(
+  env: DataApiEnv,
+  parsed: unknown,
+  original: Row[],
+  rows: Row[],
+  pass: PassTallyInput | null,
+  lane: string,
+): string | undefined {
+  if (!parsed || typeof parsed !== "object" || !("delivery" in parsed)) return;
+  try {
+    requireSyncDeliveryQualification(env);
+    if (!pass)
+      throw new TypeError("Identified delivery requires a declared pass");
+    verifySyncDelivery(parsed.delivery, lane, pass, original);
+    if (parsed.delivery.parent_id !== undefined)
+      throw new TypeError("Producer cannot claim a queue parent");
+    pass.delivery = makeSyncDelivery(
+      lane,
+      pass.capturedAt,
+      pass.expectedRows,
+      rows,
+      parsed.delivery,
+    );
+  } catch (error) {
+    return String(error);
+  }
+}
+
 function passTallyFromRows(
   rows: Row[],
   declaredTotal: number | undefined,
@@ -3094,9 +3178,13 @@ async function handleAccountBalancesSync(
   }
   const incoming = Array.isArray(parsed)
     ? parsed
-    : Array.isArray(parsed?.rows)
-      ? parsed.rows
-      : null;
+    : Array.isArray(parsed?.delivery_rows) &&
+        parsed?.delivery !== undefined &&
+        parsed?.rows === undefined
+      ? parsed.delivery_rows
+      : Array.isArray(parsed?.rows) && parsed?.delivery === undefined
+        ? parsed.rows
+        : null;
   if (!incoming) {
     return writeJson(
       {
@@ -3175,6 +3263,16 @@ async function handleAccountBalancesSync(
     };
   }
 
+  const deliveryError = attachSyncDelivery(
+    env,
+    parsed,
+    incoming,
+    rows,
+    pass,
+    "account-balances",
+  );
+  if (deliveryError) return writeJson({ error: deliveryError }, 400);
+
   // ENQUEUE-ONLY (metagraphed-infra#353). The inline D1 write that used to
   // stand behind a `syncLaneUsesQueue` check is gone, and this route no longer
   // touches D1 at all -- the sync-batches consumer owns the write, the pass
@@ -3203,7 +3301,9 @@ async function handleAccountBalancesSync(
     await enqueueSyncBatch(env.SYNC_BATCHES, {
       lane: "account-balances",
       capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
-      ...(pass ? { passTotal: pass.expectedRows } : {}),
+      ...(pass
+        ? { passTotal: pass.expectedRows, delivery: pass.delivery }
+        : {}),
       rows,
     });
   } catch (err) {
@@ -3220,6 +3320,7 @@ async function handleAccountBalancesSync(
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,
+    ...(pass?.delivery ? { delivery: pass.delivery } : {}),
   });
 }
 
@@ -3322,9 +3423,13 @@ async function handleHotkeyAlphaSync(
   }
   const incoming = Array.isArray(parsed)
     ? parsed
-    : Array.isArray(parsed?.rows)
-      ? parsed.rows
-      : null;
+    : Array.isArray(parsed?.delivery_rows) &&
+        parsed?.delivery !== undefined &&
+        parsed?.rows === undefined
+      ? parsed.delivery_rows
+      : Array.isArray(parsed?.rows) && parsed?.delivery === undefined
+        ? parsed.rows
+        : null;
   if (!incoming) {
     return writeJson(
       {
@@ -3405,6 +3510,16 @@ async function handleHotkeyAlphaSync(
     };
   }
 
+  const deliveryError = attachSyncDelivery(
+    env,
+    parsed,
+    incoming,
+    rows,
+    pass,
+    "hotkey-alpha",
+  );
+  if (deliveryError) return writeJson({ error: deliveryError }, 400);
+
   // ENQUEUE OR WRITE, NEVER BOTH (metagraphed-infra#348). The producer is a
   // Rust container that cannot hold queue credentials, so the switch lives
   // here rather than in the producer: the route either hands the chunk to the
@@ -3424,7 +3539,9 @@ async function handleHotkeyAlphaSync(
       await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "hotkey-alpha",
         capturedAt: rows[0]!.captured_at as number,
-        ...(pass ? { passTotal: pass.expectedRows } : {}),
+        ...(pass
+          ? { passTotal: pass.expectedRows, delivery: pass.delivery }
+          : {}),
         rows,
       });
     } catch (err) {
@@ -3439,6 +3556,7 @@ async function handleHotkeyAlphaSync(
       hotkey_alpha_written: rows.length,
       stores: ["queue"],
       pass_total: pass?.expectedRows ?? null,
+      ...(pass?.delivery ? { delivery: pass.delivery } : {}),
     });
   }
 
@@ -3477,6 +3595,7 @@ async function handleHotkeyAlphaSync(
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,
+    ...(pass?.delivery ? { delivery: pass.delivery } : {}),
   });
 }
 
@@ -9350,7 +9469,8 @@ export function decodeBlockHeader(
   payload: unknown,
 ): { blockTag: string; blockNumber: number; timestampSeconds: number } | null {
   const result = (payload as { result?: unknown })?.result as
-    { number?: unknown; timestamp?: unknown } | undefined;
+    | { number?: unknown; timestamp?: unknown }
+    | undefined;
   if (!result) return null;
   const { number: rawNumber, timestamp: rawTimestamp } = result;
   if (typeof rawNumber !== "string" || typeof rawTimestamp !== "string")
@@ -9931,6 +10051,7 @@ export default {
         continue;
       }
       try {
+        if (body.delivery !== undefined) requireSyncDeliveryQualification(env);
         await writeSyncBatch(body, writers, Date.now(), familyWriters);
         if (body.lane === "neurons" && body.pass_total !== undefined) {
           scheduleExplorerDirectoryRefresh(env, ctx, body.captured_at);

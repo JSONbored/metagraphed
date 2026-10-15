@@ -1,3 +1,4 @@
+import { writeIdentifiedPostgres } from "./sync-delivery-postgres.ts";
 // The neurons lane's Neon mirror (metagraphed-infra#336).
 //
 // Three tables move together because ONE handler produces all three:
@@ -476,6 +477,60 @@ export async function mirrorNeuronSnapshotToNeon(
       results,
       ...(prune ? { prune } : {}),
     };
+  }
+  if (input.pass?.delivery) {
+    try {
+      const outcome = await writeIdentifiedPostgres(
+        env?.HYPERDRIVE?.connectionString,
+        NEURONS_NEON_LANE,
+        input.rows,
+        input.pass,
+        (sql, legacy) =>
+          mirrorNeuronSnapshotToNeon(
+            null,
+            null,
+            { ...input, pass: legacy },
+            { sql, laneHealthDb: null },
+          ),
+      );
+      const laneDb = laneHealthStore(env, deps.laneHealthDb);
+      const now = (deps.now ?? Date.now)();
+      for (const [name, result] of Object.entries(outcome.results))
+        await recordNeonWriteVerdict(
+          laneDb,
+          name === `${NEURONS_NEON_LANE}_passes`
+            ? `${NEURONS_NEON_LANE}-pass`
+            : name,
+          result,
+          now,
+          false,
+          name.endsWith("_passes"),
+        );
+      if (outcome.prune)
+        await recordNeonWriteVerdict(
+          laneDb,
+          `${NEURONS_NEON_LANE}-prune`,
+          outcome.prune,
+          now,
+          false,
+          true,
+        );
+      return outcome;
+    } catch (error) {
+      const failure = {
+        ok: false,
+        rows: 0,
+        statements: 0,
+        reason: String(error),
+      };
+      await recordNeonWriteVerdict(
+        laneHealthStore(env, deps.laneHealthDb),
+        NEURONS_NEON_LANE,
+        failure,
+        (deps.now ?? Date.now)(),
+      );
+      return { attempted: true, results: { neurons: failure }, prune: failure };
+    }
   }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
