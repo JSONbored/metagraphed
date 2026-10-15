@@ -558,16 +558,28 @@ test("an indivisible over-row-budget block falls back atomically without enqueue
     },
   } as unknown as Parameters<typeof worker.fetch>[1];
   const context = { waitUntil() {} } as unknown as ExecutionContext;
-  const post = (value = body) =>
+  const post = (value = body, targetEnv = queuedEnv) =>
     worker.fetch(
       new Request("https://d/api/v1/internal/chain-detail-sync", {
         method: "POST",
         headers: { "x-chain-detail-sync-token": "secret" },
         body: JSON.stringify(value),
       }),
-      queuedEnv,
+      targetEnv,
       context,
     );
+  assert.equal(
+    (
+      await post(body, {
+        ...queuedEnv,
+        D1_STATE_TABLES: "",
+        HYPERDRIVE: { connectionString: "postgres://unused" },
+      } as typeof queuedEnv)
+    ).status,
+    502,
+    "row admission cannot fall through without native D1 ownership",
+  );
+  assert.equal(sends, 0);
   const multiple = {
     blocks: [
       body.blocks[0],

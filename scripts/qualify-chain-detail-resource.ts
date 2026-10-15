@@ -143,7 +143,12 @@ function payload(shape: string, block = 9_000_001) {
               signer: null,
               call_module: "Timestamp",
               call_function: "set",
-              success: null,
+              success:
+                shape === "objects"
+                  ? true
+                  : shape === "objects-max"
+                    ? false
+                    : null,
               fee_tao: null,
               tip_tao: null,
               call_args: null,
@@ -601,7 +606,7 @@ try {
             for (const row of rows) row.observed_at = stamp + 1;
         }
         const admitted = direct
-          ? gzipSync(JSON.stringify(current))
+          ? undefined
           : await compressSyncBatchMessage(current, 128 * 1024);
         if (phase === "late-failure")
           await db
@@ -637,15 +642,19 @@ try {
         const start = performance.now();
         let results: Awaited<ReturnType<typeof worker.queue>>[] = [];
         let httpResult: { status: number; body: unknown } | undefined;
+        let httpRequestBytes: number | undefined;
         try {
           if (direct) {
             // Recover the indivisible original through the existing authenticated
             // HTTP writer, keeping every family in the one native transaction.
             const blocks = current.families.blockRows.map((block) => ({
               ...block,
-              extrinsics: current.families.extrinsicRows.filter(
-                (row) => row.block_number === block.block_number,
-              ),
+              extrinsics: current.families.extrinsicRows
+                .filter((row) => row.block_number === block.block_number)
+                .map((row) => ({
+                  ...row,
+                  success: row.success === null ? null : Boolean(row.success),
+                })),
               chain_events: current.families.chainEventRows.filter(
                 (row) => row.block_number === block.block_number,
               ),
@@ -653,11 +662,13 @@ try {
                 (row) => row.block_number === block.block_number,
               ),
             }));
+            const requestBody = JSON.stringify({ blocks });
+            httpRequestBytes = Buffer.byteLength(requestBody);
             const response = await deadline(
               worker.fetch("https://d/api/v1/internal/chain-detail-sync", {
                 method: "POST",
                 headers: { "x-chain-detail-sync-token": "synthetic-only" },
-                body: JSON.stringify({ blocks }),
+                body: requestBody,
               }),
               120_000,
             );
@@ -781,8 +792,10 @@ try {
           phase,
           isolate,
           target_id: subjects[0].id,
-          wire_bytes: admitted.byteLength,
-          decoded_bytes: decoded,
+          wire_bytes: admitted?.byteLength,
+          decoded_bytes: direct ? undefined : decoded,
+          http_request_bytes: httpRequestBytes,
+          retained_normalized_message_bytes: direct ? decoded : undefined,
           family_rows: Object.fromEntries(
             Object.entries(message.families).map(([key, value]) => [
               key,
