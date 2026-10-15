@@ -400,13 +400,15 @@ try {
   assert.equal(policy.max_batch_size, 1);
   assert.equal(policy.max_concurrency, 1);
   report.native_admission = policy;
-  for (const shape of [
-    "small",
-    "string",
-    "objects",
-    "objects-max",
-    "blocks16",
-  ]) {
+  const shape = process.env.CHAIN_DETAIL_RESOURCE_SHAPE;
+  assert.ok(
+    shape &&
+      ["small", "string", "objects", "objects-max", "blocks16"].includes(shape),
+    "one explicit finite diagnostic shape required",
+  );
+  report.shape = shape;
+  for (const selectedShape of [shape]) {
+    const shape = selectedShape;
     const message = payload(shape);
     const decoded = Buffer.byteLength(JSON.stringify(message));
     assert.ok(decoded <= SYNC_BATCH_MAX_DECODED_BYTES);

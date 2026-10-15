@@ -1605,6 +1605,11 @@ jobs:
             || echo "::warning::npm audit found high/critical advisories in apps/ui's runtime dependencies — review above (report-only; not failing CI yet)"
 
   chain-detail-resources:
+    name: chain-detail-resources (${{ matrix.shape }})
+    strategy:
+      fail-fast: false
+      matrix:
+        shape: [small, string, objects, objects-max, blocks16]
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify_chain_detail_resources }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -1623,20 +1628,28 @@ jobs:
         run: |
           set -euo pipefail
           node_binary="$(command -v node)"
-          sudo --preserve-env=CI,WRANGLER_SEND_METRICS systemd-run --scope --same-dir \
-            --unit="metagraphed-resource-${{ github.run_id }}" \
+          scope="metagraphed-resource-${{ github.run_id }}-${{ matrix.shape }}"
+          probe_status=0
+          sudo --preserve-env=CI,WRANGLER_SEND_METRICS,CHAIN_DETAIL_RESOURCE_SHAPE systemd-run --scope --same-dir \
+            --unit="$scope" \
             --property=MemoryMax=536870912 --property=MemorySwapMax=0 \
             --property=TasksMax=128 --property=CPUQuota=200% \
             timeout --signal=TERM --kill-after=15s 600s \
-            "$node_binary" scripts/qualify-chain-detail-resource.ts
+            "$node_binary" scripts/qualify-chain-detail-resource.ts || probe_status=$?
+          mkdir -p reports/chain-detail-resource
+          sudo systemctl show "$scope.scope" --property=Result --property=MemoryPeak \
+            --property=MemoryCurrent --property=CPUUsageNSec --property=TasksMax \
+            > reports/chain-detail-resource/scope-result.txt || true
+          exit "$probe_status"
         env:
           WRANGLER_SEND_METRICS: "false"
           CI: "true"
+          CHAIN_DETAIL_RESOURCE_SHAPE: ${{ matrix.shape }}
       - name: Retain bounded raw observations and CPU profiles
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: chain-detail-resource-${{ github.sha }}
+          name: chain-detail-resource-${{ github.sha }}-${{ matrix.shape }}
           path: reports/chain-detail-resource/
           retention-days: 7
           if-no-files-found: error
