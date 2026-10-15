@@ -26,6 +26,7 @@ import {
 } from "../src/sync-batch-queue.ts";
 import { makeSyncDelivery } from "../src/sync-delivery-receipt.ts";
 import { captureUpsertStatements } from "../src/capture-family-d1.ts";
+import { NOMINATOR_POSITIONS_CONFLICT } from "../src/nominator-positions-neon-write.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
 import { chainDetailTables } from "../src/chain-detail-neon-write.ts";
 import { stripJsonComments } from "./lib.ts";
@@ -1139,7 +1140,7 @@ try {
               "captured_at",
               "source",
             ],
-            conflict: ["coldkey", "hotkey", "netuid"],
+            conflict: NOMINATOR_POSITIONS_CONFLICT,
           },
           eligibility,
         ))
