@@ -475,6 +475,23 @@ try {
       outboundService: { network: { allow: [] } },
     });
     let cdp: Awaited<ReturnType<typeof inspector>> | undefined;
+    const helpers: Array<{
+      id: string;
+      title: string;
+      client: Awaited<ReturnType<typeof inspector>>;
+    }> = [];
+    const helperHeaps = async () => {
+      const results = [];
+      for (const helper of helpers)
+        results.push({
+          target_id: helper.id,
+          title: helper.title,
+          request_started_ms: performance.now(),
+          ...(await helper.client.request("Runtime.getHeapUsage")),
+          reply_received_ms: performance.now(),
+        });
+      return results;
+    };
     try {
       const db = await deadline(runtime.getD1Database("D1_STATE"), 30_000);
       for (const migration of [
@@ -519,6 +536,16 @@ try {
         "must identify exactly the actual data-api isolate",
       );
       cdp = await inspector(subjects[0].webSocketDebuggerUrl);
+      const auxiliaryTargets = targets.filter(
+        (target) => target.id.startsWith("d1:") || target.id === "core:entry",
+      );
+      assert.ok(auxiliaryTargets.length <= 4, "finite native helper census");
+      for (const target of auxiliaryTargets)
+        helpers.push({
+          id: target.id,
+          title: target.title,
+          client: await inspector(target.webSocketDebuggerUrl),
+        });
       const isolate = await cdp.request("Runtime.getIsolateId");
       await cdp.request("Profiler.enable");
       await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
@@ -617,6 +644,7 @@ try {
         if (phase === "repair-replay")
           await db.prepare("DROP TRIGGER resource_reject").run();
         const samples: Array<Record<string, unknown>> = [];
+        const helperHeapsBefore = await helperHeaps();
         const before = await cdp.request("Runtime.getHeapUsage");
         assert.ok(
           typeof before.usedSize === "number" && before.usedSize > 0,
@@ -815,6 +843,8 @@ try {
               : null,
           before,
           after,
+          native_helper_heaps_before: helperHeapsBefore,
+          native_helper_heaps_after_verification: await helperHeaps(),
           samples,
           profile: profileName,
           observed_heap_max: Math.max(
@@ -1037,6 +1067,7 @@ try {
       }
     } finally {
       cdp?.close();
+      for (const helper of helpers) helper.client.close();
       await deadline(runtime.dispose(), 10_000);
     }
   }
