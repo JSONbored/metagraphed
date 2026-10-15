@@ -140,8 +140,19 @@ test("all five authenticated routes preserve producer identity through actual wr
   for (const [lane, rows] of lanes) {
     const delivery = makeSyncDelivery(lane, stamp, rows.length, rows);
     const packet = { delivery, delivery_rows: rows, pass_total: rows.length };
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const response = await post(lane, packet);
+    const invalid = await post(lane, {
+      ...packet,
+      delivery: { ...delivery, sha256: "a".repeat(64) },
+    });
+    assert.equal(invalid.status, 400, await invalid.clone().text());
+    for (let attempt = 0; attempt < 4; attempt++) {
+      // Cross the actual HTTP handoff as well as the direct writer: both
+      // transports must acknowledge the same producer and cannot re-credit it.
+      const response = await post(
+        lane,
+        packet,
+        attempt < 2 ? env() : { ...env(), SYNC_QUEUE_LANES: lane },
+      );
       assert.equal(response.status, 200, await response.clone().text());
       const reply = await response.json<{
         delivery: { parent_id: string; parent_sha256: string };
@@ -158,6 +169,7 @@ test("all five authenticated routes preserve producer identity through actual wr
           assert.fail("identified replay requested retry");
         },
       }));
+      assert.equal(messages.length, attempt < 2 ? 0 : 1);
       if (messages.length)
         await worker.queue!(
           {
