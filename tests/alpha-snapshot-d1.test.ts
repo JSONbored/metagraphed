@@ -150,7 +150,7 @@ test("missing or corrupt post-commit chunk readback never acknowledges or recoun
 
 test("resume and capture require their declared owner and report storage errors as unacknowledged", async () => {
   const db = await fixture(false);
-  const send = (body: Row, environment: Env) =>
+  const send = (body: Row, environment: ReturnType<typeof dataApiEnv>) =>
     worker.fetch(
       new Request(
         "https://api.metagraph.sh/api/v1/internal/nominator-positions-sync",
