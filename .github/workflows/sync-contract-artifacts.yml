@@ -85,10 +85,16 @@ jobs:
           audit_status=0
           npm audit --omit=dev --json > "$RUNNER_TEMP/dependency-security/before.json" || audit_status=$?
           test "$audit_status" -le 1
-          npm install --ignore-scripts --workspaces --include-workspace-root
-          fix_status=0
-          npm audit fix --ignore-scripts --workspaces --include-workspace-root || fix_status=$?
-          test "$fix_status" -le 1
+          # Re-resolve only stale transitive nodes; npm owns versions/integrities.
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
+          for (const key of Object.keys(lock.packages)) {
+            if (/node_modules\/(dompurify|undici)$/.test(key)) delete lock.packages[key];
+          }
+          fs.writeFileSync("package-lock.json", JSON.stringify(lock, null, 2) + "\n");
+          NODE
+          npm install --package-lock-only --ignore-scripts --workspaces --include-workspace-root
           full_audit_status=0
           npm audit --json > "$RUNNER_TEMP/dependency-security/full-after.json" || full_audit_status=$?
           test "$full_audit_status" -le 1
