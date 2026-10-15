@@ -208,6 +208,53 @@ describe("the fleet-wide guard", () => {
   test("nothing flagged is not fleet-wide", () => {
     assert.equal(isFleetWide([]), false);
   });
+
+  test("measured churn does not manufacture or enlarge a capture cluster", () => {
+    const churn = Array.from({ length: AXON_FLEET_WIDE_FLAGS }, (_, i) => ({
+      ...finding(i + 1),
+      kind: "churn-replaced" as const,
+      lossesViaReuse: 50,
+      lossesSameHotkey: 0,
+    }));
+    assert.equal(isFleetWide(churn), false);
+    assert.equal(isFleetWide([...churn, finding(101)]), false);
+    assert.equal(
+      isFleetWide([
+        ...churn,
+        ...Array.from({ length: AXON_FLEET_WIDE_FLAGS }, (_, i) =>
+          finding(i + 101),
+        ),
+      ]),
+      true,
+      "churn cannot hide four remaining unexplained drops",
+    );
+  });
+
+  test("subnets emptying together remain capture suspects", () => {
+    assert.equal(
+      isFleetWide(
+        Array.from({ length: AXON_FLEET_WIDE_FLAGS }, (_, i) => ({
+          ...finding(i + 1),
+          kind: "subnet-turned-over" as const,
+          neurons: 2,
+        })),
+      ),
+      true,
+    );
+  });
+
+  test("drops on different capture days do not manufacture a simultaneous cluster", () => {
+    const suspects = Array.from({ length: AXON_FLEET_WIDE_FLAGS }, (_, i) => ({
+      ...finding(i + 1),
+      date: `2026-08-${15 + i}`,
+    }));
+    assert.equal(isFleetWide(suspects), false);
+    assert.equal(
+      isFleetWide([...suspects, finding(101), finding(102), finding(103)]),
+      true,
+      "four unexplained drops on one day still meet the unchanged threshold",
+    );
+  });
 });
 
 describe("evaluateAxonAnnouncements and axonDetail", () => {
@@ -967,6 +1014,109 @@ describe("the tick reports the mechanism it measured", () => {
     // the paging decision -- open an issue that then could not close, because
     // it closes on the first `ok` and churn keeps the lane off it.
     assert.equal(verdictValue(), "ok");
+  });
+
+  test("the four measured churn findings retain every detail without a capture alarm", async () => {
+    // The ordinary 2026-10-02 verdict measured these exact counts: every loss
+    // was deregistration churn, yet the raw finding count overrode all four.
+    // Stable membership fixtures isolate that aggregate classification error.
+    const measured = [
+      [37, 63, 3, 71],
+      [22, 190, 16, 216],
+      [101, 26, 8, 39],
+      [102, 24, 14, 27],
+    ];
+    answer(
+      measured.flatMap(([netuid, baseline, current]) =>
+        rowsFor(netuid, then(flat(8, baseline), [current, 256])),
+      ),
+      measured.map(([netuid, , , losses]) => ({
+        netuid,
+        via_reuse: losses,
+        same_hotkey: 0,
+      })),
+    );
+    const recordException = vi.fn(async () => true);
+    const result = await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-10-02T19:36:00Z"),
+      recordException: recordException as never,
+    });
+    assert.equal(result.flagged, true);
+    assert.equal(result.churn_only, true);
+    assert.equal(result.explained_membership_only, true);
+    assert.equal(result.fleet_wide, false);
+    assert.equal(result.alerted, false);
+    assert.equal(recordException.mock.calls.length, 0);
+    assert.equal(verdictValue(), "ok");
+    assert.equal((result.findings as AxonFinding[]).length, 4);
+    for (const [netuid, baseline, current, losses] of measured) {
+      assert.ok(verdict().includes(`SN${netuid} ${current}/${baseline} axons`));
+      assert.ok(verdict().includes(`${losses} of ${losses} losses`));
+    }
+  });
+
+  test("three churn findings cannot turn one real withdrawal into a capture failure", async () => {
+    const churnIds = [22, 37, 102];
+    answer(
+      [
+        ...churnIds.flatMap((netuid) =>
+          rowsFor(netuid, then(flat(8, 80), [14, 256])),
+        ),
+        ...rowsFor(101, then(flat(8, 223), [129, 256])),
+      ],
+      [
+        ...churnIds.map((netuid) => ({
+          netuid,
+          via_reuse: 67,
+          same_hotkey: 0,
+        })),
+        { netuid: 101, via_reuse: 0, same_hotkey: 94 },
+      ],
+    );
+    const recordException = vi.fn(async () => true);
+    const result = await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-10-02T19:36:00Z"),
+      recordException: recordException as never,
+    });
+    assert.equal(result.flagged, true);
+    assert.equal(result.alerted, true);
+    assert.equal(result.fleet_wide, false);
+    assert.equal(result.explained_membership_only, false);
+    assert.equal(verdictValue(), "stale");
+    assert.equal(recordException.mock.calls.length, 1);
+    const event = recordException.mock.calls[0] as unknown as [
+      unknown,
+      { errorCode: string; error: Error },
+    ];
+    assert.equal(event[1].errorCode, "axon_announcements_dropped");
+    assert.match(event[1].error.message, /94 miner\(s\) stopped announcing/);
+    assert.doesNotMatch(event[1].error.message, /capture failing/);
+    assert.equal((result.findings as AxonFinding[]).length, 4);
+  });
+
+  test("four simultaneous empty metagraphs still raise the capture alarm", async () => {
+    const ids = [20, 21, 22, 23];
+    answer(
+      ids.flatMap((netuid) => rowsFor(netuid, then(flat(8, 200), [0, 2]))),
+      ids.map((netuid) => ({ netuid, via_reuse: 200, same_hotkey: 0 })),
+    );
+    const recordException = vi.fn(async () => true);
+    const result = await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-10-02T19:36:00Z"),
+      recordException: recordException as never,
+    });
+    assert.equal(result.fleet_wide, true);
+    assert.equal(result.alerted, true);
+    assert.equal(result.explained_membership_only, false);
+    assert.equal(verdictValue(), "stale");
+    assert.equal(recordException.mock.calls.length, 1);
+    const event = recordException.mock.calls[0] as unknown as [
+      unknown,
+      { errorCode: string; error: Error },
+    ];
+    assert.equal(event[1].errorCode, "axon_capture_suspect");
+    assert.match(event[1].error.message, /At least 4 subnets/);
+    assert.match(event[1].error.message, /the subnet turned over/);
   });
 
   test("CHURN MIXED WITH A WITHDRAWAL is still stale, and still pages", async () => {
