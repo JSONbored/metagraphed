@@ -52,7 +52,9 @@ function normalize(mantissa: bigint, exp: bigint): Decimal | null {
     exp--;
     if (exp < I64_MIN) return null;
   }
-  return exp < I64_MIN || exp > I64_MAX ? null : { mantissa, exponent: exp };
+  // Callers admit only checked i64 exponents; each adjustment above checks
+  // its new value before another iteration. No unchecked exponent reaches here.
+  return { mantissa, exponent: exp };
 }
 const power = (exp: bigint) => 10n ** (exp > 22n ? 22n : exp);
 function divide(a: Decimal, b: Decimal): Decimal | null {

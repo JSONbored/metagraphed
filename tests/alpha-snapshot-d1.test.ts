@@ -79,6 +79,106 @@ const rowsOf = async (db: D1Database) =>
 const write = (db: D1StoreBinding, p: Row) =>
   writeAlphaSnapshotD1(db, p, baseAt + 100000);
 
+test("legacy-only originals survive exact native hashing and reversed owner order cannot change a receipt", async () => {
+  const db = await fixture();
+  const rows = [row("bob"), row("alice")];
+  for (const item of rows) {
+    item.evidence.share = { legacy_bits: (1n << 64n).toString(), v2: null };
+    item.evidence.denominator = {
+      legacy_bits: (1n << 64n).toString(),
+      v2: null,
+    };
+  }
+  const value = packet(rows, { scanned_legacy: 2, scanned_v2: 0 });
+  const accepted = await write(db, value);
+  const replay = await write(db, { ...value, rows: [...rows].reverse() });
+  assert.equal(replay.alpha_snapshot.sha256, accepted.alpha_snapshot.sha256);
+  assert.equal(replay.alpha_snapshot.received_rows, 2);
+  assert.equal(replay.alpha_snapshot.received_chunks, 1);
+  for (const stored of await rowsOf(db)) {
+    assert.equal(stored.alpha_rao, rows[0].evidence.total_alpha_rao);
+    const original = JSON.parse(stored.alpha_evidence);
+    assert.equal(original.share.v2, null);
+    assert.equal(original.denominator.v2, null);
+  }
+});
+
+test("missing or corrupt post-commit chunk readback never acknowledges or recounts a native capture", async () => {
+  for (const corrupt of [null, { sha256: "wrong" }, { applied: 0 }]) {
+    const db = await fixture();
+    const binding = {
+      batch: db.batch.bind(db),
+      prepare(sql: string) {
+        const statement = db.prepare(sql);
+        if (sql.startsWith("SELECT c.sha256,c.applied,p.received_rows")) {
+          const bind = statement.bind.bind(statement);
+          statement.bind = (...values: unknown[]) => {
+            const bound = bind(...values);
+            const all = bound.all.bind(bound);
+            bound.all = async <T>() => {
+              const result = await all<T>();
+              return {
+                ...result,
+                results:
+                  corrupt === null
+                    ? []
+                    : [
+                        {
+                          ...(result.results[0] as Record<string, unknown>),
+                          ...corrupt,
+                        } as T,
+                      ],
+              };
+            };
+            return bound;
+          };
+        }
+        return statement;
+      },
+    } as D1StoreBinding;
+    await assert.rejects(write(binding, packet()), /not durably acknowledged/);
+    assert.equal(
+      (await rowsOf(db)).length,
+      1,
+      "the original native commit remains durable",
+    );
+    const replay = await write(db, packet());
+    assert.equal(replay.alpha_snapshot.received_rows, 1);
+    assert.equal(replay.alpha_snapshot.received_chunks, 1);
+  }
+});
+
+test("resume and capture require their declared owner and report storage errors as unacknowledged", async () => {
+  const db = await fixture(false);
+  const send = (body: Row, environment: Env) =>
+    worker.fetch(
+      new Request(
+        "https://api.metagraph.sh/api/v1/internal/nominator-positions-sync",
+        {
+          method: "POST",
+          headers: { "x-nominator-positions-sync-token": "fixture-token" },
+          body: JSON.stringify(body),
+        },
+      ),
+      environment,
+      {} as ExecutionContext,
+    );
+  const environment = dataApiEnv({
+    D1_STATE: db,
+    D1_STATE_TABLES: "nominator_positions",
+    NOMINATOR_POSITIONS_SYNC_SECRET: "fixture-token",
+  });
+  for (const body of [{ alpha_snapshot_resume: true }, packet()]) {
+    const absent = dataApiEnv({ ...environment, D1_STATE_TABLES: undefined });
+    assert.equal((await send(body, absent)).status, 503);
+    assert.equal(
+      (await send(body, environment)).status,
+      502,
+      "missing native tables are storage failures, never a successful ACK",
+    );
+  }
+});
+
 test("partial and replayed chunks do not expose new serving rows or invent a complete pass", async () => {
   const db = await fixture();
   await db
