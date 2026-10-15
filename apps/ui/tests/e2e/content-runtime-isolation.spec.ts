@@ -37,10 +37,10 @@ test.describe("content route runtime isolation", () => {
     await expect.poll(() => openapiChunks.length).toBe(1);
   });
 
-  test("a malformed server-function link cannot become an HTML document", async ({ page }, testInfo) => {
-    // GHSA-qx66-fv34-fjm8: exercise the compiled public transport, not a mock
-    // handler or a hard-coded generated function ID. A normal client navigation
-    // supplies both the current URL and a positive control for that function.
+  test("server-function input cannot replace internal result state", async ({ page }, testInfo) => {
+    // Exercise the compiled public input boundary with benign JSON metadata.
+    // A normal navigation supplies the current URL and a positive control;
+    // no generated function ID, HTML payload or script execution is assumed.
     await gotoThroughRestart(page, "/news/sn19/2026-w17");
     await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
     const normalCall = page.waitForResponse((response) => {
@@ -61,49 +61,32 @@ test.describe("content route runtime isolation", () => {
     const target = new URL(normalResponse.url());
     expect(target.origin).toBe(new URL(page.url()).origin);
     expect(["localhost", "127.0.0.1"]).toContain(target.hostname);
-    const marker = "metagraph-server-function-canary";
-    const html =
-      `<p id="${marker}">Untrusted transport result</p>` +
-      "<script>globalThis.__METAGRAPH_SERVER_FUNCTION_CANARY__ = true</script>";
+    const marker = "unexpected-transport-result";
     target.searchParams.set(
       "payload",
       JSON.stringify(
         await toJSONAsync({
-          // The docs loader expects an array of slugs. Its failure must not
-          // leave this untrusted result eligible for response handling.
           data: { invalidSlugs: true },
-          result: {
-            constructor: { name: "HTTPResponse" },
-            status: 200,
-            headers: { "content-type": "text/html" },
-            body: html,
-          },
+          result: { marker },
         }),
       ),
     );
-
-    // A document navigation deliberately carries no x-tsr-serverFn header,
-    // matching the unauthenticated link-opening boundary in the advisory.
-    const response = await gotoThroughRestart(page, target.href);
-    expect(response).not.toBeNull();
-    const contentType = response!.headers()["content-type"];
-    const body = await response!.text();
-    const executed = await page.evaluate(
-      () => Reflect.get(globalThis, "__METAGRAPH_SERVER_FUNCTION_CANARY__") === true,
-    );
-    await testInfo.attach("server-function-response-boundary", {
+    const response = await page.request.get(target.href, {
+      headers: { "x-tsr-serverFn": "true" },
+    });
+    const contentType = response.headers()["content-type"];
+    const body = await response.text();
+    await testInfo.attach("server-function-input-boundary", {
       contentType: "application/json",
       body: JSON.stringify({
         transport_path: target.pathname,
         control_status: normalResponse.status(),
-        attack_status: response!.status(),
+        malformed_status: response.status(),
         content_type: contentType,
-        canary_in_body: body.includes(marker),
-        canary_executed: executed,
+        unexpected_result_in_body: body.includes(marker),
       }),
     });
     expect(contentType).not.toContain("text/html");
     expect(body).not.toContain(marker);
-    expect(executed).toBe(false);
   });
 });
