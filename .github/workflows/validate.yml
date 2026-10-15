@@ -1632,3 +1632,11 @@ jobs:
           path: reports/chain-detail-resource/
           retention-days: 7
           if-no-files-found: error
+
+      # The review gate counts skipped jobs as success. A diagnostic probe must
+      # therefore remain unable to qualify a commit without the ordinary suite.
+      - name: Keep diagnostics separate from source qualification
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify_chain_detail_resources && inputs.resource_probe_only }}
+        run: |
+          echo "::error::Diagnostic measurements do not qualify Validate; run ordinary full validation."
+          exit 1
