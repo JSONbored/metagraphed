@@ -330,9 +330,11 @@ export function ExtrinsicDetailPage() {
         paginate={false}
         expand={(row) => <RawCode label={`${row.name} decoded value`}>{row.value}</RawCode>}
         empty={
-          extrinsic?.call_args == null
-            ? "Call arguments are unavailable in this indexed record."
-            : "This call takes no arguments."
+          <p className="whitespace-normal">
+            {extrinsic?.call_args == null
+              ? "Call arguments are unavailable in this indexed record."
+              : "This call takes no arguments."}
+          </p>
         }
       />
 
@@ -349,7 +351,12 @@ export function ExtrinsicDetailPage() {
         caption="Account-attributed events"
         source="extrinsic-account-event"
         paginate={false}
-        empty="No account-attributed events were decoded for this extrinsic. Other decoded events may appear below."
+        empty={
+          <p className="whitespace-normal">
+            No account-attributed events were decoded for this extrinsic. Other decoded events may
+            appear below.
+          </p>
+        }
       />
 
       <DataTable
@@ -372,7 +379,12 @@ export function ExtrinsicDetailPage() {
             />
           ) : undefined
         }
-        empty="No pallet-level event records are available from this tier for this extrinsic. This does not establish that the call emitted no events."
+        empty={
+          <p className="whitespace-normal">
+            No pallet-level event records are available from this tier for this extrinsic. This does
+            not establish that the call emitted no events.
+          </p>
+        }
       />
       {/* A raw event record can exceed the initial 50-row read. The detail
           page must offer its continuation instead of implying page one is
@@ -419,11 +431,13 @@ export function ExtrinsicDetailPage() {
             ) : undefined
           }
           empty={
-            !hasPeerScope
-              ? "No signer or related call hash is available in this indexed record."
-              : callHash
-                ? "No other extrinsics reference this call hash yet."
-                : "No other recent calls from this signer."
+            <p className="whitespace-normal">
+              {!hasPeerScope
+                ? "No signer or related call hash is available in this indexed record."
+                : callHash
+                  ? "No other extrinsics reference this call hash yet."
+                  : "No other recent calls from this signer."}
+            </p>
           }
         />
       </div>

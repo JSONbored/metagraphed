@@ -166,8 +166,9 @@ test.describe("account attribution and pallet-level evidence", () => {
             body: JSON.stringify({ ok: true, data: { events: [], next_cursor: null } }),
           }),
         );
-        await gotoThroughRestart(page, `/extrinsics/${EVIDENCE_HASH}#economic-effects`);
+        await gotoThroughRestart(page, `/extrinsics/${EVIDENCE_HASH}`);
         const table = page.getByRole("table", { name: "Account-attributed events" });
+        await expect(page.locator("#economic-effects")).toContainText("Account-attributed events");
         await expect(table).toContainText("TimelockedWeightsCommitted");
         await expect(table).toContainText("StakeAdded");
         await expect(page.getByText("Decoded economic effects", { exact: true })).toHaveCount(0);
@@ -180,6 +181,11 @@ test.describe("account attribution and pallet-level evidence", () => {
           document.documentElement.style.scrollBehavior = "auto";
           window.scrollTo(0, 0);
         });
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+        const tierNote = page.getByText(
+          /No pallet-level event records are available from this tier/,
+        );
+        expect(await tierNote.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
         await page.screenshot({
           path: test.info().outputPath(`explorer-evidence-${width}-${theme}.png`),
           fullPage: true,
