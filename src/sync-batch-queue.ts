@@ -1,5 +1,6 @@
 import {
   makeSyncDelivery,
+  syncDeliveryKey,
   verifySyncDelivery,
   type SyncDelivery,
 } from "./sync-delivery-receipt.ts";
@@ -662,6 +663,7 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
     return true;
   }
   if (!Array.isArray(m.rows) || m.rows.length === 0) return false;
+  if (!m.rows.every((r) => r !== null && typeof r === "object")) return false;
   // A pruning lane must SAY its chunk is key-complete. Refusing here beats
   // pruning on trust: the failure mode is deleted rows, which no retry undoes.
   if (PRUNING_LANES.includes(m.lane) && m.key_complete !== true) {
@@ -680,7 +682,14 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
     if (m.rows.some((r) => m.key_column! in r)) return false;
   }
   if (m.pass_total !== undefined && m.pass_total < m.rows.length) return false;
-  return m.rows.every((r) => r !== null && typeof r === "object");
+  if (m.delivery !== undefined) {
+    try {
+      for (const row of syncBatchRows(m)) syncDeliveryKey(m.lane, row);
+    } catch {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -812,6 +821,13 @@ export function syncBatchRows(
   const rows = message.rows ?? [];
   if (!message.key_column) return rows;
   const column = message.key_column;
+  if (
+    message.delivery !== undefined &&
+    message.lane === "neurons" &&
+    column === "netuid" &&
+    !/^(0|[1-9][0-9]{0,4})$/.test(message.key_value ?? "")
+  )
+    throw new TypeError("Invalid canonical hoisted business key");
   const value =
     message.lane === "neurons" && column === "netuid"
       ? Number(message.key_value)

@@ -25,6 +25,7 @@ import {
   syncBatchRows,
 } from "../src/sync-batch-queue.ts";
 import { writeLedgerD1, writeNominatorPositionsD1 } from "../src/ledger-d1.ts";
+import { deliveryKeyFixtures } from "./helpers/sync-delivery-key-fixtures.ts";
 
 const stamp = 1790000000000;
 const rows = ["a", "b", "c", "d"].map((ss58) => ({
@@ -61,6 +62,38 @@ test("canonical encoding matches Rust golden vectors and exact quantity strings"
   assert.throws(() => syncDeliveryKey("unknown", {}));
   assert.throws(() => syncDeliveryKey("account-balances", {}));
   assert.deepEqual(syncDeliveryBytes(undefined), syncDeliveryBytes(null));
+});
+
+test("canonical business key types reject native storage aliases and preserve distinct text", () => {
+  for (const fixture of deliveryKeyFixtures) {
+    syncDeliveryKey(fixture.lane, fixture.valid);
+    for (const override of fixture.invalid)
+      assert.throws(
+        () => syncDeliveryKey(fixture.lane, { ...fixture.valid, ...override }),
+        /canonical business key/,
+      );
+  }
+  for (const row of [null, 1, [], Object.create({ ss58: "1" })])
+    assert.throws(() => syncDeliveryKey("account-balances", row as never));
+  for (const value of [NaN, Infinity, -Infinity])
+    assert.throws(() => syncDeliveryKey("neurons", { netuid: value, uid: 0 }));
+  assert.equal(
+    syncDeliveryKey("neurons", { netuid: 1.0, uid: -0 }),
+    syncDeliveryKey("neurons", { netuid: 1, uid: 0 }),
+  );
+  syncDeliveryKey("neurons", { netuid: 65_535, uid: 65_535 });
+  syncDeliveryKey("account-balances", { ss58: "é".repeat(64) });
+  assert.throws(
+    () => syncDeliveryKey("account-balances", { ss58: "\ud800" }),
+    /Unicode/,
+  );
+  const distinct = ["1", "01", "1 ", "A", "a", "é", "e\u0301"];
+  assert.equal(
+    new Set(
+      distinct.map((ss58) => syncDeliveryKey("account-balances", { ss58 })),
+    ).size,
+    distinct.length,
+  );
 });
 
 test("identity freezes census and keys while digest freezes business content", () => {
@@ -242,7 +275,7 @@ for (const dialect of ["sqlite", "postgres"] as const)
       await write(rows.slice(2));
       assert.equal(await count("sync_delivery_receipts"), 2);
     });
-    test("lost commit acknowledgement recovers only an exact durable receipt", async () => {
+    test("simulated lost commit acknowledgement recovers only an exact durable receipt", async () => {
       const lost = {
         ...store,
         transaction: async (

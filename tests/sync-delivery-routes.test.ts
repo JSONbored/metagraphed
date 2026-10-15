@@ -14,12 +14,19 @@ import {
   passTallyFor,
   syncBatchRows,
   writeSyncBatch,
+  validSyncBatchMessage,
   type SyncBatchMessage,
 } from "../src/sync-batch-queue.ts";
-import { PASS_TABLES } from "../src/pass-completeness.ts";
+import { PASS_TABLES, type PassTallyInput } from "../src/pass-completeness.ts";
 import { createD1Store } from "../src/d1-store.ts";
+import { writeLedgerD1, writeNominatorPositionsD1 } from "../src/ledger-d1.ts";
 import { writeNeuronDocuments } from "../src/neuron-documents.ts";
 import { neuronSnapshotWrite } from "../src/neurons-neon-write.ts";
+import { coldkeyMaxCapturedAt } from "../src/nominator-positions-neon-write.ts";
+import {
+  deliveryKeyFixtures,
+  uncheckedDelivery,
+} from "./helpers/sync-delivery-key-fixtures.ts";
 
 const runtime = new Miniflare({
   modules: true,
@@ -367,4 +374,180 @@ test("malformed identified queue bodies retain repair evidence and an unqualifie
       .first("n"),
     0,
   );
+});
+
+test("native D1 and the actual consumer refuse storage-key aliases without completing a missing-row pass", async () => {
+  const store = createD1Store(db);
+  for (const [index, fixture] of deliveryKeyFixtures.entries()) {
+    const at = stamp + 100 + index;
+    if (fixture.lane === "hotkey-alpha")
+      await db
+        .prepare(
+          "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at) VALUES('seed','1',1,1,?)",
+        )
+        .bind(at)
+        .run();
+    const nativeWrite = async (
+      incoming: Record<string, unknown>[],
+      tally: PassTallyInput | null,
+    ) => {
+      assert.ok(tally);
+      if (fixture.lane === "neurons") {
+        await writeNeuronDocuments(store, {
+          ...neuronSnapshotWrite(incoming, at + 100),
+          pass: tally,
+        });
+      } else if (fixture.lane === "nominator-positions") {
+        const result = await writeNominatorPositionsD1(store, {
+          rows: incoming,
+          coldkeyMaxCapturedAt: coldkeyMaxCapturedAt(incoming),
+          pass: tally,
+        });
+        assert.equal(result.write?.ok, true, result.write?.reason);
+      } else {
+        const result = await writeLedgerD1(
+          store,
+          fixture.lane,
+          incoming,
+          tally,
+        );
+        assert.equal(result.ok, true, result.reason);
+      }
+    };
+    const original = { ...fixture.valid, captured_at: at };
+    const message = (row: Record<string, unknown>): SyncBatchMessage => ({
+      lane: fixture.lane,
+      captured_at: at,
+      pass_total: 2,
+      key_complete: true,
+      rows: [row],
+      delivery: uncheckedDelivery(fixture, [row], at),
+    });
+    let writes = 0;
+    const writer = async (
+      incoming: Record<string, unknown>[],
+      tally: PassTallyInput | null,
+    ) => {
+      writes++;
+      await nativeWrite(incoming, tally);
+    };
+    await writeSyncBatch(
+      message(original),
+      { [fixture.lane]: writer },
+      at + 100,
+    );
+    const messages = [];
+    let retries = 0;
+    for (const [number, override] of fixture.invalid.entries()) {
+      const alias = { ...original, ...override };
+      const packet = message(alias);
+      assert.equal(validSyncBatchMessage(packet), false);
+      await assert.rejects(
+        writeSyncBatch(packet, { [fixture.lane]: writer }, at + 100),
+        /canonical business key/,
+      );
+      await assert.rejects(
+        nativeWrite([alias], {
+          capturedAt: at,
+          expectedRows: 2,
+          receivedRows: 1,
+          nowMs: at + 100,
+          delivery: packet.delivery,
+        }),
+      );
+      messages.push({
+        id: String(number),
+        timestamp: new Date(at),
+        attempts: 1,
+        body: packet,
+        ack() {
+          assert.fail("identified alias was acknowledged");
+        },
+        retry() {
+          retries++;
+        },
+      });
+    }
+    await worker.queue!(
+      {
+        queue: "metagraphed-sync-batches",
+        metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
+        messages,
+        ackAll() {
+          assert.fail("identified alias batch was acknowledged");
+        },
+        retryAll() {
+          assert.fail("unexpected bulk retry");
+        },
+      },
+      env(),
+      ctx,
+    );
+    assert.equal(retries, fixture.invalid.length);
+    assert.equal(writes, 1);
+    const table = fixture.lane.replaceAll("-", "_");
+    assert.equal(
+      await db
+        .prepare(`SELECT COUNT(*) n FROM ${table} WHERE captured_at=?`)
+        .bind(at)
+        .first("n"),
+      1,
+    );
+    assert.equal(
+      await db
+        .prepare(
+          "SELECT COUNT(*) n FROM sync_delivery_receipts WHERE lane=? AND captured_at=?",
+        )
+        .bind(fixture.lane, at)
+        .first("n"),
+      1,
+    );
+    const tally = await db
+      .prepare(
+        `SELECT received_rows,completed_at FROM ${PASS_TABLES[fixture.lane]} WHERE captured_at=?`,
+      )
+      .bind(at)
+      .first<{ received_rows: number; completed_at: number | null }>();
+    assert.equal(tally!.received_rows, 1);
+    assert.equal(tally!.completed_at, null);
+  }
+});
+
+test("identified hoisted neuron keys require canonical decimal transport spelling", async () => {
+  const fixture = deliveryKeyFixtures.find((f) => f.lane === "neurons")!;
+  const row = { ...fixture.valid, captured_at: stamp + 500 };
+  const withoutKey: Record<string, unknown> = { ...row };
+  delete withoutKey.netuid;
+  for (const key_value of [
+    "01",
+    "+1",
+    "1.0",
+    "1e0",
+    " 1 ",
+    "-0",
+    "0x1",
+    "65536",
+    "100000",
+    "NaN",
+    "Infinity",
+    undefined,
+  ]) {
+    const packet = {
+      lane: "neurons",
+      captured_at: stamp + 500,
+      pass_total: 2,
+      key_complete: true,
+      key_column: "netuid",
+      key_value,
+      rows: [withoutKey],
+      delivery: uncheckedDelivery(fixture, [row], stamp + 500),
+    } as SyncBatchMessage;
+    assert.equal(validSyncBatchMessage(packet), false);
+    await assert.rejects(
+      writeSyncBatch(packet, {
+        neurons: async () => assert.fail("aliased hoist reached writer"),
+      }),
+      /canonical/,
+    );
+  }
 });

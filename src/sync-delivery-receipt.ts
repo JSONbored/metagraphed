@@ -78,8 +78,29 @@ const digest = (value: unknown) =>
 
 export function syncDeliveryKey(lane: string, row: Row): string {
   const keys = KEYS[lane];
-  if (!keys || keys.some((key) => row[key] == null))
-    throw new TypeError("Unknown delivery lane or missing business key");
+  if (!keys || !row || typeof row !== "object" || Array.isArray(row))
+    throw new TypeError("Invalid canonical business key");
+  for (const key of keys) {
+    const value = row[key];
+    // Hash the native business identity, never a value the database must
+    // coerce into it. PG/SQLite can store 1 and "1" under the same INTEGER
+    // key, and a numeric/array bind can likewise alias an existing TEXT key.
+    // The Bittensor key indexes are u16; Root (0) remains valid.
+    const integer = key === "netuid" || key === "uid";
+    if (
+      !Object.hasOwn(row, key) ||
+      (integer
+        ? typeof value !== "number" ||
+          !Number.isInteger(value) ||
+          value < 0 ||
+          value > 65_535
+        : typeof value !== "string" ||
+          !value ||
+          Buffer.byteLength(value, "utf8") > 128 ||
+          value.includes("\0"))
+    )
+      throw new TypeError("Invalid canonical business key");
+  }
   return syncDeliveryBytes(keys.map((key) => row[key])).toString("hex");
 }
 

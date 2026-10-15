@@ -26,6 +26,15 @@ numbers use big-endian IEEE754 and negative zero normalizes to zero. Lone JavaSc
 surrogates are refused, matching Rust's valid UTF8 strings. Receipt identities and
 hex key intervals use explicit binary/C collation in both qualification schemas.
 
+Business keys have one canonical type before hashing or dispatch: `netuid` and
+`uid` are numeric integers in 0..65535 (including Root), while account/hotkey/coldkey
+keys are nonempty valid Unicode strings of at most 128 UTF8 bytes with no NUL.
+Numeric strings, booleans, arrays and objects cannot substitute for those keys;
+native database coercion must never turn two different receipt keys into one
+business row. Text case, spaces and normalization remain distinct. Identified
+hoisted neuron netuids use canonical decimal transport spelling. The receiver,
+consumer, direct commit boundary and Rust producer enforce the same key contract.
+
 V1 POSTs carry `delivery_rows`, `delivery` and `pass_total`, deliberately omitting
 legacy `rows`. An old receiver rejects this shape before writing. The receiver
 verifies the producer identity/digest before projection, echoes the original

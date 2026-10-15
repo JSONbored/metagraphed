@@ -13,7 +13,7 @@ import {
   test,
 } from "vitest";
 import { createProducerStore } from "../src/producer-store.ts";
-import { PASS_TABLES } from "../src/pass-completeness.ts";
+import { PASS_TABLES, type PassTallyInput } from "../src/pass-completeness.ts";
 import {
   commitSyncDelivery,
   makeSyncDelivery,
@@ -28,6 +28,15 @@ import {
   neuronSnapshotWrite,
 } from "../src/neurons-neon-write.ts";
 import { writeIdentifiedPostgres } from "../src/sync-delivery-postgres.ts";
+import {
+  writeSyncBatch,
+  validSyncBatchMessage,
+  type SyncBatchMessage,
+} from "../src/sync-batch-queue.ts";
+import {
+  deliveryKeyFixtures,
+  uncheckedDelivery,
+} from "./helpers/sync-delivery-key-fixtures.ts";
 
 // Same disposable Unix-socket-only PostgreSQL model as the root basket races.
 // Native CI must actually execute these races; no remote production DB is used.
@@ -315,13 +324,21 @@ describe.skipIf(!available)("concurrent delivery transactions", () => {
   });
   test("identified positions and neurons persist all families and report health only after commit", async () => {
     const verdicts: string[] = [];
+    let expectedLane = "nominator-positions";
+    let expectedDelivery = positionInput().pass.delivery;
     const health = {
       query: async () => [],
       run: async (_text: string, values?: unknown[]) => {
         assert.ok(
           (
             await admin.query(
-              "SELECT COUNT(*)::int n FROM sync_delivery_receipts",
+              "SELECT COUNT(*)::int n FROM sync_delivery_receipts WHERE lane=$1 AND captured_at=$2 AND id=$3 AND sha256=$4",
+              [
+                expectedLane,
+                stamp,
+                expectedDelivery.id,
+                expectedDelivery.sha256,
+              ],
             )
           ).rows[0].n > 0,
         );
@@ -358,6 +375,8 @@ describe.skipIf(!available)("concurrent delivery transactions", () => {
         .rows[0].n,
       1,
     );
+    expectedLane = "neurons";
+    expectedDelivery = neuronInput().pass.delivery;
     const neurons = await mirrorNeuronSnapshotToNeon(
       environment(),
       null,
@@ -485,5 +504,115 @@ describe.skipIf(!available)("concurrent delivery transactions", () => {
       ),
       /preparation failed/,
     );
+  });
+  test("native PostgreSQL cannot gain completeness credit from canonical business key aliases", async () => {
+    for (const fixture of deliveryKeyFixtures) {
+      await admin.query(
+        `TRUNCATE sync_delivery_receipts,sync_delivery_passes,account_balances,hotkey_alpha,nominator_positions,nominator_scan_receipts,validator_nominator_counts,neurons,neuron_daily,account_position_daily,${Object.values(PASS_TABLES).join(",")} CASCADE`,
+      );
+      if (fixture.lane === "hotkey-alpha")
+        await admin.query(
+          "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at) VALUES('seed','1',1,1,$1)",
+          [stamp],
+        );
+      const nativeWrite = async (
+        incoming: Record<string, unknown>[],
+        tally: PassTallyInput | null,
+      ) => {
+        assert.ok(tally);
+        if (fixture.lane === "neurons") {
+          const result = await mirrorNeuronSnapshotToNeon(
+            environment(),
+            null,
+            { ...neuronSnapshotWrite(incoming, stamp + 100), pass: tally },
+            { laneHealthDb: ordinaryHealth },
+          );
+          assert.ok(Object.values(result.results).every((r) => r.ok));
+        } else if (fixture.lane === "nominator-positions") {
+          const result = await mirrorNominatorPositionsToNeon(
+            environment(),
+            null,
+            {
+              rows: incoming,
+              coldkeyMaxCapturedAt: coldkeyMaxCapturedAt(incoming),
+              pass: tally,
+            },
+            { laneHealthDb: ordinaryHealth },
+          );
+          assert.equal(result.write?.ok, true, result.write?.reason);
+        } else {
+          const result = await mirrorLedgerToNeon(
+            environment(),
+            null,
+            fixture.lane,
+            incoming,
+            { laneHealthDb: ordinaryHealth },
+            tally,
+          );
+          assert.equal(result.result?.ok, true, result.result?.reason);
+        }
+      };
+      const original = { ...fixture.valid, captured_at: stamp };
+      const message = (row: Record<string, unknown>): SyncBatchMessage => ({
+        lane: fixture.lane,
+        captured_at: stamp,
+        pass_total: 2,
+        key_complete: true,
+        rows: [row],
+        delivery: uncheckedDelivery(fixture, [row], stamp),
+      });
+      let writes = 0;
+      const writer = async (
+        incoming: Record<string, unknown>[],
+        tally: PassTallyInput | null,
+      ) => {
+        writes++;
+        await nativeWrite(incoming, tally);
+      };
+      await writeSyncBatch(
+        message(original),
+        { [fixture.lane]: writer },
+        stamp + 100,
+      );
+      for (const override of fixture.invalid) {
+        const alias = { ...original, ...override };
+        const packet = message(alias);
+        assert.equal(validSyncBatchMessage(packet), false);
+        await assert.rejects(
+          writeSyncBatch(packet, { [fixture.lane]: writer }, stamp + 100),
+          /canonical business key/,
+        );
+        await assert.rejects(
+          nativeWrite([alias], {
+            capturedAt: stamp,
+            expectedRows: 2,
+            receivedRows: 1,
+            nowMs: stamp + 100,
+            delivery: packet.delivery,
+          }),
+        );
+      }
+      assert.equal(writes, 1);
+      const table = fixture.lane.replaceAll("-", "_");
+      assert.equal(
+        (await admin.query(`SELECT COUNT(*)::int n FROM ${table}`)).rows[0].n,
+        1,
+      );
+      assert.equal(
+        (
+          await admin.query(
+            "SELECT COUNT(*)::int n FROM sync_delivery_receipts",
+          )
+        ).rows[0].n,
+        1,
+      );
+      const tally = (
+        await admin.query(
+          `SELECT received_rows,completed_at FROM ${PASS_TABLES[fixture.lane]}`,
+        )
+      ).rows[0];
+      assert.equal(tally.received_rows, 1);
+      assert.equal(tally.completed_at, null);
+    }
   });
 });
