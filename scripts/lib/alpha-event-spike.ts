@@ -143,6 +143,23 @@ export class AlphaEventSpike {
   private failed = false;
   private malformed = 0;
   private observationBytes = 0;
+  private runtimeCoverage = new Map<
+    string,
+    {
+      identity: z.infer<typeof runtime>;
+      qualified: boolean;
+      blocks: number;
+      first_block: number;
+      last_block: number;
+    }
+  >();
+
+  private record(observation: Record<string, unknown>) {
+    this.observationBytes += Buffer.byteLength(JSON.stringify(observation));
+    if (this.observationBytes > 64 * 1024 * 1024)
+      throw new Error("Per-event report exceeds its byte budget");
+    this.observations.push(observation);
+  }
 
   constructor(input: unknown) {
     this.manifest = AlphaSpikeManifestSchema.parse(input);
@@ -210,6 +227,17 @@ export class AlphaEventSpike {
       throw new Error("Event order or complete census differs");
     this.rows += block.events.length;
     const qualified = runtimeKnown(block.runtime);
+    const runtimeKey = `${block.runtime.spec_version}:${block.runtime.code_hash}:${block.runtime.metadata_sha256}`;
+    const coverage = this.runtimeCoverage.get(runtimeKey) ?? {
+      identity: block.runtime,
+      qualified,
+      blocks: 0,
+      first_block: block.block_number,
+      last_block: block.block_number,
+    };
+    coverage.blocks++;
+    coverage.last_block = block.block_number;
+    this.runtimeCoverage.set(runtimeKey, coverage);
     for (const row of block.events) {
       if (row.pallet !== "SubtensorModule") continue;
       if (
@@ -220,6 +248,23 @@ export class AlphaEventSpike {
       ) {
         const key = `${block.runtime.spec_version}:${row.method}`;
         this.unsupported.set(key, (this.unsupported.get(key) ?? 0) + 1);
+        this.record({
+          block_number: block.block_number,
+          block_hash: block.block_hash,
+          event_index: row.event_index,
+          method: row.method,
+          runtime: block.runtime,
+          operands: [],
+          raw_args: row.args,
+          pools: [],
+          typed_operands_valid: false,
+          missing_state: [
+            qualified
+              ? "event semantics are outside this audited method set"
+              : "runtime metadata/code identity is not admitted",
+          ],
+          event_only_derivable: false,
+        });
         continue;
       }
       let args: unknown;
@@ -334,10 +379,7 @@ export class AlphaEventSpike {
         missing_state: missing,
         event_only_derivable: false,
       };
-      this.observationBytes += Buffer.byteLength(JSON.stringify(observation));
-      if (this.observationBytes > 64 * 1024 * 1024)
-        throw new Error("Per-event report exceeds its byte budget");
-      this.observations.push(observation);
+      this.record(observation);
     }
     const members = new Set<string>();
     for (const state of block.canonical_state) {
@@ -400,6 +442,9 @@ export class AlphaEventSpike {
       ),
       canonical_same_hash_checks: this.checks,
       malformed_supported_events: this.malformed,
+      runtime_coverage: [...this.runtimeCoverage.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, value]) => value),
       events: this.observations,
     };
   }

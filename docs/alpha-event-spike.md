@@ -70,9 +70,9 @@ quote computation; it does not independently establish where those state bytes
 were obtained. Post-block state also cannot establish an intermediate value
 between two events in that block.
 
-The report retains each supported event's exact raw argument string, operand
-names, both known pool legs, missing state requirements and derivability
-verdict. It does not convert event amounts through JavaScript numbers or use
+The report records every declared runtime, including zero-event blocks, and retains each Subtensor event's exact raw argument string. Supported events include operand
+names, both known pool legs, missing state requirements and a derivability
+verdict. Unsupported events retain explicit unknown semantics and no admitted pool touches. It does not convert event amounts through JavaScript numbers or use
 them to compute shares. Only account and netuid identities are decoded for the
 touch set. The distinct count is explicitly the **known-event touch set**, not
 a census of every pool whose value changed. Unknown methods remain counted and

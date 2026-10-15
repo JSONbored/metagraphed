@@ -158,6 +158,9 @@ describe("bounded retained Alpha event spike", () => {
     analysis.accept(f.block);
     const report = analysis.finish(f.manifest.source_sha256);
     assert.equal(report.unsupported_subtensor_methods["478:FutureMutation"], 1);
+    assert.equal(report.events.at(-1)!.method, "FutureMutation");
+    assert.equal(report.events.at(-1)!.event_only_derivable, false);
+    assert.equal(report.runtime_coverage[0]!.qualified, true);
     assert.ok(
       (report.events[2]!.missing_state as string[]).includes(
         "decodable pool identity",
@@ -242,6 +245,20 @@ describe("bounded retained Alpha event spike", () => {
       () => new AlphaEventSpike(wrongPrefix.manifest).accept(wrongPrefix.block),
       /identity/,
     );
+  });
+
+  test("reports an unsupported runtime even on a zero-event block", () => {
+    const f = fixture();
+    f.block.events = [];
+    f.block.canonical_state = [];
+    f.manifest.blocks[0]!.event_count = 0;
+    f.block.runtime.code_hash = hash(1);
+    const analysis = new AlphaEventSpike(f.manifest);
+    analysis.accept(f.block);
+    const report = analysis.finish(f.manifest.source_sha256);
+    assert.equal(report.runtime_coverage[0]!.qualified, false);
+    assert.equal(report.runtime_coverage[0]!.blocks, 1);
+    assert.equal(report.known_event_touched_pool_count, 0);
   });
 
   test("rejects duplicates, missing blocks, reordered events, reorgs and incomplete windows", () => {
