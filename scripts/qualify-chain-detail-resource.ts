@@ -570,10 +570,14 @@ try {
                 async run() {
                   return statement.all();
                 },
-                async first(field?: string) {
+                async first<T = Record<string, unknown>>(
+                  field?: string,
+                ): Promise<T | null> {
                   const result = await statement.all();
                   const row = result.results[0] ?? null;
-                  return field === undefined ? row : (row?.[field] ?? null);
+                  return (
+                    field === undefined ? row : (row?.[field] ?? null)
+                  ) as T | null;
                 },
               };
               return statement;
