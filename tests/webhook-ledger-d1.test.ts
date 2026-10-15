@@ -1065,3 +1065,66 @@ test("dead-letter finalization refuses a lost intent and respects a concurrent a
   assert.equal((await ledger.deadLetter(m, NOW)).state, "stale");
   assert.deepEqual(await f.ledger.outbox(NOW + 4), [{ ...m, generation: 1 }]);
 });
+
+test("post-batch DLQ reread preserves a delayed claimant whose first-round lease has expired", async () => {
+  const f = await fixture(),
+    message = webhookMessage(),
+    dlqNow = NOW + 60_002;
+  await f.ledger.ensure(message, NOW);
+  let finishing = false,
+    interleaved = 0;
+  const ledger = webhookLedgerD1({
+    prepare(sql: string) {
+      if (sql.startsWith("UPDATE webhook_delivery_intents SET state='dead'"))
+        finishing = true;
+      return f.db.prepare(sql);
+    },
+    async batch(statements) {
+      if (finishing) {
+        finishing = false;
+        interleaved++;
+        // A claimant captured its clock before the DLQ owner and commits
+        // after the DLQ's initial read. No new controller or direct state edit.
+        const delayed = await f.ledger.claim(message, URL, 1, NOW + 1);
+        assert.equal(delayed.kind, "claimed");
+      }
+      return f.db.batch(statements);
+    },
+  } as D1StoreBinding);
+  const stale = await ledger.deadLetter(message, dlqNow);
+  assert.equal(stale.state, "stale");
+  assert.equal(interleaved, 1);
+  assert.deepEqual(
+    await f.db
+      .prepare(
+        "SELECT state,round,sequence,lease_until FROM webhook_delivery_intents",
+      )
+      .first(),
+    { state: "sending", round: 1, sequence: 1, lease_until: NOW + 60_001 },
+  );
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT outcome FROM webhook_delivery_attempts")
+        .first()
+    )?.outcome,
+    "ambiguous",
+  );
+  const next = await f.ledger.claim(message, URL, 2, dlqNow + 1);
+  assert.equal(next.kind, "claimed");
+  if (next.kind !== "claimed")
+    throw new Error("retry lost the retained claimant");
+  assert.equal(next.attempt.round, 2);
+  await f.ledger.finish(next.attempt, delivered, "delivered", dlqNow + 2, null);
+  assert.equal(
+    (await f.ledger.deadLetter(message, dlqNow + 3)).state,
+    "delivered",
+  );
+  const attempts = await f.db
+    .prepare("SELECT outcome FROM webhook_delivery_attempts ORDER BY sequence")
+    .all();
+  assert.deepEqual(
+    attempts.results.map((row) => row.outcome),
+    ["ambiguous", "delivered"],
+  );
+});

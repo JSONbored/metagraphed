@@ -145,6 +145,145 @@ test("production consumer persists the exact attempt before HTTP, then native su
   );
 });
 
+test("authorized nonzero replay generation reaches the actual consumer and stale copies cannot send", async () => {
+  const f = await setup(),
+    original = webhookMessage(f.id),
+    now = Date.now();
+  vi.spyOn(Date, "now").mockReturnValue(now);
+  let effects = 0;
+  assert.deepEqual(
+    await consume(f.env, original, async () => {
+      effects++;
+      return {
+        status: "failed",
+        reason: "http-400",
+        status_code: 400,
+        retryable: false,
+      };
+    }),
+    ["ack"],
+  );
+  const replay = await f.ledger.authorizeReplay(
+    original,
+    "bounded-operator-replay",
+    now + 1,
+  );
+  assert.deepEqual(replay, { ...original, generation: 1 });
+  vi.spyOn(Date, "now").mockReturnValue(now + 2);
+  const deliver = async ({ bodyText }: { bodyText: string }) => {
+    effects++;
+    assert.equal(bodyText, original.body);
+    assert.deepEqual(
+      await f.db
+        .prepare(
+          "SELECT generation,round,sequence,outcome FROM webhook_delivery_attempts WHERE outcome='sending'",
+        )
+        .first(),
+      { generation: 1, round: 1, sequence: 2, outcome: "sending" },
+    );
+    return { status: "delivered", status_code: 200 };
+  };
+  assert.deepEqual(await consume(f.env, original, deliver), ["ack"]);
+  assert.equal(
+    effects,
+    1,
+    "an old generation cannot acquire another remote effect",
+  );
+  assert.deepEqual(await consume(f.env, replay, deliver), ["ack"]);
+  assert.equal(effects, 2);
+  assert.deepEqual(await consume(f.env, replay, deliver, 2), ["ack"]);
+  assert.deepEqual(await consume(f.env, original, deliver, 3), ["ack"]);
+  assert.equal(
+    effects,
+    2,
+    "durable success fences both replay duplicates and old copies",
+  );
+  const rows = await f.db
+    .prepare(
+      "SELECT generation,sequence,outcome FROM webhook_delivery_attempts ORDER BY sequence",
+    )
+    .all();
+  assert.deepEqual(rows.results, [
+    { generation: 0, sequence: 1, outcome: "ambiguous" },
+    { generation: 1, sequence: 2, outcome: "delivered" },
+  ]);
+  const response = await status(f.env, f.id);
+  assert.equal((await response.json()).data.delivery.status, "ok");
+});
+
+test("inconsistent delivered-proof readback retries without losing native success or repeating HTTP", async () => {
+  const f = await setup(),
+    message = webhookMessage(f.id);
+  let finishing = false,
+    staleRead = false,
+    injected = 0,
+    effects = 0;
+  const db = {
+    prepare(sql: string) {
+      if (sql.startsWith("UPDATE webhook_delivery_attempts SET outcome=?"))
+        finishing = true;
+      const statement = f.db.prepare(sql);
+      if (!sql.startsWith("SELECT i.*,a.sequence AS proven_sequence"))
+        return statement;
+      return {
+        bind(...values: unknown[]) {
+          const bound = statement.bind(...values);
+          return {
+            async first<T>() {
+              const row = await bound.first<T>();
+              if (!staleRead) return row;
+              staleRead = false;
+              injected++;
+              // One inconsistent transport read after a real committed batch:
+              // the intent is present, but this response omits its success proof.
+              return {
+                ...row,
+                state: "pending",
+                lease_token: null,
+                proven_sequence: null,
+                proven_status: null,
+                proven_at: null,
+              } as T;
+            },
+          } as D1PreparedStatement;
+        },
+      } as D1PreparedStatement;
+    },
+    async batch(statements: Parameters<D1StoreBinding["batch"]>[0]) {
+      const result = await f.db.batch(statements);
+      if (finishing) {
+        finishing = false;
+        staleRead = true;
+      }
+      return result;
+    },
+  } as D1StoreBinding;
+  const env = { ...f.env, D1_STATE: db };
+  const deliver = async () => {
+    effects++;
+    return { status: "delivered", status_code: 200 };
+  };
+  assert.deepEqual(await consume(env, message, deliver), ["retry"]);
+  assert.equal(injected, 1);
+  assert.equal(effects, 1);
+  assert.equal(
+    (
+      await f.db
+        .prepare("SELECT outcome FROM webhook_delivery_attempts")
+        .first()
+    )?.outcome,
+    "delivered",
+  );
+  assert.equal(
+    (await f.db.prepare("SELECT state FROM webhook_delivery_intents").first())
+      ?.state,
+    "delivered",
+  );
+  assert.deepEqual(await consume(env, message, deliver, 2), ["ack"]);
+  assert.equal(effects, 1);
+  assert.equal(injected, 1);
+});
+
 test("effect followed by failed commit retries, expired lease exposes ambiguity and same identity remains replayable", async () => {
   const f = await setup(),
     m = webhookMessage(f.id);
