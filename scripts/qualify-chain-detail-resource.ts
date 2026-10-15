@@ -25,7 +25,8 @@ import {
 } from "../src/sync-batch-compress.ts";
 
 const cpuProfiles = process.env.CHAIN_DETAIL_RESOURCE_CPU_PROFILES !== "false";
-const nativeOracle = process.env.CHAIN_DETAIL_RESOURCE_NATIVE_ORACLE === "true";
+const nativeOracle =
+  process.env.CHAIN_DETAIL_RESOURCE_NATIVE_ORACLE !== "false";
 const output = path.resolve("reports/chain-detail-resource");
 await mkdir(output, { recursive: true });
 const temporary = await mkdtemp(path.join(tmpdir(), "chain-detail-resource-"));
@@ -47,6 +48,7 @@ const report: Record<string, unknown> = {
     "Cloudflare billed CPU",
     "native queue scheduling/concurrency parity",
     "production workload representativeness",
+    "full16MB/80000-row HTTP envelope and concurrent fallback backpressure",
   ],
   batches: {
     messages: 1,

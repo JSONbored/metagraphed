@@ -20,9 +20,9 @@ on:
         type: boolean
         default: false
       resource_native_oracle:
-        description: "Compare identical SQL verification through a native fixture binding"
+        description: "Use native SQL verification; false retains Node binding-proxy comparison"
         type: boolean
-        default: false
+        default: true
       resource_cpu_profiles:
         description: "Enable CPU profiling; false is an explicit instrumentation comparison"
         type: boolean
