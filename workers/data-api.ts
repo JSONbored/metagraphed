@@ -1300,10 +1300,7 @@ async function handleNeuronDailyBackfill(
   }
   const maxRows = receiptVersion !== null ? 1000 : NEURONS_SYNC_MAX_ROWS;
   if (incoming.length > maxRows) {
-    return writeJson(
-      { error: `at most ${maxRows} rows per request` },
-      413,
-    );
+    return writeJson({ error: `at most ${maxRows} rows per request` }, 413);
   }
   const validatedIncoming = incoming.map(stripClientSnapshotDate);
   const neuronCheck = validateSyncRows(
@@ -1366,25 +1363,47 @@ async function handleNeuronDailyBackfill(
       selectedD1Store(env, [...NEURONS_SNAPSHOT_TABLES, "neurons_passes"]) ||
       !env.HYPERDRIVE?.connectionString
     ) {
-      return writeJson({ error: "historical receipt needs the PostgreSQL owner" }, 503);
+      return writeJson(
+        { error: "historical receipt needs the PostgreSQL owner" },
+        503,
+      );
     }
     const bodySha256 = await sha256Hex(raw);
     let confirmed = false;
     try {
-      await writeNeuronHistory(env.HYPERDRIVE.connectionString, dailyRows, positionRows);
+      await writeNeuronHistory(
+        env.HYPERDRIVE.connectionString,
+        dailyRows,
+        positionRows,
+      );
       confirmed = true;
     } catch {
       // A rejected COMMIT can already have committed. Preserve that ambiguity;
       // the same input can safely replay and must obtain a new confirmation.
     }
-    for (const [table, count] of [["neuron_daily", dailyRows.length],
-      ["account_position_daily", positionRows.length]] as const) {
-      await recordNeonWriteVerdict(laneHealthStore(env), table, {
-        ok: confirmed, rows: count, statements: confirmed ? 2 : 0,
-        ...(confirmed ? {} : { reason: "historical write unconfirmed", confirmation: "unknown" as const }),
-      }, Date.now());
+    for (const [table, count] of [
+      ["neuron_daily", dailyRows.length],
+      ["account_position_daily", positionRows.length],
+    ] as const) {
+      await recordNeonWriteVerdict(
+        laneHealthStore(env),
+        table,
+        {
+          ok: confirmed,
+          rows: count,
+          statements: confirmed ? 2 : 0,
+          ...(confirmed
+            ? {}
+            : {
+                reason: "historical write unconfirmed",
+                confirmation: "unknown" as const,
+              }),
+        },
+        Date.now(),
+      );
     }
-    if (!confirmed) return writeJson({ error: "historical write unconfirmed" }, 502);
+    if (!confirmed)
+      return writeJson({ error: "historical write unconfirmed" }, 502);
     return writeJson({
       ok: true,
       neuron_daily_written: dailyRows.length,

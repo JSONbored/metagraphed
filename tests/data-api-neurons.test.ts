@@ -736,12 +736,22 @@ async function postBackfill(
   );
 }
 
-async function postHistorical(rows: Row[], overrides: Row = {}, version = "historical-neuron-v1") {
-  return call(req("/api/v1/internal/backfill-neuron-daily", {
-    method: "POST",
-    headers: { "x-neuron-daily-backfill-token": BACKFILL_SECRET,
-      "x-metagraph-backfill-receipt": version }, body: { rows },
-  }), env(overrides));
+async function postHistorical(
+  rows: Row[],
+  overrides: Row = {},
+  version = "historical-neuron-v1",
+) {
+  return call(
+    req("/api/v1/internal/backfill-neuron-daily", {
+      method: "POST",
+      headers: {
+        "x-neuron-daily-backfill-token": BACKFILL_SECRET,
+        "x-metagraph-backfill-receipt": version,
+      },
+      body: { rows },
+    }),
+    env(overrides),
+  );
 }
 
 test("prepared historical receiver verifies both family orders, exact replay and stable write stamps", async () => {
@@ -752,20 +762,28 @@ test("prepared historical receiver verifies both family orders, exact replay and
       const input = [{ ...base, stake_tao: stake }];
       const response = await postHistorical(input);
       assert.equal(response.status, 200);
-      const body = await response.json() as Row;
+      const body = (await response.json()) as Row;
       const { sha256Hex } = await import("../src/sha256-hex.ts");
       assert.deepEqual(body.backfill_receipt, {
         format: "metagraphed-neuron-history-receipt/v1",
         body_sha256: await sha256Hex(JSON.stringify({ rows: input })),
-        confirmation: "committed", projection: "same-capture-null-stake-enrichment/v1",
-        neuron_daily_rows: 1, account_position_daily_rows: 1,
+        confirmation: "committed",
+        projection: "same-capture-null-stake-enrichment/v1",
+        neuron_daily_rows: 1,
+        account_position_daily_rows: 1,
       });
     }
     for (const table of ["neuron_daily", "account_position_daily"]) {
-      assert.equal((await one(`SELECT stake_tao FROM ${table}`)).stake_tao, 12.5);
+      assert.equal(
+        (await one(`SELECT stake_tao FROM ${table}`)).stake_tao,
+        12.5,
+      );
     }
     const before = await one("SELECT updated_at FROM neuron_daily");
-    assert.equal((await postHistorical([{ ...base, stake_tao: 12.5 }])).status, 200);
+    assert.equal(
+      (await postHistorical([{ ...base, stake_tao: 12.5 }])).status,
+      200,
+    );
     assert.deepEqual(await one("SELECT updated_at FROM neuron_daily"), before);
   }
   assert.equal(await count("neurons"), 0);
@@ -776,41 +794,96 @@ test("prepared historical receiver refuses stale or contradictory same-capture o
   assert.equal((await postHistorical([syncRow()])).status, 200);
   const original = (await db.query("SELECT * FROM neuron_daily")).rows;
   for (const changes of [
-    { captured_at: CAPTURED_AT - 1 }, { stake_tao: 101 },
-    { coldkey: "different-owner" }, { block_number: 8_600_001 },
+    { captured_at: CAPTURED_AT - 1 },
+    { stake_tao: 101 },
+    { coldkey: "different-owner" },
+    { block_number: 8_600_001 },
     { rank: 0.6 },
   ]) {
     assert.equal((await postHistorical([syncRow(changes)])).status, 502);
-    assert.deepEqual((await db.query("SELECT * FROM neuron_daily")).rows, original);
+    assert.deepEqual(
+      (await db.query("SELECT * FROM neuron_daily")).rows,
+      original,
+    );
   }
-  assert.equal((await postHistorical([syncRow({ captured_at: CAPTURED_AT + 1, stake_tao: null })])).status, 200);
-  assert.equal((await one("SELECT stake_tao FROM neuron_daily")).stake_tao, null);
+  assert.equal(
+    (
+      await postHistorical([
+        syncRow({ captured_at: CAPTURED_AT + 1, stake_tao: null }),
+      ])
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await one("SELECT stake_tao FROM neuron_daily")).stake_tao,
+    null,
+  );
 });
 
 test("prepared historical receiver rolls back the first family when the second has a newer original", async () => {
   assert.equal((await postHistorical([syncRow()])).status, 200);
   await db.exec("TRUNCATE neuron_daily");
-  const position = (await db.query("SELECT * FROM account_position_daily")).rows;
-  assert.equal((await postHistorical([syncRow({ captured_at: CAPTURED_AT - 1 })])).status, 502);
+  const position = (await db.query("SELECT * FROM account_position_daily"))
+    .rows;
+  assert.equal(
+    (await postHistorical([syncRow({ captured_at: CAPTURED_AT - 1 })])).status,
+    502,
+  );
   assert.equal(await count("neuron_daily"), 0);
-  assert.deepEqual((await db.query("SELECT * FROM account_position_daily")).rows, position);
+  assert.deepEqual(
+    (await db.query("SELECT * FROM account_position_daily")).rows,
+    position,
+  );
 });
 
 test("prepared historical receiver verifies empty and account-less projections and refuses ownership/version/caps", async () => {
   assert.equal((await postHistorical([])).status, 200);
   const response = await postHistorical([syncRow({ hotkey: null })]);
   assert.equal(response.status, 200);
-  assert.equal((await response.json() as Row).backfill_receipt.account_position_daily_rows, 0);
+  assert.equal(
+    ((await response.json()) as Row).backfill_receipt
+      .account_position_daily_rows,
+    0,
+  );
   assert.equal((await postHistorical([], {}, "future-version")).status, 400);
-  assert.equal((await postHistorical([], { HYPERDRIVE: undefined })).status, 503);
-  const native = { prepare() { throw new Error("unselected store touched"); }, batch() { throw new Error("unselected store touched"); } };
-  assert.equal((await postHistorical([], { D1_STATE: native,
-    D1_STATE_TABLES: "neurons,neuron_daily,account_position_daily,neurons_passes" })).status, 503);
-  assert.equal((await postHistorical(Array.from({ length: 1001 }, () => syncRow()))).status, 413);
-  const tooLarge = await call(new Request("https://d/api/v1/internal/backfill-neuron-daily", {
-    method: "POST", headers: { "x-neuron-daily-backfill-token": BACKFILL_SECRET,
-      "x-metagraph-backfill-receipt": "historical-neuron-v1" }, body: " ".repeat(524289),
-  }), env());
+  assert.equal(
+    (await postHistorical([], { HYPERDRIVE: undefined })).status,
+    503,
+  );
+  const native = {
+    prepare() {
+      throw new Error("unselected store touched");
+    },
+    batch() {
+      throw new Error("unselected store touched");
+    },
+  };
+  assert.equal(
+    (
+      await postHistorical([], {
+        D1_STATE: native,
+        D1_STATE_TABLES:
+          "neurons,neuron_daily,account_position_daily,neurons_passes",
+      })
+    ).status,
+    503,
+  );
+  assert.equal(
+    (await postHistorical(Array.from({ length: 1001 }, () => syncRow())))
+      .status,
+    413,
+  );
+  const tooLarge = await call(
+    new Request("https://d/api/v1/internal/backfill-neuron-daily", {
+      method: "POST",
+      headers: {
+        "x-neuron-daily-backfill-token": BACKFILL_SECRET,
+        "x-metagraph-backfill-receipt": "historical-neuron-v1",
+      },
+      body: " ".repeat(524289),
+    }),
+    env(),
+  );
   assert.equal(tooLarge.status, 413);
 });
 
@@ -819,14 +892,20 @@ test("prepared historical receiver replays a committed write whose COMMIT acknow
   let lost = false;
   pg.control.postgres = async (text, values) => {
     const rows = await engine(text, values);
-    if (text === "COMMIT" && !lost) { lost = true; throw new Error("lost commit acknowledgement"); }
+    if (text === "COMMIT" && !lost) {
+      lost = true;
+      throw new Error("lost commit acknowledgement");
+    }
     return rows;
   };
   assert.equal((await postHistorical([syncRow()])).status, 502);
   assert.equal(await count("neuron_daily"), 1);
   const original = (await db.query("SELECT * FROM neuron_daily")).rows;
   assert.equal((await postHistorical([syncRow()])).status, 200);
-  assert.deepEqual((await db.query("SELECT * FROM neuron_daily")).rows, original);
+  assert.deepEqual(
+    (await db.query("SELECT * FROM neuron_daily")).rows,
+    original,
+  );
 });
 
 test("backfill-neuron-daily writes neuron_daily + account_position_daily and never touches neurons", async () => {

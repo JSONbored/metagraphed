@@ -29,8 +29,7 @@ export async function writeNeuronHistory(
     const same = business
       .filter((column) => column !== "stake_tao")
       .map(
-        (column) =>
-          `${name}.${column} IS NOT DISTINCT FROM EXCLUDED.${column}`,
+        (column) => `${name}.${column} IS NOT DISTINCT FROM EXCLUDED.${column}`,
       )
       .join(" AND ");
     const updates = columns
