@@ -388,7 +388,7 @@ test("distinguishes copied argument previews from exact API text", async ({ page
   expect(rawReads).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({
-    path: test.info().outputPath("explorer-exact-arguments-375.png"),
+    path: test.info().outputPath("explorer-evidence-exact-arguments-375.png"),
     fullPage: true,
   });
   pruned = true;
@@ -401,7 +401,7 @@ test("distinguishes copied argument previews from exact API text", async ({ page
   ).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({
-    path: test.info().outputPath("explorer-partial-arguments-375.png"),
+    path: test.info().outputPath("explorer-evidence-partial-arguments-375.png"),
     fullPage: true,
   });
 });

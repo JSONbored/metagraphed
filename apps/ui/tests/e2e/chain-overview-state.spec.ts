@@ -275,7 +275,7 @@ test("compares only closed UTC fee days and keeps missing observations unknown a
   await expect(section.locator(".mg-stack-axis")).toContainText("2026-10-13");
   await expect(section.locator(".mg-stack-axis")).toContainText("2026-10-15");
   await page.screenshot({
-    path: test.info().outputPath("explorer-fee-totals-missing-day.png"),
+    path: test.info().outputPath("explorer-evidence-fee-totals-missing-day.png"),
     fullPage: true,
   });
   observed = null;
