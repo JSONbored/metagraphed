@@ -1135,7 +1135,7 @@ describe("handleCompareValidators", () => {
     );
   });
 
-  test("netuid context: flag=postgres carries subnet_context from the per-hotkey Postgres response", async () => {
+  test("netuid context: a single batch response preserves the detail projection", async () => {
     const env = createLocalArtifactEnv();
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     const requestedPaths: string[] = [];
@@ -1144,10 +1144,14 @@ describe("handleCompareValidators", () => {
         const reqUrl = new URL(request.url);
         requestedPaths.push(reqUrl.pathname);
         return Response.json({
-          schema_version: 1,
-          hotkey: reqUrl.pathname.split("/").pop(),
-          coldkey: "coldkey-1",
-          subnets: [{ netuid: 7, uid: 3, stake_tao: 100 }],
+          details: [
+            {
+              schema_version: 1,
+              hotkey: HOTKEY_A,
+              coldkey: "coldkey-1",
+              subnets: [{ netuid: 7, uid: 3, stake_tao: 100 }],
+            },
+          ],
         });
       },
     };
@@ -1158,7 +1162,7 @@ describe("handleCompareValidators", () => {
         url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=7`),
       ),
     );
-    assert.deepEqual(requestedPaths, [`/api/v1/validators/${HOTKEY_A}`]);
+    assert.deepEqual(requestedPaths, ["/api/v1/internal/validator-details"]);
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.validators[0].subnet_context.netuid, 7);
     assert.equal(body.data.validators[0].subnet_context.uid, 3);

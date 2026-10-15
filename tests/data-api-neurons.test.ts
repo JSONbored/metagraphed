@@ -584,10 +584,31 @@ test("a failed table is a 502, and the tables written before it are NOT rolled b
   // converges on the same state rather than double-counting. What must NOT
   // happen is the request reporting ok -- the producer would advance past a
   // snapshot two of whose three tables are missing.
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
   await db.exec("DROP TABLE account_position_daily");
   const res = await postSync([syncRow()]);
   assert.equal(res.status, 502);
   assert.deepEqual(await res.json(), { error: "neon write failed" });
+  const event = warn.mock.calls.find(
+    ([label]) => label === "neuron_snapshot_write_failure",
+  );
+  assert.ok(event);
+  assert.equal(event[1].write_path, "postgres-direct");
+  assert.equal(event[1].confirmed_rows, null);
+  assert.deepEqual(event[1].input_rows, {
+    neurons: 1,
+    neuron_daily: 1,
+    account_position_daily: 1,
+  });
+  assert.equal(event[1].failures.account_position_daily, "insert_error");
+  assert.ok(
+    errors.mock.calls.every(
+      ([label]) => label !== "data-api neurons-sync Neon write failed:",
+    ),
+  );
+  warn.mockRestore();
+  errors.mockRestore();
   assert.equal(
     await count("neurons"),
     1,
@@ -4038,4 +4059,70 @@ test("the bulk ranking excludes each subnet's burn sink and counts its miners (#
   // With the 70-emission sink excluded, the emission lens sees the validator's
   // 20 and the miner's 10 -- two holders, not a 70% single-holder illusion.
   assert.equal(row.holders, 2);
+});
+
+test("internal comparison batch uses five PostgreSQL reads and preserves single-detail order", async () => {
+  const keys = [
+    "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+  ];
+  await insertNeuron({ uid: 0, hotkey: keys[0], validator_permit: 1 });
+  await insertNeuron({ uid: 1, hotkey: keys[1], validator_permit: 1 });
+  pg.control.queries.length = 0;
+  const response = await call(
+    req(
+      `/api/v1/internal/validator-details?hotkeys=${keys[1]},${keys[0]},${keys[1]}`,
+    ),
+  );
+  assert.equal(response.status, 200);
+  const batch = await response.json<Row>();
+  assert.equal(pg.control.queries.length, 5);
+  assert.deepEqual(
+    batch.details.map((r: Row) => r.hotkey),
+    [keys[1], keys[0]],
+  );
+  for (const detail of batch.details)
+    assert.deepEqual(
+      detail,
+      await (await call(req(`/api/v1/validators/${detail.hotkey}`))).json(),
+    );
+  assert.equal(
+    (await call(req("/api/v1/internal/validator-details?hotkeys=invalid")))
+      .status,
+    400,
+  );
+});
+
+test("internal shared cards read one PostgreSQL population and preserve standalone cards", async () => {
+  for (const row of [
+    { uid: 0, stake_tao: null, validator_permit: 1 },
+    { uid: 1, stake_tao: 50, validator_permit: 1 },
+    { uid: 2, stake_tao: 50, validator_permit: 1 },
+    { uid: 3, stake_tao: 200, validator_permit: 0 },
+    { uid: 4, stake_tao: null, validator_permit: 1 },
+  ])
+    await insertNeuron(row);
+  pg.control.queries.length = 0;
+  const response = await call(req("/api/v1/internal/subnets/7/snapshot-cards"));
+  assert.equal(response.status, 200);
+  const shared = await response.json<Row>();
+  assert.equal(pg.control.queries.length, 1);
+  for (const card of ["concentration", "performance", "validators"])
+    assert.deepEqual(
+      shared[card],
+      await (await call(req(`/api/v1/subnets/7/${card}`))).json(),
+    );
+  assert.equal(shared.validators.validators[0].uid, 0);
+  assert.equal(shared.validators.validators[1].uid, 4);
+  assert.equal(shared.validators.validator_count, 4);
+  assert.equal(shared.performance.neuron_count, 5);
+  for (const netuid of [
+    "65536",
+    "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+  ])
+    assert.equal(
+      (await call(req(`/api/v1/internal/subnets/${netuid}/snapshot-cards`)))
+        .status,
+      400,
+    );
 });
