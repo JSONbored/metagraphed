@@ -19,6 +19,10 @@ on:
         description: "Reproduce combined-process pressure (diagnostic-only; cannot qualify source)"
         type: boolean
         default: false
+      resource_extended_diagnostic:
+        description: "Only HTTP envelope/concurrent and nonempty chunk diagnostics (requires probe-only)"
+        type: boolean
+        default: false
       resource_native_oracle:
         description: "Use native SQL verification; false retains Node binding-proxy comparison"
         type: boolean
@@ -1621,15 +1625,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shape: ${{ inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","objects-admitted","blocks16"]') }}
+        shape: ${{ inputs.resource_extended_diagnostic && fromJSON('["chunks","chunks-http","http-envelope","http-concurrent"]') || inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","objects-admitted","blocks16"]') }}
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify_chain_detail_resources }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Require diagnostic disposition for combined pressure
-        if: ${{ inputs.resource_combined_diagnostic && !inputs.resource_probe_only }}
+        if: ${{ (inputs.resource_combined_diagnostic || inputs.resource_extended_diagnostic) && !inputs.resource_probe_only }}
         run: |
-          echo "::error::Combined pressure reproduction requires diagnostic-only mode."
+          echo "::error::Extended/combined pressure reproduction requires diagnostic-only mode."
           exit 1
       - name: Checkout exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

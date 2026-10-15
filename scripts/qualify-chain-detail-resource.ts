@@ -13,8 +13,10 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Miniflare } from "miniflare";
+import { CHAIN_DETAIL_SYNC_MAX_BODY_BYTES } from "../src/chain-detail-sync-payload.ts";
 import { parseChainDetailSync } from "../src/chain-detail-sync-payload.ts";
 import { restoreChainDetailPayloads } from "../src/chain-detail-payloads.ts";
+import { SYNC_BATCH_MAX_BYTES } from "../src/sync-batch-queue.ts";
 import { chainDetailTables } from "../src/chain-detail-neon-write.ts";
 import { stripJsonComments } from "./lib.ts";
 import { gzipSync, gunzipSync } from "node:zlib";
@@ -48,7 +50,7 @@ const report: Record<string, unknown> = {
     "Cloudflare billed CPU",
     "native queue scheduling/concurrency parity",
     "production workload representativeness",
-    "full16MB/80000-row HTTP envelope and concurrent fallback backpressure",
+    "production HTTP concurrency/backpressure and sustained throughput",
   ],
   batches: {
     messages: 1,
@@ -135,7 +137,54 @@ async function nativeLimits() {
 
 const stamp = 1_790_090_000_000;
 
-function payload(shape: string, block = 9_000_001) {
+interface ResourceMessage {
+  lane: "chain-detail";
+  captured_at: number;
+  families: {
+    blockRows: Record<string, unknown>[];
+    extrinsicRows: Record<string, unknown>[];
+    chainEventRows: Record<string, unknown>[];
+    accountEventRows: Record<string, unknown>[];
+  };
+}
+
+function httpBody(message: ResourceMessage): string {
+  return JSON.stringify({
+    blocks: message.families.blockRows.map((block) => ({
+      ...block,
+      extrinsics: message.families.extrinsicRows
+        .filter((row) => row.block_number === block.block_number)
+        .map((row) => ({
+          ...row,
+          success: row.success === null ? null : Boolean(row.success),
+        })),
+      chain_events: message.families.chainEventRows.filter(
+        (row) => row.block_number === block.block_number,
+      ),
+      account_events: message.families.accountEventRows.filter(
+        (row) => row.block_number === block.block_number,
+      ),
+    })),
+  });
+}
+
+// Deterministic JSON-safe high-entropy text: unlike repeated x, it must use
+// nonempty native payload chunks after gzip, while fitting the queue wire cap.
+function chunkArgument(): string {
+  let seed = 0x12345678;
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+  let value = "";
+  for (let i = 0; i < 160_000; i++) {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    value += alphabet[seed >>> 26];
+  }
+  return JSON.stringify({ value });
+}
+
+function payload(shape: string, block = 9_000_001): ResourceMessage {
   const parsed = parseChainDetailSync(
     {
       blocks: [
@@ -167,15 +216,19 @@ function payload(shape: string, block = 9_000_001) {
           chain_events: Array.from(
             {
               length:
-                shape === "objects-max"
-                  ? 23_000
-                  : shape === "objects"
-                    ? 12_000
-                    : shape === "objects-admitted"
-                      ? 4_998
-                      : shape === "objects-repair"
-                        ? 3_000
-                        : 0,
+                shape === "chunks-http"
+                  ? 4_999
+                  : shape === "http-envelope"
+                    ? 79_998
+                    : shape === "objects-max"
+                      ? 23_000
+                      : shape === "objects"
+                        ? 12_000
+                        : shape === "objects-admitted"
+                          ? 4_998
+                          : shape === "objects-repair"
+                            ? 3_000
+                            : 0,
             },
             (_, i) => ({
               block_number: block,
@@ -210,7 +263,37 @@ function payload(shape: string, block = 9_000_001) {
   );
   assert.ok(parsed.ok);
   const { head: _head, ...families } = parsed.rows;
-  const message = { lane: "chain-detail", captured_at: stamp, families };
+  const message: ResourceMessage = {
+    lane: "chain-detail",
+    captured_at: stamp,
+    families,
+  };
+  if (shape.startsWith("chunks"))
+    families.extrinsicRows[0].call_args = chunkArgument();
+  if (shape === "http-envelope") {
+    families.extrinsicRows[0].call_args = JSON.stringify({ s: "" });
+    const remaining =
+      CHAIN_DETAIL_SYNC_MAX_BODY_BYTES - Buffer.byteLength(httpBody(message));
+    assert.ok(
+      remaining > 0,
+      "all80000 detail rows must fit supported HTTP envelope",
+    );
+    families.extrinsicRows[0].call_args = JSON.stringify({
+      s: "x".repeat(remaining),
+    });
+    assert.equal(
+      Buffer.byteLength(httpBody(message)),
+      CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
+    );
+  }
+  if (shape === "http-concurrent") {
+    const parts = [
+      payload("http-envelope", block),
+      payload("http-envelope", block + 100_000),
+    ];
+    for (const name of Object.keys(families) as Array<keyof typeof families>)
+      families[name] = parts.flatMap((part) => part.families[name]);
+  }
   if (shape === "string") {
     // Near the decoded byte ceiling; leave space for the JSON envelope.
     families.extrinsicRows[0].call_args = JSON.stringify({
@@ -263,7 +346,7 @@ async function databaseState(db: VerificationDb) {
       ).results;
       for (const row of rows) digest.update(JSON.stringify(row) + "\n");
       count += rows.length;
-      assert.ok(count <= 100_000, "finite verification row bound");
+      assert.ok(count <= 400_000, "finite verification row bound");
       if (rows.length < 128) break;
     }
     state.push({ table, rows: count, sha256: digest.digest("hex") });
@@ -455,6 +538,10 @@ try {
         "objects-max",
         "objects-admitted",
         "blocks16",
+        "chunks",
+        "chunks-http",
+        "http-envelope",
+        "http-concurrent",
         "combined",
       ].includes(shape),
     "one explicit finite diagnostic shape required",
@@ -473,9 +560,13 @@ try {
       : [shape];
   for (const selectedShape of shapes) {
     const shape = selectedShape;
+    report.current_shape = shape;
+    report.current_phase = "construct-input";
+    await save();
     const message = payload(shape);
     const decoded = Buffer.byteLength(JSON.stringify(message));
-    assert.ok(decoded <= SYNC_BATCH_MAX_DECODED_BYTES);
+    if (!shape.startsWith("http-"))
+      assert.ok(decoded <= SYNC_BATCH_MAX_DECODED_BYTES);
     const apiOptions = {
       name: "chain-detail-resource",
       modules: nativeModules,
@@ -646,6 +737,19 @@ try {
         await cdp.request("Profiler.enable");
         await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
       }
+      if (shape === "chunks") {
+        await assert.rejects(
+          compressSyncBatchMessage(message, SYNC_BATCH_MAX_BYTES),
+          /over the 98304-byte budget/,
+        );
+        report.chunk_legacy_admission = {
+          current_producer_wire_bytes: SYNC_BATCH_MAX_BYTES,
+          current_producer_refused: true,
+          consumer_wire_bytes: 128 * 1024,
+          scope: "older accepted consumer body; not current producer admission",
+        };
+        await save();
+      }
       let retainedOriginal = message;
       if (shape === "objects" || shape === "objects-max") {
         await assert.rejects(
@@ -713,7 +817,29 @@ try {
         });
         await save();
       }
-      const direct = shape === "objects" || shape === "objects-max";
+      const direct =
+        shape === "objects" ||
+        shape === "objects-max" ||
+        shape.startsWith("http-") ||
+        shape === "chunks-http";
+      let originalChunkDigest: string | undefined;
+      const originalArgument = message.families.extrinsicRows[0].call_args;
+      const originalChunkHash =
+        typeof originalArgument === "string"
+          ? hash(Buffer.from(originalArgument))
+          : null;
+      const chunkDigest = async (key: string) => {
+        const rows = (
+          await db
+            .prepare(
+              "SELECT * FROM chain_detail_payload_chunks WHERE sha256=? ORDER BY part LIMIT 13",
+            )
+            .bind(key)
+            .all()
+        ).results;
+        assert.ok(rows.length > 0, "nonempty native payload chunks required");
+        return hash(Buffer.from(JSON.stringify(rows)));
+      };
       let priorRows: unknown;
       for (const phase of [
         "first",
@@ -721,6 +847,8 @@ try {
         "late-failure",
         "repair-replay",
       ]) {
+        report.current_phase = phase;
+        await save();
         const current =
           phase === "fresh-insert"
             ? payload(shape, 9_000_002)
@@ -728,6 +856,13 @@ try {
         if (phase === "late-failure" || phase === "repair-replay") {
           for (const rows of Object.values(current.families))
             for (const row of rows) row.observed_at = stamp + 1;
+        }
+        if (
+          shape.startsWith("chunks") &&
+          (phase === "late-failure" || phase === "repair-replay")
+        ) {
+          for (const row of current.families.extrinsicRows)
+            row.call_args = JSON.stringify({ changed: originalArgument });
         }
         const admitted = direct
           ? undefined
@@ -772,41 +907,84 @@ try {
           if (direct) {
             // Recover the indivisible original through the existing authenticated
             // HTTP writer, keeping every family in the one native transaction.
-            const blocks = current.families.blockRows.map((block) => ({
-              ...block,
-              extrinsics: current.families.extrinsicRows
-                .filter((row) => row.block_number === block.block_number)
-                .map((row) => ({
-                  ...row,
-                  success: row.success === null ? null : Boolean(row.success),
-                })),
-              chain_events: current.families.chainEventRows.filter(
-                (row) => row.block_number === block.block_number,
+            const messages =
+              shape === "http-concurrent"
+                ? current.families.blockRows.map((block) => ({
+                    ...current,
+                    families: Object.fromEntries(
+                      Object.entries(current.families).map(([name, rows]) => [
+                        name,
+                        rows.filter(
+                          (row) => row.block_number === block.block_number,
+                        ),
+                      ]),
+                    ) as typeof current.families,
+                  }))
+                : [current];
+            const requestBodies = messages.map(httpBody);
+            httpRequestBytes = Math.max(
+              ...requestBodies.map((body) => Buffer.byteLength(body)),
+            );
+            if (shape.startsWith("http-"))
+              for (const body of requestBodies)
+                assert.equal(
+                  Buffer.byteLength(body),
+                  CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
+                );
+            const responses = await deadline(
+              Promise.all(
+                requestBodies.map(async (body) => {
+                  const started_ms = performance.now();
+                  const response = await worker.fetch(
+                    "https://d/api/v1/internal/chain-detail-sync",
+                    {
+                      method: "POST",
+                      headers: {
+                        "x-chain-detail-sync-token": "synthetic-only",
+                      },
+                      body,
+                    },
+                  );
+                  const result = {
+                    status: response.status,
+                    body: await response.json(),
+                    started_ms,
+                    finished_ms: performance.now(),
+                  };
+                  assert.equal(
+                    response.status,
+                    phase === "late-failure" ? 502 : 200,
+                  );
+                  if (phase !== "late-failure")
+                    assert.deepEqual(
+                      (result.body as { stores: string[] }).stores,
+                      ["d1"],
+                    );
+                  return result;
+                }),
               ),
-              account_events: current.families.accountEventRows.filter(
-                (row) => row.block_number === block.block_number,
-              ),
-            }));
-            const requestBody = JSON.stringify({ blocks });
-            httpRequestBytes = Buffer.byteLength(requestBody);
-            const response = await deadline(
-              worker.fetch("https://d/api/v1/internal/chain-detail-sync", {
-                method: "POST",
-                headers: { "x-chain-detail-sync-token": "synthetic-only" },
-                body: requestBody,
-              }),
               120_000,
             );
-            httpResult = {
-              status: response.status,
-              body: await response.json(),
-            };
-            assert.equal(response.status, phase === "late-failure" ? 502 : 200);
-            if (phase !== "late-failure")
-              assert.deepEqual(
-                (httpResult.body as { stores: string[] }).stores,
-                ["d1"],
+            const driverWindowsOverlap =
+              responses.length === 2
+                ? Math.max(...responses.map((result) => result.started_ms)) <
+                  Math.min(...responses.map((result) => result.finished_ms))
+                : null;
+            if (shape === "http-concurrent")
+              assert.equal(
+                driverWindowsOverlap,
+                true,
+                "driver request windows must overlap; this does not prove synchronous API execution overlap",
               );
+            httpResult = {
+              status: responses[0].status,
+              body: {
+                simultaneous_requests: responses.length,
+                driver_request_windows_overlap: driverWindowsOverlap,
+                actual_api_execution_overlap_qualified: false,
+                responses,
+              },
+            };
           } else {
             results = [
               await deadline(
@@ -847,12 +1025,37 @@ try {
           else assert.ok(result.ackAll || result.explicitAcks.length === 1);
         }
         const actualRows = await databaseState(db);
-        if (phase === "late-failure")
+        if (phase === "late-failure") {
+          // Immutable payload chunks are prepared BEFORE the atomic four-family
+          // transaction. New chunks may remain unreferenced after failure; old
+          // chunks and all published family rows must be byte-for-byte intact.
           assert.deepEqual(
-            actualRows,
-            priorRows,
+            shape.startsWith("chunks") ? actualRows.slice(0, -1) : actualRows,
+            shape.startsWith("chunks")
+              ? (priorRows as typeof actualRows).slice(0, -1)
+              : priorRows,
             "failed changed-row transaction must preserve every prior family value",
           );
+        }
+        if (shape.startsWith("chunks")) {
+          assert.ok(originalChunkHash);
+          const digest = await chunkDigest(originalChunkHash);
+          if (originalChunkDigest !== undefined)
+            assert.equal(
+              digest,
+              originalChunkDigest,
+              "prior immutable chunks must survive unchanged",
+            );
+          originalChunkDigest = digest;
+          if (phase === "late-failure" || phase === "repair-replay") {
+            const staged = String(current.families.extrinsicRows[0].call_args);
+            await chunkDigest(hash(Buffer.from(staged)));
+            assert.ok(
+              actualRows.at(-1)!.rows > 1,
+              "changed payload stages additional chunks before late failure",
+            );
+          }
+        }
         if (phase === "repair-replay") {
           const blocks = message.families.blockRows.map(
             (row) => row.block_number,
@@ -903,9 +1106,27 @@ try {
         ]);
         assert.equal(
           restored.call_args,
-          message.families.extrinsicRows[0].call_args,
-          "exact original argument bytes survive replay",
+          shape.startsWith("chunks") && phase === "repair-replay"
+            ? current.families.extrinsicRows[0].call_args
+            : message.families.extrinsicRows[0].call_args,
+          "exact original or atomically repaired argument bytes survive replay",
         );
+        if (shape.startsWith("chunks") && phase === "repair-replay") {
+          const freshRow = await db
+            .prepare(
+              "SELECT call_args FROM chain_detail_extrinsics WHERE block_number=9000002 AND extrinsic_index=0",
+            )
+            .first<Record<string, unknown>>();
+          assert.ok(freshRow);
+          const [fresh] = await restoreChainDetailPayloads({ D1_STATE: db }, [
+            freshRow,
+          ]);
+          assert.equal(
+            fresh.call_args,
+            originalArgument,
+            "repair must not change the distinct fresh block's payload",
+          );
+        }
         const health = await db
           .prepare(
             "SELECT verdict FROM lane_health_current WHERE lane='neon:chain-detail'",
@@ -934,6 +1155,21 @@ try {
           results,
           http_result: httpResult,
           recovery: direct ? "indivisible-original-http-atomic" : undefined,
+          http_simultaneous_requests:
+            shape === "http-concurrent" ? 2 : direct ? 1 : 0,
+          immutable_chunks: shape.startsWith("chunks")
+            ? {
+                original_sha256: originalChunkHash,
+                original_chunks_digest: originalChunkDigest,
+                new_chunks_staged_before_row_transaction:
+                  phase === "late-failure" || phase === "repair-replay",
+                failed_row_transaction_may_retain_unreferenced_immutable_chunks: true,
+                published_argument_sha256:
+                  typeof restored.call_args === "string"
+                    ? hash(Buffer.from(restored.call_args))
+                    : null,
+              }
+            : undefined,
           census,
           four_family_and_chunk_digests: actualRows,
           health,
