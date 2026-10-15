@@ -145,6 +145,7 @@ jobs:
         if: inputs.prepare_only == true
         run: |
           npm run validate:untyped-db-reads
+          npm run validate:type-duplicates
           npm run typecheck
           npm run build --workspace=packages/ui-kit
           npm run typecheck --workspace=apps/ui

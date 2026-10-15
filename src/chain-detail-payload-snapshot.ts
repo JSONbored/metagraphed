@@ -4,26 +4,30 @@ import {
   type D1StoreBinding,
 } from "./d1-store.ts";
 import type {
-  ExtrinsicsRow,
-  ChainEventsRow,
-} from "../generated/lakehouse/types.ts";
+  ChainDetailExtrinsics,
+  ChainDetailChainEvents,
+} from "../generated/db/types.ts";
 import {
   NATIVE_PAYLOAD_PREFIX,
   type NativePayloadParts,
 } from "./chain-detail-native-payloads.ts";
 import type { ProducerStatement } from "./producer-store.ts";
 
-type PayloadRow = Partial<
-  Omit<ExtrinsicsRow, "success" | "fee_tao" | "tip_tao"> & ChainEventsRow
-> & {
-  success?: number | null;
-  fee_tao?: string | number | null;
-  tip_tao?: string | number | null;
-  record?: string | null;
-  first?: number | null;
-  last?: number | null;
-  rows?: number | null;
+// SQLite stores booleans as integers. Derive native detail columns from their
+// storage owner, while keeping the coverage/JSON projection a distinct row.
+type D1Row<Row> = {
+  [Key in keyof Row]: Row[Key] extends boolean | null
+    ? number | Extract<Row[Key], null>
+    : Row[Key];
 };
+type PayloadRow =
+  | Partial<D1Row<ChainDetailExtrinsics> & ChainDetailChainEvents>
+  | {
+      record: string | null;
+      first: number | null;
+      last: number | null;
+      rows: number | null;
+    };
 type ChunkRow = { sha256: string; part: number; data: string };
 
 /** One D1 batch owns both the selection and its exact chunk bytes. No lease,
