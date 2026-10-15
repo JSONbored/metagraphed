@@ -23,6 +23,24 @@ const hash = `0x${"ab".repeat(32)}`;
 const stamp = 1790090000000;
 const raw = () => JSON.stringify({ blob: randomBytes(120000).toString("hex") });
 const env = (binding = db) => ({ D1_STATE: binding, D1_STATE_TABLES: tables.join(","), CHAIN_DETAIL_PAYLOAD_GC: "enabled" });
+async function services(binding = db) {
+  const { apiEnv } = await import("./helpers/worker-env.ts");
+  const { handleExtrinsic } = await import("../workers/request-handlers/entities.ts");
+  const { handleMcpRequest } = await import("../src/mcp-server.ts");
+  const bound = apiEnv(env(binding));
+  const rest = await handleExtrinsic(new Request("https://api.metagraph.sh/api/v1/extrinsics/9000001-0"),bound,"9000001-0");
+  assert.equal(rest.status,200);
+  const body = await rest.json() as {data:unknown};
+  const mcp = await handleMcpRequest(new Request("https://api.metagraph.sh/mcp", {
+    method:"POST", headers:{"content-type":"application/json"},
+    body:JSON.stringify({jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"get_extrinsic",arguments:{ref:"9000001-0"}}}),
+  }),bound);
+  assert.equal(mcp.status,200);
+  const rpc = await mcp.json() as {error?:unknown;result:{isError:boolean;structuredContent:unknown}};
+  assert.equal(rpc.error,undefined); assert.equal(rpc.result.isError,false);
+  assert.deepEqual(rpc.result.structuredContent,body.data);
+  return body.data;
+}
 function capture(value: string, block = 9000001) {
   const result = parseChainDetailSync({ blocks: [{ block_number: block, block_hash: hash,
     spec_version: 454, observed_at: stamp, extrinsics: [{ block_number: block,
@@ -85,8 +103,8 @@ test("prepared reclamation preserves either family reference and releases quota 
   await pruneChainDetailPayloads(env(observed));
   const plan = await db.prepare(`EXPLAIN QUERY PLAN ${deletion}`).bind("[]","").all();
   const details = JSON.stringify(plan.results);
-  assert.ok(details.includes("chain_detail_extrinsics_payload_hash"));
-  assert.ok(details.includes("chain_detail_chain_events_payload_hash"));
+  assert.match(details,/SEARCH [^"\n]*chain_detail_extrinsics_payload_hash/);
+  assert.match(details,/SEARCH [^"\n]*chain_detail_chain_events_payload_hash/);
   await db.prepare("DELETE FROM chain_detail_extrinsics").run(); await sweep();
   assert.deepEqual((await state()).parts, original.parts);
   await db.prepare("DELETE FROM chain_detail_chain_events").run(); await sweep();
@@ -171,9 +189,10 @@ test("prepared reclamation supplied cut restores source tables, chunks, quota an
   const cut = Object.fromEntries(owners.map((name,i) => [name,snapshots[i].results]));
   const bytes = JSON.stringify(cut), pin=createHash("sha256").update(bytes).digest("hex");
   const original = await Promise.all([loadExtrinsicHotTier(env(),"9000001-0"),loadBlockChainEventsHotTier(env(),9000002)]);
+  const originalServices = await services();
   // This is a frozen supplied synthetic cut, not production writer fencing or custody.
   const directory=process.env.METAGRAPH_RECLAMATION_EVIDENCE;
-  if (directory) { mkdirSync(directory,{recursive:true}); writeFileSync(path.join(directory,"cut-original.json"),bytes); writeFileSync(path.join(directory,"pins.json"),JSON.stringify({sha256:pin,source:process.env.GITHUB_SHA,production_common_cut:false,independent_custody:false})); }
+  if (directory) { mkdirSync(directory,{recursive:true}); writeFileSync(path.join(directory,"cut-original.json"),bytes); writeFileSync(path.join(directory,"service-original.json"),JSON.stringify(originalServices)); writeFileSync(path.join(directory,"pins.json"),JSON.stringify({sha256:pin,source:process.env.GITHUB_SHA,production_common_cut:false,independent_custody:false})); }
   const copy=JSON.parse(bytes) as Record<string,Record<string,unknown>[]>;
   await restored.batch(owners.map((name) => restored.prepare(`DELETE FROM ${name}`)));
   // Restore the quota owner first with a derived zero counter; chunk triggers reconstruct it once.
@@ -186,6 +205,7 @@ test("prepared reclamation supplied cut restores source tables, chunks, quota an
   const after = await restored.batch(owners.map((name) => restored.prepare(`SELECT * FROM ${name} ORDER BY 1,2`)));
   assert.deepEqual(Object.fromEntries(owners.map((name,i)=>[name,after[i].results])),cut);
   assert.deepEqual(await Promise.all([loadExtrinsicHotTier(env(restored),"9000001-0"),loadBlockChainEventsHotTier(env(restored),9000002)]),original);
+  assert.deepEqual(await services(restored), originalServices);
   await state(restored); await pruneChainDetailPayloads(env(restored));
   assert.deepEqual(await loadExtrinsicHotTier(env(restored),"9000001-0"),original[0]);
   await restored.prepare("DELETE FROM chain_detail_payload_chunks WHERE sha256=(SELECT MIN(sha256) FROM chain_detail_payload_chunks)").run();
