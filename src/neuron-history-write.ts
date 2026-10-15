@@ -17,6 +17,14 @@ export async function writeNeuronHistory(
   ] as const) {
     if (!rows.length) continue;
     const { columns, conflict } = NEURON_MIRROR_PLANS[name];
+    // Numeric keys are already typed by the receiver; account keys must be
+    // strings so PostgreSQL text coercion cannot merge differently typed keys.
+    if (name === "account_position_daily" && rows.some((row) => typeof row.account !== "string")) {
+      throw new Error("historical account keys must be strings");
+    }
+    // Verify a distinct key census before any connection or statement runs.
+    const keys = new Set(rows.map((row) => JSON.stringify(conflict.map((column) => row[column]))));
+    if (keys.size !== rows.length) throw new Error("historical normalized keys repeat");
     const business = columns.filter((column) => column !== "updated_at");
     const equal = (alias: string) =>
       business

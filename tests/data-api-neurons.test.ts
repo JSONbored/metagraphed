@@ -857,6 +857,29 @@ test("prepared historical receiver refuses stale or contradictory same-capture o
   );
 });
 
+test("prepared historical receiver refuses repeated neuron or account projection keys before writes", async () => {
+  for (const preseed of [false, true]) {
+    for (const rows of [
+      [syncRow(), syncRow()],
+      [syncRow(), syncRow({ stake_tao: 101 })],
+      [syncRow(), syncRow({ uid: 1 })],
+      [syncRow({ hotkey: 123 }), syncRow({ uid: 1, hotkey: "123" })],
+    ]) {
+      await db.exec("TRUNCATE neuron_daily,account_position_daily");
+      if (preseed) assert.equal((await postHistorical([syncRow()])).status, 200);
+      const before = (await db.query("SELECT * FROM neuron_daily")).rows;
+      const positions = (await db.query("SELECT * FROM account_position_daily")).rows;
+      pg.control.queries.length = 0;
+      const response = await postHistorical(rows);
+      assert.equal(response.status, 502);
+      assert.equal(((await response.json()) as Row).backfill_receipt, undefined);
+      assert.deepEqual((await db.query("SELECT * FROM neuron_daily")).rows, before);
+      assert.deepEqual((await db.query("SELECT * FROM account_position_daily")).rows, positions);
+      assert.equal(pg.control.queries.filter((query) => query.text === "BEGIN").length, 0);
+    }
+  }
+});
+
 test("prepared historical receiver rolls back the first family when the second has a newer original", async () => {
   assert.equal((await postHistorical([syncRow()])).status, 200);
   await db.exec("TRUNCATE neuron_daily");
