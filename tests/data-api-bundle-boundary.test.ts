@@ -144,11 +144,15 @@ describe("data-api's bundle boundary", () => {
     // dependency; the named boundaries remain mandatory above.
     // The native neuron receipt adds 5,165 source bytes to that measured
     // graph (4,824,337 total), without adding any forbidden module.
+    // Native daily Alpha reads measured 4,827,059 source bytes in run38737789328.
+    // Shared original-metadata qualification adds 127 bytes to those same
+    // inputs. Keep this narrow allowance for the pure evidence/read leaves;
+    // all named router/GraphQL/MCP/ingestion boundaries above remain mandatory.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_826_000,
+      firstParty < 4_829_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

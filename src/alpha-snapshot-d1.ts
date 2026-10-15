@@ -11,7 +11,7 @@ import { createD1Store, type D1StoreBinding } from "./d1-store.ts";
 
 import {
   ALPHA_GENESIS as GENESIS,
-  ALPHA_RUNTIMES as RUNTIMES,
+  alphaRuntimeOriginalMatches,
 } from "./alpha-runtime-identity.ts";
 const sha = (bytes: string | Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
@@ -62,13 +62,13 @@ const packet = z.strictObject({
 function qualified(value: unknown, now: number) {
   const parsed = packet.parse(value),
     s = parsed.alpha_snapshot;
-  const runtime = RUNTIMES[s.spec_version];
   if (
-    s.code_hash !== runtime.code ||
-    s.metadata_sha256 !== runtime.metadata ||
-    (s.metadata_scale_hex !== undefined &&
-      sha(Buffer.from(s.metadata_scale_hex.slice(2), "hex")) !==
-        s.metadata_sha256)
+    !alphaRuntimeOriginalMatches(
+      s.spec_version,
+      s.code_hash,
+      s.metadata_sha256,
+      s.metadata_scale_hex,
+    )
   )
     throw new TypeError(
       "Alpha runtime code or original metadata is unqualified",

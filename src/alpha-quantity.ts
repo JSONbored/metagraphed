@@ -5,11 +5,9 @@ import {
   type AlphaQuantityCapture,
 } from "./alpha-quantity-capture.ts";
 export {
-  AlphaCompleteCaptureSchema,
   AlphaQuantityCaptureSchema,
   alphaQuantityProvenance,
   alphaPositionQuantity,
-  type AlphaCompleteCapture,
   type AlphaQuantityCapture,
 } from "./alpha-quantity-capture.ts";
 

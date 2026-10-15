@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { createHash } from "node:crypto";
-import { ALPHA_RUNTIMES } from "./alpha-runtime-identity.ts";
+import { alphaRuntimeOriginalMatches } from "./alpha-runtime-identity.ts";
 import { internalJson as reply } from "./internal-json.ts";
 import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
 import {
@@ -87,20 +86,14 @@ export async function handleNominatorDailyExport(
         .bind(value.sha256)
         .first<Row>();
       if (!metadata) return fail(404, "runtime metadata is unobserved");
-      const scale = z
-        .string()
-        .max(2 * 1024 * 1024 + 2)
-        .regex(/^0x6d6574610e(?:[0-9a-f]{2})+$/)
-        .parse(metadata.scale_hex);
-      const spec = z
-        .union([z.literal(454), z.literal(478)])
-        .parse(metadata.spec_version);
       if (
-        metadata.code_hash !== ALPHA_RUNTIMES[spec].code ||
-        value.sha256 !== ALPHA_RUNTIMES[spec].metadata ||
-        createHash("sha256")
-          .update(Buffer.from(scale.slice(2), "hex"))
-          .digest("hex") !== value.sha256
+        typeof metadata.scale_hex !== "string" ||
+        !alphaRuntimeOriginalMatches(
+          metadata.spec_version,
+          metadata.code_hash,
+          value.sha256,
+          metadata.scale_hex,
+        )
       )
         throw new Error("unqualified metadata original");
       return reply({ version: 1, projection, metadata });
