@@ -70,6 +70,7 @@ test("identity freezes census and keys while digest freezes business content", (
   assert.notEqual(a.delivery.id, pass(rows.slice(0, 2), 5).delivery.id);
   assert.equal(syncDeliveryEvidence(a), "identified-v1");
   assert.equal(syncDeliveryEvidence(), "legacy-ambiguous");
+  assert.equal(syncDeliveryEvidence(null), "legacy-ambiguous");
   assert.equal(
     syncDeliveryEvidence({ ...a, delivery: undefined }),
     "legacy-ambiguous",
@@ -81,6 +82,10 @@ test("identity freezes census and keys while digest freezes business content", (
     {},
     { ...a.delivery, version: 2 },
     { ...a.delivery, id: "x" },
+    { ...a.delivery, id: 123 },
+    { ...a.delivery, sha256: "invalid" },
+    { ...a.delivery, sha256: 123 },
+    { ...a.delivery, parent_sha256: a.delivery.sha256 },
     { ...a.delivery, extra: 1 },
     { ...a.delivery, parent_id: a.delivery.id },
   ])

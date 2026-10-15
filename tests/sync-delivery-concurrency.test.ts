@@ -19,6 +19,15 @@ import {
   makeSyncDelivery,
 } from "../src/sync-delivery-receipt.ts";
 import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
+import {
+  mirrorNominatorPositionsToNeon,
+  coldkeyMaxCapturedAt,
+} from "../src/nominator-positions-neon-write.ts";
+import {
+  mirrorNeuronSnapshotToNeon,
+  neuronSnapshotWrite,
+} from "../src/neurons-neon-write.ts";
+import { writeIdentifiedPostgres } from "../src/sync-delivery-postgres.ts";
 
 // Same disposable Unix-socket-only PostgreSQL model as the root basket races.
 // Native CI must actually execute these races; no remote production DB is used.
@@ -109,16 +118,21 @@ describe.skipIf(!available)("concurrent delivery transactions", () => {
       await admin.query(
         `CREATE TABLE ${table}(captured_at BIGINT PRIMARY KEY,expected_rows INTEGER NOT NULL,received_rows INTEGER NOT NULL DEFAULT 0,completed_at BIGINT)`,
       );
-    await admin.query(
-      "CREATE TABLE account_balances(ss58 TEXT PRIMARY KEY,free_tao DOUBLE PRECISION NOT NULL,reserved_tao DOUBLE PRECISION NOT NULL,captured_at BIGINT NOT NULL)",
-    );
+    for (const file of [
+      "0007_hand_created_tables.sql",
+      "0008_hotkey_alpha.sql",
+      "0025_nominator_positions_shares.sql",
+      "0027_nominator_positions_source.sql",
+      "0035_nominator_scan_receipts.sql",
+    ])
+      await admin.query(readFileSync(`migrations/neon/${file}`, "utf8"));
     await admin.query(
       readFileSync("deploy/sync-delivery-receipts/postgres.sql", "utf8"),
     );
   }, 30000);
   beforeEach(async () => {
     await admin.query(
-      "TRUNCATE sync_delivery_receipts,sync_delivery_passes,account_balances,account_balances_passes CASCADE",
+      `TRUNCATE sync_delivery_receipts,sync_delivery_passes,account_balances,hotkey_alpha,nominator_positions,nominator_scan_receipts,validator_nominator_counts,neurons,neuron_daily,account_position_daily,${Object.values(PASS_TABLES).join(",")} CASCADE`,
     );
   });
   afterEach(async () => {
@@ -247,6 +261,204 @@ describe.skipIf(!available)("concurrent delivery transactions", () => {
       (await admin.query("SELECT received_rows FROM account_balances_passes"))
         .rows[0].received_rows,
       3,
+    );
+  });
+  const environment = () => ({
+    HYPERDRIVE: {
+      connectionString: `postgresql://delivery_test@localhost/postgres?host=${encodeURIComponent(directory)}`,
+    },
+  });
+  const ordinaryHealth = {
+    query: async () => [],
+    run: async () => ({ changes: 1 }),
+  };
+  const positionRows = [
+    {
+      coldkey: "c",
+      hotkey: "h",
+      netuid: 1,
+      shares: "340282366920938463463374607431768211455",
+      share_fraction: 1,
+      captured_at: stamp,
+    },
+  ];
+  const positionInput = () => ({
+    rows: positionRows,
+    coldkeyMaxCapturedAt: coldkeyMaxCapturedAt(positionRows),
+    pass: {
+      capturedAt: stamp,
+      expectedRows: 1,
+      receivedRows: 1,
+      nowMs: stamp + 100,
+      delivery: makeSyncDelivery("nominator-positions", stamp, 1, positionRows),
+    },
+  });
+  const neuronRows = [
+    {
+      netuid: 1,
+      uid: 0,
+      hotkey: "h",
+      coldkey: "c",
+      active: true,
+      captured_at: stamp,
+    },
+  ];
+  const neuronInput = () => ({
+    ...neuronSnapshotWrite(neuronRows, stamp + 100),
+    pass: {
+      capturedAt: stamp,
+      expectedRows: 1,
+      receivedRows: 1,
+      nowMs: stamp + 100,
+      delivery: makeSyncDelivery("neurons", stamp, 1, neuronRows),
+    },
+  });
+  test("identified positions and neurons persist all families and report health only after commit", async () => {
+    const verdicts: string[] = [];
+    const health = {
+      query: async () => [],
+      run: async (_text: string, values?: unknown[]) => {
+        assert.ok(
+          (
+            await admin.query(
+              "SELECT COUNT(*)::int n FROM sync_delivery_receipts",
+            )
+          ).rows[0].n > 0,
+        );
+        verdicts.push(String(values?.[0]));
+        return { changes: 1 };
+      },
+    };
+    const positions = await mirrorNominatorPositionsToNeon(
+      environment(),
+      null,
+      positionInput(),
+      { laneHealthDb: health },
+    );
+    assert.equal(positions.write?.ok, true, positions.write?.reason);
+    assert.equal(positions.pass?.ok, true);
+    assert.equal(
+      (
+        await mirrorNominatorPositionsToNeon(
+          environment(),
+          null,
+          positionInput(),
+          { laneHealthDb: health },
+        )
+      ).pass?.ok,
+      true,
+    );
+    assert.equal(
+      (await admin.query("SELECT shares::text FROM nominator_positions"))
+        .rows[0].shares,
+      positionRows[0]!.shares,
+    );
+    assert.equal(
+      (await admin.query("SELECT COUNT(*)::int n FROM nominator_scan_receipts"))
+        .rows[0].n,
+      1,
+    );
+    const neurons = await mirrorNeuronSnapshotToNeon(
+      environment(),
+      null,
+      neuronInput(),
+      { laneHealthDb: health },
+    );
+    assert.ok(Object.values(neurons.results).every((result) => result.ok));
+    assert.equal(neurons.prune?.ok, true);
+    const withoutPrune = { ...neuronInput(), netuidMaxCapturedAt: undefined };
+    assert.ok(
+      Object.values(
+        (
+          await mirrorNeuronSnapshotToNeon(environment(), null, withoutPrune, {
+            laneHealthDb: health,
+          })
+        ).results,
+      ).every((result) => result.ok),
+    );
+    for (const table of ["neurons", "neuron_daily", "account_position_daily"])
+      assert.equal(
+        (await admin.query(`SELECT COUNT(*)::int n FROM ${table}`)).rows[0].n,
+        1,
+      );
+    assert.ok(verdicts.some((lane) => lane.includes("normalize")));
+    assert.ok(verdicts.some((lane) => lane.includes("coverage")));
+  });
+  test("required native PostgreSQL prune failures roll back every new family and receipt", async () => {
+    const positions = positionInput();
+    positions.coldkeyMaxCapturedAt = new Map([["c", NaN]]);
+    const positionResult = await mirrorNominatorPositionsToNeon(
+      environment(),
+      null,
+      positions,
+      { laneHealthDb: ordinaryHealth },
+    );
+    assert.equal(positionResult.write?.ok, false);
+    const neurons = neuronInput();
+    neurons.netuidMaxCapturedAt = new Map([[1, NaN]]);
+    const neuronResult = await mirrorNeuronSnapshotToNeon(
+      environment(),
+      null,
+      neurons,
+      { laneHealthDb: ordinaryHealth },
+    );
+    assert.equal(neuronResult.results.neurons!.ok, false);
+    for (const table of [
+      "sync_delivery_receipts",
+      "nominator_positions",
+      "nominator_scan_receipts",
+      "neurons",
+      "neuron_daily",
+      "account_position_daily",
+    ])
+      assert.equal(
+        (await admin.query(`SELECT COUNT(*)::int n FROM ${table}`)).rows[0].n,
+        0,
+      );
+    const changedRows = rows.map((row) => ({ ...row, free_tao: 2 }));
+    const ledger = await mirrorLedgerToNeon(
+      environment(),
+      null,
+      "account-balances",
+      changedRows,
+      { laneHealthDb: ordinaryHealth },
+      pass(),
+    );
+    assert.equal(ledger.result?.ok, false);
+  });
+  test("unbound identified writers and failed statement preparation never acknowledge delivery", async () => {
+    assert.equal(
+      (
+        await mirrorLedgerToNeon(
+          null,
+          null,
+          "account-balances",
+          rows,
+          {},
+          pass(),
+        )
+      ).result?.ok,
+      false,
+    );
+    assert.equal(
+      (await mirrorNominatorPositionsToNeon(null, null, positionInput())).write
+        ?.ok,
+      false,
+    );
+    assert.equal(
+      (await mirrorNeuronSnapshotToNeon(null, null, neuronInput())).results
+        .neurons!.ok,
+      false,
+    );
+    await assert.rejects(
+      writeIdentifiedPostgres(
+        "unused-local-fixture",
+        "account-balances",
+        rows,
+        pass(),
+        async () => ({ result: { ok: false } }),
+      ),
+      /preparation failed/,
     );
   });
 });
