@@ -146,12 +146,13 @@ test("all five authenticated routes preserve producer identity through actual wr
     });
     assert.equal(invalid.status, 400, await invalid.clone().text());
     for (let attempt = 0; attempt < 4; attempt++) {
-      // Cross the actual HTTP handoff as well as the direct writer: both
-      // transports must acknowledge the same producer and cannot re-credit it.
+      // Account balances is queue-only. The other lanes cross the HTTP
+      // handoff as well as their direct writer without re-crediting a replay.
+      const usesQueue = lane === "account-balances" || attempt >= 2;
       const response = await post(
         lane,
         packet,
-        attempt < 2 ? env() : { ...env(), SYNC_QUEUE_LANES: lane },
+        usesQueue ? { ...env(), SYNC_QUEUE_LANES: lane } : env(),
       );
       assert.equal(response.status, 200, await response.clone().text());
       const reply = await response.json<{
@@ -169,7 +170,7 @@ test("all five authenticated routes preserve producer identity through actual wr
           assert.fail("identified replay requested retry");
         },
       }));
-      assert.equal(messages.length, attempt < 2 ? 0 : 1);
+      assert.equal(messages.length, usesQueue ? 1 : 0);
       if (messages.length)
         await worker.queue!(
           {
