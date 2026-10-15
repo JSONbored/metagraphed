@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 import {
   closeSync,
+  constants,
   createReadStream,
   fstatSync,
   openSync,
@@ -11,15 +12,21 @@ import { pathToFileURL } from "node:url";
 import { AlphaEventSpike } from "./lib/alpha-event-spike.ts";
 
 function openRegular(path: string, maxBytes: number) {
-  const fd = openSync(path, "r");
-  const stat = fstatSync(fd);
-  if (!stat.isFile() || stat.size > maxBytes) {
+  // Inspect the opened object without waiting for a FIFO writer. The descriptor
+  // remains pinned for the actual read, so a path replacement cannot swap in a
+  // different object between admission and consumption.
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size > maxBytes)
+      throw new Error(
+        "Pinned analysis input exceeds its regular-file byte budget",
+      );
+    return fd;
+  } catch (error) {
     closeSync(fd);
-    throw new Error(
-      "Pinned analysis input exceeds its regular-file byte budget",
-    );
+    throw error;
   }
-  return fd;
 }
 function readManifest(path: string) {
   const max = 8 * 1024 * 1024,

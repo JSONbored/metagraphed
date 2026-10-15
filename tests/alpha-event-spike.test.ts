@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync, truncateSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -375,4 +376,42 @@ describe("bounded retained Alpha event spike", () => {
       rmSync(directory, { recursive: true });
     }
   });
+
+  test.skipIf(process.platform === "win32")(
+    "FIFO inputs are refused without waiting for a writer",
+    () => {
+      const f = fixture(),
+        directory = mkdtempSync(join(tmpdir(), "alpha-spike-fifo-"));
+      try {
+        const manifest = join(directory, "manifest.json"),
+          source = join(directory, "blocks.ndjson"),
+          fifo = join(directory, "input.fifo");
+        writeFileSync(manifest, JSON.stringify(f.manifest));
+        writeFileSync(source, f.source);
+        execFileSync("mkfifo", [fifo]);
+        for (const paths of [
+          [fifo, source],
+          [manifest, fifo],
+        ]) {
+          // A subprocess timeout also bounds a regression to a blocking open;
+          // a test-runner timer cannot interrupt a synchronous FIFO open.
+          const result = spawnSync(
+            process.execPath,
+            ["scripts/analyze-alpha-event-window.ts", ...paths],
+            {
+              encoding: "utf8",
+              timeout: 10_000,
+              maxBuffer: 64 * 1024,
+            },
+          );
+          assert.equal(result.error, undefined);
+          assert.equal(result.status, 1);
+          assert.match(result.stderr, /regular-file byte budget/);
+          assert.equal(result.stdout, "");
+        }
+      } finally {
+        rmSync(directory, { recursive: true });
+      }
+    },
+  );
 });
