@@ -278,6 +278,23 @@ try {
       "raw configured entry rejected by pinned Workerd; production entrypoint parity is unqualified",
     raw_entry_failure_run: 38741940703,
   };
+  const nativeModules = [
+    { type: "ESModule" as const, path: facadePath },
+    { type: "ESModule" as const, path: scriptPath },
+    ...(await readdir(temporary, { recursive: true }))
+      .filter((name) => name.endsWith(".wasm"))
+      .map((name) => ({
+        type: "CompiledWasm" as const,
+        path: path.join(temporary, name),
+      })),
+  ];
+  report.module_manifest = await Promise.all(
+    nativeModules.map(async (module) => ({
+      path: path.relative(temporary, module.path),
+      type: module.type,
+      sha256: hash(await readFile(module.path)),
+    })),
+  );
   report.lock_sha256 = hash(await readFile("package-lock.json"));
   report.config_sha256 = hash(await readFile("wrangler.data.jsonc"));
   for (const shape of ["small", "string", "objects"]) {
@@ -287,8 +304,7 @@ try {
     const bytes = await compressSyncBatchMessage(message, 128 * 1024);
     const runtime = new Miniflare({
       name: "chain-detail-resource",
-      modules: true,
-      scriptPath: facadePath,
+      modules: nativeModules,
       modulesRoot: temporary,
       compatibilityDate: "2026-06-06",
       compatibilityFlags: ["nodejs_compat"],
