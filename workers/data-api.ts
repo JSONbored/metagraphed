@@ -586,7 +586,6 @@ import {
   isCompressedSyncBatchBody,
 } from "../src/sync-batch-compress.ts";
 import {
-  classifySyncBatch,
   enqueueSyncBatch,
   packMultiFamilyMessage,
   SYNC_BATCH_MAX_BYTES,
@@ -9882,34 +9881,10 @@ export default {
       );
       return;
     }
-    // DECOMPRESS BEFORE ANYTHING READS THE BODY (metagraphed#9759). A
-    // compressed message arrives as bytes, and `validSyncBatchMessage` would
-    // call those unparseable -- which the consumer ACKS. That is silent data
-    // loss for the largest lane on the platform, so it happens first, and a
-    // body that fails to decompress simply stays what it was and takes the
-    // existing unparseable path.
-    const decoded = await Promise.all(
-      batch.messages.map(async (message) =>
-        isCompressedSyncBatchBody(message.body)
-          ? {
-              message,
-              body: await decompressSyncBatchMessage(message.body),
-            }
-          : { message, body: message.body },
-      ),
-    );
-    const { valid, invalid } = classifySyncBatch(decoded);
-    // syncBatchRowCount, not `m.rows.length`: a multi-family message carries
-    // `families` and no `rows` at all, so the direct read threw a TypeError HERE
-    // -- above the per-message try/catch below -- and failed the whole batch,
-    // every co-batched lane with it, five times over, into the dead-letter
-    // queue. A log line is the last thing that should be able to do that.
-    const rows = valid.reduce((n: number, m) => n + syncBatchRowCount(m), 0);
-    const lanes = [...new Set(valid.map((m) => m.lane))].sort().join(",");
-    console.log(
-      `sync-batches: ${batch.messages.length} message(s), ${valid.length} valid ` +
-        `(${rows} row(s), lanes=${lanes || "none"}), ${invalid} unparseable`,
-    );
+    let valid = 0;
+    let invalid = 0;
+    let rows = 0;
+    const lanes = new Set<string>();
     // WRITES NOW, per message (metagraphed-infra#348). Per message rather than
     // per batch so one bad chunk is retried alone instead of dragging its nine
     // neighbours through the retry budget with it.
@@ -10111,8 +10086,22 @@ export default {
         return { statements: 0 };
       },
     };
-    for (const { message, body } of decoded) {
+    // Decode, write and release one body before expanding its neighbour. Ten
+    // small gzip messages must not retain ten large parsed bodies in the heap.
+    for (const message of batch.messages) {
+      let body: unknown;
+      try {
+        body = isCompressedSyncBatchBody(message.body)
+          ? await decompressSyncBatchMessage(message.body)
+          : message.body;
+      } catch (err) {
+        console.error("sync-batches: decode admission failed:", err);
+        await captureDataApiError(err, "sync-batches/decode", env);
+        message.retry();
+        continue;
+      }
       if (!validSyncBatchMessage(body)) {
+        invalid++;
         // Acked, not retried: a message that cannot parse will not parse on the
         // fifth attempt either, and burning the budget only delays the DLQ.
         if (body && typeof body === "object" && "delivery" in body) {
@@ -10124,6 +10113,9 @@ export default {
         }
         continue;
       }
+      valid++;
+      rows += syncBatchRowCount(body);
+      lanes.add(body.lane);
       try {
         if (body.delivery !== undefined) {
           requireSyncDeliveryQualification(env);
@@ -10142,6 +10134,10 @@ export default {
         message.retry();
       }
     }
+    console.log(
+      `sync-batches: ${batch.messages.length} message(s), ${valid} valid ` +
+        `(${rows} row(s), lanes=${[...lanes].sort().join(",") || "none"}), ${invalid} unparseable`,
+    );
     if (invalid > 0) {
       ctx.waitUntil(
         recordLaneVerdict(laneHealthStore(env), {

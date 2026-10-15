@@ -7,16 +7,20 @@
 // because the consumer acks null and retries a throw, and getting that
 // backwards loses rows for the largest lane on the platform.
 import assert from "node:assert/strict";
+import { gzipSync } from "node:zlib";
 import { describe, test } from "vitest";
 import {
   compressSyncBatchMessage,
   decompressSyncBatchMessage,
   isCompressedSyncBatchBody,
   SYNC_BATCH_COMPRESSION,
+  SYNC_BATCH_MAX_DECODED_BYTES,
+  SyncBatchSizeError,
 } from "../src/sync-batch-compress.ts";
 import {
   packMultiFamilyMessage,
   SYNC_BATCH_MAX_BYTES,
+  QUEUE_MESSAGE_MAX_BYTES,
   validSyncBatchMessage,
 } from "../src/sync-batch-queue.ts";
 
@@ -193,5 +197,58 @@ describe("decompressSyncBatchMessage", () => {
       );
       assert.equal(await decompressSyncBatchMessage(body), null);
     }
+  });
+});
+
+describe("compressed admission budgets", () => {
+  function sized(bytes: number) {
+    const overhead = new TextEncoder().encode(
+      JSON.stringify({ payload: "" }),
+    ).length;
+    const available = bytes - overhead;
+    return {
+      payload:
+        "界".repeat(Math.floor(available / 3)) + "x".repeat(available % 3),
+    };
+  }
+
+  test("admits the exact UTF-8 boundary and refuses the next byte on both ends", async () => {
+    for (const bytes of [
+      SYNC_BATCH_MAX_DECODED_BYTES - 1,
+      SYNC_BATCH_MAX_DECODED_BYTES,
+    ]) {
+      const value = sized(bytes);
+      assert.equal(
+        new TextEncoder().encode(JSON.stringify(value)).length,
+        bytes,
+      );
+      const packed = await compressSyncBatchMessage(
+        value,
+        SYNC_BATCH_MAX_BYTES,
+      );
+      assert.deepEqual(await decompressSyncBatchMessage(packed), value);
+    }
+    const tooLarge = sized(SYNC_BATCH_MAX_DECODED_BYTES + 1);
+    await assert.rejects(
+      compressSyncBatchMessage(tooLarge, SYNC_BATCH_MAX_BYTES),
+      SyncBatchSizeError,
+    );
+    // An older sender may already have accepted this small gzip. Refuse its
+    // expansion while streaming; throwing preserves retry/DLQ ownership.
+    const legacy = gzipSync(JSON.stringify(tooLarge));
+    assert.ok(legacy.length < SYNC_BATCH_MAX_BYTES);
+    await assert.rejects(
+      decompressSyncBatchMessage(legacy),
+      SyncBatchSizeError,
+    );
+    await assert.rejects(
+      decompressSyncBatchMessage(new Uint8Array(QUEUE_MESSAGE_MAX_BYTES + 1)),
+      /compressed message exceeds/,
+    );
+    // The wire boundary itself is permitted, even when the body is malformed.
+    assert.equal(
+      await decompressSyncBatchMessage(new Uint8Array(QUEUE_MESSAGE_MAX_BYTES)),
+      null,
+    );
   });
 });

@@ -1,3 +1,5 @@
+import { QUEUE_MESSAGE_MAX_BYTES } from "./sync-batch-queue.ts";
+
 // Compressing a sync-batches message, so the largest lane can travel at all
 // (metagraphed-infra#359, metagraphed#9759).
 //
@@ -38,6 +40,19 @@
  * buys a self-describing stream for nothing that matters. */
 export const SYNC_BATCH_COMPRESSION = "gzip" as const;
 
+// Admission budget, not a claim about measured isolate heap. A compressed
+// message may satisfy the wire limit while expanding far beyond it. Process
+// one admitted body at a time; a producer must reduce its posted block batch
+// when either budget refuses it, never split a block's families here.
+export const SYNC_BATCH_MAX_DECODED_BYTES = 4 * 1024 * 1024;
+
+export class SyncBatchSizeError extends RangeError {
+  constructor(kind: "compressed" | "expanded") {
+    super(`sync-batches: ${kind} message exceeds its admission budget`);
+    this.name = "SyncBatchSizeError";
+  }
+}
+
 /**
  * The first two bytes of a gzip stream (0x1f 0x8b).
  *
@@ -49,15 +64,26 @@ export const SYNC_BATCH_COMPRESSION = "gzip" as const;
  */
 const GZIP_MAGIC = [0x1f, 0x8b] as const;
 
-async function drain(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
+async function drain(
+  stream: ReadableStream<Uint8Array>,
+  maxBytes: number,
+): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
   let total = 0;
   const reader = stream.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    total += value.length;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value.length > maxBytes - total) {
+        void reader.cancel().catch(() => undefined);
+        throw new SyncBatchSizeError("expanded");
+      }
+      chunks.push(value);
+      total += value.length;
+    }
+  } finally {
+    reader.releaseLock();
   }
   const out = new Uint8Array(total);
   let at = 0;
@@ -95,6 +121,8 @@ export async function compressSyncBatchMessage(
 ): Promise<Uint8Array> {
   const json = JSON.stringify(message);
   const raw = new TextEncoder().encode(json);
+  if (raw.length > SYNC_BATCH_MAX_DECODED_BYTES)
+    throw new SyncBatchSizeError("expanded");
   // A one-chunk ReadableStream rather than a Blob: `Blob` is present in
   // workerd but its `BlobPart` type is not in this project's lib set, and a
   // stream is the shape CompressionStream wants anyway.
@@ -105,6 +133,8 @@ export async function compressSyncBatchMessage(
         controller.close();
       },
     }).pipeThrough(new CompressionStream(SYNC_BATCH_COMPRESSION)),
+    // gzip overhead remains bounded even for an incompressible admitted body.
+    SYNC_BATCH_MAX_DECODED_BYTES + 65_536,
   );
   if (packed.length > maxBytes) {
     const lane = (message as { lane?: unknown })?.lane ?? "unknown";
@@ -121,6 +151,7 @@ export async function compressSyncBatchMessage(
 
 /**
  * Decompress and parse a message, or null if the bytes are not one.
+ * Admission refusals throw so previously accepted messages retain retry/DLQ ownership.
  *
  * NULL RATHER THAN A THROW, because of what the caller does with each. The
  * consumer acks an unparseable message rather than retrying it -- retrying
@@ -133,6 +164,8 @@ export async function decompressSyncBatchMessage(
 ): Promise<unknown> {
   if (!isCompressedSyncBatchBody(body)) return null;
   const bytes = body instanceof Uint8Array ? body : new Uint8Array(body);
+  if (bytes.length > QUEUE_MESSAGE_MAX_BYTES)
+    throw new SyncBatchSizeError("compressed");
   if (
     bytes.length < 2 ||
     bytes[0] !== GZIP_MAGIC[0] ||
@@ -148,9 +181,13 @@ export async function decompressSyncBatchMessage(
           controller.close();
         },
       }).pipeThrough(new DecompressionStream(SYNC_BATCH_COMPRESSION)),
+      SYNC_BATCH_MAX_DECODED_BYTES,
     );
     return JSON.parse(new TextDecoder().decode(raw)) as unknown;
-  } catch {
+  } catch (error) {
+    // This may be an already accepted message from an older sender. Preserve
+    // it for retry/DLQ repair; a resource refusal must never become an ACK.
+    if (error instanceof SyncBatchSizeError) throw error;
     // Truncated bytes, a corrupted stream, or valid gzip that is not JSON. All
     // three are "this will not parse on the fifth attempt either".
     return null;

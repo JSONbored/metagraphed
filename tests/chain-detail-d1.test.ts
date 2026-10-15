@@ -28,6 +28,7 @@ import worker, { neonOwnsChainDetail } from "../workers/data-api.ts";
 import {
   compressSyncBatchMessage,
   decompressSyncBatchMessage,
+  SYNC_BATCH_MAX_DECODED_BYTES,
 } from "../src/sync-batch-compress.ts";
 import {
   packMultiFamilyMessage,
@@ -621,6 +622,23 @@ test("the configured queue refuses oversized compressed bytes and failed sends",
       })
     ).status,
     502,
+  );
+  assert.equal(sends, 1);
+  assert.equal(
+    (
+      await post(
+        payload(
+          JSON.stringify({
+            repetitive: "x".repeat(SYNC_BATCH_MAX_DECODED_BYTES),
+          }),
+        ),
+        async () => {
+          sends++;
+        },
+      )
+    ).status,
+    502,
+    "HTTP-valid JSON that expands beyond the queue budget is refused before enqueue",
   );
   assert.equal(sends, 1);
   for (const table of chainDetailTables()) assert.equal(await count(table), 0);

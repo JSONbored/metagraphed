@@ -8,6 +8,7 @@
 // failed WRITE loses rows nothing else is producing, because a cut-over lane
 // has no second path.
 import assert from "node:assert/strict";
+import { gzipSync } from "node:zlib";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
@@ -337,6 +338,46 @@ describe("the sync queue consumer", () => {
     );
   });
 
+  test("completes each compressed write before reading the next body in a ten-message batch", async () => {
+    const { compressSyncBatchMessage } =
+      await import("../src/sync-batch-compress.ts");
+    const packed = await compressSyncBatchMessage(
+      positionMessage().body,
+      96 * 1024,
+    );
+    const batch = Array.from({ length: 10 }, () => message(packed));
+    for (let index = 1; index < batch.length; index++) {
+      Object.defineProperty(batch[index], "body", {
+        get() {
+          assert.deepEqual(
+            batch[index - 1]!.calls,
+            ["ack"],
+            "the preceding body must be written and released before expanding another",
+          );
+          return packed;
+        },
+      });
+    }
+    await consume(batch);
+    for (const item of batch) assert.deepEqual(item.calls, ["ack"]);
+    assert.equal(rows().length, 10);
+  });
+
+  test("retries expansion refusal without preventing a neighbouring write", async () => {
+    const { SYNC_BATCH_MAX_DECODED_BYTES } =
+      await import("../src/sync-batch-compress.ts");
+    const oversized = message(
+      gzipSync(
+        JSON.stringify({ payload: "x".repeat(SYNC_BATCH_MAX_DECODED_BYTES) }),
+      ),
+    );
+    const neighbour = positionMessage();
+    await consume([oversized, neighbour]);
+    assert.deepEqual(oversized.calls, ["retry"]);
+    assert.deepEqual(neighbour.calls, ["ack"]);
+    assert.equal(rows().length, 1);
+  });
+
   test("a compressed body that will not inflate is acked, not retried", async () => {
     // Same rule the unparseable JSON path follows: truncated or corrupted bytes
     // will not inflate on the fifth attempt either, so retrying only burns the
@@ -385,6 +426,35 @@ describe("the sync queue consumer", () => {
         ),
         m.body,
       );
+    } finally {
+      f.sql.close();
+    }
+  });
+
+  test("preserves refused expansion as exact compressed DLQ bytes before acknowledgment", async () => {
+    const { SYNC_BATCH_MAX_DECODED_BYTES } =
+      await import("../src/sync-batch-compress.ts");
+    const packed = gzipSync(
+      JSON.stringify({ payload: "x".repeat(SYNC_BATCH_MAX_DECODED_BYTES) }),
+    );
+    const m = { ...message(packed), id: "oversized-legacy-gzip" };
+    await consume([m]);
+    assert.deepEqual(m.calls, ["retry"]);
+    m.calls.length = 0;
+    const f = syncDeadLetterDb();
+    try {
+      await worker.queue!(
+        { queue: "sync-batches-dlq", messages: [m] } as never,
+        { ...pgMockEnv(), D1_STATE: f.db } as never,
+        { waitUntil: () => {} } as never,
+      );
+      assert.deepEqual(m.calls, ["ack"]);
+      const retained = f.sql
+        .prepare("SELECT encoding,payload FROM sync_dead_letters")
+        .get()!;
+      assert.equal(retained.encoding, "base64");
+      assert.deepEqual(Buffer.from(String(retained.payload), "base64"), packed);
+      assert.equal(rows().length, 0);
     } finally {
       f.sql.close();
     }
