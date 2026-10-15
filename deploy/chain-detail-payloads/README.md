@@ -148,7 +148,6 @@ about heights. A wall-clock cutoff would also make the prune's behaviour
 depend on whether the lane is currently running, which is exactly when it
 must not.
 
-
 ## Historical hot-tier routing rationale
 
 Preserved source header; dated observations are historical context. Current
