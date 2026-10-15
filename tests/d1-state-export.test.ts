@@ -1192,6 +1192,158 @@ test("lossless integer rows and cursors cross two native pages without JS roundi
     );
 });
 
+test("lossless native keys refuse physical coercion and preserve bounded resumable cursors", async () => {
+  const isolated = new Miniflare({
+    modules: true,
+    script: "export default {fetch(){return new Response('test')}}",
+    compatibilityDate: "2026-06-06",
+    d1Databases: ["DB"],
+  });
+  try {
+    const source = await isolated.getD1Database("DB");
+    // Copy current native DDL, without unrelated rows from the shared fixture.
+    const ddl = await db
+      .prepare(
+        "SELECT sql FROM sqlite_schema WHERE name IN ('compute_declarations','surface_failure_daily','archive_export_revisions') ORDER BY name",
+      )
+      .all<{ sql: string }>();
+    assert.equal(ddl.results.length, 3);
+    for (const { sql } of ddl.results) await source.prepare(sql).run();
+    const overrides = { D1_STATE: source };
+    const table = "compute_declarations";
+    const columns = (
+      await get({ table, kind: "schema", encoding: "lossless-v1" }, overrides)
+    ).columns.map((c) => c.name);
+    const base = { table, kind: "rows", columns, encoding: "lossless-v1" };
+    const urls = Array.from({ length: 2001 }, (_, i) =>
+      String(i).padStart(4, "0"),
+    );
+    await source
+      .prepare(
+        "INSERT INTO compute_declarations(netuid,source_url,read_at_sha,observed_at,first_seen,found) SELECT 1,CASE WHEN CAST(key AS INTEGER)>=1999 THEN CAST(value AS BLOB) ELSE value END,'sha',1790090000000,1790090000000,0 FROM json_each(?)",
+      )
+      .bind(JSON.stringify(urls))
+      .run();
+    // The 2000th key is BLOB: CAST-to-TEXT would emit a non-advancing boundary.
+    assert.equal(
+      (await handleD1StateExport(req(base), { ...env(), ...overrides })).status,
+      503,
+    );
+    await source.prepare("DELETE FROM compute_declarations").run();
+    for (const key of [1.5, "not-an-integer"]) {
+      await source
+        .prepare(
+          "INSERT INTO compute_declarations(netuid,source_url,read_at_sha,observed_at,first_seen,found) VALUES(?,'source','sha',1790090000000,1790090000000,0)",
+        )
+        .bind(key)
+        .run();
+      assert.equal(
+        (await handleD1StateExport(req(base), { ...env(), ...overrides }))
+          .status,
+        503,
+      );
+      await source.prepare("DELETE FROM compute_declarations").run();
+    }
+    await source
+      .prepare(
+        "INSERT INTO compute_declarations(netuid,source_url,read_at_sha,observed_at,first_seen,found) VALUES(1,?,'sha',1790090000000,1790090000000,0)",
+      )
+      .bind("x".repeat(2049))
+      .run();
+    assert.equal(
+      (await handleD1StateExport(req(base), { ...env(), ...overrides })).status,
+      503,
+    );
+    // The unchanged analytics default does not impose the lossless key fence.
+    assert.equal(
+      (await get({ table, kind: "rows", columns: ["source_url"] }, overrides))
+        .rows.length,
+      1,
+    );
+    await source.prepare("DELETE FROM compute_declarations").run();
+    const atLimit = "é".repeat(2048);
+    await source
+      .prepare(
+        "INSERT INTO compute_declarations(netuid,source_url,read_at_sha,observed_at,first_seen,found) SELECT value,?,replace(hex(zeroblob(375000)),'0','x'),1790090000000,1790090000000,0 FROM json_each('[1,2,3]')",
+      )
+      .bind(atLimit)
+      .run();
+    const first = await get(base, overrides);
+    assert.deepEqual(first.next_cursor, ["2", atLimit]);
+    const resumed = {
+      ...base,
+      revision: first.revision,
+      cursor: first.next_cursor,
+    };
+    assert.ok(
+      new TextEncoder().encode(JSON.stringify(resumed)).byteLength <= 8192,
+    );
+    const last = await get(resumed, overrides);
+    assert.equal(last.next_cursor, null);
+    assert.deepEqual(
+      [...first.rows, ...last.rows].map((r) => r[0]),
+      [1, 2, 3].map((n) => ({ storage: "integer", value: String(n) })),
+    );
+    assert.ok(
+      [...first.rows, ...last.rows].every(
+        (r) => (r[1] as { value: string }).value === atLimit,
+      ),
+    );
+
+    const multiTable = "surface_failure_daily";
+    const multiColumns = (
+      await get(
+        { table: multiTable, kind: "schema", encoding: "lossless-v1" },
+        overrides,
+      )
+    ).columns.map((c) => c.name);
+    const multiBase = {
+      table: multiTable,
+      kind: "rows",
+      columns: multiColumns,
+      encoding: "lossless-v1",
+    };
+    const kind = "界".repeat(2048),
+      classification = "語".repeat(2048);
+    await source
+      .prepare(
+        "INSERT INTO surface_failure_daily(day,netuid,kind,classification,checks,updated_at) SELECT '2040-01-01',value,?,?,1,1 FROM json_each(?)",
+      )
+      .bind(
+        kind,
+        classification,
+        JSON.stringify(Array.from({ length: 100 }, (_, i) => i)),
+      )
+      .run();
+    assert.ok(
+      new TextEncoder().encode(
+        JSON.stringify({
+          ...multiBase,
+          revision: 0,
+          cursor: ["2040-01-01", "0", kind, classification],
+        }),
+      ).byteLength > 8192,
+    );
+    const refused = await handleD1StateExport(req(multiBase), {
+      ...env(),
+      ...overrides,
+    });
+    assert.equal(refused.status, 413);
+    assert.deepEqual(await refused.json(), {
+      error: "lossless export cursor exceeds request byte budget",
+    });
+    // No resume body is required for a terminal full projection.
+    await source
+      .prepare("DELETE FROM surface_failure_daily WHERE netuid<>0")
+      .run();
+    const terminal = await get(multiBase, overrides);
+    assert.equal(terminal.rows.length, 1);
+    assert.equal(terminal.next_cursor, null);
+  } finally {
+    await isolated.dispose();
+  }
+});
+
 test("lossless exports refuse partial projections, filters and non-finite cells", async () => {
   const table = "nominator_positions";
   const columns = (

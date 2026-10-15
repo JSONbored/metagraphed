@@ -442,8 +442,20 @@ export async function handleD1StateExport(
         lossless ? checkedCell(row[field] as string) : row[field],
       );
       const keys = lossless
-        ? (JSON.parse(row._lossless_keys as string) as unknown[])
+        ? z
+            .array(cellSchema)
+            .length(plan.keys.length)
+            .parse(JSON.parse(row._lossless_keys as string))
         : [];
+      if (
+        lossless &&
+        keys.some(
+          (cell, i) =>
+            cell.storage !== (integerKey(plan.keys[i]!) ? "integer" : "text") ||
+            !scalar.safeParse(cell.value).success,
+        )
+      )
+        throw new Error("lossless key cannot resume with the bounded cursor");
       bytes +=
         new TextEncoder().encode(
           JSON.stringify(lossless ? [projected, keys] : projected),
@@ -458,6 +470,14 @@ export async function handleD1StateExport(
       sourceRows.length > rows.length
         ? JSON.parse(sourceRows[rows.length - 1]!._cursor as string)
         : null;
+    if (
+      lossless &&
+      next_cursor !== null &&
+      new TextEncoder().encode(
+        JSON.stringify({ ...input, revision, cursor: next_cursor }),
+      ).byteLength > 8192
+    )
+      return fail(413, "lossless export cursor exceeds request byte budget");
     return reply({
       revision,
       rows,

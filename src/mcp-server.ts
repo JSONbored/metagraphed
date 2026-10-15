@@ -286,6 +286,7 @@ import { applyMcpQueryFilters } from "./mcp-list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
   currentDataApiTierFallbackGeneration,
+  markDataApiTierFallback,
   tryDataApiTier,
 } from "../workers/data-api-tier.ts";
 import { answerBlock, answerBlockFeed } from "./blocks-answer.ts";
@@ -8209,17 +8210,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "/api/v1/blocks/summary.",
     inputSchema: inputJsonSchema(GetBlocksSummaryInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
-      // Mirrors REST's handleBlocksSummary: try Postgres first, fall back to
-      // the schema-stable zeroed card now that blocks' store write path is
-      // retired (#4772) and the table is dropped in production.
-      return (
-        // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
-        // config and absent from FORWARDABLE_TIER_FLAGS, so this arm resolved to null
-        // on every request.
-        // #9146: same blocks-summary projection REST reads, so the tool and
-        // the route cannot report different block-production numbers.
-        (await loadBlocksSummaryFromArtifact(ctx.env)) ?? buildBlocksSummary([])
-      );
+      const projected = await loadBlocksSummaryFromArtifact(ctx.env);
+      // Match REST's unavailable marker; an unreadable selected object has
+      // not measured zero blocks. Reuse the request-scoped protocol owner.
+      if (!projected) markDataApiTierFallback();
+      return projected ?? buildBlocksSummary([]);
     },
   },
   {
