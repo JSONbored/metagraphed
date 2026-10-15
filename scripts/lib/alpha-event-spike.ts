@@ -79,18 +79,12 @@ function account(value: unknown): string | null {
 // supplies their original source. Older parsers explicitly mark that operand
 // unavailable; neither path permits rounded quantities to become state.
 function rawArguments(text: string): unknown {
-  const parse = JSON.parse as unknown as (
-    text: string,
-    reviver: (
-      key: string,
-      value: unknown,
-      context?: { source?: string },
-    ) => unknown,
-  ) => unknown;
-  return parse(text, (_key, value, context) =>
-    typeof value === "number" && !Number.isSafeInteger(value)
-      ? (context?.source ?? { unavailable_numeric_source: true })
-      : value,
+  return JSON.parse(
+    text,
+    (_key: string, value: unknown, context?: { source?: string }) =>
+      typeof value === "number" && !Number.isSafeInteger(value)
+        ? (context?.source ?? { unavailable_numeric_source: true })
+        : value,
   );
 }
 
