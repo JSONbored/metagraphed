@@ -1121,9 +1121,10 @@ describe("recordExceptionEvent", () => {
     assert.equal(list.length, 1);
     assert.equal(list[0].type, "RangeError");
     assert.equal(list[0].value, "boom");
-    // `type` comes from @posthog/core's builder (#9068); handled/synthetic are
-    // the hint we pass in.
+    // The SDK builder numbers the root exception at zero; handled/synthetic
+    // remain the hint we pass in, and its mechanism type remains generic.
     assert.deepEqual(list[0].mechanism, {
+      exception_id: 0,
       handled: true,
       synthetic: false,
       type: "generic",
