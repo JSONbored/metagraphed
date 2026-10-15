@@ -1330,6 +1330,76 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 108,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn108:hyperparam:9225013:max_burn_tao",
+            "chain:sn108:hyperparam:9219013:min_burn_tao",
+            "chain:sn108:hyperparam:9219013:max_burn_tao",
+            "chain:sn108:hyperparam:9219013:subnet_is_active"
+          ],
+          "text": "Subnet 108 recorded four hyperparameter changes between 5 October and 6 October."
+        }
+      ],
+      "slug": "2026-w41",
+      "sources": [
+        {
+          "id": "chain:sn108:hyperparam:9225013:max_burn_tao",
+          "summary": "Maximum burn changed from 1 to 100 at block #9225013.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-10-06T16:06:22.644Z",
+          "title": "Subnet 108: Maximum burn 1 → 100",
+          "url": "https://metagraph.sh/blocks/9225013"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9219013:min_burn_tao",
+          "summary": "Minimum burn changed from 0.5 to 0.05 at block #9219013.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-10-05T20:06:59.555Z",
+          "title": "Subnet 108: Minimum burn 0.5 → 0.05",
+          "url": "https://metagraph.sh/blocks/9219013"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9219013:max_burn_tao",
+          "summary": "Maximum burn changed from 100 to 1 at block #9219013.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-10-05T20:06:59.555Z",
+          "title": "Subnet 108: Maximum burn 100 → 1",
+          "url": "https://metagraph.sh/blocks/9219013"
+        },
+        {
+          "id": "chain:sn108:hyperparam:9219013:subnet_is_active",
+          "summary": "Subnet active changed from disabled to enabled at block #9219013.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn108"
+          ],
+          "timestamp": "2026-10-05T20:06:59.555Z",
+          "title": "Subnet 108: Subnet active disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9219013"
+        }
+      ],
+      "substantive_count": 4,
+      "week": 41,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 109,
       "schema_version": 1,
       "sentences": [
@@ -5771,6 +5841,63 @@
       ],
       "substantive_count": 4,
       "week": 26,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 37,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn37:hyperparam:9250509:commit_reveal_enabled",
+            "chain:sn37:hyperparam:9250209:max_validators",
+            "chain:sn37:hyperparam:9249609:commit_reveal_enabled"
+          ],
+          "text": "Subnet 37 recorded three hyperparameter changes on 10 October."
+        }
+      ],
+      "slug": "2026-w41",
+      "sources": [
+        {
+          "id": "chain:sn37:hyperparam:9250509:commit_reveal_enabled",
+          "summary": "Commit-reveal changed from disabled to enabled at block #9250509.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn37"
+          ],
+          "timestamp": "2026-10-10T05:06:21.826Z",
+          "title": "Subnet 37: Commit-reveal disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9250509"
+        },
+        {
+          "id": "chain:sn37:hyperparam:9250209:max_validators",
+          "summary": "Max validators changed from 64 to 1 at block #9250209.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn37"
+          ],
+          "timestamp": "2026-10-10T04:06:19.536Z",
+          "title": "Subnet 37: Max validators 64 → 1",
+          "url": "https://metagraph.sh/blocks/9250209"
+        },
+        {
+          "id": "chain:sn37:hyperparam:9249609:commit_reveal_enabled",
+          "summary": "Commit-reveal changed from enabled to disabled at block #9249609.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn37"
+          ],
+          "timestamp": "2026-10-10T02:06:19.733Z",
+          "title": "Subnet 37: Commit-reveal enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9249609"
+        }
+      ],
+      "substantive_count": 3,
+      "week": 41,
       "year": 2026
     },
     {
@@ -11255,6 +11382,76 @@
       ],
       "substantive_count": 8,
       "week": 39,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 82,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn82:hyperparam:9261609:max_validators",
+            "chain:sn82:hyperparam:9261609:commit_reveal_enabled",
+            "chain:sn82:hyperparam:9241509:max_burn_tao",
+            "chain:sn82:hyperparam:9227113:activity_cutoff"
+          ],
+          "text": "Subnet 82 recorded four hyperparameter changes between 6 October and 11 October."
+        }
+      ],
+      "slug": "2026-w41",
+      "sources": [
+        {
+          "id": "chain:sn82:hyperparam:9261609:max_validators",
+          "summary": "Max validators changed from 64 to 1 at block #9261609.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-10-11T18:06:16.232Z",
+          "title": "Subnet 82: Max validators 64 → 1",
+          "url": "https://metagraph.sh/blocks/9261609"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9261609:commit_reveal_enabled",
+          "summary": "Commit-reveal changed from enabled to disabled at block #9261609.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-10-11T18:06:16.232Z",
+          "title": "Subnet 82: Commit-reveal enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9261609"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9241509:max_burn_tao",
+          "summary": "Maximum burn changed from 18446700000 to 15 at block #9241509.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-10-08T23:06:22.295Z",
+          "title": "Subnet 82: Maximum burn 18446700000 → 15",
+          "url": "https://metagraph.sh/blocks/9241509"
+        },
+        {
+          "id": "chain:sn82:hyperparam:9227113:activity_cutoff",
+          "summary": "Activity cutoff changed from 5000 to 16200 at block #9227113.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn82"
+          ],
+          "timestamp": "2026-10-06T23:06:14.998Z",
+          "title": "Subnet 82: Activity cutoff 5000 → 16200",
+          "url": "https://metagraph.sh/blocks/9227113"
+        }
+      ],
+      "substantive_count": 4,
+      "week": 41,
       "year": 2026
     },
     {

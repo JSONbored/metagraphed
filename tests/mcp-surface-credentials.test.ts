@@ -69,7 +69,7 @@ function fakeEnv(secret = "test-secret") {
 describe("surface credential store", () => {
   test("the credential is encrypted at rest, not merely encoded", async () => {
     const { kv, env } = fakeEnv();
-    await storeSurfaceCredential(env, "account:7", "sn-1-x-api", "hunter2");
+    await storeSurfaceCredential(env, "account:rpc:7", "sn-1-x-api", "hunter2");
 
     const [raw] = [...kv.store.values()];
     assert.ok(raw, "a KV record must exist");
@@ -86,9 +86,9 @@ describe("surface credential store", () => {
 
   test("a stored string credential round-trips for the same identity", async () => {
     const { env } = fakeEnv();
-    await storeSurfaceCredential(env, "account:7", "sn-1-x-api", "hunter2");
+    await storeSurfaceCredential(env, "account:rpc:7", "sn-1-x-api", "hunter2");
     assert.equal(
-      await loadSurfaceCredential(env, "account:7", "sn-1-x-api"),
+      await loadSurfaceCredential(env, "account:rpc:7", "sn-1-x-api"),
       "hunter2",
     );
   });
@@ -96,9 +96,9 @@ describe("surface credential store", () => {
   test("a signature bundle round-trips as an object", async () => {
     const { env } = fakeEnv();
     const bundle = { "X-Hotkey": "5abc", "X-Signature": "0xdead" };
-    await storeSurfaceCredential(env, "account:7", "sn-2-x-api", bundle);
+    await storeSurfaceCredential(env, "account:rpc:7", "sn-2-x-api", bundle);
     assert.deepEqual(
-      await loadSurfaceCredential(env, "account:7", "sn-2-x-api"),
+      await loadSurfaceCredential(env, "account:rpc:7", "sn-2-x-api"),
       bundle,
     );
   });
@@ -108,23 +108,23 @@ describe("surface credential store", () => {
   // third-party secrets, and a prefix collision would be a credential leak.
   test("one identity cannot read another's credential", async () => {
     const { env } = fakeEnv();
-    await storeSurfaceCredential(env, "account:7", "sn-1-x-api", "mine");
+    await storeSurfaceCredential(env, "account:rpc:7", "sn-1-x-api", "mine");
     assert.equal(
-      await loadSurfaceCredential(env, "account:8", "sn-1-x-api"),
+      await loadSurfaceCredential(env, "account:rpc:8", "sn-1-x-api"),
       null,
     );
-    assert.deepEqual(await listSurfaceCredentials(env, "account:8"), []);
+    assert.deepEqual(await listSurfaceCredentials(env, "account:rpc:8"), []);
   });
 
   test("a rotated secret makes stored credentials unreadable, not wrong", async () => {
     const { kv, env } = fakeEnv("old-secret");
-    await storeSurfaceCredential(env, "account:7", "sn-1-x-api", "hunter2");
+    await storeSurfaceCredential(env, "account:rpc:7", "sn-1-x-api", "hunter2");
     const rotated = {
       METAGRAPH_CONTROL: kv,
       MCP_SURFACE_CREDENTIAL_SECRET: "new-secret",
     } as unknown as ConfiguredSurfaceCredentialEnv;
     assert.equal(
-      await loadSurfaceCredential(rotated, "account:7", "sn-1-x-api"),
+      await loadSurfaceCredential(rotated, "account:rpc:7", "sn-1-x-api"),
       null,
     );
   });
@@ -133,31 +133,31 @@ describe("surface credential store", () => {
     const { env } = fakeEnv();
     const first = await storeSurfaceCredential(
       env,
-      "account:7",
+      "account:rpc:7",
       "sn-1-x-api",
       "one",
     );
     assert.equal(first.replaced, false);
     const second = await storeSurfaceCredential(
       env,
-      "account:7",
+      "account:rpc:7",
       "sn-1-x-api",
       "two",
     );
     assert.equal(second.replaced, true);
     assert.equal(
-      await loadSurfaceCredential(env, "account:7", "sn-1-x-api"),
+      await loadSurfaceCredential(env, "account:rpc:7", "sn-1-x-api"),
       "two",
     );
   });
 
   test("listing returns metadata only, never a credential value", async () => {
     const { env } = fakeEnv();
-    await storeSurfaceCredential(env, "account:7", "sn-1-x-api", "hunter2");
-    await storeSurfaceCredential(env, "account:7", "sn-2-x-api", {
+    await storeSurfaceCredential(env, "account:rpc:7", "sn-1-x-api", "hunter2");
+    await storeSurfaceCredential(env, "account:rpc:7", "sn-2-x-api", {
       sig: "0xdead",
     });
-    const listed = await listSurfaceCredentials(env, "account:7");
+    const listed = await listSurfaceCredentials(env, "account:rpc:7");
     assert.equal(listed.length, 2);
     const serialized = JSON.stringify(listed);
     assert.ok(!serialized.includes("hunter2"));
@@ -174,10 +174,10 @@ describe("surface credential store", () => {
     // A KV record written without metadata (an older writer, or metadata
     // dropped by KV): the surface id is still recoverable from the key, and
     // one such record must not break the whole listing.
-    kv.store.set(`${SURFACE_CREDENTIAL_KV_PREFIX}account:7:sn-9-x-api`, {
+    kv.store.set(`${SURFACE_CREDENTIAL_KV_PREFIX}account:rpc:7:sn-9-x-api`, {
       value: JSON.stringify({ v: 1, iv: "aaaa", data: "bbbb" }),
     });
-    const listed = await listSurfaceCredentials(env, "account:7");
+    const listed = await listSurfaceCredentials(env, "account:rpc:7");
     assert.deepEqual(listed, [
       {
         surface_id: "sn-9-x-api",
@@ -198,7 +198,7 @@ describe("surface credential store", () => {
       {
         keys: [
           {
-            name: `${SURFACE_CREDENTIAL_KV_PREFIX}account:7:sn-1-x-api`,
+            name: `${SURFACE_CREDENTIAL_KV_PREFIX}account:rpc:7:sn-1-x-api`,
             metadata: {
               surface_id: "sn-1-x-api",
               shape: "string",
@@ -213,7 +213,7 @@ describe("surface credential store", () => {
       {
         keys: [
           {
-            name: `${SURFACE_CREDENTIAL_KV_PREFIX}account:7:sn-2-x-api`,
+            name: `${SURFACE_CREDENTIAL_KV_PREFIX}account:rpc:7:sn-2-x-api`,
             metadata: {
               surface_id: "sn-2-x-api",
               shape: "object",
@@ -230,7 +230,7 @@ describe("surface credential store", () => {
       cursors.push(options?.cursor);
       return pages.shift()!;
     };
-    const listed = await listSurfaceCredentials(env, "account:7");
+    const listed = await listSurfaceCredentials(env, "account:rpc:7");
     assert.deepEqual(
       listed.map((entry) => entry.surface_id),
       ["sn-1-x-api", "sn-2-x-api"],
@@ -240,24 +240,24 @@ describe("surface credential store", () => {
 
   test("delete removes the record and is idempotent", async () => {
     const { env } = fakeEnv();
-    await storeSurfaceCredential(env, "account:7", "sn-1-x-api", "hunter2");
+    await storeSurfaceCredential(env, "account:rpc:7", "sn-1-x-api", "hunter2");
     assert.equal(
-      await deleteSurfaceCredential(env, "account:7", "sn-1-x-api"),
+      await deleteSurfaceCredential(env, "account:rpc:7", "sn-1-x-api"),
       true,
     );
     assert.equal(
-      await loadSurfaceCredential(env, "account:7", "sn-1-x-api"),
+      await loadSurfaceCredential(env, "account:rpc:7", "sn-1-x-api"),
       null,
     );
     assert.equal(
-      await deleteSurfaceCredential(env, "account:7", "sn-1-x-api"),
+      await deleteSurfaceCredential(env, "account:rpc:7", "sn-1-x-api"),
       false,
     );
   });
 
   test("a corrupt or foreign KV record reads as absent", async () => {
     const { kv, env } = fakeEnv();
-    const key = `${SURFACE_CREDENTIAL_KV_PREFIX}account:7:sn-1-x-api`;
+    const key = `${SURFACE_CREDENTIAL_KV_PREFIX}account:rpc:7:sn-1-x-api`;
     for (const value of [
       JSON.stringify("not-an-object"),
       JSON.stringify({ v: 2, iv: "a", data: "b" }),
@@ -267,7 +267,7 @@ describe("surface credential store", () => {
     ]) {
       kv.store.set(key, { value });
       assert.equal(
-        await loadSurfaceCredential(env, "account:7", "sn-1-x-api"),
+        await loadSurfaceCredential(env, "account:rpc:7", "sn-1-x-api"),
         null,
         `${value} must read as absent`,
       );
@@ -283,12 +283,12 @@ describe("surface credential store", () => {
     const { env } = fakeEnv();
     await storeSurfaceCredential(
       env,
-      "account:7",
+      "account:rpc:7",
       "sn-1-x-api",
       {} as unknown as string,
     );
     assert.equal(
-      await loadSurfaceCredential(env, "account:7", "sn-1-x-api"),
+      await loadSurfaceCredential(env, "account:rpc:7", "sn-1-x-api"),
       null,
       "a credential with no entries is nothing stored, not an empty header set",
     );
@@ -304,7 +304,7 @@ describe("surface credential store", () => {
       MCP_SURFACE_CREDENTIAL_SECRET: "s",
     } as unknown as ConfiguredSurfaceCredentialEnv;
     assert.equal(
-      await loadSurfaceCredential(env, "account:7", "sn-1-x-api"),
+      await loadSurfaceCredential(env, "account:rpc:7", "sn-1-x-api"),
       null,
     );
   });
@@ -333,7 +333,7 @@ describe("surface credential store", () => {
       true,
     );
     assert.equal(
-      await loadSurfaceCredential({}, "account:7", "sn-1-x-api"),
+      await loadSurfaceCredential({}, "account:rpc:7", "sn-1-x-api"),
       null,
     );
   });
@@ -344,9 +344,10 @@ describe("surface credential identity", () => {
     assert.equal(
       resolveSurfaceCredentialIdentity({
         accountId: "7",
+        accountKind: "rpc",
         executionCtx: { props: { accountId: 9 } },
       }),
-      "account:7",
+      "account:rpc:7",
     );
   });
 
@@ -355,7 +356,61 @@ describe("surface credential identity", () => {
       resolveSurfaceCredentialIdentity({
         executionCtx: { props: { accountId: 9 } },
       }),
-      "account:9",
+      "account:github:9",
+    );
+  });
+
+  test("a gate identity without a valid kind cannot fall back to OAuth", () => {
+    for (const accountKind of [undefined, null, "unknown"]) {
+      assert.equal(
+        resolveSurfaceCredentialIdentity({
+          accountId: "7",
+          accountKind,
+          executionCtx: { props: { accountId: 9 } },
+        }),
+        null,
+      );
+    }
+  });
+
+  test("equal ids in separate account kinds have isolated registrations", async () => {
+    const { env, kv } = fakeEnv();
+    const rpc = resolveSurfaceCredentialIdentity({
+      accountId: "7",
+      accountKind: "rpc",
+    })!;
+    const github = resolveSurfaceCredentialIdentity({
+      executionCtx: { props: { accountId: 7 } },
+    })!;
+    await storeSurfaceCredential(env, rpc, "sn-1-x-api", "rpc-value");
+    await storeSurfaceCredential(env, github, "sn-1-x-api", "github-value");
+    assert.equal(
+      await loadSurfaceCredential(env, rpc, "sn-1-x-api"),
+      "rpc-value",
+    );
+    assert.equal(
+      await loadSurfaceCredential(env, github, "sn-1-x-api"),
+      "github-value",
+    );
+    await deleteSurfaceCredential(env, rpc, "sn-1-x-api");
+    assert.equal(
+      await loadSurfaceCredential(env, github, "sn-1-x-api"),
+      "github-value",
+    );
+    const legacy = `${SURFACE_CREDENTIAL_KV_PREFIX}account:7:sn-2-x-api`;
+    // Copy a valid decryptable envelope: an accidental legacy fallback would
+    // return the real synthetic credential, rather than fail decryption.
+    const valid = kv.store.get(
+      `${SURFACE_CREDENTIAL_KV_PREFIX}${github}:sn-1-x-api`,
+    )!;
+    kv.store.set(legacy, valid);
+    assert.equal(await loadSurfaceCredential(env, rpc, "sn-2-x-api"), null);
+    assert.equal(await loadSurfaceCredential(env, github, "sn-2-x-api"), null);
+    assert.equal((await listSurfaceCredentials(env, github)).length, 1);
+    assert.ok(kv.store.has(legacy));
+    await assert.rejects(
+      () => listSurfaceCredentials(env, "account:7"),
+      TypeError,
     );
   });
 
@@ -374,10 +429,16 @@ describe("surface credential identity", () => {
   // outright rather than escaped.
   test("an id that could alias another identity's key space is refused", () => {
     assert.equal(
-      resolveSurfaceCredentialIdentity({ accountId: "7:sn-1-x-api" }),
+      resolveSurfaceCredentialIdentity({
+        accountId: "7:sn-1-x-api",
+        accountKind: "rpc",
+      }),
       null,
     );
-    assert.equal(resolveSurfaceCredentialIdentity({ accountId: "  " }), null);
+    assert.equal(
+      resolveSurfaceCredentialIdentity({ accountId: "  ", accountKind: "rpc" }),
+      null,
+    );
   });
 });
 
@@ -396,7 +457,7 @@ describe("surface credential TTL", () => {
     const before = Date.now();
     const { expiresAt } = await storeSurfaceCredential(
       env,
-      "account:7",
+      "account:rpc:7",
       "sn-1-x-api",
       "hunter2",
       3600,

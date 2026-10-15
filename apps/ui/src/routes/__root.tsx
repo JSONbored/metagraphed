@@ -1,8 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext } from "@tanstack/react-router";
+import { createRootRouteWithContext, lazyRouteComponent } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
-import { NotFoundComponent, ErrorComponent, RootShell, RootComponent } from "./-root-views";
+import { ErrorComponent, RootShell, RootComponent } from "./-root-views";
 import { registryFeedLinks } from "@/lib/metagraphed/feed-links";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -60,6 +60,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   },
   shellComponent: RootShell,
   component: RootComponent,
-  notFoundComponent: NotFoundComponent,
+  // The 404-only view does not belong in every page's client entry. The native
+  // route loader preserves SSR and reload-on-missing-module behavior.
+  notFoundComponent: lazyRouteComponent(() => import("./-not-found-page"), "NotFoundComponent"),
   errorComponent: ErrorComponent,
 });

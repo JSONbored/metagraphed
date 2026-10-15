@@ -33,6 +33,42 @@ explicit serialization. A statement may bind at most 100 parameters.
 
 ## Qualification and cutover
 
+### Reconcile already-applied migrations
+
+`0038_raw_capture_publications.sql` was recorded as migration 38 on
+2026-10-03 at 00:23:04 UTC. Its original 1434 bytes have SHA256
+`b8dd7743860c28969602f6b40c0fa776ff18734dd78e43a0752bbb755482e3ac`.
+The retained native capture after the failed 0039 attempt contains 269 objects:
+the 268 previous definitions plus `raw_capture_publications`. This source
+reconciliation restores that exact SQL and captured catalog; it does not assert
+that 0039 or any later schema applied, or that publication rows are recoverable.
+
+The existing `D1 maintenance` workflow defaults manual dispatches to
+verification only (`apply_migrations=false`), as scheduled runs already do.
+`npm run snapshot:d1-schema -- --verify-ledger` checks recorded migration
+filenames with one bounded SELECT, then verifies both physical-schema artifacts.
+Ledger membership alone cannot prove SQL bytes or physical definitions; all
+three checks are required. A missing or untracked filename fails verification
+without applying anything. The test pins 0038's immutable source identity.
+
+A push to main touching migration/snapshot paths still invokes the existing
+apply step. An explicit manual `apply_migrations=true` also applies pending
+files. After authorization for the exact DDL and reviewed source, dispatch with
+the explicit input (replace `REVIEWED_BRANCH_OR_TAG` with that reviewed ref):
+
+```sh
+gh workflow run d1-maintenance.yml --repo JSONbored/metagraphed \
+  --ref REVIEWED_BRANCH_OR_TAG -f apply_migrations=true
+```
+
+Omitting that input performs verification only. Ledger failures retain a fixed
+classification in the native step log; provider text and query inputs are not
+logged. Consequently this reconciliation must remain unmerged until its release
+effect is reviewed. Credential-free CI tests use injected ledger/schema results;
+they do not verify the current production ledger or authorize a live query.
+
+### Move an ownership group
+
 1. Apply `migrations/d1` to the destination with Wrangler. Keep ownership unset
    until both schema and data are ready.
 2. Export `lane_health` through a read-only repeatable-read source transaction.
@@ -176,6 +212,24 @@ readings from replacing newer values, and replayed scan receipts replace their
 payload count instead of adding it. Pass tallies retain the existing at-least-once
 accounting contract. Fraction normalization only visits pools affected by a chunk,
 while including earlier chunks of that capture in each pool's denominator.
+
+Legacy pass tallies are additive delivery accounting, not unique chunk receipts.
+Replaying the same chunk can leave its guarded data UPSERT unchanged while
+incrementing `received_rows` again and marking an incomplete pass complete.
+Hotkey Alpha also filters out unreferenced pools, so counting stored pool rows
+cannot reconstruct the producer's declared census. Neither affected-row counts
+nor a new Queue message ID safely substitutes for a stable producer chunk
+identity. Automated quarantine replay requires a separately qualified receipt
+contract; the newer runtime-qualified Alpha draft does not retroactively supply
+that identity or runtime evidence to legacy messages.
+
+DLQ alarms count retained handler observations. They record before preservation,
+so failed preservation, partial delivery and redelivery may create more records
+for the same messages. Counts in the detail describe that delivered batch, not
+uniquely preserved messages or confirmed permanent losses. Successful sync
+preservation keeps the first payload and receipt time per message ID before ACK;
+the health observation does not contain that outcome. Existing incident history
+and closure acknowledgement remain intact; closure is not proof of recovery.
 
 The migration does not select these tables. Copy every retained row and receipt,
 qualify the joined readers and final source drain, and then select each complete
