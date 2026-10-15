@@ -31,6 +31,7 @@ import { fileURLToPath } from "node:url";
 import { buildValidatorOperatorDirectory } from "../../../../src/validator-operator-directory.ts";
 import { HAR_DIR, DATED_ENDPOINT_PATTERNS } from "./har-path.ts";
 import {
+  BOUNDED_ARGS_HASH,
   EVIDENCE_HASH,
   FAILED_PROXY_HASH,
   UNINDEXED_HASH,
@@ -357,7 +358,7 @@ for (const [key, recorded] of byPath) {
 
 // Explicit synthetic SSR fixtures: browser interception cannot replace a
 // useSuspenseQuery response fetched by the server before hydration.
-for (const hash of [EVIDENCE_HASH, FAILED_PROXY_HASH, UNINDEXED_HASH]) {
+for (const hash of [EVIDENCE_HASH, FAILED_PROXY_HASH, UNINDEXED_HASH, BOUNDED_ARGS_HASH]) {
   const key = `/api/v1/extrinsics/${hash}`;
   const recorded = {
     status: 200,

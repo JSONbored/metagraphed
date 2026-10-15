@@ -98,7 +98,7 @@ test.describe("Chain overview secondary query states", () => {
     await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
 
     const throughput = page.locator("#throughput .mg-composition");
-    const fees = page.locator("#chain-fees .mg-line-plot");
+    const fees = page.locator("#chain-fees .mg-stack-bars");
     const flow = page.getByRole("group", { name: "Stake moved per subnet" });
     const concentration = page.getByRole("group", { name: "Stake concentration measures" });
     const emission = page.getByRole("group", {
@@ -269,14 +269,20 @@ test("compares only closed UTC fee days and keeps missing observations unknown a
   daily[1]!.total_fee_tao = null;
   await page.getByRole("button", { name: "refresh", exact: true }).click();
   await expect(section.getByText("109.0100τ", { exact: true })).toHaveCount(0);
-  await expect(section).toContainText(
-    "Daily fee chart requires consecutive closed UTC days with known readings.",
-  );
+  const bars = section.getByRole("group", { name: /Daily fee totals/ });
+  await expect(bars).toBeVisible();
+  await expect(section.locator(".mg-stack-col")).toHaveCount(2);
+  await expect(section.locator(".mg-stack-axis")).toContainText("2026-10-13");
+  await expect(section.locator(".mg-stack-axis")).toContainText("2026-10-15");
+  await page.screenshot({
+    path: test.info().outputPath("explorer-fee-totals-missing-day.png"),
+    fullPage: true,
+  });
   observed = null;
   await page.getByRole("button", { name: "refresh", exact: true }).click();
   await expect(section).toContainText("3 unverified date(s) excluded");
   await expect(section).toContainText(
-    "Daily fee chart requires consecutive closed UTC days with known readings.",
+    "Daily fee bars require closed UTC days with known readings.",
   );
   await expect(section.getByText("109.0100τ", { exact: true })).toHaveCount(0);
 });

@@ -12,7 +12,7 @@ import {
   FactStrip,
   FilterField,
   FilterSelect,
-  LineWithWindow,
+  StackedColumns,
   MarkerRail,
   RangeControl,
   RankedRails,
@@ -31,7 +31,6 @@ import {
   callSegments,
   feePoints,
   feeDayWindow,
-  consecutiveFeePoints,
   summarizeFeeWindow,
   flowRails,
   fmtCount,
@@ -414,28 +413,32 @@ export function ExplorerPage() {
           visualRef={feesRef}
           visual={
             !feesNearViewport || fees.isPending ? (
-              <LineWithWindow
+              <StackedColumns
                 id="chain-fees"
-                points={[]}
-                window={{ from: 0, to: 0 }}
-                unit="τ"
+                columns={[]}
+                seriesOrder={["fees"]}
                 formatValue={(value) => fmtTao(value, 4)}
-                ariaLabel={`Fees for closed UTC days, ${window}`}
-                source="chain-fees"
+                ariaLabel={`Daily fee totals for closed UTC days, ${window}`}
+                columnSource="chain-fees"
                 loading
+                loadingColumns={7}
               />
-            ) : points.length > 1 && consecutiveFeePoints(points) ? (
-              <LineWithWindow
+            ) : points.length > 0 ? (
+              <StackedColumns
                 id="chain-fees"
-                points={points}
-                window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
-                unit="τ"
+                columns={points.map((point) => ({
+                  key: String(point.t),
+                  label: new Date(point.t).toISOString().slice(0, 10),
+                  total: point.v,
+                  segments: [{ key: "fees", label: "Fees", value: point.v }],
+                }))}
+                seriesOrder={["fees"]}
                 formatValue={(value) => fmtTao(value, 4)}
-                ariaLabel={`Fees for closed UTC days, ${window}`}
-                source="chain-fees"
+                ariaLabel={`Daily fee totals for closed UTC days, ${window}`}
+                columnSource="chain-fees"
               />
             ) : (
-              <p>Daily fee chart requires consecutive closed UTC days with known readings.</p>
+              <p>Daily fee bars require closed UTC days with known readings.</p>
             )
           }
           legend={<FactStrip cells={feeCells} />}

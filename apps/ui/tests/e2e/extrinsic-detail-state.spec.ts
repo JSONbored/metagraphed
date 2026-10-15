@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
-import { EVIDENCE_HASH, FAILED_PROXY_HASH, UNINDEXED_HASH } from "./extrinsic-evidence-fixture.ts";
+import {
+  BOUNDED_ARGS_HASH,
+  EVIDENCE_HASH,
+  FAILED_PROXY_HASH,
+  UNINDEXED_HASH,
+} from "./extrinsic-evidence-fixture.ts";
 
 const HASH = "0x986f1f7da3d93882e8c19bbe3b303ef8ba5454062272446598d17aa599ca4428";
 const ROUTE = `/extrinsics/${HASH}`;
@@ -227,12 +232,12 @@ test.describe("account attribution and pallet-level evidence", () => {
     const argumentsTable = page.locator("#arguments");
     await argumentsTable.getByRole("button", { name: "Expand row", exact: true }).focus();
     await page.keyboard.press("Enter");
-    const decodedValue = argumentsTable.getByLabel("call decoded value", { exact: true });
+    const decodedValue = argumentsTable.getByLabel("call argument preview", { exact: true });
     await expect(decodedValue).toBeVisible();
     await expect(decodedValue).toContainText('"batch"');
     await expect(decodedValue).toContainText('"add_stake"');
     await expect(
-      argumentsTable.getByRole("button", { name: "Copy call decoded value", exact: true }),
+      argumentsTable.getByRole("button", { name: "Copy call argument preview", exact: true }),
     ).toBeVisible();
     await expect(page.getByText(/No account-attributed events were decoded/)).toBeVisible();
     await expect(page.getByRole("table", { name: /What it produced/ })).toContainText(
@@ -323,4 +328,104 @@ test.describe("account attribution and pallet-level evidence", () => {
         await expect(page.getByText(/Pagination stopped/)).toBeVisible();
     });
   }
+});
+
+test("distinguishes copied argument previews from exact API text", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          (window as unknown as { copied: string }).copied = value;
+        },
+      },
+    });
+  });
+  let rawReads = 0;
+  let pruned = false;
+  const exactText =
+    ' {"ok":true,"data":{"extrinsic":{"call_args":{"long":"' +
+    "x".repeat(2001) +
+    '","n":340282366920938463463374607431768211455}}}}\r\n';
+  await page.route(`**/api/v1/extrinsics/${BOUNDED_ARGS_HASH}`, (route) => {
+    rawReads++;
+    return route.fulfill(
+      pruned
+        ? {
+            status: 410,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: { code: "history_pruned", message: "Pruned after the previous read" },
+            }),
+          }
+        : { contentType: "application/json", body: exactText },
+    );
+  });
+  await gotoThroughRestart(page, `/extrinsics/${BOUNDED_ARGS_HASH}`);
+  await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+  await expect(page.getByText(/Partial preview:/)).toContainText("Showing 64 of 65 arguments");
+  await expect(page.getByText(/Partial preview:/)).toContainText("long strings");
+  await expect(page.getByText(/Partial preview:/)).toContainText("collection entries");
+  await expect(page.getByText(/Partial preview:/)).toContainText("nested depth");
+  expect(rawReads).toBe(0);
+  const args = page.locator("#arguments");
+  await args.getByRole("button", { name: "Expand row", exact: true }).first().click();
+  await expect(args.getByLabel("long argument preview", { exact: true })).toHaveText(
+    "x".repeat(2000) + "…",
+  );
+  await args.getByRole("button", { name: "Copy long argument preview", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { copied: string }).copied))
+    .toBe("x".repeat(2000) + "…");
+  await page.getByRole("button", { name: "Load exact API response", exact: true }).click();
+  await expect(page.getByLabel("exact API response text", { exact: true })).toHaveText(exactText);
+  await page.getByRole("button", { name: "Copy exact API response text", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { copied: string }).copied))
+    .toBe(exactText);
+  expect(rawReads).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("explorer-exact-arguments-375.png"),
+    fullPage: true,
+  });
+  pruned = true;
+  await page.getByRole("button", { name: "Reload exact API response", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Exact API response unavailable" }),
+  ).toContainText("410 · history_pruned");
+  await expect(
+    page.getByRole("button", { name: "Copy exact API response text", exact: true }),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("explorer-partial-arguments-375.png"),
+    fullPage: true,
+  });
+});
+
+test("keeps pruned exact API responses explicit and retryable", async ({ page }) => {
+  await page.route(`**/api/v1/extrinsics/${BOUNDED_ARGS_HASH}`, (route) =>
+    route.fulfill({
+      status: 410,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: false,
+        error: { code: "history_pruned", message: "Historical detail was pruned" },
+      }),
+    }),
+  );
+  await gotoThroughRestart(page, `/extrinsics/${BOUNDED_ARGS_HASH}`);
+  await page.getByRole("button", { name: "Load exact API response", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Exact API response unavailable" }),
+  ).toContainText("410 · history_pruned");
+  await expect(
+    page.getByRole("button", { name: "Retry exact API response", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Copy exact API response text", exact: true }),
+  ).toHaveCount(0);
 });

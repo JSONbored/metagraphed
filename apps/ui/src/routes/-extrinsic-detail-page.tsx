@@ -17,6 +17,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { ErrorState } from "@/components/metagraphed/states";
+import { ExtrinsicRawRecord } from "@/components/metagraphed/extrinsic-raw-record";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -320,6 +321,12 @@ export function ExtrinsicDetailPage() {
         live={{ updatedAt: extrinsic?.observed_at ?? null, source: "chain-direct" }}
       />
 
+      <p>
+        Arguments below are normalized previews. Copying a preview copies the displayed value.
+        {extrinsic?.call_args_preview_limits?.length
+          ? ` Partial preview: ${extrinsic.call_args_preview_limits.join(", ")}. Showing ${args.length} of ${extrinsic.call_args_total ?? "unknown"} arguments.`
+          : ""}
+      </p>
       <DataTable
         id="arguments"
         rows={args}
@@ -328,15 +335,19 @@ export function ExtrinsicDetailPage() {
         caption="What this call was made with"
         source="extrinsic-arg"
         paginate={false}
-        expand={(row) => <RawCode label={`${row.name} decoded value`}>{row.value}</RawCode>}
+        expand={(row) => <RawCode label={`${row.name} argument preview`}>{row.value}</RawCode>}
         empty={
           <p className="whitespace-normal">
-            {extrinsic?.call_args == null
-              ? "Call arguments are unavailable in this indexed record."
-              : "This call takes no arguments."}
+            {extrinsic?.call_args_preview_limits?.length
+              ? "No argument values can be displayed from this partial preview."
+              : extrinsic?.call_args == null
+                ? "Call arguments are unavailable in this indexed record."
+                : "This call takes no arguments."}
           </p>
         }
       />
+
+      <ExtrinsicRawRecord reference={hash} />
 
       <p>
         Account-attributed events include economic, consensus, identity and other activity. The

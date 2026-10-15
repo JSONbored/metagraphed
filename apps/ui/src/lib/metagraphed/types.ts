@@ -1133,6 +1133,8 @@ export interface Extrinsic {
   tip_tao?: number | null;
   call_args?: ExtrinsicCallArg[] | Record<string, unknown> | null;
   call_args_total?: number | null;
+  /** Losses in the bounded, normalized display preview; never an exact raw record. */
+  call_args_preview_limits?: string[];
   events?: AccountEvent[];
   events_total?: number;
   success?: boolean | null;

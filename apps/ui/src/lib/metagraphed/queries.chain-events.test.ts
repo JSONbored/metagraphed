@@ -34,6 +34,23 @@ describe("chainEventsInfiniteQuery", () => {
     mockedApiFetch.mockReset();
   });
 
+  it("gives each chain event its own bounded argument budget", async () => {
+    resolveWith({
+      events: [
+        {
+          block_number: 1,
+          event_index: 0,
+          args: Array.from({ length: 64 }, () => "x".repeat(2001)),
+        },
+        { block_number: 1, event_index: 1, args: { preserved: "next event" } },
+      ],
+      next_cursor: null,
+    });
+    const result = await runPage();
+    expect(JSON.stringify(result.data[0]?.args)).toContain("…");
+    expect(result.data[1]?.args).toEqual({ preserved: "next event" });
+  });
+
   it("fetches the all-events feed with pallet/method filters and limit", async () => {
     resolveWith({ count: 0, events: [], next_cursor: null });
     await runPage({ pallet: "Balances", method: "Transfer", limit: 25 });
