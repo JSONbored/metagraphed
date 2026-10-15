@@ -4,12 +4,15 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
   mkdir,
+  open,
   mkdtemp,
   readFile,
   readdir,
   rm,
   writeFile,
 } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Miniflare } from "miniflare";
@@ -326,6 +329,95 @@ function payload(shape: string, block = 9_000_001): ResourceMessage {
   return message;
 }
 
+// Same exact16MB/80000-detail request workload, materialized incrementally.
+// Only fixture-driver retention changes: the API still parses every byte/row.
+async function writeHttpEnvelope(
+  filePath: string,
+  block: number,
+  observedAt: number,
+) {
+  const base = payload("small", block);
+  const blockRow = {
+    ...base.families.blockRows[0],
+    chain_event_count: 79_998,
+    observed_at: observedAt,
+  };
+  const extrinsic = {
+    ...base.families.extrinsicRows[0],
+    observed_at: observedAt,
+    call_args: JSON.stringify({ s: "" }),
+  };
+  const account = {
+    ...base.families.accountEventRows[0],
+    observed_at: observedAt,
+  };
+  const event = (index: number) =>
+    JSON.stringify({
+      block_number: block,
+      event_index: index,
+      pallet: "System",
+      method: "ExtrinsicSuccess",
+      args: null,
+      phase: "Initialization",
+      extrinsic_index: null,
+      observed_at: observedAt,
+    });
+  const prefix = () =>
+    `{"blocks":[${JSON.stringify(blockRow).slice(0, -1)},"extrinsics":[${JSON.stringify(extrinsic)}],"chain_events":[`;
+  const suffix = `],"account_events":[${JSON.stringify(account)}]}]}`;
+  let eventBytes = 79_997; // commas between79998 rows
+  for (let index = 0; index < 79_998; index++)
+    eventBytes += Buffer.byteLength(event(index));
+  const remaining =
+    CHAIN_DETAIL_SYNC_MAX_BODY_BYTES -
+    Buffer.byteLength(prefix()) -
+    eventBytes -
+    Buffer.byteLength(suffix);
+  assert.ok(remaining > 0);
+  extrinsic.call_args = JSON.stringify({ s: "x".repeat(remaining) });
+  const argumentSha256 = hash(Buffer.from(extrinsic.call_args));
+  const expectedBytes =
+    Buffer.byteLength(prefix()) + eventBytes + Buffer.byteLength(suffix);
+  assert.equal(expectedBytes, CHAIN_DETAIL_SYNC_MAX_BODY_BYTES);
+  const file = await open(filePath, "wx");
+  const digest = createHash("sha256");
+  let written = 0;
+  const append = async (text: string) => {
+    const bytes = Buffer.from(text);
+    digest.update(bytes);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const result = await file.write(bytes, offset);
+      assert.ok(result.bytesWritten > 0);
+      offset += result.bytesWritten;
+    }
+    written += bytes.length;
+  };
+  try {
+    await append(prefix());
+    for (let start = 0; start < 79_998; start += 128) {
+      let chunk = "";
+      for (let i = start; i < Math.min(start + 128, 79_998); i++)
+        chunk += (i ? "," : "") + event(i);
+      await append(chunk);
+    }
+    await append(suffix);
+  } finally {
+    await file.close();
+  }
+  assert.equal(written, CHAIN_DETAIL_SYNC_MAX_BODY_BYTES);
+  return {
+    file_path: filePath,
+    bytes: written,
+    sha256: digest.digest("hex"),
+    detail_rows: 80000,
+    chain_events: 79998,
+    block,
+    observed_at: observedAt,
+    argument_sha256: argumentSha256,
+  };
+}
+
 // Only the verifier methods used below; both the native binding and the
 // HTTP diagnostic adapter implement this surface without claiming batch/exec.
 interface VerificationStatement {
@@ -570,7 +662,7 @@ try {
     report.current_shape = shape;
     report.current_phase = "construct-input";
     await save();
-    const message = payload(shape);
+    const message = payload(shape.startsWith("http-") ? "small" : shape);
     const decoded = Buffer.byteLength(JSON.stringify(message));
     if (!shape.startsWith("http-"))
       assert.ok(decoded <= SYNC_BATCH_MAX_DECODED_BYTES);
@@ -778,6 +870,218 @@ try {
       if (cpuProfiles) {
         await cdp.request("Profiler.enable");
         await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
+      }
+      if (shape.startsWith("http-")) {
+        report.http_cpu_profiles_collected = false;
+        report.http_fixture_driver =
+          "exact request file streamed64KiB at a time; no retained80000-row normalized driverDTO; unchanged API body/count/limits";
+        const simultaneous = shape === "http-concurrent" ? 2 : 1;
+        let prior: Awaited<ReturnType<typeof databaseState>> | undefined;
+        for (const phase of [
+          "first",
+          "fresh-insert",
+          "late-failure",
+          "repair-replay",
+        ]) {
+          report.current_phase = phase;
+          report.current_stage = "construct-streamed-fixtures";
+          await save();
+          const fixtures = [];
+          for (let index = 0; index < simultaneous; index++)
+            fixtures.push(
+              await writeHttpEnvelope(
+                path.join(temporary, `${shape}-${phase}-${index}.json`),
+                (phase === "fresh-insert" ? 9_000_002 : 9_000_001) +
+                  index * 100_000,
+                phase === "late-failure" || phase === "repair-replay"
+                  ? stamp + 1
+                  : stamp,
+              ),
+            );
+          if (phase === "late-failure")
+            await db
+              .prepare(
+                "CREATE TRIGGER resource_http_reject BEFORE INSERT ON chain_detail_blocks BEGIN SELECT RAISE(ABORT,'synthetic streamed HTTP late failure'); END",
+              )
+              .run();
+          if (phase === "repair-replay")
+            await db.prepare("DROP TRIGGER resource_http_reject").run();
+          const before = await cdp.request("Runtime.getHeapUsage");
+          report.current_stage = "before-dispatch";
+          report.http_current_fixtures = fixtures;
+          report.http_pre_dispatch = {
+            driver_memory: process.memoryUsage(),
+            workerd_process: await processMemory(),
+            native_limits: await nativeLimits(),
+          };
+          await save();
+          const processSamples: Array<Record<string, unknown>> = [];
+          let done = false;
+          report.current_stage = "dispatch-and-write";
+          await save();
+          let monitoringError: unknown;
+          const monitor = (async () => {
+            while (!done) {
+              assert.ok(processSamples.length < 2048);
+              processSamples.push({
+                at_ms: performance.now(),
+                driver_memory: process.memoryUsage(),
+                workerd_process: await processMemory(),
+                native_limits: await nativeLimits(),
+              });
+              report.http_current_process_samples = processSamples;
+              await save();
+              if (!done)
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+          })().catch((error: unknown) => {
+            monitoringError = error;
+          });
+          let responses;
+          const start = performance.now();
+          try {
+            responses = await deadline(
+              Promise.all(
+                fixtures.map(async (fixture) => {
+                  const source = createReadStream(fixture.file_path, {
+                    highWaterMark: 65536,
+                  });
+                  const started_ms = performance.now();
+                  try {
+                    const init = {
+                      method: "POST",
+                      headers: {
+                        "x-chain-detail-sync-token": "synthetic-only",
+                      },
+                      body: Readable.toWeb(
+                        source,
+                      ) as ReadableStream<Uint8Array>,
+                      duplex: "half" as const,
+                    };
+                    const response = await worker.fetch(
+                      "https://d/api/v1/internal/chain-detail-sync",
+                      init,
+                    );
+                    return {
+                      status: response.status,
+                      body: await response.json(),
+                      started_ms,
+                      finished_ms: performance.now(),
+                    };
+                  } finally {
+                    source.destroy();
+                  }
+                }),
+              ),
+              120_000,
+            );
+          } finally {
+            done = true;
+            await monitor;
+          }
+          if (monitoringError) throw monitoringError;
+          for (const response of responses) {
+            assert.equal(response.status, phase === "late-failure" ? 502 : 200);
+            if (phase !== "late-failure")
+              assert.deepEqual((response.body as { stores: string[] }).stores, [
+                "d1",
+              ]);
+          }
+          const overlap =
+            simultaneous === 2
+              ? Math.max(...responses.map((r) => r.started_ms)) <
+                Math.min(...responses.map((r) => r.finished_ms))
+              : null;
+          if (simultaneous === 2)
+            assert.equal(
+              overlap,
+              true,
+              "driver windows overlap; API execution overlap remains unknown",
+            );
+          report.current_stage = "verify";
+          await save();
+          const rows = await databaseState(db);
+          if (phase === "late-failure")
+            assert.deepEqual(
+              rows,
+              prior,
+              "all published rows and inline payload state survive rollback",
+            );
+          const count = simultaneous * (phase === "first" ? 1 : 2);
+          assert.deepEqual(
+            rows.map((row) => ({ table: row.table, rows: row.rows })),
+            [
+              { table: "chain_detail_extrinsics", rows: count },
+              { table: "chain_detail_chain_events", rows: 79998 * count },
+              { table: "chain_detail_account_events", rows: count },
+              { table: "chain_detail_blocks", rows: count },
+              { table: "chain_detail_payload_chunks", rows: 0 },
+            ],
+          );
+          for (const fixture of fixtures) {
+            const row = await db
+              .prepare(
+                "SELECT call_args,observed_at FROM chain_detail_extrinsics WHERE block_number=? AND extrinsic_index=0",
+              )
+              .bind(fixture.block)
+              .first<Record<string, unknown>>();
+            assert.ok(row);
+            assert.equal(
+              row.observed_at,
+              phase === "repair-replay" ? stamp + 1 : stamp,
+            );
+            const [restored] = await restoreChainDetailPayloads(
+              { D1_STATE: db },
+              [row],
+            );
+            assert.equal(
+              hash(Buffer.from(String(restored.call_args))),
+              fixture.argument_sha256,
+            );
+          }
+          if (phase === "repair-replay")
+            for (const fixture of fixtures)
+              for (const table of chainDetailTables()) {
+                assert.equal(
+                  await db
+                    .prepare(
+                      `SELECT count(*) n FROM ${table} WHERE block_number=? AND observed_at IS NOT ?`,
+                    )
+                    .bind(fixture.block, stamp + 1)
+                    .first<number>("n"),
+                  0,
+                );
+              }
+          const health = await db
+            .prepare(
+              "SELECT verdict FROM lane_health_current WHERE lane='neon:chain-detail'",
+            )
+            .first<{ verdict: string }>();
+          assert.equal(
+            health?.verdict,
+            phase === "late-failure" ? "stale" : "ok",
+          );
+          prior = rows;
+          observations.push({
+            shape,
+            phase,
+            health,
+            fixtures,
+            responses,
+            driver_request_windows_overlap: overlap,
+            actual_api_execution_overlap_qualified: false,
+            four_family_and_chunk_digests: rows,
+            wall_ms: performance.now() - start,
+            before,
+            after: await cdp.request("Runtime.getHeapUsage"),
+            process_samples: processSamples,
+            native_limits: await nativeLimits(),
+            true_peak_qualified: false,
+          });
+          await save();
+          for (const fixture of fixtures) await rm(fixture.file_path);
+        }
+        continue;
       }
       if (shape === "chunks") {
         await assert.rejects(
