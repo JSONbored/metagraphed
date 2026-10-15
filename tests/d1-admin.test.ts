@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { d1AdminBatch, d1AdminCredentials } from "../scripts/lib/d1-admin.ts";
 
 const credentials = {
@@ -402,4 +402,170 @@ test("arbitrary request identifiers and combined header values are never returne
         !String(error).includes("request_id=") &&
         !String(error).includes(ray),
     );
+});
+
+test("an exact16KiB error body followed by EOF is parsed without cancellation", async () => {
+  const json = JSON.stringify({ errors: [{ code: 0, message: "Forbidden" }] });
+  const bytes = new TextEncoder().encode(json.padEnd(16 * 1024, " "));
+  assert.equal(bytes.byteLength, 16 * 1024);
+  let cancellations = 0;
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(bytes.subarray(0, 8192));
+      controller.enqueue(bytes.subarray(8192));
+      controller.close();
+    },
+    cancel() {
+      cancellations++;
+    },
+  });
+  await assert.rejects(
+    d1AdminBatch(
+      [statement],
+      credentials,
+      async () => new Response(body, { status: 403 }),
+    ),
+    /HTTP 403; provider_code=0; provider_message=Forbidden; error_body=json$/,
+  );
+  assert.equal(cancellations, 0);
+});
+
+test("non2xx decoding accepts split UTF8 and a split BOM, and rejects an incomplete final codepoint", async () => {
+  for (const [text, expected] of [
+    [
+      "\uFEFF" + JSON.stringify({ errors: [{ message: "Permission denied" }] }),
+      "Permission denied",
+    ],
+    [
+      JSON.stringify({ errors: [{ message: "private λ漢🦊" }] }),
+      "Provider message redacted",
+    ],
+  ]) {
+    const bytes = new TextEncoder().encode(text);
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const byte of bytes) controller.enqueue(new Uint8Array([byte]));
+        controller.close();
+      },
+    });
+    await assert.rejects(
+      d1AdminBatch(
+        [statement],
+        credentials,
+        async () => new Response(body, { status: 403 }),
+      ),
+      (error: unknown) =>
+        String(error).endsWith(`provider_message=${expected}; error_body=json`),
+    );
+  }
+  const incomplete = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new Uint8Array([0xe2]));
+      controller.enqueue(new Uint8Array([0x82]));
+      controller.close();
+    },
+  });
+  await assert.rejects(
+    d1AdminBatch(
+      [statement],
+      credentials,
+      async () => new Response(incomplete, { status: 403 }),
+    ),
+    /HTTP 403; error_body=unreadable$/,
+  );
+});
+
+test("message length boundaries and input echoes retain only fixed labels", async () => {
+  for (const [message, expected] of [
+    [" ".repeat(503) + "Forbidden", "Forbidden"],
+    [" ".repeat(504) + "Forbidden", "Provider message redacted"],
+    ["unknown provider text", "Provider message redacted"],
+  ]) {
+    await assert.rejects(
+      d1AdminBatch([{ sql: "SELECT 1" }], credentials, async () =>
+        Response.json(
+          { errors: [{ code: 2_147_483_647, message }] },
+          { status: 403 },
+        ),
+      ),
+      (error: unknown) =>
+        String(error).endsWith(
+          `provider_code=2147483647; provider_message=${expected}; error_body=json`,
+        ),
+    );
+  }
+  await assert.rejects(
+    d1AdminBatch(
+      [{ sql: "SELECT ?", params: ["", "FORBIDDEN"] }],
+      credentials,
+      async () =>
+        Response.json({ errors: [{ message: "Forbidden" }] }, { status: 403 }),
+    ),
+    /provider_message=Provider message redacted; error_body=json$/,
+  );
+  for (const errors of [[], null, {}, [null], [false], [{ message: 123 }]]) {
+    await assert.rejects(
+      d1AdminBatch([statement], credentials, async () =>
+        Response.json({ errors }, { status: 403 }),
+      ),
+      (error: unknown) =>
+        String(error).includes("HTTP 403") &&
+        !String(error).includes("provider_message="),
+    );
+  }
+});
+
+test("default credentials and fetch are exercised without outbound access", async () => {
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", credentials.accountId);
+  vi.stubEnv("CLOUDFLARE_D1_DATABASE_ID", credentials.databaseId);
+  vi.stubEnv("CLOUDFLARE_API_TOKEN", credentials.apiToken);
+  assert.deepEqual(d1AdminCredentials(), credentials);
+  vi.stubGlobal("fetch", async () =>
+    Response.json({ success: true, result: [{ success: true, results: [] }] }),
+  );
+  assert.deepEqual(await d1AdminBatch([statement]), [
+    { success: true, results: [] },
+  ]);
+  assert.throws(
+    () =>
+      d1AdminCredentials({
+        CLOUDFLARE_ACCOUNT_ID: credentials.accountId,
+        CLOUDFLARE_D1_DATABASE_ID: credentials.databaseId,
+        CLOUDFLARE_API_TOKEN: "",
+      }),
+    /required/,
+  );
+});
+
+test("unsettled custom-transport cancellation does not delay the original HTTP failure", async () => {
+  let cancellations = 0;
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new Uint8Array(16 * 1024 + 1));
+    },
+    cancel() {
+      cancellations++;
+      return new Promise<void>(() => undefined);
+    },
+  });
+  await assert.rejects(
+    d1AdminBatch(
+      [statement],
+      credentials,
+      async () => new Response(body, { status: 403 }),
+    ),
+    /HTTP 403; error_body=oversized$/,
+  );
+  assert.equal(cancellations, 1);
+}, 1000);
+
+test("failure to obtain optional header diagnostics still preserves the HTTP status", async () => {
+  const response = new Response("private-body", { status: 403 });
+  vi.spyOn(response.headers, "get").mockImplementation(() => {
+    throw new Error("private-header-failure");
+  });
+  await assert.rejects(
+    d1AdminBatch([statement], credentials, async () => response),
+    /HTTP 403; error_body=unavailable$/,
+  );
 });

@@ -47,7 +47,9 @@ async function readErrorBody(response: Response): Promise<{
       if (part.done) break;
       bytes += part.value.byteLength;
       if (bytes > ERROR_BODY_MAX_BYTES) {
-        await reader.cancel().catch(() => undefined);
+        // Cleanup cannot hold the HTTP result open if a custom transport's
+        // cancellation never settles. Native fetch retains its request deadline.
+        void reader.cancel().catch(() => undefined);
         return { state: "oversized" };
       }
       text += decoder.decode(part.value, { stream: true });
@@ -56,7 +58,7 @@ async function readErrorBody(response: Response): Promise<{
     if (bytes === 0) return { state: "empty" };
     return { state: "complete", text };
   } catch {
-    await reader?.cancel().catch(() => undefined);
+    void reader?.cancel().catch(() => undefined);
     return { state: "unreadable" };
   } finally {
     reader?.releaseLock();
