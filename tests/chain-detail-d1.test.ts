@@ -429,7 +429,7 @@ test("compressed queue batches acknowledge only a durable atomic block", async (
 
 test("configured HTTP queue preserves a wide block through rollback and replay", async () => {
   const base = payload('[{"value":"精密 🧬"}]');
-  const accounts = Array.from({ length: 5_001 }, (_, index) => ({
+  const accounts = Array.from({ length: 4_998 }, (_, index) => ({
     block_number: 9_000_001,
     event_index: index,
     extrinsic_index: 0,
@@ -456,6 +456,28 @@ test("configured HTTP queue preserves a wide block through rollback and replay",
     },
   } as unknown as Parameters<typeof worker.fetch>[1];
   const context = { waitUntil() {} } as unknown as ExecutionContext;
+  const oversized = await worker.fetch(
+    new Request("https://d/api/v1/internal/chain-detail-sync", {
+      method: "POST",
+      headers: { "x-chain-detail-sync-token": "secret" },
+      body: JSON.stringify({
+        blocks: [
+          {
+            ...body.blocks[0],
+            account_events: [
+              ...accounts,
+              { ...accounts[0], event_index: 4_998 },
+            ],
+          },
+        ],
+      }),
+    }),
+    queuedEnv,
+    context,
+  );
+  assert.equal(oversized.status, 502, "5001 detail rows fail queue admission");
+  assert.equal(sent.length, 0, "refusal never sends a partial block");
+  for (const table of chainDetailTables()) assert.equal(await count(table), 0);
   const response = await worker.fetch(
     new Request("https://d/api/v1/internal/chain-detail-sync", {
       method: "POST",
@@ -514,11 +536,11 @@ test("configured HTTP queue preserves a wide block through rollback and replay",
   assert.equal(await count("chain_detail_blocks"), 1);
   assert.equal(await count("chain_detail_extrinsics"), 1);
   assert.equal(await count("chain_detail_chain_events"), 1);
-  assert.equal(await count("chain_detail_account_events"), 5_001);
+  assert.equal(await count("chain_detail_account_events"), 4_998);
   assert.deepEqual(
     await db
       .prepare(
-        "SELECT amount_tao,alpha_amount,hotkey FROM chain_detail_account_events WHERE event_index=5000",
+        "SELECT amount_tao,alpha_amount,hotkey FROM chain_detail_account_events WHERE event_index=4997",
       )
       .first(),
     { amount_tao: "0.000000001", alpha_amount: null, hotkey: null },
