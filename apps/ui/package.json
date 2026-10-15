@@ -40,7 +40,7 @@
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-router": "^1.170.23",
     "@tanstack/react-router-ssr-query": "^1.167.1",
-    "@tanstack/react-start": "^1.168.40",
+    "@tanstack/react-start": "^1.168.60",
     "@tanstack/react-virtual": "^3.14.9",
     "@tanstack/router-plugin": "^1.168.27",
     "clsx": "^2.1.1",
@@ -87,7 +87,6 @@
   },
   "overrides": {
     "@babel/core": "^7.29.7",
-    "@tanstack/start-server-core": "1.169.23",
     "esbuild": "^0.28.2",
     "js-yaml": "^4.3.2"
   }
