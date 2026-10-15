@@ -116,15 +116,25 @@ const count = (table: string) =>
 beforeAll(async () => {
   db = await runtime.getD1Database("DB");
   archive = (await runtime.getR2Bucket("R2")) as unknown as R2Bucket;
-  for (const statement of readFileSync(
-    new URL("../migrations/d1/0014_recent_chain_state.sql", import.meta.url),
-    "utf8",
-  ).split("-- statement-breakpoint"))
-    if (statement.trim()) await db.prepare(statement).run();
+  for (const file of [
+    "migrations/d1/0014_recent_chain_state.sql",
+    "migrations/d1/0024_chain_detail_payload_chunks.sql",
+    "deploy/chain-detail-payloads/sqlite.sql",
+  ])
+    for (const statement of readFileSync(
+      new URL(`../${file}`, import.meta.url),
+      "utf8",
+    ).split("-- statement-breakpoint"))
+      if (statement.trim()) await db.prepare(statement).run();
+  await db
+    .prepare("UPDATE chain_detail_payload_budget SET max_encoded_bytes=?")
+    .bind(64 * 1024 * 1024)
+    .run();
 });
 afterAll(async () => runtime.dispose());
 beforeEach(async () => {
   for (const table of tables) await db.prepare(`DELETE FROM ${table}`).run();
+  await db.prepare("DELETE FROM chain_detail_payload_chunks").run();
 });
 
 test("native chain detail preserves nullable outcomes and reader parity on replay", async () => {
@@ -897,4 +907,58 @@ test("D1 extrinsic feeds apply all bounds before LIMIT and cross tuple ties exac
       [102, 0],
     ],
   );
+});
+
+test("native D1 concurrent shared chunks survive a competing late failure", async () => {
+  const value = JSON.stringify({
+    bytes: randomBytes(200000).toString("base64"),
+  });
+  const good = input(value),
+    bad = input(value);
+  bad.blockRows[0].block_hash = null;
+  const results = await Promise.all(
+    [good, bad].map((rows) =>
+      writeChainDetailD1(createD1Store(db), env(), rows),
+    ),
+  );
+  assert.ok(Object.values(results[0]).every((result) => result.ok));
+  assert.ok(Object.values(results[1]).every((result) => !result.ok));
+  assert.equal(await count("chain_detail_payload_chunks"), 1);
+  const selected = (
+    await db.prepare("SELECT call_args FROM chain_detail_extrinsics").all()
+  ).results;
+  const { restoreChainDetailPayloads } =
+    await import("../src/chain-detail-payloads.ts");
+  assert.equal(
+    (await restoreChainDetailPayloads(env(), selected))[0].call_args,
+    value,
+  );
+  const used = await db
+    .prepare("SELECT used_encoded_bytes n FROM chain_detail_payload_budget")
+    .first<number>("n");
+  await writeChainDetailD1(createD1Store(db), env(), good);
+  assert.equal(
+    await db
+      .prepare("SELECT used_encoded_bytes n FROM chain_detail_payload_budget")
+      .first("n"),
+    used,
+  );
+});
+
+test("native D1 distinct failed chunks roll back without growing retained quota", async () => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const rows = input(
+      JSON.stringify({ bytes: randomBytes(200000).toString("base64") }),
+    );
+    rows.blockRows[0].block_hash = null;
+    const result = await writeChainDetailD1(createD1Store(db), env(), rows);
+    assert.ok(Object.values(result).every((row) => !row.ok));
+    assert.equal(await count("chain_detail_payload_chunks"), 0);
+    assert.equal(
+      await db
+        .prepare("SELECT used_encoded_bytes n FROM chain_detail_payload_budget")
+        .first("n"),
+      0,
+    );
+  }
 });

@@ -301,21 +301,25 @@ family together after copying and catching up retained rows: block-list readers
 join headers to the detail coverage register. This migration does not select
 ownership or change the existing retention policy.
 
-The HTTP sync and queue consumer share one native D1 transaction. Detail rows
-and their coverage register either all commit or all roll back. A failed queue
+The HTTP sync and queue consumer share one native D1 transaction. Native payload
+chunks, detail rows and their coverage register either all commit or all roll back.
+Chunked publication requires the separately held encoded-byte quota bundle in
+`deploy/chain-detail-payloads/`; its limit starts at zero and activation needs
+measured capacity and verified source/restore ownership. A failed queue
 write requests retry; it must never acknowledge the message merely because the
 writer returned an error result instead of throwing. A failed D1 resume query
 returns 503, keeping it distinct from a verified empty register.
 
-Decoded argument JSON above 128 KiB is stored in immutable R2 objects before the
-D1 transaction. Gzip is used when it reduces size. D1 retains an opaque reference;
-readers restore the original UTF-8 bytes and verify their SHA-256 digest. This
-keeps valid multi-megabyte calls readable without exceeding D1's row limit.
-Both serving Workers require the `METAGRAPH_ARCHIVE` binding. Missing objects,
-invalid references, corruption, and expansion beyond the declared size fail the
-read rather than returning truncated arguments. Values are bounded at 16 MiB
-and hydration at 32 MiB per query. The reader also supports the uncompressed
-references used by the initial retained-history copy.
+New decoded argument JSON above 128 KiB uses exact compressed native D1 payloads:
+inline values when their encoded representation fits, otherwise immutable D1
+chunks below the row limit. Gzip is used when it reduces size. Readers restore
+the original UTF-8 bytes and verify their SHA-256 digest. Legacy retained R2 v1
+and v2 references remain readable and still require `METAGRAPH_ARCHIVE`; new
+payload writes do not use R2. Missing chunks/legacy objects, invalid references,
+corruption and expansion beyond declared size fail the read. Individual values
+remain bounded at 16 MiB and hydration at 32 MiB per query. Recovery must preserve
+row-reference closure over both native chunks and retained legacy R2 originals;
+a four-table logical export alone is not a whole-source backup.
 
 Keep the source history and immutable objects until copy receipts, reader
 qualification, final catch-up, and ownership readback complete. Never prune a

@@ -284,7 +284,9 @@ export async function readBoundedRequestText(
         typeof value === "string" ? new TextEncoder().encode(value) : value;
       bytes += chunk.byteLength;
       if (bytes > maxBytes) {
-        await reader.cancel();
+        // Refusal is already determined. An underlying cancel can reject or
+        // never resolve; its cleanup acknowledgement cannot hold up the 413.
+        void reader.cancel().catch(() => undefined);
         return { ok: false, text: "" };
       }
       text += decoder.decode(chunk, { stream: true });

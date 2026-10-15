@@ -433,12 +433,17 @@ interface VerificationDb {
   prepare(sql: string): VerificationStatement;
 }
 
-async function databaseState(db: VerificationDb) {
+async function databaseState(
+  db: VerificationDb,
+  progress?: (state: { table: string; rows: number }) => Promise<void>,
+) {
   const state = [];
   for (const table of [...chainDetailTables(), "chain_detail_payload_chunks"]) {
     const digest = createHash("sha256");
     let count = 0;
     for (;;) {
+      if (progress && count % 8192 === 0)
+        await progress({ table, rows: count });
       const rows = (
         await db
           .prepare(`SELECT * FROM ${table} ORDER BY 1,2 LIMIT 128 OFFSET ?`)
@@ -822,6 +827,18 @@ try {
           if (statement.trim()) await db.prepare(statement).run();
         }
       }
+      for (const statement of (
+        await readFile("deploy/chain-detail-payloads/sqlite.sql", "utf8")
+      ).split("-- statement-breakpoint")) {
+        if (statement.trim()) await db.prepare(statement).run();
+      }
+      // Explicit synthetic encoded-byte quota, not a production capacity value.
+      await db
+        .prepare(
+          "UPDATE chain_detail_payload_budget SET max_encoded_bytes=? WHERE id=1",
+        )
+        .bind(64 * 1024 * 1024)
+        .run();
       if (mixed) {
         for (const statement of (
           await readFile("deploy/sync-delivery-receipts/sqlite.sql", "utf8")
@@ -887,6 +904,19 @@ try {
           "repair-replay",
         ]) {
           report.current_phase = phase;
+          for (const field of [
+            "http_response_receipt",
+            "http_pre_dispatch",
+            "http_current_process_samples",
+            "http_post_response_api_heap",
+            "http_post_response_helper_heaps",
+            "http_post_response_process",
+            "http_post_response_limits",
+            "http_verification_progress",
+            "http_verification_api_heap",
+            "http_verification_helper_heaps",
+          ])
+            delete report[field];
           report.current_stage = "construct-streamed-fixtures";
           await save();
           const fixtures = [];
@@ -913,6 +943,8 @@ try {
           report.current_stage = "before-dispatch";
           report.http_current_fixtures = fixtures;
           report.http_pre_dispatch = {
+            api_heap: before,
+            native_helper_heaps: await helperHeaps(),
             driver_memory: process.memoryUsage(),
             workerd_process: await processMemory(),
             native_limits: await nativeLimits(),
@@ -1001,9 +1033,49 @@ try {
               true,
               "driver windows overlap; API execution overlap remains unknown",
             );
+          // Persist the asserted response before any inspector/oracle call can
+          // fail. This receipt proves HTTP/store claims and driver windows;
+          // independent persisted census/hash verification is still pending.
+          assert.ok(JSON.stringify(responses).length <= 16384);
+          report.current_stage = "response-receipt";
+          report.http_response_receipt = {
+            phase,
+            responses,
+            driver_request_windows_overlap: overlap,
+            actual_api_execution_overlap_qualified: false,
+            persisted_census_and_hashes_verified: false,
+          };
+          await save();
+          report.current_stage = "post-response-memory";
+          await save();
+          report.http_post_response_api_heap = await cdp.request(
+            "Runtime.getHeapUsage",
+          );
+          await save();
+          report.http_post_response_helper_heaps = await helperHeaps();
+          report.http_post_response_process = await processMemory();
+          report.http_post_response_limits = await nativeLimits();
+          await save();
           report.current_stage = "verify";
           await save();
-          const rows = await databaseState(db);
+          const rows = await databaseState(db, async (state) => {
+            // Finite samples before the first read and each 8192-row boundary
+            // localize shared D1/oracle growth without changing verifier SQL.
+            report.http_verification_progress = {
+              ...state,
+              at_ms: performance.now(),
+              driver_memory: process.memoryUsage(),
+              workerd_process: await processMemory(),
+              native_limits: await nativeLimits(),
+            };
+            await save();
+            report.http_verification_api_heap = await cdp.request(
+              "Runtime.getHeapUsage",
+            );
+            await save();
+            report.http_verification_helper_heaps = await helperHeaps();
+            await save();
+          });
           if (phase === "late-failure")
             assert.deepEqual(
               rows,

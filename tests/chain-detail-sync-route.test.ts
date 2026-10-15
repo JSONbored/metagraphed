@@ -277,6 +277,35 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
       assert.deepEqual(insertedTables(), []);
     });
 
+  for (const cancelOutcome of ["pending", "rejected"] as const)
+    test(`overflow returns413/no writes despite ${cancelOutcome} cancellation`, async () => {
+      const cancel = vi.fn(() =>
+        cancelOutcome === "pending"
+          ? new Promise<void>(() => undefined)
+          : Promise.reject(new Error("cleanup failed")),
+      );
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(16000001));
+        },
+        cancel,
+      });
+      const request = new Request(
+        "https://d/api/v1/internal/chain-detail-sync",
+        {
+          method: "POST",
+          headers: { [HEADER]: SECRET, "content-length": "1" },
+          body: stream,
+          duplex: "half",
+        } as RequestInit,
+      );
+      const response = await dataApi.fetch(request, env, CTX);
+      assert.equal(response.status, 413);
+      assert.equal(cancel.mock.calls.length, 1);
+      assert.equal(stream.locked, false);
+      assert.deepEqual(insertedTables(), []);
+    });
+
   test("exact wire-byte limit preserves UTF-8 split across stream chunks", async () => {
     const input = body();
     input.blocks[0].extrinsics[0].call_args = JSON.stringify({
