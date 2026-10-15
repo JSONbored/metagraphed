@@ -39,7 +39,7 @@ async function readErrorBody(response: Response): Promise<{
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   try {
     reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8", { fatal: true });
+    const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
     let bytes = 0,
       text = "";
     for (;;) {
