@@ -11,7 +11,11 @@ import {
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
 import { d1AdminBatch } from "./lib/d1-admin.ts";
-import { migrationSequenceErrors } from "./validate-migrations.ts";
+import {
+  assertRecordedD1Migrations,
+  assertTrackedD1Migrations,
+  d1SchemaVerificationFailure,
+} from "./lib/d1-migration-ledger.ts";
 
 export interface SchemaObject {
   type: string;
@@ -71,8 +75,7 @@ export async function verifyD1MigrationLedger(
   const files = readdirSync(path.join(root, "migrations/d1"))
     .filter((file) => file.endsWith(".sql"))
     .sort();
-  if (!files.length || migrationSequenceErrors(files).length)
-    throw new Error("Tracked D1 migrations are empty or invalid");
+  assertTrackedD1Migrations(files);
   // One extra row detects an untracked successor without scanning its history.
   const result = await batch([
     {
@@ -80,22 +83,7 @@ export async function verifyD1MigrationLedger(
       params: [String(files.length + 1)],
     },
   ]);
-  const rows = result[0]?.results;
-  if (!rows) throw new Error("D1 migration ledger response is unavailable");
-  const names = rows.map((row) => row.name);
-  if (
-    names.some((name) => typeof name !== "string") ||
-    migrationSequenceErrors(names as string[]).length
-  )
-    throw new Error("D1 migration ledger contains invalid or duplicate names");
-  const recorded = new Set(names);
-  const tracked = new Set(files);
-  const missing = files.filter((file) => !recorded.has(file));
-  const extra = names.filter((name) => !tracked.has(name as string));
-  if (missing.length || extra.length)
-    throw new Error(
-      `D1 migration ledger differs: ${missing.length} missing, ${extra.length} untracked. No migrations were applied.`,
-    );
+  assertRecordedD1Migrations(files, result[0]?.results);
   console.log(`D1 migration ledger verified: ${files.length} recorded files`);
 }
 export async function snapshotD1Schema(
@@ -144,10 +132,8 @@ if (process.argv[1]?.endsWith("snapshot-d1-schema.ts")) {
     if (args.includes("--verify-ledger")) await verifyD1MigrationLedger();
     await snapshotD1Schema(args.includes("--write"));
   };
-  verify().catch(() => {
-    console.error(
-      "D1 schema verification failed; run the credentialed snapshot command and review its diff",
-    );
+  verify().catch((error: unknown) => {
+    console.error(d1SchemaVerificationFailure(error));
     process.exitCode = 1;
   });
 }

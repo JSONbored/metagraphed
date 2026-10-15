@@ -8,6 +8,7 @@ on:
       - "scripts/snapshot-d1-schema.ts"
       - "scripts/validate-declared-tables-exist.ts"
       - "scripts/lib/d1-admin.ts"
+      - "scripts/lib/d1-migration-ledger.ts"
       - "generated/db/d1-schema.json"
       - "db/d1-schema.sql"
       - ".github/workflows/d1-maintenance.yml"

@@ -11,6 +11,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "vitest";
 import {
+  D1MigrationLedgerError,
+  d1SchemaVerificationFailure,
+} from "../scripts/lib/d1-migration-ledger.ts";
+import {
   normalizeSchema,
   snapshotD1Schema,
   verifyD1MigrationLedger,
@@ -136,4 +140,46 @@ test("the recorded0038 keeps its original bytes and matches the captured physica
   await snapshotD1Schema(false, async () => [
     { results: schema.map((object) => ({ ...object })) },
   ]);
+});
+
+test("CLI diagnostics retain ledger classifications without trusting error messages", () => {
+  const secret = "private-query-and-credential";
+  for (const reason of [
+    "tracked_invalid",
+    "response_unavailable",
+    "record_invalid",
+    "ledger_mismatch",
+  ] as const) {
+    const error = new D1MigrationLedgerError(reason, secret);
+    assert.equal(
+      d1SchemaVerificationFailure(error),
+      `D1 migration ledger verification failed (${reason})`,
+    );
+  }
+  const changed = new D1MigrationLedgerError("ledger_mismatch", secret);
+  Object.defineProperty(changed, "reason", { value: secret });
+  assert.equal(
+    d1SchemaVerificationFailure(changed),
+    "D1 schema verification failed (unclassified)",
+  );
+  for (const error of [undefined, null, secret, {}, new Error(secret)]) {
+    assert.equal(
+      d1SchemaVerificationFailure(error),
+      "D1 schema verification failed (unclassified)",
+    );
+  }
+  for (const suffix of ["", `; provider_message=${secret}`]) {
+    assert.equal(
+      d1SchemaVerificationFailure(
+        new Error(`D1 maintenance request failed with HTTP 403${suffix}`),
+      ),
+      "D1 schema verification failed (http_403)",
+    );
+  }
+  assert.equal(
+    d1SchemaVerificationFailure(
+      new Error(`D1 maintenance request failed with HTTP 4030${secret}`),
+    ),
+    "D1 schema verification failed (unclassified)",
+  );
 });

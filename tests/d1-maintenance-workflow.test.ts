@@ -66,6 +66,9 @@ test("scheduled and default manual verification cannot apply pending migrations"
     required: true,
     default: false,
   });
+  assert.ok(
+    workflow.on.push.paths.includes("scripts/lib/d1-migration-ledger.ts"),
+  );
   const steps = workflow.jobs.maintenance.steps as {
     run?: string;
     if?: string;

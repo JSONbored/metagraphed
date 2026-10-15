@@ -53,7 +53,17 @@ without applying anything. The test pins 0038's immutable source identity.
 
 A push to main touching migration/snapshot paths still invokes the existing
 apply step. An explicit manual `apply_migrations=true` also applies pending
-files. Consequently this reconciliation must remain unmerged until that release
+files. After authorization for the exact DDL and reviewed source, dispatch with
+the explicit input (replace `REVIEWED_BRANCH_OR_TAG` with that reviewed ref):
+
+```sh
+gh workflow run d1-maintenance.yml --repo JSONbored/metagraphed \
+  --ref REVIEWED_BRANCH_OR_TAG -f apply_migrations=true
+```
+
+Omitting that input performs verification only. Ledger failures retain a fixed
+classification in the native step log; provider text and query inputs are not
+logged. Consequently this reconciliation must remain unmerged until its release
 effect is reviewed. Credential-free CI tests use injected ledger/schema results;
 they do not verify the current production ledger or authorize a live query.
 
