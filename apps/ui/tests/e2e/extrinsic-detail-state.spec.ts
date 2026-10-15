@@ -194,6 +194,7 @@ test.describe("account attribution and pallet-level evidence", () => {
   test("retains failed proxy/batch arguments and unknown runtime events without inventing account effects", async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 375, height: 900 });
     await page.route("**/api/v1/chain-events?*", (route) =>
       route.fulfill({
         contentType: "application/json",
@@ -217,10 +218,22 @@ test.describe("account attribution and pallet-level evidence", () => {
     await gotoThroughRestart(page, `/extrinsics/${FAILED_PROXY_HASH}`);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("proxy");
     await expect(page.getByText("result failed", { exact: true })).toBeVisible();
-    await expect(page.locator("#arguments")).toContainText("batch");
+    const argumentsTable = page.locator("#arguments");
+    await argumentsTable.getByRole("button", { name: "Expand row", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    const decodedValue = argumentsTable.getByLabel("call decoded value", { exact: true });
+    await expect(decodedValue).toBeVisible();
+    await expect(decodedValue).toContainText('"batch"');
+    await expect(decodedValue).toContainText('"add_stake"');
+    await expect(
+      argumentsTable.getByRole("button", { name: "Copy call decoded value", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText(/No account-attributed events were decoded/)).toBeVisible();
     await expect(page.getByRole("table", { name: /What it produced/ })).toContainText(
       "FutureRuntime.Unrecognized",
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
     );
   });
 

@@ -7,6 +7,7 @@ import {
   FactSentence,
   LoadMore,
   Raw,
+  RawCode,
   TimeAgo,
   truncateIdentifier,
   type DataTableColumn,
@@ -327,6 +328,7 @@ export function ExtrinsicDetailPage() {
         caption="What this call was made with"
         source="extrinsic-arg"
         paginate={false}
+        expand={(row) => <RawCode label={`${row.name} decoded value`}>{row.value}</RawCode>}
         empty={
           extrinsic?.call_args == null
             ? "Call arguments are unavailable in this indexed record."
