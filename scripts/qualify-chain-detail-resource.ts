@@ -24,6 +24,7 @@ import {
   SyncBatchSizeError,
 } from "../src/sync-batch-compress.ts";
 
+const cpuProfiles = process.env.CHAIN_DETAIL_RESOURCE_CPU_PROFILES !== "false";
 const output = path.resolve("reports/chain-detail-resource");
 await mkdir(output, { recursive: true });
 const temporary = await mkdtemp(path.join(tmpdir(), "chain-detail-resource-"));
@@ -33,6 +34,7 @@ const report: Record<string, unknown> = {
   }).trim(),
   status: "incomplete",
   driver_exec_argv: process.execArgv,
+  cpu_profiles_enabled: cpuProfiles,
   scope: "synthetic native Workerd, actual dry-run data-api bundle and D1",
   exclusions: [
     "true synchronous heap peak",
@@ -547,8 +549,10 @@ try {
           client: await inspector(target.webSocketDebuggerUrl),
         });
       const isolate = await cdp.request("Runtime.getIsolateId");
-      await cdp.request("Profiler.enable");
-      await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
+      if (cpuProfiles) {
+        await cdp.request("Profiler.enable");
+        await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
+      }
       let retainedOriginal = message;
       if (shape === "objects" || shape === "objects-max") {
         await assert.rejects(
@@ -650,7 +654,7 @@ try {
           typeof before.usedSize === "number" && before.usedSize > 0,
           "actual isolate heap statistics required",
         );
-        await cdp.request("Profiler.start");
+        if (cpuProfiles) await cdp.request("Profiler.start");
         let finished = false;
         let samplingError: unknown;
         const sampling = (async () => {
@@ -731,14 +735,17 @@ try {
         }
         if (samplingError) throw samplingError;
         const wall_ms = performance.now() - start;
-        const profile = await cdp.request("Profiler.stop");
-        const profileName = `${shape}-${phase}.cpuprofile`;
-        const profileText = JSON.stringify(profile.profile);
-        assert.ok(
-          Buffer.byteLength(profileText) <= 32 * 1024 * 1024,
-          "CPU profile byte bound",
-        );
-        await writeFile(path.join(output, profileName), profileText);
+        let profileName: string | undefined;
+        if (cpuProfiles) {
+          const profile = await cdp.request("Profiler.stop");
+          profileName = `${shape}-${phase}.cpuprofile`;
+          const profileText = JSON.stringify(profile.profile);
+          assert.ok(
+            Buffer.byteLength(profileText) <= 32 * 1024 * 1024,
+            "CPU profile byte bound",
+          );
+          await writeFile(path.join(output, profileName), profileText);
+        }
         const after = await cdp.request("Runtime.getHeapUsage");
         const resultsExpected = phase === "late-failure" ? "retry" : "ack";
         for (const result of results) {

@@ -19,6 +19,10 @@ on:
         description: "Reproduce combined-process pressure (diagnostic-only; cannot qualify source)"
         type: boolean
         default: false
+      resource_cpu_profiles:
+        description: "Enable CPU profiling; false is an explicit instrumentation comparison"
+        type: boolean
+        default: true
       resource_probe_only:
         description: "Diagnostic resource probe only; skip ordinary source/test qualification"
         type: boolean
@@ -1633,6 +1637,10 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts
+      - name: Retain pinned formatting evidence
+        run: |
+          mkdir -p reports/chain-detail-resource
+          npx --no-install prettier workers/data-api.ts > reports/chain-detail-resource/data-api.formatted.ts
       - name: Observe actual Workerd queue execution
         run: |
           set -euo pipefail
@@ -1642,7 +1650,7 @@ jobs:
           mkdir -p reports/chain-detail-resource
           scope="metagraphed-resource-${{ github.run_id }}-${{ matrix.shape }}"
           probe_status=0
-          sudo --preserve-env=CI,WRANGLER_SEND_METRICS,CHAIN_DETAIL_RESOURCE_SHAPE systemd-run --scope --same-dir \
+          sudo --preserve-env=CI,WRANGLER_SEND_METRICS,CHAIN_DETAIL_RESOURCE_SHAPE,CHAIN_DETAIL_RESOURCE_CPU_PROFILES systemd-run --scope --same-dir \
             --unit="$scope" \
             --property=MemoryMax=536870912 --property=MemorySwapMax=0 \
             --property=TasksMax=128 --property=CPUQuota=200% \
@@ -1659,6 +1667,7 @@ jobs:
           WRANGLER_SEND_METRICS: "false"
           CI: "true"
           CHAIN_DETAIL_RESOURCE_SHAPE: ${{ matrix.shape }}
+          CHAIN_DETAIL_RESOURCE_CPU_PROFILES: ${{ inputs.resource_cpu_profiles }}
       - name: Retain bounded raw observations and CPU profiles
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
