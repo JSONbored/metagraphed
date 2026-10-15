@@ -759,7 +759,9 @@ try {
         nativeOracle
           ? {
               inspectorPort: 0,
-              ...(separateHttpPhases ? { resourcePersistencePath: persistence } : {}),
+              ...(separateHttpPhases
+                ? { resourcePersistencePath: persistence }
+                : {}),
               workers: [apiOptions, oracleOptions],
             }
           : apiOptions,
