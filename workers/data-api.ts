@@ -1270,9 +1270,14 @@ async function handleNeuronDailyBackfill(
   if (receiptVersion !== null) {
     const bounded = await readBoundedRequestText(request, 512 * 1024, true);
     if (!bounded.ok) {
-      return writeJson({ error: bounded.invalidUtf8
-        ? "historical body must be valid UTF-8 without a leading BOM"
-        : "historical body exceeds 524288 bytes" }, bounded.invalidUtf8 ? 400 : 413);
+      return writeJson(
+        {
+          error: bounded.invalidUtf8
+            ? "historical body must be valid UTF-8 without a leading BOM"
+            : "historical body exceeds 524288 bytes",
+        },
+        bounded.invalidUtf8 ? 400 : 413,
+      );
     }
     raw = bounded.text;
     originalBytes = bounded.originalBytes;

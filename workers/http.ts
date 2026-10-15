@@ -262,14 +262,21 @@ export async function readBoundedRequestText(
   request: Request,
   maxBytes: number,
   exactUtf8 = false,
-): Promise<{ ok: boolean; text: string; originalBytes?: Uint8Array; invalidUtf8?: boolean }> {
+): Promise<{
+  ok: boolean;
+  text: string;
+  originalBytes?: Uint8Array;
+  invalidUtf8?: boolean;
+}> {
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > maxBytes) {
     return { ok: false, text: "" };
   }
 
   if (!request.body) {
-    return exactUtf8 ? { ok: true, text: "", originalBytes: new Uint8Array() } : { ok: true, text: "" };
+    return exactUtf8
+      ? { ok: true, text: "", originalBytes: new Uint8Array() }
+      : { ok: true, text: "" };
   }
 
   const reader = request.body.getReader();
@@ -306,7 +313,10 @@ export async function readBoundedRequestText(
   const roundtrip = new TextEncoder().encode(text);
   // Reject malformed UTF-8 and a stripped leading BOM before parsing/hashing.
   // No unsupported fatal-decoder option is required by the Worker runtime.
-  if (roundtrip.length !== bytes || roundtrip.some((byte, index) => byte !== admitted[index])) {
+  if (
+    roundtrip.length !== bytes ||
+    roundtrip.some((byte, index) => byte !== admitted[index])
+  ) {
     return { ok: false, text: "", invalidUtf8: true };
   }
   return { ok: true, text, originalBytes: admitted };
