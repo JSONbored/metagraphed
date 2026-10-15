@@ -103,6 +103,45 @@ test("synthetic runtime454 and478 differ in epoch retirement and pool caps", () 
   assert.equal(quoteAlphaPool(over, 454).alphaRao, "3333333333");
 });
 
+test("legacy integer and fractional boundaries preserve truncated pool values in both runtimes", () => {
+  const unit = 1n << 64n;
+  // Four pool shares own twelve rao. These originals include an integer,
+  // mixed integer/fraction, a one-bit fraction and the last bit below full.
+  const cases = [
+    [0n, "0"],
+    [1n, "0"],
+    [unit / 2n, "1"],
+    [unit, "3"],
+    [unit + unit / 2n, "4"],
+    [4n * unit - 1n, "11"],
+    [4n * unit, "12"],
+  ] as const;
+  for (const version of [454, 478] as const) {
+    for (const [bits, expected] of cases) {
+      const evidence = {
+        ...base(),
+        share: { legacy_bits: bits.toString(), v2: null },
+        denominator: { legacy_bits: (4n * unit).toString(), v2: null },
+        total_alpha_rao: "12",
+      };
+      assert.equal(quoteAlphaPool(evidence, version).alphaRao, expected);
+    }
+    const maximum = ((1n << 128n) - 1n).toString();
+    assert.equal(
+      quoteAlphaPool(
+        {
+          ...base(),
+          share: { legacy_bits: maximum, v2: null },
+          denominator: { legacy_bits: maximum, v2: null },
+          total_alpha_rao: "12",
+        },
+        version,
+      ).alphaRao,
+      "12",
+    );
+  }
+});
+
 test("synthetic exponent bounds, checked intermediates, capped powers and u64 saturation match runtime failure rules", () => {
   const min = "-9223372036854775808",
     max = "9223372036854775807";
