@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
-import { EVIDENCE_HASH, FAILED_PROXY_HASH } from "./extrinsic-evidence-fixture.ts";
+import { EVIDENCE_HASH, FAILED_PROXY_HASH, UNINDEXED_HASH } from "./extrinsic-evidence-fixture.ts";
 
 const HASH = "0x986f1f7da3d93882e8c19bbe3b303ef8ba5454062272446598d17aa599ca4428";
 const ROUTE = `/extrinsics/${HASH}`;
@@ -175,7 +175,11 @@ test.describe("account attribution and pallet-level evidence", () => {
           page.getByText(/No pallet-level event records are available from this tier/),
         ).toBeVisible();
         await expect(table.locator("tbody tr")).toHaveCount(2);
-        await table.scrollIntoViewIfNeeded();
+        await expect(page.locator("#signer .mg-dt-skeleton")).toHaveCount(0);
+        await page.evaluate(() => {
+          document.documentElement.style.scrollBehavior = "auto";
+          window.scrollTo(0, 0);
+        });
         await page.screenshot({
           path: test.info().outputPath(`explorer-evidence-${width}-${theme}.png`),
           fullPage: true,
@@ -218,6 +222,36 @@ test.describe("account attribution and pallet-level evidence", () => {
     await expect(page.getByRole("table", { name: /What it produced/ })).toContainText(
       "FutureRuntime.Unrecognized",
     );
+  });
+
+  test("keeps unavailable decode coordinates and signer context distinct from empty or pending data", async ({
+    page,
+  }) => {
+    let rawReads = 0,
+      peerReads = 0;
+    await page.route("**/api/v1/chain-events?*", async (route) => {
+      rawReads++;
+      await route.continue();
+    });
+    await page.route("**/api/v1/extrinsics?*", async (route) => {
+      peerReads++;
+      await route.continue();
+    });
+    await gotoThroughRestart(page, `/extrinsics/${UNINDEXED_HASH}`);
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await expect(
+      page.getByText("Call arguments are unavailable in this indexed record.", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("No signer or related call hash is available in this indexed record.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.locator("#events .mg-dt-skeleton, #signer .mg-dt-skeleton")).toHaveCount(0);
+    expect(rawReads).toBe(0);
+    expect(peerReads).toBe(0);
+    await expect(page.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
+    await expect(page.getByText("This call takes no arguments.", { exact: true })).toHaveCount(0);
   });
 
   for (const outcome of ["repeated-cursor", "failure-recovery"] as const) {

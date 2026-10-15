@@ -33,6 +33,7 @@ import { HAR_DIR, DATED_ENDPOINT_PATTERNS } from "./har-path.ts";
 import {
   EVIDENCE_HASH,
   FAILED_PROXY_HASH,
+  UNINDEXED_HASH,
   extrinsicEvidenceFixture,
 } from "./extrinsic-evidence-fixture.ts";
 
@@ -356,7 +357,7 @@ for (const [key, recorded] of byPath) {
 
 // Explicit synthetic SSR fixtures: browser interception cannot replace a
 // useSuspenseQuery response fetched by the server before hydration.
-for (const hash of [EVIDENCE_HASH, FAILED_PROXY_HASH]) {
+for (const hash of [EVIDENCE_HASH, FAILED_PROXY_HASH, UNINDEXED_HASH]) {
   const key = `/api/v1/extrinsics/${hash}`;
   const recorded = {
     status: 200,

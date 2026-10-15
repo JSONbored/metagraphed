@@ -9,6 +9,8 @@ const page = readFileSync(
 
 describe("extrinsic event-record completeness", () => {
   it("keeps a continuation affordance for a partial paginated raw event record", () => {
+    expect(page).toContain("showEventContinuation");
+    expect(page).toContain("hasEventScope &&");
     expect(page).toContain(
       "events.hasNextPage || ((events.error || eventCursorInvalid) && eventRows.length > 0)",
     );

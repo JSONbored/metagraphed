@@ -79,13 +79,14 @@ export function ExtrinsicDetailPage() {
   const { ref: peersRef, nearViewport: peersNearViewport } =
     useNearViewport<HTMLDivElement>("0px 0px");
 
+  const hasEventScope = block != null && index != null;
   const events = useInfiniteQuery({
     ...chainEventsInfiniteQuery(
       block == null || index == null
         ? {}
         : { block, extrinsic: index, limit: EXTRINSIC_EVENT_PAGE_SIZE },
     ),
-    enabled: block != null && index != null,
+    enabled: hasEventScope,
     retry: 0,
   });
   /**
@@ -99,6 +100,7 @@ export function ExtrinsicDetailPage() {
    * every page, which is how a section teaches readers to skip it.
    */
   const callHash = multisigCallHash(extrinsic?.call_module, extrinsic?.call_args);
+  const hasPeerScope = Boolean(callHash || extrinsic?.signer);
   const peers = useQuery({
     ...extrinsicsQuery(
       callHash
@@ -109,13 +111,14 @@ export function ExtrinsicDetailPage() {
     // decoded results above it. Keep the table's place and state explicit,
     // but defer this additional cross-extrinsic lookup until a reader reaches
     // it on the detail route.
-    enabled: peersNearViewport && Boolean(callHash || extrinsic?.signer),
+    enabled: peersNearViewport && hasPeerScope,
     retry: 0,
   });
 
   const args = useMemo(() => argRows(extrinsic?.call_args), [extrinsic]);
   const accountEvents = extrinsic?.events ?? [];
   const eventRows = useMemo(() => {
+    if (!hasEventScope) return [];
     // A misbehaving upstream cursor must not duplicate rows in a forensic
     // record. The page keeps the first instance, then reports the cursor
     // problem through `LoadMore` below rather than pretending those repeated
@@ -129,16 +132,19 @@ export function ExtrinsicDetailPage() {
         seen.add(key);
         return true;
       }) as ChainEvent[];
-  }, [events.data]);
+  }, [events.data, hasEventScope]);
   const eventCursorInvalid =
-    events.data?.pages.some((page) => page.cursorInvalid === true) ?? false;
+    hasEventScope && (events.data?.pages.some((page) => page.cursorInvalid === true) ?? false);
+  const showEventContinuation =
+    hasEventScope &&
+    (events.hasNextPage || ((events.error || eventCursorInvalid) && eventRows.length > 0));
   // This extrinsic is not one of "the signer's other calls".
   const peerRows = useMemo(
     () =>
-      ((peers.data?.data ?? []) as Extrinsic[])
+      ((hasPeerScope ? (peers.data?.data ?? []) : []) as Extrinsic[])
         .filter((row) => row.extrinsic_hash !== hash)
         .slice(0, SIGNER_LIMIT),
-    [peers.data, hash],
+    [peers.data, hash, hasPeerScope],
   );
 
   const argColumns: DataTableColumn<ArgRow>[] = [
@@ -296,11 +302,11 @@ export function ExtrinsicDetailPage() {
         name={extrinsicTitle(extrinsic, truncateIdentifier(hash))}
         sentence={
           <FactSentence>
-            {truncateIdentifier(hash)}, signed by{" "}
+            {truncateIdentifier(hash)}, signer{" "}
             <AddressDisplay
               ss58={extrinsic?.signer}
               compact
-              fallback={extrinsic?.signer ? truncateIdentifier(extrinsic.signer) : "nobody"}
+              fallback={extrinsic?.signer ? truncateIdentifier(extrinsic.signer) : "unavailable"}
             />{" "}
             {extrinsic?.observed_at ? <TimeAgo at={extrinsic.observed_at} /> : null}.{" "}
             {extrinsicFacts(extrinsic, { count: formatNumber, tao: formatTao }).map((fact) => (
@@ -321,7 +327,11 @@ export function ExtrinsicDetailPage() {
         caption="What this call was made with"
         source="extrinsic-arg"
         paginate={false}
-        empty="This call takes no arguments."
+        empty={
+          extrinsic?.call_args == null
+            ? "Call arguments are unavailable in this indexed record."
+            : "This call takes no arguments."
+        }
       />
 
       <p>
@@ -349,10 +359,10 @@ export function ExtrinsicDetailPage() {
         rowHref={(row) => eventHref(row) ?? undefined}
         link={RouterLink}
         source="extrinsic-event"
-        loading={events.isPending}
+        loading={hasEventScope && events.isPending}
         paginate={false}
         error={
-          events.isError && eventRows.length === 0 ? (
+          hasEventScope && events.isError && eventRows.length === 0 ? (
             <ErrorState
               error={events.error}
               onRetry={() => void events.refetch()}
@@ -365,7 +375,7 @@ export function ExtrinsicDetailPage() {
       {/* A raw event record can exceed the initial 50-row read. The detail
           page must offer its continuation instead of implying page one is
           every event this call produced. */}
-      {events.hasNextPage || ((events.error || eventCursorInvalid) && eventRows.length > 0) ? (
+      {showEventContinuation ? (
         <LoadMore
           hasMore={Boolean(events.hasNextPage)}
           isLoading={events.isFetchingNextPage}
@@ -388,7 +398,7 @@ export function ExtrinsicDetailPage() {
           rowHref={(row) => (row.extrinsic_hash ? `/extrinsics/${row.extrinsic_hash}` : undefined)}
           link={RouterLink}
           source="extrinsic-peer"
-          loading={!peersNearViewport || peers.isPending}
+          loading={hasPeerScope && (!peersNearViewport || peers.isPending)}
           paginate={false}
           // #6426: a failed lookup and a genuine zero are different answers.
           // The retired section rendered the same "no siblings" copy for both,
@@ -396,7 +406,7 @@ export function ExtrinsicDetailPage() {
           // out"; `DataTable` keeps them apart because `error` and `empty` are
           // separate slots.
           error={
-            peers.isError ? (
+            hasPeerScope && peers.isError ? (
               <ErrorState
                 error={peers.error}
                 onRetry={() => void peers.refetch()}
@@ -407,9 +417,11 @@ export function ExtrinsicDetailPage() {
             ) : undefined
           }
           empty={
-            callHash
-              ? "No other extrinsics reference this call hash yet."
-              : "No other recent calls from this signer."
+            !hasPeerScope
+              ? "No signer or related call hash is available in this indexed record."
+              : callHash
+                ? "No other extrinsics reference this call hash yet."
+                : "No other recent calls from this signer."
           }
         />
       </div>
