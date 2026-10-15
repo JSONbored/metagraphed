@@ -11,12 +11,7 @@ export {
   type AlphaQuantityCapture,
 } from "./alpha-quantity-capture.ts";
 
-/** A complete selected pass and its retained metadata owner. Missing old schema,
- * incomplete identity, or a failed read cannot qualify a legacy share fraction.
- * selected records prior promotions cumulatively. Choose the latest canonical
- * owner before joining metadata, so missing metadata cannot borrow an older pass. */
-/** Resolve the complete quantity family under one declared owner. A partial
- * ownership rollout cannot borrow metadata from a different database. */
+/** Resolve the complete family under one owner; partial rollout fails closed. */
 export function alphaQuantityStore(env: unknown) {
   try {
     return readStore(env, ALPHA_QUANTITY_TABLES);
@@ -29,6 +24,8 @@ export async function loadAlphaQuantityCaptureFromOwner(env: unknown) {
   return loadAlphaQuantityCapture(alphaQuantityStore(env));
 }
 
+/** Select the latest canonical owner before joining metadata. A missing original
+ * cannot borrow an older pass; incomplete or legacy shares stay unqualified. */
 export async function loadAlphaQuantityCapture(
   db: OptionalRowReader | null | undefined,
 ): Promise<AlphaQuantityCapture | null> {

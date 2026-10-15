@@ -261,20 +261,15 @@ export async function writeAlphaSnapshotD1(
         ON CONFLICT(snapshot_date) DO UPDATE SET captured_at=excluded.captured_at`,
       values: [day, at],
     },
-    {
-      text: `INSERT INTO archive_export_revisions(table_name,revision)
-        SELECT 'nominator_positions_daily',1 WHERE ${complete}
+    ...["nominator_positions_daily", "nominator_daily_captures"].map(
+      (table) => ({
+        text: `INSERT INTO archive_export_revisions(table_name,revision)
+        SELECT ?,1 WHERE ${complete}
         AND EXISTS(SELECT 1 FROM nominator_daily_captures WHERE captured_at=${at})
         ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1`,
-      values: [],
-    },
-    {
-      text: `INSERT INTO archive_export_revisions(table_name,revision)
-        SELECT 'nominator_daily_captures',1 WHERE ${complete}
-        AND EXISTS(SELECT 1 FROM nominator_daily_captures WHERE captured_at=${at})
-        ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1`,
-      values: [],
-    },
+        values: [table],
+      }),
+    ),
     {
       text: `INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,shares,captured_at,source,alpha_rao,alpha_evidence)
       SELECT coldkey,hotkey,netuid,share_fraction,shares,captured_at,'alpha',alpha_rao,alpha_evidence FROM alpha_snapshot_rows WHERE captured_at=? AND ${promote}
@@ -318,20 +313,13 @@ export async function writeAlphaSnapshotD1(
       text: `UPDATE alpha_snapshot_passes SET completed_at=? WHERE captured_at=? AND ${complete}`,
       values: [now, at],
     },
-    {
-      text: `DELETE FROM alpha_snapshot_rows WHERE captured_at IN (
+    ...["alpha_snapshot_rows", "alpha_snapshot_pools"].map((table) => ({
+      text: `DELETE FROM ${table} WHERE captured_at IN (
         SELECT p.captured_at FROM alpha_snapshot_passes p WHERE p.completed_at IS NOT NULL
         AND p.captured_at>=? AND p.captured_at<?
         AND NOT EXISTS(SELECT 1 FROM nominator_daily_captures d WHERE d.captured_at=p.captured_at))`,
       values: [dayStart, dayStart + 86_400_000],
-    },
-    {
-      text: `DELETE FROM alpha_snapshot_pools WHERE captured_at IN (
-        SELECT p.captured_at FROM alpha_snapshot_passes p WHERE p.completed_at IS NOT NULL
-        AND p.captured_at>=? AND p.captured_at<?
-        AND NOT EXISTS(SELECT 1 FROM nominator_daily_captures d WHERE d.captured_at=p.captured_at))`,
-      values: [dayStart, dayStart + 86_400_000],
-    },
+    })),
   ];
   await store.transaction(statements);
   const receipt = await store.first<{

@@ -12,6 +12,8 @@ const safeInteger = z.preprocess(
 const timestamp = safeInteger.refine(
   (value) => value > 0 && value <= 8_640_000_000_000_000,
 );
+const census = safeInteger.refine((value) => value <= 1_000_000);
+const chunks = safeInteger.refine((value) => value > 0 && value <= 1000);
 const hash = z.string().regex(/^0x[0-9a-f]{64}$/);
 export const AlphaCompleteCaptureSchema = z
   .object({
@@ -22,10 +24,10 @@ export const AlphaCompleteCaptureSchema = z
     spec_version: z.union([z.literal(454), z.literal(478)]),
     code_hash: hash,
     metadata_sha256: z.string().regex(/^[0-9a-f]{64}$/),
-    expected_rows: safeInteger.refine((value) => value <= 1_000_000),
-    received_rows: safeInteger.refine((value) => value <= 1_000_000),
-    expected_chunks: safeInteger.refine((value) => value > 0 && value <= 1000),
-    received_chunks: safeInteger.refine((value) => value > 0 && value <= 1000),
+    expected_rows: census,
+    received_rows: census,
+    expected_chunks: chunks,
+    received_chunks: chunks,
     completed_at: timestamp,
     selected: z.union([z.literal(0), z.literal(1)]),
   })

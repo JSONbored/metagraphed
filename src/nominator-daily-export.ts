@@ -8,16 +8,7 @@ import {
   alphaQuantityProvenance,
 } from "./alpha-quantity-capture.ts";
 
-const date = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .refine((value) => {
-    const time = Date.parse(`${value}T00:00:00Z`);
-    return (
-      Number.isFinite(time) &&
-      new Date(time).toISOString().slice(0, 10) === value
-    );
-  });
+const date = z.iso.date();
 const key = z.string().min(1).max(128);
 const schema = z.discriminatedUnion("operation", [
   z.strictObject({
@@ -56,11 +47,19 @@ const MEMBER_FIELDS =
   "coldkey hotkey netuid snapshot_date share_fraction shares captured_at source alpha_rao alpha_evidence block_number block_hash genesis_hash spec_version code_hash metadata_sha256 updated_at".split(
     " ",
   );
-const projection = "alpha-daily-members-v1";
+const envelope = { version: 1, projection: "alpha-daily-members-v1" };
+const dailyEnvelope = {
+  ...envelope,
+  domain: "alpha_nonroot",
+  day_basis: "observation_utc",
+};
+const captureQuery = `SELECT d.snapshot_date,p.*,EXISTS(SELECT 1 FROM alpha_runtime_metadata m WHERE m.sha256=p.metadata_sha256 AND m.code_hash=p.code_hash AND m.spec_version=p.spec_version) metadata_qualified
+  FROM nominator_daily_captures d LEFT JOIN alpha_snapshot_passes p USING(captured_at)`;
+const utcDay = (at: number) => new Date(at).toISOString().slice(0, 10);
 function qualifyDay(row: Row, day: string) {
   if (row.metadata_qualified !== 1) throw new Error("missing capture metadata");
   const capture = AlphaCompleteCaptureSchema.parse(row);
-  if (new Date(capture.captured_at).toISOString().slice(0, 10) !== day)
+  if (utcDay(capture.captured_at) !== day)
     throw new Error("capture day mismatch");
   return capture;
 }
@@ -96,7 +95,7 @@ export async function handleNominatorDailyExport(
         )
       )
         throw new Error("unqualified metadata original");
-      return reply({ version: 1, projection, metadata });
+      return reply({ ...envelope, metadata });
     }
     if (value.operation === "days") {
       const start = Date.parse(`${value.from}T00:00:00Z`);
@@ -106,9 +105,7 @@ export async function handleNominatorDailyExport(
       const rows = (
         await db
           .prepare(
-            `SELECT d.snapshot_date,p.*,EXISTS(SELECT 1 FROM alpha_runtime_metadata m WHERE m.sha256=p.metadata_sha256 AND m.code_hash=p.code_hash AND m.spec_version=p.spec_version) metadata_qualified FROM nominator_daily_captures d
-        LEFT JOIN alpha_snapshot_passes p USING(captured_at)
-        WHERE d.snapshot_date BETWEEN ? AND ? ORDER BY d.snapshot_date`,
+            `${captureQuery} WHERE d.snapshot_date BETWEEN ? AND ? ORDER BY d.snapshot_date`,
           )
           .bind(value.from, value.to)
           .all<Row>()
@@ -116,7 +113,7 @@ export async function handleNominatorDailyExport(
       const heads = new Map(rows.map((row) => [row.snapshot_date, row]));
       const days = [];
       for (let at = start; at <= end; at += 86_400_000) {
-        const day = new Date(at).toISOString().slice(0, 10);
+        const day = utcDay(at);
         const row = heads.get(day);
         if (!row) {
           days.push({ day, status: "missing_unobserved" });
@@ -131,10 +128,7 @@ export async function handleNominatorDailyExport(
         });
       }
       return reply({
-        version: 1,
-        projection,
-        domain: "alpha_nonroot",
-        day_basis: "observation_utc",
+        ...dailyEnvelope,
         days,
       });
     }
@@ -144,12 +138,7 @@ export async function handleNominatorDailyExport(
     // The head and page use the same native snapshot. A changed day selection
     // invalidates continuation; it cannot splice two full scans together.
     const results = await db.batch<Row>([
-      db
-        .prepare(
-          `SELECT p.*,EXISTS(SELECT 1 FROM alpha_runtime_metadata m WHERE m.sha256=p.metadata_sha256 AND m.code_hash=p.code_hash AND m.spec_version=p.spec_version) metadata_qualified FROM nominator_daily_captures d LEFT JOIN alpha_snapshot_passes p USING(captured_at)
-        WHERE d.snapshot_date=?`,
-        )
-        .bind(value.day),
+      db.prepare(`${captureQuery} WHERE d.snapshot_date=?`).bind(value.day),
       db
         .prepare(
           `SELECT ${MEMBER_FIELDS.join(",")} FROM nominator_positions_daily WHERE snapshot_date=?
@@ -178,10 +167,7 @@ export async function handleNominatorDailyExport(
     });
     const last = members.at(-1);
     return reply({
-      version: 1,
-      projection,
-      domain: "alpha_nonroot",
-      day_basis: "observation_utc",
+      ...dailyEnvelope,
       day: value.day,
       captured_at: capture.captured_at,
       expected_rows: capture.expected_rows,
