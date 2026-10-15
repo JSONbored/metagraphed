@@ -56,6 +56,10 @@ tombstones invalidates replay safety. Measure their growth and index/backup
 cost before choosing a retention policy. Qualify an isolated restore of both
 business data and receipts before accepting replay after recovery.
 
+The native lost-acknowledgement fixture injects an exception after a successful
+commit; it does not sever a database connection. Lock/concurrency fixtures use
+actual independent PostgreSQL connections. Those are distinct qualification claims.
+
 ## Compatibility and activation gates
 
 Unidentified deliveries remain `legacy-ambiguous`. Existing row/API semantics

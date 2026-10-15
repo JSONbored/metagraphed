@@ -825,7 +825,8 @@ export function syncBatchRows(
     message.delivery !== undefined &&
     message.lane === "neurons" &&
     column === "netuid" &&
-    !/^(0|[1-9][0-9]{0,4})$/.test(message.key_value ?? "")
+    (typeof message.key_value !== "string" ||
+      !/^(0|[1-9][0-9]{0,4})$/.test(message.key_value))
   )
     throw new TypeError("Invalid canonical hoisted business key");
   const value =

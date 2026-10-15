@@ -531,6 +531,10 @@ test("identified hoisted neuron keys require canonical decimal transport spellin
     "NaN",
     "Infinity",
     undefined,
+    1,
+    [1],
+    true,
+    {},
   ]) {
     const packet = {
       lane: "neurons",
