@@ -17,6 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { resetModuleState } from "../src/module-state-registry.ts";
 import type { Row } from "./row-type.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import type { DataApiWorkerEnv } from "../workers/types.ts";
@@ -122,6 +123,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  resetModuleState();
   // RE-APPLY, not just TRUNCATE. One instance serves the whole file, and two
   // tests below DROP a table on purpose to reach the two 502 paths -- so
   // emptying is not enough to undo them. Every statement is `IF NOT EXISTS`,
@@ -606,3 +608,59 @@ test("identity history: cold table 503s; a populated table's empty page serves",
 // runner writes both tables of the family in one plan (the write module's
 // own suite), and no binding still refuses rather than half-writing (the
 // unbound tests above).
+
+test("identity history read failure emits a safe stage without changing its 502", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const clock = vi.spyOn(Date, "now").mockReturnValue(9_000_000_000_000);
+  try {
+    await db.exec("DROP TABLE account_identity_history");
+    const response = await postIdentity([identitySyncRow()]);
+    assert.equal(response.status, 502);
+    assert.equal(((await response.json()) as Row).error, "history read failed");
+    const events = warn.mock.calls.filter(
+      ([label]) => label === "account_identity_sync_failure",
+    );
+    assert.deepEqual(events, [
+      [
+        "account_identity_sync_failure",
+        {
+          stage: "history_read",
+          reasons: ["insert_error"],
+          upstream_status: null,
+          confirmed_rows: null,
+        },
+      ],
+    ]);
+  } finally {
+    warn.mockRestore();
+    clock.mockRestore();
+  }
+});
+
+test("identity family write failure reports driver class and keeps commitment unknown", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const clock = vi.spyOn(Date, "now").mockReturnValue(9_000_000_060_000);
+  try {
+    await db.exec("DROP TABLE account_identity");
+    const response = await postIdentity([identitySyncRow()]);
+    assert.equal(response.status, 502);
+    assert.equal(((await response.json()) as Row).error, "neon write failed");
+    const events = warn.mock.calls.filter(
+      ([label]) => label === "account_identity_sync_failure",
+    );
+    assert.deepEqual(events, [
+      [
+        "account_identity_sync_failure",
+        {
+          stage: "family_write",
+          reasons: ["insert_error"],
+          upstream_status: null,
+          confirmed_rows: null,
+        },
+      ],
+    ]);
+  } finally {
+    warn.mockRestore();
+    clock.mockRestore();
+  }
+});
