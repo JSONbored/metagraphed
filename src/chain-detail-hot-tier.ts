@@ -92,7 +92,7 @@ async function query(
   try {
     if (field && selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)) {
       const snapshot = await readChainDetailPayloadSnapshot(env, { text: sql, values: params }, field);
-      return restoreChainDetailPayloads(env, snapshot.rows, snapshot.parts);
+      return await restoreChainDetailPayloads(env, snapshot.rows, snapshot.parts);
     }
     return (await binding.query(sql, params)) as Row[];
   } catch {

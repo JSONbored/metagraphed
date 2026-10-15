@@ -69,7 +69,7 @@ beforeEach(async () => {
 afterAll(async () => runtime.dispose());
 
 test("prepared reclamation captures immutable bytes before replacement or row pruning", async () => {
-  const value = raw(); await publish(value);
+  const value = JSON.stringify({blob:randomBytes(1600000).toString("hex")}); await publish(value);
   const snapshot = await readChainDetailPayloadSnapshot(env(), {text:"SELECT call_args FROM chain_detail_extrinsics"}, "call_args");
   assert.equal(snapshot.parts.size, 1);
   await publish(raw()); await retire(); await sweep();
@@ -80,6 +80,13 @@ test("prepared reclamation captures immutable bytes before replacement or row pr
 
 test("prepared reclamation preserves either family reference and releases quota only after both retire", async () => {
   await publish(raw()); const original = await state();
+  let deletion = "";
+  const observed = { prepare(text:string) { if (text.startsWith("DELETE FROM chain_detail_payload_chunks")) deletion=text; return db.prepare(text); }, batch:db.batch.bind(db) } as unknown as D1Database;
+  await pruneChainDetailPayloads(env(observed));
+  const plan = await db.prepare(`EXPLAIN QUERY PLAN ${deletion}`).bind("[]","").all();
+  const details = JSON.stringify(plan.results);
+  assert.ok(details.includes("chain_detail_extrinsics_payload_hash"));
+  assert.ok(details.includes("chain_detail_chain_events_payload_hash"));
   await db.prepare("DELETE FROM chain_detail_extrinsics").run(); await sweep();
   assert.deepEqual((await state()).parts, original.parts);
   await db.prepare("DELETE FROM chain_detail_chain_events").run(); await sweep();
@@ -89,6 +96,24 @@ test("prepared reclamation preserves either family reference and releases quota 
   assert.ok((await state()).parts.length > 0);
   await pruneChainDetailPayloads({CHAIN_DETAIL_PAYLOAD_GC:"enabled"});
   assert.ok((await state()).parts.length > 0);
+  await pruneChainDetailPayloads(null);
+  const before = await state();
+  await db.prepare("DELETE FROM chain_detail_payload_budget").run();
+  try { await assert.rejects(pruneChainDetailPayloads(env()), /budget missing/); }
+  finally { await db.prepare("INSERT INTO chain_detail_payload_budget(id,max_encoded_bytes,used_encoded_bytes,gc_after_sha256) VALUES(1,67108864,?,?)").bind(before.budget.used_encoded_bytes,before.budget.gc_after_sha256).run(); }
+  assert.deepEqual(await state(),before);
+});
+
+test("prepared reclamation snapshots refuse an over-budget declared raw selection before transporting chunks", async () => {
+  await publish(raw()); await publish(raw(),9000002); await publish(raw(),9000003);
+  const rows = (await db.prepare("SELECT block_number,call_args FROM chain_detail_extrinsics").all<{block_number:number;call_args:string}>()).results;
+  for (const row of rows) {
+    const fields=row.call_args.split(":"); fields[4]="16777216";
+    await db.prepare("UPDATE chain_detail_extrinsics SET call_args=? WHERE block_number=?").bind(fields.join(":"),row.block_number).run();
+  }
+  const snapshot=await readChainDetailPayloadSnapshot(env(),{text:"SELECT call_args FROM chain_detail_extrinsics"},"call_args");
+  assert.equal(snapshot.parts.size,0);
+  await assert.rejects(restoreChainDetailPayloads(env(),snapshot.rows,snapshot.parts));
 });
 
 test("prepared reclamation reader and indexed tail own bytes before a concurrent sweep", async () => {
@@ -165,4 +190,5 @@ test("prepared reclamation supplied cut restores source tables, chunks, quota an
   assert.deepEqual(await loadExtrinsicHotTier(env(restored),"9000001-0"),original[0]);
   await restored.prepare("DELETE FROM chain_detail_payload_chunks WHERE sha256=(SELECT MIN(sha256) FROM chain_detail_payload_chunks)").run();
   assert.notDeepEqual(await state(restored),await state());
+  assert.ok((await Promise.all([loadExtrinsicHotTier(env(restored),"9000001-0"),loadExtrinsicHotTier(env(restored),"9000002-0")])).some((row)=>row===null));
 });

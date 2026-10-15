@@ -1,62 +1,7 @@
-// Retention for the chain-detail hot tier (#9208).
-//
-// THE WINDOW COVERS THE SERVING GAP: chain tip minus the oldest selected index.
-// Below that seam the retained reader holds the same rows at full depth, so
-// a hot row below it is a duplicate that costs D1 space and buys nothing. The
-// decode lane runs HOURLY, so that gap is normally <= 2h (~600 blocks at the
-// chain's 12s cadence). This is not an archive and it is never backfilled --
-// history is the lakehouse's job, and #9208 says so explicitly.
-//
-// Decoded rows alone are insufficient: index publication can still be pending.
-// Legacy environments retain their decode-watermark policy.
-//
-// THE FLOOR IS MEASURED, NOT GUESSED (2026-08-03). Ten real blocks were pulled
-// from the live API across 8,740,000-8,759,000, loaded into THIS migration's
-// exact schema in SQLite, and measured by page count (so index overhead is in
-// the number, not left out of it). chain_events args came from the real
-// captured fixtures in tests/chain-event-args.test.ts -- block 8,587,754,
-// indices 412 and 119 -- because that stream has no live reader to sample:
-//
-//   extrinsics      1,365 B/row  (mean call_args 863 B), 27.6 rows/block
-//   account_events    153 B/row,                        329.8 rows/block
-//   chain_events      289 B/row  (mean args 183 B),        339 rows/block
-//   -> 181.6 KiB per block
-//
-// At the chain's ~300 blocks/hour that is ~53 MiB/hour resident, so the 6h
-// floor below holds ~319 MiB: 3.1% of the store's 10 GB per-database cap. The 24h
-// ceiling holds ~1.25 GiB, 12.5% of the cap, which is the price of the failure
-// mode where the decoder has been dead for a full day.
-//
-// AT SUSTAINED PEAK, which is the number that actually has to fit: the measured
-// per-block maxima are 143 extrinsics / 667 chain_events / 461 account_events,
-// and a window where EVERY block looks like that costs 448 KiB/block -> 787 MiB
-// at 6h (7.7% of the cap) and 3.1 GiB at the 24h ceiling. Still comfortable at
-// the floor, and still short of the cap at the ceiling.
-//
-// ONE HONEST CAVEAT. The 863 B call_args mean was measured on the SERVED
-// (normalized) shape, because the raw scale_value tree is only readable through
-// the R2 SQL token this repo does not hold. The stored form is the raw tree and
-// is therefore LARGER. The peak-case row above absorbs it with room to spare:
-// call_args would have to grow ~5x before the 6h window reached a tenth of the
-// cap, and the window is 6h -- 3x the hourly decode lane's worst-case lag --
-// because that is what #9208 asked for, not because capacity is what bounds it.
-//
-// THE WINDOW IS ADAPTIVE, and that is the part worth reading. A FIXED 6h window
-// would create a gap the moment the decode lane fell more than 6h behind: rows
-// dropped here before the lakehouse absorbed them, and every block in between
-// declining. So the retained depth follows the SEAM -- the same resolved
-// watermark the read path routes on -- and only falls back to the 6h floor when
-// the seam is close, which is the normal case. The 24h ceiling is what stops a
-// multi-day decoder outage from turning D1 into the archive this tier refuses
-// to be; past it the prune resumes and the reads decline, loudly and
-// diagnosably, which is the correct failure for a lane that has been broken for
-// a day.
-//
-// PRUNING IS BLOCK-SCOPED, NOT TIME-SCOPED, for the same reason the seam is a
-// height: `observed_at` is an observer's clock and the coverage question is
-// about heights. A wall-clock cutoff would also make the prune's behaviour
-// depend on whether the lane is currently running, which is exactly when it
-// must not.
+// Bounded retention for the chain-detail hot tier, following the existing
+// published-history seam. Details and coverage retire together. The dated
+// sizing sample and full design rationale are retained in
+// deploy/chain-detail-payloads/README.md; current capacity requires measurement.
 
 import { resolveBlocksSeam } from "./blocks-cold-tier.ts";
 import {
