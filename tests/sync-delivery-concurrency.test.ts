@@ -415,6 +415,7 @@ describe.skipIf(!available)("concurrent delivery transactions", () => {
         { laneHealthDb: ordinaryHealth },
       );
       assert.equal(neuronResult.results.neurons!.ok, false);
+      assert.equal(neuronResult.writePath, "postgres-direct");
     } finally {
       for (const table of ["nominator_positions", "neurons"])
         await admin.query(`DROP TRIGGER fixture_reject_prune ON ${table}`);
@@ -467,11 +468,13 @@ describe.skipIf(!available)("concurrent delivery transactions", () => {
         ?.ok,
       false,
     );
-    assert.equal(
-      (await mirrorNeuronSnapshotToNeon(null, null, neuronInput())).results
-        .neurons!.ok,
-      false,
+    const neuronResult = await mirrorNeuronSnapshotToNeon(
+      null,
+      null,
+      neuronInput(),
     );
+    assert.equal(neuronResult.results.neurons!.ok, false);
+    assert.equal(neuronResult.writePath, "unbound");
     await assert.rejects(
       writeIdentifiedPostgres(
         "unused-local-fixture",

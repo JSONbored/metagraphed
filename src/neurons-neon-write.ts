@@ -529,7 +529,14 @@ export async function mirrorNeuronSnapshotToNeon(
         failure,
         (deps.now ?? Date.now)(),
       );
-      return { attempted: true, results: { neurons: failure }, prune: failure };
+      return {
+        attempted: true,
+        writePath: env?.HYPERDRIVE?.connectionString
+          ? "postgres-direct"
+          : "unbound",
+        results: { neurons: failure },
+        prune: failure,
+      };
     }
   }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
