@@ -756,6 +756,11 @@ async function postHistorical(
 
 test("prepared historical receiver rejects BOM and malformed wire bytes and hashes valid split UTF-8 exactly", async () => {
   const { createHash } = await import("node:crypto");
+  const { readBoundedRequestText } = await import("../workers/http.ts");
+  assert.deepEqual(
+    await readBoundedRequestText(new Request("https://d/"), 512 * 1024),
+    { ok: true, text: "" },
+  );
   const encoder = new TextEncoder();
   const text = JSON.stringify({ rows: [syncRow({ axon: "XYZ-é" })] });
   const raw = encoder.encode(text);
