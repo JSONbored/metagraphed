@@ -141,9 +141,32 @@ test("two concurrent owners produce one claimed attempt and stable replay", asyn
     f.ledger.claim(m, URL, 1, NOW),
   ]);
   assert.equal(claims.filter((c) => c.kind === "claimed").length, 1);
-  assert.equal(claims.filter((c) => c.kind === "busy").length, 1);
+  // A loser reading after the winner's claim sees an already-used round;
+  // a loser reaching the guarded write with the prior sequence sees busy.
+  assert.equal(
+    claims.filter((c) => c.kind === "busy" || c.kind === "stale").length,
+    1,
+  );
   const c = claims.find((c) => c.kind === "claimed");
   assert(c?.kind === "claimed");
+  assert.equal((await f.ledger.claim(m, URL, 1, NOW)).kind, "stale");
+  assert.deepEqual(
+    (
+      await f.db
+        .prepare(
+          "SELECT token,sequence,round,outcome FROM webhook_delivery_attempts",
+        )
+        .all()
+    ).results,
+    [
+      {
+        token: c.attempt.token,
+        sequence: c.attempt.sequence,
+        round: 1,
+        outcome: "sending",
+      },
+    ],
+  );
   await f.ledger.finish(c.attempt, delivered, "delivered", NOW + 1, null);
   assert.equal((await f.ledger.claim(m, URL, 1, NOW + 2)).kind, "delivered");
   assert.equal(
