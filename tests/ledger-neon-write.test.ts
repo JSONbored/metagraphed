@@ -200,7 +200,7 @@ describe("mirrorLedgerToNeon", () => {
     );
     assert.deepEqual(out, { attempted: true });
     assert.equal(spy.rows[0].lane, "neon:validator-nominator-counts");
-    assert.match(String(spy.rows[0].detail), /hyperdrive unbound/);
+    assert.match(String(spy.rows[0].detail), /missing_store/);
   });
 
   test("builds its own runner from the binding, and reports a dead origin", async () => {
@@ -235,7 +235,7 @@ describe("mirrorLedgerToNeon", () => {
       { laneHealthDb: spy.db, now: () => NOW },
     );
     assert.deepEqual(out, { attempted: true });
-    assert.match(String(spy.rows[0].detail), /hyperdrive unbound/);
+    assert.match(String(spy.rows[0].detail), /missing_store/);
   });
 });
 

@@ -52,7 +52,9 @@ function normalize(mantissa: bigint, exp: bigint): Decimal | null {
     exp--;
     if (exp < I64_MIN) return null;
   }
-  return exp < I64_MIN || exp > I64_MAX ? null : { mantissa, exponent: exp };
+  // Callers admit only checked i64 exponents; each adjustment above checks
+  // its new value before another iteration. No unchecked exponent reaches here.
+  return { mantissa, exponent: exp };
 }
 const power = (exp: bigint) => 10n ** (exp > 22n ? 22n : exp);
 function divide(a: Decimal, b: Decimal): Decimal | null {
@@ -61,26 +63,24 @@ function divide(a: Decimal, b: Decimal): Decimal | null {
   if (exp < I64_MIN || exp > I64_MAX) return null;
   return normalize((a.mantissa * MAX_MANTISSA) / b.mantissa, exp);
 }
-function add(a: Decimal, b: Decimal): Decimal | null {
-  if (a.mantissa === 0n) return b;
-  if (b.mantissa === 0n) return a;
-  return a.exponent >= b.exponent
-    ? normalize(
-        a.mantissa + b.mantissa / power(a.exponent - b.exponent),
-        a.exponent,
-      )
-    : normalize(
-        a.mantissa / power(b.exponent - a.exponent) + b.mantissa,
-        b.exponent,
-      );
-}
 function legacy(bits: bigint): Decimal | null {
   if (bits === 0n) return { mantissa: 0n, exponent: 0n };
   const integer = normalize(bits >> 64n, 0n)!;
   const numerator = normalize(bits & U64_MAX, 0n)!;
   const denominator = normalize(1n << 64n, 0n)!;
-  const fractional = divide(numerator, denominator);
-  return fractional ? add(integer, fractional) : null;
+  // The numerator is u64 and the fixed denominator is 2^64. Their
+  // normalized exponents and quotient stay far inside i64 bounds.
+  const fractional = divide(numerator, denominator)!;
+  if (integer.mantissa === 0n) return fractional;
+  if (fractional.mantissa === 0n) return integer;
+  // This addition is only a nonzero integer plus a fraction below one.
+  // The integer's exponent is therefore >= the fraction's exponent; align
+  // the fraction to it with the runtime's capped power and truncation.
+  return normalize(
+    integer.mantissa +
+      fractional.mantissa / power(integer.exponent - fractional.exponent),
+    integer.exponent,
+  );
 }
 function selected(value: Evidence["share"]): Decimal | null {
   // Legacy presence includes an explicit zero. It must win over V2 just as

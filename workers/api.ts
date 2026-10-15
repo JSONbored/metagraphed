@@ -1,5 +1,7 @@
 import { webhookLedgerForEnv } from "../src/webhook-ledger-d1.ts";
 import { webhookDeliveryStatus } from "../src/webhook-delivery-status.ts";
+import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
+const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { handleNativeStoreExportRequest } from "../src/native-store-export.ts";
@@ -4796,6 +4798,12 @@ async function proxyToDataApi(
   try {
     body = await upstream.json();
   } catch {
+    if (code === "account_identity_sync_unavailable") {
+      reportAccountIdentitySyncFailure({
+        stage: "upstream_response",
+        status: upstream.status,
+      });
+    }
     return errorResponse(code, unreadableMessage, 502);
   }
   return new Response(JSON.stringify(body), {
@@ -9427,6 +9435,7 @@ configureAnalyticsRoutes({ readHealthMetaKv, readEconomicsCurrentKv });
 // handler module has dropped back to its unwired placeholders — leaving the
 // process in exactly the state a fresh import would produce.
 registerModuleStateReset("workers/api.ts", () => {
+  reportAccountIdentitySyncFailure.reset();
   healthMetaKvMemo.reset();
   economicsCurrentKvMemo.reset();
   chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };

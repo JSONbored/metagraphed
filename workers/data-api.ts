@@ -3,11 +3,15 @@ import {
   writeAlphaSnapshotD1,
   readAlphaSnapshotResumeD1,
 } from "../src/alpha-snapshot-d1.ts";
+import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
+import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
+const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import {
   parseCompareHotkeys,
   COMPARE_VALIDATORS_MAX,
 } from "../src/analytics-live.ts";
 import { withRequestCounters } from "../src/request-counters.ts";
+import { sha256Hex } from "../src/sha256-hex.ts";
 // metagraphed data Worker — store-backed serving, kept SEPARATE from the main
 // api.ts Worker (which is near its bundle budget); the main Worker routes the
 // relevant paths in via a service binding (DATA_API).
@@ -262,6 +266,7 @@ const explorerDirectoryRefreshes = new Map<number, Promise<boolean>>();
 // this reset is here because the state genuinely leaks, not because the gate
 // demanded it.
 registerModuleStateReset("workers/data-api.ts", () => {
+  reportAccountIdentitySyncFailure.reset();
   capturedSchemaDrift.clear();
   explorerDirectoryRefreshes.clear();
 });
@@ -313,7 +318,12 @@ async function captureDataApiError(
 ): Promise<boolean> {
   if (shouldSkipDriftCapture(err, route)) return false;
   await recordExceptionEvent(env, {
-    error: err,
+    // Keep the original driver metadata for drift dedupe above. Only the
+    // emitted identity history telemetry receives the safe replacement.
+    error:
+      route === "account-identity-sync-history"
+        ? new Error(classifyLaneHealthWriteError(err))
+        : err,
     route,
     errorCode: "internal_error",
   });
@@ -443,6 +453,7 @@ import {
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
+import { createNeuronWriteReporter } from "../src/neuron-write-diagnostics.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
 import { mirrorChainDetailToNeon } from "../src/chain-detail-neon-write.ts";
 import {
@@ -554,6 +565,10 @@ type NeuronDailyPoint = {
 };
 
 import { recordLaneVerdict } from "../src/lane-health.ts";
+import {
+  createLaneHealthWriteReporter,
+  type LaneHealthWriteFailure,
+} from "../src/lane-health-write-diagnostics.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import {
   handleDeadLetterBatch,
@@ -748,6 +763,8 @@ function stripClientSnapshotDate(row: Row) {
 
 // --- Neurons-family READS on the store (box decommission; tests/fixtures/sqlite-schema/0007) ------
 //
+const reportNeuronWriteFailure = createNeuronWriteReporter();
+
 async function handleNeuronsSync(
   request: Request,
   env: DataApiEnv,
@@ -931,7 +948,11 @@ async function handleNeuronsSync(
   // tell the producer its rows are safe when nothing holds them.
   const failed = Object.entries(neon.results).filter(([, r]) => !r.ok);
   if (!neon.attempted || failed.length > 0) {
-    console.error("data-api neurons-sync Neon write failed:", failed);
+    reportNeuronWriteFailure(neon, {
+      neurons: rows.length,
+      neuron_daily: dailyRows.length,
+      account_position_daily: positionRows.length,
+    });
     await captureDataApiError(
       new Error(
         failed.length > 0
@@ -1957,7 +1978,7 @@ async function handleAccountIdentitySync(
     neonHistoryRows = historyRows as Row[];
     historyAppended = historyRows.length;
   } catch (err) {
-    console.error("data-api account-identity-sync history read failed:", err);
+    reportAccountIdentitySyncFailure({ stage: "history_read", error: err });
     await captureDataApiError(err, "account-identity-sync-history", env);
     return writeJson({ error: "history read failed" }, 502);
   }
@@ -1970,13 +1991,9 @@ async function handleAccountIdentitySync(
   // AUTHORITATIVE -- see the hyperparams sync for the reasoning.
   const failed = failedTables(neon);
   if (!neon.attempted || (failed && failed.length > 0)) {
-    console.error("data-api account-identity-sync Neon write failed:", failed);
+    reportAccountIdentitySyncFailure({ stage: "family_write", outcome: neon });
     await captureDataApiError(
-      new Error(
-        failed && failed.length > 0
-          ? `neon write failed: ${failed.join(", ")}`
-          : "neon write not attempted",
-      ),
+      new Error("account identity family write failed"),
       "account-identity-sync-neon",
       env,
     );
@@ -3545,9 +3562,11 @@ async function handleHotkeyAlphaSync(
 const POLLER_LANE_HEALTH_TOKEN_HEADER = "x-poller-lane-health-sync-token";
 const POLLER_LANE_HEALTH_MAX_BODY_BYTES = 64_000;
 const POLLER_LANE_HEALTH_MAX_ROWS = 50;
+const reportLaneHealthWrite = createLaneHealthWriteReporter();
 
 async function handlePollerLaneHealthSync(request: Request, env: DataApiEnv) {
   if (!env.POLLER_LANE_HEALTH_SYNC_SECRET) {
+    reportLaneHealthWrite(null, 0, ["missing_secret"]);
     return writeJson(
       {
         error: "poller lane-health sync is not provisioned on this deployment",
@@ -3607,23 +3626,41 @@ async function handlePollerLaneHealthSync(request: Request, env: DataApiEnv) {
   // they would have stopped silently.
   const laneDb = laneHealthStore(env);
   if (!laneDb) {
+    reportLaneHealthWrite(incoming.length, 0, ["missing_store"]);
     return writeJson({ error: "no lane_health store bound" }, 503);
   }
 
   // recordLaneVerdict swallows its own failures by design -- an alarm whose
-  // recording can break the alarm is worse than the bug. So the count of rows
-  // that actually landed is reported rather than assumed.
+  // recording can break the alarm is worse than the bug. Count only inserts
+  // whose returned identity is confirmed. An error after commit is ambiguous,
+  // so a failed response is never proof that a whole batch is safe to replay.
   let written = 0;
+  const failures: LaneHealthWriteFailure[] = [];
   for (const row of incoming.map(coercePollerJobOutcome)) {
-    if (await recordLaneVerdict(laneDb, row)) written += 1;
+    if (
+      await recordLaneVerdict(laneDb, row, {
+        confirm: true,
+        onFailure: (reason) => failures.push(reason),
+      })
+    )
+      written += 1;
   }
-  return writeJson({
-    ok: true,
-    lane_health_written: written,
-    // "d1" left this ack with the flag (#10051): the answer was already a
-    // dead vocabulary reporting a deleted store.
-    stores: ["neon"],
-  });
+  // Bind the acknowledgement to these exact request bytes. A health sender
+  // must distinguish a landed verdict from a successful HTTP response, and a
+  // partial batch must not be replayed as if nothing reached the store.
+  const complete = written === incoming.length;
+  reportLaneHealthWrite(incoming.length, written, failures);
+  return writeJson(
+    {
+      ok: complete,
+      lane_health_written: written,
+      lane_health_expected: incoming.length,
+      request_sha256: await sha256Hex(raw),
+      // Retained vocabulary; laneHealthStore above selects the actual owner.
+      stores: ["neon"],
+    },
+    complete ? 200 : 503,
+  );
 }
 
 function json(data: unknown, status: number = 200) {

@@ -687,10 +687,31 @@ test("a failed table is a 502, and the tables written before it are NOT rolled b
   // converges on the same state rather than double-counting. What must NOT
   // happen is the request reporting ok -- the producer would advance past a
   // snapshot two of whose three tables are missing.
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
   await db.exec("DROP TABLE account_position_daily");
   const res = await postSync([syncRow()]);
   assert.equal(res.status, 502);
   assert.deepEqual(await res.json(), { error: "neon write failed" });
+  const event = warn.mock.calls.find(
+    ([label]) => label === "neuron_snapshot_write_failure",
+  );
+  assert.ok(event);
+  assert.equal(event[1].write_path, "postgres-direct");
+  assert.equal(event[1].confirmed_rows, null);
+  assert.deepEqual(event[1].input_rows, {
+    neurons: 1,
+    neuron_daily: 1,
+    account_position_daily: 1,
+  });
+  assert.equal(event[1].failures.account_position_daily, "insert_error");
+  assert.ok(
+    errors.mock.calls.every(
+      ([label]) => label !== "data-api neurons-sync Neon write failed:",
+    ),
+  );
+  warn.mockRestore();
+  errors.mockRestore();
   assert.equal(
     await count("neurons"),
     1,
