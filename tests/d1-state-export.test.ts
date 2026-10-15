@@ -1309,7 +1309,14 @@ test("lossless effective keys retain nullable cells and schema changes fence an 
 });
 
 test("lossless source schema, dependencies and bounded authoritative census must be complete", async () => {
-  for (const defect of ["column", "dependency", "count"]) {
+  for (const defect of [
+    "column",
+    "dependency",
+    "count",
+    "physical-type",
+    "nullability",
+    "primary-key",
+  ]) {
     const proxy = {
       prepare: db.prepare.bind(db),
       batch: async <T = unknown>(statements: D1PreparedStatement[]) => {
@@ -1321,6 +1328,18 @@ test("lossless source schema, dependencies and bounded authoritative census must
           };
         else if (defect === "dependency")
           results[1] = { ...results[1]!, results: [] };
+        else if (
+          ["physical-type", "nullability", "primary-key"].includes(defect)
+        )
+          results[0] = {
+            ...results[0]!,
+            results: results[0]!.results.map((row) => ({
+              ...row,
+              ...(defect === "physical-type" ? { type: null } : {}),
+              ...(defect === "nullability" ? { notnull: 2 } : {}),
+              ...(defect === "primary-key" ? { pk: -1 } : {}),
+            })),
+          };
         else
           results[0] = {
             ...results[0]!,

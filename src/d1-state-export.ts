@@ -48,7 +48,17 @@ const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
 const losslessCell = (expression: string) =>
   `json_object('storage',typeof(${expression}),'value',CASE typeof(${expression}) WHEN 'integer' THEN CAST(${expression} AS TEXT) WHEN 'real' THEN printf('%!.26g',${expression}) WHEN 'blob' THEN hex(${expression}) ELSE ${expression} END)`;
 function checkedCell(encoded: string) {
-  const cell = JSON.parse(encoded) as { storage: string; value: unknown };
+  const cell = z
+    .discriminatedUnion("storage", [
+      z.object({ storage: z.literal("null"), value: z.null() }).strict(),
+      z
+        .object({
+          storage: z.enum(["integer", "real", "text", "blob"]),
+          value: z.string(),
+        })
+        .strict(),
+    ])
+    .parse(JSON.parse(encoded));
   if (cell.storage === "real" && !Number.isFinite(Number(cell.value)))
     throw new Error("non-finite export cell");
   return cell;
@@ -177,7 +187,16 @@ export async function handleD1StateExport(
       pk: number;
     };
     const schema = metadata
-      ? (metadata[0]!.results as unknown as PhysicalColumn[])
+      ? z
+          .array(
+            z.object({
+              name: z.string(),
+              type: z.string(),
+              notnull: z.union([z.literal(0), z.literal(1)]),
+              pk: z.number().int().nonnegative(),
+            }),
+          )
+          .parse(metadata[0]!.results)
       : (await schemaStatement.all<PhysicalColumn>()).results;
     // Storage migrations cannot authorize new disclosure fields.
     const approved = new Set(D1_EXPORT_COLUMNS[table]!.split(" "));
