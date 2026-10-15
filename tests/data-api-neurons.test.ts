@@ -836,8 +836,8 @@ test("prepared historical receiver rolls back the first family when the second h
   );
 });
 
-test("prepared historical receiver verifies empty and account-less projections and refuses ownership/version/caps", async () => {
-  assert.equal((await postHistorical([])).status, 200);
+test("prepared historical receiver refuses empty input and verifies account-less projections, ownership, version and caps", async () => {
+  assert.equal((await postHistorical([])).status, 400);
   const response = await postHistorical([syncRow({ hotkey: null })]);
   assert.equal(response.status, 200);
   assert.equal(
@@ -847,7 +847,7 @@ test("prepared historical receiver verifies empty and account-less projections a
   );
   assert.equal((await postHistorical([], {}, "future-version")).status, 400);
   assert.equal(
-    (await postHistorical([], { HYPERDRIVE: undefined })).status,
+    (await postHistorical([syncRow()], { HYPERDRIVE: undefined })).status,
     503,
   );
   const native = {
@@ -860,7 +860,7 @@ test("prepared historical receiver verifies empty and account-less projections a
   };
   assert.equal(
     (
-      await postHistorical([], {
+      await postHistorical([syncRow()], {
         D1_STATE: native,
         D1_STATE_TABLES:
           "neurons,neuron_daily,account_position_daily,neurons_passes",
