@@ -89,6 +89,7 @@ jobs:
           fix_status=0
           npm audit fix --ignore-scripts --workspaces --include-workspace-root || fix_status=$?
           test "$fix_status" -le 1
+          npm dedupe --ignore-scripts --workspaces --include-workspace-root
           npm ls @modelcontextprotocol/sdk @tanstack/react-start @tanstack/react-router @tanstack/router-core @tanstack/router-plugin @tanstack/start-server-core posthog-js dompurify undici --all --workspaces --include-workspace-root --json > "$RUNNER_TEMP/dependency-security/installed-security-tree.json"
           node --input-type=module <<'NODE'
           import fs from "node:fs";
