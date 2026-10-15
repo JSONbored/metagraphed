@@ -152,7 +152,7 @@ test("all five authenticated routes preserve producer identity through actual wr
       const response = await post(
         lane,
         packet,
-        usesQueue ? { ...env(), SYNC_QUEUE_LANES: lane } : env(),
+        usesQueue ? dataApiEnv({ ...env(), SYNC_QUEUE_LANES: lane }) : env(),
       );
       assert.equal(response.status, 200, await response.clone().text());
       const reply = await response.json<{
