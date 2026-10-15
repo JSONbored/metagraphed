@@ -7,12 +7,19 @@ their existing strict 90-day cutoff. A bounded sweep may leave expired backlog.
 
 ## First stage: compatible runtime, no physical migration
 
-This candidate changes runtime and tests only. All active `migrations/d1` files and
-both physical snapshots are byte-identical to its main base. It adds no production
-migration, physical-schema assertion, deletion fence, observer or controller.
-`tests/fixtures/lane-health-retention-trigger-bounds.sql` is disposable native test
-input: the exact reviewed future trigger repair, outside the active migration path.
-Native regressions exercise both the old schema and that prospective repair.
+The first stage landed through PR #12721 at `327e4ec` without changing active
+migrations or physical snapshots. Its four public Workers were independently
+verified selected at 100%, with matching store bindings, all ten post-merge CI jobs
+passing and no contract-sync drift. This establishes runtime publication, not
+successful database recovery or completion of every old invocation.
+
+This separate schema candidate restores exact applied 0038 and promotes the reviewed
+fixture bytes to `migrations/d1/0039_lane_health_retention_trigger_bounds.sql`.
+Native regressions now read that canonical SQL. The 269-object snapshots are the
+retained actual capture from PR #12620; all 268 earlier objects are unchanged.
+They describe the pre-0039 state, not a fabricated future schema. Applying 0039
+still requires separate authorization; no runtime, binding or workflow changes are
+included.
 
 The D1 health store checks six actual SQLite trigger definitions once per store
 instance. Missing, changed, duplicate or unreadable definitions disable cleanup
@@ -49,6 +56,25 @@ Old code can retain its pre-existing unbounded cleanup during rollout. New burn
 cleanup may free space and let an old health insertion succeed, exposing that old
 cleanup while versions overlap. A strict zero-old-writer guarantee requires native
 quiescence evidence; no arbitrary fixed wait or new persistent fence is implied.
+
+Old HTTP invocation lifetime is not SQLite transaction lifetime. SQLite permits
+one writer at a time, and triggers execute as part of the statement changing their
+table. An already executing old write finishes before the migration write; a later
+write uses the committed schema or fails, rather than entering between its trigger
+DROP and CREATE statements. The native Wrangler 4.118.0 migration contract rolls
+back a failed migration and submits each file plus its ledger insertion in one
+request. This reasoning depends on using that native owner, not issuing individual
+DDL statements. See [SQLite isolation](https://www.sqlite.org/isolation.html),
+[trigger behavior](https://www.sqlite.org/lang_createtrigger.html), and the pinned
+[Wrangler migration contract](https://github.com/cloudflare/workers-sdk/blob/95d9b12f2c707f254b66b446e0bd9fd6b8b7d96d/packages/wrangler/src/d1/migrations/apply.ts#L31)
+and [query construction](https://github.com/cloudflare/workers-sdk/blob/95d9b12f2c707f254b66b446e0bd9fd6b8b7d96d/packages/wrangler/src/d1/migrations/helpers.ts#L448).
+
+Total old-invocation absence is therefore not a schema-atomicity prerequisite.
+Remaining overlap can delay or reject queued work and retains the old runtime's
+uncapped cleanup. The 20-row bound applies to the compatible runtime, not every
+possible old invocation. Do not claim complete drainage or bounded historical work
+from deployment metadata. No fixed waiting period or additional gate is required
+by the transactional trigger replacement.
 
 Prepare a second schema candidate on that compatible runtime baseline. Preserve
 exact already-applied `0038_raw_capture_publications.sql` and add only the reviewed
@@ -92,8 +118,18 @@ runtime candidate does not rename, undo or replay an applied migration.
 | Webhook ledger        | 0042                 | Never applied; held                     |
 | Alpha snapshots       | 0043                 | Never applied; held                     |
 
+The trigger replacement does not rebuild history or repair pre-existing projection
+drift. Native regression coverage checks populated projection parity before and
+after the repair and after tie, move, deletion and rollback operations. A full
+production-history census is not required for this prospective metadata change.
+Bounded indexed canaries can support acceptance without proving global parity.
+
 Near-full D1 can still refuse DDL or cleanup allocation; reserved raw bytes do not
-prove writable or reclaimable space. No denied PRAGMA, heavy census, raw drain,
+prove writable or reclaimable space. A fresh allocation number also cannot prove
+reusable pages. Approval may instead explicitly allow one native migration attempt
+at the known limit, stopping on allocation failure and checking actual ledger and
+trigger state before any retry. A recovery bookmark identifies a provider boundary;
+it is not an independent backup or a tested, lossless restore. No denied PRAGMA, heavy census, raw drain,
 manual replay, purchase or portable-owner cutover is authorized here. If interrupted
 before the schema stage, health cleanup remains disabled while inserts retain their
 truthful result. Keep the native release record explicitly pending and resume with
