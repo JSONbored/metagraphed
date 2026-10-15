@@ -570,11 +570,14 @@ test("an indivisible over-row-budget block falls back atomically without enqueue
     );
   assert.equal(
     (
-      await post(body, {
-        ...queuedEnv,
-        D1_STATE_TABLES: "",
-        HYPERDRIVE: { connectionString: "postgres://unused" },
-      } as typeof queuedEnv)
+      await post(
+        body,
+        dataApiEnv({
+          ...queuedEnv,
+          D1_STATE_TABLES: "",
+          HYPERDRIVE: { connectionString: "postgres://unused" },
+        }),
+      )
     ).status,
     502,
     "row admission cannot fall through without native D1 ownership",
