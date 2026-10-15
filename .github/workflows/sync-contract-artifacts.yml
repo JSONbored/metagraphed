@@ -197,6 +197,10 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+      - name: Require unchanged dependency API contracts
+        if: inputs.prepare_only == true && inputs.dependency_security_fix == true
+        run: git diff --exit-code -- generated/graphql/schema.ts generated/graphql/types.ts public/metagraph/openapi.json
+
       - name: Qualify prepared quantity source
         if: inputs.prepare_only == true
         run: |
