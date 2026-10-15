@@ -205,6 +205,10 @@ jobs:
           npm run build --workspace=packages/ui-kit
           npm run typecheck --workspace=apps/ui
 
+      - name: Qualify dependency UI production build
+        if: inputs.prepare_only == true && inputs.dependency_security_fix == true
+        run: npm run build:worker:e2e --workspace=apps/ui
+
       - name: Qualify API quantity assertions
         if: inputs.prepare_only == true
         run: npm run validate:api

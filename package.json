@@ -230,6 +230,7 @@
     "@graphql-codegen/cli": "^7.2.0",
     "@graphql-codegen/typescript": "^6.1.0",
     "@graphql-codegen/typescript-resolvers": "^6.1.0",
+    "@tanstack/react-start": "^1.168.60",
     "@types/pg": "^8.20.4",
     "@vitest/coverage-v8": "^4.1.11",
     "ajv": "^8.20.0",
