@@ -260,10 +260,21 @@ beforeAll(async () => {
   for (const row of lossless.rows)
     await source
       .prepare(
-        "INSERT INTO nominator_positions VALUES(?,?,CAST(? AS INTEGER),CAST(? AS REAL),CAST(? AS INTEGER),?,?)",
+        "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at,shares,source) VALUES(?,?,CAST(? AS INTEGER),CAST(? AS REAL),CAST(? AS INTEGER),?,?)",
       )
       .bind(...row.map((c) => c.value))
       .run();
+  // Synthetic projection cells, not a qualified Alpha snapshot/pass. Preserve
+  // exact newly approved TEXT fields alongside the unchanged shared corpus.
+  await source
+    .prepare(
+      "UPDATE nominator_positions SET alpha_rao=?,alpha_evidence=? WHERE coldkey='recovery-0'",
+    )
+    .bind(
+      "18446744073709551615",
+      '{"fixture":"α","original":"340282366920938463463374607431768211455","missing":null}',
+    )
+    .run();
   await restoreProjection("account_identity");
   await restoreProjection("nominator_positions");
   for (const [network, name] of ["mainnet", "testnet"].entries()) {
@@ -352,6 +363,23 @@ test("lossless source generations restore exact cells, and REST/MCP serve the re
   });
   assert.equal(mcp.isError, false);
   assert.deepEqual(mcp.structuredContent, body.data);
+  const positionsSchema = await exported(restored, {
+    table: "nominator_positions",
+    kind: "schema",
+  });
+  const positions = await exported(restored, {
+    table: "nominator_positions",
+    kind: "rows",
+    columns: positionsSchema.columns.map((column) => column.name),
+  });
+  assert.deepEqual(positions.rows[0]!.slice(-2), [
+    { storage: "text", value: "18446744073709551615" },
+    {
+      storage: "text",
+      value:
+        '{"fixture":"α","original":"340282366920938463463374607431768211455","missing":null}',
+    },
+  ]);
   assert.equal(
     await restoredBlocks
       .prepare("SELECT snapshot FROM history_block_state WHERE network=0")

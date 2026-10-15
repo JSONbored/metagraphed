@@ -15,7 +15,7 @@ const runtime = new Miniflare({
   modules: true,
   script: "export default {fetch(){return new Response('test')}}",
   compatibilityDate: "2026-06-06",
-  d1Databases: ["DB"],
+  d1Databases: ["DB", "LEGACY"],
 });
 let db: D1Database;
 const tables = [...Object.keys(D1_EXPORT_TABLES), "neurons_passes"].join(",");
@@ -62,6 +62,44 @@ beforeAll(async () => {
       if (sql.trim()) await db.prepare(sql).run();
 });
 afterAll(async () => runtime.dispose());
+
+test("lossless Alpha generation refuses an old physical schema while legacy analytics stays readable", async () => {
+  const legacy = await runtime.getD1Database("LEGACY");
+  const root = new URL("../migrations/d1/", import.meta.url);
+  for (const file of readdirSync(root)
+    .filter((name) => name.endsWith(".sql") && Number(name.slice(0, 4)) <= 38)
+    .sort())
+    for (const sql of readFileSync(new URL(file, root), "utf8").split(
+      "-- statement-breakpoint",
+    ))
+      if (sql.trim()) await legacy.prepare(sql).run();
+  const schema = await get(
+    { table: "nominator_positions", kind: "schema" },
+    { D1_STATE: legacy },
+  );
+  assert.deepEqual(
+    schema.columns.map((column) => column.name),
+    [
+      "coldkey",
+      "hotkey",
+      "netuid",
+      "share_fraction",
+      "captured_at",
+      "shares",
+      "source",
+    ],
+  );
+  const response = await handleD1StateExport(
+    req({
+      table: "nominator_positions",
+      kind: "schema",
+      encoding: "lossless-v1",
+    }),
+    { ...env(), D1_STATE: legacy },
+  );
+  assert.equal(response.status, 503);
+  assert.match((await response.json<{ error: string }>()).error, /incomplete/);
+});
 
 test("all 34 archive schemas and empty exports use native D1 with logical types", async () => {
   assert.equal(Object.keys(D1_EXPORT_TABLES).length, 34);
@@ -1063,7 +1101,21 @@ test("lossless opt-in matches the shared typed corpus without widening disclosur
       row.map((c) => c.value),
     );
   const schema = await get({ table, kind: "schema", encoding: "lossless-v1" });
-  assert.deepEqual(schema.columns, fixture.columns);
+  // The shared corpus pins the seven-column current-main generation. This
+  // integration also approves the two nullable Alpha columns from 0043.
+  const alphaColumns = ["alpha_rao", "alpha_evidence"].map((name) => ({
+    name,
+    type: "text",
+    sqlite_type: "TEXT",
+    not_null: false,
+    primary_key: 0,
+  }));
+  assert.deepEqual(schema.columns, [...fixture.columns, ...alphaColumns]);
+  const expectedRows = fixture.rows.map((row: unknown[]) => [
+    ...row,
+    { storage: "null", value: null },
+    { storage: "null", value: null },
+  ]);
   const names = schema.columns.map((c) => c.name);
   const result = await get({
     table,
@@ -1071,7 +1123,7 @@ test("lossless opt-in matches the shared typed corpus without widening disclosur
     columns: names,
     encoding: "lossless-v1",
   });
-  assert.deepEqual(result.rows, fixture.rows);
+  assert.deepEqual(result.rows, expectedRows);
   assert.equal(result.next_cursor, null);
   assert.deepEqual(
     (result as unknown as { row_keys: unknown }).row_keys,
@@ -1087,7 +1139,7 @@ test("lossless opt-in matches the shared typed corpus without widening disclosur
     cursor: ["recovery-2", "hotkey", "2"],
     revision: result.revision,
   });
-  assert.deepEqual(after.rows, fixture.rows.slice(3));
+  assert.deepEqual(after.rows, expectedRows.slice(3));
   await store.run(
     "UPDATE nominator_positions SET shares=x'00FF' WHERE coldkey='recovery-0'",
   );
