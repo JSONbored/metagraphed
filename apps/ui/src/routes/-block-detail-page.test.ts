@@ -68,7 +68,8 @@ describe("block detail loading contract", () => {
     expect(extrinsicPage).toContain('context="decoded events"');
     expect(page).toContain('empty="This block carried no extrinsics."');
     expect(page).toContain('empty="No decoded events for this block."');
-    expect(extrinsicPage).toContain('empty="No events are decoded for this extrinsic."');
+    expect(extrinsicPage).toContain("No pallet-level event records are available from this tier");
+    expect(extrinsicPage).toContain("events.isError && eventRows.length === 0");
   });
 
   it("self-heals only the explicit newest-block detail handoff", () => {
