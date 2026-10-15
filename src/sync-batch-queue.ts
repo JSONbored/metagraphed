@@ -1,3 +1,9 @@
+import {
+  makeSyncDelivery,
+  syncDeliveryKey,
+  verifySyncDelivery,
+  type SyncDelivery,
+} from "./sync-delivery-receipt.ts";
 // The bulk sync path, on a queue (metagraphed-infra#346/#347).
 //
 // WHAT THIS REPLACES, and why it is a refactor rather than a rescue. Each bulk
@@ -44,6 +50,7 @@ export interface SyncBatchMessage {
    * it is optional on the sync routes: a producer may post without declaring,
    * and inventing a total would mark an unproven load complete. */
   pass_total?: number;
+  delivery?: SyncDelivery;
   /**
    * The chunk's rows, for a lane that carries one array.
    *
@@ -357,6 +364,7 @@ export function packSyncBatchMessages(input: {
   lane: SyncBatchLane;
   capturedAt: number;
   passTotal?: number;
+  delivery?: SyncDelivery;
   rows: Record<string, unknown>[];
   maxBytes?: number;
   maxRows?: number;
@@ -372,11 +380,24 @@ export function packSyncBatchMessages(input: {
     lane,
     capturedAt,
     passTotal,
+    delivery,
     rows,
     maxBytes = SYNC_BATCH_MAX_BYTES,
     maxRows = SYNC_BATCH_MAX_ROWS,
     pruningKeys = PRUNING_LANE_KEYS,
   } = input;
+  if (delivery)
+    verifySyncDelivery(
+      delivery,
+      lane,
+      {
+        capturedAt,
+        expectedRows: passTotal!,
+        receivedRows: rows.length,
+        nowMs: capturedAt,
+      },
+      rows,
+    );
   if (rows.length === 0) return [];
 
   const prunes = PRUNING_LANES.includes(lane);
@@ -431,6 +452,17 @@ export function packSyncBatchMessages(input: {
       ...(prunes ? { key_complete: true as const } : {}),
       ...(hoisted ? { key_column: hoisted, key_value: keyValue } : {}),
       rows,
+      ...(delivery
+        ? {
+            delivery: makeSyncDelivery(
+              lane,
+              capturedAt,
+              passTotal!,
+              current,
+              delivery,
+            ),
+          }
+        : {}),
     };
     // THE ASSERTION THIS BUG COST US. Nothing measured the message before
     // sending it, so an oversize payload surfaced as a 502 the producer read as
@@ -568,6 +600,7 @@ export async function enqueueSyncBatch(
     lane: SyncBatchLane;
     capturedAt: number;
     passTotal?: number;
+    delivery?: SyncDelivery;
     rows: Record<string, unknown>[];
   },
 ): Promise<number> {
@@ -630,6 +663,7 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
     return true;
   }
   if (!Array.isArray(m.rows) || m.rows.length === 0) return false;
+  if (!m.rows.every((r) => r !== null && typeof r === "object")) return false;
   // A pruning lane must SAY its chunk is key-complete. Refusing here beats
   // pruning on trust: the failure mode is deleted rows, which no retry undoes.
   if (PRUNING_LANES.includes(m.lane) && m.key_complete !== true) {
@@ -648,7 +682,14 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
     if (m.rows.some((r) => m.key_column! in r)) return false;
   }
   if (m.pass_total !== undefined && m.pass_total < m.rows.length) return false;
-  return m.rows.every((r) => r !== null && typeof r === "object");
+  if (m.delivery !== undefined) {
+    try {
+      for (const row of syncBatchRows(m)) syncDeliveryKey(m.lane, row);
+    } catch {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -735,6 +776,7 @@ export interface PassTally {
   expectedRows: number;
   receivedRows: number;
   nowMs: number;
+  delivery?: SyncDelivery;
 }
 
 /**
@@ -759,6 +801,7 @@ export function passTallyFor(
     // `rows` there would credit zero and the pass would never close.
     receivedRows: syncBatchRowCount(message),
     nowMs,
+    ...(message.delivery ? { delivery: message.delivery } : {}),
   };
 }
 
@@ -778,7 +821,18 @@ export function syncBatchRows(
   const rows = message.rows ?? [];
   if (!message.key_column) return rows;
   const column = message.key_column;
-  const value = message.key_value;
+  if (
+    message.delivery !== undefined &&
+    message.lane === "neurons" &&
+    column === "netuid" &&
+    (typeof message.key_value !== "string" ||
+      !/^(0|[1-9][0-9]{0,4})$/.test(message.key_value))
+  )
+    throw new TypeError("Invalid canonical hoisted business key");
+  const value =
+    message.lane === "neurons" && column === "netuid"
+      ? Number(message.key_value)
+      : message.key_value;
   return rows.map((row) => ({ ...row, [column]: value }));
 }
 
@@ -801,6 +855,18 @@ export async function writeSyncBatch(
   nowMs: number = Date.now(),
   familyWriters: SyncBatchFamilyWriters = {},
 ): Promise<void> {
+  // Keep this inside the write boundary: malformed identity must retry/dead
+  // letter, not become a legacy write or the classifier's invalid-message ACK.
+  if (message.delivery !== undefined) {
+    const pass = passTallyFor(message, nowMs);
+    if (!pass) throw new TypeError("Identified queue delivery lacks a census");
+    verifySyncDelivery(
+      message.delivery,
+      message.lane,
+      pass,
+      syncBatchRows(message),
+    );
+  }
   if (message.families) {
     const familyWriter = familyWriters[message.lane as SyncBatchLane];
     if (!familyWriter) {

@@ -391,7 +391,11 @@ interface DataApiEnv
     RuntimeSecretEnv,
     ArchiveObjectEnv,
     LegacyStoreFixtureEnv,
-    LegacyBufferFixtureEnv {}
+    LegacyBufferFixtureEnv {
+  /** Source protocol only; enable after recorded receiver/schema qualification
+   * and proven quiescence of old consumers. No production value is configured. */
+  SYNC_DELIVERY_V1_READY?: string;
+}
 
 /** The registry sync Worker authenticates its own callers. */
 interface RegistrySyncApiEnv extends RuntimeSecretEnv, LegacyStoreFixtureEnv {}
