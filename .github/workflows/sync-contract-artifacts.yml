@@ -98,7 +98,7 @@ jobs:
           fix_status=0
           npm audit fix --ignore-scripts --workspaces --include-workspace-root || fix_status=$?
           test "$fix_status" -le 1
-          npm ls dompurify undici --all --json > "$RUNNER_TEMP/dependency-security/installed-security-tree.json"
+          npm ls dompurify undici --all --workspaces --include-workspace-root --json > "$RUNNER_TEMP/dependency-security/installed-security-tree.json"
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
