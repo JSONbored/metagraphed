@@ -1859,15 +1859,10 @@ try {
         }
         const actualRows = await databaseState(db);
         if (phase === "late-failure") {
-          // Immutable payload chunks are prepared BEFORE the atomic four-family
-          // transaction. New chunks may remain unreferenced after failure; old
-          // chunks and all published family rows must be byte-for-byte intact.
           assert.deepEqual(
-            shape.startsWith("chunks") ? actualRows.slice(0, -1) : actualRows,
-            shape.startsWith("chunks")
-              ? (priorRows as typeof actualRows).slice(0, -1)
-              : priorRows,
-            "failed changed-row transaction must preserve every prior family value",
+            actualRows,
+            priorRows,
+            "failed changed-row transaction must preserve all prior rows and chunks",
           );
         }
         if (shape.startsWith("chunks")) {
@@ -1880,12 +1875,25 @@ try {
               "prior immutable chunks must survive unchanged",
             );
           originalChunkDigest = digest;
-          if (phase === "late-failure" || phase === "repair-replay") {
-            const staged = String(current.families.extrinsicRows[0].call_args);
-            await chunkDigest(hash(Buffer.from(staged)));
+          if (phase === "late-failure") {
+            const changed = String(current.families.extrinsicRows[0].call_args);
+            assert.equal(
+              await db
+                .prepare(
+                  "SELECT count(*) n FROM chain_detail_payload_chunks WHERE sha256=?",
+                )
+                .bind(hash(Buffer.from(changed)))
+                .first<number>("n"),
+              0,
+              "failed publication must roll back every new chunk",
+            );
+          }
+          if (phase === "repair-replay") {
+            const changed = String(current.families.extrinsicRows[0].call_args);
+            await chunkDigest(hash(Buffer.from(changed)));
             assert.ok(
               actualRows.at(-1)!.rows > 1,
-              "changed payload stages additional chunks before late failure",
+              "successful repair commits new chunks with its rows",
             );
           }
         }
@@ -1994,9 +2002,9 @@ try {
             ? {
                 original_sha256: originalChunkHash,
                 original_chunks_digest: originalChunkDigest,
-                new_chunks_staged_before_row_transaction:
-                  phase === "late-failure" || phase === "repair-replay",
-                failed_row_transaction_may_retain_unreferenced_immutable_chunks: true,
+                new_chunks_persist_before_row_transaction: false,
+                failed_row_transaction_retains_new_chunks: false,
+                published_and_in_flight_original_chunks_retained: true,
                 published_argument_sha256:
                   typeof restored.call_args === "string"
                     ? hash(Buffer.from(restored.call_args))
