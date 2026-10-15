@@ -9,7 +9,6 @@ import {
   hotHistoryNumbers,
   readHotHistoryTail,
 } from "./history-feed-hot-bridge.ts";
-import { restoreChainDetailPayloads } from "./chain-detail-payloads.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
 import {
@@ -137,7 +136,7 @@ async function loadSelectedExtrinsicFeedPage(
     if (hot.length)
       streams.push(
         (async function* () {
-          for (const record of await restoreChainDetailPayloads(env, hot)) {
+          for (const record of hot) {
             const numeric = hotHistoryNumbers(record, ["fee_tao", "tip_tao"]);
             const row = ExtrinsicsRowSchema.required().parse({
               ...numeric,

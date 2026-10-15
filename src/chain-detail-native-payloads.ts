@@ -4,6 +4,7 @@ import type { D1StoreBinding } from "./d1-store.ts";
 import type { ProducerStatement } from "./producer-store.ts";
 
 export const NATIVE_PAYLOAD_PREFIX = "\0metagraphed:payload:v1:";
+export type NativePayloadParts = ReadonlyMap<string, { part: number; data: string }[]>;
 const INLINE_ENCODED_BYTES = 128 * 1024;
 const CHUNK_BYTES = 1_490_000;
 
@@ -32,6 +33,7 @@ export async function readNativePayload(
   hash: string,
   size: number,
   location: string,
+  snapshot?: NativePayloadParts,
 ): Promise<Uint8Array> {
   if (location.startsWith("inline:")) {
     const encoded = location.slice(7);
@@ -40,12 +42,12 @@ export async function readNativePayload(
     return decode(encoded, size);
   }
   const count = Math.ceil(size / CHUNK_BYTES);
-  const { results } = await database(env)
+  const results = snapshot ? snapshot.get(hash) ?? [] : (await database(env)
     .prepare(
       "SELECT part, data FROM chain_detail_payload_chunks WHERE sha256 = ? ORDER BY part LIMIT 13",
     )
     .bind(hash)
-    .all<{ part: number; data: string }>();
+    .all<{ part: number; data: string }>()).results;
   if (results.length !== count)
     throw new Error("Missing native chain detail payload chunks");
   const bytes = new Uint8Array(size);

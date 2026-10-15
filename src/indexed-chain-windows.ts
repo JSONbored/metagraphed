@@ -9,7 +9,6 @@ import {
   hotHistoryPredicate,
   readHotHistoryTail,
 } from "./history-feed-hot-bridge.ts";
-import { restoreChainDetailPayloads } from "./chain-detail-payloads.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
 import {
@@ -270,7 +269,7 @@ export async function loadIndexedChainWindow(
     }
     const hot = ChainEventsRowSchema.required()
       .array()
-      .parse(await restoreChainDetailPayloads(env, context.hot))
+      .parse(context.hot)
       .filter(
         (row) =>
           !query.cursor ||

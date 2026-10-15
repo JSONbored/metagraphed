@@ -42,6 +42,7 @@ beforeAll(async () => {
   db = await runtime.getD1Database("DB");
   for (const file of [
     "0014_recent_chain_state.sql",
+    "0024_chain_detail_payload_chunks.sql",
     "0033_account_event_subnet_tail_index.sql",
   ])
     for (const sql of readFileSync(

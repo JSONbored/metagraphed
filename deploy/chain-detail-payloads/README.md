@@ -42,3 +42,40 @@ stored bytes, raw-byte SHA256, decompression limits and row-reference closure
 before selecting the restored owner. Derive the quota counter from restored
 parts with writers held. A public four-table projection is not that backup.
 Do not widen public export to expose private control or closure state.
+
+## Prepared reader-safe reclamation
+
+The successor reader captures selected rows and their immutable chunk parts in
+one D1 batch. Hydration consumes that owned snapshot and cannot fall back to a
+later chunk lookup. Direct block/extrinsic/event readers and indexed hot-tail
+readers use the same helper. Metadata-only/account/aggregate reads keep their
+existing paths. Separate result rows preserve D1's per-row byte limit. Snapshot
+parts have a 48MiB encoded and300-part transfer ceiling; an admitted32MiB raw
+selection needs fewer than280 parts. Corrupt or oversized selections retain the
+existing fail-closed digest/order/decompression checks.
+
+The prepared quota bundle adds NUL-safe BLOB expression indexes for both native
+reference owners and a bounded sweep cursor. `CHAIN_DETAIL_PAYLOAD_GC=enabled`
+opts the existing prune tick into one pass of at most16hashes/192parts; no checked
+in configuration enables it. The cursor scans forward through live hashes and
+wraps, so a live prefix cannot permanently hide retired hashes. Reference checks,
+chunk deletion, trigger-based quota release and cursor advance commit together.
+A competing publisher serializes on the same D1 database; current references
+protect shared hashes, while a later publication recreates exact deleted parts
+inside its original atomic capture. Failed batches preserve cursor/counter/data.
+
+This replaces the earlier deliberate no-GC source policy only after coordinated
+activation. Do not enable reclamation while any deployed reader still performs
+separate row/chunk reads or older invocations remain in flight. The standalone
+hydration helper still supports offline callers; it is not a concurrent read
+protocol without a supplied snapshot. Private coherent restores must retain the
+new cursor/index schema and derive/verify the quota counter from original parts.
+No schema bundle, flag, deployment or live deletion is activated here.
+
+Native fixtures must verify racing readers, either family keeping a shared hash,
+failed and competing sweeps, publication after candidate selection, cursor
+fairness, repeated replacement, and restored source/counter/reader projections.
+Actual sweep throughput versus retirement rate, DB/page/free-space amplification,
+query plans, serving interference, RPO/RTO and whole-estate REST/MCP/UI corpus
+remain separate measured acceptance. Fixed per-tick work is not a throughput or
+capacity guarantee; quota exhaustion remains explicit admission failure.

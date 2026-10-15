@@ -5,6 +5,7 @@ import {
   NATIVE_PAYLOAD_PREFIX,
   readNativePayload,
   writeNativePayload,
+  type NativePayloadParts,
 } from "./chain-detail-native-payloads.ts";
 import type { ProducerStatement } from "./producer-store.ts";
 const PREFIX = "\0metagraphed:r2:";
@@ -78,6 +79,7 @@ export async function storeChainDetailPayloads(
 export async function restoreChainDetailPayloads(
   env: unknown,
   rows: Row[],
+  snapshot?: NativePayloadParts,
 ): Promise<Row[]> {
   let total = 0;
   const cache = new Map<string, string>();
@@ -127,6 +129,7 @@ export async function restoreChainDetailPayloads(
             hash,
             storedBytes,
             location,
+            snapshot,
           );
           // The adapter owns this buffer; stream it without another full copy.
           body = new ReadableStream({

@@ -67,6 +67,7 @@ import {
 import { readStore, type ReadStoreDb, safeIntOrNull } from "./read-store.ts";
 import { CHAIN_DETAIL_HOT_TIER_TABLES } from "./chain-detail-hot-tier.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import { pruneChainDetailPayloads } from "./chain-detail-payload-prune.ts";
 import { readSelectedHistorySegments } from "./indexed-history-store.ts";
 
 /** Decoding can finish before its serving indexes publish. Retention must
@@ -289,6 +290,9 @@ export async function pruneChainDetail(
   if (!reader?.first) return { ok: false, reason: "no store bound" };
 
   try {
+    // Independent of block-floor movement: replacements and an empty tier can
+    // also leave retired chunks. The explicit activation flag defaults off.
+    await pruneChainDetailPayloads(env);
     const bounds = (await reader.first(
       "SELECT MIN(block_number) AS floor, MAX(block_number) AS head " +
         "FROM chain_detail_blocks",

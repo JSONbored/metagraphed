@@ -59,16 +59,33 @@ function bindValue(value: unknown): string | number | null | ArrayBuffer {
   );
 }
 
+function prepareD1Statement(
+  db: D1StoreBinding,
+  { text, values = [] }: ProducerStatement,
+) {
+  if (values.length > 100)
+    throw new RangeError("D1 statement exceeds 100 bindings");
+  const statement = db.prepare(text);
+  return values.length ? statement.bind(...values.map(bindValue)) : statement;
+}
+
+/** Selected rows and their dependent immutable parts share one read snapshot.
+ * Preparing the entire batch first preserves the normal binding admission. */
+export async function readD1Snapshot(
+  db: D1StoreBinding,
+  statements: readonly ProducerStatement[],
+): Promise<Record<string, unknown>[][]> {
+  const prepared = statements.map((statement) => prepareD1Statement(db, statement));
+  const results = await timed(TIMING_D1, () => db.batch<Record<string, unknown>>(prepared));
+  results.forEach(markD1SqlExecution);
+  return results.map((result) => result.results);
+}
+
 export function createD1Store(
   db: D1StoreBinding,
   revisions: readonly string[] = [],
 ): ProducerStore {
-  const prepare = ({ text, values = [] }: ProducerStatement) => {
-    if (values.length > 100)
-      throw new RangeError("D1 statement exceeds 100 bindings");
-    const statement = db.prepare(text);
-    return values.length ? statement.bind(...values.map(bindValue)) : statement;
-  };
+  const prepare = (statement: ProducerStatement) => prepareD1Statement(db, statement);
   const query = async <Row = Record<string, unknown>>(
     text: string,
     values: unknown[] = [],

@@ -59,6 +59,7 @@ import { readStore, type OptionalRowQuerier } from "./read-store.ts";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
 import { selectedD1Store } from "./d1-store.ts";
 import { restoreChainDetailPayloads } from "./chain-detail-payloads.ts";
+import { readChainDetailPayloadSnapshot } from "./chain-detail-payload-snapshot.ts";
 
 type Row = Record<string, unknown>;
 
@@ -84,14 +85,16 @@ async function query(
   env: unknown,
   sql: string,
   params: unknown[],
+  field?: "call_args" | "args",
 ): Promise<Row[] | null> {
   const binding = db(env);
   if (!binding?.query) return null;
   try {
-    const rows = (await binding.query(sql, params)) as Row[];
-    return selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)
-      ? await restoreChainDetailPayloads(env, rows)
-      : rows;
+    if (field && selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)) {
+      const snapshot = await readChainDetailPayloadSnapshot(env, { text: sql, values: params }, field);
+      return restoreChainDetailPayloads(env, snapshot.rows, snapshot.parts);
+    }
+    return (await binding.query(sql, params)) as Row[];
   } catch {
     return null;
   }
@@ -334,6 +337,7 @@ export async function loadBlockExtrinsicsHotTier(
     `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics ` +
       "WHERE block_number = ? ORDER BY extrinsic_index ASC LIMIT ? OFFSET ?",
     [height, limit, offset],
+    "call_args",
   );
   if (rows === null) return null;
   return buildBlockExtrinsics(rows, ref, height, { limit, offset });
@@ -592,6 +596,7 @@ export async function loadExtrinsicsHeadHotTier(
       " ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC" +
       " LIMIT ?",
     [...params, need],
+    "call_args",
   );
 }
 
@@ -647,6 +652,7 @@ export async function loadChainEventsHeadHotTier(
       (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
       " ORDER BY block_number DESC, event_index DESC LIMIT ?",
     [...params, need],
+    "args",
   );
 }
 
@@ -663,6 +669,7 @@ export async function loadBlockChainEventsHotTier(
     `SELECT ${CHAIN_EVENT_COLUMNS} FROM chain_detail_chain_events ` +
       "WHERE block_number = ? ORDER BY event_index ASC",
     [height],
+    "args",
   );
   if (rows === null) return null;
   const events = rows
@@ -695,6 +702,7 @@ export async function loadExtrinsicHotTier(
       `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics ` +
         "WHERE block_number = ? AND extrinsic_index = ? LIMIT 1",
       [block, index],
+      "call_args",
     );
   } else {
     const hash = String(ref).trim();
@@ -704,6 +712,7 @@ export async function loadExtrinsicHotTier(
       `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics ` +
         "WHERE lower(extrinsic_hash) = ? LIMIT 1",
       [hash.toLowerCase()],
+      "call_args",
     );
   }
   const row = rows?.[0];

@@ -6,7 +6,8 @@
 CREATE TABLE chain_detail_payload_budget (
   id INTEGER PRIMARY KEY CHECK (id=1),
   max_encoded_bytes INTEGER NOT NULL CHECK (max_encoded_bytes>=0 AND max_encoded_bytes<=9007199254740991),
-  used_encoded_bytes INTEGER NOT NULL CHECK (used_encoded_bytes>=0 AND used_encoded_bytes<=9007199254740991)
+  used_encoded_bytes INTEGER NOT NULL CHECK (used_encoded_bytes>=0 AND used_encoded_bytes<=9007199254740991),
+  gc_after_sha256 TEXT NOT NULL DEFAULT '' CHECK(length(gc_after_sha256) IN (0,64))
 );
 -- statement-breakpoint
 INSERT INTO chain_detail_payload_budget(id,max_encoded_bytes,used_encoded_bytes)
@@ -19,6 +20,16 @@ BEGIN
     WHERE id=1 AND length(NEW.data)<=max_encoded_bytes-used_encoded_bytes)
     THEN RAISE(ABORT,'native payload encoded-byte quota exhausted') END;
 END;
+-- statement-breakpoint
+CREATE INDEX chain_detail_extrinsics_payload_hash ON chain_detail_extrinsics
+  (CAST(substr(CAST(call_args AS BLOB),25,64) AS TEXT))
+  WHERE substr(CAST(call_args AS BLOB),1,24)=X'006d657461677261706865643a7061796c6f61643a76313a'
+    AND substr(CAST(call_args AS BLOB),-3)=X'3a6431';
+-- statement-breakpoint
+CREATE INDEX chain_detail_chain_events_payload_hash ON chain_detail_chain_events
+  (CAST(substr(CAST(args AS BLOB),25,64) AS TEXT))
+  WHERE substr(CAST(args AS BLOB),1,24)=X'006d657461677261706865643a7061796c6f61643a76313a'
+    AND substr(CAST(args AS BLOB),-3)=X'3a6431';
 -- statement-breakpoint
 CREATE TRIGGER chain_detail_payload_budget_inserted AFTER INSERT ON chain_detail_payload_chunks
 BEGIN

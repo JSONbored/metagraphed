@@ -1,3 +1,5 @@
+import { readChainDetailPayloadSnapshot } from "./chain-detail-payload-snapshot.ts";
+import { restoreChainDetailPayloads } from "./chain-detail-payloads.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import type { ChainNetworkId } from "./chain-network.ts";
 import type { FeedRange } from "./history-feed-tree.ts";
@@ -123,12 +125,7 @@ export async function readHotHistoryTail(
   const subnet = netuids
     ? ` AND netuid IN (${netuids.map(() => "?").join(",")})`
     : "";
-  const result = await store.query<{
-    first: number | null;
-    last: number | null;
-    rows: number | null;
-    record: string | null;
-  }>(
+  const text =
     `WITH coverage AS (
        SELECT MIN(block_number) AS first, MAX(block_number) AS last, COUNT(*) AS rows
        FROM chain_detail_blocks WHERE block_number > ? AND block_number <= ?
@@ -142,8 +139,8 @@ export async function readHotHistoryTail(
      UNION ALL
      SELECT 1, NULL, NULL, NULL, json_object(${columns.map((column) => `'${column}',${column}`).join(",")}),
        ${groupBy ? "NULL, NULL, NULL" : `observed_at, block_number, ${index}`} FROM matching
-     ORDER BY sequence, ${outerOrder}`,
-    [
+     ORDER BY sequence, ${outerOrder}`;
+  const values = [
       through,
       last,
       through,
@@ -151,8 +148,10 @@ export async function readHotHistoryTail(
       ...(netuids ?? []),
       ...predicate.values,
       maximum + 1,
-    ],
-  );
+    ];
+  const field = !groupBy && table !== "account_events" ? table === "extrinsics" ? "call_args" : "args" : undefined;
+  const snapshot = field ? await readChainDetailPayloadSnapshot(env, { text, values }, field, true) : undefined;
+  const result = (snapshot?.rows ?? await store.query(text, values)) as {first:number|null;last:number|null;rows:number|null;record:string|null}[];
   const coverage = result.shift();
   if (
     !coverage ||
@@ -167,7 +166,8 @@ export async function readHotHistoryTail(
     32 * 1024 * 1024
   )
     throw new Error("Hot history tail exceeds byte budget");
-  return result.slice(0, maximum).map((item) => JSON.parse(item.record!));
+  const rows = result.slice(0, maximum).map((item) => JSON.parse(item.record!));
+  return snapshot ? restoreChainDetailPayloads(env, rows, snapshot.parts) : rows;
 }
 
 /** Parse catalog numbers. */
