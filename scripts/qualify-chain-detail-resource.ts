@@ -21,6 +21,7 @@ import { gzipSync, gunzipSync } from "node:zlib";
 import {
   compressSyncBatchMessage,
   SYNC_BATCH_MAX_DECODED_BYTES,
+  SyncBatchSizeError,
 } from "../src/sync-batch-compress.ts";
 
 const output = path.resolve("reports/chain-detail-resource");
@@ -68,6 +69,14 @@ async function processMemory() {
       const membership = await readFile(`/proc/${pid}/cgroup`, "utf8");
       if (membership !== scope) continue;
       const status = await readFile(`/proc/${pid}/status`, "utf8");
+      const mapping = await readFile(`/proc/${pid}/smaps_rollup`, "utf8");
+      const mappingKiB = Object.fromEntries(
+        [
+          ...mapping.matchAll(
+            /^(Rss|Pss|Anonymous|Private_Dirty|Shared_Clean|Swap):\s+(\d+)/gm,
+          ),
+        ].map((match) => [match[1], Number(match[2])]),
+      );
       const fields = Object.fromEntries(
         [...status.matchAll(/^(VmRSS|VmHWM|Threads):\s+(\d+)/gm)].map(
           (match) => [match[1], Number(match[2])],
@@ -79,6 +88,7 @@ async function processMemory() {
         rss_kib: fields.VmRSS,
         high_water_kib: fields.VmHWM,
         threads: fields.Threads,
+        mapping_kib: mappingKiB,
       });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -98,8 +108,11 @@ async function nativeLimits() {
     "memory.max",
     "memory.swap.max",
     "memory.peak",
+    "memory.current",
+    "memory.stat",
     "memory.events",
     "pids.max",
+    "pids.current",
     "cpu.max",
   ])
     fields[name] = (await readFile(path.join(root, name), "utf8")).trim();
@@ -143,7 +156,11 @@ function payload(shape: string, block = 9_000_001) {
                   ? 23_000
                   : shape === "objects"
                     ? 12_000
-                    : 0,
+                    : shape === "objects-admitted"
+                      ? 4_998
+                      : shape === "objects-repair"
+                        ? 3_000
+                        : 0,
             },
             (_, i) => ({
               block_number: block,
@@ -185,7 +202,7 @@ function payload(shape: string, block = 9_000_001) {
       s: "x".repeat(SYNC_BATCH_MAX_DECODED_BYTES - 4_096),
     });
   }
-  if (shape === "objects-max") {
+  if (shape === "objects-max" || shape === "objects-admitted") {
     const remaining =
       SYNC_BATCH_MAX_DECODED_BYTES -
       Buffer.byteLength(JSON.stringify(message)) -
@@ -364,6 +381,7 @@ try {
     ],
     { stdio: "inherit", timeout: 120_000 },
   );
+  report.native_limits_after_bundle = await nativeLimits();
   const modules = (await readdir(temporary)).filter((name) =>
     name.endsWith(".js"),
   );
@@ -408,6 +426,7 @@ try {
         "string",
         "objects",
         "objects-max",
+        "objects-admitted",
         "blocks16",
         "combined",
       ].includes(shape),
@@ -416,7 +435,14 @@ try {
   report.shape = shape;
   const shapes =
     shape === "combined"
-      ? ["small", "string", "objects", "objects-max", "blocks16"]
+      ? [
+          "small",
+          "string",
+          "objects",
+          "objects-max",
+          "objects-admitted",
+          "blocks16",
+        ]
       : [shape];
   for (const selectedShape of shapes) {
     const shape = selectedShape;
@@ -471,6 +497,10 @@ try {
         title: string;
         webSocketDebuggerUrl: string;
       }>;
+      report.inspector_targets = targets.map(({ id, title }) => ({
+        id,
+        title,
+      }));
       const subjects = targets.filter((target) =>
         target.title.includes("chain-detail-resource"),
       );
@@ -483,6 +513,67 @@ try {
       const isolate = await cdp.request("Runtime.getIsolateId");
       await cdp.request("Profiler.enable");
       await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
+      if (shape === "objects" || shape === "objects-max") {
+        await assert.rejects(
+          compressSyncBatchMessage(message, 128 * 1024),
+          SyncBatchSizeError,
+        );
+        const packed = gzipSync(JSON.stringify(message));
+        assert.ok(packed.length <= 128 * 1024);
+        const envelope = [
+          {
+            id: `retained-${shape}`,
+            timestamp: new Date(stamp),
+            attempts: 6,
+            body: packed,
+          },
+        ];
+        const refused = await deadline(
+          worker.queue("sync-batches", envelope),
+          30_000,
+        );
+        assert.equal(refused.explicitAcks.length, 0);
+        assert.equal(refused.retryMessages.length, 1);
+        const untouched = await databaseState(db);
+        assert.ok(untouched.every((table) => table.rows === 0));
+        const quarantined = await deadline(
+          worker.queue("sync-batches-dlq", envelope),
+          30_000,
+        );
+        assert.ok(quarantined.ackAll || quarantined.explicitAcks.length === 1);
+        const receipt = await db
+          .prepare(
+            "SELECT body_sha256,encoding,payload FROM sync_dead_letters WHERE message_id=?",
+          )
+          .bind(envelope[0].id)
+          .first<{ body_sha256: string; encoding: string; payload: string }>();
+        assert.equal(receipt?.body_sha256, hash(packed));
+        assert.equal(receipt.encoding, "base64");
+        assert.deepEqual(Buffer.from(receipt.payload, "base64"), packed);
+        observations.push({
+          shape,
+          phase: "row-admission-refusal",
+          decoded_bytes: decoded,
+          wire_bytes: packed.length,
+          detail_rows:
+            Object.values(message.families).reduce(
+              (n, rows) => n + rows.length,
+              0,
+            ) - message.families.blockRows.length,
+          producer_refused: true,
+          retry_without_ack: true,
+          exact_dlq_sha256: receipt.body_sha256,
+          business_tables_untouched: true,
+          indivisible_original_retained_unresolved: true,
+          isolate,
+          driver_memory: process.memoryUsage(),
+          driver_high_water_kib: process.resourceUsage().maxRSS,
+          workerd_process: await processMemory(),
+          native_limits: await nativeLimits(),
+        });
+        await save();
+        continue;
+      }
       let priorRows: unknown;
       for (const phase of [
         "first",
@@ -671,6 +762,8 @@ try {
             ...samples.map((sample) => Number(sample.usedSize)),
           ),
           changed_rows_rolled_back: phase === "late-failure" ? true : null,
+          driver_memory: process.memoryUsage(),
+          driver_high_water_kib: process.resourceUsage().maxRSS,
           workerd_process: await processMemory(),
           native_limits: await nativeLimits(),
           true_peak_qualified: false,
@@ -681,174 +774,205 @@ try {
         // An older sender accepted two whole blocks as one oversized expansion.
         // Quarantine preserves that exact transport; repair splits only between
         // blocks and keeps every block's four families together.
-        const originals = [
-          payload("string", 9_000_003),
-          payload("string", 9_000_004),
-        ];
-        for (const original of originals) {
-          original.families.extrinsicRows[0].call_args = JSON.stringify({
-            s: "q".repeat(2_100_000),
-          });
-          original.families.chainEventRows.push({
-            block_number: original.families.blockRows[0].block_number,
-            event_index: 0,
-            pallet: "System",
-            method: "ExtrinsicSuccess",
-            args: null,
-            phase: "Initialization",
-            extrinsic_index: null,
-            observed_at: stamp,
-          });
-          original.families.blockRows[0].chain_event_count = 1;
-        }
-        const oversized = {
-          lane: "chain-detail",
-          captured_at: stamp,
-          families: Object.fromEntries(
-            Object.keys(message.families).map((name) => [
-              name,
-              originals.flatMap(
-                (original) =>
-                  original.families[name as keyof typeof original.families],
-              ),
-            ]),
-          ),
-        };
-        const raw = JSON.stringify(oversized);
-        assert.ok(Buffer.byteLength(raw) > SYNC_BATCH_MAX_DECODED_BYTES);
-        const refused = gzipSync(raw);
-        assert.ok(refused.length < 128 * 1024);
-        const envelope = [
-          {
-            id: "oversized-original",
-            timestamp: new Date(stamp),
-            attempts: 6,
-            body: refused,
-          },
-        ];
-        const refusal = await deadline(
-          worker.queue("sync-batches", envelope),
-          30_000,
-        );
-        assert.equal(refusal.retryMessages.length, 1);
-        assert.equal(refusal.explicitAcks.length, 0);
-        assert.equal(
-          await db
-            .prepare("SELECT count(*) n FROM chain_detail_blocks")
-            .first("n"),
-          2,
-        );
-        const quarantined = await deadline(
-          worker.queue("sync-batches-dlq", envelope),
-          30_000,
-        );
-        assert.ok(quarantined.ackAll || quarantined.explicitAcks.length === 1);
-        const receipt = await db
-          .prepare(
-            "SELECT body_sha256,encoding,payload FROM sync_dead_letters WHERE message_id='oversized-original'",
-          )
-          .first<{ body_sha256: string; encoding: string; payload: string }>();
-        assert.equal(receipt?.body_sha256, hash(refused));
-        assert.equal(receipt.encoding, "base64");
-        assert.deepEqual(Buffer.from(receipt.payload, "base64"), refused);
-        const retained = JSON.parse(
-          gunzipSync(Buffer.from(receipt.payload, "base64"), {
-            maxOutputLength: 2 * SYNC_BATCH_MAX_DECODED_BYTES,
-          }).toString("utf8"),
-        ) as typeof oversized;
-        assert.deepEqual(retained, oversized);
-        for (const original of originals) {
-          const block = original.families.blockRows[0].block_number;
-          const repaired = {
-            lane: retained.lane,
-            captured_at: retained.captured_at,
+        for (const kind of ["bytes", "rows"]) {
+          const first = kind === "bytes" ? 9_000_003 : 9_000_005;
+          const priorBlocks = kind === "bytes" ? 2 : 4;
+          const id = `oversized-${kind}`;
+          const originals = [
+            payload(kind === "bytes" ? "string" : "objects-repair", first),
+            payload(kind === "bytes" ? "string" : "objects-repair", first + 1),
+          ];
+          for (const original of originals) {
+            original.families.extrinsicRows[0].call_args = JSON.stringify({
+              s: "q".repeat(kind === "bytes" ? 2_100_000 : 100),
+            });
+            if (kind === "bytes")
+              original.families.chainEventRows.push({
+                block_number: original.families.blockRows[0].block_number,
+                event_index: 0,
+                pallet: "System",
+                method: "ExtrinsicSuccess",
+                args: null,
+                phase: "Initialization",
+                extrinsic_index: null,
+                observed_at: stamp,
+              });
+            original.families.blockRows[0].chain_event_count =
+              original.families.chainEventRows.length;
+          }
+          const oversized = {
+            lane: "chain-detail",
+            captured_at: stamp,
             families: Object.fromEntries(
-              Object.entries(retained.families).map(([family, rows]) => [
-                family,
-                rows.filter((row) => row.block_number === block),
+              Object.keys(message.families).map((name) => [
+                name,
+                originals.flatMap(
+                  (original) =>
+                    original.families[name as keyof typeof original.families],
+                ),
               ]),
             ),
           };
-          const result = await deadline(
-            worker.queue("sync-batches", [
-              {
-                id: `repaired-${original.families.blockRows[0].block_number}`,
-                timestamp: new Date(stamp),
-                attempts: 1,
-                body: await compressSyncBatchMessage(repaired, 128 * 1024),
-              },
-            ]),
+          const raw = JSON.stringify(oversized);
+          assert.equal(
+            Buffer.byteLength(raw) > SYNC_BATCH_MAX_DECODED_BYTES,
+            kind === "bytes",
+          );
+          await assert.rejects(
+            compressSyncBatchMessage(oversized, 128 * 1024),
+            SyncBatchSizeError,
+          );
+          const refused = gzipSync(raw);
+          assert.ok(refused.length < 128 * 1024);
+          const envelope = [
+            {
+              id,
+              timestamp: new Date(stamp),
+              attempts: 6,
+              body: refused,
+            },
+          ];
+          const refusal = await deadline(
+            worker.queue("sync-batches", envelope),
             30_000,
           );
-          assert.ok(result.ackAll || result.explicitAcks.length === 1);
-          const [restored] = await restoreChainDetailPayloads(
-            { D1_STATE: db },
-            [
-              (await db
-                .prepare(
-                  "SELECT call_args FROM chain_detail_extrinsics WHERE block_number=? AND extrinsic_index=0",
-                )
-                .bind(original.families.blockRows[0].block_number)
-                .first<Record<string, unknown>>()) ?? {},
-            ],
-          );
+          assert.equal(refusal.retryMessages.length, 1);
+          assert.equal(refusal.explicitAcks.length, 0);
           assert.equal(
-            restored.call_args,
-            original.families.extrinsicRows[0].call_args,
-          );
-        }
-        assert.equal(
-          await db
-            .prepare("SELECT count(*) n FROM chain_detail_blocks")
-            .first("n"),
-          4,
-        );
-        const expectedFamilies = {
-          blockRows: "chain_detail_blocks",
-          extrinsicRows: "chain_detail_extrinsics",
-          chainEventRows: "chain_detail_chain_events",
-          accountEventRows: "chain_detail_account_events",
-        };
-        for (const [family, table] of Object.entries(expectedFamilies)) {
-          const actual = (
             await db
-              .prepare(
-                `SELECT * FROM ${table} WHERE block_number IN (9000003,9000004) ORDER BY block_number`,
-              )
-              .all()
-          ).results;
-          const expected = retained.families[family];
-          assert.equal(actual.length, expected.length);
-          for (let index = 0; index < expected.length; index++) {
-            const row = { ...actual[index] };
-            if (family === "extrinsicRows") {
-              const [restored] = await restoreChainDetailPayloads(
-                { D1_STATE: db },
-                [row],
-              );
-              row.call_args = restored.call_args;
-            }
-            for (const [field, value] of Object.entries(expected[index]))
-              assert.deepEqual(row[field], value);
+              .prepare("SELECT count(*) n FROM chain_detail_blocks")
+              .first("n"),
+            priorBlocks,
+          );
+          const quarantined = await deadline(
+            worker.queue("sync-batches-dlq", envelope),
+            30_000,
+          );
+          assert.ok(
+            quarantined.ackAll || quarantined.explicitAcks.length === 1,
+          );
+          const receipt = await db
+            .prepare(
+              "SELECT body_sha256,encoding,payload FROM sync_dead_letters WHERE message_id=?",
+            )
+            .bind(id)
+            .first<{
+              body_sha256: string;
+              encoding: string;
+              payload: string;
+            }>();
+          assert.equal(receipt?.body_sha256, hash(refused));
+          assert.equal(receipt.encoding, "base64");
+          assert.deepEqual(Buffer.from(receipt.payload, "base64"), refused);
+          const retained = JSON.parse(
+            gunzipSync(Buffer.from(receipt.payload, "base64"), {
+              maxOutputLength: 2 * SYNC_BATCH_MAX_DECODED_BYTES,
+            }).toString("utf8"),
+          ) as typeof oversized;
+          assert.deepEqual(retained, oversized);
+          for (const original of originals) {
+            const block = original.families.blockRows[0].block_number;
+            const repaired = {
+              lane: retained.lane,
+              captured_at: retained.captured_at,
+              families: Object.fromEntries(
+                Object.entries(retained.families).map(([family, rows]) => [
+                  family,
+                  rows.filter((row) => row.block_number === block),
+                ]),
+              ),
+            };
+            const result = await deadline(
+              worker.queue("sync-batches", [
+                {
+                  id: `repaired-${original.families.blockRows[0].block_number}`,
+                  timestamp: new Date(stamp),
+                  attempts: 1,
+                  body: await compressSyncBatchMessage(repaired, 128 * 1024),
+                },
+              ]),
+              30_000,
+            );
+            assert.ok(result.ackAll || result.explicitAcks.length === 1);
+            const [restored] = await restoreChainDetailPayloads(
+              { D1_STATE: db },
+              [
+                (await db
+                  .prepare(
+                    "SELECT call_args FROM chain_detail_extrinsics WHERE block_number=? AND extrinsic_index=0",
+                  )
+                  .bind(original.families.blockRows[0].block_number)
+                  .first<Record<string, unknown>>()) ?? {},
+              ],
+            );
+            assert.equal(
+              restored.call_args,
+              original.families.extrinsicRows[0].call_args,
+            );
           }
+          assert.equal(
+            await db
+              .prepare("SELECT count(*) n FROM chain_detail_blocks")
+              .first("n"),
+            priorBlocks + 2,
+          );
+          const expectedFamilies = {
+            blockRows: "chain_detail_blocks",
+            extrinsicRows: "chain_detail_extrinsics",
+            chainEventRows: "chain_detail_chain_events",
+            accountEventRows: "chain_detail_account_events",
+          };
+          for (const [family, table] of Object.entries(expectedFamilies)) {
+            const actual = (
+              await db
+                .prepare(
+                  `SELECT * FROM ${table} WHERE block_number IN (?,?) ORDER BY 1,2`,
+                )
+                .bind(first, first + 1)
+                .all()
+            ).results;
+            const expected = retained.families[family];
+            assert.equal(actual.length, expected.length);
+            for (let index = 0; index < expected.length; index++) {
+              const row = { ...actual[index] };
+              if (family === "extrinsicRows") {
+                const [restored] = await restoreChainDetailPayloads(
+                  { D1_STATE: db },
+                  [row],
+                );
+                row.call_args = restored.call_args;
+              }
+              for (const [field, value] of Object.entries(expected[index]))
+                assert.deepEqual(row[field], value);
+            }
+          }
+          const stillRetained = await db
+            .prepare(
+              "SELECT body_sha256,payload FROM sync_dead_letters WHERE message_id=?",
+            )
+            .bind(id)
+            .first();
+          assert.equal(stillRetained?.body_sha256, hash(refused));
+          assert.equal(stillRetained?.payload, receipt.payload);
+          observations.push({
+            shape: `oversized-${kind}`,
+            admitted_block_detail_rows: originals.map(
+              (original) =>
+                original.families.chainEventRows.length +
+                original.families.extrinsicRows.length +
+                original.families.accountEventRows.length,
+            ),
+            retry_without_ack: true,
+            exact_dlq_sha256: receipt.body_sha256,
+            repaired_whole_blocks: 2,
+            original_retained: true,
+            driver_memory: process.memoryUsage(),
+            driver_high_water_kib: process.resourceUsage().maxRSS,
+            workerd_process: await processMemory(),
+            native_limits: await nativeLimits(),
+          });
+          await save();
         }
-        const stillRetained = await db
-          .prepare(
-            "SELECT body_sha256,payload FROM sync_dead_letters WHERE message_id='oversized-original'",
-          )
-          .first();
-        assert.equal(stillRetained?.body_sha256, hash(refused));
-        assert.equal(stillRetained?.payload, receipt.payload);
-        observations.push({
-          shape: "oversized-expansion",
-          retry_without_ack: true,
-          exact_dlq_sha256: receipt.body_sha256,
-          repaired_whole_blocks: 2,
-          original_retained: true,
-          workerd_process: await processMemory(),
-          native_limits: await nativeLimits(),
-        });
-        await save();
       }
     } finally {
       cdp?.close();

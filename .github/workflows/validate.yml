@@ -1613,7 +1613,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shape: ${{ inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","blocks16"]') }}
+        shape: ${{ inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","objects-admitted","blocks16"]') }}
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify_chain_detail_resources }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

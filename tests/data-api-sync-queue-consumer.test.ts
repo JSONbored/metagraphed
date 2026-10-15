@@ -287,6 +287,27 @@ describe("the sync queue consumer", () => {
     assert.deepEqual(m.calls, ["retry"]);
   });
 
+  test("row admission refuses plain and legacy gzip bodies without ACK or store writes", async () => {
+    const { gzipSync } = await import("node:zlib");
+    const body = {
+      lane: "chain-detail",
+      captured_at: 1_780_000_000_000,
+      families: {
+        blockRows: [{ block_number: 1 }],
+        chainEventRows: Array(5_001).fill({ event_index: 0 }),
+      },
+    };
+    for (const value of [body, gzipSync(JSON.stringify(body))]) {
+      const refused = message(value);
+      const neighbour = positionMessage();
+      await consume([refused, neighbour]);
+      assert.deepEqual(refused.calls, ["retry"]);
+      assert.deepEqual(neighbour.calls, ["ack"]);
+    }
+    assert.equal(inserts("chain_detail_chain_events").length, 0);
+    assert.equal(inserts("chain_detail_blocks").length, 0);
+  });
+
   test("an empty batch is not an error", async () => {
     await consume([]);
     assert.equal(rows().length, 0);

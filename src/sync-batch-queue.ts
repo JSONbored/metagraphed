@@ -612,10 +612,9 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
       if (!rows.every((r) => r !== null && typeof r === "object")) return false;
       total += rows.length;
     }
-    // This lane transports the already bounded HTTP transaction unchanged.
-    // Applying the single-array packer's 5,000-row ceiling here would ACK valid
-    // compressed blocks without writing them. Reuse both HTTP bounds; the
-    // existing compressed-byte budget bounds the actual queue message.
+    // Structural validity retains both HTTP bounds. Queue resource admission
+    // runs before classification so older valid bodies that exceed its lower
+    // row budget retain retry/DLQ ownership instead of becoming malformed ACKs.
     const blocks = (families.blockRows as unknown[] | undefined)?.length ?? 0;
     if (
       blocks === 0 ||

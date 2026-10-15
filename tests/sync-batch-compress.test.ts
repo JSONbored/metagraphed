@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { gzipSync } from "node:zlib";
 import { describe, test } from "vitest";
 import {
+  assertSyncBatchAdmission,
   compressSyncBatchMessage,
   decompressSyncBatchMessage,
   isCompressedSyncBatchBody,
@@ -249,6 +250,49 @@ describe("compressed admission budgets", () => {
     assert.equal(
       await decompressSyncBatchMessage(new Uint8Array(QUEUE_MESSAGE_MAX_BYTES)),
       null,
+    );
+  });
+});
+
+describe("whole-block row admission", () => {
+  test("resource admission is distinct from structural validity", async () => {
+    for (const value of [
+      null,
+      undefined,
+      false,
+      1,
+      "text",
+      {},
+      { lane: "other" },
+      { lane: "chain-detail" },
+      { lane: "chain-detail", families: "bad" },
+      { lane: "chain-detail", families: [] },
+      {
+        lane: "chain-detail",
+        families: { blockRows: [{}], extrinsicRows: "bad" },
+      },
+    ])
+      assert.doesNotThrow(() => assertSyncBatchAdmission(value));
+    const body = {
+      lane: "chain-detail",
+      captured_at: 1,
+      families: {
+        blockRows: [{}],
+        extrinsicRows: Array(5_000).fill({ index: 0 }),
+      },
+    };
+    assert.equal(validSyncBatchMessage(body), true);
+    assert.doesNotThrow(() => assertSyncBatchAdmission(body));
+    body.families.extrinsicRows.push({ index: 1 });
+    assert.equal(
+      validSyncBatchMessage(body),
+      true,
+      "older structurally valid messages retain retry ownership",
+    );
+    assert.throws(() => assertSyncBatchAdmission(body), SyncBatchSizeError);
+    await assert.rejects(
+      compressSyncBatchMessage(body, SYNC_BATCH_MAX_BYTES),
+      SyncBatchSizeError,
     );
   });
 });

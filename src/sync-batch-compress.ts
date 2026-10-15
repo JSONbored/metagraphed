@@ -1,39 +1,14 @@
-import { QUEUE_MESSAGE_MAX_BYTES } from "./sync-batch-queue.ts";
+import {
+  QUEUE_MESSAGE_MAX_BYTES,
+  SYNC_BATCH_MAX_ROWS,
+} from "./sync-batch-queue.ts";
 
-// Compressing a sync-batches message, so the largest lane can travel at all
-// (metagraphed-infra#359, metagraphed#9759).
-//
-// WHY, MEASURED. `chain-detail`'s indivisible unit is ONE block: its four row
-// families are posted together precisely so a block and its extrinsics cannot
-// land separately, and `packMultiFamilyMessage` refuses to split them for that
-// reason. So the question was never "how many blocks per message" -- the batch
-// is already one block. It is whether one block fits.
-//
-// As raw JSON it does not. Built from the real rows of the busiest block
-// captured (#8790494 -- 35 extrinsics, 694 chain events, 515 account events,
-// 1,245 rows):
-//
-//   raw JSON     476.6 KiB     against a 128 KiB per-message cap -- 3.7x over
-//   gzip -9       40.5 KiB     11.8x, 87.5 KiB of headroom, ~3 blocks/message
-//
-// The payload is enormously repetitive -- the same ss58 addresses, pallet names
-// and event kinds hundreds of times over -- which is why the ratio is decisive
-// rather than marginal.
-//
-// AND IT IS THE LANE THE QUEUE MOST WANTS. `chain-detail` is the largest D1
-// writer here and the only continuous one: ~1,245 rows every 12 seconds is
-// ~9M rows/day, against `account-balances`' ~1.5M. metagraphed-infra#346's
-// argument for one queue was global backpressure -- "a lane left out is a lane
-// that can still overwhelm the database the others are being polite about" --
-// and this is that lane. The bulk lanes are bursty; this one never stops.
-//
-// ## What this deliberately does NOT do
-//
-// It does not compress the four lanes already on the queue. They fit, they are
-// running clean, and re-encoding a working transport to make it uniform is the
-// change this epic's own non-goals warn against. The DECODER accepts a
-// compressed body from any lane, so opting one in later is a producer-side
-// change with no consumer deploy -- but nothing is opted in today.
+// One block's four families remain atomic. Observed block8790494 was476.6KiB
+// raw and40.5KiB gzip; compression admits it under the128KiB transport ceiling.
+// Byte and row admission are separate from structural validity. Reuse the
+// existing5000-row queue budget to bound statement materialization. Refusal
+// preserves producer cursor or accepted-message retry/DLQ ownership; only the
+// producer or verified repair may split BETWEEN whole blocks.
 
 /** The only algorithm here. `gzip` rather than `deflate-raw` because both ends
  * are workerd and the header costs 18 bytes against a 40 KiB payload, which
@@ -47,10 +22,24 @@ export const SYNC_BATCH_COMPRESSION = "gzip" as const;
 export const SYNC_BATCH_MAX_DECODED_BYTES = 4 * 1024 * 1024;
 
 export class SyncBatchSizeError extends RangeError {
-  constructor(kind: "compressed" | "expanded") {
+  constructor(kind: "compressed" | "expanded" | "rows") {
     super(`sync-batches: ${kind} message exceeds its admission budget`);
     this.name = "SyncBatchSizeError";
   }
+}
+
+/** Fail resource admission before classification can ACK a valid older body. */
+export function assertSyncBatchAdmission(body: unknown): void {
+  const message = body as { lane?: unknown; families?: unknown } | null;
+  if (!message || message.lane !== "chain-detail") return;
+  const families = message.families;
+  if (!families || typeof families !== "object" || Array.isArray(families))
+    return;
+  let rows = 0;
+  for (const [name, values] of Object.entries(families)) {
+    if (name !== "blockRows" && Array.isArray(values)) rows += values.length;
+  }
+  if (rows > SYNC_BATCH_MAX_ROWS) throw new SyncBatchSizeError("rows");
 }
 
 /**
@@ -119,6 +108,7 @@ export async function compressSyncBatchMessage(
   message: unknown,
   maxBytes: number,
 ): Promise<Uint8Array> {
+  assertSyncBatchAdmission(message);
   const json = JSON.stringify(message);
   const raw = new TextEncoder().encode(json);
   if (raw.length > SYNC_BATCH_MAX_DECODED_BYTES)

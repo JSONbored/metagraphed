@@ -581,6 +581,7 @@ import {
 } from "../src/dead-letter.ts";
 import type { PassTallyInput } from "../src/pass-completeness.ts";
 import {
+  assertSyncBatchAdmission,
   compressSyncBatchMessage,
   decompressSyncBatchMessage,
   isCompressedSyncBatchBody,
@@ -10094,6 +10095,7 @@ export default {
         body = isCompressedSyncBatchBody(message.body)
           ? await decompressSyncBatchMessage(message.body)
           : message.body;
+        assertSyncBatchAdmission(body);
       } catch (err) {
         console.error("sync-batches: decode admission failed:", err);
         await captureDataApiError(err, "sync-batches/decode", env);
