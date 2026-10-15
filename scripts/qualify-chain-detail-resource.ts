@@ -1069,7 +1069,7 @@ try {
               native_limits: await nativeLimits(),
             };
             await save();
-            report.http_verification_api_heap = await cdp.request(
+            report.http_verification_api_heap = await cdp!.request(
               "Runtime.getHeapUsage",
             );
             await save();
