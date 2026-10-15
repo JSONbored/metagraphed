@@ -204,7 +204,6 @@ readers use the coherent payload snapshot described above.
 
 ```
 
-
 ## Separate-process HTTP diagnostic
 
 The existing Validate workflow has an opt-in `resource_separate_http_phases`

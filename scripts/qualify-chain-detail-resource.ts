@@ -740,32 +740,30 @@ try {
     // native strong-reference release otherwise depends on Node finalization.
     // This is a local fixture only; the production entry and writer are intact.
     const oracleOptions = {
-                name: "chain-detail-oracle",
-                modules: true,
-                compatibilityDate: "2026-06-06",
-                d1Databases: { D1_STATE: "D1_STATE" },
-                outboundService: { network: { allow: [] } },
-                script: `export default { async fetch(request, env) {
+      name: "chain-detail-oracle",
+      modules: true,
+      compatibilityDate: "2026-06-06",
+      d1Databases: { D1_STATE: "D1_STATE" },
+      outboundService: { network: { allow: [] } },
+      script: `export default { async fetch(request, env) {
           const raw = await request.text();
           if (new TextEncoder().encode(raw).length > 2097152) return new Response("oracle request bound", {status:413});
           const { sql, values } = JSON.parse(raw);
           if (typeof sql !== "string" || !Array.isArray(values) || values.length > 100) return new Response("oracle shape", {status:400});
           return Response.json(await env.D1_STATE.prepare(sql).bind(...values).all());
         }};`,
-              };
+    };
     const persistence = path.join(temporary, "d1", shape);
-    const createApplication = () => new Miniflare(
-      nativeOracle
-        ? {
-            inspectorPort: 0,
-            ...(separateHttpPhases ? { resourcePersistencePath: persistence } : {}),
-            workers: [
-              apiOptions,
-              oracleOptions,
-            ],
-          }
-        : apiOptions,
-    );
+    const createApplication = () =>
+      new Miniflare(
+        nativeOracle
+          ? {
+              inspectorPort: 0,
+              ...(separateHttpPhases ? { resourcePersistencePath: persistence } : {}),
+              workers: [apiOptions, oracleOptions],
+            }
+          : apiOptions,
+      );
     let runtime = createApplication();
     let cdp: Awaited<ReturnType<typeof inspector>> | undefined;
     const helpers: Array<{
@@ -1124,7 +1122,8 @@ try {
               final_native_limits: report.http_post_response_limits,
               final_process: report.http_post_response_process,
               response_receipt: report.http_response_receipt,
-              persisted_database: "same synthetic D1 id and private temporary persistence directory",
+              persisted_database:
+                "same synthetic D1 id and private temporary persistence directory",
               application_disposed_before_verification: false,
             };
             await save();
@@ -1251,13 +1250,17 @@ try {
             after: separateHttpPhases
               ? report.http_post_response_api_heap
               : await cdp!.request("Runtime.getHeapUsage"),
-            application_phase: separateHttpPhases ? report.http_application_phase : undefined,
-            verifier_phase: separateHttpPhases ? {
-              ...report.http_verifier_phase as object,
-              final_process: await processMemory(),
-              helper_heaps: await helperHeaps(),
-              persisted_census_and_hashes_verified: true,
-            } : undefined,
+            application_phase: separateHttpPhases
+              ? report.http_application_phase
+              : undefined,
+            verifier_phase: separateHttpPhases
+              ? {
+                  ...(report.http_verifier_phase as object),
+                  final_process: await processMemory(),
+                  helper_heaps: await helperHeaps(),
+                  persisted_census_and_hashes_verified: true,
+                }
+              : undefined,
             process_samples: processSamples,
             native_limits: await nativeLimits(),
             true_peak_qualified: false,
