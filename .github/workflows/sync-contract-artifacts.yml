@@ -40,6 +40,11 @@ on:
         type: boolean
         default: false
 
+      dependency_security_fix:
+        description: "Prepare compatible npm security lock changes as an artifact (requires prepare_only)"
+        type: boolean
+        default: false
+
 permissions:
   contents: read
 
@@ -70,6 +75,29 @@ jobs:
         with:
           node-version: 22.23.2
           cache: npm
+
+      - name: Prepare compatible dependency security lock
+        if: inputs.prepare_only == true && inputs.dependency_security_fix == true
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/dependency-security"
+          git rev-parse HEAD > "$RUNNER_TEMP/dependency-security/source-head.txt"
+          audit_status=0
+          npm audit --omit=dev --json > "$RUNNER_TEMP/dependency-security/before.json" || audit_status=$?
+          test "$audit_status" -le 1
+          npm audit fix --package-lock-only --ignore-scripts --omit=dev
+          npm audit --omit=dev --json > "$RUNNER_TEMP/dependency-security/after.json"
+          cp package.json package-lock.json "$RUNNER_TEMP/dependency-security/"
+          git diff -- package.json package-lock.json > "$RUNNER_TEMP/dependency-security/dependency.patch"
+
+      - name: Retain dependency preparation evidence
+        if: always() && inputs.prepare_only == true && inputs.dependency_security_fix == true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dependency-security
+          path: ${{ runner.temp }}/dependency-security
+          retention-days: 7
+          if-no-files-found: error
 
       - name: Install dependencies
         run: npm ci
