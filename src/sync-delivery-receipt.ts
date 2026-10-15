@@ -45,6 +45,10 @@ export function syncDeliveryBytes(value: unknown): Buffer {
   };
   if (typeof value === "string") {
     const bytes = Buffer.from(value, "utf8");
+    // Rust strings are valid UTF8. Reject lone JS surrogates rather than hash
+    // their replacement character as if it were the original payload.
+    if (bytes.toString("utf8") !== value)
+      throw new TypeError("Delivery strings must be valid Unicode");
     return Buffer.concat([length("s", bytes.length), bytes]);
   }
   if (Array.isArray(value))

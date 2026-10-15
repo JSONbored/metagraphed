@@ -56,6 +56,8 @@ test("canonical encoding matches Rust golden vectors and exact quantity strings"
   assert.throws(() => syncDeliveryBytes(Infinity));
   assert.throws(() => syncDeliveryBytes(1n));
   assert.throws(() => syncDeliveryBytes({ "not-column": 1 }));
+  assert.throws(() => syncDeliveryBytes("\ud800"), /Unicode/);
+  assert.throws(() => syncDeliveryBytes("\udfff"), /Unicode/);
   assert.throws(() => syncDeliveryKey("unknown", {}));
   assert.throws(() => syncDeliveryKey("account-balances", {}));
   assert.deepEqual(syncDeliveryBytes(undefined), syncDeliveryBytes(null));
