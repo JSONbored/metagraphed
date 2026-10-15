@@ -294,7 +294,8 @@ function candidateStatements(result: SweepResult): ProducerStatement[] {
 /**
  * Persist one complete pass in one transaction. A candidate failure must not
  * leave a fresh sweep receipt with only a prefix of its observations stored.
- * D1 submits the batch once and updates both export revisions in that commit.
+ * D1 submits the batch once. Any configured export revisions advance in that
+ * commit; attribution tables are outside the current export allowlist.
  *
  * ON CONFLICT DO UPDATE, never INSERT OR REPLACE: the latter is SQLite's
  * spelling and Postgres rejects it outright, which is how every write in the
