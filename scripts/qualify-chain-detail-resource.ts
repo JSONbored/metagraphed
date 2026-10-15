@@ -872,7 +872,10 @@ try {
           title: target.title,
           client: await inspector(target.webSocketDebuggerUrl),
         });
-      return cdp?.request("Runtime.getIsolateId");
+      return {
+        client: cdp,
+        isolate: await cdp?.request("Runtime.getIsolateId"),
+      };
     }
     async function stopRuntime() {
       cdp?.close();
@@ -922,7 +925,9 @@ try {
           await db.prepare(statement).run();
       }
       let worker = await runtime.getWorker();
-      let isolate = await attachInspectors(true);
+      const attached = await attachInspectors(true);
+      cdp = attached.client;
+      let isolate = attached.isolate;
       assert.ok(cdp);
       if (cpuProfiles) {
         await cdp.request("Profiler.enable");
@@ -1266,7 +1271,9 @@ try {
             runtime = createApplication();
             db = await verificationDb();
             worker = await runtime.getWorker();
-            isolate = await attachInspectors(true);
+            const attached = await attachInspectors(true);
+            cdp = attached.client;
+            isolate = attached.isolate;
           }
         }
         continue;
