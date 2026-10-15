@@ -1355,7 +1355,9 @@ test("lossless neurons read the actual preexisting view semantics, not the optim
   assert.notEqual(changed, original);
   await db.batch([
     db
-      .prepare(`INSERT INTO neurons_documents VALUES(65534,'',0,1,jsonb(?))`)
+      .prepare(
+        `INSERT INTO neurons_documents VALUES(65534,'',0,1790090000000,jsonb(?))`,
+      )
       .bind(JSON.stringify({ 0: { rank: 0.25 } })),
     db.prepare("INSERT INTO neurons_members VALUES(65534,0,'codec','owner',0)"),
   ]);

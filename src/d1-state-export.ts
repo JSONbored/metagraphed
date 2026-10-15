@@ -157,7 +157,7 @@ export async function handleD1StateExport(
     const filter =
       table === "subnet_lifecycle" ? " WHERE _invalidated_at IS NULL" : "";
     const metadata = lossless
-      ? await db.batch([
+      ? await db.batch<ExportRow>([
           schemaStatement,
           definitions,
           revisionStatement,
@@ -376,6 +376,17 @@ export async function handleD1StateExport(
     const effectiveKeys = lossless
       ? `,json_array(${plan.keys.map((key) => losslessCell(key)).join(",")}) AS _lossless_keys`
       : "";
+    // ORDER BY an unqualified name would select its encoded output alias.
+    // Page by the original SQLite keys, including its nullable-key expression.
+    const order = lossless
+      ? plan.keys
+          .map((key) =>
+            key === "coalesce(netuid,-1)"
+              ? `coalesce(${quote(table)}.netuid,-1)`
+              : `${quote(table)}.${quote(key)}`,
+          )
+          .join(",")
+      : plan.keys.join(",");
     const text = optimizedNeurons
       ? `WITH page AS MATERIALIZED (
          SELECT m.netuid,m.uid,m.hotkey,m.coldkey,
@@ -385,7 +396,7 @@ export async function handleD1StateExport(
          ${input.cursor ? "WHERE (m.netuid,m.uid) > (?,?)" : ""}
          ORDER BY m.netuid,m.uid LIMIT 2001)
          SELECT ${projection},${cursorSql}${effectiveKeys} FROM page ORDER BY netuid,uid`
-      : `SELECT ${projection},${cursorSql}${effectiveKeys} FROM ${quote(table)} ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY ${plan.keys.join(",")} LIMIT 2001`;
+      : `SELECT ${projection},${cursorSql}${effectiveKeys} FROM ${quote(table)} ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY ${order} LIMIT 2001`;
     const statement = db.prepare(text).bind(...values);
     const results = await db.batch<ExportRow>([
       revisionStatement,
