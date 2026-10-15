@@ -25,6 +25,7 @@ import {
 } from "../src/sync-batch-compress.ts";
 
 const cpuProfiles = process.env.CHAIN_DETAIL_RESOURCE_CPU_PROFILES !== "false";
+const nativeOracle = process.env.CHAIN_DETAIL_RESOURCE_NATIVE_ORACLE === "true";
 const output = path.resolve("reports/chain-detail-resource");
 await mkdir(output, { recursive: true });
 const temporary = await mkdtemp(path.join(tmpdir(), "chain-detail-resource-"));
@@ -35,6 +36,10 @@ const report: Record<string, unknown> = {
   status: "incomplete",
   driver_exec_argv: process.execArgv,
   cpu_profiles_enabled: cpuProfiles,
+  database_verifier: nativeOracle
+    ? "native-fixture-worker"
+    : "node-binding-proxy",
+
   scope: "synthetic native Workerd, actual dry-run data-api bundle and D1",
   exclusions: [
     "true synchronous heap peak",
@@ -457,7 +462,7 @@ try {
     const message = payload(shape);
     const decoded = Buffer.byteLength(JSON.stringify(message));
     assert.ok(decoded <= SYNC_BATCH_MAX_DECODED_BYTES);
-    const runtime = new Miniflare({
+    const apiOptions = {
       name: "chain-detail-resource",
       modules: nativeModules,
       modulesRoot: temporary,
@@ -475,7 +480,34 @@ try {
       },
       // No network service, credentials, external store or live queue binding.
       outboundService: { network: { allow: [] } },
-    });
+    };
+    // The optional oracle runs the SAME SQL through an ordinary native binding.
+    // It avoids thousands of temporary Node prepared-statement proxies whose
+    // native strong-reference release otherwise depends on Node finalization.
+    // This is a local fixture only; the production entry and writer are intact.
+    const runtime = new Miniflare(
+      nativeOracle
+        ? {
+            workers: [
+              apiOptions,
+              {
+                name: "chain-detail-oracle",
+                modules: true,
+                compatibilityDate: "2026-06-06",
+                d1Databases: { D1_STATE: "D1_STATE" },
+                outboundService: { network: { allow: [] } },
+                script: `export default { async fetch(request, env) {
+          const raw = await request.text();
+          if (new TextEncoder().encode(raw).length > 2097152) return new Response("oracle request bound", {status:413});
+          const { sql, values } = JSON.parse(raw);
+          if (typeof sql !== "string" || !Array.isArray(values) || values.length > 100) return new Response("oracle shape", {status:400});
+          return Response.json(await env.D1_STATE.prepare(sql).bind(...values).all());
+        }};`,
+              },
+            ],
+          }
+        : apiOptions,
+    );
     let cdp: Awaited<ReturnType<typeof inspector>> | undefined;
     const helpers: Array<{
       id: string;
@@ -495,7 +527,46 @@ try {
       return results;
     };
     try {
-      const db = await deadline(runtime.getD1Database("D1_STATE"), 30_000);
+      const oracle = nativeOracle
+        ? await deadline(runtime.getWorker("chain-detail-oracle"), 30_000)
+        : undefined;
+      const db = oracle
+        ? ({
+            prepare(sql: string) {
+              let values: unknown[] = [];
+              const statement = {
+                bind(...bindings: unknown[]) {
+                  values = bindings;
+                  return statement;
+                },
+                async all() {
+                  const response = await deadline(
+                    oracle.fetch("https://oracle/query", {
+                      method: "POST",
+                      body: JSON.stringify({ sql, values }),
+                    }),
+                    30_000,
+                  );
+                  assert.equal(
+                    response.status,
+                    200,
+                    "native oracle query must succeed",
+                  );
+                  return response.json() as Promise<D1Result>;
+                },
+                async run() {
+                  return statement.all();
+                },
+                async first(field?: string) {
+                  const result = await statement.all();
+                  const row = result.results[0] ?? null;
+                  return field === undefined ? row : (row?.[field] ?? null);
+                },
+              };
+              return statement;
+            },
+          } as unknown as D1Database)
+        : await deadline(runtime.getD1Database("D1_STATE"), 30_000);
       for (const migration of [
         "0001_lane_health.sql",
         "0002_lane_health_current.sql",
@@ -539,7 +610,10 @@ try {
       );
       cdp = await inspector(subjects[0].webSocketDebuggerUrl);
       const auxiliaryTargets = targets.filter(
-        (target) => target.id.startsWith("d1:") || target.id === "core:entry",
+        (target) =>
+          target.id.startsWith("d1:") ||
+          target.id === "core:entry" ||
+          target.id === "core:user:chain-detail-oracle",
       );
       assert.ok(auxiliaryTargets.length <= 4, "finite native helper census");
       for (const target of auxiliaryTargets)
