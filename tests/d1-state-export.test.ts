@@ -45,6 +45,9 @@ async function get(body: unknown, overrides: Record<string, unknown> = {}) {
     revision: number;
     day_revisions?: boolean;
     next_cursor: (string | number)[] | null;
+    row_count?: number;
+    projection_sha256?: string;
+    row_keys?: { storage: string; value: string | null }[][];
   }>();
 }
 beforeAll(async () => {
@@ -79,6 +82,27 @@ test("all 34 archive schemas and empty exports use native D1 with logical types"
     assert.deepEqual(rows.rows, []);
     assert.equal(rows.next_cursor, null);
     assert.equal(rows.revision, 0);
+    const exactSchema = await get({
+      table,
+      kind: "schema",
+      encoding: "lossless-v1",
+    });
+    assert.equal(exactSchema.row_count, 0);
+    assert.equal(exactSchema.revision, 0);
+    assert.match(exactSchema.projection_sha256!, /^[0-9a-f]{64}$/);
+    assert.deepEqual(
+      exactSchema.columns.map((c) => c.name),
+      names,
+    );
+    const exactRows = await get({
+      table,
+      kind: "rows",
+      columns: names,
+      encoding: "lossless-v1",
+      revision: exactSchema.revision,
+    });
+    assert.deepEqual(exactRows.rows, []);
+    assert.deepEqual(exactRows.row_keys, []);
   }
   const types = async (table: string) =>
     (await get({ table, kind: "schema" })).columns;
@@ -274,6 +298,39 @@ test("wide neuron export pages preserve view values, membership, cursors and rev
       revision: firstPage.revision,
     });
     assert.equal(secondPage.next_cursor, null);
+    const exactSchema = await get({
+      table: "neurons",
+      kind: "schema",
+      encoding: "lossless-v1",
+    });
+    const exactFields = exactSchema.columns.map((c) => c.name);
+    let exactCursor: (string | number)[] | null | undefined;
+    const exactRows: unknown[][] = [];
+    do {
+      const page = await get({
+        table: "neurons",
+        kind: "rows",
+        columns: exactFields,
+        encoding: "lossless-v1",
+        revision: exactSchema.revision,
+        ...(exactCursor ? { cursor: exactCursor } : {}),
+      });
+      exactRows.push(...page.rows);
+      exactCursor = page.next_cursor;
+    } while (exactCursor);
+    assert.equal(exactRows.length, baseline.length);
+    assert.equal(exactSchema.row_count, baseline.length);
+    assert.deepEqual(
+      exactRows.map((row) =>
+        row.map((raw) => {
+          const cell = raw as { storage: string; value: string | null };
+          return ["integer", "real"].includes(cell.storage)
+            ? Number(cell.value)
+            : cell.value;
+        }),
+      ),
+      baseline.map((row) => exactFields.map((field) => row[field])),
+    );
     assert.deepEqual(
       [...firstPage.rows, ...secondPage.rows],
       baseline.map((row) => fields.map((field) => row[field])),
@@ -985,4 +1042,351 @@ test("price and lifecycle writers advance export revisions through their native 
     (await get({ table: "subnet_lifecycle", kind: "revision" })).revision,
     1,
   );
+});
+
+test("lossless opt-in matches the shared typed corpus without widening disclosure", async () => {
+  const fixture = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/lossless-state-export-v1.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const table = fixture.table as string;
+  const store = selectedD1Store(env(), [table])!;
+  await store.run("DELETE FROM nominator_positions");
+  for (const row of fixture.rows as {
+    storage: string;
+    value: string | null;
+  }[][])
+    await store.run(
+      "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at,shares,source) VALUES(?,?,CAST(? AS INTEGER),CAST(? AS REAL),CAST(? AS INTEGER),?,?)",
+      row.map((c) => c.value),
+    );
+  const schema = await get({ table, kind: "schema", encoding: "lossless-v1" });
+  assert.deepEqual(schema.columns, fixture.columns);
+  const names = schema.columns.map((c) => c.name);
+  const result = await get({
+    table,
+    kind: "rows",
+    columns: names,
+    encoding: "lossless-v1",
+  });
+  assert.deepEqual(result.rows, fixture.rows);
+  assert.equal(result.next_cursor, null);
+  assert.deepEqual(
+    (result as unknown as { row_keys: unknown }).row_keys,
+    fixture.row_keys,
+  );
+  assert.equal((schema as unknown as { scope: string }).scope, fixture.scope);
+  assert.equal(schema.row_count, fixture.rows.length);
+  const after = await get({
+    table,
+    kind: "rows",
+    columns: names,
+    encoding: "lossless-v1",
+    cursor: ["recovery-2", "hotkey", "2"],
+    revision: result.revision,
+  });
+  assert.deepEqual(after.rows, fixture.rows.slice(3));
+  await store.run(
+    "UPDATE nominator_positions SET shares=x'00FF' WHERE coldkey='recovery-0'",
+  );
+  const blob = await get({
+    table,
+    kind: "rows",
+    columns: names,
+    encoding: "lossless-v1",
+  });
+  assert.deepEqual(blob.rows[0]![5], { storage: "blob", value: "00FF" });
+  for (const table of [
+    "api_keys",
+    "nominator_scan_receipts",
+    "archive_export_revisions",
+  ])
+    assert.equal(
+      (
+        await handleD1StateExport(
+          req({ table, kind: "schema", encoding: "lossless-v1" }),
+          env(),
+        )
+      ).status,
+      400,
+    );
+  // All-null cells remain typed; an empty full projection is still a snapshot.
+  await store.run("DELETE FROM nominator_positions");
+  assert.deepEqual(
+    (
+      await get({
+        table,
+        kind: "rows",
+        columns: names,
+        encoding: "lossless-v1",
+      })
+    ).rows,
+    [],
+  );
+});
+
+test("lossless integer rows and cursors cross two native pages without JS rounding", async () => {
+  const table = "account_identity_history";
+  const store = selectedD1Store(env(), [table])!;
+  await store.run("DELETE FROM account_identity_history");
+  const ids = Array.from({ length: 2002 }, (_, i) =>
+    (9007199254740993n + BigInt(i)).toString(),
+  );
+  await store.run(
+    "INSERT INTO account_identity_history(id,account,observed_at,identity_hash) SELECT CAST(value AS INTEGER),value,CAST(key AS INTEGER),'hash' FROM json_each(?)",
+    [JSON.stringify(ids)],
+  );
+  const columns = (
+    await get({ table, kind: "schema", encoding: "lossless-v1" })
+  ).columns.map((c) => c.name);
+  const base = { table, kind: "rows", columns, encoding: "lossless-v1" };
+  const first = await get(base);
+  assert.deepEqual(first.next_cursor, [ids[1999]]);
+  const last = await get({
+    ...base,
+    cursor: first.next_cursor,
+    revision: first.revision,
+  });
+  assert.deepEqual(
+    [...first.rows, ...last.rows].map((r) => r[0]),
+    ids.map((value) => ({ storage: "integer", value })),
+  );
+  assert.equal(last.next_cursor, null);
+  for (const cursor of [
+    [1],
+    ["01"],
+    ["-0"],
+    ["1.0"],
+    ["9223372036854775808"],
+    ["-9223372036854775809"],
+  ])
+    assert.equal(
+      (
+        await handleD1StateExport(
+          req({ ...base, cursor, revision: first.revision }),
+          env(),
+        )
+      ).status,
+      400,
+    );
+  await store.run(
+    "UPDATE account_identity_history SET name='corrected' WHERE id=CAST(? AS INTEGER)",
+    [ids[0]!],
+  );
+  for (const kind of ["rows", "revision"])
+    assert.equal(
+      (
+        await handleD1StateExport(
+          req({
+            ...base,
+            kind,
+            cursor: kind === "rows" ? first.next_cursor : undefined,
+            revision: first.revision,
+          }),
+          env(),
+        )
+      ).status,
+      409,
+    );
+});
+
+test("lossless exports refuse partial projections, filters and non-finite cells", async () => {
+  const table = "nominator_positions";
+  const columns = (
+    await get({ table, kind: "schema", encoding: "lossless-v1" })
+  ).columns.map((c) => c.name);
+  const base = { table, kind: "rows", columns, encoding: "lossless-v1" };
+  for (const patch of [
+    { columns: columns.slice(1) },
+    { columns: [...columns].reverse() },
+    { day: "2020-01-01" },
+    { watermark: ["id"], since: [0] },
+    { kind: "days" },
+    { revision_scope: "day" },
+  ])
+    assert.equal(
+      (await handleD1StateExport(req({ ...base, ...patch }), env())).status,
+      400,
+    );
+  await db
+    .prepare(
+      "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at) VALUES('infinite','h',1,1e999,1)",
+    )
+    .run();
+  assert.equal((await handleD1StateExport(req(base), env())).status, 503);
+  await db
+    .prepare("DELETE FROM nominator_positions WHERE coldkey='infinite'")
+    .run();
+});
+
+test("lossless effective keys retain nullable cells and schema changes fence an otherwise identical view", async () => {
+  await db
+    .prepare(
+      "INSERT INTO surface_failure_daily(day,netuid,kind,classification,checks,updated_at) VALUES('2040-01-01',NULL,'rpc','unavailable',1,1)",
+    )
+    .run();
+  const table = "surface_failure_daily";
+  const schema = await get({ table, kind: "schema", encoding: "lossless-v1" });
+  const rows = await get({
+    table,
+    kind: "rows",
+    encoding: "lossless-v1",
+    columns: schema.columns.map((c) => c.name),
+    revision: schema.revision,
+  });
+  const index = rows.rows.findIndex(
+    (r) => (r[0] as { value: string }).value === "2040-01-01",
+  );
+  assert.deepEqual(rows.rows[index]![1], { storage: "null", value: null });
+  assert.deepEqual(rows.row_keys![index]![1], {
+    storage: "integer",
+    value: "-1",
+  });
+  const after = await get({
+    table,
+    kind: "rows",
+    encoding: "lossless-v1",
+    columns: schema.columns.map((c) => c.name),
+    revision: schema.revision,
+    cursor: ["2040-01-01", "-1", "rpc", "unavailable"],
+  });
+  assert.deepEqual(after.rows, []);
+  const view = "account_position_daily";
+  const original = await db
+    .prepare("SELECT sql FROM sqlite_schema WHERE name=?")
+    .bind(view)
+    .first<string>("sql");
+  const before = await get({
+    table: view,
+    kind: "schema",
+    encoding: "lossless-v1",
+  });
+  let batches = 0;
+  const proxy = {
+    prepare: db.prepare.bind(db),
+    batch: async <T = unknown>(statements: D1PreparedStatement[]) => {
+      batches++;
+      if (batches === 2) {
+        await db.prepare(`DROP VIEW ${view}`).run();
+        await db.prepare(`${original!.replace(/;$/, "")} WHERE 0`).run();
+      }
+      return db.batch<T>(statements);
+    },
+  };
+  try {
+    assert.equal(
+      (
+        await handleD1StateExport(
+          req({
+            table: view,
+            kind: "rows",
+            encoding: "lossless-v1",
+            columns: before.columns.map((c) => c.name),
+            revision: before.revision,
+          }),
+          { ...env(), D1_STATE: proxy },
+        )
+      ).status,
+      409,
+    );
+    const changed = await get({
+      table: view,
+      kind: "schema",
+      encoding: "lossless-v1",
+    });
+    assert.deepEqual(changed.columns, before.columns);
+    assert.equal(changed.revision, before.revision);
+    assert.notEqual(changed.projection_sha256, before.projection_sha256);
+  } finally {
+    await db.prepare(`DROP VIEW ${view}`).run();
+    await db.prepare(original!).run();
+    await db
+      .prepare("DELETE FROM surface_failure_daily WHERE day='2040-01-01'")
+      .run();
+  }
+});
+
+test("lossless source schema, dependencies and bounded authoritative census must be complete", async () => {
+  for (const defect of ["column", "dependency", "count"]) {
+    const proxy = {
+      prepare: db.prepare.bind(db),
+      batch: async <T = unknown>(statements: D1PreparedStatement[]) => {
+        const results = await db.batch<T>(statements);
+        if (defect === "count")
+          results[3] = {
+            ...results[3]!,
+            results: [{ rows: 2000001 } as unknown as T],
+          };
+        else if (defect === "dependency")
+          results[1] = { ...results[1]!, results: [] };
+        else
+          results[0] = {
+            ...results[0]!,
+            results: results[0]!.results.filter(
+              (r) => (r as { name: string }).name !== "shares",
+            ),
+          };
+        return results;
+      },
+    };
+    assert.equal(
+      (
+        await handleD1StateExport(
+          req({
+            table: "nominator_positions",
+            kind: "schema",
+            encoding: "lossless-v1",
+          }),
+          { ...env(), D1_STATE: proxy },
+        )
+      ).status,
+      defect === "count" ? 413 : 503,
+    );
+  }
+});
+
+test("lossless neurons read the actual preexisting view semantics, not the optimized analytics projection", async () => {
+  const original = await db
+    .prepare("SELECT sql FROM sqlite_schema WHERE name='neurons'")
+    .first<string>("sql");
+  const changed = original!.replace(" AS rank,", "+1 AS rank,");
+  assert.notEqual(changed, original);
+  await db.batch([
+    db
+      .prepare(`INSERT INTO neurons_documents VALUES(65534,'',0,1,jsonb(?))`)
+      .bind(JSON.stringify({ 0: { rank: 0.25 } })),
+    db.prepare("INSERT INTO neurons_members VALUES(65534,0,'codec','owner',0)"),
+  ]);
+  try {
+    await db.prepare("DROP VIEW neurons").run();
+    await db.prepare(changed).run();
+    const schema = await get({
+      table: "neurons",
+      kind: "schema",
+      encoding: "lossless-v1",
+    });
+    const columns = schema.columns.map((c) => c.name);
+    const result = await get({
+      table: "neurons",
+      kind: "rows",
+      columns,
+      encoding: "lossless-v1",
+      revision: schema.revision,
+    });
+    const row = result.rows.find(
+      (r) => (r[0] as { value: string }).value === "65534",
+    )!;
+    assert.deepEqual(row[columns.indexOf("rank")], {
+      storage: "real",
+      value: "1.25",
+    });
+    assert.equal(result.rows.length, schema.row_count);
+  } finally {
+    await db.prepare("DROP VIEW neurons").run();
+    await db.prepare(original!).run();
+    await db.prepare("DELETE FROM neurons_members WHERE netuid=65534").run();
+    await db.prepare("DELETE FROM neurons_documents WHERE netuid=65534").run();
+  }
 });

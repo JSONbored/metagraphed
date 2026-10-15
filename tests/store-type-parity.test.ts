@@ -1,7 +1,10 @@
 // The Neon/lakehouse shape rule, tested without either snapshot (#11043).
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { compare } from "../scripts/validate-store-type-parity.ts";
+import {
+  compare,
+  compareRecovery,
+} from "../scripts/validate-store-type-parity.ts";
 
 const neon = (table: string, column: string, udt: string) => ({
   table,
@@ -15,6 +18,47 @@ const lake = (table: string, column: string, type: string) => ({
 });
 
 describe("store-type parity", () => {
+  test("analytics numeric compatibility cannot certify exact recovery", () => {
+    const source = [
+      { ...neon("positions", "shares", "numeric"), nullable: true },
+    ];
+    const destination = [
+      { ...lake("positions", "shares", "double"), required: false },
+    ];
+    assert.equal(compare(source, destination).narrowed.length, 0);
+    assert.equal(compareRecovery(source, destination).compatible, false);
+  });
+  test("recovery requires every source table, column and explicit nullability", () => {
+    const source = [{ ...neon("t", "amount", "int8"), nullable: true }];
+    assert.equal(
+      compareRecovery(source, [
+        { ...lake("t", "amount", "long"), required: false },
+      ]).compatible,
+      true,
+    );
+    for (const destination of [
+      [],
+      [{ ...lake("t", "amount", "long"), required: true }],
+      [lake("t", "amount", "long")],
+      Array(2).fill({ ...lake("t", "amount", "long"), required: false }),
+    ])
+      assert.equal(compareRecovery(source, destination).compatible, false);
+    assert.equal(
+      compareRecovery(
+        [neon("t", "amount", "int8")],
+        [{ ...lake("t", "amount", "long"), required: false }],
+      ).compatible,
+      false,
+    );
+    assert.equal(compareRecovery([], []).compatible, false);
+    assert.equal(
+      compareRecovery(
+        [...source, ...source],
+        [{ ...lake("t", "amount", "long"), required: false }],
+      ).compatible,
+      false,
+    );
+  });
   test("WIDENING passes -- int4 fits in long, and loses nothing", () => {
     const r = compare([neon("t", "c", "int4")], [lake("t", "c", "long")]);
     assert.deepEqual(r.narrowed, []);
