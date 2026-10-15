@@ -1112,14 +1112,12 @@ async function handleChainDetailSync(
     } catch (err) {
       // No enqueue occurred. One indivisible block can use this route's
       // existing atomic D1 writer; other failures keep the producer's retry.
-      if (
-        !(
-          err instanceof SyncBatchSizeError &&
-          err.kind === "rows" &&
-          batch.rows.blockRows.length === 1 &&
-          selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)
-        )
-      ) {
+      if (!(
+        err instanceof SyncBatchSizeError &&
+        err.kind === "rows" &&
+        batch.rows.blockRows.length === 1 &&
+        selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)
+      )) {
         console.error("data-api chain-detail enqueue failed:", err);
         await captureDataApiError(err, "chain-detail-sync-queue", env);
         return writeJson({ error: "enqueue failed" }, 502);
