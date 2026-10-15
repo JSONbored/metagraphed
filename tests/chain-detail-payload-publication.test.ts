@@ -122,12 +122,22 @@ function fixture(quota = 4 * 1024 * 1024) {
         .prepare("SELECT used_encoded_bytes n FROM chain_detail_payload_budget")
         .get()!.n,
     );
+  // Node22's experimental SQLite text conversion truncates a NUL-prefixed
+  // token. Read its actual stored bytes so this fixture matches D1's lossless
+  // string binding instead of silently passing an empty token to hydration.
   const rows = () =>
     sql
       .prepare(
-        "SELECT block_number,call_args FROM chain_detail_extrinsics ORDER BY block_number",
+        "SELECT block_number,CAST(call_args AS BLOB) call_args FROM chain_detail_extrinsics ORDER BY block_number",
       )
-      .all();
+      .all()
+      .map((row) => ({
+        ...row,
+        call_args:
+          row.call_args === null
+            ? null
+            : Buffer.from(row.call_args as Uint8Array).toString("utf8"),
+      }));
   return { sql, db, env, store, count, used, rows };
 }
 afterEach(() => {
