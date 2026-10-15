@@ -39,6 +39,7 @@ import {
   type LaneHealthDb,
   type LaneVerdict,
 } from "./lane-health.ts";
+import { classifyLaneHealthWriteReason } from "./lane-health-write-diagnostics.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 
 /**
@@ -197,6 +198,8 @@ export interface NeonWriteResult {
   rows: number;
   statements: number;
   reason?: string;
+  /** A failed acknowledgement may follow commit; attempted rows are not proof. */
+  confirmation?: "unknown";
 }
 
 /**
@@ -666,6 +669,9 @@ export async function recordNeonWriteVerdict(
     // (every call site awaits it bare), which is exactly why the value has to
     // be right now: the first one that does will be reading it as health.
     return true;
+  // Driver reasons can contain submitted values or connection details. This
+  // shared sink feeds both REST and MCP self-health; persist fixed classes only.
+  const reason = classifyLaneHealthWriteReason(result.reason);
   const written = await recordLaneVerdict(db, {
     lane: key,
     verdict,
@@ -679,7 +685,9 @@ export async function recordNeonWriteVerdict(
         buffered
         ? `${result.rows} row(s) enqueued in ${result.statements} statement(s)`
         : `${result.rows} row(s) in ${result.statements} statement(s)`
-      : `${result.rows} row(s) written before failure: ${result.reason ?? "unknown"}`,
+      : result.confirmation === "unknown"
+        ? `write not confirmed; commit state unknown: ${reason}`
+        : `${result.rows} row(s) written before failure: ${reason}`,
     checked_at: nowMs,
   });
   // Only a row that LANDED may suppress the next one. Recording the attempt

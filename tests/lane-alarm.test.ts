@@ -625,10 +625,9 @@ describe("laneAlarmPlan", () => {
     };
   }
 
-  test("a further loss is reported into the issue that is already open", () => {
-    // The row is newer than the last thing written to the issue, and a
-    // dead-letter lane only writes a row when a message is lost -- so this IS
-    // a loss nobody has been told about.
+  test("a newer delivery observation is reported into the issue that is already open", () => {
+    // The row is newer than the last thing written to the issue. The
+    // observation may be a redelivery. It still belongs in this incident.
     const plan = laneAlarmPlan(dlqBase());
     assert.deepEqual(
       plan.update.map((u) => ({ lane: u.lane, issue: u.issue })),
@@ -683,7 +682,7 @@ describe("laneAlarmPlan", () => {
 });
 
 describe("laneAlarmLossComment", () => {
-  test("names the loss, and why it is a comment rather than a new issue", () => {
+  test("names the delivery observation without claiming a further loss", () => {
     const body = laneAlarmLossComment(
       "probe-jobs-dlq",
       record({
@@ -692,21 +691,37 @@ describe("laneAlarmLossComment", () => {
         checked_at: NOW,
       }),
     );
-    assert.match(body, /`probe-jobs-dlq` lost more at /);
+    assert.match(
+      body,
+      /`probe-jobs-dlq` reported a dead-letter delivery observation at /,
+    );
     assert.ok(body.includes(new Date(NOW).toISOString()));
     assert.match(body, /sn-51/);
     // The reader has to be told this is not the alarm re-firing for the same
     // thing, or these get muted as duplicates.
     assert.match(body, /still open/);
     assert.match(body, /never reports `ok`/);
+    assert.match(body, /may repeat previously seen messages/);
+    assert.match(
+      body,
+      /does not establish unique-message counts, durable preservation or confirmed permanent loss/,
+    );
+    assert.doesNotMatch(body, /lost more|nothing un-loses/);
   });
 
-  test("a loss with no detail still reports the loss", () => {
+  test("an observation with no detail still reports unknown preservation and loss", () => {
     const body = laneAlarmLossComment(
       "sync-batches-dlq",
       record({ lane: "sync-batches-dlq", detail: null, checked_at: NOW }),
     );
-    assert.match(body, /`sync-batches-dlq` lost more at /);
+    assert.match(
+      body,
+      /`sync-batches-dlq` reported a dead-letter delivery observation at /,
+    );
+    assert.match(
+      body,
+      /does not establish unique-message counts, durable preservation or confirmed permanent loss/,
+    );
     assert.ok(!body.includes("``"));
   });
 });
@@ -751,7 +766,7 @@ describe("laneAlarmIssueBody", () => {
 
   // THE FIRST ISSUE THIS ALARM EVER FILED (#11251) said all three of these
   // things about a dead-letter lane, and all three were wrong.
-  test("a dead-letter body counts losses, drops the cadence, and promises nothing", () => {
+  test("a dead-letter body counts retained observations and preserves incident acknowledgement", () => {
     const body = laneAlarmIssueBody(
       alarm({
         lane: "probe-jobs-dlq",
@@ -761,9 +776,17 @@ describe("laneAlarmIssueBody", () => {
       }),
       NOW,
     );
-    // Rows are LOSSES, not one condition observed 89 times.
-    assert.match(body, /dead-lettered \*\*89 time\(s\)\*\*/);
-    assert.match(body, /a count of losses, not of ticks/);
+    assert.match(body, /\*\*89 retained dead-letter observation\(s\)\*\*/);
+    assert.match(body, /not unique messages or confirmed permanent losses/);
+    assert.match(
+      body,
+      /preservation and acknowledgement outcomes are not recorded here/,
+    );
+    assert.match(body, /retained observations since/);
+    assert.doesNotMatch(
+      body,
+      /count of losses|were acked|since the first loss/,
+    );
     assert.doesNotMatch(body, /on every tick/);
     // The cadence belongs to the producer and says nothing about when a
     // message was lost -- the misreading #10809 measured, in the other
@@ -771,7 +794,11 @@ describe("laneAlarmIssueBody", () => {
     assert.doesNotMatch(body, /observed cadence/);
     // And it must not promise a close that cannot happen.
     assert.match(body, /will NOT close itself/);
-    assert.match(body, /further losses arrive here as\ncomments/);
+    assert.match(body, /further observations arrive here as comments/);
+    assert.match(
+      body,
+      /Closing acknowledges the incident; it does not prove payload recovery/,
+    );
     assert.doesNotMatch(body, /Closed automatically/);
   });
 
@@ -1526,7 +1553,7 @@ describe("runLaneAlarm", () => {
   // `ok`, so its issue never closes -- and while it was open the lane was
   // dropped from `fresh`, which meant the first lost message was filed and
   // every one after it was reported NOWHERE. Both channels get it now.
-  test("a further dead-letter loss comments on the open issue, and records", async () => {
+  test("a further dead-letter observation comments on the open issue, and records", async () => {
     const db = healthDb({
       latest: [
         {
@@ -1543,14 +1570,14 @@ describe("runLaneAlarm", () => {
       // Last written to an hour ago; the row above landed since.
       "probe-jobs-dlq": { issue: 55, updatedAt: NOW - HOUR },
     });
-    const seen: Array<{ errorCode?: string }> = [];
+    const seen: Array<{ errorCode?: string; error?: Error }> = [];
     const out = await runLaneAlarm(
       { ...TOKEN, ...db.env },
       {
         github,
         now: () => NOW,
         recordException: async (_env, payload) => {
-          seen.push(payload as { errorCode?: string });
+          seen.push(payload as { errorCode?: string; error?: Error });
           return true;
         },
       },
@@ -1560,15 +1587,24 @@ describe("runLaneAlarm", () => {
     assert.equal(github.commented.length, 1);
     assert.equal(github.commented[0].issue, 55);
     assert.match(github.commented[0].body, /sn-51/);
+    assert.match(
+      github.commented[0].body,
+      /reported a dead-letter delivery observation/,
+    );
+    assert.doesNotMatch(github.commented[0].body, /lost more/);
     // NOT a second issue, and not a close either.
     assert.deepEqual(github.opened, []);
     assert.deepEqual(github.closed, []);
-    // Its own code: "more was lost on a queue already alarming" is a different
-    // event from the first loss, and must not fingerprint as a repeat of it.
+    // Retain the legacy analytics identity while correcting its message.
     assert.deepEqual(
       seen.map((p) => p.errorCode),
       ["lane_lost_again"],
     );
+    assert.match(
+      seen[0].error!.message,
+      /reported another dead-letter delivery observation/,
+    );
+    assert.doesNotMatch(seen[0].error!.message, /lost more/);
     // And the reader's own verdict counts it, so a tick that only commented
     // does not read as a tick with nothing to report.
     assert.deepEqual(db.written[0].values, [

@@ -265,8 +265,16 @@ describe("poller-lane-health-sync", () => {
     // stopped landing when D1 went away -- silently, because recordLaneVerdict
     // swallows its failures by design.
     const res = await send("lane_health");
-    assert.equal(res.status, 200);
-    const body = (await res.json()) as { stores?: string[] };
+    // The bound runner is deliberately unreachable. Reaching it must now
+    // report a failed persistence acknowledgement, rather than HTTP200/zero.
+    assert.equal(res.status, 503);
+    const body = (await res.json()) as {
+      stores?: string[];
+      ok: boolean;
+      lane_health_written: number;
+    };
+    assert.equal(body.ok, false);
+    assert.equal(body.lane_health_written, 0);
     assert.deepEqual(body.stores, ["neon"]);
   });
 

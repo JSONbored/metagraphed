@@ -30,6 +30,9 @@ export interface BurnHistoryDb {
 }
 
 export const SUBNET_BURN_HISTORY_TABLE = "subnet_burn_history";
+// Qualified against 396-row captures, with room to catch up on expiry.
+// This bounds direct work, not a guarantee of capacity at any subnet count.
+export const BURN_HISTORY_PRUNE_MAX_ROWS = 2000;
 
 /** Windows the serving route accepts, and the default. */
 export const BURN_HISTORY_WINDOWS: Record<string, number> = {
@@ -76,6 +79,7 @@ export async function captureSubnetBurnHistory(
 ): Promise<{
   ok: boolean;
   captured: number;
+  /** One bounded sweep completed; expired backlog may remain. */
   pruned: boolean;
   reason?: string;
 }> {
@@ -121,7 +125,9 @@ export async function captureSubnetBurnHistory(
   }
 
   // Rows the batch reports as actually written; see the note at the assignment.
-  let written: number;
+  let written = 0;
+  let writeError: unknown;
+  let writeFailed = false;
   try {
     // ON CONFLICT DO UPDATE, not INSERT OR REPLACE (#10172).
     //
@@ -157,27 +163,34 @@ export async function captureSubnetBurnHistory(
     // not get this lane.
     written = batched.reduce((sum, r) => sum + r.changes, 0);
   } catch (error) {
-    return {
-      ok: false,
-      captured: 0,
-      pruned: false,
-      reason: `write_failed: ${String((error as Error)?.message ?? error)}`,
-    };
+    writeFailed = true;
+    writeError = error;
   }
 
-  // Pruned in its own try: the prices are already committed, so a failed sweep must
-  // not report the capture as failed. The next tick retries it.
+  // Independent of capture success: a full store must still attempt expiry.
+  // One limited key selection bounds direct deletions, matching receipt cleanup.
+  // Missing/empty upstream reads above still do no housekeeping or replay.
   let pruned = false;
   try {
     await db.run(
-      `DELETE FROM ${SUBNET_BURN_HISTORY_TABLE} WHERE observed_at < ?`,
-      [observedAt - BURN_HISTORY_RETENTION_MS],
+      `DELETE FROM ${SUBNET_BURN_HISTORY_TABLE} WHERE (netuid, observed_at) IN (
+        SELECT netuid, observed_at FROM ${SUBNET_BURN_HISTORY_TABLE}
+        WHERE observed_at < ? ORDER BY observed_at LIMIT ?)`,
+      [observedAt - BURN_HISTORY_RETENTION_MS, BURN_HISTORY_PRUNE_MAX_ROWS],
     );
     pruned = true;
   } catch {
     // Retention is housekeeping; the series is what matters.
   }
 
+  if (writeFailed) {
+    return {
+      ok: false,
+      captured: 0,
+      pruned,
+      reason: `write_failed: ${String((writeError as Error)?.message ?? writeError)}`,
+    };
+  }
   return { ok: true, captured: written, pruned };
 }
 

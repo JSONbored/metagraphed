@@ -15,7 +15,7 @@ const postgresTierFallbackGeneration = createRequestCounter(
   "workers/data-api-tier.ts",
 );
 
-function markDataApiTierFallback(): null {
+export function markDataApiTierFallback(): null {
   postgresTierFallbackGeneration.increment();
   return null;
 }

@@ -1,4 +1,6 @@
 import { webhookDeliveryStatus } from "./webhook-delivery-status.ts";
+import { loadSubnetSnapshotCardsTier } from "./subnet-snapshot-cards-tier.ts";
+import { loadValidatorDetailBatchTier } from "./validator-detail-batch-tier.ts";
 import { withRequestCounters } from "./request-counters.ts";
 import { requestTimings, withOperationTiming } from "./request-timing.ts";
 import { loadSubnetStatus } from "./subnet-status-read.ts";
@@ -6618,45 +6620,31 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         10,
         1000,
       );
-      const [hyperparams, concentration, performance, validators, events] =
-        await Promise.all([
-          tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/hyperparameters`),
-            "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
-          ).then((data) => data ?? buildSubnetHyperparams(null, netuid)),
-          tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/concentration`),
-            "METAGRAPH_NEURONS_SOURCE",
-          ).then((data) => data ?? buildConcentration([], netuid)),
-          tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/performance`),
-            "METAGRAPH_NEURONS_SOURCE",
-          ).then((data) => data ?? buildSubnetPerformance([], netuid)),
-          tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/validators`),
-            "METAGRAPH_NEURONS_SOURCE",
-          ).then((data) => data ?? buildSubnetValidators([], netuid)),
-          // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
-          // in wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so the
-          // promise this composer awaited resolved to null on every call -- the
-          // composer's own cold rung has been the answer.
-          //
-          // THE COLD RUNG, via the composer that owns the ladder (#10320). This
-          // card fell straight from the retired tier to `buildSubnetEvents([])`,
-          // so the snapshot served `event_count: 0` while its own standalone twin
-          // served ten rows for the same subnet in the same minute -- verified
-          // live on SN64, 2026-08-09. A card was wired and its embedded copy was
-          // not, which is precisely the class the widened tier-cascade gate now
-          // catches on all three surfaces.
-          answerSubnetEvents(ctx.env, netuid, null, {
-            limit: recentEventsLimit,
-            offset: 0,
-          }),
-        ]);
+      const [hyperparams, cards, events] = await Promise.all([
+        tryDataApiTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/hyperparameters`),
+          "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+        ).then((data) => data ?? buildSubnetHyperparams(null, netuid)),
+        loadSubnetSnapshotCardsTier(ctx.env, netuid),
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
+        // in wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so the
+        // promise this composer awaited resolved to null on every call -- the
+        // composer's own cold rung has been the answer.
+        //
+        // THE COLD RUNG, via the composer that owns the ladder (#10320). This
+        // card fell straight from the retired tier to `buildSubnetEvents([])`,
+        // so the snapshot served `event_count: 0` while its own standalone twin
+        // served ten rows for the same subnet in the same minute -- verified
+        // live on SN64, 2026-08-09. A card was wired and its embedded copy was
+        // not, which is precisely the class the widened tier-cascade gate now
+        // catches on all three surfaces.
+        answerSubnetEvents(ctx.env, netuid, null, {
+          limit: recentEventsLimit,
+          offset: 0,
+        }),
+      ]);
+      const { concentration, performance, validators } = cards;
       // list_subnet_validators' own limit post-filter (the loader already
       // ranks by stake_tao DESC, so slicing after is a no-op re-sort) --
       // mirrored here rather than exported, since it's three lines.
@@ -9544,26 +9532,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       const netuid = optionalNonNegativeInt(args, "netuid");
-      // One detail load per hotkey, each via the exact Postgres-tier-or-empty
-      // path get_validator_detail uses -- no new data source, just the same
-      // cross-subnet aggregate fetched for each compared validator, then
-      // projected side by side. Sequential (not parallel) to keep the
-      // fan-out's request pattern identical to N get_validator_detail calls.
-      const details = [];
-      for (const hotkey of hotkeys) {
-        details.push(
-          (await tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(
-              `/api/v1/validators/${encodeURIComponent(hotkey)}`,
-            ),
-            "METAGRAPH_NEURONS_SOURCE",
-          )) ??
-            buildValidatorDetail([], hotkey, {
-              priceByNetuid: NO_ALPHA_PRICES,
-            }),
-        );
-      }
+      const details = await loadValidatorDetailBatchTier(ctx.env, hotkeys);
       return composeValidatorComparison(details, { netuid });
     },
   },
