@@ -252,7 +252,11 @@ test("compares only closed UTC fee days and keeps missing observations unknown a
   await expect(section).toContainText("calendar closure does not certify indexed coverage");
   await page.clock.setFixedTime(new Date("2026-10-16T00:00:01Z"));
   // Clock rollover cannot promote yesterday's unfinished reading.
+  const staleRefresh = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/v1/chain/fees",
+  );
   await page.getByRole("button", { name: "refresh", exact: true }).click();
+  await staleRefresh;
   await expect(section).toContainText("109.0000τ");
   observed = "2026-10-16T00:00:01Z";
   await page.getByRole("button", { name: "refresh", exact: true }).click();
