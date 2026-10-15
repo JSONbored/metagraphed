@@ -2034,8 +2034,9 @@ function normalizeBlock(raw: unknown): Block | null {
     block_hash: blockHash ?? "",
     parent_hash: firstString(blockData.parent_hash),
     author: typeof blockData.author === "string" ? blockData.author : null,
-    extrinsic_count: firstFiniteNumber(blockData.extrinsic_count),
-    event_count: firstFiniteNumber(blockData.event_count),
+    extrinsic_count:
+      blockData.extrinsic_count === null ? null : firstFiniteNumber(blockData.extrinsic_count),
+    event_count: blockData.event_count === null ? null : firstFiniteNumber(blockData.event_count),
     observed_at: firstString(blockData.observed_at),
     prev_block_number: typeof prevBlock === "number" ? prevBlock : null,
     next_block_number: typeof nextBlock === "number" ? nextBlock : null,
