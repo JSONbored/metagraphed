@@ -1,5 +1,5 @@
 /** Fixed failure vocabulary. Never pass exception text, rows or credentials to
- * the diagnostic sink. A capacity label requires an actual SQLite FULL error. */
+ * the diagnostic sink. Capacity labels require an actual driver capacity error. */
 export const LANE_HEALTH_WRITE_FAILURES = [
   "missing_secret",
   "missing_store",
@@ -32,7 +32,13 @@ export function classifyLaneHealthWriteError(
         .filter((part): part is string => typeof part === "string")
         .map((part) => part.slice(0, 2048))
         .join(" ");
-      if (/\bSQLITE_FULL\b|\bdatabase or disk is full\b/i.test(text))
+      if (
+        /\bSQLITE_FULL\b|\bdatabase or disk is full\b/i.test(text) ||
+        (/\bD1_ERROR\b/i.test(text) &&
+          /\bmaximum (?:database|db) size\b|\bD1 DB storage limit\b|\bstorage limit exceeded\b/i.test(
+            text,
+          ))
+      )
         return "insert_capacity";
       if (/\bSQLITE_BUSY\b|\bSQLITE_LOCKED\b/i.test(text)) return "insert_busy";
       if (/\btimeout\b|\btimed out\b/i.test(text)) return "insert_timeout";
@@ -45,6 +51,18 @@ export function classifyLaneHealthWriteError(
     // Exotic error getters must not break the best-effort diagnostic path.
   }
   return "insert_error";
+}
+
+/** Writer results can retain driver reasons internally. Every shared verdict
+ * sink must classify them before persistence or public health delivery. */
+export function classifyLaneHealthWriteReason(
+  reason: unknown,
+): LaneHealthWriteFailure {
+  if (reason === "unbound" || reason === "hyperdrive unbound")
+    return "missing_store";
+  if (LANE_HEALTH_WRITE_FAILURES.includes(reason as LaneHealthWriteFailure))
+    return reason as LaneHealthWriteFailure;
+  return classifyLaneHealthWriteError({ message: reason });
 }
 
 /** One fixed event at most per minute per isolate, across all lanes/reasons.

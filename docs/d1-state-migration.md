@@ -177,6 +177,24 @@ payload count instead of adding it. Pass tallies retain the existing at-least-on
 accounting contract. Fraction normalization only visits pools affected by a chunk,
 while including earlier chunks of that capture in each pool's denominator.
 
+Legacy pass tallies are additive delivery accounting, not unique chunk receipts.
+Replaying the same chunk can leave its guarded data UPSERT unchanged while
+incrementing `received_rows` again and marking an incomplete pass complete.
+Hotkey Alpha also filters out unreferenced pools, so counting stored pool rows
+cannot reconstruct the producer's declared census. Neither affected-row counts
+nor a new Queue message ID safely substitutes for a stable producer chunk
+identity. Automated quarantine replay requires a separately qualified receipt
+contract; the newer runtime-qualified Alpha draft does not retroactively supply
+that identity or runtime evidence to legacy messages.
+
+DLQ alarms count retained handler observations. They record before preservation,
+so failed preservation, partial delivery and redelivery may create more records
+for the same messages. Counts in the detail describe that delivered batch, not
+uniquely preserved messages or confirmed permanent losses. Successful sync
+preservation keeps the first payload and receipt time per message ID before ACK;
+the health observation does not contain that outcome. Existing incident history
+and closure acknowledgement remain intact; closure is not proof of recovery.
+
 The migration does not select these tables. Copy every retained row and receipt,
 qualify the joined readers and final source drain, and then select each complete
 group through `D1_STATE_TABLES`. The hotkey alpha writer also requires nominator
