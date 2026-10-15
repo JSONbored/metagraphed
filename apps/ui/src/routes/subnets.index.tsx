@@ -41,6 +41,13 @@ export const subnetsSearchSchema = defineSearchSchema({
 export type SubnetsSearch = SearchOutput<typeof subnetsSearchSchema>;
 
 export const Route = createFileRoute("/subnets/")({
+  // Resolve only the view's primary read before SSR. Streaming a whole pending
+  // shell and then the populated directory duplicates markup and lets the
+  // shell's hydration signal precede the controls the reader actually sees.
+  loader: async ({ context }) => {
+    const { subnetDirectoryQuery } = await import("@/lib/metagraphed/subnet-directory-query");
+    await context.queryClient.ensureQueryData(subnetDirectoryQuery());
+  },
   validateSearch: subnetsSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(subnetsSearchSchema)] },
   head: () => ({
