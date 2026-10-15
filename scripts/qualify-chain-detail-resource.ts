@@ -265,6 +265,19 @@ try {
   assert.equal(modules.length, 1, "expected one data-api entry");
   const scriptPath = path.join(temporary, modules[0]);
   report.bundle_sha256 = hash(await readFile(scriptPath));
+  // Workerd treats every export of the entry module as a service entrypoint.
+  // The raw deploy bundle also exposes test constants. Import it unchanged as
+  // a child module; this facade adds no handler or controller of its own.
+  const facade = `export { default } from ${JSON.stringify(`./${modules[0]}`)};\n`;
+  const facadePath = path.join(temporary, "measurement-entry.js");
+  await writeFile(facadePath, facade);
+  report.entry_facade = {
+    source: facade,
+    sha256: hash(Buffer.from(facade)),
+    limitation:
+      "raw configured entry rejected by pinned Workerd; production entrypoint parity is unqualified",
+    raw_entry_failure_run: 38741940703,
+  };
   report.lock_sha256 = hash(await readFile("package-lock.json"));
   report.config_sha256 = hash(await readFile("wrangler.data.jsonc"));
   for (const shape of ["small", "string", "objects"]) {
@@ -275,7 +288,7 @@ try {
     const runtime = new Miniflare({
       name: "chain-detail-resource",
       modules: true,
-      scriptPath,
+      scriptPath: facadePath,
       modulesRoot: temporary,
       compatibilityDate: "2026-06-06",
       compatibilityFlags: ["nodejs_compat"],
