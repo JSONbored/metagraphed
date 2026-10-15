@@ -14,6 +14,12 @@ on:
   schedule:
     - cron: "0 6 * * 4"
   workflow_dispatch:
+    inputs:
+      apply_migrations:
+        description: "Apply pending tracked migrations before verification"
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -35,14 +41,14 @@ jobs:
           node-version: 22.23.2
       - run: npm ci --ignore-scripts
       - name: Apply tracked D1 migrations
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.apply_migrations)
         run: npm run migrate:d1 -- --remote
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
-      - name: Verify physical D1 schema
-        run: npm run snapshot:d1-schema
+      - name: Verify recorded migrations and physical D1 schema
+        run: npm run snapshot:d1-schema -- --verify-ledger
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}

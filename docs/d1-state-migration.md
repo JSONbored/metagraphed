@@ -33,6 +33,32 @@ explicit serialization. A statement may bind at most 100 parameters.
 
 ## Qualification and cutover
 
+### Reconcile already-applied migrations
+
+`0038_raw_capture_publications.sql` was recorded as migration 38 on
+2026-10-03 at 00:23:04 UTC. Its original 1434 bytes have SHA256
+`b8dd7743860c28969602f6b40c0fa776ff18734dd78e43a0752bbb755482e3ac`.
+The retained native capture after the failed 0039 attempt contains 269 objects:
+the 268 previous definitions plus `raw_capture_publications`. This source
+reconciliation restores that exact SQL and captured catalog; it does not assert
+that 0039 or any later schema applied, or that publication rows are recoverable.
+
+The existing `D1 maintenance` workflow defaults manual dispatches to
+verification only (`apply_migrations=false`), as scheduled runs already do.
+`npm run snapshot:d1-schema -- --verify-ledger` checks recorded migration
+filenames with one bounded SELECT, then verifies both physical-schema artifacts.
+Ledger membership alone cannot prove SQL bytes or physical definitions; all
+three checks are required. A missing or untracked filename fails verification
+without applying anything. The test pins 0038's immutable source identity.
+
+A push to main touching migration/snapshot paths still invokes the existing
+apply step. An explicit manual `apply_migrations=true` also applies pending
+files. Consequently this reconciliation must remain unmerged until that release
+effect is reviewed. Credential-free CI tests use injected ledger/schema results;
+they do not verify the current production ledger or authorize a live query.
+
+### Move an ownership group
+
 1. Apply `migrations/d1` to the destination with Wrangler. Keep ownership unset
    until both schema and data are ready.
 2. Export `lane_health` through a read-only repeatable-read source transaction.
