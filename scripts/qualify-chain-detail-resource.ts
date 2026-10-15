@@ -25,6 +25,7 @@ import {
   SYNC_BATCH_MAX_BYTES,
 } from "../src/sync-batch-queue.ts";
 import { makeSyncDelivery } from "../src/sync-delivery-receipt.ts";
+import { captureUpsertStatements } from "../src/capture-family-d1.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
 import { chainDetailTables } from "../src/chain-detail-neon-write.ts";
 import { stripJsonComments } from "./lib.ts";
@@ -63,7 +64,8 @@ const report: Record<string, unknown> = {
   ],
   batches: {
     messages: 1,
-    simultaneous_calls: 1,
+    simultaneous_calls:
+      process.env.CHAIN_DETAIL_RESOURCE_SHAPE === "http-concurrent" ? 2 : 1,
     scheduling: "driver-imposed, not Miniflare max_concurrency",
   },
   load_identity:
@@ -1125,12 +1127,26 @@ try {
           captured_at: stamp - 1000,
           source: "alpha",
         }));
-        await db
-          .prepare(
-            "INSERT INTO nominator_positions(coldkey,hotkey,netuid,shares,share_fraction,captured_at,source) SELECT json_extract(value,'$.coldkey'),json_extract(value,'$.hotkey'),json_extract(value,'$.netuid'),json_extract(value,'$.shares'),json_extract(value,'$.share_fraction'),json_extract(value,'$.captured_at'),json_extract(value,'$.source') FROM json_each(?)",
-          )
-          .bind(JSON.stringify(eligibility))
-          .run();
+        for (const statement of captureUpsertStatements(
+          {
+            table: "nominator_positions",
+            columns: [
+              "coldkey",
+              "hotkey",
+              "netuid",
+              "shares",
+              "share_fraction",
+              "captured_at",
+              "source",
+            ],
+            conflict: ["coldkey", "hotkey", "netuid"],
+          },
+          eligibility,
+        ))
+          await db
+            .prepare(statement.text)
+            .bind(...statement.values)
+            .run();
         assert.equal(
           await db
             .prepare(

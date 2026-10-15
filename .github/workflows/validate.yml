@@ -1671,6 +1671,7 @@ jobs:
           mkdir -p reports/chain-detail-resource
           scope="metagraphed-resource-${{ github.run_id }}-${{ matrix.shape }}"
           probe_status=0
+          scope_started="$(date -u '+%Y-%m-%d %H:%M:%S')"
           sudo --preserve-env=CI,WRANGLER_SEND_METRICS,CHAIN_DETAIL_RESOURCE_SHAPE,CHAIN_DETAIL_RESOURCE_CPU_PROFILES,CHAIN_DETAIL_RESOURCE_NATIVE_ORACLE systemd-run --scope --same-dir \
             --unit="$scope" \
             --property=MemoryMax=536870912 --property=MemorySwapMax=0 \
@@ -1683,6 +1684,19 @@ jobs:
             > reports/chain-detail-resource/scope-result.txt || true
           sudo journalctl --unit="$scope.scope" --no-pager --lines=30 --output=short-iso \
             > reports/chain-detail-resource/scope-journal.txt || true
+          # Best-effort read-only victim evidence OUTSIDE the dying scope.
+          # Never change journal/security access; unavailable stays unknown.
+          kernel_raw="$RUNNER_TEMP/${scope}.kernel.jsonl"
+          kernel_status=0
+          sudo journalctl --dmesg --since="$scope_started" --no-pager --lines=500 --output=json \
+            > "$kernel_raw" 2>/dev/null || kernel_status=$?
+          if ! "$node_binary" --max-old-space-size=64 scripts/collect-resource-oom.ts \
+            "${scope}.scope" "$kernel_raw" "$kernel_status" \
+            > reports/chain-detail-resource/kernel-oom.json; then
+            echo '{"status":"unavailable","reason":"collector_failed","victim_evidence":[]}' \
+              > reports/chain-detail-resource/kernel-oom.json
+          fi
+          rm -f "$kernel_raw"
           exit "$probe_status"
         env:
           WRANGLER_SEND_METRICS: "false"
