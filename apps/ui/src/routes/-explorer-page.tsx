@@ -30,6 +30,8 @@ import {
   CHAIN_WINDOWS,
   callSegments,
   feePoints,
+  feeDayWindow,
+  consecutiveFeePoints,
   summarizeFeeWindow,
   flowRails,
   fmtCount,
@@ -157,7 +159,11 @@ export function ExplorerPage() {
   const days = activity.data?.data.days ?? [];
   const latest = lastCompleteDay(days);
   const segments = callSegments(calls.data?.data.calls ?? []);
-  const points = feePoints(fees.data?.data.daily ?? []);
+  const feeCalendar = feeDayWindow(
+    fees.data?.data.daily ?? [],
+    fees.data?.data.observed_at ?? null,
+  );
+  const points = feePoints(feeCalendar.closed);
   const flowRailItems = flowRails(flow.data?.data.subnets ?? [], nameOf, (value) =>
     fmtTao(value, 0),
   );
@@ -226,12 +232,12 @@ export function ExplorerPage() {
     { label: "Signers", value: fmtCount(latest?.unique_signers), loading: activity.isPending },
   ];
 
-  const feeDays = fees.data?.data.daily ?? [];
+  const feeDays = feeCalendar.closed;
   const feeWindow = summarizeFeeWindow(feeDays);
 
   const feeCells: FactCells = [
     {
-      label: `Fees ${window}`,
+      label: `Fees ${window} · closed UTC days`,
       value: feeWindow ? fmtTao(feeWindow.totalFeeTao, 4) : "—",
       loading: fees.isPending,
     },
@@ -241,13 +247,13 @@ export function ExplorerPage() {
       loading: fees.isPending,
     },
     {
-      label: `Tips ${window}`,
+      label: `Tips ${window} · closed UTC days`,
       value: feeWindow ? fmtTao(feeWindow.totalTipTao, 4) : "—",
       loading: fees.isPending,
     },
     {
       label: "Days measured",
-      value: feeWindow ? formatNumber(fees.data?.data.day_count ?? feeWindow.dayCount) : "—",
+      value: feeWindow ? formatNumber(feeWindow.dayCount) : "—",
       loading: fees.isPending,
     },
   ];
@@ -414,21 +420,23 @@ export function ExplorerPage() {
                 window={{ from: 0, to: 0 }}
                 unit="τ"
                 formatValue={(value) => fmtTao(value, 4)}
-                ariaLabel={`Daily fees, ${window}`}
+                ariaLabel={`Fees for closed UTC days, ${window}`}
                 source="chain-fees"
                 loading
               />
-            ) : points.length > 1 ? (
+            ) : points.length > 1 && consecutiveFeePoints(points) ? (
               <LineWithWindow
                 id="chain-fees"
                 points={points}
                 window={{ from: points[0]!.t, to: points[points.length - 1]!.t }}
                 unit="τ"
                 formatValue={(value) => fmtTao(value, 4)}
-                ariaLabel={`Daily fees, ${window}`}
+                ariaLabel={`Fees for closed UTC days, ${window}`}
                 source="chain-fees"
               />
-            ) : null
+            ) : (
+              <p>Daily fee chart requires consecutive closed UTC days with known readings.</p>
+            )
           }
           legend={<FactStrip cells={feeCells} />}
           footnote={
@@ -438,7 +446,7 @@ export function ExplorerPage() {
                 ? `Loading ${window} fees · chain-direct`
                 : fees.isError
                   ? "Fee history is temporarily unavailable · chain-direct"
-                  : `${window} · signed extrinsics only · chain-direct`
+                  : `${window} · signed extrinsics only · UTC days before ${feeCalendar.cutoff ?? "an unknown observation time"} · ${feeCalendar.partial.length} partial day(s) excluded · ${feeCalendar.unknown} unverified date(s) excluded · reported days only; missing readings are not zero · calendar closure does not certify indexed coverage · chain-direct`
           }
         />
         <AnalyticsSection

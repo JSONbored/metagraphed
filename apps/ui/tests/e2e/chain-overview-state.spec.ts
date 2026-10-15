@@ -205,3 +205,74 @@ test.describe("Chain overview secondary query states", () => {
     ).toHaveCount(0);
   });
 });
+
+test("compares only closed UTC fee days and keeps missing observations unknown across rollover", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date("2026-10-15T12:00:00Z"));
+  let observed: string | null = "2026-10-15T10:00:00Z";
+  const daily: Array<Record<string, unknown>> = [
+    {
+      day: "2026-10-13",
+      total_fee_tao: 100,
+      total_tip_tao: 2,
+      signed_extrinsic_count: 100,
+      extrinsic_count: 100,
+    },
+    {
+      day: "2026-10-14",
+      total_fee_tao: 9,
+      total_tip_tao: 1,
+      signed_extrinsic_count: 1,
+      extrinsic_count: 1,
+    },
+    {
+      day: "2026-10-15",
+      total_fee_tao: 0.01,
+      total_tip_tao: 99,
+      signed_extrinsic_count: 1,
+      extrinsic_count: 1,
+    },
+  ];
+  await page.route("**/api/v1/chain/fees*", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        data: { daily, observed_at: observed, day_count: 3, top_fee_payers: [] },
+      }),
+    }),
+  );
+  await gotoThroughRestart(page, "/chain");
+  const section = page.locator("section#fees");
+  await section.scrollIntoViewIfNeeded();
+  await expect(section).toContainText("109.0000τ");
+  await expect(section).toContainText("3.0000τ");
+  await expect(section).toContainText("1 partial day(s) excluded");
+  await expect(section).toContainText("calendar closure does not certify indexed coverage");
+  await page.clock.setFixedTime(new Date("2026-10-16T00:00:01Z"));
+  // Clock rollover cannot promote yesterday's unfinished reading.
+  await page.getByRole("button", { name: "refresh", exact: true }).click();
+  await expect(section).toContainText("109.0000τ");
+  observed = "2026-10-16T00:00:01Z";
+  await page.getByRole("button", { name: "refresh", exact: true }).click();
+  await expect(section).toContainText("109.0100τ");
+  await expect(section).toContainText("0 partial day(s) excluded");
+  daily[0]!.total_tip_tao = null;
+  await page.getByRole("button", { name: "refresh", exact: true }).click();
+  await expect(section.getByText("102.0000τ", { exact: true })).toHaveCount(0);
+  await expect(section).toContainText("109.0100τ");
+  daily[0]!.total_fee_tao = null;
+  await page.getByRole("button", { name: "refresh", exact: true }).click();
+  await expect(section.getByText("109.0100τ", { exact: true })).toHaveCount(0);
+  await expect(section).toContainText(
+    "Daily fee chart requires consecutive closed UTC days with known readings.",
+  );
+  observed = null;
+  await page.getByRole("button", { name: "refresh", exact: true }).click();
+  await expect(section).toContainText("3 unverified date(s) excluded");
+  await expect(section).toContainText(
+    "Daily fee chart requires consecutive closed UTC days with known readings.",
+  );
+  await expect(section.getByText("109.0100τ", { exact: true })).toHaveCount(0);
+});

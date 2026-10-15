@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
+import { EVIDENCE_HASH, FAILED_PROXY_HASH } from "./extrinsic-evidence-fixture.ts";
 
 const HASH = "0x986f1f7da3d93882e8c19bbe3b303ef8ba5454062272446598d17aa599ca4428";
 const ROUTE = `/extrinsics/${HASH}`;
@@ -149,4 +150,123 @@ test.describe("extrinsic detail raw-event continuation", () => {
     }));
     expect(width.document).toBeLessThanOrEqual(width.viewport);
   });
+});
+
+test.describe("account attribution and pallet-level evidence", () => {
+  test.use({ serviceWorkers: "block" });
+
+  for (const width of [375, 768, 1280]) {
+    for (const theme of ["light", "dark"] as const) {
+      test(`preserves consensus and stake events at ${width} in ${theme}`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.addInitScript((choice) => localStorage.setItem("mg-theme", choice), theme);
+        await page.route("**/api/v1/chain-events?*", (route) =>
+          route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify({ ok: true, data: { events: [], next_cursor: null } }),
+          }),
+        );
+        await gotoThroughRestart(page, `/extrinsics/${EVIDENCE_HASH}#economic-effects`);
+        const table = page.getByRole("table", { name: "Account-attributed events" });
+        await expect(table).toContainText("TimelockedWeightsCommitted");
+        await expect(table).toContainText("StakeAdded");
+        await expect(page.getByText("Decoded economic effects", { exact: true })).toHaveCount(0);
+        await expect(
+          page.getByText(/No pallet-level event records are available from this tier/),
+        ).toBeVisible();
+        await expect(table.locator("tbody tr")).toHaveCount(2);
+        await table.scrollIntoViewIfNeeded();
+        await page.screenshot({
+          path: test.info().outputPath(`explorer-evidence-${width}-${theme}.png`),
+          fullPage: true,
+        });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+          true,
+        );
+      });
+    }
+  }
+
+  test("retains failed proxy/batch arguments and unknown runtime events without inventing account effects", async ({
+    page,
+  }) => {
+    await page.route("**/api/v1/chain-events?*", (route) =>
+      route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            events: [
+              {
+                block_number: 8713384,
+                event_index: 9,
+                pallet: "FutureRuntime",
+                method: "Unrecognized",
+                args: { raw: "retained" },
+              },
+            ],
+            next_cursor: null,
+          },
+        }),
+      }),
+    );
+    await gotoThroughRestart(page, `/extrinsics/${FAILED_PROXY_HASH}`);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("proxy");
+    await expect(page.locator("#arguments")).toContainText("batch");
+    await expect(page.getByText(/No account-attributed events were decoded/)).toBeVisible();
+    await expect(page.getByRole("table", { name: /What it produced/ })).toContainText(
+      "FutureRuntime.Unrecognized",
+    );
+  });
+
+  for (const outcome of ["repeated-cursor", "failure-recovery"] as const) {
+    test(`preserves more than ten raw events through ${outcome}`, async ({ page }) => {
+      const rows = Array.from({ length: 12 }, (_, index) => ({
+        block_number: 8713384,
+        event_index: index,
+        pallet: "System",
+        method: "Remarked",
+        args: {},
+      }));
+      let fail = outcome === "failure-recovery";
+      await page.route("**/api/v1/chain-events?*", async (route) => {
+        const continuation = new URL(route.request().url()).searchParams.has("cursor");
+        if (continuation && fail) {
+          await route.fulfill({
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: { code: "fixture_failure", message: "Continuation unavailable" },
+            }),
+          });
+          return;
+        }
+        await route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({
+            ok: true,
+            data: {
+              events: continuation ? [rows[9], rows[10], rows[11]] : rows.slice(0, 10),
+              next_cursor: continuation && outcome !== "repeated-cursor" ? null : "next-page",
+            },
+          }),
+        });
+      });
+      await gotoThroughRestart(page, `/extrinsics/${EVIDENCE_HASH}`);
+      const table = page.getByRole("table", { name: /What it produced/ });
+      await expect(table.locator("tbody tr")).toHaveCount(10);
+      await page.getByRole("button", { name: "Load more", exact: true }).click();
+      if (outcome === "failure-recovery") {
+        await expect(page.getByText(/Couldn’t load more/)).toBeVisible();
+        await expect(table.locator("tbody tr")).toHaveCount(10);
+        fail = false;
+        await page.getByRole("button", { name: "Retry", exact: true }).last().click();
+      }
+      await expect(table.locator("tbody tr")).toHaveCount(12);
+      await expect(page.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
+      if (outcome === "repeated-cursor")
+        await expect(page.getByText(/Pagination stopped/)).toBeVisible();
+    });
+  }
 });

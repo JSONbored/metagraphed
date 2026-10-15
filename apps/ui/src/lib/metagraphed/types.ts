@@ -3753,9 +3753,9 @@ export interface ChainFeeDay {
   day: string;
   extrinsic_count: number;
   signed_extrinsic_count: number | null;
-  total_fee_tao: number;
+  total_fee_tao: number | null;
   avg_fee_tao: number | null;
-  total_tip_tao: number;
+  total_tip_tao: number | null;
   avg_tip_tao: number | null;
 }
 export interface ChainFeePayer {

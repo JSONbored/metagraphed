@@ -1424,6 +1424,15 @@ jobs:
       #
       # `if: failure()` rather than `always()`: on a green run this is noise, and the
       # log is only interesting when the server did something unexpected.
+      - name: Retain explorer evidence screenshots
+        if: ${{ always() && needs.changes.outputs.run_ui_e2e == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: explorer-evidence-screenshots
+          path: apps/ui/test-results/**/explorer-evidence-*.png
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Upload e2e server + report artifacts on failure
         if: ${{ failure() && needs.changes.outputs.run_ui_e2e == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

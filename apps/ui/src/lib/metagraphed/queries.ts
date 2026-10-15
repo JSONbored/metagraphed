@@ -4117,14 +4117,14 @@ function normalizeChainFeeDay(raw: unknown): ChainFeeDay | null {
   const extrinsicCount = coerceFiniteNumber(raw.extrinsic_count);
   const totalFeeTao = coerceFiniteNumber(raw.total_fee_tao);
   const totalTipTao = coerceFiniteNumber(raw.total_tip_tao);
-  if (!day || extrinsicCount == null || totalFeeTao == null || totalTipTao == null) return null;
+  if (!day || extrinsicCount == null) return null;
   return {
     day,
     extrinsic_count: extrinsicCount,
     signed_extrinsic_count: coerceFiniteNumber(raw.signed_extrinsic_count) ?? null,
-    total_fee_tao: totalFeeTao,
+    total_fee_tao: totalFeeTao ?? null,
     avg_fee_tao: coerceFiniteNumber(raw.avg_fee_tao) ?? null,
-    total_tip_tao: totalTipTao,
+    total_tip_tao: totalTipTao ?? null,
     avg_tip_tao: coerceFiniteNumber(raw.avg_tip_tao) ?? null,
   };
 }

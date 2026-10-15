@@ -10,6 +10,8 @@ import type {
 import {
   callSegments,
   feePoints,
+  feeDayWindow,
+  consecutiveFeePoints,
   summarizeFeeWindow,
   pipelineRails,
   pipelineTally,
@@ -361,5 +363,70 @@ describe("pipelineTally", () => {
       disabled: 0,
       zeroWeighted: 0,
     });
+  });
+});
+
+describe("fee UTC-day completeness", () => {
+  const now = Date.parse("2026-10-15T12:00:00Z");
+  const day = (date: string, fee: number | null = 10) =>
+    ({ day: date, total_fee_tao: fee, total_tip_tao: 2, signed_extrinsic_count: 5 }) as ChainFeeDay;
+
+  it("excludes the observed UTC day even when its finite total looks complete", () => {
+    const window = feeDayWindow(
+      [day("2026-10-14"), day("2026-10-15", 0.01)],
+      "2026-10-15T10:00:00Z",
+      now,
+    );
+    expect(window.closed.map((row) => row.day)).toEqual(["2026-10-14"]);
+    expect(window.partial).toHaveLength(1);
+    expect(summarizeFeeWindow(window.closed)).toMatchObject({
+      totalFeeTao: 10,
+      totalTipTao: 2,
+      averageFeeTao: 2,
+      dayCount: 1,
+    });
+  });
+
+  it("requires a fresh later-day observation across rollover, rather than promoting stale data at midnight", () => {
+    const rows = [day("2026-10-14"), day("2026-10-15")];
+    expect(
+      feeDayWindow(rows, "2026-10-15T23:59:59Z", Date.parse("2026-10-16T00:00:01Z")).closed,
+    ).toHaveLength(1);
+    expect(
+      feeDayWindow(rows, "2026-10-16T00:00:01Z", Date.parse("2026-10-16T00:00:02Z")).closed,
+    ).toHaveLength(2);
+  });
+
+  it("does not certify unknown, invalid or future observations and dates", () => {
+    const rows = [day("2026-10-14"), day("bad"), day("2026-02-31"), day("2026-10-17")];
+    for (const observed of [null, "invalid"])
+      expect(feeDayWindow(rows, observed, now)).toMatchObject({
+        closed: [],
+        partial: [],
+        unknown: 4,
+        cutoff: null,
+      });
+    expect(feeDayWindow(rows, "2026-10-17T12:00:00Z", now)).toMatchObject({
+      closed: [rows[0]],
+      unknown: 3,
+      cutoff: "2026-10-15",
+    });
+  });
+
+  it("preserves unknown amounts and prevents interpolation across missing dates", () => {
+    const rows = [day("2026-10-11"), day("2026-10-12", null), day("2026-10-13")];
+    expect(summarizeFeeWindow(rows)).toMatchObject({
+      totalFeeTao: null,
+      totalTipTao: 6,
+      averageFeeTao: null,
+    });
+    expect(consecutiveFeePoints(feePoints(rows))).toBe(false);
+    expect(consecutiveFeePoints(feePoints([day("2026-10-11"), day("2026-10-12")]))).toBe(true);
+    expect(
+      summarizeFeeWindow([{ ...day("2026-10-11"), signed_extrinsic_count: null }])?.averageFeeTao,
+    ).toBeNull();
+    expect(
+      summarizeFeeWindow([{ ...day("2026-10-11"), total_tip_tao: NaN }])?.totalTipTao,
+    ).toBeNull();
   });
 });

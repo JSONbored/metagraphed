@@ -114,7 +114,7 @@ export function ExtrinsicDetailPage() {
   });
 
   const args = useMemo(() => argRows(extrinsic?.call_args), [extrinsic]);
-  const economicEvents = extrinsic?.events ?? [];
+  const accountEvents = extrinsic?.events ?? [];
   const eventRows = useMemo(() => {
     // A misbehaving upstream cursor must not duplicate rows in a forensic
     // record. The page keeps the first instance, then reports the cursor
@@ -171,10 +171,10 @@ export function ExtrinsicDetailPage() {
     },
   ];
 
-  const economicEventColumns: DataTableColumn<AccountEvent>[] = [
+  const accountEventColumns: DataTableColumn<AccountEvent>[] = [
     {
       key: "kind",
-      label: "Decoded effect",
+      label: "Account event",
       width: 180,
       value: (row) => row.event_kind,
     },
@@ -186,7 +186,7 @@ export function ExtrinsicDetailPage() {
       width: 140,
       value: (row) => row.amount_tao ?? null,
       format: (value) => (typeof value === "number" ? formatTao(value) : "—"),
-      definition: "Native TAO amount decoded for this effect. It never falls back to alpha.",
+      definition: "Native TAO amount decoded for this event. It never falls back to alpha.",
     },
     {
       key: "alpha",
@@ -196,7 +196,7 @@ export function ExtrinsicDetailPage() {
       width: 140,
       value: (row) => row.alpha_amount ?? null,
       format: (value) => (typeof value === "number" ? formatAmount(value, "α") : "—"),
-      definition: "Subnet alpha amount decoded for this effect. It remains independent of TAO.",
+      definition: "Subnet alpha amount decoded for this event. It remains independent of TAO.",
     },
     {
       key: "subnet",
@@ -324,15 +324,20 @@ export function ExtrinsicDetailPage() {
         empty="This call takes no arguments."
       />
 
+      <p>
+        Account-attributed events include economic, consensus, identity and other activity. The
+        pallet-level record below is loaded separately and may have different coverage.
+      </p>
+      {/* Retain the existing fragment for saved detail-page links. */}
       <DataTable
         id="economic-effects"
-        rows={economicEvents}
-        columns={economicEventColumns}
-        rowKey={(row) => `${row.event_index ?? "?"}-${row.event_kind ?? "effect"}`}
-        caption="Decoded economic effects"
-        source="extrinsic-economic-effect"
+        rows={accountEvents}
+        columns={accountEventColumns}
+        rowKey={(row) => `${row.event_index ?? "?"}-${row.event_kind ?? "event"}`}
+        caption="Account-attributed events"
+        source="extrinsic-account-event"
         paginate={false}
-        empty="No account-attributed economic effects were decoded for this extrinsic."
+        empty="No account-attributed events were decoded for this extrinsic. Other decoded events may appear below."
       />
 
       <DataTable
@@ -347,7 +352,7 @@ export function ExtrinsicDetailPage() {
         loading={events.isPending}
         paginate={false}
         error={
-          events.isError ? (
+          events.isError && eventRows.length === 0 ? (
             <ErrorState
               error={events.error}
               onRetry={() => void events.refetch()}
@@ -355,7 +360,7 @@ export function ExtrinsicDetailPage() {
             />
           ) : undefined
         }
-        empty="No events are decoded for this extrinsic."
+        empty="No pallet-level event records are available from this tier for this extrinsic. This does not establish that the call emitted no events."
       />
       {/* A raw event record can exceed the initial 50-row read. The detail
           page must offer its continuation instead of implying page one is
