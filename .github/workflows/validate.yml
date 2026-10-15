@@ -24,7 +24,7 @@ on:
         type: boolean
         default: false
       resource_focused_shape:
-        description: "One diagnostic case (requires probe-only)"
+        description: "One diagnostic case or both HTTP boundaries (requires probe-only)"
         type: choice
         default: none
         options:
@@ -35,6 +35,7 @@ on:
             chunks-http,
             http-envelope,
             http-concurrent,
+            http-boundaries,
           ]
       resource_separate_http_phases:
         description: "Stop application before persisted-D1 verification; HTTP diagnostic-only comparison"
@@ -1652,7 +1653,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shape: ${{ inputs.resource_focused_shape && inputs.resource_focused_shape != 'none' && fromJSON(format('["{0}"]', inputs.resource_focused_shape)) || inputs.resource_extended_diagnostic && fromJSON('["chunks","chunks-http","http-envelope","http-concurrent"]') || inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","objects-admitted","blocks16"]') }}
+        shape: ${{ inputs.resource_focused_shape == 'http-boundaries' && fromJSON('["http-envelope","http-concurrent"]') || inputs.resource_focused_shape && inputs.resource_focused_shape != 'none' && fromJSON(format('["{0}"]', inputs.resource_focused_shape)) || inputs.resource_extended_diagnostic && fromJSON('["chunks","chunks-http","http-envelope","http-concurrent"]') || inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","objects-admitted","blocks16"]') }}
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify_chain_detail_resources }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
