@@ -235,7 +235,19 @@ function payload(shape: string, block = 9_000_001) {
   return message;
 }
 
-async function databaseState(db: D1Database) {
+// Only the verifier methods used below; both the native binding and the
+// HTTP diagnostic adapter implement this surface without claiming batch/exec.
+interface VerificationStatement {
+  bind(...values: unknown[]): VerificationStatement;
+  all<T = Record<string, unknown>>(): Promise<{ results: T[] }>;
+  run(): Promise<unknown>;
+  first<T = Record<string, unknown>>(field?: string): Promise<T | null>;
+}
+interface VerificationDb {
+  prepare(sql: string): VerificationStatement;
+}
+
+async function databaseState(db: VerificationDb) {
   const state = [];
   for (const table of [...chainDetailTables(), "chain_detail_payload_chunks"]) {
     const digest = createHash("sha256");
@@ -488,6 +500,7 @@ try {
     const runtime = new Miniflare(
       nativeOracle
         ? {
+            inspectorPort: 0,
             workers: [
               apiOptions,
               {
@@ -530,8 +543,8 @@ try {
       const oracle = nativeOracle
         ? await deadline(runtime.getWorker("chain-detail-oracle"), 30_000)
         : undefined;
-      const db = oracle
-        ? ({
+      const db: VerificationDb = oracle
+        ? {
             prepare(sql: string) {
               let values: unknown[] = [];
               const statement = {
@@ -539,7 +552,7 @@ try {
                   values = bindings;
                   return statement;
                 },
-                async all() {
+                async all<T = Record<string, unknown>>() {
                   const response = await deadline(
                     oracle.fetch("https://oracle/query", {
                       method: "POST",
@@ -552,7 +565,7 @@ try {
                     200,
                     "native oracle query must succeed",
                   );
-                  return response.json() as Promise<D1Result>;
+                  return response.json() as Promise<D1Result<T>>;
                 },
                 async run() {
                   return statement.all();
@@ -565,7 +578,7 @@ try {
               };
               return statement;
             },
-          } as unknown as D1Database)
+          }
         : await deadline(runtime.getD1Database("D1_STATE"), 30_000);
       for (const migration of [
         "0001_lane_health.sql",
