@@ -106,37 +106,43 @@ test("legacy-only originals survive exact native hashing and reversed owner orde
 test("missing or corrupt post-commit chunk readback never acknowledges or recounts a native capture", async () => {
   for (const corrupt of [null, { sha256: "wrong" }, { applied: 0 }]) {
     const db = await fixture();
+    let interceptedReadbacks = 0;
     const binding = {
       batch: db.batch.bind(db),
       prepare(sql: string) {
         const statement = db.prepare(sql);
         if (sql.startsWith("SELECT c.sha256,c.applied,p.received_rows")) {
-          const bind = statement.bind.bind(statement);
-          statement.bind = (...values: unknown[]) => {
-            const bound = bind(...values);
-            const all = bound.all.bind(bound);
-            bound.all = async <T>() => {
-              const result = await all<T>();
+          // The native statement is an RPC proxy. Return a readback adapter
+          // instead of assigning methods on that proxy; the commit stays native.
+          return {
+            bind(...values: unknown[]) {
+              const bound = statement.bind(...values);
               return {
-                ...result,
-                results:
-                  corrupt === null
-                    ? []
-                    : [
-                        {
-                          ...(result.results[0] as Record<string, unknown>),
-                          ...corrupt,
-                        } as T,
-                      ],
-              };
-            };
-            return bound;
-          };
+                async all<T>() {
+                  interceptedReadbacks++;
+                  const result = await bound.all<T>();
+                  return {
+                    ...result,
+                    results:
+                      corrupt === null
+                        ? []
+                        : [
+                            {
+                              ...(result.results[0] as Record<string, unknown>),
+                              ...corrupt,
+                            } as T,
+                          ],
+                  };
+                },
+              } as D1PreparedStatement;
+            },
+          } as D1PreparedStatement;
         }
         return statement;
       },
     } as D1StoreBinding;
     await assert.rejects(write(binding, packet()), /not durably acknowledged/);
+    assert.equal(interceptedReadbacks, 1);
     assert.equal(
       (await rowsOf(db)).length,
       1,
