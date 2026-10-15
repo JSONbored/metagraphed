@@ -279,7 +279,7 @@ describe("NEURON_MIRROR_PLANS", () => {
     assert.equal(spy.rows.length, 1);
     assert.equal(spy.rows[0].lane, "neon:neurons");
     assert.equal(spy.rows[0].verdict, "stale");
-    assert.match(String(spy.rows[0].detail), /hyperdrive unbound/);
+    assert.match(String(spy.rows[0].detail), /missing_store/);
   });
 
   test("a bound Hyperdrive with no ctx is also unbound, not a crash", async () => {
@@ -295,7 +295,7 @@ describe("NEURON_MIRROR_PLANS", () => {
       { laneHealthDb: spy.db, now: () => NOW },
     );
     assert.equal(out.attempted, true);
-    assert.match(String(spy.rows[0].detail), /hyperdrive unbound/);
+    assert.match(String(spy.rows[0].detail), /missing_store/);
   });
 
   test("builds a real runner from a bound Hyperdrive, and reports its failure", async () => {

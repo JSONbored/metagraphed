@@ -26,6 +26,7 @@
 // API. Do not move a read onto a table here until its `neon:` lane has been
 // green across several producer ticks.
 
+import { classifyLaneHealthWriteError } from "./lane-health-write-diagnostics.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
   recordNeonWriteVerdict,
@@ -370,6 +371,7 @@ export interface NeuronMirrorOutcome {
   /** False when the lane is not enabled, or Hyperdrive is unbound. Distinct
    * from a failed attempt: "we did not try" is not "we tried and it broke". */
   attempted: boolean;
+  writePath: "d1" | "postgres-direct" | "postgres-buffered" | "unbound";
   results: Record<string, NeonWriteResult>;
   /** The deregistration prune, kept OUT of `results` on purpose -- see the
    * write path. Absent when there were no cutoffs to prune on, or when a table
@@ -414,7 +416,7 @@ export async function mirrorNeuronSnapshotToNeon(
     try {
       statements = await writeNeuronDocuments(d1, input);
     } catch (error) {
-      reason = String(error);
+      reason = classifyLaneHealthWriteError(error);
     }
     const results: Record<string, NeonWriteResult> = {};
     const counts = {
@@ -427,7 +429,9 @@ export async function mirrorNeuronSnapshotToNeon(
         ok: reason === undefined,
         rows,
         statements,
-        ...(reason === undefined ? {} : { reason }),
+        ...(reason === undefined
+          ? {}
+          : { reason, confirmation: "unknown" as const }),
       };
       results[name] = result;
       await recordNeonWriteVerdict(
@@ -466,7 +470,12 @@ export async function mirrorNeuronSnapshotToNeon(
         true,
       );
     }
-    return { attempted: true, results, ...(prune ? { prune } : {}) };
+    return {
+      attempted: true,
+      writePath: "d1",
+      results,
+      ...(prune ? { prune } : {}),
+    };
   }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
@@ -503,7 +512,7 @@ export async function mirrorNeuronSnapshotToNeon(
         reason: "hyperdrive unbound",
       };
     }
-    return { attempted: true, results: unbound };
+    return { attempted: true, writePath: "unbound", results: unbound };
   }
 
   // Keyed by the same names as NEURON_MIRROR_PLANS, so the loop below indexes
@@ -638,5 +647,10 @@ export async function mirrorNeuronSnapshotToNeon(
     );
     results[`${NEURONS_NEON_LANE}_passes`] = verdict;
   }
-  return { attempted: true, results, ...(prune ? { prune } : {}) };
+  return {
+    attempted: true,
+    writePath: buffered ? "postgres-buffered" : "postgres-direct",
+    results,
+    ...(prune ? { prune } : {}),
+  };
 }

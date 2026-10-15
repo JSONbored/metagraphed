@@ -178,6 +178,43 @@ test("hotkey pools persist only when a nominator position references the pool", 
     1,
   );
 });
+test("legacy hotkey replay can complete the additive tally without delivering the missing pool", async () => {
+  await positions([row("c", "first"), row("c", "missing")]);
+  const rows = [
+    { hotkey: "first", netuid: 1, total_alpha: 90, captured_at: stamp },
+  ];
+  const write = () => writeLedgerD1(store(), "hotkey-alpha", rows, pass(1, 2));
+  const tally = () =>
+    db
+      .prepare(
+        "SELECT expected_rows,received_rows,completed_at FROM hotkey_alpha_passes",
+      )
+      .first();
+  assert.equal((await write()).ok, true);
+  assert.equal((await tally())!.received_rows, 1);
+  assert.equal((await tally())!.completed_at, null);
+  const original = await db.prepare("SELECT * FROM hotkey_alpha").first();
+  assert.equal((await write()).ok, true);
+  assert.deepEqual(
+    await db.prepare("SELECT * FROM hotkey_alpha").first(),
+    original,
+  );
+  assert.equal(await count("hotkey_alpha"), 1);
+  assert.deepEqual(await tally(), {
+    expected_rows: 2,
+    received_rows: 2,
+    completed_at: stamp + 1,
+  });
+  assert.equal((await write()).ok, true);
+  assert.equal((await tally())!.received_rows, 3);
+  assert.equal(
+    await db
+      .prepare("SELECT COUNT(*) n FROM hotkey_alpha WHERE hotkey='missing'")
+      .first("n"),
+    0,
+  );
+});
+
 test("failed final tally rolls back every ledger chunk and reports failure", async () => {
   await db
     .prepare(
