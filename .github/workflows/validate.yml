@@ -1649,6 +1649,8 @@ jobs:
           sudo systemctl show "$scope.scope" --property=Result --property=MemoryPeak \
             --property=MemoryCurrent --property=CPUUsageNSec --property=TasksMax \
             > reports/chain-detail-resource/scope-result.txt || true
+          sudo journalctl --unit="$scope.scope" --no-pager --lines=30 --output=short-iso \
+            > reports/chain-detail-resource/scope-journal.txt || true
           exit "$probe_status"
         env:
           WRANGLER_SEND_METRICS: "false"
