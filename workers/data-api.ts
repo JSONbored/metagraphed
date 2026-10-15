@@ -66,7 +66,7 @@ import {
 import { readJsonObjectBody } from "../schemas-src/json-request.ts";
 import { spotPriceTao } from "../src/stake-quote.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
-import { isPathUnder } from "./http.ts";
+import { isPathUnder, readBoundedRequestText } from "./http.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import {
@@ -1058,13 +1058,17 @@ async function handleChainDetailSync(
   const denied = chainDetailSyncAuth(request, env);
   if (denied) return denied;
 
-  const raw = await request.text();
-  if (utf8Bytes(raw).length > CHAIN_DETAIL_SYNC_MAX_BODY_BYTES) {
+  const bounded = await readBoundedRequestText(
+    request,
+    CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
+  );
+  if (!bounded.ok) {
     return writeJson(
       { error: `body exceeds ${CHAIN_DETAIL_SYNC_MAX_BODY_BYTES} bytes` },
       413,
     );
   }
+  const raw = bounded.text;
   let parsed;
   try {
     parsed = JSON.parse(raw);

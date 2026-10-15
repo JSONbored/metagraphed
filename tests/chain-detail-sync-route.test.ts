@@ -220,6 +220,112 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
     assert.equal(badRow.status, 400);
   });
 
+  test("declared oversize is refused before the authenticated body is read", async () => {
+    const pull = vi.fn(
+      (controller: ReadableStreamDefaultController<Uint8Array>) =>
+        controller.error(new Error("body must stay unread")),
+    );
+    const request = new Request("https://d/api/v1/internal/chain-detail-sync", {
+      method: "POST",
+      headers: { [HEADER]: SECRET, "content-length": "16000001" },
+      body: new ReadableStream({ pull }, { highWaterMark: 0 }),
+      duplex: "half",
+    } as RequestInit);
+    const response = await dataApi.fetch(request, env, CTX);
+    assert.equal(response.status, 413);
+    assert.equal(pull.mock.calls.length, 0);
+    assert.equal(request.bodyUsed, false);
+    assert.deepEqual(insertedTables(), []);
+  });
+
+  for (const length of [undefined, "1", "16000000"])
+    test(`stream overflow cancels early with content-length ${String(length)}`, async () => {
+      let pulls = 0;
+      let cancelled = 0;
+      const chunk = new Uint8Array(65536).fill(32);
+      const stream = new ReadableStream<Uint8Array>(
+        {
+          pull(controller) {
+            pulls++;
+            if (pulls > 245) {
+              controller.error(new Error("oversized stream was over-read"));
+              return;
+            }
+            controller.enqueue(chunk);
+          },
+          cancel() {
+            cancelled++;
+          },
+        },
+        { highWaterMark: 0 },
+      );
+      const headers: Record<string, string> = { [HEADER]: SECRET };
+      if (length !== undefined) headers["content-length"] = length;
+      const request = new Request(
+        "https://d/api/v1/internal/chain-detail-sync",
+        {
+          method: "POST",
+          headers,
+          body: stream,
+          duplex: "half",
+        } as RequestInit,
+      );
+      const response = await dataApi.fetch(request, env, CTX);
+      assert.equal(response.status, 413);
+      assert.equal(pulls, 245);
+      assert.equal(cancelled, 1);
+      assert.deepEqual(insertedTables(), []);
+    });
+
+  test("exact wire-byte limit preserves UTF-8 split across stream chunks", async () => {
+    const input = body();
+    input.blocks[0].extrinsics[0].call_args = JSON.stringify({
+      value: "精密 🧬",
+    });
+    const bytes = new TextEncoder().encode(JSON.stringify(input));
+    const split = bytes.findIndex((value) => value > 127) + 1;
+    assert.ok(split > 0);
+    const padding = new Uint8Array(65536).fill(32);
+    let position = 0;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          if (position < bytes.length) {
+            const end = position === 0 ? split : bytes.length;
+            controller.enqueue(bytes.subarray(position, end));
+            position = end;
+            return;
+          }
+          if (position < 16000000) {
+            const end = Math.min(position + padding.length, 16000000);
+            controller.enqueue(padding.subarray(0, end - position));
+            position = end;
+            return;
+          }
+          controller.close();
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const response = await dataApi.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { [HEADER]: SECRET },
+        body: stream,
+        duplex: "half",
+      } as RequestInit),
+      env,
+      CTX,
+    );
+    assert.equal(response.status, 200);
+    assert.equal(position, 16000000);
+    const extrinsic = statements.find((statement) =>
+      statement.sql.startsWith("INSERT INTO chain_detail_extrinsics"),
+    );
+    assert.ok(extrinsic);
+    assert.ok(JSON.stringify(extrinsic.params).includes("精密 🧬"));
+  });
+
   test("a valid batch with no store bound is 503, not a silent success", async () => {
     const res = await dataApi.fetch(
       new Request("https://d/api/v1/internal/chain-detail-sync", {
