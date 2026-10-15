@@ -212,6 +212,7 @@ test.describe("account attribution and pallet-level evidence", () => {
     );
     await gotoThroughRestart(page, `/extrinsics/${FAILED_PROXY_HASH}`);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("proxy");
+    await expect(page.getByText("result failed", { exact: true })).toBeVisible();
     await expect(page.locator("#arguments")).toContainText("batch");
     await expect(page.getByText(/No account-attributed events were decoded/)).toBeVisible();
     await expect(page.getByRole("table", { name: /What it produced/ })).toContainText(

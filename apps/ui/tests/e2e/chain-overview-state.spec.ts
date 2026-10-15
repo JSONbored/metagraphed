@@ -262,7 +262,7 @@ test("compares only closed UTC fee days and keeps missing observations unknown a
   await page.getByRole("button", { name: "refresh", exact: true }).click();
   await expect(section.getByText("102.0000τ", { exact: true })).toHaveCount(0);
   await expect(section).toContainText("109.0100τ");
-  daily[0]!.total_fee_tao = null;
+  daily[1]!.total_fee_tao = null;
   await page.getByRole("button", { name: "refresh", exact: true }).click();
   await expect(section.getByText("109.0100τ", { exact: true })).toHaveCount(0);
   await expect(section).toContainText(

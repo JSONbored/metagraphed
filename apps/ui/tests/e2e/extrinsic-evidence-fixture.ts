@@ -20,7 +20,7 @@ export function extrinsicEvidenceFixture(hash: string) {
         call_args: failed
           ? { call: { Utility: { batch: [{ SubtensorModule: { add_stake: {} } }] } } }
           : {},
-        success: failed ? 0 : 1,
+        success: !failed,
         observed_at: "2026-08-22T10:00:00.000Z",
       },
       events: failed
