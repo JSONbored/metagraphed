@@ -1647,7 +1647,7 @@ jobs:
             --property=MemoryMax=536870912 --property=MemorySwapMax=0 \
             --property=TasksMax=128 --property=CPUQuota=200% \
             timeout --signal=TERM --kill-after=15s 600s \
-            "$node_binary" scripts/qualify-chain-detail-resource.ts || probe_status=$?
+            "$node_binary" --max-old-space-size=128 scripts/qualify-chain-detail-resource.ts || probe_status=$?
           mkdir -p reports/chain-detail-resource
           sudo systemctl show "$scope.scope" --property=Result --property=MemoryPeak \
             --property=MemoryCurrent --property=CPUUsageNSec --property=TasksMax \

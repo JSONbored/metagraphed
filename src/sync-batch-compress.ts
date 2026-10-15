@@ -22,7 +22,7 @@ export const SYNC_BATCH_COMPRESSION = "gzip" as const;
 export const SYNC_BATCH_MAX_DECODED_BYTES = 4 * 1024 * 1024;
 
 export class SyncBatchSizeError extends RangeError {
-  constructor(kind: "compressed" | "expanded" | "rows") {
+  constructor(readonly kind: "compressed" | "expanded" | "rows") {
     super(`sync-batches: ${kind} message exceeds its admission budget`);
     this.name = "SyncBatchSizeError";
   }

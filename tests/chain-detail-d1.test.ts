@@ -456,28 +456,6 @@ test("configured HTTP queue preserves a wide block through rollback and replay",
     },
   } as unknown as Parameters<typeof worker.fetch>[1];
   const context = { waitUntil() {} } as unknown as ExecutionContext;
-  const oversized = await worker.fetch(
-    new Request("https://d/api/v1/internal/chain-detail-sync", {
-      method: "POST",
-      headers: { "x-chain-detail-sync-token": "secret" },
-      body: JSON.stringify({
-        blocks: [
-          {
-            ...body.blocks[0],
-            account_events: [
-              ...accounts,
-              { ...accounts[0], event_index: 4_998 },
-            ],
-          },
-        ],
-      }),
-    }),
-    queuedEnv,
-    context,
-  );
-  assert.equal(oversized.status, 502, "5001 detail rows fail queue admission");
-  assert.equal(sent.length, 0, "refusal never sends a partial block");
-  for (const table of chainDetailTables()) assert.equal(await count(table), 0);
   const response = await worker.fetch(
     new Request("https://d/api/v1/internal/chain-detail-sync", {
       method: "POST",
@@ -551,6 +529,92 @@ test("configured HTTP queue preserves a wide block through rollback and replay",
       .first("call_args"),
     body.blocks[0].extrinsics[0].call_args,
   );
+});
+
+test("an indivisible over-row-budget block falls back atomically without enqueue", async () => {
+  const base = payload();
+  const accounts = Array.from({ length: 5_001 }, (_, event_index) => ({
+    block_number: 9_000_001,
+    event_index,
+    extrinsic_index: 0,
+    event_kind: "StakeAdded",
+    hotkey: null,
+    coldkey: null,
+    netuid: null,
+    uid: null,
+    amount_tao: "0.000000001",
+    alpha_amount: null,
+    observed_at: stamp,
+  }));
+  const body = { blocks: [{ ...base.blocks[0], account_events: accounts }] };
+  let sends = 0;
+  const queuedEnv = {
+    ...env(),
+    SYNC_QUEUE_LANES: "chain-detail",
+    SYNC_BATCHES: {
+      async send() {
+        sends++;
+      },
+    },
+  } as unknown as Parameters<typeof worker.fetch>[1];
+  const context = { waitUntil() {} } as unknown as ExecutionContext;
+  const post = (value = body) =>
+    worker.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { "x-chain-detail-sync-token": "secret" },
+        body: JSON.stringify(value),
+      }),
+      queuedEnv,
+      context,
+    );
+  const multiple = {
+    blocks: [
+      body.blocks[0],
+      {
+        ...body.blocks[0],
+        block_number: 9_000_002,
+        extrinsics: body.blocks[0].extrinsics.map((row) => ({
+          ...row,
+          block_number: 9_000_002,
+        })),
+        chain_events: body.blocks[0].chain_events.map((row) => ({
+          ...row,
+          block_number: 9_000_002,
+        })),
+        account_events: accounts.map((row) => ({
+          ...row,
+          block_number: 9_000_002,
+        })),
+      },
+    ],
+  };
+  assert.equal(
+    (await post(multiple)).status,
+    502,
+    "multi-block refusal cannot bypass admission",
+  );
+  assert.equal(sends, 0);
+  await db
+    .prepare(
+      "CREATE TRIGGER fallback_reject BEFORE INSERT ON chain_detail_blocks BEGIN SELECT RAISE(ABORT,'late failure'); END",
+    )
+    .run();
+  assert.equal((await post()).status, 502);
+  for (const table of chainDetailTables()) assert.equal(await count(table), 0);
+  await db.prepare("DROP TRIGGER fallback_reject").run();
+  for (let replay = 0; replay < 2; replay++) {
+    const response = await post();
+    assert.equal(response.status, 200);
+    assert.deepEqual(((await response.json()) as { stores: string[] }).stores, [
+      "d1",
+    ]);
+  }
+  assert.equal(sends, 0, "native fallback never enqueues");
+  assert.equal(await count("chain_detail_blocks"), 1);
+  assert.equal(await count("chain_detail_extrinsics"), 1);
+  assert.equal(await count("chain_detail_chain_events"), 1);
+  assert.equal(await count("chain_detail_account_events"), 5_001);
 });
 
 test("compressed family messages cannot downgrade an unsupported delivery identity to legacy writes", async () => {

@@ -585,6 +585,7 @@ import {
   compressSyncBatchMessage,
   decompressSyncBatchMessage,
   isCompressedSyncBatchBody,
+  SyncBatchSizeError,
 } from "../src/sync-batch-compress.ts";
 import {
   enqueueSyncBatch,
@@ -1073,33 +1074,14 @@ async function handleChainDetailSync(
   const batch = parseChainDetailSync(parsed, Date.now());
   if (!batch.ok) return writeJson({ error: batch.error }, batch.status);
 
-  // D1 is the binding this path requires UNTIL Neon owns the four families
-  // (#10144) -- asked only when the store write below is going to happen, since an
-  // unconditional check answered 503 here and never reached the Neon write.
-  //
-  // Checked HERE, after parsing and validation, not at the top: a malformed
-  // body is a 400 whether or not a store happens to be bound, and answering 503
-  // to it would blame the infrastructure for the caller's payload. Same
-  // ordering, and the same reason, as handleNeuronsSync above.
-  // ALL FOUR FAMILIES, OR NONE -- they must land together, so a partial
-  // declaration is the "no store" case rather than a weaker version of owned.
+  // Validate before ownership: malformed input is a400. All four families
+  // must be declared together before either delivery path can persist them.
   if (!neonOwnsChainDetail(env)) {
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
-  // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
-  //
-  // FOUR FAMILIES, ONE MESSAGE (metagraphed-infra#359). blocks, extrinsics,
-  // chain events and account events are posted together because they must land
-  // together: a block whose drill-down shows no calls is readable and wrong.
-  // packMultiFamilyMessage refuses to split them, so an oversize batch throws
-  // here rather than silently becoming the split this shape exists to prevent.
-  //
-  // SENT COMPRESSED, because raw JSON does not fit and cannot be made to: one
-  // block measures 476.6 KiB against a 128 KiB cap, and the batch is already
-  // one block. gzip takes the same bytes to 40.5 KiB (metagraphed#9759). The
-  // budget is checked on the COMPRESSED size -- the only number the transport
-  // sees -- and still throws rather than degrading into a split.
+  // Four families travel atomically. gzip fits ordinary blocks under128KiB;
+  // admission refuses whole multi-block batches so the producer can shrink.
   if (syncLaneUsesQueue(env, "chain-detail")) {
     try {
       await env.SYNC_BATCHES!.send(
@@ -1118,20 +1100,31 @@ async function handleChainDetailSync(
         ),
         { contentType: "bytes" },
       );
+      return writeJson({
+        ok: true,
+        blocks_written: batch.rows.blockRows.length,
+        extrinsics_written: batch.rows.extrinsicRows.length,
+        chain_events_written: batch.rows.chainEventRows.length,
+        account_events_written: batch.rows.accountEventRows.length,
+        head: batch.rows.head,
+        stores: ["queue"],
+      });
     } catch (err) {
-      console.error("data-api chain-detail enqueue failed:", err);
-      await captureDataApiError(err, "chain-detail-sync-queue", env);
-      return writeJson({ error: "enqueue failed" }, 502);
+      // No enqueue occurred. One indivisible block can use this route's
+      // existing atomic D1 writer; other failures keep the producer's retry.
+      if (
+        !(
+          err instanceof SyncBatchSizeError &&
+          err.kind === "rows" &&
+          batch.rows.blockRows.length === 1 &&
+          selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)
+        )
+      ) {
+        console.error("data-api chain-detail enqueue failed:", err);
+        await captureDataApiError(err, "chain-detail-sync-queue", env);
+        return writeJson({ error: "enqueue failed" }, 502);
+      }
     }
-    return writeJson({
-      ok: true,
-      blocks_written: batch.rows.blockRows.length,
-      extrinsics_written: batch.rows.extrinsicRows.length,
-      chain_events_written: batch.rows.chainEventRows.length,
-      account_events_written: batch.rows.accountEventRows.length,
-      head: batch.rows.head,
-      stores: ["queue"],
-    });
   }
 
   let neon: Awaited<ReturnType<typeof mirrorChainDetailToNeon>>;

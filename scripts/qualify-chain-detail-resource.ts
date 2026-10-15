@@ -32,6 +32,7 @@ const report: Record<string, unknown> = {
     encoding: "utf8",
   }).trim(),
   status: "incomplete",
+  driver_exec_argv: process.execArgv,
   scope: "synthetic native Workerd, actual dry-run data-api bundle and D1",
   exclusions: [
     "true synchronous heap peak",
@@ -457,10 +458,13 @@ try {
       compatibilityFlags: ["nodejs_compat"],
       inspectorPort: 0,
       d1Databases: ["D1_STATE"],
+      queueProducers: { SYNC_BATCHES: "sync-batches" },
       bindings: {
         D1_STATE_TABLES: [...chainDetailTables(), "lane_health"].join(","),
         D1_EXPORT_REVISIONS: "enabled",
         ARCHIVE_OBJECT_STORAGE: "native",
+        CHAIN_DETAIL_SYNC_SECRET: "synthetic-only",
+        SYNC_QUEUE_LANES: "chain-detail",
       },
       // No network service, credentials, external store or live queue binding.
       outboundService: { network: { allow: [] } },
@@ -513,6 +517,7 @@ try {
       const isolate = await cdp.request("Runtime.getIsolateId");
       await cdp.request("Profiler.enable");
       await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
+      let retainedOriginal = message;
       if (shape === "objects" || shape === "objects-max") {
         await assert.rejects(
           compressSyncBatchMessage(message, 128 * 1024),
@@ -550,6 +555,12 @@ try {
         assert.equal(receipt?.body_sha256, hash(packed));
         assert.equal(receipt.encoding, "base64");
         assert.deepEqual(Buffer.from(receipt.payload, "base64"), packed);
+        retainedOriginal = JSON.parse(
+          gunzipSync(Buffer.from(receipt.payload, "base64"), {
+            maxOutputLength: SYNC_BATCH_MAX_DECODED_BYTES,
+          }).toString("utf8"),
+        );
+        assert.deepEqual(retainedOriginal, message);
         observations.push({
           shape,
           phase: "row-admission-refusal",
@@ -572,8 +583,8 @@ try {
           native_limits: await nativeLimits(),
         });
         await save();
-        continue;
       }
+      const direct = shape === "objects" || shape === "objects-max";
       let priorRows: unknown;
       for (const phase of [
         "first",
@@ -584,12 +595,14 @@ try {
         const current =
           phase === "fresh-insert"
             ? payload(shape, 9_000_002)
-            : structuredClone(message);
+            : structuredClone(retainedOriginal);
         if (phase === "late-failure" || phase === "repair-replay") {
           for (const rows of Object.values(current.families))
             for (const row of rows) row.observed_at = stamp + 1;
         }
-        const admitted = await compressSyncBatchMessage(current, 128 * 1024);
+        const admitted = direct
+          ? gzipSync(JSON.stringify(current))
+          : await compressSyncBatchMessage(current, 128 * 1024);
         if (phase === "late-failure")
           await db
             .prepare(
@@ -622,24 +635,57 @@ try {
           samplingError = error;
         });
         const start = performance.now();
-        let results;
+        let results: Awaited<ReturnType<typeof worker.queue>>[] = [];
+        let httpResult: { status: number; body: unknown } | undefined;
         try {
-          results = await deadline(
-            Promise.all(
-              Array.from({ length: 1 }, (_, batch) =>
-                worker.queue(
-                  "sync-batches",
-                  Array.from({ length: 1 }, (_, i) => ({
-                    id: `${shape}-${phase}-${batch}-${i}`,
+          if (direct) {
+            // Recover the indivisible original through the existing authenticated
+            // HTTP writer, keeping every family in the one native transaction.
+            const blocks = current.families.blockRows.map((block) => ({
+              ...block,
+              extrinsics: current.families.extrinsicRows.filter(
+                (row) => row.block_number === block.block_number,
+              ),
+              chain_events: current.families.chainEventRows.filter(
+                (row) => row.block_number === block.block_number,
+              ),
+              account_events: current.families.accountEventRows.filter(
+                (row) => row.block_number === block.block_number,
+              ),
+            }));
+            const response = await deadline(
+              worker.fetch("https://d/api/v1/internal/chain-detail-sync", {
+                method: "POST",
+                headers: { "x-chain-detail-sync-token": "synthetic-only" },
+                body: JSON.stringify({ blocks }),
+              }),
+              120_000,
+            );
+            httpResult = {
+              status: response.status,
+              body: await response.json(),
+            };
+            assert.equal(response.status, phase === "late-failure" ? 502 : 200);
+            if (phase !== "late-failure")
+              assert.deepEqual(
+                (httpResult.body as { stores: string[] }).stores,
+                ["d1"],
+              );
+          } else {
+            results = [
+              await deadline(
+                worker.queue("sync-batches", [
+                  {
+                    id: `${shape}-${phase}`,
                     timestamp: new Date(stamp),
                     attempts: 1,
                     body: admitted,
-                  })),
-                ),
+                  },
+                ]),
+                120_000,
               ),
-            ),
-            120_000,
-          );
+            ];
+          }
         } finally {
           finished = true;
           await sampling;
@@ -745,6 +791,8 @@ try {
           ),
           wall_ms,
           results,
+          http_result: httpResult,
+          recovery: direct ? "indivisible-original-http-atomic" : undefined,
           census,
           four_family_and_chunk_digests: actualRows,
           health,
