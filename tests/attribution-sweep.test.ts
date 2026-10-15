@@ -20,6 +20,7 @@ import worker, {
 } from "../workers/api.ts";
 import { LANE_HEARTBEAT_CRON } from "../workers/config.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { ProducerStatement } from "../src/producer-store.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 import {
@@ -228,6 +229,11 @@ describe("the store", () => {
         sink.push({ sql, binds });
         return { changes: 1 };
       },
+      async transaction(statements: readonly ProducerStatement[]) {
+        for (const statement of statements)
+          sink.push({ sql: statement.text, binds: statement.values ?? [] });
+        return statements.map(() => ({ changes: 1 }));
+      },
       async query<T>(sql: string, binds: unknown[] = []) {
         sink.push({ sql, binds });
         return rows as T[];
@@ -264,16 +270,58 @@ describe("the store", () => {
   });
 
   test("no binding is a stated refusal, not a silent success", async () => {
-    assert.deepEqual(await persistSweep(null, result), {
-      ok: false,
-      reason: "no_store_binding",
-    });
+    for (const store of [
+      null,
+      undefined,
+      { run: async () => ({ changes: 1 }) },
+    ]) {
+      assert.deepEqual(await persistSweep(store, result), {
+        ok: false,
+        reason: "no_store_binding",
+      });
+    }
+  });
+
+  test("keeps every candidate in one transaction below the binding ceiling", async () => {
+    for (const count of [0, 1, 20, 21, 40, 41]) {
+      const batches: ProducerStatement[][] = [];
+      const candidates = Array.from({ length: count }, (_, index) => ({
+        ss58: REAL,
+        source_url: `https://example.invalid/${index}`,
+      }));
+      assert.deepEqual(
+        await persistSweep(
+          {
+            transaction: async (statements) => {
+              batches.push([...statements]);
+              return statements.map(() => ({ changes: 1 }));
+            },
+            run: async () => {
+              throw new Error("individual writes must not be used");
+            },
+          },
+          { ...result, candidates },
+        ),
+        { ok: true },
+      );
+      assert.equal(batches.length, 1);
+      assert.equal(batches[0].length, 1 + Math.ceil(count / 20));
+      assert.ok(
+        batches[0].every((statement) => statement.values!.length <= 100),
+      );
+      assert.equal(
+        batches[0]
+          .slice(1)
+          .reduce((sum, statement) => sum + statement.values!.length / 5, 0),
+        count,
+      );
+    }
   });
 
   test("a write failure is reported rather than swallowed", async () => {
     const out = await persistSweep(
       {
-        run() {
+        transaction() {
           throw new Error("relation does not exist");
         },
       },
@@ -656,7 +704,7 @@ describe("shapes the registry and the store can really produce", () => {
   test("a thrown non-Error still names the failure", async () => {
     const out = await persistSweep(
       {
-        run() {
+        transaction() {
           throw "a bare string";
         },
       },
@@ -759,6 +807,8 @@ describe("consuming a sweep batch", () => {
 
   const store = () => ({
     run: async () => ({ changes: 1 }),
+    transaction: async (statements: readonly ProducerStatement[]) =>
+      statements.map(() => ({ changes: 1 })),
     query: async <T>() => [] as T[],
   });
 
@@ -1083,6 +1133,8 @@ describe("the last of the queue shapes", () => {
       ],
       {
         run: async () => ({ changes: 1 }),
+        transaction: async (statements: readonly ProducerStatement[]) =>
+          statements.map(() => ({ changes: 1 })),
         query: async <T>() => [] as T[],
       },
       {
