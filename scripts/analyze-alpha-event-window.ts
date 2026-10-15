@@ -34,7 +34,7 @@ function readManifest(path: string) {
       if (total > max) throw new Error("Manifest grew beyond its byte budget");
     }
     return JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(
+      new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(
         bytes.subarray(0, total),
       ),
     );
@@ -54,7 +54,7 @@ export async function analyzeAlphaEventFiles(
     autoClose: true,
   });
   const digest = createHash("sha256");
-  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
   let bytes = 0,
     lineBytes = 0;
   let parts: Buffer[] = [];

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, truncateSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, test } from "vitest";
@@ -295,6 +295,65 @@ describe("bounded retained Alpha event spike", () => {
       );
       writeFileSync(source, f.source + "\n");
       await assert.rejects(analyzeAlphaEventFiles(manifest, source));
+    } finally {
+      rmSync(directory, { recursive: true });
+    }
+  });
+  test("the file adapter refuses non-files, invalid UTF-8 and byte overflow without partial success", async () => {
+    const f = fixture(),
+      directory = mkdtempSync(join(tmpdir(), "alpha-spike-limits-"));
+    try {
+      const manifest = join(directory, "manifest.json"),
+        source = join(directory, "blocks.ndjson");
+      writeFileSync(manifest, JSON.stringify(f.manifest));
+      writeFileSync(source, f.source);
+      await assert.rejects(
+        analyzeAlphaEventFiles(directory, source),
+        /regular-file/,
+      );
+      await assert.rejects(
+        analyzeAlphaEventFiles(manifest, directory),
+        /regular-file/,
+      );
+      writeFileSync(
+        source,
+        Buffer.concat([
+          Buffer.from(f.source.slice(0, -2)),
+          Buffer.from([255]),
+          Buffer.from("}\n"),
+        ]),
+      );
+      await assert.rejects(
+        analyzeAlphaEventFiles(manifest, source),
+        /encoded data|encoding|UTF/i,
+      );
+      writeFileSync(source, " ".repeat(16 * 1024 * 1024 + 1));
+      await assert.rejects(
+        analyzeAlphaEventFiles(manifest, source),
+        /Block line exceeds/,
+      );
+      // Sparse files prove admission before any large source is read.
+      truncateSync(source, 256 * 1024 * 1024 + 1);
+      await assert.rejects(
+        analyzeAlphaEventFiles(manifest, source),
+        /regular-file byte budget/,
+      );
+      writeFileSync(source, f.source);
+      const exactManifest = JSON.stringify(f.manifest).padEnd(
+        8 * 1024 * 1024,
+        " ",
+      );
+      writeFileSync(manifest, exactManifest);
+      assert.equal(
+        (await analyzeAlphaEventFiles(manifest, source))
+          .known_event_touched_pool_count,
+        4,
+      );
+      truncateSync(manifest, 8 * 1024 * 1024 + 1);
+      await assert.rejects(
+        analyzeAlphaEventFiles(manifest, source),
+        /regular-file byte budget/,
+      );
     } finally {
       rmSync(directory, { recursive: true });
     }
