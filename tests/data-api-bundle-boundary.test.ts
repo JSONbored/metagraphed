@@ -42,15 +42,22 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, test } from "vitest";
+import { stripJsonComments } from "../scripts/lib.ts";
 
 const workdir = mkdtempSync(path.join(tmpdir(), "data-api-graph-"));
 const metafile = path.join(workdir, "meta.json");
+const configuredEntry = (
+  JSON.parse(
+    stripJsonComments(readFileSync("wrangler.data.jsonc", "utf8")),
+  ) as { main: string }
+).main;
+assert.equal(typeof configuredEntry, "string");
 
 afterAll(() => rmSync(workdir, { recursive: true, force: true }));
 
 /** data-api's real module graph, from esbuild rather than from a grep. */
 function inputs(
-  entry = "workers/data-api.ts",
+  entry = configuredEntry,
   portable = false,
 ): Record<string, { bytes: number }> {
   execFileSync(
@@ -82,7 +89,11 @@ describe("data-api's bundle boundary", () => {
       Object.keys(graph).length > 100,
       `only ${Object.keys(graph).length} inputs resolved -- esbuild failed?`,
     );
-    assert.ok(graph["workers/data-api.ts"], "its own entry point is missing");
+    assert.ok(graph[configuredEntry], "the configured entry point is missing");
+    assert.ok(
+      graph["workers/data-api.ts"],
+      "the handler implementation is missing",
+    );
   });
 
   for (const forbidden of [

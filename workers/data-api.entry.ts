@@ -1,3 +1,2 @@
-// Workerd registers every entry export as a service entrypoint. Keep test
-// helpers and constants in the implementation module, outside that registry.
+// Keep implementation test exports outside Workerd service registration.
 export { default } from "./data-api.ts";
