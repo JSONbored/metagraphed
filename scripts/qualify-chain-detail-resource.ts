@@ -40,6 +40,8 @@ import {
 const cpuProfiles = process.env.CHAIN_DETAIL_RESOURCE_CPU_PROFILES !== "false";
 const nativeOracle =
   process.env.CHAIN_DETAIL_RESOURCE_NATIVE_ORACLE !== "false";
+const separateHttpPhases =
+  process.env.CHAIN_DETAIL_RESOURCE_SEPARATE_HTTP_PHASES === "true";
 const output = path.resolve("reports/chain-detail-resource");
 await mkdir(output, { recursive: true });
 const temporary = await mkdtemp(path.join(tmpdir(), "chain-detail-resource-"));
@@ -50,6 +52,16 @@ const report: Record<string, unknown> = {
   status: "incomplete",
   driver_exec_argv: process.execArgv,
   cpu_profiles_enabled: cpuProfiles,
+  separate_http_phases: separateHttpPhases,
+  process_lifetime: separateHttpPhases
+    ? "fresh application Workerd per dispatch, stopped before separate persisted-D1 verification Workerd"
+    : "original warm application/D1/verifier Workerd",
+  phase_comparison_limits: [
+    "application dispatch still includes native D1/helper allocations in its Workerd process",
+    "fresh application lifetime changes cache/retention; compare with original warm mode",
+    "one unchanged 512MiB scope bounds sequential processes; its memory.peak is cumulative",
+    "isolate samples can miss synchronous peaks and do not implement production limits",
+  ],
   database_verifier: nativeOracle
     ? "native-fixture-worker"
     : "node-binding-proxy",
@@ -653,6 +665,11 @@ try {
       ].includes(shape),
     "one explicit finite diagnostic shape required",
   );
+  if (separateHttpPhases)
+    assert.ok(
+      nativeOracle && ["http-envelope", "http-concurrent"].includes(shape),
+      "separate phases require one HTTP boundary shape and native verifier",
+    );
   report.shape = shape;
   const shapes =
     shape === "combined"
@@ -722,13 +739,7 @@ try {
     // It avoids thousands of temporary Node prepared-statement proxies whose
     // native strong-reference release otherwise depends on Node finalization.
     // This is a local fixture only; the production entry and writer are intact.
-    const runtime = new Miniflare(
-      nativeOracle
-        ? {
-            inspectorPort: 0,
-            workers: [
-              apiOptions,
-              {
+    const oracleOptions = {
                 name: "chain-detail-oracle",
                 modules: true,
                 compatibilityDate: "2026-06-06",
@@ -741,11 +752,21 @@ try {
           if (typeof sql !== "string" || !Array.isArray(values) || values.length > 100) return new Response("oracle shape", {status:400});
           return Response.json(await env.D1_STATE.prepare(sql).bind(...values).all());
         }};`,
-              },
+              };
+    const persistence = path.join(temporary, "d1", shape);
+    const createApplication = () => new Miniflare(
+      nativeOracle
+        ? {
+            inspectorPort: 0,
+            ...(separateHttpPhases ? { d1Persist: persistence } : {}),
+            workers: [
+              apiOptions,
+              oracleOptions,
             ],
           }
         : apiOptions,
     );
+    let runtime = createApplication();
     let cdp: Awaited<ReturnType<typeof inspector>> | undefined;
     const helpers: Array<{
       id: string;
@@ -764,11 +785,11 @@ try {
         });
       return results;
     };
-    try {
+    async function verificationDb(): Promise<VerificationDb> {
       const oracle = nativeOracle
         ? await deadline(runtime.getWorker("chain-detail-oracle"), 30_000)
         : undefined;
-      const db: VerificationDb = oracle
+      return oracle
         ? {
             prepare(sql: string) {
               let values: unknown[] = [];
@@ -809,6 +830,59 @@ try {
             },
           }
         : await deadline(runtime.getD1Database("D1_STATE"), 30_000);
+    }
+    async function attachInspectors(application: boolean) {
+      const targetUrl = new URL(
+        "/json/list",
+        await deadline(runtime.getInspectorURL(), 15_000),
+      );
+      targetUrl.protocol = "http:";
+      const targets = (await (
+        await fetch(targetUrl, { signal: AbortSignal.timeout(5_000) })
+      ).json()) as Array<{
+        id: string;
+        title: string;
+        webSocketDebuggerUrl: string;
+      }>;
+      report.inspector_targets = targets.map(({ id, title }) => ({
+        id,
+        title,
+      }));
+      const subjects = targets.filter((target) =>
+        target.title.includes("chain-detail-resource"),
+      );
+      assert.equal(
+        subjects.length,
+        application ? 1 : 0,
+        "must identify exactly the actual data-api isolate",
+      );
+      cdp = application
+        ? await inspector(subjects[0].webSocketDebuggerUrl)
+        : undefined;
+      const auxiliaryTargets = targets.filter(
+        (target) =>
+          target.id.startsWith("d1:") ||
+          target.id === "core:entry" ||
+          target.id === "core:user:chain-detail-oracle",
+      );
+      assert.ok(auxiliaryTargets.length <= 4, "finite native helper census");
+      for (const target of auxiliaryTargets)
+        helpers.push({
+          id: target.id,
+          title: target.title,
+          client: await inspector(target.webSocketDebuggerUrl),
+        });
+      return cdp?.request("Runtime.getIsolateId");
+    }
+    async function stopRuntime() {
+      cdp?.close();
+      cdp = undefined;
+      for (const helper of helpers) helper.client.close();
+      helpers.length = 0;
+      await deadline(runtime.dispose(), 10_000);
+    }
+    try {
+      let db: VerificationDb = await verificationDb();
       for (const migration of mixed
         ? schemaFiles
         : [
@@ -847,46 +921,9 @@ try {
           .filter((sql) => sql.trim()))
           await db.prepare(statement).run();
       }
-      const worker = await runtime.getWorker();
-      const targetUrl = new URL(
-        "/json/list",
-        await deadline(runtime.getInspectorURL(), 15_000),
-      );
-      targetUrl.protocol = "http:";
-      const targets = (await (
-        await fetch(targetUrl, { signal: AbortSignal.timeout(5_000) })
-      ).json()) as Array<{
-        id: string;
-        title: string;
-        webSocketDebuggerUrl: string;
-      }>;
-      report.inspector_targets = targets.map(({ id, title }) => ({
-        id,
-        title,
-      }));
-      const subjects = targets.filter((target) =>
-        target.title.includes("chain-detail-resource"),
-      );
-      assert.equal(
-        subjects.length,
-        1,
-        "must identify exactly the actual data-api isolate",
-      );
-      cdp = await inspector(subjects[0].webSocketDebuggerUrl);
-      const auxiliaryTargets = targets.filter(
-        (target) =>
-          target.id.startsWith("d1:") ||
-          target.id === "core:entry" ||
-          target.id === "core:user:chain-detail-oracle",
-      );
-      assert.ok(auxiliaryTargets.length <= 4, "finite native helper census");
-      for (const target of auxiliaryTargets)
-        helpers.push({
-          id: target.id,
-          title: target.title,
-          client: await inspector(target.webSocketDebuggerUrl),
-        });
-      const isolate = await cdp.request("Runtime.getIsolateId");
+      let worker = await runtime.getWorker();
+      let isolate = await attachInspectors(true);
+      assert.ok(cdp);
       if (cpuProfiles) {
         await cdp.request("Profiler.enable");
         await cdp.request("Profiler.setSamplingInterval", { interval: 1_000 });
@@ -906,6 +943,8 @@ try {
           report.current_phase = phase;
           for (const field of [
             "http_response_receipt",
+            "http_application_phase",
+            "http_verifier_phase",
             "http_pre_dispatch",
             "http_current_process_samples",
             "http_post_response_api_heap",
@@ -939,6 +978,7 @@ try {
               .run();
           if (phase === "repair-replay")
             await db.prepare("DROP TRIGGER resource_http_reject").run();
+          assert.ok(cdp, "application inspector required before dispatch");
           const before = await cdp.request("Runtime.getHeapUsage");
           report.current_stage = "before-dispatch";
           report.http_current_fixtures = fixtures;
@@ -964,6 +1004,17 @@ try {
                 workerd_process: await processMemory(),
                 native_limits: await nativeLimits(),
               });
+              if (separateHttpPhases) {
+                const requested = performance.now();
+                const apiHeap = await cdp!.request("Runtime.getHeapUsage");
+                const replied = performance.now();
+                Object.assign(processSamples.at(-1)!, {
+                  api_heap: apiHeap,
+                  api_heap_request_started_ms: requested,
+                  api_heap_reply_received_ms: replied,
+                  native_helper_heaps: await helperHeaps(),
+                });
+              }
               report.http_current_process_samples = processSamples;
               await save();
               if (!done)
@@ -1056,6 +1107,46 @@ try {
           report.http_post_response_process = await processMemory();
           report.http_post_response_limits = await nativeLimits();
           await save();
+          if (separateHttpPhases) {
+            report.current_stage = "stop-application-before-verification";
+            report.http_application_phase = {
+              phase,
+              isolate,
+              inspector_targets: report.inspector_targets,
+              final_process: report.http_post_response_process,
+              response_receipt: report.http_response_receipt,
+              persisted_database: "same synthetic D1 id and private temporary persistence directory",
+              application_disposed_before_verification: false,
+            };
+            await save();
+            await stopRuntime();
+            Object.assign(report.http_application_phase as object, {
+              application_disposed_before_verification: true,
+            });
+            report.current_stage = "start-separate-verifier";
+            await save();
+            runtime = new Miniflare({
+              inspectorPort: 0,
+              d1Persist: persistence,
+              workers: [oracleOptions],
+            });
+            db = await verificationDb();
+            await attachInspectors(false);
+            const process = await processMemory();
+            assert.notEqual(
+              process.pid,
+              (report.http_post_response_process as { pid: number }).pid,
+              "verifier must run in a distinct Workerd process",
+            );
+            report.http_verifier_phase = {
+              phase,
+              process,
+              inspector_targets: report.inspector_targets,
+              application_isolate_present: false,
+              native_limits: await nativeLimits(),
+            };
+            await save();
+          }
           report.current_stage = "verify";
           await save();
           const rows = await databaseState(db, async (state) => {
@@ -1069,9 +1160,9 @@ try {
               native_limits: await nativeLimits(),
             };
             await save();
-            report.http_verification_api_heap = await cdp!.request(
-              "Runtime.getHeapUsage",
-            );
+            report.http_verification_api_heap = cdp
+              ? await cdp.request("Runtime.getHeapUsage")
+              : null;
             await save();
             report.http_verification_helper_heaps = await helperHeaps();
             await save();
@@ -1148,16 +1239,35 @@ try {
             four_family_and_chunk_digests: rows,
             wall_ms: performance.now() - start,
             before,
-            after: await cdp.request("Runtime.getHeapUsage"),
+            after: separateHttpPhases
+              ? report.http_post_response_api_heap
+              : await cdp!.request("Runtime.getHeapUsage"),
+            application_phase: separateHttpPhases ? report.http_application_phase : undefined,
+            verifier_phase: separateHttpPhases ? {
+              ...report.http_verifier_phase as object,
+              final_process: await processMemory(),
+              helper_heaps: await helperHeaps(),
+              persisted_census_and_hashes_verified: true,
+            } : undefined,
             process_samples: processSamples,
             native_limits: await nativeLimits(),
             true_peak_qualified: false,
           });
           await save();
           for (const fixture of fixtures) await rm(fixture.file_path);
+          if (separateHttpPhases && phase !== "repair-replay") {
+            report.current_stage = "stop-verifier-before-next-application";
+            await save();
+            await stopRuntime();
+            runtime = createApplication();
+            db = await verificationDb();
+            worker = await runtime.getWorker();
+            isolate = await attachInspectors(true);
+          }
         }
         continue;
       }
+      assert.ok(cdp, "application inspector required");
       if (shape === "chunks") {
         await assert.rejects(
           compressSyncBatchMessage(message, SYNC_BATCH_MAX_BYTES),

@@ -203,3 +203,28 @@ readers use the coherent payload snapshot described above.
 // hot-then-cold path.
 
 ```
+
+
+## Separate-process HTTP diagnostic
+
+The existing Validate workflow has an opt-in `resource_separate_http_phases`
+comparison for `http-envelope` and `http-concurrent`, with diagnostic-only mode
+and the native oracle required. It streams the unchanged exact maximum HTTP
+request(s), checks their actual responses and retains request SHA256s plus
+application/helper CDP samples, Linux process RSS/high-water and cgroup receipts.
+After each dispatch it closes the application inspector and stops that Workerd,
+then opens the same temporary persisted synthetic D1 in a distinct oracle-only
+Workerd. The original complete family census, ordered row digests, argument
+hashes, failure rollback and repair checks run there. Only after verification
+stops does the next fresh application process start.
+
+All phases retain the existing whole-scope 512MiB memory, zero swap, 128 tasks,
+two-CPU quota and Node 128MiB old-space limits. Cgroup peak is cumulative across
+sequential processes; fresh process high-water marks are separately attributed.
+The original warm-process mode remains available. Fresh application lifetime
+changes caches and retention, so this comparison does not qualify sustained
+warm operation. Application dispatch still shares its Workerd with native D1
+helpers, while verification runs without an application isolate. Sampled CDP
+heaps may miss synchronous peaks. A scope or Workerd OOM does not establish a
+production application-isolate failure. Killed/incomplete phases retain only the
+receipts actually written and cannot claim completed correctness verification.
