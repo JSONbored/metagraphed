@@ -70,7 +70,9 @@ export function canonicalAlphaOwnerStore(env: unknown) {
 /** All Alpha tables are installed with their nominator-position owner. */
 export async function alphaCaptureStateFromOwner(env: unknown) {
   const store = canonicalAlphaOwnerStore(env);
-  if (!store) return { available: false, capture: null };
+  if (!store) {
+    return { available: false, capture: null };
+  }
   return alphaCaptureState(store);
 }
 
@@ -87,8 +89,9 @@ export async function alphaPositionsUnqualified(
     !Number.isSafeInteger(capturedAt) ||
     capturedAt <= 0 ||
     (scope && !["coldkey", "hotkey", "netuid"].includes(scope.column))
-  )
+  ) {
     throw new TypeError("Invalid Alpha position qualification scope");
+  }
   const predicate = scope ? ` AND ${scope.column}=?` : "";
   const values = scope ? [scope.value, capturedAt, scope.value] : [capturedAt];
   const statement = `SELECT
@@ -96,7 +99,11 @@ export async function alphaPositionsUnqualified(
     OR EXISTS(SELECT 1 FROM alpha_snapshot_rows WHERE captured_at=?
       AND alpha_rao IS NULL${predicate}) AS unqualified`;
   const row = await db.first(statement, values);
-  return !row || (row as QualificationRow).unqualified !== 0;
+  if (!row) {
+    return true;
+  }
+  const qualification = row as QualificationRow;
+  return qualification.unqualified !== 0;
 }
 
 /** Missing pre-migration schema permits the existing reader during rollout.
@@ -106,14 +113,20 @@ export async function alphaPositionsUnqualified(
 export async function alphaCaptureState(
   db: OptionalRowReader | null | undefined,
 ): Promise<CaptureState> {
-  if (!db?.first) throw new TypeError("Alpha capture owner is unavailable");
-  if (isPostgresReadStore(db)) return { available: false, capture: null };
-  const schema = await db.first(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'",
-  );
-  const tableName = (schema as TableRow | null)?.name;
-  if (tableName !== "alpha_snapshot_passes")
+  if (!db?.first) {
+    throw new TypeError("Alpha capture owner is unavailable");
+  }
+  if (isPostgresReadStore(db)) {
     return { available: false, capture: null };
+  }
+  const discovery =
+    "SELECT name FROM sqlite_master WHERE type='table' " +
+    "AND name='alpha_snapshot_passes'";
+  const schema = await db.first(discovery);
+  const table = schema as TableRow | null;
+  if (!table || table.name !== "alpha_snapshot_passes") {
+    return { available: false, capture: null };
+  }
   const statement = `SELECT p.*,m.sha256 AS retained_metadata_sha256,
     m.code_hash AS retained_code_hash,m.spec_version AS retained_spec_version
     FROM (SELECT * FROM alpha_snapshot_passes WHERE selected=1
@@ -121,7 +134,9 @@ export async function alphaCaptureState(
     LEFT JOIN alpha_runtime_metadata m ON m.sha256=p.metadata_sha256`;
   const selected = await db.first(statement);
   const parsed = captureSchema.safeParse(selected);
-  if (!parsed.success) return { available: true, capture: null };
+  if (!parsed.success) {
+    return { available: true, capture: null };
+  }
   const p = parsed.data;
   const spec = alphaValuationSpec(p.spec_version);
   const runtime = spec === null ? null : ALPHA_RUNTIMES[spec];
