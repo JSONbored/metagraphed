@@ -14,6 +14,7 @@ import { readArtifactObject } from "../src/projection-store.ts";
 import { z } from "zod";
 import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watchdog.ts";
 import { requestTimings, withRequestTiming } from "../src/request-timing.ts";
+import { retainedProjectionCases } from "./helpers/retained-projection-contract.ts";
 
 const databases: DatabaseSync[] = [];
 beforeEach(() => resetModuleState());
@@ -102,6 +103,33 @@ const currentKey = (network: string) =>
   `metagraph/native-projections/v1/${network}/current.json`;
 const immutableKey = (generation: number) =>
   `metagraph/native-projections/v1/mainnet/${generation.toString(16).padStart(64, "0")}/chain-stake-flow.json`;
+
+test("actual retained producer D1 rows restore through the public projection reader", async () => {
+  for (const { network, manifest, plan, readback } of retainedProjectionCases) {
+    const { db, put } = fixture();
+    for (const row of readback.rows) put(row.key, JSON.parse(row.payload));
+    const env = {
+      NATIVE_PROJECTIONS: "enabled",
+      D1_STATE: db,
+      METAGRAPH_ARCHIVE: {
+        get: async () => {
+          throw new Error("Unexpected legacy read");
+        },
+      },
+    };
+    const selected = await loadNativeProjectionManifest(env, network, true);
+    assert.deepEqual(selected, manifest);
+    assert.deepEqual(selected!.sources[0]!.retainedBlocks, plan.retainedBlocks);
+    assert.deepEqual(
+      await readNativeProjectionObject(
+        env,
+        "metagraph/projections/blocks-summary.json",
+        network,
+      ),
+      readback.expectedBody,
+    );
+  }
+});
 
 test("concurrent and repeated immutable reads share verified bytes without sharing mutable JSON", async () => {
   const { db, seed, store, queries } = fixture();

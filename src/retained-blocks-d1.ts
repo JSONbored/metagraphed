@@ -21,6 +21,7 @@ const State = z.object({
   source_files: integer.max(32768),
   coverage: z.string().nullable(),
 });
+export const RetainedBlockStateSchema = State.strict();
 const Counts = z.object({
   kind: z.enum(["events", "extrinsics"]),
   matches: integer,
