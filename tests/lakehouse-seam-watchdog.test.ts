@@ -120,7 +120,7 @@ describe("the decode-lane rule", () => {
     );
     assert.equal(summary.seam, DEFAULT_BLOCKS_SEAM);
     assert.ok(reasons.some((r) => r.includes(DECODE_WATERMARK_KEY)));
-    assert.ok(reasons.some((r) => /pinned at the configured floor/.test(r)));
+    assert.ok(reasons.some((r) => /decoder progress beyond the configured floor/.test(r)));
   });
 
   test("a stopped decoder is named as stopped, with the frozen seam", () => {
@@ -135,7 +135,7 @@ describe("the decode-lane rule", () => {
     );
     assert.equal(reasons.length, 1);
     assert.match(reasons[0]!, /has stopped publishing/);
-    assert.match(reasons[0]!, new RegExp(`frozen at ${HI}`));
+    assert.match(reasons[0]!, new RegExp(`last published through ${HI}`));
   });
 
   test("a watermark exactly at the staleness threshold is still quiet", () => {
@@ -255,7 +255,7 @@ describe("the decode-lane rule", () => {
     );
     assert.equal(reasons.length, 4);
     for (const pattern of [
-      /pinned at the configured floor/,
+      /decoder progress beyond the configured floor/,
       /raw_capture_state/,
       /NOT contiguous/,
       /the seam does not expose/,
@@ -803,8 +803,131 @@ describe("the watchdog's own reporting", () => {
     // this watchdog cannot reach and a seam it checked and found correct both
     // produced exactly nothing.
     assert.equal(s.rows[0].verdict, "unknown");
-    assert.equal(s.rows[0].detail, "lakehouse_unavailable");
+    const detail = JSON.parse(String(s.rows[0].detail));
+    assert.deepEqual(detail.causes, [
+      "decode_watermark_unavailable",
+      "raw_capture_unavailable",
+      "chain_head_unavailable",
+      "indexed_census_unavailable",
+    ]);
+    assert.equal(detail.contiguous, null);
     assert.deepEqual(s.captures, [], "unreachable is not drift");
+  });
+
+  test("census failures preserve independent lag and clock evidence without claiming coverage", async () => {
+    for (const outcome of [null, undefined, "throw"] as const) {
+      const s = spies();
+      const input = env({
+        body: { decoded_through: HI, updated_at: "2026-08-01T00:00:00Z" },
+        captured: HI + DECODE_LAG_BLOCKS + 1,
+        head: HI + DECODE_LAG_BLOCKS + CAPTURE_LAG_BLOCKS + 2,
+      });
+      if (outcome === "throw")
+        censusReader.mockRejectedValueOnce(new Error("private driver detail"));
+      else censusReader.mockResolvedValueOnce(outcome);
+      const result = await runNativeSeamWatchdog(input as never, {
+        now: () => NOW,
+        ...s.deps,
+      });
+      assert.equal(result.ok, false);
+      assert.equal(result.skipped, true);
+      assert.equal(result.drifted, undefined);
+      assert.equal(result.contiguous, null);
+      assert.equal(result.lakehouse_hi, null);
+      assert.equal(result.capture_lag, DECODE_LAG_BLOCKS + 1);
+      assert.equal(result.head_lag, CAPTURE_LAG_BLOCKS + 1);
+      assert.equal(
+        result.watermark_age_ms,
+        NOW - Date.parse("2026-08-01T00:00:00Z"),
+      );
+      assert.deepEqual(result.causes, [
+        "decode_watermark_stale",
+        "decode_lag",
+        "capture_head_lag",
+        "indexed_census_unavailable",
+      ]);
+      assert.ok(
+        pg.control.queries.some((q) => q.text.includes("raw_capture_state")),
+      );
+      assert.ok(
+        pg.control.queries.some((q) => q.text.includes("blocks_head")),
+      );
+      assert.equal(s.rows[0].verdict, "unknown");
+      const detail = String(s.rows[0].detail);
+      assert.deepEqual(JSON.parse(detail).causes, result.causes);
+      assert.equal(JSON.parse(detail).head_lag, CAPTURE_LAG_BLOCKS + 1);
+      assert.ok(detail.length < 4096);
+      assert.doesNotMatch(detail, /private driver detail/);
+    }
+  });
+
+  test("an unbound selected state owner cannot suppress its independent sibling or fall back", async () => {
+    for (const table of ["raw_capture_state", "blocks_head"]) {
+      const s = spies();
+      const result = await runLakehouseSeamWatchdog(
+        {
+          ...env({
+            body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
+          }),
+          D1_STATE_TABLES: table,
+        } as never,
+        { now: () => NOW, ...s.deps },
+      );
+      const rawUnavailable = table === "raw_capture_state";
+      assert.equal(result.captured_through, rawUnavailable ? null : HI + 100);
+      assert.equal(result.chain_head, rawUnavailable ? HI + 130 : null);
+      assert.equal(result.watermark_decoded_through, HI);
+      assert.deepEqual(result.causes, [
+        rawUnavailable ? "raw_capture_unavailable" : "chain_head_unavailable",
+        "indexed_census_unavailable",
+      ]);
+      assert.ok(!pg.control.queries.some((q) => q.text.includes(table)));
+      assert.equal(s.rows[0].verdict, "unknown");
+      assert.deepEqual(JSON.parse(String(s.rows[0].detail)).causes, result.causes);
+    }
+  });
+
+  test("healthy independent sources cannot recover unknown indexed coverage", async () => {
+    const s = spies();
+    const result = await runLakehouseSeamWatchdog(
+      env({
+        body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
+      }) as never,
+      { now: () => NOW, ...s.deps },
+    );
+    assert.deepEqual(result.causes, ["indexed_census_unavailable"]);
+    assert.equal(result.seam, HI);
+    assert.equal(result.contiguous, null);
+    assert.equal(s.rows[0].verdict, "unknown");
+    assert.deepEqual(s.captures, []);
+  });
+
+  test("a selected retained failure has no fallback seam and still measures capture against head", async () => {
+    for (const census of [
+      null,
+      { lo: 0, hi: DEFAULT_BLOCKS_SEAM - 1, n: DEFAULT_BLOCKS_SEAM },
+    ]) {
+      const s = spies();
+      const input = {
+        ...env({ captured: HI, head: HI + CAPTURE_LAG_BLOCKS + 1 }),
+        RETAINED_BLOCKS_NETWORKS: "mainnet",
+      };
+      censusReader.mockResolvedValueOnce(census);
+      const result = await runNativeSeamWatchdog(input as never, {
+        now: () => NOW,
+        ...s.deps,
+      });
+      assert.equal(result.ok, false);
+      assert.equal(result.seam, null);
+      assert.equal(result.capture_lag, null);
+      assert.equal(result.head_lag, CAPTURE_LAG_BLOCKS + 1);
+      assert.equal(result.watermark_decoded_through, null);
+      assert.ok((result.causes as string[]).includes("serving_seam_unavailable"));
+      assert.ok((result.causes as string[]).includes("capture_head_lag"));
+      assert.ok(!(result.causes as string[]).includes("decode_lag"));
+      assert.equal(s.rows[0].verdict, "unknown");
+      assert.equal(JSON.parse(String(s.rows[0].detail)).seam, null);
+    }
   });
 
   test("a lane_health write that fails never breaks the tick", async () => {

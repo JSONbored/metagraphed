@@ -54,6 +54,8 @@ import { laneHealthStore } from "./lane-health-store.ts";
 import { missedTicksMs } from "./producer-cadence.ts";
 import {
   TOP_HOLDERS_FLOW_PROJECTION_KEY,
+  TOP_HOLDERS_HOLDINGS_SORTS,
+  topHoldersArtifactSorts,
   topHoldersFlowRows,
 } from "./top-holders-flow-tier.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
@@ -128,15 +130,14 @@ export type TopHoldersArtifactState =
       /**
        * When the HOLDINGS half was last written (#9632).
        *
-       * Falls back to `generated_at` when the body does not carry its own, and
-       * that is a reading rather than a suppression: before the split the
-       * holdings columns were written by the daily lane at exactly that
-       * instant, so for such a body the two vintages are genuinely equal. The
-       * same rule topHoldersArtifactSorts applies to a body with no `sorts`.
+       * Read only when the body declares EVERY holdings sort. A flow-only or
+       * partially proven body cannot establish holdings health, even if it
+       * carries a fresh stamp. Missing `sorts` means flow-only, matching the
+       * route's topHoldersArtifactSorts reader.
        *
-       * The consequence is deliberate: on the first tick after this deploys,
-       * the published artifact's holdings half really is up to 24 h old, and
-       * this leg really should fire until the first refresh lands.
+       * A combined body written before the clock split may fall back to
+       * `generated_at` when its holdings stamp is absent: the daily lane wrote
+       * both halves then. A malformed explicit stamp never gets that fallback.
        */
       holdingsGeneratedAt: string | null;
       rowCount: number;
@@ -278,15 +279,17 @@ export async function readTopHoldersArtifactState(
   } | null;
   const generatedAt =
     typeof stamps?.generated_at === "string" ? stamps.generated_at : null;
+  const sorts = topHoldersArtifactSorts(body);
+  let holdingsGeneratedAt: string | null = null;
+  if (TOP_HOLDERS_HOLDINGS_SORTS.every((sort) => sorts.includes(sort))) {
+    const raw = stamps?.holdings_generated_at;
+    holdingsGeneratedAt =
+      raw === undefined ? generatedAt : typeof raw === "string" ? raw : null;
+  }
   return {
     present: true,
     generatedAt,
-    // See TopHoldersArtifactState for why the fallback is a reading of an older
-    // body rather than a hole in the alarm.
-    holdingsGeneratedAt:
-      typeof stamps?.holdings_generated_at === "string"
-        ? stamps.holdings_generated_at
-        : generatedAt,
+    holdingsGeneratedAt,
     rowCount: rows.length,
   };
 }
@@ -365,8 +368,7 @@ export async function runTopHoldersStalenessWatchdog(
         `top-holders holdings refresh ${holdings.reason}: free_tao, ` +
           `delegated_tao and total_tao are ${age} (threshold ` +
           `${(holdingsThresholdMs / 3_600_000).toFixed(1)} h) -- the ` +
-          `leaderboard still RANKS on them, so this is a wrong ordering ` +
-          `served with a 200 rather than a missing column (#9632)`,
+          `leaderboard cannot establish a fresh ranking for all three sorts`,
       ),
       route: "watchdog:top-holders-holdings-staleness",
       errorCode: "stale_lane",
