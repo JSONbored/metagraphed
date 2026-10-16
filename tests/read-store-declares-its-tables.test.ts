@@ -19,6 +19,8 @@
 // more copy to forget.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import path from "node:path";
+import ts from "typescript";
 import { describe, test } from "vitest";
 
 /** Ported in #10148. Each still owns its own table declaration; this only
@@ -72,8 +74,90 @@ function tablesInSql(source: string): Set<string> {
   return found;
 }
 
+/** Resolve literal owners without executing modules or trusting unexported names. */
+function declaredConstant(
+  source: string,
+  ident: string,
+  file: string,
+  load: (file: string) => string,
+  exported = false,
+): string[] {
+  const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  const variables = ast.statements.filter(ts.isVariableStatement);
+  const locals = variables.flatMap((stmt) =>
+    stmt.declarationList.declarations
+      .filter((decl) => ts.isIdentifier(decl.name) && decl.name.text === ident)
+      .map((decl) => ({ stmt, decl })),
+  );
+  const importStatements = ast.statements.filter(ts.isImportDeclaration);
+  const imports = importStatements.flatMap((stmt) => {
+    const bindings = stmt.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) return [];
+    return bindings.elements
+      .filter((spec) => spec.name.text === ident)
+      .map((spec) => ({ stmt, spec }));
+  });
+  assert.equal(
+    locals.length + imports.length,
+    1,
+    `${ident} is passed to readStore but has no unique declaration in ${file}`,
+  );
+  const local = locals[0];
+  if (local) {
+    assert.ok(local.stmt.declarationList.flags & ts.NodeFlags.Const);
+    if (exported) {
+      assert.ok(
+        local.stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword),
+        `${ident} is not exported by ${file}`,
+      );
+    }
+    const value = local.decl.initializer;
+    assert.ok(
+      value &&
+        ts.isAsExpression(value) &&
+        value.type.getText(ast) === "const" &&
+        ts.isArrayLiteralExpression(value.expression),
+      `${ident} is not a literal const table tuple in ${file}`,
+    );
+    const tables = value.expression.elements.map((element) => {
+      assert.ok(ts.isStringLiteral(element), `${ident} has a nonliteral table`);
+      assert.match(element.text, /^[a-z_][a-z0-9_]*$/i);
+      return element.text.toLowerCase();
+    });
+    assert.ok(tables.length > 0, `${ident} is empty`);
+    assert.equal(new Set(tables).size, tables.length, `${ident} repeats a table`);
+    return tables;
+  }
+  // One direct named relative import is enough for shared owners. Re-exports,
+  // type-only imports and executable/spread values fail closed.
+  assert.ok(!exported, `${ident} is not a directly exported tuple in ${file}`);
+  const { stmt, spec } = imports[0]!;
+  assert.ok(
+    !stmt.importClause?.isTypeOnly && !spec.isTypeOnly,
+    "ownership imports must carry values",
+  );
+  assert.ok(ts.isStringLiteral(stmt.moduleSpecifier));
+  assert.match(
+    stmt.moduleSpecifier.text,
+    /^\.{1,2}\//,
+    "ownership imports must be relative",
+  );
+  const target = path.resolve(path.dirname(file), stmt.moduleSpecifier.text);
+  return declaredConstant(
+    load(target),
+    spec.propertyName?.text ?? spec.name.text,
+    target,
+    load,
+    true,
+  );
+}
+
 /** Every table named by the shared reader or an explicit D1 ownership check. */
-function tablesDeclared(source: string): Set<string> {
+function tablesDeclared(
+  source: string,
+  file = "source.ts",
+  load = (name: string) => readFileSync(name, "utf8"),
+): Set<string> {
   const declared = new Set<string>();
   // Inline array: readStore(env, ["neurons"])
   for (const [, list] of source.matchAll(
@@ -82,16 +166,12 @@ function tablesDeclared(source: string): Set<string> {
     for (const [, name] of list.matchAll(/"([a-z_][a-z0-9_]*)"/gi))
       declared.add(name.toLowerCase());
   }
-  // Named constant: readStore(env, BLOCKS_SEAM_TABLES) -> read the constant.
+  // Named constant: read its local tuple or the named relative import's export.
   for (const [, ident] of source.matchAll(
     /(?:readStore|selectedD1Store)\([^,]+,\s*([A-Z][A-Z0-9_]*)\s*\)/g,
   )) {
-    const decl = source.match(
-      new RegExp(`${ident}\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*as const`),
-    );
-    assert.ok(decl, `${ident} is passed to readStore but never declared`);
-    for (const [, name] of decl[1]!.matchAll(/"([a-z_][a-z0-9_]*)"/gi))
-      declared.add(name.toLowerCase());
+    for (const name of declaredConstant(source, ident!, file, load))
+      declared.add(name);
   }
   return declared;
 }
@@ -119,10 +199,66 @@ describe("every ported reader declares the tables it reads", () => {
       [],
     );
   });
+  test("named relative owners resolve aliases and still expose missing SQL tables", () => {
+    const file = path.resolve("fixtures/readers/positions.ts");
+    const target = path.resolve("fixtures/owners.ts");
+    const source =
+      'import { TABLES as POSITION_TABLES } from "../owners.ts"; ' +
+      "selectedD1Store(env, POSITION_TABLES); " +
+      'const sql = "SELECT * FROM nominator_positions JOIN neurons USING (hotkey)";';
+    const load = (name: string) => {
+      assert.equal(name, target);
+      return 'export const TABLES = ["nominator_positions"] as const;';
+    };
+    const declared = tablesDeclared(source, file, load);
+    assert.deepEqual([...declared], ["nominator_positions"]);
+    assert.deepEqual(
+      [...tablesInSql(source)].filter((table) => !declared.has(table)),
+      ["neurons"],
+    );
+    const complete = tablesDeclared(source, file, (name) => {
+      assert.equal(name, target);
+      return 'export const TABLES = ["nominator_positions", "neurons"] as const;';
+    });
+    assert.deepEqual(
+      [...tablesInSql(source)].filter((table) => !complete.has(table)),
+      [],
+    );
+  });
+  test("unknown, unexported and dynamic imported owners fail closed", () => {
+    const file = path.resolve("fixtures/reader.ts");
+    const source =
+      'import { TABLES } from "./owners.ts"; readStore(env, TABLES)';
+    for (const owner of [
+      'export const OTHER_TABLES = ["neurons"] as const;',
+      'const TABLES = ["neurons"] as const;',
+      'export const TABLES = ["neurons", ...OTHER_TABLES] as const;',
+      'export const TABLES = ["neurons", dynamicTable] as const;',
+      'export const TABLES = getTables();',
+      'export { TABLES } from "./another-owner.ts";',
+    ]) {
+      const load = () => owner;
+      assert.throws(() => tablesDeclared(source, file, load));
+    }
+    assert.throws(() => tablesDeclared("readStore(env, MISSING_TABLES)"));
+    assert.throws(() =>
+      tablesDeclared(source, file, () => {
+        throw new Error("missing owner module");
+      }),
+    );
+    assert.throws(
+      () => tablesDeclared(source.replace('"./owners.ts"', '"owners"'), file),
+      /ownership imports must be relative/,
+    );
+    assert.throws(
+      () => tablesDeclared(source.replace("import {", "import type {"), file),
+      /ownership imports must carry values/,
+    );
+  });
   for (const file of PORTED) {
     test(file, () => {
       const source = readFileSync(file, "utf8");
-      const declared = tablesDeclared(source);
+      const declared = tablesDeclared(source, file);
       // A module in this list that calls readStore nowhere means the port was
       // reverted, or the file was renamed and this list went stale -- both of
       // which would otherwise show up as a vacuous pass.
