@@ -5,7 +5,9 @@
 // and the only thing that noticed was a caller reading the timestamp. The
 // first test below replays that exact artifact.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import * as nativeFlow from "../src/top-holders-native-flow.ts";
+import * as holdings from "../src/top-holders-holdings.ts";
 import {
   evaluateTopHoldersStaleness,
   TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS,
@@ -15,7 +17,11 @@ import {
   type TopHoldersArtifactState,
 } from "../src/top-holders-staleness-watchdog.ts";
 import {
+  computeTopHoldersFlow,
   TOP_HOLDERS_FLOW_PROJECTION_KEY,
+  TOP_HOLDERS_FLOW_SORTS,
+  TOP_HOLDERS_HOLDINGS_SORTS,
+  TOP_HOLDERS_LIVE_SORTS,
   topHoldersFlowRows,
 } from "../src/top-holders-flow-tier.ts";
 import { runStalenessLane } from "./helpers/staleness-lane.ts";
@@ -32,9 +38,8 @@ const FROZEN_GENERATED_AT = "2026-08-02T22:38:17.501738+00:00";
 /** A present artifact carrying `rows` rows, generated at `generatedAt`.
  *
  * `holdingsGeneratedAt` defaults to the flow stamp, which is what
- * readTopHoldersArtifactState produces for a body written before #9632 and for
- * one the daily lane wrote whole -- so every assertion below that predates the
- * split keeps asking exactly the question it was asking. */
+ * readTopHoldersArtifactState produces for a combined body written before
+ * #9632 and for one the daily lane wrote whole. */
 function present(
   generatedAt: string | null,
   rowCount = 2_965,
@@ -194,16 +199,139 @@ describe("readTopHoldersArtifactState", () => {
     rows: [{ ss58: "5A", free_tao: "1" }],
   };
 
-  test("reads the real artifact shape", async () => {
+  test("a legacy flow-only body cannot establish holdings health", async () => {
     assert.deepEqual(await readTopHoldersArtifactState(bucket(frozenBody)), {
       present: true,
       generatedAt: FROZEN_GENERATED_AT,
-      // A body with no `holdings_generated_at` is one written before #9632
-      // split the lane, and for such a body the holdings columns really were
-      // written at `generated_at` -- so it reads as that, not as null.
-      holdingsGeneratedAt: FROZEN_GENERATED_AT,
+      // Even a holdings-looking cell does not prove that this sort was ranked.
+      // The route reads missing sorts as FLOW only.
+      holdingsGeneratedAt: null,
       rowCount: 1,
     });
+  });
+
+  test("only a genuinely combined body may inherit the pre-split flow clock", async () => {
+    assert.deepEqual(
+      await readTopHoldersArtifactState(
+        bucket({ ...frozenBody, sorts: TOP_HOLDERS_LIVE_SORTS }),
+      ),
+      present(FROZEN_GENERATED_AT, 1),
+    );
+  });
+
+  test("every holdings sort must be declared, independently of a fresh stamp", async () => {
+    const fresh = new Date(NOW - HOUR).toISOString();
+    for (const sorts of [
+      TOP_HOLDERS_FLOW_SORTS,
+      ...TOP_HOLDERS_HOLDINGS_SORTS.map((missing) =>
+        TOP_HOLDERS_LIVE_SORTS.filter((sort) => sort !== missing),
+      ),
+      [...TOP_HOLDERS_FLOW_SORTS, "free_tao"],
+      undefined,
+      "free_tao,delegated_tao,total_tao",
+      ["unknown", null, 7],
+    ]) {
+      for (const stamp of [undefined, fresh]) {
+        const state = await readTopHoldersArtifactState(
+          bucket({
+            ...frozenBody,
+            generated_at: fresh,
+            holdings_generated_at: stamp,
+            sorts,
+          }),
+        );
+        assert.deepEqual(state, present(fresh, 1, null));
+        assert.equal(
+          evaluateTopHoldersStaleness({
+            artifact: state,
+            nowMs: NOW,
+            thresholdMs: TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS,
+            vintage: "holdings",
+          }).reason,
+          "unreadable",
+        );
+      }
+    }
+  });
+
+  test("a malformed explicit holdings clock cannot borrow the flow clock", async () => {
+    for (const stamp of [null, 17, {}, "not a timestamp"]) {
+      const state = await readTopHoldersArtifactState(
+        bucket({
+          ...frozenBody,
+          generated_at: new Date(NOW - HOUR).toISOString(),
+          holdings_generated_at: stamp,
+          sorts: TOP_HOLDERS_LIVE_SORTS,
+        }),
+      );
+      const verdict = evaluateTopHoldersStaleness({
+        artifact: state,
+        nowMs: NOW,
+        thresholdMs: TOP_HOLDERS_HOLDINGS_STALENESS_THRESHOLD_MS,
+        vintage: "holdings",
+      });
+      assert.equal(verdict.stale, true);
+      assert.equal(verdict.reason, "unreadable");
+      assert.equal(verdict.age_ms, null);
+    }
+  });
+
+  test("the actual daily writer cannot turn a declined or partial holdings leg healthy", async () => {
+    const flowAt = NOW - HOUR;
+    const readNative = vi
+      .spyOn(nativeFlow, "loadNativeTopHoldersFlow")
+      .mockResolvedValue({
+        generatedAt: flowAt,
+        rows: [
+          { coldkey: "5A", net_flow_7d: 1, net_flow_30d: 2, net_flow_90d: 3 },
+        ],
+      });
+    const readHoldings = vi.spyOn(holdings, "topHoldersHoldings");
+    const clock = vi.spyOn(Date, "now").mockReturnValue(NOW);
+    try {
+      for (const sorts of [[], ["free_tao"], TOP_HOLDERS_HOLDINGS_SORTS]) {
+        readHoldings.mockResolvedValue(
+          sorts.length === 0
+            ? null
+            : {
+                sorts,
+                capturedAt: NOW - 2 * HOUR,
+                cells: new Map([
+                  [
+                    "5A",
+                    {
+                      free_tao: 1,
+                      ...(sorts.includes("delegated_tao")
+                        ? { delegated_tao: 2, total_tao: 3 }
+                        : {}),
+                    },
+                  ],
+                ]),
+              },
+        );
+        const body = await computeTopHoldersFlow({} as Env);
+        assert.ok(body);
+        assert.deepEqual(body.sorts, [...TOP_HOLDERS_FLOW_SORTS, ...sorts]);
+        assert.equal(
+          body.holdings_generated_at,
+          sorts.length ? new Date(NOW).toISOString() : undefined,
+        );
+        assert.deepEqual(
+          await readTopHoldersArtifactState(bucket(body)),
+          present(
+            new Date(flowAt).toISOString(),
+            1,
+            sorts.length === TOP_HOLDERS_HOLDINGS_SORTS.length
+              ? new Date(NOW).toISOString()
+              : null,
+          ),
+        );
+      }
+    } finally {
+      clock.mockRestore();
+      readHoldings.mockRestore();
+      readNative.mockRestore();
+    }
   });
 
   test("a missing object is absent; a throw is unreadable", async () => {
@@ -229,6 +357,18 @@ describe("readTopHoldersArtifactState", () => {
       {},
       { schema_version: 2, rows: [] },
       { schema_version: 1, rows: "not an array" },
+      {
+        schema_version: 2,
+        generated_at: FROZEN_GENERATED_AT,
+        holdings_generated_at: new Date(NOW).toISOString(),
+        sorts: TOP_HOLDERS_LIVE_SORTS,
+        rows: [{ ss58: "5A", total_tao: 3 }],
+      },
+      {
+        generated_at: new Date(NOW).toISOString(),
+        holdings_generated_at: new Date(NOW).toISOString(),
+        sorts: TOP_HOLDERS_LIVE_SORTS,
+      },
     ]) {
       assert.equal(topHoldersFlowRows(body), null);
       assert.deepEqual(await readTopHoldersArtifactState(bucket(body)), {
@@ -300,13 +440,26 @@ describe("runTopHoldersStalenessWatchdog", () => {
    * There is no second artifact under it any more. */
   function flowBody(
     generatedAt: string,
-    rows: unknown[] = [{ ss58: "5A", net_flow_7d: 1 }],
+    rows: unknown[] = [
+      {
+        ss58: "5A",
+        net_flow_7d: 1,
+        free_tao: 1,
+        delegated_tao: 2,
+        total_tao: 3,
+      },
+    ],
     /** #9632: the holdings half's own stamp. Omitted by default, which is what
-     * a body written before the split looks like -- and what the daily lane
-     * writes when its holdings leg declines. */
+     * a combined body written before the split looks like. */
     extra: Record<string, unknown> = {},
   ) {
-    return { schema_version: 1, generated_at: generatedAt, rows, ...extra };
+    return {
+      schema_version: 1,
+      generated_at: generatedAt,
+      sorts: TOP_HOLDERS_LIVE_SORTS,
+      rows,
+      ...extra,
+    };
   }
 
   function envWith(body: unknown, extra: Record<string, unknown> = {}) {
@@ -505,6 +658,30 @@ describe("runTopHoldersStalenessWatchdog", () => {
     assert.equal(forLane(rows, HOLDINGS_LANE)[0]!.verdict, "stale");
   });
 
+  test("fresh flow-only and partial bodies still page and record unhealthy holdings", async () => {
+    for (const sorts of [
+      undefined,
+      TOP_HOLDERS_FLOW_SORTS,
+      ...TOP_HOLDERS_HOLDINGS_SORTS.map((missing) =>
+        TOP_HOLDERS_LIVE_SORTS.filter((sort) => sort !== missing),
+      ),
+    ]) {
+      const { result, events, rows } = await run(
+        flowBody(new Date(NOW - HOUR).toISOString(), undefined, { sorts }),
+      );
+      assert.equal(result.stale, false);
+      assert.equal(result.alerted, true);
+      assert.equal(result.holdings.stale, true);
+      assert.equal(result.holdings.reason, "unreadable");
+      assert.equal(result.holdings.age_ms, null);
+      assert.deepEqual(forRoute(events, FLOW_ROUTE), []);
+      assert.equal(forRoute(events, HOLDINGS_ROUTE).length, 1);
+      assert.equal(forLane(rows, FLOW_LANE)[0]!.verdict, "ok");
+      assert.equal(forLane(rows, HOLDINGS_LANE)[0]!.verdict, "stale");
+      assert.equal(forLane(rows, HOLDINGS_LANE)[0]!.detail, "unreadable");
+    }
+  });
+
   // And the converse, so the two bounds cannot be silently collapsed into one:
   // the refresh keeps ticking while the daily lakehouse scan dies.
   test("a healthy holdings leg does not vouch for a stalled flow leg", async () => {
@@ -515,6 +692,19 @@ describe("runTopHoldersStalenessWatchdog", () => {
     );
     assert.equal(result.stale, true);
     assert.equal(result.holdings.stale, false);
+    assert.equal(forRoute(events, FLOW_ROUTE).length, 1);
+    assert.deepEqual(forRoute(events, HOLDINGS_ROUTE), []);
+  });
+
+  test("an unreadable flow clock does not replace a proven holdings clock", async () => {
+    const { result, events } = await run(
+      flowBody("not a timestamp", undefined, {
+        holdings_generated_at: new Date(NOW - HOUR).toISOString(),
+      }),
+    );
+    assert.equal(result.reason, "unreadable");
+    assert.equal(result.holdings.stale, false);
+    assert.equal(result.holdings.age_ms, HOUR);
     assert.equal(forRoute(events, FLOW_ROUTE).length, 1);
     assert.deepEqual(forRoute(events, HOLDINGS_ROUTE), []);
   });
@@ -568,7 +758,7 @@ describe("runTopHoldersStalenessWatchdog", () => {
   // The message has to name the lane an operator would go and look at. A
   // holdings alert that read like the flow one would send them to the daily
   // lakehouse scan, which is working.
-  test("the holdings page names the columns and says the ranking is wrong, not missing", async () => {
+  test("the holdings page names all the sorts that need a fresh ranking", async () => {
     const { events } = await run(
       flowBody(new Date(NOW - HOUR).toISOString(), undefined, {
         holdings_generated_at: new Date(NOW - 24 * HOUR).toISOString(),
@@ -579,7 +769,7 @@ describe("runTopHoldersStalenessWatchdog", () => {
     );
     assert.match(message, /free_tao/);
     assert.match(message, /delegated_tao/);
-    assert.match(message, /still RANKS on them/);
+    assert.match(message, /fresh ranking for all three sorts/);
     assert.match(message, /24\.0 h old/);
   });
 
