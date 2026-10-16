@@ -226,7 +226,6 @@ test("GraphQL executes valid nullable values and enforces the scalar rather than
   });
 });
 
-
 test("compact and composed nullable list items execute null without weakening non-null items", async () => {
   const items = [
     { type: ["integer", "null"] },
@@ -243,33 +242,62 @@ test("compact and composed nullable list items execute null without weakening no
       const validate = new Ajv2020({ strict: false }).compile(array);
       assert.equal(validate([1, null]), true);
       assert.equal(validate(null), true);
-      const { types } = emitTypes({ Container: {
-        type: "object", required: ["values"], properties: { values: array },
-      } });
+      const { types } = emitTypes({
+        Container: {
+          type: "object",
+          required: ["values"],
+          properties: { values: array },
+        },
+      });
       assert.equal(fieldTypes(types.get("Container")!).values, "[Int]");
-      const schema = new GraphQLSchema({ query: new GraphQLObjectType({
-        name: "Query", fields: { sample: { type: types.get("Container")! } },
-      }) });
+      const schema = new GraphQLSchema({
+        query: new GraphQLObjectType({
+          name: "Query",
+          fields: { sample: { type: types.get("Container")! } },
+        }),
+      });
       for (const values of [[1, null], null]) {
-        const result = await graphql({ schema, source: "{ sample { values } }",
-          rootValue: { sample: { values } } });
+        const result = await graphql({
+          schema,
+          source: "{ sample { values } }",
+          rootValue: { sample: { values } },
+        });
         assert.equal(result.errors, undefined);
-        assert.deepEqual(JSON.parse(JSON.stringify(result.data)), { sample: { values } });
+        assert.deepEqual(JSON.parse(JSON.stringify(result.data)), {
+          sample: { values },
+        });
       }
     }
   }
-  const { types } = emitTypes({ Container: {
-    type: "object", required: ["values"],
-    properties: { values: { type: ["array", "null"], items: { type: "integer" } } },
-  } });
-  assert.equal(new Ajv2020().compile({ type: "array", items: { type: "integer" } })([1, null]), false);
+  const { types } = emitTypes({
+    Container: {
+      type: "object",
+      required: ["values"],
+      properties: {
+        values: { type: ["array", "null"], items: { type: "integer" } },
+      },
+    },
+  });
+  const disallowNull = new Ajv2020().compile({
+    type: "array",
+    items: { type: "integer" },
+  });
+  assert.equal(disallowNull([1, null]), false);
   assert.equal(fieldTypes(types.get("Container")!).values, "[Int!]");
-  const schema = new GraphQLSchema({ query: new GraphQLObjectType({
-    name: "Query", fields: { sample: { type: types.get("Container")! } },
-  }) });
-  const rejected = await graphql({ schema, source: "{ sample { values } }",
-    rootValue: { sample: { values: [1, null] } } });
+  const schema = new GraphQLSchema({
+    query: new GraphQLObjectType({
+      name: "Query",
+      fields: { sample: { type: types.get("Container")! } },
+    }),
+  });
+  const rejected = await graphql({
+    schema,
+    source: "{ sample { values } }",
+    rootValue: { sample: { values: [1, null] } },
+  });
   assert.equal(rejected.errors?.length, 1);
   assert.deepEqual(rejected.errors![0].path, ["sample", "values", 1]);
-  assert.deepEqual(JSON.parse(JSON.stringify(rejected.data)), { sample: { values: null } });
+  assert.deepEqual(JSON.parse(JSON.stringify(rejected.data)), {
+    sample: { values: null },
+  });
 });
