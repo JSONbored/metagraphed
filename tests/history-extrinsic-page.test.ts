@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { decodeExtrinsicPage } from "../src/history-extrinsic-page.ts";
 
@@ -119,4 +119,16 @@ describe("compact extrinsic page wire format", () => {
       );
     }
   });
+});
+
+
+it("pins public encoder originals for independent physical-source recovery", async () => {
+  const { extrinsicRecoveryFixture } = await import("./helpers/extrinsic-page-recovery-fixture.ts");
+  const fixture = extrinsicRecoveryFixture();
+  for (const example of fixture.cases) for (const page of example.pages)
+    expect(decodeExtrinsicPage(Buffer.from(page.base64, "base64"))).toEqual(
+      page.entries.map(([token, values]) => ({ token, values })),
+    );
+  const output = process.env.METAGRAPH_MGE1_FIXTURE_OUT;
+  if (output) writeFileSync(output, JSON.stringify(fixture, null, 2) + "\n");
 });

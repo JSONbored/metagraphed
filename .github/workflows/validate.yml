@@ -1184,6 +1184,15 @@ jobs:
       # -- `--no-project` keeps python/'s pyproject from being resolved for a suite that does not
       # belong to it. Discovery is the point: a test whose subject has been deleted fails at
       # import here instead of sitting unrun.
+      - name: Install and check the locked data-refresh environment
+        run: |
+          uv sync --locked --project scripts
+          uv pip check --python scripts/.venv/bin/python
+          uv run --locked --project scripts python -c 'from importlib.metadata import version; assert version("bittensor") == "10.5.0"; assert tuple(map(int, version("urllib3").split("."))) >= (2, 8, 0); assert tuple(map(int, version("multidict").split("."))) >= (6, 9, 1)'
+
+      - name: Test scripts in their locked dependency environment
+        run: uv run --locked --project scripts python -m unittest discover -s scripts -p 'test_*.py'
+
       - name: Test data-refresh scripts
         run: uv run --no-project python -m unittest discover -s scripts -p 'test_*.py'
 
