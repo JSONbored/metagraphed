@@ -230,7 +230,9 @@ export async function handleD1StateExport(
         );
     if (
       !columns.length ||
-      (lossless && columns.length !== approved.size && !legacyNominator)
+      ((lossless || table === "nominator_positions") &&
+        columns.length !== approved.size &&
+        !legacyNominator)
     )
       throw new Error("export source schema is incomplete");
     const sourceDefinitions = metadata?.[1]!.results;

@@ -72,7 +72,9 @@ export async function handleDefaultExplorerDirectory(
           entry.id,
           (cacheRequest) => entry.handle(cacheRequest, env),
           entry.path,
-          readExplorerDirectoryCacheStamp,
+          entry.id === "validator-operator-directory"
+            ? async () => null
+            : readExplorerDirectoryCacheStamp,
         );
       }),
     () => entry.id,

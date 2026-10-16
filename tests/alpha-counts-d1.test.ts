@@ -15,7 +15,10 @@ import {
   ALPHA_RUNTIMES,
 } from "../src/alpha-runtime-identity.ts";
 import { createD1Store } from "../src/d1-store.ts";
-import type { ProducerStore } from "../src/producer-store.ts";
+import type {
+  ProducerStatement,
+  ProducerStore,
+} from "../src/producer-store.ts";
 import type { Row } from "./row-type.ts";
 
 const frozen = JSON.parse(
@@ -137,6 +140,98 @@ async function state(store: ProducerStore) {
     ),
   ]);
 }
+
+function isCountInsert(statement: ProducerStatement) {
+  return statement.text.startsWith("INSERT INTO validator_nominator_counts(");
+}
+
+test("large count deliveries use bounded atomic bindings", async () => {
+  const { db, store } = await fixture();
+  const anchor = await publish(db, [], AT, 100, 25_000);
+  const rows = Array.from({ length: 25_000 }, (_, index) =>
+    countRow(anchor, String(index).padStart(48, "x")),
+  );
+  assert.equal(Buffer.byteLength(JSON.stringify(rows)), 2_750_001);
+  const before = await state(store);
+  const transaction = vi.spyOn(store, "transaction");
+  const failing: ProducerStore = {
+    ...store,
+    async transaction(statements) {
+      const inserts = statements.filter(isCountInsert);
+      assert.ok(inserts.length > 1);
+      const later = statements.indexOf(inserts[1]);
+      return store.transaction([
+        ...statements.slice(0, later),
+        { text: "SELECT json('later count piece failed')" },
+        ...statements.slice(later),
+      ]);
+    },
+  };
+  await assert.rejects(
+    writeAlphaCountsD1(failing, rows, anchor, rows.length, AT + 10),
+  );
+  assert.equal(transaction.mock.calls.length, 1);
+  assert.deepEqual(await state(store), before);
+  transaction.mockClear();
+
+  const receipt = await writeAlphaCountsD1(
+    store,
+    rows,
+    anchor,
+    rows.length,
+    AT + 11,
+  );
+  assert.equal(transaction.mock.calls.length, 1);
+  const statements = transaction.mock.calls[0][0];
+  const inserted = statements.filter(isCountInsert);
+  assert.ok(inserted.length > 1);
+  for (const statement of statements) {
+    for (const value of statement.values ?? []) {
+      if (typeof value === "string") {
+        assert.ok(Buffer.byteLength(value) <= 512 * 1024);
+      }
+    }
+  }
+  const originals = inserted.flatMap(
+    (statement) => JSON.parse(String(statement.values?.[1])) as Row[],
+  );
+  assert.deepEqual(originals, rows);
+  assert.equal(receipt.current, true);
+  assert.equal(receipt.complete, true);
+  assert.equal(receipt.pass_total, rows.length);
+  assert.equal(receipt.applied_count, rows.length);
+  assert.equal(receipt.completed_at, AT + 11);
+  assert.deepEqual(
+    await readAlphaCountStatusD1(store, anchor, rows.length),
+    receipt,
+  );
+});
+
+test("count admission bounds rows and UTF8 bytes before writing", async () => {
+  const { store } = await fixture();
+  const anchor = anchorFor(0, AT, 100, 50_001);
+  const transaction = vi.spyOn(store, "transaction");
+  const tooMany = Array.from({ length: 50_001 }, (_, index) =>
+    countRow(anchor, String(index)),
+  );
+  await assert.rejects(
+    writeAlphaCountsD1(store, tooMany, anchor, tooMany.length, AT + 10),
+    /Invalid anchored Alpha count rows/,
+  );
+  const rows = tooMany.slice(0, 50_000).map((row, index) => ({
+    ...row,
+    hotkey: String(index).padStart(8, "0") + "\u{10000}".repeat(30),
+  }));
+  const encoded = JSON.stringify(rows);
+  assert.ok(encoded.length < 8_000_000);
+  assert.ok(Buffer.byteLength(encoded) > 8_000_000);
+  await assert.rejects(
+    writeAlphaCountsD1(store, rows, anchor, rows.length, AT + 10),
+    /request byte budget/,
+  );
+  assert.equal(transaction.mock.calls.length, 0);
+  assert.deepEqual(await state(store), [[], [], []]);
+});
 
 test("count receipts measure distinct delivery and exact replay", async () => {
   const { db, store } = await fixture();
@@ -407,13 +502,7 @@ test("root coverage is required only when all count keys arrive", async () => {
   assert.equal(partial.applied_count, 1);
   const before = await state(store);
   await assert.rejects(
-    writeAlphaCountsD1(
-      store,
-      [countRow(anchor, "root-b")],
-      anchor,
-      2,
-      AT + 11,
-    ),
+    writeAlphaCountsD1(store, [countRow(anchor, "root-b")], anchor, 2, AT + 11),
   );
   assert.deepEqual(await state(store), before);
   const last = [countRow(anchor, "root-b", 2)];

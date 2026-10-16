@@ -6725,39 +6725,9 @@ type NeuronsStoreRouteHandler = (
   ctx: ExecutionContext,
 ) => Promise<Response>;
 
-// The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
-// alpha_price_tao. Group-wise-MAX join instead of DISTINCT ON, same
-// degrade-to-empty-map failure contract (every non-root row is then excluded
-// from the totals rather than counted 1:1).
-// netuid -> tempo(blocks) from the subnet_hyperparams tier (#9342), for
-// accumulateApyRow to annualize each membership's emission_tao.
-//
-// Same degrade-to-empty-map contract as its siblings: a cold or absent table
-// yields an empty map, every lookup misses, and apy_estimate serves as null --
-// which is exactly what a caller got unconditionally before this was wired.
-// tempoByNetuid() drops tempo=0 rather than storing it, since a zero-length
-// epoch divides into an infinite epochsPerYear downstream.
-//
-// ROOT IS INCLUDED, deliberately, and that is verified against the chain rather
-// than inferred from our capture. subnet_hyperparams holds 129 rows -- netuid 0
-// plus the 128 real subnets -- and reading finney storage directly confirms root
-// is a genuine network with a genuine tempo, not a capture artefact:
-//
-//   SubtensorModule::NetworksAdded(0) = true
-//   SubtensorModule::Tempo(0)  = 100     (ours: 100)
-//   SubtensorModule::Tempo(1)  = 99      (ours: 99)
-//   SubtensorModule::Tempo(64) = 360     (ours: 360)
-//
-// It is kept because every sibling enrichment in this same builder already treats
-// a root membership as real: loadStoreAlphaPricesByNetuid gives netuid 0 a price of
-// 1, and the leaderboard counts a root-only validator. Dropping root would make
-// apy_estimate silently ignore the root position of exactly the large validators
-// whose stake is mostly there.
-//
-// The one wart is the OUTPUT field's name, `apy_estimate_eligible_subnet_count`,
-// which counts root among "subnets" when root is not one. That name predates this
-// fix and renaming a published field is a contract change, not a bug fix -- so it
-// is left alone and called out rather than quietly redefined here.
+// APY uses positive captured subnet tempos, including root. Missing or failed
+// reads leave APY unknown; tempoByNetuid excludes zero to avoid infinite rates.
+// The published eligible-subnet count includes root for compatibility.
 async function loadSubnetTemposFromStore(
   sql: PgSql,
   env: DataApiEnv,
@@ -6794,24 +6764,8 @@ async function loadStoreAlphaPricesByNetuid(
         FROM subnet_snapshots GROUP BY netuid
       ) latest
         ON latest.netuid = s.netuid AND latest.snapshot_date = s.snapshot_date`;
-    // #9408 follow-up: mark at SPOT, derived from the reserves on this same row,
-    // rather than at alpha_price_tao -- which is the chain's MOVING price, byte-
-    // identical to moving_price_pinned on the live tier.
-    //
-    // The difference is not academic. Measured on netuid 64's own snapshots:
-    //
-    //   2026-08-04  moving 0.084773044  spot 0.084866808   (-0.11%)
-    //   2026-08-03  moving 0.084084102  spot 0.085180046   (-1.29%)
-    //
-    // A lagging average is the wrong mark for "what is this position worth", and it
-    // lags hardest exactly when the market has moved. The reserves were already being
-    // selected past -- the spot is one division away.
-    //
-    // spotPriceTao is shared with /stake-quote and the economics card, so all three
-    // mean the same thing by "spot", including root's 1:1 (no AMM, price 1 by
-    // definition). It returns null for an unusable pool rather than 0, and the map's
-    // existing contract already excludes a null-priced membership from the totals --
-    // which under-reports rather than mis-denominates, the same trade as before.
+    // Price from same-row reserves using the shared spot codec (root is 1:1).
+    // Unusable pools remain null and contribute no invented priced stake.
     return new Map(
       rows.map((row) => [
         Number(row.netuid),
@@ -7615,6 +7569,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       const materialized = await readExplorerDirectoryMaterialization(
         env.METAGRAPH_CONTROL,
       );
+      let directory = materialized?.validators;
       if (materialized) {
         // Keep the verified response available if the freshness read fails.
         scheduleExplorerDirectoryRefresh(
@@ -7624,10 +7579,26 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             (latest) => latest ?? materialized.captured_at,
           ),
         );
-        return json(materialized.validators);
-      }
-      return json(
-        buildValidatorOperatorDirectory(
+        const previous = materialized.validators;
+        const counts = await loadNominatorCountsFromStore(
+          sql,
+          env,
+          previous.operators
+            .filter((operator) => operator.hotkey_count === 1)
+            .map((operator) => operator.primary_hotkey),
+        );
+        directory = {
+          ...previous,
+          operators: previous.operators.map((operator) => ({
+            ...operator,
+            nominator_count:
+              operator.hotkey_count === 1
+                ? (counts.get(operator.primary_hotkey) ?? null)
+                : null,
+          })),
+        };
+      } else {
+        directory = buildValidatorOperatorDirectory(
           await loadGlobalValidatorsFromStore(
             sql,
             env,
@@ -7635,8 +7606,11 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             GLOBAL_VALIDATOR_LIMIT_MAX,
             true,
           ),
-        ),
-      );
+        );
+      }
+      const response = json(directory);
+      response.headers.set("cache-control", "no-store");
+      return response;
     };
   }
 

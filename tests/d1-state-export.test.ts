@@ -15,7 +15,14 @@ const runtime = new Miniflare({
   modules: true,
   script: "export default {fetch(){return new Response('test')}}",
   compatibilityDate: "2026-06-06",
-  d1Databases: ["DB", "LEGACY", "UPGRADED", "PARTIAL"],
+  d1Databases: [
+    "DB",
+    "LEGACY",
+    "UPGRADED",
+    "PARTIAL",
+    "PARTIAL_EVIDENCE",
+    "UNKNOWN",
+  ],
 });
 let db: D1Database;
 const tables = [...Object.keys(D1_EXPORT_TABLES), "neurons_passes"].join(",");
@@ -85,7 +92,13 @@ test("lossless exports preserve both approved receiver schema generations and re
   }));
   const evidence =
     '{"share":{"v2":{"mantissa":"9007199254740993","exponent":-65}},"pool_epoch":"9007199254740993","member_epoch":"0001"}';
-  for (const name of ["LEGACY", "UPGRADED", "PARTIAL"]) {
+  for (const name of [
+    "LEGACY",
+    "UPGRADED",
+    "PARTIAL",
+    "PARTIAL_EVIDENCE",
+    "UNKNOWN",
+  ]) {
     const database = await runtime.getD1Database(name);
     for (const file of [
       "0010_ledger_state.sql",
@@ -101,16 +114,28 @@ test("lossless exports preserve both approved receiver schema generations and re
         .map((sql) => database.prepare(sql));
       await database.batch(statements);
     }
-    if (name === "PARTIAL") {
-      await database
-        .prepare("ALTER TABLE nominator_positions ADD COLUMN alpha_rao TEXT")
-        .run();
-      const response = await handleD1StateExport(
-        req({ table, kind: "schema", encoding: "lossless-v1" }),
-        { ...env(), D1_STATE: database },
-      );
-      assert.equal(response.status, 503);
-      assert.match(await response.text(), /no snapshot was acknowledged/);
+    if (name.startsWith("PARTIAL") || name === "UNKNOWN") {
+      const additions =
+        name === "PARTIAL"
+          ? ["alpha_rao"]
+          : name === "PARTIAL_EVIDENCE"
+            ? ["alpha_evidence"]
+            : ["alpha_rao", "alpha_evidence", "unreviewed"];
+      for (const column of additions) {
+        const sql = `ALTER TABLE nominator_positions ADD COLUMN ${column} TEXT`;
+        await database.prepare(sql).run();
+      }
+      for (const encoding of [undefined, "lossless-v1"]) {
+        for (const kind of ["schema", "rows"]) {
+          const response = await handleD1StateExport(
+            req({ table, kind, encoding }),
+            { ...env(), D1_STATE: database },
+          );
+          assert.equal(response.status, 503);
+          if (name !== "UNKNOWN")
+            assert.match(await response.text(), /no snapshot was acknowledged/);
+        }
+      }
       continue;
     }
     await database

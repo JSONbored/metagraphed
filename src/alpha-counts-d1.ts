@@ -91,6 +91,37 @@ function assertion(text: string, values: unknown[]): ProducerStatement {
   };
 }
 
+/** Keep every native binding within the ledger's 512 KiB budget. The three
+ * validated scalar fields bound each individual row; unrelated input fields
+ * never enter SQLite. All pieces still commit in one transaction. */
+function countJsonPieces(rows: Record<string, unknown>[]): string[] {
+  const encoder = new TextEncoder();
+  const pieces: string[] = [];
+  let batch: string[] = [];
+  let bytes = 2;
+  let total = 2;
+  for (const [index, row] of rows.entries()) {
+    const encoded = JSON.stringify({
+      hotkey: row.hotkey,
+      nominator_count: row.nominator_count,
+      captured_at: row.captured_at,
+    });
+    const size = encoder.encode(encoded).byteLength;
+    total += size + (index ? 1 : 0);
+    if (total > 8_000_000)
+      throw new RangeError("Alpha count rows exceed the request byte budget");
+    if (batch.length && bytes + size + 1 > 512 * 1024) {
+      pieces.push(`[${batch.join(",")}]`);
+      batch = [];
+      bytes = 2;
+    }
+    bytes += size + (batch.length ? 1 : 0);
+    batch.push(encoded);
+  }
+  if (batch.length) pieces.push(`[${batch.join(",")}]`);
+  return pieces;
+}
+
 /** A transport ACK is admission only. This receipt observes actual native rows. */
 export async function readAlphaCountStatusD1(
   store: ProducerStore,
@@ -160,6 +191,7 @@ export async function writeAlphaCountsD1(
   const anchor = alphaCountAnchorSchema.parse(input);
   alphaCountPassTotal(anchor, expectedRows);
   if (
+    rows.length > 50_000 ||
     rows.length > expectedRows ||
     !Number.isSafeInteger(nowMs) ||
     nowMs <= 0 ||
@@ -177,8 +209,8 @@ export async function writeAlphaCountsD1(
     throw new TypeError("Invalid anchored Alpha count rows or declaration");
   const identity = JSON.stringify(anchor);
   const predicate = anchorPredicate(anchor);
-  const encoded = JSON.stringify(rows);
-  const statements = [
+  const pieces = countJsonPieces(rows);
+  const statements: ProducerStatement[] = [
     assertion(
       `EXISTS(SELECT 1 FROM (${CURRENT_ALPHA_CAPTURE_SQL}) p WHERE ${predicate.text}
         AND p.completed_at IS NOT NULL)
@@ -198,35 +230,41 @@ export async function writeAlphaCountsD1(
         anchor.captured_at,
       ],
     ),
-    assertion(
-      `NOT EXISTS(SELECT 1 FROM json_each(?) r JOIN validator_nominator_counts c
-        ON c.hotkey=json_extract(r.value,'$.hotkey') AND c.captured_at=?
-        WHERE c.nominator_count IS NOT json_extract(r.value,'$.nominator_count'))
-      AND NOT EXISTS(SELECT 1 FROM json_each(?) r WHERE
-        json_extract(r.value,'$.nominator_count') NOT BETWEEN 1 AND ?
-        OR json_extract(r.value,'$.nominator_count')<(SELECT COUNT(DISTINCT coldkey)
-          FROM alpha_snapshot_rows WHERE captured_at=? AND hotkey=json_extract(r.value,'$.hotkey')))`,
-      [
-        encoded,
-        anchor.captured_at,
-        encoded,
-        anchor.distinct_members,
-        anchor.captured_at,
-      ],
-    ),
     {
       text: `INSERT INTO validator_nominator_counts_passes
         (captured_at,expected_rows,received_rows,completed_at,alpha_snapshot) VALUES(?,?,0,NULL,?)
         ON CONFLICT(captured_at) DO NOTHING`,
       values: [anchor.captured_at, expectedRows, identity],
     },
-    {
-      text: `INSERT INTO validator_nominator_counts(hotkey,nominator_count,captured_at)
+  ];
+  for (const encoded of pieces) {
+    statements.push(
+      assertion(
+        `NOT EXISTS(SELECT 1 FROM json_each(?) r JOIN validator_nominator_counts c
+        ON c.hotkey=json_extract(r.value,'$.hotkey') AND c.captured_at=?
+        WHERE c.nominator_count IS NOT json_extract(r.value,'$.nominator_count'))
+      AND NOT EXISTS(SELECT 1 FROM json_each(?) r WHERE
+        json_extract(r.value,'$.nominator_count') NOT BETWEEN 1 AND ?
+        OR json_extract(r.value,'$.nominator_count')<(SELECT COUNT(DISTINCT coldkey)
+          FROM alpha_snapshot_rows WHERE captured_at=? AND hotkey=json_extract(r.value,'$.hotkey')))`,
+        [
+          encoded,
+          anchor.captured_at,
+          encoded,
+          anchor.distinct_members,
+          anchor.captured_at,
+        ],
+      ),
+      {
+        text: `INSERT INTO validator_nominator_counts(hotkey,nominator_count,captured_at)
         SELECT json_extract(value,'$.hotkey'),json_extract(value,'$.nominator_count'),?
         FROM json_each(?) WHERE true ON CONFLICT(hotkey) DO UPDATE SET
         nominator_count=excluded.nominator_count,captured_at=excluded.captured_at`,
-      values: [anchor.captured_at, encoded],
-    },
+        values: [anchor.captured_at, encoded],
+      },
+    );
+  }
+  statements.push(
     assertion(
       `WITH known AS (SELECT hotkey,COUNT(DISTINCT coldkey) AS n FROM alpha_snapshot_rows
         WHERE captured_at=? GROUP BY hotkey), actual AS
@@ -259,7 +297,7 @@ export async function writeAlphaCountsD1(
         identity,
       ],
     },
-  ];
+  );
   await store.transaction(statements);
   return readAlphaCountStatusD1(store, anchor, expectedRows);
 }

@@ -478,6 +478,41 @@ test("split owners and native failures cannot fall back", async () => {
   );
 });
 
+test("ownership loss during discovery refuses count enrichment", async () => {
+  const db = await fixture();
+  await capture(db);
+  await counts(db);
+  const env = environment(db);
+  const statements: string[] = [];
+  env.D1_STATE = {
+    prepare(text: string) {
+      statements.push(text);
+      const statement = db.prepare(text);
+      return {
+        bind: statement.bind.bind(statement),
+        async all() {
+          const result = await statement.all();
+          if (text.includes("FROM sqlite_master")) {
+            env.D1_STATE_TABLES = "";
+          }
+          return result;
+        },
+      };
+    },
+    batch: db.batch.bind(db),
+  } as unknown as D1Database;
+  const sql = forbiddenSql();
+  await assert.rejects(
+    readDirectoryNominatorCounts(sql, env, ["kept"]),
+    /Alpha counts require their complete native owner/,
+  );
+  assert.equal(env.D1_STATE_TABLES, "");
+  assert.deepEqual(statements, [
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'",
+  ]);
+  assert.equal(vi.mocked(sql.unsafe).mock.calls.length, 0);
+});
+
 test("canonical count query failures propagate without fallback", async () => {
   const db = await fixture();
   await capture(db);

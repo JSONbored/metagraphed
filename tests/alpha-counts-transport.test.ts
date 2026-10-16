@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { Miniflare } from "miniflare";
 import { afterEach, test, vi } from "vitest";
 import worker from "../workers/data-api.ts";
+import { ALPHA_RUNTIMES } from "../src/alpha-runtime-identity.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import type { Row } from "./row-type.ts";
 
@@ -179,7 +180,13 @@ async function fixture() {
     const result = await db.prepare(sql).all<Row>();
     return result.results;
   };
-  return { db, env, sent, post, capture, status, deliver, counts };
+  const receipts = async () => {
+    const sql =
+      "SELECT * FROM validator_nominator_counts_passes ORDER BY captured_at";
+    const result = await db.prepare(sql).all<Row>();
+    return result.results;
+  };
+  return { db, env, sent, post, capture, status, deliver, counts, receipts };
 }
 
 async function json(response: Response): Promise<Row> {
@@ -194,6 +201,98 @@ function countRow(hotkey: string, anchor: Row, nominatorCount = 1) {
     captured_at: anchor.captured_at,
   };
 }
+
+test("large inline counts acknowledge native completion", async () => {
+  const f = await fixture();
+  const size = 25_000;
+  const snapshot = {
+    ...frozen.alpha_snapshot,
+    block_number: 100,
+    block_hash: "0x" + "c".repeat(64),
+    spec_version: 479,
+    code_hash: ALPHA_RUNTIMES[479].code,
+    metadata_sha256: ALPHA_RUNTIMES[479].metadata,
+    metadata_scale_hex: readFileSync(
+      new URL("./fixtures/alpha-runtime/metadata-479.hex", import.meta.url),
+      "utf8",
+    ).trim(),
+    scanned_legacy: 0,
+    scanned_v2: size,
+    distinct_members: size,
+    excluded_root_members: size,
+    total_rows: 0,
+    total_chunks: 1,
+    index: 0,
+  };
+  const selected = await json(
+    await f.post(
+      { alpha_snapshot: snapshot, rows: [] },
+      f.env,
+      SECRET,
+      POSITION_PATH,
+    ),
+  );
+  assert.equal(selected.alpha_snapshot.selected, 1);
+  assert.equal(selected.alpha_snapshot.current, true);
+  const anchor = Object.fromEntries(
+    ANCHOR_FIELDS.map((field) => [field, snapshot[field]]),
+  );
+  const rows = Array.from({ length: size }, (_, index) =>
+    countRow(String(index).padStart(48, "x"), anchor),
+  );
+  const body = { rows, pass_total: size, alpha_snapshot: anchor };
+  const bytes = Buffer.byteLength(JSON.stringify(body));
+  assert.ok(bytes > 2_000_000 && bytes < 8_000_000);
+  const started = Promise.withResolvers<void>();
+  const gate = Promise.withResolvers<void>();
+  let committed = false;
+  let acknowledged = false;
+  const inline = dataApiEnv({
+    ...f.env,
+    SYNC_QUEUE_LANES: "",
+    SYNC_BATCHES: undefined,
+    D1_STATE: {
+      prepare: f.db.prepare.bind(f.db),
+      async batch(statements: D1PreparedStatement[]) {
+        started.resolve();
+        await gate.promise;
+        const result = await f.db.batch(statements);
+        committed = true;
+        return result;
+      },
+    },
+  });
+  const response = f.post(body, inline).then((result) => {
+    acknowledged = true;
+    return result;
+  });
+  try {
+    await started.promise;
+    assert.deepEqual(await f.counts(), []);
+    const pending = await json(await f.status(anchor, size, inline));
+    assert.equal(pending.complete, false);
+    assert.equal(pending.applied_count, 0);
+    assert.equal(pending.completed_at, null);
+    assert.equal(acknowledged, false);
+    assert.equal(committed, false);
+  } finally {
+    gate.resolve();
+  }
+  const applied = await json(await response);
+  assert.equal(committed, true);
+  assert.equal(f.sent.length, 0);
+  assert.deepEqual(applied.stores, ["d1"]);
+  assert.deepEqual(applied.alpha_snapshot, anchor);
+  assert.equal(applied.queued, undefined);
+  assert.equal(applied.current, true);
+  assert.equal(applied.complete, true);
+  assert.equal(applied.pass_total, size);
+  assert.equal(applied.applied_count, size);
+  assert.equal(typeof applied.completed_at, "number");
+  assert.ok(applied.completed_at > 0);
+  assert.equal((await f.counts()).length, size);
+  assert.deepEqual(await json(await f.status(anchor, size, inline)), applied);
+});
 
 test("queue admission is not a durable count receipt; partial delivery and retries tally unique hotkeys", async () => {
   const f = await fixture();
@@ -489,4 +588,109 @@ test("all chunks may be admitted before polling with a receiver clock behind cap
   } finally {
     clock.mockRestore();
   }
+});
+
+test("an anchored request cannot use an unselected native owner even when its tables exist", async () => {
+  const f = await fixture();
+  const anchor = await f.capture();
+  const unselected = dataApiEnv({ ...f.env, D1_STATE_TABLES: "" });
+  const response = await f.post(
+    {
+      rows: [countRow("hot-a", anchor)],
+      alpha_snapshot: anchor,
+      pass_total: 2,
+    },
+    unselected,
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await f.status(anchor, 2, unselected)).status, 503);
+  assert.equal(f.sent.length, 0);
+  assert.deepEqual(await f.counts(), []);
+  assert.deepEqual(await f.receipts(), []);
+});
+
+test("legacy HTTP and queued delivery fail closed when native discovery loses its binding", async () => {
+  const f = await fixture();
+  const legacy = {
+    rows: [countRow("legacy-only", { captured_at: STAMP })],
+    pass_total: 1,
+  };
+  const admitted = await json(await f.post(legacy));
+  assert.deepEqual(admitted.stores, ["queue"]);
+  assert.equal(f.sent.length, 1);
+  assert.equal(f.sent[0].alpha_snapshot, undefined);
+  const anchor = await f.capture();
+  let fallbackReads = 0;
+  const unavailable = dataApiEnv({
+    ...f.env,
+    D1_STATE: undefined,
+    HYPERDRIVE: {
+      get connectionString() {
+        fallbackReads++;
+        return undefined;
+      },
+    },
+  });
+  assert.equal((await f.post(legacy, unavailable)).status, 503);
+  assert.equal(f.sent.length, 1);
+  assert.deepEqual(await f.deliver(f.sent[0], unavailable), ["retry"]);
+  assert.equal(fallbackReads, 0);
+  assert.deepEqual(await f.counts(), []);
+  assert.deepEqual(await f.receipts(), []);
+  const status = await json(await f.status(anchor));
+  assert.equal(status.current, true);
+  assert.equal(status.complete, false);
+  assert.equal(status.applied_count, 0);
+});
+
+test("legacy messages admitted before Alpha selection cannot mutate anchored count state", async () => {
+  const f = await fixture();
+  const legacy = {
+    rows: [countRow("legacy-only", { captured_at: STAMP + 1 })],
+    pass_total: 1,
+  };
+  await json(await f.post(legacy));
+  assert.equal(f.sent.length, 1);
+  assert.equal(f.sent[0].alpha_snapshot, undefined);
+  assert.deepEqual(await f.counts(), []);
+  const anchor = await f.capture();
+  await json(
+    await f.post({
+      rows: [countRow("hot-a", anchor)],
+      alpha_snapshot: anchor,
+      pass_total: 2,
+    }),
+  );
+  assert.deepEqual(await f.deliver(f.sent[1]), ["ack"]);
+  const beforeRows = await f.counts();
+  const beforeReceipts = await f.receipts();
+  assert.equal(beforeRows.length, 1);
+  assert.equal(beforeReceipts.length, 1);
+  let nativeBatches = 0;
+  let fallbackReads = 0;
+  const observed = dataApiEnv({
+    ...f.env,
+    D1_STATE: {
+      prepare: f.db.prepare.bind(f.db),
+      async batch(statements: D1PreparedStatement[]) {
+        nativeBatches++;
+        return f.db.batch(statements);
+      },
+    },
+    HYPERDRIVE: {
+      get connectionString() {
+        fallbackReads++;
+        return undefined;
+      },
+    },
+  });
+  assert.deepEqual(await f.deliver(f.sent[0], observed), ["retry"]);
+  assert.equal(nativeBatches, 0);
+  assert.equal(fallbackReads, 0);
+  assert.deepEqual(await f.counts(), beforeRows);
+  assert.deepEqual(await f.receipts(), beforeReceipts);
+  const status = await json(await f.status(anchor));
+  assert.equal(status.current, true);
+  assert.equal(status.complete, false);
+  assert.equal(status.applied_count, 1);
 });

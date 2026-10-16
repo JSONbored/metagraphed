@@ -155,6 +155,11 @@ superseded chunks fail without changing counts or receipts. Empty raw captures
 use an empty rows/zero-total control transaction, without enqueueing bulk work.
 No separate controller or wire generation is introduced.
 
+Inline and queued writes use UTF-8 JSON pieces of at most 512 KiB within that
+same atomic transaction. Admission remains bounded to 50,000 rows and 8 MB;
+pieces do not create intermediate completion receipts. A later-piece failure
+rolls back every earlier piece and the pass declaration.
+
 Counts describe distinct raw coldkeys per hotkey across all subnets, including
 root, stored-zero and retired members. They do not certify economic stake.
 Known retained non-root hotkeys and coldkeys bound the declared pass and every
@@ -167,6 +172,12 @@ non-root pairs remain producer evidence. Economic readers require qualified quan
 exclude exact zero outputs, and retain every original row. Count readers require
 the current capture's complete anchored pass; old stamps and leftover hotkeys
 cannot supply counts or confirmed zeros.
+
+Operator directories requalify counts when serving materialized neuron data.
+Public operator, global validator and validator-detail responses use `no-store`;
+count-bearing operator and global list routes bypass edge-cache entries whose
+neuron or health stamp cannot express capture selection or count completion.
+An unchanged neuron artifact cannot preserve a previous capture's count or zero.
 
 ## Activation and rollback preconditions
 
@@ -183,6 +194,8 @@ new 0039 declarations. A passing source check cannot certify deployed objects,
 physical headroom, authentic full census or historical state availability.
 Main pushes touching these paths automatically apply tracked migrations; merging
 this PR is an activation step and remains held.
+Exporter-only prerequisite #12767 contains no DDL or new-schema-dependent reader
+and must be qualified on the existing schema before this combined change merges.
 
 Before eventual activation, the coordinating owner must:
 
