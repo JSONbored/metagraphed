@@ -219,7 +219,19 @@ export async function handleD1StateExport(
             }
           : {}),
       }));
-    if (!columns.length || (lossless && columns.length !== approved.size))
+    // The exporter can precede the additive receiver DDL. Approve both exact
+    // physical generations, preserving the original seven-column recovery
+    // corpus. A partially applied evidence pair cannot describe a snapshot.
+    const legacyNominator =
+      table === "nominator_positions" &&
+      JSON.stringify(columns.map((column) => column.name)) ===
+        JSON.stringify(
+          D1_EXPORT_COLUMNS.nominator_positions!.split(" ").slice(0, -2),
+        );
+    if (
+      !columns.length ||
+      (lossless && columns.length !== approved.size && !legacyNominator)
+    )
       throw new Error("export source schema is incomplete");
     const sourceDefinitions = metadata?.[1]!.results;
     if (lossless && sourceDefinitions!.length !== dependencies.length)
