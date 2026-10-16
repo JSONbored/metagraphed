@@ -645,35 +645,68 @@ test("prepared reclamation supplied cut restores source tables, chunks, quota an
   const { handleRequest } = await import("../workers/api.ts");
   const { handleMcpRequest } = await import("../src/mcp-server.ts");
   const { apiEnv } = await import("./helpers/worker-env.ts");
-  const partial = apiEnv({ ...env(restored), D1_STATE_TABLES: tables.join(",") });
+  const partial = apiEnv({
+    ...env(restored),
+    D1_STATE_TABLES: tables.join(","),
+  });
   const complete = apiEnv(env(restored));
-  async function refusal(bound: typeof complete, name: string, ref: string, code: string) {
-    const response = await handleMcpRequest(new Request("https://api.metagraph.sh/mcp", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: { ref } } }),
-    }), bound);
+  async function refusal(
+    bound: typeof complete,
+    name: string,
+    ref: string,
+    code: string,
+  ) {
+    const response = await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name, arguments: { ref } },
+        }),
+      }),
+      bound,
+    );
     assert.equal(response.status, 200);
-    const rpc = await response.json() as {
+    const rpc = (await response.json()) as {
       error?: unknown;
-      result: { isError: boolean; content: { type: string; text: string }[];
-        structuredContent: { error: { code: string; message: string } } };
+      result: {
+        isError: boolean;
+        content: { type: string; text: string }[];
+        structuredContent: { error: { code: string; message: string } };
+      };
     };
     assert.equal(rpc.error, undefined);
     assert.equal(rpc.result.isError, true);
     assert.equal(rpc.result.structuredContent.error.code, code);
     assert.equal(rpc.result.content[0].type, "text");
-    assert.equal(rpc.result.content[0].text,
-      `${code}: ${rpc.result.structuredContent.error.message}`);
+    assert.equal(
+      rpc.result.content[0].text,
+      `${code}: ${rpc.result.structuredContent.error.message}`,
+    );
     return rpc;
   }
   // The REST dispatcher propagates this owner error; its platform HTTP mapping
   // is outside this fixture. MCP must return the actual sanitized tool error.
   await assert.rejects(
-    handleRequest(new Request("https://api.metagraph.sh/api/v1/blocks/9000001"), partial),
+    handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/blocks/9000001"),
+      partial,
+    ),
     /spans D1 and Neon/,
   );
-  const mixed = await refusal(partial, "get_block", "9000001", "internal_error");
-  assert.equal(mixed.result.structuredContent.error.message, "The tool failed to complete.");
+  const mixed = await refusal(
+    partial,
+    "get_block",
+    "9000001",
+    "internal_error",
+  );
+  assert.equal(
+    mixed.result.structuredContent.error.message,
+    "The tool failed to complete.",
+  );
   assert.doesNotMatch(JSON.stringify(mixed), /D1|Neon|Reader spans/);
   await state(restored);
   await pruneChainDetailPayloads(env(restored));
@@ -681,25 +714,53 @@ test("prepared reclamation supplied cut restores source tables, chunks, quota an
     await loadExtrinsicHotTier(env(restored), "9000001-0"),
     original[0],
   );
-  const victim = await readChainDetailPayloadSnapshot(env(restored), {
-    text: "SELECT call_args FROM chain_detail_extrinsics WHERE block_number=?",
-    values: [9000001],
-  }, "call_args");
+  const victim = await readChainDetailPayloadSnapshot(
+    env(restored),
+    {
+      text: "SELECT call_args FROM chain_detail_extrinsics WHERE block_number=?",
+      values: [9000001],
+    },
+    "call_args",
+  );
   assert.equal(victim.rows.length, 1);
   assert.equal(victim.parts.size, 1);
   const victimHash = [...victim.parts.keys()][0];
-  await restored.prepare("DELETE FROM chain_detail_payload_chunks WHERE sha256=?").bind(victimHash).run();
-  const missing = await handleRequest(new Request("https://api.metagraph.sh/api/v1/extrinsics/9000001-0"), complete);
+  await restored
+    .prepare("DELETE FROM chain_detail_payload_chunks WHERE sha256=?")
+    .bind(victimHash)
+    .run();
+  const missing = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/extrinsics/9000001-0"),
+    complete,
+  );
   assert.equal(missing.status, 503);
-  assert.equal(missing.headers.get("x-metagraph-error-code"), "block_detail_unavailable");
+  assert.equal(
+    missing.headers.get("x-metagraph-error-code"),
+    "block_detail_unavailable",
+  );
   assert.equal(missing.headers.get("cache-control"), "no-store");
-  const missingBody = await missing.json() as { ok: boolean; data: unknown; error: { code: string; message: string } };
+  const missingBody = (await missing.json()) as {
+    ok: boolean;
+    data: unknown;
+    error: { code: string; message: string };
+  };
   assert.equal(missingBody.ok, false);
   assert.equal(missingBody.data, null);
   assert.equal(missingBody.error.code, "block_detail_unavailable");
-  const missingTool = await refusal(complete, "get_extrinsic", "9000001-0", "block_detail_unavailable");
-  assert.equal(missingTool.result.structuredContent.error.message, missingBody.error.message);
-  assert.match(missingBody.error.message, /not a block without extrinsics or events/);
+  const missingTool = await refusal(
+    complete,
+    "get_extrinsic",
+    "9000001-0",
+    "block_detail_unavailable",
+  );
+  assert.equal(
+    missingTool.result.structuredContent.error.message,
+    missingBody.error.message,
+  );
+  assert.match(
+    missingBody.error.message,
+    /not a block without extrinsics or events/,
+  );
   assert.equal("extrinsic" in missingTool.result.structuredContent, false);
   assert.notDeepEqual(await state(restored), await state());
   await assert.rejects(
