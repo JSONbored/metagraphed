@@ -47,6 +47,10 @@ import {
   mayPriceHotkeyAlpha,
 } from "./hotkey-alpha-completeness.ts";
 import {
+  alphaCaptureState,
+  alphaPositionsUnqualified,
+} from "./alpha-capture-reader.ts";
+import {
   SUBNET_HOLDERS_LIMIT_DEFAULT,
   SUBNET_HOLDERS_LIMIT_MAX,
 } from "./route-limits.ts";
@@ -100,17 +104,21 @@ export interface SubnetHoldersRead {
  * positions against totals read at different blocks, which is a silently
  * inconsistent sum rather than a merely stale one.
  */
-const holderCte = (alphaCapturedAt: number) =>
+const holderCte = (alphaCapturedAt: number, exact = false) =>
   "holder AS (" +
   "SELECT np.coldkey AS coldkey," +
-  " SUM(np.share_fraction * ha.total_alpha) AS alpha," +
+  (exact
+    ? " SUM(CAST(np.alpha_rao AS REAL) / 1000000000.0) AS alpha,"
+    : " SUM(np.share_fraction * ha.total_alpha) AS alpha,") +
   " COUNT(DISTINCT np.hotkey) AS hotkey_count," +
   " MAX(np.captured_at) AS positions_captured_at" +
-  " FROM nominator_positions np" +
-  " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
-  " AND ha.netuid = np.netuid" +
-  ` AND ha.captured_at = ${alphaCapturedAt}` +
-  " WHERE np.netuid = ?" +
+  (exact
+    ? ` FROM alpha_snapshot_rows np WHERE np.captured_at = ${alphaCapturedAt} AND`
+    : " FROM nominator_positions np" +
+      " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
+      " AND ha.netuid = np.netuid" +
+      ` AND ha.captured_at = ${alphaCapturedAt} WHERE`) +
+  " np.netuid = ?" +
   " GROUP BY np.coldkey)";
 
 /**
@@ -123,9 +131,10 @@ const holderCte = (alphaCapturedAt: number) =>
 export function subnetHoldersRowsSql(
   alphaCapturedAt: number,
   limit: number,
+  exact = false,
 ): string {
   return (
-    `WITH ${holderCte(alphaCapturedAt)}` +
+    `WITH ${holderCte(alphaCapturedAt, exact)}` +
     " SELECT coldkey, alpha, hotkey_count FROM holder" +
     ` ORDER BY alpha DESC, coldkey ASC LIMIT ${limit}`
   );
@@ -138,14 +147,17 @@ export function subnetHoldersRowsSql(
  * SQLite either way, and this form states the "rank the full set, then take N"
  * rule directly in the shape of the query.
  */
-export function subnetHoldersAggregateSql(alphaCapturedAt: number): string {
+export function subnetHoldersAggregateSql(
+  alphaCapturedAt: number,
+  exact = false,
+): string {
   const tops = HOLDER_CONCENTRATION_RANKS.map(
     (n) =>
       `(SELECT SUM(alpha) FROM (SELECT alpha FROM holder ORDER BY alpha DESC` +
       ` LIMIT ${n})) AS top${n}_alpha`,
   );
   return (
-    `WITH ${holderCte(alphaCapturedAt)}` +
+    `WITH ${holderCte(alphaCapturedAt, exact)}` +
     " SELECT (SELECT COUNT(*) FROM holder) AS holder_count," +
     " (SELECT SUM(alpha) FROM holder) AS total_alpha," +
     " (SELECT MAX(positions_captured_at) FROM holder) AS positions_captured_at," +
@@ -176,6 +188,42 @@ export async function loadSubnetHolders(
   // reachable, so the reason a caller gets should not depend on that.
   if (netuid === ROOT_NETUID) return declined("root_not_in_alpha_map");
   if (!db?.query) return declined("unavailable");
+
+  try {
+    const state = await alphaCaptureState(db);
+    if (state.available) {
+      const capture = state.capture;
+      if (!capture?.quantityQualified) return declined("pool_totals_unproven");
+      const [rows, aggregate] = await Promise.all([
+        db.query<Row>(subnetHoldersRowsSql(capture.captured_at, limit, true), [
+          netuid,
+        ]),
+        db.first!(subnetHoldersAggregateSql(capture.captured_at, true), [netuid]),
+      ]);
+      if (
+        await alphaPositionsUnqualified(db, capture.captured_at, {
+          column: "netuid",
+          value: netuid,
+        })
+      )
+        return declined("pool_totals_unproven");
+      const after = await alphaCaptureState(db);
+      if (
+        !after.capture?.quantityQualified ||
+        after.capture.captured_at !== capture.captured_at ||
+        after.capture.block_hash !== capture.block_hash
+      )
+        return declined("pool_totals_unproven");
+      return {
+        rows,
+        aggregate: readAggregate(aggregate as Row | null),
+        capturedAt: capture.captured_at,
+        decline: null,
+      };
+    }
+  } catch {
+    return declined("unavailable");
+  }
 
   const alpha = await latestCompleteHotkeyAlphaPass(db);
   if (!mayPriceHotkeyAlpha(alpha)) {

@@ -37,6 +37,10 @@ import {
   mayPriceHotkeyAlpha,
 } from "./hotkey-alpha-completeness.ts";
 import {
+  alphaCaptureState,
+  alphaPositionsUnqualified,
+} from "./alpha-capture-reader.ts";
+import {
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
 } from "./route-limits.ts";
@@ -91,19 +95,23 @@ export interface ChainHoldersRead {
  * Exported because the scoping, the partitioning and the prefix boundaries are
  * the whole contract and all three are decidable from the string.
  */
-export function chainHoldersSql(alphaCapturedAt: number): string {
+export function chainHoldersSql(alphaCapturedAt: number, exact = false): string {
   const prefixes = CHAIN_HOLDERS_RANKS.map(
     (n) => `SUM(CASE WHEN rn <= ${n} THEN alpha ELSE 0 END) AS top${n}_alpha`,
   ).join(", ");
   return (
     "WITH holder AS (" +
     "SELECT np.netuid AS netuid, np.coldkey AS coldkey," +
-    " SUM(np.share_fraction * ha.total_alpha) AS alpha," +
+    (exact
+      ? " SUM(CAST(np.alpha_rao AS REAL) / 1000000000.0) AS alpha,"
+      : " SUM(np.share_fraction * ha.total_alpha) AS alpha,") +
     " MAX(np.captured_at) AS positions_captured_at" +
-    " FROM nominator_positions np" +
-    " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
-    " AND ha.netuid = np.netuid" +
-    ` AND ha.captured_at = ${alphaCapturedAt}` +
+    (exact
+      ? ` FROM alpha_snapshot_rows np WHERE np.captured_at = ${alphaCapturedAt}`
+      : " FROM nominator_positions np" +
+        " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
+        " AND ha.netuid = np.netuid" +
+        ` AND ha.captured_at = ${alphaCapturedAt}`) +
     " GROUP BY np.netuid, np.coldkey), " +
     "ranked AS (SELECT netuid, coldkey, alpha, positions_captured_at," +
     " ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY alpha DESC) AS rn" +
@@ -127,6 +135,27 @@ export async function loadChainHolders(
     decline,
   });
   if (!db?.query) return declined("unavailable");
+
+  try {
+    const state = await alphaCaptureState(db);
+    if (state.available) {
+      const capture = state.capture;
+      if (!capture?.quantityQualified) return declined("pool_totals_unproven");
+      const rows = await db.query<Row>(chainHoldersSql(capture.captured_at, true));
+      if (await alphaPositionsUnqualified(db, capture.captured_at))
+        return declined("pool_totals_unproven");
+      const after = await alphaCaptureState(db);
+      if (
+        !after.capture?.quantityQualified ||
+        after.capture.captured_at !== capture.captured_at ||
+        after.capture.block_hash !== capture.block_hash
+      )
+        return declined("pool_totals_unproven");
+      return { rows, capturedAt: capture.captured_at, decline: null };
+    }
+  } catch {
+    return declined("unavailable");
+  }
 
   const alpha = await latestCompleteHotkeyAlphaPass(db);
   if (!mayPriceHotkeyAlpha(alpha)) {

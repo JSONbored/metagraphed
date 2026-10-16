@@ -1,4 +1,8 @@
-import { round9OrNull, nonNegativeCellOrNull } from "./lib/rao.ts";
+import {
+  round9OrNull,
+  nonNegativeCellOrNull,
+  raoBigToTao,
+} from "./lib/rao.ts";
 // Nominator-side (coldkey) position reconstruction (#5233): "what does this
 // coldkey actually hold, across every hotkey/subnet it delegates to" — the
 // coldkey-scoped counterpart to buildAccountPortfolio's hotkey-scoped view
@@ -206,15 +210,32 @@ export function buildAccountPositions(
     const hotkey = typeof row?.hotkey === "string" ? row.hotkey : null;
     const netuid = nonNegativeInt(row?.netuid);
     const fraction = nullableFraction(row?.share_fraction);
-    if (!hotkey || netuid == null || fraction == null) continue;
+    if (!hotkey || netuid == null) continue;
 
-    const hotkeyStake = stakeByKey.get(`${hotkey}|${netuid}`);
-    if (hotkeyStake == null) {
+    // Exact snapshot rows carry this column even when valuation is NULL. Its
+    // presence forbids a fallback to fractions or a different capture's pool.
+    const exact = Object.hasOwn(row, "alpha_rao");
+    const rao = row.alpha_rao;
+    if (
+      exact &&
+      (typeof rao !== "string" ||
+        !/^(0|[1-9]\d{0,19})$/.test(rao) ||
+        BigInt(rao) > (1n << 64n) - 1n ||
+        fraction === null ||
+        fraction > 1)
+    ) {
       unpriceable += 1;
       continue;
     }
-
-    const stakeTao = round9OrNull(fraction * hotkeyStake);
+    if (!exact && fraction == null) continue;
+    const hotkeyStake = stakeByKey.get(`${hotkey}|${netuid}`);
+    if (!exact && hotkeyStake == null) {
+      unpriceable += 1;
+      continue;
+    }
+    const stakeTao = exact
+      ? raoBigToTao(BigInt(rao as string))
+      : round9OrNull(fraction! * hotkeyStake!);
     if (stakeTao == null) continue;
     totalStakeAlpha += stakeTao;
 
@@ -329,6 +350,23 @@ export function unavailableAccountPositions(
     degraded: {
       reason: POSITIONS_DEGRADED_TIER_UNAVAILABLE,
       snapshot_captured_at: null,
+      latest_stake_event_at: null,
+    },
+  };
+}
+
+/** A canonical structural capture exists, but its quantities are unqualified. */
+export function unpriceableAccountPositions(
+  ss58: string,
+  capturedAt: number | null,
+): AccountPositionsResult {
+  const stamp = capturedAt === null ? null : toIso(capturedAt);
+  return {
+    ...buildAccountPositions([], null, ss58),
+    captured_at: stamp,
+    degraded: {
+      reason: POSITIONS_DEGRADED_UNPRICEABLE,
+      snapshot_captured_at: stamp,
       latest_stake_event_at: null,
     },
   };

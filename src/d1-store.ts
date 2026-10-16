@@ -12,6 +12,16 @@ import { mark, timed, TIMING_D1, TIMING_D1_SQL } from "./request-timing.ts";
 
 export type D1StoreBinding = Pick<D1Database, "prepare" | "batch">;
 
+/** Receiver evidence is installed atomically beside its existing ledger owner.
+ * These internal tables inherit that owner and cannot be independently routed. */
+const ALPHA_OWNER_TABLES = [
+  "alpha_runtime_metadata",
+  "alpha_snapshot_passes",
+  "alpha_snapshot_chunks",
+  "alpha_snapshot_rows",
+  "alpha_snapshot_pools",
+] as const;
+
 /** D1 reports SQL execution separately from binding/network wait. Keep both
  * measurements: a slow binding call does not establish a slow query. Batch
  * results each describe one statement, including export revision writes. */
@@ -26,11 +36,16 @@ function d1TableOwners(env: unknown): Set<string> {
     env && typeof env === "object"
       ? (env as { D1_STATE_TABLES?: unknown }).D1_STATE_TABLES
       : undefined;
-  return new Set(
+  const owners = new Set(
     typeof value === "string"
       ? value.split(",").map((name) => name.trim())
       : [],
   );
+  for (const table of ALPHA_OWNER_TABLES) {
+    owners.delete(table);
+    if (owners.has("nominator_positions")) owners.add(table);
+  }
+  return owners;
 }
 
 /** Census queries may span owners; JOINs still must select a single owner. */

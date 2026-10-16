@@ -1,3 +1,13 @@
+import { ownerCapturePositions } from "../src/owner-capture-positions.ts";
+import { ZodError } from "zod";
+import {
+  writeAlphaSnapshotD1,
+  readAlphaSnapshotResumeD1,
+} from "../src/alpha-snapshot-d1.ts";
+import {
+  parseSelfStakeSnapshot,
+  type SelfStakeSnapshot,
+} from "../src/self-stake-snapshot-d1.ts";
 import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
@@ -2635,6 +2645,65 @@ async function handleNominatorPositionsSync(
   } catch {
     return writeJson({ error: "body must be JSON" }, 400);
   }
+  if (parsed?.alpha_snapshot_resume !== undefined) {
+    if (
+      parsed.alpha_snapshot_resume !== true ||
+      Object.keys(parsed).length !== 1
+    )
+      return writeJson({ error: "invalid Alpha resume request" }, 400);
+    if (
+      !env.D1_STATE ||
+      ![
+        "nominator_positions",
+        "nominator_positions_passes",
+        "nominator_scan_receipts",
+      ].every((table) =>
+        String(env.D1_STATE_TABLES ?? "")
+          .split(",")
+          .map((name) => name.trim())
+          .includes(table),
+      )
+    )
+      return writeJson(
+        { error: "Alpha resume requires its native owner" },
+        503,
+      );
+    try {
+      return writeJson(await readAlphaSnapshotResumeD1(env.D1_STATE));
+    } catch (error) {
+      return writeJson({ error: String(error) }, 502);
+    }
+  }
+  if (parsed?.alpha_snapshot !== undefined) {
+    if (
+      !env.D1_STATE ||
+      ![
+        "nominator_positions",
+        "nominator_positions_passes",
+        "nominator_scan_receipts",
+      ].every((table) =>
+        String(env.D1_STATE_TABLES ?? "")
+          .split(",")
+          .map((name) => name.trim())
+          .includes(table),
+      )
+    )
+      return writeJson(
+        { error: "Alpha snapshots require their native owner" },
+        503,
+      );
+    try {
+      return writeJson(
+        await writeAlphaSnapshotD1(env.D1_STATE, parsed, Date.now()),
+      );
+    } catch (error) {
+      const invalid =
+        error instanceof TypeError ||
+        error instanceof RangeError ||
+        error instanceof ZodError;
+      return writeJson({ error: String(error) }, invalid ? 400 : 502);
+    }
+  }
   const incoming = Array.isArray(parsed)
     ? parsed
     : Array.isArray(parsed?.rows)
@@ -2886,9 +2955,19 @@ async function handleSelfStakeSync(
   const rows = incoming.map(coerceNominatorPositionSyncRow);
   const cutoffs = coldkeyMaxCapturedAt(rows);
 
+  let snapshot: SelfStakeSnapshot | undefined;
+  if (!Array.isArray(parsed) && Object.hasOwn(parsed, "snapshot")) {
+    try {
+      snapshot = parseSelfStakeSnapshot(parsed.snapshot, rows);
+    } catch (error) {
+      return writeJson({ error: String(error) }, 400);
+    }
+  }
+
   const neon = await mirrorNominatorPositionsToNeon(env, ctx, {
     rows,
     coldkeyMaxCapturedAt: cutoffs,
+    selfStakeSnapshot: snapshot,
     source: POSITION_SOURCE_SELF_STAKE,
     lane: SELF_STAKE_NEON_LANE,
   });
@@ -2914,6 +2993,7 @@ async function handleSelfStakeSync(
     ok: true,
     self_stake_positions_written: rows.length,
     coldkeys_pruned: cutoffs.size,
+    ...(snapshot ? { self_stake_snapshot: neon.snapshot } : {}),
     stores: ["neon"],
   });
 }
@@ -8185,7 +8265,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/owner-capture$/,
   );
   if (ownerCaptureMatch) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(ownerCaptureMatch[1]);
       const cutoff = windowCutoffDate(
         url,
@@ -8223,18 +8303,26 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       // Only meaningful when we know whose UIDs to look behind, so it is
       // skipped entirely rather than read and discarded.
       const positions = ownerColdkey
-        ? await sql<{
-            coldkey: NominatorPositions["coldkey"];
-            hotkey: NominatorPositions["hotkey"];
-            share_fraction: NominatorPositions["share_fraction"];
-          }>`
+        ? await ownerCapturePositions(
+            selectedD1Store(env, [
+              "nominator_positions",
+              "nominator_positions_passes",
+              "nominator_scan_receipts",
+            ]),
+            netuid,
+            () => sql<{
+              coldkey: NominatorPositions["coldkey"];
+              hotkey: NominatorPositions["hotkey"];
+              share_fraction: NominatorPositions["share_fraction"];
+            }>`
         SELECT np.coldkey, np.hotkey, np.share_fraction
         FROM nominator_positions np
         WHERE np.netuid = ${netuid}
           AND np.captured_at = (
             SELECT MAX(captured_at) FROM nominator_positions
             WHERE netuid = ${netuid}
-          )`
+          )`,
+          )
         : [];
 
       return json(

@@ -44,6 +44,9 @@ export const ALPHA_PRICING_TABLES = [
   "nominator_positions",
   "hotkey_alpha",
   "hotkey_alpha_passes",
+  "alpha_runtime_metadata",
+  "alpha_snapshot_passes",
+  "alpha_snapshot_rows",
 ] as const;
 
 /** topHoldersHoldings -- the alpha-pricing set, plus the balances leg and the

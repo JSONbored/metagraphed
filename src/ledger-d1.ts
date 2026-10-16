@@ -7,6 +7,7 @@ import {
   POSITION_INSERT_COLUMNS_WITH_SOURCE,
   NOMINATOR_POSITIONS_CONFLICT,
   POSITION_SOURCE_ALPHA,
+  POSITION_SOURCE_SELF_STAKE,
   NOMINATOR_POSITIONS_NEON_LANE,
   type NominatorPositionsInput,
   type NominatorPositionsMirrorOutcome,
@@ -14,6 +15,7 @@ import {
 import { NOMINATOR_SCAN_RECEIPTS_RETENTION_MS } from "./nominator-scan-receipts.ts";
 import type { ProducerStore, ProducerStatement } from "./producer-store.ts";
 import type { NeonWriteResult } from "./neon-write.ts";
+import { writeSelfStakeSnapshotD1 } from "./self-stake-snapshot-d1.ts";
 
 function passStatement(lane: string, pass: PassTallyInput): ProducerStatement {
   const table = PASS_TABLES[lane];
@@ -77,11 +79,49 @@ export async function writeNominatorPositionsD1(
   const source = input.source ?? POSITION_SOURCE_ALPHA;
   const parts: Record<string, NeonWriteResult> = {};
   try {
+    if (input.selfStakeSnapshot) {
+      if (source !== POSITION_SOURCE_SELF_STAKE)
+        throw new TypeError("Snapshot belongs to self-stake only");
+      return await writeSelfStakeSnapshotD1(
+        store,
+        input.rows,
+        input.selfStakeSnapshot,
+        Date.now(),
+      );
+    }
     const rows: Record<string, unknown>[] = input.rows.map((row) => ({
       ...row,
       source,
     }));
-    const statements = rows.length
+    // A partial owner update has no full census, but it still cannot replace
+    // canonical Alpha evidence. Schema detection permits code to be installed
+    // before the receiver migration; failed native reads never downgrade it.
+    const selfStake = source === POSITION_SOURCE_SELF_STAKE;
+    const alphaSchema =
+      selfStake &&
+      Boolean(
+        await store.first<{ name: string }>(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'",
+          [],
+        ),
+      );
+    const snapshotSchema =
+      selfStake &&
+      Boolean(
+        await store.first<{ name: string }>(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='self_stake_snapshot_passes'",
+          [],
+        ),
+      );
+    const filters = ["true"];
+    if (snapshotSchema)
+      filters.push(`NOT EXISTS (SELECT 1 FROM self_stake_snapshot_passes WHERE completed_at IS NOT NULL
+        AND captured_at > json_extract(value,'$[${POSITION_INSERT_COLUMNS_WITH_SOURCE.indexOf("captured_at")}]'))`);
+    if (alphaSchema)
+      filters.push(`NOT EXISTS (SELECT 1 FROM nominator_positions p
+        WHERE p.coldkey=json_extract(value,'$[0]') AND p.hotkey=json_extract(value,'$[1]')
+        AND p.netuid=json_extract(value,'$[2]') AND p.alpha_evidence IS NOT NULL)`);
+    const statements: ProducerStatement[] = rows.length
       ? captureUpsertStatements(
           {
             table: "nominator_positions",
@@ -90,6 +130,7 @@ export async function writeNominatorPositionsD1(
           },
           rows,
           "nominator_positions.captured_at < excluded.captured_at",
+          filters.join(" AND "),
         )
       : [];
     parts.write = {

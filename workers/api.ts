@@ -1,3 +1,4 @@
+import { alphaCaptureStateFromOwner } from "../src/alpha-capture-reader.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
@@ -5629,6 +5630,11 @@ async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
   // bought the ANSWER, and a hit is an answer; settling only on a miss would
   // make the charge depend on cache residency, which they cannot see.
   return withX402(request, env, resolved.pathname, async () => {
+    if (ACCOUNT_POSITIONS_PATH_PATTERN.test(resolved.pathname)) {
+      const alpha = await alphaCaptureStateFromOwner(env).catch(() => null);
+      if (alpha === null || alpha.available)
+        return dispatchRequest(request, env, ctx);
+    }
     const eligible = accountEdgeCacheEligible({
       method: request.method,
       isDefaultNetwork: network.isDefault,
@@ -6480,6 +6486,9 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   if (url.pathname === "/api/v1/accounts/top-holders") {
     const topHoldersCache = canonicalTopHoldersCachePath(url, request);
     if (topHoldersCache.response) return topHoldersCache.response;
+    const alpha = await alphaCaptureStateFromOwner(env).catch(() => null);
+    if (alpha === null || alpha.available)
+      return handleTopHoldersList(request, env, url);
     return withEdgeCache(
       request,
       ctx,
@@ -6770,6 +6779,14 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       resolved.url.pathname,
     );
     if (ownerCaptureMatch) {
+      const alpha = await alphaCaptureStateFromOwner(env).catch(() => null);
+      if (alpha === null || alpha.available)
+        return handleSubnetOwnerCapture(
+          request,
+          env,
+          Number(ownerCaptureMatch[1]),
+          resolved.url,
+        );
       // Same rollup, same cron cadence, same edge-cache treatment as its
       // emission-split sibling.
       return withEdgeCache(

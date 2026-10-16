@@ -36,6 +36,10 @@ import {
   latestCompleteHotkeyAlphaPass,
   mayPriceHotkeyAlpha,
 } from "./hotkey-alpha-completeness.ts";
+import {
+  alphaCaptureState,
+  alphaPositionsUnqualified,
+} from "./alpha-capture-reader.ts";
 
 type Row = Record<string, unknown>;
 
@@ -65,16 +69,23 @@ export interface NominatorPositionsRead {
  * sum produced last time. The per-coldkey ordering key is therefore the number
  * of subnets and then the largest single-subnet holding, not a total.
  */
-export function nominatorPositionsSql(alphaCapturedAt: number): string {
+export function nominatorPositionsSql(
+  alphaCapturedAt: number,
+  exact = false,
+): string {
   return (
     "SELECT np.coldkey AS coldkey, np.netuid AS netuid," +
-    " SUM(np.share_fraction * ha.total_alpha) AS alpha," +
+    (exact
+      ? " SUM(CAST(np.alpha_rao AS REAL) / 1000000000.0) AS alpha,"
+      : " SUM(np.share_fraction * ha.total_alpha) AS alpha,") +
     " MAX(np.captured_at) AS positions_captured_at" +
-    " FROM nominator_positions np" +
-    " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
-    " AND ha.netuid = np.netuid" +
-    ` AND ha.captured_at = ${alphaCapturedAt}` +
-    " WHERE np.hotkey = ?" +
+    (exact
+      ? ` FROM alpha_snapshot_rows np WHERE np.captured_at = ${alphaCapturedAt} AND`
+      : " FROM nominator_positions np" +
+        " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
+        " AND ha.netuid = np.netuid" +
+        ` AND ha.captured_at = ${alphaCapturedAt} WHERE`) +
+    " np.hotkey = ?" +
     " GROUP BY np.coldkey, np.netuid" +
     " ORDER BY alpha DESC"
   );
@@ -89,6 +100,35 @@ export async function loadNominatorPositions(
     decline: NominatorPositionsDecline,
   ): NominatorPositionsRead => ({ rows: [], capturedAt: null, decline });
   if (!db?.query) return declined("unavailable");
+
+  try {
+    const state = await alphaCaptureState(db);
+    if (state.available) {
+      const capture = state.capture;
+      if (!capture?.quantityQualified) return declined("pool_totals_unproven");
+      const rows = await db.query<Row>(
+        nominatorPositionsSql(capture.captured_at, true),
+        [hotkey],
+      );
+      if (
+        await alphaPositionsUnqualified(db, capture.captured_at, {
+          column: "hotkey",
+          value: hotkey,
+        })
+      )
+        return declined("pool_totals_unproven");
+      const after = await alphaCaptureState(db);
+      if (
+        !after.capture?.quantityQualified ||
+        after.capture.captured_at !== capture.captured_at ||
+        after.capture.block_hash !== capture.block_hash
+      )
+        return declined("pool_totals_unproven");
+      return { rows, capturedAt: capture.captured_at, decline: null };
+    }
+  } catch {
+    return declined("unavailable");
+  }
 
   const alpha = await latestCompleteHotkeyAlphaPass(db);
   if (!mayPriceHotkeyAlpha(alpha)) {
