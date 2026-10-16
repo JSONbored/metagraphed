@@ -15,7 +15,14 @@ const runtime = new Miniflare({
   modules: true,
   script: "export default {fetch(){return new Response('test')}}",
   compatibilityDate: "2026-06-06",
-  d1Databases: ["DB"],
+  d1Databases: [
+    "DB",
+    "LEGACY",
+    "UPGRADED",
+    "PARTIAL_RAO",
+    "PARTIAL_EVIDENCE",
+    "UNKNOWN",
+  ],
 });
 let db: D1Database;
 const tables = [...Object.keys(D1_EXPORT_TABLES), "neurons_passes"].join(",");
@@ -67,6 +74,145 @@ beforeAll(async () => {
 });
 afterAll(async () => runtime.dispose());
 
+test("position exports accept only complete approved generations", async () => {
+  const fixture = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/lossless-state-export-v1.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  type Cell = { storage: string; value: string | null };
+  const original = fixture.rows[0] as Cell[];
+  const table = "nominator_positions";
+  const baseColumns = fixture.columns as { name: string }[];
+  const columns = baseColumns.map((column) => column.name);
+  const alphaColumns = ["alpha_rao", "alpha_evidence"].map((name) => ({
+    name,
+    type: "text",
+    sqlite_type: "TEXT",
+    not_null: false,
+    primary_key: 0,
+  }));
+  const evidence =
+    '{"share":{"v2":{"mantissa":"9007199254740993","exponent":"-65"}},"pool_epoch":"9007199254740993","member_epoch":"0001"}';
+  const alphaRao = ((1n << 64n) - 1n).toString();
+  const generations = {
+    LEGACY: [],
+    UPGRADED: ["alpha_rao", "alpha_evidence"],
+    PARTIAL_RAO: ["alpha_rao"],
+    PARTIAL_EVIDENCE: ["alpha_evidence"],
+    UNKNOWN: ["alpha_rao", "alpha_evidence", "unreviewed"],
+  };
+  for (const [name, additions] of Object.entries(generations)) {
+    const database = await runtime.getD1Database(name);
+    for (const file of [
+      "0010_ledger_state.sql",
+      "0016_archive_export_revisions.sql",
+    ]) {
+      const statements = readFileSync(
+        new URL(`../migrations/d1/${file}`, import.meta.url),
+        "utf8",
+      )
+        .split("-- statement-breakpoint")
+        .filter((sql) => sql.trim())
+        .map((sql) => database.prepare(sql));
+      await database.batch(statements);
+    }
+    for (const column of additions) {
+      const sql = `ALTER TABLE nominator_positions ADD COLUMN ${column} TEXT`;
+      await database.prepare(sql).run();
+    }
+    const overrides = { D1_STATE: database };
+    if (name !== "LEGACY" && name !== "UPGRADED") {
+      for (const encoding of [undefined, "lossless-v1"]) {
+        for (const kind of ["schema", "rows"]) {
+          const response = await handleD1StateExport(
+            req({
+              table,
+              kind,
+              encoding,
+              columns: [...columns, ...additions],
+            }),
+            { ...env(), ...overrides },
+          );
+          assert.equal(response.status, 503);
+        }
+      }
+      continue;
+    }
+    const insertSql =
+      "INSERT INTO nominator_positions" +
+      "(coldkey,hotkey,netuid,share_fraction,captured_at,shares,source) " +
+      "VALUES(?,?,CAST(? AS INTEGER),CAST(? AS REAL),CAST(? AS INTEGER),?,?)";
+    await database
+      .prepare(insertSql)
+      .bind(...original.map((cell) => cell.value))
+      .run();
+    if (name === "UPGRADED") {
+      const sql = "UPDATE nominator_positions SET alpha_rao=?,alpha_evidence=?";
+      await database.prepare(sql).bind(alphaRao, evidence).run();
+    }
+    const schema = await get(
+      { table, kind: "schema", encoding: "lossless-v1" },
+      overrides,
+    );
+    assert.deepEqual(
+      schema.columns,
+      name === "LEGACY"
+        ? fixture.columns
+        : [...fixture.columns, ...alphaColumns],
+    );
+    const body = {
+      table,
+      kind: "rows",
+      encoding: "lossless-v1",
+      columns: schema.columns.map((column) => column.name),
+      revision: schema.revision,
+    };
+    const page = await get(body, overrides);
+    const exactAlpha = [
+      { storage: "text", value: alphaRao },
+      { storage: "text", value: evidence },
+    ];
+    const expected =
+      name === "LEGACY" ? original : [...original, ...exactAlpha];
+    assert.deepEqual(page.rows, [expected]);
+    assert.deepEqual(page.row_keys, fixture.row_keys.slice(0, 1));
+    assert.equal(schema.row_count, 1);
+    assert.equal(page.next_cursor, null);
+    const ordinarySchema = await get({ table, kind: "schema" }, overrides);
+    const ordinaryColumns = schema.columns.map((column) => ({
+      name: column.name,
+      type: column.type,
+    }));
+    assert.deepEqual(ordinarySchema.columns, ordinaryColumns);
+    const ordinaryBody = { ...body, encoding: undefined };
+    const ordinary = await get(ordinaryBody, overrides);
+    const values = expected.map((cell) =>
+      cell.storage === "integer" || cell.storage === "real"
+        ? Number(cell.value)
+        : cell.value,
+    );
+    assert.deepEqual(ordinary.rows, [values]);
+    if (name === "UPGRADED") {
+      const sql =
+        "UPDATE nominator_positions SET alpha_rao=NULL,share_fraction=NULL";
+      await database.prepare(sql).run();
+      const unqualified = await get(body, overrides);
+      const nullable = original.map((cell, index) =>
+        index === 3 ? { storage: "null", value: null } : cell,
+      );
+      assert.deepEqual(unqualified.rows, [
+        [
+          ...nullable,
+          { storage: "null", value: null },
+          { storage: "text", value: evidence },
+        ],
+      ]);
+    }
+  }
+});
+
 test("all 34 archive schemas and empty exports use native D1 with logical types", async () => {
   assert.equal(Object.keys(D1_EXPORT_TABLES).length, 34);
   assert.deepEqual(
@@ -77,10 +223,11 @@ test("all 34 archive schemas and empty exports use native D1 with logical types"
     const schema = await get({ table, kind: "schema" });
     assert.ok(schema.columns.length > 0);
     const names = schema.columns.map((c) => c.name);
-    assert.deepEqual(
-      [...names].sort(),
-      D1_EXPORT_COLUMNS[table]!.split(" ").sort(),
-    );
+    const approved = D1_EXPORT_COLUMNS[table]!.split(" ");
+    // Tracked main DDL still has the original seven position columns.
+    const expected =
+      table === "nominator_positions" ? approved.slice(0, 7) : approved;
+    assert.deepEqual([...names].sort(), expected.sort());
     assert.ok(names.every((name: string) => !name.startsWith("_")));
     const rows = await get({ table, kind: "rows", columns: names });
     assert.deepEqual(rows.rows, []);
