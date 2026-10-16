@@ -223,6 +223,8 @@ export function buildAccountPositions(
       unpriceable += 1;
       continue;
     }
+    // Retired and stored-zero originals remain evidence, not current holdings.
+    if (exact && rao === "0") continue;
     if (!exact && fraction == null) continue;
     const hotkeyStake = stakeByKey.get(`${hotkey}|${netuid}`);
     if (!exact && hotkeyStake == null) {

@@ -110,7 +110,10 @@ const holderCte = (alphaCapturedAt: number, exact = false) =>
   (exact
     ? " SUM(CAST(np.alpha_rao AS REAL) / 1000000000.0) AS alpha,"
     : " SUM(np.share_fraction * ha.total_alpha) AS alpha,") +
-  " COUNT(DISTINCT np.hotkey) AS hotkey_count," +
+  (exact
+    ? " COUNT(DISTINCT CASE WHEN CAST(np.alpha_rao AS REAL) > 0" +
+      " THEN np.hotkey END) AS hotkey_count,"
+    : " COUNT(DISTINCT np.hotkey) AS hotkey_count,") +
   " MAX(np.captured_at) AS positions_captured_at" +
   (exact
     ? ` FROM alpha_snapshot_rows np WHERE np.captured_at = ${alphaCapturedAt} AND`
@@ -119,7 +122,9 @@ const holderCte = (alphaCapturedAt: number, exact = false) =>
       " AND ha.netuid = np.netuid" +
       ` AND ha.captured_at = ${alphaCapturedAt} WHERE`) +
   " np.netuid = ?" +
-  " GROUP BY np.coldkey)";
+  " GROUP BY np.coldkey" +
+  (exact ? " HAVING SUM(CAST(np.alpha_rao AS REAL)) > 0" : "") +
+  ")";
 
 /**
  * The ranked page.

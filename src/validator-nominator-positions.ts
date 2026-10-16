@@ -87,6 +87,7 @@ export function nominatorPositionsSql(
         ` AND ha.captured_at = ${alphaCapturedAt} WHERE`) +
     " np.hotkey = ?" +
     " GROUP BY np.coldkey, np.netuid" +
+    (exact ? " HAVING SUM(CAST(np.alpha_rao AS REAL)) > 0" : "") +
     " ORDER BY alpha DESC"
   );
 }

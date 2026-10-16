@@ -116,7 +116,9 @@ export function chainHoldersSql(capturedAt: number, exact = false): string {
     amount +
     " MAX(np.captured_at) AS positions_captured_at" +
     source +
-    " GROUP BY np.netuid, np.coldkey), " +
+    " GROUP BY np.netuid, np.coldkey" +
+    (exact ? " HAVING SUM(CAST(np.alpha_rao AS REAL)) > 0" : "") +
+    "), " +
     "ranked AS (SELECT netuid, coldkey, alpha, positions_captured_at," +
     " ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY alpha DESC) AS rn" +
     " FROM holder) " +

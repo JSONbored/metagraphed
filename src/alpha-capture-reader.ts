@@ -142,15 +142,15 @@ export async function alphaCaptureState(
   const runtime = spec === null ? null : ALPHA_RUNTIMES[spec];
   const quantityQualified = Boolean(
     runtime &&
-      p.genesis_hash === ALPHA_GENESIS &&
-      p.code_hash === runtime.code &&
-      p.metadata_sha256 === runtime.metadata &&
-      p.retained_metadata_sha256 === p.metadata_sha256 &&
-      p.retained_code_hash === p.code_hash &&
-      p.retained_spec_version === p.spec_version &&
-      p.expected_rows === p.received_rows &&
-      p.expected_chunks === p.received_chunks &&
-      p.completed_at >= p.captured_at,
+    p.genesis_hash === ALPHA_GENESIS &&
+    p.code_hash === runtime.code &&
+    p.metadata_sha256 === runtime.metadata &&
+    p.retained_metadata_sha256 === p.metadata_sha256 &&
+    p.retained_code_hash === p.code_hash &&
+    p.retained_spec_version === p.spec_version &&
+    p.expected_rows === p.received_rows &&
+    p.expected_chunks === p.received_chunks &&
+    p.completed_at >= p.captured_at,
   );
   return {
     available: true,

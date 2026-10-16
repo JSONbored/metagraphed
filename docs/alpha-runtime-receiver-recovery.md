@@ -115,10 +115,19 @@ mixing independently exported tables while writers continue to mutate them.
 
 ## Activation and rollback preconditions
 
-This source change authorizes no production action. The original physical-schema
-assertion and observed schema snapshot remain unchanged. Proposed-schema native
-fixtures are software evidence and cannot certify deployed objects, physical
-headroom, authentic full census or historical state availability.
+This source change authorizes no production action. Source qualification uses
+`validate:declared-tables-exist -- --proposed-native`: it applies the actual
+tracked migrations to ephemeral native D1 and checks every declared table/view
+and reader dependency against that database's physical catalog. Missing objects
+still fail. Its catalog is proposed-schema evidence and is never written into
+the observed production artifacts.
+
+The default production verifier, authentic snapshot pair and maintenance workflow
+remain strict. Before DDL, the observed catalog through 0038 cannot satisfy the
+new 0039 declarations. A passing source check cannot certify deployed objects,
+physical headroom, authentic full census or historical state availability.
+Main pushes touching these paths automatically apply tracked migrations; merging
+this PR is an activation step and remains held.
 
 Before eventual activation, the coordinating owner must:
 
@@ -126,9 +135,14 @@ Before eventual activation, the coordinating owner must:
    and physical schema, and fence competing old writers at a coherent cut.
 2. Qualify old-schema exporter/receiver compatibility first, retain independent
    originals/receipts and a coherent recoverable backup, and prove restoration.
-3. Separately authorize DDL on the chosen owner, verify every new column, trigger
-   and table physically, retain that actual schema capture, and rerun the intact
-   physical-schema gate. Main merge would otherwise trigger tracked D1 maintenance.
+3. Only after exporter and coherent restore qualification, separately authorize
+   DDL on the chosen owner. Verify every new column, trigger and table physically,
+   capture the actual catalog through the protected schema writer, review both
+   production snapshot artifacts, and run the unchanged ledger/schema/declaration
+   verifiers. Reconcile those artifacts before main merge. The existing apply
+   workflow can apply DDL and then fail verification against the old snapshot;
+   that outcome is not successful activation or proof that DDL rolled back.
+   Inspect the actual ledger and catalog before any retry.
 4. Measure admission and full-pass promotion at worst-case cardinality and pool
    width within D1 execution, statement, memory, I/O and storage budgets, including
    concurrent serving impact. The one-million-row ceiling is not a performance

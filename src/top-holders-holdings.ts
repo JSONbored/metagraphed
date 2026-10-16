@@ -161,7 +161,9 @@ const delegatedCte = (alphaCapturedAt: number, exact = false) =>
       ` AND ha.captured_at = ${alphaCapturedAt}`) +
   " JOIN price ON price.netuid = np.netuid" +
   (exact ? ` WHERE np.captured_at = ${alphaCapturedAt}` : "") +
-  " GROUP BY np.coldkey)";
+  " GROUP BY np.coldkey" +
+  (exact ? " HAVING SUM(CAST(np.alpha_rao AS REAL)) > 0" : "") +
+  ")";
 
 /**
  * The balance ledger's own rows.

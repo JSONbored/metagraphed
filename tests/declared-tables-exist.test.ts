@@ -5,12 +5,23 @@
 // Both halves have that failure mode: a migration scanner fooled by prose, and
 // a constant scanner that misses the array shape these sets are written in.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import {
+  copyFileSync,
+  mkdtempSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { Miniflare } from "miniflare";
 import { describe, test } from "vitest";
 import {
+  applyTrackedD1Migrations,
+  assertDeclaredNativeTables,
   findMissing,
   tablesInMigrations,
   tablesInReadStoreSets,
@@ -173,11 +184,177 @@ test("D1 view declarations are required alongside native tables", () => {
   ]);
 });
 
-test("CLI checks the physical D1 snapshot, including root baskets absent from the logical legacy snapshot", () => {
+test("source CLI applies all tracked migrations to proposed native D1", () => {
   const output = execFileSync(
     process.execPath,
-    ["scripts/validate-declared-tables-exist.ts"],
+    ["scripts/validate-declared-tables-exist.ts", "--proposed-native"],
     { encoding: "utf8" },
   );
-  assert.match(output, /every declared table exists/);
+  assert.match(output, /every declared table exists in the proposed native/);
+});
+
+test("native validation refuses a view dropped after real DDL", async () => {
+  const runtime = new Miniflare({
+    modules: true,
+    script: "export default {fetch(){return new Response('schema')}}",
+    compatibilityDate: "2026-06-06",
+    d1Databases: ["DB"],
+  });
+  try {
+    const db = await runtime.getD1Database("DB");
+    await applyTrackedD1Migrations(db);
+    const counts = await assertDeclaredNativeTables(db);
+    assert.ok(counts.native > 40);
+    await db.prepare("DROP VIEW neurons").run();
+    await assert.rejects(assertDeclaredNativeTables(db), /neurons/);
+  } finally {
+    await runtime.dispose();
+  }
+});
+
+test("populated 0038 upgrades preserve exact legacy rows", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "declared-upgrade-"));
+  const runtime = new Miniflare({
+    modules: true,
+    script: "export default {fetch(){return new Response('upgrade')}}",
+    compatibilityDate: "2026-06-06",
+    d1Databases: ["DB"],
+  });
+  try {
+    const dir = path.join(root, "migrations/d1");
+    mkdirSync(dir, { recursive: true });
+    const origin = new URL("../migrations/d1/", import.meta.url);
+    const files = readdirSync(origin)
+      .filter((file) => file.endsWith(".sql"))
+      .filter((file) => Number(file.slice(0, 4)) <= 38)
+      .sort();
+    assert.equal(files.length, 38);
+    for (const file of files) {
+      copyFileSync(new URL(file, origin), path.join(dir, file));
+    }
+    const db = await runtime.getD1Database("DB");
+    await applyTrackedD1Migrations(db, root);
+    const at = "9007199254740993";
+    const completedAt = "9007199254740994";
+    const shares = ((1n << 128n) - 1n).toString();
+    const positionInsert =
+      "INSERT INTO nominator_positions" +
+      "(coldkey,hotkey,netuid,share_fraction,captured_at,shares,source) " +
+      "VALUES('legacy-alpha','validator',23,0.5," +
+      "CAST(? AS INTEGER),?,'alpha')," +
+      "('legacy-self','other',24,NULL,CAST(? AS INTEGER),NULL,'self-stake')";
+    const passInsert =
+      "INSERT INTO nominator_positions_passes" +
+      "(captured_at,expected_rows,received_rows,completed_at) " +
+      "VALUES(CAST(? AS INTEGER),1,1,CAST(? AS INTEGER))";
+    const scanInsert =
+      "INSERT INTO nominator_scan_receipts(captured_at,coldkey,row_count) " +
+      "VALUES(CAST(? AS INTEGER),'legacy-alpha',1)";
+    await db.batch([
+      db.prepare(positionInsert).bind(at, shares, at),
+      db.prepare(passInsert).bind(at, completedAt),
+      db.prepare(scanInsert).bind(at),
+    ]);
+    const positionSelect =
+      "SELECT coldkey,hotkey,CAST(netuid AS TEXT) AS netuid," +
+      "CASE WHEN share_fraction IS NULL THEN NULL ELSE " +
+      "printf('%!.26g',share_fraction) END AS share_fraction," +
+      "CAST(captured_at AS TEXT) AS captured_at,shares,source " +
+      "FROM nominator_positions ORDER BY coldkey,hotkey,netuid";
+    const passSelect =
+      "SELECT CAST(captured_at AS TEXT) AS captured_at," +
+      "CAST(expected_rows AS TEXT) AS expected_rows," +
+      "CAST(received_rows AS TEXT) AS received_rows," +
+      "CAST(completed_at AS TEXT) AS completed_at " +
+      "FROM nominator_positions_passes ORDER BY captured_at";
+    const scanSelect =
+      "SELECT CAST(captured_at AS TEXT) AS captured_at,coldkey," +
+      "CAST(row_count AS TEXT) AS row_count " +
+      "FROM nominator_scan_receipts ORDER BY captured_at,coldkey";
+    const readLegacy = async () => {
+      const sql = [positionSelect, passSelect, scanSelect];
+      const statements = sql.map((text) => db.prepare(text));
+      const results = await db.batch(statements);
+      return results.map((result) => result.results);
+    };
+    const before = await readLegacy();
+    assert.equal(before[0]?.[0]?.shares, shares);
+    assert.equal(before[0]?.[0]?.captured_at, at);
+    assert.equal(before[0]?.[1]?.share_fraction, null);
+    assert.equal(before[1]?.[0]?.completed_at, completedAt);
+    assert.equal(before[2]?.[0]?.captured_at, at);
+    const next = new URL("0039_alpha_runtime_receiver.sql", origin);
+    const statements = readFileSync(next, "utf8")
+      .split("-- statement-breakpoint")
+      .filter((sql) => sql.trim())
+      .map((sql) => db.prepare(sql));
+    await db.batch(statements);
+    assert.deepEqual(await readLegacy(), before);
+    const evidenceSql =
+      "SELECT coldkey,alpha_rao,alpha_evidence " +
+      "FROM nominator_positions ORDER BY coldkey";
+    const evidence = await db.prepare(evidenceSql).all();
+    assert.deepEqual(evidence.results, [
+      { coldkey: "legacy-alpha", alpha_rao: null, alpha_evidence: null },
+      { coldkey: "legacy-self", alpha_rao: null, alpha_evidence: null },
+    ]);
+    const countSql = "SELECT COUNT(*) AS n FROM alpha_snapshot_passes";
+    assert.equal(await db.prepare(countSql).first("n"), 0);
+    const counts = await assertDeclaredNativeTables(db);
+    assert.ok(counts.native > 40);
+  } finally {
+    await runtime.dispose();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("default CLI checks observed state and rejects unknown flags", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "declared-live-"));
+  const migrations = path.join(root, "migrations/d1");
+  const generated = path.join(root, "generated/db");
+  const source = path.join(root, "src");
+  for (const dir of [migrations, generated, source]) {
+    mkdirSync(dir, { recursive: true });
+  }
+  const ddl = "CREATE TABLE present(id INTEGER PRIMARY KEY)";
+  writeFileSync(path.join(migrations, "0001_present.sql"), ddl);
+  const readSets = 'export const TEST_TABLES = ["present"] as const;';
+  writeFileSync(path.join(source, "read-store-tables.ts"), readSets);
+  const observed = [
+    {
+      type: "table",
+      name: "present",
+      tbl_name: "present",
+      sql: ddl,
+    },
+  ];
+  const snapshot = path.join(generated, "d1-schema.json");
+  writeFileSync(snapshot, JSON.stringify(observed));
+  const env = { ...process.env, METAGRAPH_REPO_ROOT: root };
+  const options = { encoding: "utf8" as const, env };
+  const script = "scripts/validate-declared-tables-exist.ts";
+  try {
+    const output = execFileSync(process.execPath, [script], options);
+    assert.match(output, /every declared table exists/);
+    assert.match(output, /1 live/);
+    for (const args of [
+      ["--unknown"],
+      ["--proposed-native", "--unknown"],
+      ["--proposed-native", "--proposed-native"],
+    ]) {
+      const result = spawnSync(process.execPath, [script, ...args], options);
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, /Use --proposed-native or no arguments/);
+    }
+    writeFileSync(
+      path.join(migrations, "0002_missing.sql"),
+      "CREATE TABLE missing(id INTEGER PRIMARY KEY)",
+    );
+    const failed = spawnSync(process.execPath, [script], options);
+    assert.equal(failed.status, 1);
+    assert.match(failed.stderr, /missing.*0002_missing.sql/);
+    assert.match(failed.stderr, /do not exist in the live schema/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

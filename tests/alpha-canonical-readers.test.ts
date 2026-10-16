@@ -8,8 +8,8 @@ import {
 } from "../src/account-nominator-positions.ts";
 import * as hotPositions from "../src/nominator-positions-hot-tier.ts";
 import * as coldPositions from "../src/nominator-positions-cold-tier.ts";
-import { loadSubnetHolders } from "../src/subnet-holders.ts";
-import { loadChainHolders } from "../src/chain-holders.ts";
+import { buildSubnetHolders, loadSubnetHolders } from "../src/subnet-holders.ts";
+import { buildChainHolders, loadChainHolders } from "../src/chain-holders.ts";
 import * as nominatorPositions from "../src/validator-nominator-positions.ts";
 import { topHoldersHoldings } from "../src/top-holders-holdings.ts";
 import {
@@ -30,6 +30,7 @@ const { ALPHA_GENESIS, ALPHA_RUNTIMES } = alpha;
 const { loadAccountPositionsFromStore } = hotPositions;
 const { loadAccountPositionsColdTier } = coldPositions;
 const { loadNominatorPositions } = nominatorPositions;
+const { buildNominatorPositions } = nominatorPositions;
 const { AccountPositionsArtifactSchema } = accountSchema;
 const ACCOUNT_READERS = [
   loadAccountPositionsFromStore,
@@ -196,6 +197,154 @@ describe("canonical Alpha quantities across existing readers", () => {
       assert.ok(!seen.some((text) => text.includes("JOIN hotkey_alpha")));
     },
   );
+
+  test("zero originals do not inflate holders, hotkeys, positions or validator breadth", async () => {
+    capture(479);
+    // Synthetic qualified quantities cover retired and stored-zero originals.
+    const originals = [
+      [COLDKEY, HOTKEY, 7, 0.25, "2500000000"],
+      ["retired-coldkey", HOTKEY, 7, 0, "0"],
+      ["stored-zero-coldkey", HOTKEY, 7, 0, "0"],
+      [COLDKEY, "retired-hotkey", 7, 0, "0"],
+      [COLDKEY, HOTKEY, 8, 0, "0"],
+      ["all-zero-coldkey", "all-zero-hotkey", 9, 0, "0"],
+    ] as const;
+    const insert = sqlite.prepare(
+      "INSERT INTO alpha_snapshot_rows VALUES(?,?,?,?,?,?)",
+    );
+    for (const original of originals) insert.run(STAMP, ...original);
+    const counts = sqlite.prepare(
+      "UPDATE alpha_snapshot_passes SET expected_rows=?,received_rows=?",
+    );
+    counts.run(originals.length, originals.length);
+    const originalSql =
+      "SELECT * FROM alpha_snapshot_rows ORDER BY coldkey,hotkey,netuid";
+    const before = sqlite.prepare(originalSql).all();
+
+    const subnet = await loadSubnetHolders(store(), 7);
+    assert.equal(subnet.decline, null);
+    assert.equal(subnet.aggregate?.holderCount, 1);
+    assert.equal(subnet.aggregate?.totalAlpha, 2.5);
+    assert.equal(subnet.rows.length, 1);
+    assert.equal(subnet.rows[0].coldkey, COLDKEY);
+    assert.equal(subnet.rows[0].hotkey_count, 1);
+    const emptySubnet = await loadSubnetHolders(store(), 9);
+    assert.equal(emptySubnet.decline, null);
+    assert.equal(emptySubnet.aggregate?.holderCount, 0);
+    assert.deepEqual(emptySubnet.rows, []);
+    const chain = await loadChainHolders(store());
+    assert.equal(chain.decline, null);
+    assert.equal(chain.rows.length, 1);
+    assert.equal(chain.rows[0].netuid, 7);
+    assert.equal(chain.rows[0].holder_count, 1);
+    assert.equal(chain.rows[0].total_alpha, 2.5);
+    assert.equal(chain.rows[0].top_holder, COLDKEY);
+    const nominators = await loadNominatorPositions(store(), HOTKEY);
+    assert.equal(nominators.decline, null);
+    assert.equal(nominators.rows.length, 1);
+    const card = buildNominatorPositions(nominators, HOTKEY);
+    const ranked = card.nominators as Record<string, unknown>[];
+    assert.equal(card.nominator_count, 1);
+    assert.equal(ranked[0].coldkey, COLDKEY);
+    assert.equal(ranked[0].subnet_count, 1);
+    assert.deepEqual(ranked[0].subnets, [{ netuid: 7, alpha: 2.5 }]);
+
+    for (const load of ACCOUNT_READERS) {
+      const account = await load(environment(), COLDKEY);
+      assert.ok(account);
+      assert.equal(account.position_count, 1);
+      assert.equal(account.total_stake_alpha, 2.5);
+      assert.equal(account.degraded, undefined);
+      AccountPositionsArtifactSchema.parse(account);
+      for (const coldkey of ["retired-coldkey", "stored-zero-coldkey"]) {
+        const empty = await load(environment(), coldkey);
+        assert.ok(empty);
+        assert.equal(empty.position_count, 0);
+        assert.equal(empty.total_stake_alpha, 0);
+        assert.equal(empty.degraded, undefined);
+        AccountPositionsArtifactSchema.parse(empty);
+      }
+    }
+    const holdings = await topHoldersHoldings(environment());
+    assert.ok(holdings);
+    assert.deepEqual([...holdings.cells.keys()], [COLDKEY]);
+    assert.deepEqual(holdings.cells.get(COLDKEY), {
+      free_tao: 10,
+      delegated_tao: 5,
+      total_tao: 15,
+    });
+    assert.deepEqual(sqlite.prepare(originalSql).all(), before);
+  });
+
+  test("a qualified all-zero capture is an empty economic holder set", async () => {
+    capture(479);
+    position("0", STAMP, 0);
+    const subnet = await loadSubnetHolders(store(), 7);
+    assert.equal(subnet.decline, null);
+    assert.deepEqual(subnet.rows, []);
+    assert.equal(subnet.aggregate?.holderCount, 0);
+    assert.equal(subnet.aggregate?.totalAlpha, null);
+    const subnetCard = buildSubnetHolders(subnet, 7);
+    assert.equal(subnetCard.holder_count, 0);
+    assert.deepEqual(subnetCard.holders, []);
+    assert.equal(subnetCard.degraded, undefined);
+    const chain = await loadChainHolders(store());
+    assert.equal(chain.decline, null);
+    assert.deepEqual(chain.rows, []);
+    const chainCard = buildChainHolders(chain);
+    assert.equal(chainCard.subnet_count, 0);
+    assert.deepEqual(chainCard.subnets, []);
+    assert.equal(chainCard.degraded, undefined);
+    const nominators = await loadNominatorPositions(store(), HOTKEY);
+    assert.equal(nominators.decline, null);
+    assert.deepEqual(nominators.rows, []);
+    const validatorCard = buildNominatorPositions(nominators, HOTKEY);
+    assert.equal(validatorCard.nominator_count, 0);
+    assert.deepEqual(validatorCard.nominators, []);
+    assert.equal(validatorCard.degraded, undefined);
+    for (const load of ACCOUNT_READERS) {
+      const account = await load(environment(), COLDKEY);
+      assert.ok(account);
+      assert.equal(account.position_count, 0);
+      assert.deepEqual(account.positions, []);
+      assert.equal(account.total_stake_alpha, 0);
+      assert.equal(account.degraded, undefined);
+      assert.equal(account.captured_at, new Date(STAMP).toISOString());
+      AccountPositionsArtifactSchema.parse(account);
+    }
+    const holdings = await topHoldersHoldings(environment());
+    assert.ok(holdings);
+    assert.deepEqual(holdings.cells.get(COLDKEY), {
+      free_tao: 10,
+      delegated_tao: 0,
+      total_tao: 10,
+    });
+    const retained = sqlite.prepare("SELECT alpha_rao FROM alpha_snapshot_rows");
+    assert.deepEqual(retained.all().map((row) => row.alpha_rao), ["0"]);
+  });
+
+  test("one rao remains a positive holding in every economic reader", async () => {
+    capture(479);
+    position("1", STAMP, 1e-9);
+    const subnet = await loadSubnetHolders(store(), 7);
+    assert.equal(subnet.aggregate?.holderCount, 1);
+    assert.equal(subnet.rows[0].alpha, 1e-9);
+    assert.equal(subnet.rows[0].hotkey_count, 1);
+    const chain = await loadChainHolders(store());
+    assert.equal(chain.rows[0].holder_count, 1);
+    assert.equal(chain.rows[0].total_alpha, 1e-9);
+    const nominators = await loadNominatorPositions(store(), HOTKEY);
+    assert.equal(nominators.rows[0].alpha, 1e-9);
+    for (const load of ACCOUNT_READERS) {
+      const account = await load(environment(), COLDKEY);
+      assert.ok(account);
+      assert.equal(account.position_count, 1);
+      assert.equal(account.total_stake_alpha, 1e-9);
+      assert.equal(account.degraded, undefined);
+    }
+    const holdings = await topHoldersHoldings(environment());
+    assert.equal(holdings?.cells.get(COLDKEY)?.delegated_tao, 2e-9);
+  });
 
   test("a newer mismatched runtime identity cannot borrow older qualified captures or legacy values", async () => {
     capture(478, STAMP - 1, 99);
