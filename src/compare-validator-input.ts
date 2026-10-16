@@ -40,4 +40,3 @@ export function parseCompareHotkeyList(hotkeys: unknown): string[] | null {
   if (result.length > COMPARE_VALIDATORS_MAX) return null;
   return result;
 }
-

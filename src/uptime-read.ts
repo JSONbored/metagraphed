@@ -1,6 +1,10 @@
 import { formatUptime } from "./health-serving.ts";
 import { dailyLatencyColumns } from "./health-sql.ts";
-import { DAY_MS, MAX_UPTIME_ROWS, UPTIME_WINDOW_DAYS } from "../workers/config.ts";
+import {
+  DAY_MS,
+  MAX_UPTIME_ROWS,
+  UPTIME_WINDOW_DAYS,
+} from "../workers/config.ts";
 import { storeAll, type ObservationsReadDb } from "./analytics-store-read.ts";
 
 export async function loadSubnetUptime(
@@ -74,4 +78,3 @@ export async function loadSubnetUptime(
     now: now || new Date().toISOString(),
   });
 }
-

@@ -81,7 +81,15 @@ function inputs(
 
 const graph = inputs();
 const graphOutput = process.env.METAGRAPH_DATA_API_GRAPH_OUT;
-if (graphOutput) writeFileSync(graphOutput, JSON.stringify({ source: process.env.GITHUB_SHA, entry: configuredEntry, inputs: graph }, null, 2));
+if (graphOutput)
+  writeFileSync(
+    graphOutput,
+    JSON.stringify(
+      { source: process.env.GITHUB_SHA, entry: configuredEntry, inputs: graph },
+      null,
+      2,
+    ),
+  );
 
 describe("data-api's bundle boundary", () => {
   test("the graph was actually resolved", () => {
@@ -100,6 +108,8 @@ describe("data-api's bundle boundary", () => {
 
   for (const forbidden of [
     "src/mcp-server.ts",
+    "src/analytics-live.ts",
+    "workers/request-handlers/analytics-routes.ts",
     "src/projection-write-store.ts",
     "src/native-store-export.ts",
     "src/raw-capture-d1.ts",

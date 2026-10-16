@@ -5,6 +5,7 @@ import path from "node:path";
 import { beforeAll, beforeEach, afterAll, test } from "vitest";
 import { Miniflare } from "miniflare";
 import { createD1Store } from "../src/d1-store.ts";
+import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
 import { writeChainDetailD1 } from "../src/chain-detail-d1-write.ts";
 import { parseChainDetailSync } from "../src/chain-detail-sync-payload.ts";
 import { readChainDetailPayloadSnapshot } from "../src/chain-detail-payload-snapshot.ts";
@@ -39,7 +40,7 @@ const stamp = 1790090000000;
 const raw = () => JSON.stringify({ blob: randomBytes(120000).toString("hex") });
 const env = (binding = db) => ({
   D1_STATE: binding,
-  D1_STATE_TABLES: tables.join(","),
+  D1_STATE_TABLES: [...tables, "blocks_head"].join(","),
   CHAIN_DETAIL_PAYLOAD_GC: "enabled",
 });
 async function services(binding = db) {
@@ -122,7 +123,13 @@ async function services(binding = db) {
       const diagnostic = process.env.METAGRAPH_RECLAMATION_EVIDENCE;
       if (diagnostic) {
         mkdirSync(diagnostic, { recursive: true });
-        writeFileSync(path.join(diagnostic, `service-${ref}-${item.name}-${binding === db ? "source" : "restored"}.json`), JSON.stringify({ rest: body, mcp: rpc }));
+        writeFileSync(
+          path.join(
+            diagnostic,
+            `service-${ref}-${item.name}-${binding === db ? "source" : "restored"}.json`,
+          ),
+          JSON.stringify({ rest: body, mcp: rpc }),
+        );
       }
       assert.equal(rpc.error, undefined);
       assert.equal(rpc.result.isError, false);
@@ -176,21 +183,23 @@ function capture(value: string, block = 9000001, accountEvents = false) {
               observed_at: stamp,
             },
           ],
-          account_events: accountEvents ? [
-            {
-              block_number: block,
-              event_index: 0,
-              extrinsic_index: 0,
-              event_kind: "Transfer",
-              hotkey: "alice",
-              coldkey: "bob",
-              netuid: null,
-              uid: null,
-              amount_tao: "1.250000001",
-              alpha_amount: null,
-              observed_at: stamp,
-            },
-          ] : [],
+          account_events: accountEvents
+            ? [
+                {
+                  block_number: block,
+                  event_index: 0,
+                  extrinsic_index: 0,
+                  event_kind: "Transfer",
+                  hotkey: "alice",
+                  coldkey: "bob",
+                  netuid: null,
+                  uid: null,
+                  amount_tao: "1.250000001",
+                  alpha_amount: null,
+                  observed_at: stamp,
+                },
+              ]
+            : [],
         },
       ],
     },
@@ -206,6 +215,24 @@ async function publish(value: string, block = 9000001, accountEvents = false) {
     capture(value, block, accountEvents),
   );
   assert.ok(Object.values(result).every((r) => r.ok));
+  if (accountEvents) {
+    const head = await mirrorBlocksHeadToNeon(
+      env(),
+      null,
+      {
+        block_number: block,
+        block_hash: hash,
+        parent_hash: hash,
+        extrinsic_count: 1,
+        event_count: 1,
+        author: null,
+        observed_at: stamp,
+      },
+      { now: () => stamp },
+    );
+    assert.equal(head.attempted, true);
+    assert.equal(head.result?.ok, true);
+  }
 }
 async function state(binding = db) {
   const result = await binding.batch([
@@ -260,7 +287,7 @@ beforeEach(async () => {
   resetDecodeWatermarkCache();
   for (const binding of [db, restored]) {
     await binding.batch(
-      [...tables, "chain_detail_payload_chunks"].map((table) =>
+      [...tables, "blocks_head", "chain_detail_payload_chunks"].map((table) =>
         binding.prepare(`DELETE FROM ${table}`),
       ),
     );
@@ -534,6 +561,7 @@ test("prepared reclamation supplied cut restores source tables, chunks, quota an
   await sweep();
   const owners = [
     ...tables,
+    "blocks_head",
     "chain_detail_payload_chunks",
     "chain_detail_payload_budget",
   ];
@@ -614,6 +642,16 @@ test("prepared reclamation supplied cut restores source tables, chunks, quota an
     original,
   );
   assert.deepEqual(await services(restored), originalServices);
+  const { handleBlock } = await import("../workers/request-handlers/entities.ts");
+  const { apiEnv } = await import("./helpers/worker-env.ts");
+  await assert.rejects(
+    handleBlock(
+      new Request("https://api.metagraph.sh/api/v1/blocks/9000001"),
+      apiEnv({ ...env(restored), D1_STATE_TABLES: tables.join(",") }),
+      "9000001",
+    ),
+    /spans D1 and Neon/,
+  );
   await state(restored);
   await pruneChainDetailPayloads(env(restored));
   assert.deepEqual(

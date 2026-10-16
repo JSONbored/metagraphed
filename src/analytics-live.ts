@@ -37,7 +37,11 @@ export const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
 const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
 
 import { storeAll, type ObservationsReadDb } from "./analytics-store-read.ts";
-export { storeAll, currentStoreReadFailureGeneration, type ObservationsReadDb } from "./analytics-store-read.ts";
+export {
+  storeAll,
+  currentStoreReadFailureGeneration,
+  type ObservationsReadDb,
+} from "./analytics-store-read.ts";
 
 export interface SubnetMetaEntry {
   slug: string | null;
@@ -150,7 +154,11 @@ export function parseCompareNetuidList(netuids: unknown): number[] | null {
   return requestedNetuids;
 }
 
-export { COMPARE_VALIDATORS_MAX, parseCompareHotkeys, parseCompareHotkeyList } from "./compare-validator-input.ts";
+export {
+  COMPARE_VALIDATORS_MAX,
+  parseCompareHotkeys,
+  parseCompareHotkeyList,
+} from "./compare-validator-input.ts";
 
 export function parseCompareDimensions(
   dimensionsRaw: unknown,
