@@ -353,6 +353,11 @@ export async function pruneChainDetail(
         Math.min(
           window.accountEventsKeepFrom,
           accountFloor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
+          // A hash lookup still embeds events from hot extrinsics regardless
+          // of the published seam. Never overtake the ORIGINAL detail floor,
+          // even during an earlier transaction that can commit before a later
+          // detail chunk fails. Newly retired detail becomes eligible next tick.
+          floor,
         ),
       );
       const detailSpan = deletedBelow - floor;
