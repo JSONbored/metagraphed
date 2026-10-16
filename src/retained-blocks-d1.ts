@@ -203,17 +203,17 @@ export async function readRetainedBlockRows(
     const author = where.some((clause) => clause.startsWith("author = "));
     const spec = where.some((clause) => /^spec_version\s*=/.test(clause));
     const heightOrder = minimums.heightOrder === true;
-    const selectorCensus = heightOrder && (author || spec);
     const selectorWhere = where
       .filter(
         (clause) =>
-          clause.startsWith("author = ") || /^spec_version\s*=/.test(clause),
+          clause.startsWith("author = ") || /^spec_version\s*=/.test(clause) || /^observed_at\s*(>=|<=)/.test(clause),
       )
       .map((clause) =>
         clause.startsWith("author = ")
           ? `b.author_id = (SELECT id FROM history_block_authors WHERE address${clause.slice(6)})`
           : `b.${clause}`,
       );
+    const selectorCensus = heightOrder && selectorWhere.length > 0;
 
     const ordered = author
       ? spec

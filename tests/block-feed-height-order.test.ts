@@ -280,6 +280,8 @@ test("rare old-height count, author and spec filters retain bounded selective pl
       [{ specVersion: 999 }, "spec"],
       [{ author, specVersion: 999 }, "author_spec"],
       [{ author, minEvents: 99 }, "events"],
+      [{ to: now }, "order"],
+      [{ from: now, to: now }, "order"],
     ] as const) {
       const result = await fetchBlockRowsFromR2Sql(env, {
         limit: 1,
