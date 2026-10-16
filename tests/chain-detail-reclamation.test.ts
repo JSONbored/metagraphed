@@ -45,35 +45,87 @@ const env = (binding = db) => ({
 async function services(binding = db) {
   resetDecodeWatermarkCache();
   const { apiEnv } = await import("./helpers/worker-env.ts");
-  const { handleExtrinsic, handleBlock, handleBlockExtrinsics, handleBlockEvents } =
-    await import("../workers/request-handlers/entities.ts");
+  const {
+    handleExtrinsic,
+    handleBlock,
+    handleBlockExtrinsics,
+    handleBlockEvents,
+  } = await import("../workers/request-handlers/entities.ts");
   const { handleMcpRequest } = await import("../src/mcp-server.ts");
   const bound = apiEnv(env(binding));
   const corpus: Record<string, unknown> = {};
   for (const ref of ["9000001", "9000002"]) {
     const cases = [
-      { name: "extrinsic", tool: "get_extrinsic", ref: `${ref}-0`, path: `/extrinsics/${ref}-0`, handle: (request: Request, _url: URL) => handleExtrinsic(request, bound, `${ref}-0`), present: "extrinsic" },
-      { name: "block", tool: "get_block", ref, path: `/blocks/${ref}`, handle: (request: Request, _url: URL) => handleBlock(request, bound, ref), present: "block" },
-      { name: "extrinsics", tool: "list_block_extrinsics", ref, path: `/blocks/${ref}/extrinsics`, handle: (request: Request, url: URL) => handleBlockExtrinsics(request, bound, ref, url), present: "extrinsics" },
-      { name: "events", tool: "get_block_events", ref, path: `/blocks/${ref}/events`, handle: (request: Request, url: URL) => handleBlockEvents(request, bound, ref, url), present: "events" },
+      {
+        name: "extrinsic",
+        tool: "get_extrinsic",
+        ref: `${ref}-0`,
+        path: `/extrinsics/${ref}-0`,
+        handle: (request: Request, _url: URL) =>
+          handleExtrinsic(request, bound, `${ref}-0`),
+        present: "extrinsic",
+      },
+      {
+        name: "block",
+        tool: "get_block",
+        ref,
+        path: `/blocks/${ref}`,
+        handle: (request: Request, _url: URL) =>
+          handleBlock(request, bound, ref),
+        present: "block",
+      },
+      {
+        name: "extrinsics",
+        tool: "list_block_extrinsics",
+        ref,
+        path: `/blocks/${ref}/extrinsics`,
+        handle: (request: Request, url: URL) =>
+          handleBlockExtrinsics(request, bound, ref, url),
+        present: "extrinsics",
+      },
+      {
+        name: "events",
+        tool: "get_block_events",
+        ref,
+        path: `/blocks/${ref}/events`,
+        handle: (request: Request, url: URL) =>
+          handleBlockEvents(request, bound, ref, url),
+        present: "events",
+      },
     ];
     for (const item of cases) {
       const url = new URL(`https://api.metagraph.sh/api/v1${item.path}`);
       const rest = await item.handle(new Request(url), url);
       assert.equal(rest.status, 200, `${ref}:${item.name} REST status`);
       const body = (await rest.json()) as { data: Record<string, unknown> };
-      assert.ok(body.data[item.present], `${ref}:${item.name} original owner present`);
-      if (Array.isArray(body.data[item.present])) assert.equal(body.data[item.present].length, 1);
-      const mcp = await handleMcpRequest(new Request("https://api.metagraph.sh/mcp", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call",
-          params: { name: item.tool, arguments: { ref: item.ref } } }),
-      }), bound);
+      const present = body.data[item.present];
+      assert.ok(present, `${ref}:${item.name} original owner present`);
+      if (Array.isArray(present)) assert.equal(present.length, 1);
+      const mcp = await handleMcpRequest(
+        new Request("https://api.metagraph.sh/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: { name: item.tool, arguments: { ref: item.ref } },
+          }),
+        }),
+        bound,
+      );
       assert.equal(mcp.status, 200);
-      const rpc = (await mcp.json()) as { error?: unknown; result: { isError: boolean; structuredContent: unknown } };
+      const rpc = (await mcp.json()) as {
+        error?: unknown;
+        result: { isError: boolean; structuredContent: unknown };
+      };
       assert.equal(rpc.error, undefined);
       assert.equal(rpc.result.isError, false);
-      assert.deepEqual(rpc.result.structuredContent, body.data, `${ref}:${item.name} complete REST/MCP response parity`);
+      assert.deepEqual(
+        rpc.result.structuredContent,
+        body.data,
+        `${ref}:${item.name} complete REST/MCP response parity`,
+      );
       corpus[`${ref}:${item.name}`] = body.data;
     }
   }
@@ -116,9 +168,21 @@ function capture(value: string, block = 9000001) {
               observed_at: stamp,
             },
           ],
-          account_events: [{ block_number: block, event_index: 0, extrinsic_index: 0,
-            event_kind: "Transfer", hotkey: "alice", coldkey: "bob", netuid: null, uid: null,
-            amount_tao: "1.250000001", alpha_amount: null, observed_at: stamp }],
+          account_events: [
+            {
+              block_number: block,
+              event_index: 0,
+              extrinsic_index: 0,
+              event_kind: "Transfer",
+              hotkey: "alice",
+              coldkey: "bob",
+              netuid: null,
+              uid: null,
+              amount_tao: "1.250000001",
+              alpha_amount: null,
+              observed_at: stamp,
+            },
+          ],
         },
       ],
     },
@@ -554,7 +618,10 @@ test("prepared reclamation supplied cut restores source tables, chunks, quota an
     )
     .run();
   assert.notDeepEqual(await state(restored), await state());
-  await assert.rejects(services(restored), "missing original payload owner must not pass restored service acceptance");
+  await assert.rejects(
+    services(restored),
+    "missing original payload owner must not pass restored service acceptance",
+  );
   assert.ok(
     (
       await Promise.all([

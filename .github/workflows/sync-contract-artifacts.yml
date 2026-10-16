@@ -117,6 +117,7 @@ jobs:
         with:
           name: source-format
           path: ${{ runner.temp }}/source-format
+          include-hidden-files: true
           retention-days: 1
           if-no-files-found: error
 

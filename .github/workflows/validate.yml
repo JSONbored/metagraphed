@@ -1192,7 +1192,7 @@ jobs:
         run: |
           uv sync --locked --project scripts
           uv pip check --python scripts/.venv/bin/python
-          uv run --locked --project scripts python -c 'from importlib.metadata import version; assert version("bittensor") == "10.5.0"; assert tuple(map(int, version("urllib3").split("."))) >= (2, 8, 0); assert tuple(map(int, version("multidict").split("."))) >= (6, 9, 1)'
+          uv run --locked --project scripts python -c 'import bittensor as bt; from importlib.metadata import version; assert callable(bt.SubtensorApi); assert version("bittensor") == "10.5.0"; assert tuple(map(int, version("urllib3").split("."))) >= (2, 8, 0); assert tuple(map(int, version("multidict").split("."))) >= (6, 9, 1)'
 
       - name: Test scripts in their locked dependency environment
         run: uv run --locked --project scripts python -m unittest discover -s scripts -p 'test_*.py'

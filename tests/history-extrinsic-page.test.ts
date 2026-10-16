@@ -121,14 +121,15 @@ describe("compact extrinsic page wire format", () => {
   });
 });
 
-
 it("pins public encoder originals for independent physical-source recovery", async () => {
-  const { extrinsicRecoveryFixture } = await import("./helpers/extrinsic-page-recovery-fixture.ts");
+  const { extrinsicRecoveryFixture } =
+    await import("./helpers/extrinsic-page-recovery-fixture.ts");
   const fixture = extrinsicRecoveryFixture();
-  for (const example of fixture.cases) for (const page of example.pages)
-    expect(decodeExtrinsicPage(Buffer.from(page.base64, "base64"))).toEqual(
-      page.entries.map(([token, values]) => ({ token, values })),
-    );
+  for (const example of fixture.cases)
+    for (const page of example.pages)
+      expect(decodeExtrinsicPage(Buffer.from(page.base64, "base64"))).toEqual(
+        page.entries.map(([token, values]) => ({ token, values })),
+      );
   const output = process.env.METAGRAPH_MGE1_FIXTURE_OUT;
   if (output) writeFileSync(output, JSON.stringify(fixture, null, 2) + "\n");
 });
