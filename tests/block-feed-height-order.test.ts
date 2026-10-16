@@ -10,7 +10,7 @@ import { DEFAULT_BLOCKS_SEAM as SEAM } from "../src/blocks-seam.ts";
 
 // Execute the production reader's SQL, including its ORDER BY and seeks. A
 // preordered transport mock cannot expose observation-time ordering regressions.
-function binding(sql: DatabaseSync, plans: string[][] = []) {
+function binding(sql: DatabaseSync, plans: string[][] = [], selectorRows: number[] = []) {
   const prepare = (text: string, values: unknown[] = []) => ({
     bind: (...next: unknown[]) => prepare(text, next),
     all: async () => {
@@ -21,11 +21,9 @@ function binding(sql: DatabaseSync, plans: string[][] = []) {
             .all(...(values as never[]))
             .map((row) => String(row.detail)),
         );
-      return {
-        success: true,
-        results: sql.prepare(text).all(...(values as never[])),
-        meta: {},
-      };
+      const results = sql.prepare(text).all(...(values as never[]));
+      if (text.startsWith("SELECT COUNT(*) AS matches FROM (SELECT 1")) selectorRows.push(Number(results[0]!.matches));
+      return {success:true,results,meta:{}};
     },
     run: async () => ({
       success: true,
@@ -238,7 +236,8 @@ test("rare old-height count, author and spec filters retain bounded selective pl
       sql.prepare("INSERT INTO history_block_counts VALUES(0,?,1,?),(0,?,99,1)").run(kind,higher,kind);
     }
     const plans: string[][] = [];
-    const env = {D1_RETAINED_BLOCKS:binding(sql,plans),RETAINED_BLOCKS_NETWORKS:"mainnet"};
+    const selectorRows: number[] = [];
+    const env = {D1_RETAINED_BLOCKS:binding(sql,plans,selectorRows),RETAINED_BLOCKS_NETWORKS:"mainnet"};
     for(const [filters,index] of [
       [{minEvents:99},"events"],
       [{minExtrinsics:99},"extrinsics"],
@@ -256,5 +255,9 @@ test("rare old-height count, author and spec filters retain bounded selective pl
     assert.equal(broad!.rows[0]!.block_number,100_000+higher);
     const missing=await fetchBlockRowsFromR2Sql(env,{limit:1,offset:0,specVersion:123456});
     assert.deepEqual(missing!.rows,[]);
+    assert.ok(selectorRows.includes(1));
+    assert.ok(selectorRows.includes(50_001),"common selectors stop counting at the bounded-sort threshold plus one");
+    assert.ok(selectorRows.includes(0));
+    assert.ok(selectorRows.every(rows=>rows<=50_001));
   } finally {sql.close();}
 });

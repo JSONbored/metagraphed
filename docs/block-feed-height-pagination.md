@@ -22,9 +22,14 @@ The hot and retained owners still meet at one resolved height. A new height page
 fences the retained owner at that seam and binds its seek to a height upper bound;
 it does not compare a hot observation time against retained observations. The
 retained reader validates the same publication receipt before and after its read
-and merges at most two candidate pages. Selective author/spec/count filters retain
-their predicates, but their production rows-read cost needs measurement before
-claiming a cost bound independent of selectivity or inactive source membership.
+and merges at most two candidate pages. Count histograms preserve an existing
+selective count index when at most 50,000 active rows match. Author/spec selectors
+have an index-prefix census capped at 50,001 physical entries, including inactive
+sources; a set of at most 50,000 retains its selective index and sorts that bounded
+set by height. Broad selectors use the height index. The smaller proven bound wins
+when selectors intersect. The extra census is itself a request read budget;
+production latency, filter frequency and inactive-source membership still need
+measurement. No blanket rows-read bound is claimed for arbitrary filters.
 
 The native regression executes the real hub and SQL-backed blocks handler with
 `limit=2`, live height `SEAM+1001`, repairs starting at `SEAM+15`, increasing clocks,
