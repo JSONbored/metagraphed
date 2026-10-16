@@ -228,7 +228,10 @@ test.each(["blocks", "extrinsics", "chain_events", "account_events"])(
     assert.equal(result.ok, true);
     assert.equal(result.keep_from, floor);
     assert.equal(result.blocks_pruned, 0);
-    assert.deepEqual(await Promise.all(tables.map(blocks)), before);
+    assert.deepEqual(
+      await Promise.all(tables.map(blocks)),
+      before.map((rows, index) => tables[index] === "chain_detail_account_events" ? rows.filter(block => block >= accountFloor) : rows),
+    );
     assert.equal(selected.METAGRAPH_ARCHIVE.get.mock.calls.length, 4);
   },
 );
@@ -383,6 +386,8 @@ test("a published detail seam does not stall the older account-only retention wi
   const result = await pruneChainDetail({...env(),...selected},ctx);
   assert.equal(result.ok,true);
   assert.equal(result.keep_from,detailFloor);
+  assert.equal(result.account_events_deleted_below,oldAccount+120);
+  assert.equal(result.account_events_blocks_pruned,120);
   assert.equal(result.blocks_pruned,0);
   assert.deepEqual(await blocks("chain_detail_account_events"),[oldAccount+120,accountKeep-1,accountKeep,detailFloor]);
   assert.deepEqual(await Promise.all(tables.filter(table => table !== "chain_detail_account_events").map(blocks)),before);
