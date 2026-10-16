@@ -25,6 +25,7 @@ const Counts = z.object({
   kind: z.enum(["events", "extrinsics"]),
   matches: integer,
 });
+const SelectorCount = z.object({matches: integer});
 const HeightBounds = z.object({
   first_block: z.number().int().safe().nullable(),
   last_block: z.number().int().safe().nullable(),
@@ -183,7 +184,12 @@ export async function readRetainedBlockRows(
   count: number,
   network: ChainNetworkId = "mainnet",
   now = Date.now(),
-  minimums: { minEvents?: number | null; minExtrinsics?: number | null; heightOrder?: boolean; heightUpper?: number } = {},
+  minimums: {
+    minEvents?: number | null;
+    minExtrinsics?: number | null;
+    heightOrder?: boolean;
+    heightUpper?: number;
+  } = {},
 ): Promise<Record<string, unknown>[] | null | undefined> {
   if (!env?.RETAINED_BLOCKS_NETWORKS?.split(",").includes(network))
     return undefined;
@@ -196,6 +202,10 @@ export async function readRetainedBlockRows(
     const range = blockRange(where);
     const author = where.some((clause) => clause.startsWith("author = "));
     const spec = where.some((clause) => /^spec_version\s*=/.test(clause));
+    const heightOrder = minimums.heightOrder === true;
+    const selectorCensus = heightOrder && (author || spec);
+    const selectorWhere = where.filter(clause => clause.startsWith("author = ") || /^spec_version\s*=/.test(clause)).map(clause => clause.startsWith("author = ") ? `b.author_id = (SELECT id FROM history_block_authors WHERE address${clause.slice(6)})` : `b.${clause}`);
+
     const ordered = author
       ? spec
         ? "author_spec"
@@ -224,6 +234,7 @@ export async function readRetainedBlockRows(
     ] as const;
     const selected = filters.filter(([, minimum]) => minimum != null);
     let generation: string;
+    let boundedSelective = false;
     {
       // Validate even unfiltered reads before touching the large block table.
       // Keep the second receipt read below to reject a concurrent publication.
@@ -239,6 +250,9 @@ export async function readRetainedBlockRows(
             )
             .bind(kind, net, kind, minimum),
         ),
+        ...(selectorCensus ? [db.prepare(
+          `SELECT COUNT(*) AS matches FROM (SELECT 1 FROM history_blocks b INDEXED BY history_blocks_${ordered} WHERE b.network=? AND ${selectorWhere.join(" AND ")} LIMIT 50001)`,
+        ).bind(net)] : []),
         ...(chooseHeight
           ? [
               db
@@ -283,14 +297,23 @@ export async function readRetainedBlockRows(
         .map((result) => Counts.parse(result.results[0]))
         .sort((a, b) => a.matches - b.matches);
       if (counts[0]?.matches === 0) return [];
-      if (counts[0] && counts[0].matches <= 50000)
+      const selector = selectorCensus ? SelectorCount.parse(results[selected.length]!.results[0]) : null;
+      if (selector?.matches === 0) return [];
+      if (counts[0] && counts[0].matches <= 50000) {
         index = ` INDEXED BY history_blocks_${counts[0]!.kind}`;
+        boundedSelective = true;
+      }
+      if (selector && selector.matches <= 50000 && (!boundedSelective || selector.matches < counts[0]!.matches)) {
+        index = ` INDEXED BY history_blocks_${ordered}`;
+        boundedSelective = true;
+      }
     }
     // Height scans use the existing height index in reverse: height DESC,
     // observed ASC, then the appended physical primary key DESC. Keep legacy
     // observation cursors on their original plan and order.
-    const heightOrder = minimums.heightOrder === true;
-    if (heightOrder) index = " INDEXED BY history_blocks_height";
+    // Keep a proven small selector/count range and sort at most that bounded
+    // set. A height scan is the fallback for broad or unfiltered requests.
+    if (heightOrder && !boundedSelective) index = " INDEXED BY history_blocks_height";
     // SQLite cannot satisfy two NULLS FIRST keys with the existing index: it
     // may scan the entire network before returning one row. Partition nullable
     // heights, use the height index for nulls and the selected index otherwise,
@@ -301,14 +324,17 @@ export async function readRetainedBlockRows(
       (nullable ? " INDEXED BY history_blocks_height " : `${index} `) +
       (author ? "JOIN history_block_authors a ON a.id=b.author_id " : "") +
       `WHERE b.network=? AND b.block_number IS ${nullable ? "" : "NOT "}NULL ` +
-      (heightOrder && !nullable && minimums.heightUpper !== undefined ? `AND b.block_number <= ${minimums.heightUpper} ` : "") +
+      (heightOrder && !nullable && minimums.heightUpper !== undefined
+        ? `AND b.block_number <= ${minimums.heightUpper} `
+        : "") +
       "AND b.source_id IN (SELECT id FROM history_block_sources WHERE network=? AND active=1)" +
       (range.clauses.length
         ? ` AND ${range.clauses.map((clause) => (clause.startsWith("author = ") ? `a.address${clause.slice(6)}` : clause)).join(" AND ")}`
         : "") +
       (heightOrder
         ? " ORDER BY block_number DESC,observed_at ASC,b.source_id DESC,b.ordinal DESC"
-        : " ORDER BY observed_at DESC NULLS FIRST" + (nullable ? "" : ",block_number DESC")) +
+        : " ORDER BY observed_at DESC NULLS FIRST" +
+          (nullable ? "" : ",block_number DESC")) +
       " LIMIT ?";
     const [receipt, result] = await db.batch([
       stateQuery(),
@@ -318,16 +344,26 @@ export async function readRetainedBlockRows(
             `SELECT ${heightOrder ? "b.source_id AS _source_id,b.ordinal AS _ordinal," : ""}${BLOCKS_COLUMNS.map((column) => (column === "author" ? "a.address AS author" : `b.${column}`)).join(", ")} ` +
             "FROM candidates c JOIN history_blocks b ON b.source_id=c.source_id AND b.ordinal=c.ordinal " +
             "LEFT JOIN history_block_authors a ON a.id=b.author_id ORDER BY " +
-            (heightOrder ? "b.block_number DESC,b.observed_at ASC,b.source_id DESC,b.ordinal DESC" : "b.observed_at DESC NULLS FIRST,b.block_number DESC NULLS FIRST") + " LIMIT ?",
+            (heightOrder
+              ? "b.block_number DESC,b.observed_at ASC,b.source_id DESC,b.ordinal DESC"
+              : "b.observed_at DESC NULLS FIRST,b.block_number DESC NULLS FIRST") +
+            " LIMIT ?",
         )
         .bind(net, net, count, net, net, count, count),
     ]);
     if (!receipt!.success || !result!.success) return null;
     const state = checkedState(receipt!.results[0], net, now);
     if (generation !== state.generation) return null;
-    return (heightOrder
-      ? BlocksRowSchema.required().extend({_source_id: integer, _ordinal: integer})
-      : BlocksRowSchema.required()).array().parse(result!.results);
+    return (
+      heightOrder
+        ? BlocksRowSchema.required().extend({
+            _source_id: integer,
+            _ordinal: integer,
+          })
+        : BlocksRowSchema.required()
+    )
+      .array()
+      .parse(result!.results);
   } catch {
     return null;
   }
