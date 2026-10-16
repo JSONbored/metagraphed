@@ -47,7 +47,9 @@ function asset(overrides: Partial<CaptureAsset> = {}): CaptureAsset {
   return { partition: "3", sha256: "a".repeat(64), bytes: 1, ...overrides };
 }
 
-function captured(data = Buffer.from("synthetic native bytes")): CapturedAsset {
+function captured(
+  data: Buffer = Buffer.from("synthetic native bytes"),
+): CapturedAsset {
   return {
     partition: "3",
     sha256: digest(data),
@@ -265,7 +267,8 @@ test("capture request JSON is byte bounded and rejects malformed envelopes", () 
     );
   }
   assert.throws(
-    () => parseCaptureAssets(JSON.stringify([asset(), asset({ partition: "4" })])),
+    () =>
+      parseCaptureAssets(JSON.stringify([asset(), asset({ partition: "4" })])),
     REFUSED,
   );
 });
@@ -331,6 +334,7 @@ test("manifest decoding rejects corrupt gzip, invalid UTF-8 and invalid JSON", (
     Buffer.from("synthetic-invalid-gzip"),
     valid.subarray(0, valid.length - 1),
     gzipSync(Buffer.from([0xff])),
+    gzipSync(Buffer.from("\uFEFF{}")),
     gzipSync(Buffer.from("{synthetic-parser-detail")),
     Buffer.alloc(CAPTURE_LIMITS.manifestBytes + 1),
   ]) {
@@ -437,7 +441,9 @@ test("manifest rejects duplicate JSON members before they can collapse", () => {
     `{${member},${member}}`,
     `{${member},${conflicting}}`,
     `{${path}:${duplicateDescriptor}}`,
-    `{${Array(CAPTURE_LIMITS.manifestEntries + 1).fill(member).join(",")}}`,
+    `{${Array(CAPTURE_LIMITS.manifestEntries + 1)
+      .fill(member)
+      .join(",")}}`,
   ]) {
     assert.ok(Buffer.byteLength(text) < CAPTURE_LIMITS.manifestExpandedBytes);
     assert.throws(
@@ -464,7 +470,9 @@ test("sealing independently round trips RSA-OAEP-SHA256 and AES-256-GCM", () => 
   const first = sealCapture(assets, publicKeyBase64);
   const second = sealCapture(assets, publicKeyBase64);
   assert.equal(first.keySha256, keySha256);
-  assert.ok(Buffer.byteLength(first.serialized) <= CAPTURE_LIMITS.encryptedBytes);
+  assert.ok(
+    Buffer.byteLength(first.serialized) <= CAPTURE_LIMITS.encryptedBytes,
+  );
   assert.deepEqual(decrypt(first.serialized), { version: 1, assets });
   assert.notEqual(first.serialized, second.serialized);
   assert.ok(!first.serialized.includes("synthetic native bytes"));
@@ -472,7 +480,9 @@ test("sealing independently round trips RSA-OAEP-SHA256 and AES-256-GCM", () => 
   const damagedTag = Buffer.from(envelope.tag, "base64");
   damagedTag[0] ^= 1;
   assert.throws(() =>
-    decrypt(JSON.stringify({ ...envelope, tag: damagedTag.toString("base64") })),
+    decrypt(
+      JSON.stringify({ ...envelope, tag: damagedTag.toString("base64") }),
+    ),
   );
 });
 
@@ -513,10 +523,14 @@ test("capture sends one pinned identity request and returns an encrypted summary
   const data = Buffer.from("synthetic native bytes");
   const input = captureInput(data);
   const signal = new AbortController().signal;
-  const timeout = t.mock.method(AbortSignal, "timeout", (milliseconds: number) => {
-    assert.equal(milliseconds, 30000);
-    return signal;
-  });
+  const timeout = t.mock.method(
+    AbortSignal,
+    "timeout",
+    (milliseconds: number) => {
+      assert.equal(milliseconds, 30000);
+      return signal;
+    },
+  );
   let calls = 0;
   const fetcher: typeof fetch = async (url, init) => {
     calls += 1;
@@ -611,7 +625,9 @@ test("capture validates the full exact-size manifest before sealing it", async (
   assert.deepEqual(decrypt(result.serialized).assets, [
     { ...captured(data), manifest: true },
   ]);
-  assert.ok(Buffer.byteLength(result.serialized) <= CAPTURE_LIMITS.encryptedBytes);
+  assert.ok(
+    Buffer.byteLength(result.serialized) <= CAPTURE_LIMITS.encryptedBytes,
+  );
 });
 
 test("capture refuses bad HTTP, headers, bytes and fetch failures without retries", async () => {
@@ -712,6 +728,7 @@ test("CLI failures emit only the fixed refusal code and retain no artifact", () 
       {
         cwd: directory,
         env: {
+          ...process.env,
           NATIVE_PARITY_ASSETS: "{synthetic-parser-detail",
           NATIVE_PARITY_PUBLIC_KEY: "synthetic-invalid-key",
           STATE_EXPORT_SECRET: SECRET,

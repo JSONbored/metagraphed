@@ -44,7 +44,10 @@ function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function exactKeys(value: Record<string, unknown>, expected: string[]): boolean {
+function exactKeys(
+  value: Record<string, unknown>,
+  expected: string[],
+): boolean {
   const keys = Object.keys(value).sort();
   return (
     keys.length === expected.length &&
@@ -123,7 +126,10 @@ export function validateCaptureManifest(raw: Uint8Array): void {
     decoded = gunzipSync(raw, {
       maxOutputLength: CAPTURE_LIMITS.manifestExpandedBytes,
     });
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(decoded);
+    const text = new TextDecoder("utf-8", {
+      fatal: true,
+      ignoreBOM: true,
+    }).decode(decoded);
     const ledger: unknown = JSON.parse(text);
     // The publisher writes compact JSON. Re-encoding detects duplicate members
     // before JSON.parse's collapsed object could undercount the ledger.
@@ -194,7 +200,10 @@ function sealWithKey(assets: readonly CapturedAsset[], publicKey: KeyObject) {
     );
     const cipher = createCipheriv("aes-256-gcm", key, iv);
     cipher.setAAD(aad);
-    const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+    const ciphertext = Buffer.concat([
+      cipher.update(plaintext),
+      cipher.final(),
+    ]);
     const encrypted = {
       version: 1,
       keySha256,
@@ -342,6 +351,9 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   await main();
 }
