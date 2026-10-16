@@ -34,6 +34,7 @@ import {
  */
 export function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
+  const message = typeof error === "string" ? error : "Unexpected route error";
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   useEffect(() => {
@@ -67,15 +68,7 @@ export function ErrorComponent({ error, reset }: ErrorComponentProps) {
         <Raw
           rows={[
             { label: "path", value: pathname },
-            {
-              label: "error",
-              value:
-                error instanceof Error
-                  ? error.message
-                  : typeof error === "string"
-                    ? error
-                    : "Unexpected route error",
-            },
+            { label: "error", value: error instanceof Error ? error.message : message },
           ]}
         />
         <nav aria-label="Elsewhere" className="flex flex-wrap gap-3">

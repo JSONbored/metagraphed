@@ -44,7 +44,9 @@ test.describe("content route runtime isolation", () => {
     await gotoThroughRestart(page, "/news/sn19/2026-w17");
     await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
     const urls: string[] = [];
-    page.on("response", (response) => { if (new URL(response.url()).pathname.includes("server")) urls.push(response.url()); });
+    page.on("response", (response) => {
+      if (new URL(response.url()).pathname.includes("server")) urls.push(response.url());
+    });
     const normalCall = page.waitForResponse((response) => {
       const url = new URL(response.url());
       if (!url.pathname.startsWith("/_serverFn/") || response.request().method() !== "GET")
@@ -53,11 +55,18 @@ test.describe("content route runtime isolation", () => {
       if (!payload) return false;
       const input = fromJSON(JSON.parse(payload)) as { data?: unknown };
       // Distinguish the docs slug loader from unrelated header/palette calls.
-      return Array.isArray(input.data) && input.data.length <= 1 && input.data.every((slug) => slug === "");
+      return (
+        Array.isArray(input.data) &&
+        input.data.length <= 1 &&
+        input.data.every((slug) => slug === "")
+      );
     });
     await page.locator("footer").getByRole("link", { name: "Docs", exact: true }).click();
     const normalResponse = await normalCall.finally(async () => {
-      await testInfo.attach("observed-local-server-function-urls", { contentType: "application/json", body: JSON.stringify(urls) });
+      await testInfo.attach("observed-local-server-function-urls", {
+        contentType: "application/json",
+        body: JSON.stringify(urls),
+      });
     });
     expect(normalResponse.ok()).toBe(true);
     await expect(page.getByRole("heading", { name: "Documentation", level: 1 })).toBeVisible();

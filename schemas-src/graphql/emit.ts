@@ -262,8 +262,9 @@ function isNameable(key: string): boolean {
  * printer owns SDL syntax (escaping, block strings, field ordering), so this
  * module never concatenates schema source.
  */
-export function emitTypes(): EmittedTypes {
-  const schemas = componentSchemas();
+export function emitTypes(
+  schemas: Record<string, SchemaNode> = componentSchemas(),
+): EmittedTypes {
   const types = new Map<string, GraphQLObjectType>();
   const derivedNames = new Map<string, string>();
   const unnameable: string[] = [];
