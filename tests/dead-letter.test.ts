@@ -6,8 +6,8 @@
 // them apart is the only thing standing between "record the loss" and "attempt
 // the failing write a sixth time".
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
-import { syncDeadLetterDb } from "./helpers/sync-dead-letter-db.ts";
+import { describe, test } from "vitest";
+import { syncDeadLetterKv } from "./helpers/sync-dead-letter-kv.ts";
 import {
   DEAD_LETTER_LANES,
   DEAD_LETTER_MAX_NAMED_SUBJECTS,
@@ -16,15 +16,9 @@ import {
   summarizeDeadLetterBatch,
 } from "../src/dead-letter.ts";
 
-const stores: ReturnType<typeof syncDeadLetterDb>[] = [];
 function quarantine() {
-  const f = syncDeadLetterDb();
-  stores.push(f);
-  return f.db;
+  return syncDeadLetterKv().kv;
 }
-afterEach(() => {
-  for (const f of stores.splice(0)) f.sql.close();
-});
 let nextMessageId = 0;
 
 function message(body: unknown) {
@@ -32,6 +26,8 @@ function message(body: unknown) {
   return {
     id: String(++nextMessageId),
     body,
+    timestamp: new Date(1_780_000_000_000),
+    attempts: 1,
     calls,
     ack: () => calls.push("ack"),
   };

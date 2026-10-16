@@ -11,9 +11,10 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
+import { gzipSync } from "node:zlib";
 import { beforeEach, describe, test, vi } from "vitest";
 
-import { syncDeadLetterDb } from "./helpers/sync-dead-letter-db.ts";
+import { syncDeadLetterKv } from "./helpers/sync-dead-letter-kv.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The store is Postgres now (#10179). The consumer reaches it through
@@ -365,29 +366,71 @@ describe("the sync queue consumer", () => {
     );
   });
 
-  test("a dead-letter batch is preserved and acked without applying its failed write", async () => {
-    const f = syncDeadLetterDb();
-    try {
-      const m = { ...positionMessage(), id: "failed-sync" };
+  test("a dead-letter batch preserves observed bytes in KV while D1 is full", async () => {
+    for (const compressed of [false, true]) {
+      const f = syncDeadLetterKv();
+      const original = positionMessage();
+      const bytes = Buffer.from(JSON.stringify(original.body));
+      const body = compressed ? gzipSync(bytes) : original.body;
+      const m = {
+        ...original,
+        id: "failed-sync",
+        timestamp: new Date(1_780_000_000_123),
+        attempts: 7,
+        body,
+      };
+      let failedD1Writes = 0;
       await worker.queue!(
         { queue: "sync-batches-dlq", messages: [m] } as never,
-        { ...pgMockEnv(), D1_STATE: f.db } as never,
+        {
+          ...pgMockEnv(),
+          D1_STATE_TABLES: "lane_health",
+          D1_STATE: {
+            prepare() {
+              failedD1Writes++;
+              throw new Error("SQLITE_FULL");
+            },
+          },
+          METAGRAPH_CONTROL: f.kv,
+        } as never,
         { waitUntil: () => {} } as never,
       );
       assert.deepEqual(m.calls, ["ack"]);
       assert.equal(rows().length, 0);
+      assert.ok(failedD1Writes > 0, "the failed alarm write was attempted");
+      assert.equal(f.values.size, 1);
+      const envelope = JSON.parse([...f.values.values()][0]!);
       assert.deepEqual(
-        JSON.parse(
-          String(
-            f.sql.prepare("SELECT payload FROM sync_dead_letters").get()!
-              .payload,
-          ),
-        ),
-        m.body,
+        Buffer.from(envelope.payload, "base64"),
+        compressed ? body : bytes,
       );
-    } finally {
-      f.sql.close();
+      assert.equal(envelope.representation, compressed ? "bytes" : "json");
+      assert.equal(envelope.published_at, m.timestamp.getTime());
+      assert.equal(envelope.attempts, 7);
+      assert.equal(
+        f.gets.length,
+        2,
+        "KV bytes are read back before acknowledgment",
+      );
     }
+  });
+
+  test("a dead-letter batch without KV stays unacknowledged and never writes business rows", async () => {
+    const m = {
+      ...positionMessage(),
+      id: "unpreserved-sync",
+      timestamp: new Date(1_780_000_000_123),
+      attempts: 1,
+    };
+    await assert.rejects(
+      worker.queue!(
+        { queue: "sync-batches-dlq", messages: [m] } as never,
+        { ...pgMockEnv() } as never,
+        { waitUntil: () => {} } as never,
+      ),
+    );
+    assert.deepEqual(m.calls, []);
+    assert.equal(rows().length, 0);
   });
 
   test("a live batch is still written, so the branch cannot swallow one", async () => {

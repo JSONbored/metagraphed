@@ -6,7 +6,10 @@
 
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { ProbeJobTypeSchema } from "../schemas-src/probe-jobs.ts";
-import { preserveSyncDeadLetter } from "./sync-dead-letter-store.ts";
+import {
+  preserveSyncDeadLetter,
+  type SyncDeadLetterStore,
+} from "./sync-dead-letter-store.ts";
 
 /** The two dead-letter queues, and the lane each reports under.
  *
@@ -196,12 +199,14 @@ export async function handleDeadLetterBatch(
     readonly messages: readonly {
       readonly id?: string;
       readonly body: unknown;
+      readonly timestamp?: Date;
+      readonly attempts?: number;
       ack: () => void;
     }[];
   },
   db: LaneHealthDb | undefined,
   nowMs: number = Date.now(),
-  quarantine?: Pick<D1Database, "prepare">,
+  quarantine?: SyncDeadLetterStore,
 ): Promise<string> {
   const detail = summarizeDeadLetterBatch(batch.queue, batch.messages);
   console.error(`dead-letter: ${detail}`);
@@ -220,7 +225,7 @@ export async function handleDeadLetterBatch(
   }
   for (const message of batch.messages) {
     if (batch.queue === "sync-batches-dlq")
-      await preserveSyncDeadLetter(quarantine, message, nowMs);
+      await preserveSyncDeadLetter(quarantine, batch.queue, message);
     message.ack();
   }
   return detail;

@@ -226,10 +226,37 @@ that identity or runtime evidence to legacy messages.
 DLQ alarms count retained handler observations. They record before preservation,
 so failed preservation, partial delivery and redelivery may create more records
 for the same messages. Counts in the detail describe that delivered batch, not
-uniquely preserved messages or confirmed permanent losses. Successful sync
-preservation keeps the first payload and receipt time per message ID before ACK;
-the health observation does not contain that outcome. Existing incident history
-and closure acknowledgement remain intact; closure is not proof of recovery.
+uniquely preserved messages or confirmed permanent losses. Sync preservation uses
+the existing control KV binding independently of application-database health.
+Each `sync-quarantine:v1:<sha256>` object contains one complete delivered
+observation: queue, message ID, provider timestamp, observed attempt, body
+representation, byte count, body digest and base64 payload. Binary transport bytes
+remain unchanged; JSON records the consumer-observed value serialized again.
+Unsupported values that JSON would discard or change are refused before storage.
+The complete envelope's digest selects its key, and exact bounded byte readback
+must succeed before ACK. Identical observations need no additional write;
+conflicting bodies and different attempts remain separate observations. A failed
+or ambiguous write/readback remains unacknowledged, without replaying business
+writes. KV has no atomic message-ID uniqueness or Queue ACK transaction, and
+eventual consistency can delay confirmation even after a successful write.
+
+Quarantine has no expiration or automatic collector. It is outside registry
+publication and GC. The existing authenticated `POST /api/v1/internal/state-export`
+accepts `{"kind":"dead-letter","operation":"list"}` with an optional opaque
+`cursor` to enumerate at most 100 envelope digests per page. Read one with
+`{"kind":"dead-letter","operation":"read","sha256":"<64 lowercase hex>"}`;
+an optional `bytes` asserts an exact expected size. Reads verify the full digest
+and stream at most 192 KiB, returning private `no-store` bytes. Listing completion
+describes KV page traversal, never a complete queue census or settled publication.
+An operator must verify every retained envelope and separately qualify queue
+coverage and any replay. Historical `sync_dead_letters` D1 rows remain untouched
+and require their own backup; this protocol does not export them. Adding the
+dispatch changes the lossless state export's function-derived projection digest,
+so pinned migration plans require requalification before deployment.
+
+The health observation does not contain custody outcomes. Existing incident
+history and closure acknowledgement remain intact; closure is not proof of
+recovery.
 
 The migration does not select these tables. Copy every retained row and receipt,
 qualify the joined readers and final source drain, and then select each complete

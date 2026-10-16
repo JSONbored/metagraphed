@@ -9690,7 +9690,7 @@ export default {
         batch,
         laneHealthStore(env),
         Date.now(),
-        env.D1_STATE,
+        env.METAGRAPH_CONTROL,
       );
       return;
     }
