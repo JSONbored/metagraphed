@@ -183,7 +183,7 @@ export async function readRetainedBlockRows(
   count: number,
   network: ChainNetworkId = "mainnet",
   now = Date.now(),
-  minimums: { minEvents?: number | null; minExtrinsics?: number | null; heightOrder?: boolean } = {},
+  minimums: { minEvents?: number | null; minExtrinsics?: number | null; heightOrder?: boolean; heightUpper?: number } = {},
 ): Promise<Record<string, unknown>[] | null | undefined> {
   if (!env?.RETAINED_BLOCKS_NETWORKS?.split(",").includes(network))
     return undefined;
@@ -301,6 +301,7 @@ export async function readRetainedBlockRows(
       (nullable ? " INDEXED BY history_blocks_height " : `${index} `) +
       (author ? "JOIN history_block_authors a ON a.id=b.author_id " : "") +
       `WHERE b.network=? AND b.block_number IS ${nullable ? "" : "NOT "}NULL ` +
+      (heightOrder && !nullable && minimums.heightUpper !== undefined ? `AND b.block_number <= ${minimums.heightUpper} ` : "") +
       "AND b.source_id IN (SELECT id FROM history_block_sources WHERE network=? AND active=1)" +
       (range.clauses.length
         ? ` AND ${range.clauses.map((clause) => (clause.startsWith("author = ") ? `a.address${clause.slice(6)}` : clause)).join(" AND ")}`

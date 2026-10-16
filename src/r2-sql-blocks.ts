@@ -98,8 +98,7 @@ export {
 export interface BlockFeedQuery {
   limit: number;
   offset: number;
-  /** The raw ?cursor token: data-api's dot-joined (observed_at, block_number)
-   * pair, decoded with the shared codec so tokens round-trip across tiers. */
+  /** Opaque versioned height token; deployed observation tokens remain valid. */
   cursor?: unknown;
   author?: string | null;
   specVersion?: number | null;
@@ -115,8 +114,6 @@ export interface BlockFeedQuery {
    * block ceiling, not a public token. */
   ceilingBlock?: number | null;
 }
-
-/** The cursor pair the blocks feed pages on, mirroring data-api. */
 
 /** Preserve the public SS58 author guard before building D1 predicates. */
 export function safeAuthorLiteral(value: unknown): string | null {
@@ -194,9 +191,11 @@ export async function fetchBlockRowsFromR2Sql(
     where.push(`${clause} ${n}`);
   }
   const cursor = decodeBlockFeedCursor(query.cursor);
+  let heightUpper = cursor?.mode !== "observed" && cursor?.height != null ? cursor.height : undefined;
   if (query.ceilingBlock != null) {
     const ceiling = safeBlockNumber(query.ceilingBlock);
     if (ceiling === null) return null;
+    heightUpper = Math.min(heightUpper ?? ceiling - 1, ceiling - 1);
     where.push(cursor?.mode === "observed" ? `block_number < ${ceiling}` : `(block_number < ${ceiling} OR block_number IS NULL)`);
   }
   if (cursor) where.push(blockFeedSeek(cursor));
@@ -208,6 +207,7 @@ export async function fetchBlockRowsFromR2Sql(
     env,
     readRetainedBlockRows(env, where, limit + paged, network, Date.now(), {
       heightOrder: cursor?.mode !== "observed",
+      heightUpper,
       minEvents: query.minEvents,
       minExtrinsics: query.minExtrinsics,
     }),

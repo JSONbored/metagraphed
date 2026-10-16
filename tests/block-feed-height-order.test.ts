@@ -49,6 +49,12 @@ test("actual block handler keeps live heights first while honest later observati
     assert.equal(storage.get("head:write_next"),SEAM+39);
     const first = await page();
     assert.deepEqual(first.blocks.map((b: {block_number: number}) => b.block_number),[SEAM+1001,SEAM+38]);
+    const oldPage = await page(`${Number.MAX_SAFE_INTEGER}.${Number.MAX_SAFE_INTEGER}`);
+    assert.deepEqual(oldPage.blocks.map((b: {block_number:number})=>b.block_number),[SEAM+38,SEAM+37]);
+    assert.match(oldPage.next_cursor,/^\d+\.\d+$/);
+    const oldHeightPage = await page(String(SEAM+38));
+    assert.deepEqual(oldHeightPage.blocks.map((b: {block_number:number})=>b.block_number),[SEAM+37,SEAM+36]);
+    assert.match(oldHeightPage.next_cursor,/^\d+$/);
     const observed = app.prepare("SELECT block_number,observed_at FROM blocks_head WHERE block_number IN (?,?) ORDER BY block_number").all(SEAM+15,SEAM+1001);
     assert.ok(Number(observed[0]!.observed_at) > Number(observed[1]!.observed_at),"repair observation remains later than live observation");
     await hub.alarm();
