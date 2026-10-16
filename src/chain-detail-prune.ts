@@ -249,10 +249,8 @@ export interface ChainDetailPruneResult {
   deleted_below?: number;
   /** How many blocks this run removed, capped per run. */
   blocks_pruned?: number;
-  /** D1 account-event cutoff, independently bounded from that table's floor. */
-  account_events_deleted_below?: number;
-  /** Account-event height span retired, not a row count or reclaimed bytes. */
-  account_events_blocks_pruned?: number;
+  /** Acknowledged D1 account rows deleted; no retired-prefix claim on replay. */
+  account_events_rows_pruned?: number;
   /** Whether the SAME bound was applied to Neon, and what happened if not.
    * Reported separately because the two stores prune INDEPENDENTLY -- see the
    * runner. */
@@ -362,6 +360,7 @@ export async function pruneChainDetail(
       );
       const detailSpan = deletedBelow - floor;
       const accountSpan = accountDeletedBelow - accountFloor;
+      let accountRowsPruned = 0;
       for (
         let offset = 0;
         offset < Math.max(detailSpan, accountSpan);
@@ -370,28 +369,33 @@ export async function pruneChainDetail(
         // Detail and its coverage register still commit together. Account
         // history can retire its own older, published prefix even when the
         // detail floor is already at the shared selected-history seam.
-        await d1.transaction(
-          PRUNE_TABLES.flatMap((table) => {
-            const account = table === "chain_detail_account_events";
-            const first = (account ? accountFloor : floor) + offset;
-            const last = Math.min(
-              account ? accountDeletedBelow : deletedBelow,
-              first + D1_PRUNE_BLOCKS_PER_TRANSACTION,
-            );
-            return first < last
-              ? [
-                  {
-                    text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?`,
-                    values: [first, last],
-                  },
-                ]
-              : [];
-          }),
-        );
+        const statements = PRUNE_TABLES.flatMap((table) => {
+          const account = table === "chain_detail_account_events";
+          const first = (account ? accountFloor : floor) + offset;
+          const last = Math.min(
+            account ? accountDeletedBelow : deletedBelow,
+            first + D1_PRUNE_BLOCKS_PER_TRANSACTION,
+          );
+          return first < last
+            ? [
+                {
+                  table,
+                  // A complete replay can lower coverage after JS sampled
+                  // its floor. Check the live indexed floor atomically with
+                  // account deletion; a missing floor retains every row.
+                  text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?${account ? " AND block_number < (SELECT MIN(block_number) FROM chain_detail_blocks)" : ""}`,
+                  values: [first, last],
+                },
+              ]
+            : [];
+        });
+        const deleted = await d1.transaction(statements);
+        for (const [index, statement] of statements.entries())
+          if (statement.table === "chain_detail_account_events")
+            accountRowsPruned += deleted[index]!.changes;
       }
       accountOutcome = {
-        account_events_deleted_below: accountDeletedBelow,
-        account_events_blocks_pruned: accountSpan,
+        account_events_rows_pruned: accountRowsPruned,
       };
       outcome = { d1_pruned: true };
     } else {

@@ -12,6 +12,8 @@ import { chainDetailTables } from "../src/chain-detail-neon-write.ts";
 import { runNeonPrune, NEON_PRUNE_PLANS } from "../src/neon-prune.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
+import { writeChainDetailD1 } from "../src/chain-detail-d1-write.ts";
+import { createD1Store } from "../src/d1-store.ts";
 
 const runtime = new Miniflare({
   modules: true,
@@ -83,6 +85,7 @@ beforeAll(async () => {
 afterAll(async () => runtime.dispose());
 beforeEach(async () => {
   await db.prepare("DROP TRIGGER IF EXISTS reject_prune").run();
+  await db.prepare("DROP TRIGGER IF EXISTS reject_replay").run();
   for (const table of tables) await db.prepare(`DELETE FROM ${table}`).run();
   resetDecodeWatermarkCache();
   pg.control.connects = 0;
@@ -125,6 +128,321 @@ test("a late D1 delete failure rolls back every detail table and coverage", asyn
   assert.equal(result.blocks_pruned, undefined);
   assert.deepEqual(await Promise.all(tables.map(blocks)), before);
   assert.equal(pg.control.connects, 0);
+});
+
+function completeReplay(block: number, hash: string) {
+  return {
+    blockRows: [
+      {
+        block_number: block,
+        block_hash: `0x${"12".repeat(32)}`,
+        extrinsic_count: 1,
+        chain_event_count: 1,
+        account_event_count: 2,
+        observed_at: 1,
+        synced_at: 1,
+        subnet_ids: "[]",
+        economics_complete: 0,
+      },
+    ],
+    extrinsicRows: [
+      {
+        block_number: block,
+        extrinsic_index: 0,
+        extrinsic_hash: hash,
+        call_module: "Balances",
+        call_function: "transfer_keep_alive",
+        success: 1,
+        fee_tao: "0.25",
+        tip_tao: "0",
+        call_args: "{}",
+        observed_at: 1,
+      },
+    ],
+    chainEventRows: [
+      {
+        block_number: block,
+        event_index: 0,
+        pallet: "Balances",
+        method: "Transfer",
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 0,
+        args: "{}",
+        observed_at: 1,
+      },
+    ],
+    accountEventRows: [0, 1].map((event_index) => ({
+      block_number: block,
+      event_index,
+      extrinsic_index: 0,
+      event_kind: "Transfer",
+      hotkey: null,
+      coldkey: null,
+      netuid: null,
+      uid: null,
+      amount_tao: event_index === 0 ? "0.5" : "0.75",
+      alpha_amount: null,
+      observed_at: 1,
+    })),
+  };
+}
+
+async function replayThroughOwner(block: number, hash: string) {
+  const result = await writeChainDetailD1(
+    createD1Store(db),
+    env(),
+    completeReplay(block, hash),
+  );
+  assert.ok(Object.values(result).every((value) => value.ok));
+}
+
+async function exactReplayCells(block: number) {
+  return Promise.all(
+    tables.map(async (table) =>
+      (
+        await db
+          .prepare(`SELECT * FROM ${table} WHERE block_number=?`)
+          .bind(block)
+          .all()
+      ).results
+        .map((row) => JSON.stringify(row))
+        .sort(),
+    ),
+  );
+}
+
+function assertNoAccountPrefix(
+  result: Awaited<ReturnType<typeof pruneChainDetail>>,
+) {
+  assert.equal("account_events_deleted_below" in result, false);
+  assert.equal("account_events_blocks_pruned" in result, false);
+}
+
+test.each([1, 3])(
+  "account-only retention preserves a replay committed before batch %i",
+  async (beforeBatch) => {
+    const { old, selected } = await accountOnlyFixture();
+    const block = old + (beforeBatch - 1) * 10 + 5;
+    const hash = `0x${"ab".repeat(32)}`;
+    const cold = vi.fn(async () => {
+      throw new Error("replayed hot hash must stay hot");
+    });
+    let calls = 0;
+    let before: Awaited<ReturnType<typeof answerExtrinsicDetail>> | undefined;
+    let cells: Awaited<ReturnType<typeof exactReplayCells>> | undefined;
+    const owned = {
+      ...env(),
+      ...selected,
+      D1_STATE: {
+        prepare: db.prepare.bind(db),
+        async batch(statements: D1PreparedStatement[]) {
+          if (++calls === beforeBatch) {
+            await replayThroughOwner(block, hash);
+            before = await answerExtrinsicDetail(env(), hash, cold);
+            assert.equal(
+              before.kind === "answer" && before.data.events.length,
+              2,
+            );
+            cells = await exactReplayCells(block);
+          }
+          return db.batch(statements);
+        },
+      },
+    };
+    const result = await pruneChainDetail(owned, ctx);
+    assert.equal(result.ok, true);
+    assert.deepEqual(
+      await answerExtrinsicDetail(env(), hash, cold),
+      before,
+      "hot hash events changed after replay",
+    );
+    assert.deepEqual(await exactReplayCells(block), cells);
+    assert.equal(cold.mock.calls.length, 0);
+    assert.equal(calls, 12);
+    assertNoAccountPrefix(result);
+    assert.equal(result.account_events_rows_pruned, block - old);
+    assert.equal(pg.control.connects, 0);
+  },
+);
+
+test.each([1, 3])(
+  "a replay after account deletion batch %i commits its complete hot hash",
+  async (afterBatch) => {
+    const { old, selected } = await accountOnlyFixture();
+    const block = old + (afterBatch - 1) * 10 + 5;
+    const hash = `0x${"bc".repeat(32)}`;
+    const cold = vi.fn(async () => {
+      throw new Error("replayed hot hash must stay hot");
+    });
+    let calls = 0;
+    let before: Awaited<ReturnType<typeof answerExtrinsicDetail>> | undefined;
+    let cells: Awaited<ReturnType<typeof exactReplayCells>> | undefined;
+    const result = await pruneChainDetail(
+      {
+        ...env(),
+        ...selected,
+        D1_STATE: {
+          prepare: db.prepare.bind(db),
+          async batch(statements: D1PreparedStatement[]) {
+            const result = await db.batch(statements);
+            if (++calls === afterBatch) {
+              await replayThroughOwner(block, hash);
+              before = await answerExtrinsicDetail(env(), hash, cold);
+              assert.equal(
+                before.kind === "answer" && before.data.events.length,
+                2,
+              );
+              cells = await exactReplayCells(block);
+            }
+            return result;
+          },
+        },
+      },
+      ctx,
+    );
+    assert.equal(result.ok, true);
+    assert.deepEqual(await answerExtrinsicDetail(env(), hash, cold), before);
+    assert.deepEqual(await exactReplayCells(block), cells);
+    assert.equal(cold.mock.calls.length, 0);
+    assertNoAccountPrefix(result);
+    assert.equal(result.account_events_rows_pruned, afterBatch * 10);
+  },
+);
+
+for (const mode of ["abort", "lost-ack"])
+  test.each([1, 3])(
+    `a replay survives ${mode} ordering at account batch %i`,
+    async (beforeBatch) => {
+      const { old, selected } = await accountOnlyFixture();
+      const first = old + (beforeBatch - 1) * 10;
+      const block = first + 5;
+      const hash = `0x${"cd".repeat(32)}`;
+      const cold = vi.fn(async () => {
+        throw new Error("replayed hot hash must stay hot");
+      });
+      let calls = 0;
+      let before: Awaited<ReturnType<typeof answerExtrinsicDetail>> | undefined;
+      let cells: Awaited<ReturnType<typeof exactReplayCells>> | undefined;
+      let accountBefore: unknown[] = [];
+      const result = await pruneChainDetail(
+        {
+          ...env(),
+          ...selected,
+          D1_STATE: {
+            prepare: db.prepare.bind(db),
+            async batch(statements: D1PreparedStatement[]) {
+              const injecting = ++calls === beforeBatch;
+              if (injecting) {
+                await replayThroughOwner(block, hash);
+                before = await answerExtrinsicDetail(env(), hash, cold);
+                cells = await exactReplayCells(block);
+                accountBefore = await blocks("chain_detail_account_events");
+                if (mode === "abort")
+                  await db
+                    .prepare(
+                      `CREATE TRIGGER reject_prune BEFORE DELETE ON chain_detail_account_events WHEN OLD.block_number=${first + 2} BEGIN SELECT RAISE(ABORT,'replay ordering rejected'); END`,
+                    )
+                    .run();
+              }
+              const result = await db.batch(statements);
+              if (injecting && mode === "lost-ack")
+                throw new Error("replay ordering acknowledgement lost");
+              return result;
+            },
+          },
+        },
+        ctx,
+      );
+      assert.equal(result.ok, false);
+      assert.match(result.detail!, /replay ordering/);
+      assert.equal(calls, beforeBatch);
+      assert.deepEqual(await answerExtrinsicDetail(env(), hash, cold), before);
+      assert.deepEqual(await exactReplayCells(block), cells);
+      assert.deepEqual(
+        await blocks("chain_detail_account_events"),
+        mode === "abort"
+          ? accountBefore
+          : accountBefore.filter((height) => Number(height) >= block),
+      );
+      assert.equal(result.account_events_rows_pruned, undefined);
+      assertNoAccountPrefix(result);
+      assert.equal(cold.mock.calls.length, 0);
+    },
+  );
+
+test("a replay rejected at its block register commits none of its hot families", async () => {
+  const { old, selected } = await accountOnlyFixture();
+  const block = old + 5,
+    hash = `0x${"de".repeat(32)}`;
+  let injected = false;
+  const result = await pruneChainDetail(
+    {
+      ...env(),
+      ...selected,
+      D1_STATE: {
+        prepare: db.prepare.bind(db),
+        async batch(statements: D1PreparedStatement[]) {
+          if (!injected) {
+            injected = true;
+            const beforeReplay = await exactReplayCells(block);
+            await db
+              .prepare(
+                `CREATE TRIGGER reject_replay BEFORE INSERT ON chain_detail_blocks WHEN NEW.block_number=${block} BEGIN SELECT RAISE(ABORT,'replay register rejected'); END`,
+              )
+              .run();
+            const replay = await writeChainDetailD1(
+              createD1Store(db),
+              env(),
+              completeReplay(block, hash),
+            );
+            assert.ok(Object.values(replay).every((value) => !value.ok));
+            assert.deepEqual(await exactReplayCells(block), beforeReplay);
+            assert.deepEqual(await blocks("chain_detail_extrinsics"), []);
+            assert.deepEqual(await blocks("chain_detail_chain_events"), []);
+            assert.deepEqual(await blocks("chain_detail_blocks"), [
+              head - 1800 + 1,
+              head,
+            ]);
+          }
+          return db.batch(statements);
+        },
+      },
+    },
+    ctx,
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(await answerExtrinsicDetail(env(), hash, async () => null), {
+    kind: "miss",
+  });
+  assert.equal(result.account_events_rows_pruned, 120);
+  assertNoAccountPrefix(result);
+});
+
+test("account-only retention fails closed when the live detail register disappears", async () => {
+  const { selected } = await accountOnlyFixture();
+  const before = await blocks("chain_detail_account_events");
+  let injected = false;
+  const result = await pruneChainDetail(
+    {
+      ...env(),
+      ...selected,
+      D1_STATE: {
+        prepare: db.prepare.bind(db),
+        async batch(statements: D1PreparedStatement[]) {
+          if (!injected) {
+            injected = true;
+            await db.prepare("DELETE FROM chain_detail_blocks").run();
+          }
+          return db.batch(statements);
+        },
+      },
+    },
+    ctx,
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.account_events_rows_pruned, 0);
+  assertNoAccountPrefix(result);
+  assert.deepEqual(await blocks("chain_detail_account_events"), before);
 });
 
 test("an account-event backlog is bounded from its own floor", async () => {
@@ -418,8 +736,7 @@ test("a published detail seam does not stall the older account-only retention wi
   const result = await pruneChainDetail({ ...env(), ...selected }, ctx);
   assert.equal(result.ok, true);
   assert.equal(result.keep_from, detailFloor);
-  assert.equal(result.account_events_deleted_below, oldAccount + 120);
-  assert.equal(result.account_events_blocks_pruned, 120);
+  assert.equal(result.account_events_rows_pruned, 4);
   assert.equal(result.blocks_pruned, 0);
   assert.deepEqual(await blocks("chain_detail_account_events"), [
     oldAccount + 120,
@@ -518,7 +835,7 @@ test("an account-only failure rolls back its ten-height chunk and preserves the 
   assert.equal(result.reason, "prune_failed");
   assert.match(result.detail!, /account chunk rejected/);
   assert.equal(result.blocks_pruned, undefined);
-  assert.equal(result.account_events_blocks_pruned, undefined);
+  assert.equal(result.account_events_rows_pruned, undefined);
   assert.deepEqual(await blocks("chain_detail_account_events"), [
     oldAccount + 10,
     oldAccount + 11,
@@ -713,7 +1030,7 @@ test("account-only retention bounds twelve ten-height transactions and preserves
   );
   assert.equal(result.ok, true);
   assert.equal(result.blocks_pruned, 0);
-  assert.equal(result.account_events_blocks_pruned, 120);
+  assert.equal(result.account_events_rows_pruned, 120);
   assert.equal(batch.mock.calls.length, 12);
   for (const [statements] of batch.mock.calls)
     assert.equal(statements.length, 1);
@@ -725,7 +1042,7 @@ test("account-only retention bounds twelve ten-height transactions and preserves
     deletes.every(
       (sql) =>
         sql ===
-        "DELETE FROM chain_detail_account_events WHERE block_number >= ? AND block_number < ?",
+        "DELETE FROM chain_detail_account_events WHERE block_number >= ? AND block_number < ? AND block_number < (SELECT MIN(block_number) FROM chain_detail_blocks)",
     ),
   );
   assert.deepEqual(
@@ -759,7 +1076,7 @@ test("a lost account-delete acknowledgement stops writes and a later cron rechec
   const failed = await pruneChainDetail(owned, ctx);
   assert.equal(failed.ok, false);
   assert.match(failed.detail!, /acknowledgement lost/);
-  assert.equal(failed.account_events_blocks_pruned, undefined);
+  assert.equal(failed.account_events_rows_pruned, undefined);
   assert.equal(calls, 2);
   assert.deepEqual(
     await blocks("chain_detail_account_events"),
@@ -779,8 +1096,7 @@ test("a lost account-delete acknowledgement stops writes and a later cron rechec
     clock.mockReturnValue(now + 120_002);
     const resumed = await pruneChainDetail(owned, ctx);
     assert.equal(resumed.ok, true);
-    assert.equal(resumed.account_events_deleted_below, old + 140);
-    assert.equal(resumed.account_events_blocks_pruned, 120);
+    assert.equal(resumed.account_events_rows_pruned, 120);
     assert.equal(calls, 14);
     assert.deepEqual(
       await blocks("chain_detail_account_events"),
