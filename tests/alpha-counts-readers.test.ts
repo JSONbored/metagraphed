@@ -443,6 +443,53 @@ test("capture changes cannot race the count read", async () => {
   assert.equal(changed, true);
 });
 
+test("missing canonical reads stay unknown", async () => {
+  const db = await fixture();
+  await capture(db);
+  await counts(db);
+  const missing = await fixture();
+  await missing
+    .prepare("INSERT INTO validator_nominator_counts VALUES('kept',9,?)")
+    .bind(STAMP + 1000)
+    .run();
+  const env = environment({
+    prepare(text: string) {
+      // A later native view can lack the selection observed at discovery.
+      // Its legacy count row must not become a fresh fallback or healthy stamp.
+      if (text.startsWith("WITH canonical")) return missing.prepare(text);
+      return db.prepare(text);
+    },
+    batch: db.batch.bind(db),
+  } as unknown as D1Database);
+  assert.deepEqual(await readCanonicalNominatorCountCoverage(env), {
+    latest: null,
+    covered: 0,
+    total: 0,
+  });
+  const sql = forbiddenSql();
+  const rows = await readDirectoryNominatorCounts(sql, env, ["kept"]);
+  assert.deepEqual(rows, [
+    { hotkey: "kept", nominator_count: null, scan_at: null },
+  ]);
+  const confirmed = fillConfirmedZeros(
+    rows,
+    nominatorCountsByHotkey(rows),
+    STAMP + 20,
+    1000,
+  );
+  assert.equal(confirmed.size, 0);
+  assert.equal(vi.mocked(sql.unsafe).mock.calls.length, 0);
+  const verdict = await runValidatorNominatorCountsStalenessWatchdog(
+    { ...env, VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_ROWS: 1 },
+    { now: () => STAMP + 20, recordException: async () => false },
+  );
+  assert.equal(verdict.ok, true);
+  assert.equal(verdict.stale, true);
+  assert.equal(verdict.reason, "no_rows");
+  assert.equal(verdict.latest_captured_at, null);
+  assert.equal(verdict.covered_rows, 0);
+});
+
 test("split owners and native failures cannot fall back", async () => {
   const db = await fixture();
   await capture(db);

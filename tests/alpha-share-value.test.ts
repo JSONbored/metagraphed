@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "vitest";
-import { quoteAlphaPool } from "../src/alpha-share-value.ts";
+import { divide, quoteAlphaPool } from "../src/alpha-share-value.ts";
 import type { Row } from "./row-type.ts";
 
 const safe = (n: bigint, exponent = -21) => ({
@@ -15,6 +15,18 @@ const base = () => ({
   total_alpha_rao: "1000000000",
   pool_epoch: null,
   member_epoch: null,
+});
+
+test("zero denominator division refuses without altering originals", () => {
+  const share = { mantissa: 300000000000000000000n, exponent: -21n };
+  const denominator = { mantissa: 0n, exponent: -21n };
+  assert.equal(divide(share, denominator), null);
+  assert.deepEqual(denominator, { mantissa: 0n, exponent: -21n });
+  const evidence = { ...base(), denominator: original(0n) };
+  const quoted = quoteAlphaPool(evidence, 479);
+  assert.equal(quoted.alphaRao, "0");
+  assert.equal(quoted.shareFraction, 0);
+  assert.deepEqual(quoted.evidence, evidence);
 });
 
 test("authentic legacy and V2 originals match sampled runtime values without inferring a denominator", () => {

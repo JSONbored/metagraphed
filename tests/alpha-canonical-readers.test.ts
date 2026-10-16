@@ -396,8 +396,15 @@ describe("canonical Alpha quantities across existing readers", () => {
   });
 
   test("installed schema with no selected capture never exposes legacy quantities", async () => {
-    const account = await loadAccountPositionsFromStore(environment(), COLDKEY);
-    assert.equal(account?.degraded?.reason, POSITIONS_DEGRADED_UNPRICEABLE);
+    for (const load of ACCOUNT_READERS) {
+      const account = await load(environment(), COLDKEY);
+      assert.ok(account);
+      assert.equal(account.degraded?.reason, POSITIONS_DEGRADED_UNPRICEABLE);
+      assert.equal(account.degraded?.snapshot_captured_at, null);
+      assert.equal(account.captured_at, null);
+      assert.equal(account.position_count, 0);
+      AccountPositionsArtifactSchema.parse(account);
+    }
     assert.equal(
       (await loadSubnetHolders(store(), 7)).decline,
       "pool_totals_unproven",
@@ -413,6 +420,70 @@ describe("canonical Alpha quantities across existing readers", () => {
     const holdings = await topHoldersHoldings(environment());
     assert.deepEqual(holdings?.sorts, ["free_tao"]);
   });
+
+  test.each(ACCOUNT_READERS)(
+    "account reader %# declines when native ownership disappears during its exact read",
+    async (load) => {
+      capture();
+      position();
+      const env = environment();
+      const originalSql = "SELECT * FROM alpha_snapshot_rows";
+      const retained = sqlite.prepare(originalSql).all();
+      let changed = false;
+      afterRead = (sql) => {
+        if (!changed && sql.startsWith("SELECT hotkey, netuid")) {
+          changed = true;
+          Object.assign(env, { D1_STATE_TABLES: "neurons" });
+        }
+      };
+      const account = await load(env, COLDKEY);
+      assert.equal(changed, true);
+      assert.ok(account);
+      assert.equal(account.degraded?.reason, POSITIONS_DEGRADED_UNPRICEABLE);
+      assert.equal(account.degraded?.snapshot_captured_at, null);
+      assert.equal(account.captured_at, null);
+      assert.equal(account.position_count, 0);
+      AccountPositionsArtifactSchema.parse(account);
+      assert.deepEqual(sqlite.prepare(originalSql).all(), retained);
+      assert.ok(!seen.some((sql) => sql.includes("FROM neurons")));
+      assert.ok(!seen.some((sql) => sql.includes("JOIN hotkey_alpha")));
+    },
+  );
+
+  test.each(ACCOUNT_READERS)(
+    "account reader %# requires the complete canonical set within its position cap",
+    async (load) => {
+      capture();
+      const cap = coldPositions.POSITION_SCAN_CAP;
+      const insert = sqlite.prepare(
+        "INSERT INTO alpha_snapshot_rows VALUES(?,?,?,?,?,?)",
+      );
+      for (let netuid = 1; netuid <= cap; netuid++) {
+        insert.run(STAMP, COLDKEY, HOTKEY, netuid, 1e-9, "1");
+      }
+      const census = sqlite.prepare(
+        "UPDATE alpha_snapshot_passes SET expected_rows=?,received_rows=?",
+      );
+      census.run(cap, cap);
+      const boundary = await load(environment(), COLDKEY);
+      assert.ok(boundary);
+      assert.equal(boundary.position_count, cap);
+      assert.equal(boundary.total_stake_alpha, cap / 1e9);
+      assert.equal(boundary.degraded, undefined);
+      AccountPositionsArtifactSchema.parse(boundary);
+
+      insert.run(STAMP, COLDKEY, HOTKEY, cap + 1, 1e-9, "1");
+      census.run(cap + 1, cap + 1);
+      const overflow = await load(environment(), COLDKEY);
+      assert.equal(overflow, null);
+      const originals = sqlite
+        .prepare("SELECT COUNT(*) AS rows FROM alpha_snapshot_rows")
+        .get();
+      assert.equal(originals?.rows, cap + 1);
+      assert.ok(!seen.some((sql) => sql.includes("FROM neurons")));
+      assert.ok(!seen.some((sql) => sql.includes("JOIN hotkey_alpha")));
+    },
+  );
 
   test("self-stake coexistence declines only the affected account, validator and subnet scopes", async () => {
     capture();
@@ -632,6 +703,31 @@ function projectionEnv(alphaStamp?: number): Env {
 }
 
 describe("materialized top-holder quantities", () => {
+  test("missing and unqualified captures retain only archived free and flow cells", async () => {
+    for (const unqualified of [false, true]) {
+      if (unqualified) {
+        capture();
+        position();
+        sqlite.exec("DELETE FROM alpha_runtime_metadata");
+      }
+      const env = projectionEnv(STAMP);
+      for (const sort of ["delegated_tao", "total_tao"]) {
+        const result = await loadTopHoldersFlowTier(env, { sort });
+        assert.equal(result, null);
+      }
+      for (const sort of ["free_tao", "net_flow_7d"]) {
+        const result = await loadTopHoldersFlowTier(env, { sort });
+        assert.ok(result);
+        const accounts = result.accounts as Record<string, unknown>[];
+        const row = accounts[0];
+        assert.equal(row.free_tao, 10);
+        assert.equal(row.net_flow_7d, 3);
+        assert.equal(row.delegated_tao, null);
+        assert.equal(row.total_tao, null);
+      }
+    }
+  });
+
   test("historical runtime479 NULL quantities invalidate a projection at the same capture", async () => {
     capture(479);
     position(null);
@@ -764,5 +860,50 @@ describe("public Alpha cache", () => {
       assert.equal(match.mock.calls.length, 0);
       assert.equal(put.mock.calls.length, 0);
     }
+  });
+});
+
+describe("top-holder holdings without a balance store", () => {
+  test("unqualified positions decline before ranking when free balances are unavailable", async () => {
+    capture(479);
+    position(null);
+    sqlite.exec("DROP TABLE account_balances_passes");
+
+    const result = await topHoldersHoldings(environment());
+
+    assert.equal(result, null);
+    const balanceProbe = seen.some((sql) =>
+      sql.includes("FROM account_balances_passes"),
+    );
+    const qualification = seen.some((sql) => sql.includes("AS unqualified"));
+    const ranking = seen.some((sql) => sql.includes("combined AS ("));
+    assert.equal(balanceProbe, true);
+    assert.equal(qualification, true);
+    assert.equal(ranking, false);
+  });
+
+  test("a capture lost after ranking cannot publish a delegated-only result", async () => {
+    capture(479);
+    position();
+    sqlite.exec("DROP TABLE account_balances_passes");
+    const env = environment();
+    const healthy = await topHoldersHoldings(env);
+    assert.deepEqual(healthy?.sorts, ["delegated_tao"]);
+    assert.equal(healthy?.cells.get(COLDKEY)?.delegated_tao, 5);
+    assert.equal(healthy?.alphaCapturedAt, STAMP);
+    seen.length = 0;
+    let ranked = false;
+    afterRead = (sql) => {
+      if (!sql.includes("combined AS (")) return;
+      ranked = true;
+      sqlite.exec("DELETE FROM alpha_snapshot_passes");
+    };
+
+    const result = await topHoldersHoldings(env);
+
+    assert.equal(ranked, true);
+    assert.equal(result, null);
+    const legacyPool = seen.some((sql) => sql.includes("FROM hotkey_alpha"));
+    assert.equal(legacyPool, false);
   });
 });

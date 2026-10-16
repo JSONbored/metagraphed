@@ -506,9 +506,8 @@ test("root coverage is required only when all count keys arrive", async () => {
   assert.equal(partial.complete, false);
   assert.equal(partial.applied_count, 1);
   const before = await state(store);
-  await assert.rejects(
-    writeAlphaCountsD1(store, [countRow(anchor, "root-b")], anchor, 2, AT + 11),
-  );
+  const chunk = [countRow(anchor, "root-b")];
+  await assert.rejects(writeAlphaCountsD1(store, chunk, anchor, 2, AT + 11));
   assert.deepEqual(await state(store), before);
   const last = [countRow(anchor, "root-b", 2)];
   const receipt = await writeAlphaCountsD1(store, last, anchor, 2, AT + 12);
