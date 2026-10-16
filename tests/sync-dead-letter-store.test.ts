@@ -126,7 +126,10 @@ test("different attempts and conflicting identities retain separate complete obs
   assert.equal(f.values.size, 6);
   assert.equal(new Set(f.puts.map((put) => put.key)).size, 6);
   const retained = envelopes(f);
-  assert.deepEqual(retained.map((entry) => entry.attempts), [1, 2, 1, 1, 1, 1]);
+  assert.deepEqual(
+    retained.map((entry) => entry.attempts),
+    [1, 2, 1, 1, 1, 1],
+  );
   assert.deepEqual(
     retained.map((entry) => Buffer.from(entry.payload, "base64").toString()),
     [
@@ -184,7 +187,10 @@ test("a failed message and the remainder of a partial batch stay unacknowledged"
     /store unavailable/,
   );
   assert.deepEqual(acks, ["a"]);
-  assert.deepEqual(envelopes(f).map((entry) => entry.message_id), ["a"]);
+  assert.deepEqual(
+    envelopes(f).map((entry) => entry.message_id),
+    ["a"],
+  );
   delete f.hooks.beforePut;
   await handleDeadLetterBatch(
     { queue, messages: messages.slice(1).map((m) => ({ ...m, attempts: 2 })) },
@@ -193,7 +199,10 @@ test("a failed message and the remainder of a partial batch stay unacknowledged"
     f.kv,
   );
   assert.deepEqual(acks, ["a", "b", "c"]);
-  assert.deepEqual(envelopes(f).map((entry) => entry.attempts), [1, 2, 2]);
+  assert.deepEqual(
+    envelopes(f).map((entry) => entry.attempts),
+    [1, 2, 2],
+  );
 });
 
 test("a lost write response or acknowledgment leaves recoverable observations on retry", async () => {
