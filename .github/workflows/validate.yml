@@ -10,6 +10,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      diagnostic_retention_only:
+        description: "Diagnostic successful-retry proof only; never ordinary release qualification"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -262,7 +267,7 @@ jobs:
     # every push before anyone marked it ready. Job-level skip is safe here: this repo has ZERO
     # required status contexts on main (verified via branches/main/protection), and the review
     # pipeline's fetchLiveCiAggregate buckets skipped identically to success.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft != true) && !(github.event_name == 'workflow_dispatch' && inputs.diagnostic_retention_only) }}
     env:
       # The docs fast lane + narrow validator skips, unchanged from the old `checks` job -- see the
       # `changes` job comment above for what each flag proves. Still per-STEP guards (not job-level):
@@ -795,7 +800,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft != true) && !(github.event_name == 'workflow_dispatch' && inputs.diagnostic_retention_only) }}
     strategy:
       # One red leg must not cancel the others: a shard-specific failure is
       # exactly the thing you want the other shards' results for.
@@ -957,7 +962,7 @@ jobs:
   coverage:
     name: coverage
     needs: test
-    if: ${{ !cancelled() && needs.test.result != 'skipped' }}
+    if: ${{ (!cancelled() && needs.test.result != 'skipped') && !(github.event_name == 'workflow_dispatch' && inputs.diagnostic_retention_only) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -1107,7 +1112,7 @@ jobs:
     # pipeline buckets skipped as success -- see the `test` job comment): both suites read only
     # python/**, scripts/**.py and scripts lock/project manifests. Draft
     # PRs skip entirely, same as every heavy job here. Push/dispatch runs are unaffected.
-    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true') }}
+    if: ${{ (github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true')) && !(github.event_name == 'workflow_dispatch' && inputs.diagnostic_retention_only) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15 # locked dependency qualification and hermetic suites
     steps:
@@ -1426,7 +1431,7 @@ jobs:
       # overflow backlog (#3930, #3931, #3985, etc.).
       - name: Responsive overflow check (e2e)
         if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
-        run: npm run test:e2e --workspace=apps/ui
+        run: npm run test:e2e --workspace=apps/ui -- --project=interaction --no-deps --grep="diagnostic retention keeps"
 
       # The e2e server is a LOCAL `wrangler dev` on this runner (playwright.config.ts's
       # webServer), not a deployed Worker -- so when it dies there is nothing in the
@@ -1454,6 +1459,24 @@ jobs:
             apps/ui/test-results/**
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Verify actual successful-retry diagnostic receipt
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_retention_only }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { existsSync, readFileSync } from "node:fs";
+          const path = "apps/ui/test-results/e2e-receipt.json";
+          assert.ok(existsSync(path), "successful-retry diagnostic receipt is missing");
+          const receipt = JSON.parse(readFileSync(path,"utf8"));
+          const item = receipt.failures.find(row => row.title.includes("diagnostic retention keeps"));
+          assert.equal(receipt.stats.unexpected,0);
+          assert.equal(receipt.stats.flaky,1);
+          assert.equal(item.outcome,"flaky");
+          assert.deepEqual(item.results.map(({retry,status}) => [retry,status]),[[0,"failed"],[1,"passed"]]);
+          assert.ok(item.results.every(row => row.attachments.some(attachment => attachment.name === "diagnostic-retention-attempt")));
+          console.log(JSON.stringify({source:receipt.source,stats:receipt.stats,attempts:item.results.map(({retry,status})=>({retry,status}))}));
+          NODE
 
       # Guard against client-bundle regressions. Measures the INITIAL client
       # transfer for a cold visit to "/" -- the entry chunk plus the transitive

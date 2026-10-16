@@ -1,3 +1,4 @@
+import { registerDiagnosticRetry } from "./diagnostic-retention.fixture";
 import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
 
@@ -36,3 +37,5 @@ test.describe("content route runtime isolation", () => {
     await expect.poll(() => openapiChunks.length).toBe(1);
   });
 });
+
+registerDiagnosticRetry();
