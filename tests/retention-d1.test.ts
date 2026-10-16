@@ -522,3 +522,26 @@ test("a sparse account floor cannot retire events still embedded by a hot extrin
   assert.deepEqual(await blocks("chain_detail_account_events"),[sparseBlock,sparseBlock]);
   assert.equal(cold.mock.calls.length,0);
 });
+
+
+test("a later detail rollback cannot leave a retained hot hash without its account events", async () => {
+  const detailFloor = head - 11_000;
+  const sparseBlock = detailFloor + 15;
+  const hash = `0x${"cd".repeat(32)}`;
+  for (const block of [detailFloor,detailFloor+10,sparseBlock,head])
+    await db.prepare("INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'hash',1,0,2,1,1)").bind(block).run();
+  await db.prepare("INSERT INTO chain_detail_extrinsics(block_number,extrinsic_index,extrinsic_hash,call_module,call_function,success,observed_at) VALUES(?,0,?,'Balances','transfer_keep_alive',1,1)").bind(sparseBlock,hash).run();
+  for (const event of [0,1])
+    await db.prepare("INSERT INTO chain_detail_account_events(block_number,event_index,extrinsic_index,event_kind,amount_tao,observed_at) VALUES(?,?,0,'Transfer','0.5',1)").bind(sparseBlock,event).run();
+  const owned = {...env(),...selectedHistory({blocks:head,extrinsics:head,account_events:head,chain_events:head})};
+  const cold = vi.fn(async () => { throw new Error("hot hash must not need a cold read"); });
+  const before = await answerExtrinsicDetail(owned,hash,cold);
+  assert.equal(before.kind === "answer" && before.data.events.length,2);
+  await db.prepare(`CREATE TRIGGER reject_prune BEFORE DELETE ON chain_detail_blocks WHEN OLD.block_number >= ${detailFloor+10} BEGIN SELECT RAISE(ABORT,'later detail chunk rejected'); END`).run();
+  const result = await pruneChainDetail(owned,ctx);
+  assert.equal(result.ok,false);
+  assert.match(result.detail!,/later detail chunk rejected/);
+  assert.deepEqual(await blocks("chain_detail_blocks"),[detailFloor+10,sparseBlock,head]);
+  assert.deepEqual(await answerExtrinsicDetail(owned,hash,cold),before);
+  assert.equal(cold.mock.calls.length,0);
+});
