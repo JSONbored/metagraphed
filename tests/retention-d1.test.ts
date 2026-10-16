@@ -7,6 +7,7 @@ const { pg } = await vi.hoisted(async () => ({
 }));
 vi.mock("pg", () => pg.module);
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
+import { answerExtrinsicDetail } from "../src/chain-detail-hot-tier.ts";
 import { chainDetailTables } from "../src/chain-detail-neon-write.ts";
 import { runNeonPrune, NEON_PRUNE_PLANS } from "../src/neon-prune.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
@@ -495,4 +496,29 @@ test("an account-only failure rolls back its ten-height chunk and preserves the 
   assert.equal(result.account_events_blocks_pruned,undefined);
   assert.deepEqual(await blocks("chain_detail_account_events"),[oldAccount+10,oldAccount+11,oldAccount+120,accountFloor]);
   assert.deepEqual(await blocks("chain_detail_blocks"),[detailFloor,head]);
+});
+
+
+test("a sparse account floor cannot retire events still embedded by a hot extrinsic hash", async () => {
+  const detailFloor = head - 11_000;
+  const sparseBlock = head - 10_000;
+  const hash = `0x${"ab".repeat(32)}`;
+  for (const block of [detailFloor,sparseBlock,head])
+    await db.prepare("INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'hash',1,0,2,1,1)").bind(block).run();
+  await db.prepare("INSERT INTO chain_detail_extrinsics(block_number,extrinsic_index,extrinsic_hash,call_module,call_function,success,observed_at) VALUES(?,0,?,'Balances','transfer_keep_alive',1,1)").bind(sparseBlock,hash).run();
+  for (const event of [0,1])
+    await db.prepare("INSERT INTO chain_detail_account_events(block_number,event_index,extrinsic_index,event_kind,amount_tao,observed_at) VALUES(?,?,0,'Transfer','0.5',1)").bind(sparseBlock,event).run();
+  const selected = selectedHistory({blocks:head,extrinsics:head,account_events:head,chain_events:head});
+  const owned = {...env(),...selected};
+  const cold = vi.fn(async () => { throw new Error("hot hash must not need a cold read"); });
+  const before = await answerExtrinsicDetail(owned,hash,cold);
+  assert.equal(before.kind,"answer");
+  assert.equal(before.kind === "answer" && before.tier,"hot");
+  assert.equal(before.kind === "answer" && before.data.events.length,2);
+  const result = await pruneChainDetail(owned,ctx);
+  assert.equal(result.ok,true);
+  assert.equal(result.blocks_pruned,120);
+  assert.deepEqual(await answerExtrinsicDetail(owned,hash,cold),before);
+  assert.deepEqual(await blocks("chain_detail_account_events"),[sparseBlock,sparseBlock]);
+  assert.equal(cold.mock.calls.length,0);
 });
