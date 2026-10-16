@@ -112,14 +112,20 @@ test("actual retained producer D1 rows restore through the public projection rea
       NATIVE_PROJECTIONS: "enabled",
       D1_STATE: db,
       METAGRAPH_ARCHIVE: {
-        get: async () => { throw new Error("Unexpected legacy read"); },
+        get: async () => {
+          throw new Error("Unexpected legacy read");
+        },
       },
     };
     const selected = await loadNativeProjectionManifest(env, network, true);
     assert.deepEqual(selected, manifest);
     assert.deepEqual(selected!.sources[0]!.retainedBlocks, plan.retainedBlocks);
     assert.deepEqual(
-      await readNativeProjectionObject(env, "metagraph/projections/blocks-summary.json", network),
+      await readNativeProjectionObject(
+        env,
+        "metagraph/projections/blocks-summary.json",
+        network,
+      ),
       readback.expectedBody,
     );
   }

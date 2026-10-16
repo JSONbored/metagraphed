@@ -20,7 +20,10 @@ interface ProducerCase {
 // methods on native CI. Every identity and physical row is synthetic.
 export const retainedProjectionCases: ProducerCase[] = JSON.parse(
   readFileSync(
-    new URL("../fixtures/native-projections/retained-contract.json", import.meta.url),
+    new URL(
+      "../fixtures/native-projections/retained-contract.json",
+      import.meta.url,
+    ),
     "utf8",
   ),
 ).cases;
