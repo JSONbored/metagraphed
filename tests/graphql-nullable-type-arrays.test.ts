@@ -224,3 +224,47 @@ test("GraphQL executes valid nullable values and enforces the scalar rather than
     },
   });
 });
+
+
+test("compact and composed nullable list items execute null without weakening non-null items", async () => {
+  const items = [
+    { type: ["integer", "null"] },
+    { anyOf: [{ type: "integer" }, { type: "null" }] },
+    { oneOf: [{ type: "integer" }, { type: "null" }] },
+  ];
+  for (const item of items) {
+    const arrays = [
+      { type: ["array", "null"], items: item },
+      { anyOf: [{ type: "array", items: item }, { type: "null" }] },
+      { oneOf: [{ type: "array", items: item }, { type: "null" }] },
+    ];
+    for (const array of arrays) {
+      const { types } = emitTypes({ Container: {
+        type: "object", required: ["values"], properties: { values: array },
+      } });
+      assert.equal(fieldTypes(types.get("Container")!).values, "[Int]");
+      const schema = new GraphQLSchema({ query: new GraphQLObjectType({
+        name: "Query", fields: { sample: { type: types.get("Container")! } },
+      }) });
+      for (const values of [[1, null], null]) {
+        const result = await graphql({ schema, source: "{ sample { values } }",
+          rootValue: { sample: { values } } });
+        assert.equal(result.errors, undefined);
+        assert.deepEqual(JSON.parse(JSON.stringify(result.data)), { sample: { values } });
+      }
+    }
+  }
+  const { types } = emitTypes({ Container: {
+    type: "object", required: ["values"],
+    properties: { values: { type: ["array", "null"], items: { type: "integer" } } },
+  } });
+  assert.equal(fieldTypes(types.get("Container")!).values, "[Int!]");
+  const schema = new GraphQLSchema({ query: new GraphQLObjectType({
+    name: "Query", fields: { sample: { type: types.get("Container")! } },
+  }) });
+  const rejected = await graphql({ schema, source: "{ sample { values } }",
+    rootValue: { sample: { values: [1, null] } } });
+  assert.equal(rejected.errors?.length, 1);
+  assert.deepEqual(rejected.errors![0].path, ["sample", "values", 1]);
+  assert.deepEqual(JSON.parse(JSON.stringify(rejected.data)), { sample: { values: null } });
+});
