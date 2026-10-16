@@ -230,7 +230,11 @@ test.each(["blocks", "extrinsics", "chain_events", "account_events"])(
     assert.equal(result.blocks_pruned, 0);
     assert.deepEqual(
       await Promise.all(tables.map(blocks)),
-      before.map((rows, index) => tables[index] === "chain_detail_account_events" ? rows.filter(block => block >= accountFloor) : rows),
+      before.map((rows, index) =>
+        tables[index] === "chain_detail_account_events"
+          ? rows.filter((block) => block >= accountFloor)
+          : rows,
+      ),
     );
     assert.equal(selected.METAGRAPH_ARCHIVE.get.mock.calls.length, 4);
   },
@@ -371,40 +375,124 @@ test("mixed window ownership prunes only Neon tables and unbound D1 fails closed
   assert.equal(pg.control.connects, connections);
 });
 
-
 test("a published detail seam does not stall the older account-only retention window", async () => {
   const liveHead = 9_268_821;
   const detailFloor = 9_261_070;
   const oldAccount = 9_253_944;
   const accountKeep = liveHead - 9_000 + 1;
   for (const block of [detailFloor, liveHead])
-    await db.prepare("INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'hash',0,0,0,1,1)").bind(block).run();
-  for (const block of [oldAccount, oldAccount+9, oldAccount+10, oldAccount+119, oldAccount+120, accountKeep-1, accountKeep, detailFloor])
-    await db.prepare("INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)").bind(block).run();
-  const selected = selectedHistory({blocks:9_265_409,extrinsics:9_263_769,account_events:9_263_769,chain_events:9_261_069});
-  const before = await Promise.all(tables.filter(table => table !== "chain_detail_account_events").map(blocks));
-  const result = await pruneChainDetail({...env(),...selected},ctx);
-  assert.equal(result.ok,true);
-  assert.equal(result.keep_from,detailFloor);
-  assert.equal(result.account_events_deleted_below,oldAccount+120);
-  assert.equal(result.account_events_blocks_pruned,120);
-  assert.equal(result.blocks_pruned,0);
-  assert.deepEqual(await blocks("chain_detail_account_events"),[oldAccount+120,accountKeep-1,accountKeep,detailFloor]);
-  assert.deepEqual(await Promise.all(tables.filter(table => table !== "chain_detail_account_events").map(blocks)),before);
-  assert.equal(pg.control.connects,0);
+    await db
+      .prepare(
+        "INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'hash',0,0,0,1,1)",
+      )
+      .bind(block)
+      .run();
+  for (const block of [
+    oldAccount,
+    oldAccount + 9,
+    oldAccount + 10,
+    oldAccount + 119,
+    oldAccount + 120,
+    accountKeep - 1,
+    accountKeep,
+    detailFloor,
+  ])
+    await db
+      .prepare(
+        "INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)",
+      )
+      .bind(block)
+      .run();
+  const selected = selectedHistory({
+    blocks: 9_265_409,
+    extrinsics: 9_263_769,
+    account_events: 9_263_769,
+    chain_events: 9_261_069,
+  });
+  const before = await Promise.all(
+    tables
+      .filter((table) => table !== "chain_detail_account_events")
+      .map(blocks),
+  );
+  const result = await pruneChainDetail({ ...env(), ...selected }, ctx);
+  assert.equal(result.ok, true);
+  assert.equal(result.keep_from, detailFloor);
+  assert.equal(result.account_events_deleted_below, oldAccount + 120);
+  assert.equal(result.account_events_blocks_pruned, 120);
+  assert.equal(result.blocks_pruned, 0);
+  assert.deepEqual(await blocks("chain_detail_account_events"), [
+    oldAccount + 120,
+    accountKeep - 1,
+    accountKeep,
+    detailFloor,
+  ]);
+  assert.deepEqual(
+    await Promise.all(
+      tables
+        .filter((table) => table !== "chain_detail_account_events")
+        .map(blocks),
+    ),
+    before,
+  );
+  assert.equal(pg.control.connects, 0);
 });
 
 test("one remaining detail height does not limit an independent account prefix to ten heights", async () => {
-  const detailFloor = head-1_800;
-  const oldAccount = accountFloor-500;
-  for (const block of [detailFloor,head])
+  const detailFloor = head - 1_800;
+  const oldAccount = accountFloor - 500;
+  for (const block of [detailFloor, head])
+    await db
+      .prepare(
+        "INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'hash',0,0,0,1,1)",
+      )
+      .bind(block)
+      .run();
+  for (const block of [
+    oldAccount,
+    oldAccount + 9,
+    oldAccount + 10,
+    oldAccount + 119,
+    oldAccount + 120,
+    accountFloor,
+  ])
+    await db
+      .prepare(
+        "INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)",
+      )
+      .bind(block)
+      .run();
+  const selected = selectedHistory({
+    blocks: head,
+    extrinsics: head,
+    account_events: head,
+    chain_events: head,
+  });
+  const result = await pruneChainDetail({ ...env(), ...selected }, ctx);
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 1);
+  assert.deepEqual(await blocks("chain_detail_account_events"), [
+    oldAccount + 120,
+    accountFloor,
+  ]);
+  assert.deepEqual(await blocks("chain_detail_blocks"), [head]);
+});
+
+
+test("an account-only failure rolls back its ten-height chunk and preserves the committed prefix", async () => {
+  const detailFloor = head - 1800 + 1;
+  const oldAccount = accountFloor - 500;
+  for (const block of [detailFloor, head])
     await db.prepare("INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'hash',0,0,0,1,1)").bind(block).run();
-  for (const block of [oldAccount,oldAccount+9,oldAccount+10,oldAccount+119,oldAccount+120,accountFloor])
+  for (const block of [oldAccount, oldAccount + 9, oldAccount + 10, oldAccount + 11, oldAccount + 120, accountFloor])
     await db.prepare("INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)").bind(block).run();
+  await db.prepare(`CREATE TRIGGER reject_prune BEFORE DELETE ON chain_detail_account_events WHEN OLD.block_number = ${oldAccount + 11} BEGIN SELECT RAISE(ABORT,'account chunk rejected'); END`).run();
   const selected = selectedHistory({blocks:head,extrinsics:head,account_events:head,chain_events:head});
   const result = await pruneChainDetail({...env(),...selected},ctx);
-  assert.equal(result.ok,true);
-  assert.equal(result.blocks_pruned,1);
-  assert.deepEqual(await blocks("chain_detail_account_events"),[oldAccount+120,accountFloor]);
-  assert.deepEqual(await blocks("chain_detail_blocks"),[head]);
+  assert.equal(result.ok,false);
+  assert.equal(result.reason,"prune_failed");
+  assert.match(result.detail!,/account chunk rejected/);
+  assert.equal(result.blocks_pruned,undefined);
+  assert.equal(result.account_events_blocks_pruned,undefined);
+  assert.deepEqual(await blocks("chain_detail_account_events"),[oldAccount+10,oldAccount+11,oldAccount+120,accountFloor]);
+  assert.deepEqual(await blocks("chain_detail_blocks"),[detailFloor,head]);
 });

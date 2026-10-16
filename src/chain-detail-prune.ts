@@ -374,10 +374,12 @@ export async function pruneChainDetail(
               first + D1_PRUNE_BLOCKS_PER_TRANSACTION,
             );
             return first < last
-              ? [{
-                  text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?`,
-                  values: [first, last],
-                }]
+              ? [
+                  {
+                    text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?`,
+                    values: [first, last],
+                  },
+                ]
               : [];
           }),
         );
