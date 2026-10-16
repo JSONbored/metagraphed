@@ -1716,7 +1716,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.native_parity_capture_only && !inputs.native_parity_test_only }}
     needs: native_parity_capture_tests
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -1731,8 +1731,10 @@ jobs:
           NATIVE_PARITY_ASSETS: ${{ inputs.native_parity_assets }}
           NATIVE_PARITY_PUBLIC_KEY: ${{ inputs.native_parity_public_key }}
       - name: Retain encrypted capture only
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: sealed-native-parity-capture
-          path: native-parity-capture.encrypted.json
+          path: native-parity-capture*.encrypted.json
+          if-no-files-found: ignore
           retention-days: 1

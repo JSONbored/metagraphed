@@ -17,6 +17,8 @@ import { gzipSync } from "node:zlib";
 import {
   CAPTURE_LIMITS,
   captureNativeParity,
+  captureNativeParitySequence,
+  estimateCaptureEnvelopeBytes,
   parseCaptureAssets,
   sealCapture,
   validateCaptureManifest,
@@ -82,11 +84,14 @@ function ledger(count: number): Record<string, { hash: string; size: number }> {
   );
 }
 
-// A legal gzip comment makes the synthetic compressed object match the pinned
-// manifest size without inserting source data or depending on compression ratios.
-function exactSizeManifest(entries: unknown): Buffer {
+// A legal gzip comment makes the synthetic compressed object match a selected
+// size without inserting source data or depending on compression ratios.
+function exactSizeManifest(
+  entries: unknown,
+  bytes = CAPTURE_LIMITS.manifestBytes,
+): Buffer {
   const raw = manifest(entries);
-  const extra = CAPTURE_LIMITS.manifestBytes - raw.byteLength;
+  const extra = bytes - raw.byteLength;
   assert.ok(extra > 0);
   const header = Buffer.from(raw.subarray(0, 10));
   header[3] |= 0x10;
@@ -170,16 +175,39 @@ function captureInput(data: Uint8Array, overrides: Partial<CaptureAsset> = {}) {
   };
 }
 
+function sequenceFixture() {
+  const data = ["a", "b", "c"].map((character) => {
+    const hash = character.repeat(64);
+    return manifest({ [manifestPath(hash)]: descriptor(hash) });
+  });
+  const assets = data.map((bytes) =>
+    asset({
+      bytes: bytes.byteLength,
+      sha256: digest(bytes),
+      manifest: true,
+    }),
+  );
+  return {
+    data,
+    assets,
+    input: { ...captureInput(data[0]), assetsJson: JSON.stringify(assets) },
+  };
+}
+
 test("capture budgets preserve ordinary limits and bound the manifest exception", () => {
   assert.deepEqual(CAPTURE_LIMITS, {
     requestBytes: 4096,
     assets: 8,
     assetBytes: 524288,
     totalBytes: 2097152,
-    manifestBytes: 3236624,
+    manifestBytes: 4194304,
+    manifestAssets: 16,
+    manifestTotalBytes: 67108864,
     manifestExpandedBytes: 25165824,
     manifestEntries: 100000,
     encryptedBytes: 6291456,
+    manifestEncryptedBytes: 8388608,
+    sequenceTimeoutMs: 540000,
   });
 });
 
@@ -273,14 +301,24 @@ test("capture request JSON is byte bounded and rejects malformed envelopes", () 
   );
 });
 
-test("manifest capture is an explicit singleton with the exact pinned size", () => {
+test("manifest requests require explicit mode and bounded positive byte counts", () => {
   const pinned = asset({
     manifest: true,
     bytes: CAPTURE_LIMITS.manifestBytes,
   });
-  assert.deepEqual(parseCaptureAssets(JSON.stringify([pinned])), [pinned]);
+  for (const bytes of [
+    1,
+    3236624,
+    CAPTURE_LIMITS.manifestBytes - 1,
+    CAPTURE_LIMITS.manifestBytes,
+  ]) {
+    const bounded = { ...pinned, bytes };
+    assert.deepEqual(parseCaptureAssets(JSON.stringify([bounded])), [bounded]);
+  }
   for (const malformed of [
-    { ...pinned, bytes: CAPTURE_LIMITS.manifestBytes - 1 },
+    { ...pinned, bytes: 0 },
+    { ...pinned, bytes: -1 },
+    { ...pinned, bytes: 1.5 },
     { ...pinned, bytes: CAPTURE_LIMITS.manifestBytes + 1 },
     { ...pinned, manifest: false },
     { ...pinned, manifest: "true" },
@@ -300,13 +338,37 @@ test("manifest capture is an explicit singleton with the exact pinned size", () 
       ),
     REFUSED,
   );
-  assert.throws(
-    () =>
-      parseCaptureAssets(
-        JSON.stringify([pinned, { ...pinned, sha256: "b".repeat(64) }]),
-      ),
-    REFUSED,
+  const second = { ...pinned, sha256: "b".repeat(64) };
+  assert.deepEqual(parseCaptureAssets(JSON.stringify([pinned, second])), [
+    pinned,
+    second,
+  ]);
+});
+
+test("manifest batches accept sixteen unique objects and reject excess or mixed inputs", () => {
+  const assets = Array.from({ length: 16 }, (_, index) =>
+    asset({
+      partition: index.toString(16),
+      sha256: index.toString(16).repeat(64),
+      bytes: CAPTURE_LIMITS.manifestBytes,
+      manifest: true,
+    }),
   );
+  assert.deepEqual(parseCaptureAssets(JSON.stringify(assets)), assets);
+  for (const invalid of [
+    [...assets, asset({ ...assets[0], sha256: "f".repeat(63) + "0" })],
+    assets.map((entry, index) =>
+      index === 15 ? { ...entry, bytes: 5 * 1024 * 1024 } : entry,
+    ),
+    [assets[0], assets[0]],
+    [asset(), assets[1]],
+    [assets[0], asset({ sha256: "b".repeat(64) })],
+  ]) {
+    assert.throws(
+      () => parseCaptureAssets(JSON.stringify(invalid)),
+      REFUSED,
+    );
+  }
 });
 
 test("manifest validation accepts the native flat ledger and both path kinds", () => {
@@ -519,6 +581,40 @@ test("sealing refuses oversized plaintext and oversized encrypted serialization"
   }
 });
 
+test("manifest sealing enforces its own plaintext and serialized envelope cap", () => {
+  for (const length of [
+    7 * 1024 * 1024,
+    CAPTURE_LIMITS.manifestEncryptedBytes,
+  ]) {
+    assert.throws(
+      () =>
+        sealCapture(
+          [{ ...captured(), manifest: true, data: "a".repeat(length) }],
+          publicKeyBase64,
+        ),
+      REFUSED,
+    );
+  }
+});
+
+test("mixed or multiple assets retain the ordinary encryption cap", () => {
+  const largeManifest: CapturedAsset = {
+    ...captured(),
+    manifest: true,
+    data: "a".repeat(5 * 1024 * 1024),
+  };
+  const small = captured(Buffer.from("synthetic second asset"));
+  const smallManifest: CapturedAsset = { ...small, manifest: true };
+  for (const assets of [
+    [largeManifest, small],
+    [small, largeManifest],
+    [largeManifest, smallManifest],
+    [smallManifest, largeManifest],
+  ]) {
+    assert.throws(() => sealCapture(assets, publicKeyBase64), REFUSED);
+  }
+});
+
 test("capture sends one pinned identity request and returns an encrypted summary", async (t) => {
   const data = Buffer.from("synthetic native bytes");
   const input = captureInput(data);
@@ -572,6 +668,12 @@ test("capture sends one pinned identity request and returns an encrypted summary
     version: 1,
     assets: [captured(data)],
   });
+  assert.ok(
+    estimateCaptureEnvelopeBytes(
+      parseCaptureAssets(input.assetsJson),
+      publicKeyBase64,
+    ) >= Buffer.byteLength(result.serialized),
+  );
   assert.ok(!JSON.stringify(result.summary).includes(SECRET));
   assert.ok(!JSON.stringify(result.summary).includes(digest(data)));
 });
@@ -597,7 +699,7 @@ test("capture accepts a streamed ordinary response without a length header", asy
   assert.equal(cancellations, 0);
 });
 
-test("capture validates the full exact-size manifest before sealing it", async () => {
+test("capture validates and seals a manifest at the full byte ceiling", async () => {
   const hash = "a".repeat(64);
   const data = exactSizeManifest({
     [manifestPath(hash)]: descriptor(hash),
@@ -626,8 +728,46 @@ test("capture validates the full exact-size manifest before sealing it", async (
     { ...captured(data), manifest: true },
   ]);
   assert.ok(
-    Buffer.byteLength(result.serialized) <= CAPTURE_LIMITS.encryptedBytes,
+    Buffer.byteLength(result.serialized) > CAPTURE_LIMITS.encryptedBytes,
   );
+  assert.ok(
+    Buffer.byteLength(result.serialized) <=
+      CAPTURE_LIMITS.manifestEncryptedBytes,
+  );
+  const estimate = estimateCaptureEnvelopeBytes(
+    parseCaptureAssets(captureInput(data, { manifest: true }).assetsJson),
+    publicKeyBase64,
+  );
+  assert.ok(estimate >= Buffer.byteLength(result.serialized));
+  assert.ok(estimate <= CAPTURE_LIMITS.manifestEncryptedBytes);
+});
+
+test("manifest capture accepts smaller pinned sizes without changing the envelope", async () => {
+  const hash = "a".repeat(64);
+  const entries = { [manifestPath(hash)]: descriptor(hash) };
+  for (const data of [
+    manifest(entries),
+    exactSizeManifest(entries, 3236624),
+  ]) {
+    let calls = 0;
+    const fetcher: typeof fetch = async () => {
+      calls += 1;
+      return responseFor(data);
+    };
+    const result = await captureNativeParity({
+      ...captureInput(data, { manifest: true }),
+      fetcher,
+    });
+    assert.equal(calls, 1);
+    assert.equal(result.summary.bytes, data.byteLength);
+    assert.deepEqual(decrypt(result.serialized).assets, [
+      { ...captured(data), manifest: true },
+    ]);
+    assert.ok(
+      Buffer.byteLength(result.serialized) <=
+        CAPTURE_LIMITS.manifestEncryptedBytes,
+    );
+  }
 });
 
 test("capture refuses bad HTTP, headers, bytes and fetch failures without retries", async () => {
@@ -714,6 +854,289 @@ test("capture validates request, recipient key and secret before any network rea
     );
   }
   assert.equal(calls, 0);
+});
+
+test("the single-object core rejects a manifest batch before fetching", async () => {
+  const fixture = sequenceFixture();
+  let calls = 0;
+  const fetcher: typeof fetch = async () => {
+    calls += 1;
+    return responseFor(fixture.data[0]);
+  };
+  await assert.rejects(
+    captureNativeParity({ ...fixture.input, fetcher }),
+    REFUSED,
+  );
+  assert.equal(calls, 0);
+});
+
+test("manifest sequences await each encrypted sink before fetching the next object", async () => {
+  const fixture = sequenceFixture();
+  const events: string[] = [];
+  let calls = 0;
+  const fetcher: typeof fetch = async (_url, init) => {
+    const index = calls++;
+    events.push(`fetch:${index}`);
+    const request = JSON.parse(String(init?.body)) as CaptureAsset;
+    assert.equal(request.sha256, fixture.assets[index].sha256);
+    assert.equal(request.bytes, fixture.assets[index].bytes);
+    assert.equal(request.manifest, true);
+    return responseFor(fixture.data[index]);
+  };
+  const summary = await captureNativeParitySequence({
+    ...fixture.input,
+    fetcher,
+    async sink(result, index) {
+      events.push(`sink:${index}`);
+      assert.deepEqual(decrypt(result.serialized).assets, [
+        { ...captured(fixture.data[index]), manifest: true },
+      ]);
+      assert.equal(result.summary.assets, 1);
+      await Promise.resolve();
+      events.push(`retained:${index}`);
+    },
+  });
+  assert.equal(calls, 3);
+  assert.deepEqual(events, [
+    "fetch:0",
+    "sink:0",
+    "retained:0",
+    "fetch:1",
+    "sink:1",
+    "retained:1",
+    "fetch:2",
+    "sink:2",
+    "retained:2",
+  ]);
+  assert.deepEqual(summary, {
+    version: 1,
+    status: "encrypted",
+    assets: 3,
+    bytes: fixture.data.reduce((total, bytes) => total + bytes.byteLength, 0),
+    keySha256,
+  });
+});
+
+test("manifest sequence preflight rejects every invalid request before any fetch or sink", async () => {
+  const fixture = sequenceFixture();
+  const maximum = Array.from({ length: 16 }, (_, index) =>
+    asset({
+      sha256: index.toString(16).repeat(64),
+      bytes: CAPTURE_LIMITS.manifestBytes,
+      manifest: true,
+    }),
+  );
+  let fetches = 0;
+  let sinks = 0;
+  const fetcher: typeof fetch = async () => {
+    fetches += 1;
+    return responseFor(fixture.data[0]);
+  };
+  for (const invalid of [
+    {
+      assetsJson: JSON.stringify([
+        fixture.assets[0],
+        { ...fixture.assets[1], bytes: CAPTURE_LIMITS.manifestBytes + 1 },
+      ]),
+    },
+    { assetsJson: JSON.stringify([...fixture.assets, fixture.assets[0]]) },
+    { assetsJson: JSON.stringify([asset()]) },
+    { assetsJson: JSON.stringify([fixture.assets[0], asset()]) },
+    {
+      assetsJson: JSON.stringify([
+        ...maximum,
+        { ...maximum[0], sha256: "f".repeat(63) + "0" },
+      ]),
+    },
+    {
+      assetsJson: JSON.stringify(
+        maximum.map((entry, index) =>
+          index === 15 ? { ...entry, bytes: 5 * 1024 * 1024 } : entry,
+        ),
+      ),
+    },
+    { publicKeyBase64: "synthetic-invalid-key" },
+    { secret: "" },
+  ]) {
+    await assert.rejects(
+      captureNativeParitySequence({
+        ...fixture.input,
+        ...invalid,
+        fetcher,
+        async sink() {
+          sinks += 1;
+        },
+      }),
+      REFUSED,
+    );
+  }
+  assert.equal(fetches, 0);
+  assert.equal(sinks, 0);
+});
+
+test("manifest sequences stop after a failed fetch or encrypted sink", async () => {
+  const fixture = sequenceFixture();
+  for (const failure of ["fetch", "sink"]) {
+    let fetches = 0;
+    const retained: number[] = [];
+    const fetcher: typeof fetch = async () => {
+      const index = fetches++;
+      if (failure === "fetch" && index === 1) {
+        throw new Error("synthetic-provider-detail");
+      }
+      return responseFor(fixture.data[index]);
+    };
+    await assert.rejects(
+      captureNativeParitySequence({
+        ...fixture.input,
+        fetcher,
+        async sink(_result, index) {
+          retained.push(index);
+          if (failure === "sink") {
+            throw new Error("synthetic-sink-detail");
+          }
+        },
+      }),
+      REFUSED,
+    );
+    assert.equal(fetches, failure === "fetch" ? 2 : 1);
+    assert.deepEqual(retained, [0]);
+  }
+});
+
+test("manifest sequences refuse the exact deadline after fetch or sink", async () => {
+  const fixture = sequenceFixture();
+  for (const boundary of ["fetch", "sink"]) {
+    let elapsed = 0;
+    let fetches = 0;
+    let sinks = 0;
+    const fetcher: typeof fetch = async () => {
+      fetches += 1;
+      if (boundary === "fetch") elapsed = CAPTURE_LIMITS.sequenceTimeoutMs;
+      return responseFor(fixture.data[0]);
+    };
+    await assert.rejects(
+      captureNativeParitySequence({
+        ...fixture.input,
+        fetcher,
+        budgetNow: () => elapsed,
+        async sink() {
+          sinks += 1;
+          elapsed = CAPTURE_LIMITS.sequenceTimeoutMs;
+        },
+      }),
+      REFUSED,
+    );
+    assert.equal(fetches, 1);
+    assert.equal(sinks, boundary === "fetch" ? 0 : 1);
+  }
+});
+
+test("manifest sequences refuse an exhausted budget before the first fetch", async () => {
+  const fixture = sequenceFixture();
+  let clockReads = 0;
+  let fetches = 0;
+  let sinks = 0;
+  const fetcher: typeof fetch = async () => {
+    fetches += 1;
+    return responseFor(fixture.data[0]);
+  };
+  await assert.rejects(
+    captureNativeParitySequence({
+      ...fixture.input,
+      fetcher,
+      budgetNow: () =>
+        clockReads++ === 0 ? 0 : CAPTURE_LIMITS.sequenceTimeoutMs,
+      async sink() {
+        sinks += 1;
+      },
+    }),
+    REFUSED,
+  );
+  assert.equal(fetches, 0);
+  assert.equal(sinks, 0);
+});
+
+test("the hard sequence timer rejects a stalled sink and prevents another fetch", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  t.mock.method(AbortSignal, "timeout", () => new AbortController().signal);
+  const fixture = sequenceFixture();
+  const sinkStarted = Promise.withResolvers<void>();
+  const releaseSink = Promise.withResolvers<void>();
+  const sinkResumed = Promise.withResolvers<void>();
+  let fetches = 0;
+  let sinks = 0;
+  const fetcher: typeof fetch = async () => {
+    fetches += 1;
+    return responseFor(fixture.data[0]);
+  };
+  const sequence = captureNativeParitySequence({
+    ...fixture.input,
+    fetcher,
+    budgetNow: () => 0,
+    async sink() {
+      sinks += 1;
+      sinkStarted.resolve();
+      await releaseSink.promise;
+      sinkResumed.resolve();
+    },
+  });
+  const refused = assert.rejects(sequence, REFUSED);
+  try {
+    await sinkStarted.promise;
+    t.mock.timers.tick(CAPTURE_LIMITS.sequenceTimeoutMs);
+    await refused;
+    assert.equal(fetches, 1);
+    assert.equal(sinks, 1);
+  } finally {
+    releaseSink.resolve();
+  }
+  await sinkResumed.promise;
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(fetches, 1);
+  assert.equal(sinks, 1);
+});
+
+test("the hard sequence timer aborts a stalled fetch without reaching the sink", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  t.mock.method(AbortSignal, "timeout", () => new AbortController().signal);
+  const fixture = sequenceFixture();
+  const fetchStarted = Promise.withResolvers<AbortSignal>();
+  let fetches = 0;
+  let sinks = 0;
+  const fetcher: typeof fetch = (_url, init) => {
+    fetches += 1;
+    const signal = init?.signal;
+    assert.ok(signal instanceof AbortSignal);
+    const pending = new Promise<Response>((_resolve, reject) => {
+      signal.addEventListener(
+        "abort",
+        () => reject(new Error("synthetic-fetch-aborted")),
+        { once: true },
+      );
+    });
+    fetchStarted.resolve(signal);
+    return pending;
+  };
+  const sequence = captureNativeParitySequence({
+    ...fixture.input,
+    fetcher,
+    budgetNow: () => 0,
+    async sink() {
+      sinks += 1;
+    },
+  });
+  const refused = assert.rejects(sequence, REFUSED);
+  const signal = await fetchStarted.promise;
+  assert.equal(signal.aborted, false);
+  t.mock.timers.tick(CAPTURE_LIMITS.sequenceTimeoutMs);
+  await refused;
+  assert.equal(signal.aborted, true);
+  assert.equal(fetches, 1);
+  assert.equal(sinks, 0);
+  await Promise.resolve();
+  assert.equal(fetches, 1);
 });
 
 test("CLI failures emit only the fixed refusal code and retain no artifact", () => {

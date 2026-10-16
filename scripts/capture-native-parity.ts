@@ -17,10 +17,14 @@ export const CAPTURE_LIMITS = Object.freeze({
   assets: 8,
   assetBytes: 524288,
   totalBytes: 2 * 1024 * 1024,
-  manifestBytes: 3236624,
+  manifestBytes: 4 * 1024 * 1024,
+  manifestAssets: 16,
+  manifestTotalBytes: 64 * 1024 * 1024,
   manifestExpandedBytes: 24 * 1024 * 1024,
   manifestEntries: 100000,
   encryptedBytes: 6 * 1024 * 1024,
+  manifestEncryptedBytes: 8 * 1024 * 1024,
+  sequenceTimeoutMs: 9 * 60 * 1000,
 });
 
 export interface CaptureAsset {
@@ -63,10 +67,13 @@ export function parseCaptureAssets(text: string): CaptureAsset[] {
   } catch {
     refuse();
   }
+  if (!Array.isArray(parsed) || parsed.length < 1) refuse();
+  const manifestMode = parsed.some(
+    (value) => record(value) && value.manifest === true,
+  );
   if (
-    !Array.isArray(parsed) ||
-    parsed.length < 1 ||
-    parsed.length > CAPTURE_LIMITS.assets
+    parsed.length >
+    (manifestMode ? CAPTURE_LIMITS.manifestAssets : CAPTURE_LIMITS.assets)
   ) {
     refuse();
   }
@@ -76,6 +83,7 @@ export function parseCaptureAssets(text: string): CaptureAsset[] {
   for (const value of parsed) {
     if (!record(value)) refuse();
     const manifest = value.manifest === true;
+    if (manifest !== manifestMode) refuse();
     if (
       !exactKeys(
         value,
@@ -101,9 +109,7 @@ export function parseCaptureAssets(text: string): CaptureAsset[] {
       refuse();
     }
     if (manifest) {
-      if (parsed.length !== 1 || value.bytes !== CAPTURE_LIMITS.manifestBytes) {
-        refuse();
-      }
+      if (value.bytes > CAPTURE_LIMITS.manifestBytes) refuse();
     } else if (value.bytes > CAPTURE_LIMITS.assetBytes) refuse();
     total += value.bytes;
     seen.add(value.sha256);
@@ -114,7 +120,14 @@ export function parseCaptureAssets(text: string): CaptureAsset[] {
       ...(manifest ? { manifest: true as const } : {}),
     });
   }
-  if (!assets[0].manifest && total > CAPTURE_LIMITS.totalBytes) refuse();
+  if (
+    total >
+    (manifestMode
+      ? CAPTURE_LIMITS.manifestTotalBytes
+      : CAPTURE_LIMITS.totalBytes)
+  ) {
+    refuse();
+  }
   return assets;
 }
 
@@ -182,7 +195,72 @@ function capturePublicKey(encoded: string): KeyObject {
   }
 }
 
+function encryptedLimit(assets: readonly CaptureAsset[]): number {
+  return assets.length === 1 && assets[0].manifest === true
+    ? CAPTURE_LIMITS.manifestEncryptedBytes
+    : CAPTURE_LIMITS.encryptedBytes;
+}
+
+function envelopeBytes(
+  assets: readonly CaptureAsset[],
+  publicKey: KeyObject,
+) {
+  const base64Bytes = (bytes: number) => 4 * Math.ceil(bytes / 3);
+  // ISO dates use at most 27 characters, including extended years. Base64
+  // needs no JSON escapes, so only its measured length is added below.
+  const metadata = JSON.stringify({
+    version: 1,
+    assets: assets.map((asset) => ({
+      ...asset,
+      observedAt: "0".repeat(27),
+      data: "",
+    })),
+  });
+  const plaintextBytes =
+    Buffer.byteLength(metadata) +
+    assets.reduce((total, asset) => total + base64Bytes(asset.bytes), 0);
+  const keySha256 = "0".repeat(64);
+  const aad = Buffer.from(
+    JSON.stringify({
+      version: 1,
+      keySha256,
+      purpose: "metagraphed-native-parity-capture",
+    }),
+  ).toString("base64");
+  const envelope = JSON.stringify({
+    version: 1,
+    keySha256,
+    aad,
+    iv: "0".repeat(16),
+    tag: "0".repeat(24),
+    wrappedKey: "",
+    ciphertext: "",
+  });
+  const modulusLength = publicKey.asymmetricKeyDetails?.modulusLength;
+  if (!modulusLength) refuse();
+  return (
+    Buffer.byteLength(envelope) +
+    base64Bytes(plaintextBytes) +
+    base64Bytes(Math.ceil(modulusLength / 8))
+  );
+}
+
+export function estimateCaptureEnvelopeBytes(
+  assets: readonly CaptureAsset[],
+  publicKeyBase64: string,
+): number {
+  return envelopeBytes(assets, capturePublicKey(publicKeyBase64));
+}
+
+function preflightEnvelope(
+  assets: readonly CaptureAsset[],
+  publicKey: KeyObject,
+) {
+  if (envelopeBytes(assets, publicKey) > encryptedLimit(assets)) refuse();
+}
+
 function sealWithKey(assets: readonly CapturedAsset[], publicKey: KeyObject) {
+  const limit = encryptedLimit(assets);
   const keySha256 = createHash("sha256")
     .update(publicKey.export({ type: "spki", format: "der" }))
     .digest("hex");
@@ -190,7 +268,7 @@ function sealWithKey(assets: readonly CapturedAsset[], publicKey: KeyObject) {
   const iv = randomBytes(12);
   const plaintext = Buffer.from(JSON.stringify({ version: 1, assets }));
   try {
-    if (plaintext.byteLength > CAPTURE_LIMITS.encryptedBytes) refuse();
+    if (plaintext.byteLength > limit) refuse();
     const aad = Buffer.from(
       JSON.stringify({
         version: 1,
@@ -221,7 +299,7 @@ function sealWithKey(assets: readonly CapturedAsset[], publicKey: KeyObject) {
       ciphertext: ciphertext.toString("base64"),
     };
     const serialized = JSON.stringify(encrypted);
-    if (Buffer.byteLength(serialized) > CAPTURE_LIMITS.encryptedBytes) refuse();
+    if (Buffer.byteLength(serialized) > limit) refuse();
     return { serialized, keySha256 };
   } catch {
     refuse();
@@ -238,19 +316,25 @@ export function sealCapture(
   return sealWithKey(assets, capturePublicKey(publicKeyBase64));
 }
 
-export async function captureNativeParity(input: {
+interface CaptureInput {
   assetsJson: string;
   publicKeyBase64: string;
   secret: string;
   fetcher?: typeof fetch;
   now?: () => Date;
-}) {
+  signal?: AbortSignal;
+}
+
+export async function captureNativeParity(input: CaptureInput) {
   const assets = parseCaptureAssets(input.assetsJson);
+  if (assets[0].manifest && assets.length !== 1) refuse();
   const publicKey = capturePublicKey(input.publicKeyBase64);
   if (!input.secret) refuse();
+  preflightEnvelope(assets, publicKey);
   const fetcher = input.fetcher ?? fetch;
   const captured: CapturedAsset[] = [];
   for (const asset of assets) {
+    if (input.signal?.aborted) refuse();
     let response: Response;
     try {
       response = await fetcher(
@@ -258,7 +342,9 @@ export async function captureNativeParity(input: {
         {
           method: "POST",
           redirect: "error",
-          signal: AbortSignal.timeout(30000),
+          signal: input.signal
+            ? AbortSignal.any([AbortSignal.timeout(30000), input.signal])
+            : AbortSignal.timeout(30000),
           headers: {
             "content-type": "application/json",
             "accept-encoding": "identity",
@@ -332,18 +418,109 @@ export async function captureNativeParity(input: {
   };
 }
 
+export async function captureNativeParitySequence(
+  input: Omit<CaptureInput, "signal"> & {
+    sink: (
+      result: Awaited<ReturnType<typeof captureNativeParity>>,
+      index: number,
+    ) => Promise<void>;
+    budgetNow?: () => number;
+  },
+) {
+  const budgetNow = input.budgetNow ?? (() => performance.now());
+  const startedAt = budgetNow();
+  const assets = parseCaptureAssets(input.assetsJson);
+  if (!assets.every((asset) => asset.manifest === true)) refuse();
+  const publicKey = capturePublicKey(input.publicKeyBase64);
+  if (!input.secret || typeof input.sink !== "function") refuse();
+  for (const asset of assets) preflightEnvelope([asset], publicKey);
+  const controller = new AbortController();
+  const checkBudget = () => {
+    const elapsed = budgetNow() - startedAt;
+    if (
+      !Number.isFinite(elapsed) ||
+      elapsed < 0 ||
+      elapsed >= CAPTURE_LIMITS.sequenceTimeoutMs ||
+      controller.signal.aborted
+    ) {
+      refuse();
+    }
+    return CAPTURE_LIMITS.sequenceTimeoutMs - elapsed;
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error("Native parity capture refused"));
+    }, checkBudget());
+  });
+  async function run() {
+    for (const [index, asset] of assets.entries()) {
+      checkBudget();
+      const result = await captureNativeParity({
+        assetsJson: JSON.stringify([asset]),
+        publicKeyBase64: input.publicKeyBase64,
+        secret: input.secret,
+        fetcher: input.fetcher,
+        now: input.now,
+        signal: controller.signal,
+      });
+      checkBudget();
+      // Keep only one sealed envelope in flight. A failed sink stops the batch
+      // before its next read, and no plaintext is written on any path.
+      await input.sink(result, index);
+      checkBudget();
+    }
+    return {
+      version: 1 as const,
+      status: "encrypted" as const,
+      assets: assets.length,
+      bytes: assets.reduce((total, asset) => total + asset.bytes, 0),
+      keySha256: createHash("sha256")
+        .update(publicKey.export({ type: "spki", format: "der" }))
+        .digest("hex"),
+    };
+  }
+  try {
+    return await Promise.race([deadline, run()]);
+  } catch {
+    refuse();
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    controller.abort();
+  }
+}
+
 async function main() {
   try {
-    const result = await captureNativeParity({
+    const input = {
       assetsJson: process.env.NATIVE_PARITY_ASSETS ?? "",
       publicKeyBase64: process.env.NATIVE_PARITY_PUBLIC_KEY ?? "",
       secret: process.env.STATE_EXPORT_SECRET ?? "",
-    });
-    await writeFile("native-parity-capture.encrypted.json", result.serialized, {
-      mode: 0o600,
-      flag: "wx",
-    });
-    console.log(JSON.stringify(result.summary));
+    };
+    const assets = parseCaptureAssets(input.assetsJson);
+    if (assets[0].manifest) {
+      const summary = await captureNativeParitySequence({
+        ...input,
+        sink: async (result, index) => {
+          const suffix = String(index).padStart(2, "0");
+          await writeFile(
+            `native-parity-capture-${suffix}.encrypted.json`,
+            result.serialized,
+            { mode: 0o600, flag: "wx" },
+          );
+        },
+      });
+      console.log(JSON.stringify(summary));
+    } else {
+      const result = await captureNativeParity(input);
+      await writeFile(
+        "native-parity-capture.encrypted.json",
+        result.serialized,
+        { mode: 0o600, flag: "wx" },
+      );
+      console.log(JSON.stringify(result.summary));
+    }
   } catch {
     // The CLI is a final boundary even for unexpected runtime/filesystem errors.
     console.error("native_parity_capture_refused");
