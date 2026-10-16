@@ -74,7 +74,7 @@ function tablesInSql(source: string): Set<string> {
   return found;
 }
 
-/** Resolve literal owners without executing modules or trusting unexported names. */
+/** Resolve literal owners without executing imported modules. */
 function declaredConstant(
   source: string,
   ident: string,
@@ -84,18 +84,20 @@ function declaredConstant(
 ): string[] {
   const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const variables = ast.statements.filter(ts.isVariableStatement);
-  const locals = variables.flatMap((stmt) =>
-    stmt.declarationList.declarations
-      .filter((decl) => ts.isIdentifier(decl.name) && decl.name.text === ident)
-      .map((decl) => ({ stmt, decl })),
-  );
+  const locals = variables.flatMap((stmt) => {
+    const declarations = stmt.declarationList.declarations;
+    const matching = declarations.filter((decl) => {
+      return ts.isIdentifier(decl.name) && decl.name.text === ident;
+    });
+    return matching.map((decl) => ({ stmt, decl }));
+  });
   const importStatements = ast.statements.filter(ts.isImportDeclaration);
   const imports = importStatements.flatMap((stmt) => {
     const bindings = stmt.importClause?.namedBindings;
     if (!bindings || !ts.isNamedImports(bindings)) return [];
-    return bindings.elements
-      .filter((spec) => spec.name.text === ident)
-      .map((spec) => ({ stmt, spec }));
+    const specs = bindings.elements;
+    const matching = specs.filter((spec) => spec.name.text === ident);
+    return matching.map((spec) => ({ stmt, spec }));
   });
   assert.equal(
     locals.length + imports.length,
@@ -106,10 +108,10 @@ function declaredConstant(
   if (local) {
     assert.ok(local.stmt.declarationList.flags & ts.NodeFlags.Const);
     if (exported) {
-      assert.ok(
-        local.stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword),
-        `${ident} is not exported by ${file}`,
-      );
+      const exportKind = ts.SyntaxKind.ExportKeyword;
+      const modifiers = local.stmt.modifiers;
+      const isExported = modifiers?.some((m) => m.kind === exportKind);
+      assert.ok(isExported, `${ident} is not exported by ${file}`);
     }
     const value = local.decl.initializer;
     assert.ok(
@@ -119,13 +121,14 @@ function declaredConstant(
         ts.isArrayLiteralExpression(value.expression),
       `${ident} is not a literal const table tuple in ${file}`,
     );
-    const tables = value.expression.elements.map((element) => {
-      assert.ok(ts.isStringLiteral(element), `${ident} has a nonliteral table`);
-      assert.match(element.text, /^[a-z_][a-z0-9_]*$/i);
-      return element.text.toLowerCase();
+    const tables = value.expression.elements.map((table) => {
+      assert.ok(ts.isStringLiteral(table), `${ident} has a nonliteral table`);
+      assert.match(table.text, /^[a-z_][a-z0-9_]*$/i);
+      return table.text.toLowerCase();
     });
     assert.ok(tables.length > 0, `${ident} is empty`);
-    assert.equal(new Set(tables).size, tables.length, `${ident} repeats a table`);
+    const unique = new Set(tables);
+    assert.equal(unique.size, tables.length, `${ident} repeats a table`);
     return tables;
   }
   // One direct named relative import is enough for shared owners. Re-exports,
@@ -241,17 +244,22 @@ describe("every ported reader declares the tables it reads", () => {
       assert.throws(() => tablesDeclared(source, file, load));
     }
     assert.throws(() => tablesDeclared("readStore(env, MISSING_TABLES)"));
-    assert.throws(() =>
-      tablesDeclared(source, file, () => {
-        throw new Error("missing owner module");
-      }),
-    );
+    const missingModule = () => {
+      throw new Error("missing owner module");
+    };
+    assert.throws(() => {
+      tablesDeclared(source, file, missingModule);
+    });
     assert.throws(
-      () => tablesDeclared(source.replace('"./owners.ts"', '"owners"'), file),
+      () => {
+        tablesDeclared(source.replace('"./owners.ts"', '"owners"'), file);
+      },
       /ownership imports must be relative/,
     );
     assert.throws(
-      () => tablesDeclared(source.replace("import {", "import type {"), file),
+      () => {
+        tablesDeclared(source.replace("import {", "import type {"), file);
+      },
       /ownership imports must carry values/,
     );
   });
