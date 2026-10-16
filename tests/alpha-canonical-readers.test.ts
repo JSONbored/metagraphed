@@ -26,6 +26,10 @@ import {
 const COLDKEY = "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e";
 const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
 const STAMP = 1_785_634_702_670;
+const ACCOUNT_READERS = [
+  loadAccountPositionsFromStore,
+  loadAccountPositionsColdTier,
+];
 let sqlite: InstanceType<typeof DatabaseSync>;
 let seen: string[];
 let afterRead: ((sql: string) => void) | undefined;
@@ -82,24 +86,23 @@ function environment(): Env {
 }
 function capture(spec: 454 | 478 | 479 = 478, at = STAMP, block = 100) {
   const runtime = ALPHA_RUNTIMES[spec];
-  sqlite
-    .prepare("INSERT OR IGNORE INTO alpha_runtime_metadata VALUES(?,?,?)")
-    .run(runtime.metadata, runtime.code, spec);
-  sqlite
-    .prepare(
-      `INSERT INTO alpha_snapshot_passes VALUES(
-    ?,?, ?,?,?,?, ?,1,1,1,1,?,1)`,
-    )
-    .run(
-      at,
-      block,
-      `0x${String(block).padStart(64, "0")}`,
-      ALPHA_GENESIS,
-      spec,
-      runtime.code,
-      runtime.metadata,
-      at + 1,
-    );
+  const metadata = sqlite.prepare(
+    "INSERT OR IGNORE INTO alpha_runtime_metadata VALUES(?,?,?)",
+  );
+  metadata.run(runtime.metadata, runtime.code, spec);
+  const sql = `INSERT INTO alpha_snapshot_passes VALUES(
+    ?,?, ?,?,?,?, ?,1,1,1,1,?,1)`;
+  const pass = sqlite.prepare(sql);
+  pass.run(
+    at,
+    block,
+    `0x${String(block).padStart(64, "0")}`,
+    ALPHA_GENESIS,
+    spec,
+    runtime.code,
+    runtime.metadata,
+    at + 1,
+  );
 }
 function position(
   rao: string | null = "2500000000",
@@ -162,10 +165,7 @@ describe("canonical Alpha quantities across existing readers", () => {
       capture(spec);
       position();
       const env = environment();
-      for (const load of [
-        loadAccountPositionsFromStore,
-        loadAccountPositionsColdTier,
-      ]) {
+      for (const load of ACCOUNT_READERS) {
         const result = await load(env, COLDKEY);
         assert.ok(result);
         assert.equal(result?.positions[0].stake_tao, 2.5);
@@ -175,10 +175,8 @@ describe("canonical Alpha quantities across existing readers", () => {
       }
       assert.equal((await loadSubnetHolders(store(), 7)).rows[0].alpha, 2.5);
       assert.equal((await loadChainHolders(store())).rows[0].total_alpha, 2.5);
-      assert.equal(
-        (await loadNominatorPositions(store(), HOTKEY)).rows[0].alpha,
-        2.5,
-      );
+      const nominators = await loadNominatorPositions(store(), HOTKEY);
+      assert.equal(nominators.rows[0].alpha, 2.5);
       const holdings = await topHoldersHoldings(env);
       assert.ok(holdings);
       assert.deepEqual(holdings?.cells.get(COLDKEY), {
@@ -202,10 +200,7 @@ describe("canonical Alpha quantities across existing readers", () => {
         "UPDATE alpha_runtime_metadata SET spec_version=478 WHERE sha256=?",
       )
       .run(ALPHA_RUNTIMES[479].metadata);
-    for (const load of [
-      loadAccountPositionsFromStore,
-      loadAccountPositionsColdTier,
-    ]) {
+    for (const load of ACCOUNT_READERS) {
       const result = await load(environment(), COLDKEY);
       assert.ok(result);
       assert.equal(result?.position_count, 0);
@@ -237,11 +232,8 @@ describe("canonical Alpha quantities across existing readers", () => {
   });
 
   test("installed schema with no selected capture never exposes legacy quantities", async () => {
-    assert.equal(
-      (await loadAccountPositionsFromStore(environment(), COLDKEY))?.degraded
-        ?.reason,
-      POSITIONS_DEGRADED_UNPRICEABLE,
-    );
+    const account = await loadAccountPositionsFromStore(environment(), COLDKEY);
+    assert.equal(account?.degraded?.reason, POSITIONS_DEGRADED_UNPRICEABLE);
     assert.equal(
       (await loadSubnetHolders(store(), 7)).decline,
       "pool_totals_unproven",
@@ -254,36 +246,34 @@ describe("canonical Alpha quantities across existing readers", () => {
       (await loadNominatorPositions(store(), HOTKEY)).decline,
       "pool_totals_unproven",
     );
-    assert.deepEqual((await topHoldersHoldings(environment()))?.sorts, [
-      "free_tao",
-    ]);
+    const holdings = await topHoldersHoldings(environment());
+    assert.deepEqual(holdings?.sorts, ["free_tao"]);
   });
 
   test("self-stake coexistence declines only the affected account, validator and subnet scopes", async () => {
     capture();
     position();
-    for (const [
-      coldkey,
-      hotkey,
-      netuid,
-      accountDeclines,
-      validatorDeclines,
-      subnetDeclines,
-    ] of [
+    const cases = [
       [COLDKEY, "other-hotkey", 8, true, false, false],
       ["other-coldkey", HOTKEY, 8, false, true, false],
       ["other-coldkey", "other-hotkey", 7, false, false, true],
-    ] as const) {
+    ] as const;
+    for (const scenario of cases) {
+      const [
+        coldkey,
+        hotkey,
+        netuid,
+        accountDeclines,
+        validatorDeclines,
+        subnetDeclines,
+      ] = scenario;
       sqlite.exec("DELETE FROM nominator_positions WHERE source='self-stake'");
       sqlite
         .prepare(
           "INSERT INTO nominator_positions VALUES(?,?,?,?,?,'self-stake')",
         )
         .run(coldkey, hotkey, netuid, 1, STAMP);
-      for (const load of [
-        loadAccountPositionsFromStore,
-        loadAccountPositionsColdTier,
-      ]) {
+      for (const load of ACCOUNT_READERS) {
         const result = await load(environment(), COLDKEY);
         assert.ok(result);
         assert.equal(
@@ -303,9 +293,8 @@ describe("canonical Alpha quantities across existing readers", () => {
         (await loadChainHolders(store())).decline,
         "pool_totals_unproven",
       );
-      assert.deepEqual((await topHoldersHoldings(environment()))?.sorts, [
-        "free_tao",
-      ]);
+      const holdings = await topHoldersHoldings(environment());
+      assert.deepEqual(holdings?.sorts, ["free_tao"]);
     }
   });
 
@@ -314,10 +303,7 @@ describe("canonical Alpha quantities across existing readers", () => {
     async (spec) => {
       capture(spec);
       position(null);
-      for (const load of [
-        loadAccountPositionsFromStore,
-        loadAccountPositionsColdTier,
-      ]) {
+      for (const load of ACCOUNT_READERS) {
         const result = await load(environment(), COLDKEY);
         assert.ok(result);
         assert.equal(result.position_count, 0);
@@ -336,34 +322,24 @@ describe("canonical Alpha quantities across existing readers", () => {
         (await loadNominatorPositions(store(), HOTKEY)).decline,
         "pool_totals_unproven",
       );
-      assert.deepEqual((await topHoldersHoldings(environment()))?.sorts, [
-        "free_tao",
-      ]);
+      const holdings = await topHoldersHoldings(environment());
+      assert.deepEqual(holdings?.sorts, ["free_tao"]);
     },
   );
 
   test("a genuinely absent additive schema retains the existing reader during rollout", async () => {
     sqlite.exec("DROP TABLE alpha_snapshot_passes");
-    assert.equal(
-      (await loadAccountPositionsFromStore(environment(), COLDKEY))
-        ?.total_stake_alpha,
-      900,
-    );
-    assert.equal(
-      (await loadAccountPositionsColdTier(environment(), COLDKEY))
-        ?.total_stake_alpha,
-      900,
-    );
+    const env = environment();
+    const hot = await loadAccountPositionsFromStore(env, COLDKEY);
+    const cold = await loadAccountPositionsColdTier(env, COLDKEY);
+    assert.equal(hot?.total_stake_alpha, 900);
+    assert.equal(cold?.total_stake_alpha, 900);
     assert.equal((await loadSubnetHolders(store(), 7)).rows[0].alpha, 900);
     assert.equal((await loadChainHolders(store())).rows[0].total_alpha, 900);
-    assert.equal(
-      (await loadNominatorPositions(store(), HOTKEY)).rows[0].alpha,
-      900,
-    );
-    assert.equal(
-      (await topHoldersHoldings(environment()))?.cells.get(COLDKEY)?.delegated_tao,
-      1800,
-    );
+    const nominators = await loadNominatorPositions(store(), HOTKEY);
+    assert.equal(nominators.rows[0].alpha, 900);
+    const holdings = await topHoldersHoldings(environment());
+    assert.equal(holdings?.cells.get(COLDKEY)?.delegated_tao, 1800);
   });
 
   test("a capture switching during a read declines instead of returning its older qualified quantities", async () => {
@@ -420,10 +396,8 @@ describe("canonical Alpha quantities across existing readers", () => {
       await loadAccountPositionsFromStore(environment(), COLDKEY),
       null,
     );
-    assert.equal(
-      await loadAccountPositionsColdTier(environment(), COLDKEY),
-      null,
-    );
+    const cold = await loadAccountPositionsColdTier(environment(), COLDKEY);
+    assert.equal(cold, null);
     assert.equal(await topHoldersHoldings(environment()), null);
   });
 
@@ -443,11 +417,10 @@ describe("canonical Alpha quantities across existing readers", () => {
       const body = await response.json();
       AccountPositionsArtifactSchema.parse(body.data);
       assert.equal(body.data.degraded.reason, POSITIONS_DEGRADED_UNPRICEABLE);
-      assert.equal(
-        sqlite.prepare("SELECT share_fraction FROM alpha_snapshot_rows").get()
-          ?.share_fraction,
-        fraction,
-      );
+      const row = sqlite
+        .prepare("SELECT share_fraction FROM alpha_snapshot_rows")
+        .get();
+      assert.equal(row?.share_fraction, fraction);
     }
   });
 

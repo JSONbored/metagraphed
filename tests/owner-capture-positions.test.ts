@@ -44,16 +44,11 @@ function reader(options: ReaderOptions = {}): ReadStoreDb {
       if (sql.includes("sqlite_master")) {
         const table = { name: "alpha_snapshot_passes" };
         value = options.schema === false ? null : table;
-      } else if (sql.includes("AS unqualified"))
-        value = {
-          unqualified:
-            options.selfStake ||
-            options.nullQuantity ||
-            (options.lateSelfStake && qualificationReads++ > 0)
-              ? 1
-              : 0,
-        };
-      else {
+      } else if (sql.includes("AS unqualified")) {
+        const late = options.lateSelfStake && qualificationReads++ > 0;
+        const unqualified = options.selfStake || options.nullQuantity || late;
+        value = { unqualified: unqualified ? 1 : 0 };
+      } else {
         value = {
           ...capture(options.spec),
           captured_at: options.race && reads++ > 0 ? 101 : 100,
@@ -75,13 +70,12 @@ const noLegacy = async (): Promise<Row[]> => {
 test("owner split preserves pre-schema legacy readers", async () => {
   const legacy = async () => [position];
   assert.deepEqual(await ownerCapturePositions(null, 23, legacy), [position]);
-  assert.deepEqual(
-    await ownerCapturePositions(reader({ schema: false }), 23, legacy),
-    [position],
-  );
+  const beforeSchema = reader({ schema: false });
+  const result = await ownerCapturePositions(beforeSchema, 23, legacy);
+  assert.deepEqual(result, [position]);
 });
 
-test("owner split selects exact canonical rows and refuses unqualified, shadowed or racing quantities", async () => {
+test("owner split refuses unqualified, shadowed or racing quantities", async () => {
   const valid = await ownerCapturePositions(reader(), 23, noLegacy);
   assert.deepEqual(valid, [position]);
   for (const options of [

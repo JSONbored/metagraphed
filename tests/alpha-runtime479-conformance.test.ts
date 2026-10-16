@@ -48,14 +48,17 @@ function scale(value: Decimal | null): string | null {
   return "0x" + bytes.toString("hex");
 }
 
-function assertDecimal(actual: Decimal | null, expected: OracleDecimal | null) {
-  assert.deepEqual(
-    actual,
-    expected === null
-      ? null
-      : { mantissa: expected.mantissa, exponent: expected.exponent },
-  );
-  assert.equal(scale(actual), expected?.scale_hex ?? null);
+function assertDecimal(value: Decimal | null, oracle: OracleDecimal | null) {
+  if (oracle === null) {
+    assert.equal(value, null);
+    assert.equal(scale(value), null);
+    return;
+  }
+  assert.deepEqual(value, {
+    mantissa: oracle.mantissa,
+    exponent: oracle.exponent,
+  });
+  assert.equal(scale(value), oracle.scale_hex);
 }
 
 test("runtime479 conformance retains all synthetic and unchanged historical inputs", () => {
@@ -69,11 +72,9 @@ test("runtime479 conformance retains all synthetic and unchanged historical inpu
     4,
   );
   for (const spec of [454, 478]) {
+    const fixturePath = `./fixtures/alpha-runtime/frozen-${spec}.json`;
     const original = JSON.parse(
-      readFileSync(
-        new URL(`./fixtures/alpha-runtime/frozen-${spec}.json`, import.meta.url),
-        "utf8",
-      ),
+      readFileSync(new URL(fixturePath, import.meta.url), "utf8"),
     ) as { members: { evidence: unknown }[] };
     for (const [index, member] of original.members.entries()) {
       const crosscheck = fixture.cases.find(

@@ -101,17 +101,29 @@ export async function alphaCaptureState(
   const tableName = (schema as { name?: unknown } | null)?.name;
   if (tableName !== "alpha_snapshot_passes")
     return { available: false, capture: null };
-  const parsed = captureSchema.safeParse(
-    await db.first(`SELECT p.*,m.sha256 AS retained_metadata_sha256,
-      m.code_hash AS retained_code_hash,m.spec_version AS retained_spec_version
-      FROM (SELECT * FROM alpha_snapshot_passes WHERE selected=1
-        ORDER BY block_number DESC,captured_at DESC LIMIT 1) p
-      LEFT JOIN alpha_runtime_metadata m ON m.sha256=p.metadata_sha256`),
-  );
+  const statement = `SELECT p.*,m.sha256 AS retained_metadata_sha256,
+    m.code_hash AS retained_code_hash,m.spec_version AS retained_spec_version
+    FROM (SELECT * FROM alpha_snapshot_passes WHERE selected=1
+      ORDER BY block_number DESC,captured_at DESC LIMIT 1) p
+    LEFT JOIN alpha_runtime_metadata m ON m.sha256=p.metadata_sha256`;
+  const selected = await db.first(statement);
+  const parsed = captureSchema.safeParse(selected);
   if (!parsed.success) return { available: true, capture: null };
   const p = parsed.data;
   const spec = alphaValuationSpec(p.spec_version);
   const runtime = spec === null ? null : ALPHA_RUNTIMES[spec];
+  const quantityQualified = Boolean(
+    runtime &&
+      p.genesis_hash === ALPHA_GENESIS &&
+      p.code_hash === runtime.code &&
+      p.metadata_sha256 === runtime.metadata &&
+      p.retained_metadata_sha256 === p.metadata_sha256 &&
+      p.retained_code_hash === p.code_hash &&
+      p.retained_spec_version === p.spec_version &&
+      p.expected_rows === p.received_rows &&
+      p.expected_chunks === p.received_chunks &&
+      p.completed_at >= p.captured_at,
+  );
   return {
     available: true,
     capture: {
@@ -122,18 +134,7 @@ export async function alphaCaptureState(
       spec_version: p.spec_version,
       code_hash: p.code_hash,
       metadata_sha256: p.metadata_sha256,
-      quantityQualified: Boolean(
-        runtime &&
-          p.genesis_hash === ALPHA_GENESIS &&
-          p.code_hash === runtime.code &&
-          p.metadata_sha256 === runtime.metadata &&
-          p.retained_metadata_sha256 === p.metadata_sha256 &&
-          p.retained_code_hash === p.code_hash &&
-          p.retained_spec_version === p.spec_version &&
-          p.expected_rows === p.received_rows &&
-          p.expected_chunks === p.received_chunks &&
-          p.completed_at >= p.captured_at,
-      ),
+      quantityQualified,
     },
   };
 }

@@ -95,23 +95,27 @@ export interface ChainHoldersRead {
  * Exported because the scoping, the partitioning and the prefix boundaries are
  * the whole contract and all three are decidable from the string.
  */
-export function chainHoldersSql(alphaCapturedAt: number, exact = false): string {
+export function chainHoldersSql(capturedAt: number, exact = false): string {
   const prefixes = CHAIN_HOLDERS_RANKS.map(
     (n) => `SUM(CASE WHEN rn <= ${n} THEN alpha ELSE 0 END) AS top${n}_alpha`,
   ).join(", ");
+  let amount = " SUM(np.share_fraction * ha.total_alpha) AS alpha,";
+  let source =
+    " FROM nominator_positions np" +
+    " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
+    " AND ha.netuid = np.netuid" +
+    ` AND ha.captured_at = ${capturedAt}`;
+  if (exact) {
+    amount = " SUM(CAST(np.alpha_rao AS REAL) / 1000000000.0) AS alpha,";
+    source = " FROM alpha_snapshot_rows np WHERE np.captured_at = ";
+    source += capturedAt;
+  }
   return (
     "WITH holder AS (" +
     "SELECT np.netuid AS netuid, np.coldkey AS coldkey," +
-    (exact
-      ? " SUM(CAST(np.alpha_rao AS REAL) / 1000000000.0) AS alpha,"
-      : " SUM(np.share_fraction * ha.total_alpha) AS alpha,") +
+    amount +
     " MAX(np.captured_at) AS positions_captured_at" +
-    (exact
-      ? ` FROM alpha_snapshot_rows np WHERE np.captured_at = ${alphaCapturedAt}`
-      : " FROM nominator_positions np" +
-        " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
-        " AND ha.netuid = np.netuid" +
-        ` AND ha.captured_at = ${alphaCapturedAt}`) +
+    source +
     " GROUP BY np.netuid, np.coldkey), " +
     "ranked AS (SELECT netuid, coldkey, alpha, positions_captured_at," +
     " ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY alpha DESC) AS rn" +

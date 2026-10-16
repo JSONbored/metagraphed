@@ -20,21 +20,14 @@ export async function ownerCapturePositions(
     if (!state.available) return legacy();
     const capture = state.capture;
     if (!capture?.quantityQualified || !db.query || !db.first) return [];
-    if (
-      await alphaPositionsUnqualified(db, capture.captured_at, {
-        column: "netuid",
-        value: netuid,
-      })
-    )
-      return [];
+    const capturedAt = capture.captured_at;
+    const scope = { column: "netuid" as const, value: netuid };
+    if (await alphaPositionsUnqualified(db, capturedAt, scope)) return [];
     const rows = await db.query<Row>(
       "SELECT coldkey,hotkey,share_fraction FROM alpha_snapshot_rows WHERE netuid=? AND captured_at=?",
-      [netuid, capture.captured_at],
+      [netuid, capturedAt],
     );
-    const unqualified = await alphaPositionsUnqualified(db, capture.captured_at, {
-      column: "netuid",
-      value: netuid,
-    });
+    const unqualified = await alphaPositionsUnqualified(db, capturedAt, scope);
     const after = await alphaCaptureState(db);
     if (
       unqualified ||

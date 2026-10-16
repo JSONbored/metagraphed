@@ -16,9 +16,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, test } from "vitest";
-import {
-  tablesInMigrations,
-} from "../scripts/validate-declared-tables-exist.ts";
+import * as d1Tables from "../scripts/validate-declared-tables-exist.ts";
 import { alphaCaptureState } from "../src/alpha-capture-reader.ts";
 import { partitionStoreTables } from "../src/d1-store.ts";
 import { ALPHA_PRICING_TABLES } from "../src/read-store-tables.ts";
@@ -135,7 +133,7 @@ describe("every reader dependency exists in its actual store", () => {
   });
 
   test("native dependencies require DDL and their single owner", () => {
-    const nativeCreated = tablesInMigrations("migrations/d1");
+    const nativeCreated = d1Tables.tablesInMigrations("migrations/d1");
     for (const family of NATIVE_ONLY_FAMILIES) {
       assert.ok(created.has(family.owner));
       const env = { D1_STATE_TABLES: family.owner };

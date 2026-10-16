@@ -20,8 +20,11 @@ export const ALPHA_RUNTIMES = {
 } as const;
 
 /** Every adapter is qualified separately from structural identity admission. */
-export function alphaValuationSpec(specVersion: number): 454 | 478 | 479 | null {
-  return specVersion === 454 || specVersion === 478 || specVersion === 479
-    ? specVersion
-    : null;
+export function alphaValuationSpec(
+  specVersion: number,
+): 454 | 478 | 479 | null {
+  if (specVersion === 454) return 454;
+  if (specVersion === 478) return 478;
+  if (specVersion === 479) return 479;
+  return null;
 }
