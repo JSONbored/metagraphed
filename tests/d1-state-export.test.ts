@@ -19,7 +19,7 @@ const runtime = new Miniflare({
     "DB",
     "LEGACY",
     "UPGRADED",
-    "PARTIAL",
+    "PARTIAL_RAO",
     "PARTIAL_EVIDENCE",
     "UNKNOWN",
   ],
@@ -74,15 +74,18 @@ beforeAll(async () => {
 });
 afterAll(async () => runtime.dispose());
 
-test("lossless exports preserve both approved receiver schema generations and refuse partial evidence DDL", async () => {
+test("position exports accept only complete approved generations", async () => {
   const fixture = JSON.parse(
     readFileSync(
       new URL("./fixtures/lossless-state-export-v1.json", import.meta.url),
       "utf8",
     ),
   );
-  const original = fixture.rows[0] as { storage: string; value: string }[];
+  type Cell = { storage: string; value: string | null };
+  const original = fixture.rows[0] as Cell[];
   const table = "nominator_positions";
+  const baseColumns = fixture.columns as { name: string }[];
+  const columns = baseColumns.map((column) => column.name);
   const alphaColumns = ["alpha_rao", "alpha_evidence"].map((name) => ({
     name,
     type: "text",
@@ -91,19 +94,20 @@ test("lossless exports preserve both approved receiver schema generations and re
     primary_key: 0,
   }));
   const evidence =
-    '{"share":{"v2":{"mantissa":"9007199254740993","exponent":-65}},"pool_epoch":"9007199254740993","member_epoch":"0001"}';
-  for (const name of [
-    "LEGACY",
-    "UPGRADED",
-    "PARTIAL",
-    "PARTIAL_EVIDENCE",
-    "UNKNOWN",
-  ]) {
+    '{"share":{"v2":{"mantissa":"9007199254740993","exponent":"-65"}},"pool_epoch":"9007199254740993","member_epoch":"0001"}';
+  const alphaRao = ((1n << 64n) - 1n).toString();
+  const generations = {
+    LEGACY: [],
+    UPGRADED: ["alpha_rao", "alpha_evidence"],
+    PARTIAL_RAO: ["alpha_rao"],
+    PARTIAL_EVIDENCE: ["alpha_evidence"],
+    UNKNOWN: ["alpha_rao", "alpha_evidence", "unreviewed"],
+  };
+  for (const [name, additions] of Object.entries(generations)) {
     const database = await runtime.getD1Database(name);
     for (const file of [
       "0010_ledger_state.sql",
       "0016_archive_export_revisions.sql",
-      ...(name === "UPGRADED" ? ["0039_alpha_runtime_receiver.sql"] : []),
     ]) {
       const statements = readFileSync(
         new URL(`../migrations/d1/${file}`, import.meta.url),
@@ -114,22 +118,22 @@ test("lossless exports preserve both approved receiver schema generations and re
         .map((sql) => database.prepare(sql));
       await database.batch(statements);
     }
-    if (name.startsWith("PARTIAL") || name === "UNKNOWN") {
-      const additions =
-        name === "PARTIAL"
-          ? ["alpha_rao"]
-          : name === "PARTIAL_EVIDENCE"
-            ? ["alpha_evidence"]
-            : ["alpha_rao", "alpha_evidence", "unreviewed"];
-      for (const column of additions) {
-        const sql = `ALTER TABLE nominator_positions ADD COLUMN ${column} TEXT`;
-        await database.prepare(sql).run();
-      }
+    for (const column of additions) {
+      const sql = `ALTER TABLE nominator_positions ADD COLUMN ${column} TEXT`;
+      await database.prepare(sql).run();
+    }
+    const overrides = { D1_STATE: database };
+    if (name !== "LEGACY" && name !== "UPGRADED") {
       for (const encoding of [undefined, "lossless-v1"]) {
         for (const kind of ["schema", "rows"]) {
           const response = await handleD1StateExport(
-            req({ table, kind, encoding }),
-            { ...env(), D1_STATE: database },
+            req({
+              table,
+              kind,
+              encoding,
+              columns: [...columns, ...additions],
+            }),
+            { ...env(), ...overrides },
           );
           assert.equal(response.status, 503);
           if (name !== "UNKNOWN")
@@ -138,22 +142,21 @@ test("lossless exports preserve both approved receiver schema generations and re
       }
       continue;
     }
+    const insertSql =
+      "INSERT INTO nominator_positions" +
+      "(coldkey,hotkey,netuid,share_fraction,captured_at,shares,source) " +
+      "VALUES(?,?,CAST(? AS INTEGER),CAST(? AS REAL),CAST(? AS INTEGER),?,?)";
     await database
-      .prepare(
-        "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at,shares,source) VALUES(?,?,CAST(? AS INTEGER),CAST(? AS REAL),CAST(? AS INTEGER),?,?)",
-      )
+      .prepare(insertSql)
       .bind(...original.map((cell) => cell.value))
       .run();
-    if (name === "UPGRADED")
-      await database
-        .prepare(
-          "UPDATE nominator_positions SET alpha_rao=NULL,share_fraction=NULL,alpha_evidence=?",
-        )
-        .bind(evidence)
-        .run();
+    if (name === "UPGRADED") {
+      const sql = "UPDATE nominator_positions SET alpha_rao=?,alpha_evidence=?";
+      await database.prepare(sql).bind(alphaRao, evidence).run();
+    }
     const schema = await get(
       { table, kind: "schema", encoding: "lossless-v1" },
-      { D1_STATE: database },
+      overrides,
     );
     assert.deepEqual(
       schema.columns,
@@ -161,31 +164,54 @@ test("lossless exports preserve both approved receiver schema generations and re
         ? fixture.columns
         : [...fixture.columns, ...alphaColumns],
     );
-    const page = await get(
-      {
-        table,
-        kind: "rows",
-        encoding: "lossless-v1",
-        columns: schema.columns.map((column) => column.name),
-        revision: schema.revision,
-      },
-      { D1_STATE: database },
-    );
-    const upgraded = original.map((cell, index) =>
-      index === 3 ? { storage: "null", value: null } : cell,
-    );
-    assert.deepEqual(page.rows, [
-      name === "LEGACY"
-        ? original
-        : [
-            ...upgraded,
-            { storage: "null", value: null },
-            { storage: "text", value: evidence },
-          ],
-    ]);
+    const body = {
+      table,
+      kind: "rows",
+      encoding: "lossless-v1",
+      columns: schema.columns.map((column) => column.name),
+      revision: schema.revision,
+    };
+    const page = await get(body, overrides);
+    const exactAlpha = [
+      { storage: "text", value: alphaRao },
+      { storage: "text", value: evidence },
+    ];
+    const expected =
+      name === "LEGACY" ? original : [...original, ...exactAlpha];
+    assert.deepEqual(page.rows, [expected]);
     assert.deepEqual(page.row_keys, fixture.row_keys.slice(0, 1));
     assert.equal(schema.row_count, 1);
     assert.equal(page.next_cursor, null);
+    const ordinarySchema = await get({ table, kind: "schema" }, overrides);
+    const ordinaryColumns = schema.columns.map((column) => ({
+      name: column.name,
+      type: column.type,
+    }));
+    assert.deepEqual(ordinarySchema.columns, ordinaryColumns);
+    const ordinaryBody = { ...body, encoding: undefined };
+    const ordinary = await get(ordinaryBody, overrides);
+    const values = expected.map((cell) =>
+      cell.storage === "integer" || cell.storage === "real"
+        ? Number(cell.value)
+        : cell.value,
+    );
+    assert.deepEqual(ordinary.rows, [values]);
+    if (name === "UPGRADED") {
+      const sql =
+        "UPDATE nominator_positions SET alpha_rao=NULL,share_fraction=NULL";
+      await database.prepare(sql).run();
+      const unqualified = await get(body, overrides);
+      const nullable = original.map((cell, index) =>
+        index === 3 ? { storage: "null", value: null } : cell,
+      );
+      assert.deepEqual(unqualified.rows, [
+        [
+          ...nullable,
+          { storage: "null", value: null },
+          { storage: "text", value: evidence },
+        ],
+      ]);
+    }
   }
 });
 
