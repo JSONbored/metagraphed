@@ -108,7 +108,23 @@ export const DECODE_LAG_BLOCKS = 2_400;
  */
 export const CAPTURE_LAG_BLOCKS = 900;
 
+/** Bounded observations only; upstream readers do not expose driver causes. */
+export type SeamCause =
+  | "decode_watermark_unavailable"
+  | "decode_clock_unavailable"
+  | "decode_watermark_stale"
+  | "raw_capture_unavailable"
+  | "decode_lag"
+  | "chain_head_unavailable"
+  | "capture_head_lag"
+  | "indexed_census_unavailable"
+  | "serving_seam_unavailable"
+  | "indexed_census_noncontiguous"
+  | "seam_ahead"
+  | "watermark_publish_lag";
+
 export interface SeamVerdict {
+  causes: SeamCause[];
   reasons: string[];
   summary: Record<string, unknown>;
 }
@@ -119,7 +135,7 @@ export interface SeamInput {
   /** What the decoder published, or null when nothing could be read. */
   watermark: DecodeWatermark | null;
   /** Exact serving boundary when the retained copy publishes separately. */
-  servingSeam?: number;
+  servingSeam?: number | null;
   /** raw_capture_state.last_contiguous_block, or null when unreadable. */
   capturedThrough: number | null;
   /**
@@ -160,40 +176,50 @@ export function evaluateDecodeSeam({
   now,
 }: SeamInput): SeamVerdict {
   const reasons: string[] = [];
+  const causes: SeamCause[] = [];
   // Exactly what the serving path computes, so this watchdog is judging the
   // number requests actually route on rather than a reconstruction of it.
   const seam =
-    servingSeam ?? Math.max(floor, watermark?.decodedThrough ?? floor);
+    servingSeam === undefined
+      ? Math.max(floor, watermark?.decodedThrough ?? floor)
+      : servingSeam;
   const age =
     watermark && watermark.updatedAt !== null
       ? now - watermark.updatedAt
       : null;
 
+  if (seam === null) {
+    causes.push("serving_seam_unavailable");
+    reasons.push("the selected retained copy cannot establish a serving seam");
+  }
   if (watermark === null) {
+    causes.push("decode_watermark_unavailable");
     reasons.push(
-      `no decode watermark could be read from ${DECODE_WATERMARK_KEY}: the seam is pinned at the configured floor ${floor} ` +
-        "and cannot advance, so every block the decoder adds from here on serves with null author/spec_version/event_count " +
-        "and no extrinsics or events at all",
+      `no decode watermark could be read from ${DECODE_WATERMARK_KEY}: decoder progress beyond the configured floor ${floor} is unmeasurable`,
     );
   } else if (age === null) {
+    causes.push("decode_clock_unavailable");
     reasons.push(
       "the decode watermark carries no usable `updated_at`, so a stopped decoder is indistinguishable from a quiet one — " +
         "every completed run must rewrite this field even when it appended nothing",
     );
   } else if (age > DECODE_STALE_MS) {
+    causes.push("decode_watermark_stale");
     reasons.push(
       `the decode watermark is ${hours(age)}h old (threshold ${hours(DECODE_STALE_MS)}h): the decode lane has stopped publishing. ` +
-        `Retained decoded-history coverage is frozen at ${seam}; recent hot-tier block details may still be available`,
+        `The decoder last published through ${watermark.decodedThrough}; recent hot-tier block details may still be available`,
     );
   }
 
   if (capturedThrough === null) {
+    causes.push("raw_capture_unavailable");
     // Not fatal to the seam, but it is the yardstick for rules 3 and 5, so a
     // silent skip would hide a lag rather than report one.
     reasons.push(
       "could not read raw_capture_state.last_contiguous_block — the seam's lag behind the raw capture is unmeasurable this tick",
     );
-  } else if (capturedThrough - seam > DECODE_LAG_BLOCKS) {
+  } else if (seam !== null && capturedThrough - seam > DECODE_LAG_BLOCKS) {
+    causes.push("decode_lag");
     reasons.push(
       `the seam trails the raw capture by ${capturedThrough - seam} block(s) (threshold ${DECODE_LAG_BLOCKS}): ` +
         `blocks ${seam + 1}..${capturedThrough} are captured as raw bytes but not decoded, so their extrinsics and events read as empty`,
@@ -205,6 +231,7 @@ export function evaluateDecodeSeam({
   //    following a watermark that is falling behind. See CAPTURE_LAG_BLOCKS for
   //    why the bound is the retention window rather than the cron cadence.
   if (chainHead === null) {
+    causes.push("chain_head_unavailable");
     reasons.push(
       "could not read the chain head from blocks_head — whether the raw capture is keeping up with the chain is unmeasurable this tick",
     );
@@ -212,6 +239,7 @@ export function evaluateDecodeSeam({
     capturedThrough !== null &&
     chainHead - capturedThrough > CAPTURE_LAG_BLOCKS
   ) {
+    causes.push("capture_head_lag");
     const behind = chainHead - capturedThrough;
     reasons.push(
       `the raw capture trails the chain head by ${behind} block(s) (threshold ${CAPTURE_LAG_BLOCKS}, ~${hours(behind * 12_000)}h of chain): ` +
@@ -220,28 +248,31 @@ export function evaluateDecodeSeam({
     );
   }
 
+  const summary = {
+    seam,
+    floor,
+    watermark_decoded_through: watermark?.decodedThrough ?? null,
+    watermark_age_ms: age,
+    watermark_per_table: watermark?.perTable ?? null,
+    captured_through: capturedThrough,
+    capture_lag:
+      capturedThrough === null || seam === null ? null : capturedThrough - seam,
+    chain_head: chainHead,
+    head_lag:
+      capturedThrough === null || chainHead === null
+        ? null
+        : chainHead - capturedThrough,
+    lakehouse_lo: lo,
+    lakehouse_hi: hi,
+    lakehouse_count: count,
+    contiguous: null as boolean | null,
+  };
   if (lo === null || hi === null || count === null) {
-    // A failed read is not a passing check: staying quiet here would make an
-    // unreachable lakehouse indistinguishable from a healthy one.
+    causes.push("indexed_census_unavailable");
     reasons.push(
-      "could not measure chain.blocks — the lakehouse is unreachable or the query failed",
+      "could not measure chain.blocks — the indexed census is unavailable",
     );
-    return {
-      reasons,
-      summary: {
-        seam,
-        floor,
-        lo,
-        hi,
-        count,
-        captured_through: capturedThrough,
-        chain_head: chainHead,
-        head_lag:
-          capturedThrough === null || chainHead === null
-            ? null
-            : chainHead - capturedThrough,
-      },
-    };
+    return { causes, reasons, summary };
   }
 
   // count == hi - lo + 1 proves contiguity: no gaps AND no duplicates. A gap
@@ -249,13 +280,15 @@ export function evaluateDecodeSeam({
   // reads to a source that does not have them at all.
   const expected = hi - lo + 1;
   if (count !== expected) {
+    causes.push("indexed_census_noncontiguous");
     reasons.push(
       `chain.blocks is NOT contiguous: ${lo}..${hi} should hold ${expected} rows but holds ${count} ` +
         `(${expected - count} missing) — a gap below the seam is unreadable from either tier`,
     );
   }
 
-  if (seam > hi) {
+  if (seam !== null && seam > hi) {
+    causes.push("seam_ahead");
     // The one direction that answers WRONGLY rather than thinly. It should be
     // unreachable -- the ledger property is written in the same Iceberg commit
     // as the rows -- so if it happens the publisher's contract is broken.
@@ -263,7 +296,8 @@ export function evaluateDecodeSeam({
       `the seam is ${seam - hi} block(s) AHEAD of the lakehouse: it resolves to ${seam} but chain.blocks stops at ${hi}. ` +
         `Blocks ${hi + 1}..${seam} route to a lakehouse that cannot answer, so they read as missing`,
     );
-  } else if (hi - seam > DECODE_LAG_BLOCKS) {
+  } else if (seam !== null && hi - seam > DECODE_LAG_BLOCKS) {
+    causes.push("watermark_publish_lag");
     // Some lead is normal and self-correcting: the loader appends chain.blocks
     // before the other three tables and the watermark is the min across all
     // four, so a run in flight always shows a little. A sustained lead means
@@ -275,27 +309,9 @@ export function evaluateDecodeSeam({
   }
 
   return {
+    causes,
     reasons,
-    summary: {
-      seam,
-      floor,
-      watermark_decoded_through: watermark?.decodedThrough ?? null,
-      watermark_age_ms: age,
-      watermark_per_table: watermark?.perTable ?? null,
-      captured_through: capturedThrough,
-      capture_lag: capturedThrough === null ? null : capturedThrough - seam,
-      chain_head: chainHead,
-      // The capture's own lag, distinct from `capture_lag` above (which is the
-      // DECODER's lag behind the capture). Both can be healthy while this is not.
-      head_lag:
-        capturedThrough === null || chainHead === null
-          ? null
-          : chainHead - capturedThrough,
-      lakehouse_lo: lo,
-      lakehouse_hi: hi,
-      lakehouse_count: count,
-      contiguous: count === expected,
-    },
+    summary: { ...summary, contiguous: count === expected },
   };
 }
 
@@ -309,9 +325,9 @@ async function capturedThrough(env: unknown): Promise<number | null> {
   // raw_capture_state is Neon's outright, so this follows it (#10154). The
   // seam this watchdog measures is capture-vs-lakehouse; against a frozen
   // watermark it reports a gap that only ever widens.
-  const db = readStore(env, ["raw_capture_state"]);
-  if (!db?.first) return null;
   try {
+    const db = readStore(env, ["raw_capture_state"]);
+    if (!db?.first) return null;
     return await watermarkRead(db)();
   } catch {
     return null;
@@ -327,9 +343,9 @@ async function capturedThrough(env: unknown): Promise<number | null> {
  * itself.
  */
 async function chainHead(env: unknown): Promise<number | null> {
-  const db = readStore(env, ["blocks_head"]);
-  if (!db?.first) return null;
   try {
+    const db = readStore(env, ["blocks_head"]);
+    if (!db?.first) return null;
     const row = (await db.first(
       "SELECT MAX(block_number) AS head FROM blocks_head",
     )) as { head?: unknown } | null;
@@ -374,59 +390,39 @@ export async function runLakehouseSeamWatchdog(
       ...verdict,
       checked_at: (deps.now ?? Date.now)(),
     });
-  const unavailable = async () => {
-    await recordVerdict({
-      verdict: "unknown",
-      age_ms: null,
-      detail: "lakehouse_unavailable",
-    });
-    return {
-      ok: false,
-      skipped: true,
-      reason: "lakehouse_unavailable",
-      seam: blocksSeamFloor(env),
-    };
-  };
-  const census = await loadIndexedBlockCensus(env);
-  const rows = census == null ? null : [census];
-  // r2SqlQuery returns null when the lakehouse is UNCONFIGURED as well as when
-  // a query fails. Unconfigured is not a fault -- self-hosters and CI have no
-  // lakehouse -- so it is reported as skipped rather than as drift.
-  if (rows === null) {
-    // ...but it is equally not a MEASUREMENT, and `unknown` is the vocabulary's
-    // own word for that. Recording it is what distinguishes a lakehouse this
-    // watchdog cannot reach from a seam it checked and found correct -- before
-    // this, both produced exactly nothing.
-    return unavailable();
-  }
-
-  const row = rows[0];
-  // `fresh` deliberately bypasses the serving memo: staleness is the thing
-  // being measured, and a value up to a TTL old would understate it.
-  const watermark = await resolveDecodeWatermark(env, { fresh: true });
-  let servingSeam: number;
+  // Every source is independent. An unavailable census must not suppress the
+  // capture/head comparison or the decoder clock. None substitutes for coverage.
+  const [census, watermark, captured, head] = await Promise.all([
+    loadIndexedBlockCensus(env).catch(() => null),
+    resolveDecodeWatermark(env, { fresh: true }),
+    capturedThrough(env),
+    chainHead(env),
+  ]);
+  const floor = blocksSeamFloor(env);
+  let servingSeam: number | null;
   try {
     servingSeam = publishedBlocksSeam(
-      blocksSeamFloor(env),
+      floor,
       watermark?.decodedThrough,
       (env as RetainedBlocksEnv | undefined)?.RETAINED_BLOCKS_NETWORKS?.split(
         ",",
       ).includes("mainnet")
-        ? num(row?.hi)
+        ? num(census?.hi)
         : undefined,
     );
   } catch {
-    return unavailable();
+    // A selected owner may not fall back to a floor or decoder watermark.
+    servingSeam = null;
   }
-  const { reasons, summary } = evaluateDecodeSeam({
-    floor: blocksSeamFloor(env),
+  const { causes, reasons, summary } = evaluateDecodeSeam({
+    floor,
     watermark,
     servingSeam,
-    capturedThrough: await capturedThrough(env),
-    chainHead: await chainHead(env),
-    lo: num(row?.lo),
-    hi: num(row?.hi),
-    count: num(row?.n),
+    capturedThrough: captured,
+    chainHead: head,
+    lo: num(census?.lo),
+    hi: num(census?.hi),
+    count: num(census?.n),
     now: (deps.now ?? Date.now)(),
   });
 
@@ -438,13 +434,39 @@ export async function runLakehouseSeamWatchdog(
   // every tick and reported to nobody, on any channel. Its siblings have had
   // the notification half since #9330 and the durable half since #9340/#9431;
   // this one was simply never wired to either.
-  if (reasons.length > 0) {
+  const coverageUnknown = census == null || servingSeam === null;
+  const independentDrift =
+    causes.includes("decode_watermark_stale") ||
+    causes.includes("capture_head_lag") ||
+    (watermark !== null && causes.includes("decode_lag"));
+  // Unknown coverage cannot erase a positively measured independent fault.
+  // Notify before persistence: a full verdict store may reject this tick too.
+  // Missing configuration alone still produces unknown, without a drift page.
+  if (reasons.length > 0 && (!coverageUnknown || independentDrift)) {
     const record = deps.recordExceptionEvent ?? recordExceptionEvent;
     await record(env, {
       error: new Error(`lakehouse decode seam drifted: ${reasons.join(", ")}`),
       route: "watchdog:lakehouse-seam",
       errorCode: "stale_lane",
     }).catch(() => false);
+  }
+
+  if (coverageUnknown) {
+    // Retain the unknown verdict, with bounded typed observations and measured
+    // values. A healthy independent leg cannot certify unreadable coverage.
+    await recordVerdict({
+      verdict: "unknown",
+      age_ms: null,
+      detail: JSON.stringify({ causes, reasons, ...summary }),
+    });
+    return {
+      ok: false,
+      skipped: true,
+      reason: "lakehouse_unavailable",
+      causes,
+      reasons,
+      ...summary,
+    };
   }
 
   // PostHog is the notification path, never the record: it drops $exception
@@ -474,6 +496,7 @@ export async function runLakehouseSeamWatchdog(
     // found something. Same convention as the freshness watchdog.
     ok: true,
     drifted: reasons.length > 0,
+    causes,
     reasons,
     ...summary,
   };
