@@ -1,0 +1,33 @@
+name: Prepare health evidence patch
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 236079eb9462c01d8a4ae5f21e712326bf5b2766
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install
+        uses: ./.github/actions/install-deps
+      - name: Format changed tests
+        run: |
+          npx --no-install prettier --write tests/lakehouse-seam-watchdog.test.ts tests/top-holders-staleness-watchdog.test.ts
+          git diff -- tests/lakehouse-seam-watchdog.test.ts tests/top-holders-staleness-watchdog.test.ts > /tmp/health-format.patch
+      - name: Upload formatter patch
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: health-format-patch
+          path: /tmp/health-format.patch
+          if-no-files-found: error
+          retention-days: 7
