@@ -41,6 +41,11 @@ function d1TableOwners(env: unknown): Set<string> {
       ? value.split(",").map((name) => name.trim())
       : [],
   );
+  if (
+    !owners.has("nominator_positions") &&
+    ALPHA_OWNER_TABLES.some((table) => owners.has(table))
+  )
+    throw new Error("Alpha evidence requires its nominator_positions owner");
   for (const table of ALPHA_OWNER_TABLES) {
     owners.delete(table);
     if (owners.has("nominator_positions")) owners.add(table);

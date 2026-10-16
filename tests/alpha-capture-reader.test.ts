@@ -140,6 +140,10 @@ test("Neon handles skip native schema discovery while partial native ownership f
     capture: null,
   });
   await assert.rejects(
+    alphaCaptureStateFromOwner({ D1_STATE_TABLES: "alpha_snapshot_rows" }),
+    /requires its nominator_positions owner/,
+  );
+  await assert.rejects(
     alphaCaptureStateFromOwner({ D1_STATE_TABLES: "nominator_positions" }),
     /spans D1 and Neon/,
   );
