@@ -206,7 +206,9 @@ export async function readRetainedBlockRows(
     const selectorWhere = where
       .filter(
         (clause) =>
-          clause.startsWith("author = ") || /^spec_version\s*=/.test(clause) || /^observed_at\s*(>=|<=)/.test(clause),
+          clause.startsWith("author = ") ||
+          /^spec_version\s*=/.test(clause) ||
+          /^observed_at\s*(>=|<=)/.test(clause),
       )
       .map((clause) =>
         clause.startsWith("author = ")
