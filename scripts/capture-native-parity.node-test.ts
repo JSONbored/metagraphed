@@ -364,10 +364,7 @@ test("manifest batches accept sixteen unique objects and reject excess or mixed 
     [asset(), assets[1]],
     [assets[0], asset({ sha256: "b".repeat(64) })],
   ]) {
-    assert.throws(
-      () => parseCaptureAssets(JSON.stringify(invalid)),
-      REFUSED,
-    );
+    assert.throws(() => parseCaptureAssets(JSON.stringify(invalid)), REFUSED);
   }
 });
 
@@ -745,10 +742,7 @@ test("capture validates and seals a manifest at the full byte ceiling", async ()
 test("manifest capture accepts smaller pinned sizes without changing the envelope", async () => {
   const hash = "a".repeat(64);
   const entries = { [manifestPath(hash)]: descriptor(hash) };
-  for (const data of [
-    manifest(entries),
-    exactSizeManifest(entries, 3236624),
-  ]) {
+  for (const data of [manifest(entries), exactSizeManifest(entries, 3236624)]) {
     let calls = 0;
     const fetcher: typeof fetch = async () => {
       calls += 1;

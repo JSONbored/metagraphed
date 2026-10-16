@@ -201,10 +201,7 @@ function encryptedLimit(assets: readonly CaptureAsset[]): number {
     : CAPTURE_LIMITS.encryptedBytes;
 }
 
-function envelopeBytes(
-  assets: readonly CaptureAsset[],
-  publicKey: KeyObject,
-) {
+function envelopeBytes(assets: readonly CaptureAsset[], publicKey: KeyObject) {
   const base64Bytes = (bytes: number) => 4 * Math.ceil(bytes / 3);
   // ISO dates use at most 27 characters, including extended years. Base64
   // needs no JSON escapes, so only its measured length is added below.
