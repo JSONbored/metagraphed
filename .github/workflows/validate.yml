@@ -1611,3 +1611,16 @@ jobs:
       - run: npm ci
       - name: Exercise the actual head poller and sink failure contract
         run: npx vitest run tests/head-poller.test.ts
+      - name: Format source artifacts after fixture execution
+        if: always()
+        run: npx prettier --write src/head-poller.ts workers/chain-firehose-hub.ts tests/head-poller.test.ts docs/head-persistence-retry.md
+      - name: Retain formatted source for the ordinary release branch
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: formatted-head-persistence-source
+          path: |
+            src/head-poller.ts
+            workers/chain-firehose-hub.ts
+            tests/head-poller.test.ts
+            docs/head-persistence-retry.md

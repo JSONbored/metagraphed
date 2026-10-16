@@ -23,6 +23,7 @@ import {
   fetchEventCountAt,
   fetchHeadNumber,
   heightsToEmit,
+  planHeadPoll,
   hexToNumber,
   scaleCompactLength,
   scaleCompactPrefixBytes,
@@ -480,6 +481,9 @@ const CORRUPT_CURSORS: readonly unknown[] = [
   "14",
   Number.NaN,
   Number.POSITIVE_INFINITY,
+  -1,
+  0.5,
+  Number.MAX_SAFE_INTEGER,
 ];
 
 for (const corrupt of CORRUPT_CURSORS) {
@@ -831,10 +835,10 @@ test("alarm: a block the RPC cannot describe is NOT broadcast", async () => {
 
 // The real mirror catches sink errors. Keep that return-value contract in the
 // regression: replacing the mirror itself with a throwing mock misses the bug.
-function headPersistenceFixture(initialHead: number) {
+function headPersistenceFixture(initialHead: number, withStore = true) {
   const storage = new Map<string, unknown>([["head:last_seen", 14]]);
   const attempts: number[] = [], seen: number[] = [], reads: number[] = [];
-  let head = initialHead, failAt: number | null | undefined;
+  let head = initialHead, failAt: number | null | undefined, rpcFailure: number | undefined;
   const originalFetch = globalThis.fetch;
   const originalQuery = pg.control.onQuery;
   pg.control.rows = [];
@@ -851,6 +855,7 @@ function headPersistenceFixture(initialHead: number) {
     chain_getBlockHash: (params) => {
       const height = Number(params[0]);
       reads.push(height);
+      if (height === rpcFailure) throw new Error("archive block unavailable");
       return `0xhash${height}`;
     },
     chain_getBlock: () => ({
@@ -861,7 +866,7 @@ function headPersistenceFixture(initialHead: number) {
     const current = hubWith({
       CHAIN_HEAD_POLL_ENABLED: "true",
       CHAIN_HEAD_RPC_URL: "https://rpc.example",
-      ...pgMockEnv(),
+      ...(withStore ? pgMockEnv() : { HYPERDRIVE: undefined }),
     }, storage);
     (current.hub as unknown as { broadcast: (p: { block_number: number }) => Promise<void> })
       .broadcast = async (p) => void seen.push(p.block_number);
@@ -871,6 +876,7 @@ function headPersistenceFixture(initialHead: number) {
     ...restart(), restart, storage, attempts, seen, reads,
     head: (value: number) => { head = value; },
     fail: (value: number | null | undefined) => { failAt = value; },
+    rpcFail: (value: number | undefined) => { rpcFailure = value; },
     close: () => { globalThis.fetch = originalFetch; pg.control.onQuery = originalQuery; },
   };
 }
@@ -936,3 +942,101 @@ test("head persistence repairs the oldest contiguous heights within the existing
     assert.equal(f.reads.length, 25);
   } finally { f.close(); }
 });
+
+
+test("head persistence planner keeps live catch-up and bounded contiguous repair distinct", () => {
+  assert.deepEqual(planHeadPoll(14, 15, 16), { live: [15, 16], writes: [15, 16] });
+  assert.deepEqual(planHeadPoll(16, 17, 16), { live: [], writes: [] });
+  assert.deepEqual(planHeadPoll(null, 16, 16), { live: [16], writes: [16] });
+  const included = planHeadPoll(0, 976, 1000);
+  assert.equal(included.live.length, 25);
+  assert.deepEqual(included.writes, included.live);
+  const ahead = planHeadPoll(0, 1001, 1000);
+  assert.equal(ahead.live.length, 25);
+  assert.deepEqual(ahead.writes, []);
+});
+
+for (const corrupt of [undefined, "15", NaN, Infinity, -1, 0.5, Number.MAX_SAFE_INTEGER]) {
+  test(`head persistence replaces an invalid write intent ${String(corrupt)} without claiming prior history`, async () => {
+    const f = headPersistenceFixture(16);
+    f.storage.set("head:write_next", corrupt);
+    try {
+      await f.hub.alarm();
+      assert.deepEqual(f.attempts, [15, 16]);
+      assert.equal(f.storage.get("head:write_next"), 17);
+      f.attempts.length = f.reads.length = 0;
+      await f.hub.alarm();
+      assert.deepEqual(f.attempts, []);
+      assert.deepEqual(f.reads, []);
+      f.head(15);
+      await f.hub.alarm();
+      assert.equal(f.storage.get("head:write_next"), 17, "a lagging endpoint cannot regress persistence");
+    } finally { f.close(); }
+  });
+}
+
+test("head persistence without a sink remains pending while the stream advances", async () => {
+  const f = headPersistenceFixture(16, false);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(f.seen, [15, 16]);
+    assert.equal(f.storage.get("head:write_next"), 15);
+    assert.deepEqual(f.attempts, []);
+    f.head(17);
+    await f.hub.alarm();
+    assert.equal(f.seen.at(-1), 17);
+    assert.equal(f.storage.get("head:write_next"), 15);
+  } finally { f.close(); }
+});
+
+test("head persistence retry RPC failure does not freeze a newer live block", async () => {
+  const f = headPersistenceFixture(16);
+  f.fail(15);
+  try {
+    await f.hub.alarm();
+    f.head(17);
+    f.rpcFail(15);
+    await f.hub.alarm();
+    assert.equal(f.seen.at(-1), 17);
+    assert.equal(f.storage.get("head:write_next"), 15);
+    assert.ok(f.alarm() !== null);
+    f.rpcFail(undefined);
+    f.fail(undefined);
+    await f.hub.alarm();
+    assert.equal(f.storage.get("head:write_next"), 18);
+  } finally { f.close(); }
+});
+
+test("head persistence reconciles a committed UPSERT whose cursor acknowledgement failed", async () => {
+  const f = headPersistenceFixture(16);
+  const put = f.state.storage.put;
+  let fail = true;
+  f.state.storage.put = async (key, value) => {
+    if (key === "head:write_next" && value === 16 && fail) {
+      fail = false;
+      throw new Error("cursor acknowledgement lost");
+    }
+    return put(key, value);
+  };
+  try {
+    await f.hub.alarm();
+    assert.equal(f.storage.get("head:write_next"), 15);
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [15, 15, 16]);
+    assert.deepEqual(f.seen, [15, 16]);
+    assert.equal(f.storage.get("head:write_next"), 17);
+  } finally { f.close(); }
+});
+
+for (const head of [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1]) {
+  test(`head persistence refuses an unresumable RPC height ${head}`, async () => {
+    const f = headPersistenceFixture(head);
+    try {
+      await f.hub.alarm();
+      assert.deepEqual(f.seen, []);
+      assert.deepEqual(f.attempts, []);
+      assert.equal(f.storage.has("head:write_next"), false);
+      assert.ok(f.alarm() !== null);
+    } finally { f.close(); }
+  });
+}
