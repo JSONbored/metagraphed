@@ -1373,14 +1373,38 @@ export class ChainFirehoseHub implements DurableObject {
         await this.broadcast(block);
         await this.state.storage.put("head:last_seen", height);
       }
+      const committed = new Set<number>();
+      let repairFailure: { error: unknown } | undefined;
       for (const height of plan.writes) {
-        const block = await readBlock(height);
+        let block: Awaited<ReturnType<typeof fetchBlockAt>>;
+        try {
+          block = await readBlock(height);
+        } catch (error) {
+          repairFailure = { error };
+          break;
+        }
         const write = await mirrorBlocksHeadToNeon(this.env, this.state, block);
         if (write.result?.ok !== true)
           throw new Error("blocks_head write was not committed");
+        committed.add(height);
         // A failed/ambiguous cursor put retries the same idempotent UPSERT.
         await this.state.storage.put("head:write_next", height + 1);
       }
+      // Keep the current persisted view live during bounded repair, including
+      // when an older RPC block is unavailable. Out-of-order success is NOT
+      // contiguous progress. A failed sink above skips this phase to avoid a
+      // storm of doomed writes against the same unavailable owner.
+      for (const height of plan.live) {
+        if (committed.has(height)) continue;
+        const write = await mirrorBlocksHeadToNeon(
+          this.env,
+          this.state,
+          await readBlock(height),
+        );
+        if (write.result?.ok !== true)
+          throw new Error("live blocks_head write was not committed");
+      }
+      if (repairFailure) throw repairFailure.error;
     } catch (error) {
       const message = String((error as Error)?.message);
       console.error("[head-poller]", message);

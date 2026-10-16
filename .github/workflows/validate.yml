@@ -221,9 +221,10 @@ jobs:
           # Same-shape flag for the python job, which runs two independent hermetic suites: the
           # Python SDK's (reads only python/**) and the data-refresh scripts' (reads only
           # scripts/**.py). scripts/ is overwhelmingly TypeScript since #7510, so this gates on the
-          # .py extension rather than the whole directory -- a .ts-only diff under scripts/ cannot
-          # change either suite's result.
-          if grep -qE '^python/|^scripts/.*\.py$' changed-files.txt; then
+          # .py extension plus the two dependency manifests rather than the whole directory.
+          # A lock/project-only PR must install and check the scripts environment too;
+          # an unrelated TypeScript-only script change does not change these suites.
+          if grep -qE '^python/|^scripts/.*\.py$|^scripts/(uv\.lock|pyproject\.toml)$' changed-files.txt; then
             echo "run_python_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_python_validation=false" >> "$GITHUB_OUTPUT"
@@ -1104,11 +1105,11 @@ jobs:
     needs: changes
     # Path-gated at the JOB level (safe: zero required status contexts on main, and the review
     # pipeline buckets skipped as success -- see the `test` job comment): both suites read only
-    # python/** and scripts/**.py, so a PR touching neither cannot change this job's result. Draft
+    # python/**, scripts/**.py and scripts lock/project manifests. Draft
     # PRs skip entirely, same as every heavy job here. Push/dispatch runs are unaffected.
     if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15 # two hermetic unittest suites (37 + 44 cases), no network
+    timeout-minutes: 15 # locked dependency qualification and hermetic suites
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1122,6 +1123,27 @@ jobs:
       - name: Test Python SDK
         working-directory: python
         run: uv run --extra test python -m unittest discover -s tests
+
+      - name: Install and check the locked data-refresh environment
+        run: |
+          uv sync --locked --project scripts --python 3.12
+          uv pip check --python scripts/.venv/bin/python
+          uv run --locked --project scripts python - <<'PYTHON'
+          import hashlib, json, sys
+          from pathlib import Path
+          from importlib.metadata import version
+          from packaging.version import Version
+          import bittensor as bt
+          versions = {name: version(name) for name in ("bittensor", "urllib3", "multidict")}
+          assert callable(bt.SubtensorApi)
+          assert versions["bittensor"] == "10.5.0"
+          assert Version(versions["urllib3"]) >= Version("2.8.0")
+          assert Version(versions["multidict"]) >= Version("6.9.1")
+          print(json.dumps({"python": sys.version, "installed": versions, "scripts_lock_sha256": hashlib.sha256(Path("scripts/uv.lock").read_bytes()).hexdigest()}))
+          PYTHON
+
+      - name: Test scripts in their locked dependency environment
+        run: uv run --locked --project scripts python -m unittest discover -s scripts -p 'test_*.py'
 
       # Stdlib unittest with no third-party imports (each case loads its subject by path via
       # importlib and asserts pure helpers), so this runs OUTSIDE the SDK's project environment

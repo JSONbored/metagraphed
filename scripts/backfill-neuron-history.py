@@ -1,33 +1,20 @@
 #!/usr/bin/env python3
-"""Historical per-UID metagraph BACKFILL (#1345 Phase 1) — chain-direct off the FREE
-public archive, BATCHED. Fills `neuron_daily` retroactively so the history endpoints
-serve a real time-series NOW instead of accruing forward over months.
+"""Legacy approximate per-UID metric projection (#1345 Phase 1).
 
-Why batched raw storage (not the runtime API): get_metagraph_info(block=N) is ~18-25s
-PER SUBNET and the MetagraphInfo runtime struct has a hard ~8-month decode floor. The
-per-netuid metric VECTORS live in plain SubtensorModule storage with NO such floor, and
-one batched `state_queryStorageAt` returns all 129 subnets' 7 metric vectors (~903
-values) in ~13s PER BLOCK — ~176x faster, full-year reachable, $0, no API key.
+Metric vectors are read at a sampled historical block, but identity, registration
+and axon fields come from a CURRENT-head overlay. The legacy subnet census also
+assumes dense netuids from TotalNetworks. Reused UIDs, removed/sparse subnets and
+runtime/pruning boundaries prevent this from proving authentic historical state.
+Historical storage and compatible runtime metadata must actually be available;
+block/extrinsic retention alone cannot regenerate missing state.
 
-Per target UTC day: resolve the block nearest a fixed time-of-day, then for every
-subnet fetch Active, ValidatorPermit, Consensus, Incentive, Dividends, Emission,
-ValidatorTrust as offline-built storage keys (chunked 50/call), SCALE-decode the Vecs,
-and emit the exact `neuron_daily` row shape to the secret-gated ingest (idempotent on
-(netuid,uid,snapshot_date), so re-runs are safe/resumable).
+Use --dry-run for inspection. Writes additionally require the explicit
+--allow-approximate-history acknowledgement. This path does not produce the
+same-finalized-hash identity/census/runtime originals required for qualified
+historical recovery. Exact rao conversion does not qualify identity or coverage.
 
-Units match scripts/fetch-metagraph-native.py: consensus/incentive/dividends/
-validator_trust = u16/65535; emission_tao = exact u64-rao whole/remainder split,
-not plain u64/1e9, which loses precision above 2**53 rao (metagraphed#2921);
-rank derived (1-based incentive
-desc); trust = 0.0 (dead in dTAO). hotkey/coldkey/registered_at_block/axon come from a
-one-shot CURRENT-snapshot overlay (get_all_metagraphs_info at head) applied to all
-backfilled rows — accurate for stable UIDs (documented approximation). stake_tao is
-DEFERRED (null): per-UID dTAO stake is runtime-only (childkey/TaoWeight math, not a raw
-read); it accrues daily forward via the live rollup.
-
-Run (one-time; resumable):
-  NEURON_DAILY_BACKFILL_SECRET=... \
-  uv run --project scripts --with xxhash==3.5.0 python scripts/backfill-neuron-history.py --days 365
+Example (inspection only):
+  uv run --project scripts python scripts/backfill-neuron-history.py --dry-run --days 1
 """
 import argparse
 import ipaddress
@@ -333,7 +320,12 @@ def main():
     p.add_argument("--minute", type=int, default=47)
     p.add_argument("--chunk", type=int, default=1000, help="rows per ingest POST")
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--allow-approximate-history", action="store_true",
+                   help="acknowledge current-head identities and dense-netuid approximation before writes")
     args = p.parse_args()
+    if not args.dry_run and not args.allow_approximate_history:
+        p.error("legacy head-identity/dense-netuid projection is approximate; use --dry-run or explicitly --allow-approximate-history")
+    sys.stderr.write("APPROXIMATE history: head identities and dense netuids; not a qualified historical capture.\n")
     if not SECRET and not args.dry_run:
         sys.exit("METAGRAPH_BACKFILL_SECRET is required (or use --dry-run)")
 
