@@ -35,6 +35,7 @@ import {
 import {
   alphaCaptureStateFromOwner,
   alphaPositionsUnqualified,
+  NOMINATOR_POSITIONS_TABLES,
 } from "./alpha-capture-reader.ts";
 import {
   neuronStakeByHotkeys,
@@ -42,14 +43,6 @@ import {
 } from "./nominator-positions-cold-tier.ts";
 import { readStore } from "./read-store.ts";
 import type { NominatorPositions } from "../generated/db/types.ts";
-
-/** Exact capture evidence inherits the nominator ledger's D1 owner. */
-const NOMINATOR_POSITIONS_TABLES = [
-  "nominator_positions",
-  "alpha_runtime_metadata",
-  "alpha_snapshot_passes",
-  "alpha_snapshot_rows",
-] as const;
 
 /** Kept identical to the cold tier's SELECT list (minus `coldkey`, which the
  * predicate already fixes) so both tiers hand the formatter the same shape. */

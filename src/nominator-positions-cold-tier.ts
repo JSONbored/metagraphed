@@ -14,6 +14,7 @@ import {
   alphaCaptureStateFromOwner,
   alphaPositionsUnqualified,
   canonicalAlphaOwnerStore,
+  NOMINATOR_POSITIONS_TABLES,
 } from "./alpha-capture-reader.ts";
 import { accountHistoryFloorMs } from "./account-summary-projection.ts";
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./account-stake-flow.ts";
@@ -22,14 +23,6 @@ import { readStore } from "./read-store.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import { loadIndexedAccountFeedPage } from "./indexed-account-feeds.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
-
-/** Exact capture evidence inherits the nominator ledger's D1 owner. */
-const NOMINATOR_POSITIONS_TABLES = [
-  "nominator_positions",
-  "alpha_runtime_metadata",
-  "alpha_snapshot_passes",
-  "alpha_snapshot_rows",
-] as const;
 
 async function nativePositionRows(
   env: unknown,

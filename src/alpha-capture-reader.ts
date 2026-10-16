@@ -54,6 +54,14 @@ interface TableRow {
   name?: unknown;
 }
 
+/** Exact capture evidence inherits the nominator ledger's D1 owner. */
+export const NOMINATOR_POSITIONS_TABLES = [
+  "nominator_positions",
+  "alpha_runtime_metadata",
+  "alpha_snapshot_passes",
+  "alpha_snapshot_rows",
+] as const;
+
 export const ALPHA_RECEIVER_OWNER_TABLES = [
   "nominator_positions",
   "nominator_positions_passes",
