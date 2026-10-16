@@ -828,3 +828,111 @@ test("alarm: a block the RPC cannot describe is NOT broadcast", async () => {
     "the watermark did not advance past a block we could not describe",
   );
 });
+
+// The real mirror catches sink errors. Keep that return-value contract in the
+// regression: replacing the mirror itself with a throwing mock misses the bug.
+function headPersistenceFixture(initialHead: number) {
+  const storage = new Map<string, unknown>([["head:last_seen", 14]]);
+  const attempts: number[] = [], seen: number[] = [], reads: number[] = [];
+  let head = initialHead, failAt: number | null | undefined;
+  const originalFetch = globalThis.fetch;
+  const originalQuery = pg.control.onQuery;
+  pg.control.rows = [];
+  pg.control.failNext = null;
+  pg.control.onQuery = (query) => {
+    if (!/INSERT INTO blocks_head/i.test(query.text)) return;
+    const height = Number(query.values[0]);
+    attempts.push(height);
+    if (failAt === null || height === failAt)
+      throw new Error("D1_ERROR: Exceeded maximum DB size");
+  };
+  globalThis.fetch = rpcFetch({
+    chain_getHeader: () => ({ number: `0x${head.toString(16)}` }),
+    chain_getBlockHash: (params) => {
+      const height = Number(params[0]);
+      reads.push(height);
+      return `0xhash${height}`;
+    },
+    chain_getBlock: () => ({
+      block: { header: { parentHash: "0xp" }, extrinsics: [1] },
+    }),
+  });
+  const restart = () => {
+    const current = hubWith({
+      CHAIN_HEAD_POLL_ENABLED: "true",
+      CHAIN_HEAD_RPC_URL: "https://rpc.example",
+      ...pgMockEnv(),
+    }, storage);
+    (current.hub as unknown as { broadcast: (p: { block_number: number }) => Promise<void> })
+      .broadcast = async (p) => void seen.push(p.block_number);
+    return current;
+  };
+  return {
+    ...restart(), restart, storage, attempts, seen, reads,
+    head: (value: number) => { head = value; },
+    fail: (value: number | null | undefined) => { failAt = value; },
+    close: () => { globalThis.fetch = originalFetch; pg.control.onQuery = originalQuery; },
+  };
+}
+
+test("head persistence retries a failed write after restart even when the live head is unchanged", async () => {
+  const f = headPersistenceFixture(16);
+  f.fail(15);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [15], "a failed durable write cannot be crossed");
+    assert.deepEqual(f.seen, [15, 16], "the live stream remains current");
+    assert.equal(f.storage.get("head:last_seen"), 16, "live delivery has its own progress");
+    assert.equal(f.storage.get("head:write_next"), 15, "failed height survives eviction");
+    assert.ok(f.alarm() !== null);
+    f.fail(undefined);
+    const restarted = f.restart();
+    await restarted.hub.alarm();
+    assert.deepEqual(f.attempts, [15, 15, 16]);
+    assert.deepEqual(f.seen, [15, 16], "repair does not rebroadcast old live blocks");
+    assert.equal(f.storage.get("head:write_next"), 17);
+    assert.ok(restarted.alarm() !== null);
+  } finally { f.close(); }
+});
+
+test("head persistence stops at a mid-batch failure while later live blocks keep flowing", async () => {
+  const f = headPersistenceFixture(17);
+  f.fail(16);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [15, 16]);
+    assert.deepEqual(f.seen, [15, 16, 17]);
+    assert.equal(f.storage.get("head:write_next"), 16);
+    f.fail(undefined);
+    f.head(18);
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [15, 16, 16, 17, 18]);
+    assert.deepEqual(f.seen, [15, 16, 17, 18]);
+    assert.equal(f.storage.get("head:write_next"), 19);
+  } finally { f.close(); }
+});
+
+test("head persistence repairs the oldest contiguous heights within the existing 25-block read cap", async () => {
+  const f = headPersistenceFixture(1000);
+  f.fail(null);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [15]);
+    assert.equal(f.seen.at(-1), 1000, "a sink outage cannot freeze serving");
+    assert.ok(f.reads.length <= 25, "live and durable work share one read cap");
+    assert.equal(f.storage.get("head:write_next"), 15);
+    f.fail(undefined);
+    f.attempts.length = f.reads.length = 0;
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, Array.from({ length: 25 }, (_, i) => 15 + i));
+    assert.equal(f.storage.get("head:write_next"), 40, "never jump to the recent live window");
+    assert.equal(f.reads.length, 25);
+    f.head(1001);
+    f.attempts.length = f.reads.length = 0;
+    await f.hub.alarm();
+    assert.equal(f.seen.at(-1), 1001);
+    assert.deepEqual(f.attempts, Array.from({ length: 24 }, (_, i) => 40 + i));
+    assert.equal(f.storage.get("head:write_next"), 64);
+    assert.equal(f.reads.length, 25);
+  } finally { f.close(); }
+});
