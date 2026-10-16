@@ -400,7 +400,9 @@ export function emitTypes(
 
     if (node.type === "array") {
       const item = outputType(node.items ?? {}, `${path}[]`, fallbackName);
-      return new GraphQLList(new GraphQLNonNull(item));
+      return new GraphQLList(
+        admitsNull(node.items) ? item : new GraphQLNonNull(item),
+      );
     }
 
     if (node.type === "object" || node.properties) {
