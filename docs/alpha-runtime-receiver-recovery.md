@@ -105,6 +105,14 @@ The position export allowlist is not expanded to unrelated tables. Capture
 metadata, immutable rows/pools and receipt tables additionally require coherent
 native backup/restore coverage; a positions-only export is not complete recovery.
 
+The native recovery regression takes one coherent eleven-table family cut,
+including all seven new tables, positions, pass/scan completeness evidence and
+the export revision ledger. It restores exact typed cells into a blank migrated
+fixture, then checks canonical reads, pending resume, unchanged Alpha/self-stake
+receipts and replay before completing the pending pass. This is a synthetic
+software restore proof. It does not certify production backup coverage or permit
+mixing independently exported tables while writers continue to mutate them.
+
 ## Activation and rollback preconditions
 
 This source change authorizes no production action. The original physical-schema

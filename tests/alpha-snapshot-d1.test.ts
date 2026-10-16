@@ -10,6 +10,7 @@ import { NOMINATOR_POSITIONS_COVERAGE_SQL } from "../src/nominator-scan-coverage
 import { writeNominatorPositionsD1 } from "../src/ledger-d1.ts";
 import { alphaCaptureState } from "../src/alpha-capture-reader.ts";
 import { ALPHA_RUNTIMES } from "../src/alpha-runtime-identity.ts";
+import * as ownerSplit from "../src/owner-capture-positions.ts";
 import {
   writeAlphaSnapshotD1,
   readAlphaSnapshotResumeD1,
@@ -1093,4 +1094,227 @@ test("synthetic supplementary and BMP owners use native UTF8 ranges and tuple ha
     (await rowsOf(db)).map((r) => r.coldkey),
     [bmp, supplementary, "\u{10001}"],
   );
+});
+
+test("native receiver restore preserves serving and receipts", async () => {
+  const source = await fixture();
+  const restored = await fixture();
+  const legacy = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/alpha-runtime/frozen-454.json", import.meta.url),
+      "utf8",
+    ),
+  ) as Row;
+  const maximumShares = ((1n << 128n) - 1n).toString();
+  const legacyEvidence = structuredClone(legacy.members[0].evidence);
+  legacyEvidence.share.legacy_bits = maximumShares;
+  legacyEvidence.denominator.legacy_bits = maximumShares;
+  legacyEvidence.total_alpha_rao = ((1n << 64n) - 1n).toString();
+  const original = packet([{ ...row("legacy"), evidence: legacyEvidence }], {
+    ...legacy.alpha_snapshot,
+    captured_at: baseAt,
+    scanned_legacy: 1,
+    scanned_v2: 0,
+  });
+  await write(source, original);
+
+  const evidence = structuredClone(frozen.members[0].evidence);
+  evidence.share.v2 = { mantissa: "300000000000000000000", exponent: "-21" };
+  evidence.denominator.v2 = {
+    mantissa: "1000000000000000000000",
+    exponent: "-20",
+  };
+  evidence.total_alpha_rao = "101";
+  evidence.pool_epoch = ((1n << 64n) - 1n).toString();
+  evidence.member_epoch = evidence.pool_epoch;
+  const metadataPath = "./fixtures/alpha-runtime/metadata-479.hex";
+  const metadataUrl = new URL(metadataPath, import.meta.url);
+  const metadata = readFileSync(metadataUrl, "utf8").trim();
+  const current = packet([{ ...row("current"), evidence }], {
+    captured_at: baseAt + 1,
+    block_number: frozen.alpha_snapshot.block_number + 1,
+    spec_version: 479,
+    code_hash: ALPHA_RUNTIMES[479].code,
+    metadata_sha256: ALPHA_RUNTIMES[479].metadata,
+    metadata_scale_hex: metadata,
+  });
+  const selected = await write(source, current);
+  const pending = packet([{ ...row("pending-a"), evidence }], {
+    ...current.alpha_snapshot,
+    captured_at: baseAt + 2,
+    block_number: frozen.alpha_snapshot.block_number + 2,
+    metadata_scale_hex: undefined,
+    total_rows: 2,
+    total_chunks: 2,
+    index: 0,
+  });
+  const staged = await write(source, pending);
+  const selfAt = baseAt + 3;
+  const selfRows = [
+    {
+      coldkey: "current",
+      hotkey: "hot",
+      netuid: 23,
+      share_fraction: 1 / 3,
+      shares: null,
+      captured_at: selfAt,
+    },
+    {
+      coldkey: "self-only",
+      hotkey: "self-hot",
+      netuid: 24,
+      share_fraction: 1e-7,
+      shares: maximumShares,
+      captured_at: selfAt,
+    },
+  ];
+  const selfMeta = {
+    captured_at: selfAt,
+    scanned_pairs: 2,
+    total_rows: 2,
+    total_chunks: 1,
+    index: 0,
+    digest_version: 2 as const,
+  };
+  const selfReceipt = await writeSelfStakeSnapshotD1(
+    createD1Store(source),
+    selfRows,
+    selfMeta,
+    selfAt + 1,
+  );
+
+  // Fixed synthetic receiver tables only. This is an offline restore proof,
+  // not a public exporter or an observation of production backup coverage.
+  const tables = [
+    "alpha_runtime_metadata",
+    "alpha_snapshot_passes",
+    "alpha_snapshot_chunks",
+    "alpha_snapshot_pools",
+    "alpha_snapshot_rows",
+    "self_stake_snapshot_passes",
+    "self_stake_snapshot_chunks",
+    "nominator_positions",
+    "nominator_positions_passes",
+    "nominator_scan_receipts",
+    "archive_export_revisions",
+  ] as const;
+  type Column = { name: string; pk: number };
+  type Cell = {
+    storage: "integer" | "real" | "text" | "null";
+    value: string | null;
+  };
+  const schemaStatements = tables.map((table) => {
+    const sql = `PRAGMA table_info(${table})`;
+    return source.prepare(sql);
+  });
+  const definitions = await source.batch<Column>(schemaStatements);
+  const plans = definitions.map((definition, index) => {
+    const columns = definition.results.map((column) => column.name);
+    const keys = definition.results
+      .filter((column) => column.pk > 0)
+      .sort((a, b) => a.pk - b.pk)
+      .map((column) => column.name);
+    assert.ok(columns.length > 0);
+    assert.ok(keys.length > 0);
+    return { table: tables[index]!, columns, keys };
+  });
+  const readCut = async (database: D1Database) => {
+    const statements = plans.map((plan) => {
+      const cells = plan.columns.map((column) => {
+        const value =
+          `CASE typeof(${column}) ` +
+          `WHEN 'integer' THEN CAST(${column} AS TEXT) ` +
+          `WHEN 'real' THEN printf('%!.26g',${column}) ` +
+          `ELSE ${column} END`;
+        const storage = `typeof(${column})`;
+        return `json_object('storage',${storage},'value',${value})`;
+      });
+      const sql =
+        `SELECT json_array(${cells.join(",")}) AS cells ` +
+        `FROM ${plan.table} ORDER BY ${plan.keys.join(",")}`;
+      return database.prepare(sql);
+    });
+    // One native batch pins all family reads to the same SQLite cut. Encode
+    // integers and REALs before they cross JavaScript's numeric boundary.
+    const results = await database.batch<{ cells: string }>(statements);
+    return results.map((result) => {
+      assert.ok(result.success);
+      return result.results.map((entry) => JSON.parse(entry.cells) as Cell[]);
+    });
+  };
+  const cut = await readCut(source);
+  assert.ok(cut.every((rows) => rows.length > 0));
+  const statements: D1PreparedStatement[] = [];
+  for (const [index, plan] of plans.entries()) {
+    for (const cells of cut[index]!) {
+      const values = cells.map((cell) => {
+        if (cell.storage === "integer") return "CAST(? AS INTEGER)";
+        if (cell.storage === "real") return "CAST(? AS REAL)";
+        return "?";
+      });
+      const sql =
+        `INSERT INTO ${plan.table}(${plan.columns.join(",")}) ` +
+        `VALUES(${values.join(",")})`;
+      const statement = restored.prepare(sql);
+      statements.push(statement.bind(...cells.map((cell) => cell.value)));
+    }
+  }
+  await restored.batch(statements);
+  assert.deepEqual(await readCut(restored), cut);
+
+  const store = createD1Store(restored);
+  const capture = (await alphaCaptureState(store)).capture;
+  assert.equal(capture?.captured_at, baseAt + 1);
+  assert.equal(capture?.spec_version, 479);
+  assert.equal(capture?.quantityQualified, true);
+  const noLegacy = async (): Promise<Row[]> => {
+    throw new Error("Restored canonical evidence must remain authoritative");
+  };
+  const { ownerCapturePositions } = ownerSplit;
+  const positions = await ownerCapturePositions(store, 23, noLegacy);
+  assert.equal(positions.length, 1);
+  assert.equal(positions[0]!.coldkey, "current");
+  const fraction = Number(positions[0]!.share_fraction);
+  assert.ok(Math.abs(fraction - 0.03) < Number.EPSILON);
+  assert.deepEqual(await ownerCapturePositions(store, 24, noLegacy), []);
+  const resume = await readAlphaSnapshotResumeD1(source);
+  assert.equal(resume.alpha_snapshot_resume?.captured_at, baseAt + 2);
+  assert.deepEqual(await readAlphaSnapshotResumeD1(restored), resume);
+
+  const replay = await write(restored, current);
+  assert.equal(replay.alpha_snapshot.sha256, selected.alpha_snapshot.sha256);
+  assert.equal(replay.alpha_snapshot.received_rows, 1);
+  const pendingReplay = await write(restored, pending);
+  const pendingDigest = staged.alpha_snapshot.sha256;
+  assert.equal(pendingReplay.alpha_snapshot.sha256, pendingDigest);
+  assert.equal(pendingReplay.alpha_snapshot.received_rows, 1);
+  assert.equal(pendingReplay.alpha_snapshot.received_chunks, 1);
+  const selfReplay = await writeSelfStakeSnapshotD1(
+    store,
+    selfRows,
+    selfMeta,
+    selfAt + 2,
+  );
+  assert.equal(selfReplay.snapshot.sha256, selfReceipt.snapshot.sha256);
+  assert.equal(selfReplay.snapshot.source_rows, 1);
+  assert.equal(selfReplay.snapshot.shadowed_rows, 1);
+  assert.equal(selfReplay.snapshot.received_rows, 2);
+  assert.equal(selfReplay.snapshot.received_chunks, 1);
+  assert.deepEqual(await readCut(restored), cut);
+  const last = {
+    alpha_snapshot: { ...pending.alpha_snapshot, index: 1 },
+    rows: [{ ...row("pending-b"), evidence }],
+  };
+  const completed = await write(restored, last);
+  assert.equal(completed.alpha_snapshot.complete, true);
+  assert.equal(completed.alpha_snapshot.selected, 1);
+  assert.equal(completed.alpha_snapshot.received_rows, 2);
+  assert.equal(completed.alpha_snapshot.received_chunks, 2);
+  const latest = (await alphaCaptureState(store)).capture;
+  assert.equal(latest?.captured_at, baseAt + 2);
+  assert.equal(latest?.quantityQualified, true);
+  assert.deepEqual(await readAlphaSnapshotResumeD1(restored), {
+    ok: true,
+    alpha_snapshot_resume: null,
+  });
 });

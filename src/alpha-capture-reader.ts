@@ -39,6 +39,21 @@ export interface CanonicalAlphaCapture {
   quantityQualified: boolean;
 }
 
+interface CaptureState {
+  available: boolean;
+  capture: CanonicalAlphaCapture | null;
+}
+interface PositionScope {
+  column: "coldkey" | "hotkey" | "netuid";
+  value: string | number;
+}
+interface QualificationRow {
+  unqualified?: unknown;
+}
+interface TableRow {
+  name?: unknown;
+}
+
 export const ALPHA_RECEIVER_OWNER_TABLES = [
   "nominator_positions",
   "nominator_positions_passes",
@@ -65,7 +80,7 @@ export async function alphaCaptureStateFromOwner(env: unknown) {
 export async function alphaPositionsUnqualified(
   db: OptionalRowReader,
   capturedAt: number,
-  scope?: { column: "coldkey" | "hotkey" | "netuid"; value: string | number },
+  scope?: PositionScope,
 ): Promise<boolean> {
   if (
     !db.first ||
@@ -81,7 +96,7 @@ export async function alphaPositionsUnqualified(
     OR EXISTS(SELECT 1 FROM alpha_snapshot_rows WHERE captured_at=?
       AND alpha_rao IS NULL${predicate}) AS unqualified`;
   const row = await db.first(statement, values);
-  return !row || (row as { unqualified?: unknown }).unqualified !== 0;
+  return !row || (row as QualificationRow).unqualified !== 0;
 }
 
 /** Missing pre-migration schema permits the existing reader during rollout.
@@ -90,13 +105,13 @@ export async function alphaPositionsUnqualified(
  * missing evidence or a capture-only runtime cannot borrow an older value. */
 export async function alphaCaptureState(
   db: OptionalRowReader | null | undefined,
-): Promise<{ available: boolean; capture: CanonicalAlphaCapture | null }> {
+): Promise<CaptureState> {
   if (!db?.first) throw new TypeError("Alpha capture owner is unavailable");
   if (isPostgresReadStore(db)) return { available: false, capture: null };
   const schema = await db.first(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'",
   );
-  const tableName = (schema as { name?: unknown } | null)?.name;
+  const tableName = (schema as TableRow | null)?.name;
   if (tableName !== "alpha_snapshot_passes")
     return { available: false, capture: null };
   const statement = `SELECT p.*,m.sha256 AS retained_metadata_sha256,

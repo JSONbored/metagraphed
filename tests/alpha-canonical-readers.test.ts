@@ -114,16 +114,16 @@ function position(
   at = STAMP,
   fraction: number | null = 0.25,
 ) {
-  sqlite
-    .prepare("INSERT INTO alpha_snapshot_rows VALUES(?,?,?,?,?,?)")
-    .run(at, COLDKEY, HOTKEY, 7, fraction, rao);
+  const sql = "INSERT INTO alpha_snapshot_rows VALUES(?,?,?,?,?,?)";
+  const statement = sqlite.prepare(sql);
+  statement.run(at, COLDKEY, HOTKEY, 7, fraction, rao);
 }
 
 beforeEach(() => {
   seen = [];
   afterRead = undefined;
   sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(`
+  const schemaSql = `
     CREATE TABLE alpha_runtime_metadata(sha256 TEXT PRIMARY KEY,code_hash TEXT,spec_version INTEGER);
     CREATE TABLE alpha_snapshot_passes(captured_at INTEGER,block_number INTEGER,block_hash TEXT,
       genesis_hash TEXT,spec_version INTEGER,code_hash TEXT,metadata_sha256 TEXT,
@@ -139,23 +139,25 @@ beforeEach(() => {
     CREATE TABLE account_balances(ss58 TEXT,free_tao REAL);
     CREATE TABLE account_balances_passes(captured_at INTEGER,expected_rows INTEGER,received_rows INTEGER,completed_at INTEGER);
     CREATE TABLE subnet_snapshots(netuid INTEGER,snapshot_date TEXT,alpha_price_tao REAL);
-  `);
-  sqlite
-    .prepare(
-      "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at) VALUES(?,?,?,?,?)",
-    )
-    .run(COLDKEY, HOTKEY, 7, 0.9, STAMP - 100);
-  sqlite
-    .prepare("INSERT INTO hotkey_alpha VALUES(?,?,?,?)")
-    .run(HOTKEY, 7, 1000, STAMP - 100);
-  sqlite
-    .prepare("INSERT INTO hotkey_alpha_passes VALUES(?,?,?,?)")
-    .run(STAMP - 100, 1, 1, STAMP - 99);
-  sqlite.prepare("INSERT INTO neurons VALUES(?,?,?)").run(HOTKEY, 7, 1000);
-  sqlite.prepare("INSERT INTO account_balances VALUES(?,?)").run(COLDKEY, 10);
-  sqlite
-    .prepare("INSERT INTO account_balances_passes VALUES(?,?,?,?)")
-    .run(STAMP - 10, 1, 1, STAMP - 9);
+  `;
+  sqlite.exec(schemaSql);
+  const positionSql =
+    "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at) VALUES(?,?,?,?,?)";
+  const positions = sqlite.prepare(positionSql);
+  positions.run(COLDKEY, HOTKEY, 7, 0.9, STAMP - 100);
+  const poolSql = "INSERT INTO hotkey_alpha VALUES(?,?,?,?)";
+  const pools = sqlite.prepare(poolSql);
+  pools.run(HOTKEY, 7, 1000, STAMP - 100);
+  const poolPassSql = "INSERT INTO hotkey_alpha_passes VALUES(?,?,?,?)";
+  const poolPasses = sqlite.prepare(poolPassSql);
+  poolPasses.run(STAMP - 100, 1, 1, STAMP - 99);
+  const neurons = sqlite.prepare("INSERT INTO neurons VALUES(?,?,?)");
+  neurons.run(HOTKEY, 7, 1000);
+  const balances = sqlite.prepare("INSERT INTO account_balances VALUES(?,?)");
+  balances.run(COLDKEY, 10);
+  const balancePassSql = "INSERT INTO account_balances_passes VALUES(?,?,?,?)";
+  const balancePasses = sqlite.prepare(balancePassSql);
+  balancePasses.run(STAMP - 10, 1, 1, STAMP - 9);
   sqlite.exec("INSERT INTO subnet_snapshots VALUES(7,'2026-10-16',2)");
 });
 afterEach(() => {
@@ -200,11 +202,10 @@ describe("canonical Alpha quantities across existing readers", () => {
     position("99000000000", STAMP - 1);
     capture(479);
     position(null);
-    sqlite
-      .prepare(
-        "UPDATE alpha_runtime_metadata SET spec_version=478 WHERE sha256=?",
-      )
-      .run(ALPHA_RUNTIMES[479].metadata);
+    const sql =
+      "UPDATE alpha_runtime_metadata SET spec_version=478 WHERE sha256=?";
+    const metadata = sqlite.prepare(sql);
+    metadata.run(ALPHA_RUNTIMES[479].metadata);
     for (const load of ACCOUNT_READERS) {
       const result = await load(environment(), COLDKEY);
       assert.ok(result);
@@ -355,9 +356,9 @@ describe("canonical Alpha quantities across existing readers", () => {
       () => loadNominatorPositions(store(), HOTKEY),
       () => topHoldersHoldings(environment()),
     ]) {
-      sqlite.exec(
-        "DELETE FROM alpha_snapshot_passes; DELETE FROM alpha_snapshot_rows",
-      );
+      const resetSql =
+        "DELETE FROM alpha_snapshot_passes; DELETE FROM alpha_snapshot_rows";
+      sqlite.exec(resetSql);
       capture();
       position();
       let switched = false;
@@ -421,9 +422,9 @@ describe("canonical Alpha quantities across existing readers", () => {
       const body = await response.json();
       AccountPositionsArtifactSchema.parse(body.data);
       assert.equal(body.data.degraded.reason, POSITIONS_DEGRADED_UNPRICEABLE);
-      const row = sqlite
-        .prepare("SELECT share_fraction FROM alpha_snapshot_rows")
-        .get();
+      const sql = "SELECT share_fraction FROM alpha_snapshot_rows";
+      const statement = sqlite.prepare(sql);
+      const row = statement.get();
       assert.equal(row?.share_fraction, fraction);
     }
   });
@@ -477,12 +478,11 @@ describe("materialized top-holder quantities", () => {
     capture(479);
     position(null);
     const env = projectionEnv(STAMP);
-    assert.equal(await loadTopHoldersFlowTier(env, { sort: "total_tao" }), null);
+    const total = await loadTopHoldersFlowTier(env, { sort: "total_tao" });
+    assert.equal(total, null);
     const result = await loadTopHoldersFlowTier(env, { sort: "free_tao" });
-    assert.equal(
-      (result?.accounts as Record<string, unknown>[])[0].delegated_tao,
-      null,
-    );
+    const accounts = result?.accounts as Record<string, unknown>[];
+    assert.equal(accounts[0].delegated_tao, null);
   });
 
   test("self-stake arriving after a projection invalidates its quantities at the same canonical capture", async () => {
@@ -490,27 +490,28 @@ describe("materialized top-holder quantities", () => {
     position();
     const env = projectionEnv(STAMP);
     assert.ok(await loadTopHoldersFlowTier(env, { sort: "total_tao" }));
-    sqlite
-      .prepare("INSERT INTO nominator_positions VALUES(?,?,?,?,?,'self-stake')")
-      .run("other-coldkey", "other-hotkey", 8, 1, STAMP + 1);
-    assert.equal(await loadTopHoldersFlowTier(env, { sort: "total_tao" }), null);
+    const sql =
+      "INSERT INTO nominator_positions VALUES(?,?,?,?,?,'self-stake')";
+    const statement = sqlite.prepare(sql);
+    statement.run("other-coldkey", "other-hotkey", 8, 1, STAMP + 1);
+    const total = await loadTopHoldersFlowTier(env, { sort: "total_tao" });
+    assert.equal(total, null);
     const result = await loadTopHoldersFlowTier(env, { sort: "free_tao" });
-    assert.equal(
-      (result?.accounts as Record<string, unknown>[])[0].delegated_tao,
-      null,
-    );
+    const accounts = result?.accounts as Record<string, unknown>[];
+    assert.equal(accounts[0].delegated_tao, null);
   });
   test("a runtime479 capture removes older archived delegated and total cells on every sort", async () => {
     capture(479);
     const env = projectionEnv(STAMP - 1);
-    assert.equal(
-      await loadTopHoldersFlowTier(env, { sort: "delegated_tao" }),
-      null,
-    );
-    assert.equal(await loadTopHoldersFlowTier(env, { sort: "total_tao" }), null);
+    const delegatedSort = { sort: "delegated_tao" };
+    const delegated = await loadTopHoldersFlowTier(env, delegatedSort);
+    assert.equal(delegated, null);
+    const total = await loadTopHoldersFlowTier(env, { sort: "total_tao" });
+    assert.equal(total, null);
     for (const sort of ["free_tao", "net_flow_7d"]) {
       const result = await loadTopHoldersFlowTier(env, { sort });
-      const row = (result?.accounts as Record<string, unknown>[])[0];
+      const accounts = result?.accounts as Record<string, unknown>[];
+      const row = accounts[0];
       assert.equal(row.free_tao, 10);
       assert.equal(row.net_flow_7d, 3);
       assert.equal(row.delegated_tao, null);
@@ -520,35 +521,27 @@ describe("materialized top-holder quantities", () => {
 
   test("qualified runtime479 captures still require the artifact's own exact capture stamp", async () => {
     capture(479);
-    for (const stamp of [undefined, STAMP - 1])
-      assert.equal(
-        await loadTopHoldersFlowTier(projectionEnv(stamp), { sort: "total_tao" }),
-        null,
-      );
-    const result = await loadTopHoldersFlowTier(projectionEnv(STAMP), {
-      sort: "total_tao",
-    });
-    assert.equal(
-      (result?.accounts as Record<string, unknown>[])[0].total_tao,
-      1009,
-    );
+    for (const stamp of [undefined, STAMP - 1]) {
+      const env = projectionEnv(stamp);
+      const total = await loadTopHoldersFlowTier(env, { sort: "total_tao" });
+      assert.equal(total, null);
+    }
+    const env = projectionEnv(STAMP);
+    const result = await loadTopHoldersFlowTier(env, { sort: "total_tao" });
+    const accounts = result?.accounts as Record<string, unknown>[];
+    assert.equal(accounts[0].total_tao, 1009);
   });
 
   test("failed owner reads suppress archived quantities while free and flow cells remain usable", async () => {
     afterRead = () => {
       throw new Error("capture read failed");
     };
-    assert.equal(
-      await loadTopHoldersFlowTier(projectionEnv(STAMP), { sort: "total_tao" }),
-      null,
-    );
-    const result = await loadTopHoldersFlowTier(projectionEnv(STAMP), {
-      sort: "free_tao",
-    });
-    assert.equal(
-      (result?.accounts as Record<string, unknown>[])[0].delegated_tao,
-      null,
-    );
+    const env = projectionEnv(STAMP);
+    const total = await loadTopHoldersFlowTier(env, { sort: "total_tao" });
+    assert.equal(total, null);
+    const result = await loadTopHoldersFlowTier(env, { sort: "free_tao" });
+    const accounts = result?.accounts as Record<string, unknown>[];
+    assert.equal(accounts[0].delegated_tao, null);
   });
 });
 
