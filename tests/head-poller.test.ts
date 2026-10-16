@@ -23,6 +23,7 @@ import {
   fetchEventCountAt,
   fetchHeadNumber,
   heightsToEmit,
+  planHeadPoll,
   hexToNumber,
   scaleCompactLength,
   scaleCompactPrefixBytes,
@@ -480,6 +481,9 @@ const CORRUPT_CURSORS: readonly unknown[] = [
   "14",
   Number.NaN,
   Number.POSITIVE_INFINITY,
+  -1,
+  0.5,
+  Number.MAX_SAFE_INTEGER,
 ];
 
 for (const corrupt of CORRUPT_CURSORS) {
@@ -827,4 +831,316 @@ test("alarm: a block the RPC cannot describe is NOT broadcast", async () => {
     14,
     "the watermark did not advance past a block we could not describe",
   );
+});
+
+// The real mirror catches sink errors. Keep that return-value contract in the
+// regression: replacing the mirror itself with a throwing mock misses the bug.
+function headPersistenceFixture(initialHead: number, withStore = true) {
+  const storage = new Map<string, unknown>([["head:last_seen", 14]]);
+  const attempts: number[] = [],
+    seen: number[] = [],
+    reads: number[] = [];
+  let head = initialHead,
+    failAt: number | null | undefined,
+    rpcFailure: number | undefined;
+  const originalFetch = globalThis.fetch;
+  const originalQuery = pg.control.onQuery;
+  pg.control.rows = [];
+  pg.control.failNext = null;
+  pg.control.onQuery = (query) => {
+    if (!/INSERT INTO blocks_head/i.test(query.text)) return;
+    const height = Number(query.values[0]);
+    attempts.push(height);
+    if (failAt === null || height === failAt)
+      throw new Error("D1_ERROR: Exceeded maximum DB size");
+  };
+  globalThis.fetch = rpcFetch({
+    chain_getHeader: () => ({ number: `0x${head.toString(16)}` }),
+    chain_getBlockHash: (params) => {
+      const height = Number(params[0]);
+      reads.push(height);
+      if (height === rpcFailure) throw new Error("archive block unavailable");
+      return `0xhash${height}`;
+    },
+    chain_getBlock: () => ({
+      block: { header: { parentHash: "0xp" }, extrinsics: [1] },
+    }),
+  });
+  const restart = () => {
+    const current = hubWith(
+      {
+        CHAIN_HEAD_POLL_ENABLED: "true",
+        CHAIN_HEAD_RPC_URL: "https://rpc.example",
+        ...(withStore ? pgMockEnv() : { HYPERDRIVE: undefined }),
+      },
+      storage,
+    );
+    (
+      current.hub as unknown as {
+        broadcast: (p: { block_number: number }) => Promise<void>;
+      }
+    ).broadcast = async (p) => void seen.push(p.block_number);
+    return current;
+  };
+  return {
+    ...restart(),
+    restart,
+    storage,
+    attempts,
+    seen,
+    reads,
+    head: (value: number) => {
+      head = value;
+    },
+    fail: (value: number | null | undefined) => {
+      failAt = value;
+    },
+    rpcFail: (value: number | undefined) => {
+      rpcFailure = value;
+    },
+    close: () => {
+      globalThis.fetch = originalFetch;
+      pg.control.onQuery = originalQuery;
+    },
+  };
+}
+
+test("head persistence retries a failed write after restart even when the live head is unchanged", async () => {
+  const f = headPersistenceFixture(16);
+  f.fail(15);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(
+      f.attempts,
+      [15],
+      "a failed durable write cannot be crossed",
+    );
+    assert.deepEqual(f.seen, [15, 16], "the live stream remains current");
+    assert.equal(
+      f.storage.get("head:last_seen"),
+      16,
+      "live delivery has its own progress",
+    );
+    assert.equal(
+      f.storage.get("head:write_next"),
+      15,
+      "failed height survives eviction",
+    );
+    assert.ok(f.alarm() !== null);
+    f.fail(undefined);
+    const restarted = f.restart();
+    await restarted.hub.alarm();
+    assert.deepEqual(f.attempts, [15, 15, 16]);
+    assert.deepEqual(
+      f.seen,
+      [15, 16],
+      "repair does not rebroadcast old live blocks",
+    );
+    assert.equal(f.storage.get("head:write_next"), 17);
+    assert.ok(restarted.alarm() !== null);
+  } finally {
+    f.close();
+  }
+});
+
+test("head persistence stops at a mid-batch failure while later live blocks keep flowing", async () => {
+  const f = headPersistenceFixture(17);
+  f.fail(16);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [15, 16]);
+    assert.deepEqual(f.seen, [15, 16, 17]);
+    assert.equal(f.storage.get("head:write_next"), 16);
+    f.fail(undefined);
+    f.head(18);
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [15, 16, 16, 17, 18]);
+    assert.deepEqual(f.seen, [15, 16, 17, 18]);
+    assert.equal(f.storage.get("head:write_next"), 19);
+  } finally {
+    f.close();
+  }
+});
+
+test("head persistence repairs the oldest contiguous heights within the existing 25-block read cap", async () => {
+  const f = headPersistenceFixture(1000);
+  f.fail(null);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [15]);
+    assert.equal(f.seen.at(-1), 1000, "a sink outage cannot freeze serving");
+    assert.ok(f.reads.length <= 25, "live and durable work share one read cap");
+    assert.equal(f.storage.get("head:write_next"), 15);
+    f.fail(undefined);
+    f.attempts.length = f.reads.length = 0;
+    await f.hub.alarm();
+    assert.deepEqual(
+      f.attempts,
+      Array.from({ length: 25 }, (_, i) => 15 + i),
+    );
+    assert.equal(
+      f.storage.get("head:write_next"),
+      40,
+      "never jump to the recent live window",
+    );
+    assert.equal(f.reads.length, 25);
+    f.head(1001);
+    f.attempts.length = f.reads.length = 0;
+    await f.hub.alarm();
+    assert.equal(f.seen.at(-1), 1001);
+    assert.deepEqual(f.attempts, [
+      ...Array.from({ length: 24 }, (_, i) => 40 + i),
+      1001,
+    ]);
+    assert.equal(f.storage.get("head:write_next"), 64);
+    assert.equal(f.reads.length, 25);
+  } finally {
+    f.close();
+  }
+});
+
+test("head persistence planner keeps live catch-up and bounded contiguous repair distinct", () => {
+  assert.deepEqual(planHeadPoll(14, 15, 16), {
+    live: [15, 16],
+    writes: [15, 16],
+  });
+  assert.deepEqual(planHeadPoll(16, 17, 16), { live: [], writes: [] });
+  assert.deepEqual(planHeadPoll(null, 16, 16), { live: [16], writes: [16] });
+  const included = planHeadPoll(0, 976, 1000);
+  assert.equal(included.live.length, 25);
+  assert.deepEqual(included.writes, included.live);
+  const ahead = planHeadPoll(0, 1001, 1000);
+  assert.equal(ahead.live.length, 25);
+  assert.deepEqual(ahead.writes, []);
+});
+
+for (const corrupt of [
+  undefined,
+  "15",
+  NaN,
+  Infinity,
+  -1,
+  0.5,
+  Number.MAX_SAFE_INTEGER,
+]) {
+  test(`head persistence replaces an invalid write intent ${String(corrupt)} without claiming prior history`, async () => {
+    const f = headPersistenceFixture(16);
+    f.storage.set("head:write_next", corrupt);
+    try {
+      await f.hub.alarm();
+      assert.deepEqual(f.attempts, [15, 16]);
+      assert.equal(f.storage.get("head:write_next"), 17);
+      f.attempts.length = f.reads.length = 0;
+      await f.hub.alarm();
+      assert.deepEqual(f.attempts, []);
+      assert.deepEqual(f.reads, []);
+      f.head(15);
+      await f.hub.alarm();
+      assert.equal(
+        f.storage.get("head:write_next"),
+        17,
+        "a lagging endpoint cannot regress persistence",
+      );
+    } finally {
+      f.close();
+    }
+  });
+}
+
+test("head persistence without a sink remains pending while the stream advances", async () => {
+  const f = headPersistenceFixture(16, false);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(f.seen, [15, 16]);
+    assert.equal(f.storage.get("head:write_next"), 15);
+    assert.deepEqual(f.attempts, []);
+    f.head(17);
+    await f.hub.alarm();
+    assert.equal(f.seen.at(-1), 17);
+    assert.equal(f.storage.get("head:write_next"), 15);
+  } finally {
+    f.close();
+  }
+});
+
+test("head persistence retry RPC failure does not freeze a newer live block", async () => {
+  const f = headPersistenceFixture(16);
+  f.fail(15);
+  try {
+    await f.hub.alarm();
+    f.head(17);
+    f.rpcFail(15);
+    await f.hub.alarm();
+    assert.equal(f.seen.at(-1), 17);
+    assert.equal(
+      f.attempts.at(-1),
+      17,
+      "current persisted serving is not blocked by an old RPC miss",
+    );
+    assert.equal(f.storage.get("head:write_next"), 15);
+    assert.ok(f.alarm() !== null);
+    f.rpcFail(undefined);
+    f.fail(undefined);
+    await f.hub.alarm();
+    assert.equal(f.storage.get("head:write_next"), 18);
+  } finally {
+    f.close();
+  }
+});
+
+test("head persistence reconciles a committed UPSERT whose cursor acknowledgement failed", async () => {
+  const f = headPersistenceFixture(16);
+  const put = f.state.storage.put;
+  let fail = true;
+  f.state.storage.put = async (key, value) => {
+    if (key === "head:write_next" && value === 16 && fail) {
+      fail = false;
+      throw new Error("cursor acknowledgement lost");
+    }
+    return put(key, value);
+  };
+  try {
+    await f.hub.alarm();
+    assert.equal(f.storage.get("head:write_next"), 15);
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [15, 15, 16]);
+    assert.deepEqual(f.seen, [15, 16]);
+    assert.equal(f.storage.get("head:write_next"), 17);
+  } finally {
+    f.close();
+  }
+});
+
+for (const head of [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1]) {
+  test(`head persistence refuses an unresumable RPC height ${head}`, async () => {
+    const f = headPersistenceFixture(head);
+    try {
+      await f.hub.alarm();
+      assert.deepEqual(f.seen, []);
+      assert.deepEqual(f.attempts, []);
+      assert.equal(f.storage.has("head:write_next"), false);
+      assert.ok(f.alarm() !== null);
+    } finally {
+      f.close();
+    }
+  });
+}
+
+test("a failed out-of-order live write cannot advance the contiguous retry cursor", async () => {
+  const f = headPersistenceFixture(1001);
+  f.storage.set("head:last_seen", 1000);
+  f.storage.set("head:write_next", 15);
+  f.fail(1001);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [
+      ...Array.from({ length: 24 }, (_, i) => 15 + i),
+      1001,
+    ]);
+    assert.equal(f.storage.get("head:write_next"), 39);
+    assert.equal(f.seen.at(-1), 1001);
+    assert.equal(f.reads.length, 25);
+  } finally {
+    f.close();
+  }
 });

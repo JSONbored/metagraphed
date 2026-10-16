@@ -7,6 +7,9 @@ Runnable both ways:
     python3 -m pytest scripts/test_backfill_neuron_history.py
 """
 import importlib.util
+import io
+from contextlib import redirect_stderr
+from unittest.mock import patch
 import os
 import sys
 import types
@@ -51,6 +54,31 @@ class RaoToTaoExactTest(unittest.TestCase):
         rao = 9_007_199_254_740_993_123
         result = rao_to_tao_exact(rao)
         self.assertEqual(int(result), rao // 1_000_000_000)
+
+
+class ApproximateHistoryGuardTest(unittest.TestCase):
+    def test_default_write_refuses_before_rpc_or_delivery(self):
+        with patch.object(sys, "argv", ["backfill-neuron-history.py", "--days", "1"]), \
+                patch.object(_bnh.bt, "SubtensorApi", create=True) as rpc, \
+                patch.object(_bnh, "post_chunk") as send, redirect_stderr(io.StringIO()) as error:
+            with self.assertRaises(SystemExit) as refused:
+                _bnh.main()
+            self.assertEqual(refused.exception.code, 2)
+            self.assertIn("approximate", error.getvalue())
+            rpc.assert_not_called()
+            send.assert_not_called()
+
+    def test_dry_run_and_explicit_acknowledgement_retain_the_legacy_entrypoint(self):
+        for flag in ("--dry-run", "--allow-approximate-history"):
+            with self.subTest(flag=flag), \
+                    patch.object(sys, "argv", ["backfill-neuron-history.py", flag, "--days", "1"]), \
+                    patch.object(_bnh, "SECRET", "fixture-only"), \
+                    patch.object(_bnh.bt, "SubtensorApi", create=True, side_effect=RuntimeError("offline-stop")) as rpc, \
+                    redirect_stderr(io.StringIO()) as error:
+                with self.assertRaisesRegex(RuntimeError, "offline-stop"):
+                    _bnh.main()
+                rpc.assert_called_once()
+                self.assertIn("not a qualified historical capture", error.getvalue())
 
 
 if __name__ == "__main__":
