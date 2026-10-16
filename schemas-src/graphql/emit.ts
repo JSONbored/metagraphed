@@ -157,16 +157,20 @@ function flattenAllOf(
 }
 
 /**
- * Strip the `| null` arm Zod emits for a nullable field.
+ * Strip the `| null` arm from composed unions or compact JSON Schema type arrays.
  *
  * Returns the remaining single branch, or null when the union is genuinely
  * heterogeneous (which becomes {@link JSONScalar}).
  */
 function unwrapNullableUnion(node: SchemaNode): SchemaNode | null {
   const branches: SchemaNode[] | undefined = node.anyOf ?? node.oneOf;
-  if (!Array.isArray(branches)) return null;
-  const real = branches.filter((b) => b?.type !== "null");
-  return real.length === 1 ? real[0] : null;
+  if (Array.isArray(branches)) {
+    const real = branches.filter((b) => b?.type !== "null");
+    return real.length === 1 ? real[0] : null;
+  }
+  if (!Array.isArray(node.type)) return null;
+  const real = node.type.filter((type) => type !== "null");
+  return real.length === 1 ? { ...node, type: real[0] } : null;
 }
 
 /** `subnet_health` / `subnetHealth` -> `SubnetHealth`. */
@@ -262,8 +266,9 @@ function isNameable(key: string): boolean {
  * printer owns SDL syntax (escaping, block strings, field ordering), so this
  * module never concatenates schema source.
  */
-export function emitTypes(): EmittedTypes {
-  const schemas = componentSchemas();
+export function emitTypes(
+  schemas: Record<string, SchemaNode> = componentSchemas(),
+): EmittedTypes {
   const types = new Map<string, GraphQLObjectType>();
   const derivedNames = new Map<string, string>();
   const unnameable: string[] = [];
@@ -304,7 +309,12 @@ export function emitTypes(): EmittedTypes {
             unnameable.push(`${path}.${key}`);
             continue;
           }
-          if (raw?.type === "null") {
+          if (
+            raw?.type === "null" ||
+            (Array.isArray(raw?.type) &&
+              raw.type.length === 1 &&
+              raw.type[0] === "null")
+          ) {
             nullOnly.push(`${path}.${key}`);
             fields[key] = {
               type: GraphQLString,
@@ -377,7 +387,8 @@ export function emitTypes(): EmittedTypes {
 
     const single = unwrapNullableUnion(node);
     if (single) return outputType(single, path, fallbackName);
-    if (Array.isArray(node.anyOf ?? node.oneOf)) return JSONScalar;
+    if (Array.isArray(node.anyOf ?? node.oneOf) || Array.isArray(node.type))
+      return JSONScalar;
 
     if (Array.isArray(node.allOf)) {
       return objectType(
@@ -389,7 +400,9 @@ export function emitTypes(): EmittedTypes {
 
     if (node.type === "array") {
       const item = outputType(node.items ?? {}, `${path}[]`, fallbackName);
-      return new GraphQLList(new GraphQLNonNull(item));
+      return new GraphQLList(
+        admitsNull(node.items) ? item : new GraphQLNonNull(item),
+      );
     }
 
     if (node.type === "object" || node.properties) {
