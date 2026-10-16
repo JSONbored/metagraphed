@@ -216,3 +216,45 @@ test("actual block handler keeps live heights first while honest later observati
     retained.close();
   }
 });
+
+test("rare old-height count, author and spec filters retain bounded selective plans", async () => {
+  const { fetchBlockRowsFromR2Sql } = await import("../src/r2-sql-blocks.ts");
+  const sql = new DatabaseSync(":memory:");
+  const author = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
+  const common = "5HjhkCMa89QJbFULs8WPZBgVg8kMq5qdX1nx7CnQpZgoyKAN";
+  const now = Date.now();
+  try {
+    sql.exec(readFileSync(new URL("../migrations/retained-blocks/0001_retained_blocks.sql", import.meta.url),"utf8"));
+    const higher = 50_002;
+    sql.prepare("INSERT INTO history_block_sources VALUES(1,'selector',0,'{}',?,?,1)").run(higher+1,higher+1);
+    sql.prepare("INSERT INTO history_block_authors VALUES(1,?),(2,?)").run(author,common);
+    const insert = sql.prepare("INSERT INTO history_blocks VALUES(0,1,?,?,NULL,NULL,?,?,?,?,?)");
+    sql.exec("BEGIN");
+    insert.run(0,1,1,99,99,999,now);
+    for(let ordinal=1;ordinal<=higher;ordinal++) insert.run(ordinal,100_000+ordinal,2,1,1,1,now+ordinal);
+    sql.exec("COMMIT");
+    sql.prepare("INSERT INTO history_block_state VALUES(0,?,?,?,1,?,?,1,NULL)").run("b".repeat(64),"019fc234-642e-7f82-b656-ddb8529315ab","100",now,higher+1);
+    for(const kind of ["events","extrinsics"]) {
+      sql.prepare("INSERT INTO history_block_counts VALUES(0,?,1,?),(0,?,99,1)").run(kind,higher,kind);
+    }
+    const plans: string[][] = [];
+    const env = {D1_RETAINED_BLOCKS:binding(sql,plans),RETAINED_BLOCKS_NETWORKS:"mainnet"};
+    for(const [filters,index] of [
+      [{minEvents:99},"events"],
+      [{minExtrinsics:99},"extrinsics"],
+      [{author},"author"],
+      [{specVersion:999},"spec"],
+      [{author,specVersion:999},"author_spec"],
+      [{author,minEvents:99},"events"],
+    ] as const) {
+      const result = await fetchBlockRowsFromR2Sql(env,{limit:1,offset:0,...filters});
+      assert.deepEqual(result!.rows.map(row=>row.block_number),[1]);
+      const plan=plans.at(-1)!;
+      assert.ok(plan.some(detail => detail.includes(`history_blocks_${index}`)),`${JSON.stringify(filters)} must use bounded ${index} matches below ${higher} unrelated newer rows: ${plan.join("\n")}`);
+    }
+    const broad=await fetchBlockRowsFromR2Sql(env,{limit:1,offset:0,author:common});
+    assert.equal(broad!.rows[0]!.block_number,100_000+higher);
+    const missing=await fetchBlockRowsFromR2Sql(env,{limit:1,offset:0,specVersion:123456});
+    assert.deepEqual(missing!.rows,[]);
+  } finally {sql.close();}
+});
