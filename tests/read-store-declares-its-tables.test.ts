@@ -237,7 +237,7 @@ describe("every ported reader declares the tables it reads", () => {
       'const TABLES = ["neurons"] as const;',
       'export const TABLES = ["neurons", ...OTHER_TABLES] as const;',
       'export const TABLES = ["neurons", dynamicTable] as const;',
-      'export const TABLES = getTables();',
+      "export const TABLES = getTables();",
       'export { TABLES } from "./another-owner.ts";',
     ]) {
       const load = () => owner;
