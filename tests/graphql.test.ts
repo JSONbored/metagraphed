@@ -5637,7 +5637,9 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
       // reading a range the head leg owns. Nothing else is.
       assert.match(
         sql,
-        new RegExp(`^author = '${AUTHOR}' AND block_number < \\d+$`),
+        new RegExp(
+          `^author = '${AUTHOR}' AND \\(block_number < \\d+ OR block_number IS NULL\\)$`,
+        ),
       );
     } finally {
       lake.restore();

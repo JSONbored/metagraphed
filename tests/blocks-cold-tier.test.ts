@@ -490,9 +490,7 @@ describe("loadBlockFeedColdTier", () => {
     );
     assert.match(
       queries.blockFeed.mock.calls[0]![1].join(" AND "),
-      new RegExp(
-        `\\(observed_at, block_number\\) < \\(${1_700_000_000_000 + SEAM + 1}, ${SEAM + 1}\\)`,
-      ),
+      new RegExp(`block_number < ${SEAM + 1}`),
       "continues via the last store row's own cursor token",
     );
   });
@@ -603,10 +601,10 @@ describe("loadBlockFeedColdTier", () => {
       limit: 2,
       offset: 0,
     });
-    // The Postgres tier's own token for this row: observed_at.block_number.
+    // Fresh pages issue an explicit height token; old tokens keep their meaning.
     assert.equal(
       full!.next_cursor,
-      `${1_700_000_000_000 + SEAM + 1}.${SEAM + 1}`,
+      `bh1.${SEAM + 1}.${1_700_000_000_000 + SEAM + 1}.n.n`,
     );
 
     const { db: db2 } = runner([headRow(SEAM + 1)]);

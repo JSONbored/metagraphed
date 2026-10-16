@@ -838,3 +838,26 @@ test("blocks from/to parse to NUMBERS, which routeText cannot read (#10395)", ()
   assert.equal(routeInt(heights, "block_start"), 8800000);
   assert.equal(routeInt(heights, "block_end"), 8812000);
 });
+
+test("loadBlocks resumes explicit height tokens and preserves legacy observed tokens", async () => {
+  for (const [cursor, expected, next] of [
+    ["bh1.300.100.n.n", /block_number < \?/, "bh1.299.99.n.n"],
+    ["100.300", /\(observed_at,block_number\) < \(\?,\?\)/, "99.299"],
+    ["300", /block_number < \?/, "299"],
+    ["bh1.n.n.1.0", /block_number IS NULL/, "bh1.299.99.n.n"],
+  ] as const) {
+    let sql = "";
+    const result = await loadBlocks(
+      async (text) => {
+        sql = text;
+        return [{ block_number: 299, observed_at: 99 }];
+      },
+      { limit: 1, cursor, offset: 20 },
+    );
+    assert.match(sql, expected);
+    assert.doesNotMatch(sql, /OFFSET/);
+    assert.equal(result.next_cursor, next);
+    if (cursor === "100.300")
+      assert.match(sql, /ORDER BY observed_at DESC,block_number DESC/);
+  }
+});

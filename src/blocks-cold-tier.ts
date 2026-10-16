@@ -47,7 +47,11 @@ import {
 import { safeBlockNumber, safeHexLiteral } from "./history-readers.ts";
 import type { BlocksHead, ChainDetailBlocks } from "../generated/db/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
-import { decodeCursor, encodeCursor } from "./cursor.ts";
+import {
+  decodeBlockFeedCursor,
+  encodeBlockFeedCursor,
+  type BlockFeedCursor,
+} from "./block-feed-cursor.ts";
 import { readStore, recordOrNull } from "./read-store.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
 import { blocksSeamFloor, resolveBlocksSeam } from "./blocks-seam.ts";
@@ -179,7 +183,7 @@ export function storeCanServe(query: BlockFeedQuery): boolean {
 async function storeHeadRows(
   env: HistoryReadEnv | null | undefined,
   query: BlockFeedQuery,
-  cursor: number[] | null,
+  cursor: BlockFeedCursor | null,
   seam: number,
   want: number,
 ): Promise<Record<string, unknown>[] | null> {
@@ -192,10 +196,15 @@ async function storeHeadRows(
   const where: string[] = ["b.block_number > ?"];
   const params: unknown[] = [seam];
   if (cursor) {
-    // The same 2-part (observed_at, block_number) seek the other tiers issue
-    // for this token; SQLite row values keep it a single bound comparison.
-    where.push("(b.observed_at, b.block_number) < (?, ?)");
-    params.push(cursor[0], cursor[1]);
+    if (cursor.mode === "observed") {
+      where.push("(b.observed_at, b.block_number) < (?, ?)");
+      params.push(cursor.observed, cursor.height);
+    } else if (cursor.height === null) {
+      return [];
+    } else {
+      where.push("b.block_number < ?");
+      params.push(cursor.height);
+    }
   }
   for (const [value, clause] of [
     [query.blockStart, "b.block_number >= ?"],
@@ -216,7 +225,7 @@ async function storeHeadRows(
   try {
     return (await db.query(
       `SELECT ${STORE_SELECT} FROM ${STORE_FROM} WHERE ${where.join(" AND ")}
-       ORDER BY b.observed_at DESC, b.block_number DESC LIMIT ?`,
+       ORDER BY ${cursor?.mode === "observed" ? "b.observed_at DESC, b.block_number DESC" : "b.block_number DESC"} LIMIT ?`,
       [Date.now() - 300_000, ...params, want],
     )) as Record<string, unknown>[];
   } catch {
@@ -241,11 +250,7 @@ export async function loadBlockFeedColdTier(
   const offset = safeBlockNumber(query.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
 
-  // Decode the public token ONCE, with the shared codec and data-api's arity.
-  // An invalid token decodes to null and means page 1 -- the Postgres tier's
-  // exact behavior -- so both tiers serve the identical page for the
-  // identical request, malformed tokens included.
-  const cursor = decodeCursor(query.cursor, 2);
+  const cursor = decodeBlockFeedCursor(query.cursor);
 
   // An inverted range matches nothing, at any height, in either source. Answer
   // it here rather than issuing two queries to prove an impossible result --
@@ -292,10 +297,7 @@ export async function loadBlockFeedColdTier(
     // an exclusive block ceiling at the seam bounds the lake leg instead.
     const lastHead = rows.length ? rows[rows.length - 1]! : null;
     const continuation = lastHead
-      ? encodeCursor([
-          safeBlockNumber(lastHead.observed_at),
-          safeBlockNumber(lastHead.block_number),
-        ])
+      ? encodeBlockFeedCursor(lastHead, cursor)
       : null;
     // RAW rows, deliberately: they are formatted once below, together with the
     // store rows, so both sources go through the formatter exactly the same way.
@@ -311,7 +313,10 @@ export async function loadBlockFeedColdTier(
         // exclude and a ceiling would be actively wrong: the seam is 0 there, so
         // `block_number < seam + 1` would cap the whole feed at block 0.
         ceilingBlock:
-          network !== DEFAULT_CHAIN_NETWORK || lastHead ? null : seam + 1,
+          network !== DEFAULT_CHAIN_NETWORK ||
+          (lastHead && cursor?.mode === "observed")
+            ? null
+            : seam + 1,
       },
       network,
     );
@@ -321,14 +326,7 @@ export async function loadBlockFeedColdTier(
 
   const page = paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
-  // The SAME token every other tier emits for this row, so paging survives a
-  // tier transition in either direction.
-  const nextCursor = last
-    ? encodeCursor([
-        safeBlockNumber(last.observed_at),
-        safeBlockNumber(last.block_number),
-      ])
-    : null;
+  const nextCursor = last ? encodeBlockFeedCursor(last, cursor) : null;
   return buildBlockFeed(page, { limit, offset, nextCursor });
 }
 

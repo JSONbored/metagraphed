@@ -12,7 +12,10 @@ import {
   clampLimit,
   clampOffset,
 } from "../workers/request-params.ts";
-import { decodeCursor, encodeCursor } from "./cursor.ts";
+import {
+  decodeBlockFeedCursor,
+  encodeBlockFeedCursor,
+} from "./block-feed-cursor.ts";
 import type { BlockEconomicsSummary } from "./block-economics.ts";
 
 type SqlRunner = (
@@ -338,15 +341,25 @@ export async function loadBlocks(
     conds.push("event_count >= ?");
     params.push(minEvents);
   }
-  const cur = decodeCursor(cursor, 1);
+  const cur = decodeBlockFeedCursor(cursor);
   const useCursor = Boolean(cur);
   if (useCursor && cur) {
-    conds.push("block_number < ?");
-    params.push(cur[0]);
+    if (cur.mode === "observed") {
+      conds.push("(observed_at,block_number) < (?,?)");
+      params.push(cur.observed, cur.height);
+    } else {
+      conds.push(
+        cur.height === null ? "block_number IS NULL" : "block_number < ?",
+      );
+      if (cur.height !== null) params.push(cur.height);
+    }
   }
   let sql = `SELECT ${BLOCK_READ_COLUMNS} FROM blocks`;
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
-  sql += " ORDER BY block_number DESC LIMIT ?";
+  sql +=
+    cur?.mode === "observed"
+      ? " ORDER BY observed_at DESC,block_number DESC LIMIT ?"
+      : " ORDER BY block_number DESC LIMIT ?";
   params.push(lim);
   if (!useCursor) {
     sql += " OFFSET ?";
@@ -354,7 +367,7 @@ export async function loadBlocks(
   }
   const rows = await runner(sql, params);
   const last = rows.length === lim ? rows[rows.length - 1] : null;
-  const nextCursor = last ? encodeCursor([last.block_number as number]) : null;
+  const nextCursor = last ? encodeBlockFeedCursor(last, cur) : null;
   return buildBlockFeed(rows, { limit: lim, offset: off, nextCursor });
 }
 
