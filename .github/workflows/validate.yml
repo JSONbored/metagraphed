@@ -1447,13 +1447,58 @@ jobs:
       # "overflow" failure each run. The actual reason goes to this file and dies
       # with the runner.
       #
-      # `if: failure()` rather than `always()`: on a green run this is noise, and the
-      # log is only interesting when the server did something unexpected.
-      - name: Upload e2e server + report artifacts on failure
-        if: ${{ failure() && needs.changes.outputs.run_ui_e2e == 'true' }}
+      # A flaky test can make this step green after its retry. Retain the first
+      # failure's error-context and server logs too: #12741's successful retry
+      # otherwise discarded the evidence needed to distinguish an interrupted
+      # asset request from a page bug. This changes neither assertions nor retries.
+      - name: Pin e2e diagnostic receipt
+        if: ${{ !cancelled() && (steps.ui-e2e.outcome == 'success' || steps.ui-e2e.outcome == 'failure') }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from "node:child_process";
+          import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+          const directory = "apps/ui/test-results";
+          const reportPath = `${directory}/e2e-results.json`;
+          const report = existsSync(reportPath) ? JSON.parse(readFileSync(reportPath, "utf8")) : null;
+          const failures = [];
+          function visit(suites, ancestors = []) {
+            for (const suite of suites ?? []) {
+              const titles = [...ancestors, suite.title];
+              for (const spec of suite.specs ?? []) {
+                for (const test of spec.tests ?? []) {
+                  if (test.status !== "flaky" && test.status !== "unexpected") continue;
+                  failures.push({
+                    title: [...titles, spec.title].join(" > "),
+                    project: test.projectName,
+                    outcome: test.status,
+                    results: test.results.map(({ retry, status, errors, attachments }) => ({
+                      retry, status, errors,
+                      attachments: attachments.map(({ name, contentType, path }) => ({ name, contentType, path })),
+                    })),
+                  });
+                }
+              }
+              visit(suite.suites, titles);
+            }
+          }
+          visit(report?.suites);
+          mkdirSync(directory, { recursive: true });
+          writeFileSync(`${directory}/e2e-receipt.json`, JSON.stringify({
+            source: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+            run_id: process.env.GITHUB_RUN_ID,
+            run_attempt: process.env.GITHUB_RUN_ATTEMPT,
+            report_present: report !== null,
+            stats: report?.stats ?? null,
+            errors: report?.errors ?? [],
+            failures,
+          }, null, 2) + "\n");
+          NODE
+
+      - name: Upload e2e server + report diagnostics
+        if: ${{ !cancelled() && (steps.ui-e2e.outcome == 'success' || steps.ui-e2e.outcome == 'failure') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ui-e2e-failure-logs
+          name: ui-e2e-diagnostics
           path: |
             ~/.config/.wrangler/logs/*.log
             apps/ui/playwright-report/**
