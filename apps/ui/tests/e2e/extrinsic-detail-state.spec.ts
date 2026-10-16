@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
+import {
+  BOUNDED_ARGS_HASH,
+  EVIDENCE_HASH,
+  FAILED_PROXY_HASH,
+  UNINDEXED_HASH,
+} from "./extrinsic-evidence-fixture.ts";
 
 const HASH = "0x986f1f7da3d93882e8c19bbe3b303ef8ba5454062272446598d17aa599ca4428";
 const ROUTE = `/extrinsics/${HASH}`;
@@ -149,4 +155,356 @@ test.describe("extrinsic detail raw-event continuation", () => {
     }));
     expect(width.document).toBeLessThanOrEqual(width.viewport);
   });
+});
+
+test.describe("account attribution and pallet-level evidence", () => {
+  test.use({ serviceWorkers: "block" });
+
+  for (const width of [375, 768, 1280]) {
+    for (const theme of ["light", "dark"] as const) {
+      test(`preserves consensus and stake events at ${width} in ${theme}`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.addInitScript((choice) => localStorage.setItem("mg-theme", choice), theme);
+        await page.route("**/api/v1/chain-events?*", (route) =>
+          route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify({ ok: true, data: { events: [], next_cursor: null } }),
+          }),
+        );
+        await gotoThroughRestart(page, `/extrinsics/${EVIDENCE_HASH}`);
+        const table = page.getByRole("table", { name: "Account-attributed events" });
+        await expect(page.locator("#economic-effects")).toContainText("Account-attributed events");
+        await expect(table).toContainText("TimelockedWeightsCommitted");
+        await expect(table).toContainText("StakeAdded");
+        await expect(page.getByText("Decoded economic effects", { exact: true })).toHaveCount(0);
+        await expect(
+          page.getByText(/No pallet-level event records are available from this tier/),
+        ).toBeVisible();
+        await expect(table.locator("tbody tr")).toHaveCount(2);
+        await expect(page.locator("#signer .mg-dt-skeleton")).toHaveCount(0);
+        await page.evaluate(() => {
+          document.documentElement.style.scrollBehavior = "auto";
+          window.scrollTo(0, 0);
+        });
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+        const tierNote = page.getByText(
+          /No pallet-level event records are available from this tier/,
+        );
+        expect(await tierNote.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+        await page.screenshot({
+          path: test.info().outputPath(`explorer-evidence-${width}-${theme}.png`),
+          fullPage: true,
+        });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+          true,
+        );
+      });
+    }
+  }
+
+  test("retains failed proxy/batch arguments and unknown runtime events without inventing account effects", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.route("**/api/v1/chain-events?*", (route) =>
+      route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            events: [
+              {
+                block_number: 8713384,
+                event_index: 9,
+                pallet: "FutureRuntime",
+                method: "Unrecognized",
+                args: { raw: "retained" },
+              },
+            ],
+            next_cursor: null,
+          },
+        }),
+      }),
+    );
+    await gotoThroughRestart(page, `/extrinsics/${FAILED_PROXY_HASH}`);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("proxy");
+    await expect(page.getByText("result failed", { exact: true })).toBeVisible();
+    const argumentsTable = page.locator("#arguments");
+    await argumentsTable.getByRole("button", { name: "Expand row", exact: true }).focus();
+    await page.keyboard.press("Enter");
+    const decodedValue = argumentsTable.getByLabel("call argument preview", { exact: true });
+    await expect(decodedValue).toBeVisible();
+    await expect(decodedValue).toContainText('"batch"');
+    await expect(decodedValue).toContainText('"add_stake"');
+    await expect(
+      argumentsTable.getByRole("button", { name: "Copy call argument preview", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(/No account-attributed events were decoded/)).toBeVisible();
+    await expect(page.getByRole("table", { name: /What it produced/ })).toContainText(
+      "FutureRuntime.Unrecognized",
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  });
+
+  test("keeps unavailable decode coordinates and signer context distinct from empty or pending data", async ({
+    page,
+  }) => {
+    let rawReads = 0,
+      peerReads = 0;
+    await page.route("**/api/v1/chain-events?*", async (route) => {
+      rawReads++;
+      await route.continue();
+    });
+    await page.route("**/api/v1/extrinsics?*", async (route) => {
+      peerReads++;
+      await route.continue();
+    });
+    await gotoThroughRestart(page, `/extrinsics/${UNINDEXED_HASH}`);
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    await expect(
+      page.getByText("Call arguments are unavailable in this indexed record.", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("No signer or related call hash is available in this indexed record.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.locator("#events .mg-dt-skeleton, #signer .mg-dt-skeleton")).toHaveCount(0);
+    expect(rawReads).toBe(0);
+    expect(peerReads).toBe(0);
+    await expect(page.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
+    await expect(page.getByText("This call takes no arguments.", { exact: true })).toHaveCount(0);
+  });
+
+  for (const outcome of ["repeated-cursor", "failure-recovery"] as const) {
+    test(`preserves more than ten raw events through ${outcome}`, async ({ page }) => {
+      const rows = Array.from({ length: 12 }, (_, index) => ({
+        block_number: 8713384,
+        event_index: index,
+        pallet: "System",
+        method: "Remarked",
+        args: {},
+      }));
+      let fail = outcome === "failure-recovery";
+      await page.route("**/api/v1/chain-events?*", async (route) => {
+        const continuation = new URL(route.request().url()).searchParams.has("cursor");
+        if (continuation && fail) {
+          await route.fulfill({
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: { code: "fixture_failure", message: "Continuation unavailable" },
+            }),
+          });
+          return;
+        }
+        await route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({
+            ok: true,
+            data: {
+              events: continuation ? [rows[9], rows[10], rows[11]] : rows.slice(0, 10),
+              next_cursor: continuation && outcome !== "repeated-cursor" ? null : "next-page",
+            },
+          }),
+        });
+      });
+      await gotoThroughRestart(page, `/extrinsics/${EVIDENCE_HASH}`);
+      const table = page.getByRole("table", { name: /What it produced/ });
+      await expect(table.locator("tbody tr")).toHaveCount(10);
+      await page.getByRole("button", { name: "Load more", exact: true }).click();
+      if (outcome === "failure-recovery") {
+        await expect(page.getByText(/Couldn’t load more/)).toBeVisible();
+        await expect(table.locator("tbody tr")).toHaveCount(10);
+        fail = false;
+        await page.getByRole("button", { name: "Retry", exact: true }).last().click();
+      }
+      await expect(table.locator("tbody tr")).toHaveCount(12);
+      await expect(page.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
+      if (outcome === "repeated-cursor")
+        await expect(page.getByText(/Pagination stopped/)).toBeVisible();
+    });
+  }
+});
+
+test("distinguishes copied argument previews from exact API text", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          (window as unknown as { copied: string }).copied = value;
+        },
+      },
+    });
+  });
+  // This synthetic extrinsic has no pallet-level records. Do not attach the
+  // unrelated captured block's events to its visual evidence.
+  await page.route("**/api/v1/chain-events?*", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: { events: [], next_cursor: null } }),
+    }),
+  );
+  let rawReads = 0;
+  let pruned = false;
+  const exactText =
+    ' {"ok":true,"data":{"extrinsic":{"call_args":{"long":"' +
+    "x".repeat(2001) +
+    '","n":340282366920938463463374607431768211455}}}}\r\n';
+  await page.route(`**/api/v1/extrinsics/${BOUNDED_ARGS_HASH}`, (route) => {
+    rawReads++;
+    return route.fulfill(
+      pruned
+        ? {
+            status: 410,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: { code: "history_pruned", message: "Pruned after the previous read" },
+            }),
+          }
+        : { contentType: "application/json", body: exactText },
+    );
+  });
+  await gotoThroughRestart(page, `/extrinsics/${BOUNDED_ARGS_HASH}`);
+  await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+  await expect(page.getByText(/Partial preview:/)).toContainText("Showing 64 of 65 arguments");
+  await expect(page.getByText(/Partial preview:/)).toContainText("long strings");
+  await expect(page.getByText(/Partial preview:/)).toContainText("collection entries");
+  await expect(page.getByText(/Partial preview:/)).toContainText("nested depth");
+  expect(rawReads).toBe(0);
+  const args = page.locator("#arguments");
+  await args.getByRole("button", { name: "Expand row", exact: true }).first().click();
+  await expect(args.getByLabel("long argument preview", { exact: true })).toHaveText(
+    "x".repeat(2000) + "…",
+  );
+  await args.getByRole("button", { name: "Copy long argument preview", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { copied: string }).copied))
+    .toBe("x".repeat(2000) + "…");
+  await page.getByRole("button", { name: "Load exact API response", exact: true }).click();
+  await expect(page.getByLabel("exact API response text", { exact: true })).toHaveText(exactText);
+  await page.getByRole("button", { name: "Copy exact API response text", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { copied: string }).copied))
+    .toBe(exactText);
+  expect(rawReads).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+  await page.evaluate(() => {
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, 0);
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.screenshot({
+    path: test.info().outputPath("explorer-evidence-exact-arguments-375.png"),
+    fullPage: true,
+  });
+  pruned = true;
+  await page.getByRole("button", { name: "Reload exact API response", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Exact API response unavailable" }),
+  ).toContainText("410 · history_pruned");
+  await expect(
+    page.getByRole("button", { name: "Copy exact API response text", exact: true }),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.screenshot({
+    path: test.info().outputPath("explorer-evidence-partial-arguments-375.png"),
+    fullPage: true,
+  });
+});
+
+test("does not restore a late exact response after navigating away from a stalled read", async ({
+  page,
+}) => {
+  let release!: () => void;
+  let settled = false;
+  let entered = false;
+  const stalled = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`**/api/v1/extrinsics/${BOUNDED_ARGS_HASH}`, async (route) => {
+    entered = true;
+    await stalled;
+    try {
+      await route.fulfill({
+        contentType: "application/json",
+        body: '{"ok":true,"data":{"extrinsic":{"call_args":{"late":"old record"}}}}',
+      });
+    } catch {
+      // Navigation may have already cancelled the request in Chromium.
+    } finally {
+      settled = true;
+    }
+  });
+  await gotoThroughRestart(page, `/extrinsics/${BOUNDED_ARGS_HASH}`);
+  await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+  const marker = "stalled-raw-read-same-document";
+  await page.evaluate((value) => {
+    (window as unknown as { rawReadMarker: string }).rawReadMarker = value;
+  }, marker);
+  try {
+    await page.getByRole("button", { name: "Load exact API response", exact: true }).click();
+    await expect.poll(() => entered).toBe(true);
+    await expect(
+      page.getByRole("status").filter({ hasText: "Loading exact API response" }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Chain", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/chain$/);
+    expect(
+      await page.evaluate(() => (window as unknown as { rawReadMarker: string }).rawReadMarker),
+    ).toBe(marker);
+    release();
+    await expect.poll(() => settled).toBe(true);
+    await expect(page.getByLabel("exact API response text", { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Copy exact API response text", exact: true }),
+    ).toHaveCount(0);
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`/extrinsics/${BOUNDED_ARGS_HASH}$`));
+    expect(
+      await page.evaluate(() => (window as unknown as { rawReadMarker: string }).rawReadMarker),
+    ).toBe(marker);
+    await expect(
+      page.getByRole("button", { name: "Load exact API response", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("exact API response text", { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Copy exact API response text", exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    release();
+  }
+});
+
+test("keeps pruned exact API responses explicit and retryable", async ({ page }) => {
+  await page.route(`**/api/v1/extrinsics/${BOUNDED_ARGS_HASH}`, (route) =>
+    route.fulfill({
+      status: 410,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: false,
+        error: { code: "history_pruned", message: "Historical detail was pruned" },
+      }),
+    }),
+  );
+  await gotoThroughRestart(page, `/extrinsics/${BOUNDED_ARGS_HASH}`);
+  await page.getByRole("button", { name: "Load exact API response", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Exact API response unavailable" }),
+  ).toContainText("410 · history_pruned");
+  await expect(
+    page.getByRole("button", { name: "Retry exact API response", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Copy exact API response text", exact: true }),
+  ).toHaveCount(0);
 });

@@ -1471,6 +1471,15 @@ jobs:
       # "overflow" failure each run. The actual reason goes to this file and dies
       # with the runner.
       #
+      - name: Retain explorer evidence screenshots
+        if: ${{ always() && needs.changes.outputs.run_ui_e2e == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: explorer-evidence-screenshots
+          path: apps/ui/test-results/**/explorer-evidence-*.png
+          retention-days: 7
+          if-no-files-found: ignore
+
       # A flaky test can make this step green after its retry. Retain the first
       # failure's error-context and server logs too: #12741's successful retry
       # otherwise discarded the evidence needed to distinguish an interrupted

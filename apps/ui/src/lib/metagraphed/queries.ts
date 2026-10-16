@@ -2401,62 +2401,104 @@ function countExtrinsicCallArgs(raw: unknown): number | null {
   return null;
 }
 
-function normalizeExtrinsicCallArgs(raw: unknown): Extrinsic["call_args"] {
+interface ExtrinsicPreviewBudget {
+  nodes: number;
+  characters: number;
+  limits: Set<string>;
+}
+
+function previewString(value: string | null | undefined, budget: ExtrinsicPreviewBudget) {
+  if (value == null) return value;
+  const limit = Math.min(MAX_EXTRINSIC_STRING_LENGTH, budget.characters);
+  budget.characters -= Math.min(value.length, limit);
+  if (value.length <= limit) return value;
+  budget.limits.add(limit < MAX_EXTRINSIC_STRING_LENGTH ? "preview budget" : "long strings");
+  return `${value.slice(0, limit)}…`;
+}
+
+function normalizeExtrinsicCallArgs(
+  raw: unknown,
+  budget: ExtrinsicPreviewBudget,
+): Extrinsic["call_args"] {
   if (Array.isArray(raw)) {
-    return raw
-      .slice(0, MAX_EXTRINSIC_CALL_ARGS)
-      .filter(isRecord)
-      .map(
-        (arg) =>
-          ({
-            name: truncateString(firstString(arg.name)),
-            value: sanitizeExtrinsicValue(arg.value),
-          }) as ExtrinsicCallArg,
-      );
+    if (raw.length > MAX_EXTRINSIC_CALL_ARGS) budget.limits.add("argument count");
+    return raw.slice(0, MAX_EXTRINSIC_CALL_ARGS).flatMap((arg) => {
+      if (!isRecord(arg)) {
+        budget.limits.add("unrecognized arguments");
+        return [];
+      }
+      return [
+        {
+          name: previewString(firstString(arg.name), budget),
+          value: sanitizeExtrinsicValue(arg.value, budget),
+        } as ExtrinsicCallArg,
+      ];
+    });
   }
 
   if (isRecord(raw)) {
+    const keys = Object.keys(raw);
+    if (keys.length > MAX_EXTRINSIC_CALL_ARGS) budget.limits.add("argument count");
     return Object.fromEntries(
-      Object.entries(raw)
+      keys
         .slice(0, MAX_EXTRINSIC_CALL_ARGS)
-        .map(([key, value]) => [truncateString(key) ?? key, sanitizeExtrinsicValue(value)]),
+        .map((key) => [
+          previewString(key, budget) ?? key,
+          sanitizeExtrinsicValue(raw[key], budget),
+        ]),
     );
   }
 
+  if (raw != null) budget.limits.add("unrecognized arguments");
   return null;
 }
 
-function sanitizeExtrinsicValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
+function sanitizeExtrinsicValue(
+  value: unknown,
+  budget: ExtrinsicPreviewBudget = { nodes: 2048, characters: 128 * 1024, limits: new Set() },
+  depth = 0,
+  seen = new WeakSet<object>(),
+): unknown {
+  if (budget.nodes-- <= 0 || budget.characters <= 0) {
+    budget.limits.add("preview budget");
+    return "[Preview budget exceeded]";
+  }
   if (value === null || value === undefined) return value;
-
-  if (typeof value === "string") return truncateString(value);
+  if (typeof value === "string") return previewString(value, budget);
   if (typeof value === "number" || typeof value === "boolean") return value;
-  if (typeof value === "bigint") return value.toString();
-  if (typeof value !== "object") return String(value);
-
-  if (seen.has(value)) return "[Circular]";
-  if (depth >= MAX_EXTRINSIC_VALUE_DEPTH) return "[Max depth exceeded]";
-
+  if (typeof value === "bigint") return previewString(value.toString(), budget);
+  if (typeof value !== "object") {
+    budget.limits.add("unsupported values");
+    return previewString(String(value), budget);
+  }
+  if (seen.has(value) || depth >= MAX_EXTRINSIC_VALUE_DEPTH) {
+    budget.limits.add(seen.has(value) ? "circular values" : "nested depth");
+    return seen.has(value) ? "[Circular]" : "[Max depth exceeded]";
+  }
   seen.add(value);
-
   if (Array.isArray(value)) {
     const out = value
       .slice(0, MAX_EXTRINSIC_COLLECTION_ENTRIES)
-      .map((entry) => sanitizeExtrinsicValue(entry, depth + 1, seen));
-    if (value.length > MAX_EXTRINSIC_COLLECTION_ENTRIES) out.push("[Truncated]");
+      .map((entry) => sanitizeExtrinsicValue(entry, budget, depth + 1, seen));
+    if (value.length > MAX_EXTRINSIC_COLLECTION_ENTRIES) {
+      budget.limits.add("collection entries");
+      out.push("[Truncated]");
+    }
     seen.delete(value);
     return out;
   }
-
+  const keys = Object.keys(value);
+  const record = value as Record<string, unknown>;
   const out = Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
+    keys
       .slice(0, MAX_EXTRINSIC_COLLECTION_ENTRIES)
-      .map(([key, entry]) => [
-        truncateString(key) ?? key,
-        sanitizeExtrinsicValue(entry, depth + 1, seen),
+      .map((key) => [
+        previewString(key, budget) ?? key,
+        sanitizeExtrinsicValue(record[key], budget, depth + 1, seen),
       ]),
   );
-  if (Object.keys(value as Record<string, unknown>).length > MAX_EXTRINSIC_COLLECTION_ENTRIES) {
+  if (keys.length > MAX_EXTRINSIC_COLLECTION_ENTRIES) {
+    budget.limits.add("collection entries");
     out.__truncated = true;
   }
   seen.delete(value);
@@ -2480,7 +2522,12 @@ export function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic
     return null;
   }
 
-  const callArgs = normalizeExtrinsicCallArgs(raw.call_args);
+  const previewBudget: ExtrinsicPreviewBudget = {
+    nodes: 2048,
+    characters: 128 * 1024,
+    limits: new Set(),
+  };
+  const callArgs = normalizeExtrinsicCallArgs(raw.call_args, previewBudget);
   const callArgsTotal = countExtrinsicCallArgs(raw.call_args);
 
   const eventsSource = Array.isArray(rawEvents)
@@ -2524,6 +2571,7 @@ export function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic
     tip_tao: firstFiniteNumber(raw.tip_tao),
     call_args: callArgs,
     call_args_total: callArgsTotal,
+    call_args_preview_limits: [...previewBudget.limits],
     events,
     events_total: eventsTotal,
     success: typeof raw.success === "boolean" ? raw.success : null,
@@ -4117,14 +4165,14 @@ function normalizeChainFeeDay(raw: unknown): ChainFeeDay | null {
   const extrinsicCount = coerceFiniteNumber(raw.extrinsic_count);
   const totalFeeTao = coerceFiniteNumber(raw.total_fee_tao);
   const totalTipTao = coerceFiniteNumber(raw.total_tip_tao);
-  if (!day || extrinsicCount == null || totalFeeTao == null || totalTipTao == null) return null;
+  if (!day || extrinsicCount == null) return null;
   return {
     day,
     extrinsic_count: extrinsicCount,
     signed_extrinsic_count: coerceFiniteNumber(raw.signed_extrinsic_count) ?? null,
-    total_fee_tao: totalFeeTao,
+    total_fee_tao: totalFeeTao ?? null,
     avg_fee_tao: coerceFiniteNumber(raw.avg_fee_tao) ?? null,
-    total_tip_tao: totalTipTao,
+    total_tip_tao: totalTipTao ?? null,
     avg_tip_tao: coerceFiniteNumber(raw.avg_tip_tao) ?? null,
   };
 }

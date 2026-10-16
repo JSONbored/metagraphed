@@ -30,6 +30,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildValidatorOperatorDirectory } from "../../../../src/validator-operator-directory.ts";
 import { HAR_DIR, DATED_ENDPOINT_PATTERNS } from "./har-path.ts";
+import {
+  BOUNDED_ARGS_HASH,
+  EVIDENCE_HASH,
+  FAILED_PROXY_HASH,
+  UNINDEXED_HASH,
+  extrinsicEvidenceFixture,
+} from "./extrinsic-evidence-fixture.ts";
 
 const port = Number(process.argv[2] ?? 8081);
 // `--record` fills gaps from live production and writes them to the
@@ -347,6 +354,19 @@ for (const [key, recorded] of byPath) {
   if (key === "/api/v1/blocks" || BLOCK_DETAIL_PATH.test(key)) {
     byPath.set(key, withBlockEconomicsFixture(recorded));
   }
+}
+
+// Explicit synthetic SSR fixtures: browser interception cannot replace a
+// useSuspenseQuery response fetched by the server before hydration.
+for (const hash of [EVIDENCE_HASH, FAILED_PROXY_HASH, UNINDEXED_HASH, BOUNDED_ARGS_HASH]) {
+  const key = `/api/v1/extrinsics/${hash}`;
+  const recorded = {
+    status: 200,
+    contentType: "application/json",
+    body: Buffer.from(JSON.stringify(extrinsicEvidenceFixture(hash))),
+  };
+  byUrl.set(key, recorded);
+  byPath.set(key, recorded);
 }
 
 /**

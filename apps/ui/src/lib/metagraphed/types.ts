@@ -1133,6 +1133,8 @@ export interface Extrinsic {
   tip_tao?: number | null;
   call_args?: ExtrinsicCallArg[] | Record<string, unknown> | null;
   call_args_total?: number | null;
+  /** Losses in the bounded, normalized display preview; never an exact raw record. */
+  call_args_preview_limits?: string[];
   events?: AccountEvent[];
   events_total?: number;
   success?: boolean | null;
@@ -3753,9 +3755,9 @@ export interface ChainFeeDay {
   day: string;
   extrinsic_count: number;
   signed_extrinsic_count: number | null;
-  total_fee_tao: number;
+  total_fee_tao: number | null;
   avg_fee_tao: number | null;
-  total_tip_tao: number;
+  total_tip_tao: number | null;
   avg_tip_tao: number | null;
 }
 export interface ChainFeePayer {

@@ -150,6 +150,15 @@ describe("argRows", () => {
     expect(rows.map((r) => r.value)).toEqual(["false", "0"]);
   });
 
+  it("retains legacy named-object proxy and batch arguments", () => {
+    const call = { Utility: { batch: [{ SubtensorModule: { add_stake: {} } }] } };
+    expect(argRows({ call, flag: false, count: 0 } as Extrinsic["call_args"])).toEqual([
+      { key: "0-call", name: "call", type: null, value: JSON.stringify(call) },
+      { key: "1-flag", name: "flag", type: null, value: "false" },
+      { key: "2-count", name: "count", type: null, value: "0" },
+    ]);
+  });
+
   it("is empty when the tier decoded no arguments", () => {
     expect(argRows(undefined)).toEqual([]);
     expect(argRows([] as Extrinsic["call_args"])).toEqual([]);

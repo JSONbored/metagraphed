@@ -64,6 +64,38 @@ export function callSegments(calls: readonly ChainCallEntry[], top = 8): CallSeg
   return head;
 }
 
+/** Calendar closure is distinct from indexed coverage. A bucket remains partial
+ * until a later UTC-day observation arrives; midnight alone cannot complete a
+ * stale reading. Missing observation time cannot certify any daily bucket. */
+export function feeDayWindow(
+  days: readonly ChainFeeDay[],
+  observedAt: string | null,
+  now = Date.now(),
+) {
+  const observed = observedAt === null ? NaN : Date.parse(observedAt);
+  const cutoff =
+    Number.isFinite(observed) && Number.isFinite(now)
+      ? new Date(Math.min(observed, now)).toISOString().slice(0, 10)
+      : null;
+  const closed: ChainFeeDay[] = [];
+  const partial: ChainFeeDay[] = [];
+  let unknown = 0;
+  for (const day of days) {
+    const parsed = Date.parse(`${day.day}T00:00:00Z`);
+    if (
+      !cutoff ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(day.day) ||
+      !Number.isFinite(parsed) ||
+      new Date(parsed).toISOString().slice(0, 10) !== day.day ||
+      day.day > cutoff
+    ) {
+      unknown++;
+    } else if (day.day === cutoff) partial.push(day);
+    else closed.push(day);
+  }
+  return { closed, partial, unknown, cutoff };
+}
+
 /** Daily fee totals → chronological line points. */
 export function feePoints(days: readonly ChainFeeDay[]): { t: number; v: number }[] {
   return days
@@ -76,9 +108,16 @@ export function feePoints(days: readonly ChainFeeDay[]): { t: number; v: number 
     .sort((a, b) => a.t - b.t);
 }
 
+/** A line would interpolate across an unmeasured UTC day. */
+export function consecutiveFeePoints(points: readonly { t: number; v: number }[]): boolean {
+  return points.every(
+    (point, index) => index === 0 || point.t - points[index - 1]!.t === 86_400_000,
+  );
+}
+
 export interface FeeWindowSummary {
-  totalFeeTao: number;
-  totalTipTao: number;
+  totalFeeTao: number | null;
+  totalTipTao: number | null;
   averageFeeTao: number | null;
   dayCount: number;
 }
@@ -91,18 +130,16 @@ export interface FeeWindowSummary {
  */
 export function summarizeFeeWindow(days: readonly ChainFeeDay[]): FeeWindowSummary | null {
   if (days.length === 0) return null;
-  const totals = days.reduce(
-    (current, day) => ({
-      fee: current.fee + (day.total_fee_tao ?? 0),
-      tip: current.tip + (day.total_tip_tao ?? 0),
-      signedExtrinsics: current.signedExtrinsics + (day.signed_extrinsic_count ?? 0),
-    }),
-    { fee: 0, tip: 0, signedExtrinsics: 0 },
-  );
+  const sum = (key: "total_fee_tao" | "total_tip_tao" | "signed_extrinsic_count") =>
+    days.every((day) => typeof day[key] === "number" && Number.isFinite(day[key]) && day[key]! >= 0)
+      ? days.reduce((total, day) => total + day[key]!, 0)
+      : null;
+  const fee = sum("total_fee_tao");
+  const signed = sum("signed_extrinsic_count");
   return {
-    totalFeeTao: totals.fee,
-    totalTipTao: totals.tip,
-    averageFeeTao: totals.signedExtrinsics > 0 ? totals.fee / totals.signedExtrinsics : null,
+    totalFeeTao: fee,
+    totalTipTao: sum("total_tip_tao"),
+    averageFeeTao: fee !== null && signed !== null && signed > 0 ? fee / signed : null,
     dayCount: days.length,
   };
 }
