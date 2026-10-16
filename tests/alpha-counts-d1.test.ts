@@ -217,7 +217,8 @@ test("count admission bounds rows and UTF8 bytes before writing", async () => {
     writeAlphaCountsD1(store, tooMany, anchor, tooMany.length, AT + 10),
     /Invalid anchored Alpha count rows/,
   );
-  const rows = tooMany.slice(0, 1000).map((row, index) => ({
+  const subset = tooMany.slice(0, 1000);
+  const rows = subset.map((row, index) => ({
     ...row,
     hotkey: String(index).padStart(8, "0") + "\u{10000}".repeat(30),
   }));
@@ -600,15 +601,8 @@ test("native failure rolls back both gauges and receipt", async () => {
       ]);
     },
   };
-  await assert.rejects(
-    writeAlphaCountsD1(
-      faulty,
-      [countRow(anchor, "hot-a")],
-      anchor,
-      2,
-      AT + 10,
-    ),
-  );
+  const chunk = [countRow(anchor, "hot-a")];
+  await assert.rejects(writeAlphaCountsD1(faulty, chunk, anchor, 2, AT + 10));
   assert.equal(injected, true);
   assert.deepEqual(await state(store), before);
 });
@@ -671,10 +665,8 @@ test("raw counts include root, stored-zero and retired members", async () => {
   const originals = await store.query<{ alpha_rao: string }>(
     "SELECT alpha_rao FROM alpha_snapshot_rows ORDER BY coldkey",
   );
-  assert.deepEqual(
-    originals.map((row) => row.alpha_rao),
-    ["0", "0", "0"],
-  );
+  const exactRao = originals.map((row) => row.alpha_rao);
+  assert.deepEqual(exactRao, ["0", "0", "0"]);
   const distinctColdkeys = await store.first(
     "SELECT nominator_count FROM validator_nominator_counts WHERE hotkey=?",
     ["hot-zero"],
