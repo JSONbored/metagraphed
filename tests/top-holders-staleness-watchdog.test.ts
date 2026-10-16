@@ -441,7 +441,13 @@ describe("runTopHoldersStalenessWatchdog", () => {
   function flowBody(
     generatedAt: string,
     rows: unknown[] = [
-      { ss58: "5A", net_flow_7d: 1, free_tao: 1, delegated_tao: 2, total_tao: 3 },
+      {
+        ss58: "5A",
+        net_flow_7d: 1,
+        free_tao: 1,
+        delegated_tao: 2,
+        total_tao: 3,
+      },
     ],
     /** #9632: the holdings half's own stamp. Omitted by default, which is what
      * a combined body written before the split looks like. */

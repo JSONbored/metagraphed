@@ -120,7 +120,11 @@ describe("the decode-lane rule", () => {
     );
     assert.equal(summary.seam, DEFAULT_BLOCKS_SEAM);
     assert.ok(reasons.some((r) => r.includes(DECODE_WATERMARK_KEY)));
-    assert.ok(reasons.some((r) => /decoder progress beyond the configured floor/.test(r)));
+    assert.ok(
+      reasons.some((r) =>
+        /decoder progress beyond the configured floor/.test(r),
+      ),
+    );
   });
 
   test("a stopped decoder is named as stopped, with the frozen seam", () => {
@@ -849,9 +853,7 @@ describe("the watchdog's own reporting", () => {
       assert.ok(
         pg.control.queries.some((q) => q.text.includes("raw_capture_state")),
       );
-      assert.ok(
-        pg.control.queries.some((q) => q.text.includes("blocks_head")),
-      );
+      assert.ok(pg.control.queries.some((q) => q.text.includes("blocks_head")));
       assert.equal(s.rows[0].verdict, "unknown");
       const detail = String(s.rows[0].detail);
       assert.deepEqual(JSON.parse(detail).causes, result.causes);
@@ -883,7 +885,10 @@ describe("the watchdog's own reporting", () => {
       ]);
       assert.ok(!pg.control.queries.some((q) => q.text.includes(table)));
       assert.equal(s.rows[0].verdict, "unknown");
-      assert.deepEqual(JSON.parse(String(s.rows[0].detail)).causes, result.causes);
+      assert.deepEqual(
+        JSON.parse(String(s.rows[0].detail)).causes,
+        result.causes,
+      );
     }
   });
 
@@ -922,7 +927,9 @@ describe("the watchdog's own reporting", () => {
       assert.equal(result.capture_lag, null);
       assert.equal(result.head_lag, CAPTURE_LAG_BLOCKS + 1);
       assert.equal(result.watermark_decoded_through, null);
-      assert.ok((result.causes as string[]).includes("serving_seam_unavailable"));
+      assert.ok(
+        (result.causes as string[]).includes("serving_seam_unavailable"),
+      );
       assert.ok((result.causes as string[]).includes("capture_head_lag"));
       assert.ok(!(result.causes as string[]).includes("decode_lag"));
       assert.equal(s.rows[0].verdict, "unknown");
