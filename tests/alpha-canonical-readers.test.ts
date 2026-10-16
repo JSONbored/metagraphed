@@ -25,6 +25,7 @@ import {
   decodeWatermarkKey,
   resetDecodeWatermarkCache,
 } from "../src/decode-watermark.ts";
+import { apiEnv } from "./helpers/worker-env.ts";
 
 const COLDKEY = "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e";
 const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
@@ -835,7 +836,7 @@ describe("public Alpha cache", () => {
     for (const path of paths) {
       const response = await handleRequest(
         new Request(`https://api.metagraph.sh${path}`),
-        { ...env, D1_STATE_TABLES: "neurons" },
+        apiEnv({ ...env, D1_STATE_TABLES: "neurons" }),
         {},
       );
       assert.equal((await response.json()).obsolete, true);

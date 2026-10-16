@@ -300,7 +300,7 @@ test("populated 0038 upgrades preserve exact legacy rows", async () => {
         countPassSelect,
       ];
       const statements = sql.map((text) => db.prepare(text));
-      const results = await db.batch(statements);
+      const results = await db.batch<Record<string, string | null>>(statements);
       return results.map((result) => result.results);
     };
     const before = await readLegacy();

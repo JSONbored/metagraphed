@@ -529,7 +529,10 @@ test("ownership loss during discovery refuses count enrichment", async () => {
   const db = await fixture();
   await capture(db);
   await counts(db);
-  const env = environment(db);
+  const env = {
+    ...environment(db),
+    D1_STATE_TABLES: owners.join(","),
+  };
   const statements: string[] = [];
   env.D1_STATE = {
     prepare(text: string) {

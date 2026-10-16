@@ -2493,7 +2493,7 @@ async function handleValidatorNominatorCountsSync(
     }
   }
 
-  const rows = incoming.map(coerceNominatorCountSyncRow);
+  const rows: Row[] = incoming.map(coerceNominatorCountSyncRow);
   if (alphaAnchor) {
     if (
       rows.length > alphaTotal! ||
@@ -6828,7 +6828,7 @@ async function loadNominatorCountFromStore(
   env: DataApiEnv,
 ): Promise<Map<string, number>> {
   try {
-    let rows = await readCanonicalNominatorCounts(env, hotkeys);
+    let rows: Row[] | null = await readCanonicalNominatorCounts(env, hotkeys);
     if (rows === null) {
       rows = await sql.unsafe<{
         hotkey: ValidatorNominatorCounts["hotkey"];

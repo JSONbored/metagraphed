@@ -291,7 +291,11 @@ describe("default directory entry", () => {
         if (previousEtag) {
           init = { headers: { "if-none-match": previousEtag } };
         }
-        const response = await read(request(OPERATOR_PATH, init), env, f.ctx);
+        const response: Response | null = await read(
+          request(OPERATOR_PATH, init),
+          env,
+          f.ctx,
+        );
         expect(response!.status).toBe(200);
         const body = (await response!.json()) as { data: OperatorDirectory };
         expect(body.data).toEqual(current);
