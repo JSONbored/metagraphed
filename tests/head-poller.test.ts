@@ -937,7 +937,7 @@ test("head persistence repairs the oldest contiguous heights within the existing
     f.attempts.length = f.reads.length = 0;
     await f.hub.alarm();
     assert.equal(f.seen.at(-1), 1001);
-    assert.deepEqual(f.attempts, Array.from({ length: 24 }, (_, i) => 40 + i));
+    assert.deepEqual(f.attempts, [...Array.from({ length: 24 }, (_, i) => 40 + i), 1001]);
     assert.equal(f.storage.get("head:write_next"), 64);
     assert.equal(f.reads.length, 25);
   } finally { f.close(); }
@@ -998,6 +998,7 @@ test("head persistence retry RPC failure does not freeze a newer live block", as
     f.rpcFail(15);
     await f.hub.alarm();
     assert.equal(f.seen.at(-1), 17);
+    assert.equal(f.attempts.at(-1), 17, "current persisted serving is not blocked by an old RPC miss");
     assert.equal(f.storage.get("head:write_next"), 15);
     assert.ok(f.alarm() !== null);
     f.rpcFail(undefined);
@@ -1040,3 +1041,18 @@ for (const head of [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1]) {
     } finally { f.close(); }
   });
 }
+
+
+test("a failed out-of-order live write cannot advance the contiguous retry cursor", async () => {
+  const f = headPersistenceFixture(1001);
+  f.storage.set("head:last_seen", 1000);
+  f.storage.set("head:write_next", 15);
+  f.fail(1001);
+  try {
+    await f.hub.alarm();
+    assert.deepEqual(f.attempts, [...Array.from({ length: 24 }, (_, i) => 15 + i), 1001]);
+    assert.equal(f.storage.get("head:write_next"), 39);
+    assert.equal(f.seen.at(-1), 1001);
+    assert.equal(f.reads.length, 25);
+  } finally { f.close(); }
+});

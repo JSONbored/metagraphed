@@ -11,7 +11,12 @@ pending intent, never the recent-window truncation used by live catch-up. Both
 paths share at most 25 block fetches per alarm and reuse fetched blocks. A full
 live catch-up window reserves one slot for an older retry; ordinary new-head
 traffic leaves up to 24 repair slots. A failed sink write stops persistence at
-that height while the alarm still rearms. A cursor acknowledgement failure retries
+that height while the alarm still rearms. Current live headers can also commit
+out of order within the same 25-block budget; those successes never advance the
+contiguous cursor. If an old RPC block is unavailable, current cached live blocks
+can still reach the sink while the failed height remains pending and reported.
+A failed sink stops further writes in that alarm to avoid an outage write storm.
+A cursor acknowledgement failure retries
 the same existing height-keyed UPSERT; it does not advance uncertain progress.
 
 This is prospective retry, not a historical replay or a new archive. On adoption,
