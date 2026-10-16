@@ -1,7 +1,9 @@
 name: Quarantine source formatting
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [fix/sync-dead-letter-durable-quarantine-20261016]
+    paths: [.github/workflows/quarantine-format.yml]
 
 permissions:
   contents: read
