@@ -250,10 +250,20 @@ test("populated 0038 upgrades preserve exact legacy rows", async () => {
     const scanInsert =
       "INSERT INTO nominator_scan_receipts(captured_at,coldkey,row_count) " +
       "VALUES(CAST(? AS INTEGER),'legacy-alpha',1)";
+    const countInsert =
+      "INSERT INTO validator_nominator_counts" +
+      "(hotkey,nominator_count,captured_at) " +
+      "VALUES('validator',1,CAST(? AS INTEGER))";
+    const countPassInsert =
+      "INSERT INTO validator_nominator_counts_passes" +
+      "(captured_at,expected_rows,received_rows,completed_at) " +
+      "VALUES(CAST(? AS INTEGER),1,1,CAST(? AS INTEGER))";
     await db.batch([
       db.prepare(positionInsert).bind(at, shares, at),
       db.prepare(passInsert).bind(at, completedAt),
       db.prepare(scanInsert).bind(at),
+      db.prepare(countInsert).bind(at),
+      db.prepare(countPassInsert).bind(at, completedAt),
     ]);
     const positionSelect =
       "SELECT coldkey,hotkey,CAST(netuid AS TEXT) AS netuid," +
@@ -271,8 +281,24 @@ test("populated 0038 upgrades preserve exact legacy rows", async () => {
       "SELECT CAST(captured_at AS TEXT) AS captured_at,coldkey," +
       "CAST(row_count AS TEXT) AS row_count " +
       "FROM nominator_scan_receipts ORDER BY captured_at,coldkey";
+    const countSelect =
+      "SELECT hotkey,CAST(nominator_count AS TEXT) AS nominator_count," +
+      "CAST(captured_at AS TEXT) AS captured_at " +
+      "FROM validator_nominator_counts ORDER BY hotkey";
+    const countPassSelect =
+      "SELECT CAST(captured_at AS TEXT) AS captured_at," +
+      "CAST(expected_rows AS TEXT) AS expected_rows," +
+      "CAST(received_rows AS TEXT) AS received_rows," +
+      "CAST(completed_at AS TEXT) AS completed_at " +
+      "FROM validator_nominator_counts_passes ORDER BY captured_at";
     const readLegacy = async () => {
-      const sql = [positionSelect, passSelect, scanSelect];
+      const sql = [
+        positionSelect,
+        passSelect,
+        scanSelect,
+        countSelect,
+        countPassSelect,
+      ];
       const statements = sql.map((text) => db.prepare(text));
       const results = await db.batch(statements);
       return results.map((result) => result.results);
@@ -283,6 +309,9 @@ test("populated 0038 upgrades preserve exact legacy rows", async () => {
     assert.equal(before[0]?.[1]?.share_fraction, null);
     assert.equal(before[1]?.[0]?.completed_at, completedAt);
     assert.equal(before[2]?.[0]?.captured_at, at);
+    assert.equal(before[3]?.[0]?.captured_at, at);
+    assert.equal(before[4]?.[0]?.captured_at, at);
+    assert.equal(before[4]?.[0]?.completed_at, completedAt);
     const next = new URL("0039_alpha_runtime_receiver.sql", origin);
     const statements = readFileSync(next, "utf8")
       .split("-- statement-breakpoint")
@@ -298,6 +327,10 @@ test("populated 0038 upgrades preserve exact legacy rows", async () => {
       { coldkey: "legacy-alpha", alpha_rao: null, alpha_evidence: null },
       { coldkey: "legacy-self", alpha_rao: null, alpha_evidence: null },
     ]);
+    const anchorSql =
+      "SELECT alpha_snapshot FROM validator_nominator_counts_passes";
+    const anchors = await db.prepare(anchorSql).all();
+    assert.deepEqual(anchors.results, [{ alpha_snapshot: null }]);
     const countSql = "SELECT COUNT(*) AS n FROM alpha_snapshot_passes";
     assert.equal(await db.prepare(countSql).first("n"), 0);
     const counts = await assertDeclaredNativeTables(db);

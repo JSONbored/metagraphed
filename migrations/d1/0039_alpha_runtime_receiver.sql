@@ -5,6 +5,9 @@
 -- unqualified originals retain NULL valuation when a later adapter qualifies.
 -- A complete self-stake scan owns only its latest-only source domain. Keep
 -- exact chunk receipts separate from the Alpha scan's completeness ledger.
+ALTER TABLE validator_nominator_counts_passes ADD COLUMN alpha_snapshot TEXT
+  CHECK(alpha_snapshot IS NULL OR json_valid(alpha_snapshot));
+-- statement-breakpoint
 CREATE TABLE self_stake_snapshot_passes (
     captured_at INTEGER PRIMARY KEY CHECK (captured_at > 0),
     scanned_pairs INTEGER NOT NULL CHECK (scanned_pairs > 0),
@@ -61,12 +64,18 @@ CREATE TABLE alpha_snapshot_passes (
   metadata_sha256 TEXT NOT NULL REFERENCES alpha_runtime_metadata(sha256),
   scanned_legacy INTEGER NOT NULL CHECK(scanned_legacy>=0),
   scanned_v2 INTEGER NOT NULL CHECK(scanned_v2>=0),
+  distinct_members INTEGER NOT NULL CHECK(distinct_members BETWEEN 0 AND 2000000),
+  excluded_root_members INTEGER NOT NULL CHECK(excluded_root_members BETWEEN 0 AND 2000000),
   expected_rows INTEGER NOT NULL CHECK(expected_rows BETWEEN 0 AND 1000000),
   expected_chunks INTEGER NOT NULL CHECK(expected_chunks BETWEEN 1 AND 1000),
   received_rows INTEGER NOT NULL DEFAULT 0 CHECK(received_rows BETWEEN 0 AND expected_rows),
   received_chunks INTEGER NOT NULL DEFAULT 0 CHECK(received_chunks BETWEEN 0 AND expected_chunks),
   completed_at INTEGER,
   selected INTEGER NOT NULL DEFAULT 0 CHECK(selected IN (0,1)),
+  CHECK(distinct_members>=max(scanned_legacy,scanned_v2) AND distinct_members<=scanned_legacy+scanned_v2),
+  CHECK(excluded_root_members<=distinct_members),
+  CHECK(expected_rows=distinct_members-excluded_root_members),
+  CHECK(spec_version<>479 OR (scanned_legacy=0 AND distinct_members=scanned_v2)),
   CHECK(completed_at IS NULL OR (received_rows=expected_rows AND received_chunks=expected_chunks))
 ) WITHOUT ROWID;
 -- statement-breakpoint
@@ -96,6 +105,10 @@ CREATE TABLE alpha_snapshot_rows (
   alpha_evidence TEXT NOT NULL CHECK(json_valid(alpha_evidence)),
   PRIMARY KEY(captured_at,coldkey,hotkey,netuid)
 ) WITHOUT ROWID;
+-- statement-breakpoint
+CREATE INDEX alpha_snapshot_count_members ON alpha_snapshot_rows(captured_at,hotkey,coldkey);
+-- statement-breakpoint
+CREATE INDEX alpha_count_capture ON validator_nominator_counts(captured_at,hotkey);
 -- statement-breakpoint
 -- An old producer must not silently replace qualified Alpha values. Self-stake
 -- owns its separate domain and may not erase an existing qualified Alpha row.
@@ -146,7 +159,8 @@ WHEN NEW.captured_at IS NOT OLD.captured_at OR NEW.block_number IS NOT OLD.block
  OR NEW.block_hash IS NOT OLD.block_hash OR NEW.genesis_hash IS NOT OLD.genesis_hash
  OR NEW.spec_version IS NOT OLD.spec_version OR NEW.code_hash IS NOT OLD.code_hash
  OR NEW.metadata_sha256 IS NOT OLD.metadata_sha256 OR NEW.scanned_legacy IS NOT OLD.scanned_legacy
- OR NEW.scanned_v2 IS NOT OLD.scanned_v2 OR NEW.expected_rows IS NOT OLD.expected_rows
+ OR NEW.scanned_v2 IS NOT OLD.scanned_v2 OR NEW.distinct_members IS NOT OLD.distinct_members
+ OR NEW.excluded_root_members IS NOT OLD.excluded_root_members OR NEW.expected_rows IS NOT OLD.expected_rows
  OR NEW.expected_chunks IS NOT OLD.expected_chunks OR NEW.received_rows<OLD.received_rows
  OR NEW.received_chunks<OLD.received_chunks OR NEW.selected<OLD.selected
  OR (OLD.completed_at IS NOT NULL AND NEW.completed_at IS NOT OLD.completed_at)
@@ -201,3 +215,64 @@ WHEN OLD.alpha_evidence IS NOT NULL AND NOT EXISTS(
    SELECT 1 FROM alpha_snapshot_passes selected
    WHERE selected.selected=1 AND selected.block_number>=p.block_number))
 BEGIN SELECT RAISE(ABORT,'Alpha position retirement requires a complete newer snapshot'); END;
+-- statement-breakpoint
+-- Queue admission is not a count receipt. An anchored count pass names the
+-- exact retained capture; historical terminal receipts remain restorable.
+CREATE TRIGGER alpha_count_pass_insert_fence BEFORE INSERT ON validator_nominator_counts_passes
+WHEN (NEW.alpha_snapshot IS NULL AND EXISTS(SELECT 1 FROM alpha_snapshot_passes WHERE selected=1))
+ OR (NEW.alpha_snapshot IS NOT NULL AND NEW.alpha_snapshot IS NOT (
+  SELECT json_object('captured_at',p.captured_at,'block_number',p.block_number,
+   'block_hash',p.block_hash,'genesis_hash',p.genesis_hash,'spec_version',p.spec_version,
+   'code_hash',p.code_hash,'metadata_sha256',p.metadata_sha256,
+   'scanned_legacy',p.scanned_legacy,'scanned_v2',p.scanned_v2,
+   'distinct_members',p.distinct_members,'excluded_root_members',p.excluded_root_members)
+  FROM alpha_snapshot_passes p WHERE p.captured_at=NEW.captured_at
+   AND p.selected=1 AND p.completed_at IS NOT NULL))
+BEGIN SELECT RAISE(ABORT,'Alpha counts require their exact retained capture'); END;
+-- statement-breakpoint
+CREATE TRIGGER alpha_count_pass_update_fence BEFORE UPDATE ON validator_nominator_counts_passes
+WHEN (NEW.alpha_snapshot IS NULL AND EXISTS(SELECT 1 FROM alpha_snapshot_passes WHERE selected=1))
+ OR NEW.alpha_snapshot IS NOT OLD.alpha_snapshot
+ OR (OLD.alpha_snapshot IS NOT NULL AND (NEW.captured_at IS NOT OLD.captured_at
+  OR NEW.expected_rows IS NOT OLD.expected_rows OR NEW.received_rows<OLD.received_rows
+  OR (OLD.completed_at IS NOT NULL AND NEW.completed_at IS NOT OLD.completed_at)))
+BEGIN SELECT RAISE(ABORT,'Alpha count receipt identity is immutable'); END;
+-- statement-breakpoint
+CREATE TRIGGER alpha_count_pass_insert_bounds BEFORE INSERT ON validator_nominator_counts_passes
+WHEN NEW.alpha_snapshot IS NOT NULL AND (NEW.expected_rows<0
+ OR NEW.expected_rows>json_extract(NEW.alpha_snapshot,'$.distinct_members')
+ OR (NEW.expected_rows=0)<>(json_extract(NEW.alpha_snapshot,'$.distinct_members')=0)
+ OR NEW.received_rows<0 OR NEW.received_rows>NEW.expected_rows
+ OR (NEW.completed_at IS NOT NULL AND (NEW.completed_at<NEW.captured_at
+  OR NEW.received_rows<>NEW.expected_rows)))
+BEGIN SELECT RAISE(ABORT,'Alpha count receipt is incomplete or outside its census'); END;
+-- statement-breakpoint
+CREATE TRIGGER alpha_count_pass_update_bounds BEFORE UPDATE ON validator_nominator_counts_passes
+WHEN NEW.alpha_snapshot IS NOT NULL AND (NEW.expected_rows<0
+ OR NEW.expected_rows>json_extract(NEW.alpha_snapshot,'$.distinct_members')
+ OR (NEW.expected_rows=0)<>(json_extract(NEW.alpha_snapshot,'$.distinct_members')=0)
+ OR NEW.received_rows<0 OR NEW.received_rows>NEW.expected_rows
+ OR (NEW.completed_at IS NOT NULL AND (NEW.completed_at<NEW.captured_at
+  OR NEW.received_rows<>NEW.expected_rows)))
+BEGIN SELECT RAISE(ABORT,'Alpha count receipt is incomplete or outside its census'); END;
+-- statement-breakpoint
+CREATE TRIGGER alpha_count_pass_preserve BEFORE DELETE ON validator_nominator_counts_passes
+WHEN OLD.alpha_snapshot IS NOT NULL
+BEGIN SELECT RAISE(ABORT,'Alpha count receipt is retained'); END;
+-- statement-breakpoint
+CREATE TRIGGER alpha_count_insert_fence BEFORE INSERT ON validator_nominator_counts
+WHEN EXISTS(SELECT 1 FROM alpha_snapshot_passes WHERE selected=1)
+ AND (NEW.captured_at IS NOT (SELECT captured_at FROM alpha_snapshot_passes WHERE selected=1
+  ORDER BY block_number DESC,captured_at DESC LIMIT 1)
+ OR NOT EXISTS(SELECT 1 FROM validator_nominator_counts_passes
+  WHERE captured_at=NEW.captured_at AND alpha_snapshot IS NOT NULL))
+BEGIN SELECT RAISE(ABORT,'Alpha counts require the current canonical capture'); END;
+-- statement-breakpoint
+CREATE TRIGGER alpha_count_update_fence BEFORE UPDATE ON validator_nominator_counts
+WHEN EXISTS(SELECT 1 FROM alpha_snapshot_passes WHERE selected=1)
+ AND (NEW.captured_at IS NOT (SELECT captured_at FROM alpha_snapshot_passes WHERE selected=1
+  ORDER BY block_number DESC,captured_at DESC LIMIT 1)
+ OR NOT EXISTS(SELECT 1 FROM validator_nominator_counts_passes
+  WHERE captured_at=NEW.captured_at AND alpha_snapshot IS NOT NULL)
+ OR (NEW.captured_at=OLD.captured_at AND NEW.nominator_count IS NOT OLD.nominator_count))
+BEGIN SELECT RAISE(ABORT,'Alpha count write is stale or differs at the same capture'); END;

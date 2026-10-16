@@ -1,5 +1,15 @@
 import { ownerCapturePositions } from "../src/owner-capture-positions.ts";
 import { ZodError } from "zod";
+import { readCanonicalNominatorCounts } from "../src/alpha-counts-reader.ts";
+import {
+  alphaCountAnchorSchema,
+  alphaCountPassTotal,
+  alphaCountsOwnerStore,
+  alphaCountsNeedAnchor,
+  readAlphaCountStatusD1,
+  writeAlphaCountsD1,
+  type AlphaCountAnchor,
+} from "../src/alpha-counts-d1.ts";
 import {
   writeAlphaSnapshotD1,
   readAlphaSnapshotResumeD1,
@@ -2330,26 +2340,9 @@ async function handleSubnetOwnershipSync(
 
 // --- POST /api/v1/internal/validator-nominator-counts-sync (#2549) --------
 //
-// RESTORED ON D1 (#9146). Retired by #9193 when the Postgres table it wrote
-// was destroyed with the box; this is the same route against
-// tests/fixtures/sqlite-schema/0011_validator_nominator_counts.sql instead.
-//
-// The write path into validator_nominator_counts -- simpler than
-// account-identity-sync above: latest-only, no history table (a nominator
-// count is a live gauge, not a fact worth diffing over time yet). Populated by
-// its own low-frequency job
-// (metagraphed-infra src/bin/poller/jobs/validator_nominators.rs, 24h),
-// decoupled from the fast neurons sync -- see that job's and the migration's
-// own header comments for why a full SubtensorModule::Alpha scan can't share
-// the neurons snapshot's cadence.
-//
-// THE PRODUCER CHUNKS; THIS ROUTE DOES NOT REASSEMBLE. One scan is ~112,550
-// rows, over the per-request cap below, so a scan arrives as several
-// independent requests. That is why there is no prune here and no batch-wide
-// bookkeeping: each request is a self-contained upsert, and correctness comes
-// from buildUpsert's captured_at guard rather than from requests arriving in
-// order or at all. A dropped chunk costs those hotkeys one cycle of freshness,
-// never a wrong value.
+// Raw membership counts share the Alpha capture's native owner. Admission
+// preserves the existing queue; authenticated status proves terminal application.
+// Legacy envelopes remain valid before the first canonical Alpha capture.
 const VALIDATOR_NOMINATOR_COUNTS_SYNC_TOKEN_HEADER =
   "x-validator-nominator-counts-sync-token";
 
@@ -2429,9 +2422,41 @@ async function handleValidatorNominatorCountsSync(
   } catch {
     return writeJson({ error: "body must be JSON" }, 400);
   }
-  // Both envelopes accepted, matching handleNeuronsSync's own tolerance -- the
-  // producer sends a bare array, but {rows:[...]} is what every other sync
-  // route here speaks and a mismatch is not worth a failed cycle.
+  let alphaAnchor: AlphaCountAnchor | undefined;
+  let alphaTotal: number | undefined;
+  if (
+    parsed?.alpha_snapshot !== undefined ||
+    parsed?.counts_status !== undefined
+  ) {
+    try {
+      alphaAnchor = alphaCountAnchorSchema.parse(parsed.alpha_snapshot);
+      alphaTotal = alphaCountPassTotal(alphaAnchor, parsed.pass_total);
+      if (parsed.counts_status !== undefined && parsed.counts_status !== true)
+        throw new TypeError("Invalid count status request");
+    } catch {
+      return writeJson({ error: "invalid Alpha count identity or total" }, 400);
+    }
+    try {
+      const owner = alphaCountsOwnerStore(env);
+      if (!owner)
+        return writeJson(
+          { error: "Alpha counts require their native owner" },
+          503,
+        );
+      if (parsed.counts_status === true) {
+        if (parsed.rows !== undefined)
+          return writeJson({ error: "count status cannot carry rows" }, 400);
+        return writeJson(
+          await readAlphaCountStatusD1(owner, alphaAnchor, alphaTotal),
+        );
+      }
+    } catch {
+      return writeJson(
+        { error: "Alpha count owner or receipt unavailable" },
+        503,
+      );
+    }
+  }
   const incoming = Array.isArray(parsed)
     ? parsed
     : Array.isArray(parsed?.rows)
@@ -2464,6 +2489,55 @@ async function handleValidatorNominatorCountsSync(
   }
 
   const rows = incoming.map(coerceNominatorCountSyncRow);
+  if (alphaAnchor) {
+    if (
+      rows.length > alphaTotal! ||
+      rows.some((row) => row.captured_at !== alphaAnchor.captured_at) ||
+      new Set(rows.map((row) => row.hotkey)).size !== rows.length
+    )
+      return writeJson({ error: "Alpha count rows differ from capture" }, 400);
+    if (!rows.length && alphaTotal !== 0)
+      return writeJson({ error: "empty Alpha count chunk" }, 400);
+    try {
+      if (rows.length && syncLaneUsesQueue(env, "validator-nominator-counts")) {
+        await enqueueSyncBatch(env.SYNC_BATCHES!, {
+          lane: "validator-nominator-counts",
+          capturedAt: alphaAnchor.captured_at,
+          passTotal: alphaTotal!,
+          alpha_snapshot: alphaAnchor,
+          rows,
+        });
+        return writeJson({
+          ok: true,
+          stores: ["queue"],
+          queued: true,
+          alpha_snapshot: alphaAnchor,
+          pass_total: alphaTotal,
+        });
+      }
+      return writeJson(
+        await writeAlphaCountsD1(
+          alphaCountsOwnerStore(env)!,
+          rows,
+          alphaAnchor,
+          alphaTotal!,
+          Date.now(),
+        ),
+      );
+    } catch (error) {
+      await captureDataApiError(error, "alpha-count-sync", env);
+      return writeJson({ error: "Alpha count application failed" }, 502);
+    }
+  }
+  try {
+    if (await alphaCountsNeedAnchor(env))
+      return writeJson(
+        { error: "canonical Alpha counts require alpha_snapshot" },
+        400,
+      );
+  } catch {
+    return writeJson({ error: "Alpha count owner unavailable" }, 503);
+  }
 
   // THE PASS DECLARATION (metagraphed-infra#346). This lane had none, which is
   // why a short load here was indistinguishable from a validator genuinely
@@ -6900,20 +6974,23 @@ async function loadNominatorCountFromStore(
   env: DataApiEnv,
 ): Promise<Map<string, number>> {
   try {
-    const rows = await sql.unsafe<{
-      hotkey: ValidatorNominatorCounts["hotkey"];
-      nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
-      scan_at: ValidatorNominatorCounts["captured_at"] | null;
-    }>(
-      hotkeys.length === 1
-        ? "SELECT ? AS hotkey," +
-            " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
-            " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
-        : `WITH requested(hotkey) AS (VALUES ${hotkeys.map(() => "(?)").join(",")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
+    let rows = await readCanonicalNominatorCounts(env, hotkeys);
+    if (rows === null) {
+      rows = await sql.unsafe<{
+        hotkey: ValidatorNominatorCounts["hotkey"];
+        nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
+        scan_at: ValidatorNominatorCounts["captured_at"] | null;
+      }>(
+        hotkeys.length === 1
+          ? "SELECT ? AS hotkey," +
+              " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
+              " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
+          : `WITH requested(hotkey) AS (VALUES ${hotkeys.map(() => "(?)").join(",")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
           SELECT r.hotkey,c.nominator_count,scan.scan_at FROM requested r CROSS JOIN scan
           LEFT JOIN validator_nominator_counts c ON c.hotkey=r.hotkey`,
-      hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],
-    );
+        hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],
+      );
+    }
     const counts = fillConfirmedZeros(
       rows,
       nominatorCountsByHotkey(rows),
@@ -9941,7 +10018,20 @@ export default {
         if (reason) throw new Error(`neurons queue write failed: ${reason}`);
         return result;
       },
-      "validator-nominator-counts": async (rows, pass) => {
+      "validator-nominator-counts": async (rows, pass, alphaAnchor) => {
+        if (alphaAnchor) {
+          const owner = alphaCountsOwnerStore(env);
+          if (!owner || !pass)
+            throw new Error("Alpha counts require their native owner and total");
+          await writeAlphaCountsD1(
+            owner,
+            rows,
+            alphaAnchor,
+            pass.expectedRows,
+            Date.now(),
+          );
+          return { statements: 6 };
+        }
         // D1 is not written -- this lane is Neon's outright (#10116) --
         // so the Neon write below is the ONLY one, and its failure must
         // throw rather than return: a normal return acks the message and

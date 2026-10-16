@@ -28,6 +28,15 @@ legacy member census and each row's legacy components; its receipt alone is not
 an independent global denominator-prefix proof. Spec version alone never qualifies
 arithmetic.
 
+The capture retains raw `scanned_legacy`/`scanned_v2`, the distinct union
+`distinct_members`, and `excluded_root_members`. Serving rows must equal the
+distinct union minus excluded root members. Runtime479 additionally requires
+zero legacy members and a distinct union equal to its V2 census. Completion
+checks actual retained rows and both raw-lane representation deficits against
+the explicit root scope. Zero and retired originals remain part of that census.
+Historical receipt `selected` is monotone; boolean `current` reports whether
+that capture is still canonical by finalized block, then capture timestamp.
+
 The arithmetic reference executes unchanged share-pool 0.1.0 and SafeFloat from
 [upstream commit f4786f9](https://github.com/RaoFoundation/subtensor/tree/f4786f9087cac84cfab37cbdf1e01c399042653a),
 with SDK `cacb4310f20c7cac83eb3ccd8ed5a5ad4212608a`, substrate-fixed 0.6.0
@@ -84,7 +93,8 @@ unchanged. The proposed next identity is
 `alpha_snapshot_passes`, `alpha_snapshot_chunks`, `alpha_snapshot_rows`,
 `alpha_snapshot_pools`, `self_stake_snapshot_passes`,
 `self_stake_snapshot_chunks`), nullable `alpha_rao`/`alpha_evidence` on
-`nominator_positions`, ownership/immutability triggers and supporting indexes.
+`nominator_positions`, nullable exact `alpha_snapshot` on the existing
+`validator_nominator_counts_passes`, ownership/immutability triggers and indexes.
 This is a fresh focused migration, not a renaming of a recorded migration.
 
 The retained stack used 0039 for unrelated retention trigger work, 0040 for
@@ -105,13 +115,53 @@ The position export allowlist is not expanded to unrelated tables. Capture
 metadata, immutable rows/pools and receipt tables additionally require coherent
 native backup/restore coverage; a positions-only export is not complete recovery.
 
-The native recovery regression takes one coherent eleven-table family cut,
+The native recovery regression takes one coherent thirteen-table family cut,
 including all seven new tables, positions, pass/scan completeness evidence and
-the export revision ledger. It restores exact typed cells into a blank migrated
+the export revision ledger, plus counts and their anchored pass receipts.
+It restores exact typed cells into a blank migrated
 fixture, then checks canonical reads, pending resume, unchanged Alpha/self-stake
-receipts and replay before completing the pending pass. This is a synthetic
+receipts, lower-clock canonical counts and replay before completing the pending
+pass. Count rows restore before selected Alpha passes, and anchored count receipts
+restore after their retained capture identities, in one atomic native batch.
+This is a synthetic
 software restore proof. It does not certify production backup coverage or permit
 mixing independently exported tables while writers continue to mutate them.
+
+## Count transport and terminal receipt
+
+The existing authenticated counts-sync POST accepts
+`{rows, pass_total, alpha_snapshot}`. The count anchor contains exactly
+`captured_at`, `block_number`, `block_hash`, `genesis_hash`, `spec_version`,
+`code_hash`, `metadata_sha256`, `scanned_legacy`, `scanned_v2`,
+`distinct_members` and `excluded_root_members`. It travels unchanged through
+every packed queue message. Queue admission returns `queued:true` and
+`stores:["queue"]`; it does not claim that counts were written.
+
+Poll the same authenticated POST with
+`{counts_status:true, alpha_snapshot, pass_total}`. The native terminal receipt
+echoes the anchor and total with `stores:["d1"]`, `applied_count`, `completed_at`,
+boolean `complete` and boolean `current`. Success requires exact anchor/total
+equality, both flags true, applied count equal to the total and non-null completion.
+This proves only the co-owned D1 transaction. A separate Neon sink requires its
+own completion proof; anchored cross-store application is refused.
+
+The consumer checks actual canonical selection inside the transaction that
+writes count rows and their receipt. Distinct actual hotkeys determine progress,
+so duplicate and reordered deliveries cannot complete a truncated pass.
+Higher finalized blocks may replace counts despite a lower capture clock;
+superseded chunks fail without changing counts or receipts. Empty raw captures
+use an empty rows/zero-total control transaction, without enqueueing bulk work.
+No separate controller or wire generation is introduced.
+
+Counts describe distinct raw coldkeys per hotkey across all subnets, including
+root, stored-zero and retired members. They do not certify economic stake.
+Known retained non-root hotkeys and coldkeys bound the declared pass and every
+count; additional distinct pairs cannot exceed excluded root members. The root
+originals are outside this serving capture, so their exact deduplication remains
+producer evidence. Economic readers independently require qualified quantities,
+exclude exact zero outputs, and retain every original row. Count readers require
+the current capture's complete anchored pass; old stamps and leftover hotkeys
+cannot supply counts or confirmed zeros.
 
 ## Activation and rollback preconditions
 

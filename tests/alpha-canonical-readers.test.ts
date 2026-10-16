@@ -8,7 +8,10 @@ import {
 } from "../src/account-nominator-positions.ts";
 import * as hotPositions from "../src/nominator-positions-hot-tier.ts";
 import * as coldPositions from "../src/nominator-positions-cold-tier.ts";
-import { buildSubnetHolders, loadSubnetHolders } from "../src/subnet-holders.ts";
+import {
+  buildSubnetHolders,
+  loadSubnetHolders,
+} from "../src/subnet-holders.ts";
 import { buildChainHolders, loadChainHolders } from "../src/chain-holders.ts";
 import * as nominatorPositions from "../src/validator-nominator-positions.ts";
 import { topHoldersHoldings } from "../src/top-holders-holdings.ts";
@@ -25,6 +28,9 @@ import {
 
 const COLDKEY = "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e";
 const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
+const RETIRED_COLDKEY = HOTKEY;
+const STORED_ZERO_COLDKEY =
+  "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 const STAMP = 1_785_634_702_670;
 const { ALPHA_GENESIS, ALPHA_RUNTIMES } = alpha;
 const { loadAccountPositionsFromStore } = hotPositions;
@@ -203,8 +209,8 @@ describe("canonical Alpha quantities across existing readers", () => {
     // Synthetic qualified quantities cover retired and stored-zero originals.
     const originals = [
       [COLDKEY, HOTKEY, 7, 0.25, "2500000000"],
-      ["retired-coldkey", HOTKEY, 7, 0, "0"],
-      ["stored-zero-coldkey", HOTKEY, 7, 0, "0"],
+      [RETIRED_COLDKEY, HOTKEY, 7, 0, "0"],
+      [STORED_ZERO_COLDKEY, HOTKEY, 7, 0, "0"],
       [COLDKEY, "retired-hotkey", 7, 0, "0"],
       [COLDKEY, HOTKEY, 8, 0, "0"],
       ["all-zero-coldkey", "all-zero-hotkey", 9, 0, "0"],
@@ -256,7 +262,7 @@ describe("canonical Alpha quantities across existing readers", () => {
       assert.equal(account.total_stake_alpha, 2.5);
       assert.equal(account.degraded, undefined);
       AccountPositionsArtifactSchema.parse(account);
-      for (const coldkey of ["retired-coldkey", "stored-zero-coldkey"]) {
+      for (const coldkey of [RETIRED_COLDKEY, STORED_ZERO_COLDKEY]) {
         const empty = await load(environment(), coldkey);
         assert.ok(empty);
         assert.equal(empty.position_count, 0);
@@ -319,7 +325,8 @@ describe("canonical Alpha quantities across existing readers", () => {
       delegated_tao: 0,
       total_tao: 10,
     });
-    const retained = sqlite.prepare("SELECT alpha_rao FROM alpha_snapshot_rows");
+    const retainedSql = "SELECT alpha_rao FROM alpha_snapshot_rows";
+    const retained = sqlite.prepare(retainedSql);
     assert.deepEqual(retained.all().map((row) => row.alpha_rao), ["0"]);
   });
 

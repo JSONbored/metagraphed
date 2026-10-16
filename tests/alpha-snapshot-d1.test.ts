@@ -60,18 +60,33 @@ const row = (coldkey = "alice", hotkey = "hot") => ({
   netuid: 23,
   evidence: structuredClone(frozen.members[0].evidence),
 });
-const packet = (rows = [row()], overrides: Row = {}) => ({
-  alpha_snapshot: {
-    ...frozen.alpha_snapshot,
-    scanned_legacy: 0,
-    scanned_v2: 10,
-    total_rows: rows.length,
-    total_chunks: 1,
-    index: 0,
+const packet = (rows = [row()], overrides: Row = {}) => {
+  const total = overrides.total_rows ?? rows.length;
+  const excluded = overrides.excluded_root_members ?? 0;
+  const distinct = overrides.distinct_members ?? total + excluded;
+  return {
+    alpha_snapshot: {
+      ...frozen.alpha_snapshot,
+      scanned_legacy: 0,
+      scanned_v2: distinct,
+      distinct_members: distinct,
+      excluded_root_members: excluded,
+      total_rows: rows.length,
+      total_chunks: 1,
+      index: 0,
+      ...overrides,
+    },
+    rows,
+  };
+};
+const packet479 = (rows = [row()], overrides: Row = {}) =>
+  packet(rows, {
+    spec_version: 479,
+    code_hash: ALPHA_RUNTIMES[479].code,
+    metadata_sha256: ALPHA_RUNTIMES[479].metadata,
+    metadata_scale_hex: undefined,
     ...overrides,
-  },
-  rows,
-});
+  });
 const rowsOf = async (db: D1Database) =>
   (
     await db
@@ -595,7 +610,8 @@ test("max-width positions stay inside native binding limits and use one pool own
     };
     return statement;
   };
-  await write(bounded as D1StoreBinding, packet(rows, { scanned_v2: 2500 }));
+  const census = { scanned_legacy: 2500, scanned_v2: 2500 };
+  await write(bounded as D1StoreBinding, packet(rows, census));
   assert.ok(Math.max(...lengths) < 2_000_000);
   assert.equal(
     (await db.prepare("SELECT COUNT(*) AS n FROM alpha_snapshot_pools").first())
@@ -967,6 +983,7 @@ test("runtime479 qualifies exact V2 originals under its pinned identity without 
     spec_version: 479,
     code_hash: ALPHA_RUNTIMES[479].code,
     metadata_sha256: ALPHA_RUNTIMES[479].metadata,
+    scanned_v2: 1,
     metadata_scale_hex: readFileSync(
       new URL("./fixtures/alpha-runtime/metadata-479.hex", import.meta.url),
       "utf8",
@@ -1007,6 +1024,7 @@ test("runtime479 refuses a legacy census or original legacy lane before native I
       spec_version: 479,
       code_hash: ALPHA_RUNTIMES[479].code,
       metadata_sha256: ALPHA_RUNTIMES[479].metadata,
+      scanned_v2: 1,
       metadata_scale_hex: undefined,
     });
     if (legacy === "census") body.alpha_snapshot.scanned_legacy = 1;
@@ -1014,6 +1032,362 @@ test("runtime479 refuses a legacy census or original legacy lane before native I
     await assert.rejects(write(db, body), /empty original legacy lanes/);
   }
   assert.equal(prepare.mock.calls.length, 0);
+});
+
+test("runtime479 rejects empty or truncated member censuses before native I/O", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  const priorRows = await rowsOf(db);
+  const priorCapture = await alphaCaptureState(createD1Store(db));
+  const next = {
+    captured_at: baseAt + 1,
+    block_number: frozen.alpha_snapshot.block_number + 1,
+  };
+  const prepare = vi.spyOn(db, "prepare");
+  for (const body of [
+    packet479([], { ...next, scanned_v2: 96252 }),
+    packet479([row("truncated")], { ...next, scanned_v2: 96252 }),
+    packet479([row("truncated")], {
+      ...next,
+      scanned_v2: 96252,
+      total_rows: 2,
+      total_chunks: 2,
+    }),
+    packet479([row("omitted-member")], { ...next, scanned_v2: 2 }),
+    packet479([row("undercounted")], { ...next, scanned_v2: 0 }),
+    packet479([row("wrong-scope")], {
+      ...next,
+      distinct_members: 1,
+      excluded_root_members: 2,
+    }),
+  ])
+    await assert.rejects(write(db, body), /census/);
+  const missingCensus: Row = packet479([row("missing-census")], next);
+  delete missingCensus.alpha_snapshot.distinct_members;
+  await assert.rejects(write(db, missingCensus));
+  const root = row("root-position");
+  root.netuid = 0;
+  const rootPosition = packet479([root], {
+    ...next,
+    distinct_members: 2,
+    scanned_v2: 2,
+    excluded_root_members: 1,
+  });
+  await assert.rejects(write(db, rootPosition));
+  const wrongMetadata = packet479([row("unqualified")], {
+    ...next,
+    metadata_scale_hex: frozen.alpha_snapshot.metadata_scale_hex,
+  });
+  await assert.rejects(write(db, wrongMetadata), /unqualified/);
+  assert.equal(prepare.mock.calls.length, 0);
+  prepare.mockRestore();
+  assert.deepEqual(await rowsOf(db), priorRows);
+  const capture = await alphaCaptureState(createD1Store(db));
+  assert.deepEqual(capture, priorCapture);
+  const countSql = "SELECT COUNT(*) AS n FROM alpha_snapshot_rows";
+  const originals = await db.prepare(countSql).first();
+  assert.equal(originals?.n, 1);
+});
+
+test("runtime479 empty rows require an empty or explicitly root-only census", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  const metadataPath = "./fixtures/alpha-runtime/metadata-479.hex";
+  const metadataUrl = new URL(metadataPath, import.meta.url);
+  const body = packet479([], {
+    captured_at: baseAt + 1,
+    block_number: frozen.alpha_snapshot.block_number + 1,
+    metadata_scale_hex: readFileSync(metadataUrl, "utf8").trim(),
+  });
+  const accepted = await write(db, body);
+  assert.equal(accepted.alpha_snapshot.scanned_legacy, 0);
+  assert.equal(accepted.alpha_snapshot.scanned_v2, 0);
+  assert.equal(accepted.alpha_snapshot.received_rows, 0);
+  assert.equal(accepted.alpha_snapshot.received_chunks, 1);
+  assert.equal(accepted.alpha_snapshot.complete, true);
+  assert.equal(accepted.alpha_snapshot.selected, 1);
+  assert.deepEqual(await rowsOf(db), []);
+  const state = await alphaCaptureState(createD1Store(db));
+  assert.equal(state.capture?.captured_at, baseAt + 1);
+  assert.equal(state.capture?.quantityQualified, true);
+  const rootOnly = packet479([], {
+    ...body.alpha_snapshot,
+    captured_at: baseAt + 2,
+    block_number: frozen.alpha_snapshot.block_number + 2,
+    scanned_v2: 2,
+    distinct_members: 2,
+    excluded_root_members: 2,
+    metadata_scale_hex: undefined,
+  });
+  const excluded = await write(db, rootOnly);
+  assert.equal(excluded.alpha_snapshot.current, true);
+  assert.equal(excluded.alpha_snapshot.total_rows, 0);
+  assert.equal(excluded.alpha_snapshot.scanned_v2, 2);
+  assert.equal(excluded.alpha_snapshot.distinct_members, 2);
+  assert.equal(excluded.alpha_snapshot.excluded_root_members, 2);
+  assert.deepEqual(await rowsOf(db), []);
+  const countSql = "SELECT COUNT(*) AS n FROM alpha_snapshot_rows";
+  const originals = await db.prepare(countSql).first();
+  assert.equal(originals?.n, 1);
+});
+
+test("runtime479 retains raw and excluded-root census in every retry identity", async () => {
+  const db = await fixture();
+  const metadataPath = "./fixtures/alpha-runtime/metadata-479.hex";
+  const metadataUrl = new URL(metadataPath, import.meta.url);
+  const body = packet479([row("non-root")], {
+    scanned_v2: 3,
+    distinct_members: 3,
+    excluded_root_members: 2,
+    metadata_scale_hex: readFileSync(metadataUrl, "utf8").trim(),
+  });
+  const accepted = await write(db, body);
+  assert.equal(accepted.alpha_snapshot.current, true);
+  assert.equal(accepted.alpha_snapshot.scanned_v2, 3);
+  assert.equal(accepted.alpha_snapshot.distinct_members, 3);
+  assert.equal(accepted.alpha_snapshot.excluded_root_members, 2);
+  assert.equal(accepted.alpha_snapshot.received_rows, 1);
+  const originals = await rowsOf(db);
+  assert.equal(originals.length, 1);
+  const retained = JSON.parse(originals[0].alpha_evidence);
+  assert.deepEqual(retained, body.rows[0].evidence);
+  const changed = structuredClone(body);
+  changed.alpha_snapshot.scanned_v2 = 4;
+  changed.alpha_snapshot.distinct_members = 4;
+  changed.alpha_snapshot.excluded_root_members = 3;
+  await assert.rejects(write(db, changed));
+  assert.deepEqual(await rowsOf(db), originals);
+  const replay = await write(db, body);
+  assert.equal(replay.alpha_snapshot.sha256, accepted.alpha_snapshot.sha256);
+  assert.equal(replay.alpha_snapshot.current, true);
+});
+
+test("runtime479 census includes stored zero and retired originals across chunks", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  const priorRows = await rowsOf(db);
+  const zero = row("zero");
+  zero.evidence.share.v2 = { mantissa: "0", exponent: "-17" };
+  zero.evidence.denominator.v2 = {
+    mantissa: "1000000000000000000000",
+    exponent: "-20",
+  };
+  zero.evidence.total_alpha_rao = "101";
+  zero.evidence.pool_epoch = "5";
+  zero.evidence.member_epoch = "4";
+  const retired = row("retired");
+  retired.evidence = structuredClone(zero.evidence);
+  retired.evidence.share.v2 = {
+    mantissa: "300000000000000000000",
+    exponent: "-21",
+  };
+  const metadataPath = "./fixtures/alpha-runtime/metadata-479.hex";
+  const metadataUrl = new URL(metadataPath, import.meta.url);
+  const first = packet479([zero], {
+    captured_at: baseAt + 1,
+    block_number: frozen.alpha_snapshot.block_number + 1,
+    metadata_scale_hex: readFileSync(metadataUrl, "utf8").trim(),
+    total_rows: 2,
+    total_chunks: 2,
+  });
+  const staged = await write(db, first);
+  assert.equal(staged.alpha_snapshot.complete, false);
+  assert.equal(staged.alpha_snapshot.received_rows, 1);
+  assert.equal(staged.alpha_snapshot.scanned_v2, 2);
+  assert.deepEqual(await rowsOf(db), priorRows);
+  const last = packet479([retired], {
+    ...first.alpha_snapshot,
+    metadata_scale_hex: undefined,
+    index: 1,
+  });
+  const inconsistent = structuredClone(last);
+  inconsistent.alpha_snapshot.scanned_v2 = 3;
+  const prepare = vi.spyOn(db, "prepare");
+  await assert.rejects(write(db, inconsistent), /census/);
+  assert.equal(prepare.mock.calls.length, 0);
+  prepare.mockRestore();
+  assert.deepEqual(await rowsOf(db), priorRows);
+  const pending = await readAlphaSnapshotResumeD1(db);
+  assert.equal(pending.alpha_snapshot_resume?.expected_rows, 2);
+  assert.equal(pending.alpha_snapshot_resume?.scanned_v2, 2);
+  assert.equal(pending.alpha_snapshot_resume?.distinct_members, 2);
+  assert.equal(pending.alpha_snapshot_resume?.excluded_root_members, 0);
+  const accepted = await write(db, last);
+  assert.equal(accepted.alpha_snapshot.complete, true);
+  assert.equal(accepted.alpha_snapshot.selected, 1);
+  assert.equal(accepted.alpha_snapshot.received_rows, 2);
+  const current = await rowsOf(db);
+  assert.equal(current.length, 2);
+  for (const original of [retired, zero]) {
+    const stored = current.find((item) => item.coldkey === original.coldkey);
+    assert.ok(stored);
+    assert.equal(stored.alpha_rao, "0");
+    assert.equal(stored.shares, null);
+    assert.deepEqual(JSON.parse(stored.alpha_evidence), original.evidence);
+  }
+  const countSql = "SELECT COUNT(*) AS n FROM alpha_snapshot_rows";
+  const originals = await db.prepare(countSql).first();
+  assert.equal(originals?.n, 3);
+});
+
+test("capture admission requires a retained member original for every row", async () => {
+  const db = await fixture();
+  const prepare = vi.spyOn(db, "prepare");
+  for (const spec of [454, 478, 479] as const) {
+    const missing = row();
+    missing.evidence.share = { legacy_bits: null, v2: null };
+    const body = packet([missing], {
+      spec_version: spec,
+      code_hash: ALPHA_RUNTIMES[spec].code,
+      metadata_sha256: ALPHA_RUNTIMES[spec].metadata,
+      metadata_scale_hex: undefined,
+    });
+    await assert.rejects(write(db, body), /member original is absent/);
+  }
+  assert.equal(prepare.mock.calls.length, 0);
+});
+
+test("completion proves both original member lane counts before any promotion", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  const priorRows = await rowsOf(db);
+  const priorCapture = await alphaCaptureState(createD1Store(db));
+  const legacyOnly = row("legacy-only");
+  legacyOnly.evidence.share = {
+    legacy_bits: (1n << 64n).toString(),
+    v2: null,
+  };
+  for (const original of [row("v2-only"), legacyOnly]) {
+    const body = packet([original], {
+      captured_at: baseAt + 1,
+      block_number: frozen.alpha_snapshot.block_number + 1,
+      scanned_legacy: 1,
+      scanned_v2: 1,
+    });
+    await assert.rejects(write(db, body));
+    assert.deepEqual(await rowsOf(db), priorRows);
+    const capture = await alphaCaptureState(createD1Store(db));
+    assert.deepEqual(capture, priorCapture);
+    const countSql = "SELECT COUNT(*) AS n FROM alpha_snapshot_rows";
+    const originals = await db.prepare(countSql).first();
+    assert.equal(originals?.n, 1);
+    const resume = await readAlphaSnapshotResumeD1(db);
+    assert.equal(resume.alpha_snapshot_resume, null);
+  }
+  const overlap = row("both-lanes");
+  overlap.evidence.share.legacy_bits = (1n << 64n).toString();
+  const body = packet([overlap], {
+    captured_at: baseAt + 1,
+    block_number: frozen.alpha_snapshot.block_number + 1,
+    scanned_legacy: 1,
+    scanned_v2: 1,
+  });
+  const accepted = await write(db, body);
+  assert.equal(accepted.alpha_snapshot.complete, true);
+  assert.equal(accepted.alpha_snapshot.selected, 1);
+  const current = await rowsOf(db);
+  assert.equal(current.length, 1);
+  assert.deepEqual(JSON.parse(current[0].alpha_evidence), overlap.evidence);
+  const impossibleRoot = packet([overlap], {
+    captured_at: baseAt + 2,
+    block_number: frozen.alpha_snapshot.block_number + 2,
+    scanned_legacy: 1,
+    scanned_v2: 1,
+    distinct_members: 2,
+    excluded_root_members: 1,
+  });
+  await assert.rejects(write(db, impossibleRoot));
+  assert.deepEqual(await rowsOf(db), current);
+  const scoped = packet([row("v2-after-root-exclusion")], {
+    ...impossibleRoot.alpha_snapshot,
+  });
+  const excluded = await write(db, scoped);
+  assert.equal(excluded.alpha_snapshot.current, true);
+  assert.equal(excluded.alpha_snapshot.scanned_legacy, 1);
+  assert.equal(excluded.alpha_snapshot.scanned_v2, 1);
+  assert.equal(excluded.alpha_snapshot.distinct_members, 2);
+  assert.equal(excluded.alpha_snapshot.excluded_root_members, 1);
+});
+
+test("a final lane mismatch preserves earlier staging until a complete replay succeeds", async () => {
+  const db = await fixture();
+  await write(db, packet());
+  const priorRows = await rowsOf(db);
+  const priorCapture = await alphaCaptureState(createD1Store(db));
+  const first = packet([row("staged-v2")], {
+    captured_at: baseAt + 1,
+    block_number: frozen.alpha_snapshot.block_number + 1,
+    scanned_legacy: 1,
+    scanned_v2: 1,
+    total_rows: 2,
+    total_chunks: 2,
+  });
+  const staged = await write(db, first);
+  const resume = await readAlphaSnapshotResumeD1(db);
+  assert.equal(resume.alpha_snapshot_resume?.distinct_members, 2);
+  assert.equal(resume.alpha_snapshot_resume?.excluded_root_members, 0);
+  const wrong = packet([row("late-v2")], {
+    ...first.alpha_snapshot,
+    metadata_scale_hex: undefined,
+    index: 1,
+  });
+  await assert.rejects(write(db, wrong));
+  assert.deepEqual(await rowsOf(db), priorRows);
+  const capture = await alphaCaptureState(createD1Store(db));
+  assert.deepEqual(capture, priorCapture);
+  assert.deepEqual(await readAlphaSnapshotResumeD1(db), resume);
+  const stagedSql =
+    "SELECT coldkey FROM alpha_snapshot_rows WHERE captured_at=?";
+  const stagedStatement = db.prepare(stagedSql).bind(baseAt + 1);
+  const stagedRows = await stagedStatement.all<Row>();
+  assert.deepEqual(stagedRows.results, [{ coldkey: "staged-v2" }]);
+  const replay = await write(db, first);
+  assert.equal(replay.alpha_snapshot.sha256, staged.alpha_snapshot.sha256);
+  assert.equal(replay.alpha_snapshot.received_rows, 1);
+  assert.equal(replay.alpha_snapshot.received_chunks, 1);
+  assert.equal(replay.alpha_snapshot.complete, false);
+  const legacyOnly = row("late-legacy");
+  legacyOnly.evidence.share = {
+    legacy_bits: (1n << 64n).toString(),
+    v2: null,
+  };
+  const last = { ...wrong, rows: [legacyOnly] };
+  const accepted = await write(db, last);
+  assert.equal(accepted.alpha_snapshot.complete, true);
+  assert.equal(accepted.alpha_snapshot.selected, 1);
+  assert.equal(accepted.alpha_snapshot.received_rows, 2);
+  const current = await rowsOf(db);
+  const owners = current.map((item) => item.coldkey);
+  assert.deepEqual(owners, ["late-legacy", "staged-v2"]);
+});
+
+test("old completed replay acknowledges its receipt without claiming current selection", async () => {
+  const db = await fixture();
+  const old = packet();
+  const first = await write(db, old);
+  assert.equal(first.alpha_snapshot.selected, 1);
+  const next = packet([row("new-canonical")], {
+    captured_at: baseAt - 1,
+    block_number: frozen.alpha_snapshot.block_number + 1,
+  });
+  const newerBlock = await write(db, next);
+  assert.equal(newerBlock.alpha_snapshot.selected, 1);
+  assert.equal(newerBlock.alpha_snapshot.current, true);
+  const replay = await write(db, old);
+  assert.equal(replay.alpha_snapshot.sha256, first.alpha_snapshot.sha256);
+  assert.equal(replay.alpha_snapshot.complete, true);
+  assert.equal(replay.alpha_snapshot.received_rows, 1);
+  assert.equal(replay.alpha_snapshot.received_chunks, 1);
+  assert.equal(replay.alpha_snapshot.selected, 1);
+  assert.equal(replay.alpha_snapshot.current, false);
+  const capture = await alphaCaptureState(createD1Store(db));
+  assert.equal(capture.capture?.captured_at, baseAt - 1);
+  assert.equal(capture.capture?.block_number, next.alpha_snapshot.block_number);
+  const current = await rowsOf(db);
+  assert.deepEqual(current.map((item) => item.coldkey), ["new-canonical"]);
+  const selectedSql = "SELECT selected FROM alpha_snapshot_passes";
+  const historical = await db.prepare(selectedSql).all<Row>();
+  assert.deepEqual(historical.results.map((item) => item.selected), [1, 1]);
 });
 
 test("completed originals and receipts permit exact no-ops but reject mutation or deletion after promotion", async () => {
@@ -1099,6 +1473,22 @@ test("synthetic supplementary and BMP owners use native UTF8 ranges and tuple ha
 test("native receiver restore preserves serving and receipts", async () => {
   const source = await fixture();
   const restored = await fixture();
+  const countModule = await import("../src/alpha-counts-d1.ts");
+  const sourceStore = createD1Store(source);
+  const anchorFor = (capture: Row) =>
+    countModule.alphaCountAnchorSchema.parse({
+      captured_at: capture.captured_at,
+      block_number: capture.block_number,
+      block_hash: capture.block_hash,
+      genesis_hash: capture.genesis_hash,
+      spec_version: capture.spec_version,
+      code_hash: capture.code_hash,
+      metadata_sha256: capture.metadata_sha256,
+      scanned_legacy: capture.scanned_legacy,
+      scanned_v2: capture.scanned_v2,
+      distinct_members: capture.distinct_members,
+      excluded_root_members: capture.excluded_root_members,
+    });
   const legacy = JSON.parse(
     readFileSync(
       new URL("./fixtures/alpha-runtime/frozen-454.json", import.meta.url),
@@ -1110,13 +1500,30 @@ test("native receiver restore preserves serving and receipts", async () => {
   legacyEvidence.share.legacy_bits = maximumShares;
   legacyEvidence.denominator.legacy_bits = maximumShares;
   legacyEvidence.total_alpha_rao = ((1n << 64n) - 1n).toString();
-  const original = packet([{ ...row("legacy"), evidence: legacyEvidence }], {
+  const originalRows = [
+    { ...row("legacy"), evidence: legacyEvidence },
+    { ...row("legacy-stale", "old-only"), evidence: legacyEvidence },
+  ];
+  const original = packet(originalRows, {
     ...legacy.alpha_snapshot,
     captured_at: baseAt,
-    scanned_legacy: 1,
+    scanned_legacy: 2,
     scanned_v2: 0,
   });
   await write(source, original);
+  const oldAnchor = anchorFor(original.alpha_snapshot);
+  const oldCounts = [
+    { hotkey: "hot", nominator_count: 1, captured_at: baseAt },
+    { hotkey: "old-only", nominator_count: 1, captured_at: baseAt },
+  ];
+  const oldCountReceipt = await countModule.writeAlphaCountsD1(
+    sourceStore,
+    oldCounts,
+    oldAnchor,
+    2,
+    baseAt + 1,
+  );
+  assert.equal(oldCountReceipt.complete, true);
 
   const evidence = structuredClone(frozen.members[0].evidence);
   evidence.share.v2 = { mantissa: "300000000000000000000", exponent: "-21" };
@@ -1130,20 +1537,43 @@ test("native receiver restore preserves serving and receipts", async () => {
   const metadataPath = "./fixtures/alpha-runtime/metadata-479.hex";
   const metadataUrl = new URL(metadataPath, import.meta.url);
   const metadata = readFileSync(metadataUrl, "utf8").trim();
-  const current = packet([{ ...row("current"), evidence }], {
-    captured_at: baseAt + 1,
+  const currentAt = baseAt - 1;
+  const currentRows = [
+    { ...row("current"), evidence },
+    { ...row("current-other", "other-hot"), evidence },
+  ];
+  const current = packet(currentRows, {
+    captured_at: currentAt,
     block_number: frozen.alpha_snapshot.block_number + 1,
     spec_version: 479,
     code_hash: ALPHA_RUNTIMES[479].code,
     metadata_sha256: ALPHA_RUNTIMES[479].metadata,
+    scanned_v2: 2,
     metadata_scale_hex: metadata,
   });
   const selected = await write(source, current);
+  const countAnchor = anchorFor(current.alpha_snapshot);
+  const firstCounts = [
+    { hotkey: "hot", nominator_count: 1, captured_at: currentAt },
+  ];
+  const countReceipt = await countModule.writeAlphaCountsD1(
+    sourceStore,
+    firstCounts,
+    countAnchor,
+    2,
+    baseAt + 2,
+  );
+  assert.equal(countReceipt.current, true);
+  assert.equal(countReceipt.complete, false);
+  assert.equal(countReceipt.applied_count, 1);
+  assert.ok(currentAt < oldAnchor.captured_at);
   const pending = packet([{ ...row("pending-a"), evidence }], {
     ...current.alpha_snapshot,
     captured_at: baseAt + 2,
     block_number: frozen.alpha_snapshot.block_number + 2,
     metadata_scale_hex: undefined,
+    scanned_v2: 2,
+    distinct_members: 2,
     total_rows: 2,
     total_chunks: 2,
     index: 0,
@@ -1185,7 +1615,10 @@ test("native receiver restore preserves serving and receipts", async () => {
 
   // Fixed synthetic receiver tables only. This is an offline restore proof,
   // not a public exporter or an observation of production backup coverage.
+  // Restore count rows before selection, then anchored receipts after their
+  // immutable capture history; the single batch keeps the cut atomic.
   const tables = [
+    "validator_nominator_counts",
     "alpha_runtime_metadata",
     "alpha_snapshot_passes",
     "alpha_snapshot_chunks",
@@ -1196,6 +1629,7 @@ test("native receiver restore preserves serving and receipts", async () => {
     "nominator_positions",
     "nominator_positions_passes",
     "nominator_scan_receipts",
+    "validator_nominator_counts_passes",
     "archive_export_revisions",
   ] as const;
   type Column = { name: string; pk: number };
@@ -1264,7 +1698,7 @@ test("native receiver restore preserves serving and receipts", async () => {
 
   const store = createD1Store(restored);
   const capture = (await alphaCaptureState(store)).capture;
-  assert.equal(capture?.captured_at, baseAt + 1);
+  assert.equal(capture?.captured_at, currentAt);
   assert.equal(capture?.spec_version, 479);
   assert.equal(capture?.quantityQualified, true);
   const noLegacy = async (): Promise<Row[]> => {
@@ -1272,18 +1706,37 @@ test("native receiver restore preserves serving and receipts", async () => {
   };
   const { ownerCapturePositions } = ownerSplit;
   const positions = await ownerCapturePositions(store, 23, noLegacy);
-  assert.equal(positions.length, 1);
-  assert.equal(positions[0]!.coldkey, "current");
+  assert.equal(positions.length, 2);
+  const owners = positions.map((position) => position.coldkey).sort();
+  assert.deepEqual(owners, ["current", "current-other"]);
   const fraction = Number(positions[0]!.share_fraction);
   assert.ok(Math.abs(fraction - 0.03) < Number.EPSILON);
   assert.deepEqual(await ownerCapturePositions(store, 24, noLegacy), []);
   const resume = await readAlphaSnapshotResumeD1(source);
   assert.equal(resume.alpha_snapshot_resume?.captured_at, baseAt + 2);
   assert.deepEqual(await readAlphaSnapshotResumeD1(restored), resume);
+  const restoredCounts = await countModule.readAlphaCountStatusD1(
+    store,
+    countAnchor,
+    2,
+  );
+  assert.deepEqual(restoredCounts, countReceipt);
+  const oldCountStatus = await countModule.readAlphaCountStatusD1(
+    store,
+    oldAnchor,
+    2,
+  );
+  assert.equal(oldCountStatus.current, false);
+  assert.equal(oldCountStatus.completed_at, oldCountReceipt.completed_at);
+  const staleCountSql =
+    "SELECT nominator_count,captured_at FROM validator_nominator_counts " +
+    "WHERE hotkey='old-only'";
+  const staleCount = await store.first(staleCountSql);
+  assert.deepEqual(staleCount, { nominator_count: 1, captured_at: baseAt });
 
   const replay = await write(restored, current);
   assert.equal(replay.alpha_snapshot.sha256, selected.alpha_snapshot.sha256);
-  assert.equal(replay.alpha_snapshot.received_rows, 1);
+  assert.equal(replay.alpha_snapshot.received_rows, 2);
   const pendingReplay = await write(restored, pending);
   const pendingDigest = staged.alpha_snapshot.sha256;
   assert.equal(pendingReplay.alpha_snapshot.sha256, pendingDigest);
@@ -1300,7 +1753,46 @@ test("native receiver restore preserves serving and receipts", async () => {
   assert.equal(selfReplay.snapshot.shadowed_rows, 1);
   assert.equal(selfReplay.snapshot.received_rows, 2);
   assert.equal(selfReplay.snapshot.received_chunks, 1);
+  const countReplay = await countModule.writeAlphaCountsD1(
+    store,
+    firstCounts,
+    countAnchor,
+    2,
+    baseAt + 4,
+  );
+  assert.deepEqual(countReplay, countReceipt);
+  const staleWrite = countModule.writeAlphaCountsD1(
+    store,
+    oldCounts,
+    oldAnchor,
+    2,
+    baseAt + 4,
+  );
+  await assert.rejects(staleWrite);
   assert.deepEqual(await readCut(restored), cut);
+  const lastCounts = [
+    { hotkey: "other-hot", nominator_count: 1, captured_at: currentAt },
+  ];
+  const terminalCounts = await countModule.writeAlphaCountsD1(
+    store,
+    lastCounts,
+    countAnchor,
+    2,
+    baseAt + 5,
+  );
+  assert.equal(terminalCounts.current, true);
+  assert.equal(terminalCounts.complete, true);
+  assert.equal(terminalCounts.applied_count, 2);
+  const terminalCut = await readCut(restored);
+  const terminalReplay = await countModule.writeAlphaCountsD1(
+    store,
+    lastCounts,
+    countAnchor,
+    2,
+    baseAt + 6,
+  );
+  assert.deepEqual(terminalReplay, terminalCounts);
+  assert.deepEqual(await readCut(restored), terminalCut);
   const last = {
     alpha_snapshot: { ...pending.alpha_snapshot, index: 1 },
     rows: [{ ...row("pending-b"), evidence }],
@@ -1317,4 +1809,11 @@ test("native receiver restore preserves serving and receipts", async () => {
     ok: true,
     alpha_snapshot_resume: null,
   });
+  const supersededCounts = await countModule.readAlphaCountStatusD1(
+    store,
+    countAnchor,
+    2,
+  );
+  assert.equal(supersededCounts.current, false);
+  assert.equal(supersededCounts.completed_at, terminalCounts.completed_at);
 });

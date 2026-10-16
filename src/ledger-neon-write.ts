@@ -27,6 +27,7 @@
 // silent regression -- both writes would otherwise succeed.
 
 import { selectedD1Store } from "./d1-store.ts";
+import { alphaCountsNeedAnchor } from "./alpha-counts-d1.ts";
 import { writeLedgerD1 } from "./ledger-d1.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
@@ -215,6 +216,17 @@ export async function mirrorLedgerToNeon(
   // this table lacks is still a config defect to surface via lane_health, not
   // a reason to crash the pass around it.
   if (!plan) return { attempted: false };
+  if (lane === "validator-nominator-counts") {
+    try {
+      if (await alphaCountsNeedAnchor(env))
+        throw new Error("Canonical Alpha counts require their exact anchor");
+    } catch (error) {
+      return {
+        attempted: true,
+        result: { ok: false, rows: 0, statements: 0, reason: String(error) },
+      };
+    }
+  }
   // The dual-write gate stood here until #10051: with D1 deleted this is the
   // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
   // no-arm means "do not persist" is not a cutover control any more, it is an

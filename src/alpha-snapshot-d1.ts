@@ -33,6 +33,8 @@ const packet = z.strictObject({
       .optional(),
     scanned_legacy: count(1_000_000),
     scanned_v2: count(1_000_000),
+    distinct_members: count(2_000_000),
+    excluded_root_members: count(2_000_000),
     total_rows: count(1_000_000),
     total_chunks: z.number().int().min(1).max(1000),
     index: count(999),
@@ -78,7 +80,11 @@ function admitted(value: unknown, now: number) {
     now < s.captured_at ||
     s.index >= s.total_chunks ||
     parsed.rows.length > s.total_rows ||
-    s.total_rows > s.scanned_legacy + s.scanned_v2 ||
+    s.distinct_members < Math.max(s.scanned_legacy, s.scanned_v2) ||
+    s.distinct_members > s.scanned_legacy + s.scanned_v2 ||
+    s.excluded_root_members > s.distinct_members ||
+    s.total_rows !== s.distinct_members - s.excluded_root_members ||
+    (s.spec_version === 479 && s.distinct_members !== s.scanned_v2) ||
     s.total_rows > s.total_chunks * 2500 ||
     (s.total_rows === 0
       ? s.total_chunks !== 1 || parsed.rows.length !== 0
@@ -101,6 +107,11 @@ function admitted(value: unknown, now: number) {
   const seen = new Set<string>();
   const rows = parsed.rows
     .map((row) => {
+      if (
+        row.evidence.share.legacy_bits === null &&
+        row.evidence.share.v2 === null
+      )
+        throw new TypeError("Alpha snapshot member original is absent");
       const key = JSON.stringify([row.coldkey, row.hotkey, row.netuid]);
       if (seen.has(key))
         throw new TypeError("Alpha snapshot repeats a position");
@@ -152,6 +163,8 @@ export async function writeAlphaSnapshotD1(
     "metadata_sha256",
     "scanned_legacy",
     "scanned_v2",
+    "distinct_members",
+    "excluded_root_members",
     "expected_rows",
     "expected_chunks",
   ];
@@ -165,6 +178,8 @@ export async function writeAlphaSnapshotD1(
     s.metadata_sha256,
     s.scanned_legacy,
     s.scanned_v2,
+    s.distinct_members,
+    s.excluded_root_members,
     s.total_rows,
     s.total_chunks,
   ];
@@ -265,6 +280,20 @@ export async function writeAlphaSnapshotD1(
       values: [at, s.index, digest],
     },
     {
+      text: `UPDATE alpha_snapshot_passes AS p SET received_rows=CASE WHEN
+        (SELECT COUNT(*)=p.expected_rows
+          AND COUNT(json_extract(alpha_evidence,'$.share.legacy_bits'))
+            BETWEEN p.scanned_legacy-p.excluded_root_members AND p.scanned_legacy
+          AND COUNT(json_extract(alpha_evidence,'$.share.v2'))
+            BETWEEN p.scanned_v2-p.excluded_root_members AND p.scanned_v2
+          AND COUNT(json_extract(alpha_evidence,'$.share.legacy_bits'))
+            +COUNT(json_extract(alpha_evidence,'$.share.v2'))
+            <=p.scanned_legacy+p.scanned_v2-p.excluded_root_members
+          FROM alpha_snapshot_rows WHERE captured_at=p.captured_at)
+        THEN received_rows ELSE NULL END WHERE captured_at=? AND ${complete}`,
+      values: [at],
+    },
+    {
       text: `INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,shares,captured_at,source,alpha_rao,alpha_evidence)
       SELECT coldkey,hotkey,netuid,share_fraction,shares,captured_at,'alpha',alpha_rao,alpha_evidence FROM alpha_snapshot_rows WHERE captured_at=? AND ${promote}
       ON CONFLICT(coldkey,hotkey,netuid) DO UPDATE SET share_fraction=excluded.share_fraction,shares=excluded.shares,captured_at=excluded.captured_at,source=excluded.source,alpha_rao=excluded.alpha_rao,alpha_evidence=excluded.alpha_evidence`,
@@ -317,8 +346,14 @@ export async function writeAlphaSnapshotD1(
     received_chunks: number;
     completed_at: number | null;
     selected: number;
+    current: number;
   }>(
-    "SELECT c.sha256,c.applied,p.received_rows,p.received_chunks,p.completed_at,p.selected FROM alpha_snapshot_chunks c JOIN alpha_snapshot_passes p USING(captured_at) WHERE c.captured_at=? AND c.batch_index=?",
+    `SELECT c.sha256,c.applied,p.received_rows,p.received_chunks,p.completed_at,p.selected,
+      CASE WHEN p.captured_at=(SELECT captured_at FROM alpha_snapshot_passes
+        WHERE selected=1 ORDER BY block_number DESC,captured_at DESC LIMIT 1)
+      THEN 1 ELSE 0 END AS current FROM alpha_snapshot_chunks c
+      JOIN alpha_snapshot_passes p USING(captured_at)
+      WHERE c.captured_at=? AND c.batch_index=?`,
     [at, s.index],
   );
   if (!receipt || receipt.sha256 !== digest || receipt.applied !== 1)
@@ -329,6 +364,7 @@ export async function writeAlphaSnapshotD1(
       ...s,
       metadata_scale_hex: undefined,
       ...receipt,
+      current: receipt.current === 1,
       complete: receipt.completed_at !== null,
     },
     nominator_positions_written: rows.length,
@@ -351,13 +387,16 @@ export async function readAlphaSnapshotResumeD1(binding: D1StoreBinding) {
     | "metadata_sha256"
     | "scanned_legacy"
     | "scanned_v2"
+    | "distinct_members"
+    | "excluded_root_members"
   > & {
     expected_rows: number;
     expected_chunks: number;
   };
   const pending = await createD1Store(binding).first<ResumeRow>(
     `SELECT captured_at,block_number,block_hash,genesis_hash,spec_version,code_hash,
-      metadata_sha256,scanned_legacy,scanned_v2,expected_rows,expected_chunks
+      metadata_sha256,scanned_legacy,scanned_v2,distinct_members,excluded_root_members,
+      expected_rows,expected_chunks
       FROM alpha_snapshot_passes WHERE completed_at IS NULL ORDER BY captured_at LIMIT 1`,
     [],
   );
