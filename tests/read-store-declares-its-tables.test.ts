@@ -250,18 +250,12 @@ describe("every ported reader declares the tables it reads", () => {
     assert.throws(() => {
       tablesDeclared(source, file, missingModule);
     });
-    assert.throws(
-      () => {
-        tablesDeclared(source.replace('"./owners.ts"', '"owners"'), file);
-      },
-      /ownership imports must be relative/,
-    );
-    assert.throws(
-      () => {
-        tablesDeclared(source.replace("import {", "import type {"), file);
-      },
-      /ownership imports must carry values/,
-    );
+    assert.throws(() => {
+      tablesDeclared(source.replace('"./owners.ts"', '"owners"'), file);
+    }, /ownership imports must be relative/);
+    assert.throws(() => {
+      tablesDeclared(source.replace("import {", "import type {"), file);
+    }, /ownership imports must carry values/);
   });
   for (const file of PORTED) {
     test(file, () => {
