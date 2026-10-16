@@ -43,6 +43,7 @@ const env = (binding = db) => ({
   CHAIN_DETAIL_PAYLOAD_GC: "enabled",
 });
 async function services(binding = db) {
+  resetDecodeWatermarkCache();
   const { apiEnv } = await import("./helpers/worker-env.ts");
   const { handleExtrinsic, handleBlock, handleBlockExtrinsics, handleBlockEvents } =
     await import("../workers/request-handlers/entities.ts");
@@ -51,8 +52,8 @@ async function services(binding = db) {
   const corpus: Record<string, unknown> = {};
   for (const ref of ["9000001", "9000002"]) {
     const cases = [
-      { name: "extrinsic", tool: "get_extrinsic", ref: `${ref}-0`, path: `/extrinsics/${ref}-0`, handle: (request: Request, url: URL) => handleExtrinsic(request, bound, `${ref}-0`), present: "extrinsic" },
-      { name: "block", tool: "get_block", ref, path: `/blocks/${ref}`, handle: (request: Request, url: URL) => handleBlock(request, bound, ref), present: "block" },
+      { name: "extrinsic", tool: "get_extrinsic", ref: `${ref}-0`, path: `/extrinsics/${ref}-0`, handle: (request: Request, _url: URL) => handleExtrinsic(request, bound, `${ref}-0`), present: "extrinsic" },
+      { name: "block", tool: "get_block", ref, path: `/blocks/${ref}`, handle: (request: Request, _url: URL) => handleBlock(request, bound, ref), present: "block" },
       { name: "extrinsics", tool: "list_block_extrinsics", ref, path: `/blocks/${ref}/extrinsics`, handle: (request: Request, url: URL) => handleBlockExtrinsics(request, bound, ref, url), present: "extrinsics" },
       { name: "events", tool: "get_block_events", ref, path: `/blocks/${ref}/events`, handle: (request: Request, url: URL) => handleBlockEvents(request, bound, ref, url), present: "events" },
     ];

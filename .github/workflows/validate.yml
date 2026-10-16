@@ -11,6 +11,10 @@ on:
       - main
   workflow_dispatch:
     inputs:
+      qualify_diagnostic_retry:
+        description: "Prove successful-retry diagnostic retention with one deterministic fixture"
+        type: boolean
+        default: false
       qualify_chain_detail_resources:
         description: "Run finite synthetic native Workerd resource observations"
         type: boolean
@@ -1467,6 +1471,11 @@ jobs:
       # Fails only on a NEW element escaping the viewport that isn't already
       # in the known baseline, so this doesn't block on the existing tracked
       # overflow backlog (#3930, #3931, #3985, etc.).
+      - name: Admit deterministic diagnostic retry fixture
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify_diagnostic_retry && needs.changes.outputs.run_ui_e2e == 'true' }}
+        run: |
+          printf '\nimport { registerDiagnosticRetry } from "./diagnostic-retention.fixture";\nregisterDiagnosticRetry();\n' >> apps/ui/tests/e2e/content-runtime-isolation.spec.ts
+
       - name: Responsive overflow check (e2e)
         id: ui-e2e
         if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
