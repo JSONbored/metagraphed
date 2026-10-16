@@ -19,7 +19,9 @@ export const ALPHA_RUNTIMES = {
   },
 } as const;
 
-/** Structural identity permits retention; valuation needs its own proven adapter. */
-export function alphaValuationSpec(specVersion: number): 454 | 478 | null {
-  return specVersion === 454 || specVersion === 478 ? specVersion : null;
+/** Every adapter is qualified separately from structural identity admission. */
+export function alphaValuationSpec(specVersion: number): 454 | 478 | 479 | null {
+  return specVersion === 454 || specVersion === 478 || specVersion === 479
+    ? specVersion
+    : null;
 }

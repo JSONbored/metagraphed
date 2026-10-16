@@ -12,7 +12,6 @@ import { createD1Store, type D1StoreBinding } from "./d1-store.ts";
 import {
   ALPHA_GENESIS as GENESIS,
   ALPHA_RUNTIMES as RUNTIMES,
-  alphaValuationSpec,
 } from "./alpha-runtime-identity.ts";
 const sha = (bytes: string | Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
@@ -99,7 +98,6 @@ function admitted(value: unknown, now: number) {
     throw new TypeError(
       "Alpha runtime479 requires empty original legacy lanes",
     );
-  const valuationSpec = alphaValuationSpec(s.spec_version);
   const seen = new Set<string>();
   const rows = parsed.rows
     .map((row) => {
@@ -107,17 +105,14 @@ function admitted(value: unknown, now: number) {
       if (seen.has(key))
         throw new TypeError("Alpha snapshot repeats a position");
       seen.add(key);
-      const quote =
-        valuationSpec === null
-          ? null
-          : quoteAlphaPool(row.evidence, valuationSpec);
+      const quote = quoteAlphaPool(row.evidence, s.spec_version);
       return {
         coldkey: row.coldkey,
         hotkey: row.hotkey,
         netuid: row.netuid,
-        share_fraction: quote?.shareFraction ?? null,
+        share_fraction: quote.shareFraction,
         shares: row.evidence.share.legacy_bits,
-        alpha_rao: quote?.alphaRao ?? null,
+        alpha_rao: quote.alphaRao,
         alpha_evidence: JSON.stringify(row.evidence),
         captured_at: s.captured_at,
       };

@@ -1,4 +1,7 @@
-import { alphaCaptureState } from "./alpha-capture-reader.ts";
+import {
+  alphaCaptureState,
+  alphaPositionsUnqualified,
+} from "./alpha-capture-reader.ts";
 import type { OptionalRowQuerier, OptionalRowReader } from "./read-store.ts";
 
 type Row = Record<string, unknown>;
@@ -18,18 +21,23 @@ export async function ownerCapturePositions(
     const capture = state.capture;
     if (!capture?.quantityQualified || !db.query || !db.first) return [];
     if (
-      await db.first(
-        "SELECT coldkey FROM nominator_positions WHERE source='self-stake' AND netuid=? LIMIT 1",
-        [netuid],
-      )
+      await alphaPositionsUnqualified(db, capture.captured_at, {
+        column: "netuid",
+        value: netuid,
+      })
     )
       return [];
     const rows = await db.query<Row>(
       "SELECT coldkey,hotkey,share_fraction FROM alpha_snapshot_rows WHERE netuid=? AND captured_at=?",
       [netuid, capture.captured_at],
     );
+    const unqualified = await alphaPositionsUnqualified(db, capture.captured_at, {
+      column: "netuid",
+      value: netuid,
+    });
     const after = await alphaCaptureState(db);
     if (
+      unqualified ||
       !after.capture?.quantityQualified ||
       after.capture.captured_at !== capture.captured_at ||
       after.capture.block_hash !== capture.block_hash ||

@@ -156,44 +156,52 @@ afterEach(() => {
 });
 
 describe("canonical Alpha quantities across existing readers", () => {
-  test("all readers use exact current capture values instead of legacy pool or neuron quantities", async () => {
-    capture();
-    position();
-    const env = environment();
-    for (const load of [
-      loadAccountPositionsFromStore,
-      loadAccountPositionsColdTier,
-    ]) {
-      const result = await load(env, COLDKEY);
-      assert.ok(result);
-      assert.equal(result?.positions[0].stake_tao, 2.5);
-      assert.equal(result.total_stake_alpha, 2.5);
-      assert.equal(result.captured_at, new Date(STAMP).toISOString());
-      AccountPositionsArtifactSchema.parse(result);
-    }
-    assert.equal((await loadSubnetHolders(store(), 7)).rows[0].alpha, 2.5);
-    assert.equal((await loadChainHolders(store())).rows[0].total_alpha, 2.5);
-    assert.equal(
-      (await loadNominatorPositions(store(), HOTKEY)).rows[0].alpha,
-      2.5,
-    );
-    const holdings = await topHoldersHoldings(env);
-    assert.ok(holdings);
-    assert.deepEqual(holdings?.cells.get(COLDKEY), {
-      free_tao: 10,
-      delegated_tao: 5,
-      total_tao: 15,
-    });
-    assert.equal(holdings.alphaCapturedAt, STAMP);
-    assert.ok(!seen.some((text) => text.includes("FROM neurons")));
-    assert.ok(!seen.some((text) => text.includes("JOIN hotkey_alpha")));
-  });
+  test.each([478, 479] as const)(
+    "runtime%i readers use exact current capture values instead of legacy pool or neuron quantities",
+    async (spec) => {
+      capture(spec);
+      position();
+      const env = environment();
+      for (const load of [
+        loadAccountPositionsFromStore,
+        loadAccountPositionsColdTier,
+      ]) {
+        const result = await load(env, COLDKEY);
+        assert.ok(result);
+        assert.equal(result?.positions[0].stake_tao, 2.5);
+        assert.equal(result.total_stake_alpha, 2.5);
+        assert.equal(result.captured_at, new Date(STAMP).toISOString());
+        AccountPositionsArtifactSchema.parse(result);
+      }
+      assert.equal((await loadSubnetHolders(store(), 7)).rows[0].alpha, 2.5);
+      assert.equal((await loadChainHolders(store())).rows[0].total_alpha, 2.5);
+      assert.equal(
+        (await loadNominatorPositions(store(), HOTKEY)).rows[0].alpha,
+        2.5,
+      );
+      const holdings = await topHoldersHoldings(env);
+      assert.ok(holdings);
+      assert.deepEqual(holdings?.cells.get(COLDKEY), {
+        free_tao: 10,
+        delegated_tao: 5,
+        total_tao: 15,
+      });
+      assert.equal(holdings.alphaCapturedAt, STAMP);
+      assert.ok(!seen.some((text) => text.includes("FROM neurons")));
+      assert.ok(!seen.some((text) => text.includes("JOIN hotkey_alpha")));
+    },
+  );
 
-  test("runtime479 cannot borrow older qualified captures or legacy values", async () => {
+  test("a newer mismatched runtime identity cannot borrow older qualified captures or legacy values", async () => {
     capture(478, STAMP - 1, 99);
     position("99000000000", STAMP - 1);
     capture(479);
     position(null);
+    sqlite
+      .prepare(
+        "UPDATE alpha_runtime_metadata SET spec_version=478 WHERE sha256=?",
+      )
+      .run(ALPHA_RUNTIMES[479].metadata);
     for (const load of [
       loadAccountPositionsFromStore,
       loadAccountPositionsColdTier,
@@ -301,25 +309,38 @@ describe("canonical Alpha quantities across existing readers", () => {
     }
   });
 
-  test("a NULL retained quantity never becomes an omitted addend in a healthy aggregate", async () => {
-    capture();
-    position(null);
-    assert.equal(
-      (await loadSubnetHolders(store(), 7)).decline,
-      "pool_totals_unproven",
-    );
-    assert.equal(
-      (await loadChainHolders(store())).decline,
-      "pool_totals_unproven",
-    );
-    assert.equal(
-      (await loadNominatorPositions(store(), HOTKEY)).decline,
-      "pool_totals_unproven",
-    );
-    assert.deepEqual((await topHoldersHoldings(environment()))?.sorts, [
-      "free_tao",
-    ]);
-  });
+  test.each([478, 479] as const)(
+    "runtime%i NULL retained quantities never become omitted addends in a healthy answer",
+    async (spec) => {
+      capture(spec);
+      position(null);
+      for (const load of [
+        loadAccountPositionsFromStore,
+        loadAccountPositionsColdTier,
+      ]) {
+        const result = await load(environment(), COLDKEY);
+        assert.ok(result);
+        assert.equal(result.position_count, 0);
+        assert.equal(result.degraded?.reason, POSITIONS_DEGRADED_UNPRICEABLE);
+        AccountPositionsArtifactSchema.parse(result);
+      }
+      assert.equal(
+        (await loadSubnetHolders(store(), 7)).decline,
+        "pool_totals_unproven",
+      );
+      assert.equal(
+        (await loadChainHolders(store())).decline,
+        "pool_totals_unproven",
+      );
+      assert.equal(
+        (await loadNominatorPositions(store(), HOTKEY)).decline,
+        "pool_totals_unproven",
+      );
+      assert.deepEqual((await topHoldersHoldings(environment()))?.sorts, [
+        "free_tao",
+      ]);
+    },
+  );
 
   test("a genuinely absent additive schema retains the existing reader during rollout", async () => {
     sqlite.exec("DROP TABLE alpha_snapshot_passes");
@@ -475,6 +496,18 @@ function projectionEnv(alphaStamp?: number): Env {
 }
 
 describe("materialized top-holder quantities", () => {
+  test("historical runtime479 NULL quantities invalidate a projection at the same capture", async () => {
+    capture(479);
+    position(null);
+    const env = projectionEnv(STAMP);
+    assert.equal(await loadTopHoldersFlowTier(env, { sort: "total_tao" }), null);
+    const result = await loadTopHoldersFlowTier(env, { sort: "free_tao" });
+    assert.equal(
+      (result?.accounts as Record<string, unknown>[])[0].delegated_tao,
+      null,
+    );
+  });
+
   test("self-stake arriving after a projection invalidates its quantities at the same canonical capture", async () => {
     capture();
     position();
@@ -490,7 +523,7 @@ describe("materialized top-holder quantities", () => {
       null,
     );
   });
-  test("new unqualified capture removes archived delegated and total cells on every sort", async () => {
+  test("a runtime479 capture removes older archived delegated and total cells on every sort", async () => {
     capture(479);
     const env = projectionEnv(STAMP - 1);
     assert.equal(
@@ -508,8 +541,8 @@ describe("materialized top-holder quantities", () => {
     }
   });
 
-  test("qualified captures still require the artifact's own exact capture stamp", async () => {
-    capture();
+  test("qualified runtime479 captures still require the artifact's own exact capture stamp", async () => {
+    capture(479);
     for (const stamp of [undefined, STAMP - 1])
       assert.equal(
         await loadTopHoldersFlowTier(projectionEnv(stamp), { sort: "total_tao" }),

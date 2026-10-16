@@ -1,0 +1,1405 @@
+{
+  "schema_version": 1,
+  "scope": "Official native runtime479 arithmetic on 23 synthetic cases and four historical originals. Historical inputs are cross-version checks, not current runtime479 observations; this fixture does not prove a deployed Wasm/source match or execute a pallet storage getter.",
+  "upstream": {
+    "share_pool_version": "0.1.0",
+    "share_pool_commit": "f4786f9087cac84cfab37cbdf1e01c399042653a",
+    "safe_math_commit": "f4786f9087cac84cfab37cbdf1e01c399042653a",
+    "sdk_commit": "cacb4310f20c7cac83eb3ccd8ed5a5ad4212608a",
+    "substrate_fixed_version": "0.6.0",
+    "substrate_fixed_commit": "d5f70362f2e05b5f33fb51cd7baa825323e4e6c5",
+    "dependency_lock_sha256": "b0c52b9f5c895dd81689c9b148d9abaf4cfc4b9346caecbc41040339b41550f0"
+  },
+  "cases": [
+    {
+      "id": "historical-454-0",
+      "provenance": "historical_crosscheck",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": "1844674407370955161600000000",
+          "v2": null
+        },
+        "member_epoch": null,
+        "pool_epoch": null,
+        "share": {
+          "legacy_bits": "1844674407370955161600000000",
+          "v2": null
+        },
+        "total_alpha_rao": "100000000"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "100000000",
+        "runtime_get_stake_alpha_rao": "100000000",
+        "uncapped_alpha_rao": "100000000",
+        "share_source": "legacy",
+        "denominator_source": "legacy",
+        "selected_raw_share": {
+          "exponent": "-13",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000f3ffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-13",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000f3ffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-13",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000f3ffffffffffffff"
+        },
+        "effective_pool_epoch": "0",
+        "effective_member_epoch": "0",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "historical-454-1",
+      "provenance": "historical_crosscheck",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-10",
+            "mantissa": "879091934530000000000"
+          }
+        },
+        "member_epoch": null,
+        "pool_epoch": null,
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-10",
+            "mantissa": "879091934530000000000"
+          }
+        },
+        "total_alpha_rao": "87909193453"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "87909193453",
+        "runtime_get_stake_alpha_rao": "87909193453",
+        "uncapped_alpha_rao": "87909193453",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-10",
+          "mantissa": "879091934530000000000",
+          "scale_hex": "0x00149a8bd3f0d9a72f00000000000000f6ffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-10",
+          "mantissa": "879091934530000000000",
+          "scale_hex": "0x00149a8bd3f0d9a72f00000000000000f6ffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-10",
+          "mantissa": "879091934530000000000",
+          "scale_hex": "0x00149a8bd3f0d9a72f00000000000000f6ffffffffffffff"
+        },
+        "effective_pool_epoch": "0",
+        "effective_member_epoch": "0",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "historical-478-0",
+      "provenance": "historical_crosscheck",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-11",
+            "mantissa": "163325115200000000000"
+          }
+        },
+        "member_epoch": null,
+        "pool_epoch": null,
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-11",
+            "mantissa": "163325115200000000000"
+          }
+        },
+        "total_alpha_rao": "1633251152"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "1633251152",
+        "runtime_get_stake_alpha_rao": "1633251152",
+        "uncapped_alpha_rao": "1633251152",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-11",
+          "mantissa": "163325115200000000000",
+          "scale_hex": "0x0080c0dbf05e97da0800000000000000f5ffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-11",
+          "mantissa": "163325115200000000000",
+          "scale_hex": "0x0080c0dbf05e97da0800000000000000f5ffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-11",
+          "mantissa": "163325115200000000000",
+          "scale_hex": "0x0080c0dbf05e97da0800000000000000f5ffffffffffffff"
+        },
+        "effective_pool_epoch": "0",
+        "effective_member_epoch": "0",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "historical-478-1",
+      "provenance": "historical_crosscheck",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-10",
+            "mantissa": "597883603710000000000"
+          }
+        },
+        "member_epoch": "11",
+        "pool_epoch": "11",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-10",
+            "mantissa": "597883603710000000000"
+          }
+        },
+        "total_alpha_rao": "59788360371"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "59788360371",
+        "runtime_get_stake_alpha_rao": "59788360371",
+        "uncapped_alpha_rao": "59788360371",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-10",
+          "mantissa": "597883603710000000000",
+          "scale_hex": "0x006cf8e4d9414d692000000000000000f6ffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-10",
+          "mantissa": "597883603710000000000",
+          "scale_hex": "0x006cf8e4d9414d692000000000000000f6ffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-10",
+          "mantissa": "597883603710000000000",
+          "scale_hex": "0x006cf8e4d9414d692000000000000000f6ffffffffffffff"
+        },
+        "effective_pool_epoch": "11",
+        "effective_member_epoch": "11",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "unequal-exponents-current",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "3",
+        "runtime_get_stake_alpha_rao": "3",
+        "uncapped_alpha_rao": "3",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-22",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000eaffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "unequal-exponents-retired-positive",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "4",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "retired_member",
+        "classification": "retired_member",
+        "alpha_rao": null,
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": null,
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_share": null,
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "4",
+        "upstream_div_ratio": null
+      }
+    },
+    {
+      "id": "member-epoch-absent-in-positive-pool-epoch",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": null,
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "retired_member",
+        "classification": "retired_member",
+        "alpha_rao": null,
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": null,
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_share": null,
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "0",
+        "upstream_div_ratio": null
+      }
+    },
+    {
+      "id": "pool-epoch-absent",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "9",
+        "pool_epoch": null,
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "3",
+        "runtime_get_stake_alpha_rao": "3",
+        "uncapped_alpha_rao": "3",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "0",
+        "effective_member_epoch": "9",
+        "upstream_div_ratio": {
+          "exponent": "-22",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000eaffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "stored-zero-pool-epoch",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "9",
+        "pool_epoch": "0",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "3",
+        "runtime_get_stake_alpha_rao": "3",
+        "uncapped_alpha_rao": "3",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "0",
+        "effective_member_epoch": "9",
+        "upstream_div_ratio": {
+          "exponent": "-22",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000eaffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "stored-zero-share-in-retired-epoch",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "4",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "0",
+            "mantissa": "0"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "zero_share",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": "0",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "0",
+          "mantissa": "0",
+          "scale_hex": "0x000000000000000000000000000000000000000000000000"
+        },
+        "effective_share": {
+          "exponent": "0",
+          "mantissa": "0",
+          "scale_hex": "0x000000000000000000000000000000000000000000000000"
+        },
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "4",
+        "upstream_div_ratio": {
+          "exponent": "0",
+          "mantissa": "0",
+          "scale_hex": "0x000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "id": "missing-member-is-not-stored-zero",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "4",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": null
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "missing_member",
+        "classification": "missing_member",
+        "alpha_rao": null,
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": null,
+        "share_source": "absent",
+        "denominator_source": "v2",
+        "selected_raw_share": null,
+        "effective_share": null,
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "4",
+        "upstream_div_ratio": null
+      }
+    },
+    {
+      "id": "stored-zero-denominator",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "0",
+            "mantissa": "0"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "zero_denominator",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": null,
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "0",
+          "mantissa": "0",
+          "scale_hex": "0x000000000000000000000000000000000000000000000000"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": null
+      }
+    },
+    {
+      "id": "absent-denominator-default",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": null
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "zero_denominator",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": null,
+        "share_source": "v2",
+        "denominator_source": "absent",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "0",
+          "mantissa": "0",
+          "scale_hex": "0x000000000000000000000000000000000000000000000000"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": null
+      }
+    },
+    {
+      "id": "share-over-denominator-cap",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-19",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "100"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "capped_at_pool_value",
+        "alpha_rao": "100",
+        "runtime_get_stake_alpha_rao": "100",
+        "uncapped_alpha_rao": "300",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-19",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000edffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-19",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000edffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-20",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ecffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "legacy-some-zero-share-precedence",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "4",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": "0",
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "zero_share",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": "0",
+        "share_source": "legacy",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "0",
+          "mantissa": "0",
+          "scale_hex": "0x000000000000000000000000000000000000000000000000"
+        },
+        "effective_share": {
+          "exponent": "0",
+          "mantissa": "0",
+          "scale_hex": "0x000000000000000000000000000000000000000000000000"
+        },
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "4",
+        "upstream_div_ratio": {
+          "exponent": "0",
+          "mantissa": "0",
+          "scale_hex": "0x000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "id": "legacy-some-zero-denominator-precedence",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": "0",
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "zero_denominator",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": null,
+        "share_source": "v2",
+        "denominator_source": "legacy",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "0",
+          "mantissa": "0",
+          "scale_hex": "0x000000000000000000000000000000000000000000000000"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": null
+      }
+    },
+    {
+      "id": "legacy-nonzero-overlap-precedence",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": "55340232221128654848",
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": "27670116110564327424",
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "101"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "50",
+        "runtime_get_stake_alpha_rao": "50",
+        "uncapped_alpha_rao": "50",
+        "share_source": "legacy",
+        "denominator_source": "legacy",
+        "selected_raw_share": {
+          "exponent": "-20",
+          "mantissa": "150000000000000000000",
+          "scale_hex": "0x00009814440dab210800000000000000ecffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-20",
+          "mantissa": "150000000000000000000",
+          "scale_hex": "0x00009814440dab210800000000000000ecffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "500000000000000000000",
+          "scale_hex": "0x000050efe2d6e41a1b00000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "legacy-high-bits-conversion-rounding",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": "170141183460469231731687303715884105730",
+          "v2": null
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": "170141183460469231731687303715884105729",
+          "v2": null
+        },
+        "total_alpha_rao": "100"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "100",
+        "runtime_get_stake_alpha_rao": "100",
+        "uncapped_alpha_rao": "100",
+        "share_source": "legacy",
+        "denominator_source": "legacy",
+        "selected_raw_share": {
+          "exponent": "-2",
+          "mantissa": "922337203685477580800",
+          "scale_hex": "0x00000000000000003200000000000000feffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-2",
+          "mantissa": "922337203685477580800",
+          "scale_hex": "0x00000000000000003200000000000000feffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-2",
+          "mantissa": "922337203685477580800",
+          "scale_hex": "0x00000000000000003200000000000000feffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "common-min-exponent-intermediate-underflow",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-9223372036854775808",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-9223372036854775808",
+            "mantissa": "500000000000000000000"
+          }
+        },
+        "total_alpha_rao": "100"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "arithmetic_failure_zero",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": null,
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-9223372036854775808",
+          "mantissa": "500000000000000000000",
+          "scale_hex": "0x000050efe2d6e41a1b000000000000000000000000000080"
+        },
+        "effective_share": {
+          "exponent": "-9223372036854775808",
+          "mantissa": "500000000000000000000",
+          "scale_hex": "0x000050efe2d6e41a1b000000000000000000000000000080"
+        },
+        "effective_denominator": {
+          "exponent": "-9223372036854775808",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc93536000000000000000000000000000080"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "500000000000000000000",
+          "scale_hex": "0x000050efe2d6e41a1b00000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "opposite-extreme-exponents-intermediate-overflow",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-9223372036854775808",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "9223372036854775807",
+            "mantissa": "500000000000000000000"
+          }
+        },
+        "total_alpha_rao": "100"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "arithmetic_failure_zero",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": null,
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "9223372036854775807",
+          "mantissa": "500000000000000000000",
+          "scale_hex": "0x000050efe2d6e41a1b00000000000000ffffffffffffff7f"
+        },
+        "effective_share": {
+          "exponent": "9223372036854775807",
+          "mantissa": "500000000000000000000",
+          "scale_hex": "0x000050efe2d6e41a1b00000000000000ffffffffffffff7f"
+        },
+        "effective_denominator": {
+          "exponent": "-9223372036854775808",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc93536000000000000000000000000000080"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": null
+      }
+    },
+    {
+      "id": "rounding-just-below-one-rao",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "333333333333333333333"
+          }
+        },
+        "total_alpha_rao": "3"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": "0",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "333333333333333333333",
+          "scale_hex": "0x5555354a97e4ed111200000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "333333333333333333333",
+          "scale_hex": "0x5555354a97e4ed111200000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "333333333333333333333",
+          "scale_hex": "0x5555354a97e4ed111200000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "rounding-just-above-one-rao",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "333333333333333333334"
+          }
+        },
+        "total_alpha_rao": "3"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "1",
+        "runtime_get_stake_alpha_rao": "1",
+        "uncapped_alpha_rao": "1",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "333333333333333333334",
+          "scale_hex": "0x5655354a97e4ed111200000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "333333333333333333334",
+          "scale_hex": "0x5655354a97e4ed111200000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "333333333333333333334",
+          "scale_hex": "0x5655354a97e4ed111200000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "normalization-low-mantissa-boundary",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "100000000000000000000"
+          }
+        },
+        "total_alpha_rao": "7"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "7",
+        "runtime_get_stake_alpha_rao": "7",
+        "uncapped_alpha_rao": "7",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-20",
+          "mantissa": "100000000000000000000",
+          "scale_hex": "0x000010632d5ec76b0500000000000000ecffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-20",
+          "mantissa": "100000000000000000000",
+          "scale_hex": "0x000010632d5ec76b0500000000000000ecffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "normalization-upper-mantissa-boundary",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "total_alpha_rao": "7"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "7",
+        "runtime_get_stake_alpha_rao": "7",
+        "uncapped_alpha_rao": "7",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "maximum-u64-pool-half-share",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "500000000000000000000"
+          }
+        },
+        "total_alpha_rao": "18446744073709551615"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "9223372036854775807",
+        "runtime_get_stake_alpha_rao": "9223372036854775807",
+        "uncapped_alpha_rao": "9223372036854775807",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "500000000000000000000",
+          "scale_hex": "0x000050efe2d6e41a1b00000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "500000000000000000000",
+          "scale_hex": "0x000050efe2d6e41a1b00000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-21",
+          "mantissa": "500000000000000000000",
+          "scale_hex": "0x000050efe2d6e41a1b00000000000000ebffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "legacy-smallest-fraction-at-maximum-pool",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": "18446744073709551616",
+          "v2": null
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": "1",
+          "v2": null
+        },
+        "total_alpha_rao": "18446744073709551615"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "valued",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": "0",
+        "share_source": "legacy",
+        "denominator_source": "legacy",
+        "selected_raw_share": {
+          "exponent": "-40",
+          "mantissa": "542101086242752217003",
+          "scale_hex": "0xabbfa45cc3f129631d00000000000000d8ffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-40",
+          "mantissa": "542101086242752217003",
+          "scale_hex": "0xabbfa45cc3f129631d00000000000000d8ffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-21",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ebffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-40",
+          "mantissa": "542101086242752217003",
+          "scale_hex": "0xabbfa45cc3f129631d00000000000000d8ffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": "stored-zero-total",
+      "provenance": "synthetic",
+      "evidence": {
+        "denominator": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-20",
+            "mantissa": "1000000000000000000000"
+          }
+        },
+        "member_epoch": "5",
+        "pool_epoch": "5",
+        "share": {
+          "legacy_bits": null,
+          "v2": {
+            "exponent": "-21",
+            "mantissa": "300000000000000000000"
+          }
+        },
+        "total_alpha_rao": "0"
+      },
+      "expected": {
+        "status": "ok",
+        "classification": "zero_pool_value",
+        "alpha_rao": "0",
+        "runtime_get_stake_alpha_rao": "0",
+        "uncapped_alpha_rao": "0",
+        "share_source": "v2",
+        "denominator_source": "v2",
+        "selected_raw_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_share": {
+          "exponent": "-21",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000ebffffffffffffff"
+        },
+        "effective_denominator": {
+          "exponent": "-20",
+          "mantissa": "1000000000000000000000",
+          "scale_hex": "0x0000a0dec5adc9353600000000000000ecffffffffffffff"
+        },
+        "effective_pool_epoch": "5",
+        "effective_member_epoch": "5",
+        "upstream_div_ratio": {
+          "exponent": "-22",
+          "mantissa": "300000000000000000000",
+          "scale_hex": "0x00003029881a56431000000000000000eaffffffffffffff"
+        }
+      }
+    }
+  ]
+}

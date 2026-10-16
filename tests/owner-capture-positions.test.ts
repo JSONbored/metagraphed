@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { ownerCapturePositions } from "../src/owner-capture-positions.ts";
 import { ALPHA_GENESIS, ALPHA_RUNTIMES } from "../src/alpha-runtime-identity.ts";
-import type { OptionalRowQuerier, OptionalRowReader } from "../src/read-store.ts";
+import type { ReadStoreDb } from "../src/read-store.ts";
 
 type Row = Record<string, unknown>;
 const position = { coldkey: "owner", hotkey: "validator", share_fraction: 1 };
@@ -24,27 +24,40 @@ const capture = (spec: 478 | 479 = 478) => ({
   retained_code_hash: ALPHA_RUNTIMES[spec].code,
   retained_spec_version: spec,
 });
-function reader(
-  options: {
-    schema?: boolean;
-    spec?: 478 | 479;
-    selfStake?: boolean;
-    failure?: boolean;
-    race?: boolean;
-    rows?: Row[];
-  } = {},
-): OptionalRowReader & OptionalRowQuerier {
+interface ReaderOptions {
+  schema?: boolean;
+  spec?: 478 | 479;
+  selfStake?: boolean;
+  nullQuantity?: boolean;
+  lateSelfStake?: boolean;
+  failure?: boolean;
+  race?: boolean;
+  rows?: Row[];
+}
+function reader(options: ReaderOptions = {}): ReadStoreDb {
   let reads = 0;
+  let qualificationReads = 0;
   return {
     async first<T>(sql: string) {
       if (options.failure) throw new Error("fixture read failure");
       let value: unknown;
-      if (sql.includes("sqlite_master"))
-        value = options.schema === false ? null : { name: "alpha_snapshot_passes" };
-      else if (sql.includes("source='self-stake'"))
-        value = options.selfStake ? { coldkey: "other" } : null;
+      if (sql.includes("sqlite_master")) {
+        const table = { name: "alpha_snapshot_passes" };
+        value = options.schema === false ? null : table;
+      } else if (sql.includes("AS unqualified"))
+        value = {
+          unqualified:
+            options.selfStake ||
+            options.nullQuantity ||
+            (options.lateSelfStake && qualificationReads++ > 0)
+              ? 1
+              : 0,
+        };
       else {
-        value = capture(options.race && reads++ > 0 ? 479 : options.spec);
+        value = {
+          ...capture(options.spec),
+          captured_at: options.race && reads++ > 0 ? 101 : 100,
+        };
       }
       return value as T | null;
     },
@@ -69,27 +82,28 @@ test("owner split preserves pre-schema legacy readers", async () => {
 });
 
 test("owner split selects exact canonical rows and refuses unqualified, shadowed or racing quantities", async () => {
-  assert.deepEqual(await ownerCapturePositions(reader(), 23, noLegacy), [position]);
+  const valid = await ownerCapturePositions(reader(), 23, noLegacy);
+  assert.deepEqual(valid, [position]);
   for (const options of [
-    { spec: 479 as const },
+    { spec: 479 as const, nullQuantity: true },
     { selfStake: true },
+    { lateSelfStake: true },
+    { nullQuantity: true },
     { failure: true },
     { race: true },
     ...[null, -0.1, 1.1, Infinity].map((share_fraction) => ({
       rows: [{ ...position, share_fraction }],
     })),
-  ])
-    assert.deepEqual(
-      await ownerCapturePositions(reader(options), 23, noLegacy),
-      [],
-    );
+  ]) {
+    const result = await ownerCapturePositions(reader(options), 23, noLegacy);
+    assert.deepEqual(result, []);
+  }
 });
 
 test("owner split refuses incomplete reader capabilities", async () => {
   assert.deepEqual(await ownerCapturePositions({}, 23, noLegacy), []);
   const complete = reader();
-  assert.deepEqual(
-    await ownerCapturePositions({ first: complete.first }, 23, noLegacy),
-    [],
-  );
+  const partial = { first: complete.first };
+  const result = await ownerCapturePositions(partial, 23, noLegacy);
+  assert.deepEqual(result, []);
 });

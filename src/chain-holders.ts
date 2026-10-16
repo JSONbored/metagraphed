@@ -141,9 +141,8 @@ export async function loadChainHolders(
     if (state.available) {
       const capture = state.capture;
       if (!capture?.quantityQualified) return declined("pool_totals_unproven");
-      const rows = await db.query<Row>(
-        chainHoldersSql(capture.captured_at, true),
-      );
+      const statement = chainHoldersSql(capture.captured_at, true);
+      const rows = await db.query<Row>(statement);
       if (await alphaPositionsUnqualified(db, capture.captured_at))
         return declined("pool_totals_unproven");
       const after = await alphaCaptureState(db);

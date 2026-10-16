@@ -55,7 +55,8 @@ export function canonicalAlphaOwnerStore(env: unknown) {
 /** All Alpha tables are installed with their nominator-position owner. */
 export async function alphaCaptureStateFromOwner(env: unknown) {
   const store = canonicalAlphaOwnerStore(env);
-  return store ? alphaCaptureState(store) : { available: false, capture: null };
+  if (!store) return { available: false, capture: null };
+  return alphaCaptureState(store);
 }
 
 /** Self-stake rows have no qualified same-capture originals. Omitting that
@@ -97,10 +98,8 @@ export async function alphaCaptureState(
   const schema = await db.first(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'",
   );
-  if (
-    !schema ||
-    (schema as { name?: unknown }).name !== "alpha_snapshot_passes"
-  )
+  const tableName = (schema as { name?: unknown } | null)?.name;
+  if (tableName !== "alpha_snapshot_passes")
     return { available: false, capture: null };
   const parsed = captureSchema.safeParse(
     await db.first(`SELECT p.*,m.sha256 AS retained_metadata_sha256,

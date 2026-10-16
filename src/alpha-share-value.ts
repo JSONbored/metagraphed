@@ -31,8 +31,8 @@ export const AlphaPoolEvidenceSchema = z.strictObject({
   pool_epoch: unsigned(U64_MAX).nullable(),
   member_epoch: unsigned(U64_MAX).nullable(),
 });
-type Evidence = z.infer<typeof AlphaPoolEvidenceSchema>;
-interface Decimal {
+export type Evidence = z.infer<typeof AlphaPoolEvidenceSchema>;
+export interface Decimal {
   mantissa: bigint;
   exponent: bigint;
 }
@@ -57,7 +57,7 @@ function normalize(mantissa: bigint, exp: bigint): Decimal | null {
   return { mantissa, exponent: exp };
 }
 const power = (exp: bigint) => 10n ** (exp > 22n ? 22n : exp);
-function divide(a: Decimal, b: Decimal): Decimal | null {
+export function divide(a: Decimal, b: Decimal): Decimal | null {
   if (b.mantissa === 0n) return null;
   const exp = a.exponent - b.exponent - 21n;
   if (exp < I64_MIN || exp > I64_MAX) return null;
@@ -82,7 +82,7 @@ function legacy(bits: bigint): Decimal | null {
     integer.exponent,
   );
 }
-function selected(value: Evidence["share"]): Decimal | null {
+export function selected(value: Evidence["share"]): Decimal | null {
   // Legacy presence includes an explicit zero. It must win over V2 just as
   // try_get does; selecting the largest or first nonzero value changes truth.
   if (value.legacy_bits !== null) return legacy(BigInt(value.legacy_bits));
@@ -93,7 +93,7 @@ function selected(value: Evidence["share"]): Decimal | null {
       }
     : { mantissa: 0n, exponent: 0n };
 }
-function integer(value: Decimal): bigint {
+export function integer(value: Decimal): bigint {
   const scaled =
     value.exponent >= 0n
       ? value.mantissa * power(value.exponent)
@@ -101,11 +101,34 @@ function integer(value: Decimal): bigint {
   return scaled > U64_MAX ? U64_MAX : scaled;
 }
 
+/** Shared checked mul_div; originals enter unchanged. The denominator is
+ * nonzero at both valuation and conformance call sites. */
+export function alphaPoolMulDiv(
+  total: bigint,
+  share: Decimal,
+  denominator: Decimal,
+) {
+  const value = normalize(total, 0n)!;
+  const productExp = value.exponent + share.exponent;
+  const exp = productExp - denominator.exponent;
+  if (
+    productExp < I64_MIN ||
+    productExp > I64_MAX ||
+    exp < I64_MIN ||
+    exp > I64_MAX
+  )
+    return null;
+  return normalize(
+    (value.mantissa * share.mantissa) / denominator.mantissa,
+    exp,
+  );
+}
+
 /** Mirrors the selected runtime get_value: legacy-first originals and
- * SafeFloat mul_div/u64 saturation. Only478 applies retirement and pool cap.
+ * SafeFloat mul_div/u64 saturation. Runtime478 and479 apply retirement and cap.
  * The display fraction alone is a Number; exact originals/rao survive. */
-export function quoteAlphaPool(value: unknown, specVersion: 454 | 478) {
-  if (specVersion !== 454 && specVersion !== 478)
+export function quoteAlphaPool(value: unknown, specVersion: 454 | 478 | 479) {
+  if (specVersion !== 454 && specVersion !== 478 && specVersion !== 479)
     throw new TypeError("Unsupported Alpha runtime semantics");
   const evidence = AlphaPoolEvidenceSchema.parse(value);
   const raw = selected(evidence.share),
@@ -113,32 +136,27 @@ export function quoteAlphaPool(value: unknown, specVersion: 454 | 478) {
   const poolEpoch = BigInt(evidence.pool_epoch ?? "0"),
     memberEpoch = BigInt(evidence.member_epoch ?? "0");
   const retired =
-    specVersion === 478 && poolEpoch !== 0n && poolEpoch !== memberEpoch;
+    specVersion !== 454 &&
+    poolEpoch !== 0n &&
+    poolEpoch !== memberEpoch &&
+    (specVersion !== 479 || raw?.mantissa !== 0n);
   const share =
     retired && raw?.mantissa !== 0n ? { mantissa: 0n, exponent: 0n } : raw;
-  const total = BigInt(evidence.total_alpha_rao),
-    totalDecimal = normalize(total, 0n)!;
+  const total = BigInt(evidence.total_alpha_rao);
   let amount = 0n;
   let fraction = 0;
   if (share && denominator && denominator.mantissa > 0n) {
-    const productExp = totalDecimal.exponent + share.exponent;
-    const exp = productExp - denominator.exponent;
-    const result =
-      productExp < I64_MIN ||
-      productExp > I64_MAX ||
-      exp < I64_MIN ||
-      exp > I64_MAX
-        ? null
-        : normalize(
-            (totalDecimal.mantissa * share.mantissa) / denominator.mantissa,
-            exp,
-          );
+    const result = alphaPoolMulDiv(total, share, denominator);
     if (result) amount = integer(result);
-    if (specVersion === 478 && amount > total) amount = total;
+    if (specVersion !== 454 && amount > total) amount = total;
     const ratio = divide(share, denominator);
     if (ratio) fraction = Number(ratio.mantissa) * 10 ** Number(ratio.exponent);
-    if (specVersion === 478) fraction = Math.min(1, fraction);
+    if (specVersion !== 454) fraction = Math.min(1, fraction);
   }
+  const unavailable =
+    specVersion === 479 &&
+    (retired ||
+      (evidence.share.legacy_bits === null && evidence.share.v2 === null));
   return {
     evidence,
     alphaRao: amount.toString(),
@@ -146,5 +164,6 @@ export function quoteAlphaPool(value: unknown, specVersion: 454 | 478) {
     retired,
     shareLayout:
       evidence.share.legacy_bits !== null ? "legacy-u64f64" : "safe-float",
+    tryGetValueAlphaRao: unavailable ? null : amount.toString(),
   };
 }

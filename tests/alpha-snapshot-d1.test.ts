@@ -623,7 +623,10 @@ test("exporter upgrade precedes DDL and rollback is unsafe before first selectio
   };
   assert.equal((await handleD1StateExport(request(), env)).status, 200);
   for (const sql of readFileSync(
-    new URL("../migrations/d1/0039_alpha_runtime_receiver.sql", import.meta.url),
+    new URL(
+      "../migrations/d1/0039_alpha_runtime_receiver.sql",
+      import.meta.url,
+    ),
     "utf8",
   ).split("-- statement-breakpoint"))
     if (sql.trim()) await db.prepare(sql).run();
@@ -945,13 +948,18 @@ test("missing, mismatched or unapplied receipt readbacks refuse ACK without losi
   }
 });
 
-test("runtime479 retains exact V2 originals under its pinned identity with null valuation and no older quantity fallback", async () => {
+test("runtime479 qualifies exact V2 originals under its pinned identity without borrowing an older quantity", async () => {
   const db = await fixture();
   await write(db, packet());
   const evidence = structuredClone(frozen.members[0].evidence);
-  evidence.share.v2 = { mantissa: "1", exponent: "-9223372036854775808" };
-  evidence.pool_epoch = "18446744073709551615";
-  evidence.member_epoch = "0";
+  evidence.share.v2 = { mantissa: "300000000000000000000", exponent: "-21" };
+  evidence.denominator.v2 = {
+    mantissa: "1000000000000000000000",
+    exponent: "-20",
+  };
+  evidence.total_alpha_rao = "101";
+  evidence.pool_epoch = "5";
+  evidence.member_epoch = "5";
   const body = packet([{ ...row("new"), evidence }], {
     captured_at: baseAt + 1,
     block_number: frozen.alpha_snapshot.block_number + 1,
@@ -968,14 +976,14 @@ test("runtime479 retains exact V2 originals under its pinned identity with null 
   assert.equal(accepted.alpha_snapshot.complete, true);
   const stored = (await rowsOf(db))[0];
   assert.equal(stored.coldkey, "new");
-  assert.equal(stored.share_fraction, null);
-  assert.equal(stored.alpha_rao, null);
+  assert.ok(Math.abs(Number(stored.share_fraction) - 0.03) < Number.EPSILON);
+  assert.equal(stored.alpha_rao, "3");
   assert.equal(stored.shares, null);
   assert.deepEqual(JSON.parse(stored.alpha_evidence), evidence);
   const state = await alphaCaptureState(createD1Store(db));
   assert.equal(state.capture?.captured_at, baseAt + 1);
   assert.equal(state.capture?.spec_version, 479);
-  assert.equal(state.capture?.quantityQualified, false);
+  assert.equal(state.capture?.quantityQualified, true);
   const replay = await write(db, body);
   assert.equal(replay.alpha_snapshot.sha256, accepted.alpha_snapshot.sha256);
   assert.equal(replay.alpha_snapshot.received_rows, 1);
@@ -987,7 +995,7 @@ test("runtime479 retains exact V2 originals under its pinned identity with null 
   assert.equal(originals.length, 2);
   assert.equal(originals[0].alpha_rao, "1633251152");
   assert.deepEqual(JSON.parse(originals[1].alpha_evidence), evidence);
-  assert.equal(originals[1].alpha_rao, null);
+  assert.equal(originals[1].alpha_rao, "3");
 });
 
 test("runtime479 refuses a legacy census or original legacy lane before native I/O", async () => {

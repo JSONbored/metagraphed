@@ -2645,56 +2645,43 @@ async function handleNominatorPositionsSync(
   } catch {
     return writeJson({ error: "body must be JSON" }, 400);
   }
+  const owners = String(env.D1_STATE_TABLES ?? "")
+    .split(",")
+    .map((name) => name.trim());
+  const required = [
+    "nominator_positions",
+    "nominator_positions_passes",
+    "nominator_scan_receipts",
+  ];
+  const nativeAlpha = required.every((table) => owners.includes(table))
+    ? env.D1_STATE
+    : undefined;
   if (parsed?.alpha_snapshot_resume !== undefined) {
     if (
       parsed.alpha_snapshot_resume !== true ||
       Object.keys(parsed).length !== 1
     )
       return writeJson({ error: "invalid Alpha resume request" }, 400);
-    if (
-      !env.D1_STATE ||
-      ![
-        "nominator_positions",
-        "nominator_positions_passes",
-        "nominator_scan_receipts",
-      ].every((table) =>
-        String(env.D1_STATE_TABLES ?? "")
-          .split(",")
-          .map((name) => name.trim())
-          .includes(table),
-      )
-    )
+    if (!nativeAlpha)
       return writeJson(
         { error: "Alpha resume requires its native owner" },
         503,
       );
     try {
-      return writeJson(await readAlphaSnapshotResumeD1(env.D1_STATE));
+      return writeJson(await readAlphaSnapshotResumeD1(nativeAlpha));
     } catch (error) {
       return writeJson({ error: String(error) }, 502);
     }
   }
   if (parsed?.alpha_snapshot !== undefined) {
-    if (
-      !env.D1_STATE ||
-      ![
-        "nominator_positions",
-        "nominator_positions_passes",
-        "nominator_scan_receipts",
-      ].every((table) =>
-        String(env.D1_STATE_TABLES ?? "")
-          .split(",")
-          .map((name) => name.trim())
-          .includes(table),
-      )
-    )
+    if (!nativeAlpha)
       return writeJson(
         { error: "Alpha snapshots require their native owner" },
         503,
       );
     try {
       return writeJson(
-        await writeAlphaSnapshotD1(env.D1_STATE, parsed, Date.now()),
+        await writeAlphaSnapshotD1(nativeAlpha, parsed, Date.now()),
       );
     } catch (error) {
       const invalid =
@@ -2801,22 +2788,15 @@ async function handleNominatorPositionsSync(
     });
   }
 
-  // NO D1 WRITE, and no store binding requirement: nominator_positions and its
-  // pass ledger are Neon's outright (#10111). The queue consumer below is this
-  // lane's other entry point and it does not write D1 either.
+  // The existing selected owner writes rows, coverage and pass atomically.
   const neon = await mirrorNominatorPositionsToNeon(env, ctx, {
     rows,
     coldkeyMaxCapturedAt: cutoffs,
     pass,
   });
 
-  // Once Neon is the store, a pass that did not reach it did not happen.
+  // Prune, coverage and pass are required parts of the acknowledgment.
   {
-    // The PRUNE and the PASS count as well as the write. Rows landing while
-    // stale coldkeys survive is not a partial success -- top-holders would
-    // serve both. And nominator_positions_passes has no other writer once this
-    // inverts, so a tally that did not land leaves a completeness ledger
-    // nobody can tell is empty.
     const failed = [neon.write, neon.prune, neon.coverage, neon.pass].filter(
       (r) => r && !r.ok,
     );
@@ -2852,39 +2832,12 @@ async function handleNominatorPositionsSync(
 
 // --- POST /api/v1/internal/self-stake-sync (#10845) -----------------------
 //
-// THE SAME TABLE AS nominator-positions-sync, AND NOT THE SAME ROUTE, which is
-// the whole point (metagraphed-infra#473).
-//
-// `self-stake` fills a gap `validator-nominators`' Alpha scan cannot: an owner's
-// own stake on their own hotkey frequently has NO `SubtensorModule::Alpha`
-// entry -- `{bits: 0}` on ~91% of one hotkey's registered pairs -- even when
-// the runtime-computed stake is large. Those rows belong in
-// `nominator_positions`, because a validator's own stake is often its largest
-// position and eight surfaces read that table.
-//
-// BUT IT CANNOT REUSE THE OTHER ROUTE, and reusing it would delete data. That
-// route PRUNES per `coldkey`: every row for a posted `coldkey` older than the
-// newest captured_at that same `coldkey` carries in the request. And
-// `validator-nominators` may do
-// that because `pack_coldkey_chunks` never splits a `coldkey`. `self-stake`
-// cannot: its rows are absent from the Alpha scan BY CONSTRUCTION, so they are
-// always "older than this pass" from the other lane's point of view, and any
-// owner who also nominates elsewhere would lose their self-stake row within a
-// day of it being written.
-//
-// So each producer owns a PRUNE DOMAIN -- 0027's `source` column -- and this
-// route writes `source='self-stake'` and prunes only that. `source` is stamped
-// by the writer, never accepted from the wire: a producer that could name its
-// own source could claim the other lane's domain and delete its rows.
-//
-// NO PASS TALLY, unlike its sibling. `nominator_positions_passes` records
-// completeness of a full keyspace scan; self-stake is a targeted read over
-// registered (hotkey, netuid) pairs and declaring it complete would corrupt
-// the ledger the other lane's consumers gate on.
+// Shared ledger, separate source ownership: self-stake may retire only its
+// own rows. The writer stamps source; wire input cannot claim another domain.
+// Legacy partial owner updates remain supported. Optional complete-snapshot
+// receipts own their census and retirement, never the Alpha pass ledger.
 const SELF_STAKE_SYNC_TOKEN_HEADER = "x-self-stake-sync-token";
-// One runtime API call per (hotkey, netuid) pair makes this lane WEEKLY and
-// far smaller than the Alpha scan, but the ceilings match its sibling's so a
-// producer cannot be surprised by a different limit on the same table.
+// Match the sibling route's request and row ceilings.
 const SELF_STAKE_SYNC_MAX_BODY_BYTES = 8_000_000;
 const SELF_STAKE_SYNC_MAX_ROWS = 25_000;
 

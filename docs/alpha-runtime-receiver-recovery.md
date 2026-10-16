@@ -17,20 +17,47 @@ excluded here. Producer source and deployment coordination have a separate owner
 ## Runtime and ownership contract
 
 Admission checks genesis, spec, code and original metadata identity together.
-The existing exact454/478 adapters retain their arithmetic bounds and tests.
-The explicitly pinned479 identity is admitted for structural capture only;
-its original legacy/V2 components, denominator, pool amount and epochs survive,
-while derived valuation remains null and unqualified. Spec version alone never
-qualifies arithmetic. A later479 valuation adapter requires separate evidence
-and review; it must not rewrite the accepted originals.
+The existing exact 454/478 adapters retain their arithmetic bounds and tests.
+The explicitly pinned 479 identity uses the source-qualified getter adapter
+with exact derived-value parity cases. Original member components, denominator,
+pool amount and epochs survive unchanged. The 479 capture layout requires empty
+legacy lanes; synthetic legacy arithmetic cases do not authorize legacy storage
+in an actual 479 capture. The coordinated producer checks both entire legacy
+prefixes at each pinned capture before packets. The receiver checks the declared
+legacy member census and each row's legacy components; its receipt alone is not
+an independent global denominator-prefix proof. Spec version alone never qualifies
+arithmetic.
+
+The arithmetic reference executes unchanged share-pool 0.1.0 and SafeFloat from
+[upstream commit f4786f9](https://github.com/RaoFoundation/subtensor/tree/f4786f9087cac84cfab37cbdf1e01c399042653a),
+with SDK `cacb4310f20c7cac83eb3ccd8ed5a5ad4212608a`, substrate-fixed 0.6.0
+`d5f70362f2e05b5f33fb51cd7baa825323e4e6c5` and locked dependency digest
+`b0c52b9f5c895dd81689c9b148d9abaf4cfc4b9346caecbc41040339b41550f0`.
+The reference output digest is
+`4240a3b3c16802f2c72fc6bba7297bc669eb30775feae691870b1f16beb96495`.
+The public mathematical fixture covers 23 explicitly synthetic vectors and four
+unchanged historical 454/478 original cases as cross-version inputs. It compares
+raw arithmetic selection, effective share after epochs, exact rao and the getter
+wrapper. Normalized arithmetic intermediates never replace original storage bits.
+
+Missing or retired members have unavailable raw `try_get_value` results. The
+source-derived getter's `unwrap_or(0)` yields zero for those valid states;
+invalid evidence, unknown identity and failed reads still refuse the capture.
+Stored zero remains a present zero, including mismatched epochs. Selection,
+epoch policy and fallback are source-derived adapters, rather than executed
+pallet getters or proof that deployed Wasm matches the reviewed source. The
+bounded reference is neither authentic current479 pool/member evidence nor a
+full census or runtime-transition proof. Deployment/source binding and authentic
+selected-capture acceptance remain activation gates.
 
 Original decimal strings remain exact, including explicit legacy zero, distinct
 mantissas/exponents and absent epochs. Derived calculations never replace those
 strings. Whole-owner chunks are disjoint, receipts bind original context and rows,
 replay cannot recount or replace a chunk, and repeated pool identities must agree.
 Partial passes remain isolated from serving rows. Completed capture originals,
-metadata and receipts remain retained and immutable. Capture-only passes can
-complete and become canonical without inventing an economic quantity.
+metadata and receipts remain retained and immutable. Previously retained
+unvalued rows remain unavailable; adding an arithmetic adapter does not rewrite
+the accepted capture or borrow another pass's derived quantity.
 
 Promotion publishes the full Alpha source, coverage receipts and selector in one
 native transaction, with a row-level readback check. Finalized block order wins
@@ -41,16 +68,17 @@ public response shapes remain unchanged and unavailable economic values use thei
 existing degraded behavior. The new safe path is scoped to the colocated native
 nominator-position owner.
 
-Self-stake uses the existing snapshot receipt owner and digest-v2 IEEE754 fraction
+The receiver supports self-stake snapshot receipts and digest-v2 IEEE754 fraction
 semantics. It acknowledges source-assigned and Alpha-shadowed observations while
-leaving Alpha-owned evidence intact. Legacy partial self-stake remains compatible
-before DDL. After Alpha selection, legacy Alpha writers and overlapping self-stake
-writes are fenced. Old writers cannot normalize, overwrite or prune selected
-originals by falling back to fraction-only input.
+leaving Alpha-owned evidence intact. Legacy partial self-stake remains compatible;
+its producer does not exercise full-snapshot receipts or empty-pass retirement.
+After Alpha selection, legacy Alpha writers and overlapping self-stake writes are
+fenced. Old writers cannot normalize, overwrite or prune selected originals by
+falling back to fraction-only input.
 
 ## Focused schema identity and recovery compatibility
 
-Main ends at D1 migration0038. Its bytes and all earlier migration identities stay
+Main ends at D1 migration 0038. Its bytes and all earlier migration identities stay
 unchanged. The proposed next identity is
 `0039_alpha_runtime_receiver.sql`: seven tables (`alpha_runtime_metadata`,
 `alpha_snapshot_passes`, `alpha_snapshot_chunks`, `alpha_snapshot_rows`,
@@ -59,10 +87,10 @@ unchanged. The proposed next identity is
 `nominator_positions`, ownership/immutability triggers and supporting indexes.
 This is a fresh focused migration, not a renaming of a recorded migration.
 
-The retained stack used0039 for unrelated retention trigger work,0040 for
-self-stake receipts,0041 for raw finality,0042 for webhooks and0043 for Alpha.
+The retained stack used 0039 for unrelated retention trigger work, 0040 for
+self-stake receipts, 0041 for raw finality, 0042 for webhooks and 0043 for Alpha.
 Only the self-stake/Alpha requirements are composed here. Do not copy those
-numbers with gaps, apply both versions, or treat any previously recorded0039 as
+numbers with gaps, apply both versions, or treat any previously recorded 0039 as
 this migration. Stop and reconcile the actual ledger and physical schema if
 any competing identity is present. No Neon migration is introduced.
 
@@ -99,9 +127,10 @@ Before eventual activation, the coordinating owner must:
    guarantee. Incomplete captures are retained rather than silently discarded to
    free capacity; release needs an explicit retention/capacity plan.
 5. Coordinate the compatible producer only after those gates, prove exact receipts,
-   census, pool originals and canonical selection, then verify current readers
-   decline unqualified479 valuation. Exact historical resume requires retained
-   historical state; a receiver receipt does not spool every producer packet.
+   census, pool originals, deployed-runtime/source binding and canonical
+   selection, then verify 479 values and explicit refusal of unqualified captures.
+   Exact historical resume requires retained historical state; a receiver receipt
+   does not spool every producer packet.
 
 Keep the compatible exporter after DDL. Before any runtime rollback, fence
 producers and retain all accepted originals, receipts and canonical selectors.

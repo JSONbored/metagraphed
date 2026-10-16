@@ -59,13 +59,15 @@ test("old schema and empty new schema remain distinct without inventing a captur
 });
 
 test("only exact known arithmetic adapters qualify the selected canonical capture", async () => {
-  for (const spec of [454, 478] as const) {
+  for (const spec of [454, 478, 479] as const) {
     const state = await alphaCaptureState(reader(capture(spec)));
     assert.equal(state.capture?.quantityQualified, true);
     assert.equal(state.capture?.spec_version, spec);
   }
-  const state = await alphaCaptureState(reader(capture(479)));
-  assert.equal(state.capture?.spec_version, 479);
+  const state = await alphaCaptureState(
+    reader({ ...capture(479), spec_version: 480, retained_spec_version: 480 }),
+  );
+  assert.equal(state.capture?.spec_version, 480);
   assert.equal(state.capture?.quantityQualified, false);
 });
 

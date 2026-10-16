@@ -16,7 +16,9 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, test } from "vitest";
-import { tablesInMigrations } from "../scripts/validate-declared-tables-exist.ts";
+import {
+  tablesInMigrations,
+} from "../scripts/validate-declared-tables-exist.ts";
 import { alphaCaptureState } from "../src/alpha-capture-reader.ts";
 import { partitionStoreTables } from "../src/d1-store.ts";
 import { ALPHA_PRICING_TABLES } from "../src/read-store-tables.ts";
@@ -118,7 +120,7 @@ describe("every reader dependency exists in its actual store", () => {
     NATIVE_ONLY_FAMILIES.flatMap((family) => family.tables),
   );
 
-  test("every Neon-readable dependency is created by a Neon migration", () => {
+  test("Neon dependencies require Neon migrations", () => {
     const missing = [...gated.keys()]
       .filter((table) => !nativeOnly.has(table) && !created.has(table))
       .sort();
@@ -132,7 +134,7 @@ describe("every reader dependency exists in its actual store", () => {
     );
   });
 
-  test("conditional native dependencies have tracked DDL and cannot split from their owner", () => {
+  test("native dependencies require DDL and their single owner", () => {
     const nativeCreated = tablesInMigrations("migrations/d1");
     for (const family of NATIVE_ONLY_FAMILIES) {
       assert.ok(created.has(family.owner));
@@ -140,22 +142,21 @@ describe("every reader dependency exists in its actual store", () => {
       const tables = [family.owner, ...family.tables];
       assert.deepEqual(partitionStoreTables(env, tables), [tables]);
       for (const table of family.tables) {
-        assert.ok(gated.has(table), `${table} is a stale native-only exception`);
+        const stale = `${table} is a stale native-only exception`;
+        assert.ok(gated.has(table), stale);
         assert.ok(!created.has(table), `${table} also exists in Neon`);
         assert.equal(nativeCreated.get(table), family.migration);
+        const orphan = { D1_STATE_TABLES: table };
         assert.throws(
-          () => readStore({ D1_STATE_TABLES: table }, [table]),
+          () => readStore(orphan, [table]),
           /requires its nominator_positions owner/,
         );
+        const unbound = {
+          D1_STATE_TABLES: family.owner,
+          HYPERDRIVE: { connectionString: "postgresql://unused/db" },
+        };
         assert.throws(
-          () =>
-            readStore(
-              {
-                D1_STATE_TABLES: family.owner,
-                HYPERDRIVE: { connectionString: "postgresql://unused/db" },
-              },
-              [table],
-            ),
+          () => readStore(unbound, [table]),
           /Selected D1 store is unbound/,
         );
         assert.throws(
@@ -166,23 +167,21 @@ describe("every reader dependency exists in its actual store", () => {
     }
   });
 
-  test("the real PostgreSQL handle skips native discovery and retains legacy reads", async () => {
+  test("PostgreSQL skips native discovery and keeps legacy reads", async () => {
     const queries: string[] = [];
-    const store = readStore(
-      { HYPERDRIVE: { connectionString: "postgresql://unused/db" } },
-      ALPHA_PRICING_TABLES,
-      undefined,
-      {
-        clientFactory: () => ({
-          async connect() {},
-          async end() {},
-          async query(text) {
-            queries.push(text);
-            return { rows: [{ latest: 123 }] };
-          },
-        }),
+    const client = {
+      async connect() {},
+      async end() {},
+      async query(text: string) {
+        queries.push(text);
+        return { rows: [{ latest: 123 }] };
       },
-    );
+    };
+    const env = {
+      HYPERDRIVE: { connectionString: "postgresql://unused/db" },
+    };
+    const deps = { clientFactory: () => client };
+    const store = readStore(env, ALPHA_PRICING_TABLES, undefined, deps);
     assert.ok(store);
     assert.equal(isPostgresReadStore(store), true);
     assert.deepEqual(await alphaCaptureState(store), {
@@ -193,12 +192,13 @@ describe("every reader dependency exists in its actual store", () => {
     const legacy = "SELECT MAX(captured_at) AS latest FROM nominator_positions";
     assert.deepEqual(await store.first(legacy), { latest: 123 });
     assert.deepEqual(queries, [legacy]);
+    const failedNativeRead = {
+      async first() {
+        throw new Error("native schema read failed");
+      },
+    };
     await assert.rejects(
-      alphaCaptureState({
-        async first() {
-          throw new Error("native schema read failed");
-        },
-      }),
+      alphaCaptureState(failedNativeRead),
       /native schema read failed/,
     );
   });

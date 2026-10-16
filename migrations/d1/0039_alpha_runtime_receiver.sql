@@ -1,8 +1,8 @@
 -- Additive incident receiver schema, based on the applied sequence through0038.
 -- This focused migration replaces only the retained self-stake/Alpha proposals;
 -- unrelated retention, raw-finality and webhook proposals are not prerequisites.
--- No values are backfilled, reinterpreted or selected by this DDL. Runtime479
--- originals are retained with NULL valuation until an arithmetic adapter qualifies.
+-- No values are backfilled, reinterpreted or selected by this DDL. Existing
+-- unqualified originals retain NULL valuation when a later adapter qualifies.
 -- A complete self-stake scan owns only its latest-only source domain. Keep
 -- exact chunk receipts separate from the Alpha scan's completeness ledger.
 CREATE TABLE self_stake_snapshot_passes (
