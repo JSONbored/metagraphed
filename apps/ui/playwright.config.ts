@@ -31,7 +31,11 @@ export default defineConfig({
   // only changes how long a genuinely stuck one is allowed to hang. 90s is the
   // 45s restart budget plus the ~25s these specs already use, rounded up.
   timeout: 90_000,
-  reporter: process.env.CI ? "github" : "list",
+  // The GitHub reporter calls a successful retry "flaky", but that still makes
+  // the step green. Keep the first failure's context available in that case.
+  reporter: process.env.CI
+    ? [["github"], ["json", { outputFile: "test-results/e2e-results.json" }]]
+    : "list",
   // #8928: pinned, because Playwright's default is os.cpus().length / 2 -- 2
   // workers on the 4-core ubuntu-latest runner, leaving half the machine idle
   // for what is the largest single block in the `ui` job. Pinned rather than
