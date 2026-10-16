@@ -742,7 +742,7 @@ test("account-only retention bounds twelve ten-height transactions and preserves
   assert.equal(pg.control.connects, 0);
 });
 
-test("a lost account-delete acknowledgement stops writes and a fresh invocation rechecks coverage and its floor", async () => {
+test("a lost account-delete acknowledgement stops writes and a later cron rechecks expired coverage and its floor", async () => {
   const { old, selected } = await accountOnlyFixture();
   let calls = 0;
   const batch = async (statements: D1PreparedStatement[]) => {
@@ -766,19 +766,28 @@ test("a lost account-delete acknowledgement stops writes and a fresh invocation 
     Array.from({ length: 221 }, (_, i) => old + 20 + i),
   );
   const original = selected.METAGRAPH_ARCHIVE.get.getMockImplementation()!;
-  selected.METAGRAPH_ARCHIVE.get.mockResolvedValue(null);
-  const refused = await pruneChainDetail(owned, ctx);
-  assert.equal(refused.ok, false);
-  assert.equal(calls, 2);
-  selected.METAGRAPH_ARCHIVE.get.mockImplementation(original);
-  const resumed = await pruneChainDetail(owned, ctx);
-  assert.equal(resumed.ok, true);
-  assert.equal(resumed.account_events_deleted_below, old + 140);
-  assert.equal(resumed.account_events_blocks_pruned, 120);
-  assert.equal(calls, 14);
-  assert.deepEqual(
-    await blocks("chain_detail_account_events"),
-    Array.from({ length: 101 }, (_, i) => old + 140 + i),
-  );
+  const now = Date.now();
+  // Validated selections have an existing sixty-second cache. The normal
+  // quarter-hour cron expires it; do not claim an immediate call rereads it.
+  const clock = vi.spyOn(Date, "now").mockReturnValue(now + 60_001);
+  try {
+    selected.METAGRAPH_ARCHIVE.get.mockResolvedValue(null);
+    const refused = await pruneChainDetail(owned, ctx);
+    assert.equal(refused.ok, false);
+    assert.equal(calls, 2);
+    selected.METAGRAPH_ARCHIVE.get.mockImplementation(original);
+    clock.mockReturnValue(now + 120_002);
+    const resumed = await pruneChainDetail(owned, ctx);
+    assert.equal(resumed.ok, true);
+    assert.equal(resumed.account_events_deleted_below, old + 140);
+    assert.equal(resumed.account_events_blocks_pruned, 120);
+    assert.equal(calls, 14);
+    assert.deepEqual(
+      await blocks("chain_detail_account_events"),
+      Array.from({ length: 101 }, (_, i) => old + 140 + i),
+    );
+  } finally {
+    clock.mockRestore();
+  }
   assert.equal(pg.control.connects, 0);
 });
