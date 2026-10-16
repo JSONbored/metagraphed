@@ -10,7 +10,11 @@ import { DEFAULT_BLOCKS_SEAM as SEAM } from "../src/blocks-seam.ts";
 
 // Execute the production reader's SQL, including its ORDER BY and seeks. A
 // preordered transport mock cannot expose observation-time ordering regressions.
-function binding(sql: DatabaseSync, plans: string[][] = [], selectorRows: number[] = []) {
+function binding(
+  sql: DatabaseSync,
+  plans: string[][] = [],
+  selectorRows: number[] = [],
+) {
   const prepare = (text: string, values: unknown[] = []) => ({
     bind: (...next: unknown[]) => prepare(text, next),
     all: async () => {
@@ -22,8 +26,9 @@ function binding(sql: DatabaseSync, plans: string[][] = [], selectorRows: number
             .map((row) => String(row.detail)),
         );
       const results = sql.prepare(text).all(...(values as never[]));
-      if (text.startsWith("SELECT COUNT(*) AS matches FROM (SELECT 1")) selectorRows.push(Number(results[0]!.matches));
-      return {success:true,results,meta:{}};
+      if (text.startsWith("SELECT COUNT(*) AS matches FROM (SELECT 1"))
+        selectorRows.push(Number(results[0]!.matches));
+      return { success: true, results, meta: {} };
     },
     run: async () => ({
       success: true,
@@ -222,42 +227,97 @@ test("rare old-height count, author and spec filters retain bounded selective pl
   const common = "5HjhkCMa89QJbFULs8WPZBgVg8kMq5qdX1nx7CnQpZgoyKAN";
   const now = Date.now();
   try {
-    sql.exec(readFileSync(new URL("../migrations/retained-blocks/0001_retained_blocks.sql", import.meta.url),"utf8"));
+    sql.exec(
+      readFileSync(
+        new URL(
+          "../migrations/retained-blocks/0001_retained_blocks.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
     const higher = 50_002;
-    sql.prepare("INSERT INTO history_block_sources VALUES(1,'selector',0,'{}',?,?,1)").run(higher+1,higher+1);
-    sql.prepare("INSERT INTO history_block_authors VALUES(1,?),(2,?)").run(author,common);
-    const insert = sql.prepare("INSERT INTO history_blocks VALUES(0,1,?,?,NULL,NULL,?,?,?,?,?)");
+    sql
+      .prepare(
+        "INSERT INTO history_block_sources VALUES(1,'selector',0,'{}',?,?,1)",
+      )
+      .run(higher + 1, higher + 1);
+    sql
+      .prepare("INSERT INTO history_block_authors VALUES(1,?),(2,?)")
+      .run(author, common);
+    const insert = sql.prepare(
+      "INSERT INTO history_blocks VALUES(0,1,?,?,NULL,NULL,?,?,?,?,?)",
+    );
     sql.exec("BEGIN");
-    insert.run(0,1,1,99,99,999,now);
-    for(let ordinal=1;ordinal<=higher;ordinal++) insert.run(ordinal,100_000+ordinal,2,1,1,1,now+ordinal);
+    insert.run(0, 1, 1, 99, 99, 999, now);
+    for (let ordinal = 1; ordinal <= higher; ordinal++)
+      insert.run(ordinal, 100_000 + ordinal, 2, 1, 1, 1, now + ordinal);
     sql.exec("COMMIT");
-    sql.prepare("INSERT INTO history_block_state VALUES(0,?,?,?,1,?,?,1,NULL)").run("b".repeat(64),"019fc234-642e-7f82-b656-ddb8529315ab","100",now,higher+1);
-    for(const kind of ["events","extrinsics"]) {
-      sql.prepare("INSERT INTO history_block_counts VALUES(0,?,1,?),(0,?,99,1)").run(kind,higher,kind);
+    sql
+      .prepare("INSERT INTO history_block_state VALUES(0,?,?,?,1,?,?,1,NULL)")
+      .run(
+        "b".repeat(64),
+        "019fc234-642e-7f82-b656-ddb8529315ab",
+        "100",
+        now,
+        higher + 1,
+      );
+    for (const kind of ["events", "extrinsics"]) {
+      sql
+        .prepare("INSERT INTO history_block_counts VALUES(0,?,1,?),(0,?,99,1)")
+        .run(kind, higher, kind);
     }
     const plans: string[][] = [];
     const selectorRows: number[] = [];
-    const env = {D1_RETAINED_BLOCKS:binding(sql,plans,selectorRows),RETAINED_BLOCKS_NETWORKS:"mainnet"};
-    for(const [filters,index] of [
-      [{minEvents:99},"events"],
-      [{minExtrinsics:99},"extrinsics"],
-      [{author},"author"],
-      [{specVersion:999},"spec"],
-      [{author,specVersion:999},"author_spec"],
-      [{author,minEvents:99},"events"],
+    const env = {
+      D1_RETAINED_BLOCKS: binding(sql, plans, selectorRows),
+      RETAINED_BLOCKS_NETWORKS: "mainnet",
+    };
+    for (const [filters, index] of [
+      [{ minEvents: 99 }, "events"],
+      [{ minExtrinsics: 99 }, "extrinsics"],
+      [{ author }, "author"],
+      [{ specVersion: 999 }, "spec"],
+      [{ author, specVersion: 999 }, "author_spec"],
+      [{ author, minEvents: 99 }, "events"],
+      [{ to: now }, "order"],
+      [{ from: now, to: now }, "order"],
     ] as const) {
-      const result = await fetchBlockRowsFromR2Sql(env,{limit:1,offset:0,...filters});
-      assert.deepEqual(result!.rows.map(row=>row.block_number),[1]);
-      const plan=plans.at(-1)!;
-      assert.ok(plan.some(detail => detail.includes(`history_blocks_${index}`)),`${JSON.stringify(filters)} must use bounded ${index} matches below ${higher} unrelated newer rows: ${plan.join("\n")}`);
+      const result = await fetchBlockRowsFromR2Sql(env, {
+        limit: 1,
+        offset: 0,
+        ...filters,
+      });
+      assert.deepEqual(
+        result!.rows.map((row) => row.block_number),
+        [1],
+      );
+      const plan = plans.at(-1)!;
+      assert.ok(
+        plan.some((detail) => detail.includes(`history_blocks_${index}`)),
+        `${JSON.stringify(filters)} must use bounded ${index} matches below ${higher} unrelated newer rows: ${plan.join("\n")}`,
+      );
     }
-    const broad=await fetchBlockRowsFromR2Sql(env,{limit:1,offset:0,author:common});
-    assert.equal(broad!.rows[0]!.block_number,100_000+higher);
-    const missing=await fetchBlockRowsFromR2Sql(env,{limit:1,offset:0,specVersion:123456});
-    assert.deepEqual(missing!.rows,[]);
+    const broad = await fetchBlockRowsFromR2Sql(env, {
+      limit: 1,
+      offset: 0,
+      author: common,
+    });
+    assert.equal(broad!.rows[0]!.block_number, 100_000 + higher);
+    const missing = await fetchBlockRowsFromR2Sql(env, {
+      limit: 1,
+      offset: 0,
+      specVersion: 123456,
+    });
+    assert.deepEqual(missing!.rows, []);
     assert.ok(selectorRows.includes(1));
-    assert.ok(selectorRows.includes(50_001),"common selectors stop counting at the bounded-sort threshold plus one");
+    assert.ok(
+      selectorRows.includes(50_001),
+      "common selectors stop counting at the bounded-sort threshold plus one",
+    );
     assert.ok(selectorRows.includes(0));
-    assert.ok(selectorRows.every(rows=>rows<=50_001));
-  } finally {sql.close();}
+    assert.ok(selectorRows.every((rows) => rows <= 50_001));
+  } finally {
+    sql.close();
+  }
 });
