@@ -381,3 +381,25 @@ export function heightsToEmit(
   for (let n = start; n <= head; n += 1) out.push(n);
   return out;
 }
+
+/** Live catch-up may skip; persistence must retry the oldest uncommitted height.
+ * Both paths share the existing 25-block RPC budget. A full live window gives
+ * one slot to an older retry; steady live traffic leaves up to 24 repair slots.
+ */
+export function planHeadPoll(
+  lastSeen: number | null,
+  writeNext: number,
+  head: number,
+) {
+  const live = heightsToEmit(lastSeen, head);
+  if (live.length === 25 && writeNext <= head && !live.includes(writeNext))
+    live.shift();
+  const requested = new Set(live);
+  const writes: number[] = [];
+  for (let height = writeNext; height <= head; height += 1) {
+    if (!requested.has(height) && requested.size >= 25) break;
+    requested.add(height);
+    writes.push(height);
+  }
+  return { live, writes };
+}

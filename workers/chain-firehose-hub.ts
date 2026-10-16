@@ -49,7 +49,7 @@ import {
 import {
   fetchBlockAt,
   fetchHeadNumber,
-  heightsToEmit,
+  planHeadPoll,
 } from "../src/head-poller.ts";
 import {
   recordExceptionEvent,
@@ -1280,8 +1280,9 @@ export class ChainFirehoseHub implements DurableObject {
   // public archive endpoint itself -- blocks lane only (the other three lanes
   // need SCALE decode, which is the Containers indexer's job, #209). Each new
   // block is BOTH broadcast (the stream every subscriber already speaks) and
-  // written to the store's blocks_head (durable from the moment it is seen). The
-  // alarm always re-arms, error or not: a poller that stops on one bad RPC
+  // offered to blocks_head. Live progress is distinct from the next durable
+  // write intent; a failed sink write must not freeze serving or skip repair.
+  // The alarm always re-arms, error or not: a poller that stops on one bad RPC
   // response is an outage, one that skips a tick is a hiccup.
   async alarm(): Promise<void> {
     const interval = Number(this.env.CHAIN_HEAD_POLL_INTERVAL_MS) || 6000;
@@ -1300,11 +1301,39 @@ export class ChainFirehoseHub implements DurableObject {
       // silent at every head forever, with no error to alarm on.
       const storedLastSeen = await this.state.storage.get("head:last_seen");
       const lastSeen =
-        typeof storedLastSeen === "number" && Number.isFinite(storedLastSeen)
+        typeof storedLastSeen === "number" &&
+        Number.isSafeInteger(storedLastSeen) &&
+        storedLastSeen >= 0 &&
+        storedLastSeen < Number.MAX_SAFE_INTEGER
           ? storedLastSeen
           : null;
       const head = await fetchHeadNumber(rpcUrl);
-      for (const height of heightsToEmit(lastSeen, head)) {
+      if (!Number.isSafeInteger(head) || head === Number.MAX_SAFE_INTEGER)
+        throw new Error("head height cannot produce a safe persistence cursor");
+      // last_seen is live delivery progress, not a durable write receipt.
+      // Pin the next write BEFORE advancing that live cursor so a sink outage
+      // survives eviction and an unchanged head still gets retried. Adoption
+      // resumes the legacy live position; it cannot certify older writes.
+      const storedWriteNext = await this.state.storage.get("head:write_next");
+      const writeNext =
+        typeof storedWriteNext === "number" &&
+        Number.isSafeInteger(storedWriteNext) &&
+        storedWriteNext >= 0 &&
+        storedWriteNext < Number.MAX_SAFE_INTEGER
+          ? storedWriteNext
+          : lastSeen === null
+            ? head
+            : lastSeen + 1;
+      if (storedWriteNext !== writeNext)
+        await this.state.storage.put("head:write_next", writeNext);
+      const plan = planHeadPoll(lastSeen, writeNext, head);
+      const blocks = new Map<
+        number,
+        Awaited<ReturnType<typeof fetchBlockAt>>
+      >();
+      const readBlock = async (height: number) => {
+        const cached = blocks.get(height);
+        if (cached) return cached;
         // #9417: read the event count too, so a block is complete the moment
         // it is seen rather than ~30s later when the Containers indexer lands
         // its decode. Kill-switched like the poll itself -- it is one extra
@@ -1335,13 +1364,22 @@ export class ChainFirehoseHub implements DurableObject {
         // fix, and mutation-testing showed the branch could never fire:
         // `fetchBlockAt` THROWS on a malformed response rather than assembling
         // a partial payload. The compiler proves the rest, once (#11339).
+        blocks.set(height, block);
+        return block;
+      };
+      // Serving remains live even when the independent D1 write is failing.
+      for (const height of plan.live) {
+        const block = await readBlock(height);
         await this.broadcast(block);
-        // THE ONLY WRITE (#10107, #10179). `this.state` is the waitUntil
-        // handle here -- a Durable Object has no ExecutionContext, and
-        // createPgSql needs one to hand the pooled connection back to
-        // Hyperdrive.
-        await mirrorBlocksHeadToNeon(this.env, this.state, block);
-        await this.state.storage.put("head:last_seen", block.block_number);
+        await this.state.storage.put("head:last_seen", height);
+      }
+      for (const height of plan.writes) {
+        const block = await readBlock(height);
+        const write = await mirrorBlocksHeadToNeon(this.env, this.state, block);
+        if (write.result?.ok !== true)
+          throw new Error("blocks_head write was not committed");
+        // A failed/ambiguous cursor put retries the same idempotent UPSERT.
+        await this.state.storage.put("head:write_next", height + 1);
       }
     } catch (error) {
       const message = String((error as Error)?.message);
