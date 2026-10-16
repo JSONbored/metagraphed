@@ -2231,7 +2231,7 @@
   ],
   "format": "retained-projection-contract/v1",
   "producerSha256": {
-    "native_projection_d1.py": "d179ae108afb8ca5fca61333946f59f27ff5c03c4b920a85911e553f4d81f1a7",
+    "native_projection_d1.py": "46b0bcb0029701eb241226f64fd868e7723d04790af5cced23970ebbc4da021c",
     "native_projections_r2.py": "6cffc88e69d0f36762bb52771108f8d7edeba07ab452cd81eccb1ee75bca6e4b",
     "retained_blocks_d1.py": "ae2a6f6713c332ce3e19b95565955f6bd2a97ab8cb8e220202486024b5426632",
     "retained_projection_blocks.py": "61788c5a526287fe047e017dff6e61b6600182e96c50999b59966121506bad85"
