@@ -55,11 +55,15 @@ beforeAll(async () => {
   const root = new URL("../migrations/d1/", import.meta.url);
   for (const file of readdirSync(root)
     .filter((f) => f.endsWith(".sql"))
-    .sort())
-    for (const sql of readFileSync(new URL(file, root), "utf8").split(
-      "-- statement-breakpoint",
-    ))
-      if (sql.trim()) await db.prepare(sql).run();
+    .sort()) {
+    // Preserve every migration statement and its order without one proxy
+    // round trip per statement competing with the suite's hook budget.
+    const statements = readFileSync(new URL(file, root), "utf8")
+      .split("-- statement-breakpoint")
+      .filter((sql) => sql.trim())
+      .map((sql) => db.prepare(sql));
+    if (statements.length) await db.batch(statements);
+  }
 });
 afterAll(async () => runtime.dispose());
 
