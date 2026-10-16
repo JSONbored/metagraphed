@@ -10,10 +10,13 @@ import { DEFAULT_BLOCKS_SEAM as SEAM } from "../src/blocks-seam.ts";
 
 // Execute the production reader's SQL, including its ORDER BY and seeks. A
 // preordered transport mock cannot expose observation-time ordering regressions.
-function binding(sql: DatabaseSync) {
+function binding(sql: DatabaseSync, plans: string[][] = []) {
   const prepare = (text: string, values: unknown[] = []) => ({
     bind: (...next: unknown[]) => prepare(text, next),
-    all: async () => ({ success: true, results: sql.prepare(text).all(...values as never[]), meta: {} }),
+    all: async () => {
+      if (text.startsWith("WITH candidates")) plans.push(sql.prepare(`EXPLAIN QUERY PLAN ${text}`).all(...values as never[]).map(row => String(row.detail)));
+      return { success: true, results: sql.prepare(text).all(...values as never[]), meta: {} };
+    },
     run: async () => ({ success: true, results: sql.prepare(text).all(...values as never[]), meta: {} }),
   });
   return { prepare, batch: async (statements: ReturnType<typeof prepare>[]) => Promise.all(statements.map(s => s.all())) } as unknown as Pick<D1Database, "prepare" | "batch">;
@@ -31,7 +34,8 @@ test("actual block handler keeps live heights first while honest later observati
     retained.prepare("INSERT INTO history_block_sources VALUES(1,'one',0,'{}',4,4,1)").run();
     for (const [ordinal, height] of [SEAM, SEAM-1, SEAM-1, null].entries()) retained.prepare("INSERT INTO history_blocks VALUES(0,1,?,?,?,NULL,NULL,1,1,1,?)").run(ordinal,height,`0xcold${ordinal}`,ordinal === 3 ? null : start-1000);
     retained.prepare("INSERT INTO history_block_state VALUES(0,?,?,?,1,?,4,1,NULL)").run("a".repeat(64),"019fc234-642e-7f82-b656-ddb8529315ab","99",start);
-    const env = mockEnv({ D1_STATE: binding(app), D1_STATE_TABLES: "blocks_head,chain_detail_blocks,lane_health", D1_RETAINED_BLOCKS: binding(retained), RETAINED_BLOCKS_NETWORKS: "mainnet", ICEBERG_BLOCKS_MAX: String(SEAM), CHAIN_HEAD_POLL_ENABLED: "true", CHAIN_HEAD_RPC_URL: "https://rpc.example" });
+    const plans: string[][] = [];
+    const env = mockEnv({ D1_STATE: binding(app), D1_STATE_TABLES: "blocks_head,chain_detail_blocks,lane_health", D1_RETAINED_BLOCKS: binding(retained,plans), RETAINED_BLOCKS_NETWORKS: "mainnet", ICEBERG_BLOCKS_MAX: String(SEAM), CHAIN_HEAD_POLL_ENABLED: "true", CHAIN_HEAD_RPC_URL: "https://rpc.example" });
     globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
       const rpc = JSON.parse(String(init?.body)) as {method: string; params: number[]};
       const result = rpc.method === "chain_getHeader" ? {number: `0x${(SEAM+1001).toString(16)}`} : rpc.method === "chain_getBlockHash" ? `0x${rpc.params[0]}` : {block: {header: {parentHash: "0xp"}, extrinsics: ["0x00"]}};
@@ -74,5 +78,10 @@ test("actual block handler keeps live heights first while honest later observati
       assert.notEqual(next.next_cursor,cursor); cursor=next.next_cursor;
     }
     assert.deepEqual(seen,[SEAM+1001,...Array.from({length:49},(_,i)=>SEAM+63-i),SEAM,SEAM-1,SEAM-1,null]);
+    assert.ok(plans.length > 1);
+    for (const plan of plans) {
+      assert.ok(plan.some(detail => /history_blocks_height.*block_number[<=>]/.test(detail)),plan.join("\n"));
+      assert.ok(plan.filter(detail => /USE TEMP B-TREE FOR ORDER BY/.test(detail)).length <= 1,"only the bounded candidate merge may sort: " + plan.join("\n"));
+    }
   } finally { now.mockRestore();globalThis.fetch=originalFetch;app.close();retained.close(); }
 });
