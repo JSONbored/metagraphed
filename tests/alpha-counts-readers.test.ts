@@ -22,9 +22,7 @@ import {
   fillConfirmedZeros,
   nominatorCountsByHotkey,
 } from "../src/validator-nominator-summary.ts";
-import {
-  runValidatorNominatorCountsStalenessWatchdog,
-} from "../src/validator-nominator-counts-staleness-watchdog.ts";
+import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import type { PgSql } from "../src/pg-sql.ts";
 import { dataApiEnv } from "./helpers/worker-env.ts";
 

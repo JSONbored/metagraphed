@@ -447,9 +447,7 @@ test("a missing readback cannot acknowledge a native count write", async () => {
     },
   };
   const rows = [countRow(anchor, "hot-a")];
-  await assert.rejects(
-    writeAlphaCountsD1(missing, rows, anchor, 2, AT + 10),
-  );
+  await assert.rejects(writeAlphaCountsD1(missing, rows, anchor, 2, AT + 10));
   const confirmed = await readAlphaCountStatusD1(store, anchor);
   assert.equal(confirmed.applied_count, 1);
   assert.equal(confirmed.complete, false);

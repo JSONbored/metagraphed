@@ -2479,13 +2479,17 @@ async function handleValidatorNominatorCountsSync(
       413,
     );
   }
-  const nominatorCountCheck = validateSyncRows(
-    incoming,
-    NOMINATOR_COUNT_SYNC_ROW_SCHEMA,
-    "nominator count",
-  );
-  if (!nominatorCountCheck.ok) {
-    return writeJson({ error: nominatorCountCheck.error }, 400);
+  // Only a validated anchored empty census is a control receipt. Preserve
+  // the shared row validator's nonempty requirement for legacy requests.
+  if (incoming.length || !alphaAnchor) {
+    const nominatorCountCheck = validateSyncRows(
+      incoming,
+      NOMINATOR_COUNT_SYNC_ROW_SCHEMA,
+      "nominator count",
+    );
+    if (!nominatorCountCheck.ok) {
+      return writeJson({ error: nominatorCountCheck.error }, 400);
+    }
   }
 
   const rows = incoming.map(coerceNominatorCountSyncRow);
@@ -2539,12 +2543,8 @@ async function handleValidatorNominatorCountsSync(
     return writeJson({ error: "Alpha count owner unavailable" }, 503);
   }
 
-  // THE PASS DECLARATION (metagraphed-infra#346). This lane had none, which is
-  // why a short load here was indistinguishable from a validator genuinely
-  // losing delegators: a count cannot prove completeness, and only the producer
-  // knows how big its scan was. Optional, because a producer that has not been
-  // updated must keep working -- and inventing a total would mark an unproven
-  // load complete, which is the lie the tally exists to prevent.
+  // Before Alpha selection, legacy writers may omit their pass declaration.
+  // Do not invent completeness for an undeclared scan.
   const countsDeclared = declaredPassTotal(
     parsed,
     VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS * 100,
@@ -2580,12 +2580,7 @@ async function handleValidatorNominatorCountsSync(
     });
   }
 
-  // NO D1 WRITE, and no store binding requirement: validator_nominator_counts and
-  // its pass ledger are Neon's outright (#10116). What used to be a
-  // write-then-mirror pair is now one write, below.
-  // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
-  // other and mirrors too -- #9728 was a single unmirrored writer leaving a
-  // table short while the row count looked nearly right.
+  // Legacy inline and queue writes share the selected native or portable store.
   const neon = await mirrorLedgerToNeon(
     env,
     ctx,
@@ -2596,7 +2591,7 @@ async function handleValidatorNominatorCountsSync(
     pass,
   );
 
-  // Neon IS the store, so a pass that did not reach it did not happen.
+  // Failure in the selected store withholds the producer's acknowledgement.
   if (!neon.result?.ok) {
     const reason = neon.result?.reason ?? "neon write not attempted";
     console.error(
@@ -2621,26 +2616,11 @@ async function handleValidatorNominatorCountsSync(
   });
 }
 
-// --- POST /api/v1/internal/nominator-positions-sync (#5233, revived #9273) --
-//
-// The per-coldkey position ledger: one row per (coldkey, hotkey, netuid) with
-// that account's dimensionless share of the hotkey's alpha-pool shares on that
-// subnet, from the poller's SubtensorModule::Alpha full scan. Root (netuid 0)
-// is not covered -- Alpha carries no root data at all.
-//
-// RETIRED with the box (#9193) and REVIVED against D1 here, because nothing
-// replaced it: the lakehouse kept the frozen 153,611-row export and the route
-// over it has served a stamp that cannot advance ever since, answering
-// `positions: 0, total_stake_alpha: 0` for anyone who began delegating after
-// the export. Same request/{rows:[...]} shape, same token gate, and the same
-// D1-is-required posture as handleSubnetHyperparamsSync above.
-//
-// A FULL SCAN DOES NOT FIT ONE REQUEST. 153,611 rows is far past any single
-// body, so the poster chunks it -- and the prune below is therefore per-coldkey
-// rather than a batch-wide sweep (see
-// src/nominator-positions-d1-write.ts's header). The poster's contract is that
-// an account's positions all land in the same request; one split across two
-// requests would have its first half pruned by its second.
+// --- POST /api/v1/internal/nominator-positions-sync ---
+// Exact captures retain original member/pool evidence for non-root positions,
+// then promote only a complete whole-owner scan under its native ledger owner.
+// Legacy fractions remain compatible before selection; self-stake owns a separate
+// source domain and cannot replace or erase Alpha-owned evidence.
 const NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER =
   "x-nominator-positions-sync-token";
 // 25k rows x ~5 short columns sits well inside the Worker request ceiling and
@@ -6734,72 +6714,11 @@ async function handleAccountKeysRoute(
   );
 }
 
-// --- Neurons-family store read routes (box decommission; tests/fixtures/sqlite-schema/0007) --
-//
-// The D1 twins of every neurons/neuron_daily/account_position_daily read the
-// deleted Postgres dispatcher served, matched whenever METAGRAPH_NEURONS_SOURCE
-// is off "postgres" (see neuronsServedFromStore's own header).
-//
-// THIS IS NO LONGER A TRANSLATION TABLE, and reading it as one is what broke
-// the cutover twice. It was written when these queries had exactly one store to
-// satisfy, so each row recorded how a Postgres idiom had been re-rendered for
-// SQLite. Then #9784 gave the same query text a second store to run against,
-// and every one-directional rendering below became a live hazard: the SQLite
-// side is now the ONLY side, executed verbatim against both dialects. A
-// rendering that is merely correct for D1 served a wrong answer on Neon.
-//
-// So the surviving rule is ONE PORTABLE RENDERING, not two dialects kept in
-// sync. Each entry says what both stores accept and why the alternatives are
-// out -- and `tests/neon-sql-portability.test.ts` fails the build if a query on
-// a movable route reacquires one:
-//   - snapshot_date needs no ::cast -- it is TEXT 'YYYY-MM-DD' in both, and
-//     lexicographic comparison IS date order for ISO dates in both.
-//   - `validator_permit = TRUE`, never `= 1`. D1 stored the column INTEGER 0/1
-//     and Neon declares it BOOLEAN, because the mirror writes real JS booleans.
-//     Postgres rejects `boolean = integer` outright, so `= 1` made the query
-//     throw, the `?? buildGlobalValidators([])` fallback swallowed it, and
-//     /validators served an EMPTY leaderboard at 200 OK until #9802 rolled the
-//     flag back. `TRUE` is a keyword in both (SQLite aliases it to 1).
-//   - `SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END)`, never
-//     `SUM(validator_permit)`. Postgres has no SUM over boolean at all; the
-//     CASE is portable because SQLite reads a nonzero integer as true and
-//     Postgres reads the boolean directly.
-//   - DISTINCT ON (k) ... ORDER BY k, d is Postgres-only -- use ROW_NUMBER()
-//     OVER (PARTITION BY k ORDER BY d DESC) = 1, or a group-wise-MAX join,
-//     which both dialects have.
-//   - A window boundary is computed in TypeScript and BOUND, never shifted in
-//     SQL (#9798). `date(MAX(snapshot_date), '-N days')` is SQLite's and
-//     Postgres has no equivalent, so the subquery yielded nothing and two
-//     routes served an empty 200 (#9792). See neuronDailyWindowBounds.
-//
-// The two regressions share one shape worth naming: neither raised an error a
-// caller could see. Both returned a schema-stable 200 with zero rows, which is
-// indistinguishable from "no data yet" -- so nothing but a row-count baseline
-// caught them.
-//
-// Cross-tier joins: subnet_snapshots has a live D1 home (tests/fixtures/sqlite-schema/
-// 0002_observations.sql), so the alpha_price_tao joins/loads port for real.
-// The remaining enrichment side tables (featured_validators, account_identity)
-// have NO D1 home yet -- their families are frozen or port separately -- so the
-// twins pass each builder the degraded value the retired Postgres loader's own
-// catch branch produced (empty set/map, null), rather than issuing a query that
-// can only ever throw. Wire the real reads in when those tables land on the store.
-//
-// subnet_hyperparams' TEMPO no longer belongs to that list either (#9342). It
-// landed on the store in tests/fixtures/sqlite-schema/0009 and is populated for every subnet, but both
-// validator handlers kept passing `tempoByNetuid: new Map()` -- the placeholder
-// this comment told them to pass. An empty map means every lookup misses, and
-// accumulateApyRow skips a membership whose tempo is unresolved, so apy_estimate
-// was `null` and apy_estimate_eligible_subnet_count was 0 on EVERY served
-// response. A degraded placeholder that outlives the gap it stood in for reads
-// exactly like a real absence, which is why it survived this long.
-//
-// validator_nominator_counts NO LONGER BELONGS TO THAT LIST. It landed on D1
-// in tests/fixtures/sqlite-schema/0012, so the real read is wired below and this tier answers
-// nominator_count itself -- completely, since #9334 reads absence from a fresh
-// scan as a confirmed zero. The serving Worker's lakehouse overlay that covered
-// the gap in the meantime (#9146) is gone with #9337: it could only ever fire
-// on a null count, and there are none left to fill.
+// Neuron-family reads use portable SQL unless an explicitly owned native helper
+// handles the query. Bind date bounds, use TRUE for booleans and CASE for boolean
+// sums, and use windows/group-wise MAX instead of PostgreSQL DISTINCT ON.
+// Native enrichment reads use the same selected owner as their source family;
+// missing or unqualified state must remain unknown rather than a healthy zero.
 type NeuronsStoreRouteHandler = (
   sql: PgSql,
   env: DataApiEnv,
@@ -6910,38 +6829,10 @@ async function loadStoreAlphaPricesByNetuid(
   }
 }
 
-// hotkey -> nominator_count for every permitted validator, from the store table
-// tests/fixtures/sqlite-schema/0012 created (#9146).
-//
-// CORRELATED SUBQUERY, NOT AN IN LIST, and that is load-bearing rather than
-// stylistic: the leaderboard covers ~1,031 hotkeys and the Workers store binding
-// caps a statement at 100 bound parameters, so an inlined key list would need
-// chunking into a dozen round trips (what the lakehouse reader has to do,
-// having no join to reach for). Joining against `neurons` inside SQLite costs
-// ZERO bound parameters and one query, and keeps the filter exactly in step
-// with the leaderboard's own `validator_permit = TRUE AND hotkey IS NOT NULL`.
-//
-// Same degrade-to-empty-map contract as loadStoreAlphaPricesByNetuid above: on
-// any failure every nominator_count stays null, which is precisely the state
-// this tier served before the table existed -- so a broken read is a lost
-// enrichment, never a wrong number.
-//
-// ABSENCE MEANS ZERO, BUT ONLY FROM A FRESH SCAN (#9314). The producer emits a
-// row only for hotkeys it saw holding stake in SubtensorModule::Alpha, and it
-// has never once recorded a zero -- measured 2026-08-03, `WHERE
-// nominator_count = 0` returns nothing across 112,550 rows. So 471 of the 1,028
-// permitted validators have no row, and reading that as "unknown" understated
-// what we actually know: the producer's pass over Alpha is EXHAUSTIVE, so a
-// permitted validator absent from a completed pass genuinely has zero distinct
-// coldkeys staked to it.
-//
-// The freshness gate is what makes that inference safe rather than reckless.
-// Against a stale or truncated table the same absence means "we have not
-// looked recently", and publishing 0 for it would be a confident wrong number
-// -- the exact failure this family's own doctrine says is worse than an absent
-// one. So the zero-fill is conditioned on the scan being within the SAME
-// threshold the staleness watchdog alarms on, imported rather than restated so
-// the two can never disagree about what "fresh" means.
+// Counts are raw membership gauges, scoped to the newest canonical capture.
+// Native keys travel as one JSON binding, avoiding the binding ceiling and a
+// second neuron scan. Only a fresh, complete anchored pass permits absent keys
+// to become zero. Missing, partial or failed reads leave enrichment unknown.
 async function loadNominatorCountsFromStore(
   sql: PgSql,
   env: DataApiEnv,
@@ -10022,7 +9913,9 @@ export default {
         if (alphaAnchor) {
           const owner = alphaCountsOwnerStore(env);
           if (!owner || !pass)
-            throw new Error("Alpha counts require their native owner and total");
+            throw new Error(
+              "Alpha counts require their native owner and total",
+            );
           await writeAlphaCountsD1(
             owner,
             rows,
@@ -10032,10 +9925,7 @@ export default {
           );
           return { statements: 6 };
         }
-        // D1 is not written -- this lane is Neon's outright (#10116) --
-        // so the Neon write below is the ONLY one, and its failure must
-        // throw rather than return: a normal return acks the message and
-        // the rows are gone. writeSyncBatch turns a throw into a retry.
+        // A failed legacy write must throw so queue delivery retries it.
         const neon = await mirrorLedgerToNeon(
           env,
           ctx,

@@ -241,7 +241,10 @@ test("queue admission is not a durable count receipt; partial delivery and retri
   assert.deepEqual(complete.alpha_snapshot, anchor);
   assert.deepEqual(complete.stores, ["d1"]);
   const stored = await f.counts();
-  assert.deepEqual(stored.map((row) => row.hotkey), ["hot-a", "hot-b"]);
+  assert.deepEqual(
+    stored.map((row) => row.hotkey),
+    ["hot-a", "hot-b"],
+  );
   await f.deliver(f.sent[1]);
   assert.deepEqual(await json(await f.status(anchor)), complete);
 });

@@ -1384,10 +1384,16 @@ test("old completed replay acknowledges its receipt without claiming current sel
   assert.equal(capture.capture?.captured_at, baseAt - 1);
   assert.equal(capture.capture?.block_number, next.alpha_snapshot.block_number);
   const current = await rowsOf(db);
-  assert.deepEqual(current.map((item) => item.coldkey), ["new-canonical"]);
+  assert.deepEqual(
+    current.map((item) => item.coldkey),
+    ["new-canonical"],
+  );
   const selectedSql = "SELECT selected FROM alpha_snapshot_passes";
   const historical = await db.prepare(selectedSql).all<Row>();
-  assert.deepEqual(historical.results.map((item) => item.selected), [1, 1]);
+  assert.deepEqual(
+    historical.results.map((item) => item.selected),
+    [1, 1],
+  );
 });
 
 test("completed originals and receipts permit exact no-ops but reject mutation or deletion after promotion", async () => {
@@ -1474,6 +1480,8 @@ test("native receiver restore preserves serving and receipts", async () => {
   const source = await fixture();
   const restored = await fixture();
   const countModule = await import("../src/alpha-counts-d1.ts");
+  const writeCounts = countModule.writeAlphaCountsD1;
+  const readCounts = countModule.readAlphaCountStatusD1;
   const sourceStore = createD1Store(source);
   const anchorFor = (capture: Row) =>
     countModule.alphaCountAnchorSchema.parse({
@@ -1516,7 +1524,7 @@ test("native receiver restore preserves serving and receipts", async () => {
     { hotkey: "hot", nominator_count: 1, captured_at: baseAt },
     { hotkey: "old-only", nominator_count: 1, captured_at: baseAt },
   ];
-  const oldCountReceipt = await countModule.writeAlphaCountsD1(
+  const oldCountReceipt = await writeCounts(
     sourceStore,
     oldCounts,
     oldAnchor,
@@ -1553,10 +1561,13 @@ test("native receiver restore preserves serving and receipts", async () => {
   });
   const selected = await write(source, current);
   const countAnchor = anchorFor(current.alpha_snapshot);
-  const firstCounts = [
-    { hotkey: "hot", nominator_count: 1, captured_at: currentAt },
-  ];
-  const countReceipt = await countModule.writeAlphaCountsD1(
+  const firstCount = {
+    hotkey: "hot",
+    nominator_count: 1,
+    captured_at: currentAt,
+  };
+  const firstCounts = [firstCount];
+  const countReceipt = await writeCounts(
     sourceStore,
     firstCounts,
     countAnchor,
@@ -1715,17 +1726,9 @@ test("native receiver restore preserves serving and receipts", async () => {
   const resume = await readAlphaSnapshotResumeD1(source);
   assert.equal(resume.alpha_snapshot_resume?.captured_at, baseAt + 2);
   assert.deepEqual(await readAlphaSnapshotResumeD1(restored), resume);
-  const restoredCounts = await countModule.readAlphaCountStatusD1(
-    store,
-    countAnchor,
-    2,
-  );
+  const restoredCounts = await readCounts(store, countAnchor, 2);
   assert.deepEqual(restoredCounts, countReceipt);
-  const oldCountStatus = await countModule.readAlphaCountStatusD1(
-    store,
-    oldAnchor,
-    2,
-  );
+  const oldCountStatus = await readCounts(store, oldAnchor, 2);
   assert.equal(oldCountStatus.current, false);
   assert.equal(oldCountStatus.completed_at, oldCountReceipt.completed_at);
   const staleCountSql =
@@ -1753,7 +1756,7 @@ test("native receiver restore preserves serving and receipts", async () => {
   assert.equal(selfReplay.snapshot.shadowed_rows, 1);
   assert.equal(selfReplay.snapshot.received_rows, 2);
   assert.equal(selfReplay.snapshot.received_chunks, 1);
-  const countReplay = await countModule.writeAlphaCountsD1(
+  const countReplay = await writeCounts(
     store,
     firstCounts,
     countAnchor,
@@ -1761,19 +1764,16 @@ test("native receiver restore preserves serving and receipts", async () => {
     baseAt + 4,
   );
   assert.deepEqual(countReplay, countReceipt);
-  const staleWrite = countModule.writeAlphaCountsD1(
-    store,
-    oldCounts,
-    oldAnchor,
-    2,
-    baseAt + 4,
-  );
+  const staleWrite = writeCounts(store, oldCounts, oldAnchor, 2, baseAt + 4);
   await assert.rejects(staleWrite);
   assert.deepEqual(await readCut(restored), cut);
-  const lastCounts = [
-    { hotkey: "other-hot", nominator_count: 1, captured_at: currentAt },
-  ];
-  const terminalCounts = await countModule.writeAlphaCountsD1(
+  const lastCount = {
+    hotkey: "other-hot",
+    nominator_count: 1,
+    captured_at: currentAt,
+  };
+  const lastCounts = [lastCount];
+  const terminalCounts = await writeCounts(
     store,
     lastCounts,
     countAnchor,
@@ -1784,7 +1784,7 @@ test("native receiver restore preserves serving and receipts", async () => {
   assert.equal(terminalCounts.complete, true);
   assert.equal(terminalCounts.applied_count, 2);
   const terminalCut = await readCut(restored);
-  const terminalReplay = await countModule.writeAlphaCountsD1(
+  const terminalReplay = await writeCounts(
     store,
     lastCounts,
     countAnchor,
@@ -1809,11 +1809,7 @@ test("native receiver restore preserves serving and receipts", async () => {
     ok: true,
     alpha_snapshot_resume: null,
   });
-  const supersededCounts = await countModule.readAlphaCountStatusD1(
-    store,
-    countAnchor,
-    2,
-  );
+  const supersededCounts = await readCounts(store, countAnchor, 2);
   assert.equal(supersededCounts.current, false);
   assert.equal(supersededCounts.completed_at, terminalCounts.completed_at);
 });

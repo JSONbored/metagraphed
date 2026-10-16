@@ -29,8 +29,7 @@ import {
 const COLDKEY = "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e";
 const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
 const RETIRED_COLDKEY = HOTKEY;
-const STORED_ZERO_COLDKEY =
-  "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const STORED_ZERO_COLDKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 const STAMP = 1_785_634_702_670;
 const { ALPHA_GENESIS, ALPHA_RUNTIMES } = alpha;
 const { loadAccountPositionsFromStore } = hotPositions;
