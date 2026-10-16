@@ -940,7 +940,7 @@ describe("the watchdog's own reporting", () => {
   test("positive independent faults notify even when unknown coverage cannot be persisted", async () => {
     for (const fault of ["clock", "head", "decode"]) {
       const s = spies();
-      let writes = 0;
+      let insertAttempts = 0;
       const captured =
         fault === "decode" ? HI + DECODE_LAG_BLOCKS + 1 : HI + 100;
       const result = await runLakehouseSeamWatchdog(
@@ -960,8 +960,8 @@ describe("the watchdog's own reporting", () => {
           ...s.deps,
           laneHealthDb: {
             query: async () => [],
-            run: async () => {
-              writes++;
+            run: async (sql: string) => {
+              if (sql.startsWith("INSERT")) insertAttempts++;
               throw new Error("private full-store error");
             },
           },
@@ -970,7 +970,7 @@ describe("the watchdog's own reporting", () => {
       assert.equal(result.ok, false);
       assert.equal(result.skipped, true);
       assert.equal(result.contiguous, null);
-      assert.equal(writes, 1);
+      assert.equal(insertAttempts, 1);
       assert.equal(s.captures.length, 1);
       assert.equal(s.captures[0].errorCode, "stale_lane");
       const message = (s.captures[0].error as Error).message;
