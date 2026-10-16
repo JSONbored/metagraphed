@@ -941,13 +941,16 @@ describe("the watchdog's own reporting", () => {
     for (const fault of ["clock", "head", "decode"]) {
       const s = spies();
       let writes = 0;
-      const captured = fault === "decode" ? HI + DECODE_LAG_BLOCKS + 1 : HI + 100;
+      const captured =
+        fault === "decode" ? HI + DECODE_LAG_BLOCKS + 1 : HI + 100;
       const result = await runLakehouseSeamWatchdog(
         env({
           body: {
             decoded_through: HI,
             updated_at:
-              fault === "clock" ? "2026-08-01T00:00:00Z" : "2026-08-03T11:40:00Z",
+              fault === "clock"
+                ? "2026-08-01T00:00:00Z"
+                : "2026-08-03T11:40:00Z",
           },
           captured,
           head: captured + (fault === "head" ? CAPTURE_LAG_BLOCKS + 1 : 30),
@@ -984,7 +987,9 @@ describe("the watchdog's own reporting", () => {
       ...s.deps,
     });
     assert.equal(result.ok, false);
-    assert.ok((result.causes as string[]).includes("decode_watermark_unavailable"));
+    assert.ok(
+      (result.causes as string[]).includes("decode_watermark_unavailable"),
+    );
     assert.ok((result.causes as string[]).includes("decode_lag"));
     assert.equal(s.rows[0].verdict, "unknown");
     assert.deepEqual(s.captures, []);

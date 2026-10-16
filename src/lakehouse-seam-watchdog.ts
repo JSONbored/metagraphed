@@ -426,7 +426,6 @@ export async function runLakehouseSeamWatchdog(
     now: (deps.now ?? Date.now)(),
   });
 
-
   // #9440: NOTIFY on drift, and RECORD on every tick.
   //
   // This watchdog previously did neither. It computed `reasons` correctly and
