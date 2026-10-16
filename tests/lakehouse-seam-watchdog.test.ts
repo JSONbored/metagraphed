@@ -937,6 +937,59 @@ describe("the watchdog's own reporting", () => {
     }
   });
 
+  test("positive independent faults notify even when unknown coverage cannot be persisted", async () => {
+    for (const fault of ["clock", "head", "decode"]) {
+      const s = spies();
+      let writes = 0;
+      const captured = fault === "decode" ? HI + DECODE_LAG_BLOCKS + 1 : HI + 100;
+      const result = await runLakehouseSeamWatchdog(
+        env({
+          body: {
+            decoded_through: HI,
+            updated_at:
+              fault === "clock" ? "2026-08-01T00:00:00Z" : "2026-08-03T11:40:00Z",
+          },
+          captured,
+          head: captured + (fault === "head" ? CAPTURE_LAG_BLOCKS + 1 : 30),
+        }) as never,
+        {
+          now: () => NOW,
+          ...s.deps,
+          laneHealthDb: {
+            query: async () => [],
+            run: async () => {
+              writes++;
+              throw new Error("private full-store error");
+            },
+          },
+        },
+      );
+      assert.equal(result.ok, false);
+      assert.equal(result.skipped, true);
+      assert.equal(result.contiguous, null);
+      assert.equal(writes, 1);
+      assert.equal(s.captures.length, 1);
+      assert.equal(s.captures[0].errorCode, "stale_lane");
+      const message = (s.captures[0].error as Error).message;
+      assert.match(message, /lakehouse decode seam drifted/);
+      assert.doesNotMatch(message, /private full-store error/);
+      assert.ok(message.length < 4096);
+    }
+  });
+
+  test("configuration absence alone does not notify when coverage is unknown", async () => {
+    const s = spies();
+    const result = await runLakehouseSeamWatchdog(env() as never, {
+      now: () => NOW,
+      ...s.deps,
+    });
+    assert.equal(result.ok, false);
+    assert.ok((result.causes as string[]).includes("decode_watermark_unavailable"));
+    assert.ok((result.causes as string[]).includes("decode_lag"));
+    assert.equal(s.rows[0].verdict, "unknown");
+    assert.deepEqual(s.captures, []);
+  });
+
   test("a lane_health write that fails never breaks the tick", async () => {
     // Migrations here are applied by hand, so "no such table" is a real
     // production state until someone applies one.

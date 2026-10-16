@@ -426,7 +426,33 @@ export async function runLakehouseSeamWatchdog(
     now: (deps.now ?? Date.now)(),
   });
 
-  if (census == null || servingSeam === null) {
+
+  // #9440: NOTIFY on drift, and RECORD on every tick.
+  //
+  // This watchdog previously did neither. It computed `reasons` correctly and
+  // returned them to `handleScheduled`, whose return value
+  // workers/api.entry.ts discards -- so a drifted decode seam was measured
+  // every tick and reported to nobody, on any channel. Its siblings have had
+  // the notification half since #9330 and the durable half since #9340/#9431;
+  // this one was simply never wired to either.
+  const coverageUnknown = census == null || servingSeam === null;
+  const independentDrift =
+    causes.includes("decode_watermark_stale") ||
+    causes.includes("capture_head_lag") ||
+    (watermark !== null && causes.includes("decode_lag"));
+  // Unknown coverage cannot erase a positively measured independent fault.
+  // Notify before persistence: a full verdict store may reject this tick too.
+  // Missing configuration alone still produces unknown, without a drift page.
+  if (reasons.length > 0 && (!coverageUnknown || independentDrift)) {
+    const record = deps.recordExceptionEvent ?? recordExceptionEvent;
+    await record(env, {
+      error: new Error(`lakehouse decode seam drifted: ${reasons.join(", ")}`),
+      route: "watchdog:lakehouse-seam",
+      errorCode: "stale_lane",
+    }).catch(() => false);
+  }
+
+  if (coverageUnknown) {
     // Retain the unknown verdict, with bounded typed observations and measured
     // values. A healthy independent leg cannot certify unreadable coverage.
     await recordVerdict({
@@ -442,23 +468,6 @@ export async function runLakehouseSeamWatchdog(
       reasons,
       ...summary,
     };
-  }
-
-  // #9440: NOTIFY on drift, and RECORD on every tick.
-  //
-  // This watchdog previously did neither. It computed `reasons` correctly and
-  // returned them to `handleScheduled`, whose return value
-  // workers/api.entry.ts discards -- so a drifted decode seam was measured
-  // every tick and reported to nobody, on any channel. Its siblings have had
-  // the notification half since #9330 and the durable half since #9340/#9431;
-  // this one was simply never wired to either.
-  if (reasons.length > 0) {
-    const record = deps.recordExceptionEvent ?? recordExceptionEvent;
-    await record(env, {
-      error: new Error(`lakehouse decode seam drifted: ${reasons.join(", ")}`),
-      route: "watchdog:lakehouse-seam",
-      errorCode: "stale_lane",
-    }).catch(() => false);
   }
 
   // PostHog is the notification path, never the record: it drops $exception
