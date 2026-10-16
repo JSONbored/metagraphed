@@ -109,19 +109,24 @@ export async function readAlphaCountStatusD1(
     complete: number;
   }>(
     `WITH current AS (${CURRENT_ALPHA_CAPTURE_SQL}), receipt AS
-      (SELECT * FROM validator_nominator_counts_passes WHERE captured_at=? AND alpha_snapshot=?)
+      (SELECT * FROM validator_nominator_counts_passes WHERE captured_at=? AND alpha_snapshot=?),
+    totals AS MATERIALIZED (SELECT COUNT(*) AS applied_count,
+      COALESCE(SUM(nominator_count),0) AS member_pairs
+      FROM validator_nominator_counts WHERE captured_at=?)
     SELECT EXISTS(SELECT 1 FROM current p WHERE ${predicate.text}) AS current,
       (SELECT expected_rows FROM receipt) AS pass_total,
-      (SELECT COUNT(*) FROM validator_nominator_counts WHERE captured_at=?) AS applied_count,
+      (SELECT applied_count FROM totals) AS applied_count,
       (SELECT completed_at FROM receipt) AS completed_at,
-      EXISTS(SELECT 1 FROM receipt WHERE completed_at>=captured_at AND received_rows=expected_rows
-        AND expected_rows=(SELECT COUNT(*) FROM validator_nominator_counts WHERE captured_at=?)) AS complete`,
+      EXISTS(SELECT 1 FROM receipt WHERE completed_at>0 AND received_rows=expected_rows
+        AND expected_rows=(SELECT applied_count FROM totals)
+        AND (SELECT member_pairs FROM totals) BETWEEN ? AND ?) AS complete`,
     [
       anchor.captured_at,
       identity,
+      anchor.captured_at,
       ...predicate.values,
-      anchor.captured_at,
-      anchor.captured_at,
+      anchor.excluded_root_members,
+      anchor.distinct_members,
     ],
   );
   if (
@@ -157,7 +162,7 @@ export async function writeAlphaCountsD1(
   if (
     rows.length > expectedRows ||
     !Number.isSafeInteger(nowMs) ||
-    nowMs < anchor.captured_at ||
+    nowMs <= 0 ||
     rows.some(
       (row) =>
         row.captured_at !== anchor.captured_at ||
@@ -227,8 +232,9 @@ export async function writeAlphaCountsD1(
         WHERE captured_at=? GROUP BY hotkey), actual AS
         (SELECT * FROM validator_nominator_counts WHERE captured_at=?)
       SELECT COUNT(*)<=? AND COALESCE(SUM(a.nominator_count-COALESCE(k.n,0)),0)<=?
-        AND (COUNT(*)<? OR NOT EXISTS(SELECT 1 FROM known k
-          WHERE NOT EXISTS(SELECT 1 FROM actual WHERE hotkey=k.hotkey)))
+        AND (COUNT(*)<? OR (COALESCE(SUM(a.nominator_count),0)>=?
+          AND NOT EXISTS(SELECT 1 FROM known k
+            WHERE NOT EXISTS(SELECT 1 FROM actual WHERE hotkey=k.hotkey))))
       FROM actual a LEFT JOIN known k USING(hotkey)`,
       [
         anchor.captured_at,
@@ -236,6 +242,7 @@ export async function writeAlphaCountsD1(
         expectedRows,
         anchor.excluded_root_members,
         expectedRows,
+        anchor.excluded_root_members,
       ],
     ),
     {

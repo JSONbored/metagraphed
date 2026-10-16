@@ -142,6 +142,8 @@ Poll the same authenticated POST with
 echoes the anchor and total with `stores:["d1"]`, `applied_count`, `completed_at`,
 boolean `complete` and boolean `current`. Success requires exact anchor/total
 equality, both flags true, applied count equal to the total and non-null completion.
+Completion is a positive receiver timestamp; it is not ordered against the
+producer's capture clock. Canonical order comes from finalized block identity.
 This proves only the co-owned D1 transaction. A separate Neon sink requires its
 own completion proof; anchored cross-store application is refused.
 
@@ -157,8 +159,11 @@ Counts describe distinct raw coldkeys per hotkey across all subnets, including
 root, stored-zero and retired members. They do not certify economic stake.
 Known retained non-root hotkeys and coldkeys bound the declared pass and every
 count; additional distinct pairs cannot exceed excluded root members. The root
-originals are outside this serving capture, so their exact deduplication remains
-producer evidence. Economic readers independently require qualified quantities,
+census also bounds the final distinct-pair sum from below: root has one netuid,
+so each excluded root member is a distinct coldkey/hotkey pair. Partial delivery
+may remain below that bound; terminal completion may not. Root originals are
+outside this serving capture, so their per-hotkey contribution and overlap with
+non-root pairs remain producer evidence. Economic readers require qualified quantities,
 exclude exact zero outputs, and retain every original row. Count readers require
 the current capture's complete anchored pass; old stamps and leftover hotkeys
 cannot supply counts or confirmed zeros.

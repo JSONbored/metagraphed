@@ -326,7 +326,10 @@ describe("canonical Alpha quantities across existing readers", () => {
     });
     const retainedSql = "SELECT alpha_rao FROM alpha_snapshot_rows";
     const retained = sqlite.prepare(retainedSql);
-    assert.deepEqual(retained.all().map((row) => row.alpha_rao), ["0"]);
+    assert.deepEqual(
+      retained.all().map((row) => row.alpha_rao),
+      ["0"],
+    );
   });
 
   test("one rao remains a positive holding in every economic reader", async () => {

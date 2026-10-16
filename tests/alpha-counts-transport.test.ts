@@ -447,3 +447,46 @@ test("inline anchored delivery reports durable completion when queue routing is 
   assert.equal(f.sent.length, 0);
   assert.deepEqual(await json(await f.status(anchor)), receipt);
 });
+
+test("all chunks may be admitted before polling with a receiver clock behind capture time", async () => {
+  const f = await fixture();
+  const anchor = await f.capture();
+  const clock = vi.spyOn(Date, "now").mockReturnValue(STAMP - 1);
+  try {
+    for (const hotkey of ["hot-a", "hot-b"]) {
+      const response = await f.post({
+        rows: [countRow(hotkey, anchor)],
+        alpha_snapshot: anchor,
+        pass_total: 2,
+      });
+      const admission = await json(response);
+      assert.equal(admission.queued, true);
+      assert.deepEqual(admission.stores, ["queue"]);
+    }
+    assert.equal(f.sent.length, 2);
+    assert.deepEqual(await f.counts(), []);
+    const firstPoll = await json(await f.status(anchor));
+    assert.equal(firstPoll.current, true);
+    assert.equal(firstPoll.complete, false);
+    assert.equal(firstPoll.applied_count, 0);
+    assert.equal(firstPoll.completed_at, null);
+    assert.deepEqual(await f.deliver(f.sent[1]), ["ack"]);
+    const partial = await json(await f.status(anchor));
+    assert.equal(partial.complete, false);
+    assert.equal(partial.applied_count, 1);
+    assert.equal(partial.completed_at, null);
+    assert.deepEqual(await f.deliver(f.sent[0]), ["ack"]);
+    const complete = await json(await f.status(anchor));
+    assert.equal(complete.current, true);
+    assert.equal(complete.complete, true);
+    assert.equal(complete.pass_total, 2);
+    assert.equal(complete.applied_count, 2);
+    assert.equal(complete.completed_at, STAMP - 1);
+    assert.deepEqual(complete.stores, ["d1"]);
+    assert.deepEqual(complete.alpha_snapshot, anchor);
+    const fields = [...ANCHOR_FIELDS].sort();
+    assert.deepEqual(Object.keys(complete.alpha_snapshot).sort(), fields);
+  } finally {
+    clock.mockRestore();
+  }
+});

@@ -193,6 +193,28 @@ test("count receipts measure distinct delivery and exact replay", async () => {
   assert.deepEqual(await state(store), terminal);
 });
 
+test("count completion clocks are independent of producer capture clocks", async () => {
+  const { db, store } = await fixture();
+  const anchor = await publish(db);
+  const rows = [countRow(anchor, "hot-a"), countRow(anchor, "hot-b")];
+  const before = await state(store);
+  await assert.rejects(writeAlphaCountsD1(store, rows, anchor, 2, 0));
+  assert.deepEqual(await state(store), before);
+
+  const now = anchor.captured_at - 1;
+  const receipt = await writeAlphaCountsD1(store, rows, anchor, 2, now);
+  assert.equal(receipt.complete, true);
+  assert.equal(receipt.current, true);
+  assert.equal(receipt.pass_total, 2);
+  assert.equal(receipt.applied_count, 2);
+  assert.equal(receipt.completed_at, now);
+  assert.deepEqual(await readAlphaCountStatusD1(store, anchor, 2), receipt);
+  const terminal = await state(store);
+  const replay = await writeAlphaCountsD1(store, rows, anchor, 2, AT + 10);
+  assert.deepEqual(replay, receipt);
+  assert.deepEqual(await state(store), terminal);
+});
+
 test("block order overrides clocks and rejects delayed work", async () => {
   const { db, store } = await fixture();
   const a = await publish(db, undefined, AT + 100, 100);
@@ -354,6 +376,67 @@ test("counts must cover and match known non-root members", async () => {
   }
 });
 
+test("root-only terminal counts cover every distinct root pair", async () => {
+  const { db, store } = await fixture();
+  const anchor = await publish(db, [], AT, 100, 3);
+  const before = await state(store);
+  await assert.rejects(
+    writeAlphaCountsD1(
+      store,
+      [countRow(anchor, "root-only", 2)],
+      anchor,
+      1,
+      AT + 10,
+    ),
+  );
+  assert.deepEqual(await state(store), before);
+  const rows = [countRow(anchor, "root-only", 3)];
+  const receipt = await writeAlphaCountsD1(store, rows, anchor, 1, AT + 11);
+  assert.equal(receipt.complete, true);
+  assert.equal(receipt.current, true);
+  assert.equal(receipt.applied_count, 1);
+  assert.deepEqual(await readAlphaCountStatusD1(store, anchor, 1), receipt);
+});
+
+test("root coverage is required only when all count keys arrive", async () => {
+  const { db, store } = await fixture();
+  const anchor = await publish(db, [], AT, 100, 3);
+  const first = [countRow(anchor, "root-a")];
+  const partial = await writeAlphaCountsD1(store, first, anchor, 2, AT + 10);
+  assert.equal(partial.complete, false);
+  assert.equal(partial.applied_count, 1);
+  const before = await state(store);
+  await assert.rejects(
+    writeAlphaCountsD1(
+      store,
+      [countRow(anchor, "root-b")],
+      anchor,
+      2,
+      AT + 11,
+    ),
+  );
+  assert.deepEqual(await state(store), before);
+  const last = [countRow(anchor, "root-b", 2)];
+  const receipt = await writeAlphaCountsD1(store, last, anchor, 2, AT + 12);
+  assert.equal(receipt.complete, true);
+  assert.equal(receipt.applied_count, 2);
+});
+
+test("root and non-root members can share a single counted pair", async () => {
+  const { db, store } = await fixture();
+  const anchor = await publish(db, [member("alice", "hot-a")], AT, 100, 1);
+  const rows = [countRow(anchor, "hot-a")];
+  const receipt = await writeAlphaCountsD1(store, rows, anchor, 1, AT + 10);
+  assert.equal(receipt.complete, true);
+  assert.equal(receipt.current, true);
+  assert.equal(receipt.applied_count, 1);
+  const row = await store.first(
+    "SELECT nominator_count FROM validator_nominator_counts WHERE hotkey=?",
+    ["hot-a"],
+  );
+  assert.equal(row?.nominator_count, 1);
+});
+
 test("root allowance cannot hide a missing non-root hotkey", async () => {
   const { db, store } = await fixture();
   const anchor = await publish(db, undefined, AT, 100, 1);
@@ -495,7 +578,10 @@ test("raw counts include root, stored-zero and retired members", async () => {
   const originals = await store.query<{ alpha_rao: string }>(
     "SELECT alpha_rao FROM alpha_snapshot_rows ORDER BY coldkey",
   );
-  assert.deepEqual(originals.map((row) => row.alpha_rao), ["0", "0", "0"]);
+  assert.deepEqual(
+    originals.map((row) => row.alpha_rao),
+    ["0", "0", "0"],
+  );
   const distinctColdkeys = await store.first(
     "SELECT nominator_count FROM validator_nominator_counts WHERE hotkey=?",
     ["hot-zero"],
@@ -572,7 +658,7 @@ test("invalid rows and declarations fail before native writes", async () => {
       writeAlphaCountsD1(store, [valid], anchor, total, AT + 10),
     );
   }
-  for (const now of [NaN, AT - 1]) {
+  for (const now of [NaN, 0, -1, 1.5]) {
     await assert.rejects(writeAlphaCountsD1(store, [valid], anchor, 2, now));
   }
   await assert.rejects(writeAlphaCountsD1(store, [], anchor, 0, AT + 10));

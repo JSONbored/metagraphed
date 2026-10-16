@@ -108,7 +108,7 @@ CREATE TABLE alpha_snapshot_rows (
 -- statement-breakpoint
 CREATE INDEX alpha_snapshot_count_members ON alpha_snapshot_rows(captured_at,hotkey,coldkey);
 -- statement-breakpoint
-CREATE INDEX alpha_count_capture ON validator_nominator_counts(captured_at,hotkey);
+CREATE INDEX alpha_count_capture ON validator_nominator_counts(captured_at,hotkey,nominator_count);
 -- statement-breakpoint
 -- An old producer must not silently replace qualified Alpha values. Self-stake
 -- owns its separate domain and may not erase an existing qualified Alpha row.
@@ -243,7 +243,7 @@ WHEN NEW.alpha_snapshot IS NOT NULL AND (NEW.expected_rows<0
  OR NEW.expected_rows>json_extract(NEW.alpha_snapshot,'$.distinct_members')
  OR (NEW.expected_rows=0)<>(json_extract(NEW.alpha_snapshot,'$.distinct_members')=0)
  OR NEW.received_rows<0 OR NEW.received_rows>NEW.expected_rows
- OR (NEW.completed_at IS NOT NULL AND (NEW.completed_at<NEW.captured_at
+ OR (NEW.completed_at IS NOT NULL AND (NEW.completed_at<=0
   OR NEW.received_rows<>NEW.expected_rows)))
 BEGIN SELECT RAISE(ABORT,'Alpha count receipt is incomplete or outside its census'); END;
 -- statement-breakpoint
@@ -252,7 +252,7 @@ WHEN NEW.alpha_snapshot IS NOT NULL AND (NEW.expected_rows<0
  OR NEW.expected_rows>json_extract(NEW.alpha_snapshot,'$.distinct_members')
  OR (NEW.expected_rows=0)<>(json_extract(NEW.alpha_snapshot,'$.distinct_members')=0)
  OR NEW.received_rows<0 OR NEW.received_rows>NEW.expected_rows
- OR (NEW.completed_at IS NOT NULL AND (NEW.completed_at<NEW.captured_at
+ OR (NEW.completed_at IS NOT NULL AND (NEW.completed_at<=0
   OR NEW.received_rows<>NEW.expected_rows)))
 BEGIN SELECT RAISE(ABORT,'Alpha count receipt is incomplete or outside its census'); END;
 -- statement-breakpoint

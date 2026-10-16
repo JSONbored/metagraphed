@@ -75,12 +75,13 @@ function ready(anchor: AlphaCountAnchor) {
         AND c.completed_at>=c.captured_at
         AND c.received_rows=c.expected_rows
         AND c.received_chunks=c.expected_chunks
-        AND p.completed_at>=c.captured_at
+        AND p.completed_at>0
         AND p.expected_rows BETWEEN 0 AND c.distinct_members
         AND (p.expected_rows=0)=(c.distinct_members=0)
         AND p.received_rows=p.expected_rows
-        AND (SELECT COUNT(*) FROM validator_nominator_counts
-          WHERE captured_at=c.captured_at)=p.expected_rows
+        AND EXISTS(SELECT COUNT(*) FROM validator_nominator_counts
+          WHERE captured_at=c.captured_at HAVING COUNT(*)=p.expected_rows
+          AND COALESCE(SUM(nominator_count),0) BETWEEN c.excluded_root_members AND c.distinct_members)
     )`,
     values: [
       ...ANCHOR_COLUMNS.map((column) => anchor[column]),
@@ -90,27 +91,24 @@ function ready(anchor: AlphaCountAnchor) {
 }
 
 /** Null means the additive schema is absent. An active but unavailable capture
- * returns no enrichment, so callers cannot borrow an older clock or owner. */
+ * returns no enrichment, so callers cannot borrow an older clock or owner.
+ * Native failures propagate to the public loader's degradation handler. */
 export async function readCanonicalNominatorCounts(
   env: unknown,
   hotkeys: readonly string[],
 ): Promise<CanonicalNominatorCountRow[] | null> {
-  try {
-    const state = await context(env);
-    if (!state) return null;
-    if (!state.anchor) return [];
-    const query = ready(state.anchor);
-    return await state.store.query<CanonicalNominatorCountRow>(
-      query.text +
-        ` SELECT k.value AS hotkey,p.nominator_count,r.captured_at AS scan_at
+  const state = await context(env);
+  if (!state) return null;
+  if (!state.anchor) return [];
+  const query = ready(state.anchor);
+  return state.store.query<CanonicalNominatorCountRow>(
+    query.text +
+      ` SELECT k.value AS hotkey,p.nominator_count,r.captured_at AS scan_at
         FROM json_each(?) k LEFT JOIN ready r ON true
         LEFT JOIN validator_nominator_counts p
           ON p.hotkey=k.value AND p.captured_at=r.captured_at`,
-      [...query.values, JSON.stringify([...new Set(hotkeys)])],
-    );
-  } catch {
-    return [];
-  }
+    [...query.values, JSON.stringify([...new Set(hotkeys)])],
+  );
 }
 
 /** Preserve the existing watchdog rule while counting only the canonical

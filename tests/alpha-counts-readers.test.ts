@@ -69,7 +69,7 @@ function environment(db: D1Database, tables = owners) {
   });
 }
 
-function anchor(at = STAMP, block = 100): AlphaCountAnchor {
+function anchor(at = STAMP, block = 100, members = 3): AlphaCountAnchor {
   return {
     captured_at: at,
     block_number: block,
@@ -79,9 +79,9 @@ function anchor(at = STAMP, block = 100): AlphaCountAnchor {
     code_hash: ALPHA_RUNTIMES[479].code,
     metadata_sha256: ALPHA_RUNTIMES[479].metadata,
     scanned_legacy: 0,
-    scanned_v2: 5,
-    distinct_members: 5,
-    excluded_root_members: 5,
+    scanned_v2: members,
+    distinct_members: members,
+    excluded_root_members: members,
   };
 }
 
@@ -140,7 +140,7 @@ function forbiddenSql() {
 
 test("raw root membership does not need valued positions", async () => {
   const db = await fixture();
-  const value = anchor();
+  const value = anchor(STAMP, 100, 5);
   await capture(db, value);
   await counts(db, value, [row("kept", 5)]);
   const rows = await readCanonicalNominatorCounts(environment(db), ["kept"]);
@@ -149,9 +149,46 @@ test("raw root membership does not need valued positions", async () => {
   ]);
 });
 
+test("receiver clock may precede a fresh capture", async () => {
+  const db = await fixture();
+  const value = anchor();
+  await capture(db, value);
+  const receipt = await writeAlphaCountsD1(
+    createD1Store(db),
+    [row()],
+    value,
+    1,
+    STAMP - 1,
+  );
+  assert.equal(receipt.completed_at, STAMP - 1);
+  const stored = await db
+    .prepare(
+      "SELECT completed_at FROM validator_nominator_counts_passes WHERE captured_at=?",
+    )
+    .bind(STAMP)
+    .first<{ completed_at: number }>();
+  assert.equal(stored?.completed_at, STAMP - 1);
+  const rows = await readCanonicalNominatorCounts(environment(db), [
+    "kept",
+    "missing",
+  ]);
+  assert.deepEqual(rows, [
+    { hotkey: "kept", nominator_count: 3, scan_at: STAMP },
+    { hotkey: "missing", nominator_count: null, scan_at: STAMP },
+  ]);
+  const confirmed = fillConfirmedZeros(
+    rows,
+    nominatorCountsByHotkey(rows),
+    STAMP + 20,
+    1000,
+  );
+  assert.equal(confirmed.get("kept"), 3);
+  assert.equal(confirmed.get("missing"), 0);
+});
+
 test("unvalued originals retain raw membership counts", async () => {
   const db = await fixture();
-  const value = { ...anchor(), excluded_root_members: 0 };
+  const value = { ...anchor(STAMP, 100, 5), excluded_root_members: 0 };
   await capture(db, value);
   for (let member = 0; member < 5; member++) {
     await db
@@ -193,13 +230,13 @@ test("a complete empty raw census permits confirmed zeros", async () => {
 
 test("canonical counts ignore older clocks and hotkeys", async () => {
   const db = await fixture();
-  const older = anchor(STAMP + 1000, 100);
+  const older = anchor(STAMP + 1000, 100, 5);
   await capture(db, older);
   await counts(db, older, [
     row("kept", 3, older.captured_at),
     row("left", 2, older.captured_at),
   ]);
-  const current = anchor(STAMP, 101);
+  const current = anchor(STAMP, 101, 2);
   await capture(db, current);
   await counts(db, current, [row("kept", 2)]);
   const env = environment(db);
@@ -234,7 +271,7 @@ test("incomplete canonical counts stay unknown", async () => {
   const older = anchor(STAMP + 1000, 100);
   await capture(db, older);
   await counts(db, older, [row("kept", 3, older.captured_at)]);
-  const current = anchor(STAMP, 101);
+  const current = anchor(STAMP, 101, 2);
   await capture(db, current);
   await counts(db, current, [row("kept", 1)], 2);
   const env = environment(db);
@@ -286,6 +323,36 @@ test("terminal receipts require actual unique rows", async () => {
   assert.deepEqual(await readCanonicalNominatorCounts(env, ["kept"]), [
     { hotkey: "kept", nominator_count: null, scan_at: null },
   ]);
+  assert.equal((await readCanonicalNominatorCountCoverage(env))?.covered, 0);
+});
+
+test("underfilled root count receipts stay unknown", async () => {
+  const db = await fixture();
+  const value = anchor();
+  await capture(db, value);
+  await db
+    .prepare(
+      "INSERT INTO validator_nominator_counts_passes(captured_at,expected_rows,received_rows,completed_at,alpha_snapshot) VALUES(?,1,1,?,?)",
+    )
+    .bind(STAMP, STAMP + 10, JSON.stringify(value))
+    .run();
+  await db
+    .prepare("INSERT INTO validator_nominator_counts VALUES('kept',2,?)")
+    .bind(STAMP)
+    .run();
+  const env = environment(db);
+  const rows = await readCanonicalNominatorCounts(env, ["kept", "missing"]);
+  assert.deepEqual(rows, [
+    { hotkey: "kept", nominator_count: null, scan_at: null },
+    { hotkey: "missing", nominator_count: null, scan_at: null },
+  ]);
+  const confirmed = fillConfirmedZeros(
+    rows,
+    nominatorCountsByHotkey(rows),
+    STAMP + 20,
+    1000,
+  );
+  assert.equal(confirmed.size, 0);
   assert.equal((await readCanonicalNominatorCountCoverage(env))?.covered, 0);
 });
 
@@ -384,10 +451,16 @@ test("split owners and native failures cannot fall back", async () => {
     (table) => table !== "validator_nominator_counts_passes",
   );
   const env = environment(db, tables);
-  const rows = await readDirectoryNominatorCounts(forbiddenSql(), env, [
-    "kept",
-  ]);
-  assert.deepEqual(rows, []);
+  const sql = forbiddenSql();
+  await assert.rejects(
+    readDirectoryNominatorCounts(sql, env, ["kept"]),
+    /D1 and Neon/,
+  );
+  assert.equal(vi.mocked(sql.unsafe).mock.calls.length, 0);
+  await assert.rejects(
+    readCanonicalNominatorCounts(env, ["kept"]),
+    /D1 and Neon/,
+  );
   await assert.rejects(readCanonicalNominatorCountCoverage(env), /D1 and Neon/);
   const failed = environment({
     prepare() {
@@ -395,11 +468,39 @@ test("split owners and native failures cannot fall back", async () => {
     },
     batch: db.batch.bind(db),
   } as unknown as D1Database);
-  assert.deepEqual(await readCanonicalNominatorCounts(failed, ["kept"]), []);
+  await assert.rejects(
+    readCanonicalNominatorCounts(failed, ["kept"]),
+    /discovery failed/,
+  );
   await assert.rejects(
     readCanonicalNominatorCountCoverage(failed),
     /discovery failed/,
   );
+});
+
+test("canonical count query failures propagate without fallback", async () => {
+  const db = await fixture();
+  await capture(db);
+  await counts(db);
+  const env = environment({
+    prepare(text: string) {
+      if (text.startsWith("WITH canonical")) {
+        throw new Error("canonical count query failed");
+      }
+      return db.prepare(text);
+    },
+    batch: db.batch.bind(db),
+  } as unknown as D1Database);
+  const sql = forbiddenSql();
+  await assert.rejects(
+    readCanonicalNominatorCounts(env, ["kept"]),
+    /canonical count query failed/,
+  );
+  await assert.rejects(
+    readDirectoryNominatorCounts(sql, env, ["kept"]),
+    /canonical count query failed/,
+  );
+  assert.equal(vi.mocked(sql.unsafe).mock.calls.length, 0);
 });
 
 test("pre-migration native count reads still work", async () => {
