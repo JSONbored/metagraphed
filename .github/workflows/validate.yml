@@ -268,9 +268,10 @@ jobs:
           # Same-shape flag for the python job, which runs two independent hermetic suites: the
           # Python SDK's (reads only python/**) and the data-refresh scripts' (reads only
           # scripts/**.py). scripts/ is overwhelmingly TypeScript since #7510, so this gates on the
-          # .py extension rather than the whole directory -- a .ts-only diff under scripts/ cannot
-          # change either suite's result.
-          if grep -qE '^python/|^scripts/.*\.py$' changed-files.txt; then
+          # .py extension plus the two dependency manifests rather than the whole directory.
+          # A lock/project-only PR must install and check the scripts environment too;
+          # an unrelated TypeScript-only script change does not change these suites.
+          if grep -qE '^python/|^scripts/.*\.py$|^scripts/(uv\.lock|pyproject\.toml)$' changed-files.txt; then
             echo "run_python_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_python_validation=false" >> "$GITHUB_OUTPUT"
@@ -1164,7 +1165,8 @@ jobs:
     needs: changes
     # Path-gated at the JOB level (safe: zero required status contexts on main, and the review
     # pipeline buckets skipped as success -- see the `test` job comment): both suites read only
-    # python/** and scripts/**.py, so a PR touching neither cannot change this job's result. Draft
+    # python/** and scripts/**.py plus scripts/uv.lock and scripts/pyproject.toml,
+    # so dependency-only PRs also install and check the locked scripts environment. Draft
     # PRs skip entirely, same as every heavy job here. Push/dispatch runs are unaffected.
     if: ${{ (github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true')) && !(github.event_name == 'workflow_dispatch' && inputs.qualify_chain_detail_resources && inputs.resource_probe_only) }}
     runs-on: ubuntu-latest
