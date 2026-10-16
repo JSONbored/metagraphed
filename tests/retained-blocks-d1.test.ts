@@ -420,6 +420,7 @@ test("every retained block filter and their intersections match the established 
   const cases: [Partial<BlockFeedQuery>, number[]][] = [
     [{ author: AUTHOR }, [12, 10, 9, 8, 8]],
     [{ specVersion: 241 }, [8, 8]],
+    [{ specVersion: 241, minExtrinsics: 3 }, [8, 8]],
     [{ blockStart: 10 }, [12, 11, 10]],
     [{ blockEnd: 9 }, [9, 8, 8]],
     [{ from: 100, to: 200 }, [10, 9, 8, 8]],

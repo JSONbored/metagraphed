@@ -25,7 +25,7 @@ const Counts = z.object({
   kind: z.enum(["events", "extrinsics"]),
   matches: integer,
 });
-const SelectorCount = z.object({matches: integer});
+const SelectorCount = z.object({ matches: integer });
 const HeightBounds = z.object({
   first_block: z.number().int().safe().nullable(),
   last_block: z.number().int().safe().nullable(),
@@ -204,7 +204,16 @@ export async function readRetainedBlockRows(
     const spec = where.some((clause) => /^spec_version\s*=/.test(clause));
     const heightOrder = minimums.heightOrder === true;
     const selectorCensus = heightOrder && (author || spec);
-    const selectorWhere = where.filter(clause => clause.startsWith("author = ") || /^spec_version\s*=/.test(clause)).map(clause => clause.startsWith("author = ") ? `b.author_id = (SELECT id FROM history_block_authors WHERE address${clause.slice(6)})` : `b.${clause}`);
+    const selectorWhere = where
+      .filter(
+        (clause) =>
+          clause.startsWith("author = ") || /^spec_version\s*=/.test(clause),
+      )
+      .map((clause) =>
+        clause.startsWith("author = ")
+          ? `b.author_id = (SELECT id FROM history_block_authors WHERE address${clause.slice(6)})`
+          : `b.${clause}`,
+      );
 
     const ordered = author
       ? spec
@@ -250,9 +259,15 @@ export async function readRetainedBlockRows(
             )
             .bind(kind, net, kind, minimum),
         ),
-        ...(selectorCensus ? [db.prepare(
-          `SELECT COUNT(*) AS matches FROM (SELECT 1 FROM history_blocks b INDEXED BY history_blocks_${ordered} WHERE b.network=? AND ${selectorWhere.join(" AND ")} LIMIT 50001)`,
-        ).bind(net)] : []),
+        ...(selectorCensus
+          ? [
+              db
+                .prepare(
+                  `SELECT COUNT(*) AS matches FROM (SELECT 1 FROM history_blocks b INDEXED BY history_blocks_${ordered} WHERE b.network=? AND ${selectorWhere.join(" AND ")} LIMIT 50001)`,
+                )
+                .bind(net),
+            ]
+          : []),
         ...(chooseHeight
           ? [
               db
@@ -297,13 +312,19 @@ export async function readRetainedBlockRows(
         .map((result) => Counts.parse(result.results[0]))
         .sort((a, b) => a.matches - b.matches);
       if (counts[0]?.matches === 0) return [];
-      const selector = selectorCensus ? SelectorCount.parse(results[selected.length]!.results[0]) : null;
+      const selector = selectorCensus
+        ? SelectorCount.parse(results[selected.length]!.results[0])
+        : null;
       if (selector?.matches === 0) return [];
       if (counts[0] && counts[0].matches <= 50000) {
         index = ` INDEXED BY history_blocks_${counts[0]!.kind}`;
         boundedSelective = true;
       }
-      if (selector && selector.matches <= 50000 && (!boundedSelective || selector.matches < counts[0]!.matches)) {
+      if (
+        selector &&
+        selector.matches <= 50000 &&
+        (!boundedSelective || selector.matches < counts[0]!.matches)
+      ) {
         index = ` INDEXED BY history_blocks_${ordered}`;
         boundedSelective = true;
       }
@@ -313,7 +334,8 @@ export async function readRetainedBlockRows(
     // observation cursors on their original plan and order.
     // Keep a proven small selector/count range and sort at most that bounded
     // set. A height scan is the fallback for broad or unfiltered requests.
-    if (heightOrder && !boundedSelective) index = " INDEXED BY history_blocks_height";
+    if (heightOrder && !boundedSelective)
+      index = " INDEXED BY history_blocks_height";
     // SQLite cannot satisfy two NULLS FIRST keys with the existing index: it
     // may scan the entire network before returning one row. Partition nullable
     // heights, use the height index for nulls and the selected index otherwise,
