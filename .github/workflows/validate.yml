@@ -24,7 +24,7 @@ on:
         type: boolean
         default: false
       resource_focused_shape:
-        description: "One diagnostic case (requires probe-only)"
+        description: "One diagnostic case or both HTTP boundaries (requires probe-only)"
         type: choice
         default: none
         options:
@@ -35,7 +35,12 @@ on:
             chunks-http,
             http-envelope,
             http-concurrent,
+            http-boundaries,
           ]
+      resource_separate_http_phases:
+        description: "Stop application before persisted-D1 verification; HTTP diagnostic-only comparison"
+        type: boolean
+        default: false
       resource_native_oracle:
         description: "Use native SQL verification; false retains Node binding-proxy comparison"
         type: boolean
@@ -1703,13 +1708,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shape: ${{ inputs.resource_focused_shape && inputs.resource_focused_shape != 'none' && fromJSON(format('["{0}"]', inputs.resource_focused_shape)) || inputs.resource_extended_diagnostic && fromJSON('["chunks","chunks-http","http-envelope","http-concurrent"]') || inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","objects-admitted","blocks16"]') }}
+        shape: ${{ inputs.resource_focused_shape == 'http-boundaries' && fromJSON('["http-envelope","http-concurrent"]') || inputs.resource_focused_shape && inputs.resource_focused_shape != 'none' && fromJSON(format('["{0}"]', inputs.resource_focused_shape)) || inputs.resource_extended_diagnostic && fromJSON('["chunks","chunks-http","http-envelope","http-concurrent"]') || inputs.resource_combined_diagnostic && fromJSON('["combined"]') || fromJSON('["small","string","objects","objects-max","objects-admitted","blocks16"]') }}
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify_chain_detail_resources }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Require diagnostic disposition for combined pressure
-        if: ${{ (inputs.resource_combined_diagnostic || inputs.resource_extended_diagnostic || (inputs.resource_focused_shape && inputs.resource_focused_shape != 'none')) && !inputs.resource_probe_only }}
+        if: ${{ (inputs.resource_separate_http_phases || inputs.resource_combined_diagnostic || inputs.resource_extended_diagnostic || (inputs.resource_focused_shape && inputs.resource_focused_shape != 'none')) && !inputs.resource_probe_only }}
         run: |
           echo "::error::Extended/combined pressure reproduction requires diagnostic-only mode."
           exit 1
@@ -1737,7 +1742,7 @@ jobs:
           scope="metagraphed-resource-${{ github.run_id }}-${{ matrix.shape }}"
           probe_status=0
           scope_started="$(date -u '+%Y-%m-%d %H:%M:%S')"
-          sudo --preserve-env=CI,WRANGLER_SEND_METRICS,CHAIN_DETAIL_RESOURCE_SHAPE,CHAIN_DETAIL_RESOURCE_CPU_PROFILES,CHAIN_DETAIL_RESOURCE_NATIVE_ORACLE systemd-run --scope --same-dir \
+          sudo --preserve-env=CI,WRANGLER_SEND_METRICS,CHAIN_DETAIL_RESOURCE_SHAPE,CHAIN_DETAIL_RESOURCE_CPU_PROFILES,CHAIN_DETAIL_RESOURCE_NATIVE_ORACLE,CHAIN_DETAIL_RESOURCE_SEPARATE_HTTP_PHASES systemd-run --scope --same-dir \
             --unit="$scope" \
             --property=MemoryMax=536870912 --property=MemorySwapMax=0 \
             --property=TasksMax=128 --property=CPUQuota=200% \
@@ -1769,6 +1774,7 @@ jobs:
           CHAIN_DETAIL_RESOURCE_SHAPE: ${{ matrix.shape }}
           CHAIN_DETAIL_RESOURCE_CPU_PROFILES: ${{ inputs.resource_cpu_profiles }}
           CHAIN_DETAIL_RESOURCE_NATIVE_ORACLE: ${{ inputs.resource_native_oracle }}
+          CHAIN_DETAIL_RESOURCE_SEPARATE_HTTP_PHASES: ${{ inputs.resource_separate_http_phases }}
       - name: Retain bounded raw observations and CPU profiles
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
