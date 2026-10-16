@@ -1430,6 +1430,7 @@ jobs:
       # in the known baseline, so this doesn't block on the existing tracked
       # overflow backlog (#3930, #3931, #3985, etc.).
       - name: Responsive overflow check (e2e)
+        id: ui-e2e
         if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
         run: npm run test:e2e --workspace=apps/ui -- --project=interaction --no-deps --grep="diagnostic retention keeps"
 
@@ -1461,7 +1462,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Verify actual successful-retry diagnostic receipt
-        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_retention_only }}
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.diagnostic_retention_only && steps.ui-e2e.outcome == 'success' }}
         run: |
           node --input-type=module <<'NODE'
           import assert from "node:assert/strict";

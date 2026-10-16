@@ -6,10 +6,13 @@ export function registerDiagnosticRetry() {
     browserName,
   }, info) => {
     await info.attach("diagnostic-retention-attempt", {
-      body: JSON.stringify({fixture: "successful-retry-retention-v1",retry:info.retry,browser:browserName}),
+      body: JSON.stringify({
+        fixture: "successful-retry-retention-v1",
+        retry: info.retry,
+        browser: browserName,
+      }),
       contentType: "application/json",
     });
-    if (info.retry === 0)
-      throw new Error("Intentional diagnostic first-attempt failure");
+    if (info.retry === 0) throw new Error("Intentional diagnostic first-attempt failure");
   });
 }
