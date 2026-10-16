@@ -12,7 +12,7 @@ import {
   withBlockEconomics,
 } from "./blocks.ts";
 import { summarizeBlockEconomics } from "./block-economics.ts";
-import { decodeCursor, encodeCursor } from "./cursor.ts";
+import { decodeBlockFeedCursor, encodeBlockFeedCursor, blockFeedSeek } from "./block-feed-cursor.ts";
 import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import { type ChainNetworkId } from "./chain-network.ts";
 import type { BlocksRow } from "../generated/lakehouse/types.ts";
@@ -117,7 +117,6 @@ export interface BlockFeedQuery {
 }
 
 /** The cursor pair the blocks feed pages on, mirroring data-api. */
-const BLOCKS_CURSOR_ARITY = 2;
 
 /** Preserve the public SS58 author guard before building D1 predicates. */
 export function safeAuthorLiteral(value: unknown): string | null {
@@ -188,22 +187,19 @@ export async function fetchBlockRowsFromR2Sql(
     [query.to, "observed_at <="],
     [query.minExtrinsics, "extrinsic_count >="],
     [query.minEvents, "event_count >="],
-    [query.ceilingBlock, "block_number <"],
   ] as [unknown, string][]) {
     if (value == null) continue;
     const n = safeBlockNumber(value);
     if (n === null) return null;
     where.push(`${clause} ${n}`);
   }
-  const cursor = decodeCursor(query.cursor, BLOCKS_CURSOR_ARITY);
-  if (cursor) {
-    // The same 2-part tuple seek data-api issues for this token (tuple
-    // comparison verified supported on the live engine, 2026-08-02). An
-    // invalid token decodes to null and means page 1 -- data-api's exact
-    // behavior -- so both tiers serve the identical page for the identical
-    // request, malformed tokens included.
-    where.push(`(observed_at, block_number) < (${cursor[0]}, ${cursor[1]})`);
+  const cursor = decodeBlockFeedCursor(query.cursor);
+  if (query.ceilingBlock != null) {
+    const ceiling = safeBlockNumber(query.ceilingBlock);
+    if (ceiling === null) return null;
+    where.push(cursor?.mode === "observed" ? `block_number < ${ceiling}` : `(block_number < ${ceiling} OR block_number IS NULL)`);
   }
+  if (cursor) where.push(blockFeedSeek(cursor));
 
   // Cursor pages never carry an offset (the cursor already narrows past
   // prior pages), mirroring data-api's `OFFSET only when no cursor`.
@@ -211,6 +207,7 @@ export async function fetchBlockRowsFromR2Sql(
   const rows = await requireRetainedHistoryAnswer(
     env,
     readRetainedBlockRows(env, where, limit + paged, network, Date.now(), {
+      heightOrder: cursor?.mode !== "observed",
       minEvents: query.minEvents,
       minExtrinsics: query.minExtrinsics,
     }),
@@ -219,14 +216,7 @@ export async function fetchBlockRowsFromR2Sql(
 
   const page = paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
-  // The SAME token the Postgres tier emits for this row, so a client can page
-  // seamlessly across a tier transition in either direction.
-  const nextCursor = last
-    ? encodeCursor([
-        safeBlockNumber(last.observed_at),
-        safeBlockNumber(last.block_number),
-      ])
-    : null;
+  const nextCursor = last ? encodeBlockFeedCursor(last,cursor) : null;
   return { rows: page, limit, offset, nextCursor };
 }
 
