@@ -1613,13 +1613,15 @@ jobs:
         run: npx vitest run tests/head-poller.test.ts tests/block-feed-height-order.test.ts tests/block-feed-cursor.test.ts tests/blocks-cold-tier.test.ts tests/blocks.test.ts tests/retained-blocks-d1.test.ts tests/r2-sql-blocks.test.ts
       - name: Format source artifacts after fixture execution
         if: always()
-        run: npx prettier --write src/block-feed-cursor.ts src/blocks-cold-tier.ts src/blocks.ts src/r2-sql-blocks.ts src/retained-blocks-d1.ts tests/block-feed-cursor.test.ts tests/block-feed-height-order.test.ts tests/blocks-cold-tier.test.ts tests/retained-blocks-d1.test.ts
+        run: npx prettier --write tests/blocks.test.ts docs/block-feed-height-pagination.md src/block-feed-cursor.ts src/blocks-cold-tier.ts src/blocks.ts src/r2-sql-blocks.ts src/retained-blocks-d1.ts tests/block-feed-cursor.test.ts tests/block-feed-height-order.test.ts tests/blocks-cold-tier.test.ts tests/retained-blocks-d1.test.ts
       - name: Retain formatted source for the ordinary release branch
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: formatted-block-order-source
           path: |
+            tests/blocks.test.ts
+            docs/block-feed-height-pagination.md
             src/block-feed-cursor.ts
             src/blocks-cold-tier.ts
             src/blocks.ts
