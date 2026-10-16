@@ -974,8 +974,8 @@ export interface Block {
   block_hash: string;
   parent_hash?: string;
   author?: string | null;
-  extrinsic_count?: number;
-  event_count?: number;
+  extrinsic_count?: number | null;
+  event_count?: number | null;
   observed_at?: string; // iso
   prev_block_number?: number | null;
   next_block_number?: number | null;

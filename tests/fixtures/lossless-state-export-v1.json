@@ -1,0 +1,326 @@
+{
+  "version": 1,
+  "encoding": "lossless-v1",
+  "table": "nominator_positions",
+  "scope": "approved-application-projection",
+  "keys": ["coldkey", "hotkey", "netuid"],
+  "columns": [
+    {
+      "name": "coldkey",
+      "type": "text",
+      "sqlite_type": "TEXT",
+      "not_null": true,
+      "primary_key": 1
+    },
+    {
+      "name": "hotkey",
+      "type": "text",
+      "sqlite_type": "TEXT",
+      "not_null": true,
+      "primary_key": 2
+    },
+    {
+      "name": "netuid",
+      "type": "int8",
+      "sqlite_type": "INTEGER",
+      "not_null": true,
+      "primary_key": 3
+    },
+    {
+      "name": "share_fraction",
+      "type": "float8",
+      "sqlite_type": "REAL",
+      "not_null": false,
+      "primary_key": 0
+    },
+    {
+      "name": "captured_at",
+      "type": "int8",
+      "sqlite_type": "INTEGER",
+      "not_null": true,
+      "primary_key": 0
+    },
+    {
+      "name": "shares",
+      "type": "numeric",
+      "sqlite_type": "TEXT",
+      "not_null": false,
+      "primary_key": 0
+    },
+    {
+      "name": "source",
+      "type": "text",
+      "sqlite_type": "TEXT",
+      "not_null": true,
+      "primary_key": 0
+    }
+  ],
+  "rows": [
+    [
+      {
+        "storage": "text",
+        "value": "recovery-0"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "0"
+      },
+      {
+        "storage": "real",
+        "value": "0.5"
+      },
+      {
+        "storage": "integer",
+        "value": "9007199254740993"
+      },
+      {
+        "storage": "text",
+        "value": "340282366920938463463374607431768211455"
+      },
+      {
+        "storage": "text",
+        "value": "alpha"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-1"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "1"
+      },
+      {
+        "storage": "real",
+        "value": "0.5"
+      },
+      {
+        "storage": "integer",
+        "value": "9007199254740993"
+      },
+      {
+        "storage": "text",
+        "value": "340282366920938463463374607431768211454"
+      },
+      {
+        "storage": "text",
+        "value": "alpha"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-2"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "2"
+      },
+      {
+        "storage": "real",
+        "value": "0.5"
+      },
+      {
+        "storage": "integer",
+        "value": "9007199254740993"
+      },
+      {
+        "storage": "text",
+        "value": "9007199254740993"
+      },
+      {
+        "storage": "text",
+        "value": "alpha"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-3"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "3"
+      },
+      {
+        "storage": "real",
+        "value": "0.5"
+      },
+      {
+        "storage": "integer",
+        "value": "9007199254740993"
+      },
+      {
+        "storage": "text",
+        "value": "0"
+      },
+      {
+        "storage": "text",
+        "value": "alpha"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-4"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "4"
+      },
+      {
+        "storage": "real",
+        "value": "0.5"
+      },
+      {
+        "storage": "integer",
+        "value": "9007199254740993"
+      },
+      {
+        "storage": "text",
+        "value": "0000"
+      },
+      {
+        "storage": "text",
+        "value": "alpha"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-5"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "5"
+      },
+      {
+        "storage": "real",
+        "value": "0.5"
+      },
+      {
+        "storage": "integer",
+        "value": "9007199254740993"
+      },
+      {
+        "storage": "null",
+        "value": null
+      },
+      {
+        "storage": "text",
+        "value": "alpha"
+      }
+    ]
+  ],
+  "row_keys": [
+    [
+      {
+        "storage": "text",
+        "value": "recovery-0"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "0"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-1"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "1"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-2"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "2"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-3"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "3"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-4"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "4"
+      }
+    ],
+    [
+      {
+        "storage": "text",
+        "value": "recovery-5"
+      },
+      {
+        "storage": "text",
+        "value": "hotkey"
+      },
+      {
+        "storage": "integer",
+        "value": "5"
+      }
+    ]
+  ]
+}

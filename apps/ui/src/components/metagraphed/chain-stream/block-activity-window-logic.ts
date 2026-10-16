@@ -31,7 +31,7 @@ export function arrivedBlock(
   return nextHead;
 }
 
-function activityCount(value: number | undefined): number | null {
+function activityCount(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
@@ -41,7 +41,7 @@ function activityCount(value: number | undefined): number | null {
  * visible beside a genuinely busy one; the exact values stay in text.
  */
 export function blockActivityLevel(
-  count: number | undefined,
+  count: number | null | undefined,
   highestCount: number,
 ): BlockActivityLevel {
   const knownCount = activityCount(count);

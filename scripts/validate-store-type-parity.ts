@@ -46,7 +46,8 @@ const LAKE_SNAPSHOT = "generated/lakehouse/schema.json";
 /**
  * Every Iceberg type a Neon type may be stored as, WIDEST FIRST.
  *
- * Read as "a value of this Neon type fits, without loss, in each of these".
+ * Legacy analytics compatibility, including explicitly lossy numeric->double.
+ * Passing this map is not a lossless recovery verdict.
  * `int8` is not in `int`'s list and that asymmetry is the point.
  */
 const FITS: Readonly<Record<string, ReadonlySet<string>>> = {
@@ -61,8 +62,8 @@ const FITS: Readonly<Record<string, ReadonlySet<string>>> = {
   float4: new Set(["float", "double"]),
   float8: new Set(["double"]),
   // Arbitrary precision on one side, 64-bit float on the other. `double` is
-  // what the writer produces and what every reader here already assumes; the
-  // narrowing is inherent to the format, not a mistake this gate can fix.
+  // the existing analytics writer/readers' contract. This allowance is lossy;
+  // compareRecovery rejects it. It is not a limit of every archive format.
   numeric: new Set(["double"]),
   bool: new Set(["boolean"]),
   // text -> uuid is enforced at write rather than assumed: chain.surfaces.id is
@@ -109,9 +110,11 @@ export interface Column {
 }
 interface NeonColumn extends Column {
   udt: string;
+  nullable?: boolean;
 }
 interface LakeColumn extends Column {
   type: string;
+  required?: boolean;
 }
 export interface Divergence {
   table: string;
@@ -176,6 +179,57 @@ export function compare(
   return { narrowed, dropped, compared };
 }
 
+/** Necessary schema conditions only; actual typed restoration is separate proof.
+ * Unlike analytics, every source column/table and known nullability is required.
+ * Conditional conversions (date/uuid/timestamp) need their own qualified codec;
+ * unconstrained numeric cannot fit a fixed-width floating representation.
+ */
+export function compareRecovery(
+  source: readonly NeonColumn[],
+  destination: readonly LakeColumn[],
+): { compatible: boolean; failures: Divergence[]; compared: number } {
+  const exact: Readonly<Record<string, readonly string[]>> = {
+    int2: ["int", "long"],
+    int4: ["int", "long"],
+    int8: ["long"],
+    float4: ["float", "double"],
+    float8: ["double"],
+    bool: ["boolean"],
+    text: ["string"],
+    varchar: ["string"],
+    date: ["date"],
+  };
+  const failures: Divergence[] = [];
+  const seen = new Set<string>();
+  for (const column of source) {
+    const id = `${column.table}.${column.column}`;
+    const matches = destination.filter(
+      (c) => c.table === column.table && c.column === column.column,
+    );
+    const stored = matches[0];
+    const fail = (detail: string) =>
+      failures.push({ ...column, detail: `${id}: ${detail}` });
+    if (seen.has(id) || matches.length !== 1)
+      fail("missing or duplicate recovery column");
+    seen.add(id);
+    if (!stored) continue;
+    if (!exact[column.udt]?.includes(stored.type))
+      fail("type conversion has no unconditional lossless mapping");
+    if (
+      typeof column.nullable !== "boolean" ||
+      typeof stored.required !== "boolean"
+    )
+      fail("nullability is unknown");
+    else if (column.nullable && stored.required)
+      fail("destination cannot retain source nulls");
+  }
+  return {
+    compatible: source.length > 0 && failures.length === 0,
+    failures,
+    compared: source.length,
+  };
+}
+
 function main(): void {
   const neon = JSON.parse(
     readFileSync(path.join(repoRoot, NEON_SNAPSHOT), "utf8"),
@@ -190,7 +244,7 @@ function main(): void {
   const fixed = [...KNOWN].filter((k) => !seen.has(k));
   const failures = all.filter((d) => !KNOWN.has(key(d)));
   process.stdout.write(
-    `store-type-parity: ${compared} shared column(s); ${all.length} diverge ` +
+    `store-type-parity (analytics compatibility, not lossless recovery): ${compared} shared column(s); ${all.length} diverge ` +
       `(${all.length - failures.length} known, baseline ${KNOWN.size}), ` +
       `${failures.length} NEW, ${fixed.length} fixed.\n`,
   );

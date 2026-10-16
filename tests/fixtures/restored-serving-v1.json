@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "evidence_scope": "Synthetic Miniflare source-to-target D1 restore; UI replays the verified contract fields, without a live storage/browser connection.",
+  "now": 1790184000000,
+  "identity": {
+    "ok": true,
+    "data": {
+      "schema_version": 1,
+      "account": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      "has_identity": true,
+      "name": "界🌍 recovery",
+      "url": null,
+      "github": null,
+      "image": null,
+      "discord": null,
+      "description": null,
+      "additional": "{\"amount\":\"340282366920938463463374607431768211455\",\"optional\":null}",
+      "captured_at": "2026-09-23T17:20:00.000Z"
+    },
+    "meta": {}
+  },
+  "blocks": {
+    "mainnet": [
+      {
+        "block_number": 11,
+        "block_hash": "0x1000000000000000000000000000000000000000000000000000000000000011",
+        "parent_hash": "0x1000000000000000000000000000000000000000000000000000000000000010",
+        "author": null,
+        "extrinsic_count": null,
+        "event_count": 0,
+        "spec_version": 480,
+        "observed_at": "2026-09-23T17:19:59.000Z"
+      },
+      {
+        "block_number": 10,
+        "block_hash": "0x1000000000000000000000000000000000000000000000000000000000000010",
+        "parent_hash": "0x1000000000000000000000000000000000000000000000000000000000000009",
+        "author": null,
+        "extrinsic_count": 3,
+        "event_count": 7,
+        "spec_version": 480,
+        "observed_at": "2026-09-23T17:19:59.000Z"
+      },
+      {
+        "block_number": 9,
+        "block_hash": "0x1000000000000000000000000000000000000000000000000000000000000009",
+        "parent_hash": "0x1000000000000000000000000000000000000000000000000000000000000008",
+        "author": null,
+        "extrinsic_count": null,
+        "event_count": null,
+        "spec_version": 480,
+        "observed_at": "2026-09-23T17:19:58.000Z"
+      }
+    ],
+    "testnet": [
+      {
+        "block_number": 22,
+        "block_hash": "0x2000000000000000000000000000000000000000000000000000000000000022",
+        "parent_hash": "0x2000000000000000000000000000000000000000000000000000000000000021",
+        "author": null,
+        "extrinsic_count": 3,
+        "event_count": 7,
+        "spec_version": 480,
+        "observed_at": "2026-09-23T17:19:59.000Z"
+      },
+      {
+        "block_number": 21,
+        "block_hash": "0x2000000000000000000000000000000000000000000000000000000000000021",
+        "parent_hash": "0x2000000000000000000000000000000000000000000000000000000000000020",
+        "author": null,
+        "extrinsic_count": null,
+        "event_count": 0,
+        "spec_version": 480,
+        "observed_at": "2026-09-23T17:19:59.000Z"
+      }
+    ]
+  },
+  "first_cursor": "1790183999000.10",
+  "snapshot": "9223372036854775806"
+}
