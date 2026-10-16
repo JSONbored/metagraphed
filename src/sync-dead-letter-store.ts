@@ -40,7 +40,9 @@ function assertJson(value: unknown, ancestors = new Set<unknown>()): void {
     value === null ||
     typeof value === "string" ||
     typeof value === "boolean" ||
-    (typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))
+    (typeof value === "number" &&
+      Number.isFinite(value) &&
+      !Object.is(value, -0))
   )
     return;
   if (typeof value !== "object" || ancestors.has(value))

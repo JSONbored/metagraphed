@@ -80,7 +80,8 @@ test("complete JSON and compressed byte observations are verified before acknowl
     );
     assert.ok(acked);
     const put = f.puts[putsBefore]!;
-    const bytes = id === "json" ? Buffer.from(JSON.stringify(body)) : compressed;
+    const bytes =
+      id === "json" ? Buffer.from(JSON.stringify(body)) : compressed;
     const expected = {
       version: 1,
       queue,
@@ -220,7 +221,11 @@ test("a lost write response or acknowledgment leaves recoverable observations on
     fail = false;
     await handleDeadLetterBatch({ queue, messages: [m] }, undefined, 2, f.kv);
     assert.equal(acks, 1);
-    assert.equal(f.puts.length, 1, "an exact redelivery reuses the verified value");
+    assert.equal(
+      f.puts.length,
+      1,
+      "an exact redelivery reuses the verified value",
+    );
     await handleDeadLetterBatch(
       { queue, messages: [{ ...m, attempts: 2 }] },
       undefined,
@@ -324,13 +329,21 @@ test("matching claimed hashes cannot hide corrupted envelopes or payload bytes",
     const corrupted = JSON.stringify(changed);
     f.values.set(key, corrupted);
     await assert.rejects(preserveSyncDeadLetter(f.kv, queue, m));
-    assert.equal(f.puts.length, 0, "a mismatched value must never be overwritten");
+    assert.equal(
+      f.puts.length,
+      0,
+      "a mismatched value must never be overwritten",
+    );
     assert.equal(f.values.get(key), corrupted);
   }
   const f = syncDeadLetterKv();
   f.values.set(key, `${serialized}\n`);
   await assert.rejects(preserveSyncDeadLetter(f.kv, queue, m));
-  assert.equal(f.puts.length, 0, "verification compares the exact stored bytes");
+  assert.equal(
+    f.puts.length,
+    0,
+    "verification compares the exact stored bytes",
+  );
 });
 
 test("corruption after a successful put still prevents acknowledgment", async () => {
@@ -422,7 +435,9 @@ test("unsupported JSON values cannot be silently dropped or coerced", async () =
   const sparse: unknown[] = [];
   sparse.length = 1;
   const sparseWithExtra = Object.assign(new Array(1), { extra: true });
-  const sparseWithNumericKey = Object.assign(new Array(1), { 4294967295: true });
+  const sparseWithNumericKey = Object.assign(new Array(1), {
+    4294967295: true,
+  });
   for (const body of [
     undefined,
     () => 1,
@@ -545,7 +560,11 @@ test("failed preservation, partial retry and duplicate delivery keep the existin
   await handleDeadLetterBatch({ queue, messages }, health, now, f.kv);
   assert.deepEqual(acks, ["a", "b", "a", "b"]);
   assert.equal(observed.length, 3);
-  assert.equal(f.values.size, 2, "duplicate observations are not unique messages");
+  assert.equal(
+    f.values.size,
+    2,
+    "duplicate observations are not unique messages",
+  );
   const latest = observed[2]!;
   assert.equal(
     latest.checked_at,
@@ -555,7 +574,9 @@ test("failed preservation, partial retry and duplicate delivery keep the existin
   assert.ok(envelopes(f).every((entry) => entry.published_at === publishedAt));
   const plan = laneAlarmPlan({
     latest: { [queue]: latest },
-    runs: { [queue]: { since: observed[0]!.checked_at, ticks: observed.length } },
+    runs: {
+      [queue]: { since: observed[0]!.checked_at, ticks: observed.length },
+    },
     unknownRuns: {},
     observedMaxGap: {},
     openAlarms: { [queue]: { issue: 12640, updatedAt: now - 500 } },

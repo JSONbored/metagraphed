@@ -7,8 +7,9 @@ import { handleRequest } from "../workers/api.ts";
 const prefix = "sync-quarantine:v1:";
 const secret = "existing-export-test-secret";
 const raw = new Uint8Array([0, 255, 128, 13, 10, 34, 1]);
-const sha = (bytes: Uint8Array) =>
-  createHash("sha256").update(bytes).digest("hex");
+function sha(bytes: Uint8Array) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
 const listing = { kind: "dead-letter", operation: "list" };
 const reading = {
   kind: "dead-letter",
@@ -16,6 +17,7 @@ const reading = {
   sha256: sha(raw),
   bytes: raw.length,
 };
+const readKey = prefix + reading.sha256;
 
 function storedStream(bytes: Uint8Array) {
   return new ReadableStream<Uint8Array>({
@@ -27,15 +29,12 @@ function storedStream(bytes: Uint8Array) {
 }
 
 function fixture(bytes = raw) {
-  const get = vi.fn(
-    async (_key: string, _as: unknown): Promise<unknown> => storedStream(bytes),
-  );
-  const list = vi.fn(
-    async (_options: unknown): Promise<unknown> => ({
-      keys: [],
-      list_complete: true,
-    }),
-  );
+  async function getValue(_key: string, _as: unknown): Promise<unknown> {
+    return storedStream(bytes);
+  }
+  const page = { keys: [], list_complete: true };
+  const get = vi.fn(getValue);
+  const list = vi.fn(async (_options: unknown): Promise<unknown> => page);
   const kv = { get, list } as unknown as Pick<KVNamespace, "get" | "list">;
   return {
     get,
@@ -71,9 +70,8 @@ describe("private quarantine export authorization", () => {
       }),
       await handleD1StateExport(request(listing, secret, "GET"), f.env),
     ];
-    expect(denied.map((response) => response.status)).toEqual([
-      401, 401, 503, 405,
-    ]);
+    const statuses = denied.map((response) => response.status);
+    expect(statuses).toEqual([401, 401, 503, 405]);
     for (const response of denied)
       expect(response.headers.get("cache-control")).toBe("no-store");
     expect(f.get).not.toHaveBeenCalled();
@@ -115,18 +113,14 @@ describe("private quarantine export authorization", () => {
     expect(denied.status).toBe(401);
     expect(f.get).not.toHaveBeenCalled();
     const response = await handleRequest(request(reading), env, {});
+    const headers = response.headers;
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get("content-type")).toBe(
-      "application/octet-stream",
-    );
-    expect(response.headers.get("content-length")).toBe(String(raw.length));
-    expect(response.headers.get("x-content-sha256")).toBe(reading.sha256);
+    expect(headers.get("cache-control")).toBe("no-store");
+    expect(headers.get("content-type")).toBe("application/octet-stream");
+    expect(headers.get("content-length")).toBe(String(raw.length));
+    expect(headers.get("x-content-sha256")).toBe(reading.sha256);
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(raw);
-    expect(f.get).toHaveBeenCalledExactlyOnceWith(
-      prefix + reading.sha256,
-      "stream",
-    );
+    expect(f.get).toHaveBeenCalledExactlyOnceWith(readKey, "stream");
     expect(f.list).not.toHaveBeenCalled();
   });
 });
@@ -157,7 +151,7 @@ describe("bounded quarantine requests", () => {
     { ...reading, bytes: 192 * 1024 + 1 },
     { ...reading, cursor: "cursor" },
     { ...reading, key: "health:current" },
-  ])("rejects an invalid request without storage access: %j", async (input) => {
+  ])("rejects invalid requests before KV: %j", async (input) => {
     const f = fixture();
     const response = await handleSyncDeadLetterExport(input, f.env);
     expect(response.status).toBe(400);
@@ -291,26 +285,21 @@ describe("exact quarantine envelope reads", () => {
     expect(response.headers.get("content-length")).toBe(String(raw.length));
     expect(response.headers.get("x-content-sha256")).toBe(reading.sha256);
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(raw);
-    expect(f.get).toHaveBeenCalledExactlyOnceWith(
-      prefix + reading.sha256,
-      "stream",
-    );
+    expect(f.get).toHaveBeenCalledExactlyOnceWith(readKey, "stream");
   });
 
   it.each([1, 192 * 1024])("reads %i verified bytes", async (length) => {
     const bytes = new Uint8Array(length).fill(233);
     const f = fixture(bytes);
     const input = { ...reading, sha256: sha(bytes), bytes: length };
+    const inputKey = prefix + input.sha256;
     const response = await handleSyncDeadLetterExport(input, f.env);
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("content-length")).toBe(String(length));
     expect(response.headers.get("x-content-sha256")).toBe(input.sha256);
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
-    expect(f.get).toHaveBeenCalledExactlyOnceWith(
-      prefix + input.sha256,
-      "stream",
-    );
+    expect(f.get).toHaveBeenCalledExactlyOnceWith(inputKey, "stream");
     expect(f.list).not.toHaveBeenCalled();
   });
 
@@ -336,10 +325,7 @@ describe("exact quarantine envelope reads", () => {
     const f = fixture();
     f.get.mockResolvedValueOnce(value());
     await unavailable(await handleSyncDeadLetterExport(reading, f.env));
-    expect(f.get).toHaveBeenCalledExactlyOnceWith(
-      prefix + reading.sha256,
-      "stream",
-    );
+    expect(f.get).toHaveBeenCalledExactlyOnceWith(readKey, "stream");
     expect(f.list).not.toHaveBeenCalled();
   });
 
@@ -348,12 +334,13 @@ describe("exact quarantine envelope reads", () => {
     async (length) => {
       const bytes = new Uint8Array(length);
       const f = fixture(bytes);
-      await unavailable(
-        await handleSyncDeadLetterExport(
-          { kind: "dead-letter", operation: "read", sha256: sha(bytes) },
-          f.env,
-        ),
-      );
+      const input = {
+        kind: "dead-letter",
+        operation: "read",
+        sha256: sha(bytes),
+      };
+      const response = await handleSyncDeadLetterExport(input, f.env);
+      await unavailable(response);
       expect(f.get).toHaveBeenCalledTimes(1);
       expect(f.list).not.toHaveBeenCalled();
     },
@@ -361,12 +348,9 @@ describe("exact quarantine envelope reads", () => {
 
   it("checks supplied size even with the correct digest", async () => {
     const f = fixture();
-    await unavailable(
-      await handleSyncDeadLetterExport(
-        { ...reading, bytes: raw.length + 1 },
-        f.env,
-      ),
-    );
+    const input = { ...reading, bytes: raw.length + 1 };
+    const response = await handleSyncDeadLetterExport(input, f.env);
+    await unavailable(response);
     expect(f.get).toHaveBeenCalledTimes(1);
   });
 
@@ -385,19 +369,17 @@ describe("exact quarantine envelope reads", () => {
       { highWaterMark: 0 },
     );
     f.get.mockResolvedValueOnce(stream);
-    await unavailable(
-      await handleSyncDeadLetterExport(
-        { kind: "dead-letter", operation: "read", sha256: reading.sha256 },
-        f.env,
-      ),
-    );
+    const input = {
+      kind: "dead-letter",
+      operation: "read",
+      sha256: reading.sha256,
+    };
+    const response = await handleSyncDeadLetterExport(input, f.env);
+    await unavailable(response);
     expect(pulls).toBe(3);
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(stream.locked).toBe(false);
-    expect(f.get).toHaveBeenCalledExactlyOnceWith(
-      prefix + reading.sha256,
-      "stream",
-    );
+    expect(f.get).toHaveBeenCalledExactlyOnceWith(readKey, "stream");
   });
 
   it("releases an errored stream and sanitizes its private error", async () => {

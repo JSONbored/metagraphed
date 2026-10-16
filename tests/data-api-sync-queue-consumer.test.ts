@@ -390,6 +390,9 @@ describe("the sync queue consumer", () => {
               failedD1Writes++;
               throw new Error("SQLITE_FULL");
             },
+            async batch() {
+              throw new Error("SQLITE_FULL");
+            },
           },
           METAGRAPH_CONTROL: f.kv,
         } as never,
