@@ -12,7 +12,6 @@ import {
   formatPercentiles,
   formatTrajectory,
   formatTrends,
-  formatUptime,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "./health-serving.ts";
@@ -29,73 +28,16 @@ import {
   HEALTH_TREND_WINDOWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
-  MAX_UPTIME_ROWS,
   UPTIME_WINDOW_DAYS,
 } from "../workers/config.ts";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.ts";
-import { isFinneySs58Address } from "./finney-ss58.ts";
-import { createRequestCounter } from "./request-counters.ts";
 
 export { composeCompareData };
 export const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
 const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
 
-// --- store read tier (box decommission, the read half of #9036's dual-write) ----
-//
-// store reads resurrected 2026-08-02: the 2026-07-17 elimination that emptied
-// these loaders assumed the self-hosted Postgres would keep serving; that box
-// is now gone, and the observation tables live in D1 again (backfilled to
-// exact parity + dual-written since #9036). Each health loader takes an
-// optional `db` — the METAGRAPH_HEALTH_DB binding — and runs the exact
-// pre-elimination SQL against it; with no binding (tests, self-hosters) the
-// loader keeps its schema-stable empty behavior, byte-identical to before
-// this change. The Postgres tier stays first in every route for now; when
-// it misses (or its flag is off), the store read replaces what used to be a
-// guaranteed-empty payload.
-//
-// The read slice these loaders use -- the owned query() verb (#10909),
-// structural so tests can hand in plain fakes and the real store both.
-export interface ObservationsReadDb {
-  query<Row = Record<string, unknown>>(
-    text: string,
-    values?: unknown[],
-  ): Promise<Row[]>;
-}
-
-// A failed store read degrades to zero rows, and the payload built from those
-// zero rows must never be edge-cached as fresh — the same contract the
-// Postgres tier enforces via its own fallback generation
-// (workers/data-api-tier.ts). Handlers snapshot this before a loader call
-// and treat a changed generation as a fallback.
-const storeReadFailureGeneration = createRequestCounter(
-  "src/analytics-live.ts",
-);
-
-export function currentStoreReadFailureGeneration(): number {
-  return storeReadFailureGeneration.current();
-}
-
-// Contained store read: any failure (no binding, bad SQL against a drifted
-// schema, a D1 outage) degrades to zero rows — these are serving paths, and
-// the schema-stable empty payload has been their floor since 2026-07-17.
-// console.error keeps the failure diagnosable in the tail without making a
-// read failure a route failure.
-export async function storeAll(
-  db: ObservationsReadDb | null | undefined,
-  sql: string,
-  params: unknown[],
-): Promise<Record<string, unknown>[]> {
-  if (!db?.query) return [];
-  try {
-    // The dual-envelope acceptance (D1's { results } vs a bare array) retired
-    // with the emulators (#10909): query() answers rows, full stop.
-    return await db.query(sql, params);
-  } catch (error) {
-    storeReadFailureGeneration.increment();
-    console.error("[analytics-store]", String((error as Error)?.message));
-    return [];
-  }
-}
+import { storeAll, type ObservationsReadDb } from "./analytics-store-read.ts";
+export { storeAll, currentStoreReadFailureGeneration, type ObservationsReadDb } from "./analytics-store-read.ts";
 
 export interface SubnetMetaEntry {
   slug: string | null;
@@ -208,46 +150,7 @@ export function parseCompareNetuidList(netuids: unknown): number[] | null {
   return requestedNetuids;
 }
 
-// compare_validators/compare-validators (#6035/#6325) share this same cap and
-// SS58 validation with parseCompareNetuids/parseCompareNetuidList above --
-// one hotkey-list contract for both the REST query string and the MCP array.
-export const COMPARE_VALIDATORS_MAX = 16;
-const COMPARE_HOTKEYS_PATTERN =
-  /^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$/;
-
-export function parseCompareHotkeys(hotkeysRaw: unknown): string[] | null {
-  if (
-    typeof hotkeysRaw !== "string" ||
-    !hotkeysRaw ||
-    !COMPARE_HOTKEYS_PATTERN.test(hotkeysRaw)
-  ) {
-    return null;
-  }
-  const hotkeys: string[] = [];
-  const seen = new Set<string>();
-  for (const part of hotkeysRaw.split(",")) {
-    if (seen.has(part)) continue;
-    seen.add(part);
-    hotkeys.push(part);
-  }
-  return hotkeys;
-}
-
-export function parseCompareHotkeyList(hotkeys: unknown): string[] | null {
-  if (!Array.isArray(hotkeys) || hotkeys.length === 0) return null;
-  const result: string[] = [];
-  const seen = new Set<string>();
-  for (const value of hotkeys) {
-    if (typeof value !== "string" || !isFinneySs58Address(value)) {
-      return null;
-    }
-    if (seen.has(value)) continue;
-    seen.add(value);
-    result.push(value);
-  }
-  if (result.length > COMPARE_VALIDATORS_MAX) return null;
-  return result;
-}
+export { COMPARE_VALIDATORS_MAX, parseCompareHotkeys, parseCompareHotkeyList } from "./compare-validator-input.ts";
 
 export function parseCompareDimensions(
   dimensionsRaw: unknown,
@@ -287,77 +190,7 @@ function compareDimensionsFromTokens(tokens: unknown[]): string[] | null {
 // is supplied — the pre-elimination query, unchanged. Without a binding it
 // keeps the schema-stable empty shape a Postgres-tier miss has served since
 // 2026-07-17.
-export async function loadSubnetUptime(
-  netuid: number,
-  {
-    window = "90d",
-    observedAt = null,
-    now = null,
-    minSamples = null,
-    db = null,
-  }: {
-    window?: string;
-    observedAt?: unknown;
-    now?: string | null;
-    minSamples?: number | null;
-    db?: ObservationsReadDb | null;
-  } = {},
-): Promise<unknown> {
-  const windowParam = Object.hasOwn(UPTIME_WINDOW_DAYS, window)
-    ? window
-    : "90d";
-  // Optional min_samples floor: drop low-sample day rows (daily probe count
-  // below the threshold, incl. zero-sample "unknown" days) via HAVING,
-  // mirroring the REST /uptime route (#2700). Null → no filter.
-  const sampleFloor =
-    Number.isInteger(minSamples) && (minSamples as number) >= 0
-      ? minSamples
-      : null;
-  const days = UPTIME_WINDOW_DAYS[windowParam] as number;
-  const cutoff = new Date(Date.now() - days * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-  const rows = await storeAll(
-    db,
-    `SELECT MAX(surface_id) AS surface_id,
-            COALESCE(surface_key, surface_id) AS surface_key,
-            day,
-            SUM(samples) AS samples,
-            SUM(ok_count) AS ok_count,
-            CASE
-              WHEN SUM(samples) > 0 THEN ROUND(CAST(CAST(SUM(ok_count) AS REAL) / SUM(samples) AS NUMERIC), 4)
-              ELSE NULL
-            END AS uptime_ratio,
-            ${dailyLatencyColumns({ roundedAvg: true })},
-            MAX(p50_latency_ms) AS p50,
-            MAX(p95_latency_ms) AS p95,
-            MAX(p99_latency_ms) AS p99,
-            CASE
-              WHEN SUM(samples) = 0 THEN 'unknown'
-              WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
-              WHEN SUM(ok_count) = 0 THEN 'failed'
-              ELSE 'degraded'
-            END AS status
-     FROM surface_uptime_daily
-     WHERE netuid = ? AND day >= ?
-     GROUP BY COALESCE(surface_key, surface_id), day
-     ${sampleFloor !== null ? "HAVING SUM(samples) >= ?\n     " : ""}ORDER BY day DESC
-     LIMIT ?`,
-    sampleFloor !== null
-      ? [netuid, cutoff, sampleFloor, MAX_UPTIME_ROWS]
-      : [netuid, cutoff, MAX_UPTIME_ROWS],
-  );
-  // formatUptime (health-serving.ts, not yet converted) infers its
-  // observedAt/now default-param types as exactly `null` from their `= null`
-  // defaults -- the untyped-default-parameter inference gap.
-  return formatUptime({
-    netuid,
-    window: windowParam,
-    observedAt,
-    rows,
-    now: now || new Date().toISOString(),
-  });
-}
+export { loadSubnetUptime } from "./uptime-read.ts";
 
 // One subnet's 7d/30d uptime + latency trend per operational surface, over the
 // ranked-dedup CTE shared with the percentiles/incidents routes. The windows are

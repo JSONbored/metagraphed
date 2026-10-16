@@ -11,7 +11,7 @@ import {
   DEFAULT_HISTORY_WINDOW,
   parseHistoryWindow,
 } from "./neuron-history.ts";
-import { storeAll, type ObservationsReadDb } from "./analytics-live.ts";
+import { storeAll, type ObservationsReadDb } from "./analytics-store-read.ts";
 import { DAY_MS } from "../workers/config.ts";
 
 // ~129 netuids (128 subnets + root) × 365 days ≈ 47k rows for `all`;

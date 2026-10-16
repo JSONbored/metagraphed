@@ -20,7 +20,7 @@ import {
   HEALTH_TREND_WINDOWS,
   MAX_BULK_TREND_ROWS,
 } from "../workers/config.ts";
-import { storeAll, type ObservationsReadDb } from "./analytics-live.ts";
+import { storeAll, type ObservationsReadDb } from "./analytics-store-read.ts";
 import { formatBulkTrends, utcWindowCutoffDay } from "./health-serving.ts";
 
 /** Sum of healthy readings behind the day's mean, 0 when the day has no mean. */

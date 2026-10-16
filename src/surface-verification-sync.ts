@@ -41,10 +41,8 @@ import { generatedArtifactStore } from "./generated-artifact-store.ts";
 // and it grows one query per newly registered subnet.
 
 import type { StorageReadResult } from "../workers/storage.ts";
-import {
-  currentStoreReadFailureGeneration,
-  loadSubnetUptime,
-} from "./analytics-live.ts";
+import { currentStoreReadFailureGeneration } from "./analytics-store-read.ts";
+import { loadSubnetUptime } from "./uptime-read.ts";
 import { KV_HEALTH_META } from "./kv-keys.ts";
 import {
   buildSurfaceHealthArtifact,

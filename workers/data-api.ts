@@ -14,7 +14,7 @@ const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import {
   parseCompareHotkeys,
   COMPARE_VALIDATORS_MAX,
-} from "../src/analytics-live.ts";
+} from "../src/compare-validator-input.ts";
 import { withRequestCounters } from "../src/request-counters.ts";
 import { sha256Hex } from "../src/sha256-hex.ts";
 import { writeNeuronHistory } from "../src/neuron-history-write.ts";

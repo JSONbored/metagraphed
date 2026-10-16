@@ -19,7 +19,7 @@ import {
   FEED_PAGINATION,
 } from "../workers/request-params.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
-import { storeAll } from "./analytics-live.ts";
+import { storeAll } from "./analytics-store-read.ts";
 import { readStore } from "./read-store.ts";
 // The one table latestIdentityHashes reads (#10700), declared where every
 // other read-store table set is.

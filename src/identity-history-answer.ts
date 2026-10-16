@@ -37,7 +37,7 @@ import {
 import { loadChainIdentityHistory } from "./chain-identity-history.ts";
 import { SUBNET_IDENTITY_HISTORY_TABLES } from "./read-store-tables.ts";
 import { readStore } from "./read-store.ts";
-import { storeAll } from "./analytics-live.ts";
+import { storeAll } from "./analytics-store-read.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { ArtifactEnv } from "../workers/storage.ts";

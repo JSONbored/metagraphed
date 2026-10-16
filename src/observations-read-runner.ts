@@ -32,7 +32,7 @@ import { selectedD1Store } from "./d1-store.ts";
 // the payload is not edge-cached as fresh. So this selector is allowed to fall
 // back to the store silently, which is NOT true of the write path in
 // src/observations-neon.ts -- a probe not stored is gone.
-import type { ObservationsReadDb } from "./analytics-live.ts";
+import type { ObservationsReadDb } from "./analytics-store-read.ts";
 import {
   neonOwnsObservations,
   OBSERVATION_TABLES,

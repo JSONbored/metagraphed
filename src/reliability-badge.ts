@@ -1,19 +1,7 @@
-// The badge's reliability aggregate, and why it does not live in health-serving.
-//
-// It reads surface_uptime_daily through `loadSubnetUptime`, which lives in
-// src/analytics-live.ts -- and analytics-live already imports
-// src/health-serving.ts. Putting this back there closes that into a cycle, and
-// the cycle is not merely untidy: analytics-live reaches
-// workers/request-handlers/analytics-routes.ts and from there
-// workers/responses.ts, whose module-level `SERVICE_DESC_LINK` template then
-// evaluates before `PRIMARY_DOMAIN` is initialised. The build fails at the
-// openapi-zod step with `Cannot access 'PRIMARY_DOMAIN' before initialization`
-// -- a TDZ error hundreds of modules away from the import that caused it.
-//
-// src/badge.ts is the only consumer and nothing analytics-live reaches imports
-// it, so this side of the edge is the one with no cycle to close.
+// Reliability aggregation stays separate from pure formatting. Its bounded
+// uptime query no longer imports the analytics orchestrator or request handlers.
 import { scoreFromStats } from "./reliability.ts";
-import { loadSubnetUptime } from "./analytics-live.ts";
+import { loadSubnetUptime } from "./uptime-read.ts";
 import { readStore } from "./read-store.ts";
 import { UPTIME_DAILY_TABLES } from "./read-store-tables.ts";
 

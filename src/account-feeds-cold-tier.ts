@@ -55,7 +55,7 @@ import {
   NOMINATOR_SORTS,
   NOMINATOR_WINDOWS,
 } from "./validator-nominators.ts";
-import { storeAll } from "./analytics-live.ts";
+import { storeAll } from "./analytics-store-read.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { safeBlockNumber, safeSs58Literal } from "./history-readers.ts";
 import { loadAccountSummaryProjection } from "./account-summary-projection.ts";
