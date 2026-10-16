@@ -631,3 +631,154 @@ test("a later detail rollback cannot leave a retained hot hash without its accou
   assert.deepEqual(await answerExtrinsicDetail(owned, hash, cold), before);
   assert.equal(cold.mock.calls.length, 0);
 });
+
+async function accountOnlyFixture() {
+  const detailFloor = head - 1800 + 1;
+  const old = accountFloor - 500;
+  for (const block of [detailFloor, head])
+    await db
+      .prepare(
+        "INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'hash',0,0,0,1,1)",
+      )
+      .bind(block)
+      .run();
+  for (let offset = 0; offset <= 240; offset++)
+    await db
+      .prepare(
+        "INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,amount_tao,alpha_amount,observed_at) VALUES(?,0,'Transfer','0.0000000000000000001',NULL,1)",
+      )
+      .bind(old + offset)
+      .run();
+  const selected = selectedHistory({
+    blocks: head,
+    extrinsics: head,
+    chain_events: head,
+    account_events: head,
+  });
+  return { old, detailFloor, selected };
+}
+
+for (const family of ["blocks", "extrinsics", "chain_events", "account_events"])
+  test.each(["missing", "partial", "malformed"])(
+    `account-only retention refuses ${family} coverage that is %s`,
+    async (state) => {
+      const { selected } = await accountOnlyFixture();
+      const original = selected.METAGRAPH_ARCHIVE.get.getMockImplementation()!;
+      selected.METAGRAPH_ARCHIVE.get.mockImplementation(async (key) => {
+        if (!key.includes(`/${family}/`)) return original(key);
+        if (state === "missing") return null;
+        const object = await original(key);
+        return {
+          ...object!,
+          json: async () => ({
+            ...(await object!.json()),
+            ...(state === "malformed" ? { version: 999 } : { firstBlock: 1 }),
+          }),
+        };
+      });
+      const before = await Promise.all(tables.map(blocks));
+      const batch = vi.fn(db.batch.bind(db));
+      const result = await pruneChainDetail(
+        {
+          ...env(),
+          ...selected,
+          D1_STATE: { prepare: db.prepare.bind(db), batch },
+        },
+        ctx,
+      );
+      assert.equal(result.ok, false);
+      assert.equal(result.reason, "prune_failed");
+      assert.equal(batch.mock.calls.length, 0);
+      assert.deepEqual(await Promise.all(tables.map(blocks)), before);
+      assert.equal(pg.control.connects, 0);
+    },
+  );
+
+test("account-only retention bounds twelve ten-height transactions and preserves exact survivors", async () => {
+  const { old, selected } = await accountOnlyFixture();
+  const before = await db
+    .prepare(
+      "SELECT * FROM chain_detail_account_events ORDER BY block_number,event_index",
+    )
+    .all();
+  const prepare = vi.fn(db.prepare.bind(db));
+  const batch = vi.fn(db.batch.bind(db));
+  const result = await pruneChainDetail(
+    {
+      ...env(),
+      ...selected,
+      D1_STATE: { prepare, batch },
+    },
+    ctx,
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 0);
+  assert.equal(result.account_events_blocks_pruned, 120);
+  assert.equal(batch.mock.calls.length, 12);
+  for (const [statements] of batch.mock.calls)
+    assert.equal(statements.length, 1);
+  const deletes = prepare.mock.calls
+    .map(([sql]) => sql)
+    .filter((sql) => sql.startsWith("DELETE"));
+  assert.equal(deletes.length, 12);
+  assert.ok(
+    deletes.every(
+      (sql) =>
+        sql ===
+        "DELETE FROM chain_detail_account_events WHERE block_number >= ? AND block_number < ?",
+    ),
+  );
+  assert.deepEqual(
+    (
+      await db
+        .prepare(
+          "SELECT * FROM chain_detail_account_events ORDER BY block_number,event_index",
+        )
+        .all()
+    ).results,
+    before.results.filter((row) => Number(row.block_number) >= old + 120),
+  );
+  assert.equal(selected.METAGRAPH_ARCHIVE.get.mock.calls.length, 4);
+  assert.equal(pg.control.connects, 0);
+});
+
+test("a lost account-delete acknowledgement stops writes and a fresh invocation rechecks coverage and its floor", async () => {
+  const { old, selected } = await accountOnlyFixture();
+  let calls = 0;
+  const batch = async (statements: D1PreparedStatement[]) => {
+    calls++;
+    const result = await db.batch(statements);
+    if (calls === 2) throw new Error("accepted delete acknowledgement lost");
+    return result;
+  };
+  const owned = {
+    ...env(),
+    ...selected,
+    D1_STATE: { prepare: db.prepare.bind(db), batch },
+  };
+  const failed = await pruneChainDetail(owned, ctx);
+  assert.equal(failed.ok, false);
+  assert.match(failed.detail!, /acknowledgement lost/);
+  assert.equal(failed.account_events_blocks_pruned, undefined);
+  assert.equal(calls, 2);
+  assert.deepEqual(
+    await blocks("chain_detail_account_events"),
+    Array.from({ length: 221 }, (_, i) => old + 20 + i),
+  );
+  const original = selected.METAGRAPH_ARCHIVE.get.getMockImplementation()!;
+  selected.METAGRAPH_ARCHIVE.get.mockResolvedValue(null);
+  const refused = await pruneChainDetail(owned, ctx);
+  assert.equal(refused.ok, false);
+  assert.equal(calls, 2);
+  selected.METAGRAPH_ARCHIVE.get.mockImplementation(original);
+  const resumed = await pruneChainDetail(owned, ctx);
+  assert.equal(resumed.ok, true);
+  assert.equal(resumed.account_events_deleted_below, old + 140);
+  assert.equal(resumed.account_events_blocks_pruned, 120);
+  assert.equal(calls, 14);
+  assert.deepEqual(
+    await blocks("chain_detail_account_events"),
+    Array.from({ length: 101 }, (_, i) => old + 140 + i),
+  );
+  assert.equal(pg.control.connects, 0);
+});
