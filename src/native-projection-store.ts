@@ -8,6 +8,7 @@ import { nativeProjectionD1 } from "./native-projection-d1.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { CHAIN_FIREHOSE_TOPICS } from "./chain-firehose-topics.ts";
 import { HistoryObjectSchema } from "../schemas-src/artifacts/history-generation.ts";
+import { RetainedBlockStateSchema } from "./retained-blocks-d1.ts";
 
 export const NATIVE_PROJECTION_FILES = [
   "blocks-summary.json",
@@ -41,6 +42,21 @@ const SourceSchema = z.strictObject({
   coverage: z.string().nullable(),
   cutoff: z.number().int().nonnegative(),
   runtimeCuration: HistoryObjectSchema.optional(),
+  retainedBlocks: z
+    .strictObject({
+      databaseId: z.string().uuid(),
+      state: RetainedBlockStateSchema,
+      transitions: z
+        .array(
+          z.strictObject({
+            snapshot: z.string().regex(/^[0-9]+$/),
+            operation: z.enum(["replace", "append"]),
+            rows: z.number().int().nonnegative().safe(),
+          }),
+        )
+        .max(10_000),
+    })
+    .optional(),
 });
 const ManifestSchema = z.strictObject({
   version: z.literal(1),
@@ -96,6 +112,45 @@ export function isNativeProjectionKey(key: string): boolean {
   );
 }
 
+function validRetainedBlocks(
+  source: z.infer<typeof SourceSchema>,
+  network: ChainNetworkId,
+  generatedAt: number,
+): boolean {
+  const retained = source.retainedBlocks;
+  if (!retained) return true;
+  const { state, transitions } = retained;
+  if (
+    source.table !== "blocks" ||
+    state.network !== (network === "mainnet" ? 0 : 1) ||
+    state.table_uuid !== source.table_uuid ||
+    state.generated_at > generatedAt ||
+    state.source_files < 1 ||
+    state.source_files > state.source_rows ||
+    state.sequence < 1 ||
+    source.sequence - state.sequence < transitions.length
+  )
+    return false;
+  let snapshot = state.snapshot;
+  let rows = state.source_rows;
+  const seen = new Set([snapshot]);
+  for (const transition of transitions) {
+    if (
+      seen.has(transition.snapshot) ||
+      transition.rows < rows ||
+      (transition.operation === "replace" && transition.rows !== rows)
+    )
+      return false;
+    seen.add(transition.snapshot);
+    snapshot = transition.snapshot;
+    rows = transition.rows;
+  }
+  return (
+    snapshot === source.snapshot &&
+    (transitions.length > 0 || state.sequence === source.sequence)
+  );
+}
+
 export function validateNativeProjectionManifest(
   value: unknown,
   network: ChainNetworkId,
@@ -116,6 +171,7 @@ export function validateNativeProjectionManifest(
       (source) =>
         source.network !== network ||
         source.cutoff !== manifest.generatedAt - 90 * 86_400_000 ||
+        !validRetainedBlocks(source, network, manifest.generatedAt) ||
         (source.runtimeCuration !== undefined &&
           (source.table !== "account_events" ||
             !new RegExp(

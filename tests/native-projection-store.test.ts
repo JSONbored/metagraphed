@@ -21,6 +21,8 @@ import {
 import * as axonProjection from "../src/axon-removals-loader.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
 import type { ChainNetworkId } from "../src/chain-network.ts";
+import type { NativeProjectionManifest } from "../src/native-projection-store.ts";
+import { retainedProjectionCases } from "./helpers/retained-projection-contract.ts";
 
 type ObjectFixture = { raw: string; etag: string; size: number };
 const objects: Record<string, ObjectFixture> = JSON.parse(
@@ -64,6 +66,54 @@ beforeEach(() => {
   vi.spyOn(Date, "now").mockReturnValue(now);
 });
 afterEach(() => vi.restoreAllMocks());
+
+test("actual retained producer plans preserve their complete provenance through the public reader", async () => {
+  assert.equal(retainedProjectionCases.length, 6);
+  for (const { network, scenario, plan, manifest } of retainedProjectionCases) {
+    assert.deepEqual(validateNativeProjectionManifest(manifest, network), manifest, scenario);
+    const { env, records } = fixture();
+    const raw = JSON.stringify(manifest);
+    records[currentKey(network)] = { raw, etag: "synthetic", size: Buffer.byteLength(raw) };
+    const actual = await loadNativeProjectionManifest(env, network, true);
+    assert.deepEqual(actual, manifest);
+    assert.deepEqual(actual!.sources[0]!.retainedBlocks, plan.retainedBlocks);
+  }
+});
+
+test("retained projection provenance rejects foreign state, unsupported lineage and unknown fields", () => {
+  const blocks = (value: NativeProjectionManifest) => value.sources[0]!;
+  const retained = (value: NativeProjectionManifest) => blocks(value).retainedBlocks!;
+  const state = (value: NativeProjectionManifest) => retained(value).state;
+  const mutate: ((value: NativeProjectionManifest) => void)[] = [
+    (value) => { value.sources[1]!.retainedBlocks = retained(value); },
+    (value) => { state(value).network = 1; },
+    (value) => { state(value).table_uuid = "99999999-2222-4333-8444-555555555555"; },
+    (value) => { state(value).generated_at = value.generatedAt + 1; },
+    (value) => { state(value).source_files = 0; },
+    (value) => { state(value).source_files = state(value).source_rows + 1; },
+    (value) => { state(value).sequence = 0; },
+    (value) => { state(value).sequence = blocks(value).sequence + 1; },
+    (value) => { blocks(value).sequence = state(value).sequence + 1; },
+    (value) => { retained(value).transitions[0]!.snapshot = state(value).snapshot; },
+    (value) => { retained(value).transitions[0]!.rows = 0; },
+    (value) => { retained(value).transitions[0]!.rows = state(value).source_rows + 1; },
+    (value) => { retained(value).transitions[1]!.rows = state(value).source_rows - 1; },
+    (value) => { blocks(value).snapshot = "999"; },
+    (value) => { retained(value).transitions = []; blocks(value).snapshot = state(value).snapshot; },
+    (value) => { Object.assign(retained(value), { recoveryGeneration: "unknown" }); },
+    (value) => { Object.assign(state(value), { recoveryGeneration: "unknown" }); },
+    (value) => { Object.assign(retained(value).transitions[0]!, { parent: "unknown" }); },
+    (value) => { retained(value).databaseId = "invalid"; },
+    (value) => { Object.assign(retained(value).transitions[0]!, { operation: "delete" }); },
+    (value) => { state(value).source_rows = Number.MAX_SAFE_INTEGER + 1; },
+    (value) => { retained(value).transitions = Array.from({ length: 10_001 }, () => retained(value).transitions[0]!); },
+  ];
+  for (const change of mutate) {
+    const value = structuredClone(retainedProjectionCases[2]!.manifest);
+    change(value);
+    assert.equal(validateNativeProjectionManifest(value, "mainnet"), null);
+  }
+});
 
 test("native producer manifests cover every canonical artifact and preserve its bytes", async () => {
   const { env, gets } = fixture();

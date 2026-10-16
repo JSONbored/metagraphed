@@ -1,0 +1,2240 @@
+{
+  "cases": [
+    {
+      "manifest": {
+        "artifacts": [
+          {
+            "artifactKey": "metagraph/projections/blocks-summary.json",
+            "object": {
+              "bytes": 863,
+              "etag": "29bc09bf1f971dea2212b970f96a5d43",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/blocks-summary.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-registrations.json",
+            "object": {
+              "bytes": 506,
+              "etag": "f4ef856a31b6b773c79d4588aaa101fc",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-registrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-deregistrations.json",
+            "object": {
+              "bytes": 1720,
+              "etag": "1e89fee2b1a2a97496e28a5b4030c61a",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-deregistrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-deregistrations-by-hotkey.json",
+            "object": {
+              "bytes": 1036,
+              "etag": "5271759463cf016ee0cba229a8d9104a",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-deregistrations-by-hotkey.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-deregistrations-by-uid.json",
+            "object": {
+              "bytes": 1038,
+              "etag": "01ae2e5fef50210c26350121ab134fc4",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-deregistrations-by-uid.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-transfers.json",
+            "object": {
+              "bytes": 1094,
+              "etag": "e997a64a042d564644550101c5913d2c",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-transfers.json"
+            },
+            "rowCount": 12
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-stake-flow.json",
+            "object": {
+              "bytes": 2198,
+              "etag": "d869bb5640aa2be87701919202e1de0c",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-stake-flow.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-activity.json",
+            "object": {
+              "bytes": 1522,
+              "etag": "3fece119bc62cf2024aacaa7bc31a55d",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-activity.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-calls.json",
+            "object": {
+              "bytes": 4630,
+              "etag": "98b5baaa0e5698f0941c9b1895e20962",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-calls.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-fees.json",
+            "object": {
+              "bytes": 8379,
+              "etag": "cf0deda07840903c8f435d09eed2e98a",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-fees.json"
+            },
+            "rowCount": 13
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-signers.json",
+            "object": {
+              "bytes": 3969,
+              "etag": "dfe316ff0670a7af107cee024d105d27",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-signers.json"
+            },
+            "rowCount": 8
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-alpha-volume.json",
+            "object": {
+              "bytes": 846,
+              "etag": "57cf0de78e8672929c6984e08f8d8e0f",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-alpha-volume.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-stake-transfers.json",
+            "object": {
+              "bytes": 568,
+              "etag": "9236995cb85bc2cebcb10b26f14a89b9",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-stake-transfers.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-transfer-pairs.json",
+            "object": {
+              "bytes": 4631,
+              "etag": "80de630968e0496d60793c57ee477ff8",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-transfer-pairs.json"
+            },
+            "rowCount": 32
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-stake-moves.json",
+            "object": {
+              "bytes": 560,
+              "etag": "6eca38f4361d212e6554d3ea63e07788",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-stake-moves.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-serving.json",
+            "object": {
+              "bytes": 482,
+              "etag": "1dfb27e8220d03ecb782264719593620",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-serving.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-prometheus.json",
+            "object": {
+              "bytes": 494,
+              "etag": "6e24e12fa5d4e9f93fb32ee2d52a9fa5",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-prometheus.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-weights.json",
+            "object": {
+              "bytes": 474,
+              "etag": "a262fa7b2ace39cb1c9a1664c8f9d834",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-weights.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-weight-setters.json",
+            "object": {
+              "bytes": 1190,
+              "etag": "2f5a76b1b02647c8092b54ae6d1efb68",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-weight-setters.json"
+            },
+            "rowCount": 10
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-ownership.json",
+            "object": {
+              "bytes": 338,
+              "etag": "9adb428bcd8d824663e8d815dd18cfa3",
+              "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-ownership.json"
+            },
+            "rowCount": 1
+          }
+        ],
+        "generatedAt": 1790184000000,
+        "generation": "1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92",
+        "network": "mainnet",
+        "readerCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "retainedBlocks": {
+              "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+              "state": {
+                "coverage": "{\"version\": 1, \"network\": \"mainnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+                "generated_at": 100,
+                "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "network": 0,
+                "sequence": 1,
+                "snapshot": "1",
+                "source_files": 2,
+                "source_rows": 6,
+                "table_uuid": "11111111-2222-4333-8444-555555555555"
+              },
+              "transitions": []
+            },
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "blocks",
+            "table_uuid": "11111111-2222-4333-8444-555555555555",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "extrinsics",
+            "table_uuid": "extrinsics-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "account_events",
+            "table_uuid": "account_events-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "chain_events",
+            "table_uuid": "chain_events-uuid",
+            "version": 1
+          }
+        ],
+        "state": "complete",
+        "version": 1
+      },
+      "network": "mainnet",
+      "plan": {
+        "coverage": null,
+        "cutoff": 1782408000000,
+        "network": "mainnet",
+        "retainedBlocks": {
+          "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "state": {
+            "coverage": "{\"version\": 1, \"network\": \"mainnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+            "generated_at": 100,
+            "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "network": 0,
+            "sequence": 1,
+            "snapshot": "1",
+            "source_files": 2,
+            "source_rows": 6,
+            "table_uuid": "11111111-2222-4333-8444-555555555555"
+          },
+          "transitions": []
+        },
+        "sequence": 1,
+        "snapshot": "1",
+        "sources": [
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-1.parquet",
+            "network": "mainnet",
+            "rows": 3,
+            "table": "blocks"
+          },
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-0.parquet",
+            "network": "mainnet",
+            "rows": 3,
+            "table": "blocks"
+          }
+        ],
+        "table": "blocks",
+        "table_uuid": "11111111-2222-4333-8444-555555555555",
+        "version": 1
+      },
+      "readback": {
+        "expectedBody": {
+          "generated_at": "2026-09-23T17:20:00.000Z",
+          "row_count": 28,
+          "schema_version": 1,
+          "summary": {
+            "author_concentration": {
+              "entropy": 1.583143,
+              "entropy_normalized": 0.998852,
+              "gini": 0.02381,
+              "hhi": 0.334184,
+              "hhi_normalized": 0.001276,
+              "holders": 3,
+              "nakamoto_coefficient": 2,
+              "top_10pct_share": 0.357143,
+              "top_1pct_share": 0.357143,
+              "top_20pct_share": 0.357143,
+              "top_5pct_share": 0.357143,
+              "total": 28
+            },
+            "block_count": 28,
+            "block_time": {
+              "count": 27,
+              "max_ms": 5183939999,
+              "mean_ms": 320002222,
+              "min_ms": 1,
+              "p50_ms": 1,
+              "p90_ms": 863939999
+            },
+            "distinct_authors": 3,
+            "distinct_spec_versions": 1,
+            "first_block": 100,
+            "first_observed_at": "2026-06-15T17:19:59.999Z",
+            "last_block": 127,
+            "last_observed_at": "2026-09-23T17:21:00.000Z",
+            "latest_spec_version": 300,
+            "schema_version": 1,
+            "throughput": {
+              "max_extrinsics_in_block": 8,
+              "mean_events_per_block": 13.89,
+              "mean_extrinsics_per_block": 5,
+              "total_events": 389,
+              "total_extrinsics": 140
+            }
+          }
+        },
+        "rows": [
+          {
+            "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/blocks-summary.json",
+            "payload": "{\"bytes\":863,\"compressedBytes\":424,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"format\":\"gzip-json-v1\",\"parts\":1,\"sha256\":\"c794c7e502389d681b18f5238a9a9ad7cc47207d4172d1e8b5b501ae49900481\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/blocks-summary.json/chunks/0",
+            "payload": "{\"data\":\"H4sIAAAAAAAAA3VSy27DIBD8F85OxCMk4O/oqRdEHRKj2mABTh9R/r0LfsitGk7s7A47zO4dXY0zQSdzVjqhGlFMjzssd5S9kFNNcY3xHmP8iioU/Idq/OigjIoKxaY1vVY3E6L1DtUEoLHvdfhC9R3pMbU+QL1rjEvQoNTcUQ78ACVkzwUjB1YtkHI+9Lqz3+aMaryXUghOK3S1zuYYUyagRduWiLEDEYcS/uFhTOjpCBnfnUEaqqGD0++698mDHHO52Maa8okKJT8ogocmqdjqYMrL/FRUldTTDH1O4k8ySXfZuEeF3jrfvG+tnIBke5MtWhKnCvX6U/XwB04Ek0zCAcxoV0BGYTAUDmB2gsCggeP1KqerOM5k6H22MVkHCqcBTf6sYBxMs0x0euNiQ0yqCIQY4wXxb9GE2++tOe4Iz1tDZM0lDFDmren0hp//VID/6OvSkc3SdbCa8bcwkJx1/LN/qQ1+vLbDmLKP2TzzmYJ10TZRgUWzDDGbaG6wB1ENJqwC2V4sFm+omwo+j3Img5ZMmKGVAS8d8OPx+AGBP5PSXwMAAA==\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/mainnet/current.json",
+            "payload": "{\"artifacts\":[{\"artifactKey\":\"metagraph/projections/blocks-summary.json\",\"object\":{\"bytes\":863,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/blocks-summary.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/chain-registrations.json\",\"object\":{\"bytes\":506,\"etag\":\"f4ef856a31b6b773c79d4588aaa101fc\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-registrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-deregistrations.json\",\"object\":{\"bytes\":1720,\"etag\":\"1e89fee2b1a2a97496e28a5b4030c61a\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-deregistrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-deregistrations-by-hotkey.json\",\"object\":{\"bytes\":1036,\"etag\":\"5271759463cf016ee0cba229a8d9104a\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-deregistrations-by-hotkey.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/chain-deregistrations-by-uid.json\",\"object\":{\"bytes\":1038,\"etag\":\"01ae2e5fef50210c26350121ab134fc4\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-deregistrations-by-uid.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/chain-transfers.json\",\"object\":{\"bytes\":1094,\"etag\":\"e997a64a042d564644550101c5913d2c\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-transfers.json\"},\"rowCount\":12},{\"artifactKey\":\"metagraph/projections/chain-stake-flow.json\",\"object\":{\"bytes\":2198,\"etag\":\"d869bb5640aa2be87701919202e1de0c\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-stake-flow.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/chain-activity.json\",\"object\":{\"bytes\":1522,\"etag\":\"3fece119bc62cf2024aacaa7bc31a55d\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-activity.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/chain-calls.json\",\"object\":{\"bytes\":4630,\"etag\":\"98b5baaa0e5698f0941c9b1895e20962\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-calls.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/chain-fees.json\",\"object\":{\"bytes\":8379,\"etag\":\"cf0deda07840903c8f435d09eed2e98a\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-fees.json\"},\"rowCount\":13},{\"artifactKey\":\"metagraph/projections/chain-signers.json\",\"object\":{\"bytes\":3969,\"etag\":\"dfe316ff0670a7af107cee024d105d27\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-signers.json\"},\"rowCount\":8},{\"artifactKey\":\"metagraph/projections/chain-alpha-volume.json\",\"object\":{\"bytes\":846,\"etag\":\"57cf0de78e8672929c6984e08f8d8e0f\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-alpha-volume.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/chain-stake-transfers.json\",\"object\":{\"bytes\":568,\"etag\":\"9236995cb85bc2cebcb10b26f14a89b9\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-stake-transfers.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/chain-transfer-pairs.json\",\"object\":{\"bytes\":4631,\"etag\":\"80de630968e0496d60793c57ee477ff8\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-transfer-pairs.json\"},\"rowCount\":32},{\"artifactKey\":\"metagraph/projections/chain-stake-moves.json\",\"object\":{\"bytes\":560,\"etag\":\"6eca38f4361d212e6554d3ea63e07788\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-stake-moves.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/chain-serving.json\",\"object\":{\"bytes\":482,\"etag\":\"1dfb27e8220d03ecb782264719593620\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-serving.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-prometheus.json\",\"object\":{\"bytes\":494,\"etag\":\"6e24e12fa5d4e9f93fb32ee2d52a9fa5\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-prometheus.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-weights.json\",\"object\":{\"bytes\":474,\"etag\":\"a262fa7b2ace39cb1c9a1664c8f9d834\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-weights.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-weight-setters.json\",\"object\":{\"bytes\":1190,\"etag\":\"2f5a76b1b02647c8092b54ae6d1efb68\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-weight-setters.json\"},\"rowCount\":10},{\"artifactKey\":\"metagraph/projections/chain-ownership.json\",\"object\":{\"bytes\":338,\"etag\":\"9adb428bcd8d824663e8d815dd18cfa3\",\"key\":\"metagraph/native-projections/v1/mainnet/1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92/chain-ownership.json\"},\"rowCount\":1}],\"generatedAt\":1790184000000,\"generation\":\"1a552f04aa464f9fa018cec44588c21ca4111876a579559fb3a85599549b7f92\",\"network\":\"mainnet\",\"readerCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"sources\":[{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"retainedBlocks\":{\"databaseId\":\"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\",\"state\":{\"coverage\":\"{\\\"version\\\": 1, \\\"network\\\": \\\"mainnet\\\", \\\"table_uuid\\\": \\\"11111111-2222-4333-8444-555555555555\\\", \\\"floor\\\": 0, \\\"covered_through\\\": 99, \\\"sequence_number\\\": 1}\",\"generated_at\":100,\"generation\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"network\":0,\"sequence\":1,\"snapshot\":\"1\",\"source_files\":2,\"source_rows\":6,\"table_uuid\":\"11111111-2222-4333-8444-555555555555\"},\"transitions\":[]},\"sequence\":1,\"snapshot\":\"1\",\"table\":\"blocks\",\"table_uuid\":\"11111111-2222-4333-8444-555555555555\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"extrinsics\",\"table_uuid\":\"extrinsics-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"account_events\",\"table_uuid\":\"account_events-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"chain_events\",\"table_uuid\":\"chain_events-uuid\",\"version\":1}],\"state\":\"complete\",\"version\":1}"
+          }
+        ]
+      },
+      "scenario": "selected"
+    },
+    {
+      "manifest": {
+        "artifacts": [
+          {
+            "artifactKey": "metagraph/projections/blocks-summary.json",
+            "object": {
+              "bytes": 863,
+              "etag": "29bc09bf1f971dea2212b970f96a5d43",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/blocks-summary.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-registrations.json",
+            "object": {
+              "bytes": 506,
+              "etag": "f4ef856a31b6b773c79d4588aaa101fc",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-registrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-deregistrations.json",
+            "object": {
+              "bytes": 1720,
+              "etag": "1e89fee2b1a2a97496e28a5b4030c61a",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-deregistrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-deregistrations-by-hotkey.json",
+            "object": {
+              "bytes": 1036,
+              "etag": "5271759463cf016ee0cba229a8d9104a",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-deregistrations-by-hotkey.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-deregistrations-by-uid.json",
+            "object": {
+              "bytes": 1038,
+              "etag": "01ae2e5fef50210c26350121ab134fc4",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-deregistrations-by-uid.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-transfers.json",
+            "object": {
+              "bytes": 1094,
+              "etag": "e997a64a042d564644550101c5913d2c",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-transfers.json"
+            },
+            "rowCount": 12
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-stake-flow.json",
+            "object": {
+              "bytes": 2198,
+              "etag": "d869bb5640aa2be87701919202e1de0c",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-stake-flow.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-activity.json",
+            "object": {
+              "bytes": 1522,
+              "etag": "3fece119bc62cf2024aacaa7bc31a55d",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-activity.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-calls.json",
+            "object": {
+              "bytes": 4630,
+              "etag": "98b5baaa0e5698f0941c9b1895e20962",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-calls.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-fees.json",
+            "object": {
+              "bytes": 8379,
+              "etag": "cf0deda07840903c8f435d09eed2e98a",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-fees.json"
+            },
+            "rowCount": 13
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-signers.json",
+            "object": {
+              "bytes": 3969,
+              "etag": "dfe316ff0670a7af107cee024d105d27",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-signers.json"
+            },
+            "rowCount": 8
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-alpha-volume.json",
+            "object": {
+              "bytes": 846,
+              "etag": "57cf0de78e8672929c6984e08f8d8e0f",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-alpha-volume.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-stake-transfers.json",
+            "object": {
+              "bytes": 568,
+              "etag": "9236995cb85bc2cebcb10b26f14a89b9",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-stake-transfers.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-transfer-pairs.json",
+            "object": {
+              "bytes": 4631,
+              "etag": "80de630968e0496d60793c57ee477ff8",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-transfer-pairs.json"
+            },
+            "rowCount": 32
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-stake-moves.json",
+            "object": {
+              "bytes": 560,
+              "etag": "6eca38f4361d212e6554d3ea63e07788",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-stake-moves.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-serving.json",
+            "object": {
+              "bytes": 482,
+              "etag": "1dfb27e8220d03ecb782264719593620",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-serving.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-prometheus.json",
+            "object": {
+              "bytes": 494,
+              "etag": "6e24e12fa5d4e9f93fb32ee2d52a9fa5",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-prometheus.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-weights.json",
+            "object": {
+              "bytes": 474,
+              "etag": "a262fa7b2ace39cb1c9a1664c8f9d834",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-weights.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-weight-setters.json",
+            "object": {
+              "bytes": 1190,
+              "etag": "2f5a76b1b02647c8092b54ae6d1efb68",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-weight-setters.json"
+            },
+            "rowCount": 10
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-ownership.json",
+            "object": {
+              "bytes": 338,
+              "etag": "9adb428bcd8d824663e8d815dd18cfa3",
+              "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-ownership.json"
+            },
+            "rowCount": 1
+          }
+        ],
+        "generatedAt": 1790184000000,
+        "generation": "2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed",
+        "network": "mainnet",
+        "readerCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "retainedBlocks": {
+              "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+              "state": {
+                "coverage": "{\"version\": 1, \"network\": \"mainnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+                "generated_at": 100,
+                "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "network": 0,
+                "sequence": 1,
+                "snapshot": "1",
+                "source_files": 2,
+                "source_rows": 6,
+                "table_uuid": "11111111-2222-4333-8444-555555555555"
+              },
+              "transitions": [
+                {
+                  "operation": "replace",
+                  "rows": 6,
+                  "snapshot": "2"
+                }
+              ]
+            },
+            "sequence": 2,
+            "snapshot": "2",
+            "table": "blocks",
+            "table_uuid": "11111111-2222-4333-8444-555555555555",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "extrinsics",
+            "table_uuid": "extrinsics-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "account_events",
+            "table_uuid": "account_events-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "chain_events",
+            "table_uuid": "chain_events-uuid",
+            "version": 1
+          }
+        ],
+        "state": "complete",
+        "version": 1
+      },
+      "network": "mainnet",
+      "plan": {
+        "coverage": null,
+        "cutoff": 1782408000000,
+        "network": "mainnet",
+        "retainedBlocks": {
+          "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "state": {
+            "coverage": "{\"version\": 1, \"network\": \"mainnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+            "generated_at": 100,
+            "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "network": 0,
+            "sequence": 1,
+            "snapshot": "1",
+            "source_files": 2,
+            "source_rows": 6,
+            "table_uuid": "11111111-2222-4333-8444-555555555555"
+          },
+          "transitions": [
+            {
+              "operation": "replace",
+              "rows": 6,
+              "snapshot": "2"
+            }
+          ]
+        },
+        "sequence": 2,
+        "snapshot": "2",
+        "sources": [
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-1.parquet",
+            "network": "mainnet",
+            "rows": 3,
+            "table": "blocks"
+          },
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-0.parquet",
+            "network": "mainnet",
+            "rows": 3,
+            "table": "blocks"
+          }
+        ],
+        "table": "blocks",
+        "table_uuid": "11111111-2222-4333-8444-555555555555",
+        "version": 1
+      },
+      "readback": {
+        "expectedBody": {
+          "generated_at": "2026-09-23T17:20:00.000Z",
+          "row_count": 28,
+          "schema_version": 1,
+          "summary": {
+            "author_concentration": {
+              "entropy": 1.583143,
+              "entropy_normalized": 0.998852,
+              "gini": 0.02381,
+              "hhi": 0.334184,
+              "hhi_normalized": 0.001276,
+              "holders": 3,
+              "nakamoto_coefficient": 2,
+              "top_10pct_share": 0.357143,
+              "top_1pct_share": 0.357143,
+              "top_20pct_share": 0.357143,
+              "top_5pct_share": 0.357143,
+              "total": 28
+            },
+            "block_count": 28,
+            "block_time": {
+              "count": 27,
+              "max_ms": 5183939999,
+              "mean_ms": 320002222,
+              "min_ms": 1,
+              "p50_ms": 1,
+              "p90_ms": 863939999
+            },
+            "distinct_authors": 3,
+            "distinct_spec_versions": 1,
+            "first_block": 100,
+            "first_observed_at": "2026-06-15T17:19:59.999Z",
+            "last_block": 127,
+            "last_observed_at": "2026-09-23T17:21:00.000Z",
+            "latest_spec_version": 300,
+            "schema_version": 1,
+            "throughput": {
+              "max_extrinsics_in_block": 8,
+              "mean_events_per_block": 13.89,
+              "mean_extrinsics_per_block": 5,
+              "total_events": 389,
+              "total_extrinsics": 140
+            }
+          }
+        },
+        "rows": [
+          {
+            "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/blocks-summary.json",
+            "payload": "{\"bytes\":863,\"compressedBytes\":424,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"format\":\"gzip-json-v1\",\"parts\":1,\"sha256\":\"c794c7e502389d681b18f5238a9a9ad7cc47207d4172d1e8b5b501ae49900481\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/blocks-summary.json/chunks/0",
+            "payload": "{\"data\":\"H4sIAAAAAAAAA3VSy27DIBD8F85OxCMk4O/oqRdEHRKj2mABTh9R/r0LfsitGk7s7A47zO4dXY0zQSdzVjqhGlFMjzssd5S9kFNNcY3xHmP8iioU/Idq/OigjIoKxaY1vVY3E6L1DtUEoLHvdfhC9R3pMbU+QL1rjEvQoNTcUQ78ACVkzwUjB1YtkHI+9Lqz3+aMaryXUghOK3S1zuYYUyagRduWiLEDEYcS/uFhTOjpCBnfnUEaqqGD0++698mDHHO52Maa8okKJT8ogocmqdjqYMrL/FRUldTTDH1O4k8ySXfZuEeF3jrfvG+tnIBke5MtWhKnCvX6U/XwB04Ek0zCAcxoV0BGYTAUDmB2gsCggeP1KqerOM5k6H22MVkHCqcBTf6sYBxMs0x0euNiQ0yqCIQY4wXxb9GE2++tOe4Iz1tDZM0lDFDmren0hp//VID/6OvSkc3SdbCa8bcwkJx1/LN/qQ1+vLbDmLKP2TzzmYJ10TZRgUWzDDGbaG6wB1ENJqwC2V4sFm+omwo+j3Img5ZMmKGVAS8d8OPx+AGBP5PSXwMAAA==\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/mainnet/current.json",
+            "payload": "{\"artifacts\":[{\"artifactKey\":\"metagraph/projections/blocks-summary.json\",\"object\":{\"bytes\":863,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/blocks-summary.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/chain-registrations.json\",\"object\":{\"bytes\":506,\"etag\":\"f4ef856a31b6b773c79d4588aaa101fc\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-registrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-deregistrations.json\",\"object\":{\"bytes\":1720,\"etag\":\"1e89fee2b1a2a97496e28a5b4030c61a\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-deregistrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-deregistrations-by-hotkey.json\",\"object\":{\"bytes\":1036,\"etag\":\"5271759463cf016ee0cba229a8d9104a\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-deregistrations-by-hotkey.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/chain-deregistrations-by-uid.json\",\"object\":{\"bytes\":1038,\"etag\":\"01ae2e5fef50210c26350121ab134fc4\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-deregistrations-by-uid.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/chain-transfers.json\",\"object\":{\"bytes\":1094,\"etag\":\"e997a64a042d564644550101c5913d2c\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-transfers.json\"},\"rowCount\":12},{\"artifactKey\":\"metagraph/projections/chain-stake-flow.json\",\"object\":{\"bytes\":2198,\"etag\":\"d869bb5640aa2be87701919202e1de0c\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-stake-flow.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/chain-activity.json\",\"object\":{\"bytes\":1522,\"etag\":\"3fece119bc62cf2024aacaa7bc31a55d\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-activity.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/chain-calls.json\",\"object\":{\"bytes\":4630,\"etag\":\"98b5baaa0e5698f0941c9b1895e20962\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-calls.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/chain-fees.json\",\"object\":{\"bytes\":8379,\"etag\":\"cf0deda07840903c8f435d09eed2e98a\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-fees.json\"},\"rowCount\":13},{\"artifactKey\":\"metagraph/projections/chain-signers.json\",\"object\":{\"bytes\":3969,\"etag\":\"dfe316ff0670a7af107cee024d105d27\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-signers.json\"},\"rowCount\":8},{\"artifactKey\":\"metagraph/projections/chain-alpha-volume.json\",\"object\":{\"bytes\":846,\"etag\":\"57cf0de78e8672929c6984e08f8d8e0f\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-alpha-volume.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/chain-stake-transfers.json\",\"object\":{\"bytes\":568,\"etag\":\"9236995cb85bc2cebcb10b26f14a89b9\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-stake-transfers.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/chain-transfer-pairs.json\",\"object\":{\"bytes\":4631,\"etag\":\"80de630968e0496d60793c57ee477ff8\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-transfer-pairs.json\"},\"rowCount\":32},{\"artifactKey\":\"metagraph/projections/chain-stake-moves.json\",\"object\":{\"bytes\":560,\"etag\":\"6eca38f4361d212e6554d3ea63e07788\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-stake-moves.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/chain-serving.json\",\"object\":{\"bytes\":482,\"etag\":\"1dfb27e8220d03ecb782264719593620\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-serving.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-prometheus.json\",\"object\":{\"bytes\":494,\"etag\":\"6e24e12fa5d4e9f93fb32ee2d52a9fa5\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-prometheus.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-weights.json\",\"object\":{\"bytes\":474,\"etag\":\"a262fa7b2ace39cb1c9a1664c8f9d834\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-weights.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-weight-setters.json\",\"object\":{\"bytes\":1190,\"etag\":\"2f5a76b1b02647c8092b54ae6d1efb68\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-weight-setters.json\"},\"rowCount\":10},{\"artifactKey\":\"metagraph/projections/chain-ownership.json\",\"object\":{\"bytes\":338,\"etag\":\"9adb428bcd8d824663e8d815dd18cfa3\",\"key\":\"metagraph/native-projections/v1/mainnet/2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed/chain-ownership.json\"},\"rowCount\":1}],\"generatedAt\":1790184000000,\"generation\":\"2b679542984a107d6c18b835863cb73e6d9a1d754f39c88a41084635736ad5ed\",\"network\":\"mainnet\",\"readerCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"sources\":[{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"retainedBlocks\":{\"databaseId\":\"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\",\"state\":{\"coverage\":\"{\\\"version\\\": 1, \\\"network\\\": \\\"mainnet\\\", \\\"table_uuid\\\": \\\"11111111-2222-4333-8444-555555555555\\\", \\\"floor\\\": 0, \\\"covered_through\\\": 99, \\\"sequence_number\\\": 1}\",\"generated_at\":100,\"generation\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"network\":0,\"sequence\":1,\"snapshot\":\"1\",\"source_files\":2,\"source_rows\":6,\"table_uuid\":\"11111111-2222-4333-8444-555555555555\"},\"transitions\":[{\"operation\":\"replace\",\"rows\":6,\"snapshot\":\"2\"}]},\"sequence\":2,\"snapshot\":\"2\",\"table\":\"blocks\",\"table_uuid\":\"11111111-2222-4333-8444-555555555555\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"extrinsics\",\"table_uuid\":\"extrinsics-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"account_events\",\"table_uuid\":\"account_events-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"chain_events\",\"table_uuid\":\"chain_events-uuid\",\"version\":1}],\"state\":\"complete\",\"version\":1}"
+          }
+        ]
+      },
+      "scenario": "replace"
+    },
+    {
+      "manifest": {
+        "artifacts": [
+          {
+            "artifactKey": "metagraph/projections/blocks-summary.json",
+            "object": {
+              "bytes": 863,
+              "etag": "29bc09bf1f971dea2212b970f96a5d43",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/blocks-summary.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-registrations.json",
+            "object": {
+              "bytes": 506,
+              "etag": "f4ef856a31b6b773c79d4588aaa101fc",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-registrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-deregistrations.json",
+            "object": {
+              "bytes": 1720,
+              "etag": "1e89fee2b1a2a97496e28a5b4030c61a",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-deregistrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-deregistrations-by-hotkey.json",
+            "object": {
+              "bytes": 1036,
+              "etag": "5271759463cf016ee0cba229a8d9104a",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-deregistrations-by-hotkey.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-deregistrations-by-uid.json",
+            "object": {
+              "bytes": 1038,
+              "etag": "01ae2e5fef50210c26350121ab134fc4",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-deregistrations-by-uid.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-transfers.json",
+            "object": {
+              "bytes": 1094,
+              "etag": "e997a64a042d564644550101c5913d2c",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-transfers.json"
+            },
+            "rowCount": 12
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-stake-flow.json",
+            "object": {
+              "bytes": 2198,
+              "etag": "d869bb5640aa2be87701919202e1de0c",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-stake-flow.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-activity.json",
+            "object": {
+              "bytes": 1522,
+              "etag": "3fece119bc62cf2024aacaa7bc31a55d",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-activity.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-calls.json",
+            "object": {
+              "bytes": 4630,
+              "etag": "98b5baaa0e5698f0941c9b1895e20962",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-calls.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-fees.json",
+            "object": {
+              "bytes": 8379,
+              "etag": "cf0deda07840903c8f435d09eed2e98a",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-fees.json"
+            },
+            "rowCount": 13
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-signers.json",
+            "object": {
+              "bytes": 3969,
+              "etag": "dfe316ff0670a7af107cee024d105d27",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-signers.json"
+            },
+            "rowCount": 8
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-alpha-volume.json",
+            "object": {
+              "bytes": 846,
+              "etag": "57cf0de78e8672929c6984e08f8d8e0f",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-alpha-volume.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-stake-transfers.json",
+            "object": {
+              "bytes": 568,
+              "etag": "9236995cb85bc2cebcb10b26f14a89b9",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-stake-transfers.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-transfer-pairs.json",
+            "object": {
+              "bytes": 4631,
+              "etag": "80de630968e0496d60793c57ee477ff8",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-transfer-pairs.json"
+            },
+            "rowCount": 32
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-stake-moves.json",
+            "object": {
+              "bytes": 560,
+              "etag": "6eca38f4361d212e6554d3ea63e07788",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-stake-moves.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-serving.json",
+            "object": {
+              "bytes": 482,
+              "etag": "1dfb27e8220d03ecb782264719593620",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-serving.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-prometheus.json",
+            "object": {
+              "bytes": 494,
+              "etag": "6e24e12fa5d4e9f93fb32ee2d52a9fa5",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-prometheus.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-weights.json",
+            "object": {
+              "bytes": 474,
+              "etag": "a262fa7b2ace39cb1c9a1664c8f9d834",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-weights.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-weight-setters.json",
+            "object": {
+              "bytes": 1190,
+              "etag": "2f5a76b1b02647c8092b54ae6d1efb68",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-weight-setters.json"
+            },
+            "rowCount": 10
+          },
+          {
+            "artifactKey": "metagraph/projections/chain-ownership.json",
+            "object": {
+              "bytes": 338,
+              "etag": "9adb428bcd8d824663e8d815dd18cfa3",
+              "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-ownership.json"
+            },
+            "rowCount": 1
+          }
+        ],
+        "generatedAt": 1790184000000,
+        "generation": "bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573",
+        "network": "mainnet",
+        "readerCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "retainedBlocks": {
+              "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+              "state": {
+                "coverage": "{\"version\": 1, \"network\": \"mainnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+                "generated_at": 100,
+                "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "network": 0,
+                "sequence": 1,
+                "snapshot": "1",
+                "source_files": 2,
+                "source_rows": 6,
+                "table_uuid": "11111111-2222-4333-8444-555555555555"
+              },
+              "transitions": [
+                {
+                  "operation": "replace",
+                  "rows": 6,
+                  "snapshot": "2"
+                },
+                {
+                  "operation": "append",
+                  "rows": 8,
+                  "snapshot": "3"
+                }
+              ]
+            },
+            "sequence": 3,
+            "snapshot": "3",
+            "table": "blocks",
+            "table_uuid": "11111111-2222-4333-8444-555555555555",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "extrinsics",
+            "table_uuid": "extrinsics-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "account_events",
+            "table_uuid": "account_events-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "mainnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "chain_events",
+            "table_uuid": "chain_events-uuid",
+            "version": 1
+          }
+        ],
+        "state": "complete",
+        "version": 1
+      },
+      "network": "mainnet",
+      "plan": {
+        "coverage": null,
+        "cutoff": 1782408000000,
+        "network": "mainnet",
+        "retainedBlocks": {
+          "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "state": {
+            "coverage": "{\"version\": 1, \"network\": \"mainnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+            "generated_at": 100,
+            "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "network": 0,
+            "sequence": 1,
+            "snapshot": "1",
+            "source_files": 2,
+            "source_rows": 6,
+            "table_uuid": "11111111-2222-4333-8444-555555555555"
+          },
+          "transitions": [
+            {
+              "operation": "replace",
+              "rows": 6,
+              "snapshot": "2"
+            },
+            {
+              "operation": "append",
+              "rows": 8,
+              "snapshot": "3"
+            }
+          ]
+        },
+        "sequence": 3,
+        "snapshot": "3",
+        "sources": [
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-1.parquet",
+            "network": "mainnet",
+            "rows": 3,
+            "table": "blocks"
+          },
+          {
+            "bucket": "lake",
+            "bytes": 2542,
+            "etag": "af77d94fdae9c527628bdda271e0f53b",
+            "key": "added.parquet",
+            "network": "mainnet",
+            "rows": 2,
+            "table": "blocks"
+          },
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-0.parquet",
+            "network": "mainnet",
+            "rows": 3,
+            "table": "blocks"
+          }
+        ],
+        "table": "blocks",
+        "table_uuid": "11111111-2222-4333-8444-555555555555",
+        "version": 1
+      },
+      "readback": {
+        "expectedBody": {
+          "generated_at": "2026-09-23T17:20:00.000Z",
+          "row_count": 28,
+          "schema_version": 1,
+          "summary": {
+            "author_concentration": {
+              "entropy": 1.583143,
+              "entropy_normalized": 0.998852,
+              "gini": 0.02381,
+              "hhi": 0.334184,
+              "hhi_normalized": 0.001276,
+              "holders": 3,
+              "nakamoto_coefficient": 2,
+              "top_10pct_share": 0.357143,
+              "top_1pct_share": 0.357143,
+              "top_20pct_share": 0.357143,
+              "top_5pct_share": 0.357143,
+              "total": 28
+            },
+            "block_count": 28,
+            "block_time": {
+              "count": 27,
+              "max_ms": 5183939999,
+              "mean_ms": 320002222,
+              "min_ms": 1,
+              "p50_ms": 1,
+              "p90_ms": 863939999
+            },
+            "distinct_authors": 3,
+            "distinct_spec_versions": 1,
+            "first_block": 100,
+            "first_observed_at": "2026-06-15T17:19:59.999Z",
+            "last_block": 127,
+            "last_observed_at": "2026-09-23T17:21:00.000Z",
+            "latest_spec_version": 300,
+            "schema_version": 1,
+            "throughput": {
+              "max_extrinsics_in_block": 8,
+              "mean_events_per_block": 13.89,
+              "mean_extrinsics_per_block": 5,
+              "total_events": 389,
+              "total_extrinsics": 140
+            }
+          }
+        },
+        "rows": [
+          {
+            "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/blocks-summary.json",
+            "payload": "{\"bytes\":863,\"compressedBytes\":424,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"format\":\"gzip-json-v1\",\"parts\":1,\"sha256\":\"c794c7e502389d681b18f5238a9a9ad7cc47207d4172d1e8b5b501ae49900481\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/blocks-summary.json/chunks/0",
+            "payload": "{\"data\":\"H4sIAAAAAAAAA3VSy27DIBD8F85OxCMk4O/oqRdEHRKj2mABTh9R/r0LfsitGk7s7A47zO4dXY0zQSdzVjqhGlFMjzssd5S9kFNNcY3xHmP8iioU/Idq/OigjIoKxaY1vVY3E6L1DtUEoLHvdfhC9R3pMbU+QL1rjEvQoNTcUQ78ACVkzwUjB1YtkHI+9Lqz3+aMaryXUghOK3S1zuYYUyagRduWiLEDEYcS/uFhTOjpCBnfnUEaqqGD0++698mDHHO52Maa8okKJT8ogocmqdjqYMrL/FRUldTTDH1O4k8ySXfZuEeF3jrfvG+tnIBke5MtWhKnCvX6U/XwB04Ek0zCAcxoV0BGYTAUDmB2gsCggeP1KqerOM5k6H22MVkHCqcBTf6sYBxMs0x0euNiQ0yqCIQY4wXxb9GE2++tOe4Iz1tDZM0lDFDmren0hp//VID/6OvSkc3SdbCa8bcwkJx1/LN/qQ1+vLbDmLKP2TzzmYJ10TZRgUWzDDGbaG6wB1ENJqwC2V4sFm+omwo+j3Img5ZMmKGVAS8d8OPx+AGBP5PSXwMAAA==\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/mainnet/current.json",
+            "payload": "{\"artifacts\":[{\"artifactKey\":\"metagraph/projections/blocks-summary.json\",\"object\":{\"bytes\":863,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/blocks-summary.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/chain-registrations.json\",\"object\":{\"bytes\":506,\"etag\":\"f4ef856a31b6b773c79d4588aaa101fc\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-registrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-deregistrations.json\",\"object\":{\"bytes\":1720,\"etag\":\"1e89fee2b1a2a97496e28a5b4030c61a\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-deregistrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-deregistrations-by-hotkey.json\",\"object\":{\"bytes\":1036,\"etag\":\"5271759463cf016ee0cba229a8d9104a\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-deregistrations-by-hotkey.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/chain-deregistrations-by-uid.json\",\"object\":{\"bytes\":1038,\"etag\":\"01ae2e5fef50210c26350121ab134fc4\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-deregistrations-by-uid.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/chain-transfers.json\",\"object\":{\"bytes\":1094,\"etag\":\"e997a64a042d564644550101c5913d2c\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-transfers.json\"},\"rowCount\":12},{\"artifactKey\":\"metagraph/projections/chain-stake-flow.json\",\"object\":{\"bytes\":2198,\"etag\":\"d869bb5640aa2be87701919202e1de0c\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-stake-flow.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/chain-activity.json\",\"object\":{\"bytes\":1522,\"etag\":\"3fece119bc62cf2024aacaa7bc31a55d\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-activity.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/chain-calls.json\",\"object\":{\"bytes\":4630,\"etag\":\"98b5baaa0e5698f0941c9b1895e20962\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-calls.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/chain-fees.json\",\"object\":{\"bytes\":8379,\"etag\":\"cf0deda07840903c8f435d09eed2e98a\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-fees.json\"},\"rowCount\":13},{\"artifactKey\":\"metagraph/projections/chain-signers.json\",\"object\":{\"bytes\":3969,\"etag\":\"dfe316ff0670a7af107cee024d105d27\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-signers.json\"},\"rowCount\":8},{\"artifactKey\":\"metagraph/projections/chain-alpha-volume.json\",\"object\":{\"bytes\":846,\"etag\":\"57cf0de78e8672929c6984e08f8d8e0f\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-alpha-volume.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/chain-stake-transfers.json\",\"object\":{\"bytes\":568,\"etag\":\"9236995cb85bc2cebcb10b26f14a89b9\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-stake-transfers.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/chain-transfer-pairs.json\",\"object\":{\"bytes\":4631,\"etag\":\"80de630968e0496d60793c57ee477ff8\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-transfer-pairs.json\"},\"rowCount\":32},{\"artifactKey\":\"metagraph/projections/chain-stake-moves.json\",\"object\":{\"bytes\":560,\"etag\":\"6eca38f4361d212e6554d3ea63e07788\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-stake-moves.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/chain-serving.json\",\"object\":{\"bytes\":482,\"etag\":\"1dfb27e8220d03ecb782264719593620\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-serving.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-prometheus.json\",\"object\":{\"bytes\":494,\"etag\":\"6e24e12fa5d4e9f93fb32ee2d52a9fa5\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-prometheus.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-weights.json\",\"object\":{\"bytes\":474,\"etag\":\"a262fa7b2ace39cb1c9a1664c8f9d834\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-weights.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/chain-weight-setters.json\",\"object\":{\"bytes\":1190,\"etag\":\"2f5a76b1b02647c8092b54ae6d1efb68\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-weight-setters.json\"},\"rowCount\":10},{\"artifactKey\":\"metagraph/projections/chain-ownership.json\",\"object\":{\"bytes\":338,\"etag\":\"9adb428bcd8d824663e8d815dd18cfa3\",\"key\":\"metagraph/native-projections/v1/mainnet/bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573/chain-ownership.json\"},\"rowCount\":1}],\"generatedAt\":1790184000000,\"generation\":\"bd20c6637f501b45e8f958dd8067b8647caf0488c038645f71a0f520ee9d4573\",\"network\":\"mainnet\",\"readerCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"sources\":[{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"retainedBlocks\":{\"databaseId\":\"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\",\"state\":{\"coverage\":\"{\\\"version\\\": 1, \\\"network\\\": \\\"mainnet\\\", \\\"table_uuid\\\": \\\"11111111-2222-4333-8444-555555555555\\\", \\\"floor\\\": 0, \\\"covered_through\\\": 99, \\\"sequence_number\\\": 1}\",\"generated_at\":100,\"generation\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"network\":0,\"sequence\":1,\"snapshot\":\"1\",\"source_files\":2,\"source_rows\":6,\"table_uuid\":\"11111111-2222-4333-8444-555555555555\"},\"transitions\":[{\"operation\":\"replace\",\"rows\":6,\"snapshot\":\"2\"},{\"operation\":\"append\",\"rows\":8,\"snapshot\":\"3\"}]},\"sequence\":3,\"snapshot\":\"3\",\"table\":\"blocks\",\"table_uuid\":\"11111111-2222-4333-8444-555555555555\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"extrinsics\",\"table_uuid\":\"extrinsics-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"account_events\",\"table_uuid\":\"account_events-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"mainnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"chain_events\",\"table_uuid\":\"chain_events-uuid\",\"version\":1}],\"state\":\"complete\",\"version\":1}"
+          }
+        ]
+      },
+      "scenario": "replace-append"
+    },
+    {
+      "manifest": {
+        "artifacts": [
+          {
+            "artifactKey": "metagraph/projections/testnet/blocks-summary.json",
+            "object": {
+              "bytes": 863,
+              "etag": "29bc09bf1f971dea2212b970f96a5d43",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/blocks-summary.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-registrations.json",
+            "object": {
+              "bytes": 506,
+              "etag": "f4ef856a31b6b773c79d4588aaa101fc",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-registrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-deregistrations.json",
+            "object": {
+              "bytes": 1720,
+              "etag": "1e89fee2b1a2a97496e28a5b4030c61a",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-deregistrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-deregistrations-by-hotkey.json",
+            "object": {
+              "bytes": 1036,
+              "etag": "5271759463cf016ee0cba229a8d9104a",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-deregistrations-by-hotkey.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-deregistrations-by-uid.json",
+            "object": {
+              "bytes": 1038,
+              "etag": "01ae2e5fef50210c26350121ab134fc4",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-deregistrations-by-uid.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-transfers.json",
+            "object": {
+              "bytes": 1081,
+              "etag": "ce04eb9486ea2d8a168baae9c094291c",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-transfers.json"
+            },
+            "rowCount": 12
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-stake-flow.json",
+            "object": {
+              "bytes": 2196,
+              "etag": "3760dc510c1490227862222aa402f63c",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-stake-flow.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-activity.json",
+            "object": {
+              "bytes": 1522,
+              "etag": "3fece119bc62cf2024aacaa7bc31a55d",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-activity.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-calls.json",
+            "object": {
+              "bytes": 4630,
+              "etag": "98b5baaa0e5698f0941c9b1895e20962",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-calls.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-fees.json",
+            "object": {
+              "bytes": 8379,
+              "etag": "cf0deda07840903c8f435d09eed2e98a",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-fees.json"
+            },
+            "rowCount": 13
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-signers.json",
+            "object": {
+              "bytes": 3969,
+              "etag": "dfe316ff0670a7af107cee024d105d27",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-signers.json"
+            },
+            "rowCount": 8
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-alpha-volume.json",
+            "object": {
+              "bytes": 836,
+              "etag": "0b27ded372a3dfc4e9d3a342751e1bfd",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-alpha-volume.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-stake-transfers.json",
+            "object": {
+              "bytes": 568,
+              "etag": "9236995cb85bc2cebcb10b26f14a89b9",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-stake-transfers.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-transfer-pairs.json",
+            "object": {
+              "bytes": 4587,
+              "etag": "7d34ba0d72eab32f49445b7563abe104",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-transfer-pairs.json"
+            },
+            "rowCount": 32
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-stake-moves.json",
+            "object": {
+              "bytes": 560,
+              "etag": "6eca38f4361d212e6554d3ea63e07788",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-stake-moves.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-serving.json",
+            "object": {
+              "bytes": 482,
+              "etag": "1dfb27e8220d03ecb782264719593620",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-serving.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-prometheus.json",
+            "object": {
+              "bytes": 494,
+              "etag": "6e24e12fa5d4e9f93fb32ee2d52a9fa5",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-prometheus.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-weights.json",
+            "object": {
+              "bytes": 474,
+              "etag": "a262fa7b2ace39cb1c9a1664c8f9d834",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-weights.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-weight-setters.json",
+            "object": {
+              "bytes": 1190,
+              "etag": "2f5a76b1b02647c8092b54ae6d1efb68",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-weight-setters.json"
+            },
+            "rowCount": 10
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-ownership.json",
+            "object": {
+              "bytes": 338,
+              "etag": "9adb428bcd8d824663e8d815dd18cfa3",
+              "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-ownership.json"
+            },
+            "rowCount": 1
+          }
+        ],
+        "generatedAt": 1790184000000,
+        "generation": "21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc",
+        "network": "testnet",
+        "readerCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "retainedBlocks": {
+              "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+              "state": {
+                "coverage": "{\"version\": 1, \"network\": \"testnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+                "generated_at": 100,
+                "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "network": 1,
+                "sequence": 1,
+                "snapshot": "1",
+                "source_files": 2,
+                "source_rows": 6,
+                "table_uuid": "11111111-2222-4333-8444-555555555555"
+              },
+              "transitions": []
+            },
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "blocks",
+            "table_uuid": "11111111-2222-4333-8444-555555555555",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "extrinsics",
+            "table_uuid": "extrinsics-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "account_events",
+            "table_uuid": "account_events-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "chain_events",
+            "table_uuid": "chain_events-uuid",
+            "version": 1
+          }
+        ],
+        "state": "complete",
+        "version": 1
+      },
+      "network": "testnet",
+      "plan": {
+        "coverage": null,
+        "cutoff": 1782408000000,
+        "network": "testnet",
+        "retainedBlocks": {
+          "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "state": {
+            "coverage": "{\"version\": 1, \"network\": \"testnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+            "generated_at": 100,
+            "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "network": 1,
+            "sequence": 1,
+            "snapshot": "1",
+            "source_files": 2,
+            "source_rows": 6,
+            "table_uuid": "11111111-2222-4333-8444-555555555555"
+          },
+          "transitions": []
+        },
+        "sequence": 1,
+        "snapshot": "1",
+        "sources": [
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-0.parquet",
+            "network": "testnet",
+            "rows": 3,
+            "table": "blocks"
+          },
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-1.parquet",
+            "network": "testnet",
+            "rows": 3,
+            "table": "blocks"
+          }
+        ],
+        "table": "blocks",
+        "table_uuid": "11111111-2222-4333-8444-555555555555",
+        "version": 1
+      },
+      "readback": {
+        "expectedBody": {
+          "generated_at": "2026-09-23T17:20:00.000Z",
+          "row_count": 28,
+          "schema_version": 1,
+          "summary": {
+            "author_concentration": {
+              "entropy": 1.583143,
+              "entropy_normalized": 0.998852,
+              "gini": 0.02381,
+              "hhi": 0.334184,
+              "hhi_normalized": 0.001276,
+              "holders": 3,
+              "nakamoto_coefficient": 2,
+              "top_10pct_share": 0.357143,
+              "top_1pct_share": 0.357143,
+              "top_20pct_share": 0.357143,
+              "top_5pct_share": 0.357143,
+              "total": 28
+            },
+            "block_count": 28,
+            "block_time": {
+              "count": 27,
+              "max_ms": 5183939999,
+              "mean_ms": 320002222,
+              "min_ms": 1,
+              "p50_ms": 1,
+              "p90_ms": 863939999
+            },
+            "distinct_authors": 3,
+            "distinct_spec_versions": 1,
+            "first_block": 100,
+            "first_observed_at": "2026-06-15T17:19:59.999Z",
+            "last_block": 127,
+            "last_observed_at": "2026-09-23T17:21:00.000Z",
+            "latest_spec_version": 300,
+            "schema_version": 1,
+            "throughput": {
+              "max_extrinsics_in_block": 8,
+              "mean_events_per_block": 13.89,
+              "mean_extrinsics_per_block": 5,
+              "total_events": 389,
+              "total_extrinsics": 140
+            }
+          }
+        },
+        "rows": [
+          {
+            "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/blocks-summary.json",
+            "payload": "{\"bytes\":863,\"compressedBytes\":424,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"format\":\"gzip-json-v1\",\"parts\":1,\"sha256\":\"c794c7e502389d681b18f5238a9a9ad7cc47207d4172d1e8b5b501ae49900481\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/blocks-summary.json/chunks/0",
+            "payload": "{\"data\":\"H4sIAAAAAAAAA3VSy27DIBD8F85OxCMk4O/oqRdEHRKj2mABTh9R/r0LfsitGk7s7A47zO4dXY0zQSdzVjqhGlFMjzssd5S9kFNNcY3xHmP8iioU/Idq/OigjIoKxaY1vVY3E6L1DtUEoLHvdfhC9R3pMbU+QL1rjEvQoNTcUQ78ACVkzwUjB1YtkHI+9Lqz3+aMaryXUghOK3S1zuYYUyagRduWiLEDEYcS/uFhTOjpCBnfnUEaqqGD0++698mDHHO52Maa8okKJT8ogocmqdjqYMrL/FRUldTTDH1O4k8ySXfZuEeF3jrfvG+tnIBke5MtWhKnCvX6U/XwB04Ek0zCAcxoV0BGYTAUDmB2gsCggeP1KqerOM5k6H22MVkHCqcBTf6sYBxMs0x0euNiQ0yqCIQY4wXxb9GE2++tOe4Iz1tDZM0lDFDmren0hp//VID/6OvSkc3SdbCa8bcwkJx1/LN/qQ1+vLbDmLKP2TzzmYJ10TZRgUWzDDGbaG6wB1ENJqwC2V4sFm+omwo+j3Img5ZMmKGVAS8d8OPx+AGBP5PSXwMAAA==\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/testnet/current.json",
+            "payload": "{\"artifacts\":[{\"artifactKey\":\"metagraph/projections/testnet/blocks-summary.json\",\"object\":{\"bytes\":863,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/blocks-summary.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/testnet/chain-registrations.json\",\"object\":{\"bytes\":506,\"etag\":\"f4ef856a31b6b773c79d4588aaa101fc\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-registrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-deregistrations.json\",\"object\":{\"bytes\":1720,\"etag\":\"1e89fee2b1a2a97496e28a5b4030c61a\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-deregistrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-deregistrations-by-hotkey.json\",\"object\":{\"bytes\":1036,\"etag\":\"5271759463cf016ee0cba229a8d9104a\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-deregistrations-by-hotkey.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/testnet/chain-deregistrations-by-uid.json\",\"object\":{\"bytes\":1038,\"etag\":\"01ae2e5fef50210c26350121ab134fc4\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-deregistrations-by-uid.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/testnet/chain-transfers.json\",\"object\":{\"bytes\":1081,\"etag\":\"ce04eb9486ea2d8a168baae9c094291c\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-transfers.json\"},\"rowCount\":12},{\"artifactKey\":\"metagraph/projections/testnet/chain-stake-flow.json\",\"object\":{\"bytes\":2196,\"etag\":\"3760dc510c1490227862222aa402f63c\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-stake-flow.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/testnet/chain-activity.json\",\"object\":{\"bytes\":1522,\"etag\":\"3fece119bc62cf2024aacaa7bc31a55d\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-activity.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/testnet/chain-calls.json\",\"object\":{\"bytes\":4630,\"etag\":\"98b5baaa0e5698f0941c9b1895e20962\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-calls.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/testnet/chain-fees.json\",\"object\":{\"bytes\":8379,\"etag\":\"cf0deda07840903c8f435d09eed2e98a\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-fees.json\"},\"rowCount\":13},{\"artifactKey\":\"metagraph/projections/testnet/chain-signers.json\",\"object\":{\"bytes\":3969,\"etag\":\"dfe316ff0670a7af107cee024d105d27\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-signers.json\"},\"rowCount\":8},{\"artifactKey\":\"metagraph/projections/testnet/chain-alpha-volume.json\",\"object\":{\"bytes\":836,\"etag\":\"0b27ded372a3dfc4e9d3a342751e1bfd\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-alpha-volume.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/testnet/chain-stake-transfers.json\",\"object\":{\"bytes\":568,\"etag\":\"9236995cb85bc2cebcb10b26f14a89b9\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-stake-transfers.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/testnet/chain-transfer-pairs.json\",\"object\":{\"bytes\":4587,\"etag\":\"7d34ba0d72eab32f49445b7563abe104\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-transfer-pairs.json\"},\"rowCount\":32},{\"artifactKey\":\"metagraph/projections/testnet/chain-stake-moves.json\",\"object\":{\"bytes\":560,\"etag\":\"6eca38f4361d212e6554d3ea63e07788\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-stake-moves.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/testnet/chain-serving.json\",\"object\":{\"bytes\":482,\"etag\":\"1dfb27e8220d03ecb782264719593620\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-serving.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-prometheus.json\",\"object\":{\"bytes\":494,\"etag\":\"6e24e12fa5d4e9f93fb32ee2d52a9fa5\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-prometheus.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-weights.json\",\"object\":{\"bytes\":474,\"etag\":\"a262fa7b2ace39cb1c9a1664c8f9d834\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-weights.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-weight-setters.json\",\"object\":{\"bytes\":1190,\"etag\":\"2f5a76b1b02647c8092b54ae6d1efb68\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-weight-setters.json\"},\"rowCount\":10},{\"artifactKey\":\"metagraph/projections/testnet/chain-ownership.json\",\"object\":{\"bytes\":338,\"etag\":\"9adb428bcd8d824663e8d815dd18cfa3\",\"key\":\"metagraph/native-projections/v1/testnet/21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc/chain-ownership.json\"},\"rowCount\":1}],\"generatedAt\":1790184000000,\"generation\":\"21f811fdb02cb7570f9159df040b0665387bff1cb1eedf15e89afb9e6bc34afc\",\"network\":\"testnet\",\"readerCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"sources\":[{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"retainedBlocks\":{\"databaseId\":\"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\",\"state\":{\"coverage\":\"{\\\"version\\\": 1, \\\"network\\\": \\\"testnet\\\", \\\"table_uuid\\\": \\\"11111111-2222-4333-8444-555555555555\\\", \\\"floor\\\": 0, \\\"covered_through\\\": 99, \\\"sequence_number\\\": 1}\",\"generated_at\":100,\"generation\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"network\":1,\"sequence\":1,\"snapshot\":\"1\",\"source_files\":2,\"source_rows\":6,\"table_uuid\":\"11111111-2222-4333-8444-555555555555\"},\"transitions\":[]},\"sequence\":1,\"snapshot\":\"1\",\"table\":\"blocks\",\"table_uuid\":\"11111111-2222-4333-8444-555555555555\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"extrinsics\",\"table_uuid\":\"extrinsics-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"account_events\",\"table_uuid\":\"account_events-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"chain_events\",\"table_uuid\":\"chain_events-uuid\",\"version\":1}],\"state\":\"complete\",\"version\":1}"
+          }
+        ]
+      },
+      "scenario": "selected"
+    },
+    {
+      "manifest": {
+        "artifacts": [
+          {
+            "artifactKey": "metagraph/projections/testnet/blocks-summary.json",
+            "object": {
+              "bytes": 863,
+              "etag": "29bc09bf1f971dea2212b970f96a5d43",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/blocks-summary.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-registrations.json",
+            "object": {
+              "bytes": 506,
+              "etag": "f4ef856a31b6b773c79d4588aaa101fc",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-registrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-deregistrations.json",
+            "object": {
+              "bytes": 1720,
+              "etag": "1e89fee2b1a2a97496e28a5b4030c61a",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-deregistrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-deregistrations-by-hotkey.json",
+            "object": {
+              "bytes": 1036,
+              "etag": "5271759463cf016ee0cba229a8d9104a",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-deregistrations-by-hotkey.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-deregistrations-by-uid.json",
+            "object": {
+              "bytes": 1038,
+              "etag": "01ae2e5fef50210c26350121ab134fc4",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-deregistrations-by-uid.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-transfers.json",
+            "object": {
+              "bytes": 1081,
+              "etag": "ce04eb9486ea2d8a168baae9c094291c",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-transfers.json"
+            },
+            "rowCount": 12
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-stake-flow.json",
+            "object": {
+              "bytes": 2196,
+              "etag": "3760dc510c1490227862222aa402f63c",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-stake-flow.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-activity.json",
+            "object": {
+              "bytes": 1522,
+              "etag": "3fece119bc62cf2024aacaa7bc31a55d",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-activity.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-calls.json",
+            "object": {
+              "bytes": 4630,
+              "etag": "98b5baaa0e5698f0941c9b1895e20962",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-calls.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-fees.json",
+            "object": {
+              "bytes": 8379,
+              "etag": "cf0deda07840903c8f435d09eed2e98a",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-fees.json"
+            },
+            "rowCount": 13
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-signers.json",
+            "object": {
+              "bytes": 3969,
+              "etag": "dfe316ff0670a7af107cee024d105d27",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-signers.json"
+            },
+            "rowCount": 8
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-alpha-volume.json",
+            "object": {
+              "bytes": 836,
+              "etag": "0b27ded372a3dfc4e9d3a342751e1bfd",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-alpha-volume.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-stake-transfers.json",
+            "object": {
+              "bytes": 568,
+              "etag": "9236995cb85bc2cebcb10b26f14a89b9",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-stake-transfers.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-transfer-pairs.json",
+            "object": {
+              "bytes": 4587,
+              "etag": "7d34ba0d72eab32f49445b7563abe104",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-transfer-pairs.json"
+            },
+            "rowCount": 32
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-stake-moves.json",
+            "object": {
+              "bytes": 560,
+              "etag": "6eca38f4361d212e6554d3ea63e07788",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-stake-moves.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-serving.json",
+            "object": {
+              "bytes": 482,
+              "etag": "1dfb27e8220d03ecb782264719593620",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-serving.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-prometheus.json",
+            "object": {
+              "bytes": 494,
+              "etag": "6e24e12fa5d4e9f93fb32ee2d52a9fa5",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-prometheus.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-weights.json",
+            "object": {
+              "bytes": 474,
+              "etag": "a262fa7b2ace39cb1c9a1664c8f9d834",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-weights.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-weight-setters.json",
+            "object": {
+              "bytes": 1190,
+              "etag": "2f5a76b1b02647c8092b54ae6d1efb68",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-weight-setters.json"
+            },
+            "rowCount": 10
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-ownership.json",
+            "object": {
+              "bytes": 338,
+              "etag": "9adb428bcd8d824663e8d815dd18cfa3",
+              "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-ownership.json"
+            },
+            "rowCount": 1
+          }
+        ],
+        "generatedAt": 1790184000000,
+        "generation": "cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec",
+        "network": "testnet",
+        "readerCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "retainedBlocks": {
+              "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+              "state": {
+                "coverage": "{\"version\": 1, \"network\": \"testnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+                "generated_at": 100,
+                "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "network": 1,
+                "sequence": 1,
+                "snapshot": "1",
+                "source_files": 2,
+                "source_rows": 6,
+                "table_uuid": "11111111-2222-4333-8444-555555555555"
+              },
+              "transitions": [
+                {
+                  "operation": "replace",
+                  "rows": 6,
+                  "snapshot": "2"
+                }
+              ]
+            },
+            "sequence": 2,
+            "snapshot": "2",
+            "table": "blocks",
+            "table_uuid": "11111111-2222-4333-8444-555555555555",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "extrinsics",
+            "table_uuid": "extrinsics-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "account_events",
+            "table_uuid": "account_events-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "chain_events",
+            "table_uuid": "chain_events-uuid",
+            "version": 1
+          }
+        ],
+        "state": "complete",
+        "version": 1
+      },
+      "network": "testnet",
+      "plan": {
+        "coverage": null,
+        "cutoff": 1782408000000,
+        "network": "testnet",
+        "retainedBlocks": {
+          "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "state": {
+            "coverage": "{\"version\": 1, \"network\": \"testnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+            "generated_at": 100,
+            "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "network": 1,
+            "sequence": 1,
+            "snapshot": "1",
+            "source_files": 2,
+            "source_rows": 6,
+            "table_uuid": "11111111-2222-4333-8444-555555555555"
+          },
+          "transitions": [
+            {
+              "operation": "replace",
+              "rows": 6,
+              "snapshot": "2"
+            }
+          ]
+        },
+        "sequence": 2,
+        "snapshot": "2",
+        "sources": [
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-0.parquet",
+            "network": "testnet",
+            "rows": 3,
+            "table": "blocks"
+          },
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-1.parquet",
+            "network": "testnet",
+            "rows": 3,
+            "table": "blocks"
+          }
+        ],
+        "table": "blocks",
+        "table_uuid": "11111111-2222-4333-8444-555555555555",
+        "version": 1
+      },
+      "readback": {
+        "expectedBody": {
+          "generated_at": "2026-09-23T17:20:00.000Z",
+          "row_count": 28,
+          "schema_version": 1,
+          "summary": {
+            "author_concentration": {
+              "entropy": 1.583143,
+              "entropy_normalized": 0.998852,
+              "gini": 0.02381,
+              "hhi": 0.334184,
+              "hhi_normalized": 0.001276,
+              "holders": 3,
+              "nakamoto_coefficient": 2,
+              "top_10pct_share": 0.357143,
+              "top_1pct_share": 0.357143,
+              "top_20pct_share": 0.357143,
+              "top_5pct_share": 0.357143,
+              "total": 28
+            },
+            "block_count": 28,
+            "block_time": {
+              "count": 27,
+              "max_ms": 5183939999,
+              "mean_ms": 320002222,
+              "min_ms": 1,
+              "p50_ms": 1,
+              "p90_ms": 863939999
+            },
+            "distinct_authors": 3,
+            "distinct_spec_versions": 1,
+            "first_block": 100,
+            "first_observed_at": "2026-06-15T17:19:59.999Z",
+            "last_block": 127,
+            "last_observed_at": "2026-09-23T17:21:00.000Z",
+            "latest_spec_version": 300,
+            "schema_version": 1,
+            "throughput": {
+              "max_extrinsics_in_block": 8,
+              "mean_events_per_block": 13.89,
+              "mean_extrinsics_per_block": 5,
+              "total_events": 389,
+              "total_extrinsics": 140
+            }
+          }
+        },
+        "rows": [
+          {
+            "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/blocks-summary.json",
+            "payload": "{\"bytes\":863,\"compressedBytes\":424,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"format\":\"gzip-json-v1\",\"parts\":1,\"sha256\":\"c794c7e502389d681b18f5238a9a9ad7cc47207d4172d1e8b5b501ae49900481\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/blocks-summary.json/chunks/0",
+            "payload": "{\"data\":\"H4sIAAAAAAAAA3VSy27DIBD8F85OxCMk4O/oqRdEHRKj2mABTh9R/r0LfsitGk7s7A47zO4dXY0zQSdzVjqhGlFMjzssd5S9kFNNcY3xHmP8iioU/Idq/OigjIoKxaY1vVY3E6L1DtUEoLHvdfhC9R3pMbU+QL1rjEvQoNTcUQ78ACVkzwUjB1YtkHI+9Lqz3+aMaryXUghOK3S1zuYYUyagRduWiLEDEYcS/uFhTOjpCBnfnUEaqqGD0++698mDHHO52Maa8okKJT8ogocmqdjqYMrL/FRUldTTDH1O4k8ySXfZuEeF3jrfvG+tnIBke5MtWhKnCvX6U/XwB04Ek0zCAcxoV0BGYTAUDmB2gsCggeP1KqerOM5k6H22MVkHCqcBTf6sYBxMs0x0euNiQ0yqCIQY4wXxb9GE2++tOe4Iz1tDZM0lDFDmren0hp//VID/6OvSkc3SdbCa8bcwkJx1/LN/qQ1+vLbDmLKP2TzzmYJ10TZRgUWzDDGbaG6wB1ENJqwC2V4sFm+omwo+j3Img5ZMmKGVAS8d8OPx+AGBP5PSXwMAAA==\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/testnet/current.json",
+            "payload": "{\"artifacts\":[{\"artifactKey\":\"metagraph/projections/testnet/blocks-summary.json\",\"object\":{\"bytes\":863,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/blocks-summary.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/testnet/chain-registrations.json\",\"object\":{\"bytes\":506,\"etag\":\"f4ef856a31b6b773c79d4588aaa101fc\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-registrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-deregistrations.json\",\"object\":{\"bytes\":1720,\"etag\":\"1e89fee2b1a2a97496e28a5b4030c61a\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-deregistrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-deregistrations-by-hotkey.json\",\"object\":{\"bytes\":1036,\"etag\":\"5271759463cf016ee0cba229a8d9104a\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-deregistrations-by-hotkey.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/testnet/chain-deregistrations-by-uid.json\",\"object\":{\"bytes\":1038,\"etag\":\"01ae2e5fef50210c26350121ab134fc4\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-deregistrations-by-uid.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/testnet/chain-transfers.json\",\"object\":{\"bytes\":1081,\"etag\":\"ce04eb9486ea2d8a168baae9c094291c\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-transfers.json\"},\"rowCount\":12},{\"artifactKey\":\"metagraph/projections/testnet/chain-stake-flow.json\",\"object\":{\"bytes\":2196,\"etag\":\"3760dc510c1490227862222aa402f63c\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-stake-flow.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/testnet/chain-activity.json\",\"object\":{\"bytes\":1522,\"etag\":\"3fece119bc62cf2024aacaa7bc31a55d\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-activity.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/testnet/chain-calls.json\",\"object\":{\"bytes\":4630,\"etag\":\"98b5baaa0e5698f0941c9b1895e20962\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-calls.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/testnet/chain-fees.json\",\"object\":{\"bytes\":8379,\"etag\":\"cf0deda07840903c8f435d09eed2e98a\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-fees.json\"},\"rowCount\":13},{\"artifactKey\":\"metagraph/projections/testnet/chain-signers.json\",\"object\":{\"bytes\":3969,\"etag\":\"dfe316ff0670a7af107cee024d105d27\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-signers.json\"},\"rowCount\":8},{\"artifactKey\":\"metagraph/projections/testnet/chain-alpha-volume.json\",\"object\":{\"bytes\":836,\"etag\":\"0b27ded372a3dfc4e9d3a342751e1bfd\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-alpha-volume.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/testnet/chain-stake-transfers.json\",\"object\":{\"bytes\":568,\"etag\":\"9236995cb85bc2cebcb10b26f14a89b9\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-stake-transfers.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/testnet/chain-transfer-pairs.json\",\"object\":{\"bytes\":4587,\"etag\":\"7d34ba0d72eab32f49445b7563abe104\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-transfer-pairs.json\"},\"rowCount\":32},{\"artifactKey\":\"metagraph/projections/testnet/chain-stake-moves.json\",\"object\":{\"bytes\":560,\"etag\":\"6eca38f4361d212e6554d3ea63e07788\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-stake-moves.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/testnet/chain-serving.json\",\"object\":{\"bytes\":482,\"etag\":\"1dfb27e8220d03ecb782264719593620\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-serving.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-prometheus.json\",\"object\":{\"bytes\":494,\"etag\":\"6e24e12fa5d4e9f93fb32ee2d52a9fa5\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-prometheus.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-weights.json\",\"object\":{\"bytes\":474,\"etag\":\"a262fa7b2ace39cb1c9a1664c8f9d834\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-weights.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-weight-setters.json\",\"object\":{\"bytes\":1190,\"etag\":\"2f5a76b1b02647c8092b54ae6d1efb68\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-weight-setters.json\"},\"rowCount\":10},{\"artifactKey\":\"metagraph/projections/testnet/chain-ownership.json\",\"object\":{\"bytes\":338,\"etag\":\"9adb428bcd8d824663e8d815dd18cfa3\",\"key\":\"metagraph/native-projections/v1/testnet/cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec/chain-ownership.json\"},\"rowCount\":1}],\"generatedAt\":1790184000000,\"generation\":\"cfbdbfe2c34cf735b92c0636a27b3323fd8b9ab77e6875174fb9e4cd2de64cec\",\"network\":\"testnet\",\"readerCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"sources\":[{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"retainedBlocks\":{\"databaseId\":\"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\",\"state\":{\"coverage\":\"{\\\"version\\\": 1, \\\"network\\\": \\\"testnet\\\", \\\"table_uuid\\\": \\\"11111111-2222-4333-8444-555555555555\\\", \\\"floor\\\": 0, \\\"covered_through\\\": 99, \\\"sequence_number\\\": 1}\",\"generated_at\":100,\"generation\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"network\":1,\"sequence\":1,\"snapshot\":\"1\",\"source_files\":2,\"source_rows\":6,\"table_uuid\":\"11111111-2222-4333-8444-555555555555\"},\"transitions\":[{\"operation\":\"replace\",\"rows\":6,\"snapshot\":\"2\"}]},\"sequence\":2,\"snapshot\":\"2\",\"table\":\"blocks\",\"table_uuid\":\"11111111-2222-4333-8444-555555555555\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"extrinsics\",\"table_uuid\":\"extrinsics-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"account_events\",\"table_uuid\":\"account_events-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"chain_events\",\"table_uuid\":\"chain_events-uuid\",\"version\":1}],\"state\":\"complete\",\"version\":1}"
+          }
+        ]
+      },
+      "scenario": "replace"
+    },
+    {
+      "manifest": {
+        "artifacts": [
+          {
+            "artifactKey": "metagraph/projections/testnet/blocks-summary.json",
+            "object": {
+              "bytes": 863,
+              "etag": "29bc09bf1f971dea2212b970f96a5d43",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/blocks-summary.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-registrations.json",
+            "object": {
+              "bytes": 506,
+              "etag": "f4ef856a31b6b773c79d4588aaa101fc",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-registrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-deregistrations.json",
+            "object": {
+              "bytes": 1720,
+              "etag": "1e89fee2b1a2a97496e28a5b4030c61a",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-deregistrations.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-deregistrations-by-hotkey.json",
+            "object": {
+              "bytes": 1036,
+              "etag": "5271759463cf016ee0cba229a8d9104a",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-deregistrations-by-hotkey.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-deregistrations-by-uid.json",
+            "object": {
+              "bytes": 1038,
+              "etag": "01ae2e5fef50210c26350121ab134fc4",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-deregistrations-by-uid.json"
+            },
+            "rowCount": null
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-transfers.json",
+            "object": {
+              "bytes": 1081,
+              "etag": "ce04eb9486ea2d8a168baae9c094291c",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-transfers.json"
+            },
+            "rowCount": 12
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-stake-flow.json",
+            "object": {
+              "bytes": 2196,
+              "etag": "3760dc510c1490227862222aa402f63c",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-stake-flow.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-activity.json",
+            "object": {
+              "bytes": 1522,
+              "etag": "3fece119bc62cf2024aacaa7bc31a55d",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-activity.json"
+            },
+            "rowCount": 18
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-calls.json",
+            "object": {
+              "bytes": 4630,
+              "etag": "98b5baaa0e5698f0941c9b1895e20962",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-calls.json"
+            },
+            "rowCount": 28
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-fees.json",
+            "object": {
+              "bytes": 8379,
+              "etag": "cf0deda07840903c8f435d09eed2e98a",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-fees.json"
+            },
+            "rowCount": 13
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-signers.json",
+            "object": {
+              "bytes": 3969,
+              "etag": "dfe316ff0670a7af107cee024d105d27",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-signers.json"
+            },
+            "rowCount": 8
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-alpha-volume.json",
+            "object": {
+              "bytes": 836,
+              "etag": "0b27ded372a3dfc4e9d3a342751e1bfd",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-alpha-volume.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-stake-transfers.json",
+            "object": {
+              "bytes": 568,
+              "etag": "9236995cb85bc2cebcb10b26f14a89b9",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-stake-transfers.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-transfer-pairs.json",
+            "object": {
+              "bytes": 4587,
+              "etag": "7d34ba0d72eab32f49445b7563abe104",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-transfer-pairs.json"
+            },
+            "rowCount": 32
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-stake-moves.json",
+            "object": {
+              "bytes": 560,
+              "etag": "6eca38f4361d212e6554d3ea63e07788",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-stake-moves.json"
+            },
+            "rowCount": 6
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-serving.json",
+            "object": {
+              "bytes": 482,
+              "etag": "1dfb27e8220d03ecb782264719593620",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-serving.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-prometheus.json",
+            "object": {
+              "bytes": 494,
+              "etag": "6e24e12fa5d4e9f93fb32ee2d52a9fa5",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-prometheus.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-weights.json",
+            "object": {
+              "bytes": 474,
+              "etag": "a262fa7b2ace39cb1c9a1664c8f9d834",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-weights.json"
+            },
+            "rowCount": 4
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-weight-setters.json",
+            "object": {
+              "bytes": 1190,
+              "etag": "2f5a76b1b02647c8092b54ae6d1efb68",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-weight-setters.json"
+            },
+            "rowCount": 10
+          },
+          {
+            "artifactKey": "metagraph/projections/testnet/chain-ownership.json",
+            "object": {
+              "bytes": 338,
+              "etag": "9adb428bcd8d824663e8d815dd18cfa3",
+              "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-ownership.json"
+            },
+            "rowCount": 1
+          }
+        ],
+        "generatedAt": 1790184000000,
+        "generation": "a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe",
+        "network": "testnet",
+        "readerCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "retainedBlocks": {
+              "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+              "state": {
+                "coverage": "{\"version\": 1, \"network\": \"testnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+                "generated_at": 100,
+                "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "network": 1,
+                "sequence": 1,
+                "snapshot": "1",
+                "source_files": 2,
+                "source_rows": 6,
+                "table_uuid": "11111111-2222-4333-8444-555555555555"
+              },
+              "transitions": [
+                {
+                  "operation": "replace",
+                  "rows": 6,
+                  "snapshot": "2"
+                },
+                {
+                  "operation": "append",
+                  "rows": 8,
+                  "snapshot": "3"
+                }
+              ]
+            },
+            "sequence": 3,
+            "snapshot": "3",
+            "table": "blocks",
+            "table_uuid": "11111111-2222-4333-8444-555555555555",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "extrinsics",
+            "table_uuid": "extrinsics-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "account_events",
+            "table_uuid": "account_events-uuid",
+            "version": 1
+          },
+          {
+            "coverage": null,
+            "cutoff": 1782408000000,
+            "network": "testnet",
+            "sequence": 1,
+            "snapshot": "1",
+            "table": "chain_events",
+            "table_uuid": "chain_events-uuid",
+            "version": 1
+          }
+        ],
+        "state": "complete",
+        "version": 1
+      },
+      "network": "testnet",
+      "plan": {
+        "coverage": null,
+        "cutoff": 1782408000000,
+        "network": "testnet",
+        "retainedBlocks": {
+          "databaseId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "state": {
+            "coverage": "{\"version\": 1, \"network\": \"testnet\", \"table_uuid\": \"11111111-2222-4333-8444-555555555555\", \"floor\": 0, \"covered_through\": 99, \"sequence_number\": 1}",
+            "generated_at": 100,
+            "generation": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "network": 1,
+            "sequence": 1,
+            "snapshot": "1",
+            "source_files": 2,
+            "source_rows": 6,
+            "table_uuid": "11111111-2222-4333-8444-555555555555"
+          },
+          "transitions": [
+            {
+              "operation": "replace",
+              "rows": 6,
+              "snapshot": "2"
+            },
+            {
+              "operation": "append",
+              "rows": 8,
+              "snapshot": "3"
+            }
+          ]
+        },
+        "sequence": 3,
+        "snapshot": "3",
+        "sources": [
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-0.parquet",
+            "network": "testnet",
+            "rows": 3,
+            "table": "blocks"
+          },
+          {
+            "bucket": "lake",
+            "bytes": 100,
+            "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "key": "old-1.parquet",
+            "network": "testnet",
+            "rows": 3,
+            "table": "blocks"
+          },
+          {
+            "bucket": "lake",
+            "bytes": 2542,
+            "etag": "af77d94fdae9c527628bdda271e0f53b",
+            "key": "added.parquet",
+            "network": "testnet",
+            "rows": 2,
+            "table": "blocks"
+          }
+        ],
+        "table": "blocks",
+        "table_uuid": "11111111-2222-4333-8444-555555555555",
+        "version": 1
+      },
+      "readback": {
+        "expectedBody": {
+          "generated_at": "2026-09-23T17:20:00.000Z",
+          "row_count": 28,
+          "schema_version": 1,
+          "summary": {
+            "author_concentration": {
+              "entropy": 1.583143,
+              "entropy_normalized": 0.998852,
+              "gini": 0.02381,
+              "hhi": 0.334184,
+              "hhi_normalized": 0.001276,
+              "holders": 3,
+              "nakamoto_coefficient": 2,
+              "top_10pct_share": 0.357143,
+              "top_1pct_share": 0.357143,
+              "top_20pct_share": 0.357143,
+              "top_5pct_share": 0.357143,
+              "total": 28
+            },
+            "block_count": 28,
+            "block_time": {
+              "count": 27,
+              "max_ms": 5183939999,
+              "mean_ms": 320002222,
+              "min_ms": 1,
+              "p50_ms": 1,
+              "p90_ms": 863939999
+            },
+            "distinct_authors": 3,
+            "distinct_spec_versions": 1,
+            "first_block": 100,
+            "first_observed_at": "2026-06-15T17:19:59.999Z",
+            "last_block": 127,
+            "last_observed_at": "2026-09-23T17:21:00.000Z",
+            "latest_spec_version": 300,
+            "schema_version": 1,
+            "throughput": {
+              "max_extrinsics_in_block": 8,
+              "mean_events_per_block": 13.89,
+              "mean_extrinsics_per_block": 5,
+              "total_events": 389,
+              "total_extrinsics": 140
+            }
+          }
+        },
+        "rows": [
+          {
+            "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/blocks-summary.json",
+            "payload": "{\"bytes\":863,\"compressedBytes\":424,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"format\":\"gzip-json-v1\",\"parts\":1,\"sha256\":\"c794c7e502389d681b18f5238a9a9ad7cc47207d4172d1e8b5b501ae49900481\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/blocks-summary.json/chunks/0",
+            "payload": "{\"data\":\"H4sIAAAAAAAAA3VSy27DIBD8F85OxCMk4O/oqRdEHRKj2mABTh9R/r0LfsitGk7s7A47zO4dXY0zQSdzVjqhGlFMjzssd5S9kFNNcY3xHmP8iioU/Idq/OigjIoKxaY1vVY3E6L1DtUEoLHvdfhC9R3pMbU+QL1rjEvQoNTcUQ78ACVkzwUjB1YtkHI+9Lqz3+aMaryXUghOK3S1zuYYUyagRduWiLEDEYcS/uFhTOjpCBnfnUEaqqGD0++698mDHHO52Maa8okKJT8ogocmqdjqYMrL/FRUldTTDH1O4k8ySXfZuEeF3jrfvG+tnIBke5MtWhKnCvX6U/XwB04Ek0zCAcxoV0BGYTAUDmB2gsCggeP1KqerOM5k6H22MVkHCqcBTf6sYBxMs0x0euNiQ0yqCIQY4wXxb9GE2++tOe4Iz1tDZM0lDFDmren0hp//VID/6OvSkc3SdbCa8bcwkJx1/LN/qQ1+vLbDmLKP2TzzmYJ10TZRgUWzDDGbaG6wB1ENJqwC2V4sFm+omwo+j3Img5ZMmKGVAS8d8OPx+AGBP5PSXwMAAA==\"}"
+          },
+          {
+            "key": "metagraph/native-projections/v1/testnet/current.json",
+            "payload": "{\"artifacts\":[{\"artifactKey\":\"metagraph/projections/testnet/blocks-summary.json\",\"object\":{\"bytes\":863,\"etag\":\"29bc09bf1f971dea2212b970f96a5d43\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/blocks-summary.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/testnet/chain-registrations.json\",\"object\":{\"bytes\":506,\"etag\":\"f4ef856a31b6b773c79d4588aaa101fc\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-registrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-deregistrations.json\",\"object\":{\"bytes\":1720,\"etag\":\"1e89fee2b1a2a97496e28a5b4030c61a\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-deregistrations.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-deregistrations-by-hotkey.json\",\"object\":{\"bytes\":1036,\"etag\":\"5271759463cf016ee0cba229a8d9104a\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-deregistrations-by-hotkey.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/testnet/chain-deregistrations-by-uid.json\",\"object\":{\"bytes\":1038,\"etag\":\"01ae2e5fef50210c26350121ab134fc4\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-deregistrations-by-uid.json\"},\"rowCount\":null},{\"artifactKey\":\"metagraph/projections/testnet/chain-transfers.json\",\"object\":{\"bytes\":1081,\"etag\":\"ce04eb9486ea2d8a168baae9c094291c\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-transfers.json\"},\"rowCount\":12},{\"artifactKey\":\"metagraph/projections/testnet/chain-stake-flow.json\",\"object\":{\"bytes\":2196,\"etag\":\"3760dc510c1490227862222aa402f63c\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-stake-flow.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/testnet/chain-activity.json\",\"object\":{\"bytes\":1522,\"etag\":\"3fece119bc62cf2024aacaa7bc31a55d\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-activity.json\"},\"rowCount\":18},{\"artifactKey\":\"metagraph/projections/testnet/chain-calls.json\",\"object\":{\"bytes\":4630,\"etag\":\"98b5baaa0e5698f0941c9b1895e20962\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-calls.json\"},\"rowCount\":28},{\"artifactKey\":\"metagraph/projections/testnet/chain-fees.json\",\"object\":{\"bytes\":8379,\"etag\":\"cf0deda07840903c8f435d09eed2e98a\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-fees.json\"},\"rowCount\":13},{\"artifactKey\":\"metagraph/projections/testnet/chain-signers.json\",\"object\":{\"bytes\":3969,\"etag\":\"dfe316ff0670a7af107cee024d105d27\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-signers.json\"},\"rowCount\":8},{\"artifactKey\":\"metagraph/projections/testnet/chain-alpha-volume.json\",\"object\":{\"bytes\":836,\"etag\":\"0b27ded372a3dfc4e9d3a342751e1bfd\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-alpha-volume.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/testnet/chain-stake-transfers.json\",\"object\":{\"bytes\":568,\"etag\":\"9236995cb85bc2cebcb10b26f14a89b9\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-stake-transfers.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/testnet/chain-transfer-pairs.json\",\"object\":{\"bytes\":4587,\"etag\":\"7d34ba0d72eab32f49445b7563abe104\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-transfer-pairs.json\"},\"rowCount\":32},{\"artifactKey\":\"metagraph/projections/testnet/chain-stake-moves.json\",\"object\":{\"bytes\":560,\"etag\":\"6eca38f4361d212e6554d3ea63e07788\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-stake-moves.json\"},\"rowCount\":6},{\"artifactKey\":\"metagraph/projections/testnet/chain-serving.json\",\"object\":{\"bytes\":482,\"etag\":\"1dfb27e8220d03ecb782264719593620\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-serving.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-prometheus.json\",\"object\":{\"bytes\":494,\"etag\":\"6e24e12fa5d4e9f93fb32ee2d52a9fa5\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-prometheus.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-weights.json\",\"object\":{\"bytes\":474,\"etag\":\"a262fa7b2ace39cb1c9a1664c8f9d834\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-weights.json\"},\"rowCount\":4},{\"artifactKey\":\"metagraph/projections/testnet/chain-weight-setters.json\",\"object\":{\"bytes\":1190,\"etag\":\"2f5a76b1b02647c8092b54ae6d1efb68\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-weight-setters.json\"},\"rowCount\":10},{\"artifactKey\":\"metagraph/projections/testnet/chain-ownership.json\",\"object\":{\"bytes\":338,\"etag\":\"9adb428bcd8d824663e8d815dd18cfa3\",\"key\":\"metagraph/native-projections/v1/testnet/a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe/chain-ownership.json\"},\"rowCount\":1}],\"generatedAt\":1790184000000,\"generation\":\"a6a064d2198f7ce100452a48bb141dfdba9596cc14f2a8b314701f09e3659ffe\",\"network\":\"testnet\",\"readerCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"sources\":[{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"retainedBlocks\":{\"databaseId\":\"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\",\"state\":{\"coverage\":\"{\\\"version\\\": 1, \\\"network\\\": \\\"testnet\\\", \\\"table_uuid\\\": \\\"11111111-2222-4333-8444-555555555555\\\", \\\"floor\\\": 0, \\\"covered_through\\\": 99, \\\"sequence_number\\\": 1}\",\"generated_at\":100,\"generation\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"network\":1,\"sequence\":1,\"snapshot\":\"1\",\"source_files\":2,\"source_rows\":6,\"table_uuid\":\"11111111-2222-4333-8444-555555555555\"},\"transitions\":[{\"operation\":\"replace\",\"rows\":6,\"snapshot\":\"2\"},{\"operation\":\"append\",\"rows\":8,\"snapshot\":\"3\"}]},\"sequence\":3,\"snapshot\":\"3\",\"table\":\"blocks\",\"table_uuid\":\"11111111-2222-4333-8444-555555555555\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"extrinsics\",\"table_uuid\":\"extrinsics-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"account_events\",\"table_uuid\":\"account_events-uuid\",\"version\":1},{\"coverage\":null,\"cutoff\":1782408000000,\"network\":\"testnet\",\"sequence\":1,\"snapshot\":\"1\",\"table\":\"chain_events\",\"table_uuid\":\"chain_events-uuid\",\"version\":1}],\"state\":\"complete\",\"version\":1}"
+          }
+        ]
+      },
+      "scenario": "replace-append"
+    }
+  ],
+  "format": "retained-projection-contract/v1",
+  "producerSha256": {
+    "native_projection_d1.py": "d179ae108afb8ca5fca61333946f59f27ff5c03c4b920a85911e553f4d81f1a7",
+    "native_projections_r2.py": "6cffc88e69d0f36762bb52771108f8d7edeba07ab452cd81eccb1ee75bca6e4b",
+    "retained_blocks_d1.py": "ae2a6f6713c332ce3e19b95565955f6bd2a97ab8cb8e220202486024b5426632",
+    "retained_projection_blocks.py": "61788c5a526287fe047e017dff6e61b6600182e96c50999b59966121506bad85"
+  },
+  "synthetic": true
+}
