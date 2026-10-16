@@ -371,7 +371,10 @@ export async function loadTopHoldersFlowTier(
       );
     })().catch(() => false);
     if (!mayUseDelegated) {
-      if (sort === TOP_HOLDERS_DELEGATED_SORT || sort === TOP_HOLDERS_TOTAL_SORT)
+      if (
+        sort === TOP_HOLDERS_DELEGATED_SORT ||
+        sort === TOP_HOLDERS_TOTAL_SORT
+      )
         return null;
       rows = rows.map((row) => ({
         ...row,

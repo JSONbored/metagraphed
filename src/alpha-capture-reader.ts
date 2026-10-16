@@ -43,6 +43,9 @@ export const ALPHA_RECEIVER_OWNER_TABLES = [
   "nominator_positions",
   "nominator_positions_passes",
   "nominator_scan_receipts",
+  "alpha_runtime_metadata",
+  "alpha_snapshot_passes",
+  "alpha_snapshot_rows",
 ] as const;
 
 export function canonicalAlphaOwnerStore(env: unknown) {
@@ -52,9 +55,7 @@ export function canonicalAlphaOwnerStore(env: unknown) {
 /** All Alpha tables are installed with their nominator-position owner. */
 export async function alphaCaptureStateFromOwner(env: unknown) {
   const store = canonicalAlphaOwnerStore(env);
-  return store
-    ? alphaCaptureState(store)
-    : { available: false, capture: null };
+  return store ? alphaCaptureState(store) : { available: false, capture: null };
 }
 
 /** Self-stake rows have no qualified same-capture originals. Omitting that

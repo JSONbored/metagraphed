@@ -198,7 +198,9 @@ export async function loadSubnetHolders(
         db.query<Row>(subnetHoldersRowsSql(capture.captured_at, limit, true), [
           netuid,
         ]),
-        db.first!(subnetHoldersAggregateSql(capture.captured_at, true), [netuid]),
+        db.first!(subnetHoldersAggregateSql(capture.captured_at, true), [
+          netuid,
+        ]),
       ]);
       if (
         await alphaPositionsUnqualified(db, capture.captured_at, {

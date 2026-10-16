@@ -307,14 +307,14 @@ export interface ReadStoreDeps {
   clientFactory?: (connectionString: string) => ReadStoreClient;
 }
 
-const postgresReadStores = new WeakSet<object>();
+const POSTGRES_READ_STORE = Symbol("postgres-read-store");
 
 /** Native-only capabilities must not issue SQLite discovery against Neon. */
 export function isPostgresReadStore(value: unknown): boolean {
   return (
     typeof value === "object" &&
     value !== null &&
-    postgresReadStores.has(value)
+    Object.getOwnPropertyDescriptor(value, POSTGRES_READ_STORE)?.value === true
   );
 }
 
@@ -354,7 +354,7 @@ export function pgReadStore(
       return ((await run(text, values))[0] ?? null) as T | null;
     },
   };
-  postgresReadStores.add(store);
+  Object.defineProperty(store, POSTGRES_READ_STORE, { value: true });
   return store;
 }
 

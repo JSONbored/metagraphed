@@ -296,7 +296,9 @@ export async function topHoldersHoldings(
     alphaCaptureState(db),
   ]).catch(() => [null, null] as const);
   if (!balances || !state) return null;
-  const alpha = state.available ? null : await latestCompleteHotkeyAlphaPass(db);
+  const alpha = state.available
+    ? null
+    : await latestCompleteHotkeyAlphaPass(db);
   const free = mayRankAccountBalances(balances);
   let delegated = state.available
     ? state.capture?.quantityQualified === true

@@ -17367,7 +17367,14 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.equal(data.position_count, 1);
     assert.equal(data.positions[0].stake_tao, 50);
     assert.equal(data.total_stake_alpha, 50);
-    assert.match(queries[0]!, /FROM chain\.nominator_positions/);
+    const positionRead = queries.find((sql) =>
+      /FROM chain\.nominator_positions WHERE coldkey = /.test(sql),
+    );
+    assert.ok(positionRead, "the selected owner must supply the position page");
+    assert.match(
+      positionRead,
+      new RegExp(`WHERE coldkey = '${LAKE_EXTRINSIC.signer}'`),
+    );
 
     // The compound card resolves through the SAME chain, so it cannot
     // disagree with the single-facet tool about what this coldkey holds.
@@ -23152,6 +23159,8 @@ describe("MCP get_account_snapshot", () => {
         1,
         "the positions view must come from the store, not a tier that 503s",
       );
+      assert.equal(out.positions.positions[0].stake_tao, 25);
+      assert.equal(out.positions.total_stake_alpha, 25);
       assert.equal(
         out.recent_events.events[0].event_kind,
         "Transfer",

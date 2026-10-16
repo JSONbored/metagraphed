@@ -23,13 +23,21 @@ import { selectedD1Store } from "./d1-store.ts";
 import { loadIndexedAccountFeedPage } from "./indexed-account-feeds.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
 
+/** Exact capture evidence inherits the nominator ledger's D1 owner. */
+const NOMINATOR_POSITIONS_TABLES = [
+  "nominator_positions",
+  "alpha_runtime_metadata",
+  "alpha_snapshot_passes",
+  "alpha_snapshot_rows",
+] as const;
+
 async function nativePositionRows(
   env: unknown,
   text: string,
   values: unknown[] = [],
 ): Promise<Record<string, unknown>[] | null | undefined> {
   try {
-    const store = selectedD1Store(env, ["nominator_positions"]);
+    const store = selectedD1Store(env, NOMINATOR_POSITIONS_TABLES);
     return store ? await store.query(text, values) : undefined;
   } catch {
     return null;
@@ -190,7 +198,10 @@ export async function loadAccountPositionsColdTier(
       if (state.available) {
         const capture = state.capture;
         if (!capture?.quantityQualified)
-          return unpriceableAccountPositions(ss58, capture?.captured_at ?? null);
+          return unpriceableAccountPositions(
+            ss58,
+            capture?.captured_at ?? null,
+          );
         const exactRows = await db.query(
           `SELECT ${POSITION_COLUMNS}, alpha_rao FROM alpha_snapshot_rows` +
             " WHERE coldkey = ? AND captured_at = ? LIMIT ?",

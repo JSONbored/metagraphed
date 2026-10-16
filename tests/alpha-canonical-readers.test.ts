@@ -86,8 +86,10 @@ function capture(spec: 454 | 478 | 479 = 478, at = STAMP, block = 100) {
     .prepare("INSERT OR IGNORE INTO alpha_runtime_metadata VALUES(?,?,?)")
     .run(runtime.metadata, runtime.code, spec);
   sqlite
-    .prepare(`INSERT INTO alpha_snapshot_passes VALUES(
-    ?,?, ?,?,?,?, ?,1,1,1,1,?,1)`)
+    .prepare(
+      `INSERT INTO alpha_snapshot_passes VALUES(
+    ?,?, ?,?,?,?, ?,1,1,1,1,?,1)`,
+    )
     .run(
       at,
       block,
@@ -211,7 +213,10 @@ describe("canonical Alpha quantities across existing readers", () => {
       (await loadSubnetHolders(store(), 7)).decline,
       "pool_totals_unproven",
     );
-    assert.equal((await loadChainHolders(store())).decline, "pool_totals_unproven");
+    assert.equal(
+      (await loadChainHolders(store())).decline,
+      "pool_totals_unproven",
+    );
     assert.equal(
       (await loadNominatorPositions(store(), HOTKEY)).decline,
       "pool_totals_unproven",
@@ -233,7 +238,10 @@ describe("canonical Alpha quantities across existing readers", () => {
       (await loadSubnetHolders(store(), 7)).decline,
       "pool_totals_unproven",
     );
-    assert.equal((await loadChainHolders(store())).decline, "pool_totals_unproven");
+    assert.equal(
+      (await loadChainHolders(store())).decline,
+      "pool_totals_unproven",
+    );
     assert.equal(
       (await loadNominatorPositions(store(), HOTKEY)).decline,
       "pool_totals_unproven",
@@ -300,7 +308,10 @@ describe("canonical Alpha quantities across existing readers", () => {
       (await loadSubnetHolders(store(), 7)).decline,
       "pool_totals_unproven",
     );
-    assert.equal((await loadChainHolders(store())).decline, "pool_totals_unproven");
+    assert.equal(
+      (await loadChainHolders(store())).decline,
+      "pool_totals_unproven",
+    );
     assert.equal(
       (await loadNominatorPositions(store(), HOTKEY)).decline,
       "pool_totals_unproven",

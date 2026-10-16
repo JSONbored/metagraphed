@@ -24,14 +24,16 @@ const capture = (spec: 478 | 479 = 478) => ({
   retained_code_hash: ALPHA_RUNTIMES[spec].code,
   retained_spec_version: spec,
 });
-function reader(options: {
-  schema?: boolean;
-  spec?: 478 | 479;
-  selfStake?: boolean;
-  failure?: boolean;
-  race?: boolean;
-  rows?: Row[];
-} = {}): OptionalRowReader & OptionalRowQuerier {
+function reader(
+  options: {
+    schema?: boolean;
+    spec?: 478 | 479;
+    selfStake?: boolean;
+    failure?: boolean;
+    race?: boolean;
+    rows?: Row[];
+  } = {},
+): OptionalRowReader & OptionalRowQuerier {
   let reads = 0;
   return {
     async first<T>(sql: string) {
@@ -60,7 +62,10 @@ const noLegacy = async (): Promise<Row[]> => {
 test("owner split preserves pre-schema legacy readers", async () => {
   const legacy = async () => [position];
   assert.deepEqual(await ownerCapturePositions(null, 23, legacy), [position]);
-  assert.deepEqual(await ownerCapturePositions(reader({ schema: false }), 23, legacy), [position]);
+  assert.deepEqual(
+    await ownerCapturePositions(reader({ schema: false }), 23, legacy),
+    [position],
+  );
 });
 
 test("owner split selects exact canonical rows and refuses unqualified, shadowed or racing quantities", async () => {
@@ -74,12 +79,17 @@ test("owner split selects exact canonical rows and refuses unqualified, shadowed
       rows: [{ ...position, share_fraction }],
     })),
   ])
-    assert.deepEqual(await ownerCapturePositions(reader(options), 23, noLegacy), []);
+    assert.deepEqual(
+      await ownerCapturePositions(reader(options), 23, noLegacy),
+      [],
+    );
 });
-
 
 test("owner split refuses incomplete reader capabilities", async () => {
   assert.deepEqual(await ownerCapturePositions({}, 23, noLegacy), []);
   const complete = reader();
-  assert.deepEqual(await ownerCapturePositions({ first: complete.first }, 23, noLegacy), []);
+  assert.deepEqual(
+    await ownerCapturePositions({ first: complete.first }, 23, noLegacy),
+    [],
+  );
 });

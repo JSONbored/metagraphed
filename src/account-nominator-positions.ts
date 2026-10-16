@@ -1,8 +1,4 @@
-import {
-  round9OrNull,
-  nonNegativeCellOrNull,
-  raoBigToTao,
-} from "./lib/rao.ts";
+import { round9OrNull, nonNegativeCellOrNull, raoBigToTao } from "./lib/rao.ts";
 // Nominator-side (coldkey) position reconstruction (#5233): "what does this
 // coldkey actually hold, across every hotkey/subnet it delegates to" — the
 // coldkey-scoped counterpart to buildAccountPortfolio's hotkey-scoped view

@@ -43,6 +43,14 @@ import {
 import { readStore } from "./read-store.ts";
 import type { NominatorPositions } from "../generated/db/types.ts";
 
+/** Exact capture evidence inherits the nominator ledger's D1 owner. */
+const NOMINATOR_POSITIONS_TABLES = [
+  "nominator_positions",
+  "alpha_runtime_metadata",
+  "alpha_snapshot_passes",
+  "alpha_snapshot_rows",
+] as const;
+
 /** Kept identical to the cold tier's SELECT list (minus `coldkey`, which the
  * predicate already fixes) so both tiers hand the formatter the same shape. */
 const POSITION_COLUMNS = "hotkey, netuid, share_fraction, captured_at";
@@ -68,7 +76,7 @@ export async function loadAccountPositionsFromStore(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountPositions> | null> {
-  const db = readStore(env, ["nominator_positions"]);
+  const db = readStore(env, NOMINATOR_POSITIONS_TABLES);
   if (!db?.query || !db?.first) return null;
 
   let rows: Record<string, unknown>[];

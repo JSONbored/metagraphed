@@ -172,7 +172,8 @@ test("resume and capture require their declared owner and report storage errors 
     );
   const environment = dataApiEnv({
     D1_STATE: db,
-    D1_STATE_TABLES: "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
+    D1_STATE_TABLES:
+      "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
     NOMINATOR_POSITIONS_SYNC_SECRET: "fixture-token",
   });
   for (const body of [{ alpha_snapshot_resume: true }, packet()]) {
@@ -380,7 +381,8 @@ test("internal route enforces its existing secret and native owner; code/metadat
   const p = packet();
   const env = dataApiEnv({
     D1_STATE: db,
-    D1_STATE_TABLES: "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
+    D1_STATE_TABLES:
+      "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
     NOMINATOR_POSITIONS_SYNC_SECRET: "fixture-token",
   });
   const request = (body: Row, secret = "fixture-token") =>
@@ -614,16 +616,14 @@ test("exporter upgrade precedes DDL and rollback is unsafe before first selectio
     });
   const env = {
     D1_STATE: db,
-    D1_STATE_TABLES: "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
+    D1_STATE_TABLES:
+      "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
     D1_EXPORT_REVISIONS: "enabled",
     STATE_EXPORT_SECRET: "secret",
   };
   assert.equal((await handleD1StateExport(request(), env)).status, 200);
   for (const sql of readFileSync(
-    new URL(
-      "../migrations/d1/0039_alpha_runtime_receiver.sql",
-      import.meta.url,
-    ),
+    new URL("../migrations/d1/0039_alpha_runtime_receiver.sql", import.meta.url),
     "utf8",
   ).split("-- statement-breakpoint"))
     if (sql.trim()) await db.prepare(sql).run();
@@ -758,7 +758,8 @@ test("receiver-owned pending identity survives restart and lost acknowledgements
   });
   const env = dataApiEnv({
     D1_STATE: db,
-    D1_STATE_TABLES: "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
+    D1_STATE_TABLES:
+      "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
     NOMINATOR_POSITIONS_SYNC_SECRET: "fixture-token",
   });
   const ctx = {} as ExecutionContext;

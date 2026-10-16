@@ -44,6 +44,8 @@ export const ALPHA_PRICING_TABLES = [
   "nominator_positions",
   "hotkey_alpha",
   "hotkey_alpha_passes",
+  // Conditional D1 dependencies: alphaCaptureState skips PostgreSQL before
+  // native discovery, retaining the legacy pricing read on that owner.
   "alpha_runtime_metadata",
   "alpha_snapshot_passes",
   "alpha_snapshot_rows",

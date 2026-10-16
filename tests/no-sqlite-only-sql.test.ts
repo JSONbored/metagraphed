@@ -162,6 +162,9 @@ describe("store-neutral SQL", () => {
           "src/observations-d1.ts",
           "src/capture-family-d1.ts",
           "src/ledger-d1.ts",
+          // Full self-stake snapshots require the native source domain before
+          // dispatch through ledger-d1; PostgreSQL receives no receipt SQL.
+          "src/self-stake-snapshot-d1.ts",
           "src/registry-sync-d1.ts",
           // The caller requires explicit api_usage_rollup D1 ownership;
           // native receipt tests cover rollback and committed-reply replay.
