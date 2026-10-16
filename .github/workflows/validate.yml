@@ -10,6 +10,23 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      native_parity_capture_only:
+        description: "Read-only existing native export; encrypt captured bytes before retention"
+        type: boolean
+        default: false
+      native_parity_test_only:
+        description: "Run capture harness tests without export credentials or data reads"
+        type: boolean
+        default: false
+      native_parity_assets:
+        description: "Exact immutable identities; regular capture or one bounded manifest"
+        type: string
+        default: "[]"
+      native_parity_public_key:
+        description: "Base64 encoded ephemeral RSA public key; private key remains local"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -262,7 +279,7 @@ jobs:
     # every push before anyone marked it ready. Job-level skip is safe here: this repo has ZERO
     # required status contexts on main (verified via branches/main/protection), and the review
     # pipeline's fetchLiveCiAggregate buckets skipped identically to success.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft != true) && !(github.event_name == 'workflow_dispatch' && (inputs.native_parity_capture_only || inputs.native_parity_test_only)) }}
     env:
       # The docs fast lane + narrow validator skips, unchanged from the old `checks` job -- see the
       # `changes` job comment above for what each flag proves. Still per-STEP guards (not job-level):
@@ -795,7 +812,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft != true) && !(github.event_name == 'workflow_dispatch' && (inputs.native_parity_capture_only || inputs.native_parity_test_only)) }}
     strategy:
       # One red leg must not cancel the others: a shard-specific failure is
       # exactly the thing you want the other shards' results for.
@@ -957,7 +974,7 @@ jobs:
   coverage:
     name: coverage
     needs: test
-    if: ${{ !cancelled() && needs.test.result != 'skipped' }}
+    if: ${{ (!cancelled() && needs.test.result != 'skipped') && !(github.event_name == 'workflow_dispatch' && (inputs.native_parity_capture_only || inputs.native_parity_test_only)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -1107,7 +1124,7 @@ jobs:
     # pipeline buckets skipped as success -- see the `test` job comment): both suites read only
     # python/**, scripts/**.py and scripts lock/project manifests. Draft
     # PRs skip entirely, same as every heavy job here. Push/dispatch runs are unaffected.
-    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true') }}
+    if: ${{ (github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true')) && !(github.event_name == 'workflow_dispatch' && (inputs.native_parity_capture_only || inputs.native_parity_test_only)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15 # locked dependency qualification and hermetic suites
     steps:
@@ -1163,7 +1180,7 @@ jobs:
   ui:
     name: ui
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_ui_validation == 'true') }}
+    if: ${{ (github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_ui_validation == 'true')) && !(github.event_name == 'workflow_dispatch' && (inputs.native_parity_capture_only || inputs.native_parity_test_only)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30 # workspace install, drift-check builds, typecheck/test, and the Playwright e2e pass
     steps:
@@ -1659,3 +1676,63 @@ jobs:
         run: |
           npm audit --audit-level=high --omit=dev --workspace=apps/ui \
             || echo "::warning::npm audit found high/critical advisories in apps/ui's runtime dependencies — review above (report-only; not failing CI yet)"
+
+  native_parity_capture_tests:
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.native_parity_capture_only || inputs.native_parity_test_only) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing locked workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Format capture harness for review
+        run: npx prettier --write .github/workflows/validate.yml scripts/capture-native-parity.ts scripts/capture-native-parity.node-test.ts
+      - name: Test capture bounds and encrypted retention without credentials
+        run: node --experimental-strip-types --test scripts/capture-native-parity.node-test.ts
+      - name: Typecheck the unchanged workspace contract and diagnostic sources
+        run: npm run typecheck
+      - name: Verify committed diagnostic formatting
+        run: git diff --exit-code -- .github/workflows/validate.yml scripts/capture-native-parity.ts scripts/capture-native-parity.node-test.ts
+      - name: Retain public formatted source for review
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-parity-formatted-source
+          path: |
+            .github/workflows/validate.yml
+            scripts/capture-native-parity.ts
+            scripts/capture-native-parity.node-test.ts
+          include-hidden-files: true
+          retention-days: 1
+
+  native_parity_capture:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.native_parity_capture_only && !inputs.native_parity_test_only }}
+    needs: native_parity_capture_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22.23.2
+      - name: Read exact pinned bytes through the existing authenticated export
+        run: node --experimental-strip-types scripts/capture-native-parity.ts
+        env:
+          STATE_EXPORT_SECRET: ${{ secrets.STATE_EXPORT_SECRET }}
+          NATIVE_PARITY_ASSETS: ${{ inputs.native_parity_assets }}
+          NATIVE_PARITY_PUBLIC_KEY: ${{ inputs.native_parity_public_key }}
+      - name: Retain encrypted capture only
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: sealed-native-parity-capture
+          path: native-parity-capture.encrypted.json
+          retention-days: 1
