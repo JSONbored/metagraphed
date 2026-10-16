@@ -397,7 +397,7 @@ test("coverage declines invalid receipts and read failures without inventing a h
     );
 });
 test("native D1 preserves source duplicates, nulls, exact tuple order and network ownership", async () => {
-  const order = [5,4,0,1,3,2];
+  const order = [5, 4, 0, 1, 3, 2];
   for (const network of ["mainnet", "testnet"] as const) {
     const result = await fetchBlockRowsFromR2Sql(
       env(),
@@ -405,7 +405,11 @@ test("native D1 preserves source duplicates, nulls, exact tuple order and networ
       network,
     );
     assert.deepEqual(result, {
-      rows: order.map(ordinal => ({...rows[ordinal],_source_id: network === "mainnet" ? 1 : 2,_ordinal:ordinal})),
+      rows: order.map((ordinal) => ({
+        ...rows[ordinal],
+        _source_id: network === "mainnet" ? 1 : 2,
+        _ordinal: ordinal,
+      })),
       limit: 10,
       offset: 0,
       nextCursor: null,
@@ -452,18 +456,43 @@ test("every retained block filter and their intersections match the established 
   }
 });
 test("versioned height cursors preserve duplicate identities; old tokens retain observation ordering", async () => {
-  const first = await fetchBlockRowsFromR2Sql(env(), {limit:1,offset:0});
-  assert.deepEqual(first!.rows,[{...rows[5],_source_id:1,_ordinal:5}]);
-  assert.equal(first!.nextCursor,"bh1.12.n.1.5");
-  const next = await fetchBlockRowsFromR2Sql(env(), {limit:2,offset:99,cursor:first!.nextCursor});
-  assert.deepEqual(next!.rows.map(r=>r.block_number),[11,10]);
-  const after = await fetchBlockRowsFromR2Sql(env(), {limit:10,offset:0,cursor:next!.nextCursor});
-  assert.deepEqual(after!.rows.map(r=>r._ordinal),[1,3,2]);
-  const legacy = await fetchBlockRowsFromR2Sql(env(), {limit:2,offset:99,cursor:encodeCursor([200,9])});
-  assert.deepEqual(legacy!.rows,[rows[2],rows[3]]);
-  assert.equal(legacy!.nextCursor,encodeCursor([200,8]));
-  const malformed = await fetchBlockRowsFromR2Sql(env(), {limit:1,offset:1,cursor:"bad",from:0});
-  assert.deepEqual(malformed!.rows,[{...rows[0],_source_id:1,_ordinal:0}]);
+  const first = await fetchBlockRowsFromR2Sql(env(), { limit: 1, offset: 0 });
+  assert.deepEqual(first!.rows, [{ ...rows[5], _source_id: 1, _ordinal: 5 }]);
+  assert.equal(first!.nextCursor, "bh1.12.n.1.5");
+  const next = await fetchBlockRowsFromR2Sql(env(), {
+    limit: 2,
+    offset: 99,
+    cursor: first!.nextCursor,
+  });
+  assert.deepEqual(
+    next!.rows.map((r) => r.block_number),
+    [11, 10],
+  );
+  const after = await fetchBlockRowsFromR2Sql(env(), {
+    limit: 10,
+    offset: 0,
+    cursor: next!.nextCursor,
+  });
+  assert.deepEqual(
+    after!.rows.map((r) => r._ordinal),
+    [1, 3, 2],
+  );
+  const legacy = await fetchBlockRowsFromR2Sql(env(), {
+    limit: 2,
+    offset: 99,
+    cursor: encodeCursor([200, 9]),
+  });
+  assert.deepEqual(legacy!.rows, [rows[2], rows[3]]);
+  assert.equal(legacy!.nextCursor, encodeCursor([200, 8]));
+  const malformed = await fetchBlockRowsFromR2Sql(env(), {
+    limit: 1,
+    offset: 1,
+    cursor: "bad",
+    from: 0,
+  });
+  assert.deepEqual(malformed!.rows, [
+    { ...rows[0], _source_id: 1, _ordinal: 0 },
+  ]);
   assert.equal(
     await fetchBlockRowsFromR2Sql(env(), { limit: 1, offset: 251 }),
     null,

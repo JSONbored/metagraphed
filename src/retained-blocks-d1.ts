@@ -183,7 +183,12 @@ export async function readRetainedBlockRows(
   count: number,
   network: ChainNetworkId = "mainnet",
   now = Date.now(),
-  minimums: { minEvents?: number | null; minExtrinsics?: number | null; heightOrder?: boolean; heightUpper?: number } = {},
+  minimums: {
+    minEvents?: number | null;
+    minExtrinsics?: number | null;
+    heightOrder?: boolean;
+    heightUpper?: number;
+  } = {},
 ): Promise<Record<string, unknown>[] | null | undefined> {
   if (!env?.RETAINED_BLOCKS_NETWORKS?.split(",").includes(network))
     return undefined;
@@ -301,14 +306,17 @@ export async function readRetainedBlockRows(
       (nullable ? " INDEXED BY history_blocks_height " : `${index} `) +
       (author ? "JOIN history_block_authors a ON a.id=b.author_id " : "") +
       `WHERE b.network=? AND b.block_number IS ${nullable ? "" : "NOT "}NULL ` +
-      (heightOrder && !nullable && minimums.heightUpper !== undefined ? `AND b.block_number <= ${minimums.heightUpper} ` : "") +
+      (heightOrder && !nullable && minimums.heightUpper !== undefined
+        ? `AND b.block_number <= ${minimums.heightUpper} `
+        : "") +
       "AND b.source_id IN (SELECT id FROM history_block_sources WHERE network=? AND active=1)" +
       (range.clauses.length
         ? ` AND ${range.clauses.map((clause) => (clause.startsWith("author = ") ? `a.address${clause.slice(6)}` : clause)).join(" AND ")}`
         : "") +
       (heightOrder
         ? " ORDER BY block_number DESC,observed_at ASC,b.source_id DESC,b.ordinal DESC"
-        : " ORDER BY observed_at DESC NULLS FIRST" + (nullable ? "" : ",block_number DESC")) +
+        : " ORDER BY observed_at DESC NULLS FIRST" +
+          (nullable ? "" : ",block_number DESC")) +
       " LIMIT ?";
     const [receipt, result] = await db.batch([
       stateQuery(),
@@ -318,16 +326,26 @@ export async function readRetainedBlockRows(
             `SELECT ${heightOrder ? "b.source_id AS _source_id,b.ordinal AS _ordinal," : ""}${BLOCKS_COLUMNS.map((column) => (column === "author" ? "a.address AS author" : `b.${column}`)).join(", ")} ` +
             "FROM candidates c JOIN history_blocks b ON b.source_id=c.source_id AND b.ordinal=c.ordinal " +
             "LEFT JOIN history_block_authors a ON a.id=b.author_id ORDER BY " +
-            (heightOrder ? "b.block_number DESC,b.observed_at ASC,b.source_id DESC,b.ordinal DESC" : "b.observed_at DESC NULLS FIRST,b.block_number DESC NULLS FIRST") + " LIMIT ?",
+            (heightOrder
+              ? "b.block_number DESC,b.observed_at ASC,b.source_id DESC,b.ordinal DESC"
+              : "b.observed_at DESC NULLS FIRST,b.block_number DESC NULLS FIRST") +
+            " LIMIT ?",
         )
         .bind(net, net, count, net, net, count, count),
     ]);
     if (!receipt!.success || !result!.success) return null;
     const state = checkedState(receipt!.results[0], net, now);
     if (generation !== state.generation) return null;
-    return (heightOrder
-      ? BlocksRowSchema.required().extend({_source_id: integer, _ordinal: integer})
-      : BlocksRowSchema.required()).array().parse(result!.results);
+    return (
+      heightOrder
+        ? BlocksRowSchema.required().extend({
+            _source_id: integer,
+            _ordinal: integer,
+          })
+        : BlocksRowSchema.required()
+    )
+      .array()
+      .parse(result!.results);
   } catch {
     return null;
   }

@@ -12,7 +12,11 @@ import {
   withBlockEconomics,
 } from "./blocks.ts";
 import { summarizeBlockEconomics } from "./block-economics.ts";
-import { decodeBlockFeedCursor, encodeBlockFeedCursor, blockFeedSeek } from "./block-feed-cursor.ts";
+import {
+  decodeBlockFeedCursor,
+  encodeBlockFeedCursor,
+  blockFeedSeek,
+} from "./block-feed-cursor.ts";
 import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import { type ChainNetworkId } from "./chain-network.ts";
 import type { BlocksRow } from "../generated/lakehouse/types.ts";
@@ -191,12 +195,19 @@ export async function fetchBlockRowsFromR2Sql(
     where.push(`${clause} ${n}`);
   }
   const cursor = decodeBlockFeedCursor(query.cursor);
-  let heightUpper = cursor?.mode !== "observed" && cursor?.height != null ? cursor.height : undefined;
+  let heightUpper =
+    cursor?.mode !== "observed" && cursor?.height != null
+      ? cursor.height
+      : undefined;
   if (query.ceilingBlock != null) {
     const ceiling = safeBlockNumber(query.ceilingBlock);
     if (ceiling === null) return null;
     heightUpper = Math.min(heightUpper ?? ceiling - 1, ceiling - 1);
-    where.push(cursor?.mode === "observed" ? `block_number < ${ceiling}` : `(block_number < ${ceiling} OR block_number IS NULL)`);
+    where.push(
+      cursor?.mode === "observed"
+        ? `block_number < ${ceiling}`
+        : `(block_number < ${ceiling} OR block_number IS NULL)`,
+    );
   }
   if (cursor) where.push(blockFeedSeek(cursor));
 
@@ -216,7 +227,7 @@ export async function fetchBlockRowsFromR2Sql(
 
   const page = paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
-  const nextCursor = last ? encodeBlockFeedCursor(last,cursor) : null;
+  const nextCursor = last ? encodeBlockFeedCursor(last, cursor) : null;
   return { rows: page, limit, offset, nextCursor };
 }
 

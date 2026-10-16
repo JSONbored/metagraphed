@@ -47,7 +47,11 @@ import {
 import { safeBlockNumber, safeHexLiteral } from "./history-readers.ts";
 import type { BlocksHead, ChainDetailBlocks } from "../generated/db/types.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
-import { decodeBlockFeedCursor, encodeBlockFeedCursor, type BlockFeedCursor } from "./block-feed-cursor.ts";
+import {
+  decodeBlockFeedCursor,
+  encodeBlockFeedCursor,
+  type BlockFeedCursor,
+} from "./block-feed-cursor.ts";
 import { readStore, recordOrNull } from "./read-store.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
 import { blocksSeamFloor, resolveBlocksSeam } from "./blocks-seam.ts";
@@ -292,7 +296,9 @@ export async function loadBlockFeedColdTier(
     // than any cursor the caller sent (the store leg consumed it). With none,
     // an exclusive block ceiling at the seam bounds the lake leg instead.
     const lastHead = rows.length ? rows[rows.length - 1]! : null;
-    const continuation = lastHead ? encodeBlockFeedCursor(lastHead,cursor) : null;
+    const continuation = lastHead
+      ? encodeBlockFeedCursor(lastHead, cursor)
+      : null;
     // RAW rows, deliberately: they are formatted once below, together with the
     // store rows, so both sources go through the formatter exactly the same way.
     const lake = await fetchBlockRowsFromR2Sql(
@@ -307,7 +313,10 @@ export async function loadBlockFeedColdTier(
         // exclude and a ceiling would be actively wrong: the seam is 0 there, so
         // `block_number < seam + 1` would cap the whole feed at block 0.
         ceilingBlock:
-          network !== DEFAULT_CHAIN_NETWORK || (lastHead && cursor?.mode === "observed") ? null : seam + 1,
+          network !== DEFAULT_CHAIN_NETWORK ||
+          (lastHead && cursor?.mode === "observed")
+            ? null
+            : seam + 1,
       },
       network,
     );
@@ -317,7 +326,7 @@ export async function loadBlockFeedColdTier(
 
   const page = paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
-  const nextCursor = last ? encodeBlockFeedCursor(last,cursor) : null;
+  const nextCursor = last ? encodeBlockFeedCursor(last, cursor) : null;
   return buildBlockFeed(page, { limit, offset, nextCursor });
 }
 
