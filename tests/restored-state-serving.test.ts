@@ -375,7 +375,17 @@ test("restored retained storage preserves tie ordering, keyset pages, nullable c
       corpus.blocks[network].slice(0, 2),
     );
     if (network === "mainnet") {
-      assert.equal(body.data.next_cursor, corpus.first_cursor);
+      assert.equal(body.data.next_cursor, "bh1.10.1790183999000.1.1");
+      const legacy = await rest(
+        `/api/v1/blocks?limit=2&cursor=${corpus.first_cursor}`,
+      );
+      const legacyPage = await legacy.json<{
+        data: { blocks: Record<string, unknown>[] };
+      }>();
+      assert.deepEqual(
+        frame(legacyPage.data.blocks),
+        corpus.blocks.mainnet.slice(2),
+      );
       const next = await rest(
         `/api/v1/blocks?limit=2&cursor=${body.data.next_cursor}`,
       );

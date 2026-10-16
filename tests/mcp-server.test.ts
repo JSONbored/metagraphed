@@ -16934,7 +16934,7 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     const data = res.body.result.structuredContent;
     assert.equal(data.blocks.length, 1);
     assert.equal(data.blocks[0].block_number, 4200000);
-    assert.equal(data.next_cursor, "1750009000000.4200000");
+    assert.equal(data.next_cursor, "bh1.4200000.1750009000000.n.n");
     assert.equal(queries.blockFeed.mock.calls.length, 1);
   });
 
