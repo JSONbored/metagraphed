@@ -145,24 +145,24 @@ function isCountInsert(statement: ProducerStatement) {
   return statement.text.startsWith("INSERT INTO validator_nominator_counts(");
 }
 
-test("large count deliveries use bounded atomic bindings", async () => {
+test("supported count deliveries commit one bounded atomic write", async () => {
   const { db, store } = await fixture();
-  const anchor = await publish(db, [], AT, 100, 25_000);
-  const rows = Array.from({ length: 25_000 }, (_, index) =>
-    countRow(anchor, String(index).padStart(48, "x")),
+  const anchor = await publish(db, [], AT, 100, 1000);
+  const rows = Array.from({ length: 1000 }, (_, index) =>
+    countRow(anchor, String(index).padStart(32, "x")),
   );
-  assert.equal(Buffer.byteLength(JSON.stringify(rows)), 2_750_001);
+  assert.ok(Buffer.byteLength(JSON.stringify(rows)) <= 96 * 1024);
   const before = await state(store);
   const transaction = vi.spyOn(store, "transaction");
   const failing: ProducerStore = {
     ...store,
     async transaction(statements) {
-      const inserts = statements.filter(isCountInsert);
-      assert.ok(inserts.length > 1);
-      const later = statements.indexOf(inserts[1]);
+      const written = statements.findIndex(isCountInsert);
+      assert.ok(written >= 0);
+      const later = written + 1;
       return store.transaction([
         ...statements.slice(0, later),
-        { text: "SELECT json('later count piece failed')" },
+        { text: "SELECT json('count write completion failed')" },
         ...statements.slice(later),
       ]);
     },
@@ -184,17 +184,16 @@ test("large count deliveries use bounded atomic bindings", async () => {
   assert.equal(transaction.mock.calls.length, 1);
   const statements = transaction.mock.calls[0][0];
   const inserted = statements.filter(isCountInsert);
-  assert.ok(inserted.length > 1);
+  assert.equal(inserted.length, 1);
   for (const statement of statements) {
     for (const value of statement.values ?? []) {
       if (typeof value === "string") {
-        assert.ok(Buffer.byteLength(value) <= 512 * 1024);
+        assert.ok(Buffer.byteLength(value) <= 128 * 1024);
       }
     }
   }
-  const originals = inserted.flatMap(
-    (statement) => JSON.parse(String(statement.values?.[1])) as Row[],
-  );
+  const serialized = String(inserted[0].values?.[1]);
+  const originals = JSON.parse(serialized) as Row[];
   assert.deepEqual(originals, rows);
   assert.equal(receipt.current, true);
   assert.equal(receipt.complete, true);
@@ -209,25 +208,31 @@ test("large count deliveries use bounded atomic bindings", async () => {
 
 test("count admission bounds rows and UTF8 bytes before writing", async () => {
   const { store } = await fixture();
-  const anchor = anchorFor(0, AT, 100, 50_001);
+  const anchor = anchorFor(0, AT, 100, 5_001);
   const transaction = vi.spyOn(store, "transaction");
-  const tooMany = Array.from({ length: 50_001 }, (_, index) =>
+  const tooMany = Array.from({ length: 5_001 }, (_, index) =>
     countRow(anchor, String(index)),
   );
   await assert.rejects(
     writeAlphaCountsD1(store, tooMany, anchor, tooMany.length, AT + 10),
     /Invalid anchored Alpha count rows/,
   );
-  const rows = tooMany.slice(0, 50_000).map((row, index) => ({
+  const rows = tooMany.slice(0, 1000).map((row, index) => ({
     ...row,
     hotkey: String(index).padStart(8, "0") + "\u{10000}".repeat(30),
   }));
   const encoded = JSON.stringify(rows);
-  assert.ok(encoded.length < 8_000_000);
-  assert.ok(Buffer.byteLength(encoded) > 8_000_000);
+  assert.ok(encoded.length < 128 * 1024);
+  assert.ok(Buffer.byteLength(encoded) > 128 * 1024);
   await assert.rejects(
-    writeAlphaCountsD1(store, rows, anchor, rows.length, AT + 10),
-    /request byte budget/,
+    writeAlphaCountsD1(
+      store,
+      rows,
+      anchorFor(0, AT, 100, rows.length),
+      rows.length,
+      AT + 10,
+    ),
+    /native byte budget/,
   );
   assert.equal(transaction.mock.calls.length, 0);
   assert.deepEqual(await state(store), [[], [], []]);

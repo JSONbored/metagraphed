@@ -147,6 +147,40 @@ async function fixture() {
       ANCHOR_FIELDS.map((field) => [field, snapshot[field]]),
     );
   };
+  const captureRoot = async (size: number) => {
+    const snapshot = {
+      ...frozen.alpha_snapshot,
+      block_number: 100,
+      block_hash: "0x" + "c".repeat(64),
+      spec_version: 479,
+      code_hash: ALPHA_RUNTIMES[479].code,
+      metadata_sha256: ALPHA_RUNTIMES[479].metadata,
+      metadata_scale_hex: readFileSync(
+        new URL("./fixtures/alpha-runtime/metadata-479.hex", import.meta.url),
+        "utf8",
+      ).trim(),
+      scanned_legacy: 0,
+      scanned_v2: size,
+      distinct_members: size,
+      excluded_root_members: size,
+      total_rows: 0,
+      total_chunks: 1,
+      index: 0,
+    };
+    const selected = await json(
+      await post(
+        { alpha_snapshot: snapshot, rows: [] },
+        env,
+        SECRET,
+        POSITION_PATH,
+      ),
+    );
+    assert.equal(selected.alpha_snapshot.selected, 1);
+    assert.equal(selected.alpha_snapshot.current, true);
+    return Object.fromEntries(
+      ANCHOR_FIELDS.map((field) => [field, snapshot[field]]),
+    );
+  };
   const status = (anchor: Row, passTotal = 2, environment = env) =>
     post(
       {
@@ -186,7 +220,18 @@ async function fixture() {
     const result = await db.prepare(sql).all<Row>();
     return result.results;
   };
-  return { db, env, sent, post, capture, status, deliver, counts, receipts };
+  return {
+    db,
+    env,
+    sent,
+    post,
+    capture,
+    captureRoot,
+    status,
+    deliver,
+    counts,
+    receipts,
+  };
 }
 
 async function json(response: Response): Promise<Row> {
@@ -202,51 +247,17 @@ function countRow(hotkey: string, anchor: Row, nominatorCount = 1) {
   };
 }
 
-test("large inline counts acknowledge native completion", async () => {
+test("bulk counts require queue admission", async () => {
   const f = await fixture();
   const size = 25_000;
-  const snapshot = {
-    ...frozen.alpha_snapshot,
-    block_number: 100,
-    block_hash: "0x" + "c".repeat(64),
-    spec_version: 479,
-    code_hash: ALPHA_RUNTIMES[479].code,
-    metadata_sha256: ALPHA_RUNTIMES[479].metadata,
-    metadata_scale_hex: readFileSync(
-      new URL("./fixtures/alpha-runtime/metadata-479.hex", import.meta.url),
-      "utf8",
-    ).trim(),
-    scanned_legacy: 0,
-    scanned_v2: size,
-    distinct_members: size,
-    excluded_root_members: size,
-    total_rows: 0,
-    total_chunks: 1,
-    index: 0,
-  };
-  const selected = await json(
-    await f.post(
-      { alpha_snapshot: snapshot, rows: [] },
-      f.env,
-      SECRET,
-      POSITION_PATH,
-    ),
-  );
-  assert.equal(selected.alpha_snapshot.selected, 1);
-  assert.equal(selected.alpha_snapshot.current, true);
-  const anchor = Object.fromEntries(
-    ANCHOR_FIELDS.map((field) => [field, snapshot[field]]),
-  );
+  const anchor = await f.captureRoot(size);
   const rows = Array.from({ length: size }, (_, index) =>
     countRow(String(index).padStart(48, "x"), anchor),
   );
   const body = { rows, pass_total: size, alpha_snapshot: anchor };
   const bytes = Buffer.byteLength(JSON.stringify(body));
   assert.ok(bytes > 2_000_000 && bytes < 8_000_000);
-  const started = Promise.withResolvers<void>();
-  const gate = Promise.withResolvers<void>();
-  let committed = false;
-  let acknowledged = false;
+  let batches = 0;
   const inline = dataApiEnv({
     ...f.env,
     SYNC_QUEUE_LANES: "",
@@ -254,6 +265,79 @@ test("large inline counts acknowledge native completion", async () => {
     D1_STATE: {
       prepare: f.db.prepare.bind(f.db),
       async batch(statements: D1PreparedStatement[]) {
+        batches++;
+        return f.db.batch(statements);
+      },
+    },
+  });
+  const refused = await f.post(body, inline);
+  assert.equal(refused.status, 413);
+  const error = (await refused.json()) as Row;
+  assert.match(error.error, /1000 rows.*98304 UTF8 bytes.*projected rows JSON/);
+  assert.match(error.error, /configure validator-nominator-counts queue/);
+  assert.equal(batches, 0);
+  assert.equal(f.sent.length, 0);
+  assert.deepEqual(await f.counts(), []);
+  assert.deepEqual(await f.receipts(), []);
+  const pending = await json(await f.status(anchor, size, inline));
+  assert.equal(pending.current, true);
+  assert.equal(pending.complete, false);
+  assert.equal(pending.applied_count, 0);
+  assert.equal(pending.completed_at, null);
+  const queued = await json(await f.post(body));
+  assert.deepEqual(queued, {
+    ok: true,
+    stores: ["queue"],
+    queued: true,
+    alpha_snapshot: anchor,
+    pass_total: size,
+  });
+  assert.ok(f.sent.length > 1);
+  for (const message of f.sent) {
+    assert.ok(message.rows.length <= 5000);
+    assert.ok(Buffer.byteLength(JSON.stringify(message)) <= 128 * 1024);
+    assert.deepEqual(message.alpha_snapshot, anchor);
+    assert.equal(message.pass_total, size);
+  }
+  assert.deepEqual(
+    f.sent.flatMap((message) => message.rows),
+    rows,
+  );
+  assert.deepEqual(await json(await f.status(anchor, size)), pending);
+  assert.deepEqual(await f.counts(), []);
+  assert.deepEqual(await f.receipts(), []);
+});
+
+test("inline count boundaries retain atomic durable completion", async () => {
+  const f = await fixture();
+  const size = 1000;
+  const anchor = await f.captureRoot(size);
+  const rows = Array.from({ length: size }, (_, index) =>
+    countRow(String(index).padStart(32, "x"), anchor),
+  );
+  let padding = 96 * 1024 - Buffer.byteLength(JSON.stringify(rows));
+  for (const row of rows) {
+    const added = Math.min(padding, 128 - row.hotkey.length);
+    row.hotkey += "p".repeat(added);
+    padding -= added;
+    if (!padding) break;
+  }
+  assert.equal(padding, 0);
+  assert.equal(Buffer.byteLength(JSON.stringify(rows)), 96 * 1024);
+  const body = { rows, pass_total: size, alpha_snapshot: anchor };
+  const started = Promise.withResolvers<void>();
+  const gate = Promise.withResolvers<void>();
+  let committed = false;
+  let acknowledged = false;
+  let batches = 0;
+  const inline = dataApiEnv({
+    ...f.env,
+    SYNC_QUEUE_LANES: "",
+    SYNC_BATCHES: undefined,
+    D1_STATE: {
+      prepare: f.db.prepare.bind(f.db),
+      async batch(statements: D1PreparedStatement[]) {
+        batches++;
         started.resolve();
         await gate.promise;
         const result = await f.db.batch(statements);
@@ -292,6 +376,35 @@ test("large inline counts acknowledge native completion", async () => {
   assert.ok(applied.completed_at > 0);
   assert.equal((await f.counts()).length, size);
   assert.deepEqual(await json(await f.status(anchor, size, inline)), applied);
+  const last = rows[rows.length - 1];
+  const oversized = [
+    ...rows.slice(0, -1),
+    { ...last, hotkey: last.hotkey + "x" },
+  ];
+  assert.equal(Buffer.byteLength(JSON.stringify(oversized)), 96 * 1024 + 1);
+  const refused = await f.post({ ...body, rows: oversized }, inline);
+  assert.equal(refused.status, 413);
+  assert.equal(batches, 1);
+  assert.deepEqual(await json(await f.status(anchor, size, inline)), applied);
+});
+
+test("inline count row limits reject before a native write", async () => {
+  const f = await fixture();
+  const size = 1001;
+  const anchor = await f.captureRoot(size);
+  const rows = Array.from({ length: size }, (_, index) =>
+    countRow(String(index), anchor),
+  );
+  assert.ok(Buffer.byteLength(JSON.stringify(rows)) < 96 * 1024);
+  const inline = dataApiEnv({
+    ...f.env,
+    SYNC_QUEUE_LANES: "",
+    SYNC_BATCHES: undefined,
+  });
+  const body = { rows, pass_total: size, alpha_snapshot: anchor };
+  assert.equal((await f.post(body, inline)).status, 413);
+  assert.deepEqual(await f.counts(), []);
+  assert.deepEqual(await f.receipts(), []);
 });
 
 test("queue admission is not a durable count receipt; partial delivery and retries tally unique hotkeys", async () => {

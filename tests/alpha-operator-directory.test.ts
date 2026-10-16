@@ -249,7 +249,8 @@ test.each(["query failure", "split ownership"])(
       },
       D1_STATE_TABLES:
         failure === "split ownership"
-          ? f.env.D1_STATE_TABLES!.split(",")
+          ? f.env
+              .D1_STATE_TABLES!.split(",")
               .filter((table) => table !== "validator_nominator_counts_passes")
               .join(",")
           : f.env.D1_STATE_TABLES,

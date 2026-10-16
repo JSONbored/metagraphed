@@ -4,6 +4,7 @@ import { readCanonicalNominatorCounts } from "../src/alpha-counts-reader.ts";
 import {
   alphaCountAnchorSchema,
   alphaCountPassTotal,
+  alphaCountInlineFits,
   alphaCountsOwnerStore,
   alphaCountsNeedAnchor,
   readAlphaCountStatusD1,
@@ -2519,6 +2520,14 @@ async function handleValidatorNominatorCountsSync(
           pass_total: alphaTotal,
         });
       }
+      if (!alphaCountInlineFits(rows))
+        return writeJson(
+          {
+            error:
+              "inline counts support at most 1000 rows and 98304 UTF8 bytes of projected rows JSON; configure validator-nominator-counts queue or send bounded chunks",
+          },
+          413,
+        );
       return writeJson(
         await writeAlphaCountsD1(
           alphaCountsOwnerStore(env)!,
@@ -7569,7 +7578,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       const materialized = await readExplorerDirectoryMaterialization(
         env.METAGRAPH_CONTROL,
       );
-      let directory = materialized?.validators;
+      let directory: ReturnType<typeof buildValidatorOperatorDirectory>;
       if (materialized) {
         // Keep the verified response available if the freshness read fails.
         scheduleExplorerDirectoryRefresh(

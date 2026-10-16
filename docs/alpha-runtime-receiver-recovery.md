@@ -155,10 +155,14 @@ superseded chunks fail without changing counts or receipts. Empty raw captures
 use an empty rows/zero-total control transaction, without enqueueing bulk work.
 No separate controller or wire generation is introduced.
 
-Inline and queued writes use UTF-8 JSON pieces of at most 512 KiB within that
-same atomic transaction. Admission remains bounded to 50,000 rows and 8 MB;
-pieces do not create intermediate completion receipts. A later-piece failure
-rolls back every earlier piece and the pass declaration.
+Bulk queue admission remains bounded to 50,000 rows and 8 MB. Without the queue,
+inline application supports at most 1,000 rows and 98,304 UTF-8 bytes of the
+projected rows JSON. Larger inline requests return actionable HTTP 413 before
+any receipt or business write; configure the count queue or send bounded chunks.
+The native writer also rejects more than 5,000 rows or 128 KiB of projected JSON,
+matching existing queue transport bounds. Every accepted delivery keeps its
+canonical check, rows, census and tally in one atomic transaction. Admission
+does not claim bulk completion, and the existing queue packer is unchanged.
 
 Counts describe distinct raw coldkeys per hotkey across all subnets, including
 root, stored-zero and retired members. They do not certify economic stake.
