@@ -1,0 +1,184 @@
+import { z } from "zod";
+import { alphaRuntimeOriginalMatches } from "./alpha-runtime-identity.ts";
+import { internalJson as reply } from "./internal-json.ts";
+import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
+import {
+  AlphaCompleteCaptureSchema,
+  alphaPositionQuantity,
+  alphaQuantityProvenance,
+} from "./alpha-quantity-capture.ts";
+
+const date = z.iso.date();
+const key = z.string().min(1).max(128);
+const schema = z.discriminatedUnion("operation", [
+  z.strictObject({
+    kind: z.literal("nominator-daily"),
+    operation: z.literal("days"),
+    from: date,
+    to: date,
+  }),
+  z.strictObject({
+    kind: z.literal("nominator-daily"),
+    operation: z.literal("capture"),
+    day: date,
+    captured_at: z.number().int().positive().safe().optional(),
+    cursor: z.tuple([key, key, z.number().int().min(1).max(65535)]).optional(),
+  }),
+  z.strictObject({
+    kind: z.literal("nominator-daily"),
+    operation: z.literal("metadata"),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+]);
+type Row = Record<string, unknown>;
+interface Env {
+  D1_STATE?: D1StoreBinding;
+  D1_STATE_TABLES?: string;
+}
+
+// Native D1-only endpoint: this is not a readStore/Neon fallback family.
+export const ALPHA_DAILY_TABLES = [
+  "nominator_positions_daily",
+  "nominator_daily_captures",
+  "alpha_snapshot_passes",
+  "alpha_runtime_metadata",
+] as const;
+const MEMBER_FIELDS =
+  "coldkey hotkey netuid snapshot_date share_fraction shares captured_at source alpha_rao alpha_evidence block_number block_hash genesis_hash spec_version code_hash metadata_sha256 updated_at".split(
+    " ",
+  );
+const envelope = { version: 1, projection: "alpha-daily-members-v1" };
+const dailyEnvelope = {
+  ...envelope,
+  domain: "alpha_nonroot",
+  day_basis: "observation_utc",
+};
+const captureQuery = `SELECT d.snapshot_date,p.*,EXISTS(SELECT 1 FROM alpha_runtime_metadata m WHERE m.sha256=p.metadata_sha256 AND m.code_hash=p.code_hash AND m.spec_version=p.spec_version) metadata_qualified
+  FROM nominator_daily_captures d LEFT JOIN alpha_snapshot_passes p USING(captured_at)`;
+const utcDay = (at: number) => new Date(at).toISOString().slice(0, 10);
+function qualifyDay(row: Row, day: string) {
+  if (row.metadata_qualified !== 1) throw new Error("missing capture metadata");
+  const capture = AlphaCompleteCaptureSchema.parse(row);
+  if (utcDay(capture.captured_at) !== day)
+    throw new Error("capture day mismatch");
+  return capture;
+}
+/** Bounded logical reads behind the existing state-export credential. No
+ * whole-source backup, receipt recovery or restore qualification is implied. */
+export async function handleNominatorDailyExport(
+  input: unknown,
+  env: Env,
+): Promise<Response> {
+  const fail = (status: number, error: string) => reply({ error }, status);
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) return fail(400, "invalid daily Alpha history request");
+  const value = parsed.data;
+  try {
+    if (!selectedD1Store(env, ALPHA_DAILY_TABLES))
+      return fail(503, "daily Alpha history is not owned by D1");
+    const db = env.D1_STATE!;
+    if (value.operation === "metadata") {
+      const metadata = await db
+        .prepare(
+          "SELECT sha256,code_hash,spec_version,scale_hex FROM alpha_runtime_metadata WHERE sha256=?",
+        )
+        .bind(value.sha256)
+        .first<Row>();
+      if (!metadata) return fail(404, "runtime metadata is unobserved");
+      if (
+        typeof metadata.scale_hex !== "string" ||
+        !alphaRuntimeOriginalMatches(
+          metadata.spec_version,
+          metadata.code_hash,
+          value.sha256,
+          metadata.scale_hex,
+        )
+      )
+        throw new Error("unqualified metadata original");
+      return reply({ ...envelope, metadata });
+    }
+    if (value.operation === "days") {
+      const start = Date.parse(`${value.from}T00:00:00Z`);
+      const end = Date.parse(`${value.to}T00:00:00Z`);
+      if (end < start || end - start > 30 * 86_400_000)
+        return fail(400, "daily history ranges are limited to 31 UTC dates");
+      const rows = (
+        await db
+          .prepare(
+            `${captureQuery} WHERE d.snapshot_date BETWEEN ? AND ? ORDER BY d.snapshot_date`,
+          )
+          .bind(value.from, value.to)
+          .all<Row>()
+      ).results;
+      const heads = new Map(rows.map((row) => [row.snapshot_date, row]));
+      const days = [];
+      for (let at = start; at <= end; at += 86_400_000) {
+        const day = utcDay(at);
+        const row = heads.get(day);
+        if (!row) {
+          days.push({ day, status: "missing_unobserved" });
+          continue;
+        }
+        const capture = qualifyDay(row, day);
+        days.push({
+          day,
+          status: "complete",
+          rows: capture.expected_rows,
+          provenance: alphaQuantityProvenance(capture),
+        });
+      }
+      return reply({
+        ...dailyEnvelope,
+        days,
+      });
+    }
+    if (value.cursor && value.captured_at === undefined)
+      return fail(400, "continuation requires the selected capture identity");
+    const cursor = value.cursor ?? ["", "", 0];
+    // The head and page use the same native snapshot. A changed day selection
+    // invalidates continuation; it cannot splice two full scans together.
+    const results = await db.batch<Row>([
+      db.prepare(`${captureQuery} WHERE d.snapshot_date=?`).bind(value.day),
+      db
+        .prepare(
+          `SELECT ${MEMBER_FIELDS.join(",")} FROM nominator_positions_daily WHERE snapshot_date=?
+        AND (coldkey,hotkey,netuid)>(?,?,?) ORDER BY coldkey,hotkey,netuid LIMIT 101`,
+        )
+        .bind(value.day, ...cursor),
+    ]);
+    const head = results[0].results[0];
+    if (!head)
+      return fail(
+        404,
+        "daily Alpha capture is missing or unobserved; pruning and unsupported coverage are not established",
+      );
+    const capture = qualifyDay(head, value.day);
+    if (
+      value.captured_at !== undefined &&
+      value.captured_at !== capture.captured_at
+    )
+      return fail(412, "daily Alpha capture changed; restart this day");
+    const page = results[1].results;
+    const members = page.slice(0, 100).map((row) => {
+      const quantity = alphaPositionQuantity(row, capture);
+      if (quantity.quantity_status !== "qualified_snapshot")
+        throw new Error("unqualified historical member");
+      return row;
+    });
+    const last = members.at(-1);
+    return reply({
+      ...dailyEnvelope,
+      day: value.day,
+      captured_at: capture.captured_at,
+      expected_rows: capture.expected_rows,
+      provenance: alphaQuantityProvenance(capture),
+      members,
+      next_cursor:
+        page.length > 100 && last
+          ? [last.coldkey, last.hotkey, last.netuid]
+          : null,
+    });
+  } catch {
+    return fail(503, "daily Alpha history could not be qualified");
+  }
+}

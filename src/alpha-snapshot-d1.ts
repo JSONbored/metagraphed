@@ -11,7 +11,7 @@ import { createD1Store, type D1StoreBinding } from "./d1-store.ts";
 
 import {
   ALPHA_GENESIS as GENESIS,
-  ALPHA_RUNTIMES as RUNTIMES,
+  alphaRuntimeOriginalMatches,
 } from "./alpha-runtime-identity.ts";
 const sha = (bytes: string | Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
@@ -19,7 +19,7 @@ const count = (max: number) => z.number().int().min(0).max(max);
 const hash = z.string().regex(/^0x[0-9a-f]{64}$/);
 const packet = z.strictObject({
   alpha_snapshot: z.strictObject({
-    captured_at: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    captured_at: z.number().int().positive().max(253_402_300_799_999),
     block_number: count(0xffffffff),
     block_hash: hash,
     genesis_hash: z.literal(GENESIS),
@@ -62,13 +62,13 @@ const packet = z.strictObject({
 function qualified(value: unknown, now: number) {
   const parsed = packet.parse(value),
     s = parsed.alpha_snapshot;
-  const runtime = RUNTIMES[s.spec_version];
   if (
-    s.code_hash !== runtime.code ||
-    s.metadata_sha256 !== runtime.metadata ||
-    (s.metadata_scale_hex !== undefined &&
-      sha(Buffer.from(s.metadata_scale_hex.slice(2), "hex")) !==
-        s.metadata_sha256)
+    !alphaRuntimeOriginalMatches(
+      s.spec_version,
+      s.code_hash,
+      s.metadata_sha256,
+      s.metadata_scale_hex,
+    )
   )
     throw new TypeError(
       "Alpha runtime code or original metadata is unqualified",
@@ -181,6 +181,13 @@ export async function writeAlphaSnapshotD1(
   const pending = `EXISTS(SELECT 1 FROM alpha_snapshot_chunks c JOIN alpha_snapshot_passes p USING(captured_at) WHERE c.captured_at=${at} AND c.batch_index=${s.index} AND c.sha256='${digest}' AND c.applied=0 AND p.completed_at IS NULL)`;
   const complete = `EXISTS(SELECT 1 FROM alpha_snapshot_passes p WHERE p.captured_at=${at} AND p.completed_at IS NULL AND p.received_rows=p.expected_rows AND p.received_chunks=p.expected_chunks)`;
   const promote = `${complete} AND NOT EXISTS(SELECT 1 FROM alpha_snapshot_passes p WHERE p.selected=1 AND p.block_number>=${s.block_number})`;
+  // Observation day, not a reconstructed chain-timestamp day. A delayed older
+  // day may qualify independently of the globally current serving snapshot.
+  const day = new Date(at).toISOString().slice(0, 10);
+  const dayStart = Date.parse(`${day}T00:00:00Z`);
+  const selectDaily = `${complete} AND NOT EXISTS(
+    SELECT 1 FROM nominator_daily_captures d JOIN alpha_snapshot_passes p USING(captured_at)
+    WHERE d.snapshot_date='${day}' AND (p.captured_at>=${at} OR p.block_number>=${s.block_number}))`;
   const statements: ProducerStatement[] = [
     ...(s.metadata_scale_hex !== undefined
       ? [
@@ -249,6 +256,21 @@ export async function writeAlphaSnapshotD1(
       values: [at, s.index, digest],
     },
     {
+      text: `INSERT INTO nominator_daily_captures(snapshot_date,captured_at)
+        SELECT ?,? WHERE ${selectDaily}
+        ON CONFLICT(snapshot_date) DO UPDATE SET captured_at=excluded.captured_at`,
+      values: [day, at],
+    },
+    ...["nominator_positions_daily", "nominator_daily_captures"].map(
+      (table) => ({
+        text: `INSERT INTO archive_export_revisions(table_name,revision)
+        SELECT ?,1 WHERE ${complete}
+        AND EXISTS(SELECT 1 FROM nominator_daily_captures WHERE captured_at=${at})
+        ON CONFLICT(table_name) DO UPDATE SET revision=archive_export_revisions.revision+1`,
+        values: [table],
+      }),
+    ),
+    {
       text: `INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,shares,captured_at,source,alpha_rao,alpha_evidence)
       SELECT coldkey,hotkey,netuid,share_fraction,shares,captured_at,'alpha',alpha_rao,alpha_evidence FROM alpha_snapshot_rows WHERE captured_at=? AND ${promote}
       ON CONFLICT(coldkey,hotkey,netuid) DO UPDATE SET share_fraction=excluded.share_fraction,shares=excluded.shares,captured_at=excluded.captured_at,source=excluded.source,alpha_rao=excluded.alpha_rao,alpha_evidence=excluded.alpha_evidence`,
@@ -291,14 +313,13 @@ export async function writeAlphaSnapshotD1(
       text: `UPDATE alpha_snapshot_passes SET completed_at=? WHERE captured_at=? AND ${complete}`,
       values: [now, at],
     },
-    {
-      text: "DELETE FROM alpha_snapshot_rows WHERE captured_at IN (SELECT captured_at FROM alpha_snapshot_passes WHERE completed_at IS NOT NULL)",
-      values: [],
-    },
-    {
-      text: "DELETE FROM alpha_snapshot_pools WHERE captured_at IN (SELECT captured_at FROM alpha_snapshot_passes WHERE completed_at IS NOT NULL)",
-      values: [],
-    },
+    ...["alpha_snapshot_rows", "alpha_snapshot_pools"].map((table) => ({
+      text: `DELETE FROM ${table} WHERE captured_at IN (
+        SELECT p.captured_at FROM alpha_snapshot_passes p WHERE p.completed_at IS NOT NULL
+        AND p.captured_at>=? AND p.captured_at<?
+        AND NOT EXISTS(SELECT 1 FROM nominator_daily_captures d WHERE d.captured_at=p.captured_at))`,
+      values: [dayStart, dayStart + 86_400_000],
+    })),
   ];
   await store.transaction(statements);
   const receipt = await store.first<{

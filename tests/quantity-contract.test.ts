@@ -323,6 +323,7 @@ test("native actual promotions choose finalized ownership and decline publicatio
         "0016_archive_export_revisions.sql",
         "0040_self_stake_snapshot_receipts.sql",
         "0043_alpha_runtime_snapshots.sql",
+        "0044_nominator_daily_captures.sql",
       ])
         for (const sql of readFileSync(
           new URL(`../migrations/d1/${file}`, import.meta.url),
@@ -438,6 +439,8 @@ test("native actual promotions choose finalized ownership and decline publicatio
         0,
         "a genuinely empty current promoted census is measured zero",
       );
+      // Explicitly disable the retention fence only for this isolated corruption fixture.
+      await db.prepare("DROP TRIGGER nominator_daily_pass_update_fence").run();
       await db
         .prepare(
           "UPDATE alpha_snapshot_passes SET completed_at=NULL WHERE block_number=?",
