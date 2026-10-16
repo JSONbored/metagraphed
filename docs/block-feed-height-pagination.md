@@ -23,7 +23,7 @@ fences the retained owner at that seam and binds its seek to a height upper boun
 it does not compare a hot observation time against retained observations. The
 retained reader validates the same publication receipt before and after its read
 and merges at most two candidate pages. Count histograms preserve an existing
-selective count index when at most 50,000 active rows match. Author/spec selectors
+selective count index when at most 50,000 active rows match. Author/spec/observation-range selectors
 have an index-prefix census capped at 50,001 physical entries, including inactive
 sources; a set of at most 50,000 retains its selective index and sorts that bounded
 set by height. Broad selectors use the height index. The smaller proven bound wins
