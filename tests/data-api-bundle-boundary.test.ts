@@ -38,7 +38,7 @@
 // would change again.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, test } from "vitest";
@@ -80,6 +80,8 @@ function inputs(
 }
 
 const graph = inputs();
+const graphOutput = process.env.METAGRAPH_DATA_API_GRAPH_OUT;
+if (graphOutput) writeFileSync(graphOutput, JSON.stringify({ source: process.env.GITHUB_SHA, entry: configuredEntry, inputs: graph }, null, 2));
 
 describe("data-api's bundle boundary", () => {
   test("the graph was actually resolved", () => {

@@ -1190,9 +1190,21 @@ jobs:
       # import here instead of sitting unrun.
       - name: Install and check the locked data-refresh environment
         run: |
-          uv sync --locked --project scripts
+          uv sync --locked --project scripts --python 3.12
           uv pip check --python scripts/.venv/bin/python
-          uv run --locked --project scripts python -c 'import bittensor as bt; from importlib.metadata import version; assert callable(bt.SubtensorApi); assert version("bittensor") == "10.5.0"; assert tuple(map(int, version("urllib3").split("."))) >= (2, 8, 0); assert tuple(map(int, version("multidict").split("."))) >= (6, 9, 1)'
+          uv run --locked --project scripts python - <<'PYTHON'
+          import hashlib, json, sys
+          from pathlib import Path
+          from importlib.metadata import version
+          from packaging.version import Version
+          import bittensor as bt
+          versions = {name: version(name) for name in ("bittensor", "urllib3", "multidict")}
+          assert callable(bt.SubtensorApi)
+          assert versions["bittensor"] == "10.5.0"
+          assert Version(versions["urllib3"]) >= Version("2.8.0")
+          assert Version(versions["multidict"]) >= Version("6.9.1")
+          print(json.dumps({"python": sys.version, "installed": versions, "scripts_lock_sha256": hashlib.sha256(Path("scripts/uv.lock").read_bytes()).hexdigest()}))
+          PYTHON
 
       - name: Test scripts in their locked dependency environment
         run: uv run --locked --project scripts python -m unittest discover -s scripts -p 'test_*.py'

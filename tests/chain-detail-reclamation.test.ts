@@ -119,6 +119,11 @@ async function services(binding = db) {
         error?: unknown;
         result: { isError: boolean; structuredContent: unknown };
       };
+      const diagnostic = process.env.METAGRAPH_RECLAMATION_EVIDENCE;
+      if (diagnostic) {
+        mkdirSync(diagnostic, { recursive: true });
+        writeFileSync(path.join(diagnostic, `service-${ref}-${item.name}-${binding === db ? "source" : "restored"}.json`), JSON.stringify({ rest: body, mcp: rpc }));
+      }
       assert.equal(rpc.error, undefined);
       assert.equal(rpc.result.isError, false);
       assert.deepEqual(
@@ -126,13 +131,16 @@ async function services(binding = db) {
         body.data,
         `${ref}:${item.name} complete REST/MCP response parity`,
       );
-      corpus[`${ref}:${item.name}`] = body.data;
+      corpus[`${ref}:${item.name}`] = {
+        rest: { status: rest.status, body },
+        mcp: { status: mcp.status, body: rpc },
+      };
     }
   }
   return corpus;
 }
 
-function capture(value: string, block = 9000001) {
+function capture(value: string, block = 9000001, accountEvents = false) {
   const result = parseChainDetailSync(
     {
       blocks: [
@@ -168,7 +176,7 @@ function capture(value: string, block = 9000001) {
               observed_at: stamp,
             },
           ],
-          account_events: [
+          account_events: accountEvents ? [
             {
               block_number: block,
               event_index: 0,
@@ -182,7 +190,7 @@ function capture(value: string, block = 9000001) {
               alpha_amount: null,
               observed_at: stamp,
             },
-          ],
+          ] : [],
         },
       ],
     },
@@ -191,11 +199,11 @@ function capture(value: string, block = 9000001) {
   assert.ok(result.ok);
   return result.rows;
 }
-async function publish(value: string, block = 9000001) {
+async function publish(value: string, block = 9000001, accountEvents = false) {
   const result = await writeChainDetailD1(
     createD1Store(db),
     env(),
-    capture(value, block),
+    capture(value, block, accountEvents),
   );
   assert.ok(Object.values(result).every((r) => r.ok));
 }
@@ -520,9 +528,9 @@ test("prepared reclamation cycles through live prefixes and survives sustained r
 });
 
 test("prepared reclamation supplied cut restores source tables, chunks, quota and reader projections", async () => {
-  await publish(raw());
-  await publish(raw(), 9000002);
-  await publish(raw());
+  await publish(raw(), 9000001, true);
+  await publish(raw(), 9000002, true);
+  await publish(raw(), 9000001, true);
   await sweep();
   const owners = [
     ...tables,
