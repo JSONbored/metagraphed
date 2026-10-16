@@ -10,6 +10,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      account_retention_only:
+        description: "Diagnostic D1 account retention regression; never release qualification"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -262,7 +267,7 @@ jobs:
     # every push before anyone marked it ready. Job-level skip is safe here: this repo has ZERO
     # required status contexts on main (verified via branches/main/protection), and the review
     # pipeline's fetchLiveCiAggregate buckets skipped identically to success.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft != true) && !(github.event_name == 'workflow_dispatch' && inputs.account_retention_only) }}
     env:
       # The docs fast lane + narrow validator skips, unchanged from the old `checks` job -- see the
       # `changes` job comment above for what each flag proves. Still per-STEP guards (not job-level):
@@ -795,7 +800,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft != true) && !(github.event_name == 'workflow_dispatch' && inputs.account_retention_only) }}
     strategy:
       # One red leg must not cancel the others: a shard-specific failure is
       # exactly the thing you want the other shards' results for.
@@ -957,7 +962,7 @@ jobs:
   coverage:
     name: coverage
     needs: test
-    if: ${{ !cancelled() && needs.test.result != 'skipped' }}
+    if: ${{ (!cancelled() && needs.test.result != 'skipped') && !(github.event_name == 'workflow_dispatch' && inputs.account_retention_only) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -1107,7 +1112,7 @@ jobs:
     # pipeline buckets skipped as success -- see the `test` job comment): both suites read only
     # python/**, scripts/**.py and scripts lock/project manifests. Draft
     # PRs skip entirely, same as every heavy job here. Push/dispatch runs are unaffected.
-    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true') }}
+    if: ${{ (github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true')) && !(github.event_name == 'workflow_dispatch' && inputs.account_retention_only) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15 # locked dependency qualification and hermetic suites
     steps:
@@ -1163,7 +1168,7 @@ jobs:
   ui:
     name: ui
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_ui_validation == 'true') }}
+    if: ${{ (github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_ui_validation == 'true')) && !(github.event_name == 'workflow_dispatch' && inputs.account_retention_only) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30 # workspace install, drift-check builds, typecheck/test, and the Playwright e2e pass
     steps:
@@ -1659,3 +1664,29 @@ jobs:
         run: |
           npm audit --audit-level=high --omit=dev --workspace=apps/ui \
             || echo "::warning::npm audit found high/critical advisories in apps/ui's runtime dependencies — review above (report-only; not failing CI yet)"
+
+  account_retention_regression:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.account_retention_only }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22.23.2
+      - run: npm ci
+      - name: Exercise actual SQLite retention and publication guards
+        run: npx vitest run tests/retention-d1.test.ts tests/chain-detail-prune.test.ts
+      - name: Format retained source files
+        if: always()
+        run: npx prettier --write src/chain-detail-prune.ts tests/retention-d1.test.ts
+      - name: Retain formatted source files
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: account-retention-source
+          path: |
+            src/chain-detail-prune.ts
+            tests/retention-d1.test.ts
