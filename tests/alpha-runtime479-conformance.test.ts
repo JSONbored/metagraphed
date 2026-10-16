@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "vitest";
 import { quoteAlphaPool } from "../src/alpha-share-value.ts";
-import { runtime479Diagnostics } from "./helpers/alpha-runtime479-diagnostics.ts";
+import * as diagnostics from "./helpers/alpha-runtime479-diagnostics.ts";
 
 interface Decimal {
   mantissa: string;
@@ -61,16 +61,13 @@ function assertDecimal(value: Decimal | null, oracle: OracleDecimal | null) {
   assert.equal(scale(value), oracle.scale_hex);
 }
 
-test("runtime479 conformance retains all synthetic and unchanged historical inputs", () => {
+test("runtime479 retains synthetic and unchanged historical inputs", () => {
   assert.equal(fixture.cases.length, 27);
-  assert.equal(
-    fixture.cases.filter((c) => c.provenance === "synthetic").length,
-    23,
-  );
-  assert.equal(
-    fixture.cases.filter((c) => c.provenance === "historical_crosscheck").length,
-    4,
-  );
+  const cases = fixture.cases;
+  const synthetic = cases.filter((c) => c.provenance === "synthetic");
+  const prior = cases.filter((c) => c.provenance === "historical_crosscheck");
+  assert.equal(synthetic.length, 23);
+  assert.equal(prior.length, 4);
   for (const spec of [454, 478]) {
     const fixturePath = `./fixtures/alpha-runtime/frozen-${spec}.json`;
     const original = JSON.parse(
@@ -88,7 +85,7 @@ test("runtime479 conformance retains all synthetic and unchanged historical inpu
 for (const vector of fixture.cases) {
   test(`runtime479 official arithmetic: ${vector.id}`, () => {
     const quote = quoteAlphaPool(vector.evidence, 479);
-    const actual = runtime479Diagnostics(vector.evidence);
+    const actual = diagnostics.runtime479Diagnostics(vector.evidence);
     const expected = vector.expected;
     assert.ok(actual);
     assert.deepEqual(quote.evidence, vector.evidence);
@@ -126,7 +123,7 @@ for (const vector of fixture.cases) {
   });
 }
 
-test("invalid evidence and unsupported runtimes cannot become a qualified zero", () => {
+test("invalid evidence and runtimes cannot become qualified zero", () => {
   const evidence = fixture.cases[4].evidence as Record<string, unknown>;
   for (const invalid of [
     null,

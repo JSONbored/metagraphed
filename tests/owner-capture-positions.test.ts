@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { ownerCapturePositions } from "../src/owner-capture-positions.ts";
-import { ALPHA_GENESIS, ALPHA_RUNTIMES } from "../src/alpha-runtime-identity.ts";
+import {
+  ALPHA_GENESIS,
+  ALPHA_RUNTIMES,
+} from "../src/alpha-runtime-identity.ts";
 import type { ReadStoreDb } from "../src/read-store.ts";
 
 type Row = Record<string, unknown>;

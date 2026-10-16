@@ -76,13 +76,11 @@ export async function alphaPositionsUnqualified(
     throw new TypeError("Invalid Alpha position qualification scope");
   const predicate = scope ? ` AND ${scope.column}=?` : "";
   const values = scope ? [scope.value, capturedAt, scope.value] : [capturedAt];
-  const row = await db.first(
-    `SELECT
+  const statement = `SELECT
     EXISTS(SELECT 1 FROM nominator_positions WHERE source='self-stake'${predicate})
     OR EXISTS(SELECT 1 FROM alpha_snapshot_rows WHERE captured_at=?
-      AND alpha_rao IS NULL${predicate}) AS unqualified`,
-    values,
-  );
+      AND alpha_rao IS NULL${predicate}) AS unqualified`;
+  const row = await db.first(statement, values);
   return !row || (row as { unqualified?: unknown }).unqualified !== 0;
 }
 

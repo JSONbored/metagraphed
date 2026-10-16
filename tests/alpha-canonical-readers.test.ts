@@ -1,22 +1,22 @@
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
-import { ALPHA_GENESIS, ALPHA_RUNTIMES } from "../src/alpha-runtime-identity.ts";
+import * as alpha from "../src/alpha-runtime-identity.ts";
 import {
   buildAccountPositions,
   POSITIONS_DEGRADED_UNPRICEABLE,
 } from "../src/account-nominator-positions.ts";
-import { loadAccountPositionsFromStore } from "../src/nominator-positions-hot-tier.ts";
-import { loadAccountPositionsColdTier } from "../src/nominator-positions-cold-tier.ts";
+import * as hotPositions from "../src/nominator-positions-hot-tier.ts";
+import * as coldPositions from "../src/nominator-positions-cold-tier.ts";
 import { loadSubnetHolders } from "../src/subnet-holders.ts";
 import { loadChainHolders } from "../src/chain-holders.ts";
-import { loadNominatorPositions } from "../src/validator-nominator-positions.ts";
+import * as nominatorPositions from "../src/validator-nominator-positions.ts";
 import { topHoldersHoldings } from "../src/top-holders-holdings.ts";
 import {
   loadTopHoldersFlowTier,
   TOP_HOLDERS_FLOW_PROJECTION_KEY,
 } from "../src/top-holders-flow-tier.ts";
-import { AccountPositionsArtifactSchema } from "../schemas-src/routes/account-positions.ts";
+import * as accountSchema from "../schemas-src/routes/account-positions.ts";
 import { handleRequest } from "../workers/api.ts";
 import {
   decodeWatermarkKey,
@@ -26,6 +26,11 @@ import {
 const COLDKEY = "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e";
 const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
 const STAMP = 1_785_634_702_670;
+const { ALPHA_GENESIS, ALPHA_RUNTIMES } = alpha;
+const { loadAccountPositionsFromStore } = hotPositions;
+const { loadAccountPositionsColdTier } = coldPositions;
+const { loadNominatorPositions } = nominatorPositions;
+const { AccountPositionsArtifactSchema } = accountSchema;
 const ACCOUNT_READERS = [
   loadAccountPositionsFromStore,
   loadAccountPositionsColdTier,
@@ -268,11 +273,10 @@ describe("canonical Alpha quantities across existing readers", () => {
         subnetDeclines,
       ] = scenario;
       sqlite.exec("DELETE FROM nominator_positions WHERE source='self-stake'");
-      sqlite
-        .prepare(
-          "INSERT INTO nominator_positions VALUES(?,?,?,?,?,'self-stake')",
-        )
-        .run(coldkey, hotkey, netuid, 1, STAMP);
+      const insertSelfStake = sqlite.prepare(
+        "INSERT INTO nominator_positions VALUES(?,?,?,?,?,'self-stake')",
+      );
+      insertSelfStake.run(coldkey, hotkey, netuid, 1, STAMP);
       for (const load of ACCOUNT_READERS) {
         const result = await load(environment(), COLDKEY);
         assert.ok(result);
