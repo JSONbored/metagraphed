@@ -1609,7 +1609,11 @@ describe("handleGlobalIncidents", () => {
     const switched = url(`${base}?window=30d`);
     switched.searchParams.set("page_snapshot", empty.meta.pagination.snapshot);
     const rejected = await errorJson(
-      await handleGlobalIncidents(new Request(switched), withSurfaces([]), switched),
+      await handleGlobalIncidents(
+        new Request(switched),
+        withSurfaces([]),
+        switched,
+      ),
     );
     assert.equal(rejected.error.code, "invalid_query");
     assert.equal(rejected.meta.parameter, "page_snapshot");

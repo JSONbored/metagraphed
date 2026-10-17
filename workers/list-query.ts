@@ -556,8 +556,9 @@ function applyListTransform(
   if (requestedSnapshot) {
     // Stream already-loaded rows into one digest, avoiding a second complete
     // canonical payload string. No storage/database read is added here.
-    const digest = createHash("sha256").update(
-      historyJson({
+    const digest = createHash("sha256")
+      .update(
+        historyJson({
           scope: options.snapshotScope,
           query: [...options.snapshotParams.entries()]
             .filter(
@@ -565,8 +566,9 @@ function applyListTransform(
                 !["cursor", "limit", "format", "page_snapshot"].includes(name),
             )
             .sort(([a], [b]) => a.localeCompare(b)),
-      }),
-    ).update("\n");
+        }),
+      )
+      .update("\n");
     for (const row of sorted) digest.update(historyJson(row)).update("\n");
     snapshot = `v1.${digest.digest("hex")}`;
   }

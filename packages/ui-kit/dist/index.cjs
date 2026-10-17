@@ -4050,17 +4050,46 @@ function DataTableMenu({
     const next = visibleKeys.includes(key) ? visibleKeys.filter((k) => k !== key) : columns.filter((c) => c.key === key || visibleKeys.includes(c.key)).map((c) => c.key);
     if (next.length > 0) onVisibleKeys(next);
   };
-  const download = () => {
+  const [exporting, setExporting] = React2.useState(false);
+  const [exportError, setExportError] = React2.useState(null);
+  const exportRequest = React2.useRef(null);
+  React2.useLayoutEffect(() => {
+    setExporting(false);
+    setExportError(null);
+    return () => {
+      exportRequest.current?.abort();
+      exportRequest.current = null;
+    };
+  }, [csv]);
+  const download = async () => {
     if (typeof document === "undefined") return;
-    const blob = new Blob([csv()], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${filename.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.csv`;
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    if (exportRequest.current) return;
+    const controller = new AbortController();
+    exportRequest.current = controller;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const contents = await csv(controller.signal);
+      if (controller.signal.aborted || exportRequest.current !== controller) return;
+      const blob = new Blob([contents], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${filename.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.csv`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setExportError(error instanceof Error ? error.message : "CSV export failed. Try again.");
+      }
+    } finally {
+      if (exportRequest.current === controller) {
+        exportRequest.current = null;
+        setExporting(false);
+      }
+    }
   };
   const copyLink = () => {
     const url = shareUrl ?? (typeof window === "undefined" ? "" : window.location.href);
@@ -4115,9 +4144,10 @@ function DataTableMenu({
         )
       ] }) : null,
       /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-dt-menu-actions", children: [
-        /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: download, children: "Download CSV" }),
+        /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: () => void download(), disabled: exporting, children: exporting ? "Preparing CSV\u2026" : "Download CSV" }),
         /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: copyLink, children: copied ? "Link copied" : "Copy link" })
-      ] })
+      ] }),
+      exportError ? /* @__PURE__ */ jsxRuntime.jsx("p", { role: "alert", children: exportError }) : null
     ] })
   ] });
 }
@@ -4265,6 +4295,7 @@ function statusTone(value) {
   return "muted";
 }
 function DataTable({
+  loadExportRows,
   rows,
   columns,
   rowKey,
@@ -4383,7 +4414,10 @@ function DataTable({
     else setOwnPage(next);
     viewportRef.current?.scrollTo({ top: 0 });
   };
-  const csv = () => toCsv(sorted, shown, valueOf);
+  const csv = React2.useCallback(async (signal) => {
+    const exportRows = loadExportRows ? await loadExportRows(signal) : sorted;
+    return toCsv(onSort ? exportRows : sortRows(exportRows, sort, valueOf), shown, valueOf);
+  }, [loadExportRows, sorted, onSort, sort, shown, valueOf]);
   const hasRows = visibleRows.length > 0;
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "div",

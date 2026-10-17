@@ -397,10 +397,17 @@ export function DataTable<Row>({
     viewportRef.current?.scrollTo({ top: 0 });
   };
 
-  const csv = useCallback(async (signal: AbortSignal) => {
-    const exportRows = loadExportRows ? await loadExportRows(signal) : sorted;
-    return toCsv(onSort ? exportRows : sortRows(exportRows, sort, valueOf), shown, valueOf);
-  }, [loadExportRows, sorted, onSort, sort, shown, valueOf]);
+  const csv = useCallback(
+    async (signal: AbortSignal) => {
+      const exportRows = loadExportRows ? await loadExportRows(signal) : sorted;
+      return toCsv(
+        onSort ? exportRows : sortRows(exportRows, sort, valueOf),
+        shown,
+        valueOf,
+      );
+    },
+    [loadExportRows, sorted, onSort, sort, shown, valueOf],
+  );
 
   const hasRows = visibleRows.length > 0;
 

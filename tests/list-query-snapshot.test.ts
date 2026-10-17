@@ -120,11 +120,9 @@ describe("checked collection paging (#12094)", () => {
       );
     }
     assert.deepEqual(checked(page(many, next)).ids, [String(DEFAULT_LIMIT)]);
-    const back = paginationLinkHeader(
-      next,
-      checked(page(many, next)).pagination,
-      { queryCollection: "providers" },
-    );
+    const back = paginationLinkHeader(next, checked(page(many, next)).pagination, {
+      queryCollection: "providers",
+    });
     assert.match(back ?? "", /rel="first"/);
     assert.match(back ?? "", /rel="prev"/);
     assert.ok(!String(back).includes("page_snapshot=start"));
@@ -165,7 +163,8 @@ describe("checked collection paging (#12094)", () => {
       "9007199254740992",
     ]) {
       assert.equal(
-        page(rows, continuation(first.pagination.snapshot, cursor)).error?.parameter,
+        page(rows, continuation(first.pagination.snapshot, cursor)).error
+          ?.parameter,
         "cursor",
       );
     }

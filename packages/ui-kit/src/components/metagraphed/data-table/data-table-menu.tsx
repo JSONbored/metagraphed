@@ -90,7 +90,9 @@ export function DataTableMenu<Row>({
       URL.revokeObjectURL(url);
     } catch (error) {
       if (!controller.signal.aborted) {
-        setExportError(error instanceof Error ? error.message : "CSV export failed. Try again.");
+        setExportError(
+          error instanceof Error ? error.message : "CSV export failed. Try again.",
+        );
       }
     } finally {
       if (exportRequest.current === controller) {
@@ -159,7 +161,11 @@ export function DataTableMenu<Row>({
           </>
         ) : null}
         <div className="mg-dt-menu-actions">
-          <button type="button" onClick={() => void download()} disabled={exporting}>
+          <button
+            type="button"
+            onClick={() => void download()}
+            disabled={exporting}
+          >
             {exporting ? "Preparing CSV…" : "Download CSV"}
           </button>
           <button type="button" onClick={copyLink}>
