@@ -46,7 +46,7 @@ function storedStream(bytes: Uint8Array) {
   });
 }
 
-function fixture(bytes = raw) {
+function fixture(bytes: Uint8Array = raw) {
   async function getValue(_key: string, _as: unknown): Promise<unknown> {
     return storedStream(bytes);
   }
