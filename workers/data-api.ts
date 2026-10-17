@@ -2960,13 +2960,20 @@ async function handleSelfStakeSync(
   // The SAME row schema as its sibling, deliberately: same table, same columns,
   // same bounds. A second schema would be a second place for the shape to drift
   // from the writer's own INSERT column list.
-  const check = validateSyncRows(
-    incoming,
-    NOMINATOR_POSITION_SYNC_ROW_SCHEMA,
-    "self-stake position",
-  );
-  if (!check.ok) {
-    return writeJson({ error: check.error }, 400);
+  // Empty full receipts must pass the census parser below before dispatch.
+  if (
+    incoming.length > 0 ||
+    Array.isArray(parsed) ||
+    !Object.hasOwn(parsed, "snapshot")
+  ) {
+    const check = validateSyncRows(
+      incoming,
+      NOMINATOR_POSITION_SYNC_ROW_SCHEMA,
+      "self-stake position",
+    );
+    if (!check.ok) {
+      return writeJson({ error: check.error }, 400);
+    }
   }
 
   const rows = incoming.map(coerceNominatorPositionSyncRow);

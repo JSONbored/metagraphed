@@ -5,6 +5,11 @@ import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, beforeEach, test, vi } from "vitest";
 import { createD1Store } from "../src/d1-store.ts";
 import {
+  alphaCountAnchorSchema,
+  writeAlphaCountsD1,
+} from "../src/alpha-counts-d1.ts";
+import { writeAlphaSnapshotD1 } from "../src/alpha-snapshot-d1.ts";
+import {
   parseSelfStakeSnapshot,
   writeSelfStakeSnapshotD1,
   type SelfStakeSnapshot,
@@ -14,6 +19,7 @@ import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-
 import { dataApiEnv } from "./helpers/worker-env.ts";
 import worker from "../workers/data-api.ts";
 import * as captureFamily from "../src/capture-family-d1.ts";
+import type { Row } from "./row-type.ts";
 
 let runtime: Miniflare, db: D1Database;
 const stamp = 1790090000000;
@@ -58,6 +64,21 @@ const seed = async (coldkey: string, source = "self-stake", at = stamp - 1) =>
     )
     .bind(coldkey, "old", at, source)
     .run();
+const sendSelfStake = (body: unknown, database = db) =>
+  worker.fetch(
+    new Request("https://d/api/v1/internal/self-stake-sync", {
+      method: "POST",
+      headers: { "x-self-stake-sync-token": "test" },
+      body: JSON.stringify(body),
+    }),
+    dataApiEnv({
+      D1_STATE: database,
+      D1_STATE_TABLES:
+        "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
+      SELF_STAKE_SYNC_SECRET: "test",
+    }),
+    { waitUntil: () => {} } as unknown as ExecutionContext,
+  );
 beforeAll(async () => {
   vi.useRealTimers();
   runtime = new Miniflare({
@@ -684,31 +705,17 @@ test("full-snapshot receipts use the existing write/prune health lanes without c
 test("the real sync handler validates metadata and returns the exact durable snapshot acknowledgement", async () => {
   const coldkey = "5DvTpiniW9s3APmHRYn8FroUWyfnLtrsid5Mtn5EwMXHN2ed",
     hotkey = "5FTsvUZk3aoFdaAKAvWr1XVLmnEnEs5MoTM4nXtCUCu7yPQ7";
-  const env = dataApiEnv({
-    D1_STATE: db,
-    D1_STATE_TABLES:
-      "nominator_positions,nominator_positions_passes,nominator_scan_receipts",
-    SELF_STAKE_SYNC_SECRET: "test",
+  const nullMetadata = await sendSelfStake({
+    rows: [row(coldkey, hotkey)],
+    snapshot: null,
   });
-  const send = (body: unknown) =>
-    worker.fetch(
-      new Request("https://d/api/v1/internal/self-stake-sync", {
-        method: "POST",
-        headers: { "x-self-stake-sync-token": "test" },
-        body: JSON.stringify(body),
-      }),
-      env,
-      { waitUntil: () => {} } as unknown as ExecutionContext,
-    );
-  assert.equal(
-    (await send({ rows: [row(coldkey, hotkey)], snapshot: null })).status,
-    400,
-  );
-  assert.equal(
-    (await send({ rows: [row(coldkey, hotkey)], snapshot: {} })).status,
-    400,
-  );
-  const response = await send({
+  assert.equal(nullMetadata.status, 400);
+  const missingMetadata = await sendSelfStake({
+    rows: [row(coldkey, hotkey)],
+    snapshot: {},
+  });
+  assert.equal(missingMetadata.status, 400);
+  const response = await sendSelfStake({
     rows: [row(coldkey, hotkey)],
     snapshot: snapshot(),
   });
@@ -721,4 +728,186 @@ test("the real sync handler validates metadata and returns the exact durable sna
   assert.equal(body.self_stake_snapshot!.received_rows, 1);
   assert.equal(body.self_stake_snapshot!.positions_retired, 0);
   assert.equal((await rowsOf()).length, 1);
+});
+
+test("empty HTTP snapshot receipts retire only older self-stake and replay without changing Alpha evidence or anchors", async () => {
+  const isolated = new Miniflare({
+    modules: true,
+    script: "export default {fetch(){return new Response('test')}}",
+    compatibilityDate: "2026-06-06",
+    d1Databases: ["DB"],
+  });
+  try {
+    const database = await isolated.getD1Database("DB");
+    for (const file of [
+      "0010_ledger_state.sql",
+      "0016_archive_export_revisions.sql",
+      "0039_alpha_runtime_receiver.sql",
+    ]) {
+      const source = readFileSync(
+        new URL(`../migrations/d1/${file}`, import.meta.url),
+        "utf8",
+      );
+      for (const sql of source.split("-- statement-breakpoint")) {
+        if (sql.trim()) await database.prepare(sql).run();
+      }
+    }
+    // Synthetic ownership and census retain unchanged historical originals.
+    const frozen = JSON.parse(
+      readFileSync(
+        new URL("./fixtures/alpha-runtime/frozen-478.json", import.meta.url),
+        "utf8",
+      ),
+    ) as Row;
+    const { metadata_scale_hex, ...identity } = frozen.alpha_snapshot;
+    const anchor = alphaCountAnchorSchema.parse({
+      ...identity,
+      captured_at: stamp - 2,
+      scanned_legacy: 0,
+      scanned_v2: 1,
+      distinct_members: 1,
+      excluded_root_members: 0,
+    });
+    const captured = await writeAlphaSnapshotD1(
+      database,
+      {
+        alpha_snapshot: {
+          ...anchor,
+          metadata_scale_hex,
+          total_rows: 1,
+          total_chunks: 1,
+          index: 0,
+        },
+        rows: [
+          {
+            coldkey: "alpha",
+            hotkey: "alpha-hotkey",
+            netuid: 23,
+            evidence: frozen.members[0].evidence,
+          },
+        ],
+      },
+      stamp,
+    );
+    assert.equal(captured.alpha_snapshot.current, true);
+    const native = createD1Store(database);
+    await writeAlphaCountsD1(
+      native,
+      [
+        {
+          hotkey: "alpha-hotkey",
+          nominator_count: 1,
+          captured_at: anchor.captured_at,
+        },
+      ],
+      anchor,
+      1,
+      stamp,
+    );
+    for (const [coldkey, at] of [
+      ["departed", stamp - 1],
+      ["newer", stamp + 1],
+    ] as const) {
+      await database
+        .prepare(
+          "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at,source) VALUES(?,'self',1,0.5,?,'self-stake')",
+        )
+        .bind(coldkey, at)
+        .run();
+    }
+    const protectedState = async () => {
+      const state: Record<string, unknown> = {};
+      for (const table of [
+        "alpha_runtime_metadata",
+        "alpha_snapshot_passes",
+        "alpha_snapshot_chunks",
+        "alpha_snapshot_rows",
+        "alpha_snapshot_pools",
+        "nominator_positions_passes",
+        "nominator_scan_receipts",
+        "validator_nominator_counts",
+        "validator_nominator_counts_passes",
+      ]) {
+        state[table] = (
+          await database.prepare(`SELECT * FROM ${table} ORDER BY 1`).all()
+        ).results;
+      }
+      state.positions = (
+        await database
+          .prepare("SELECT * FROM nominator_positions WHERE source='alpha'")
+          .all()
+      ).results;
+      return state;
+    };
+    const before = await protectedState();
+    const request = {
+      rows: [],
+      snapshot: { ...snapshot(0, 0), digest_version: 2 },
+    };
+    const response = await sendSelfStake(request, database);
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as Row;
+    const receipt = body.self_stake_snapshot;
+    assert.equal(receipt.complete, true);
+    assert.equal(receipt.received_rows, 0);
+    assert.equal(receipt.received_chunks, 1);
+    assert.equal(receipt.positions_retired, 1);
+    assert.equal(receipt.digest_version, 2);
+    const remaining = (
+      await database
+        .prepare("SELECT coldkey FROM nominator_positions ORDER BY coldkey")
+        .all()
+    ).results;
+    assert.deepEqual(remaining, [{ coldkey: "alpha" }, { coldkey: "newer" }]);
+    assert.deepEqual(await protectedState(), before);
+    const repeated = await sendSelfStake(request, database);
+    assert.equal(repeated.status, 200);
+    const replay = ((await repeated.json()) as Row).self_stake_snapshot;
+    assert.deepEqual(replay, { ...receipt, positions_retired: 0 });
+    assert.deepEqual(await protectedState(), before);
+    const afterReplay = (
+      await database
+        .prepare("SELECT coldkey FROM nominator_positions ORDER BY coldkey")
+        .all()
+    ).results;
+    assert.deepEqual(afterReplay, remaining);
+  } finally {
+    await isolated.dispose();
+  }
+});
+
+test("bare empty HTTP batches and malformed empty receipts cannot write or retire positions", async () => {
+  await seed("departed");
+  await seed("alpha", "alpha");
+  await write([row()], snapshot(0, 2, 2));
+  const positions = await rowsOf();
+  const receipt = await pass();
+  const chunks = (
+    await db.prepare("SELECT * FROM self_stake_snapshot_chunks").all()
+  ).results;
+  const empty = { ...snapshot(0, 0), digest_version: 2 };
+  const invalidBodies = [
+    [],
+    { rows: [] },
+    { rows: [], snapshot: null },
+    { rows: [], snapshot: {} },
+    { rows: [], snapshot: { captured_at: stamp } },
+    { rows: [], snapshot: { ...empty, total_rows: 1 } },
+    { rows: [], snapshot: { ...empty, total_chunks: 2 } },
+    { rows: [], snapshot: { ...empty, scanned_pairs: 0 } },
+    { rows: [], snapshot: { ...empty, total_rows: -1 } },
+    { rows: [], snapshot: { ...empty, index: 1 } },
+    { rows: [], snapshot: { ...empty, digest_version: 1 } },
+    { rows: [], snapshot: { ...empty, digest_version: "2" } },
+    { rows: [], snapshot: { ...empty, extra: true } },
+  ];
+  for (const body of invalidBodies) {
+    assert.equal((await sendSelfStake(body)).status, 400);
+    assert.deepEqual(await rowsOf(), positions);
+    assert.deepEqual(await pass(), receipt);
+    const afterChunks = (
+      await db.prepare("SELECT * FROM self_stake_snapshot_chunks").all()
+    ).results;
+    assert.deepEqual(afterChunks, chunks);
+  }
 });
