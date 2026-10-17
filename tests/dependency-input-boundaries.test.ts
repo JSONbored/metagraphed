@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
+import { dirname } from "node:path";
 import { test } from "vitest";
 
 // Resolve from each consumer, so a patched hoisted copy cannot hide an older
@@ -7,6 +9,40 @@ import { test } from "vitest";
 const uiRequire = createRequire(
   new URL("../apps/ui/package.json", import.meta.url),
 );
+
+test("hoisted build and documentation peers resolve the UI framework", () => {
+  const presetRequire = createRequire(
+    uiRequire.resolve("@lovable.dev/vite-tanstack-config"),
+  );
+  const docsRequire = createRequire(
+    uiRequire.resolve("fumadocs-ui/provider/tanstack"),
+  );
+  // A workspace-local copy is invisible to a hoisted peer consumer. Resolve
+  // from the actual preset/provider, rather than checking only the root lock.
+  assert.equal(
+    presetRequire("@tanstack/react-start/package.json").version,
+    uiRequire("@tanstack/react-start/package.json").version,
+  );
+  assert.equal(
+    docsRequire("@tanstack/react-router/package.json").version,
+    uiRequire("@tanstack/react-router/package.json").version,
+  );
+  // The preset dynamically imports an import-only export. Use native ESM
+  // conditions from its directory; CommonJS resolve rejects this valid API.
+  execFileSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "--eval",
+      'import { tanstackStart } from "@tanstack/react-start/plugin/vite"; if (typeof tanstackStart !== "function") throw new TypeError("Missing Start Vite plugin factory");',
+    ],
+    {
+      cwd: dirname(uiRequire.resolve("@lovable.dev/vite-tanstack-config")),
+      encoding: "utf8",
+      timeout: 30_000,
+    },
+  );
+});
 
 interface SerovalReader {
   fromJSON(value: unknown): unknown;

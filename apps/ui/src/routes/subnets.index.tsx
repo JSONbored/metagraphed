@@ -43,6 +43,10 @@ export type SubnetsSearch = SearchOutput<typeof subnetsSearchSchema>;
 export const Route = createFileRoute("/subnets/")({
   validateSearch: subnetsSearchSchema,
   search: { middlewares: [stripDefaultSearchParams(subnetsSearchSchema)] },
+  loader: async ({ context }) => {
+    const { subnetDirectoryQuery } = await import("@/lib/metagraphed/subnet-directory-query");
+    await context.queryClient.ensureQueryData(subnetDirectoryQuery());
+  },
   head: () => ({
     meta: hubMeta("/subnets"),
   }),
