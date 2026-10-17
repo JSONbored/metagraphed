@@ -15,15 +15,14 @@ _openapi:
           across all subnets — total stake, stake-weighted + median alpha price,
           total validator/miner counts, and mean emission share — aggregated
           live from the daily subnet_snapshots rollup. `mean_emission_share`
-          averages the stage-1 price share, so it inherits the same caveat:
-          `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission
-          pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a
-          subnet receives: spec 440 separates the two by MinerBurned
-          reweighting, the Hill emission gate, the SubnetEmissionEnabled filter,
-          the alpha injection cap, and the liquidity balancer. See
-          /api/v1/network/parameters for the gate parameters and
-          docs/computed-metrics-methodology.md for the eight-stage
-          decomposition. The rollup is the same source the per-subnet
+          averages the legacy snapshot values. Artifact-normalized moving-price
+          share: alpha_price_tao divided by the sum of reported alpha prices,
+          including Root when Root reports a price. Legacy snapshot rows do not
+          retain the historical runtime eligibility inputs needed to certify
+          v440 Stage 1. This is neither a verified runtime Stage-1 share nor
+          final TAO emission. For the separately reconstructed, pinned live
+          pipeline, use /api/v1/chain/emission-pipeline and inspect
+          verification.verified. The rollup is the same source the per-subnet
           /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass
           ?format=csv to download the per-day series as CSV. Served live (no
           static file); day_count:0 / days:[] when the rollup is cold.'
