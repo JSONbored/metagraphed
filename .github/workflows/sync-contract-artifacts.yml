@@ -267,6 +267,9 @@ jobs:
           excluded = {
               "public/metagraph/r2-manifest.json",
               "public/metagraph/schemas/index.json",
+              # Probe-input seed regenerated from registry data, not a
+              # contract output. Report its drift without publishing it.
+              "public/metagraph/operational-surfaces.json",
           }
 
           def allowed(name):
