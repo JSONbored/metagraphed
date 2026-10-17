@@ -238,7 +238,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^10.7.0",
     "knip": "^6.32.1",
-    "miniflare": "5.20260907.0-alpha",
+    "miniflare": "5.20260730.0-alpha",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.6",
     "sharp": "^0.35.4",
