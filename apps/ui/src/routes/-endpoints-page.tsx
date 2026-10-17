@@ -32,11 +32,10 @@ import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
 import { parseAppSearch } from "@/lib/metagraphed/search-params";
 import {
   endpointIncidentsQuery,
-  endpointsInfiniteQuery,
-  exportEndpointRows,
   endpointsSummaryQuery,
   rpcPoolsQuery,
 } from "@/lib/metagraphed/queries";
+import { endpointsInfiniteQuery, exportEndpointRows } from "@/lib/metagraphed/catalog-queries";
 import { hostOf } from "@/components/metagraphed/providers/providers-logic";
 import {
   LATENCY_VIEWS,

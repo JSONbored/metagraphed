@@ -30,9 +30,8 @@ import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
 import {
   providerEndpointsQuery,
   providerQuery,
-  surfacesInfiniteQuery,
-  exportSurfaceRows,
 } from "@/lib/metagraphed/queries";
+import { surfacesInfiniteQuery, exportSurfaceRows } from "@/lib/metagraphed/catalog-queries";
 import type { Endpoint } from "@/lib/metagraphed/types";
 import {
   endpointRails,

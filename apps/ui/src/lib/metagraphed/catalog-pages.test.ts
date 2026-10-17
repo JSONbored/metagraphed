@@ -6,7 +6,7 @@ vi.mock("./client", async (original) => ({
   apiFetch: fetchApi,
 }));
 import { ApiError } from "./client";
-import { endpointsInfiniteQuery, surfacesInfiniteQuery } from "./queries";
+import { endpointsInfiniteQuery, surfacesInfiniteQuery } from "./catalog-queries";
 import { CatalogRestartRequired, collectCatalogRows, restartCatalogResults } from "./catalog-pages";
 
 const snapshot = "v1." + "a".repeat(64);
