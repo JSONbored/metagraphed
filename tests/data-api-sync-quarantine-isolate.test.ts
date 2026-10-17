@@ -1,5 +1,6 @@
-// Exercise the real queue export in workerd with isolated KV. This proves the
-// compiled handler's custody/ack contract, not production KV consistency.
+// Run the real Data API default handler in workerd with isolated KV. The test
+// forwarding entry excludes helper exports; this does not qualify the full
+// production export graph or production KV consistency.
 import { build } from "esbuild";
 import { Miniflare, Response as MiniflareResponse } from "miniflare";
 import { createHash } from "node:crypto";
@@ -22,7 +23,12 @@ beforeAll(async () => {
   outdir = await mkdtemp(path.join(tmpdir(), "data-api-quarantine-isolate-"));
   await build({
     absWorkingDir: repoRoot,
-    entryPoints: ["workers/data-api.ts"],
+    stdin: {
+      contents: 'export { default } from "./workers/data-api.ts";',
+      resolveDir: repoRoot,
+      sourcefile: "data-api-quarantine-isolate.ts",
+    },
+    entryNames: "data-api-quarantine-isolate",
     outdir,
     bundle: true,
     splitting: true,
@@ -72,8 +78,13 @@ beforeAll(async () => {
   const names = (await readdir(outdir, { recursive: true }))
     .filter((name) => name.endsWith(".js") || name.endsWith(".wasm"))
     .sort((a, b) =>
-      a === "data-api.js" ? -1 : b === "data-api.js" ? 1 : a.localeCompare(b),
+      a === "data-api-quarantine-isolate.js"
+        ? -1
+        : b === "data-api-quarantine-isolate.js"
+          ? 1
+          : a.localeCompare(b),
     );
+  expect(names[0]).toBe("data-api-quarantine-isolate.js");
   runtime = new Miniflare({
     modules: names.map((name) => ({
       type: name.endsWith(".wasm") ? "CompiledWasm" : "ESModule",

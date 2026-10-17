@@ -277,9 +277,11 @@ and require their own backup; this protocol does not export them. Adding the
 dispatch changes the lossless state export's function-derived projection digest,
 so pinned migration plans require requalification before deployment.
 
-Native CI invokes the actual Data API queue entry in an isolated Miniflare/workerd
-runtime with local KV and outbound requests denied. Adversarial in-memory KV tests
-exercise delayed visibility, conflicts and delivery retries separately. Neither
+Native CI invokes the actual default Data API queue handler through a test-only
+default-export forwarding module in isolated Miniflare/workerd, with local KV
+and outbound requests denied. It does not qualify the full production export
+graph. Adversarial in-memory KV tests exercise delayed visibility, conflicts and
+delivery retries separately. Neither
 qualifies production KV capacity, remote visibility or current queue coverage.
 There is no production synthetic-preservation endpoint; the private export route
 only lists and reads. A live canary requires a separately reviewed invocation
