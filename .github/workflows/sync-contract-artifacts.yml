@@ -38,7 +38,7 @@ on:
       mode:
         description: Sync main, or return generated artifacts for review without writes
         type: choice
-        options: [sync, generate-only]
+        options: [sync, generate-only, resolve-lock]
         default: sync
       artifact_preset:
         description: Fixed output family for generate-only; contracts remains the default
@@ -57,7 +57,7 @@ concurrency:
   # Not cancel-in-progress: a run started by an earlier merge is still checking
   # a real state, and cancelling it could drop the only observation of a drift
   # that the next push happens not to reintroduce.
-  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
   cancel-in-progress: false
 
 jobs:
@@ -314,6 +314,8 @@ jobs:
           excluded = {
               "public/metagraph/r2-manifest.json",
               "public/metagraph/schemas/index.json",
+              # Probe-input seed regenerated from registry data, not a
+              # contract output. Report its drift without publishing it.
               "public/metagraph/operational-surfaces.json",
           }
           logo_root = "apps/ui/public/logos/"
@@ -345,7 +347,15 @@ jobs:
               # Include ignored client source, never whole ignored build/secret trees.
               candidates = exact | {str(p) for p in pathlib.Path(docs).rglob("*") if p.is_file() or p.is_symlink()}
           for name in sorted(candidates):
-              path = regular(name)
+              path = pathlib.Path(name)
+              if preset == "logos":
+                  path = regular(name)
+              else:
+                  for parent in [path, *path.parents]:
+                      if parent.is_symlink():
+                          raise SystemExit("Symlink in generated path: " + name)
+                  if path.exists() and not stat.S_ISREG(path.stat().st_mode):
+                      raise SystemExit("Non-file generated path: " + name)
               if path.exists():
                   subprocess.run(["git", "add", "--intent-to-add", "--force", "--", name], check=True)
 
@@ -360,9 +370,13 @@ jobs:
               old = git("ls-tree", "-z", "HEAD", "--", name)
               if old and old.split(b" ", 1)[0] != b"100644":
                   raise SystemExit("Non-regular base mode in patch: " + name)
-              if preset == "logos" and name.startswith(sharing_root) and old:
-                  raise SystemExit("Existing immutable sharing output changed: " + name)
-              regular(name)
+              path = pathlib.Path(name)
+              if preset == "logos":
+                  if name.startswith(sharing_root) and old:
+                      raise SystemExit("Existing immutable sharing output changed: " + name)
+                  regular(name)
+              elif path.exists() and path.stat().st_mode & 0o111:
+                  raise SystemExit("Executable generated output: " + name)
           patch = git("diff", "--binary", "--no-renames", "HEAD", "--", *selected) if selected else b""
           diffstat = git("diff", "--stat", "HEAD", "--", *selected) if selected else b""
           hashes = {p: sha256(pathlib.Path(p).read_bytes()) if pathlib.Path(p).exists() else None for p in selected}
@@ -439,4 +453,240 @@ jobs:
           name: generated-${{ steps.source.outputs.kind }}-${{ steps.source.outputs.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/generated-${{ steps.source.outputs.kind }}-output
           if-no-files-found: error
+          retention-days: 7
+
+  resolve:
+    name: Resolve a root lock review patch at an exact source commit
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Resolve immutable lock source
+        id: source
+        env:
+          REQUESTED_SHA: ${{ inputs.source_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          source_sha="${REQUESTED_SHA:-$DISPATCH_SHA}"
+          [[ "$source_sha" =~ ^[0-9a-fA-F]{40}$ ]] || {
+            echo "source_sha must be a full 40-character commit SHA" >&2
+            exit 1
+          }
+          echo "sha=${source_sha,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout lock source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup lock resolution Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Verify source and record immutable inputs
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        shell: bash
+        run: |
+          python3 - <<'PY_LOCK_INPUTS'
+          import hashlib, json, os, pathlib, stat, subprocess
+
+          def git(*args):
+              return subprocess.check_output(["git", *args])
+
+          def names(body):
+              return [p for p in body.decode().split("\0") if p]
+
+          def regular(name):
+              path = pathlib.Path(name)
+              if path.is_absolute() or ".." in path.parts:
+                  raise SystemExit("Unsafe input path: " + name)
+              for parent in [path, *path.parents]:
+                  if parent.is_symlink():
+                      raise SystemExit("Symlink in input path: " + name)
+              if not stat.S_ISREG(path.stat().st_mode) or path.stat().st_mode & 0o111:
+                  raise SystemExit("Input must be a regular non-executable file: " + name)
+              mode = git("ls-tree", "HEAD", "--", name).split(b" ", 1)[0]
+              if mode != b"100644":
+                  raise SystemExit("Input must have tracked mode 100644: " + name)
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          source = os.environ["SOURCE_SHA"]
+          if git("rev-parse", "HEAD").decode().strip() != source:
+              raise SystemExit("Checkout does not match exact source")
+          if git("status", "--porcelain", "--untracked-files=all").strip():
+              raise SystemExit("Lock resolution requires a clean checkout")
+          if names(git("ls-files", "--others", "--ignored", "--exclude-standard", "-z")):
+              raise SystemExit("Unexpected ignored files before resolution")
+          tracked = names(git("ls-files", "-z"))
+          manifests = sorted(p for p in tracked if pathlib.PurePosixPath(p).name == "package.json")
+          npmrcs = sorted(p for p in tracked if pathlib.PurePosixPath(p).name == ".npmrc")
+          if "package.json" not in manifests or ".npmrc" not in npmrcs:
+              raise SystemExit("Missing root package manifest or npmrc")
+          inputs = {p: regular(p) for p in [*manifests, *npmrcs, "package-lock.json"]}
+          node = subprocess.check_output(["node", "--version"]).decode().strip()
+          if node != "v22.23.2":
+              raise SystemExit("Unexpected Node version: " + node)
+          receipt = {
+              "status": "prepared",
+              "source_sha": source,
+              "source_tree": git("rev-parse", "HEAD^{tree}").decode().strip(),
+              "workflow_sha": os.environ["WORKFLOW_SHA"],
+              "workflow_ref": os.environ["WORKFLOW_REF"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "node": node,
+              "npm": subprocess.check_output(["npm", "--version"]).decode().strip(),
+              "input_sha256": inputs,
+          }
+          destination = pathlib.Path(os.environ["RUNNER_TEMP"]) / "lock-resolution-inputs.json"
+          destination.write_text(json.dumps(receipt, indent=2) + "\n")
+          PY_LOCK_INPUTS
+
+      - name: Resolve root lock without lifecycle scripts
+        shell: bash
+        run: |
+          python3 - <<'PY_RESOLVE_LOCK'
+          import json, os, pathlib, subprocess
+
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          receipt = json.loads((temp / "lock-resolution-inputs.json").read_text())
+          command = ["npm", "install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"]
+          result = subprocess.run(command, check=False)
+          receipt["command"] = {"argv": command, "exit_code": result.returncode}
+          receipt["status"] = "resolved" if result.returncode == 0 else "failed"
+          (temp / "lock-resolution-result.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          if result.returncode:
+              diagnostics = temp / "lock-resolution-diagnostics"
+              diagnostics.mkdir()
+              (diagnostics / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+              raise SystemExit(1)
+          PY_RESOLVE_LOCK
+
+      - name: Capture root-lock-only patch and receipt
+        shell: bash
+        run: |
+          python3 - <<'PY_LOCK_RECEIPT'
+          import hashlib, json, os, pathlib, stat, subprocess
+
+          def git(*args):
+              return subprocess.check_output(["git", *args])
+
+          def names(body):
+              return [p for p in body.decode().split("\0") if p]
+
+          def sha256(body):
+              return hashlib.sha256(body).hexdigest()
+
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          receipt = json.loads((temp / "lock-resolution-result.json").read_text())
+          if receipt["status"] != "resolved" or receipt["command"]["exit_code"] != 0:
+              raise SystemExit("No successful resolver command receipt")
+          if git("rev-parse", "HEAD").decode().strip() != receipt["source_sha"]:
+              raise SystemExit("Resolution changed source HEAD")
+          if git("rev-parse", "HEAD^{tree}").decode().strip() != receipt["source_tree"]:
+              raise SystemExit("Resolution changed source tree")
+          for name, expected in receipt["input_sha256"].items():
+              if name == "package-lock.json":
+                  continue
+              path = pathlib.Path(name)
+              for parent in [path, *path.parents]:
+                  if parent.is_symlink():
+                      raise SystemExit("Symlink after resolution: " + name)
+              if not path.is_file() or path.stat().st_mode & 0o111 or sha256(path.read_bytes()) != expected:
+                  raise SystemExit("Resolution changed an immutable input: " + name)
+          changed = names(git("diff", "--no-renames", "--name-only", "-z", "HEAD"))
+          untracked = names(git("ls-files", "--others", "--exclude-standard", "-z"))
+          ignored = names(git("ls-files", "--others", "--ignored", "--exclude-standard", "-z"))
+          if set(changed) - {"package-lock.json"} or untracked or ignored:
+              raise SystemExit("Unexpected resolution changes: " + repr(sorted(set(changed + untracked + ignored))))
+          lock_path = pathlib.Path("package-lock.json")
+          if lock_path.is_symlink() or not stat.S_ISREG(lock_path.stat().st_mode) or lock_path.stat().st_mode & 0o111:
+              raise SystemExit("Output lock must be a regular non-executable file")
+          raw = git("diff", "--raw", "--no-abbrev", "HEAD", "--", "package-lock.json").decode()
+          if raw and not raw.startswith(":100644 100644 "):
+              raise SystemExit("Unexpected output lock mode")
+          old_bytes = git("show", "HEAD:package-lock.json")
+          if sha256(old_bytes) != receipt["input_sha256"]["package-lock.json"]:
+              raise SystemExit("Input lock identity mismatch")
+          output_bytes = lock_path.read_bytes()
+          old = json.loads(old_bytes)
+          new = json.loads(output_bytes)
+          if old.get("lockfileVersion") != 3 or new.get("lockfileVersion") != 3:
+              raise SystemExit("Expected lockfileVersion 3")
+          before = old["packages"]
+          after = new["packages"]
+          changes = [{
+              "path": name,
+              "before_version": before.get(name, {}).get("version"),
+              "after_version": after.get(name, {}).get("version"),
+              "before_integrity": before.get(name, {}).get("integrity"),
+              "after_integrity": after.get(name, {}).get("integrity"),
+          } for name in sorted(set(before) | set(after)) if before.get(name) != after.get(name)]
+          locked_paths = [{"path": name, "version": value.get("version"), "link": value.get("link", False)} for name, value in sorted(after.items()) if "node_modules/" in name]
+          summary = json.dumps({"changed_package_nodes": changes, "locked_package_paths": locked_paths}, indent=2).encode() + b"\n"
+          if len(changes) > 5000 or len(locked_paths) > 20000 or len(summary) > 2 * 1024 * 1024:
+              raise SystemExit("Resolution summary exceeds review budget")
+          patch = git("diff", "--binary", "--no-renames", "HEAD", "--", "package-lock.json")
+          diffstat = git("diff", "--stat", "HEAD", "--", "package-lock.json")
+          receipt.update({
+              "status": "success",
+              "changed_paths": sorted(changed),
+              "output_lock_sha256": sha256(output_bytes),
+              "patch_sha256": sha256(patch),
+              "version_summary_sha256": sha256(summary),
+              "changed_package_node_count": len(changes),
+              "locked_package_path_count": len(locked_paths),
+          })
+          output = temp / "resolved-lock-output"
+          output.mkdir()
+          (output / "lock.patch").write_bytes(patch)
+          (output / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          (output / "diffstat.txt").write_bytes(diffstat)
+          (output / "versions.json").write_bytes(summary)
+          PY_LOCK_RECEIPT
+
+      - name: Upload root lock review artifact only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: resolved-lock-${{ steps.source.outputs.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/resolved-lock-output
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Record failed job receipt without a lock patch
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PY_FAILED_LOCK_RECEIPT'
+          import json, os, pathlib
+
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          result = temp / "lock-resolution-result.json"
+          inputs = temp / "lock-resolution-inputs.json"
+          receipt = json.loads(result.read_text()) if result.exists() else json.loads(inputs.read_text()) if inputs.exists() else {}
+          receipt.update({"status": "failed", "run_id": os.environ["GITHUB_RUN_ID"], "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"], "diagnostic": "Job failed; inspect the exact-run step log. This receipt contains no lock patch."})
+          diagnostics = temp / "lock-resolution-diagnostics"
+          diagnostics.mkdir(exist_ok=True)
+          (diagnostics / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          PY_FAILED_LOCK_RECEIPT
+
+      - name: Upload failed resolver receipt only
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: failed-lock-resolution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/lock-resolution-diagnostics
+          if-no-files-found: ignore
           retention-days: 7

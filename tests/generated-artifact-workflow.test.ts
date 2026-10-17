@@ -220,7 +220,11 @@ test("generation presets preserve default sync and isolate exact read-only jobs"
     "mode",
     "source_sha",
   ]);
-  assert.deepEqual(inputs.mode.options, ["sync", "generate-only"]);
+  assert.deepEqual(inputs.mode.options, [
+    "sync",
+    "generate-only",
+    "resolve-lock",
+  ]);
   assert.equal(inputs.mode.default, "sync");
   assert.deepEqual(inputs.artifact_preset.options, ["contracts", "logos"]);
   assert.equal(inputs.artifact_preset.default, "contracts");
@@ -282,6 +286,30 @@ test("generation presets preserve default sync and isolate exact read-only jobs"
     (step) => step.run === "npm run validate:logo-thumbnails",
   );
   assert.ok(check < steps.indexOf(capture));
+
+  // Preserve the existing independent lock lane without changing its internals.
+  const resolve = workflow.jobs.resolve;
+  assert.match(resolve.if, /workflow_dispatch/);
+  assert.match(resolve.if, /inputs\.mode == 'resolve-lock'/);
+  assert.deepEqual(resolve.permissions, { contents: "read" });
+  const lockSteps = resolve.steps as Step[];
+  const lockCheckout = lockSteps.find((step) =>
+    step.uses?.startsWith("actions/checkout@"),
+  );
+  assert.equal(lockCheckout?.with?.["persist-credentials"], false);
+  assert.equal(lockCheckout?.with?.ref, "${{ steps.source.outputs.sha }}");
+  const resolution = lockSteps.find(
+    (step) => step.name === "Resolve root lock without lifecycle scripts",
+  );
+  const lockCommand =
+    'command = ["npm", "install", "--package-lock-only", ' +
+    '"--ignore-scripts", "--no-audit", "--no-fund"]';
+  assert.ok(resolution?.run?.includes(lockCommand));
+  const lockJob = JSON.stringify(resolve);
+  assert.ok(!lockJob.includes("secrets."));
+  assert.ok(!lockJob.includes("create-pull-request"));
+  assert.ok(!lockJob.includes("git push"));
+  assert.ok(!lockJob.includes("npm run deploy"));
 });
 
 for (const preset of [undefined, "", "contracts"] as const) {
