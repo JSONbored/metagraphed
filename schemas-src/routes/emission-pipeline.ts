@@ -3,6 +3,7 @@
 // Shape mirrors src/emission-decomposition.ts's EmissionDecomposition exactly;
 // the module is the source of truth and this is its contract projection.
 import { z } from "zod";
+import { PIPELINE_EMISSION_SHARE_DESCRIPTION } from "../legacy-emission-share.ts";
 import { ChainStateSchema, FieldSourcesSchema } from "../shared.ts";
 
 /** A fraction of block emission. Null where stage 0 excluded the subnet. */
@@ -44,9 +45,9 @@ export const SubnetEmissionDecompositionSchema = z
       .describe(
         "SubtensorModule.SubnetMovingPrice in TAO -- the EMA of the subnet's alpha price and stage 1's raw input. Published unnormalized because it is the quantity the runtime compares when deciding which subnet to deregister; emission_share divides it by the sum across subnets, so a caller cannot recover it from anything else here. Null for a subnet with no positive moving price (root, and the never-emitted set).",
       ),
-    /** Stage 1, the published `emission_share` (ADR 0023 decision 1). */
+    /** This route reconstructs Stage 1; legacy economics uses another denominator. */
     emission_share: ShareSchema.describe(
-      "Stage 1, the published emission_share (ADR 0023 decision 1) -- the PRICE share, not the share of TAO received.",
+      PIPELINE_EMISSION_SHARE_DESCRIPTION,
     ),
     /** Stage 2 input. A FRACTION in [0,1] (U96F32), never an amount. */
     miner_burned: z

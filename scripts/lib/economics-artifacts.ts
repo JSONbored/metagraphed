@@ -16,8 +16,10 @@ type Row = Record<string, any>;
 // snapshot's `economics` block (validator/miner counts, stake, registration
 // cost, alpha price). dTAO emission is price-weighted, so each subnet's
 // emission_share is its alpha price as a fraction of the network total across
-// every subnet that reports one — computed here rather than read from the
-// now-zeroed on-chain subnet_emission field. Pure + side-effect free so it is
+// every subnet that reports one, including Root. This legacy normalization
+// does not apply runtime eligibility and is not certified Stage 1. Computed
+// here rather than read from the now-zeroed on-chain subnet_emission field.
+// Pure + side-effect free so it is
 // fully unit-testable; subnets with no economics block are omitted (graceful
 // when the snapshot predates the economics fetcher).
 // Miner-readiness heuristic (#1306): 0-100 "how easy is it for a new miner to

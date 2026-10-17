@@ -2,6 +2,7 @@
 // Pure orchestration over resolveLiveEconomics + applyQueryFilters; MCP/REST
 // handlers keep tier precedence and envelope wiring.
 
+import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "../schemas-src/legacy-emission-share.ts";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -215,7 +216,8 @@ export const GET_ECONOMICS_MCP_TOOL = {
     "live from the economics tier (~3h), falling back to the latest committed " +
     "snapshot. Filter by netuid or registration_allowed, search by name/slug " +
     "(q), sort with sort + order, and page with limit (1-1000) / cursor. " +
-    "Mirrors GET /api/v1/economics.",
+    "Mirrors GET /api/v1/economics. " +
+    LEGACY_EMISSION_SHARE_DESCRIPTION,
   inputSchema: inputJsonSchema(GetEconomicsInputSchema),
 };
 

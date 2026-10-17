@@ -16,6 +16,7 @@
 // (#10131). That module is a zero-import leaf, the same shape as
 // src/route-limits.ts, which this directory has read since #9127.
 import { z } from "zod";
+import { TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION } from "../legacy-emission-share.ts";
 import { DOMAIN_TAGS } from "../../src/domain-tags.ts";
 import {
   ConcentrationScorecardSchema,
@@ -40,7 +41,11 @@ export const GetDomainSummaryOutputSchema = z
     subnet_count: z.int().optional(),
     netuids: z.array(z.int()).optional(),
     total_stake_tao: z.number().nullable().optional(),
-    total_emission_share: z.number().nullable().optional(),
+    total_emission_share: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION),
     // Typed from the route's own ConcentrationScorecardSchema (#9797).
     emission_concentration: ConcentrationScorecardSchema.nullable().optional(),
     domain_count: z.int().optional(),

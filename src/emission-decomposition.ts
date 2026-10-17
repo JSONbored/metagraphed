@@ -91,14 +91,11 @@ export interface DecompositionChainState {
  */
 export const EMISSION_FIELD_SOURCES = {
   emission_share: {
-    kind: "measured",
-    storage: "SubtensorModule.SubnetMovingPrice",
+    kind: "reconstructed",
+    storage: null,
   },
-  // The same storage item `emission_share` names, published unnormalized
-  // (#10285). Two entries citing one read is not a duplication: the pallet
-  // compares the RAW price when it decides which subnet to prune, and
-  // `emission_share` is that price divided by the sum across subnets — a
-  // caller cannot recover one from the other without every row.
+  // The raw price is measured; emission_share is its normalization over the
+  // eligible set. Only the raw measurement names this storage item (#10285).
   moving_price: {
     kind: "measured",
     storage: "SubtensorModule.SubnetMovingPrice",

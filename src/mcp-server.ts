@@ -1,3 +1,8 @@
+import {
+  LEGACY_EMISSION_SHARE_DESCRIPTION,
+  MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION,
+  TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
+} from "../schemas-src/legacy-emission-share.ts";
 import { loadSubnetSnapshotCardsTier } from "./subnet-snapshot-cards-tier.ts";
 import { loadValidatorDetailBatchTier } from "./validator-detail-batch-tier.ts";
 import { withRequestCounters } from "./request-counters.ts";
@@ -2576,7 +2581,7 @@ export const MCP_INSTRUCTIONS =
   GET_ECONOMICS_INSTRUCTIONS +
   "get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
-  "get_emission_pipeline the v440 decomposition behind emission_share -- how " +
+  "get_emission_pipeline the separately reconstructed v440 pipeline -- how " +
   "much TAO each subnet actually receives, and the split between pool " +
   "injection and chain buys, " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
@@ -6938,12 +6943,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "share, and pool reserves. Served live from the economics tier " +
       "(refreshed ~3h), falling back to the latest committed snapshot. Use it " +
       "to decide whether (and where) to register, mine, or validate. " +
-      "`emission_share` is the STAGE-1 PRICE SHARE of the v440 emission " +
-      "pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a " +
-      "subnet receives — spec 440 separates them by MinerBurned reweighting, " +
-      "the Hill emission gate, the SubnetEmissionEnabled filter, the alpha " +
-      "injection cap, and the liquidity balancer. Do not present it as TAO " +
-      "earned or emitted. get_network_parameters carries the gate parameters. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION +
+      " " +
       "SWEEPING SEVERAL SUBNETS? Pass `include_summary: false` — the `summary` " +
       "block is network-wide and identical on every call, so it is about 19% " +
       "of each response repeated once per subnet.",
@@ -7254,7 +7255,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "completeness, surface and endpoint counts, validator and miner counts, " +
       "total stake, alpha price, and emission share over time, plus 7d/30d " +
       "deltas. Use it to see whether a subnet is growing or contracting before " +
-      "committing resources.",
+      "committing resources. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     inputSchema: inputJsonSchema(GetSubnetTrajectoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetTrajectoryInputSchema>,
@@ -7287,12 +7289,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "across all subnets: total stake, stake-weighted and median alpha price, " +
       "total validator and miner counts, and mean emission share. Mirrors " +
       "GET /api/v1/economics/trends. " +
-      "`emission_share` is the STAGE-1 PRICE SHARE of the v440 emission " +
-      "pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a " +
-      "subnet receives — spec 440 separates them by MinerBurned reweighting, " +
-      "the Hill emission gate, the SubnetEmissionEnabled filter, the alpha " +
-      "injection cap, and the liquidity balancer. Do not present it as TAO " +
-      "earned or emitted. get_network_parameters carries the gate parameters. " +
+      MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION +
+      " " +
       `Windows up to ${FREE_HISTORY_WINDOW_DAYS} days (7d/30d/90d) are open to ` +
       "every caller; `1y` and `all` need a paid key and otherwise answer " +
       "`payment_required` with the upgrade path attached.",
@@ -7405,9 +7403,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "and `liquidity_fraction`. Plus the network aggregate and the " +
       "issuance-derived block emission. " +
       "USE THIS RATHER THAN get_economics's `emission_share` whenever the " +
-      "question is how much TAO a subnet actually receives -- that field is " +
-      "the STAGE-1 PRICE SHARE, and this tool is the decomposition that " +
-      "separates the two. " +
+      "question is how much TAO a subnet actually receives -- the economics " +
+      "field normalizes the reported price set, while this tool reconstructs " +
+      "the eligible runtime pipeline from pinned inputs. " +
       "EVERY SHARE HERE IS RECONSTRUCTED, NOT READ: the chain publishes the " +
       "inputs, not the decomposition. `field_sources` gives each field its " +
       "kind (measured|reconstructed) and, for measurements, the storage item " +
@@ -9197,7 +9195,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "list_subnets: member subnet count, total stake, total emission share, " +
       "and within-domain emission concentration, per domain tag. Pass `domain` " +
       "for one tag's own rollup (mirrors GET /api/v1/domains/{tag}/summary); " +
-      "omit it for every tag's rollup in one call (mirrors GET /api/v1/domains).",
+      "omit it for every tag's rollup in one call (mirrors GET /api/v1/domains). " +
+      TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
     inputSchema: inputJsonSchema(GetDomainSummaryInputSchema),
     async handler(
       args: z.infer<typeof GetDomainSummaryInputSchema>,
@@ -10962,7 +10961,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_emission_pipeline_history",
     title: "Get a subnet's emission-pipeline series",
     description:
-      "Fetch ONE SUBNET'S emission-pipeline decomposition OVER TIME (#9625) " +
+      "Fetch ONE SUBNET'S stored pipeline inputs and legacy price share OVER TIME (#9625) " +
       "-- emission share, the TAO split (pool-liquidity injection vs chain " +
       "buys), alpha in/out emission, miner burned fraction, whether emission " +
       "is enabled -- one point per day, each pinned to the block it was " +
@@ -10982,7 +10981,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "re-measured. window is 7d, 30d (default), 90d or 180d. An empty series " +
       "is a measurement -- a subnet registered after the capture began " +
       "returns one legitimately. Mainnet only. Mirrors GET " +
-      "/api/v1/subnets/{netuid}/emission-pipeline/history.",
+      "/api/v1/subnets/{netuid}/emission-pipeline/history. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     inputSchema: inputJsonSchema(GetPipelineHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetPipelineHistoryInputSchema>,
