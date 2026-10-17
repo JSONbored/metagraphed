@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { z } from "zod";
 import { listQuerySchema, API_ROUTES } from "../src/contracts.ts";
+import { sampleFromSchema } from "../src/openapi-sample.ts";
 import { PaginationMetaSchema } from "../schemas-src/envelope.ts";
+import {
+  collectionSnapshotParamSchema,
+  collectionSnapshotSchema,
+} from "../schemas-src/query-params.ts";
 import { deriveQueryArguments } from "../schemas-src/graphql/query-arguments.ts";
 import {
   applyQueryFilters,
@@ -37,6 +43,15 @@ function continuation(snapshot: string | undefined, cursor = "2") {
 }
 
 describe("checked collection paging (#12094)", () => {
+  test("generated snapshot examples satisfy their canonical response and query schemas", () => {
+    const responseSchema = collectionSnapshotSchema();
+    const response = sampleFromSchema(z.toJSONSchema(responseSchema), {});
+    assert.equal(responseSchema.parse(response), response);
+    const querySchema = collectionSnapshotParamSchema();
+    const query = sampleFromSchema(z.toJSONSchema(querySchema), {});
+    assert.equal(querySchema.parse(query), "start");
+  });
+
   test("reproduces legacy deletion skips and insertion duplicates; guarded pages reject both", () => {
     const first = checked(page(rows, url("limit=2")));
     assert.deepEqual(first.ids, ["a", "b"]);
