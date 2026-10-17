@@ -36,6 +36,8 @@ import {
 import { toPositionalPlaceholders } from "../src/pg-sql.ts";
 import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { resetAccountSummaryPointerCache } from "../src/account-summary-projection.ts";
+import * as indexedAccounts from "../src/indexed-account-feeds.ts";
 
 const SS58 = "5Fv5t8frGG3MKtahp4WafKPmT5xZDbqWf8aFZpXyvjHTgzzx";
 
@@ -252,6 +254,88 @@ describe("answerAccountSummary", () => {
     lakehouse();
     const answer = await answerAccountSummary(runner() as never, SS58);
     assert.equal(answer.kind, "miss");
+  });
+
+  for (const native of [undefined, "enabled"]) {
+    test(`an archive timeout is an explicit gap with native history ${native ?? "unconfigured"}`, async () => {
+      vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+      resetAccountSummaryPointerCache();
+      let release!: (value: null) => void;
+      const held = new Promise<null>((resolve) => {
+        release = resolve;
+      });
+      const get = vi.fn(async () => held);
+      const groups = vi
+        .spyOn(indexedAccounts, "loadIndexedAccountFeedGroups")
+        .mockResolvedValue([]);
+      const page = vi
+        .spyOn(indexedAccounts, "loadIndexedAccountFeedPage")
+        .mockResolvedValue([]);
+      const pending = answerAccountSummary(
+        {
+          ...runner({ rows: [] }),
+          ...(native ? { NATIVE_PROJECTIONS: native } : {}),
+          METAGRAPH_ARCHIVE: { get },
+          METAGRAPH_R2_TIMEOUT_MS: "20",
+        } as never,
+        SS58,
+      );
+      const outcome: {
+        settled: boolean;
+        answer?: Awaited<ReturnType<typeof answerAccountSummary>>;
+        error?: unknown;
+      } = { settled: false };
+      void pending.then(
+        (answer) => Object.assign(outcome, { settled: true, answer }),
+        (error) => Object.assign(outcome, { settled: true, error }),
+      );
+      try {
+        await vi.advanceTimersByTimeAsync(19);
+        assert.equal(outcome.settled, false);
+        await vi.advanceTimersByTimeAsync(1);
+        assert.equal(
+          outcome.settled,
+          true,
+          "SUMMARY_TIMEOUT_DID_NOT_PRODUCE_EXPLICIT_GAP",
+        );
+        assert.equal(outcome.error, undefined);
+        assert.ok(outcome.answer?.kind === "gap");
+        assert.match(outcome.answer.reasons.join(" "), /time budget/);
+        assert.equal(groups.mock.calls.length, 0);
+        assert.equal(page.mock.calls.length, 0);
+        release(null);
+        await vi.advanceTimersByTimeAsync(0);
+        assert.equal(get.mock.calls.length, 1);
+        assert.equal(groups.mock.calls.length, 0);
+        assert.equal(page.mock.calls.length, 0);
+      } finally {
+        release(null);
+        await pending.catch(() => {});
+        groups.mockRestore();
+        page.mockRestore();
+        vi.useRealTimers();
+      }
+    });
+  }
+
+  test("an unexpected indexed error propagates instead of becoming a budget gap", async () => {
+    const failure = new Error("unexpected account-index failure");
+    const groups = vi
+      .spyOn(indexedAccounts, "loadIndexedAccountFeedGroups")
+      .mockRejectedValue(failure);
+    const page = vi
+      .spyOn(indexedAccounts, "loadIndexedAccountFeedPage")
+      .mockResolvedValue([]);
+    try {
+      await assert.rejects(
+        answerAccountSummary(runner({ rows: [] }) as never, SS58),
+        (error) => error === failure,
+      );
+      assert.equal(groups.mock.calls.length, 1);
+    } finally {
+      groups.mockRestore();
+      page.mockRestore();
+    }
   });
 
   test("an unusable address declines rather than scanning every account", async () => {
