@@ -38,7 +38,7 @@ on:
       mode:
         description: Sync main, or return generated artifacts for review without writes
         type: choice
-        options: [sync, generate-only, resolve-lock, source-format]
+        options: [sync, generate-only, resolve-lock, source-format, vulnerable-baseline]
         default: sync
       source_sha:
         description: Exact same-repository commit for read-only modes (empty uses dispatch SHA)
@@ -52,7 +52,7 @@ concurrency:
   # Not cancel-in-progress: a run started by an earlier merge is still checking
   # a real state, and cancelling it could drop the only observation of a drift
   # that the next push happens not to reintroduce.
-  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'source-format' && format('source-format-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'source-format' && format('source-format-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'vulnerable-baseline' && format('vulnerable-baseline-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
   cancel-in-progress: false
 
 jobs:
@@ -732,3 +732,336 @@ jobs:
           path: ${{ runner.temp }}/source-format-output
           if-no-files-found: error
           retention-days: 7
+
+  vulnerable-baseline:
+    name: Demonstrate the retained test detects the vulnerable dependency baseline
+    if: github.repository == 'JSONbored/metagraphed' && github.event_name == 'workflow_dispatch' && inputs.mode == 'vulnerable-baseline'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      VITE_POSTHOG_PROJECT_TOKEN: ""
+      POSTHOG_API_KEY: ""
+      POSTHOG_PROJECT_ID: ""
+    steps:
+      - name: Checkout the fixed patched application and retained regression
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: JSONbored/metagraphed
+          ref: d623ef8e5a6df0265d04ced02914bcc39da320c6
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Fetch only the fixed historical dependency input commit
+        run: git fetch --no-tags --depth=1 origin ca93ab3abfa2c32de36a6cb5b9d2905386b76d70
+      - name: Materialize only the three historical dependency files
+        id: inputs
+        shell: bash
+        run: |
+          python3 - <<'PY_BASELINE_INPUTS'
+          import hashlib, json, os, pathlib, subprocess
+          root = pathlib.Path.cwd()
+          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / "server-function-baseline"
+          output.mkdir(parents=True, exist_ok=True)
+          source = "d623ef8e5a6df0265d04ced02914bcc39da320c6"
+          baseline = "ca93ab3abfa2c32de36a6cb5b9d2905386b76d70"
+          expected_source = {'package.json': '52500f90371d9fc6cf8c6160bc63685384b4b49a9a87f8dfcfb7c959fddead59', 'apps/ui/package.json': 'e3a86e5aa2fe748f042033ddf4da195568e12c5fc09b9a66c8b66c3aa4f347e2', 'package-lock.json': 'ca23d1cc6245fc06b61c4bf14e298a3e75041a5966d63b4c4e00e5835ec22309', 'apps/ui/tests/e2e/content-runtime-isolation.spec.ts': 'f6df7aadc1ba68ec612eaa4ce17c78f943dcc1b0a73b50155df8502d19a5e064', 'apps/ui/playwright.config.ts': 'e841be1d48fe584b8046106c9af06a925039fd57bd7d4ac21b687865e927da7a', 'apps/ui/src/server.ts': 'b43492635e4c277d12e56dd6bd0ead7a3f689fa071375e4d2583e80c21b4ac24', 'apps/ui/src/start.ts': '7b2a35cfb8f08b2db762d78245ee906491a22bd807066ef40bb21bb080e68c20', 'apps/ui/tests/e2e/api-stub.ts': '86722999dc241b70737c8a78b3a71c84a9a4ff279909112697669dc67684c2c4', 'apps/ui/tests/e2e/serve-e2e.ts': '819950b22abf5ba6a4648ca61aa5fbead97dfb0015e0cfc6e8feae0fb4887fc3', '.npmrc': 'b50bde7ee3e769650d30f1752bf6403f0d69f3a656113d3e2f63c9917a452165', 'apps/ui/src/routes/-root-views.tsx': 'a788155459d3b52e4a32d2de5ac19a2639c7aba3b3f28f6d7cc2da0319672076', 'apps/ui/tests/e2e/native-runtime-diagnostics.ts': '14b5315b9fbbac523005c4e3948024639659e233db6e77905eca79cd5e656914', 'apps/ui/src/routes/docs.$.tsx': 'bfdb40d6548a81de5e2b3013c418a7c39f5d3764236a0fa13aa52b4296bac26e', 'apps/ui/src/routes/index.tsx': '4ff5f3cd13479ea657ebf46662b6e79665771c04ff036798e4614a1c3ff3cb30', 'apps/ui/src/routes/-index-page.tsx': 'd019ff4dcd54e5dedadad63b1828e4e9b7c08bbdf683afcc5e8f2a1be8e9bd3b', 'apps/ui/src/routes/subnets.index.tsx': 'a2639f6f5b27b68e783151a60b10df70eb9ec6f634dee402b295d156a45cd05d', 'apps/ui/src/routes/-subnets-index-page.tsx': 'c8ab864e344d4ffee70e5addc0275409e45cd2ddc7571f5d7d086113cae4bbf3', 'apps/ui/src/lib/metagraphed/subnet-directory-query.ts': '717d4c6bced4c086d7df7da87d2f8a18c7272f774ed18c6ea7b03822c77fbc66', 'apps/ui/tests/e2e/indexable-routes.spec.ts': 'c1fd542e6dc4b711487bd9f98e045a13b41621e04f130dcb446cc350caf6c9f8'}
+          expected_baseline = {'package.json': 'f26c329ba493cd1a6c4bb057c8dd9b9f7a18614b6df4001a3835a2db43a187f6', 'apps/ui/package.json': '926be697886dd613f0085a9f6272c6be59b511ef2a84e0811bfd8a7b91725d95', 'package-lock.json': '63025f24ddae435165291d686e2ac01bd7ee3bebe2eee767c0d3521416c42aa2'}
+          def git(*args):
+              return subprocess.check_output(["git", *args])
+          def sha(body):
+              return hashlib.sha256(body).hexdigest()
+          if git("rev-parse", "HEAD").decode().strip() != source:
+              raise SystemExit("Unexpected patched application source")
+          if git("rev-parse", baseline + "^{commit}").decode().strip() != baseline:
+              raise SystemExit("Unexpected baseline commit")
+          if git("status", "--porcelain", "-z"):
+              raise SystemExit("Checkout is dirty before baseline materialization")
+          for name, digest in expected_source.items():
+              path = root / name
+              if path.is_symlink() or sha(path.read_bytes()) != digest:
+                  raise SystemExit("Unexpected patched source: " + name)
+          for path in [root / "node_modules", root / "apps/ui/node_modules"]:
+              if path.exists():
+                  raise SystemExit("Expected an unconditional clean installation")
+          for name, digest in expected_baseline.items():
+              value = git("show", baseline + ":" + name)
+              if sha(value) != digest:
+                  raise SystemExit("Unexpected baseline dependency input: " + name)
+              (root / name).write_bytes(value)
+          changed = set(git("diff", "--name-only", "HEAD", "-z").decode().rstrip("\0").split("\0")) - {""}
+          if changed != set(expected_baseline):
+              raise SystemExit("Baseline materialization changed unexpected paths")
+          ui = json.loads((root / "apps/ui/package.json").read_text())
+          expected_e2e_build = "VITE_METAGRAPH_API_BASE=http://127.0.0.1:8081 VITE_ICON_PROXY_URL=http://127.0.0.1:8081/api/v1/icon npm run build:worker"
+          if ui["scripts"]["build:worker:e2e"] != expected_e2e_build:
+              raise SystemExit("Baseline build does not use the existing local API/icon stub")
+          receipt = {
+              "application_source": source,
+              "application_tree": git("rev-parse", source + "^{tree}").decode().strip(),
+              "dependency_baseline": baseline,
+              "baseline_tree": git("rev-parse", baseline + "^{tree}").decode().strip(),
+              "patched_input_sha256": expected_source,
+              "baseline_input_sha256": expected_baseline,
+              "restored_paths": sorted(expected_baseline),
+              "fixed_build_script": expected_e2e_build,
+              "local_server": "http://localhost:8080",
+              "local_api_stub": "http://127.0.0.1:8081",
+              "fixture_recording": False,
+          }
+          (output / "inputs.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          PY_BASELINE_INPUTS
+      - name: Setup the existing native Node toolchain
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Unconditional clean install of the fixed baseline lock
+        id: install
+        shell: bash
+        run: npm ci 2>&1 | tee "$RUNNER_TEMP/server-function-baseline/npm-ci.log"
+      - name: Verify actual installed vulnerable cohort and browser version
+        id: versions
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE_BASELINE_VERSIONS'
+          import { createRequire } from "node:module";
+          import { readFileSync, writeFileSync } from "node:fs";
+          import path from "node:path";
+          const require = createRequire(path.resolve("apps/ui/package.json"));
+          const expected = {
+            "@tanstack/react-start": "1.168.42",
+            "@tanstack/start-server-core": "1.169.25",
+            "@tanstack/start-client-core": "1.170.21",
+            "@playwright/test": "1.62.0",
+          };
+          const versions = {};
+          for (const [name, version] of Object.entries(expected)) {
+            const resolved = require.resolve(`${name}/package.json`);
+            const actual = JSON.parse(readFileSync(resolved, "utf8")).version;
+            if (actual !== version) throw new Error(`Unexpected baseline ${name}: ${actual}`);
+            versions[name] = { version: actual, package_path: path.relative(process.cwd(), resolved) };
+          }
+          writeFileSync(path.join(process.env.RUNNER_TEMP, "server-function-baseline", "installed-versions.json"), JSON.stringify({ node: process.version, versions }, null, 2) + "\n");
+          NODE_BASELINE_VERSIONS
+      - name: Build client from the same patched application source
+        id: client
+        shell: bash
+        run: npm run build --workspace=packages/client 2>&1 | tee "$RUNNER_TEMP/server-function-baseline/build-client.log"
+      - name: Build ui-kit from the same patched application source
+        id: ui_kit
+        shell: bash
+        run: npm run build --workspace=packages/ui-kit 2>&1 | tee "$RUNNER_TEMP/server-function-baseline/build-ui-kit.log"
+      - name: Build chain-summaries from the same patched application source
+        id: summaries
+        shell: bash
+        run: npm run build --workspace=packages/chain-summaries 2>&1 | tee "$RUNNER_TEMP/server-function-baseline/build-chain-summaries.log"
+      - name: Build only the existing local-stub UI Worker target
+        id: build
+        shell: bash
+        run: npm run build:worker:e2e --workspace=apps/ui 2>&1 | tee "$RUNNER_TEMP/server-function-baseline/build-ui.log"
+      - name: Install Chromium through the baseline's already installed Playwright CLI
+        id: chromium
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE_BASELINE_CHROMIUM'
+          import { createRequire } from "node:module";
+          import { spawnSync } from "node:child_process";
+          import path from "node:path";
+          const require = createRequire(path.resolve("apps/ui/package.json"));
+          const cli = path.join(path.dirname(require.resolve("@playwright/test/package.json")), "cli.js");
+          const result = spawnSync(process.execPath, [cli, "install", "--with-deps", "chromium"], { stdio: "inherit" });
+          if (result.error) throw result.error;
+          process.exit(result.status ?? 1);
+          NODE_BASELINE_CHROMIUM
+      - name: Run the exact retained safety test once and capture its expected failure
+        id: test
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/server-function-baseline/e2e-results.json
+        shell: bash
+        run: |
+          set +e
+          npm run test:e2e --workspace=apps/ui -- tests/e2e/content-runtime-isolation.spec.ts --project=interaction --no-deps --grep 'a malformed server-function link cannot become an HTML document' --workers=1 --retries=0 > "$RUNNER_TEMP/server-function-baseline/test.log" 2>&1
+          test_status=$?
+          set -e
+          echo "$test_status" > "$RUNNER_TEMP/server-function-baseline/test-exit.txt"
+          cat "$RUNNER_TEMP/server-function-baseline/test.log"
+      - name: Require exact positive-control and vulnerable HTML-canary observations
+        id: qualify
+        if: always()
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          PHASE_OUTCOMES: '{"inputs":"${{ steps.inputs.outcome }}","install":"${{ steps.install.outcome }}","versions":"${{ steps.versions.outcome }}","client":"${{ steps.client.outcome }}","ui_kit":"${{ steps.ui_kit.outcome }}","summaries":"${{ steps.summaries.outcome }}","build":"${{ steps.build.outcome }}","chromium":"${{ steps.chromium.outcome }}","test":"${{ steps.test.outcome }}"}'
+        shell: bash
+        run: |
+          python3 - <<'PY_BASELINE_QUALIFICATION'
+          import base64, hashlib, json, os, pathlib, re, stat, subprocess
+          root = pathlib.Path.cwd().resolve()
+          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / "server-function-baseline"
+          output.mkdir(parents=True, exist_ok=True)
+          reasons = []
+          observations = None
+          inputs = None
+          installed = None
+          report = None
+          report_path = output / "e2e-results.json"
+          MAX_REPORT = 8 * 1024 * 1024
+          MAX_ATTACHMENT = 16 * 1024
+          MAX_LOG = 1024 * 1024
+          def sha(body):
+              return hashlib.sha256(body).hexdigest()
+          def load_bounded(path, limit):
+              if path.is_symlink() or not path.is_file() or path.stat().st_size > limit:
+                  raise ValueError("Missing, non-regular or oversized diagnostic: " + path.name)
+              return json.loads(path.read_text())
+          try:
+              phases = json.loads(os.environ["PHASE_OUTCOMES"])
+              if any(value != "success" for value in phases.values()):
+                  raise ValueError("A required preparation/build/browser/test phase failed or was skipped")
+              inputs = load_bounded(output / "inputs.json", MAX_REPORT)
+              installed = load_bounded(output / "installed-versions.json", MAX_REPORT)
+              head = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+              if head != inputs["application_source"]:
+                  raise ValueError("Application HEAD changed")
+              for name, digest in inputs["baseline_input_sha256"].items():
+                  if sha((root / name).read_bytes()) != digest:
+                      raise ValueError("Dependency input changed after npm ci: " + name)
+              for name, digest in inputs["patched_input_sha256"].items():
+                  if name not in inputs["baseline_input_sha256"] and sha((root / name).read_bytes()) != digest:
+                      raise ValueError("Application/test/config source changed: " + name)
+              if (output / "test-exit.txt").read_text().strip() != "1":
+                  raise ValueError("Expected the retained safety test to fail once with exit code 1")
+              report = load_bounded(report_path, MAX_REPORT)
+              if report.get("errors"):
+                  raise ValueError("Playwright reported setup/teardown/global errors")
+              entries = []
+              def visit(suites):
+                  for suite in suites or []:
+                      for spec in suite.get("specs", []):
+                          for test in spec.get("tests", []):
+                              entries.append((spec, test))
+                      visit(suite.get("suites", []))
+              visit(report.get("suites", []))
+              if len(entries) != 1:
+                  raise ValueError("Expected exactly one focused test, not a generic red suite")
+              spec, test = entries[0]
+              expected_title = "a malformed server-function link cannot become an HTML document"
+              if spec.get("title") != expected_title or test.get("projectName") != "interaction":
+                  raise ValueError("Unexpected test or Playwright project")
+              if not str(spec.get("file", "")).replace("\\", "/").endswith("content-runtime-isolation.spec.ts"):
+                  raise ValueError("Unexpected test source file")
+              results = test.get("results", [])
+              if test.get("expectedStatus") != "passed" or test.get("status") != "unexpected" or len(results) != 1:
+                  raise ValueError("Expected one failed ordinary safety test, without retry or test.fail inversion")
+              result = results[0]
+              if result.get("status") != "failed" or result.get("retry") != 0 or not result.get("errors"):
+                  raise ValueError("Failure was skipped, timed out, interrupted, retried or not an assertion failure")
+              attachments = [a for a in result.get("attachments", []) if a.get("name") == "server-function-response-boundary"]
+              if len(attachments) != 1 or attachments[0].get("contentType") != "application/json":
+                  raise ValueError("Expected one exact response-boundary JSON attachment")
+              attachment = attachments[0]
+              bodies = []
+              if "body" in attachment and attachment["body"] is not None:
+                  value = attachment["body"]
+                  if not isinstance(value, str) or len(value) > MAX_ATTACHMENT * 2:
+                      raise ValueError("Invalid inline attachment")
+                  bodies.append(base64.b64decode(value, validate=True))
+              if attachment.get("path"):
+                  value = pathlib.Path(attachment["path"])
+                  candidates = [value] if value.is_absolute() else [root / "apps/ui" / value, root / value, report_path.parent / value]
+                  allowed = [(root / "apps/ui/test-results").resolve(), (pathlib.Path(os.environ["RUNNER_TEMP"]) / "server-function-baseline-results").resolve()]
+                  found = []
+                  for candidate in candidates:
+                      resolved = candidate.resolve()
+                      if not any(resolved.is_relative_to(base) for base in allowed):
+                          continue
+                      if candidate.exists() and not candidate.is_symlink() and candidate.is_file() and candidate.stat().st_size <= MAX_ATTACHMENT:
+                          for parent in [candidate, *candidate.parents]:
+                              if parent.is_symlink():
+                                  raise ValueError("Symlink in attachment path")
+                          found.append(candidate.read_bytes())
+                  if len(found) != 1:
+                      raise ValueError("Missing, ambiguous, unsafe or oversized attachment path")
+                  bodies.append(found[0])
+              if not bodies or any(len(b) > MAX_ATTACHMENT for b in bodies) or any(b != bodies[0] for b in bodies[1:]):
+                  raise ValueError("Missing, oversized or inconsistent attachment contents")
+              observations = json.loads(bodies[0])
+              expected = {
+                  "control_status": 200,
+                  "control_internal_header": "true",
+                  "attack_status": 200,
+                  "attack_internal_header_present": False,
+                  "attack_navigation": True,
+                  "attack_method": "GET",
+                  "canary_in_body": True,
+                  "canary_executed": True,
+              }
+              for name, value in expected.items():
+                  if type(observations.get(name)) is not type(value) or observations[name] != value:
+                      raise ValueError("Required baseline observation absent: " + name)
+              if not re.fullmatch(r"text/html(?:\s*;[^\r\n]*)?", observations.get("content_type", ""), re.I):
+                  raise ValueError("Baseline did not return attacker-controlled HTML")
+              if not str(observations.get("transport_path", "")).startswith("/_serverFn/") or len(observations["transport_path"]) > 2048:
+                  raise ValueError("Unexpected public transport path")
+              if observations.get("serialized") == "true":
+                  raise ValueError("Baseline result was serialized instead of becoming HTML")
+          except Exception as error:
+              reasons.append(str(error)[:2048])
+
+          # Export only bounded diagnostics, never the mixed dependency files or built Worker.
+          # Raw reports contain public local test metadata; copy them only below the size cap.
+          if report_path.exists() and (report_path.is_symlink() or report_path.stat().st_size > MAX_REPORT):
+              report_path.unlink()
+          for name in ["npm-ci.log", "build-client.log", "build-ui-kit.log", "build-chain-summaries.log", "build-ui.log", "chromium.log", "test.log"]:
+              path = output / name
+              if path.exists():
+                  if path.is_symlink() or not path.is_file():
+                      path.unlink()
+                      continue
+                  if path.stat().st_size > MAX_LOG:
+                      with path.open("rb") as stream:
+                          stream.seek(-MAX_LOG, 2)
+                          tail = stream.read(MAX_LOG)
+                      path.write_bytes(b"[bounded tail]\n" + tail)
+          selected_observations = None
+          if isinstance(observations, dict):
+              selected_observations = {k: observations.get(k) for k in ["transport_path", "control_status", "attack_status", "content_type", "control_internal_header", "attack_internal_header_present", "attack_navigation", "attack_method", "serialized", "raw", "canary_in_body", "canary_executed"]}
+          receipt = {
+              "qualification": "baseline-exposure-demonstrated" if not reasons else "not-qualified",
+              "expected_application_source": "d623ef8e5a6df0265d04ced02914bcc39da320c6",
+              "expected_dependency_baseline": "ca93ab3abfa2c32de36a6cb5b9d2905386b76d70",
+              "reasons": reasons,
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow_sha": os.environ["WORKFLOW_SHA"],
+              "workflow_ref": os.environ["WORKFLOW_REF"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "inputs": inputs,
+              "installed": installed,
+              "phase_outcomes": json.loads(os.environ["PHASE_OUTCOMES"]),
+              "observations": selected_observations,
+              "playwright_report_sha256": sha(report_path.read_bytes()) if report_path.is_file() else None,
+              "stats": report.get("stats") if report else None,
+              "test_command": "npm run test:e2e --workspace=apps/ui -- tests/e2e/content-runtime-isolation.spec.ts --project=interaction --no-deps --grep 'a malformed server-function link cannot become an HTML document' --workers=1 --retries=0",
+          }
+          (output / "qualification.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          if reasons:
+              raise SystemExit("Baseline sensitivity was not established: " + "; ".join(reasons))
+          print("The unchanged safety test failed on the exact vulnerable dependency baseline with the required HTML canary observations.")
+          PY_BASELINE_QUALIFICATION
+      - name: Upload bounded diagnostic evidence only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: server-function-vulnerable-baseline-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/server-function-baseline/inputs.json
+            ${{ runner.temp }}/server-function-baseline/installed-versions.json
+            ${{ runner.temp }}/server-function-baseline/qualification.json
+            ${{ runner.temp }}/server-function-baseline/e2e-results.json
+            ${{ runner.temp }}/server-function-baseline/test-exit.txt
+            ${{ runner.temp }}/server-function-baseline/*.log
+          retention-days: 7
+          if-no-files-found: error
