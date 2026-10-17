@@ -420,35 +420,55 @@ function lookup(rawUrl: string): Match | null {
 const catalogPayloads = new Map<Recorded, Record<string, unknown>>();
 function checkedCatalogRecord(url: URL): Recorded | null {
   if (!url.searchParams.has("page_snapshot")) return null;
-  const collection = url.pathname === "/api/v1/endpoints" ? "endpoints"
-    : url.pathname === "/api/v1/surfaces" ? "surfaces" : null;
+  const collection =
+    url.pathname === "/api/v1/endpoints"
+      ? "endpoints"
+      : url.pathname === "/api/v1/surfaces"
+        ? "surfaces"
+        : null;
   if (!collection) return null;
   const provider = url.searchParams.get("provider");
-  const candidates = [...byUrl.entries()].flatMap(([key, recorded]) => {
-    const recordedUrl = new URL(key, "http://fixture.local");
-    if (recordedUrl.pathname !== url.pathname || recorded.status !== 200) return [];
-    const recordedProvider = recordedUrl.searchParams.get("provider");
-    if (recordedProvider && recordedProvider !== provider) return [];
-    let payload = catalogPayloads.get(recorded);
-    if (!payload) {
-      payload = JSON.parse(recorded.body.toString("utf8")) as Record<string, unknown>;
-      catalogPayloads.set(recorded, payload);
-    }
-    const rows = (payload.data as Record<string, unknown> | undefined)?.[collection];
-    if (!Array.isArray(rows)) return [];
-    return [{ recorded, payload, rows: rows as Record<string, unknown>[], exactScope: recordedProvider === provider }];
-  }).sort((a, b) => Number(b.exactScope) - Number(a.exactScope) || b.rows.length - a.rows.length);
+  const candidates = [...byUrl.entries()]
+    .flatMap(([key, recorded]) => {
+      const recordedUrl = new URL(key, "http://fixture.local");
+      if (recordedUrl.pathname !== url.pathname || recorded.status !== 200) return [];
+      const recordedProvider = recordedUrl.searchParams.get("provider");
+      if (recordedProvider && recordedProvider !== provider) return [];
+      let payload = catalogPayloads.get(recorded);
+      if (!payload) {
+        payload = JSON.parse(recorded.body.toString("utf8")) as Record<string, unknown>;
+        catalogPayloads.set(recorded, payload);
+      }
+      const rows = (payload.data as Record<string, unknown> | undefined)?.[collection];
+      if (!Array.isArray(rows)) return [];
+      return [
+        {
+          recorded,
+          payload,
+          rows: rows as Record<string, unknown>[],
+          exactScope: recordedProvider === provider,
+        },
+      ];
+    })
+    .sort((a, b) => Number(b.exactScope) - Number(a.exactScope) || b.rows.length - a.rows.length);
   const candidate = candidates[0];
   if (!candidate) return null;
   const q = (url.searchParams.get("q") ?? "").toLowerCase().trim();
-  const rows = candidate.rows.filter((row) =>
-    ["provider", "kind", "status", "netuid"].every((key) =>
-      !url.searchParams.has(key) || String(row[key]) === url.searchParams.get(key),
-    ) && (url.searchParams.get("known_status") !== "true" || ["ok", "degraded", "failed"].includes(String(row.status))) &&
-    (!q || q.split(/\s+/).every((term) => JSON.stringify(row).toLowerCase().includes(term))),
+  const rows = candidate.rows.filter(
+    (row) =>
+      ["provider", "kind", "status", "netuid"].every(
+        (key) => !url.searchParams.has(key) || String(row[key]) === url.searchParams.get(key),
+      ) &&
+      (url.searchParams.get("known_status") !== "true" ||
+        ["ok", "degraded", "failed"].includes(String(row.status))) &&
+      (!q || q.split(/\s+/).every((term) => JSON.stringify(row).toLowerCase().includes(term))),
   );
   const response = matchedCatalogFixture(url, collection, rows, candidate.payload);
-  return { status: response.status, contentType: response.contentType, body: Buffer.from(response.body) };
+  return {
+    status: response.status,
+    contentType: response.contentType,
+    body: Buffer.from(response.body),
+  };
 }
 
 // Misses are reported once each. A route that starts requesting an endpoint

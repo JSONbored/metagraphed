@@ -316,12 +316,14 @@ async function discoveryFixture(page: Page, waitForFeed?: Promise<void>) {
             row[key as "status" | "kind" | "provider"] === url.searchParams.get(key),
         ),
     );
-    await route.fulfill(matchedCatalogFixture(url, "endpoints", rows, {
-      data: {
-        summary: { endpoint_count: 3, monitored_count: 1, by_status: { ok: 1, unknown: 2 } },
-        operational_observed_at: "2026-09-01T10:00:00Z",
-      },
-    }));
+    await route.fulfill(
+      matchedCatalogFixture(url, "endpoints", rows, {
+        data: {
+          summary: { endpoint_count: 3, monitored_count: 1, by_status: { ok: 1, unknown: 2 } },
+          operational_observed_at: "2026-09-01T10:00:00Z",
+        },
+      }),
+    );
   });
   for (const pattern of ["**/api/v1/rpc/pools*", "**/api/v1/endpoint-incidents*"]) {
     await page.route(pattern, async (route) => {
@@ -551,13 +553,17 @@ test.describe("endpoint discovery", () => {
     await expect(error).toBeVisible();
     await expect(directory.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(0);
     await expect(directory.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
-    await expect(page.locator("section#latency").getByRole("alert")).toContainText("endpoint latency");
+    await expect(page.locator("section#latency").getByRole("alert")).toContainText(
+      "endpoint latency",
+    );
     const beforeRetry = state.reads.length;
     state.failFeed = false;
     await error.getByRole("button", { name: "Retry", exact: true }).tap();
     await expect(error).toHaveCount(0);
     await expect.poll(() => state.reads.length).toBeGreaterThan(beforeRetry);
-    expect(state.reads.every((search) => new URLSearchParams(search).get("cursor") === "0")).toBe(true);
+    expect(state.reads.every((search) => new URLSearchParams(search).get("cursor") === "0")).toBe(
+      true,
+    );
     await expect(directory.locator(".mg-dt-row")).toHaveCount(3);
     await expect(page.getByRole("group", { name: "Endpoint latency" })).toBeVisible();
     await expect(directory).not.toContainText("Refresh failed");

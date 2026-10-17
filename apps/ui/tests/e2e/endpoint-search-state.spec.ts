@@ -78,12 +78,24 @@ async function searchFixture(page: Page) {
         (params.get("known_status") !== "true" || row.status !== "unknown"),
     );
     try {
-      await route.fulfill(matchedCatalogFixture(new URL(route.request().url()), "endpoints", matched, {
-        data: {
-          summary: { endpoint_count: ROWS.length, monitored_count: 449, by_status: { ok: 449, unknown: 1 } },
-          operational_observed_at: "2026-09-01T10:00:00Z",
-        },
-      }, { omitTotal: state.omitTotal }));
+      await route.fulfill(
+        matchedCatalogFixture(
+          new URL(route.request().url()),
+          "endpoints",
+          matched,
+          {
+            data: {
+              summary: {
+                endpoint_count: ROWS.length,
+                monitored_count: 449,
+                by_status: { ok: 449, unknown: 1 },
+              },
+              operational_observed_at: "2026-09-01T10:00:00Z",
+            },
+          },
+          { omitTotal: state.omitTotal },
+        ),
+      );
     } finally {
       if (q === "slow") state.slowFinished = true;
     }
@@ -314,7 +326,9 @@ test("discards the current generation on refresh failure and retries its first p
   state.failed.add("second");
   await page.getByRole("button", { name: "refresh", exact: true }).click();
   await expect(directory.getByRole("alert")).toContainText("tracked endpoints");
-  await expect(directory.getByRole("link", { name: "node401.example", exact: true })).toHaveCount(0);
+  await expect(directory.getByRole("link", { name: "node401.example", exact: true })).toHaveCount(
+    0,
+  );
   await expect(directory).not.toContainText("previously loaded endpoints remain visible");
   state.failed.delete("second");
   await directory.getByRole("button", { name: "Retry", exact: true }).click();
@@ -386,12 +400,17 @@ test.describe("catalog-wide known status", () => {
             : p.get("known_status") === "true"
               ? known
               : [...unknown, ...known];
-        await route.fulfill(matchedCatalogFixture(new URL(route.request().url()), "endpoints", matches, {
-          data: { summary: {
-            endpoint_count: 450, monitored_count: 400,
-            by_status: { ok: 84, degraded: 83, failed: 83, unknown: 200 },
-          } },
-        }));
+        await route.fulfill(
+          matchedCatalogFixture(new URL(route.request().url()), "endpoints", matches, {
+            data: {
+              summary: {
+                endpoint_count: 450,
+                monitored_count: 400,
+                by_status: { ok: 84, degraded: 83, failed: 83, unknown: 200 },
+              },
+            },
+          }),
+        );
       });
       await gotoThroughRestart(page, "/endpoints?status=monitored#directory");
       const directory = page.locator("section#directory");

@@ -173,7 +173,9 @@ test.describe("Provider services and independent probe states", () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.setViewportSize({ width: 375, height: 812 });
     await page.route("**/api/v1/surfaces**", (route) =>
-      route.fulfill(response(route.request().url(), [service("a"), service("b", true), service("c", false)])),
+      route.fulfill(
+        response(route.request().url(), [service("a"), service("b", true), service("c", false)]),
+      ),
     );
     await loaded(page);
     await expect(page.locator('#surfaces td[data-label="Auth"]')).toHaveText([

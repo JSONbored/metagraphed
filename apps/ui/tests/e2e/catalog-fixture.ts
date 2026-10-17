@@ -43,7 +43,11 @@ export function matchedCatalogFixture(
       ...payload,
       ok: true,
       data: result.data,
-      meta: { ...(payload.meta as Record<string, unknown> | undefined), ...result.meta, pagination },
+      meta: {
+        ...(payload.meta as Record<string, unknown> | undefined),
+        ...result.meta,
+        pagination,
+      },
     }),
   };
 }
