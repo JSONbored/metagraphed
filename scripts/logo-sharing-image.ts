@@ -1,3 +1,5 @@
+import { TextDecoder } from "node:util";
+
 import sharp from "sharp";
 
 import { icoPngFrame } from "./logo-sharing-ico.ts";

@@ -211,6 +211,12 @@ test("sharing SVG refuses active and external resources before decoding", async 
     const svg = `${SVG_START} width="16" height="16">${body}</svg>`;
     await assert.rejects(prepareLogoInput(Buffer.from(svg), ".svg"));
   }
+  const invalidUtf8 = Buffer.concat([
+    Buffer.from(VECTOR.replace("</svg>", "")),
+    Buffer.from([0xff]),
+    Buffer.from("</svg>"),
+  ]);
+  await assert.rejects(prepareLogoInput(invalidUtf8, ".svg"), TypeError);
   const foreignNamespace = VECTOR.replace(
     "http://www.w3.org/2000/svg",
     "https://example.org/svg",

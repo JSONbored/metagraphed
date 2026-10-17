@@ -3,6 +3,7 @@ import { gzipSync } from "node:zlib";
 
 import { SUBNET_SLOT_CAP } from "../../src/lib/metagraphed/bittensor";
 import { OG_CARD_VERSION } from "../../src/lib/metagraphed/og-card-limits";
+import sharingIdentity from "../../public/logos/display/sharing-identity.json" with { type: "json" };
 import { gotoThroughRestart } from "./server-restart.ts";
 import { HUB_COPY, HUB_DESCRIPTION_MAX, HUB_TITLE_MAX } from "../../src/lib/metagraphed/hub-copy";
 
@@ -940,6 +941,10 @@ async function socialHead(page: Page, html: string) {
 }
 
 test.describe("#12103 one coherent social preview survives Worker HTML rewriting", () => {
+  test.beforeAll(() => {
+    expect(sharingIdentity.version).toBe(1);
+    expect(sharingIdentity.sha256).toMatch(/^[0-9a-f]{64}$/);
+  });
   const routes = [
     "/",
     "/validators",
@@ -992,7 +997,10 @@ test.describe("#12103 one coherent social preview survives Worker HTML rewriting
       const image = new URL(values("og:image")[0]!);
       expect(image.origin).toBe("https://metagraph.sh");
       expect(image.pathname).toBe("/og");
-      expect(image.searchParams.get("v")).toBe(OG_CARD_VERSION);
+      const imageVersion = image.searchParams.get("logop")
+        ? `${OG_CARD_VERSION}-${sharingIdentity.sha256}`
+        : OG_CARD_VERSION;
+      expect(image.searchParams.getAll("v")).toEqual([imageVersion]);
       expect(values("twitter:card")).toEqual(["summary_large_image"]);
       expect(values("twitter:image")).toEqual(values("og:image"));
       expect(values("og:image:width")).toEqual(["1200"]);
