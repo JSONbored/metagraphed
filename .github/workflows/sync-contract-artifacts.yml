@@ -38,7 +38,7 @@ on:
       mode:
         description: Sync main, or return generated artifacts for review without writes
         type: choice
-        options: [sync, generate-only, resolve-lock, source-format, client-recovery, ordinary-flakes]
+        options: [sync, generate-only, resolve-lock, source-format, client-recovery, ordinary-flakes, proxy-lifecycle]
         default: sync
       source_sha:
         description: Exact same-repository commit for read-only modes (empty uses dispatch SHA)
@@ -52,7 +52,7 @@ concurrency:
   # Not cancel-in-progress: a run started by an earlier merge is still checking
   # a real state, and cancelling it could drop the only observation of a drift
   # that the next push happens not to reintroduce.
-  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'source-format' && format('source-format-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'client-recovery' && format('client-recovery-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'ordinary-flakes' && format('ordinary-flakes-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'source-format' && format('source-format-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'client-recovery' && format('client-recovery-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'ordinary-flakes' && format('ordinary-flakes-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'proxy-lifecycle' && format('proxy-lifecycle-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
   cancel-in-progress: false
 
 jobs:
@@ -1053,3 +1053,457 @@ jobs:
             ${{ runner.temp }}/ordinary-flakes/*.log
           retention-days: 7
           if-no-files-found: error
+
+  proxy-lifecycle:
+    name: Qualify the published ProxyWorker error lifecycle (${{ matrix.cohort }})
+    if: github.repository == 'JSONbored/metagraphed' && github.event_name == 'workflow_dispatch' && inputs.mode == 'proxy-lifecycle'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cohort: old
+            source: "9d3585be9d387522614a48f1989446e6f34d691b"
+            lock: "ca23d1cc6245fc06b61c4bf14e298a3e75041a5966d63b4c4e00e5835ec22309"
+          - cohort: new
+            source: "6264185656f73b8c62f0264d97b53cf646ec9241"
+            lock: "00d480ff42855c3b0bbe0ac13ed1c6cc388ca7478ffaf53f898c10525f28348e"
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_WRITE_LOGS: "false"
+      WRANGLER_LOG: error
+      CLOUDFLARE_CF_FETCH_ENABLED: "false"
+      COHORT: ${{ matrix.cohort }}
+      FIXED_SOURCE: ${{ matrix.source }}
+      FIXED_LOCK: ${{ matrix.lock }}
+    steps:
+      - name: Reject unresolved pins and arbitrary source inputs before checkout
+        env:
+          REQUESTED_SHA: ${{ inputs.source_sha }}
+          FIXED_NEW_SOURCE: "6264185656f73b8c62f0264d97b53cf646ec9241"
+          FIXED_NEW_LOCK: "00d480ff42855c3b0bbe0ac13ed1c6cc388ca7478ffaf53f898c10525f28348e"
+        shell: bash
+        run: |
+          python3 - <<'PY_LIFECYCLE_PINS'
+          import os, re
+          assert os.environ["REQUESTED_SHA"] == ""
+          assert os.environ["COHORT"] in ("old", "new")
+          assert re.fullmatch(r"[0-9a-f]{40}", os.environ["FIXED_NEW_SOURCE"])
+          assert re.fullmatch(r"[0-9a-f]{64}", os.environ["FIXED_NEW_LOCK"])
+          assert re.fullmatch(r"[0-9a-f]{40}", os.environ["FIXED_SOURCE"])
+          assert re.fullmatch(r"[0-9a-f]{64}", os.environ["FIXED_LOCK"])
+          PY_LIFECYCLE_PINS
+
+      - name: Checkout the fixed lifecycle cohort
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ matrix.source }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup the fixed native Node toolchain
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Materialize the frozen lifecycle proposal only under runner temp
+        shell: bash
+        run: |
+          mkdir "$RUNNER_TEMP/proxy-lifecycle-output"
+          cat > "$RUNNER_TEMP/proxy-lifecycle.proposed.mjs" <<'LIFECYCLE_NODE_PROPOSAL_DB04'
+          // PRIVATE PROPOSAL ONLY. Not repository code; not executed/qualified.
+          // Native Node22 Linux x64; run once per separately installed old/new pinned checkout.
+          // argv: <repo> <old|new> <reviewed-source-sha> <reviewed-lock-sha256>
+          import { createRequire } from "node:module";
+          import { mkdtemp, readFile, writeFile, realpath, rm } from "node:fs/promises";
+          import { join, dirname, resolve } from "node:path";
+          import { tmpdir } from "node:os";
+          import { createHash } from "node:crypto";
+          import { execFileSync } from "node:child_process";
+          import { once } from "node:events";
+          import { setImmediate as nextTurn } from "node:timers/promises";
+          
+          const pins = {
+            old: { wrangler: "4.118.0", miniflare: "5.20260730.0-alpha", workerd: "1.20260730.1",
+              cli: "a1a7a98e0b073d39dc3229b1b89f66accb51ae557fb34552250f914f12a81efd",
+              proxy: "993f67b180aae36e296397f79bdacb781827c9768287a9e3f9677adf50d80ccd" },
+            new: { wrangler: "4.129.1", miniflare: "5.20260907.0-alpha", workerd: "1.20260907.1",
+              cli: "c1601ea9684445806550e51a81369cf007d2b5e5ec12506377f4733522200cc7",
+              proxy: "703358e6194e2323d1c40cf7d35c954b480496d69bf9d23df72cfcab308c13d9" },
+          };
+          let stage = "arguments", worker, fixture, raw, abortWaiter, waiter;
+          let fatal = 0, teardown = 0, wrongFatal = false, waiterState = "unregistered";
+          let waiterReasonMatches = false, classifiedLogs = 0, loggedDetail = false;
+          let totalLogBytes = 0, injectionPhase = false, logOverflow = false;
+          let before = false, after = false, disposed = false, result;
+          const receipt = { kind: "published-wrangler-lifecycle-boundary", natural_network_reproduction: false,
+            transport_retry_qualification: false, cli_process_exit_executed: false };
+          const originalConsole = Object.fromEntries(["debug", "info", "log", "warn", "error"].map(k => [k, console[k]]));
+          const cwd = process.cwd();
+          const print = x => process.stdout.write(JSON.stringify(x) + "\n");
+          function check(value, code) { if (!value) { const e = new Error(code); e.boundaryCode = code; throw e; } }
+          const sha = bytes => createHash("sha256").update(bytes).digest("hex");
+          async function bounded(promise, ms, code) {
+            let timer;
+            try { return await Promise.race([promise, new Promise((_, reject) => {
+              timer = setTimeout(() => { const e = new Error(code); e.boundaryCode = code; reject(e); }, ms);
+            })]); } finally { clearTimeout(timer); }
+          }
+          // No raw log or error/cause values leave the process. No logger implementation is patched.
+          for (const k of Object.keys(originalConsole)) console[k] = (...args) => {
+            const text = args.map(v => typeof v === "string" ? v : "[non-string]").join(" ");
+            totalLogBytes += Buffer.byteLength(text);
+            if (totalLogBytes > 65536) logOverflow = true;
+            const plain = text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").replace(/\s+/g, " ");
+            if (injectionPhase && k === "error" && plain.includes("Error inside ProxyWorker") &&
+                plain.includes("the affected request failed; the dev server continues")) {
+              classifiedLogs++;
+              loggedDetail ||= plain.includes("Network connection lost.") && plain.includes("failed after 3 attempts");
+            }
+          };
+          const watchdog = setTimeout(() => {
+            print({ ...receipt, ok: false, stage, failure: "overall_30s_deadline" });
+            process.exit(1);
+          }, 30000);
+          watchdog.unref();
+          try {
+            const [, , repoArg, cohort, expectedSource, expectedLock] = process.argv;
+            check(pins[cohort] && /^[a-f0-9]{40}$/.test(expectedSource ?? "") &&
+              /^[a-f0-9]{64}$/.test(expectedLock ?? ""), "invalid_reviewed_pins");
+            check(process.platform === "linux" && process.arch === "x64" && process.versions.node.split(".")[0] === "22",
+              "requires_native_linux_x64_node22");
+            const repo = await realpath(resolve(repoArg));
+            const actualSource = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
+            const lockHash = sha(await readFile(join(repo, "package-lock.json")));
+            check(actualSource === expectedSource && lockHash === expectedLock, "checkout_or_lock_mismatch");
+            const req = createRequire(join(repo, "package.json"));
+            const cli = req.resolve("wrangler");
+            const wrReq = createRequire(cli);
+            const wrPkgPath = req.resolve("wrangler/package.json");
+            const mfPkgPath = wrReq.resolve("miniflare/package.json");
+            const rootMfPkgPath = req.resolve("miniflare/package.json");
+            const wdPkgPath = wrReq.resolve("workerd/package.json");
+            const mfReq = createRequire(mfPkgPath);
+            const wdFromMfPkgPath = mfReq.resolve("workerd/package.json");
+            check(!process.env.MINIFLARE_WORKERD_PATH, "runtime_binary_override_not_allowed");
+            const wdReq = createRequire(wdPkgPath);
+            const binPkgPath = wdReq.resolve("@cloudflare/workerd-linux-64/package.json");
+            const parsed = async path => JSON.parse(await readFile(path, "utf8"));
+            const versions = {
+              wrangler: (await parsed(wrPkgPath)).version,
+              miniflare: (await parsed(mfPkgPath)).version,
+              root_miniflare: (await parsed(rootMfPkgPath)).version,
+              workerd: (await parsed(wdPkgPath)).version,
+              miniflare_workerd: (await parsed(wdFromMfPkgPath)).version,
+              binary_package: (await parsed(binPkgPath)).version,
+            };
+            const pin = pins[cohort];
+            check(versions.wrangler === pin.wrangler && versions.miniflare === pin.miniflare &&
+              versions.root_miniflare === pin.miniflare && versions.workerd === pin.workerd &&
+              versions.miniflare_workerd === pin.workerd && versions.binary_package === pin.workerd,
+              "installed_cohort_mismatch");
+            const selectedWorkerd = wrReq("workerd");
+            const platformBinary = join(dirname(binPkgPath), "bin", "workerd");
+            check(typeof selectedWorkerd.default === "string" && selectedWorkerd.version === pin.workerd &&
+              await realpath(selectedWorkerd.default) === await realpath(platformBinary), "selected_binary_mismatch");
+            const hashes = {
+              cli: sha(await readFile(cli)),
+              proxy: sha(await readFile(join(dirname(cli), "ProxyWorker.js"))),
+              miniflare_entry: sha(await readFile(wrReq.resolve("miniflare"))),
+              workerd_binary: sha(await readFile(platformBinary)),
+            };
+            check(hashes.cli === pin.cli && hashes.proxy === pin.proxy, "published_source_mismatch");
+            Object.assign(receipt, { cohort, source: actualSource, lock_sha256: lockHash,
+              node: process.versions.node, versions, hashes, workerd_declared_compatibility_date: selectedWorkerd.compatibilityDate });
+            stage = "fixture";
+            fixture = await mkdtemp(join(tmpdir(), "metagraph-proxy-lifecycle-"));
+            const body = "lifecycle-control\n";
+            const source = `export default { fetch() { return new Response(${JSON.stringify(body)}, { headers: { "content-type": "text/plain" } }); } };\n`;
+            const config = { name: "metagraph-lifecycle-boundary", main: "worker.mjs",
+              compatibility_date: "2026-07-30", compatibility_flags: ["nodejs_compat"], workers_dev: false };
+            await writeFile(join(fixture, "worker.mjs"), source);
+            await writeFile(join(fixture, "wrangler.json"), JSON.stringify(config));
+            receipt.fixture_sha256 = sha(source);
+            // Minimal isolated fixture deliberately disables geo metadata fetch, metrics and disk logs.
+            // This is not a claim that the UI runtime is hermetic or has identical fixture settings.
+            process.env.WRANGLER_SEND_METRICS = "false";
+            process.env.WRANGLER_LOG = "error";
+            process.env.WRANGLER_LOG_SANITIZE = "true";
+            process.env.WRANGLER_WRITE_LOGS = "false";
+            process.env.CLOUDFLARE_CF_FETCH_ENABLED = "false";
+            process.chdir(fixture);
+            stage = "start_local_worker";
+            const { unstable_startWorker } = req("wrangler");
+            check(typeof unstable_startWorker === "function", "public_start_api_missing");
+            worker = await bounded(unstable_startWorker({
+              config: join(fixture, "wrangler.json"), entrypoint: join(fixture, "worker.mjs"),
+              envFiles: [], dev: { remote: false, watch: false, persist: false, inspector: false,
+                server: { hostname: "127.0.0.1", port: 0, secure: false }, liveReload: false,
+                logLevel: "error", generateTypes: false },
+            }), 15000, "local_start_deadline");
+            raw = worker.raw;
+            check(raw && typeof raw.dispatch === "function" && typeof raw.on === "function", "public_raw_dispatch_missing");
+            let event;
+            const onFatal = value => { fatal++; wrongFatal ||= value !== event; };
+            raw.on("error", onFatal);
+            raw.on("teardown", () => teardown++);
+            await bounded(worker.ready, 15000, "local_ready_deadline");
+            const url = await worker.url;
+            check(url.protocol === "http:" && url.hostname === "127.0.0.1" && Number(url.port) > 0,
+              "unexpected_nonlocal_worker_url");
+            async function control() {
+              const response = await fetch(new URL("/control", url), { signal: AbortSignal.timeout(3000), redirect: "error" });
+              check(response.status === 200 && await response.text() === body, "local_control_not_200");
+            }
+            stage = "before_control";
+            await control(); before = true;
+            check(fatal === 0 && teardown === 0, "unexpected_initial_lifecycle_event");
+            abortWaiter = new AbortController();
+            waiterState = "pending";
+            waiter = once(raw, "teardown", { signal: abortWaiter.signal }).then(
+              () => { waiterState = "resolved"; },
+              reason => { waiterState = "rejected"; waiterReasonMatches = reason === event; },
+            );
+            // Exact shape produced by castErrorCause(serialized), whose implementation is not exported:
+            // non-Error values become `new Error()` with `.cause = value`. No internal bundle import/patch.
+            const serialized = JSON.parse(JSON.stringify({ name: "Error",
+              message: "GET http://127.0.0.1/lifecycle-boundary (failed after 3 attempts): Network connection lost.",
+              stack: "Error: Network connection lost.\n    at <fixed-native-boundary>" }));
+            const cause = new Error(); cause.cause = serialized;
+            check(cause.message === "" && cause.cause.message === serialized.message, "serialized_shape_mismatch");
+            event = { type: "error", source: "ProxyController", reason: "Error inside ProxyWorker", cause, data: {} };
+            stage = "dispatch_upstream_equivalent_error";
+            injectionPhase = true;
+            try { raw.dispatch(event); } finally { injectionPhase = false; }
+            await nextTurn();
+            check(!wrongFatal && !logOverflow && teardown === 0, "unexpected_dispatch_side_effect");
+            if (cohort === "old") {
+              check(fatal === 1 && waiterState === "rejected" && waiterReasonMatches && classifiedLogs === 0,
+                "old_boundary_did_not_reject_cli_style_waiter");
+            } else {
+              check(fatal === 0 && waiterState === "pending" && classifiedLogs === 1 && loggedDetail,
+                "new_boundary_not_nonfatal_classified");
+            }
+            receipt.after_dispatch = { fatal, teardown, waiter_state: waiterState,
+              waiter_reason_is_dispatched_event: waiterReasonMatches, classified_logs: classifiedLogs,
+              logged_detail: loggedDetail };
+            // Old API consumer remains alive intentionally: it observes the same waiter rejection that CLI awaits.
+            // This control does not assert that an actual old CLI process would remain alive.
+            stage = "after_control";
+            await control(); after = true;
+            stage = "dispose";
+            await bounded(worker.dispose(), 5000, "local_dispose_deadline"); disposed = true;
+            await nextTurn();
+            check(teardown === 1 && waiterState === (cohort === "old" ? "rejected" : "resolved"),
+              "dispose_did_not_settle_lifecycle_waiter");
+            await waiter;
+            check(teardown === 1 && fatal === (cohort === "old" ? 1 : 0) &&
+              waiterState === (cohort === "old" ? "rejected" : "resolved"), "unexpected_final_lifecycle");
+            result = { ...receipt, ok: true, before_control_200: before, after_control_200: after,
+              final: { fatal, teardown, waiter_state: waiterState }, log_bytes_bounded: !logOverflow };
+          } catch (error) {
+            result = { ...receipt, ok: false, stage,
+              failure: typeof error?.boundaryCode === "string" ? error.boundaryCode : "unexpected_native_failure",
+              before_control_200: before, after_control_200: after };
+            process.exitCode = 1;
+          } finally {
+            stage = "cleanup";
+            if (worker && !disposed) {
+              try { await bounded(worker.dispose(), 5000, "cleanup_deadline"); }
+              catch { result = { ...result, ok: false, cleanup_failed: true }; process.exitCode = 1; }
+            }
+            abortWaiter?.abort();
+            if (waiter) await waiter;
+            process.chdir(cwd);
+            if (fixture) {
+              try { await rm(fixture, { recursive: true, force: true }); }
+              catch { result = { ...result, ok: false, fixture_cleanup_failed: true }; process.exitCode = 1; }
+            }
+            for (const [k, fn] of Object.entries(originalConsole)) console[k] = fn;
+            clearTimeout(watchdog);
+          }
+          print(result);
+          LIFECYCLE_NODE_PROPOSAL_DB04
+          cat > "$RUNNER_TEMP/proxy-lifecycle-capture.py" <<'PY_LIFECYCLE_CAPTURE'
+          import hashlib, json, os, pathlib, selectors, signal, subprocess, sys, time
+          kind, outdir, *command = sys.argv[1:]
+          out = pathlib.Path(outdir)
+          assert kind in ("install", "lifecycle") and out.is_dir()
+          limits = {"stdout": 1048576 if kind == "install" else 32768, "stderr": 8192}
+          buffers = {name: bytearray() for name in limits}
+          totals = {name: 0 for name in limits}
+          started = time.monotonic()
+          timed_out = False
+          try:
+              proc = subprocess.Popen(command, stdout=subprocess.PIPE,
+                  stderr=subprocess.STDOUT if kind == "install" else subprocess.PIPE, start_new_session=True)
+              selector = selectors.DefaultSelector()
+              selector.register(proc.stdout, selectors.EVENT_READ, "stdout")
+              if kind != "install":
+                  selector.register(proc.stderr, selectors.EVENT_READ, "stderr")
+              deadline = started + (300 if kind == "install" else 40)
+              while selector.get_map():
+                  if time.monotonic() >= deadline:
+                      timed_out = True
+                      try:
+                          os.killpg(proc.pid, signal.SIGKILL)
+                      except ProcessLookupError:
+                          pass
+                      break
+                  for key, _ in selector.select(timeout=0.25):
+                      chunk = os.read(key.fd, 65536)
+                      if not chunk:
+                          selector.unregister(key.fileobj)
+                          continue
+                      name = key.data
+                      totals[name] += len(chunk)
+                      remaining = limits[name] - len(buffers[name])
+                      if remaining > 0:
+                          buffers[name].extend(chunk[:remaining])
+              selector.close()
+              code = proc.wait(timeout=5)
+          except Exception:
+              code = 125
+              if "proc" in locals() and proc.poll() is None:
+                  try:
+                      os.killpg(proc.pid, signal.SIGKILL)
+                      proc.wait(timeout=5)
+                  except Exception:
+                      pass
+          truncated = {name: totals[name] > limits[name] for name in limits}
+          receipt = {"kind": kind, "exit_code": code, "timed_out": timed_out,
+              "observed_bytes": totals, "retained_bytes": {k: len(v) for k, v in buffers.items()},
+              "truncated": truncated, "retained_sha256": {k: hashlib.sha256(v).hexdigest() for k, v in buffers.items()}}
+          if kind == "install":
+              (out / "install.log").write_bytes(buffers["stdout"])
+          else:
+              try:
+                  assert not any(truncated.values())
+                  result = json.loads(bytes(buffers["stdout"]))
+                  assert isinstance(result, dict) and result.get("kind") == "published-wrangler-lifecycle-boundary"
+                  (out / "lifecycle-receipt.json").write_text(json.dumps(result, indent=2) + "\n")
+                  receipt["valid_json_receipt"] = True
+              except Exception:
+                  receipt["valid_json_receipt"] = False
+          (out / (kind + "-execution.json")).write_text(json.dumps(receipt, indent=2) + "\n")
+          (out / (kind + "-exit.txt")).write_text(str(code) + "\n")
+          sys.exit(0 if code == 0 and not timed_out and (kind == "install" or receipt.get("valid_json_receipt")) else 1)
+          PY_LIFECYCLE_CAPTURE
+          printf '%s\n' 'db04ecdd3924a259064984073b01fef2ef56425a3870b037b73d35b54ab09dc7' > "$RUNNER_TEMP/proxy-lifecycle-output/snippet-sha256.txt"
+
+      - name: Verify exact source, lock, snippet and clean input checkout
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        shell: bash
+        run: |
+          python3 - <<'PY_LIFECYCLE_INPUTS'
+          import hashlib, json, os, pathlib, stat, subprocess
+          out = pathlib.Path(os.environ["RUNNER_TEMP"]) / "proxy-lifecycle-output"
+          source = os.environ["FIXED_SOURCE"]
+          lock = os.environ["FIXED_LOCK"]
+          def git(*args):
+              return subprocess.check_output(["git", *args])
+          def sha(body):
+              return hashlib.sha256(body).hexdigest()
+          assert git("rev-parse", "HEAD").decode().strip() == source
+          assert not git("status", "--porcelain", "--untracked-files=all").strip()
+          hashes = {}
+          for name in ("package.json", "package-lock.json"):
+              path = pathlib.Path(name)
+              assert not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
+              assert git("ls-tree", "HEAD", "--", name).split(b" ", 1)[0] == b"100644"
+              hashes[name] = sha(path.read_bytes())
+          assert hashes["package-lock.json"] == lock
+          snippet = pathlib.Path(os.environ["RUNNER_TEMP"]) / "proxy-lifecycle.proposed.mjs"
+          assert sha(snippet.read_bytes()) == "db04ecdd3924a259064984073b01fef2ef56425a3870b037b73d35b54ab09dc7"
+          node = subprocess.check_output(["node", "--version"]).decode().strip()
+          assert node == "v22.23.2"
+          receipt = {"cohort": os.environ["COHORT"], "source": source, "source_tree": git("rev-parse", "HEAD^{tree}").decode().strip(),
+              "lock_sha256": lock, "inputs_sha256": hashes, "node": node,
+              "npm": subprocess.check_output(["npm", "--version"]).decode().strip(),
+              "snippet_sha256": sha(snippet.read_bytes()), "workflow_sha": os.environ["WORKFLOW_SHA"],
+              "workflow_ref": os.environ["WORKFLOW_REF"], "run_id": os.environ["GITHUB_RUN_ID"], "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"]}
+          (out / "inputs.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          PY_LIFECYCLE_INPUTS
+
+      - name: Unconditional clean native install with bounded retained log
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          python3 "$RUNNER_TEMP/proxy-lifecycle-capture.py" install "$RUNNER_TEMP/proxy-lifecycle-output" npm ci --no-audit --no-fund
+
+      - name: Execute one fixed published-API lifecycle boundary regression
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 "$RUNNER_TEMP/proxy-lifecycle-capture.py" lifecycle "$RUNNER_TEMP/proxy-lifecycle-output" node "$RUNNER_TEMP/proxy-lifecycle.proposed.mjs" "$GITHUB_WORKSPACE" "$COHORT" "$FIXED_SOURCE" "$FIXED_LOCK"
+
+      - name: Require the specific cohort results and both positive controls
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY_LIFECYCLE_VERIFY'
+          import hashlib, json, os, pathlib, subprocess
+          out = pathlib.Path(os.environ["RUNNER_TEMP"]) / "proxy-lifecycle-output"
+          out.mkdir(exist_ok=True)
+          checks = {}
+          def require(label, value):
+              checks[label] = bool(value)
+              if not value:
+                  raise AssertionError(label)
+          try:
+              inputs = json.loads((out / "inputs.json").read_text())
+              install = json.loads((out / "install-execution.json").read_text())
+              execution = json.loads((out / "lifecycle-execution.json").read_text())
+              result = json.loads((out / "lifecycle-receipt.json").read_text())
+              cohort = os.environ["COHORT"]
+              expected = {"old": ("4.118.0", "5.20260730.0-alpha", "1.20260730.1", 1, "rejected"),
+                  "new": ("4.129.1", "5.20260907.0-alpha", "1.20260907.1", 0, "resolved")}[cohort]
+              require("input_pin", inputs["cohort"] == cohort and inputs["source"] == os.environ["FIXED_SOURCE"] and inputs["lock_sha256"] == os.environ["FIXED_LOCK"])
+              require("snippet_pin", inputs["snippet_sha256"] == "db04ecdd3924a259064984073b01fef2ef56425a3870b037b73d35b54ab09dc7" and (out / "snippet-sha256.txt").read_text().strip() == inputs["snippet_sha256"])
+              require("install_zero", install["exit_code"] == 0 and not install["timed_out"] and (out / "install-exit.txt").read_text().strip() == "0")
+              require("bounded_install_log", (out / "install.log").stat().st_size <= 1048576 and hashlib.sha256((out / "install.log").read_bytes()).hexdigest() == install["retained_sha256"]["stdout"])
+              require("execution_zero", execution["exit_code"] == 0 and not execution["timed_out"] and execution["valid_json_receipt"] and not any(execution["truncated"].values()) and (out / "lifecycle-exit.txt").read_text().strip() == "0")
+              require("source_receipt", result["source"] == inputs["source"] and result["lock_sha256"] == inputs["lock_sha256"] and result["cohort"] == cohort and result["node"] == "22.23.2")
+              versions = result["versions"]
+              require("versions", versions["wrangler"] == expected[0] and versions["miniflare"] == expected[1] and versions["root_miniflare"] == expected[1] and all(versions[k] == expected[2] for k in ("workerd", "miniflare_workerd", "binary_package")))
+              require("both_controls_200", result["ok"] is True and result["before_control_200"] is True and result["after_control_200"] is True and result["log_bytes_bounded"] is True)
+              dispatch = result["after_dispatch"]
+              require("specific_dispatch", dispatch["fatal"] == expected[3] and dispatch["teardown"] == 0 and dispatch["waiter_state"] == ("rejected" if cohort == "old" else "pending") and dispatch["classified_logs"] == (0 if cohort == "old" else 1) and dispatch["waiter_reason_is_dispatched_event"] is (cohort == "old") and dispatch["logged_detail"] is (cohort == "new"))
+              require("one_clean_teardown", result["final"] == {"fatal": expected[3], "teardown": 1, "waiter_state": expected[4]})
+              require("honest_scope", result["natural_network_reproduction"] is False and result["transport_retry_qualification"] is False and result["cli_process_exit_executed"] is False)
+              require("unchanged_checkout", subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip() == inputs["source"] and not subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=all"]).strip() and hashlib.sha256(pathlib.Path("package-lock.json").read_bytes()).hexdigest() == inputs["lock_sha256"])
+              files = {"inputs.json", "snippet-sha256.txt", "install.log", "install-execution.json", "install-exit.txt", "lifecycle-receipt.json", "lifecycle-execution.json", "lifecycle-exit.txt"}
+              require("artifact_allowlist", {p.name for p in out.iterdir()} == files)
+              artifact_hashes = {name: hashlib.sha256((out / name).read_bytes()).hexdigest() for name in sorted(files)}
+              verdict = {"ok": True, "cohort": cohort, "checks": checks, "artifact_sha256": artifact_hashes, "claim": "native published-API lifecycle boundary only"}
+          except Exception:
+              verdict = {"ok": False, "cohort": os.environ["COHORT"], "checks": checks, "failure": "missing_or_failed_fixed_lifecycle_evidence"}
+          (out / "verification.json").write_text(json.dumps(verdict, indent=2) + "\n")
+          raise SystemExit(0 if verdict["ok"] else 1)
+          PY_LIFECYCLE_VERIFY
+
+      - name: Upload only bounded lifecycle receipts and install log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: proxy-lifecycle-${{ matrix.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/proxy-lifecycle-output/inputs.json
+            ${{ runner.temp }}/proxy-lifecycle-output/snippet-sha256.txt
+            ${{ runner.temp }}/proxy-lifecycle-output/install.log
+            ${{ runner.temp }}/proxy-lifecycle-output/install-execution.json
+            ${{ runner.temp }}/proxy-lifecycle-output/install-exit.txt
+            ${{ runner.temp }}/proxy-lifecycle-output/lifecycle-receipt.json
+            ${{ runner.temp }}/proxy-lifecycle-output/lifecycle-execution.json
+            ${{ runner.temp }}/proxy-lifecycle-output/lifecycle-exit.txt
+            ${{ runner.temp }}/proxy-lifecycle-output/verification.json
+          if-no-files-found: error
+          retention-days: 7
