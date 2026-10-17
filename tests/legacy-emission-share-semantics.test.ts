@@ -35,9 +35,11 @@ function shareDescriptions(value: unknown): string[] {
   const descriptions: string[] = [];
   for (const [name, field] of Object.entries(record(object.properties) ?? {})) {
     if (
-      !["emission_share", "mean_emission_share", "total_emission_share"].includes(
-        name,
-      )
+      ![
+        "emission_share",
+        "mean_emission_share",
+        "total_emission_share",
+      ].includes(name)
     ) {
       continue;
     }
@@ -108,10 +110,13 @@ describe("legacy emission-share provenance (#11552)", () => {
       "/api/v1/domains/{tag}/summary",
       "/api/v1/subnets/{netuid}/emission-pipeline/history",
     ]) {
-      assertLegacy(API_ROUTES.find((route) => route.path === path)?.description);
+      assertLegacy(
+        API_ROUTES.find((route) => route.path === path)?.description,
+      );
     }
     assertLegacy(
-      PUBLIC_ARTIFACTS.find((artifact) => artifact.id === "economics")?.description,
+      PUBLIC_ARTIFACTS.find((artifact) => artifact.id === "economics")
+        ?.description,
     );
   });
 
@@ -135,12 +140,21 @@ describe("legacy emission-share provenance (#11552)", () => {
       "subnet_emission_pipeline_history",
     ]) {
       assertLegacy(
-        GRAPHQL_EXPOSURES.find((exposure) => exposure.field === field)?.description,
+        GRAPHQL_EXPOSURES.find((exposure) => exposure.field === field)
+          ?.description,
       );
     }
-    const live = MCP_TOOLS.find((tool) => tool.name === "get_emission_pipeline")!;
-    assert.match(live.description, /eligible runtime pipeline from pinned inputs/);
-    assert.doesNotMatch(live.description, /that field is the STAGE-1 PRICE SHARE/);
+    const live = MCP_TOOLS.find(
+      (tool) => tool.name === "get_emission_pipeline",
+    )!;
+    assert.match(
+      live.description,
+      /eligible runtime pipeline from pinned inputs/,
+    );
+    assert.doesNotMatch(
+      live.description,
+      /that field is the STAGE-1 PRICE SHARE/,
+    );
   });
 
   test("published legacy field schemas carry provenance without changing wire types", () => {
