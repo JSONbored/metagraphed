@@ -96,7 +96,8 @@ function invalidSvg(): Error {
 }
 
 function svgDimensions(attributes: Map<string, string>): void {
-  const viewBox = attributes.get("viewBox")?.trim().split(/[\s,]+/u);
+  const rawViewBox = attributes.get("viewBox")?.trim();
+  const viewBox = rawViewBox?.split(/[\s,]+/u);
   const numeric = (value: string | undefined) => {
     if (!value || !/^(?:\d+(?:\.\d*)?|\.\d+)(?:px)?$/u.test(value)) {
       throw invalidSvg();

@@ -53,24 +53,22 @@ function rgba(width: number, height: number): Buffer {
 }
 
 async function rasterFixture(format: "png" | "jpeg" | "gif" | "webp") {
-  return sharp(rgba(320, 200), {
+  const image = sharp(rgba(320, 200), {
     raw: { width: 320, height: 200, channels: 4 },
-  })
-    .toFormat(format)
-    .toBuffer();
+  });
+  return image.toFormat(format).toBuffer();
 }
 
 async function redPng(): Promise<Buffer> {
-  return sharp({
+  const image = sharp({
     create: {
       width: 16,
       height: 16,
       channels: 4,
       background: { r: 255, g: 0, b: 0, alpha: 1 },
     },
-  })
-    .png()
-    .toBuffer();
+  });
+  return image.png().toBuffer();
 }
 
 function pngIco(png: Buffer): Buffer {
@@ -215,7 +213,7 @@ test("sharing conversion enforces source, raster and SVG pixel bounds", async ()
   await assert.rejects(
     prepareLogoInput(Buffer.alloc(LOGO_SOURCE_LIMIT + 1), ".png"),
   );
-  const huge = await sharp({
+  const hugeImage = sharp({
     create: {
       width: 4097,
       height: 4096,
@@ -223,9 +221,8 @@ test("sharing conversion enforces source, raster and SVG pixel bounds", async ()
       background: "white",
     },
     limitInputPixels: LOGO_PIXEL_LIMIT + 4096,
-  })
-    .png()
-    .toBuffer();
+  });
+  const huge = await hugeImage.png().toBuffer();
   await assert.rejects(prepareLogoInput(huge, ".png"));
   await assert.rejects(
     prepareLogoInput(Buffer.from(bitmapSvg(huge.toString("base64"))), ".svg"),
@@ -305,7 +302,8 @@ test("logo build publishes exact sharing identities and retains prior objects", 
     assert.deepEqual(await writeDerivatives(root), first);
     const after = await stat(markFile, { bigint: true });
     assert.equal(after.mtimeNs, before.mtimeNs);
-    const replacement = await sharp(png).resize(320, 200).png().toBuffer();
+    const replacementImage = sharp(png).resize(320, 200);
+    const replacement = await replacementImage.png().toBuffer();
     await writeFile(path.join(root, "mark.png"), replacement);
     await assert.rejects(checkDerivatives(root), /stale/);
     const second = await writeDerivatives(root);
