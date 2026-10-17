@@ -954,9 +954,7 @@ export async function resolveLocalLogo(
     const maxBytes = Math.min(logo.bytes, MAX_LOCAL_LOGO_BYTES);
     const bytes = await readLogoBody(response, maxBytes, controller.signal);
     const verified =
-      bytes &&
-      (await verifyOgLogo({ bytes, contentType }, logo)) &&
-      !controller.signal.aborted;
+      bytes && (await verifyOgLogo({ bytes, contentType }, logo)) && !controller.signal.aborted;
     if (!verified) {
       console.error(
         `OG logo unresolved: ${path} (${response.status} ${response.headers.get("content-type")})`,

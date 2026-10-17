@@ -185,9 +185,11 @@ test.each(representatives)(
     const width = entry.sharing_width;
     const height = entry.sharing_height;
     const uri = `data:image/png;base64,${png.toString("base64")}`;
+    // Production card markup supplies CSS pixel dimensions: satori-html keeps
+    // HTML width/height attributes as strings, which Satori rejects.
     const markup =
       `<div style="display:flex;width:${width}px;height:${height}px">` +
-      `<img src="${uri}" width="${width}" height="${height}"/></div>`;
+      `<img src="${uri}" style="width:${width}px;height:${height}px;object-fit:contain;"/></div>`;
     const svg = await satori(html(markup) as ReactNode, {
       width,
       height,

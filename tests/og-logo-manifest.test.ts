@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
-import generatedManifest from "../apps/ui/public/logos/display/manifest.json" with {
-  type: "json",
-};
+import generatedManifest from "../apps/ui/public/logos/display/manifest.json" with { type: "json" };
 import {
   isOgLogoSourcePath,
   parseLogoManifest,

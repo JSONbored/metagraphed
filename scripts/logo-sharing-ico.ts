@@ -8,7 +8,11 @@ export function icoPngFrame(source: Uint8Array): Uint8Array {
   ) {
     throw invalid();
   }
-  const view = new DataView(source.buffer, source.byteOffset, source.byteLength);
+  const view = new DataView(
+    source.buffer,
+    source.byteOffset,
+    source.byteLength,
+  );
   const count = view.getUint16(4, true);
   const directoryEnd = 6 + count * 16;
   if (

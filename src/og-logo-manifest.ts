@@ -1,6 +1,4 @@
-import generatedManifest from "../apps/ui/public/logos/display/manifest.json" with {
-  type: "json",
-};
+import generatedManifest from "../apps/ui/public/logos/display/manifest.json" with { type: "json" };
 import { isOgLogoSourcePath } from "./og-logo-path.ts";
 export { isOgLogoSourcePath } from "./og-logo-path.ts";
 

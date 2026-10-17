@@ -87,8 +87,9 @@ const SVG_ATTRIBUTES = new Set([
 const RASTER_FORMATS = new Set(["png", "jpeg", "gif", "webp"]);
 const SVG_TAG = /^\s*(\/?)\s*([A-Za-z][A-Za-z0-9]*)\b([\s\S]*?)\/?\s*$/u;
 const SVG_ATTRIBUTE = /^\s+([A-Za-z][A-Za-z0-9:-]*)\s*=\s*(["'])([^"'<>]*)\2/u;
-const RASTER_DATA =
-  /^data:image\/(png|jpeg|gif|webp);base64,([A-Za-z0-9+/]*={0,2})$/u;
+const URI = /^data:image\/(png|jpeg|gif|webp);base64,([A-Za-z0-9+/]*={0,2})$/u;
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+const XLINK_NAMESPACE = "http://www.w3.org/1999/xlink";
 
 function invalidSvg(): Error {
   return new Error("Unsupported or unsafe sharing SVG");
@@ -200,10 +201,7 @@ async function prepareSvg(source: Uint8Array): Promise<Buffer> {
       if (value.includes("/*") || value.includes("*/")) throw invalidSvg();
       rest = rest.slice(attribute[0].length);
       if (key === "xmlns" || key === "xmlns:xlink") {
-        const expected =
-          key === "xmlns"
-            ? "http://www.w3.org/2000/svg"
-            : "http://www.w3.org/1999/xlink";
+        const expected = key === "xmlns" ? SVG_NAMESPACE : XLINK_NAMESPACE;
         if (value !== expected) throw invalidSvg();
         continue;
       }
@@ -215,7 +213,7 @@ async function prepareSvg(source: Uint8Array): Promise<Buffer> {
       if (key !== "href" && key !== "xlink:href") continue;
       if (name !== "image" || images >= 32) throw invalidSvg();
       images++;
-      const data = RASTER_DATA.exec(value);
+      const data = URI.exec(value);
       if (!data || data[2].length === 0) throw invalidSvg();
       const bytes = Buffer.from(data[2], "base64");
       if (

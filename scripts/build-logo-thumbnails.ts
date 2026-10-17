@@ -300,7 +300,6 @@ export async function writeDerivatives(
   const backup = path.join(stage, "previous");
   const entries: DisplayLogoEntry[] = [];
   let preserveBackup = false;
-  let selected = false;
   try {
     await mkdir(stagedDisplay);
     const pngs = new Map<string, Buffer>();
@@ -352,7 +351,9 @@ export async function writeDerivatives(
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
         const existing = await readFile(target);
         if (!existing.equals(data)) {
-          throw new Error(`Conflicting immutable sharing logo: ${relative}`);
+          throw new Error(`Conflicting immutable sharing logo: ${relative}`, {
+            cause: error,
+          });
         }
       }
     }
@@ -373,7 +374,6 @@ export async function writeDerivatives(
       }
       throw error;
     }
-    selected = true;
     return manifest;
   } finally {
     // Preserve a backup after failed rollback; retain prior sharing objects.
@@ -381,8 +381,8 @@ export async function writeDerivatives(
       try {
         await rm(stage, { recursive: true, force: true });
       } catch (error) {
-        if (!selected) throw error;
-        console.warn(`Logo staging cleanup failed: ${stage}`);
+        // Cleanup must not replace a build/publish/rollback failure.
+        console.warn(`Logo staging cleanup failed: ${stage}`, error);
       }
     }
   }

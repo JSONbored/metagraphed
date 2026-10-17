@@ -44,7 +44,10 @@ function rgba(width: number, height: number): Buffer {
     data[index] = seed & 255;
     data[index + 1] = (seed >>> 8) & 255;
     data[index + 2] = (seed >>> 16) & 255;
-    data[index + 3] = index === 0 ? 0 : 255;
+    const pixel = index / 4;
+    const x = pixel % width;
+    const y = Math.floor(pixel / width);
+    data[index + 3] = x < width / 4 && y < height / 4 ? 0 : 255;
   }
   return data;
 }
@@ -92,7 +95,8 @@ function bitmapSvg(data: string, mime = "png"): string {
 }
 
 async function pixels(data: Uint8Array) {
-  return sharp(data).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const image = sharp(data).ensureAlpha().raw();
+  return image.toBuffer({ resolveWithObject: true });
 }
 
 for (const format of ["png", "jpeg", "gif", "webp"] as const) {
@@ -105,7 +109,11 @@ for (const format of ["png", "jpeg", "gif", "webp"] as const) {
     assert.equal(output.width, 256);
     assert.equal(output.height, 160);
     assert.ok(output.data.byteLength <= LOGO_SOURCE_LIMIT);
-    if (format !== "jpeg") assert.equal(metadata.hasAlpha, true);
+    if (format !== "jpeg") {
+      assert.equal(metadata.hasAlpha, true);
+      const decoded = await pixels(output.data);
+      assert.equal(decoded.data[3], 0);
+    }
   });
 }
 
@@ -290,9 +298,7 @@ test("logo build publishes exact sharing identities and retains prior objects", 
       assert.equal(decoded.width, entry.sharing_width);
       assert.equal(decoded.height, entry.sharing_height);
     }
-    const mark = first.entries.find(
-      (entry) => entry.source_path === "mark.png",
-    )!;
+    const mark = first.entries.find((row) => row.source_path === "mark.png")!;
     const markFile = path.join(root, mark.sharing_path);
     const retained = await readFile(markFile);
     const before = await stat(markFile, { bigint: true });
@@ -303,11 +309,9 @@ test("logo build publishes exact sharing identities and retains prior objects", 
     await writeFile(path.join(root, "mark.png"), replacement);
     await assert.rejects(checkDerivatives(root), /stale/);
     const second = await writeDerivatives(root);
-    const changed = second.entries.find(
-      (entry) => entry.source_path === "mark.png",
-    )!;
-    assert.notEqual(changed.source_sha256, mark.source_sha256);
-    assert.notEqual(changed.sharing_path, mark.sharing_path);
+    const next = second.entries.find((row) => row.source_path === "mark.png")!;
+    assert.notEqual(next.source_sha256, mark.source_sha256);
+    assert.notEqual(next.sharing_path, mark.sharing_path);
     assert.deepEqual(await readFile(markFile), retained);
     assert.deepEqual(await checkDerivatives(root), second);
     const remaining = await readdir(root);
