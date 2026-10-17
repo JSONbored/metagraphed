@@ -117,7 +117,7 @@ test.describe("Settings record states", () => {
         await expect(accountLink).toBeFocused();
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(new RegExp(`/accounts/${address}$`));
-        await expect(page.getByRole("group", { name: "Stake by subnet" })).toBeVisible();
+        await expect(page.getByRole("table", { name: "Recorded ties by subnet" })).toBeVisible();
         await expect(page.getByRole("link", { name: "Positions", exact: true })).toBeVisible();
 
         await page.goBack();
@@ -128,9 +128,9 @@ test.describe("Settings record states", () => {
         expect((await accountLink.boundingBox())!.height).toBeGreaterThanOrEqual(44);
         await accountLink.tap();
         await expect(page).toHaveURL(new RegExp(`/accounts/${OWNER}$`));
-        const positions = page.getByRole("group", { name: "Stake by subnet" });
+        const positions = page.getByRole("table", { name: "Recorded ties by subnet" });
         await expect(positions).toBeVisible();
-        await expect(positions).not.toHaveAttribute("aria-busy", "true");
+        await expect(positions.locator(".mg-dt-skeleton")).toHaveCount(0);
         await expect
           .poll(() => secondAccountRequests)
           .toContain(`/api/v1/accounts/${OWNER}/positions`);

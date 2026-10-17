@@ -1554,38 +1554,41 @@ export interface AccountPortfolio {
 
 /**
  * One reconstructed nominator-side (coldkey) position from
- * buildAccountPositions (src/account-nominator-positions.ts) -- share_fraction
- * is dimensionless (the coldkey's share of that hotkey+netuid's total stake),
- * not a snapshotted TAO figure; stake_tao is derived by multiplying it against
- * the live neurons stake_tao at read time.
+ * buildAccountPositions (src/account-nominator-positions.ts). Legacy monetary
+ * names do not establish units: reconstruction can use neuron voting weight,
+ * and the same wire keys carry no authoritative quantity discriminator.
+ * Normalization declines stake/share values; consumers must also ignore old
+ * dehydrated numeric values and preserve only the recorded relationship.
  */
 export interface AccountPosition {
   hotkey: string;
   netuid: number;
-  share_fraction: number;
-  stake_tao: number;
+  share_fraction: number | null;
+  stake_tao: number | null;
 }
 
 /**
- * #5233: /api/v1/accounts/{ss58}/positions -- the coldkey-scoped counterpart to
- * AccountPortfolio (hotkey-scoped). Sourced from nominator_positions, populated
- * by a daily/weekly full-chain scan (the poller's validator_nominators job)
- * -- NOT a live query. Root (netuid 0) has zero coverage: SubtensorModule::Alpha
- * carries no root data (root is TAO-denominated 1:1, no alpha pool). Treat
- * captured_at as a staleness label for UI display, never as authoritative for a
- * fund-safety decision.
+ * Recorded account relationships from /api/v1/accounts/{ss58}/positions.
+ * A timestamp identifies the record's age, not a token quantity basis.
+ * Coverage markers must remain separate from those clocks.
+ * This response cannot establish holdings, ownership shares or an unstake Max.
  */
 export interface AccountPositions {
   ss58: string;
   captured_at: string | null;
-  position_count: number;
+  position_count: number | null;
   /**
-   * ALPHA, not TAO (renamed from total_stake_tao in metagraphed#8803):
-   * nominator_positions holds only netuid != 0 rows and non-root stake is that
-   * subnet's alpha token, so this sums different subnets' alpha.
+   * Legacy aggregate name; the public response does not establish its units.
+   * Normalization declines it even when finite or zero.
    */
-  total_stake_alpha: number;
+  total_stake_alpha: number | null;
   positions: AccountPosition[];
+  /** Incomplete source coverage or a response the UI could not read fully. */
+  degraded?: {
+    reason: string;
+    snapshot_captured_at: string | null;
+    latest_stake_event_at: string | null;
+  };
   [key: string]: unknown;
 }
 
@@ -2786,7 +2789,8 @@ export type GlobalValidatorSort =
 export interface GlobalValidatorSubnet {
   netuid: number;
   uid: number;
-  stake_tao: number;
+  /** Legacy UI key for membership voting weight, not TAO or delegated principal. */
+  stake_tao: number | null;
   emission_tao: number;
   validator_trust: number | null;
 }
@@ -2817,13 +2821,14 @@ export interface GlobalValidator {
   uid_count: number;
   /** Validator take/commission (#2548), 0..1 fraction kept from delegator rewards. */
   take: number | null;
-  total_stake_tao: number;
-  root_stake_tao: number;
-  alpha_stake_tao: number;
+  /** Unavailable: membership voting weight does not establish principal. */
+  total_stake_tao: number | null;
+  root_stake_tao: number | null;
+  alpha_stake_tao: number | null;
   total_emission_tao: number;
   /** Distinct coldkeys currently staking to this hotkey, network-wide (#2549). Null when the low-frequency source table has no row for this hotkey yet. */
   nominator_count: number | null;
-  /** Estimated annualized yield (#2551) — a stake-weighted blend across every subnet membership with a known tempo. See apy_estimate_eligible_subnet_count. Null when no membership resolved a tempo. */
+  /** Unavailable without an authoritative principal denominator. */
   apy_estimate: number | null;
   /** Count of subnet memberships that contributed to apy_estimate, out of subnet_count total (#2551). */
   apy_estimate_eligible_subnet_count: number;
@@ -2852,7 +2857,7 @@ export interface OperatorValidator {
   subnet_count: number;
   uid_count: number;
   take: number | null;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   total_emission_tao: number;
   nominator_count: number | null;
   apy_estimate: number | null;
@@ -2965,9 +2970,9 @@ export interface ValidatorDetailSubnet {
   consensus?: number | null;
   incentive?: number | null;
   dividends?: number | null;
-  /** ALPHA on every non-root subnet (metagraphed#10514). The detail's own
-   * `total_stake_tao` IS priced TAO -- these rows will not sum to it. */
+  /** Subnet-native emission; root uses TAO and non-root uses subnet alpha. */
   emission_alpha?: number | null;
+  /** Legacy name: chain voting weight, alpha + tao_weight * root; not principal. */
   stake_alpha?: number | null;
   registered_at_block?: number | null;
   is_immunity_period?: boolean | null;
@@ -2975,7 +2980,7 @@ export interface ValidatorDetailSubnet {
 }
 
 /** Cross-subnet validator detail from GET /api/v1/validators/{hotkey} (#4335, 7.1).
- * Schema-stable: a cold/unknown hotkey returns 200 with a zeroed aggregate, never 404. */
+ * A cold/unknown hotkey returns 200 with unavailable capital metrics, never 404. */
 export interface ValidatorDetail {
   schema_version?: number;
   hotkey: string;
@@ -2985,11 +2990,10 @@ export interface ValidatorDetail {
   subnet_count: number;
   take: number | null;
   nominator_count: number | null;
-  total_stake_tao: number;
-  /** Stake on netuid 0 (root), TAO-denominated 1:1, no AMM/price exposure (#2550). */
-  root_stake_tao: number;
-  /** total_stake_tao minus root_stake_tao — the alpha-token-denominated legs. */
-  alpha_stake_tao: number;
+  /** Unavailable: membership voting weight does not establish principal. */
+  total_stake_tao: number | null;
+  root_stake_tao: number | null;
+  alpha_stake_tao: number | null;
   total_emission_tao: number;
   avg_validator_trust: number | null;
   max_validator_trust: number | null;
@@ -3026,7 +3030,7 @@ export interface ValidatorHistoryPoint {
   subnet_count?: number | null;
   total_stake_tao?: number | null;
   total_emission_tao?: number | null;
-  /** Null when stake is 0/absent for the day (division by zero avoided server-side). */
+  /** Unavailable without an authoritative principal denominator. */
   rewards_per_1000_tao?: number | null;
 }
 

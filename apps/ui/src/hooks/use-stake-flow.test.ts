@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { alphaToRawAlpha, taoToRao } from "@/lib/metagraphed/units";
-import type { AccountPosition } from "@/lib/metagraphed/types";
+import type { SubnetStakeQuote } from "@/lib/metagraphed/types";
 import {
   deriveStakeFlowPhase,
   canCloseStakeFlow,
   computeUnstakeAlphaCandidate,
+  resolveStakeQuoteAmount,
+  stakeQuoteSpotPrice,
   resolveStakeMaxRao,
-  resolveUnstakeMaxAmountInput,
-  isMaxUnavailableForNetuid,
   buildStakeCallParams,
+  createStakeConfirmation,
+  stakeConfirmationMatches,
+  type StakeFlowIntent,
   resolveUnstakeValidationAmountRao,
   DEFAULT_TOLERANCE_PCT,
 } from "./use-stake-flow";
@@ -117,43 +120,150 @@ describe("resolveStakeMaxRao", () => {
   });
 });
 
-describe("resolveUnstakeMaxAmountInput", () => {
-  const position: AccountPosition = {
-    hotkey: HOTKEY,
-    netuid: 4,
-    share_fraction: 0.5,
-    stake_tao: 12.5,
-  };
-
-  it("returns null when there's no position on record", () => {
-    expect(resolveUnstakeMaxAmountInput(null, "tao", 2)).toBeNull();
+describe("resolveStakeQuoteAmount", () => {
+  it("quotes a known alpha input directly and a staking TAO input without a conversion", () => {
+    expect(resolveStakeQuoteAmount("unstake", "alpha", "12.5", null)).toBe(12.5);
+    expect(resolveStakeQuoteAmount("stake", "tao", "12.5", null)).toBe(12.5);
   });
 
-  it("returns the position's TAO figure, rounded to 9 decimals, in TAO mode", () => {
-    expect(resolveUnstakeMaxAmountInput(position, "tao", 2)).toBe("12.500000000");
+  it("converts a TAO unstake target only through an observed positive price", () => {
+    expect(resolveStakeQuoteAmount("unstake", "tao", "25", 2)).toBe(12.5);
+    for (const price of [null, undefined, 0, -1, NaN, Infinity]) {
+      expect(resolveStakeQuoteAmount("unstake", "tao", "25", price)).toBeNull();
+    }
   });
 
-  it("rounds an over-precise server float to 9 decimals rather than passing it through raw", () => {
-    // A real regression: a server-computed stake_tao (share_fraction * live
-    // stake) routinely carries more than 9 fractional digits, and the raw
-    // float->string would later crash taoToRao's strict parse if fed
-    // straight through unrounded.
-    const overPrecise: AccountPosition = { ...position, stake_tao: 4.997553120472154 };
-    expect(resolveUnstakeMaxAmountInput(overPrecise, "tao", 2)).toBe("4.997553120");
-  });
-
-  it("converts through computeUnstakeAlphaCandidate's own price estimate in alpha mode", () => {
-    expect(resolveUnstakeMaxAmountInput(position, "alpha", 2)).toBe(
-      computeUnstakeAlphaCandidate("12.5", 2),
-    );
+  it("declines invalid and below-precision inputs rather than producing a zero quote", () => {
+    for (const amount of ["", "nope", "0", "-1", "Infinity"]) {
+      expect(resolveStakeQuoteAmount("unstake", "alpha", amount, 2)).toBeNull();
+    }
+    expect(resolveStakeQuoteAmount("unstake", "tao", "0.0000000001", 1)).toBeNull();
   });
 });
 
-describe("isMaxUnavailableForNetuid", () => {
-  it("is true only for root (netuid 0)", () => {
-    expect(isMaxUnavailableForNetuid(0)).toBe(true);
-    expect(isMaxUnavailableForNetuid(1)).toBe(false);
-    expect(isMaxUnavailableForNetuid(4)).toBe(false);
+describe("stakeQuoteSpotPrice", () => {
+  it("uses only positive finite prices for the same subnet", () => {
+    expect(stakeQuoteSpotPrice({ netuid: 4, spot_price_tao: 2 }, 4)).toBe(2);
+    expect(stakeQuoteSpotPrice({ netuid: 5, spot_price_tao: 2 }, 4)).toBeNull();
+    expect(stakeQuoteSpotPrice(null, 4)).toBeNull();
+    for (const spot_price_tao of [0, -1, NaN, Infinity]) {
+      expect(stakeQuoteSpotPrice({ netuid: 4, spot_price_tao }, 4)).toBeNull();
+    }
+  });
+});
+
+describe("quoted stake confirmation", () => {
+  const intent: StakeFlowIntent = {
+    action: "unstake",
+    hotkey: HOTKEY,
+    netuid: 4,
+    amountInput: "25",
+    unit: "tao",
+    tolerancePct: 5,
+    signerAddress: "5Signer",
+  };
+  const quote: SubnetStakeQuote = {
+    schema_version: 1,
+    netuid: 4,
+    direction: "unstake",
+    amount: 12.5,
+    expected_out: 45,
+    expected_out_unit: "tao",
+    spot_price_tao: 4,
+    effective_price_tao: 3.6,
+    price_impact_pct: 10,
+    tao_in_pool_tao: 1000,
+    alpha_in_pool: 250,
+    is_root: false,
+  };
+
+  it("signs the exact quoted alpha when the returned spot differs from the request estimate", () => {
+    const requestedAlpha = resolveStakeQuoteAmount("unstake", "tao", "25", 2);
+    const confirmation = createStakeConfirmation(intent, requestedAlpha, quote);
+    expect(requestedAlpha).toBe(12.5);
+    expect(confirmation?.params).toMatchObject({
+      call: "remove_stake_limit",
+      hotkey: HOTKEY,
+      netuid: 4,
+      amountUnstaked: alphaToRawAlpha("12.5"),
+      limitPrice: taoToRao("3.8"),
+    });
+    expect(confirmation?.quote.expected_out).toBe(45);
+  });
+
+  it("keeps staking in quoted TAO and direct unstaking in quoted alpha", () => {
+    const staking = createStakeConfirmation({ ...intent, action: "stake" }, 25, {
+      ...quote,
+      direction: "stake",
+      amount: 25,
+      expected_out: 5,
+      expected_out_unit: "alpha",
+    });
+    expect(staking?.params).toMatchObject({
+      call: "add_stake_limit",
+      amountStaked: taoToRao("25"),
+      limitPrice: taoToRao("4.2"),
+    });
+    const unstaking = createStakeConfirmation(
+      { ...intent, unit: "alpha", amountInput: "12.5" },
+      12.5,
+      quote,
+    );
+    expect(unstaking?.params).toMatchObject({
+      call: "remove_stake_limit",
+      amountUnstaked: alphaToRawAlpha("12.5"),
+    });
+  });
+
+  it("rejects a quote for another amount, subnet, action, or output unit", () => {
+    for (const mismatch of [
+      { ...quote, amount: 25 },
+      { ...quote, netuid: 5 },
+      { ...quote, direction: "stake" as const },
+      { ...quote, expected_out_unit: "alpha" as const },
+    ]) {
+      expect(createStakeConfirmation(intent, 12.5, mismatch)).toBeNull();
+    }
+    expect(createStakeConfirmation(intent, null, quote)).toBeNull();
+    expect(createStakeConfirmation({ ...intent, signerAddress: null }, 12.5, quote)).toBeNull();
+    expect(createStakeConfirmation({ ...intent, unit: "alpha" }, 12.5, quote)).toBeNull();
+    expect(
+      createStakeConfirmation(intent, 1.0000000001, { ...quote, amount: 1.0000000001 }),
+    ).toBeNull();
+    expect(createStakeConfirmation({ ...intent, amountInput: "1e1" }, 12.5, quote)).toBeNull();
+  });
+
+  it("keeps confirmed quote and params stable across later price updates", () => {
+    const response = { ...quote };
+    const mutableIntent = { ...intent };
+    const confirmation = createStakeConfirmation(mutableIntent, 12.5, response);
+    if (!confirmation) throw new Error("expected a matching quote");
+    response.spot_price_tao = 8;
+    response.expected_out = 90;
+    mutableIntent.amountInput = "50";
+    const next = createStakeConfirmation(intent, 12.5, response);
+    expect(next?.params.limitPrice).toBe(taoToRao("7.6"));
+    expect(confirmation.params.limitPrice).toBe(taoToRao("3.8"));
+    expect(confirmation.quote.spot_price_tao).toBe(4);
+    expect(confirmation.quote.expected_out).toBe(45);
+    expect(confirmation.intent.amountInput).toBe("25");
+    expect(stakeConfirmationMatches(confirmation, { ...intent })).toBe(true);
+  });
+
+  it("requires the same signer, hotkey, subnet, action, input unit, amount, and tolerance", () => {
+    const confirmation = createStakeConfirmation(intent, 12.5, quote);
+    for (const change of [
+      { hotkey: "5OtherHotkey" },
+      { netuid: 5 },
+      { action: "stake" as const },
+      { unit: "alpha" as const },
+      { amountInput: "50" },
+      { tolerancePct: 10 },
+      { signerAddress: "5OtherSigner" },
+    ]) {
+      expect(stakeConfirmationMatches(confirmation, { ...intent, ...change })).toBe(false);
+    }
+    expect(stakeConfirmationMatches(null, intent)).toBe(false);
   });
 });
 

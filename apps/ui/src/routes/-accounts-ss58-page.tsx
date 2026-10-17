@@ -20,7 +20,6 @@ import { ActivitySection } from "@/components/metagraphed/account-detail/activit
 import { KeysSection } from "@/components/metagraphed/account-detail/keys";
 import {
   EVENT_SCAN_CAP,
-  fmtCompactTao,
   fmtSignedTao,
   fmtTao,
   type FlowWindow,
@@ -117,15 +116,14 @@ export function AccountDetailPage() {
   // `null` when the query has not answered, never 0. A failed positions read
   // rendering "0 positions" is indistinguishable from an account that holds
   // nothing, and the two are opposite facts (#8818).
-  const held = positions.data?.data.positions ?? null;
-  const staked = held ? held.reduce((acc, position) => acc + (position.stake_tao ?? 0), 0) : null;
+  const held = positions.data?.data.degraded ? null : (positions.data?.data.positions ?? null);
   const free = balance.data?.data.balance_tao ?? null;
   const subnetCount = held ? new Set(held.map((position) => position.netuid)).size : null;
-  const positionCount = positions.data?.data.position_count ?? null;
+  const positionCount = held === null ? null : (positions.data?.data.position_count ?? null);
   const scanCapped = Boolean(summary?.event_scan_capped);
   const name = identity.data?.data.name?.trim() || short(ss58);
 
-  // The sentence dates the account; the strip counts it (#11693). Free, staked,
+  // The sentence dates the account; the strip counts it (#11693). Balance,
   // the subnet count and the net flow were chips AND cells, so four of six
   // numbers in this hero were printed twice, one line apart.
   const sentence: FactNodes = summary
@@ -145,15 +143,16 @@ export function AccountDetailPage() {
     : [];
 
   const cells: FactCells = [
-    { label: "Free balance", value: fmtTao(free, 4), loading: balance.isPending },
-    { label: "Staked", value: fmtCompactTao(staked), loading: positions.isPending },
+    { label: "Balance (free + reserved)", value: fmtTao(free, 4), loading: balance.isPending },
+    // The legacy /positions response does not identify a token quantity basis.
+    { label: "Staked value", value: "—", loading: positions.isPending },
     {
       // One cell, not two. `position_count` and the number of DISTINCT netuids
       // among those positions are different measures, but they agree for most
       // accounts, so "Positions 61" beside "Subnets 61" read as one number
       // typed twice. Slashed, the pair says what it is: 61 positions spread
       // over 61 subnets, and it stops being ambiguous the moment they differ.
-      label: "Positions / subnets",
+      label: "Recorded ties / subnets",
       value:
         positionCount === null || subnetCount === null
           ? "—"
@@ -212,7 +211,7 @@ export function AccountDetailPage() {
             }
             sentence={
               <FactSentence>
-                What this address holds, where it holds it, and what it has been doing. {sentence}
+                Recorded account relationships, balance and activity. {sentence}
                 {summaryQuery.isPending ? " Activity history is loading." : null}
                 {summaryQuery.isError
                   ? " Activity history is temporarily unavailable; the independent evidence below remains usable."
@@ -222,7 +221,7 @@ export function AccountDetailPage() {
             cells={cells}
             live={{
               updatedAt: summaryResult?.meta?.generated_at ?? null,
-              source: "live RPC + chain-direct index",
+              source: "RPC + snapshot/index reads",
               onRefresh: () =>
                 void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
             }}

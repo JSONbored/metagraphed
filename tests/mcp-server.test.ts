@@ -21952,7 +21952,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
   // called with []) -- row-shaping over real rows is covered directly against
   // the pure builders in tests/validator-nominators.test.ts and
   // tests/validator-history.test.ts; this only proves the MCP wiring.
-  test("get_validator_detail returns a schema-stable zeroed aggregate", async () => {
+  test("get_validator_detail keeps capital unavailable on the empty base", async () => {
     const res = await callTool("get_validator_detail", { hotkey: HOTKEY });
     const out = res.body.result.structuredContent;
     assert.equal(out.hotkey, HOTKEY);
@@ -21960,6 +21960,48 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.equal(out.subnet_count, 0);
     assert.deepEqual(out.subnets, []);
     assert.equal(out.take, null);
+    assert.equal(out.total_stake_tao, null);
+    assert.equal(out.root_stake_tao, null);
+    assert.equal(out.alpha_stake_tao, null);
+    assert.equal(out.apy_estimate, null);
+    assert.equal(out.apy_estimate_eligible_subnet_count, 0);
+  });
+
+  test("get_validator_detail withholds legacy service capital and realized returns", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async () => Response.json({
+          schema_version: 1,
+          hotkey: HOTKEY,
+          total_stake_tao: 1000,
+          root_stake_tao: 100,
+          alpha_stake_tao: 900,
+          apy_estimate: 0.2,
+          apy_estimate_eligible_subnet_count: 2,
+          realized_return_1d: 0.1,
+          realized_return_1w: 0.2,
+          realized_return_1m: 0.3,
+          realized_return_1d_as_of: "2026-10-16",
+          realized_return_1w_as_of: "2026-10-16",
+          realized_return_1m_as_of: "2026-10-16",
+          take: 0.1,
+          total_emission_tao: 5,
+          subnets: [],
+        }),
+      },
+    };
+    const res = await callTool("get_validator_detail", { hotkey: HOTKEY }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total_stake_tao, null);
+    assert.equal(out.apy_estimate, null);
+    assert.equal(out.apy_estimate_eligible_subnet_count, 0);
+    for (const window of ["1d", "1w", "1m"]) {
+      assert.equal(out[`realized_return_${window}`], null);
+      assert.equal(out[`realized_return_${window}_as_of`], null);
+    }
+    assert.equal(out.take, 0.1);
+    assert.equal(out.total_emission_tao, 5);
   });
 
   test("get_validator_detail rejects a missing/invalid hotkey", async () => {
@@ -22063,6 +22105,9 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.validators[0].take, 0.18);
     assert.equal(out.validators[0].nominator_count, 42);
+    assert.equal(out.validators[0].total_stake_tao, null);
+    assert.equal(out.validators[0].apy_estimate, null);
+    assert.equal(out.validators[0].apy_estimate_eligible_subnet_count, 0);
     assert.deepEqual(out.validators[0].coldkey_identity, {
       has_identity: true,
       name: "Alice",

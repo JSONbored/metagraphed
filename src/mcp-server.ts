@@ -9468,12 +9468,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch the network-wide validator/operator leaderboard: validator-permit " +
       "identities grouped by hotkey across all current subnet memberships, with " +
-      "trust metrics, cross-subnet stake/emission totals, stake dominance, and " +
-      "top membership rows. Sort by subnet_count (default), uid_count, " +
+      "trust metrics, emission totals, and membership rows. Capital totals, " +
+      "stake dominance, and APY are unavailable (null): neuron voting weight " +
+      "does not establish investment principal. Sort by subnet_count (default), uid_count, " +
       "avg_validator_trust, max_validator_trust, total_stake, total_emission, " +
       `or stake_dominance; limit caps the list (default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}, ` +
-      `max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Use it to ` +
-      "find operators spanning many subnets or dominating network stake. Mirrors " +
+      `max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Legacy capital sorts retain deterministic ` +
+      "tie ordering over unavailable values. Find operators spanning many subnets. Mirrors " +
       "GET /api/v1/validators.",
     inputSchema: inputJsonSchema(ListGlobalValidatorsInputSchema),
     async handler(
@@ -9507,10 +9508,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Get one validator's cross-subnet detail",
     description:
       "Fetch a single validator identity's validator_permit rows aggregated " +
-      "across every subnet it operates in: coldkey, cross-subnet stake/emission " +
-      "totals, avg/max validator trust, and the full per-subnet membership list. " +
-      "The single-entity drill-in of list_global_validators. Returns a zeroed " +
-      "aggregate with an empty subnets list for a cold/absent hotkey, never an " +
+      "across every subnet it operates in: coldkey, emission totals, avg/max " +
+      "validator trust, and the full membership list. Capital value and APY " +
+      "are unavailable (null), with APY eligible count zero: voting weight is " +
+      "not independent principal. Legacy stake_alpha is raw voting weight, " +
+      "not an alpha holding. A cold/absent hotkey has an empty list, never an " +
       "error. Mirrors GET /api/v1/validators/{hotkey}.",
     inputSchema: inputJsonSchema(GetValidatorDetailInputSchema),
     async handler(
@@ -9535,11 +9537,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Compare validators side by side (read-only)",
     description:
       "Place several validators side by side for a stake/delegate decision: " +
-      "for each hotkey, its take rate, estimated APY, nominator count, and " +
-      "on-chain (coldkey) identity, plus the cross-subnet stake/emission/trust " +
+      "for each hotkey, its take rate, nominator count, and " +
+      "on-chain (coldkey) identity, plus the emission/trust " +
       "aggregates that give those numbers context -- the same per-validator " +
       "detail list_global_validators / get_validator_detail expose, projected " +
-      "to the fields that drive a delegate choice. Pass an optional netuid to " +
+      "to the fields that drive a delegate choice. Capital and APY are " +
+      "unavailable (null), not zero; voting weight cannot establish principal. Pass an optional netuid to " +
       "add each validator's membership in that one subnet (subnet_context). " +
       "Strictly READ-ONLY and decision-support only: it builds no transaction, " +
       "produces no signable/extrinsic artifact, and never touches a wallet or " +
@@ -9778,11 +9781,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "get_validator_history",
-    title: "Get a validator's staked-over-time history",
+    title: "Get a validator's membership history",
     description:
-      "Fetch one validator's cross-subnet staked-over-time history: one point " +
-      "per day, summed across every subnet it validates in, plus a rewards-per-" +
-      "1000-TAO rate. Choose the window (7d, 30d, 90d, 1y, all; default 30d). " +
+      "Fetch daily membership and emission history for one validator. Capital " +
+      "history and principal-derived reward ratios are unavailable (null), " +
+      "because historical voting weight is not investment principal. " +
+      "Choose the window (7d, 30d, 90d, 1y, all; default 30d). " +
       "Pass netuid to scope the series to ONE subnet, which adds that subnet's " +
       "daily alpha earnings, vTrust, consensus, dividends, take and whether the " +
       "validator permit was held that day. Mirrors GET /api/v1/validators/" +
@@ -11712,14 +11716,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_account_positions",
     title: "Get an account's nominator-side positions",
     description:
-      "This account's reconstructed nominator-side positions (by SS58 coldkey): " +
-      "what it holds delegated across every hotkey/subnet — hotkey, netuid, " +
-      "share_fraction (0-1, this account's share of that hotkey's alpha-pool " +
-      "shares on that subnet), and the derived stake_tao. Distinct from " +
-      "get_account_portfolio's hotkey-scoped view — a pure delegator shows " +
-      "near-zero there since its stake lives on someone ELSE's hotkey row. Root " +
-      "(netuid 0) stake is not covered — root has no alpha pool. An address with " +
-      "no delegated positions returns an empty card, not an error. Mirrors " +
+      "Fetch periodic nominator-side records for one SS58 coldkey. Preserve " +
+      "observed hotkey/subnet relationships and capture time. Legacy stake_tao " +
+      "reconstruction can use neuron voting weight, and these wire keys do not " +
+      "identify an authoritative asset-quantity basis. Amounts and share " +
+      "fractions must not establish holdings, allocation or unstake Max. Root " +
+      "holdings are not covered; an empty response does not establish an empty " +
+      "wallet. Mirrors " +
       "GET /api/v1/accounts/{ss58}/positions.",
     inputSchema: inputJsonSchema(GetAccountPositionsInputSchema),
     async handler(
@@ -16649,10 +16652,10 @@ export const MCP_PROMPTS = [
     ],
     build: (a: Row) =>
       `Monitor Bittensor validator ${a.hotkey}:\n` +
-      `1. get_validator_detail { hotkey: ${JSON.stringify(a.hotkey)} } — current stake, trust, APY, nominator count.\n` +
-      `2. get_validator_history { hotkey: ${JSON.stringify(a.hotkey)}, window: "30d" } — daily stake/emission trend, not just the latest snapshot.\n` +
+      `1. get_validator_detail { hotkey: ${JSON.stringify(a.hotkey)} } — membership, trust and nominator evidence; capital/APY unavailable.\n` +
+      `2. get_validator_history { hotkey: ${JSON.stringify(a.hotkey)}, window: "30d" } — daily membership/emission evidence; no principal-derived yield.\n` +
       `3. get_validator_nominators { hotkey: ${JSON.stringify(a.hotkey)} } — net_staked_tao per nominator, the honest flow signal (not gross_staked_tao alone).\n` +
-      `A zeroed response with nominator_count: 0 means a cold/never-registered hotkey, not an error — double-check the ss58 (a coldkey passed where a hotkey was expected is the common mistake). ${UNTRUSTED_DATA_NOTE}`,
+      `An empty or unavailable response does not establish zero principal or yield. Double-check the ss58 and source availability before drawing a conclusion. ${UNTRUSTED_DATA_NOTE}`,
   },
   {
     name: "audit_account_history",

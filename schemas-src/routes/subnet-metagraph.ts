@@ -61,7 +61,7 @@ export const NeuronSchema = z
       .nullable()
       .optional()
       .describe(
-        "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).",
+        "Observed metagraph voting weight for this membership, retained under the legacy stake_tao name. It combines alpha with a weighted root contribution (alpha + tao_weight * root); the root component can appear in several subnet memberships. This is not independently measured principal, a pure alpha holding, or a TAO valuation. Do not price it as alpha, sum it across subnets, or use it as an investment-yield denominator.",
       ),
     registered_at_block: z.int().nullable().optional(),
     is_immunity_period: z.boolean().optional(),

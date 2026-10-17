@@ -1,6 +1,13 @@
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { createRequestCounter } from "../src/request-counters.ts";
+import { asJsonObject } from "../schemas-src/json-request.ts";
+import { contractPathForPathname, NETWORK_ALIASES } from "../src/contracts.ts";
+import {
+  unavailableValidatorCapital,
+  unavailableRealizedReturns,
+} from "../src/metagraph-neurons.ts";
+import { unavailableValidatorHistoryCapital } from "../src/validator-history.ts";
 
 // Store-backed requests forward through the existing DATA_API service binding.
 // D1_STATE_TABLES selects the native D1 owner inside that Worker. The legacy
@@ -132,6 +139,103 @@ export async function readExplorerDirectoryCacheStamp(
   return `minute:${Math.floor(Date.now() / 60_000)}`;
 }
 
+const VALIDATOR_CAPITAL_FIELDS = [
+  "total_stake_tao",
+  "root_stake_tao",
+  "alpha_stake_tao",
+  "apy_estimate",
+  "stake_dominance",
+] as const;
+const DATA_API_NETWORK_PREFIX = new RegExp(
+  `^/api/v1/(?:${NETWORK_ALIASES.join("|")})(?=/|$)`,
+);
+
+function hasLegacyValidatorCapital(value: unknown): boolean {
+  const row = asJsonObject(value);
+  return (
+    row !== null &&
+    VALIDATOR_CAPITAL_FIELDS.some((field) => row[field] != null)
+  );
+}
+
+/** REST and MCP can meet an older DATA_API deployment during rollout. */
+function guardValidatorCapital(
+  request: Request,
+  body: Record<string, unknown>,
+): Record<string, unknown> | null {
+  // Classification only: never rewrite the forwarded request's network or URL.
+  // The router accepts repeated default aliases; stripping is bounded by path
+  // length and uses the contract's own alias vocabulary.
+  let pathname = new URL(request.url).pathname;
+  while (DATA_API_NETWORK_PREFIX.test(pathname)) {
+    pathname = pathname.replace(DATA_API_NETWORK_PREFIX, "/api/v1");
+  }
+  const route = contractPathForPathname(pathname);
+  const wrapped = asJsonObject(body.data);
+  const payload = wrapped ?? body;
+  if (route === "/api/v1/validators") {
+    // A legacy service already ranked and capped this subset by false capital.
+    // Nulling or re-sorting its limited rows cannot reconstruct the selection.
+    if (!Array.isArray(payload.validators)) return body;
+    if (payload.validators.some(hasLegacyValidatorCapital)) {
+      return markDataApiTierFallback();
+    }
+    // Return estimates do not select the membership subset. Keep its evidence,
+    // but never republish balance changes as measured investment performance.
+    const guarded = {
+      ...payload,
+      validators: payload.validators.map((value) => {
+        const validator = asJsonObject(value);
+        return validator === null
+          ? value
+          : {
+              ...validator,
+              ...unavailableValidatorCapital(),
+              ...unavailableRealizedReturns(),
+            };
+      }),
+    };
+    return wrapped ? { ...body, data: guarded } : guarded;
+  }
+  if (route === "/api/v1/validators/operators") {
+    const legacy =
+      Array.isArray(payload.operators) &&
+      payload.operators.some((value) => {
+        const operator = asJsonObject(value);
+        return (
+          hasLegacyValidatorCapital(value) ||
+          (operator !== null &&
+            Array.isArray(operator.hotkeys) &&
+            operator.hotkeys.some(hasLegacyValidatorCapital))
+        );
+      });
+    return legacy ? markDataApiTierFallback() : body;
+  }
+  if (route === "/api/v1/validators/{hotkey}") {
+    const guarded = {
+      ...payload,
+      ...unavailableValidatorCapital(),
+      ...unavailableRealizedReturns(),
+    };
+    return wrapped ? { ...body, data: guarded } : guarded;
+  }
+  if (
+    route === "/api/v1/validators/{hotkey}/history" &&
+    Array.isArray(payload.points)
+  ) {
+    const guarded = {
+      ...payload,
+      points: payload.points.map((value) => {
+        const point = asJsonObject(value);
+        if (point === null) return value;
+        return unavailableValidatorHistoryCapital(point);
+      }),
+    };
+    return wrapped ? { ...body, data: guarded } : guarded;
+  }
+  return body;
+}
+
 export async function tryDataApiTier(
   env: Env,
   request: Request,
@@ -212,5 +316,7 @@ export async function tryDataApiTier(
     await captureDataApiTierFallback(err, flagName, env);
     return markDataApiTierFallback();
   }
-  return body as Record<string, unknown>;
+  return flagName === "METAGRAPH_NEURONS_SOURCE"
+    ? guardValidatorCapital(request, body as Record<string, unknown>)
+    : (body as Record<string, unknown>);
 }

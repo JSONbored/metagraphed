@@ -23,14 +23,10 @@ import { GlobalValidatorEntrySchema } from "../schemas-src/routes/global-validat
 import { ValidatorDetailArtifactSchema } from "../schemas-src/routes/validator-detail.ts";
 import type { Row } from "./row-type.ts";
 
-// #9051 price table for the ACCUMULATION tests below. Every netuid is priced
-// at exactly 1 on purpose: those tests assert grouping, rao-exact summation
-// and APY blending, so the figure under test must be the SUM, not a product.
-// Pricing itself is asserted separately, against a realistic non-unit table,
-// in the "#9051" describe block -- which declares its own local PRICES.
-// Passed explicitly at every call site: buildGlobalValidators and friends
-// REQUIRE priceByNetuid (no default), so a test cannot silently price at 1:1
-// the way production could before that argument became mandatory.
+// Explicit unit prices isolate grouping and emission accumulation in the older
+// fixtures. Capital and APY remain unavailable regardless of this map. Separate
+// cases below exercise non-unit, missing and zero prices without treating
+// metagraph voting weight as a native-alpha position.
 const ACCUMULATION_PRICES: Map<number, number | null> = new Map(
   Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
 );
@@ -770,11 +766,11 @@ describe("metagraph-neurons builders", () => {
     assert.equal(top.coldkey_count, 2);
     assert.equal(top.subnet_count, 3);
     assert.equal(top.uid_count, 3);
-    assert.equal(top.total_stake_tao, 151.123456789);
-    assert.equal(top.root_stake_tao, 0); // no netuid-0 row for hk-a
-    assert.equal(top.alpha_stake_tao, 151.123456789);
+    assert.equal(top.total_stake_tao, null);
+    assert.equal(top.root_stake_tao, null); // no netuid-0 row for hk-a
+    assert.equal(top.alpha_stake_tao, null);
     assert.equal(top.total_emission_tao, 16);
-    assert.equal(top.stake_dominance, 0.232096);
+    assert.equal(top.stake_dominance, null);
     assert.equal(top.avg_validator_trust, 0.6);
     assert.equal(top.max_validator_trust, 0.8);
     assert.equal(top.latest_captured_at, new Date(1750000001000).toISOString());
@@ -789,7 +785,7 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
-  test("buildGlobalValidators splits root (netuid 0) stake from alpha stake in exact rao space (#2550)", () => {
+  test("buildGlobalValidators does not infer capital legs from root and non-root weights", () => {
     const data = buildGlobalValidators([
       {
         ...ROW,
@@ -820,9 +816,9 @@ describe("metagraph-neurons builders", () => {
       },
     ]);
     const entry = data.validators.find((v: Row) => v.hotkey === "hk-root");
-    assert.equal(entry.total_stake_tao, 300);
-    assert.equal(entry.root_stake_tao, 200.5);
-    assert.equal(entry.alpha_stake_tao, 99.5); // 50.25 + 49.25, exact
+    assert.equal(entry.total_stake_tao, null);
+    assert.equal(entry.root_stake_tao, null);
+    assert.equal(entry.alpha_stake_tao, null);
   });
 
   test("buildGlobalValidators joins nominator_count by hotkey, nulls a hotkey with no row (#2549)", () => {
@@ -846,149 +842,83 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.validators[0].nominator_count, null);
   });
 
-  test("buildGlobalValidators computes apy_estimate for a single eligible membership (#2551)", () => {
-    // tempo=360 -> epochsPerYear = 31,536,000/(360*12) = 7,300 exactly;
-    // annualized = 0.85*7,300 = 6,205 TAO/yr; apy = 6,205/1,000 = 6.205.
-    const data = buildGlobalValidators(
-      [
-        {
-          ...ROW,
-          netuid: 3,
-          uid: 0,
-          hotkey: "hk-a",
-          stake_tao: 1000,
-          emission_tao: 0.85,
-        },
-      ],
-      { tempoByNetuid: new Map([[3, 360]]) },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.apy_estimate, 6.205);
-    assert.equal(entry.apy_estimate_eligible_subnet_count, 1);
-  });
-
-  test("buildGlobalValidators blends apy_estimate stake-weighted across memberships, excluding one with no resolvable tempo (#2551)", () => {
-    const data = buildGlobalValidators(
-      [
-        {
-          ...ROW,
-          netuid: 3,
-          uid: 0,
-          hotkey: "hk-a",
-          stake_tao: 1000,
-          emission_tao: 0.85,
-        },
-        {
-          ...ROW,
-          netuid: 8,
-          uid: 1,
-          hotkey: "hk-a",
-          stake_tao: 500,
-          emission_tao: 0.1,
-        },
-        // netuid 21 has no entry in tempoByNetuid -- excluded from both the
-        // numerator and denominator, its 200 TAO stake never diluting apy.
-        {
-          ...ROW,
-          netuid: 21,
-          uid: 2,
-          hotkey: "hk-a",
-          stake_tao: 200,
-          emission_tao: 5,
-        },
-      ],
-      {
-        tempoByNetuid: new Map([
-          [3, 360],
-          [8, 100],
-        ]),
-      },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    // numerator = 0.85*7,300 + 0.10*26,280 = 6,205 + 2,628 = 8,833
-    // denominator = 1,000 + 500 = 1,500 (netuid 21's 200 excluded)
-    assert.equal(entry.apy_estimate, Math.round((8833 / 1500) * 1e9) / 1e9);
-    assert.equal(entry.apy_estimate_eligible_subnet_count, 2);
-    assert.equal(entry.subnet_count, 3); // all 3 memberships still counted
-  });
-
-  test("buildGlobalValidators excludes a membership with non-positive stake from apy_estimate even when tempo is known (#2551)", () => {
-    const data = buildGlobalValidators(
-      [
-        {
-          ...ROW,
-          netuid: 3,
-          uid: 0,
-          hotkey: "hk-a",
-          stake_tao: 0,
-          emission_tao: 1,
-        },
-      ],
-      { tempoByNetuid: new Map([[3, 360]]) },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.apy_estimate, null);
-    assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
-  });
-
-  test("buildGlobalValidators nulls apy_estimate AND reports 0 eligible when the only eligible stake rounds to exactly 0 rao (#2551)", () => {
-    // 4e-10 TAO is > 0 in JS float terms, so accumulateApyRow's stake > 0
-    // guard passes and its own local apyEligibleCount reaches 1 -- but
-    // toRaoBig(4e-10) rounds to 0n (sub-rao precision), leaving
-    // apyDenominatorRao at 0n. finalizeApy's apyDenominatorRao <= 0n guard
-    // catches exactly this: it must report eligible_count 0 (not the raw 1
-    // accumulateApyRow counted), never 1, to preserve the field's own
-    // documented invariant ("apy_estimate is null iff eligible_count is 0")
-    // and avoid a 0/0 division producing NaN instead of a clean null.
-    const data = buildGlobalValidators(
-      [
-        {
-          ...ROW,
-          netuid: 3,
-          uid: 0,
-          hotkey: "hk-a",
-          stake_tao: 4e-10,
-          emission_tao: 1,
-        },
-      ],
-      { tempoByNetuid: new Map([[3, 360]]) },
-    );
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.apy_estimate, null);
-    assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
-  });
-
-  test("buildGlobalValidators defaults apy_estimate to null on every entry when no tempoByNetuid map is passed", () => {
-    const data = buildGlobalValidators([
-      { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a" },
-    ]);
-    assert.equal(data.validators[0].apy_estimate, null);
-    assert.equal(data.validators[0].apy_estimate_eligible_subnet_count, 0);
-  });
-
-  test("buildGlobalValidators counts apy-eligible subnets beyond the top-10 subnets[] cap, not leaking the cap into apy_estimate (#2551)", () => {
-    // 15 memberships, every one eligible (known tempo, positive stake) --
-    // subnets[] on the returned entry is capped to GLOBAL_VALIDATOR_SUBNET_LIMIT
-    // (10), but apy_estimate_eligible_subnet_count must reflect all 15: the
-    // apy accumulation happens in the row loop, before that cap is applied.
-    const tempoByNetuid = new Map();
-    const rows = [];
-    for (let netuid = 0; netuid < 15; netuid += 1) {
-      tempoByNetuid.set(netuid, 360);
-      rows.push({
-        ...ROW,
-        netuid,
-        uid: netuid,
-        hotkey: "hk-a",
-        stake_tao: 100 + netuid, // distinct stakes so the top-10 sort is deterministic
-        emission_tao: 1,
-      });
+  test.each([
+    { label: "root-only", netuid: 0, stake_tao: 1000 },
+    { label: "non-root voting weight", netuid: 3, stake_tao: 1000 },
+    { label: "zero voting weight", netuid: 3, stake_tao: 0 },
+    { label: "missing voting weight", netuid: 3, stake_tao: null },
+  ])("$label never establishes investment capital or APY", ({ netuid, stake_tao }) => {
+    const rows = [{ ...ROW, netuid, uid: 0, hotkey: "hk-a", stake_tao }];
+    const options = { tempoByNetuid: new Map([[netuid, 360]]) };
+    const list = buildGlobalValidators(rows, options);
+    const detail = buildValidatorDetail(rows, "hk-a", options);
+    for (const entry of [list.validators[0], detail]) {
+      assert.equal(entry.total_stake_tao, null);
+      assert.equal(entry.root_stake_tao, null);
+      assert.equal(entry.alpha_stake_tao, null);
+      assert.equal(entry.apy_estimate, null);
+      assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
     }
-    const data = buildGlobalValidators(rows, { tempoByNetuid });
-    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
-    assert.equal(entry.subnets.length, 10);
-    assert.equal(entry.apy_estimate_eligible_subnet_count, 15);
-    assert.ok(entry.apy_estimate > 0);
+    assert.equal(list.validators[0].stake_dominance, null);
+    assert.equal(list.validators[0].subnet_count, 1);
+    assert.equal(detail.subnets.length, 1);
+  });
+
+  test.each([
+    { raw: undefined, expected: null },
+    { raw: null, expected: null },
+    { raw: "", expected: null },
+    { raw: "not-a-number", expected: null },
+    { raw: -1, expected: null },
+    { raw: Number.POSITIVE_INFINITY, expected: null },
+    { raw: 0, expected: 0 },
+    { raw: "120.5", expected: 120.5 },
+  ])("raw voting weight $raw stays measured or explicitly unknown", ({ raw, expected }) => {
+    const rows = [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: raw }];
+    const list = buildGlobalValidators(rows).validators[0];
+    const detail = buildValidatorDetail(rows, "hk-a");
+    for (const entry of [list, detail]) {
+      assert.equal(entry.subnets[0].stake_alpha, expected);
+      assert.equal(entry.total_stake_tao, null);
+      assert.equal(entry.apy_estimate, null);
+    }
+  });
+
+  test("repeated root influence never becomes independent capital across subnets", () => {
+    const rows = [0, 3, 8].map((netuid) => ({
+      ...ROW,
+      netuid,
+      uid: 0,
+      hotkey: "hk-a",
+      stake_tao: netuid === 0 ? 1000 : 180,
+      emission_tao: 1,
+    }));
+    const options = {
+      priceByNetuid: new Map([[3, 0.5], [8, 2]]),
+      tempoByNetuid: new Map([[0, 100], [3, 360], [8, 360]]),
+    };
+    for (const entry of [
+      buildGlobalValidators(rows, options).validators[0],
+      buildValidatorDetail(rows, "hk-a", options),
+    ]) {
+      assert.equal(entry.subnet_count, 3);
+      assert.equal(entry.total_stake_tao, null);
+      assert.equal(entry.root_stake_tao, null);
+      assert.equal(entry.alpha_stake_tao, null);
+      assert.equal(entry.apy_estimate, null);
+      assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+      assert.equal(entry.total_emission_tao, 3.5);
+    }
+  });
+
+  test("capital schemas preserve nullable compatibility keys with explicit provenance", () => {
+    for (const schema of [GlobalValidatorEntrySchema, ValidatorDetailArtifactSchema]) {
+      for (const field of ["total_stake_tao", "root_stake_tao", "alpha_stake_tao", "apy_estimate"] as const) {
+        assert.equal(schema.shape[field].parse(null), null);
+        assert.equal(schema.shape[field].meta()?.deprecated, true);
+        assert.match(schema.shape[field].description ?? "", /always null/);
+      }
+    }
   });
 
   // Even apparently complete balance history cannot tell a deposit apart
@@ -1028,11 +958,7 @@ describe("metagraph-neurons builders", () => {
         realizedStake: history,
       });
       for (const entry of [list.validators[0], detail]) {
-        assert.equal(
-          entry.total_stake_tao,
-          current,
-          "stake remains available as stake",
-        );
+        assert.equal(entry.total_stake_tao, null);
         for (const window of ["1d", "1w", "1m"]) {
           assert.equal(entry[`realized_return_${window}`], null);
           assert.equal(entry[`realized_return_${window}_as_of`], null);
@@ -1194,9 +1120,8 @@ describe("metagraph-neurons builders", () => {
     assert.deepEqual(data.validators[1].subnets[0], {
       netuid: 1,
       uid: 0,
-      // `_alpha`, not `_tao` (#10514): the entry carries a PRICED
-      // total_stake_tao, so a row under the same suffix would be a unit trap.
-      stake_alpha: 0,
+      // Invalid raw voting weight remains unknown, never a measured zero.
+      stake_alpha: null,
       emission_alpha: 0,
       validator_trust: null,
     });
@@ -1360,9 +1285,9 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.coldkey, "ck-a"); // 2 rows vs. ck-new's 1
     assert.equal(data.coldkey_count, 2);
     assert.equal(data.subnet_count, 5);
-    assert.equal(data.total_stake_tao, 653.123456789);
-    assert.equal(data.root_stake_tao, 0); // no netuid-0 row for hk-a
-    assert.equal(data.alpha_stake_tao, 653.123456789);
+    assert.equal(data.total_stake_tao, null);
+    assert.equal(data.root_stake_tao, null); // no netuid-0 row for hk-a
+    assert.equal(data.alpha_stake_tao, null);
     assert.equal(data.total_emission_tao, 19);
     assert.equal(data.avg_validator_trust, 0.6); // (0.4 + 0.8 + 0.6) / 3
     assert.equal(data.max_validator_trust, 0.8);
@@ -1380,7 +1305,7 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
-  test("buildValidatorDetail splits root (netuid 0) stake from alpha stake in exact rao space (#2550)", () => {
+  test("buildValidatorDetail does not infer capital legs from membership weights", () => {
     const data = buildValidatorDetail(
       [
         {
@@ -1410,9 +1335,9 @@ describe("metagraph-neurons builders", () => {
       ],
       "hk-a",
     );
-    assert.equal(data.total_stake_tao, 300);
-    assert.equal(data.root_stake_tao, 200.5);
-    assert.equal(data.alpha_stake_tao, 99.5); // 50.25 + 49.25, exact
+    assert.equal(data.total_stake_tao, null);
+    assert.equal(data.root_stake_tao, null);
+    assert.equal(data.alpha_stake_tao, null);
   });
 
   test("buildValidatorDetail passes through the given nominatorCount option (#2549)", () => {
@@ -1430,93 +1355,25 @@ describe("metagraph-neurons builders", () => {
     assert.equal(withoutCount.nominator_count, null);
   });
 
-  test("buildValidatorDetail blends apy_estimate stake-weighted across memberships, excluding one with no resolvable tempo (#2551)", () => {
-    const data = buildValidatorDetail(
-      [
-        {
-          ...ROW,
-          netuid: 3,
-          uid: 0,
-          hotkey: "hk-a",
-          stake_tao: 1000,
-          emission_tao: 0.85,
-        },
-        {
-          ...ROW,
-          netuid: 8,
-          uid: 1,
-          hotkey: "hk-a",
-          stake_tao: 500,
-          emission_tao: 0.1,
-        },
-        {
-          ...ROW,
-          netuid: 21,
-          uid: 2,
-          hotkey: "hk-a",
-          stake_tao: 200,
-          emission_tao: 5,
-        },
-      ],
-      "hk-a",
-      {
-        tempoByNetuid: new Map([
-          [3, 360],
-          [8, 100],
-        ]),
-      },
-    );
-    assert.equal(data.apy_estimate, Math.round((8833 / 1500) * 1e9) / 1e9);
-    assert.equal(data.apy_estimate_eligible_subnet_count, 2);
-    assert.equal(data.subnet_count, 3);
-  });
-
-  test("buildValidatorDetail excludes a non-positive-stake membership from apy_estimate even when tempo is known (#2551)", () => {
-    const data = buildValidatorDetail(
-      [
-        {
-          ...ROW,
-          netuid: 3,
-          uid: 0,
-          hotkey: "hk-a",
-          stake_tao: 0,
-          emission_tao: 1,
-        },
-      ],
-      "hk-a",
-      { tempoByNetuid: new Map([[3, 360]]) },
-    );
-    assert.equal(data.apy_estimate, null);
-    assert.equal(data.apy_estimate_eligible_subnet_count, 0);
-  });
-
-  test("buildValidatorDetail defaults apy_estimate to null when no tempoByNetuid map is passed", () => {
-    const data = buildValidatorDetail(
-      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a" }],
-      "hk-a",
-    );
-    assert.equal(data.apy_estimate, null);
-    assert.equal(data.apy_estimate_eligible_subnet_count, 0);
-  });
-
-  test("buildValidatorDetail's apy_estimate is never capped -- its subnets[] is already uncapped, unlike the leaderboard's top-10 (#2551)", () => {
-    const tempoByNetuid = new Map();
-    const rows = [];
-    for (let netuid = 0; netuid < 15; netuid += 1) {
-      tempoByNetuid.set(netuid, 360);
-      rows.push({
-        ...ROW,
-        netuid,
-        uid: netuid,
-        hotkey: "hk-a",
-        stake_tao: 100 + netuid,
-        emission_tao: 1,
-      });
+  test("memberships beyond the compact cap never become an APY denominator", () => {
+    const rows = Array.from({ length: 15 }, (_, netuid) => ({
+      ...ROW,
+      netuid,
+      uid: netuid,
+      hotkey: "hk-a",
+      stake_tao: 100 + netuid,
+    }));
+    const options = { tempoByNetuid: new Map(rows.map((row) => [row.netuid, 360])) };
+    const list = buildGlobalValidators(rows, options).validators[0];
+    const detail = buildValidatorDetail(rows, "hk-a", options);
+    assert.equal(list.subnets.length, 10);
+    assert.equal(detail.subnets.length, 15);
+    for (const entry of [list, detail]) {
+      assert.equal(entry.subnet_count, 15);
+      assert.equal(entry.total_stake_tao, null);
+      assert.equal(entry.apy_estimate, null);
+      assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
     }
-    const data = buildValidatorDetail(rows, "hk-a", { tempoByNetuid });
-    assert.equal(data.subnets.length, 15);
-    assert.equal(data.apy_estimate_eligible_subnet_count, 15);
-    assert.ok(data.apy_estimate > 0);
   });
 
   test("buildValidatorDetail: a null latest block_number is beaten by a real one on a captured_at tie, and a null incoming block_number never wins one", () => {
@@ -1557,9 +1414,9 @@ describe("metagraph-neurons builders", () => {
     assert.equal(empty.coldkey_identity, null);
     assert.equal(empty.coldkey_count, 0);
     assert.equal(empty.subnet_count, 0);
-    assert.equal(empty.total_stake_tao, 0);
-    assert.equal(empty.root_stake_tao, 0);
-    assert.equal(empty.alpha_stake_tao, 0);
+    assert.equal(empty.total_stake_tao, null);
+    assert.equal(empty.root_stake_tao, null);
+    assert.equal(empty.alpha_stake_tao, null);
     assert.equal(empty.total_emission_tao, 0);
     assert.equal(empty.nominator_count, null);
     assert.equal(empty.avg_validator_trust, null);
@@ -1614,7 +1471,7 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.validators[0].latest_block_number, null);
   });
 
-  test("buildGlobalValidators rolls up stake/emission totals and stake dominance", () => {
+  test("buildGlobalValidators preserves emissions while capital and dominance stay unavailable", () => {
     const data = buildGlobalValidators(
       [
         {
@@ -1656,15 +1513,15 @@ describe("metagraph-neurons builders", () => {
     const heavy = data.validators.find((v: Row) => v.hotkey === "hk-heavy");
     const light = data.validators.find((v: Row) => v.hotkey === "hk-light");
     const bad = data.validators.find((v: Row) => v.hotkey === "hk-bad");
-    assert.equal(heavy.total_stake_tao, 100);
+    assert.equal(heavy.total_stake_tao, null);
     assert.equal(heavy.total_emission_tao, 4);
-    assert.equal(heavy.stake_dominance, 1);
-    assert.equal(light.total_stake_tao, 0);
-    assert.equal(light.stake_dominance, 0);
-    assert.equal(bad.total_stake_tao, 0);
+    assert.equal(heavy.stake_dominance, null);
+    assert.equal(light.total_stake_tao, null);
+    assert.equal(light.stake_dominance, null);
+    assert.equal(bad.total_stake_tao, null);
     assert.deepEqual(
       data.validators.map((v: Row) => v.hotkey),
-      ["hk-heavy", "hk-bad", "hk-light"],
+      ["hk-bad", "hk-heavy", "hk-light"],
     );
   });
 
@@ -1682,7 +1539,7 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
-  test("buildGlobalValidators sorts by total_stake with hotkey tie-break", () => {
+  test("an unavailable total_stake sort uses the deterministic hotkey tie-break", () => {
     const data = buildGlobalValidators(
       [
         { ...ROW, netuid: 1, uid: 0, hotkey: "hk-b", stake_tao: 50 },
@@ -1696,10 +1553,9 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
-  test("sums a hotkey's per-UID stake in exact rao space, not compounding float error (#2922)", () => {
-    // One hotkey validating on thousands of subnets, each contributing a real
-    // sub-TAO fractional stake -- plain `+=` float accumulation across many
-    // rows would drift from the true sum. Summing in rao BigInt space must not.
+  test("sums a hotkey's priced emission in exact rao space (#2922)", () => {
+    // Keep the independent emission sum's rao-precision regression; removing
+    // unsupported capital must not change the surviving numerator arithmetic.
     const rows = [];
     let expectedTotalRao = 0n;
     for (let i = 0; i < 5000; i += 1) {
@@ -1712,8 +1568,8 @@ describe("metagraph-neurons builders", () => {
         netuid: i % 250,
         uid: 0,
         hotkey: "hk-precision",
-        stake_tao: stakeTao,
-        emission_tao: 0,
+        stake_tao: 1000,
+        emission_tao: stakeTao,
       });
       expectedTotalRao += BigInt(Math.round(stakeTao * 1e9));
     }
@@ -1725,7 +1581,7 @@ describe("metagraph-neurons builders", () => {
       Number(expectedTotalRao / 1_000_000_000n) +
       Number(expectedTotalRao % 1_000_000_000n) / 1e9;
     const entry = data.validators.find((v: Row) => v.hotkey === "hk-precision");
-    assert.equal(entry.total_stake_tao, Math.round(expectedTotal * 1e9) / 1e9);
+    assert.equal(entry.total_emission_tao, Math.round(expectedTotal * 1e9) / 1e9);
   });
 
   test("builders drop malformed rows and count only real neurons", () => {
@@ -2415,6 +2271,9 @@ describe("composeValidatorComparison (#6035)", () => {
       "total_emission_tao",
       "total_stake_tao",
     ]);
+    assert.equal(first.total_stake_tao, null);
+    assert.equal(first.apy_estimate, null);
+    assert.equal(first.apy_estimate_eligible_subnet_count, 0);
     assert.equal(first.take, 0.18);
     assert.equal(first.nominator_count, 42);
     assert.deepEqual(first.coldkey_identity, {
@@ -2478,21 +2337,19 @@ describe("composeValidatorComparison (#6035)", () => {
   });
 });
 
-// #9051: the cross-subnet sums are TAO-priced through each subnet's own
-// alpha_price_tao. What is pinned here: the conversion itself (non-unit
-// prices), root's exact 1:1 passthrough, the unpriced residuals (excluded,
-// never silently 1:1), and the total = root + alpha identity under pricing.
-describe("TAO-priced cross-subnet sums (#9051)", () => {
+// Emission pricing remains independent of the now unavailable capital fields.
+// No price coverage, including a zero price, validates economic principal.
+describe("emission pricing and unavailable validator capital", () => {
   const PRICES = new Map<number, number | null>([
     [1, 0.5],
     [2, 0.02],
     [3, null], // a subnet whose snapshot carries no price
   ]);
 
-  test("buildGlobalValidators prices each membership through its own subnet", () => {
+  test("buildGlobalValidators prices emissions without pricing voting weight", () => {
     const data = buildGlobalValidators(
       [
-        // Root: 100 TAO, passes through at exactly 1:1.
+        // Root membership voting weight remains raw evidence.
         {
           netuid: 0,
           uid: 0,
@@ -2501,7 +2358,7 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
           stake_tao: 100,
           emission_tao: 2,
         },
-        // SN1: 1000 alpha at 0.5 TAO/alpha = 500 TAO.
+        // SN1 voting weight is not a native-alpha position to price.
         {
           netuid: 1,
           uid: 0,
@@ -2510,7 +2367,7 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
           stake_tao: 1000,
           emission_tao: 10,
         },
-        // SN2: 5000 alpha at 0.02 = 100 TAO.
+        // SN2 has its own independent voting-weight scale.
         {
           netuid: 2,
           uid: 0,
@@ -2519,7 +2376,7 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
           stake_tao: 5000,
           emission_tao: 50,
         },
-        // SN3: priceless -- excluded from every priced figure, lands in the residuals.
+        // SN3 lacks a price; only emission keeps the existing exclusion behavior.
         {
           netuid: 3,
           uid: 0,
@@ -2531,17 +2388,16 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
       ],
       { priceByNetuid: PRICES },
     );
-    const v = data.validators[0] as Record<string, number>;
-    assert.equal(v.total_stake_tao, 700); // 100 + 500 + 100
-    assert.equal(v.root_stake_tao, 100);
-    assert.equal(v.alpha_stake_tao, 600); // priced alpha legs only
+    const v = data.validators[0] as Row;
+    assert.equal(v.total_stake_tao, null);
+    assert.equal(v.root_stake_tao, null);
+    assert.equal(v.alpha_stake_tao, null);
     assert.equal(v.total_emission_tao, 2 + 5 + 1); // 2 + 10*0.5 + 50*0.02
-    // The priceless subnet still counts as a membership -- exclusion is from
-    // the SUMS, not from the validator's footprint.
+    // Missing prices do not remove observed membership evidence.
     assert.equal(v.subnet_count, 4);
   });
 
-  test("stake_dominance is a ratio of PRICED totals", () => {
+  test("prices cannot establish stake dominance from voting weights", () => {
     const data = buildGlobalValidators(
       [
         {
@@ -2563,26 +2419,20 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
       ],
       { priceByNetuid: PRICES },
     );
-    // Priced: big = 500 TAO, small = 100 TAO. Under the old mixed sum the
-    // 5000-alpha hotkey would have LOOKED 5x larger; priced, it is 5x smaller.
+    // Neither a raw-weight ranking nor a price-weighted ranking can establish
+    // either validator's economic holdings or its share of a common total.
     const byHotkey = Object.fromEntries(
       (data.validators as Array<Record<string, unknown>>).map((v) => [
         v.hotkey,
         v,
       ]),
     );
-    // stake_dominance carries the module's 6dp round(), so compare rounded.
-    assert.equal(
-      (byHotkey.big as Record<string, number>).stake_dominance,
-      0.833333,
-    );
-    assert.equal(
-      (byHotkey.small as Record<string, number>).stake_dominance,
-      0.166667,
-    );
+    // Price coverage cannot establish independent economic principal.
+    assert.equal((byHotkey.big as Row).stake_dominance, null);
+    assert.equal((byHotkey.small as Row).stake_dominance, null);
   });
 
-  test("buildValidatorDetail: same conversion, and total = root + alpha exactly", () => {
+  test("buildValidatorDetail keeps legacy capital fields unavailable with complete prices", () => {
     const data = buildValidatorDetail(
       [
         {
@@ -2613,16 +2463,12 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
       "hk",
       { priceByNetuid: PRICES },
     );
-    assert.equal(data.total_stake_tao, 140); // 40 + 200*0.5
-    assert.equal(data.root_stake_tao, 40);
-    assert.equal(data.alpha_stake_tao, 100);
-    assert.equal(
-      data.total_stake_tao,
-      (data.root_stake_tao as number) + (data.alpha_stake_tao as number),
-    );
+    assert.equal(data.total_stake_tao, null);
+    assert.equal(data.root_stake_tao, null);
+    assert.equal(data.alpha_stake_tao, null);
   });
 
-  test("an EMPTY price map prices nothing but root -- never a silent 1:1", () => {
+  test("an empty price map cannot establish capital from root or non-root weights", () => {
     const data = buildValidatorDetail(
       [
         {
@@ -2645,10 +2491,10 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
       "hk",
       { priceByNetuid: new Map() },
     );
-    assert.equal(data.total_stake_tao, 5); // root only
+    assert.equal(data.total_stake_tao, null);
   });
 
-  test("a zero price is a real price (drained pool), not an unpriced miss", () => {
+  test("a zero price does not turn unmeasured principal into zero capital", () => {
     const data = buildValidatorDetail(
       [
         {
@@ -2663,8 +2509,7 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
       "hk",
       { priceByNetuid: new Map([[9, 0]]) },
     );
-    assert.equal(data.total_stake_tao, 0); // valued at zero...
-    // ...and NOT treated as a missing price.
+    assert.equal(data.total_stake_tao, null);
   });
 });
 

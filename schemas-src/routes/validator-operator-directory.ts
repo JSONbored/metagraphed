@@ -3,7 +3,14 @@ import { z } from "zod";
 export const ValidatorOperatorKeySchema = z
   .object({
     hotkey: z.string(),
-    total_stake_tao: z.number().min(0),
+    total_stake_tao: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.",
+      )
+      .meta({ deprecated: true }),
     take: z.number().nullable(),
   })
   .strict();
@@ -32,7 +39,14 @@ export const ValidatorOperatorDirectoryEntrySchema = z
       .describe(
         "The source-selected owner account of the primary hotkey. Common to all members only when ownership_basis is single_coldkey; otherwise this is a representative source field, not evidence of shared ownership.",
       ),
-    total_stake_tao: z.number().min(0),
+    total_stake_tao: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z.number().min(0),
     nominator_count: z
       .int()
@@ -45,8 +59,22 @@ export const ValidatorOperatorDirectoryEntrySchema = z
     uid_count: z.int().min(0),
     take_min: z.number().nullable(),
     take_max: z.number().nullable(),
-    apy_estimate: z.number().min(0).nullable(),
-    stake_dominance: z.number().min(0).max(1).nullable(),
+    apy_estimate: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight is not an APY denominator; null is unknown, never zero yield.",
+      )
+      .meta({ deprecated: true }),
+    stake_dominance: z
+      .number()
+      .min(0)
+      .max(1)
+      .nullable()
+      .describe(
+        "Always null: voting weight does not establish a common holdings-value denominator across validators.",
+      ),
   })
   .strict();
 

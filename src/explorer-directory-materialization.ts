@@ -7,7 +7,10 @@ import {
   explorerDirectoriesSnapshotKey,
 } from "./kv-keys.ts";
 import type { buildAccountHolderDirectory } from "./account-holder-directory.ts";
-import type { buildValidatorOperatorDirectory } from "./validator-operator-directory.ts";
+import {
+  hasLegacyValidatorOperatorCapital,
+  type buildValidatorOperatorDirectory,
+} from "./validator-operator-directory.ts";
 
 export type ExplorerDirectoryMaterialization = {
   schema_version: 1;
@@ -57,7 +60,9 @@ export function materializationFromUnknown(
   value: unknown,
 ): ExplorerDirectoryMaterialization | null {
   const parsed = ExplorerDirectoryMaterializationSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  return parsed.success && !hasLegacyValidatorOperatorCapital(parsed.data.validators)
+    ? parsed.data
+    : null;
 }
 
 export function pointerFromUnknown(

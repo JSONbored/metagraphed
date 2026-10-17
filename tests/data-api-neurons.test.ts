@@ -827,7 +827,7 @@ test("GET /api/v1/validators keeps priced stake and identity without fabricated 
   assert.equal(body.validator_count, 1);
   const entry = (body.validators as Row[])[0];
   assert.equal(entry.hotkey, "5Val");
-  assert.equal(entry.total_stake_tao, 200);
+  assert.equal(entry.total_stake_tao, null);
   assert.equal(entry.realized_return_1d, null);
   assert.equal(entry.realized_return_1d_as_of, null);
   // The identity join is live again: the coldkey's account_identity row
@@ -874,7 +874,7 @@ test.each([
       assert.equal(response.status, 200);
       const body = (await response.json()) as Row;
       const entry = route === "/api/v1/validators" ? body.validators[0] : body;
-      assert.equal(entry.total_stake_tao, stake * 3);
+      assert.equal(entry.total_stake_tao, null);
       for (const window of ["1d", "1w", "1m"]) {
         assert.equal(entry[`realized_return_${window}`], null);
         assert.equal(entry[`realized_return_${window}_as_of`], null);
@@ -960,25 +960,27 @@ test("GET /api/v1/validators/operators serves the grouped website projection", a
   assert.equal(body.validator_count, 4);
   assert.equal(body.operator_count, 3);
   const operators = body.operators as Row[];
-  assert.equal(operators[0]!.identity_name, "Tensor Team");
-  assert.equal(operators[0]!.operator_id, "coldkey:5TeamColdLarge");
-  assert.equal(operators[0]!.ownership_basis, "single_coldkey");
-  assert.equal(operators[0]!.hotkey_count, 2);
-  assert.equal(operators[0]!.primary_hotkey, "5TeamLarge");
-  assert.equal(operators[0]!.total_stake_tao, 85);
+  const team = operators.find((entry) => entry.operator_id === "coldkey:5TeamColdLarge")!;
+  assert.equal(team.identity_name, "Tensor Team");
+  assert.equal(team.ownership_basis, "single_coldkey");
+  assert.equal(team.hotkey_count, 2);
+  assert.equal(team.primary_hotkey, "5SameOwner");
+  assert.equal(team.total_stake_tao, null);
+  assert.equal(team.apy_estimate, null);
+  assert.equal(team.stake_dominance, null);
   assert.deepEqual(
-    (operators[0]!.hotkeys as Row[]).map((entry) => entry.hotkey),
-    ["5TeamLarge", "5SameOwner"],
+    (team.hotkeys as Row[]).map((entry) => entry.hotkey),
+    ["5SameOwner", "5TeamLarge"],
   );
-  assert.equal(operators[1]!.identity_name, null);
-  assert.equal(operators[1]!.primary_hotkey, "5Anonymous");
-  assert.deepEqual(operators[1]!.hotkeys, []);
-  assert.equal(operators[2]!.identity_name, "Tensor Team");
-  assert.equal(operators[2]!.operator_id, "coldkey:5TeamColdSmall");
-  assert.equal(operators[2]!.hotkey_count, 1);
+  const anonymous = operators.find((entry) => entry.primary_hotkey === "5Anonymous")!;
+  assert.equal(anonymous.identity_name, null);
+  assert.deepEqual(anonymous.hotkeys, []);
+  const small = operators.find((entry) => entry.operator_id === "coldkey:5TeamColdSmall")!;
+  assert.equal(small.identity_name, "Tensor Team");
+  assert.equal(small.hotkey_count, 1);
 });
 
-test("GET /api/v1/validators/:hotkey aggregates one hotkey across subnets with priced totals", async () => {
+test("GET /api/v1/validators/:hotkey aggregates membership without pricing voting weight", async () => {
   insertNeuron({
     netuid: 0,
     uid: 0,
@@ -1007,8 +1009,8 @@ test("GET /api/v1/validators/:hotkey aggregates one hotkey across subnets with p
   const body = (await res.json()) as Row;
   assert.equal(body.hotkey, "5Val");
   assert.equal(body.subnet_count, 2);
-  // root 100 * 1 + netuid-7 100 * 0.5
-  assert.equal(body.total_stake_tao, 150);
+  // Pricing voting weight does not establish investment capital.
+  assert.equal(body.total_stake_tao, null);
   // Detail carries the same identity join as the leaderboard.
   assert.equal((body.coldkey_identity as Row).name, "Yuma");
 });
@@ -1509,8 +1511,8 @@ test("GET /api/v1/validators/:hotkey/history prices each day at its own snapshot
   const points = body.points as Row[];
   assert.equal(points.length, 1);
   assert.equal(points[0].subnet_count, 2);
-  // root 100 * 1 + netuid-7 100 * 0.5
-  assert.equal(points[0].total_stake_tao, 150);
+  // The historical SQL price projection does not establish investment capital.
+  assert.equal(points[0].total_stake_tao, null);
   const all = await call(req("/api/v1/validators/5Val/history?window=all"));
   assert.equal(all.status, 200);
 });
@@ -1552,7 +1554,7 @@ test("GET /api/v1/validators/:hotkey/history?netuid= scopes to one subnet (#9383
   // Alpha stays alpha; the TAO figure is the same value priced at 0.5.
   assert.equal(points[0].stake_alpha, 100);
   assert.equal(points[0].emission_alpha, 10);
-  assert.equal(points[0].total_stake_tao, 50);
+  assert.equal(points[0].total_stake_tao, null);
   assert.equal(points[0].total_emission_tao, 5);
   // The per-subnet facts the unscoped rollup sums away.
   assert.equal(points[0].validator_trust, 0.75);
@@ -2481,7 +2483,7 @@ test("a NULL alpha_price_tao snapshot excludes unpriceable stake without crashin
   const body = (await res.json()) as Row;
   assert.equal(body.validator_count, 1);
   // A null price excludes the membership from the totals (never 1:1).
-  assert.equal((body.validators as Row[])[0].total_stake_tao, 0);
+  assert.equal((body.validators as Row[])[0].total_stake_tao, null);
 });
 
 test("chain turnover normalizes a bogus window and an explicit limit on an empty store", async () => {
@@ -2539,202 +2541,52 @@ test("a missing subnet_snapshots table degrades prices, never the validators rou
   const body = (await res.json()) as Row;
   assert.equal(body.validator_count, 1);
   const entry = (body.validators as Row[])[0];
-  // Unpriceable non-root stake is EXCLUDED from the totals (never counted
-  // 1:1). Realized returns remain unavailable regardless of snapshot coverage.
-  assert.equal(entry.total_stake_tao, 0);
+  // Neither absent prices nor historical snapshots establish validator capital
+  // or realized investment returns.
+  assert.equal(entry.total_stake_tao, null);
   assert.equal(entry.realized_return_1d, null);
 });
 
-// --- apy_estimate (#9342) ----------------------------------------------------
-//
-// The computation was always correct; both handlers passed `tempoByNetuid:
-// new Map()`, so every lookup missed and apy_estimate was `null` on EVERY served
-// response. These pin the wiring, not the maths -- each one fails against the
-// empty-map placeholder.
+// A known tempo and price do not make metagraph voting weight investment capital.
+test.each([0, 99, 990, null])(
+  "validator list/detail keep capital and APY unavailable with tempo %s",
+  async (tempo) => {
+    await insertTempo(1, tempo);
+    insertPrice(1, dayAgo(0), 0.5);
+    insertNeuron({
+      netuid: 1,
+      uid: 0,
+      hotkey: "5Apy",
+      stake_tao: 100,
+      emission_tao: 1,
+      validator_permit: 1,
+    });
+    for (const path of ["/api/v1/validators", "/api/v1/validators/5Apy"]) {
+      const response = await call(req(path));
+      assert.equal(response.status, 200);
+      const data = (await response.json()) as Row;
+      const entry = path === "/api/v1/validators" ? data.validators[0] : data;
+      assert.equal(entry.total_stake_tao, null);
+      assert.equal(entry.root_stake_tao, null);
+      assert.equal(entry.alpha_stake_tao, null);
+      assert.equal(entry.apy_estimate, null);
+      assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+      assert.equal(entry.subnet_count, 1);
+    }
+  },
+);
 
-test("GET /api/v1/validators resolves apy_estimate from the subnet_hyperparams tempo", async () => {
-  insertTempo(1, 99);
-  // A non-root membership needs a price or it is excluded from the totals
-  // entirely, before apy is ever reached.
-  insertPrice(1, dayAgo(0), 0.5);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Apy",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  assert.equal(res.status, 200);
-  const entry = ((await res.json()) as Row).validators as Row[];
-  assert.notEqual(
-    entry[0].apy_estimate,
-    null,
-    "an empty tempo map made this unconditionally null",
-  );
-  assert.equal(entry[0].apy_estimate_eligible_subnet_count, 1);
-});
-
-test("GET /api/v1/validators/:hotkey resolves apy_estimate too", async () => {
-  // The detail route had the same placeholder as the leaderboard, so fixing one
-  // and not the other would leave the two surfaces disagreeing about the same
-  // validator.
-  insertTempo(1, 99);
-  insertPrice(1, dayAgo(0), 0.5);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Apy",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators/5Apy"));
-  assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
-  assert.notEqual(body.apy_estimate, null);
-  assert.equal(body.apy_estimate_eligible_subnet_count, 1);
-});
-
-test("a shorter tempo annualizes to a higher apy for the same emission", async () => {
-  // The tempo has to actually reach the maths, not merely be non-empty: more
-  // epochs per year on the same per-epoch emission means more annual yield.
-  insertTempo(1, 99);
-  insertTempo(2, 990);
-  insertPrice(1, dayAgo(0), 0.5);
-  insertPrice(2, dayAgo(0), 0.5);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Fast",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  insertNeuron({
-    netuid: 2,
-    uid: 0,
-    hotkey: "5Slow",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const rows = ((await res.json()) as Row).validators as Row[];
-  const fast = rows.find((r) => r.hotkey === "5Fast") as Row;
-  const slow = rows.find((r) => r.hotkey === "5Slow") as Row;
-  assert.ok(
-    (fast.apy_estimate as number) > (slow.apy_estimate as number),
-    "10x the tempo must be ~1/10th the apy",
-  );
-});
-
-test("root counts toward apy_estimate — it is a real network with a real tempo", async () => {
-  // Verified against finney: NetworksAdded(0) is true and Tempo(0) is 100, so a
-  // root membership is not a capture artefact. Excluding it would drop the
-  // position of exactly the validators whose stake is mostly on root.
-  insertTempo(0, 100);
-  insertNeuron({
-    netuid: 0,
-    uid: 0,
-    hotkey: "5Root",
-    stake_tao: 500,
-    emission_tao: 2,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const entry = (((await res.json()) as Row).validators as Row[])[0];
-  assert.notEqual(entry.apy_estimate, null);
-  assert.equal(entry.apy_estimate_eligible_subnet_count, 1);
-});
-
-test("a membership whose tempo is missing is excluded, not defaulted", async () => {
-  // netuid 2 has no hyperparams row at all, so only netuid 1 is eligible -- the
-  // count is what says so, and a fabricated default would hide it.
-  insertTempo(1, 99);
-  insertPrice(1, dayAgo(0), 0.5);
-  insertPrice(2, dayAgo(0), 0.5);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Mix",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  insertNeuron({
-    netuid: 2,
-    uid: 0,
-    hotkey: "5Mix",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const entry = (((await res.json()) as Row).validators as Row[])[0];
-  assert.equal(entry.apy_estimate_eligible_subnet_count, 1);
-});
-
-test("a zero tempo is treated as unresolved rather than an infinite yield", async () => {
-  // tempo=0 would divide into an infinite epochsPerYear; tempoByNetuid drops it,
-  // so the row is excluded and apy_estimate stays null.
-  insertTempo(1, 0);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Zero",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const entry = (((await res.json()) as Row).validators as Row[])[0];
-  assert.equal(entry.apy_estimate, null);
-  assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
-});
-
-test("apy_estimate stays null when the hyperparams table is cold", async () => {
-  // The degrade contract: no tempo rows at all means no APY opinion, which is
-  // what a caller got unconditionally before the read was wired.
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Cold",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  const entry = (((await res.json()) as Row).validators as Row[])[0];
-  assert.equal(entry.apy_estimate, null);
-  assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
-});
-
-test("a missing subnet_hyperparams table degrades apy_estimate, never the validators route", async () => {
-  // Same degrade contract as the subnet_snapshots case above: the tempo read is
-  // an ENRICHMENT, so losing it costs the APY opinion and nothing else. A throw
-  // that escaped here would take down the whole leaderboard over a side table.
+test("a missing tempo table leaves validator membership evidence available", async () => {
   await db.exec("DROP TABLE subnet_hyperparams");
   insertPrice(1, dayAgo(0), 0.5);
-  insertNeuron({
-    netuid: 1,
-    uid: 0,
-    hotkey: "5Val",
-    stake_tao: 100,
-    emission_tao: 1,
-    validator_permit: 1,
-  });
-  const res = await call(req("/api/v1/validators"));
-  assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
-  assert.equal(body.validator_count, 1, "the route still serves");
-  const entry = (body.validators as Row[])[0];
-  // 100 alpha priced at 0.5 = 50 TAO. The point is that it is unchanged by the
-  // missing tempo table -- the stake path and the APY path are independent.
-  assert.equal(entry.total_stake_tao, 50, "the stake total is unaffected");
-  assert.equal(entry.apy_estimate, null, "only the APY opinion is lost");
-  assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+  insertNeuron({ netuid: 1, uid: 0, hotkey: "5Val", validator_permit: 1 });
+  const response = await call(req("/api/v1/validators"));
+  assert.equal(response.status, 200);
+  const data = (await response.json()) as Row;
+  assert.equal(data.validator_count, 1);
+  assert.equal(data.validators[0].total_stake_tao, null);
+  assert.equal(data.validators[0].apy_estimate, null);
+  assert.equal(data.validators[0].apy_estimate_eligible_subnet_count, 0);
 });
 
 // --- routed to the sync queue (metagraphed-infra#357) -----------------------
