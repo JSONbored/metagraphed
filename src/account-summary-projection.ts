@@ -75,10 +75,7 @@ import { z } from "zod";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { timed, TIMING_R2 } from "./request-timing.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
-import {
-  ArtifactReadBudget,
-  ArtifactReadTimeoutError,
-} from "./artifact-read-budget.ts";
+import { ArtifactReadBudget } from "./artifact-read-budget.ts";
 import { r2TimeoutMs } from "../workers/storage.ts";
 
 /** Objects the producer writes, one per shard. Contract with
@@ -244,9 +241,8 @@ async function readJsonOnce(
     );
     if (!object) return null;
     return asJsonObject(await budget.run(() => object.json()));
-  } catch (error) {
+  } catch {
     budget.check();
-    if (error instanceof ArtifactReadTimeoutError) throw error;
     // Unfetchable or unparseable is not a fault to report: the caller reads the
     // lakehouse and answers correctly, just slower.
     return null;
@@ -425,14 +421,15 @@ async function loadLegacyAccountSummaryProjection(
 ): Promise<
   AccountSummaryProjectionRead | AccountSummaryProjectionAbsent | null
 > {
-  if (!artifactBucket(env) || !account) return null;
+  const bucket = artifactBucket(env);
+  if (!env || !bucket || !account) return null;
   // Reuse the configured artifact-storage budget for the entire pointer,
   // body and rotation retry phase. This is an engineering ceiling, not a
   // bound on indexed history or the complete account response.
-  const budget = new ArtifactReadBudget(r2TimeoutMs(env ?? {}));
+  const budget = new ArtifactReadBudget(r2TimeoutMs(env));
   try {
     return await budget.run(() =>
-      readLegacyAccountSummaryProjection(env, account, options, budget),
+      readLegacyAccountSummaryProjection(bucket, account, options, budget),
     );
   } finally {
     budget.close();
@@ -440,7 +437,7 @@ async function loadLegacyAccountSummaryProjection(
 }
 
 async function readLegacyAccountSummaryProjection(
-  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
+  bucket: ArtifactObjectStore,
   account: string,
   {
     now = Date.now,
@@ -461,9 +458,6 @@ async function readLegacyAccountSummaryProjection(
 ): Promise<
   AccountSummaryProjectionRead | AccountSummaryProjectionAbsent | null
 > {
-  const bucket = artifactBucket(env);
-  if (!bucket || !account) return null;
-
   // PARSED, not indexed. The producer is in another repository, so the only
   // thing that can hold the two ends together is a written-down shape --
   // `AccountSummaryPointerSchema` is that, and the rules it encodes (a STRING

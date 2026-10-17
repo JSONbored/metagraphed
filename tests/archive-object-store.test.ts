@@ -847,4 +847,65 @@ describe("the summary deadline through the native archive adapter", () => {
       await vi.advanceTimersByTimeAsync(0);
     }
   });
+
+  it("an invalid asset response declines promptly despite hanging cancellation", async () => {
+    clock();
+    const f = fixture();
+    nativeSummaryPointer(f);
+    const heldCancel = deferredArchiveRead<void>();
+    const cancel = vi.fn(() => heldCancel.promise);
+    f.fetch.mockImplementationOnce(
+      async () =>
+        new Response(new ReadableStream<Uint8Array>({ cancel }), {
+          status: 502,
+        }),
+    );
+    const pending = boundedSummary(f);
+    const outcome = observeArchiveRead(pending);
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(outcome.settled, "SUMMARY_INVALID_ASSET_AWAITED_CANCEL").toBe(
+        true,
+      );
+      expect(outcome.error).toBeUndefined();
+      expect(outcome.value).toBeNull();
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(f.fetch).toHaveBeenCalledOnce();
+      expect(f.legacy.get).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      heldCancel.resolve();
+      await pending.catch(() => {});
+      await vi.advanceTimersByTimeAsync(0);
+    }
+  });
+
+  it("a legacy absence arriving after the deadline remains unavailable", async () => {
+    clock();
+    const f = fixture();
+    const held = deferredArchiveRead<R2ObjectBody | null>();
+    const queries: string[] = [];
+    f.fail((_sql, params) => {
+      queries.push(String(params[0]));
+    });
+    f.legacy.get.mockImplementationOnce(async () => held.promise);
+    const pending = boundedSummary(f);
+    const outcome = observeArchiveRead(pending);
+    try {
+      await vi.advanceTimersByTimeAsync(20);
+      expect(outcome.settled).toBe(true);
+      expect(outcome.error).toBeInstanceOf(RetainedHistoryUnavailableError);
+      expect(outcome.value).toBeUndefined();
+      held.resolve(null);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(queries).toEqual([prefix + ACCOUNT_SUMMARY_POINTER_KEY]);
+      expect(f.legacy.get).toHaveBeenCalledOnce();
+      expect(f.fetch).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      held.resolve(null);
+      await pending.catch(() => {});
+      await vi.advanceTimersByTimeAsync(0);
+    }
+  });
 });

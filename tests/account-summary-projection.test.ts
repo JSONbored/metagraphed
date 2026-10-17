@@ -401,6 +401,9 @@ describe("loadAccountSummaryProjection", () => {
       null,
     );
     assert.equal(await loadAccountSummaryProjection(null, HOT, FRESH), null);
+    const empty = archive(published({ [HOT]: [group()] }));
+    assert.equal(await loadAccountSummaryProjection(empty.env, "", FRESH), null);
+    assert.deepEqual(empty.asked, [], "an empty account must not read storage");
     assert.equal(
       await loadAccountSummaryProjection(
         archive({}, { throws: true }).env,
@@ -1513,6 +1516,95 @@ describe("one bounded account-summary artifact read", () => {
       assert.equal(pointers, 2, "SUMMARY_OLD_MEMO_EVICTED_NEW_LOOKUP");
     } finally {
       held.resolve(null);
+      await first.catch(() => {});
+    }
+  });
+
+  test("an old pending shard miss preserves a newer generation's memo", async () => {
+    budgetClock();
+    const next = "20260814T110000Z";
+    const nextShard = accountSummaryShardKey(HOT, SHARDS, next);
+    const held = deferredRead<JsonObject | null>();
+    let pointers = 0;
+    const get = vi.fn(async (key: string) => {
+      if (key === ACCOUNT_SUMMARY_POINTER_KEY) {
+        pointers += 1;
+        return {
+          json: async () =>
+            pointer({ generation: pointers === 1 ? GEN : next }),
+        };
+      }
+      if (key === shard) return held.promise;
+      return {
+        json: async () => ({ accounts: { [HOT]: [group({ count: 7 })] } }),
+      };
+    });
+    const env = { METAGRAPH_ARCHIVE: { get }, METAGRAPH_R2_TIMEOUT_MS: "20" };
+    const first = loadAccountSummaryProjection(env, HOT);
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      assert.deepEqual(
+        get.mock.calls.map(([key]) => key),
+        [ACCOUNT_SUMMARY_POINTER_KEY, shard],
+      );
+      resetAccountSummaryPointerCache();
+      assert.equal((await readFound(env, HOT)).groups[0].count, 7);
+      held.resolve(null);
+      const recovered = await first;
+      assert.ok(recovered && recovered.absent !== true);
+      assert.equal(recovered.groups[0].count, 7);
+      await readFound(env, HOT);
+      assert.equal(pointers, 2, "SUMMARY_OLD_SHARD_MISS_EVICTED_NEW_MEMO");
+      assert.deepEqual(
+        get.mock.calls.map(([key]) => key),
+        [
+          ACCOUNT_SUMMARY_POINTER_KEY,
+          shard,
+          ACCOUNT_SUMMARY_POINTER_KEY,
+          nextShard,
+          nextShard,
+          nextShard,
+        ],
+      );
+    } finally {
+      held.resolve(null);
+      await first.catch(() => {});
+    }
+  });
+
+  test("an old pending pointer timeout preserves a newer successful memo", async () => {
+    budgetClock();
+    const held = deferredRead<JsonObject | null>();
+    const lateJson = vi.fn(async () => pointer());
+    let pointers = 0;
+    const get = vi.fn(async (key: string) => {
+      if (key === ACCOUNT_SUMMARY_POINTER_KEY) {
+        pointers += 1;
+        if (pointers === 1) return held.promise;
+        return {
+          json: async () => pointer({ generation: "20260814T110000Z" }),
+        };
+      }
+      return { json: async () => ({ accounts: { [HOT]: [group()] } }) };
+    });
+    const env = { METAGRAPH_ARCHIVE: { get }, METAGRAPH_R2_TIMEOUT_MS: "20" };
+    const first = loadAccountSummaryProjection(env, HOT);
+    const outcome = observeRead(first);
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      resetAccountSummaryPointerCache();
+      await readFound(env, HOT);
+      await vi.advanceTimersByTimeAsync(20);
+      assert.equal(outcome.settled, true);
+      assert.ok(outcome.error instanceof RetainedHistoryUnavailableError);
+      await readFound(env, HOT);
+      assert.equal(pointers, 2, "SUMMARY_OLD_TIMEOUT_EVICTED_NEW_MEMO");
+      held.resolve({ json: lateJson });
+      await vi.advanceTimersByTimeAsync(0);
+      assert.equal(lateJson.mock.calls.length, 0);
+      assert.equal(pointers, 2);
+    } finally {
+      held.resolve({ json: lateJson });
       await first.catch(() => {});
     }
   });

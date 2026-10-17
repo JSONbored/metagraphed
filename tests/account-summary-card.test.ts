@@ -318,6 +318,26 @@ describe("answerAccountSummary", () => {
     });
   }
 
+  test("an unexpected indexed error propagates instead of becoming a budget gap", async () => {
+    const failure = new Error("unexpected account-index failure");
+    const groups = vi
+      .spyOn(indexedAccounts, "loadIndexedAccountFeedGroups")
+      .mockRejectedValue(failure);
+    const page = vi
+      .spyOn(indexedAccounts, "loadIndexedAccountFeedPage")
+      .mockResolvedValue([]);
+    try {
+      await assert.rejects(
+        answerAccountSummary(runner({ rows: [] }) as never, SS58),
+        (error) => error === failure,
+      );
+      assert.equal(groups.mock.calls.length, 1);
+    } finally {
+      groups.mockRestore();
+      page.mockRestore();
+    }
+  });
+
   test("an unusable address declines rather than scanning every account", async () => {
     lakehouse();
     const answer = await answerAccountSummary(
