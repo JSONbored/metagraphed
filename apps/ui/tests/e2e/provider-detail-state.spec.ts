@@ -1,7 +1,19 @@
 import { expect, test, type Page } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
+import {
+  attachOrdinaryFixtureDiagnostics,
+  recordOrdinaryFixturePhase,
+  startOrdinaryFixtureDiagnostics,
+} from "./native-runtime-diagnostics.ts";
 
 test.use({ serviceWorkers: "block" });
+test.beforeEach(async ({ page, baseURL }, testInfo) => {
+  if (testInfo.title === "keeps registered services visible when probes fail and retries independently")
+    await startOrdinaryFixtureDiagnostics(page, baseURL);
+});
+test.afterEach(async ({ page }, testInfo) => {
+  await attachOrdinaryFixtureDiagnostics(page, testInfo);
+});
 const url = "https://example.test/v1/run?model=a%2Fb&mode=fast#sample";
 const service = (id: string, auth?: boolean) => ({
   id,
@@ -19,11 +31,15 @@ const response = (rows: unknown[], next: string | null = null, total = rows.leng
   meta: { pagination: { total, next_cursor: next } },
 });
 async function loaded(page: Page) {
+  recordOrdinaryFixturePhase(page, "provider-navigation-start");
   await gotoThroughRestart(page, "/providers/lium");
+  recordOrdinaryFixturePhase(page, "provider-navigation-returned");
   await page.waitForFunction(
     () => (window as unknown as { __MG_HYDRATED__: boolean }).__MG_HYDRATED__,
   );
+  recordOrdinaryFixturePhase(page, "provider-hydrated");
   await expect(page.locator("#surfaces .mg-dt-row:not(.mg-dt-skeleton)").first()).toBeVisible();
+  recordOrdinaryFixturePhase(page, "provider-rows-visible");
 }
 
 test.describe("Provider services and independent probe states", () => {
@@ -66,19 +82,33 @@ test.describe("Provider services and independent probe states", () => {
     page,
   }) => {
     let fail = true;
-    await page.route("**/api/v1/providers/lium/endpoints*", (route) =>
-      fail ? route.fulfill({ status: 503, json: { error: "fixture failure" } }) : route.continue(),
-    );
+    await page.route("**/api/v1/providers/lium/endpoints*", async (route) => {
+      const failing = fail;
+      recordOrdinaryFixturePhase(page, "provider-probe-route-matched", { failing });
+      try {
+        if (failing) await route.fulfill({ status: 503, json: { error: "fixture failure" } });
+        else await route.continue();
+        recordOrdinaryFixturePhase(page, "provider-probe-route-completed", { failing });
+      } catch (error) {
+        recordOrdinaryFixturePhase(page, "provider-probe-route-error", {
+          error_type: error instanceof Error ? error.name.slice(0, 60) : typeof error,
+        });
+        throw error;
+      }
+    });
     await loaded(page);
     const error = page
       .locator("#surfaces")
       .getByRole("alert")
       .filter({ hasText: "provider endpoint probes" });
     await expect(error).toBeVisible();
+    recordOrdinaryFixturePhase(page, "provider-probe-error-visible");
     await expect(page.locator("#surfaces .mg-dt-row").first()).toBeVisible();
     fail = false;
     await error.getByRole("button", { name: "Retry", exact: true }).click();
+    recordOrdinaryFixturePhase(page, "provider-retry-clicked");
     await expect(error).toHaveCount(0);
+    recordOrdinaryFixturePhase(page, "provider-recovered");
   });
 
   test("follows the supplied cursor, retries a failed next page and keeps published counts", async ({

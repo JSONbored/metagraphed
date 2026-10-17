@@ -355,3 +355,113 @@ export async function attachHtmlDiagnostics(
     }),
   });
 }
+
+// Scoped observations for two ordinary fixture cases. No waits, routing or app state changes.
+const ordinaryFixtureDiagnostics = new WeakMap<Page, {
+  runtime: Awaited<ReturnType<typeof startRuntimeDiagnostics>>;
+  events: Observation[];
+  record: (phase: string, detail?: Record<string, string | number | boolean>) => void;
+  cleanup: () => void;
+  dropped: () => number;
+}>();
+
+export async function startOrdinaryFixtureDiagnostics(
+  page: Page,
+  baseURL: string | undefined,
+) {
+  const runtime = await startRuntimeDiagnostics(page, baseURL);
+  const origin = loopbackOrigin(baseURL ?? "");
+  const events: Observation[] = [];
+  const started = Date.now();
+  let dropped = 0;
+  let nextRequest = 0;
+  const ids = new WeakMap<Request, number>();
+  const add = (event: string, detail: Observation) => {
+    if (events.length >= 200) {
+      dropped += 1;
+      return;
+    }
+    events.push({ elapsed_ms: Date.now() - started, event, ...detail });
+  };
+  add("observation-start", { started_at_utc: new Date(started).toISOString() });
+  const selected = (request: Request, failed = false) => {
+    const url = new URL(request.url());
+    if (url.origin === origin && url.pathname.startsWith("/assets/") && url.pathname.endsWith(".js"))
+      return failed || /\/settings-panel-[^/]+\.js$/.test(url.pathname) ? url : null;
+    if (url.origin === "http://127.0.0.1:8081" &&
+      ["/api/v1/providers/lium", "/api/v1/providers/lium/endpoints", "/api/v1/surfaces"].includes(url.pathname))
+      return url;
+    return null;
+  };
+  const observe = (event: string, request: Request, status?: number) => {
+    const url = selected(request, event === "request-failed");
+    if (!url) return;
+    let id = ids.get(request);
+    if (id === undefined) {
+      id = ++nextRequest;
+      ids.set(request, id);
+    }
+    const reason = request.failure()?.errorText ?? "";
+    add(event, {
+      request_id: id,
+      path: url.pathname.slice(0, 200),
+      method: request.method(),
+      resource_type: request.resourceType(),
+      navigation: request.isNavigationRequest(),
+      status,
+      ...(event === "request-failed" ? {
+        reason: /^net::ERR_[A-Z_]+$/.test(reason) ? reason : "request-failed",
+      } : {}),
+    });
+  };
+  const onRequest = (request: Request) => observe("request", request);
+  const onResponse = (response: Response) => observe("response", response.request(), response.status());
+  const onFinished = (request: Request) => observe("request-finished", request);
+  const onFailed = (request: Request) => observe("request-failed", request);
+  page.on("request", onRequest);
+  page.on("response", onResponse);
+  page.on("requestfinished", onFinished);
+  page.on("requestfailed", onFailed);
+  ordinaryFixtureDiagnostics.set(page, {
+    runtime,
+    events,
+    record: (phase, detail = {}) => add("phase", { phase: phase.slice(0, 80), ...detail }),
+    cleanup: () => {
+      page.off("request", onRequest);
+      page.off("response", onResponse);
+      page.off("requestfinished", onFinished);
+      page.off("requestfailed", onFailed);
+    },
+    dropped: () => dropped,
+  });
+}
+
+export function recordOrdinaryFixturePhase(
+  page: Page,
+  phase: string,
+  detail?: Record<string, string | number | boolean>,
+) {
+  ordinaryFixtureDiagnostics.get(page)?.record(phase, detail);
+}
+
+export async function attachOrdinaryFixtureDiagnostics(page: Page, testInfo: TestInfo) {
+  const observations = ordinaryFixtureDiagnostics.get(page);
+  if (!observations) return;
+  observations.cleanup();
+  try {
+    await observations.runtime.attach(testInfo);
+  } finally {
+    await testInfo.attach("ordinary-fixture-observations", {
+      contentType: "application/json",
+      body: JSON.stringify({
+        version: 1,
+        status: testInfo.status,
+        retry: testInfo.retry,
+        event_cap: 200,
+        dropped_events: observations.dropped(),
+        events: observations.events,
+      }),
+    });
+    ordinaryFixtureDiagnostics.delete(page);
+  }
+}
