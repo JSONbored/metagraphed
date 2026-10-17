@@ -142,6 +142,26 @@ test("sharing SVG normalizes raster data MIME and local paint fragments", async 
   assert.equal((await sharingPng(prepared)).width, 16);
 });
 
+test("sharing SVG renders numeric-leading local fragment identifiers", async () => {
+  const svg =
+    `${SVG_START} width="16" height="16"><defs>` +
+    '<clipPath id="5a1887327b"><rect x="4" y="4" ' +
+    'width="8" height="8"/></clipPath></defs>' +
+    '<rect width="16" height="16" fill="#ff0000" ' +
+    'clip-path="url(#5a1887327b)"/></svg>';
+  const prepared = await prepareLogoInput(Buffer.from(svg), ".svg");
+  const output = await sharingPng(prepared);
+  const decoded = await pixels(output.data);
+  assert.equal(decoded.info.width, 16);
+  assert.equal(decoded.info.height, 16);
+  assert.equal(decoded.data[3], 0);
+  const center = (8 * 16 + 8) * 4;
+  assert.deepEqual(
+    [...decoded.data.subarray(center, center + 4)],
+    [255, 0, 0, 255],
+  );
+});
+
 test("sharing SVG refuses active and external resources before decoding", async () => {
   const bad = [
     '<script>alert(1)</script>',
@@ -159,6 +179,7 @@ test("sharing SVG refuses active and external resources before decoding", async 
     '<other:image href="https://example.org/logo.png"/>',
     '<rect style="fill:url(https://example.org/logo.svg)"/>',
     '<rect fill="url(https://example.org/logo.svg)"/>',
+    '<rect fill="url(https://example.org/logo.svg#5a1887327b)"/>',
     '<rect fill="url/**/(https://example.org/logo.svg)"/>',
     '<rect fill="u\\72l(https://example.org/logo.svg)"/>',
     '<style>@import "https://example.org/style.css";</style>',
