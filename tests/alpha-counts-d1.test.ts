@@ -248,9 +248,14 @@ test("capture count plans seek past stale rows while the primary key owns unique
     { name: "census", ...census },
     { name: "completion", ...completion },
   ];
-  const explain = async (statement: ProducerStatement) => {
+  const explain = async (
+    statement: ProducerStatement,
+    phase: "indexed" | "unindexed" | "primary",
+  ) => {
+    // Distinct SQL text prepares each schema phase independently.
+    const prefix = `EXPLAIN QUERY PLAN /* ${phase} */ `;
     const plan = await store.query<{ detail: string }>(
-      "EXPLAIN QUERY PLAN " + statement.text,
+      prefix + statement.text,
       statement.values,
     );
     return plan.map((row) => row.detail);
@@ -259,7 +264,7 @@ test("capture count plans seek past stale rows while the primary key owns unique
   const scan = /SCAN validator_nominator_counts\b/;
   const indexedPlans: { query: string; details: string[] }[] = [];
   for (const query of queries) {
-    const details = await explain(query);
+    const details = await explain(query, "indexed");
     indexedPlans.push({ query: query.name, details });
     const seeks = details.some((detail) => seek.test(detail));
     const scans = details.some((detail) => scan.test(detail));
@@ -286,9 +291,16 @@ test("capture count plans seek past stale rows while the primary key owns unique
   // Only this disposable native fixture loses the proposed range index.
   // The receipt remains correct, but unrelated legacy rows now require scans.
   await db.prepare("DROP INDEX alpha_count_capture").run();
+  const remaining = await db
+    .prepare("PRAGMA index_list(validator_nominator_counts)")
+    .all<{ name: string }>();
+  const stillPresent = remaining.results.some(
+    (index) => index.name === "alpha_count_capture",
+  );
+  assert.equal(stillPresent, false);
   const scanPlans: { query: string; details: string[] }[] = [];
   for (const query of queries) {
-    const details = await explain(query);
+    const details = await explain(query, "unindexed");
     scanPlans.push({ query: query.name, details });
     const scans = details.some((detail) => scan.test(detail));
     const seeks = details.some((detail) => seek.test(detail));
@@ -298,13 +310,14 @@ test("capture count plans seek past stale rows while the primary key owns unique
   }
   const unindexed = { phase: "without-capture-index", plans: scanPlans };
   console.info("Alpha count plans", JSON.stringify(unindexed));
+  const lookupSql =
+    "SELECT nominator_count,captured_at FROM validator_nominator_counts " +
+    "WHERE hotkey=?";
   const lookup = {
-    text:
-      "SELECT nominator_count,captured_at FROM validator_nominator_counts " +
-      "WHERE hotkey=?",
+    text: lookupSql,
     values: ["hot-a"],
   };
-  const lookupDetails = await explain(lookup);
+  const lookupDetails = await explain(lookup, "primary");
   const primaryLookup = /USING PRIMARY KEY \(hotkey=\?\)/;
   const usesPrimary = lookupDetails.some((detail) => primaryLookup.test(detail));
   assert.ok(usesPrimary, lookupDetails.join("\n"));
