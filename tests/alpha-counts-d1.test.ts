@@ -206,6 +206,117 @@ test("supported count deliveries commit one bounded atomic write", async () => {
   );
 });
 
+test("capture count plans seek past stale rows while the primary key owns uniqueness", async () => {
+  const { db, store } = await fixture();
+  const stale = Array.from({ length: 1000 }, (_, index) => `stale-${index}`);
+  const seed =
+    "INSERT INTO validator_nominator_counts" +
+    "(hotkey,nominator_count,captured_at) " +
+    "SELECT value,1,?+(CAST(key AS INTEGER)%2) FROM json_each(?)";
+  await store.run(seed, [AT + 100, JSON.stringify(stale)]);
+  const anchor = await publish(db);
+  const rows = [countRow(anchor, "hot-a"), countRow(anchor, "hot-b")];
+  const reads = vi.spyOn(store, "first");
+  const transaction = vi.spyOn(store, "transaction");
+  const receipt = await writeAlphaCountsD1(store, rows, anchor, 2, AT + 10);
+  assert.equal(receipt.complete, true);
+  assert.equal(receipt.applied_count, 2);
+  assert.equal(reads.mock.calls.length, 1);
+  assert.equal(transaction.mock.calls.length, 1);
+  const totalSql = "SELECT COUNT(*) AS n FROM validator_nominator_counts";
+  const total = await store.first<{ n: number }>(totalSql);
+  assert.equal(total?.n, stale.length + 2);
+  const statements = transaction.mock.calls[0]![0];
+  const orphan = statements[0]!;
+  const census = statements.find((statement) =>
+    statement.text.includes("WITH known AS"),
+  );
+  const completion = statements.find((statement) =>
+    statement.text.startsWith("UPDATE validator_nominator_counts_passes SET"),
+  );
+  const orphanSource = "validator_nominator_counts WHERE captured_at";
+  assert.ok(orphan.text.includes(orphanSource));
+  assert.ok(census);
+  assert.ok(completion);
+  const status = {
+    text: reads.mock.calls[0]![0],
+    values: reads.mock.calls[0]![1],
+  };
+  const queries = [
+    { name: "status", ...status },
+    { name: "orphan", ...orphan },
+    { name: "census", ...census },
+    { name: "completion", ...completion },
+  ];
+  const explain = async (statement: ProducerStatement) => {
+    const plan = await store.query<{ detail: string }>(
+      "EXPLAIN QUERY PLAN " + statement.text,
+      statement.values,
+    );
+    return plan.map((row) => row.detail);
+  };
+  const seek = /USING COVERING INDEX alpha_count_capture \(captured_at=\?\)/;
+  const scan = /SCAN validator_nominator_counts\b/;
+  const indexedPlans: { query: string; details: string[] }[] = [];
+  for (const query of queries) {
+    const details = await explain(query);
+    indexedPlans.push({ query: query.name, details });
+    const seeks = details.some((detail) => seek.test(detail));
+    const scans = details.some((detail) => scan.test(detail));
+    const message = details.join("\n");
+    assert.ok(seeks, message);
+    assert.ok(!scans, message);
+  }
+  const indexed = { phase: "with-capture-index", plans: indexedPlans };
+  console.info("Alpha count plans", JSON.stringify(indexed));
+  const indexList = await db
+    .prepare("PRAGMA index_list(validator_nominator_counts)")
+    .all<{ name: string; unique: number; origin: string }>();
+  const captureIndex = indexList.results.find(
+    (index) => index.name === "alpha_count_capture",
+  );
+  const primary = indexList.results.find((index) => index.origin === "pk");
+  assert.equal(captureIndex?.unique, 0);
+  assert.equal(primary?.unique, 1);
+  const duplicate =
+    "INSERT INTO validator_nominator_counts" +
+    "(hotkey,nominator_count,captured_at) VALUES('hot-a',1,?)";
+  await assert.rejects(store.run(duplicate, [AT]), /UNIQUE constraint failed/);
+
+  // Only this disposable native fixture loses the proposed range index.
+  // The receipt remains correct, but unrelated legacy rows now require scans.
+  await db.prepare("DROP INDEX alpha_count_capture").run();
+  const scanPlans: { query: string; details: string[] }[] = [];
+  for (const query of queries) {
+    const details = await explain(query);
+    scanPlans.push({ query: query.name, details });
+    const scans = details.some((detail) => scan.test(detail));
+    const seeks = details.some((detail) => seek.test(detail));
+    const message = details.join("\n");
+    assert.ok(scans, message);
+    assert.ok(!seeks, message);
+  }
+  const unindexed = { phase: "without-capture-index", plans: scanPlans };
+  console.info("Alpha count plans", JSON.stringify(unindexed));
+  const lookup = {
+    text:
+      "SELECT nominator_count,captured_at FROM validator_nominator_counts " +
+      "WHERE hotkey=?",
+    values: ["hot-a"],
+  };
+  const lookupDetails = await explain(lookup);
+  const primaryLookup = /USING PRIMARY KEY \(hotkey=\?\)/;
+  const usesPrimary = lookupDetails.some((detail) => primaryLookup.test(detail));
+  assert.ok(usesPrimary, lookupDetails.join("\n"));
+  await assert.rejects(store.run(duplicate, [AT]), /UNIQUE constraint failed/);
+  const statusAfter = await readAlphaCountStatusD1(store, anchor, 2);
+  assert.deepEqual(statusAfter, receipt);
+  const replay = await writeAlphaCountsD1(store, rows, anchor, 2, AT + 11);
+  assert.deepEqual(replay, receipt);
+  const after = await store.first<{ n: number }>(totalSql);
+  assert.equal(after?.n, stale.length + 2);
+});
+
 test("count admission bounds rows and UTF8 bytes before writing", async () => {
   const { store } = await fixture();
   const anchor = anchorFor(0, AT, 100, 5_001);
