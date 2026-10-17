@@ -402,7 +402,10 @@ describe("loadAccountSummaryProjection", () => {
     );
     assert.equal(await loadAccountSummaryProjection(null, HOT, FRESH), null);
     const empty = archive(published({ [HOT]: [group()] }));
-    assert.equal(await loadAccountSummaryProjection(empty.env, "", FRESH), null);
+    assert.equal(
+      await loadAccountSummaryProjection(empty.env, "", FRESH),
+      null,
+    );
     assert.deepEqual(empty.asked, [], "an empty account must not read storage");
     assert.equal(
       await loadAccountSummaryProjection(
