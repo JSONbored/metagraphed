@@ -1163,7 +1163,9 @@ for (const destination of [
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await gotoThroughRestart(page, "/about");
-    await expect(page.getByRole("heading", { name: "Methodology & scope", level: 1 })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Methodology & scope", level: 1 }),
+    ).toBeVisible();
     await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
     const origin = new URL(page.url()).origin;
     let unavailable = true;
@@ -1190,7 +1192,9 @@ for (const destination of [
       }
     });
     await page.locator("header").getByRole("link", { name: destination.link, exact: true }).click();
-    const notice = page.getByRole("status").filter({ hasText: "Data source temporarily unavailable" });
+    const notice = page
+      .getByRole("status")
+      .filter({ hasText: "Data source temporarily unavailable" });
     await expect(notice).toBeVisible();
     expect(new URL(page.url()).pathname).toBe(destination.path);
     expect(criticalRequests).toBeGreaterThan(0);
