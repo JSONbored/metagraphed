@@ -47,6 +47,16 @@ beforeAll(async () => {
   // Reproduce the deployment script's build-only phase with the installed
   // pinned CLI. A clean env excludes account credentials and telemetry;
   // production NODE_ENV avoids Vitest changing Wrangler's bundle defines.
+  const childEnv: Record<string, string | undefined> = {
+    PATH: process.env.PATH,
+    HOME: process.env.HOME,
+    CI: "true",
+    NODE_ENV: "production",
+    XDG_CONFIG_HOME: path.join(outdir, "config"),
+    XDG_CACHE_HOME: path.join(outdir, "cache"),
+    CLOUDFLARE_AUTH_USE_KEYRING: "false",
+    WRANGLER_SEND_METRICS: "false",
+  };
   try {
     await execFile(
       process.execPath,
@@ -66,16 +76,9 @@ beforeAll(async () => {
       ],
       {
         cwd: repoRoot,
-        env: {
-          PATH: process.env.PATH,
-          HOME: process.env.HOME,
-          CI: "true",
-          NODE_ENV: "production",
-          XDG_CONFIG_HOME: path.join(outdir, "config"),
-          XDG_CACHE_HOME: path.join(outdir, "cache"),
-          CLOUDFLARE_AUTH_USE_KEYRING: "false",
-          WRANGLER_SEND_METRICS: "false",
-        },
+        // Generated Worker types add required application fields to ProcessEnv;
+        // those bindings do not belong in this isolated host CLI environment.
+        env: childEnv as NodeJS.ProcessEnv,
         timeout: 60_000,
         maxBuffer: 1024 * 1024,
       },
