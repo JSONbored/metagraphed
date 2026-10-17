@@ -4,6 +4,7 @@ import { gzipSync } from "node:zlib";
 import { SUBNET_SLOT_CAP } from "../../src/lib/metagraphed/bittensor";
 import { OG_CARD_VERSION } from "../../src/lib/metagraphed/og-card-limits";
 import { gotoThroughRestart } from "./server-restart.ts";
+import { attachHtmlDiagnostics } from "./native-runtime-diagnostics.ts";
 import { HUB_COPY, HUB_DESCRIPTION_MAX, HUB_TITLE_MAX } from "../../src/lib/metagraphed/hub-copy";
 
 // Retained PostHog hydration incidents affected subnet and validator details.
@@ -640,8 +641,11 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
   };
 
   for (const path of Object.keys(HUB_COPY) as Array<keyof typeof HUB_COPY>) {
-    test(`${path} stays under the HTML ratchet`, async ({ request }) => {
-      const html = await (await request.get(path)).text();
+    test(`${path} stays under the HTML ratchet`, async ({ request }, testInfo) => {
+      const response = await request.get(path);
+      const html = await response.text();
+      if (path === "/" || path === "/subnets")
+        await attachHtmlDiagnostics(testInfo, response.url(), path, html);
       const kib = Math.round(Buffer.byteLength(html, "utf8") / 1024);
       expect(
         kib,

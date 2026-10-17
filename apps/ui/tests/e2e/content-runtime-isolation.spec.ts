@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { fromJSON, toJSONAsync } from "seroval";
 import { gotoThroughRestart } from "./server-restart.ts";
+import { startRuntimeDiagnostics } from "./native-runtime-diagnostics.ts";
 
 const OPENAPI_CHUNK = /\/assets\/openapi-page-[^/]+\.js(?:\?|$)/;
 
@@ -13,6 +14,15 @@ function recordOpenAPIChunks(page: Parameters<typeof gotoThroughRestart>[0]): st
 }
 
 test.describe("content route runtime isolation", () => {
+  const diagnostics = new WeakMap<object, Awaited<ReturnType<typeof startRuntimeDiagnostics>>>();
+  test.beforeEach(async ({ page, baseURL }, testInfo) => {
+    if (testInfo.title === "a malformed server-function link cannot become an HTML document")
+      diagnostics.set(page, await startRuntimeDiagnostics(page, baseURL));
+  });
+  test.afterEach(async ({ page }, testInfo) => {
+    await diagnostics.get(page)?.attach(testInfo);
+  });
+
   test("a hand-written guide does not load the API-reference renderer", async ({ page }) => {
     const openapiChunks = recordOpenAPIChunks(page);
     await gotoThroughRestart(page, "/docs/mcp");
