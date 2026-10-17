@@ -489,6 +489,8 @@ import {
   buildValidatorDetail,
   composeValidatorComparison,
   overlayFeaturedValidators,
+  unavailableValidatorCapital,
+  unavailableRealizedReturns,
 } from "./metagraph-neurons.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
 import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.ts";
@@ -625,7 +627,10 @@ import {
   overlaySubnetHistoryColdTier,
   overlayValidatorHistoryColdTier,
 } from "./neuron-daily-cold-tier.ts";
-import { buildValidatorHistory } from "./validator-history.ts";
+import {
+  buildValidatorHistory,
+  unavailableValidatorHistoryCapital,
+} from "./validator-history.ts";
 import { loadEconomicsTrends } from "./economics-trends.ts";
 import { loadSubnetTrajectory } from "./analytics-live.ts";
 import {
@@ -1817,6 +1822,11 @@ function extrinsicNode(extrinsic: Row | null | undefined) {
 function validatorNode(validator: Row) {
   return {
     ...validator,
+    // A service response from an older deployment cannot establish principal
+    // merely by carrying numeric values derived from neuron voting weight.
+    ...unavailableValidatorCapital(),
+    ...unavailableRealizedReturns(),
+    stake_dominance: null,
     // `featured` is absent from the validator DETAIL artifact by design --
     // buildValidatorDetail never passes featuredHotkeys (src/metagraph-neurons.ts:362),
     // which keeps that artifact's shape unchanged. `=== true` turned that
@@ -6230,7 +6240,7 @@ const rootValue = {
       window: data.window ?? label,
       netuid: (data.netuid as number | null) ?? null,
       point_count: data.point_count ?? 0,
-      points: data.points || [],
+      points: rowsOf(data.points).map(unavailableValidatorHistoryCapital),
     };
   },
 

@@ -8,10 +8,6 @@ import {
   EntityHero,
   Fact,
   FactSentence,
-  FactStrip,
-  LineWithWindow,
-  RangeControl,
-  RankGrid,
   RankedRails,
   Raw,
   type DataTableColumn,
@@ -27,45 +23,30 @@ import { StakeUnstakeLauncher } from "@/components/metagraphed/stake-unstake-lau
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import {
-  apyPoints,
-  changeOver,
   fmtAlpha,
   fmtScore,
   fmtStake,
-  historyPoints,
+  membershipsBySubnet,
   nominatorRail,
-  peerWindow,
   shortKey,
-  stakeBySubnet,
-  type ValidatorWindow,
 } from "@/components/metagraphed/validator-detail/validator-detail-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import {
   SUBNETS_ALL_LIMIT,
   subnetsQuery,
   validatorDetailQuery,
-  validatorHistoryQuery,
   validatorNominatorsQuery,
-  validatorOperatorDirectoryQuery,
 } from "@/lib/metagraphed/queries";
-import { deltaCell, formatNumber, formatPct } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { deserializeOperatorRows } from "@/lib/metagraphed/validator-operators";
+import { VALIDATOR_PRINCIPAL_UNAVAILABLE } from "@/lib/metagraphed/validator-principal";
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
 import { Route } from "./validators.$hotkey";
 
 const SECTIONS = [
-  { id: "stake", name: "Stake by subnet" },
+  { id: "scope", name: "Data scope" },
   { id: "memberships", name: "Per-subnet" },
   { id: "nominators", name: "Nominators" },
-  { id: "momentum", name: "Momentum" },
-  { id: "peers", name: "Peers" },
-] as const;
-
-const WINDOWS = [
-  { value: "7d", label: "7d" },
-  { value: "30d", label: "30d" },
-  { value: "90d", label: "90d" },
 ] as const;
 
 // The first membership ledger needs a subnet's identity only. Keep the
@@ -75,9 +56,7 @@ const VALIDATOR_SUBNET_NAME_FIELDS = "netuid,name";
 
 const apiPaths = (hotkey: string) => [
   `/api/v1/validators/${hotkey}`,
-  `/api/v1/validators/${hotkey}/history`,
   `/api/v1/validators/${hotkey}/nominators`,
-  `/api/v1/validators/operators`,
 ];
 
 function ApiSources({ paths }: { paths: string[] }) {
@@ -87,8 +66,6 @@ function ApiSources({ paths }: { paths: string[] }) {
 
 export function ValidatorDetailPage() {
   const { hotkey } = Route.useParams();
-  const { window } = Route.useSearch();
-  const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
   const [showAllNominators, setShowAllNominators] = useState(false);
   const paths = useMemo(() => apiPaths(hotkey), [hotkey]);
@@ -97,17 +74,6 @@ export function ValidatorDetailPage() {
   const { data: detailResult } = useSuspenseQuery(validatorDetailQuery(hotkey));
   const detail = detailResult.data;
   const { ref: nominatorsRef, nearViewport: nominatorsNearViewport } = useNearViewport("0px 0px");
-  const { ref: momentumRef, nearViewport: momentumNearViewport } = useNearViewport("0px 0px");
-  const { ref: peersRef, nearViewport: peersNearViewport } = useNearViewport("0px 0px");
-  // Memberships answer the route's first scan. The movement history, delegator
-  // ledger, and global peer ranking are all later evidence regions, so retain
-  // their anchors and stateful instruments but do not make their large reads
-  // compete with the identity and membership data on a cold profile.
-  const history = useQuery({
-    ...validatorHistoryQuery(hotkey, window),
-    enabled: momentumNearViewport,
-    retry: 0,
-  });
   const nominators = useQuery({
     ...validatorNominatorsQuery(hotkey, { limit: 200 }),
     enabled: nominatorsNearViewport,
@@ -115,11 +81,6 @@ export function ValidatorDetailPage() {
   });
   const subnets = useQuery({
     ...subnetsQuery({ limit: SUBNETS_ALL_LIMIT, fields: VALIDATOR_SUBNET_NAME_FIELDS }),
-    retry: 0,
-  });
-  const allValidators = useQuery({
-    ...validatorOperatorDirectoryQuery(),
-    enabled: peersNearViewport,
     retry: 0,
   });
 
@@ -131,32 +92,14 @@ export function ValidatorDetailPage() {
     return (netuid: number) => map.get(netuid) ?? `SN${netuid}`;
   }, [subnets.data]);
 
-  const memberships = detail.subnets ?? [];
-  const stakeRails = stakeBySubnet(memberships, nameOf, (value) => fmtAlpha(value));
-  const points = history.data?.data.points ?? [];
-  const stakeSeries = historyPoints(points, (point) => point.total_stake_tao);
-  const yieldSeries = apyPoints(points);
+  const memberships = membershipsBySubnet(detail.subnets ?? []);
   const nominatorRows = nominatorRail(nominators.data?.data ?? []);
 
   const operator = detail.coldkey_identity?.name?.trim() || shortKey(hotkey);
-  const peers = useMemo(() => {
-    const operators = deserializeOperatorRows(allValidators.data?.data.operators ?? []);
-    const ranked = operators.map((row) => ({
-      hotkey: row.primaryHotkey,
-      name: row.name,
-      totalStakeTao: row.totalStakeTao,
-    }));
-    const current = operators.find((row) => row.keys.some((key) => key.hotkey === hotkey));
-    return peerWindow(ranked, current?.primaryHotkey ?? hotkey);
-  }, [allValidators.data, hotkey]);
 
   const permits = memberships.filter((membership) => membership.validator_permit).length;
   const nominatorsLoading = nominatorsNearViewport && (!hydrated || nominators.isPending);
   const showNominatorsLoading = nominatorsNearViewport && hydrated && nominators.isPending;
-  const historyLoading = momentumNearViewport && (!hydrated || history.isPending);
-  const showHistoryLoading = momentumNearViewport && hydrated && history.isPending;
-  const peersLoading = peersNearViewport && (!hydrated || allValidators.isPending);
-  const showPeersLoading = peersNearViewport && hydrated && allValidators.isPending;
 
   // The sentence carries IDENTITY, the strip carries the numbers (#11693).
   // Four of the six chips here restated a cell verbatim -- "116 memberships"
@@ -170,10 +113,10 @@ export function ValidatorDetailPage() {
   ];
 
   const cells: FactCells = [
-    { label: "Stake value (τ)", value: fmtStake(detail.total_stake_tao) },
+    { label: "Capital value", value: "Unavailable" },
     {
       label: "Est. APY",
-      value: typeof detail.apy_estimate === "number" ? `${formatPct(detail.apy_estimate, 1)}` : "—",
+      value: "Unavailable",
     },
     {
       // One cell, not two: "Memberships 116" beside "Permits 116" reads as the
@@ -202,19 +145,18 @@ export function ValidatorDetailPage() {
     { key: "uid", label: "UID", kind: "number", sortable: true, value: (row) => row.uid },
     {
       key: "stake_alpha",
-      label: "Stake (α)",
+      label: "Voting weight",
       kind: "number",
-      sortable: true,
       value: (row) => row.stake_alpha ?? null,
-      format: (value) => (typeof value === "number" ? fmtAlpha(value) : "—"),
+      format: (value) => (typeof value === "number" ? formatDecimal(value, 3) : "—"),
     },
     {
       key: "emission_alpha",
-      label: "Emission (α)",
+      label: "Native emission",
       kind: "number",
-      sortable: true,
       value: (row) => row.emission_alpha ?? null,
-      format: (value) => (typeof value === "number" ? fmtAlpha(value) : "—"),
+      render: (row) =>
+        row.netuid === 0 ? fmtStake(row.emission_alpha) : fmtAlpha(row.emission_alpha),
     },
     {
       key: "dividends",
@@ -243,26 +185,6 @@ export function ValidatorDetailPage() {
       kind: "status",
       demote: true,
       value: (row) => (row.validator_permit ? "yes" : "no"),
-    },
-  ];
-
-  // The WINDOW'S OPENING level and what it did, not the current one (#11693).
-  // "Stake now" printed the same number as the hero's "Total stake" and
-  // "Yield now" the same as its "Est. APY" -- four cells that between them
-  // carried two facts the hero already stated and two it did not. The hero
-  // owns where a number IS; this section owns where it came from.
-  const momentumCells: FactCells = [
-    {
-      label: `Stake value ${window} ago`,
-      value: fmtStake(stakeSeries[0]?.v),
-      loading: history.isPending,
-      delta: deltaCell(changeOver(stakeSeries)),
-    },
-    {
-      label: `Yield ${window} ago`,
-      value: typeof yieldSeries[0]?.v === "number" ? `${formatPct(yieldSeries[0].v, 1)}` : "—",
-      loading: history.isPending,
-      delta: deltaCell(changeOver(yieldSeries)),
     },
   ];
 
@@ -316,7 +238,7 @@ export function ValidatorDetailPage() {
             }
             cells={cells}
             live={{
-              updatedAt: detailResult.meta?.generated_at ?? null,
+              updatedAt: detail.captured_at ?? null,
               source: "chain-direct index",
               onRefresh: () =>
                 void queryClient.invalidateQueries(metagraphedQueryInvalidationTarget()),
@@ -325,43 +247,20 @@ export function ValidatorDetailPage() {
         }
       >
         <AnalyticsSection
-          id="stake"
-          name="Stake by subnet"
-          question="Raw alpha positions by subnet, alongside their native emission."
+          id="scope"
+          name="Data scope"
+          question="What the source establishes."
           visual={
-            stakeRails.length > 0 ? (
-              <RankedRails
-                items={stakeRails}
-                formatValue={(value) => fmtAlpha(value)}
-                formatSecondary={(value) => fmtAlpha(value)}
-                scale="sqrt"
-                // Emission gets its OWN scale: it is three to four orders of
-                // magnitude below the stake beside it, so on a shared one
-                // every row drew the same flat line (#11693).
-                secondaryScale="own"
-                columns={{
-                  value: "Stake (α)",
-                  name: "Subnet",
-                  track: "Raw α stake, against the largest",
-                  secondary: "α emission, against the largest",
-                }}
-                limit={12}
-                ariaLabel="Stake and emission by subnet"
-                source="validator-subnet"
-              />
-            ) : null
+            <p className="max-w-prose text-13 text-ink-muted">
+              {VALIDATOR_PRINCIPAL_UNAVAILABLE} Historical capital and yield charts are also
+              unavailable. Membership weights are shown per subnet without a currency unit.
+            </p>
           }
-          // Not a time series: /validators/{hotkey}/history publishes daily
-          // NETWORK-WIDE totals with netuid: null, so there is no per-subnet
-          // series to stack. Momentum below carries the time dimension.
-          footnote={`the ${formatNumber(stakeRails.length)} largest of ${formatNumber(
-            memberships.length,
-          )} raw α positions · units vary by subnet; the hero total is TAO-valued · a snapshot, not a series · chain-direct`}
         />
         <AnalyticsSection
           id="memberships"
           name="Per-subnet"
-          question="Every membership, ranked by raw α stake."
+          question="Every membership in subnet order."
           visual={
             <DataTable
               rows={memberships}
@@ -377,14 +276,14 @@ export function ValidatorDetailPage() {
               storageKey="validator-memberships-columns"
             />
           }
-          footnote={`${formatNumber(permits)} of ${formatNumber(
+          footnote={`Voting weight is not principal and is not ranked across subnets · ${formatNumber(permits)} of ${formatNumber(
             memberships.length,
           )} carry a validator permit · chain-direct`}
         />
         <AnalyticsSection
           id="nominators"
           name="Nominators"
-          question="Who delegates here."
+          question="Who moved stake during the window."
           visualRef={nominatorsRef}
           visual={
             !nominatorsNearViewport || showNominatorsLoading ? (
@@ -392,7 +291,7 @@ export function ValidatorDetailPage() {
                 items={[]}
                 formatValue={(value) => fmtStake(value)}
                 scale="sqrt"
-                columns={{ value: "Moved", name: "Delegator", track: "Share of delegation" }}
+                columns={{ value: "Moved", name: "Delegator", track: "Share of movement" }}
                 ariaLabel="Nominators by stake moved"
                 source="validator-nominator"
                 loading
@@ -403,7 +302,7 @@ export function ValidatorDetailPage() {
                 items={showAllNominators ? nominatorRows : nominatorRows.slice(0, 10)}
                 formatValue={(value) => fmtStake(value)}
                 scale="sqrt"
-                columns={{ value: "Moved", name: "Delegator", track: "Share of delegation" }}
+                columns={{ value: "Moved", name: "Delegator", track: "Share of movement" }}
                 ariaLabel="Nominators by stake moved"
                 source="validator-nominator"
               />
@@ -434,104 +333,8 @@ export function ValidatorDetailPage() {
               // Ranked by GROSS movement in the window, not by net: net goes
               // negative for anyone unwinding, and ranking "who delegates
               // here" by it puts the largest departing delegator last.
-              `${formatNumber(detail.nominator_count ?? 0)} nominators · ranked by stake moved in 30d · chain-direct`
+              `${detail.nominator_count == null ? "Nominator count unavailable" : `${formatNumber(detail.nominator_count)} nominators`} · ranked by stake moved in 30d · chain-direct`
             )
-          }
-        />
-        <AnalyticsSection
-          id="momentum"
-          name="Momentum"
-          question="Stake and yield over time."
-          visualRef={momentumRef}
-          controls={
-            <RangeControl
-              label="Window"
-              options={WINDOWS}
-              value={window}
-              onChange={(next: ValidatorWindow) =>
-                void navigate({ search: (prev) => ({ ...prev, window: next }), replace: true })
-              }
-            />
-          }
-          visual={
-            !momentumNearViewport || showHistoryLoading ? (
-              <LineWithWindow
-                id={`validator-${hotkey}-stake`}
-                points={[]}
-                window={{ from: 0, to: 0 }}
-                unit="τ"
-                formatValue={(value) => fmtStake(value)}
-                ariaLabel={`Stake value, ${window}`}
-                source={`validator-${hotkey}-stake`}
-                loading
-              />
-            ) : stakeSeries.length > 1 ? (
-              <LineWithWindow
-                id={`validator-${hotkey}-stake`}
-                points={stakeSeries}
-                window={{ from: stakeSeries[0]!.t, to: stakeSeries[stakeSeries.length - 1]!.t }}
-                unit="τ"
-                formatValue={(value) => fmtStake(value)}
-                ariaLabel={`Stake value, ${window}`}
-                source={`validator-${hotkey}-stake`}
-              />
-            ) : history.isError ? (
-              <ErrorState
-                error={history.error}
-                onRetry={() => void history.refetch()}
-                context="validator stake and yield history"
-              />
-            ) : null
-          }
-          legend={<FactStrip cells={momentumCells} />}
-          footnote={
-            !momentumNearViewport
-              ? `${window} · daily stake and annualised simple yield · chain-direct`
-              : historyLoading
-                ? `Loading ${window} stake and yield history · chain-direct`
-                : history.isError
-                  ? "chain-direct · retry the affected record above"
-                  : `${window} · daily snapshots · yield annualised simply from the daily reward rate, not compounded`
-          }
-        />
-        <AnalyticsSection
-          id="peers"
-          name="Peers"
-          question="The operators ranked either side of this one."
-          visualRef={peersRef}
-          visual={
-            !peersNearViewport || showPeersLoading ? (
-              <RankGrid
-                items={[]}
-                cols={4}
-                ariaLabel="Operators near this one by stake"
-                source="validator-peer"
-                loading
-                loadingItems={4}
-              />
-            ) : peers.length > 0 ? (
-              <RankGrid
-                items={peers}
-                cols={4}
-                ariaLabel="Operators near this one by stake"
-                source="validator-peer"
-              />
-            ) : allValidators.isError ? (
-              <ErrorState
-                error={allValidators.error}
-                onRetry={() => void allValidators.refetch()}
-                context="nearby operators"
-              />
-            ) : null
-          }
-          footnote={
-            !peersNearViewport
-              ? "neighboring operators by total stake · chain-direct"
-              : peersLoading
-                ? "Loading nearby operators · chain-direct"
-                : allValidators.isError
-                  ? "chain-direct · retry the affected record above"
-                  : "by total stake across every subnet · chain-direct"
           }
         />
         <Raw rows={rawRows} title="Validator identifiers and API" />

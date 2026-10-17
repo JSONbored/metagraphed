@@ -3633,18 +3633,22 @@ export function normalizeAccountPosition(raw: unknown): AccountPosition | null {
   if (!isRecord(raw)) return null;
   const hotkey = firstString(raw.hotkey);
   const netuid = firstFiniteNumber(raw.netuid);
-  const shareFraction = firstFiniteNumber(raw.share_fraction);
-  const stakeTao = firstFiniteNumber(raw.stake_tao);
-  if (!hotkey || netuid == null || shareFraction == null || stakeTao == null) return null;
-  return { hotkey, netuid, share_fraction: shareFraction, stake_tao: stakeTao };
+  if (!hotkey || netuid == null || !Number.isSafeInteger(netuid) || netuid < 0) return null;
+  return {
+    hotkey,
+    netuid,
+    // Legacy values can be fractions of voting weight. The wire response
+    // does not identify an authoritative token quantity or ownership basis.
+    share_fraction: null,
+    stake_tao: null,
+  };
 }
 
 /**
  * #5233: the coldkey-scoped counterpart to accountPortfolioQuery. NOT a live
  * query -- see AccountPositions' own doc comment (types.ts) for the
- * daily/weekly-scan + zero-root-coverage caveats. Callers using this to
- * prefill a stake/unstake "Max" amount must surface captured_at as a
- * staleness label, and must not offer Max at all for netuid 0.
+ * snapshot + coverage caveats. This response supports recorded relationships
+ * and clocks, not token quantities, ownership shares or an unstake Max.
  */
 export const accountPositionsQuery = (ss58: string) =>
   queryOptions({
@@ -3660,13 +3664,31 @@ export const accountPositionsQuery = (ss58: string) =>
             return normalized ? [normalized] : [];
           })
         : [];
+      const count = firstFiniteNumber(d.position_count);
+      const incomplete =
+        !Array.isArray(d.positions) ||
+        d.positions.length > MAX_ACCOUNT_POSITIONS ||
+        positions.length !== d.positions.length ||
+        count == null ||
+        count !== positions.length ||
+        (d.degraded != null && !isRecord(d.degraded));
+      const sourceDegraded = isRecord(d.degraded) ? d.degraded : null;
       return {
         data: {
           ss58: firstString(d.ss58) ?? ss58,
           captured_at: firstString(d.captured_at) ?? null,
-          position_count: firstFiniteNumber(d.position_count) ?? positions.length,
-          total_stake_alpha: firstFiniteNumber(d.total_stake_alpha) ?? 0,
+          position_count: count != null && Number.isSafeInteger(count) && count >= 0 ? count : null,
+          total_stake_alpha: null,
           positions,
+          ...(sourceDegraded || incomplete
+            ? {
+                degraded: {
+                  reason: firstString(sourceDegraded?.reason) ?? "positions_response_incomplete",
+                  snapshot_captured_at: firstString(sourceDegraded?.snapshot_captured_at) ?? null,
+                  latest_stake_event_at: firstString(sourceDegraded?.latest_stake_event_at) ?? null,
+                },
+              }
+            : {}),
         } as AccountPositions,
         meta: res.meta,
         url: res.url,
@@ -8433,7 +8455,9 @@ function normalizeGlobalValidatorSubnet(raw: unknown): GlobalValidatorSubnet | n
   return {
     netuid,
     uid,
-    stake_tao: coerceFiniteNumber(raw.stake_tao) ?? 0,
+    stake_tao:
+      coerceFiniteNumber(Object.hasOwn(raw, "stake_alpha") ? raw.stake_alpha : raw.stake_tao) ??
+      null,
     emission_tao: coerceFiniteNumber(raw.emission_tao) ?? 0,
     validator_trust:
       raw.validator_trust == null ? null : (coerceFiniteNumber(raw.validator_trust) ?? null),
@@ -8463,24 +8487,22 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
     subnet_count: coerceFiniteNumber(raw.subnet_count) ?? 0,
     uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
     take: nullableNum(raw.take),
-    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
-    root_stake_tao: coerceFiniteNumber(raw.root_stake_tao) ?? 0,
-    alpha_stake_tao: coerceFiniteNumber(raw.alpha_stake_tao) ?? 0,
+    // Older API/cache values priced voting weight as principal. No published
+    // principal contract supports those numbers, even when they are finite.
+    total_stake_tao: null,
+    root_stake_tao: null,
+    alpha_stake_tao: null,
     total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
     nominator_count: nullableNum(raw.nominator_count),
-    apy_estimate: nullableNum(raw.apy_estimate),
-    apy_estimate_eligible_subnet_count:
-      coerceFiniteNumber(raw.apy_estimate_eligible_subnet_count) ?? 0,
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 0,
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),
-    // On the wire since the leaderboard shipped, and dropped here until now --
-    // this builder is an allowlist, so a field the API returns is invisible to
-    // the entire UI unless it is named. That is why the table could not offer
-    // realized return at all.
-    realized_return_1d: nullableNum(raw.realized_return_1d),
-    realized_return_1w: nullableNum(raw.realized_return_1w),
-    realized_return_1m: nullableNum(raw.realized_return_1m),
-    stake_dominance: nullableNum(raw.stake_dominance),
+    // A change in voting weight does not establish realized investment return.
+    realized_return_1d: null,
+    realized_return_1w: null,
+    realized_return_1m: null,
+    stake_dominance: null,
     latest_captured_at: typeof raw.latest_captured_at === "string" ? raw.latest_captured_at : null,
     latest_block_number: nullableNum(raw.latest_block_number),
     subnets,
@@ -8793,11 +8815,11 @@ export function projectOperatorValidator(validator: GlobalValidator): OperatorVa
     subnet_count: validator.subnet_count,
     uid_count: validator.uid_count,
     take: validator.take,
-    total_stake_tao: validator.total_stake_tao,
+    total_stake_tao: null,
     total_emission_tao: validator.total_emission_tao,
     nominator_count: validator.nominator_count,
-    apy_estimate: validator.apy_estimate,
-    stake_dominance: validator.stake_dominance,
+    apy_estimate: null,
+    stake_dominance: null,
     subnets: [],
   };
 }
@@ -8887,7 +8909,7 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
         const primaryHotkey = firstString(entry.primary_hotkey);
         if (!primaryHotkey) return [];
         const identityName = firstString(entry.identity_name) ?? null;
-        const totalStakeTao = coerceFiniteNumber(entry.total_stake_tao) ?? 0;
+        const totalStakeTao = null;
         const takeMin = coerceFiniteNumber(entry.take_min) ?? null;
         const takeMax = coerceFiniteNumber(entry.take_max) ?? null;
         const children = Array.isArray(entry.hotkeys)
@@ -8898,7 +8920,7 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
               return [
                 {
                   hotkey: childHotkey,
-                  totalStakeTao: coerceFiniteNumber(child.total_stake_tao) ?? 0,
+                  totalStakeTao: null,
                   take: coerceFiniteNumber(child.take) ?? null,
                 },
               ];
@@ -8928,8 +8950,8 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
             uidCount: coerceFiniteNumber(entry.uid_count) ?? 0,
             takeMin,
             takeMax,
-            apyEstimate: coerceFiniteNumber(entry.apy_estimate) ?? null,
-            dominance: coerceFiniteNumber(entry.stake_dominance) ?? null,
+            apyEstimate: null,
+            dominance: null,
           },
         ];
       })
@@ -9068,7 +9090,7 @@ function normalizeValidatorDetailSubnet(raw: unknown): ValidatorDetailSubnet | n
 
 /** Cross-subnet validator detail — a validator's rows joined across every subnet
  * they operate in (#4335/7.1). Schema-stable: a cold/unknown hotkey resolves to
- * a zeroed aggregate rather than an error, so this never throws on a bad hotkey. */
+ * unavailable capital metrics rather than an error for an unknown hotkey. */
 export const validatorDetailQuery = (hotkey: string) =>
   queryOptions({
     queryKey: k("validator-detail", hotkey),
@@ -9092,17 +9114,16 @@ export const validatorDetailQuery = (hotkey: string) =>
           subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
           take: firstFiniteNumber(d.take) ?? null,
           nominator_count: firstFiniteNumber(d.nominator_count) ?? null,
-          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? 0,
-          root_stake_tao: firstFiniteNumber(d.root_stake_tao) ?? 0,
-          alpha_stake_tao: firstFiniteNumber(d.alpha_stake_tao) ?? 0,
+          total_stake_tao: null,
+          root_stake_tao: null,
+          alpha_stake_tao: null,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? 0,
           avg_validator_trust: firstFiniteNumber(d.avg_validator_trust) ?? null,
-          apy_estimate: firstFiniteNumber(d.apy_estimate) ?? null,
-          apy_estimate_eligible_subnet_count:
-            firstFiniteNumber(d.apy_estimate_eligible_subnet_count) ?? 0,
-          realized_return_1d: firstFiniteNumber(d.realized_return_1d) ?? null,
-          realized_return_1w: firstFiniteNumber(d.realized_return_1w) ?? null,
-          realized_return_1m: firstFiniteNumber(d.realized_return_1m) ?? null,
+          apy_estimate: null,
+          apy_estimate_eligible_subnet_count: 0,
+          realized_return_1d: null,
+          realized_return_1w: null,
+          realized_return_1m: null,
           max_validator_trust: firstFiniteNumber(d.max_validator_trust) ?? null,
           captured_at: firstString(d.captured_at) ?? null,
           block_number: firstFiniteNumber(d.block_number) ?? null,
@@ -9158,9 +9179,9 @@ function normalizeValidatorHistoryPoint(raw: unknown): ValidatorHistoryPoint | n
   return {
     snapshot_date: snapshotDate,
     subnet_count: firstFiniteNumber(raw.subnet_count) ?? null,
-    total_stake_tao: firstFiniteNumber(raw.total_stake_tao) ?? null,
+    total_stake_tao: null,
     total_emission_tao: firstFiniteNumber(raw.total_emission_tao) ?? null,
-    rewards_per_1000_tao: firstFiniteNumber(raw.rewards_per_1000_tao) ?? null,
+    rewards_per_1000_tao: null,
   };
 }
 
@@ -9870,10 +9891,10 @@ function normalizeCompareValidator(raw: unknown): CompareValidator | null {
     coldkey: coerceString(raw.coldkey) ?? null,
     coldkey_identity: normalizeColdkeyIdentity(raw.coldkey_identity),
     take: nullableNum(raw.take),
-    apy_estimate: nullableNum(raw.apy_estimate),
-    apy_estimate_eligible_subnet_count: nullableNum(raw.apy_estimate_eligible_subnet_count),
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 0,
     nominator_count: nullableNum(raw.nominator_count),
-    total_stake_tao: nullableNum(raw.total_stake_tao),
+    total_stake_tao: null,
     total_emission_tao: nullableNum(raw.total_emission_tao),
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),

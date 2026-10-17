@@ -25,6 +25,7 @@ export function KeysSection({ ss58 }: { ss58: string }) {
   const parents = useQuery({ ...accountParentsQuery(ss58), enabled: nearViewport, retry: 0 });
   const loading = nearViewport && (positions.isPending || children.isPending || parents.isPending);
   const unavailable = positions.isError || children.isError || parents.isError;
+  const incomplete = Boolean(positions.data?.data.degraded);
 
   const rows =
     loading || unavailable
@@ -69,25 +70,29 @@ export function KeysSection({ ss58 }: { ss58: string }) {
           />
         ) : items.length > 0 ? (
           <RankGrid items={items} cols={4} ariaLabel="Related keys" source="account-key" />
+        ) : incomplete ? (
+          <p role="status">Position coverage is unavailable; hotkey ties remain unknown.</p>
         ) : null
       }
       empty={
         !nearViewport || loading
           ? false
-          : unavailable
+          : unavailable || incomplete
             ? false
             : "No hotkey, child, or parent tie recorded for this account."
       }
       footnote={
         !nearViewport
-          ? "hotkey, child and parent relationships · live chain"
+          ? "hotkey snapshots, child and parent relationships"
           : loading
-            ? "Loading live key relationships"
+            ? "Loading key relationships"
             : unavailable
-              ? "Related keys unavailable · live chain"
-              : items.length > 0
-                ? `${formatNumber(rows.length)} related keys · live chain`
-                : "No hotkey, child, or parent tie recorded for this account"
+              ? "Related keys unavailable"
+              : incomplete
+                ? "Incomplete position coverage · returned relationships only"
+                : items.length > 0
+                  ? `${formatNumber(rows.length)} related keys · position snapshots + RPC relationships`
+                  : "No hotkey, child, or parent tie recorded for this account"
       }
     />
   );

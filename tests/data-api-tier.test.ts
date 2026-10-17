@@ -395,3 +395,283 @@ test("tryDataApiTier: the failing request PATH is in the message, masked", async
     "the netuid must be masked, or one fault becomes one message per subnet",
   );
 });
+
+// During independent Worker rollouts the binding can still serve the old
+// voting-weight-derived financial payload. Guard it once for REST and MCP.
+const VALIDATOR_HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const LEGACY_VALIDATOR_CAPITAL_FIELDS = [
+  "total_stake_tao",
+  "root_stake_tao",
+  "alpha_stake_tao",
+  "apy_estimate",
+  "stake_dominance",
+] as const;
+
+async function readValidatorPayload(path: string, body: unknown) {
+  const before = currentDataApiTierFallbackGeneration();
+  const forwarded: string[] = [];
+  const env = mockEnv({
+    METAGRAPH_NEURONS_SOURCE: "data-api",
+    DATA_API: dataApi(async (request: Request) => {
+      forwarded.push(request.url);
+      return Response.json(body);
+    }),
+  });
+  const request = new Request(`https://api.metagraph.sh${path}`);
+  const result = await tryDataApiTier(env, request, "METAGRAPH_NEURONS_SOURCE");
+  assert.deepEqual(forwarded, [request.url], "one fetch with the original network scope");
+  return { result, before, after: currentDataApiTierFallbackGeneration() };
+}
+
+test.each(
+  LEGACY_VALIDATOR_CAPITAL_FIELDS.flatMap((field) =>
+    [0, 125].map((value) => ({ field, value })),
+  ),
+)("global validator $field=$value declines the already-selected legacy page", async ({ field, value }) => {
+  const { result, before, after } = await readValidatorPayload(
+    "/api/v1/validators?sort=total_stake&limit=1",
+    { limit: 1, validator_count: 100, validators: [{ hotkey: VALIDATOR_HOTKEY, [field]: value }] },
+  );
+  assert.equal(result, null);
+  assert.equal(after, before + 1);
+});
+
+test.each([
+  "/api/v1/validators",
+  "/api/v1/mainnet/validators",
+  "/api/v1/finney/validators/",
+  "/api/v1/testnet/validators",
+  "/api/v1/test/validators",
+  "/api/v1/mainnet/finney/validators",
+])("fresh null capital preserves membership and emission on %s", async (path) => {
+  const body = {
+    validators: [{
+      hotkey: VALIDATOR_HOTKEY,
+      total_stake_tao: null,
+      root_stake_tao: null,
+      alpha_stake_tao: null,
+      apy_estimate: null,
+      apy_estimate_eligible_subnet_count: 0,
+      stake_dominance: null,
+      realized_return_1d: null,
+      realized_return_1d_as_of: null,
+      realized_return_1w: null,
+      realized_return_1w_as_of: null,
+      realized_return_1m: null,
+      realized_return_1m_as_of: null,
+      total_emission_tao: 12,
+      avg_validator_trust: 0.8,
+      subnets: [{ netuid: 3, uid: 4, stake_alpha: 180 }],
+    }],
+  };
+  const { result, before, after } = await readValidatorPayload(path, body);
+  assert.deepEqual(result, body);
+  assert.equal(after, before);
+});
+
+test.each([false, true])("old realized returns alone preserve current membership with wrapped=%s", async (wrapped) => {
+  const validator = {
+    hotkey: VALIDATOR_HOTKEY,
+    total_stake_tao: null,
+    root_stake_tao: null,
+    alpha_stake_tao: null,
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 3,
+    stake_dominance: null,
+    realized_return_1d: 0,
+    realized_return_1d_as_of: "2026-10-16",
+    realized_return_1w: -0.5,
+    realized_return_1w_as_of: "2026-10-10",
+    realized_return_1m: 0.25,
+    realized_return_1m_as_of: "2026-09-17",
+    total_emission_tao: 12,
+    avg_validator_trust: 0.9,
+    subnets: [{ netuid: 3, uid: 4, stake_alpha: 180 }],
+  };
+  const page = { validator_count: 1, validators: [validator, null] };
+  const body = wrapped ? { data: page, generatedAt: "capture" } : page;
+  const expected = {
+    ...page,
+    validators: [{
+      ...validator,
+      apy_estimate_eligible_subnet_count: 0,
+      realized_return_1d: null,
+      realized_return_1d_as_of: null,
+      realized_return_1w: null,
+      realized_return_1w_as_of: null,
+      realized_return_1m: null,
+      realized_return_1m_as_of: null,
+    }, null],
+  };
+  const { result, before, after } = await readValidatorPayload("/api/v1/validators", body);
+  assert.deepEqual(result, wrapped ? { data: expected, generatedAt: "capture" } : expected);
+  assert.equal(after, before);
+  assert.equal(validator.realized_return_1w, -0.5);
+});
+
+test("wrapped legacy validator pages decline too, without retrying or repairing a limited subset", async () => {
+  const { result, before, after } = await readValidatorPayload(
+    "/api/v1/testnet/validators?limit=1",
+    { data: { validators: [null, { total_stake_tao: 100 }] }, generatedAt: "capture" },
+  );
+  assert.equal(result, null);
+  assert.equal(after, before + 1);
+});
+
+test.each([
+  { label: "capital", operator: { total_stake_tao: 0 } },
+  { label: "APY", operator: { apy_estimate: 0 } },
+  { label: "dominance", operator: { stake_dominance: 0 } },
+  { label: "child capital", operator: { total_stake_tao: null, hotkeys: [{ total_stake_tao: 0 }] } },
+])("legacy operator $label declines instead of retaining a financially-selected primary", async ({ operator }) => {
+  const { result, before, after } = await readValidatorPayload(
+    "/api/v1/validators/operators",
+    { operators: [operator] },
+  );
+  assert.equal(result, null);
+  assert.equal(after, before + 1);
+});
+
+test("wrapped operator capital declines while current null operators pass unchanged", async () => {
+  const rejected = await readValidatorPayload(
+    "/api/v1/mainnet/validators/operators",
+    { data: { operators: [{ total_stake_tao: 7 }] } },
+  );
+  assert.equal(rejected.result, null);
+  assert.equal(rejected.after, rejected.before + 1);
+  const body = {
+    data: { operators: [{
+      total_stake_tao: null,
+      apy_estimate: null,
+      stake_dominance: null,
+      total_emission_tao: 3,
+      hotkeys: [{ hotkey: VALIDATOR_HOTKEY, total_stake_tao: null, take: 0.1 }],
+    }] },
+    generatedAt: "capture",
+  };
+  const accepted = await readValidatorPayload("/api/v1/test/validators/operators", body);
+  assert.deepEqual(accepted.result, body);
+  assert.equal(accepted.after, accepted.before);
+});
+
+test.each([false, true])("validator detail nulls legacy capital with wrapped=%s", async (wrapped) => {
+  const detail = {
+    hotkey: VALIDATOR_HOTKEY,
+    total_stake_tao: 1000,
+    root_stake_tao: 0,
+    alpha_stake_tao: 1000,
+    apy_estimate: 0.25,
+    apy_estimate_eligible_subnet_count: 3,
+    total_emission_tao: 12,
+    avg_validator_trust: 0.9,
+    take: 0.18,
+    realized_return_1d: 0,
+    realized_return_1d_as_of: "2026-10-16",
+    realized_return_1w: -0.5,
+    realized_return_1w_as_of: "2026-10-10",
+    realized_return_1m: 0.25,
+    realized_return_1m_as_of: "2026-09-17",
+    subnets: [{ netuid: 3, uid: 4, stake_alpha: 180, validator_trust: 0.9 }],
+  };
+  const body = wrapped ? { data: detail, generatedAt: "capture" } : detail;
+  const expected = {
+    ...detail,
+    total_stake_tao: null,
+    root_stake_tao: null,
+    alpha_stake_tao: null,
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 0,
+    realized_return_1d: null,
+    realized_return_1d_as_of: null,
+    realized_return_1w: null,
+    realized_return_1w_as_of: null,
+    realized_return_1m: null,
+    realized_return_1m_as_of: null,
+  };
+  const { result, before, after } = await readValidatorPayload(
+    `/api/v1/finney/validators/${VALIDATOR_HOTKEY}`,
+    body,
+  );
+  assert.deepEqual(result, wrapped ? { data: expected, generatedAt: "capture" } : expected);
+  assert.equal(after, before);
+  assert.equal(detail.total_stake_tao, 1000, "the original source fixture is unmodified");
+});
+
+test.each([false, true])("history strips only existing financial point fields with wrapped=%s", async (wrapped) => {
+  const point = {
+    snapshot_date: "2026-10-17",
+    total_stake_tao: 1000,
+    rewards_per_1000_tao: 12,
+    rewards_per_1000_alpha: 7,
+    stake_share: 0.5,
+    dividend_efficiency: 1.2,
+    total_emission_tao: 4,
+    stake_alpha: 180,
+    take: 0.18,
+    validator_trust: 0.9,
+    dividends: 0.6,
+    validator_permit: false,
+  };
+  const sparse = { snapshot_date: "2026-10-16", total_emission_tao: null };
+  const history = { take_u16: 11796, points: [point, sparse, null] };
+  const body = wrapped ? { data: history, meta: { source: "capture" } } : history;
+  const expected = {
+    ...history,
+    points: [{
+      ...point,
+      total_stake_tao: null,
+      rewards_per_1000_tao: null,
+      rewards_per_1000_alpha: null,
+      stake_share: null,
+      dividend_efficiency: null,
+    }, sparse, null],
+  };
+  const { result, before, after } = await readValidatorPayload(
+    `/api/v1/testnet/validators/${VALIDATOR_HOTKEY}/history?window=30d`,
+    body,
+  );
+  assert.deepEqual(result, wrapped ? { data: expected, meta: { source: "capture" } } : expected);
+  assert.equal(after, before);
+});
+
+test.each([
+  "/api/v1/validators/economics",
+  "/api/v1/validators/economics/history",
+  "/api/v1/validators/operators/history",
+  `/api/v1/validators/${VALIDATOR_HOTKEY}/nominators`,
+  "/api/v1/subnets/3/validators",
+  "/api/v1/testnet/subnets/3/metagraph",
+  `/api/v1/validators/${VALIDATOR_HOTKEY}/history/extra`,
+  "/api/v1/unrecognized/validators",
+])("the validator capital guard does not intercept %s", async (path) => {
+  const body = { total_stake_tao: 0, apy_estimate: 0, validators: [{ total_stake_tao: 1 }] };
+  const { result, before, after } = await readValidatorPayload(path, body);
+  assert.deepEqual(result, body);
+  assert.equal(after, before);
+});
+
+test("the capital guard stays scoped to the neurons flag", async () => {
+  const before = currentDataApiTierFallbackGeneration();
+  const body = { validators: [{ total_stake_tao: 1 }] };
+  const env = mockEnv({
+    METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "data-api",
+    DATA_API: dataApi(async () => Response.json(body)),
+  });
+  const result = await tryDataApiTier(
+    env,
+    new Request("https://api.metagraph.sh/api/v1/validators"),
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+  );
+  assert.deepEqual(result, body);
+  assert.equal(currentDataApiTierFallbackGeneration(), before);
+});
+
+test.each([
+  { path: "/api/v1/validators", body: {} },
+  { path: "/api/v1/validators/operators", body: { operators: [null, {}] } },
+  { path: `/api/v1/validators/${VALIDATOR_HOTKEY}/history`, body: { points: null } },
+])("missing collections do not become fabricated measurements on $path", async ({ path, body }) => {
+  const { result, before, after } = await readValidatorPayload(path, body);
+  assert.deepEqual(result, body);
+  assert.equal(after, before);
+});

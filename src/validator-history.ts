@@ -1,12 +1,28 @@
 import { roundDpOrNull } from "./lib/stats.ts";
-// Cross-subnet daily history for one validator hotkey (#4334/7.3): staked-
-// over-time + a rewards-per-1000-TAO rate, rolled up from the neuron_daily
-// tier the same way buildSubnetHistory rolls up a subnet's daily totals
-// (src/neuron-history.ts) — one point per snapshot_date, SUM(stake_tao)/
-// SUM(emission_tao) across every subnet the hotkey validates in that day
-// (idx_neuron_daily_hotkey_date already indexes exactly this access path).
+import { nonNegativeCellOrNull } from "./lib/rao.ts";
+// Daily validator membership evidence. neuron_daily.stake_tao is the same
+// voting weight as the live metagraph, not independent investment principal.
+// Retain legacy capital/rate keys as null even if an upstream SQL rollup priced
+// that weight; preserve emission and per-subnet operational facts separately.
 
 type Row = Record<string, unknown>;
+
+const VALIDATOR_HISTORY_CAPITAL_FIELDS = [
+  "total_stake_tao",
+  "rewards_per_1000_tao",
+  "rewards_per_1000_alpha",
+  "stake_share",
+  "dividend_efficiency",
+] as const;
+
+/** Old service/cache rows carry the same unsupported principal ratios. */
+export function unavailableValidatorHistoryCapital(point: Row): Row {
+  const guarded = { ...point };
+  for (const field of VALIDATOR_HISTORY_CAPITAL_FIELDS) {
+    if (Object.hasOwn(point, field)) guarded[field] = null;
+  }
+  return guarded;
+}
 
 function toFiniteOrNull(v: unknown): number | null {
   if (v == null) return null;
@@ -18,21 +34,6 @@ function toFiniteOrNull(v: unknown): number | null {
 function toNonNegativeInt(v: unknown): number | null {
   const n = toFiniteOrNull(v);
   return n != null && Number.isSafeInteger(n) && n >= 0 ? n : null;
-}
-
-// Round a TAO sum, preserving null -- mirrors neuron-history.ts's
-// roundTaoOrNull so an unrounded D1 SUM() never leaks float noise while a
-// null/cold-day SUM stays null rather than collapsing to 0.
-
-// emission / stake scaled to a per-1000-TAO reward rate for that day -- null
-// when stake is zero/absent (the rate is undefined with nothing staked),
-// mirroring the yield-metric null convention in src/subnet-yield.ts.
-function rewardsPer1000Tao(
-  stakeTao: number | null,
-  emissionTao: number | null,
-): number | null {
-  if (!(stakeTao != null && stakeTao > 0) || emissionTao == null) return null;
-  return Math.round((emissionTao / stakeTao) * 1000 * 1e6) / 1e6;
 }
 
 // Points arrive newest-first (the handler queries `ORDER BY snapshot_date
@@ -159,15 +160,13 @@ function toRateOrNull(v: unknown): number | null {
  * inventing a cross-subnet reading (#9383).
  */
 function subnetScopedFields(r: Row): Row {
-  const stakeAlpha = roundDpOrNull(toFiniteOrNull(r.stake_alpha), 6);
+  const stakeAlpha = roundDpOrNull(nonNegativeCellOrNull(r.stake_alpha), 6);
   const emissionAlpha = roundDpOrNull(toFiniteOrNull(r.emission_alpha), 6);
   return {
     netuid: toNonNegativeInt(r.netuid),
     uid: toNonNegativeInt(r.uid),
-    // Native alpha, NOT converted. For every subnet but root this is the unit the
-    // chain actually emits in, and it is what an operator compares day over day.
-    // Named `_alpha` because #8945 is the standing reminder of what happens when an
-    // alpha value is carried in a `*_tao` field.
+    // Legacy name for the scoped metagraph voting weight. Its independent
+    // root/alpha principal legs are not available from this series.
     stake_alpha: stakeAlpha,
     emission_alpha: emissionAlpha,
     validator_trust: toRateOrNull(r.validator_trust),
@@ -178,57 +177,9 @@ function subnetScopedFields(r: Row): Row {
     // operator needs to see; dropping the row would make it indistinguishable from
     // a day the poller missed.
     validator_permit: r.validator_permit == null ? null : !!r.validator_permit,
-    rewards_per_1000_alpha: rewardsPer1000Tao(stakeAlpha, emissionAlpha),
-    ...stakeShareView(
-      stakeAlpha,
-      r.subnet_total_stake,
-      toRateOrNull(r.dividends),
-    ),
-  };
-}
-
-interface StakeShareView {
-  stake_share: number | null;
-  dividend_efficiency: number | null;
-}
-
-/**
- * This validator's share of the subnet's stake, and how its dividends compare to it.
- *
- * `dividends` is already normalised by the chain — the column sums to ~1.0 across a
- * subnet's neurons on any given day (measured: 0.99989 on netuid 64) — so it IS the
- * dividend share and needs no denominator of its own. Efficiency is therefore simply
- * dividend share over stake share: above 1 the validator out-earns its stake, below 1
- * it under-earns, and that is the number that says which subnet to leave.
- *
- * THE DENOMINATOR IS TOTAL SUBNET STAKE, including miners, because that is what
- * `subnet_snapshots.total_stake_tao` measures and it rides on a join this query already
- * does. Dividends actually accrue to validators, so the strictly correct denominator is
- * validator stake — measured across netuids 1/4/8/64 that is 99.87–100% of total, i.e.
- * a sub-0.2% difference, the same order as the snapshot total's own drift from the
- * summed neuron rows (0.05–0.21%). Naming it `stake_share` rather than
- * `validator_stake_share` keeps the field honest about which denominator it used.
- *
- * Both sides are the same unit (alpha for non-root subnets), so the ratio is unit-free.
- */
-function stakeShareView(
-  stakeAlpha: number | null,
-  subnetTotal: unknown,
-  dividends: number | null,
-): StakeShareView {
-  const total = toFiniteOrNull(subnetTotal);
-  if (stakeAlpha === null || total === null || total <= 0) {
-    return { stake_share: null, dividend_efficiency: null };
-  }
-  const share = stakeAlpha / total;
-  const rounded = Math.round(share * 1e6) / 1e6;
-  return {
-    stake_share: rounded,
-    // Undefined with no stake: a validator holding nothing has no share to out-earn.
-    dividend_efficiency:
-      dividends === null || share <= 0
-        ? null
-        : Math.round((dividends / share) * 1e6) / 1e6,
+    rewards_per_1000_alpha: null,
+    stake_share: null,
+    dividend_efficiency: null,
   };
 }
 
@@ -241,7 +192,6 @@ export function buildValidatorHistory(
   const points = (Array.isArray(rows) ? rows : [])
     .filter((r) => r && typeof r === "object")
     .map((r) => {
-      const totalStakeTao = roundDpOrNull(toFiniteOrNull(r.total_stake_tao), 6);
       const totalEmissionTao = roundDpOrNull(
         toFiniteOrNull(r.total_emission_tao),
         6,
@@ -249,12 +199,9 @@ export function buildValidatorHistory(
       return {
         snapshot_date: r.snapshot_date,
         subnet_count: toNonNegativeInt(r.subnet_count),
-        total_stake_tao: totalStakeTao,
+        total_stake_tao: null,
         total_emission_tao: totalEmissionTao,
-        rewards_per_1000_tao: rewardsPer1000Tao(
-          totalStakeTao,
-          totalEmissionTao,
-        ),
+        rewards_per_1000_tao: null,
         ...(scoped ? subnetScopedFields(r) : {}),
       };
     });

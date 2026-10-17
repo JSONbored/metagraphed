@@ -7,8 +7,13 @@ import {
 } from "../src/explorer-directory-current.ts";
 import {
   KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
+  KV_EXPLORER_DIRECTORIES_CURRENT,
   KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
 } from "../src/kv-keys.ts";
+import {
+  materializationFromUnknown,
+  readExplorerDirectoryMaterialization,
+} from "../src/explorer-directory-materialization.ts";
 
 const capturedAt = new Date().toISOString();
 
@@ -93,4 +98,80 @@ test("old or future directory snapshots fall through to the source repair path",
       null,
     );
   }
+});
+
+test("legacy capital-ranked directories decline until the source republishes neutral membership", async () => {
+  const legacy = {
+    ...validators,
+    validator_count: 2,
+    operator_count: 1,
+    operators: [
+      {
+        operator_id: "coldkey:owner",
+        ownership_basis: "single_coldkey" as const,
+        identity_name: "Declared operator",
+        hotkeys: [
+          { hotkey: "hk-b", total_stake_tao: 900, take: 0.1 },
+          { hotkey: "hk-a", total_stake_tao: 100, take: 0.2 },
+        ],
+        hotkey_count: 2,
+        primary_hotkey: "hk-b",
+        coldkey: "owner",
+        total_stake_tao: 1000,
+        total_emission_tao: 4,
+        nominator_count: null,
+        membership_count: 3,
+        uid_count: 3,
+        take_min: 0.1,
+        take_max: 0.2,
+        apy_estimate: 0.12,
+        stake_dominance: 1,
+      },
+    ],
+  };
+  const expected = {
+    ...legacy,
+    operators: legacy.operators.map((operator) => ({
+      ...operator,
+      primary_hotkey: "hk-a",
+      total_stake_tao: null,
+      apy_estimate: null,
+      stake_dominance: null,
+      hotkeys: [
+        { hotkey: "hk-a", total_stake_tao: null, take: 0.2 },
+        { hotkey: "hk-b", total_stake_tao: null, take: 0.1 },
+      ],
+    })),
+  };
+  assert.equal(
+    await readCurrentValidatorDirectory({ get: async () => legacy }),
+    null,
+  );
+  const stamp = Date.parse(capturedAt);
+  const materialization = {
+    schema_version: 1,
+    captured_at: stamp,
+    accounts,
+    validators: legacy,
+  };
+  assert.equal(materializationFromUnknown(materialization), null);
+  assert.equal(
+    await readExplorerDirectoryMaterialization({
+      get: async (key: string) =>
+        key === KV_EXPLORER_DIRECTORIES_CURRENT
+          ? { schema_version: 1, captured_at: stamp }
+          : materialization,
+    } as never),
+    null,
+  );
+  assert.deepEqual(
+    await readCurrentValidatorDirectory({ get: async () => expected }),
+    expected,
+  );
+  assert.deepEqual(
+    materializationFromUnknown({ ...materialization, validators: expected }),
+    { ...materialization, validators: expected },
+  );
+  assert.equal(legacy.operators[0]!.total_stake_tao, 1000);
+  assert.equal(legacy.operators[0]!.hotkeys[0]!.total_stake_tao, 900);
 });

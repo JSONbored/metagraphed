@@ -1,20 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AnalyticsSection, DataTable, RankedRails, type DataTableColumn } from "@jsonbored/ui-kit";
+import { AnalyticsSection, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
 import { accountPositionsQuery } from "@/lib/metagraphed/queries";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { ErrorState } from "@/components/metagraphed/states";
-import { formatNumber, formatPct } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
 import type { AccountPosition } from "@/lib/metagraphed/types";
-import { fmtCompactTao, fmtTao, positionsBySubnet } from "./account-detail-logic";
+import { useRelativeTime } from "@/hooks/use-time-format";
+import { positionsBySubnet, type PositionRow } from "./account-detail-logic";
 
 /**
- * Section 1 — where the stake sits.
+ * Section 1 — recorded position relationships.
  *
- * Rails by SUBNET, with the raw per-hotkey rows behind the disclosure: an
- * account commonly holds one subnet through several hotkeys, and railing the
- * raw rows shows the same subnet repeatedly and leaves the addition to the
- * reader.
+ * The response does not establish token quantities or ownership shares.
+ * Read only identities, including when old dehydrated numeric fields exist.
  */
 export function PositionsSection({
   ss58,
@@ -24,11 +23,30 @@ export function PositionsSection({
   nameOf: (netuid: number) => string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const formatRelative = useRelativeTime();
   const query = useQuery({ ...accountPositionsQuery(ss58), retry: 0 });
   const { data, isPending, isError } = query;
   const positions = data?.data.positions ?? [];
   const rows = positionsBySubnet(positions, nameOf);
   const unavailable = isError && !data;
+  const incomplete = Boolean(data?.data.degraded);
+
+  const subnetColumns: DataTableColumn<PositionRow>[] = [
+    {
+      key: "netuid",
+      label: "Subnet",
+      kind: "link",
+      value: (row) => row.label,
+      href: (row) => `/subnets/${row.netuid}`,
+    },
+    {
+      key: "hotkeys",
+      label: "Hotkeys",
+      kind: "number",
+      value: (row) => row.hotkeys,
+      format: (value) => (typeof value === "number" ? formatNumber(value) : "—"),
+    },
+  ];
 
   const columns: DataTableColumn<AccountPosition>[] = [
     {
@@ -39,84 +57,57 @@ export function PositionsSection({
       href: (row) => `/subnets/${row.netuid}`,
     },
     { key: "hotkey", label: "Hotkey", kind: "identifier", value: (row) => row.hotkey ?? "—" },
-    {
-      key: "stake_tao",
-      label: "Stake",
-      kind: "number",
-      sortable: true,
-      value: (row) => row.stake_tao ?? null,
-      format: (value) => (typeof value === "number" ? fmtTao(value, 4) : "—"),
-    },
-    {
-      key: "share",
-      label: "Share of subnet",
-      kind: "number",
-      sortable: true,
-      value: (row) => row.share_fraction ?? null,
-      format: (value) => (typeof value === "number" ? `${formatPct(value, 4)}` : "—"),
-    },
   ];
 
   return (
     <AnalyticsSection
       id="positions"
       name="Positions"
-      question="Where the stake sits."
+      question="Recorded position relationships by subnet."
       visual={
-        isPending ? (
-          <RankedRails
-            items={[]}
-            formatValue={fmtCompactTao}
-            scale="sqrt"
-            columns={{ value: "Stake", name: "Subnet", track: "Share of holdings" }}
-            ariaLabel="Stake by subnet"
-            source="account-subnet"
-            loading
-            loadingRows={8}
-          />
-        ) : unavailable ? (
+        unavailable ? (
           <ErrorState
             error={query.error}
             onRetry={() => void query.refetch()}
-            context="live positions"
+            context="position snapshots"
           />
-        ) : rows.length > 0 ? (
-          <RankedRails
-            items={rows.map((row) => ({
-              key: `sn-${row.netuid}`,
-              label: row.label,
-              value: row.value,
-              href: `/subnets/${row.netuid}`,
-              detail: [
-                {
-                  key: "share",
-                  label: "Share of holdings",
-                  value: `${formatPct(row.share, 1)}`,
-                },
-                { key: "hotkeys", label: "Hotkeys", value: String(row.hotkeys) },
-                { key: "stake", label: "Stake", value: fmtTao(row.value, 4) },
-              ],
-            }))}
-            formatValue={(value) => fmtCompactTao(value)}
-            scale="sqrt"
-            columns={{ value: "Stake", name: "Subnet", track: "Share of holdings" }}
-            ariaLabel="Stake by subnet"
+        ) : incomplete && rows.length === 0 ? (
+          <p role="status">Position relationship coverage is unavailable.</p>
+        ) : (
+          <DataTable
+            rows={rows}
+            columns={subnetColumns}
+            rowKey={(row) => row.key}
+            caption="Recorded ties by subnet"
+            link={RouterLink}
             source="account-subnet"
+            loading={isPending}
+            empty="No position relationships recorded in this response."
+            mobile="cards"
+            pageSize={10}
           />
-        ) : null
+        )
       }
-      empty={isPending ? false : unavailable ? false : "No positions recorded for this account."}
       footnote={
         isPending ? (
-          "Loading live positions"
+          "Loading position snapshots"
         ) : unavailable ? (
-          "Positions unavailable · live chain"
-        ) : positions.length > 0 && !expanded ? (
-          <button type="button" className="mg-section-more" onClick={() => setExpanded(true)}>
-            Show every position ({formatNumber(positions.length)})
-          </button>
+          "Position snapshots unavailable"
         ) : (
-          `${formatNumber(positions.length)} positions across ${formatNumber(rows.length)} subnets · live chain`
+          <>
+            {incomplete ? "Incomplete position coverage · returned relationships only. " : null}
+            Amounts and ownership shares are unavailable: this response does not identify an
+            authoritative quantity basis. Root holdings are not covered. Recorded relationships
+            do not establish wallet holdings.
+            {data?.data.captured_at
+              ? ` Snapshot ${formatRelative(data.data.captured_at)}.`
+              : " Snapshot time unavailable."}
+            {positions.length > 0 && !expanded ? (
+              <button type="button" className="mg-section-more" onClick={() => setExpanded(true)}>
+                Show recorded relationships ({formatNumber(positions.length)})
+              </button>
+            ) : null}
+          </>
         )
       }
     >
@@ -125,7 +116,7 @@ export function PositionsSection({
           rows={positions}
           columns={columns}
           rowKey={(row) => `${row.hotkey}-${row.netuid}`}
-          caption="Every position"
+          caption="Recorded position relationships"
           link={RouterLink}
           source="account-position"
           pageSize={25}

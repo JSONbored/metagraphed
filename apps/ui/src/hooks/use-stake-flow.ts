@@ -13,12 +13,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "./use-wallet";
 import { useTxStatus, type TxUiStatus, type UseTxStatusResult } from "./use-tx-status";
 import { useFlowSession, useFeeEstimate } from "./use-flow-session";
-import {
-  subnetStakeQuoteQuery,
-  economicsQuery,
-  accountPositionsQuery,
-} from "@/lib/metagraphed/queries";
-import type { SubnetStakeQuote, AccountPosition } from "@/lib/metagraphed/types";
+import { subnetStakeQuoteQuery, economicsQuery } from "@/lib/metagraphed/queries";
+import type { SubnetStakeQuote } from "@/lib/metagraphed/types";
 import { taoToRao, raoToTao, alphaToRawAlpha, asRao, type Rao } from "@/lib/metagraphed/units";
 import {
   computeLimitPrice,
@@ -55,8 +51,9 @@ export const DEFAULT_TOLERANCE_PCT = 5;
  */
 export const DEFAULT_STAKE_BUFFER_RAO: Rao = taoToRao("0.02");
 
-/** #5233's positions endpoint has zero root coverage (see AccountPositions' doc comment, types.ts). */
-export const MAX_UNSTAKE_UNAVAILABLE_ROOT_MESSAGE = "Max isn't available for root stake yet.";
+/** Legacy position fields do not establish token quantities for any subnet. */
+export const MAX_UNSTAKE_UNAVAILABLE_MESSAGE =
+  "Max is unavailable because recorded positions do not establish token quantities.";
 
 /**
  * Derives the flow's phase purely from the wallet/tx-status state this hook
@@ -97,8 +94,8 @@ export function canCloseStakeFlow(txStatus: TxUiStatus): boolean {
 /**
  * A first-pass alpha estimate for an unstake TAO target, given the best
  * currently-known spot price -- a CANDIDATE only, always superseded by the
- * real subnetStakeQuoteQuery response's expected_out for display, and never
- * itself the final RawAlpha unless the caller is still waiting on that quote.
+ * real subnetStakeQuoteQuery response's expected_out for display. Only a
+ * matching successful quote can authorize that candidate as final RawAlpha.
  * Rounds through a fixed 9-decimal string, never a raw float divide passed
  * straight to a bigint parse -- same rule computeLimitPrice follows.
  */
@@ -120,6 +117,37 @@ export function computeUnstakeAlphaCandidate(taoTarget: string, spotPriceTao: nu
   return (target / spotPriceTao).toFixed(9);
 }
 
+/** A quote amount is TAO when staking and alpha when unstaking. */
+export function resolveStakeQuoteAmount(
+  action: StakeFlowAction,
+  unit: StakeFlowUnit,
+  amountInput: string,
+  spotPriceTao: number | null | undefined,
+): number | null {
+  const amount = Number(amountInput);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (action === "stake" || unit === "alpha") return amount;
+  if (spotPriceTao == null || !Number.isFinite(spotPriceTao) || spotPriceTao <= 0) return null;
+  const alpha = Number(computeUnstakeAlphaCandidate(amountInput, spotPriceTao));
+  return Number.isFinite(alpha) && alpha > 0 ? alpha : null;
+}
+
+/** A price for another subnet cannot value this subnet's alpha. */
+export function stakeQuoteSpotPrice(
+  quote: Pick<SubnetStakeQuote, "netuid" | "spot_price_tao"> | null,
+  netuid: number,
+): number | null {
+  if (
+    quote == null ||
+    quote.netuid !== netuid ||
+    !Number.isFinite(quote.spot_price_tao) ||
+    quote.spot_price_tao <= 0
+  ) {
+    return null;
+  }
+  return quote.spot_price_tao;
+}
+
 /** getFreeBalance() minus a conservative buffer, floored at zero rather than going negative. */
 export function resolveStakeMaxRao(
   freeBalanceRao: Rao,
@@ -127,37 +155,6 @@ export function resolveStakeMaxRao(
 ): Rao {
   const max = freeBalanceRao - bufferRao;
   return asRao(max > 0n ? max : 0n);
-}
-
-/**
- * The stale-labeled Max prefill for unstake (see AccountPositions' doc
- * comment for why this is never authoritative). Unit-aware: alpha mode needs
- * no price at all (stake_tao itself is display-only there); TAO mode returns
- * the position's TAO figure directly. Reuses computeUnstakeAlphaCandidate for
- * the alpha-mode conversion -- the same best-effort estimate used for the
- * live TAO-mode quote candidate, not a second, differently-precise path.
- */
-export function resolveUnstakeMaxAmountInput(
-  position: AccountPosition | null,
-  unit: StakeFlowUnit,
-  spotPriceTao: number,
-): string | null {
-  if (position == null) return null;
-  if (unit === "alpha") {
-    return computeUnstakeAlphaCandidate(String(position.stake_tao), spotPriceTao);
-  }
-  // Rounded to 9 decimals like every other amount this hook ever displays or
-  // parses -- stake_tao is a server-computed float (share_fraction * live
-  // stake) and routinely carries more precision than a single rao can
-  // represent, which would otherwise surface as an ugly, over-precise
-  // prefilled value in the amount field.
-  // eslint-disable-next-line no-restricted-syntax -- transaction amount, not display
-  return position.stake_tao.toFixed(9);
-}
-
-/** Root (netuid 0) has zero coverage in the nominator-positions source. */
-export function isMaxUnavailableForNetuid(netuid: number): boolean {
-  return netuid === 0;
 }
 
 /**
@@ -229,6 +226,93 @@ export function buildStakeCallParams(
   }
 }
 
+export interface StakeFlowIntent {
+  action: StakeFlowAction;
+  hotkey: string;
+  netuid: number;
+  amountInput: string;
+  unit: StakeFlowUnit;
+  tolerancePct: number;
+  signerAddress: string | null;
+}
+
+export interface StakeConfirmation {
+  intent: StakeFlowIntent;
+  quote: SubnetStakeQuote;
+  params: AddStakeLimitParams | RemoveStakeLimitParams;
+}
+
+/** Bind the call to the amount actually quoted, not a new spot conversion. */
+export function createStakeConfirmation(
+  intent: StakeFlowIntent,
+  quoteAmount: number | null,
+  quote: SubnetStakeQuote | null,
+): StakeConfirmation | null {
+  const spotPriceTao = stakeQuoteSpotPrice(quote, intent.netuid);
+  const typedAmount = Number(intent.amountInput);
+  if (
+    !intent.signerAddress ||
+    !Number.isFinite(typedAmount) ||
+    typedAmount <= 0 ||
+    quote == null ||
+    quoteAmount == null ||
+    !Number.isFinite(quoteAmount) ||
+    quoteAmount <= 0 ||
+    quote.direction !== intent.action ||
+    quote.amount !== quoteAmount ||
+    ((intent.action === "stake" || intent.unit === "alpha") && typedAmount !== quoteAmount) ||
+    quote.expected_out_unit !== (intent.action === "stake" ? "alpha" : "tao") ||
+    !Number.isFinite(quote.expected_out) ||
+    quote.expected_out < 0 ||
+    spotPriceTao == null
+  ) {
+    return null;
+  }
+  // This is a transaction amount, not display formatting. Refuse any
+  // precision loss rather than signing a different quantity from the quote.
+  // eslint-disable-next-line no-restricted-syntax -- transaction amount, not display
+  const quotedAmountInput = quoteAmount.toFixed(9);
+  if (Number(quotedAmountInput) !== quoteAmount) return null;
+  try {
+    const typedRaw =
+      intent.action === "unstake" && intent.unit === "alpha"
+        ? alphaToRawAlpha(intent.amountInput)
+        : taoToRao(intent.amountInput);
+    const quotedRaw =
+      intent.action === "unstake"
+        ? alphaToRawAlpha(quotedAmountInput)
+        : taoToRao(quotedAmountInput);
+    if (typedRaw <= 0n) return null;
+    if ((intent.action === "stake" || intent.unit === "alpha") && typedRaw !== quotedRaw) return null;
+  } catch {
+    return null;
+  }
+  const params = buildStakeCallParams({
+    ...intent,
+    amountInput: quotedAmountInput,
+    unit: intent.action === "unstake" ? "alpha" : "tao",
+    spotPriceTao,
+  });
+  return params ? { intent: { ...intent }, quote: { ...quote }, params } : null;
+}
+
+/** An old confirmation cannot authorize another signer, validator or input. */
+export function stakeConfirmationMatches(
+  confirmation: StakeConfirmation | null,
+  intent: StakeFlowIntent,
+): confirmation is StakeConfirmation {
+  return (
+    confirmation != null &&
+    confirmation.intent.hotkey === intent.hotkey &&
+    confirmation.intent.netuid === intent.netuid &&
+    confirmation.intent.action === intent.action &&
+    confirmation.intent.unit === intent.unit &&
+    confirmation.intent.amountInput === intent.amountInput &&
+    confirmation.intent.tolerancePct === intent.tolerancePct &&
+    confirmation.intent.signerAddress === intent.signerAddress
+  );
+}
+
 export interface UseStakeFlowResult {
   phase: StakeFlowPhase;
   wallet: ReturnType<typeof useWallet>;
@@ -278,7 +362,7 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   const [unit, setUnit] = useState<StakeFlowUnit>("tao");
   const [amountInput, setAmountInput] = useState("");
   const [tolerancePct, setTolerancePct] = useState(DEFAULT_TOLERANCE_PCT);
-  const [confirmed, setConfirmed] = useState(false);
+  const [confirmation, setConfirmation] = useState<StakeConfirmation | null>(null);
 
   // Shared across all three stake/take flows -- see use-flow-session.ts.
   const { sessionId, api } = useFlowSession(wallet.status);
@@ -286,6 +370,17 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   const [freeBalanceRao, setFreeBalanceRao] = useState<Rao | null>(null);
   const [minStakeRao, setMinStakeRao] = useState<Rao | null>(null);
   const coldkeyAddress = wallet.wallet?.address ?? null;
+  const intent = useMemo<StakeFlowIntent>(
+    () => ({ action, hotkey, netuid, amountInput, unit, tolerancePct, signerAddress: coldkeyAddress }),
+    [action, hotkey, netuid, amountInput, unit, tolerancePct, coldkeyAddress],
+  );
+  const activeConfirmation = stakeConfirmationMatches(confirmation, intent) ? confirmation : null;
+  const confirmed = activeConfirmation != null;
+  useEffect(() => {
+    if (confirmation != null && !stakeConfirmationMatches(confirmation, intent)) {
+      setConfirmation(null);
+    }
+  }, [confirmation, intent]);
   useEffect(() => {
     if (!api || !coldkeyAddress) return;
     let cancelled = false;
@@ -313,56 +408,50 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   // candidate doesn't bounce back to the bootstrap price and re-derive a
   // different candidate on every refetch -- see this hook's own header
   // comment on the fund-safety cost of that class of bug.
-  const [lastKnownSpotPriceTao, setLastKnownSpotPriceTao] = useState<number | null>(null);
+  const [retainedSpotPrice, setRetainedSpotPrice] = useState<{
+    netuid: number;
+    value: number;
+  } | null>(null);
+  const lastKnownSpotPriceTao = retainedSpotPrice?.netuid === netuid ? retainedSpotPrice.value : null;
+  const priorSpotPriceTao = lastKnownSpotPriceTao ?? bootstrapSpotPriceTao;
+  const quoteAmount = resolveStakeQuoteAmount(action, unit, amountInput, priorSpotPriceTao);
+  const quotePriceUnavailable =
+    action === "unstake" &&
+    unit === "tao" &&
+    (priorSpotPriceTao == null || !Number.isFinite(priorSpotPriceTao) || priorSpotPriceTao <= 0);
 
-  const hasValidAmountInput =
-    amountInput.trim() !== "" && Number.isFinite(Number(amountInput)) && Number(amountInput) > 0;
-
-  const priorSpotPriceTao = lastKnownSpotPriceTao ?? bootstrapSpotPriceTao ?? 1;
-  const quoteAmount =
-    action === "stake"
-      ? hasValidAmountInput
-        ? Number(amountInput)
-        : 0
-      : hasValidAmountInput
-        ? Number(
-            unit === "alpha"
-              ? amountInput
-              : computeUnstakeAlphaCandidate(amountInput, priorSpotPriceTao),
-          )
-        : 0;
-
-  const quoteQ = useQuery(subnetStakeQuoteQuery(netuid, quoteAmount, action));
-  const quote = quoteQ.data?.data ?? null;
+  const quoteOptions = subnetStakeQuoteQuery(netuid, quoteAmount ?? 0, action);
+  const quoteQ = useQuery({
+    // Zero is a disabled query-key placeholder, never a substitute quote.
+    ...quoteOptions,
+    // A cached amount alone cannot authorize another validator or form intent.
+    queryKey: [...quoteOptions.queryKey, hotkey, unit, amountInput, tolerancePct, coldkeyAddress],
+    enabled: quoteAmount != null && !confirmed,
+  });
+  const currentQuote = quoteAmount != null ? (quoteQ.data?.data ?? null) : null;
+  const quotedSpotPriceTao = stakeQuoteSpotPrice(currentQuote, netuid);
 
   useEffect(() => {
-    if (quote?.spot_price_tao != null) setLastKnownSpotPriceTao(quote.spot_price_tao);
-  }, [quote?.spot_price_tao]);
+    if (!confirmed && quotedSpotPriceTao != null) {
+      setRetainedSpotPrice({ netuid, value: quotedSpotPriceTao });
+    }
+  }, [confirmed, netuid, quotedSpotPriceTao]);
 
-  const spotPriceTao = quote?.spot_price_tao ?? lastKnownSpotPriceTao ?? bootstrapSpotPriceTao;
+  const spotPriceTao =
+    activeConfirmation?.quote.spot_price_tao ??
+    quotedSpotPriceTao ??
+    lastKnownSpotPriceTao ??
+    bootstrapSpotPriceTao;
 
-  const positionsQ = useQuery({
-    ...accountPositionsQuery(coldkeyAddress ?? ""),
-    enabled: !!coldkeyAddress && action === "unstake",
-  });
-  const position =
-    positionsQ.data?.data.positions.find((p) => p.hotkey === hotkey && p.netuid === netuid) ?? null;
-
-  const params = useMemo(
+  const candidate = useMemo(
     () =>
-      spotPriceTao != null
-        ? buildStakeCallParams({
-            action,
-            hotkey,
-            netuid,
-            amountInput,
-            unit,
-            spotPriceTao,
-            tolerancePct,
-          })
+      quoteQ.isSuccess && !quoteQ.isFetching
+        ? createStakeConfirmation(intent, quoteAmount, currentQuote)
         : null,
-    [action, hotkey, netuid, amountInput, unit, spotPriceTao, tolerancePct],
+    [intent, quoteAmount, currentQuote, quoteQ.isSuccess, quoteQ.isFetching],
   );
+  const params = activeConfirmation?.params ?? candidate?.params ?? null;
+  const quote = activeConfirmation?.quote ?? candidate?.quote ?? null;
 
   const validationIssues = useMemo(() => {
     if (!params || minStakeRao == null) return [];
@@ -390,13 +479,13 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   );
 
   const canConfirm =
-    params != null && validationIssues.length === 0 && quoteQ.isSuccess && !quoteQ.isFetching;
+    !confirmed &&
+    candidate != null &&
+    validationIssues.length === 0 &&
+    quoteQ.isSuccess &&
+    !quoteQ.isFetching;
 
   const maxStakeRao = freeBalanceRao != null ? resolveStakeMaxRao(freeBalanceRao) : null;
-  const maxUnstakeUnavailable = isMaxUnavailableForNetuid(netuid);
-  const maxUnstakeAmountInput = maxUnstakeUnavailable
-    ? null
-    : resolveUnstakeMaxAmountInput(position, unit, spotPriceTao ?? 1);
 
   // Fee dry-run for the PreSignConfirmation screen -- only ever fetched once
   // the user has reached "confirm" with a resolved, idle tx, so an amount
@@ -407,34 +496,35 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     if (maxStakeRao != null) setAmountInput(raoToTao(maxStakeRao));
   }, [maxStakeRao]);
 
-  const applyMaxUnstake = useCallback(() => {
-    if (maxUnstakeAmountInput != null) setAmountInput(maxUnstakeAmountInput);
-  }, [maxUnstakeAmountInput]);
+  const applyMaxUnstake = useCallback(() => undefined, []);
 
-  const confirm = useCallback(() => setConfirmed(true), []);
+  const confirm = useCallback(() => {
+    if (canConfirm && candidate != null) setConfirmation(candidate);
+  }, [canConfirm, candidate]);
   const editAmount = useCallback(() => {
-    setConfirmed(false);
+    setConfirmation(null);
     txStatus.reset();
   }, [txStatus]);
 
   const close = useCallback(() => {
     txStatus.reset();
-    setConfirmed(false);
+    setConfirmation(null);
     setAmountInput("");
   }, [txStatus]);
 
   const submit = useCallback(async () => {
-    if (!api || !wallet.wallet || !params) return;
+    if (!api || !wallet.wallet || !activeConfirmation || validationIssues.length > 0) return;
+    const confirmedParams = activeConfirmation.params;
     const nonce = await getNextNonce(api, wallet.wallet.address);
-    const idempotencyKey = computeIdempotencyKey(params, nonce, sessionId);
-    const extrinsic = buildExtrinsic(api, params);
+    const idempotencyKey = computeIdempotencyKey(confirmedParams, nonce, sessionId);
+    const extrinsic = buildExtrinsic(api, confirmedParams);
     const signer = await getSigner(wallet.wallet.source);
     await txStatus.submit(api, extrinsic, {
       signerAddress: wallet.wallet.address,
       signer,
       idempotencyKey,
     });
-  }, [api, wallet.wallet, params, sessionId, txStatus]);
+  }, [api, wallet.wallet, activeConfirmation, validationIssues.length, sessionId, txStatus]);
 
   const phase = deriveStakeFlowPhase(wallet.status, confirmed, txStatus.status);
 
@@ -450,18 +540,24 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     tolerancePct,
     setTolerancePct,
     quote,
-    quoteIsPending: quoteQ.isPending,
-    quoteError: quoteQ.isError
-      ? quoteQ.error instanceof Error
-        ? quoteQ.error.message
-        : "Could not compute a quote."
-      : null,
+    quoteIsPending: !confirmed && quoteAmount != null && (quoteQ.isPending || quoteQ.isFetching),
+    quoteError: confirmed
+      ? null
+      : quotePriceUnavailable
+        ? "A TAO-per-alpha price is unavailable. Enter an alpha amount or try again later."
+        : quoteQ.isError
+          ? quoteQ.error instanceof Error
+            ? quoteQ.error.message
+            : "Could not compute a quote."
+          : quoteQ.isSuccess && !quoteQ.isFetching && quoteAmount != null && candidate == null
+            ? "A matching quote is unavailable for this staking request."
+            : null,
     spotPriceTao,
     freeBalanceRao,
     maxStakeRao,
-    maxUnstakeAmountInput,
-    maxUnstakeUnavailable,
-    positionCapturedAt: positionsQ.data?.data.captured_at ?? null,
+    maxUnstakeAmountInput: null,
+    maxUnstakeUnavailable: true,
+    positionCapturedAt: null,
     applyMaxStake,
     applyMaxUnstake,
     params,

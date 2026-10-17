@@ -12,10 +12,17 @@ const ValidatorHistoryPointSchema = z
       .number()
       .nullable()
       .describe(
-        "TAO-priced at this point's OWN snapshot_date (#9051): each day's cross-subnet total converts each membership through that day's alpha_price_tao (root at 1:1), so the series is a true TAO-value history. A day-row with no matching price is excluded from that day's sum.",
-      ),
+        "Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z.number().nullable(),
-    rewards_per_1000_tao: z.number().nullable(),
+    rewards_per_1000_tao: z
+      .number()
+      .nullable()
+      .describe(
+        "Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight is not an APY denominator; null is unknown, never zero yield.",
+      )
+      .meta({ deprecated: true }),
     // #9383, per-subnet scope. OPTIONAL rather than nullable: these are absent
     // from the cross-subnet series entirely, because vTrust/consensus/dividends/
     // take are per-(hotkey, netuid) facts and averaging them across subnets would
@@ -33,7 +40,7 @@ const ValidatorHistoryPointSchema = z
       .nullable()
       .optional()
       .describe(
-        "Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point.",
+        "Legacy field name for observed subnet voting weight from metagraph stake_tao: alpha + tao_weight * root for non-root memberships. Root influence can repeat across subnets. This is not independent alpha principal, cannot be valued as holdings, and must not be summed across subnets.",
       ),
     emission_alpha: z.number().nullable().optional(),
     validator_trust: z
@@ -53,14 +60,30 @@ const ValidatorHistoryPointSchema = z
       .describe(
         "Whether the permit was held that day. The scoped series reports a lost permit rather than dropping the day, so 'lost the permit' stays distinguishable from 'no data'.",
       ),
-    rewards_per_1000_alpha: z.number().nullable().optional(),
-    // #9390. `dividends` is already normalised by the chain (the column sums to ~1.0
-    // across a subnet's neurons), so it IS the dividend share; efficiency is that over
-    // stake share. Above 1 the validator out-earns its stake, below 1 it under-earns.
-    // The denominator is TOTAL subnet stake including miners -- measured at 99.87-100%
-    // validator stake, so the distinction is sub-0.2%.
-    stake_share: z.number().min(0).nullable().optional(),
-    dividend_efficiency: z.number().min(0).nullable().optional(),
+    rewards_per_1000_alpha: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight is not an APY denominator; null is unknown, never zero yield.",
+      )
+      .meta({ deprecated: true }),
+    stake_share: z
+      .number()
+      .min(0)
+      .nullable()
+      .optional()
+      .describe(
+        "Always null: observed validator voting weight and the subnet's stake total do not establish a common economic-principal denominator.",
+      ),
+    dividend_efficiency: z
+      .number()
+      .min(0)
+      .nullable()
+      .optional()
+      .describe(
+        "Always null while a valid common-denomination stake-share denominator is unavailable. Raw dividends remain available separately.",
+      ),
   })
   .strict()
   .describe(
@@ -98,7 +121,7 @@ export const ValidatorHistoryArtifactSchema = z
   })
   .strict()
   .describe(
-    "One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history.",
+    "One validator's daily operational history. Capital and principal-based reward rates remain unavailable. Mirrors GET /api/v1/validators/{hotkey}/history.",
   );
 export type ValidatorHistoryArtifact = z.infer<
   typeof ValidatorHistoryArtifactSchema
