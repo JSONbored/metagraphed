@@ -357,18 +357,18 @@ export async function attachHtmlDiagnostics(
 }
 
 // Scoped observations for two ordinary fixture cases. No waits, routing or app state changes.
-const ordinaryFixtureDiagnostics = new WeakMap<Page, {
-  runtime: Awaited<ReturnType<typeof startRuntimeDiagnostics>>;
-  events: Observation[];
-  record: (phase: string, detail?: Record<string, string | number | boolean>) => void;
-  cleanup: () => void;
-  dropped: () => number;
-}>();
+const ordinaryFixtureDiagnostics = new WeakMap<
+  Page,
+  {
+    runtime: Awaited<ReturnType<typeof startRuntimeDiagnostics>>;
+    events: Observation[];
+    record: (phase: string, detail?: Record<string, string | number | boolean>) => void;
+    cleanup: () => void;
+    dropped: () => number;
+  }
+>();
 
-export async function startOrdinaryFixtureDiagnostics(
-  page: Page,
-  baseURL: string | undefined,
-) {
+export async function startOrdinaryFixtureDiagnostics(page: Page, baseURL: string | undefined) {
   const runtime = await startRuntimeDiagnostics(page, baseURL);
   const origin = loopbackOrigin(baseURL ?? "");
   const events: Observation[] = [];
@@ -386,10 +386,18 @@ export async function startOrdinaryFixtureDiagnostics(
   add("observation-start", { started_at_utc: new Date(started).toISOString() });
   const selected = (request: Request, failed = false) => {
     const url = new URL(request.url());
-    if (url.origin === origin && url.pathname.startsWith("/assets/") && url.pathname.endsWith(".js"))
+    if (
+      url.origin === origin &&
+      url.pathname.startsWith("/assets/") &&
+      url.pathname.endsWith(".js")
+    )
       return failed || /\/settings-panel-[^/]+\.js$/.test(url.pathname) ? url : null;
-    if (url.origin === "http://127.0.0.1:8081" &&
-      ["/api/v1/providers/lium", "/api/v1/providers/lium/endpoints", "/api/v1/surfaces"].includes(url.pathname))
+    if (
+      url.origin === "http://127.0.0.1:8081" &&
+      ["/api/v1/providers/lium", "/api/v1/providers/lium/endpoints", "/api/v1/surfaces"].includes(
+        url.pathname,
+      )
+    )
       return url;
     return null;
   };
@@ -409,13 +417,16 @@ export async function startOrdinaryFixtureDiagnostics(
       resource_type: request.resourceType(),
       navigation: request.isNavigationRequest(),
       status,
-      ...(event === "request-failed" ? {
-        reason: /^net::ERR_[A-Z_]+$/.test(reason) ? reason : "request-failed",
-      } : {}),
+      ...(event === "request-failed"
+        ? {
+            reason: /^net::ERR_[A-Z_]+$/.test(reason) ? reason : "request-failed",
+          }
+        : {}),
     });
   };
   const onRequest = (request: Request) => observe("request", request);
-  const onResponse = (response: Response) => observe("response", response.request(), response.status());
+  const onResponse = (response: Response) =>
+    observe("response", response.request(), response.status());
   const onFinished = (request: Request) => observe("request-finished", request);
   const onFailed = (request: Request) => observe("request-failed", request);
   page.on("request", onRequest);

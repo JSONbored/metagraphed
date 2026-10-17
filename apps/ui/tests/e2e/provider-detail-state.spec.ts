@@ -8,7 +8,10 @@ import {
 
 test.use({ serviceWorkers: "block" });
 test.beforeEach(async ({ page, baseURL }, testInfo) => {
-  if (testInfo.title === "keeps registered services visible when probes fail and retries independently")
+  if (
+    testInfo.title ===
+    "keeps registered services visible when probes fail and retries independently"
+  )
     await startOrdinaryFixtureDiagnostics(page, baseURL);
 });
 test.afterEach(async ({ page }, testInfo) => {
