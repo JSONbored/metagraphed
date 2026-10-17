@@ -5,14 +5,31 @@ export function syncDeadLetterKv() {
   const values = new Map<string, string>();
   const gets: { key: string; type: unknown }[] = [];
   const puts: { key: string; value: string; options: unknown }[] = [];
+  const lists: { prefix?: string; limit?: number }[] = [];
   const streams: { reads: number; cancels: number; releases: number }[] = [];
   const hooks: {
     read?: (key: string, call: number) => string | null;
     beforePut?: (key: string, value: string, call: number) => void;
     afterPut?: (key: string, value: string, call: number) => void;
     stream?: (value: string) => ReadableStream<Uint8Array>;
+    list?: (prefix: string, call: number) => {
+      keys: { name: string }[];
+      list_complete: boolean;
+    };
   } = {};
   const kv = {
+    async list(options: { prefix?: string; limit?: number }) {
+      lists.push(options);
+      if (hooks.list)
+        return hooks.list(options.prefix ?? "", lists.length);
+      const keys = [...values.keys()]
+        .filter((key) => key.startsWith(options.prefix ?? ""))
+        .sort();
+      return {
+        keys: keys.slice(0, options.limit).map((name) => ({ name })),
+        list_complete: keys.length <= (options.limit ?? 1000),
+      };
+    },
     async get(key: string, type: unknown) {
       gets.push({ key, type });
       const value = hooks.read
@@ -59,6 +76,6 @@ export function syncDeadLetterKv() {
       values.set(key, value);
       hooks.afterPut?.(key, value, puts.length);
     },
-  } as unknown as Pick<KVNamespace, "get" | "put">;
-  return { kv, values, gets, puts, streams, hooks };
+  } as unknown as Pick<KVNamespace, "get" | "put" | "list">;
+  return { kv, values, gets, puts, lists, streams, hooks };
 }

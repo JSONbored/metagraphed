@@ -401,38 +401,61 @@ describe("the sync queue consumer", () => {
       assert.deepEqual(m.calls, ["ack"]);
       assert.equal(rows().length, 0);
       assert.ok(failedD1Writes > 0, "the failed alarm write was attempted");
-      assert.equal(f.values.size, 1);
-      const envelope = JSON.parse([...f.values.values()][0]!);
+      assert.equal(f.values.size, 2);
+      const records = [...f.values.values()].map((value) => JSON.parse(value));
+      const envelope = records.find((value) => value.kind === "custody");
+      const observation = records.find((value) => value.kind === "observation");
       assert.deepEqual(
         Buffer.from(envelope.payload, "base64"),
         compressed ? body : bytes,
       );
       assert.equal(envelope.representation, compressed ? "bytes" : "json");
       assert.equal(envelope.published_at, m.timestamp.getTime());
-      assert.equal(envelope.attempts, 7);
-      assert.equal(
-        f.gets.length,
-        2,
-        "KV bytes are read back before acknowledgment",
-      );
+      assert.equal(observation.attempts, 7);
+      assert.equal(f.gets.at(-2)!.key, f.puts[0]!.key);
+      assert.equal(f.gets.at(-1)!.key, f.puts[1]!.key);
     }
   });
 
-  test("a dead-letter batch without KV stays unacknowledged and never writes business rows", async () => {
+  test("a dead-letter batch without KV explicitly retries and never writes business rows", async () => {
     const m = {
       ...positionMessage(),
       id: "unpreserved-sync",
       timestamp: new Date(1_780_000_000_123),
       attempts: 1,
     };
-    await assert.rejects(
-      worker.queue!(
-        { queue: "sync-batches-dlq", messages: [m] } as never,
-        { ...pgMockEnv() } as never,
-        { waitUntil: () => {} } as never,
-      ),
+    await worker.queue!(
+      { queue: "sync-batches-dlq", messages: [m] } as never,
+      { ...pgMockEnv() } as never,
+      { waitUntil: () => {} } as never,
     );
-    assert.deepEqual(m.calls, []);
+    assert.deepEqual(m.calls, ["retry"]);
+    assert.equal(rows().length, 0);
+  });
+
+  test("a failed first dead letter retries without withholding its batch mate", async () => {
+    const f = syncDeadLetterKv();
+    const messages = ["unconfirmed", "preserved"].map((id) => ({
+      ...positionMessage(),
+      id,
+      timestamp: new Date(1_780_000_000_123),
+      attempts: 1,
+    }));
+    f.hooks.beforePut = (_key, _value, call) => {
+      if (call === 1) throw new Error("store unavailable");
+    };
+    await worker.queue!(
+      { queue: "sync-batches-dlq", messages } as never,
+      { ...pgMockEnv(), METAGRAPH_CONTROL: f.kv } as never,
+      { waitUntil: () => {} } as never,
+    );
+    assert.deepEqual(messages[0]!.calls, ["retry"]);
+    assert.deepEqual(messages[1]!.calls, ["ack"]);
+    assert.equal(f.values.size, 2);
+    const custody = [...f.values.values()]
+      .map((value) => JSON.parse(value))
+      .find((value) => value.kind === "custody");
+    assert.equal(custody.message_id, "preserved");
     assert.equal(rows().length, 0);
   });
 

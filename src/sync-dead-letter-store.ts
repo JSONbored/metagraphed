@@ -3,7 +3,15 @@ import { Buffer } from "node:buffer";
 
 export const SYNC_QUARANTINE_PREFIX = "sync-quarantine:v1:";
 export const SYNC_QUARANTINE_MAX_BYTES = 192 * 1024;
-export type SyncDeadLetterStore = Pick<KVNamespace, "get" | "put">;
+export type SyncDeadLetterStore = Pick<KVNamespace, "get" | "put" | "list">;
+
+export function syncDeadLetterObservationKey(
+  custodySha256: string,
+  attempts: number,
+  sha256: string,
+): string {
+  return `${SYNC_QUARANTINE_PREFIX}${custodySha256}:${String(attempts).padStart(16, "0")}:${sha256}`;
+}
 
 /** Bound stored bytes before copying them into memory, including corrupt keys. */
 export async function readSyncDeadLetterEnvelope(
@@ -75,9 +83,10 @@ function assertJson(value: unknown, ancestors = new Set<unknown>()): void {
   ancestors.delete(value);
 }
 
-/** Preserve one delivered observation independently of the application DB.
+/** Preserve stable custody and one exact delivery observation independently.
  * Binary bodies retain transport bytes; JSON retains the consumer-observed
- * value, not the producer's original serialization. No replay or expiry. */
+ * value, not the producer's original serialization. A verified observation may
+ * belong to an earlier attempt; this is not a complete attempt history. */
 export async function preserveSyncDeadLetter(
   store: SyncDeadLetterStore | undefined,
   queue: string,
@@ -113,25 +122,86 @@ export async function preserveSyncDeadLetter(
     throw new Error("Sync dead letter exceeds 128 KiB");
   const envelope = Buffer.from(
     JSON.stringify({
-      version: 1,
+      version: 2,
+      kind: "custody",
       queue,
       message_id: message.id,
       published_at: publishedAt,
-      attempts: message.attempts,
       representation: binary ? "bytes" : "json",
       body_bytes: bytes.length,
       body_sha256: historySha256(bytes),
       payload: bytes.toString("base64"),
     }),
   );
-  const key = SYNC_QUARANTINE_PREFIX + historySha256(envelope);
+  const custodySha256 = historySha256(envelope);
+  const key = SYNC_QUARANTINE_PREFIX + custodySha256;
   let stored = await readSyncDeadLetterEnvelope(store, key);
-  if (stored === null) {
-    // Content addressing makes concurrent compliant writers identical. KV is
-    // eventually consistent; an unconfirmed write must still fail closed.
-    await store.put(key, envelope.toString("utf8"));
-    stored = await readSyncDeadLetterEnvelope(store, key);
+  if (stored !== null && !envelope.equals(stored))
+    throw new Error("Sync dead letter readback differs");
+
+  // Discover an older actual observation through a stable prefix, rather than
+  // requiring each new delivery's fresh key to become immediately readable.
+  // Attempt-first lexical order keeps the earliest visible candidate stable.
+  const prefix = key + ":";
+  const page = await store.list({ prefix, limit: 1 });
+  if (
+    !Array.isArray(page.keys) ||
+    page.keys.length > 1 ||
+    typeof page.list_complete !== "boolean" ||
+    (!page.keys.length && !page.list_complete)
+  )
+    throw new Error("Sync dead letter observation page differs");
+  let attempts = message.attempts!;
+  const candidate = page.keys[0]?.name;
+  if (page.keys.length && typeof candidate !== "string")
+    throw new Error("Sync dead letter observation key differs");
+  if (candidate !== undefined) {
+    const suffix = candidate.slice(prefix.length);
+    const match = /^(\d{16}):([a-f0-9]{64})$/.exec(suffix);
+    if (
+      !candidate.startsWith(prefix) ||
+      !match ||
+      match[0].length !== suffix.length ||
+      !Number.isSafeInteger(Number(match[1])) ||
+      Number(match[1]) < 1
+    )
+      throw new Error("Sync dead letter observation key differs");
+    attempts = Number(match[1]);
   }
+  const observation = Buffer.from(
+    JSON.stringify({
+      version: 2,
+      kind: "observation",
+      custody_sha256: custodySha256,
+      attempts,
+    }),
+  );
+  const observationKey = syncDeadLetterObservationKey(
+    custodySha256,
+    attempts,
+    historySha256(observation),
+  );
+  if (candidate !== undefined && candidate !== observationKey)
+    throw new Error("Sync dead letter observation digest differs");
+  let observed = await readSyncDeadLetterEnvelope(store, observationKey);
+  if (
+    (candidate !== undefined && observed === null) ||
+    (observed !== null && !observation.equals(observed))
+  )
+    throw new Error("Sync dead letter observation readback differs");
+
+  // Stage both immutable records before confirmation. A later delivery can
+  // confirm these same bytes after a cached miss or a lost write response.
+  // KV has no CAS: compliant concurrent writers produce identical key/value
+  // pairs; every observed mismatch is refused without overwriting it.
+  if (stored === null) await store.put(key, envelope.toString("utf8"));
+  if (observed === null)
+    await store.put(observationKey, observation.toString("utf8"));
+  if (stored === null) stored = await readSyncDeadLetterEnvelope(store, key);
+  if (observed === null)
+    observed = await readSyncDeadLetterEnvelope(store, observationKey);
   if (stored === null || !envelope.equals(stored))
     throw new Error("Sync dead letter readback differs");
+  if (observed === null || !observation.equals(observed))
+    throw new Error("Sync dead letter observation readback differs");
 }

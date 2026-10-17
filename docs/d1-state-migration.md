@@ -228,31 +228,64 @@ so failed preservation, partial delivery and redelivery may create more records
 for the same messages. Counts in the detail describe that delivered batch, not
 uniquely preserved messages or confirmed permanent losses. Sync preservation uses
 the existing control KV binding independently of application-database health.
-Each `sync-quarantine:v1:<sha256>` object contains one complete delivered
-observation: queue, message ID, provider timestamp, observed attempt, body
-representation, byte count, body digest and base64 payload. Binary transport bytes
-remain unchanged; JSON records the consumer-observed value serialized again.
-Unsupported values that JSON would discard or change are refused before storage.
-The complete envelope's digest selects its key, and exact bounded byte readback
-must succeed before ACK. Identical observations need no additional write;
-conflicting bodies and different attempts remain separate observations. A failed
-or ambiguous write/readback remains unacknowledged, without replaying business
-writes. KV has no atomic message-ID uniqueness or Queue ACK transaction, and
-eventual consistency can delay confirmation even after a successful write.
+Each `sync-quarantine:v1:<custody_sha256>` object contains a version-2 custody
+record: queue, message ID, provider timestamp, body representation, byte count,
+body digest and base64 payload. Delivery attempts do not change that immutable
+identity. Binary transport bytes remain unchanged; JSON records the
+consumer-observed value serialized again. Unsupported values that JSON would
+discard or change are refused before storage. A separate version-2 observation
+record links an actual observed attempt to the full custody digest. Its key is
+`sync-quarantine:v1:<custody_sha256>:<16-digit attempt>:<observation_sha256>`.
+Both records require exact bounded byte readback before ACK; a successful put
+alone is insufficient. Any observed mismatch is refused without overwriting it.
+
+A stable per-custody prefix lists at most one observation, ordered by its
+fixed-width attempt. Redelivery can confirm an earlier visible observation
+instead of requiring its own fresh key to become immediately readable. A listed
+but unreadable record or an incomplete empty page fails closed. When no
+observation is visible, the handler also checks the current deterministic key
+before writing; missing custody and observation records are both staged before
+readback. Matching existing records need no additional write. This retains one
+or more observed attempts, not necessarily the first, latest or every delivery.
+Conflicting bodies or immutable identities have distinct custody records; no
+message-ID uniqueness is claimed. Compliant concurrent writes to a given key
+have identical bytes. KV provides no conditional absent-only write or Queue ACK
+transaction, and propagation has no bounded completion guarantee.
+
+Each message is handled independently. Failed preservation or acknowledgment
+registers that message's native retry and processing continues through the batch.
+Failure to register a retry rejects the invocation after the remaining messages
+are processed. No failed business write is replayed. A normal delivery uses at
+most one list, four reads and two puts per message, with one bounded stream read
+at a time. Queue retry and retention limits still apply; keeping delivery paused
+does not reset attempts, cancel in-flight work or extend retention.
 
 Quarantine has no expiration or automatic collector. It is outside registry
 publication and GC. The existing authenticated `POST /api/v1/internal/state-export`
 accepts `{"kind":"dead-letter","operation":"list"}` with an optional opaque
 `cursor` to enumerate at most 100 envelope digests per page. Read one with
 `{"kind":"dead-letter","operation":"read","sha256":"<64 lowercase hex>"}`;
-an optional `bytes` asserts an exact expected size. Reads verify the full digest
-and stream at most 192 KiB, returning private `no-store` bytes. Listing completion
+an optional `bytes` asserts an exact expected size. Observation descriptors also
+contain `custody_sha256` and `attempts`; pass both fields together on their read
+request. These fields construct only the fixed composite quarantine key, never
+an arbitrary key or prefix. Reads verify the full digest and stream at most
+192 KiB, returning private `no-store` bytes. Listing completion
 describes KV page traversal, never a complete queue census or settled publication.
 An operator must verify every retained envelope and separately qualify queue
 coverage and any replay. Historical `sync_dead_letters` D1 rows remain untouched
 and require their own backup; this protocol does not export them. Adding the
 dispatch changes the lossless state export's function-derived projection digest,
 so pinned migration plans require requalification before deployment.
+
+Native CI invokes the actual Data API queue entry in an isolated Miniflare/workerd
+runtime with local KV and outbound requests denied. Adversarial in-memory KV tests
+exercise delayed visibility, conflicts and delivery retries separately. Neither
+qualifies production KV capacity, remote visibility or current queue coverage.
+There is no production synthetic-preservation endpoint; the private export route
+only lists and reads. A live canary requires a separately reviewed invocation
+mechanism and action-time authorization, without consuming the real DLQ merely
+to test this change. Existing `STATE_EXPORT_SECRET` holders can read quarantined
+bodies after activation, which must be included in that access-scope review.
 
 The health observation does not contain custody outcomes. Existing incident
 history and closure acknowledgement remain intact; closure is not proof of

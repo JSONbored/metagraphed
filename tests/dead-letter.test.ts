@@ -30,6 +30,7 @@ function message(body: unknown) {
     attempts: 1,
     calls,
     ack: () => calls.push("ack"),
+    retry: () => calls.push("retry"),
   };
 }
 
@@ -182,6 +183,142 @@ describe("handleDeadLetterBatch", () => {
       quarantine(),
     );
     assert.deepEqual(m.calls, ["ack"]);
+  });
+
+  test("retries a failed first preservation and acknowledges the successful suffix", async () => {
+    const f = syncDeadLetterKv();
+    const health = db();
+    const first = message({ lane: "account-balances", rows: [] });
+    const suffix = message({ lane: "hotkey-alpha", rows: [] });
+    f.hooks.beforePut = (_key, _value, call) => {
+      if (call === 1) throw new Error("store unavailable");
+    };
+    await handleDeadLetterBatch(
+      batch("sync-batches-dlq", [first, suffix]),
+      health,
+      1,
+      f.kv,
+    );
+    assert.deepEqual(first.calls, ["retry"]);
+    assert.deepEqual(suffix.calls, ["ack"]);
+    assert.equal(f.values.size, 2);
+    const custody = [...f.values.values()]
+      .map((value) => JSON.parse(value))
+      .find((value) => value.kind === "custody");
+    assert.equal(custody.message_id, suffix.id);
+    assert.equal(health.inserts.length, 1);
+    assert.equal(health.inserts[0]![1], "stale");
+    assert.equal(health.inserts[0]![2], null);
+  });
+
+  test("retries each failed preservation exactly once without retrying successful neighbors", async () => {
+    const f = syncDeadLetterKv();
+    const messages = Array.from({ length: 5 }, () =>
+      message({ lane: "hotkey-alpha", rows: [] }),
+    );
+    const failed = new Set([messages[0]!.id, messages[2]!.id, messages[3]!.id]);
+    f.hooks.beforePut = (_key, value) => {
+      if (failed.has(JSON.parse(value).message_id))
+        throw new Error("store unavailable");
+    };
+    await handleDeadLetterBatch(
+      batch("sync-batches-dlq", messages),
+      undefined,
+      1,
+      f.kv,
+    );
+    assert.deepEqual(messages.map((m) => m.calls), [
+      ["retry"],
+      ["ack"],
+      ["retry"],
+      ["retry"],
+      ["ack"],
+    ]);
+    assert.equal(f.values.size, 4);
+  });
+
+  test("an acknowledgment failure retries only that preserved message", async () => {
+    const f = syncDeadLetterKv();
+    const first = message({ lane: "account-balances", rows: [] });
+    const suffix = message({ lane: "hotkey-alpha", rows: [] });
+    first.ack = () => {
+      first.calls.push("ack");
+      throw new Error("acknowledgment failed");
+    };
+    await handleDeadLetterBatch(
+      batch("sync-batches-dlq", [first, suffix]),
+      undefined,
+      1,
+      f.kv,
+    );
+    assert.deepEqual(first.calls, ["ack", "retry"]);
+    assert.deepEqual(suffix.calls, ["ack"]);
+    assert.equal(f.values.size, 4);
+  });
+
+  test("failed retry registrations reject after processing the suffix", async () => {
+    const f = syncDeadLetterKv();
+    const messages = Array.from({ length: 4 }, () =>
+      message({ lane: "hotkey-alpha", rows: [] }),
+    );
+    const failed = new Set([messages[0]!.id, messages[2]!.id]);
+    f.hooks.beforePut = (_key, value) => {
+      if (failed.has(JSON.parse(value).message_id))
+        throw new Error("store unavailable");
+    };
+    for (const m of [messages[0]!, messages[2]!])
+      m.retry = () => {
+        m.calls.push("retry");
+        throw new Error("unexpected registration failure");
+      };
+    await assert.rejects(
+      handleDeadLetterBatch(
+        batch("sync-batches-dlq", messages),
+        undefined,
+        1,
+        f.kv,
+      ),
+      (error: unknown) => {
+        assert.ok(error instanceof AggregateError);
+        assert.equal(error.errors.length, 2);
+        assert.equal(
+          error.message,
+          "Sync dead letter retries could not be registered",
+        );
+        for (const entry of error.errors)
+          assert.equal(
+            entry.message,
+            "Sync dead letter retry was not registered",
+          );
+        assert.deepEqual(messages[3]!.calls, ["ack"]);
+        return true;
+      },
+    );
+    assert.deepEqual(messages.map((m) => m.calls), [
+      ["retry"],
+      ["ack"],
+      ["retry"],
+      ["ack"],
+    ]);
+    assert.equal(f.values.size, 4);
+  });
+
+  test("other dead-letter queues retain their acknowledgment failure policy", async () => {
+    const first = message({ subscription_id: "sub_a" });
+    const suffix = message({ subscription_id: "sub_b" });
+    first.ack = () => {
+      first.calls.push("ack");
+      throw new Error("acknowledgment failed");
+    };
+    await assert.rejects(
+      handleDeadLetterBatch(
+        batch("webhook-deliveries-dlq", [first, suffix]),
+        undefined,
+      ),
+      /acknowledgment failed/,
+    );
+    assert.deepEqual(first.calls, ["ack"]);
+    assert.deepEqual(suffix.calls, []);
   });
 
   test("acks with no database bound at all", async () => {

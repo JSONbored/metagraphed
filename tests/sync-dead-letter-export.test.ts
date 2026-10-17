@@ -18,6 +18,24 @@ const reading = {
   bytes: raw.length,
 };
 const readKey = prefix + reading.sha256;
+const custodySha256 = "b".repeat(64);
+const observation = new TextEncoder().encode(
+  JSON.stringify({
+    version: 2,
+    kind: "observation",
+    custody_sha256: custodySha256,
+    attempts: 7,
+  }),
+);
+const observationReading = {
+  ...reading,
+  sha256: sha(observation),
+  bytes: observation.length,
+  custody_sha256: custodySha256,
+  attempts: 7,
+};
+const observationKey =
+  prefix + custodySha256 + ":0000000000000007:" + observationReading.sha256;
 
 function storedStream(bytes: Uint8Array) {
   return new ReadableStream<Uint8Array>({
@@ -102,6 +120,20 @@ describe("private quarantine export authorization", () => {
     expect(f.list).not.toHaveBeenCalled();
   });
 
+  it("authenticates before validating composite fields", async () => {
+    const f = fixture();
+    const incomplete = { ...reading, custody_sha256: custodySha256 };
+    for (const input of [observationReading, incomplete]) {
+      const response = await handleD1StateExport(request(input, "wrong"), f.env);
+      expect(response.status).toBe(401);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+    const authorized = await handleD1StateExport(request(incomplete), f.env);
+    expect(authorized.status).toBe(400);
+    expect(f.get).not.toHaveBeenCalled();
+    expect(f.list).not.toHaveBeenCalled();
+  });
+
   it("preserves bytes and private headers through the proxy", async () => {
     const f = fixture();
     const env = {
@@ -121,6 +153,25 @@ describe("private quarantine export authorization", () => {
     expect(headers.get("x-content-sha256")).toBe(reading.sha256);
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(raw);
     expect(f.get).toHaveBeenCalledExactlyOnceWith(readKey, "stream");
+    expect(f.list).not.toHaveBeenCalled();
+  });
+
+  it("preserves observation bytes through the proxy", async () => {
+    const f = fixture(observation);
+    const env = {
+      DATA_API: {
+        fetch: (incoming: Request) => handleD1StateExport(incoming, f.env),
+      },
+    } as unknown as Env;
+    const response = await handleRequest(request(observationReading), env, {});
+    const headers = response.headers;
+    expect(response.status).toBe(200);
+    expect(headers.get("cache-control")).toBe("no-store");
+    expect(headers.get("content-type")).toBe("application/octet-stream");
+    expect(headers.get("content-length")).toBe(String(observation.length));
+    expect(headers.get("x-content-sha256")).toBe(observationReading.sha256);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(observation);
+    expect(f.get).toHaveBeenCalledExactlyOnceWith(observationKey, "stream");
     expect(f.list).not.toHaveBeenCalled();
   });
 });
@@ -151,6 +202,26 @@ describe("bounded quarantine requests", () => {
     { ...reading, bytes: 192 * 1024 + 1 },
     { ...reading, cursor: "cursor" },
     { ...reading, key: "health:current" },
+    { ...reading, custody_sha256: custodySha256 },
+    { ...reading, attempts: 7 },
+    { ...observationReading, custody_sha256: null },
+    { ...observationReading, custody_sha256: 1 },
+    { ...observationReading, custody_sha256: "b".repeat(63) },
+    { ...observationReading, custody_sha256: "b".repeat(65) },
+    { ...observationReading, custody_sha256: "B".repeat(64) },
+    { ...observationReading, custody_sha256: "g".repeat(64) },
+    { ...observationReading, custody_sha256: "b".repeat(64) + "\n" },
+    { ...observationReading, custody_sha256: "../health:current" },
+    { ...observationReading, attempts: null },
+    { ...observationReading, attempts: "7" },
+    { ...observationReading, attempts: false },
+    { ...observationReading, attempts: 0 },
+    { ...observationReading, attempts: -1 },
+    { ...observationReading, attempts: 1.5 },
+    { ...observationReading, attempts: Number.MAX_SAFE_INTEGER + 1 },
+    { ...observationReading, attempts: Infinity },
+    { ...observationReading, attempts: NaN },
+    { ...listing, custody_sha256: custodySha256, attempts: 7 },
   ])("rejects invalid requests before KV: %j", async (input) => {
     const f = fixture();
     const response = await handleSyncDeadLetterExport(input, f.env);
@@ -160,14 +231,17 @@ describe("bounded quarantine requests", () => {
     expect(f.list).not.toHaveBeenCalled();
   });
 
-  it.each([listing, reading])("requires a store: %j", async (input) => {
-    const response = await handleSyncDeadLetterExport(input, {});
-    expect(response.status).toBe(503);
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toEqual({
-      error: "quarantine export is not provisioned",
-    });
-  });
+  it.each([listing, reading, observationReading])(
+    "requires a store: %j",
+    async (input) => {
+      const response = await handleSyncDeadLetterExport(input, {});
+      expect(response.status).toBe(503);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(await response.json()).toEqual({
+        error: "quarantine export is not provisioned",
+      });
+    },
+  );
 });
 
 describe("quarantine prefix listing", () => {
@@ -204,6 +278,65 @@ describe("quarantine prefix listing", () => {
     expect(f.list.mock.calls).toEqual([
       [{ prefix, limit: 100 }],
       [{ prefix, limit: 100, cursor: "next:page/opaque==" }],
+    ]);
+    expect(f.get).not.toHaveBeenCalled();
+  });
+
+  it("traverses mixed pages and strips provider metadata", async () => {
+    const f = fixture();
+    const lastSha256 = "c".repeat(64);
+    f.list.mockResolvedValueOnce({
+      keys: [
+        { name: readKey, metadata: { payload: "private-custody" } },
+        { name: observationKey, metadata: { payload: "private-observation" } },
+      ],
+      list_complete: false,
+      cursor: "mixed:page/opaque==",
+    });
+    const first = await handleSyncDeadLetterExport(listing, f.env);
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({
+      version: 1,
+      envelopes: [
+        { sha256: reading.sha256 },
+        {
+          sha256: observationReading.sha256,
+          custody_sha256: custodySha256,
+          attempts: 7,
+        },
+      ],
+      list_complete: false,
+      cursor: "mixed:page/opaque==",
+    });
+    f.list.mockResolvedValueOnce({
+      keys: [
+        {
+          name: prefix + custodySha256 + ":9007199254740991:" + lastSha256,
+          metadata: { payload: "private-last-observation" },
+        },
+      ],
+      list_complete: true,
+      cursor: "complete-cursor-must-not-leak",
+    });
+    const second = await handleSyncDeadLetterExport(
+      { ...listing, cursor: "mixed:page/opaque==" },
+      f.env,
+    );
+    expect(second.status).toBe(200);
+    expect(await second.json()).toEqual({
+      version: 1,
+      envelopes: [
+        {
+          sha256: lastSha256,
+          custody_sha256: custodySha256,
+          attempts: Number.MAX_SAFE_INTEGER,
+        },
+      ],
+      list_complete: true,
+    });
+    expect(f.list.mock.calls).toEqual([
+      [{ prefix, limit: 100 }],
+      [{ prefix, limit: 100, cursor: "mixed:page/opaque==" }],
     ]);
     expect(f.get).not.toHaveBeenCalled();
   });
@@ -265,6 +398,35 @@ describe("quarantine prefix listing", () => {
     expect(f.get).not.toHaveBeenCalled();
   });
 
+  it.each([
+    custodySha256 + ":" + observationReading.sha256,
+    custodySha256 + ":0000000000000007:extra:" + observationReading.sha256,
+    "b".repeat(63) + ":0000000000000007:" + observationReading.sha256,
+    "b".repeat(65) + ":0000000000000007:" + observationReading.sha256,
+    "B".repeat(64) + ":0000000000000007:" + observationReading.sha256,
+    "g".repeat(64) + ":0000000000000007:" + observationReading.sha256,
+    custodySha256 + ":0000000000000000:" + observationReading.sha256,
+    custodySha256 + ":9007199254740992:" + observationReading.sha256,
+    custodySha256 + ":00000000000000x1:" + observationReading.sha256,
+    custodySha256 + ":-000000000000001:" + observationReading.sha256,
+    custodySha256 + ":7:" + observationReading.sha256,
+    custodySha256 + ":000000000000007:" + observationReading.sha256,
+    custodySha256 + ":00000000000000007:" + observationReading.sha256,
+    custodySha256 + ":0000000000007e00:" + observationReading.sha256,
+    custodySha256 + ":0000000000000007:" + "a".repeat(63),
+    custodySha256 + ":0000000000000007:" + "A".repeat(64),
+    custodySha256 + ":0000000000000007:" + observationReading.sha256 + "\n",
+  ])("rejects malformed composite keys: %s", async (suffix) => {
+    const f = fixture();
+    f.list.mockResolvedValueOnce({
+      keys: [{ name: readKey }, { name: prefix + suffix }],
+      list_complete: true,
+    });
+    await unavailable(await handleSyncDeadLetterExport(listing, f.env));
+    expect(f.list).toHaveBeenCalledExactlyOnceWith({ prefix, limit: 100 });
+    expect(f.get).not.toHaveBeenCalled();
+  });
+
   it("sanitizes provider listing failures", async () => {
     const f = fixture();
     f.list.mockRejectedValueOnce(new Error("provider-private-payload"));
@@ -275,6 +437,72 @@ describe("quarantine prefix listing", () => {
 });
 
 describe("exact quarantine envelope reads", () => {
+  it.each([
+    { attempts: 1, padded: "0000000000000001" },
+    { attempts: 7, padded: "0000000000000007" },
+    { attempts: Number.MAX_SAFE_INTEGER, padded: "9007199254740991" },
+  ])(
+    "reads attempt $attempts at its fixed key",
+    async ({ attempts, padded }) => {
+      const bytes = new TextEncoder().encode(
+        JSON.stringify({
+          version: 2,
+          kind: "observation",
+          custody_sha256: custodySha256,
+          attempts,
+        }),
+      );
+      const f = fixture(bytes);
+      const input = {
+        ...observationReading,
+        sha256: sha(bytes),
+        attempts,
+        bytes: undefined,
+      };
+      const response = await handleSyncDeadLetterExport(input, f.env);
+      expect(response.status).toBe(200);
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+      expect(response.headers.get("x-content-sha256")).toBe(input.sha256);
+      expect(f.get).toHaveBeenCalledExactlyOnceWith(
+        prefix + custodySha256 + ":" + padded + ":" + input.sha256,
+        "stream",
+      );
+      expect(f.list).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { name: "missing", value: () => null },
+    {
+      name: "same-size corruption",
+      value: () => storedStream(new Uint8Array(observation.length).fill(7)),
+    },
+    {
+      name: "over budget",
+      value: () => storedStream(new Uint8Array(192 * 1024 + 1)),
+    },
+  ])("rejects $name composite content", async ({ value }) => {
+    const f = fixture();
+    f.get.mockResolvedValueOnce(value());
+    await unavailable(
+      await handleSyncDeadLetterExport(observationReading, f.env),
+    );
+    expect(f.get).toHaveBeenCalledExactlyOnceWith(observationKey, "stream");
+    expect(f.list).not.toHaveBeenCalled();
+  });
+
+  it("checks a composite receipt's supplied size", async () => {
+    const f = fixture(observation);
+    await unavailable(
+      await handleSyncDeadLetterExport(
+        { ...observationReading, bytes: observation.length + 1 },
+        f.env,
+      ),
+    );
+    expect(f.get).toHaveBeenCalledExactlyOnceWith(observationKey, "stream");
+    expect(f.list).not.toHaveBeenCalled();
+  });
+
   it("reads a digest without a caller-supplied size", async () => {
     const f = fixture();
     const response = await handleSyncDeadLetterExport(
