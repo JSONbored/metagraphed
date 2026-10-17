@@ -75,6 +75,11 @@ import { z } from "zod";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { timed, TIMING_R2 } from "./request-timing.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+import {
+  ArtifactReadBudget,
+  ArtifactReadTimeoutError,
+} from "./artifact-read-budget.ts";
+import { r2TimeoutMs } from "../workers/storage.ts";
 
 /** Objects the producer writes, one per shard. Contract with
  * metagraphed-infra's `services/indexer-rs/account_summary_r2.py`. */
@@ -221,19 +226,25 @@ export function accountSummaryShardKey(
 async function readJson(
   bucket: ArtifactObjectStore,
   key: string,
+  budget: ArtifactReadBudget,
 ): Promise<Record<string, unknown> | null> {
-  return timed(TIMING_R2, () => readJsonOnce(bucket, key));
+  return timed(TIMING_R2, () => readJsonOnce(bucket, key, budget));
 }
 
 async function readJsonOnce(
   bucket: ArtifactObjectStore,
   key: string,
+  budget: ArtifactReadBudget,
 ): Promise<Record<string, unknown> | null> {
   try {
-    const object = await bucket.get(key);
+    const object = await budget.run(() =>
+      bucket.getWithBudget ? bucket.getWithBudget(key, budget) : bucket.get(key),
+    );
     if (!object) return null;
-    return asJsonObject(await object.json());
-  } catch {
+    return asJsonObject(await budget.run(() => object.json()));
+  } catch (error) {
+    budget.check();
+    if (error instanceof ArtifactReadTimeoutError) throw error;
     // Unfetchable or unparseable is not a fault to report: the caller reads the
     // lakehouse and answers correctly, just slower.
     return null;
@@ -270,44 +281,71 @@ async function readJsonOnce(
  */
 export const ACCOUNT_SUMMARY_POINTER_TTL_MS = 5 * 60_000;
 
-/** The resolved pointer and when it expires. The PROMISE is memoized, not the
- * value, so concurrent requests on a cold isolate share one R2 GET instead of
- * racing to issue several. */
-let pointerMemo: {
+/** Share in-flight pointer reads within the same storage binding. */
+type PointerMemo = {
   expiresAt: number;
   value: Promise<z.infer<typeof AccountSummaryPointerSchema> | null>;
-} | null = null;
+  resolved?: z.infer<typeof AccountSummaryPointerSchema> | null;
+};
+let pointerMemo = new WeakMap<ArtifactObjectStore, PointerMemo>();
 
 registerModuleStateReset("src/account-summary-projection.ts", () => {
-  pointerMemo = null;
+  pointerMemo = new WeakMap();
 });
 
-/** Drop the memo so the next resolve re-reads R2. Exported for tests, and
- * called on a shard miss -- see the call site for why that is what makes
- * memoizing safe at all. */
+/** Drop all binding memos so the next resolves re-read storage. */
 export function resetAccountSummaryPointerCache(): void {
-  pointerMemo = null;
+  pointerMemo = new WeakMap();
+}
+
+function invalidatePointer(
+  bucket: ArtifactObjectStore,
+  pointer: z.infer<typeof AccountSummaryPointerSchema>,
+): void {
+  if (pointerMemo.get(bucket)?.resolved === pointer) pointerMemo.delete(bucket);
 }
 
 async function resolvePointer(
   bucket: ArtifactObjectStore,
   now: () => number,
+  budget: ArtifactReadBudget,
 ): Promise<z.infer<typeof AccountSummaryPointerSchema> | null> {
+  budget.check();
   const at = now();
-  if (pointerMemo && pointerMemo.expiresAt > at) return pointerMemo.value;
-  const value = (async () => {
-    const parsed = AccountSummaryPointerSchema.safeParse(
-      await readJson(bucket, ACCOUNT_SUMMARY_POINTER_KEY),
-    );
-    return parsed.success ? parsed.data : null;
-  })();
+  let memo = pointerMemo.get(bucket);
+  if (!memo || memo.expiresAt <= at) {
+    memo = {
+      expiresAt: at + ACCOUNT_SUMMARY_POINTER_TTL_MS,
+      value: (async () => {
+        const parsed = AccountSummaryPointerSchema.safeParse(
+          await readJson(bucket, ACCOUNT_SUMMARY_POINTER_KEY, budget),
+        );
+        return parsed.success ? parsed.data : null;
+      })(),
+    };
+    // The caller can exhaust its budget before attaching its own wait. Keep
+    // the original rejection available to waiters without leaving it unobserved.
+    void memo.value.catch(() => {});
+    pointerMemo.set(bucket, memo);
+  }
+  const entry = memo;
   // A FAILED READ IS NOT MEMOIZED for the TTL: it is stored so concurrent
   // callers share the in-flight request, then cleared, so a transient R2 blip
   // costs one request rather than five minutes of declines.
-  pointerMemo = { expiresAt: at + ACCOUNT_SUMMARY_POINTER_TTL_MS, value };
-  const resolved = await value;
-  if (resolved === null) pointerMemo = null;
-  return resolved;
+  try {
+    const resolved = await budget.run(() => entry.value);
+    entry.resolved = resolved;
+    const expired = now() >= entry.expiresAt;
+    if ((resolved === null || expired) && pointerMemo.get(bucket) === entry) {
+      pointerMemo.delete(bucket);
+    }
+    // A lookup can finish after its memo lifetime. Re-resolve within this
+    // request's remaining budget before issuing a shard read from it.
+    return expired ? resolvePointer(bucket, now, budget) : resolved;
+  } catch (error) {
+    if (pointerMemo.get(bucket) === entry) pointerMemo.delete(bucket);
+    throw error;
+  }
 }
 
 /**
@@ -325,8 +363,9 @@ async function usablePointer(
   bucket: ArtifactObjectStore,
   now: () => number,
   maxAgeMs: number,
+  budget: ArtifactReadBudget,
 ): Promise<z.infer<typeof AccountSummaryPointerSchema> | null> {
-  const pointer = await resolvePointer(bucket, now);
+  const pointer = await resolvePointer(bucket, now, budget);
   if (pointer === null) return null;
   if (pointer.schema_version !== ACCOUNT_SUMMARY_SCHEMA_VERSION) return null;
   const generated = Date.parse(pointer.generated_at);
@@ -380,6 +419,27 @@ export async function loadAccountSummaryProjection(
 async function loadLegacyAccountSummaryProjection(
   env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
   account: string,
+  options: Parameters<typeof readLegacyAccountSummaryProjection>[2] = {},
+): Promise<
+  AccountSummaryProjectionRead | AccountSummaryProjectionAbsent | null
+> {
+  if (!artifactBucket(env) || !account) return null;
+  // Reuse the configured artifact-storage budget for the entire pointer,
+  // body and rotation retry phase. This is an engineering ceiling, not a
+  // bound on indexed history or the complete account response.
+  const budget = new ArtifactReadBudget(r2TimeoutMs(env ?? {}));
+  try {
+    return await budget.run(() =>
+      readLegacyAccountSummaryProjection(env, account, options, budget),
+    );
+  } finally {
+    budget.close();
+  }
+}
+
+async function readLegacyAccountSummaryProjection(
+  env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
+  account: string,
   {
     now = Date.now,
     maxAgeMs = ACCOUNT_SUMMARY_MAX_AGE_MS,
@@ -394,7 +454,8 @@ async function loadLegacyAccountSummaryProjection(
      * the default -- asks for the aggregate leg only.
      */
     recentLimit?: number;
-  } = {},
+  },
+  budget: ArtifactReadBudget,
 ): Promise<
   AccountSummaryProjectionRead | AccountSummaryProjectionAbsent | null
 > {
@@ -413,13 +474,14 @@ async function loadLegacyAccountSummaryProjection(
   // Worker costs ~370 ms (`/api/v1/coverage`, which does exactly one), and the
   // projection does two in sequence -- the pointer, then the shard it names --
   // so the pointer alone was a third of the wall clock on the fast path.
-  const first = await usablePointer(bucket, now, maxAgeMs);
+  const first = await usablePointer(bucket, now, maxAgeMs, budget);
   if (first === null) return null;
 
   let pointer = first;
   let payload = await readJson(
     bucket,
     accountSummaryShardKey(account, first.shard_count, first.generation),
+    budget,
   );
 
   // A MISS INVALIDATES THE MEMO, and that is what makes memoizing the pointer
@@ -451,13 +513,14 @@ async function loadLegacyAccountSummaryProjection(
   // to survive, and costs one pointer GET (~250 ms) against a walk that costs
   // twenty to thirty seconds.
   if (!payload) {
-    resetAccountSummaryPointerCache();
-    const fresh = await usablePointer(bucket, now, maxAgeMs);
+    invalidatePointer(bucket, first);
+    const fresh = await usablePointer(bucket, now, maxAgeMs, budget);
     if (fresh !== null && fresh.generation !== first.generation) {
       pointer = fresh;
       payload = await readJson(
         bucket,
         accountSummaryShardKey(account, fresh.shard_count, fresh.generation),
+        budget,
       );
     }
     // A MISS STILL LEAVES NO MEMO BEHIND, which is the invariant the retry must
@@ -467,7 +530,7 @@ async function loadLegacyAccountSummaryProjection(
     // dropping the memo exists to prevent, restored by the code meant to
     // recover from it. Success keeps its memo: that pointer is the fresh one,
     // and it just answered.
-    if (!payload) resetAccountSummaryPointerCache();
+    if (!payload && fresh !== null) invalidatePointer(bucket, fresh);
   }
   if (!payload) return null;
   const accounts = payload["accounts"];

@@ -7,10 +7,17 @@ import {
   archiveObjectStore,
   withArchiveObjects,
 } from "../src/archive-object-store.ts";
+import {
+  ACCOUNT_SUMMARY_POINTER_KEY,
+  ACCOUNT_SUMMARY_SCHEMA_VERSION,
+  loadAccountSummaryProjection,
+} from "../src/account-summary-projection.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
+import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 
 const databases: DatabaseSync[] = [];
 afterEach(() => {
+  vi.useRealTimers();
   for (const db of databases.splice(0)) db.close();
   resetModuleState();
 });
@@ -25,7 +32,9 @@ function fixture() {
   sql.exec(
     "CREATE TABLE generated_artifacts(key TEXT PRIMARY KEY,payload TEXT,updated_at TEXT)",
   );
-  let before: ((text: string, params: unknown[]) => void) | undefined;
+  let before:
+    | ((text: string, params: unknown[]) => void | Promise<void>)
+    | undefined;
   type Result = { success: boolean; results: unknown[] };
   let reply: ((result: Result) => Result) | undefined;
   const prepare = (text: string, params: unknown[] = []) => ({
@@ -33,7 +42,7 @@ function fixture() {
       return prepare(text, values);
     },
     async all() {
-      before?.(text, params);
+      await before?.(text, params);
       const result = {
         success: true,
         results: sql.prepare(text).all(...(params as never[])),
@@ -42,7 +51,12 @@ function fixture() {
     },
   });
   const legacy = {
-    get: vi.fn(async () => null),
+    get: vi.fn(
+      async (
+        _key: string,
+        _options?: R2GetOptions,
+      ): Promise<R2ObjectBody | null> => null,
+    ),
     head: vi.fn(async () => null),
   };
   const assets = new Map<string, Uint8Array>();
@@ -587,5 +601,245 @@ describe("shared archive object storage", () => {
     expect(() =>
       withArchiveObjects({ ...f.env, ARCHIVE_OBJECT_STORAGE: "typo" }),
     ).toThrow("Unknown");
+  });
+});
+
+function deferredArchiveRead<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((yes) => {
+    resolve = yes;
+  });
+  return { promise, resolve };
+}
+
+function observeArchiveRead<T>(pending: Promise<T>) {
+  const state: { settled: boolean; value?: T; error?: unknown } = {
+    settled: false,
+  };
+  void pending.then(
+    (value) => Object.assign(state, { settled: true, value }),
+    (error) => Object.assign(state, { settled: true, error }),
+  );
+  return state;
+}
+
+const SUMMARY_ACCOUNT = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+const SUMMARY_NOW = Date.parse("2026-08-14T11:00:00Z");
+
+function summaryPointerBytes() {
+  return Buffer.from(
+    JSON.stringify({
+      schema_version: ACCOUNT_SUMMARY_SCHEMA_VERSION,
+      generation: "20260814T100000Z",
+      shard_count: 16384,
+      generated_at: "2026-08-14T10:00:00Z",
+      account_count: 1,
+    }),
+  );
+}
+
+function nativeSummaryPointer(f: ReturnType<typeof fixture>) {
+  const raw = summaryPointerBytes();
+  const sha256 = hash(raw);
+  const etag = hash(raw, "md5");
+  const partKey = `archive-content/v1/${sha256}`;
+  const middle = Math.ceil(raw.length / 2);
+  const chunks = [raw.subarray(0, middle), raw.subarray(middle)];
+  f.set(`native-object/v1/${bucket}/${partKey}`, {
+    version: 1,
+    bucket,
+    key: partKey,
+    bytes: raw.length,
+    sha256,
+    etag,
+    partition: "a",
+    chunks: chunks.map((chunk) => ({
+      sha256: hash(chunk),
+      bytes: chunk.length,
+    })),
+  });
+  f.set(prefix + ACCOUNT_SUMMARY_POINTER_KEY, {
+    ...f.record(raw),
+    key: ACCOUNT_SUMMARY_POINTER_KEY,
+    body: { parts: [{ key: partKey, bytes: raw.length, sha256, etag }] },
+  });
+  for (const chunk of chunks) f.assets.set(`/${hash(chunk)}.mgpack`, chunk);
+  return chunks;
+}
+
+function boundedSummary(f: ReturnType<typeof fixture>) {
+  const env = withArchiveObjects({
+    ...f.env,
+    METAGRAPH_R2_TIMEOUT_MS: "20",
+  });
+  return loadAccountSummaryProjection(env, SUMMARY_ACCOUNT, {
+    now: () => SUMMARY_NOW,
+  });
+}
+
+describe("the summary deadline through the native archive adapter", () => {
+  function clock() {
+    vi.useFakeTimers({
+      now: SUMMARY_NOW,
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+    });
+  }
+
+  it("a delayed D1 selection cannot continue into asset or legacy reads", async () => {
+    clock();
+    const f = fixture();
+    nativeSummaryPointer(f);
+    const held = deferredArchiveRead<void>();
+    const queries: string[] = [];
+    f.fail(async (_sql, params) => {
+      queries.push(String(params[0]));
+      if (params[0] === prefix + ACCOUNT_SUMMARY_POINTER_KEY) await held.promise;
+    });
+    const pending = boundedSummary(f);
+    const outcome = observeArchiveRead(pending);
+    try {
+      await vi.advanceTimersByTimeAsync(20);
+      expect(outcome.settled, "SUMMARY_NATIVE_D1_EXCEEDED_DEADLINE").toBe(true);
+      expect(outcome.error).toBeInstanceOf(RetainedHistoryUnavailableError);
+      held.resolve();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(queries).toEqual([prefix + ACCOUNT_SUMMARY_POINTER_KEY]);
+      expect(f.fetch).not.toHaveBeenCalled();
+      expect(f.legacy.get).not.toHaveBeenCalled();
+    } finally {
+      held.resolve();
+      await pending.catch(() => {});
+      await vi.advanceTimersByTimeAsync(0);
+    }
+  });
+
+  it("a fetch ignoring abort cancels its late body without another chunk", async () => {
+    clock();
+    const f = fixture();
+    const chunks = nativeSummaryPointer(f);
+    const heldFetch = deferredArchiveRead<Response>();
+    const heldCancel = deferredArchiveRead<void>();
+    const cancel = vi.fn(() => heldCancel.promise);
+    let signal: AbortSignal | undefined;
+    f.fetch.mockImplementationOnce(async (request) => {
+      signal = request.signal;
+      return heldFetch.promise;
+    });
+    const late = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(chunks[0]);
+          controller.close();
+        },
+        cancel,
+      }),
+    );
+    const queries: string[] = [];
+    f.fail((_sql, params) => {
+      queries.push(String(params[0]));
+    });
+    const pending = boundedSummary(f);
+    const outcome = observeArchiveRead(pending);
+    try {
+      await vi.advanceTimersByTimeAsync(19);
+      expect(f.fetch).toHaveBeenCalledOnce();
+      expect(signal?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(outcome.settled, "SUMMARY_NATIVE_FETCH_IGNORED_DEADLINE").toBe(true);
+      expect(outcome.error).toBeInstanceOf(RetainedHistoryUnavailableError);
+      expect(signal?.aborted).toBe(true);
+      const readsAtDeadline = queries.length;
+      heldFetch.resolve(late);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(f.fetch).toHaveBeenCalledOnce();
+      expect(queries).toHaveLength(readsAtDeadline);
+      expect(f.legacy.get).not.toHaveBeenCalled();
+    } finally {
+      heldFetch.resolve(late);
+      heldCancel.resolve();
+      await pending.catch(() => {});
+      await vi.advanceTimersByTimeAsync(0);
+    }
+  });
+
+  it("a stalled native body and hanging cancellation cannot extend the deadline", async () => {
+    clock();
+    const f = fixture();
+    const chunks = nativeSummaryPointer(f);
+    const heldCancel = deferredArchiveRead<void>();
+    const cancel = vi.fn(() => heldCancel.promise);
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    f.fetch.mockImplementationOnce(async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(value) {
+            controller = value;
+          },
+          cancel,
+        }),
+      ),
+    );
+    const pending = boundedSummary(f);
+    const outcome = observeArchiveRead(pending);
+    try {
+      await vi.advanceTimersByTimeAsync(20);
+      expect(outcome.settled, "SUMMARY_NATIVE_BODY_CANCEL_HELD_DEADLINE").toBe(
+        true,
+      );
+      expect(outcome.error).toBeInstanceOf(RetainedHistoryUnavailableError);
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(f.fetch).toHaveBeenCalledOnce();
+      expect(f.legacy.get).not.toHaveBeenCalled();
+    } finally {
+      // Let the old unbounded reader finish when this test is run against the
+      // baseline; a timed-out reader has already canceled this controller.
+      if (cancel.mock.calls.length === 0) {
+        controller.enqueue(chunks[0]);
+        controller.close();
+      }
+      heldCancel.resolve();
+      await pending.catch(() => {});
+      await vi.advanceTimersByTimeAsync(0);
+    }
+  });
+
+  it("a late legacy get is canceled without waiting for its cancel promise", async () => {
+    clock();
+    const f = fixture();
+    const heldGet = deferredArchiveRead<R2ObjectBody | null>();
+    const heldCancel = deferredArchiveRead<void>();
+    const cancel = vi.fn(() => heldCancel.promise);
+    const response = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(summaryPointerBytes());
+          controller.close();
+        },
+        cancel,
+      }),
+    );
+    const late = {
+      body: response.body,
+      json: () => response.json(),
+    } as R2ObjectBody;
+    f.legacy.get.mockImplementationOnce(async () => heldGet.promise);
+    const pending = boundedSummary(f);
+    const outcome = observeArchiveRead(pending);
+    try {
+      await vi.advanceTimersByTimeAsync(20);
+      expect(outcome.settled, "SUMMARY_LEGACY_GET_EXCEEDED_DEADLINE").toBe(true);
+      expect(outcome.error).toBeInstanceOf(RetainedHistoryUnavailableError);
+      heldGet.resolve(late);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(f.legacy.get).toHaveBeenCalledOnce();
+      expect(f.fetch).not.toHaveBeenCalled();
+    } finally {
+      heldGet.resolve(late);
+      heldCancel.resolve();
+      await pending.catch(() => {});
+      await vi.advanceTimersByTimeAsync(0);
+    }
   });
 });

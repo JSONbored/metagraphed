@@ -1333,7 +1333,9 @@ function deferredRead<T>() {
 }
 
 function observeRead<T>(pending: Promise<T>) {
-  const state: { settled: boolean; value?: T; error?: unknown } = { settled: false };
+  const state: { settled: boolean; value?: T; error?: unknown } = {
+    settled: false,
+  };
   void pending.then(
     (value) => Object.assign(state, { settled: true, value }),
     (error) => Object.assign(state, { settled: true, error }),

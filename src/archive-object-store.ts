@@ -4,6 +4,7 @@ import { z } from "zod";
 import { markD1SqlExecution } from "./d1-store.ts";
 import { timed, TIMING_D1 } from "./request-timing.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import type { ArtifactReadBudget } from "./artifact-read-budget.ts";
 
 const BUCKET = "metagraphed-artifacts";
 const PREFIX = `archive-object/v1/${BUCKET}/`;
@@ -116,23 +117,57 @@ type ArchiveEnv = {
 const digest = (bytes: Uint8Array, algorithm = "sha256") =>
   createHash(algorithm).update(bytes).digest("hex");
 
-async function exact(stream: ReadableStream<Uint8Array>, bytes: number) {
-  const result = new Uint8Array(bytes),
-    reader = stream.getReader();
-  let offset = 0;
+async function within<T>(
+  budget: ArtifactReadBudget | undefined,
+  operation: () => Promise<T> | T,
+): Promise<T> {
+  return budget ? budget.run(operation) : operation();
+}
+
+async function* streamParts(
+  stream: ReadableStream<Uint8Array>,
+  budget?: ArtifactReadBudget,
+): AsyncGenerator<Uint8Array> {
+  budget?.check();
+  const reader = stream.getReader();
+  const cancel = () => {
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
+  };
+  budget?.signal.addEventListener("abort", cancel, { once: true });
   try {
+    budget?.check();
     for (;;) {
-      const next = await reader.read();
+      const next = await within(budget, () => reader.read());
       if (next.done) break;
-      if (offset + next.value.length > bytes)
-        throw new Error("Archive body exceeds its byte budget");
-      result.set(next.value, offset);
-      offset += next.value.length;
+      yield next.value;
     }
   } finally {
-    await reader.cancel();
-    reader.releaseLock();
+    budget?.signal.removeEventListener("abort", cancel);
+    if (budget) cancel();
+    else {
+      await reader.cancel();
+      reader.releaseLock();
+    }
   }
+}
+
+async function exact(
+  stream: ReadableStream<Uint8Array>,
+  bytes: number,
+  budget?: ArtifactReadBudget,
+) {
+  budget?.check();
+  const result = new Uint8Array(bytes);
+  let offset = 0;
+  for await (const chunk of streamParts(stream, budget)) {
+    budget?.check();
+    if (offset + chunk.length > bytes)
+      throw new Error("Archive body exceeds its byte budget");
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  budget?.check();
   if (offset !== bytes) throw new Error("Archive body is truncated");
   return result;
 }
@@ -147,42 +182,54 @@ export function archiveObjectStore(env: ArchiveEnv) {
     env.ARCHIVE_OBJECT_STORAGE === "native-read-legacy"
       ? env.METAGRAPH_ARCHIVE
       : undefined;
-  async function query(sql: string, params: unknown[]) {
-    const result = await timed(TIMING_D1, () =>
-      db!
-        .prepare(sql)
-        .bind(...params)
-        .all<{ key: string; payload: string }>(),
+  async function query(
+    sql: string,
+    params: unknown[],
+    budget?: ArtifactReadBudget,
+  ) {
+    const result = await within(budget, () =>
+      timed(TIMING_D1, () =>
+        db!
+          .prepare(sql)
+          .bind(...params)
+          .all<{ key: string; payload: string }>(),
+      ),
     );
     markD1SqlExecution(result);
     if (!result.success) throw new Error("Archive object query failed");
     return result.results;
   }
-  async function readRows(keys: string[]) {
+  async function readRows(keys: string[], budget?: ArtifactReadBudget) {
     const rows = await query(
       `SELECT key,payload FROM generated_artifacts WHERE key IN (${keys.map(() => "?").join(",")})`,
       keys,
+      budget,
     );
     if (
       rows.some((row) => !keys.includes(row.key)) ||
       new Set(rows.map((row) => row.key)).size !== rows.length
     )
       throw new Error("Archive row census differs");
+    budget?.check();
     return new Map(rows.map((row) => [row.key, row.payload]));
   }
-  async function selected(key: string) {
+  async function selected(key: string, budget?: ArtifactReadBudget) {
+    budget?.check();
     keySchema.parse(key);
-    const raw = (await readRows([PREFIX + key])).get(PREFIX + key);
+    const raw = (await readRows([PREFIX + key], budget)).get(PREFIX + key);
     if (raw === undefined) return { raw: undefined, value: undefined };
     if (Buffer.byteLength(raw) > 48 * 1024)
       throw new Error("Archive pointer exceeds budget");
     const value = recordSchema.parse(JSON.parse(raw));
     if (value.key !== key) throw new Error("Archive pointer identity differs");
+    budget?.check();
     return { raw, value };
   }
   async function compressed(
     body: Exclude<ArchiveObject["body"], { parts: unknown }>,
+    budget?: ArtifactReadBudget,
   ) {
+    budget?.check();
     if ("gzip" in body) return Buffer.from(atob(body.gzip), "latin1");
     const item = body.d1,
       packed = new Uint8Array(item.bytes);
@@ -192,8 +239,9 @@ export function archiveObjectStore(env: ArchiveEnv) {
         { length: Math.min(8, item.parts - start) },
         (_, index) => `archive-payload/v1/${item.sha256}/${start + index}`,
       );
-      const rows = await readRows(keys);
+      const rows = await readRows(keys, budget);
       for (const key of keys) {
+        budget?.check();
         const value = rows.get(key);
         if (value === undefined || value.length > 90 * 1024)
           throw new Error("Archive D1 chunk is missing or oversized");
@@ -209,21 +257,27 @@ export function archiveObjectStore(env: ArchiveEnv) {
     }
     if (digest(packed) !== item.sha256)
       throw new Error("Archive compressed checksum differs");
+    budget?.check();
     return packed;
   }
   async function* bodyParts(
     object: ArchiveObject,
     offset: number,
     length: number,
+    budget?: ArtifactReadBudget,
   ): AsyncGenerator<Uint8Array> {
+    budget?.check();
     if (!("parts" in object.body)) {
-      const packed = await compressed(object.body);
+      const packed = await compressed(object.body, budget);
+      budget?.check();
       const raw = await exact(
         new Response(packed).body!.pipeThrough(new DecompressionStream("gzip")),
         object.bytes,
+        budget,
       );
       if (digest(raw) !== object.sha256)
         throw new Error("Archive restored checksum differs");
+      budget?.check();
       yield raw.subarray(offset, offset + length);
       return;
     }
@@ -232,11 +286,12 @@ export function archiveObjectStore(env: ArchiveEnv) {
         ? createHash("sha256")
         : undefined;
     for (const [index, part] of object.body.parts.entries()) {
+      budget?.check();
       const partOffset = index * PART;
       if (partOffset >= offset + length || partOffset + part.bytes <= offset)
         continue;
       const key = `native-object/v1/${BUCKET}/${part.key}`;
-      const raw = (await readRows([key])).get(key);
+      const raw = (await readRows([key], budget)).get(key);
       if (raw === undefined || Buffer.byteLength(raw) > 64 * 1024)
         throw new Error("Archive native part is missing or oversized");
       const native = nativeSchema.parse(JSON.parse(raw));
@@ -260,15 +315,27 @@ export function archiveObjectStore(env: ArchiveEnv) {
         Pick<Fetcher, "fetch"> | undefined;
       if (!binding?.fetch) throw new Error("Archive native binding is missing");
       for (const [i, chunk] of native.chunks.entries()) {
+        budget?.check();
         const start = partOffset + i * chunkSize;
         if (start >= offset + length || start + chunk.bytes <= offset) continue;
-        const response = await binding.fetch(
-          new Request(`https://history-assets.invalid/${chunk.sha256}.mgpack`, {
-            headers: { "accept-encoding": "identity" },
-            redirect: "manual",
-            signal: AbortSignal.timeout(10_000),
-          }),
-        );
+        const response = await within(budget, async () => {
+          const response = await binding.fetch(
+            new Request(`https://history-assets.invalid/${chunk.sha256}.mgpack`, {
+              headers: { "accept-encoding": "identity" },
+              redirect: "manual",
+              signal: budget
+                ? AbortSignal.any([budget.signal, AbortSignal.timeout(10_000)])
+                : AbortSignal.timeout(10_000),
+            }),
+          );
+          try {
+            budget?.check();
+          } catch (error) {
+            void response.body?.cancel().catch(() => {});
+            throw error;
+          }
+          return response;
+        });
         const header = response.headers.get("content-length");
         if (
           response.status !== 200 ||
@@ -277,19 +344,22 @@ export function archiveObjectStore(env: ArchiveEnv) {
             "identity" ||
           (header !== null && header !== String(chunk.bytes))
         ) {
-          await response.body?.cancel();
+          if (budget) void response.body?.cancel().catch(() => {});
+          else await response.body?.cancel();
           throw new Error("Archive asset response differs");
         }
-        const bytes = await exact(response.body, chunk.bytes);
+        const bytes = await exact(response.body, chunk.bytes, budget);
         if (digest(bytes) !== chunk.sha256)
           throw new Error("Archive asset checksum differs");
         full?.update(bytes);
+        budget?.check();
         yield bytes.subarray(
           Math.max(0, offset - start),
           Math.min(chunk.bytes, offset + length - start),
         );
       }
     }
+    budget?.check();
     if (full && full.digest("hex") !== object.sha256)
       throw new Error("Archive complete checksum differs");
   }
@@ -367,12 +437,99 @@ export function archiveObjectStore(env: ArchiveEnv) {
       throw new Error("Archive range exceeds object");
     return { offset, length };
   }
-  async function get(
+  function bodyResponse(
+    iterator: AsyncGenerator<Uint8Array>,
+    budget?: ArtifactReadBudget,
+  ) {
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          try {
+            const next = await within(budget, () => iterator.next());
+            if (next.done) controller.close();
+            else controller.enqueue(next.value);
+          } catch (error) {
+            if (budget) void iterator.return(undefined).catch(() => {});
+            throw error;
+          }
+        },
+        async cancel() {
+          if (budget) void iterator.return(undefined).catch(() => {});
+          else await iterator.return(undefined);
+        },
+      }),
+    );
+  }
+  function objectBody(
+    metadata: R2Object,
+    response: Response,
+    budget?: ArtifactReadBudget,
+    selectedRange?: { offset: number; length: number },
+  ): R2ObjectBody {
+    return {
+      key: metadata.key,
+      version: metadata.version,
+      size: metadata.size,
+      etag: metadata.etag,
+      httpEtag: metadata.httpEtag,
+      checksums: metadata.checksums,
+      uploaded: metadata.uploaded,
+      httpMetadata: metadata.httpMetadata,
+      customMetadata: metadata.customMetadata,
+      range: selectedRange ?? metadata.range,
+      storageClass: metadata.storageClass,
+      ssecKeyMd5: metadata.ssecKeyMd5,
+      writeHttpMetadata: (headers: Headers) =>
+        metadata.writeHttpMetadata(headers),
+      get body() {
+        return response.body!;
+      },
+      get bodyUsed() {
+        return response.bodyUsed;
+      },
+      arrayBuffer: () => within(budget, () => response.arrayBuffer()),
+      bytes: () => within(budget, () => response.bytes()),
+      text: () => within(budget, () => response.text()),
+      json: <T>() => within(budget, () => response.json<T>()),
+      blob: () => within(budget, () => response.blob()),
+    } satisfies R2ObjectBody;
+  }
+  async function read(
+    key: string,
+    options: undefined,
+    budget?: ArtifactReadBudget,
+  ): Promise<R2ObjectBody | null>;
+  async function read(
     key: string,
     options?: R2GetOptions,
+    budget?: ArtifactReadBudget,
+  ): Promise<R2ObjectBody | R2Object | null>;
+  async function read(
+    key: string,
+    options?: R2GetOptions,
+    budget?: ArtifactReadBudget,
   ): Promise<R2ObjectBody | R2Object | null> {
-    const { value } = await selected(key);
-    if (value === undefined) return legacy?.get(key, options) ?? null;
+    const { value } = await selected(key, budget);
+    budget?.check();
+    if (value === undefined) {
+      const object = await within(budget, async () => {
+        const object = (await legacy?.get(key, options)) ?? null;
+        try {
+          budget?.check();
+        } catch (error) {
+          if (object && "body" in object)
+            void object.body.cancel().catch(() => {});
+          throw error;
+        }
+        return object;
+      });
+      if (!budget || !object || !("body" in object)) return object;
+      return objectBody(
+        object,
+        bodyResponse(streamParts(object.body, budget), budget),
+        budget,
+      );
+    }
     if ("deleted" in value) return null;
     if (options?.ssecKey)
       throw new Error("Archive customer encryption is unsupported");
@@ -397,36 +554,23 @@ export function archiveObjectStore(env: ArchiveEnv) {
     )
       return metadata;
     const { offset, length } = range(options, value.bytes);
-    const iterator = bodyParts(value, offset, length);
-    const response = new Response(
-      new ReadableStream<Uint8Array>({
-        async pull(controller) {
-          const next = await iterator.next();
-          if (next.done) controller.close();
-          else controller.enqueue(next.value);
-        },
-        async cancel() {
-          await iterator.return(undefined);
-        },
-      }),
+    const iterator = bodyParts(value, offset, length, budget);
+    const response = bodyResponse(iterator, budget);
+    return objectBody(
+      metadata,
+      response,
+      budget,
+      options?.range ? { offset, length } : undefined,
     );
-    return {
-      ...metadata,
-      writeHttpMetadata: (headers: Headers) =>
-        metadata.writeHttpMetadata(headers),
-      ...(options?.range ? { range: { offset, length } } : {}),
-      get body() {
-        return response.body!;
-      },
-      get bodyUsed() {
-        return response.bodyUsed;
-      },
-      arrayBuffer: () => response.arrayBuffer(),
-      bytes: () => response.bytes(),
-      text: () => response.text(),
-      json: <T>() => response.json<T>(),
-      blob: () => response.blob(),
-    } satisfies R2ObjectBody;
+  }
+  async function get(
+    key: string,
+    options?: R2GetOptions,
+  ): Promise<R2ObjectBody | R2Object | null> {
+    return read(key, options);
+  }
+  async function getWithBudget(key: string, budget: ArtifactReadBudget) {
+    return budget.run(() => read(key, undefined, budget));
   }
   async function put(
     key: string,
@@ -517,6 +661,7 @@ export function archiveObjectStore(env: ArchiveEnv) {
   }
   return {
     get,
+    getWithBudget,
     put,
     async head(key: string) {
       const { value } = await selected(key);
