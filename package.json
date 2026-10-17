@@ -225,7 +225,7 @@
     "dompurify": "3.4.16"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "5.20260730.1",
+    "@cloudflare/workers-types": "5.20260907.1",
     "@electric-sql/pglite": "^0.5.4",
     "@eslint/js": "^10.0.1",
     "@graphql-codegen/cli": "^7.2.0",
