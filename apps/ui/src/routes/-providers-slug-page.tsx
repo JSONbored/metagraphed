@@ -27,10 +27,7 @@ import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
-import {
-  providerEndpointsQuery,
-  providerQuery,
-} from "@/lib/metagraphed/queries";
+import { providerEndpointsQuery, providerQuery } from "@/lib/metagraphed/queries";
 import { surfacesInfiniteQuery, exportSurfaceRows } from "@/lib/metagraphed/catalog-queries";
 import type { Endpoint } from "@/lib/metagraphed/types";
 import {
