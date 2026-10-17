@@ -27,7 +27,11 @@ function publicSlugData(value: string | null): Observation {
     const input: unknown = fromJSON(JSON.parse(value));
     const data = input && typeof input === "object" ? Reflect.get(input, "data") : undefined;
     if (!Array.isArray(data))
-      return { payload_present: true, decode: "ok", data_type: data === null ? "null" : typeof data };
+      return {
+        payload_present: true,
+        decode: "ok",
+        data_type: data === null ? "null" : typeof data,
+      };
     return {
       payload_present: true,
       decode: "ok",
@@ -51,7 +55,8 @@ function publicSlugData(value: string | null): Observation {
 function errorKind(message: string): string {
   if (/hydration|server rendered|Minified React error #(418|419|423|425)/i.test(message))
     return "hydration";
-  if (/chunk|module script|dynamically imported|loading.*script/i.test(message)) return "chunk-load";
+  if (/chunk|module script|dynamically imported|loading.*script/i.test(message))
+    return "chunk-load";
   return "other";
 }
 
@@ -113,7 +118,11 @@ export async function startRuntimeDiagnostics(page: Page, baseURL: string | unde
   };
   const onResponse = (response: Response) => {
     const url = localURL(response.url());
-    if (!url || (!response.request().isNavigationRequest() && !url.pathname.startsWith("/_serverFn/"))) return;
+    if (
+      !url ||
+      (!response.request().isNavigationRequest() && !url.pathname.startsWith("/_serverFn/"))
+    )
+      return;
     const observation = add("response", {
       path: url.pathname.slice(0, 200),
       method: response.request().method(),
@@ -177,7 +186,8 @@ export async function startRuntimeDiagnostics(page: Page, baseURL: string | unde
       document_token: typeof input.token === "string" ? input.token.slice(0, 40) : null,
       path: typeof input.path === "string" ? input.path.slice(0, 200) : null,
       hydrated: input.hydrated === true,
-      browser_count: typeof input.browser_count === "number" ? Math.min(input.browser_count, 60) : null,
+      browser_count:
+        typeof input.browser_count === "number" ? Math.min(input.browser_count, 60) : null,
       browser_cap_reached: input.browser_cap_reached === true,
       dialogs: typeof input.dialogs === "number" ? Math.min(input.dialogs, 100) : null,
       site_navigation: input.site_navigation === true,
@@ -194,7 +204,8 @@ export async function startRuntimeDiagnostics(page: Page, baseURL: string | unde
       const snapshot = () => {
         const dialogs = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')];
         const navigation = dialogs.find((dialog) => {
-          const name = dialog.getAttribute("aria-label") ??
+          const name =
+            dialog.getAttribute("aria-label") ??
             (dialog.getAttribute("aria-labelledby") ?? "")
               .split(/\s+/)
               .map((id) => document.getElementById(id)?.textContent ?? "")
@@ -206,13 +217,17 @@ export async function startRuntimeDiagnostics(page: Page, baseURL: string | unde
           site_navigation: Boolean(navigation),
           light_button: [...(navigation?.querySelectorAll("button") ?? [])]
             .slice(0, 100)
-            .some((button) => (button.getAttribute("aria-label") ?? button.textContent ?? "").trim() === "Light"),
+            .some(
+              (button) =>
+                (button.getAttribute("aria-label") ?? button.textContent ?? "").trim() === "Light",
+            ),
         };
       };
       const emit = (kind: string, state = snapshot()) => {
         if (count >= 60) return;
         count += 1;
-        const send = Reflect.get(window, binding) as ((value: unknown) => Promise<void>) | undefined;
+        const send = Reflect.get(window, binding) as
+          ((value: unknown) => Promise<void>) | undefined;
         if (typeof send !== "function") return;
         void send({
           kind,
@@ -226,13 +241,21 @@ export async function startRuntimeDiagnostics(page: Page, baseURL: string | unde
       };
       emit("document-start");
       for (const type of ["pointerdown", "click"] as const) {
-        document.addEventListener(type, (event) => {
-          const target = event.target instanceof Element ? event.target : null;
-          const anchor = target?.closest("footer a");
-          if (anchor instanceof HTMLAnchorElement && anchor.origin === origin && anchor.pathname === "/docs")
-            emit(`docs-${type}`);
-          if (target?.closest('button[aria-label="Open menu"]')) emit(`menu-${type}`);
-        }, true);
+        document.addEventListener(
+          type,
+          (event) => {
+            const target = event.target instanceof Element ? event.target : null;
+            const anchor = target?.closest("footer a");
+            if (
+              anchor instanceof HTMLAnchorElement &&
+              anchor.origin === origin &&
+              anchor.pathname === "/docs"
+            )
+              emit(`docs-${type}`);
+            if (target?.closest('button[aria-label="Open menu"]')) emit(`menu-${type}`);
+          },
+          true,
+        );
       }
       new MutationObserver(() => {
         if (count >= 60) return;
@@ -241,7 +264,12 @@ export async function startRuntimeDiagnostics(page: Page, baseURL: string | unde
         if (serialized === lastState) return;
         lastState = serialized;
         emit("dialog-change", state);
-      }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ["role", "aria-label", "aria-labelledby", "aria-hidden", "data-state"] });
+      }).observe(document, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["role", "aria-label", "aria-labelledby", "aria-hidden", "data-state"],
+      });
       window.addEventListener("pagehide", () => emit("pagehide"));
       window.addEventListener("pageshow", () => emit("pageshow"));
     },
@@ -260,7 +288,9 @@ export async function startRuntimeDiagnostics(page: Page, baseURL: string | unde
       // Bound diagnostics independently; this changes no test/action timeout.
       await Promise.race([
         Promise.allSettled([...pending]),
-        new Promise<void>((resolve) => { timer = setTimeout(resolve, 1500); }),
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, 1500);
+        }),
       ]);
       clearTimeout(timer);
       const pendingAtAttach = pending.size;
@@ -284,7 +314,12 @@ export async function startRuntimeDiagnostics(page: Page, baseURL: string | unde
 }
 
 /** Reuses exactly the response fetched by the unchanged HTML-ratchet test. */
-export async function attachHtmlDiagnostics(testInfo: TestInfo, url: string, path: string, html: string) {
+export async function attachHtmlDiagnostics(
+  testInfo: TestInfo,
+  url: string,
+  path: string,
+  html: string,
+) {
   const origin = loopbackOrigin(url);
   const expectedOrigin = loopbackOrigin(testInfo.project.use.baseURL ?? "");
   if ((path !== "/" && path !== "/subnets") || !origin || origin !== expectedOrigin) return;
