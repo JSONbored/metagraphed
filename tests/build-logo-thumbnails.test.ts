@@ -142,7 +142,8 @@ test("sharing SVG preserves visible vector and embedded bitmap pixels", async ()
 });
 
 test("sharing SVG normalizes raster data MIME and local paint fragments", async () => {
-  const jpeg = await sharp(await redPng()).jpeg().toBuffer();
+  const png = await redPng();
+  const jpeg = await sharp(png).jpeg().toBuffer();
   const input = await prepareLogoInput(
     Buffer.from(bitmapSvg(jpeg.toString("base64"), "jpeg")),
     ".svg",

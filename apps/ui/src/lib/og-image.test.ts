@@ -42,12 +42,32 @@ function sharingFixture(sourcePath = "example.webp", asset = "404-gen.png") {
   const bytes = new Uint8Array(data);
   const sha256 = createHash("sha256").update(bytes).digest("hex");
   const manifest = logoManifestFixture(bytes.buffer, sourcePath, sha256);
-  manifest.entries[0]!.sharing_width = data.readUInt32BE(16);
-  manifest.entries[0]!.sharing_height = data.readUInt32BE(20);
+  const entry = manifest.entries[0]!;
+  entry.sharing_width = data.readUInt32BE(16);
+  entry.sharing_height = data.readUInt32BE(20);
+  // A synthetic release identity tied to this fixture's exact source/output tuple.
+  const releaseInput = JSON.stringify([
+    "synthetic-og-sharing-release-v1",
+    manifest.sharing,
+    [
+      entry.source_path,
+      entry.source_sha256,
+      entry.sharing_path,
+      entry.sharing_sha256,
+      entry.sharing_bytes,
+      entry.sharing_width,
+      entry.sharing_height,
+    ],
+  ]);
+  const releaseIdentity = {
+    version: 1,
+    sha256: createHash("sha256").update(releaseInput).digest("hex"),
+  };
   return {
     bytes,
     manifest,
-    path: `/logos/${manifest.entries[0]!.sharing_path}`,
+    releaseIdentity,
+    path: `/logos/${entry.sharing_path}`,
     sourcePath: `/logos/${sourcePath}`,
     logo: resolveOgLogo(`/logos/${sourcePath}`, manifest),
   };
@@ -1387,13 +1407,19 @@ describe("edge social-preview recovery", () => {
     const identities = writes.map(([key]) => new URL(key.url).searchParams.get("logo_identity"));
     expect(identities).toEqual([a.path, b.path]);
     const options = { title: "Example", logoPath: a.sourcePath };
-    expect(buildOgImageUrl(options, a.manifest)).not.toBe(buildOgImageUrl(options, b.manifest));
+    const firstImage = new URL(buildOgImageUrl(options, a.releaseIdentity));
+    const nextImage = new URL(buildOgImageUrl(options, b.releaseIdentity));
+    expect(nextImage.href).not.toBe(firstImage.href);
+    expect(firstImage.searchParams.get("v")).toBe(`${OG_CARD_VERSION}-${a.releaseIdentity.sha256}`);
+    expect(nextImage.searchParams.get("v")).toBe(`${OG_CARD_VERSION}-${b.releaseIdentity.sha256}`);
+    expect(firstImage.searchParams.get("logop")).toBe(a.sourcePath);
+    expect(nextImage.searchParams.get("logop")).toBe(a.sourcePath);
   });
 
   it.each(["example.webp", "example.ico", "example.gif", "brands/mark.png"])(
     "renders the verified PNG derivative for original %s",
     async (sourcePath) => {
-      const { module, render } = await setup();
+      const { module, render, cache } = await setup();
       const fixture = sharingFixture(sourcePath);
       const assets = vi.fn(async (request: Request) => {
         expect(new URL(request.url).pathname).toBe(fixture.path);
@@ -1401,7 +1427,7 @@ describe("edge social-preview recovery", () => {
       });
       const image = buildOgImageUrl(
         { title: "Example", logoPath: fixture.sourcePath },
-        fixture.manifest,
+        fixture.releaseIdentity,
       );
       const response = await module.handleOgImage(
         new Request(image),
@@ -1410,17 +1436,26 @@ describe("edge social-preview recovery", () => {
       );
       expect(response?.headers.get("cache-control")).toContain("max-age=86400");
       expect(assets).toHaveBeenCalledOnce();
-      expect(render.mock.calls[0]![0]).toContain("data:image/png;base64,");
-      expect(new URL(image).searchParams.get("logop")).toBe(fixture.path);
-      const original = new URL(image);
-      original.searchParams.set("logop", fixture.sourcePath);
+      const dataUri = `data:image/png;base64,${Buffer.from(fixture.bytes).toString("base64")}`;
+      expect(render.mock.calls[0]![0]).toContain(dataUri);
+      expect(new URL(image).searchParams.get("logop")).toBe(fixture.sourcePath);
+      const sharing = new URL(image);
+      sharing.searchParams.set("logop", fixture.path);
       await module.handleOgImage(
-        new Request(original),
+        new Request(sharing),
         { ASSETS: { fetch: assets } },
         fixture.manifest,
       );
       expect(assets).toHaveBeenCalledOnce();
       expect(render).toHaveBeenCalledOnce();
+      const lookups = cache.match.mock.calls
+        .map(([request]) => new URL(request.url))
+        .filter((key) => key.pathname === "/og");
+      expect(lookups).toHaveLength(2);
+      expect(lookups[1]!.href).toBe(lookups[0]!.href);
+      for (const key of lookups) {
+        expect(key.searchParams.get("logo_identity")).toBe(fixture.path);
+      }
     },
   );
 
