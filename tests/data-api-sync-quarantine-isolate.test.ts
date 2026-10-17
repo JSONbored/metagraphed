@@ -49,40 +49,47 @@ beforeAll(async () => {
   // production NODE_ENV avoids Vitest changing Wrangler's bundle defines.
   try {
     await execFile(
-    process.execPath,
-    [
-      path.join(repoRoot, "node_modules/wrangler/bin/wrangler.js"),
-      "deploy",
-      "--config",
-      "wrangler.data.jsonc",
-      "--dry-run",
-      "--outdir",
-      modulesRoot,
-      "--outfile",
-      outfile,
-      "--upload-source-maps",
-      "--env-file",
-      envFile,
-    ],
-    {
-      cwd: repoRoot,
-      env: {
-        PATH: process.env.PATH,
-        CI: "true",
-        NODE_ENV: "production",
-        XDG_CONFIG_HOME: path.join(outdir, "config"),
-        XDG_CACHE_HOME: path.join(outdir, "cache"),
-        CLOUDFLARE_AUTH_USE_KEYRING: "false",
-        WRANGLER_SEND_METRICS: "false",
+      process.execPath,
+      [
+        path.join(repoRoot, "node_modules/wrangler/bin/wrangler.js"),
+        "deploy",
+        "--config",
+        "wrangler.data.jsonc",
+        "--dry-run",
+        "--outdir",
+        modulesRoot,
+        "--outfile",
+        outfile,
+        "--upload-source-maps",
+        "--env-file",
+        envFile,
+      ],
+      {
+        cwd: repoRoot,
+        env: {
+          PATH: process.env.PATH,
+          HOME: process.env.HOME,
+          CI: "true",
+          NODE_ENV: "production",
+          XDG_CONFIG_HOME: path.join(outdir, "config"),
+          XDG_CACHE_HOME: path.join(outdir, "cache"),
+          CLOUDFLARE_AUTH_USE_KEYRING: "false",
+          WRANGLER_SEND_METRICS: "false",
+        },
+        timeout: 60_000,
+        maxBuffer: 1024 * 1024,
       },
-      timeout: 60_000,
-      maxBuffer: 1024 * 1024,
-    },
     );
   } catch (error) {
     // execFile's rejection carries the entire captured binding dump. Keep
     // failure diagnostics bounded and exclude its stdout/stderr and cause.
-    const status = typeof error === "object" && error !== null && "code" in error && typeof error.code === "number" ? error.code : "command_failed";
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof error.code === "number"
+        ? error.code
+        : "command_failed";
     throw new Error(`Data API deployment dry run failed (${status})`);
   }
   // Wrangler's --outfile is the exact upload multipart body. Its metadata
