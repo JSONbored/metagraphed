@@ -86,6 +86,16 @@ npm run build:logo-thumbnails
 npm run validate:logo-thumbnails
 ```
 
+For a native review artifact, use the existing `sync-contract-artifacts.yml`
+workflow with all three explicit inputs: `mode=generate-only`,
+`artifact_preset=logos` and `source_sha=<full reviewed commit SHA>`. That fixed
+preset runs the existing logo builder and checker without lifecycle scripts,
+production credentials or deployment. It returns an allowlisted binary patch
+including new PNGs, with source, workflow, manifest and output hash receipts.
+The default preset remains contract generation; normal sync behavior stays
+unchanged. The current source has 176 original paths and 169 unique source
+hashes, so aliases share immutable PNGs instead of duplicating objects.
+
 Source review does not generate or publish those files. Native generation,
 format/identity regressions and actual Worker raster output must be qualified
 before coordinated derivative publication and compatible API/UI deployment.
