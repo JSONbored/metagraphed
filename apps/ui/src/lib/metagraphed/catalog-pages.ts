@@ -42,42 +42,57 @@ export async function fetchCatalogPage<T>(
   const rows = response.data?.[key];
   const p = response.meta.pagination;
   if (
-    !Array.isArray(rows) || !p || !validSnapshot(p.snapshot) ||
+    !Array.isArray(rows) ||
+    !p ||
+    !validSnapshot(p.snapshot) ||
     (page.snapshot !== "start" && p.snapshot !== page.snapshot) ||
     (page.total !== undefined && p.total !== page.total) ||
-    p.cursor !== page.cursor || p.returned !== rows.length ||
-    !Number.isSafeInteger(p.total) || (p.total as number) < page.cursor + rows.length
-  ) throw new CatalogRestartRequired();
+    p.cursor !== page.cursor ||
+    p.returned !== rows.length ||
+    !Number.isSafeInteger(p.total) ||
+    (p.total as number) < page.cursor + rows.length
+  )
+    throw new CatalogRestartRequired();
   const end = page.cursor + rows.length;
   if (p.next_cursor === null) {
     if (end !== p.total) throw new CatalogRestartRequired();
-  } else if (
-    rows.length === 0 || p.next_cursor !== end || end >= (p.total as number)
-  ) throw new CatalogRestartRequired();
+  } else if (rows.length === 0 || p.next_cursor !== end || end >= (p.total as number))
+    throw new CatalogRestartRequired();
   return { ...response, data: rows as T[] };
 }
 
 export function nextCatalogPage(last: ApiResult<unknown>): CatalogPageParam | undefined {
   const p = last.meta.pagination;
   if (p?.next_cursor == null) return undefined;
-  if (!validSnapshot(p.snapshot) || typeof p.next_cursor !== "number" || !Number.isSafeInteger(p.total)) {
+  if (
+    !validSnapshot(p.snapshot) ||
+    typeof p.next_cursor !== "number" ||
+    !Number.isSafeInteger(p.total)
+  ) {
     throw new CatalogRestartRequired();
   }
   return { cursor: p.next_cursor, snapshot: p.snapshot, total: p.total };
 }
 
 /** Complete one checked walk before exporting anything; never retry a changed walk. */
-export async function collectCatalogRows<T>(path: string, key: string, params: QueryParams, signal?: AbortSignal) {
+export async function collectCatalogRows<T>(
+  path: string,
+  key: string,
+  params: QueryParams,
+  signal?: AbortSignal,
+) {
   const rows: T[] = [];
   const originScope = buildUrl(path);
   let page: CatalogPageParam | undefined = FIRST_CATALOG_PAGE;
   let bytes = 0;
   for (let count = 0; page && count < 50; count += 1) {
     signal?.throwIfAborted();
-    if (buildUrl(path) !== originScope) throw new Error("The network changed. Start the export again.");
+    if (buildUrl(path) !== originScope)
+      throw new Error("The network changed. Start the export again.");
     const result = await fetchCatalogPage<T>(path, key, { ...params, limit: 1000 }, page, signal);
     signal?.throwIfAborted();
-    if (buildUrl(path) !== originScope) throw new Error("The network changed. Start the export again.");
+    if (buildUrl(path) !== originScope)
+      throw new Error("The network changed. Start the export again.");
     bytes += new TextEncoder().encode(JSON.stringify(result.data)).byteLength;
     if (bytes > 16 * 1024 * 1024 || rows.length + result.data.length > 50_000) {
       throw new Error("This export is too large. Narrow the filters and try again.");

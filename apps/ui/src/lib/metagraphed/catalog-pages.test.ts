@@ -7,20 +7,21 @@ vi.mock("./client", async (original) => ({
 }));
 import { ApiError } from "./client";
 import { endpointsInfiniteQuery, surfacesInfiniteQuery } from "./queries";
-import {
-  CatalogRestartRequired,
-  collectCatalogRows,
-  restartCatalogResults,
-} from "./catalog-pages";
+import { CatalogRestartRequired, collectCatalogRows, restartCatalogResults } from "./catalog-pages";
 
 const snapshot = "v1." + "a".repeat(64);
 function response(ids: string[], cursor: number, total: number, key = "endpoints") {
   return {
     data: { [key]: ids.map((id) => ({ id })) },
-    meta: { pagination: {
-      snapshot, cursor, total, returned: ids.length,
-      next_cursor: cursor + ids.length < total ? cursor + ids.length : null,
-    } },
+    meta: {
+      pagination: {
+        snapshot,
+        cursor,
+        total,
+        returned: ids.length,
+        next_cursor: cursor + ids.length < total ? cursor + ids.length : null,
+      },
+    },
     url: "https://api.metagraph.sh/api/v1/endpoints",
   };
 }
@@ -37,13 +38,20 @@ describe("first-party checked catalog consumers", () => {
     const stop = observer.subscribe(() => {});
     await observer.fetchNextPage();
     expect(fetchApi.mock.calls[0][1].params).toMatchObject({
-      kind: "rpc", fields: "id", cursor: 0, page_snapshot: "start",
+      kind: "rpc",
+      fields: "id",
+      cursor: 0,
+      page_snapshot: "start",
     });
     expect(fetchApi.mock.calls[1][1].params).toMatchObject({
-      kind: "rpc", fields: "id", cursor: 2, page_snapshot: snapshot,
+      kind: "rpc",
+      fields: "id",
+      cursor: 2,
+      page_snapshot: snapshot,
     });
-    expect(observer.getCurrentResult().data?.pages.flatMap((p) => p.data.map((r) => r.id)))
-      .toEqual(["a", "b", "c", "d"]);
+    expect(observer.getCurrentResult().data?.pages.flatMap((p) => p.data.map((r) => r.id))).toEqual(
+      ["a", "b", "c", "d"],
+    );
     stop();
     client.clear();
   });
@@ -56,7 +64,12 @@ describe("first-party checked catalog consumers", () => {
     const observer = new InfiniteQueryObserver(client, options);
     const stop = observer.subscribe(() => {});
     let finish!: (value: ReturnType<typeof response>) => void;
-    fetchApi.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    fetchApi.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
     const late = observer.fetchNextPage().catch(() => undefined);
     const lateSignal = fetchApi.mock.calls[1][1].signal as AbortSignal;
     fetchApi.mockResolvedValueOnce(response(["new"], 0, 1));
@@ -66,10 +79,13 @@ describe("first-party checked catalog consumers", () => {
     await late;
     expect(fetchApi).toHaveBeenCalledTimes(3);
     expect(fetchApi.mock.calls[2][1].params).toMatchObject({
-      kind: "rpc", cursor: 0, page_snapshot: "start",
+      kind: "rpc",
+      cursor: 0,
+      page_snapshot: "start",
     });
-    expect(observer.getCurrentResult().data?.pages.flatMap((p) => p.data.map((r) => r.id)))
-      .toEqual(["new"]);
+    expect(observer.getCurrentResult().data?.pages.flatMap((p) => p.data.map((r) => r.id))).toEqual(
+      ["new"],
+    );
     stop();
     client.clear();
   });
@@ -79,9 +95,14 @@ describe("first-party checked catalog consumers", () => {
     const client = new QueryClient();
     const options = surfacesInfiniteQuery({ provider: "fixture", limit: 1 });
     await client.fetchInfiniteQuery(options);
-    fetchApi.mockRejectedValueOnce(new ApiError("Changed", {
-      status: 400, code: "invalid_query", parameter: "page_snapshot", url: "fixture",
-    }));
+    fetchApi.mockRejectedValueOnce(
+      new ApiError("Changed", {
+        status: 400,
+        code: "invalid_query",
+        parameter: "page_snapshot",
+        url: "fixture",
+      }),
+    );
     const observer = new InfiniteQueryObserver(client, options);
     const stop = observer.subscribe(() => {});
     await observer.fetchNextPage();
@@ -93,32 +114,47 @@ describe("first-party checked catalog consumers", () => {
 
   it("CSV collection emits only a complete checked walk and discards a changed attempt", async () => {
     fetchApi.mockResolvedValueOnce(response(["a", "b"], 0, 4));
-    fetchApi.mockRejectedValueOnce(new ApiError("Changed", {
-      status: 400, code: "invalid_query", parameter: "page_snapshot", url: "fixture",
-    }));
-    await expect(collectCatalogRows("/api/v1/endpoints", "endpoints", { kind: "rpc" }))
-      .rejects.toBeInstanceOf(CatalogRestartRequired);
+    fetchApi.mockRejectedValueOnce(
+      new ApiError("Changed", {
+        status: 400,
+        code: "invalid_query",
+        parameter: "page_snapshot",
+        url: "fixture",
+      }),
+    );
+    await expect(
+      collectCatalogRows("/api/v1/endpoints", "endpoints", { kind: "rpc" }),
+    ).rejects.toBeInstanceOf(CatalogRestartRequired);
     expect(fetchApi).toHaveBeenCalledTimes(2);
     fetchApi.mockResolvedValueOnce(response(["new"], 0, 1));
-    await expect(collectCatalogRows("/api/v1/endpoints", "endpoints", { kind: "rpc" }))
-      .resolves.toEqual([{ id: "new" }]);
+    await expect(
+      collectCatalogRows("/api/v1/endpoints", "endpoints", { kind: "rpc" }),
+    ).resolves.toEqual([{ id: "new" }]);
     expect(fetchApi.mock.calls[2][1].params).toMatchObject({
-      kind: "rpc", cursor: 0, page_snapshot: "start",
+      kind: "rpc",
+      cursor: 0,
+      page_snapshot: "start",
     });
   });
 
   it("rejects a continuation that keeps the snapshot but lowers the first total", async () => {
     fetchApi.mockResolvedValueOnce(response(["a", "b"], 0, 4));
     fetchApi.mockResolvedValueOnce(response(["c"], 2, 3));
-    await expect(collectCatalogRows("/api/v1/endpoints", "endpoints", {}))
-      .rejects.toBeInstanceOf(CatalogRestartRequired);
+    await expect(collectCatalogRows("/api/v1/endpoints", "endpoints", {})).rejects.toBeInstanceOf(
+      CatalogRestartRequired,
+    );
     expect(fetchApi).toHaveBeenCalledTimes(2);
   });
 
   it("discards a late export page after cancellation without fetching another page", async () => {
     const controller = new AbortController();
     let finish!: (value: ReturnType<typeof response>) => void;
-    fetchApi.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    fetchApi.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
     const result = collectCatalogRows("/api/v1/endpoints", "endpoints", {}, controller.signal);
     expect(fetchApi.mock.calls[0][1].signal).toBe(controller.signal);
     controller.abort();

@@ -60,7 +60,9 @@ describe("checked collection paging (#12094)", () => {
     // Removing a makes c move before offset 2. Inserting before a repeats b.
     const deleted = rows.slice(1);
     const inserted = [{ id: "z", name: "Same" }, ...rows];
-    assert.deepEqual(checked(page(deleted, url("limit=2&cursor=2"))).ids, ["d"]);
+    assert.deepEqual(checked(page(deleted, url("limit=2&cursor=2"))).ids, [
+      "d",
+    ]);
     assert.deepEqual(checked(page(inserted, url("limit=2&cursor=2"))).ids, [
       "b",
       "c",
@@ -82,12 +84,10 @@ describe("checked collection paging (#12094)", () => {
     const next = continuation(first.pagination.snapshot);
     next.searchParams.set("sort", "name");
     next.searchParams.set("order", "desc");
-    assert.deepEqual([...first.ids, ...checked(page(rows, next)).ids], [
-      "a",
-      "b",
-      "c",
-      "d",
-    ]);
+    assert.deepEqual(
+      [...first.ids, ...checked(page(rows, next)).ids],
+      ["a", "b", "c", "d"],
+    );
     assert.equal(
       page([rows[1], rows[0], ...rows.slice(2)], next).error?.parameter,
       "page_snapshot",
@@ -95,7 +95,9 @@ describe("checked collection paging (#12094)", () => {
   });
 
   test("projection cannot hide a row mutation and sort changes cannot reuse a token", () => {
-    const first = checked(page(rows, url("limit=2&fields=id&page_snapshot=start")));
+    const first = checked(
+      page(rows, url("limit=2&fields=id&page_snapshot=start")),
+    );
     const next = continuation(first.pagination.snapshot);
     next.searchParams.set("fields", "id");
     assert.deepEqual(checked(page(rows, next)).ids, ["c", "d"]);
@@ -124,7 +126,10 @@ describe("checked collection paging (#12094)", () => {
     const match = header?.match(/<([^>]+)>; rel="next"/);
     assert.ok(match);
     const next = new URL(match[1]);
-    assert.equal(next.searchParams.get("page_snapshot"), first.pagination.snapshot);
+    assert.equal(
+      next.searchParams.get("page_snapshot"),
+      first.pagination.snapshot,
+    );
     for (const link of String(header).matchAll(/<([^>]+)>/g)) {
       assert.equal(
         new URL(link[1]).searchParams.get("page_snapshot"),
@@ -132,9 +137,13 @@ describe("checked collection paging (#12094)", () => {
       );
     }
     assert.deepEqual(checked(page(many, next)).ids, [String(DEFAULT_LIMIT)]);
-    const back = paginationLinkHeader(next, checked(page(many, next)).pagination, {
-      queryCollection: "providers",
-    });
+    const back = paginationLinkHeader(
+      next,
+      checked(page(many, next)).pagination,
+      {
+        queryCollection: "providers",
+      },
+    );
     assert.match(back ?? "", /rel="first"/);
     assert.match(back ?? "", /rel="prev"/);
     assert.ok(!String(back).includes("page_snapshot=start"));
@@ -153,11 +162,18 @@ describe("checked collection paging (#12094)", () => {
   });
 
   test("query parameter order and object-key order do not invalidate equivalent input", () => {
-    const first = checked(page(rows, url("sort=id&limit=2&page_snapshot=start")));
+    const first = checked(
+      page(rows, url("sort=id&limit=2&page_snapshot=start")),
+    );
     const next = continuation(first.pagination.snapshot);
     next.searchParams.set("sort", "id");
     assert.deepEqual(
-      checked(page(rows.map(({ id, name }) => ({ name, id })), next)).ids,
+      checked(
+        page(
+          rows.map(({ id, name }) => ({ name, id })),
+          next,
+        ),
+      ).ids,
       ["c", "d"],
     );
   });
@@ -253,7 +269,9 @@ describe("checked collection paging (#12094)", () => {
     const schema = listQuerySchema("providers");
     assert.ok(schema.safeParse({ page_snapshot: "start", cursor: 0 }).success);
     assert.ok(!schema.safeParse({ page_snapshot: "invented" }).success);
-    const route = API_ROUTES.find((entry) => entry.path === "/api/v1/providers");
+    const route = API_ROUTES.find(
+      (entry) => entry.path === "/api/v1/providers",
+    );
     assert.ok(
       route?.query_parameters?.some((entry) => entry.name === "page_snapshot"),
     );
@@ -266,7 +284,11 @@ describe("checked collection paging (#12094)", () => {
             get: {
               parameters: [
                 { name: "cursor", in: "query", schema: { type: "integer" } },
-                { name: "page_snapshot", in: "query", schema: { type: "string" } },
+                {
+                  name: "page_snapshot",
+                  in: "query",
+                  schema: { type: "string" },
+                },
               ],
             },
           },
@@ -274,6 +296,9 @@ describe("checked collection paging (#12094)", () => {
       },
       { hasNetworkTwin: false, returnsProjectable: false },
     );
-    assert.deepEqual(args.map((arg) => arg.name), ["cursor"]);
+    assert.deepEqual(
+      args.map((arg) => arg.name),
+      ["cursor"],
+    );
   });
 });

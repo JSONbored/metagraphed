@@ -415,7 +415,9 @@ export function EndpointsPage() {
               link={RouterLink}
               source="endpoint"
               storageKey="mg-endpoints-columns"
-              loadExportRows={async (signal) => endpointRows(await exportEndpointRows(serverParams, signal))}
+              loadExportRows={async (signal) =>
+                endpointRows(await exportEndpointRows(serverParams, signal))
+              }
               expand={endpointDetail}
               loading={(feed.isPending || searchWaiting) && !searchError}
               error={

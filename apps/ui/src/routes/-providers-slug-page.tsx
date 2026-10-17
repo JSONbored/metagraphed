@@ -1,5 +1,10 @@
 import { useMemo } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import {
   AnalyticsSection,
   BrandIcon,
@@ -299,7 +304,12 @@ export function ProviderDetail() {
               link={RouterLink}
               source="provider-surface"
               storageKey="mg-provider-surfaces-columns"
-              loadExportRows={async (signal) => mergeSurfaceProbes(providerSurfaces(await exportSurfaceRows({ provider: slug }, signal)), endpointList)}
+              loadExportRows={async (signal) =>
+                mergeSurfaceProbes(
+                  providerSurfaces(await exportSurfaceRows({ provider: slug }, signal)),
+                  endpointList,
+                )
+              }
               className="max-lg:[&_.mg-dt-expansion>td]:px-4! [&_td[data-mobile-lead=true]]:before:hidden [&_.mg-dt-status]:self-start [&_.mg-dt-disclosure]:min-h-11 [&_.mg-dt-disclosure]:min-w-11 [&_.mg-dt-menu-trigger]:min-h-11 [&_.mg-dt-menu-trigger]:min-w-11"
               mobile="cards"
               expand={surfaceDetail}
@@ -320,7 +330,8 @@ export function ProviderDetail() {
                 hasMore={surfaces.hasNextPage}
                 isLoading={surfaces.isFetchingNextPage}
                 onLoadMore={() => {
-                  if (surfaces.error instanceof CatalogRestartRequired) void restartCatalogResults(queryClient, catalogOptions.queryKey);
+                  if (surfaces.error instanceof CatalogRestartRequired)
+                    void restartCatalogResults(queryClient, catalogOptions.queryKey);
                   else void surfaces.fetchNextPage();
                 }}
                 shown={mergedSurfaces.length}

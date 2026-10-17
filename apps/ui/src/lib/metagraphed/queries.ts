@@ -1,6 +1,11 @@
 import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { apiFetch, ApiError, type ApiResult, type QueryParams } from "./client";
-import { FIRST_CATALOG_PAGE, collectCatalogRows, fetchCatalogPage, nextCatalogPage } from "./catalog-pages";
+import {
+  FIRST_CATALOG_PAGE,
+  collectCatalogRows,
+  fetchCatalogPage,
+  nextCatalogPage,
+} from "./catalog-pages";
 import { getNetwork } from "./config";
 import { blockRefPathSegment } from "./blocks";
 import { extrinsicHashPathSegment } from "./extrinsics";
@@ -10204,7 +10209,9 @@ export const surfacesInfiniteQuery = (baseParams: QueryParams = {}) =>
   });
 
 export async function exportSurfaceRows(params: QueryParams, signal?: AbortSignal) {
-  return (await collectCatalogRows<unknown>("/api/v1/surfaces", "surfaces", params, signal)).map(normalizeSurface);
+  return (await collectCatalogRows<unknown>("/api/v1/surfaces", "surfaces", params, signal)).map(
+    normalizeSurface,
+  );
 }
 
 function asString(v: unknown): string | undefined {
@@ -10418,7 +10425,9 @@ export const endpointsInfiniteQuery = (baseParams: QueryParams = {}) =>
   });
 
 export async function exportEndpointRows(params: QueryParams, signal?: AbortSignal) {
-  return (await collectCatalogRows<unknown>("/api/v1/endpoints", "endpoints", params, signal)).map(normalizeEndpoint);
+  return (await collectCatalogRows<unknown>("/api/v1/endpoints", "endpoints", params, signal)).map(
+    normalizeEndpoint,
+  );
 }
 
 // Pool rows are { id, kind, endpoint_count, eligible_count, best_endpoint_id,

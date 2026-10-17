@@ -4044,7 +4044,8 @@ function DataTableMenu({
     setExportError(null);
     try {
       const contents = await csv(controller.signal);
-      if (controller.signal.aborted || exportRequest.current !== controller) return;
+      if (controller.signal.aborted || exportRequest.current !== controller)
+        return;
       const blob = new Blob([contents], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");

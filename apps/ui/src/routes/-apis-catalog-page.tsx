@@ -114,7 +114,10 @@ export function ApisCatalogPage() {
     [surfaces, search],
   );
   const refreshAll = () => {
-    void Promise.all([coverage.refetch(), ...(catalogNearViewport ? [restartCatalogResults(queryClient, catalogOptions.queryKey)] : [])]);
+    void Promise.all([
+      coverage.refetch(),
+      ...(catalogNearViewport ? [restartCatalogResults(queryClient, catalogOptions.queryKey)] : []),
+    ]);
   };
 
   const columns: DataTableColumn<Surface>[] = [
@@ -294,7 +297,11 @@ export function ApisCatalogPage() {
             link={RouterLink}
             source="surface"
             storageKey="mg-apis-columns"
-            loadExportRows={async (signal) => (await exportSurfaceRows(serverParams, signal)).filter((surface) => matchesSurfaceFilters(surface, search))}
+            loadExportRows={async (signal) =>
+              (await exportSurfaceRows(serverParams, signal)).filter((surface) =>
+                matchesSurfaceFilters(surface, search),
+              )
+            }
             expand={surfaceDetail}
             loading={!catalogNearViewport || feed.isPending}
             error={
@@ -361,7 +368,8 @@ export function ApisCatalogPage() {
                 hasMore={feed.hasNextPage}
                 isLoading={feed.isFetchingNextPage}
                 onLoadMore={() => {
-                  if (feed.error instanceof CatalogRestartRequired) void restartCatalogResults(queryClient, catalogOptions.queryKey);
+                  if (feed.error instanceof CatalogRestartRequired)
+                    void restartCatalogResults(queryClient, catalogOptions.queryKey);
                   else void feed.fetchNextPage();
                 }}
                 shown={surfaces.length}

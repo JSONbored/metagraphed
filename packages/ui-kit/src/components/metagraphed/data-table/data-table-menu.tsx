@@ -1,5 +1,9 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 /**
  * The one table menu (#11610): which columns are shown, how many rows a page
@@ -71,7 +75,8 @@ export function DataTableMenu<Row>({
     setExportError(null);
     try {
       const contents = await csv(controller.signal);
-      if (controller.signal.aborted || exportRequest.current !== controller) return;
+      if (controller.signal.aborted || exportRequest.current !== controller)
+        return;
       const blob = new Blob([contents], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -87,7 +92,9 @@ export function DataTableMenu<Row>({
     } catch (error) {
       if (!controller.signal.aborted) {
         setExportError(
-          error instanceof Error ? error.message : "CSV export failed. Try again.",
+          error instanceof Error
+            ? error.message
+            : "CSV export failed. Try again.",
         );
       }
     } finally {

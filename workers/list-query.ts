@@ -8,7 +8,10 @@
 import { API_QUERY_COLLECTIONS } from "../src/contracts.ts";
 import { createHash } from "node:crypto";
 import { historyJson } from "../src/history-sha256.ts";
-import { validateCollectionQuery, type QueryError } from "../src/route-query.ts";
+import {
+  validateCollectionQuery,
+  type QueryError,
+} from "../src/route-query.ts";
 import { linkHeader } from "./http.ts";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.ts";
 import {
@@ -43,7 +46,10 @@ export interface QueryCollectionConfig {
   /** Param name -> the row field whose PRESENCE it tests. */
   presence_filters?: Record<string, string>;
   /** Boolean param -> membership of a row field in a canonical value set. */
-  value_set_filters?: Record<string, { field: string; values: readonly string[] }>;
+  value_set_filters?: Record<
+    string,
+    { field: string; values: readonly string[] }
+  >;
   search_keys?: string[];
   sort_fields?: string[];
 }
@@ -154,7 +160,8 @@ export function applyQueryFilters(
       return {
         error: {
           parameter: "page_snapshot",
-          message: "Guarded collection is unavailable; retry from the first page.",
+          message:
+            "Guarded collection is unavailable; retry from the first page.",
         },
       };
     }
@@ -469,7 +476,8 @@ function rangeFilterRows(
   params: URLSearchParams,
   rangeFields: string[] = [],
 ): Row[] {
-  const bounds: Array<{ field: string; limit: number; kind: "min" | "max" }> = [];
+  const bounds: Array<{ field: string; limit: number; kind: "min" | "max" }> =
+    [];
   for (const field of rangeFields) {
     const min = params.get(`min_${field}`);
     if (min !== null) bounds.push({ field, limit: Number(min), kind: "min" });
