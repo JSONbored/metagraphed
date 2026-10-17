@@ -255,6 +255,180 @@ describe("one component, one worked example", () => {
   });
 });
 
+describe("validator examples describe available measurements", () => {
+  type ExampleRow = Record<string, unknown>;
+
+  function workedExample(routePath: string, contentType = "application/json") {
+    const media = openapi.paths[routePath]?.get?.responses?.["200"]?.content?.[
+      contentType
+    ];
+    assert.ok(media, `${routePath} ${contentType}: expected a response`);
+    const name = Object.keys(media.examples ?? {})[0];
+    assert.ok(name, `${routePath} ${contentType}: expected an example`);
+    return openapi.components.examples[name]?.value;
+  }
+
+  function exampleData(routePath: string): ExampleRow {
+    return (workedExample(routePath) as { data: ExampleRow }).data;
+  }
+
+  function assertUnavailable(row: ExampleRow, fields: string[]) {
+    for (const field of fields) assert.equal(row[field], null, field);
+  }
+
+  for (const routeId of ["global-validators", "validator-detail"]) {
+    test(`${routeId} preserves membership and emission, without invented capital or returns`, () => {
+      const route = API_ROUTES.find((entry) => entry.id === routeId);
+      assert.ok(route);
+      const data = exampleData(route.path);
+      const validator =
+        routeId === "global-validators"
+          ? (data.validators as ExampleRow[])[0]!
+          : data;
+      assertUnavailable(validator, [
+        "total_stake_tao",
+        "root_stake_tao",
+        "alpha_stake_tao",
+        "apy_estimate",
+        "realized_return_1d",
+        "realized_return_1d_as_of",
+        "realized_return_1w",
+        "realized_return_1w_as_of",
+        "realized_return_1m",
+        "realized_return_1m_as_of",
+      ]);
+      assert.equal(validator.apy_estimate_eligible_subnet_count, 0);
+      if (routeId === "global-validators") {
+        assert.equal(validator.stake_dominance, null);
+      }
+      assert.equal(validator.total_emission_tao, 0.5);
+      assert.equal(validator.avg_validator_trust, 0.5);
+      const member = (validator.subnets as ExampleRow[])[0]!;
+      assert.equal(member.stake_alpha, 0.5);
+      assert.equal(member.emission_alpha, 0.5);
+      assert.equal(member.validator_trust, 0.5);
+    });
+  }
+
+  test("comparison and operator examples retain their strict shapes and nested measurements", () => {
+    const comparison = exampleData("/api/v1/compare/validators");
+    const validator = (comparison.validators as ExampleRow[])[0]!;
+    assertUnavailable(validator, ["total_stake_tao", "apy_estimate"]);
+    assert.equal(validator.apy_estimate_eligible_subnet_count, 0);
+    for (const absent of [
+      "root_stake_tao",
+      "alpha_stake_tao",
+      "realized_return_1d",
+    ]) {
+      assert.equal(Object.hasOwn(validator, absent), false, absent);
+    }
+    assert.equal(validator.total_emission_tao, 0.5);
+    assert.equal((validator.subnet_context as ExampleRow).stake_alpha, 0.5);
+
+    const directory = exampleData("/api/v1/validators/operators");
+    const operator = (directory.operators as ExampleRow[])[0]!;
+    assertUnavailable(operator, [
+      "total_stake_tao",
+      "apy_estimate",
+      "stake_dominance",
+    ]);
+    assert.equal(operator.total_emission_tao, 0.5);
+    const key = (operator.hotkeys as ExampleRow[])[0]!;
+    assert.equal(key.total_stake_tao, null);
+    assert.equal(key.take, 0.5);
+  });
+
+  test("history examples clear principal ratios without adding absent scoped fields", () => {
+    const data = exampleData("/api/v1/validators/{hotkey}/history");
+    const point = (data.points as ExampleRow[])[0]!;
+    assertUnavailable(point, ["total_stake_tao", "rewards_per_1000_tao"]);
+    assert.equal(point.total_emission_tao, 0.5);
+    assert.equal(typeof point.snapshot_date, "string");
+    assert.equal(Object.hasOwn(point, "stake_share"), false);
+
+    // Scoped fields are optional at this sample depth. Exercise their populated
+    // shape too, without making unscoped examples invent them or mutating input.
+    const scopedPoint = {
+      ...point,
+      rewards_per_1000_alpha: 0.12,
+      stake_share: 0.2,
+      dividend_efficiency: 0.7,
+      stake_alpha: 42,
+      emission_alpha: 3,
+      validator_trust: 0.9,
+      take: 0.1,
+      validator_permit: true,
+    };
+    const route = API_ROUTES.find((entry) => entry.id === "validator-history")!;
+    const registry = buildOpenApiExampleRegistry(
+      {
+        ...componentSchemas,
+        ValidatorHistoryArtifact: {
+          type: "object",
+          properties: { points: { type: "array", items: { const: scopedPoint } } },
+        },
+      } as unknown as Row,
+      [route],
+    );
+    const name = registry.jsonNameByRouteId.get(route.id)!;
+    const sample = (registry.examples[name] as { value: { data: ExampleRow } })
+      .value;
+    const scoped = (sample.data.points as ExampleRow[])[0]!;
+    assert.deepEqual(scoped, {
+      ...scopedPoint,
+      rewards_per_1000_alpha: null,
+      stake_share: null,
+      dividend_efficiency: null,
+    });
+    assert.equal(scopedPoint.stake_share, 0.2);
+  });
+
+  test("mainnet-only validator examples do not advertise network-scoped data", () => {
+    for (const routeId of [
+      "global-validators",
+      "validator-detail",
+      "compare-validators",
+      "validator-history",
+      "validator-operator-directory",
+    ]) {
+      const route = API_ROUTES.find((entry) => entry.id === routeId)!;
+      const scoped = route.path.replace("/api/v1/", "/api/v1/{network}/");
+      assert.equal(openapi.paths[scoped], undefined, scoped);
+    }
+    assert.deepEqual(
+      workedExample("/api/v1/{network}/coverage"),
+      workedExample("/api/v1/coverage"),
+    );
+    const account = (
+      exampleData("/api/v1/accounts").accounts as ExampleRow[]
+    )[0]!;
+    assert.equal(account.total_stake_tao, 0.5);
+    assert.equal(account.stake_dominance, 0.5);
+  });
+
+  test("CSV blanks validator capital and dominance while preserving account examples", () => {
+    const csv = workedExample("/api/v1/validators", "text/csv") as string;
+    const cells = csv.split("\r\n")[1]!.split(",");
+    assert.deepEqual(cells.slice(0, 10), [
+      "hk_sample",
+      "ck_sample",
+      "1",
+      "3",
+      "3",
+      "",
+      "10.25",
+      "",
+      "0.98",
+      "0.99",
+    ]);
+    const accounts = workedExample("/api/v1/accounts", "text/csv") as string;
+    assert.equal(
+      accounts.split("\r\n")[1],
+      'hk_sample,ck_sample,1,3,3,1,2,1234.5,10.25,0.12,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
+    );
+  });
+});
+
 describe("the inlined projection keeps the generated types documented", () => {
   // openapi-typescript cannot read the hoisted map and would drop every
   // `@example` JSDoc block from the published .d.ts artifacts. Type generation

@@ -5881,10 +5881,10 @@ function openApiResponseSchemaForRoute(entry: (typeof API_ROUTES)[number]) {
 // written once into `components.examples`, and every media type that shows it
 // carries `examples: { <name>: { $ref } }` instead of its own `example:` copy.
 //
-// WHY. An example is a PURE FUNCTION of the response schema
-// (openApiExampleForRoute -> sampleFromSchema), so any two routes wrapping the
-// same artifact component sample byte-identically — and a network-addressed
-// variant (#8698) is an exact second copy of its base route's whole operation.
+// WHY. Examples sample the response schema with route-specific availability
+// and fixture overrides. Routes sharing an artifact component must share those
+// semantics; the registry rejects differing values. A network-addressed
+// variant (#8698) copies its base route's whole operation and example.
 // Inlining meant serializing the same blob once per route that showed it: 335
 // media types carrying 211 distinct examples, ~94 KB of duplicate JSON in a
 // document we ask clients to download.
@@ -5950,10 +5950,9 @@ export function buildOpenApiExampleRegistry(
       componentSchemas,
     );
     const existing = examples[name] as { value: unknown } | undefined;
-    // One component, one worked example. The sampler is deterministic, so two
-    // routes on the same component disagreeing means the example stopped being
-    // a function of the schema — a silent contract bug that would otherwise
-    // surface as one route's example quietly overwriting another's.
+    // One component, one worked example. Sampling and route overrides are
+    // deterministic, so routes on the same component must share their example
+    // semantics, rather than one route quietly overwriting another's value.
     //
     // Reachable, not theoretical: openApiExampleForRoute overrides the sampled
     // value for `fixture-detail`, so a second route added on that same artifact
@@ -6857,6 +6856,50 @@ const FIXTURE_DETAIL_OPENAPI_EXAMPLE = {
   },
 };
 
+const UNAVAILABLE_VALIDATOR_EXAMPLE_ROUTES = new Set([
+  "global-validators",
+  "validator-detail",
+  "compare-validators",
+  "validator-history",
+  "validator-operator-directory",
+]);
+const UNAVAILABLE_VALIDATOR_EXAMPLE_FIELDS = new Set([
+  "total_stake_tao",
+  "root_stake_tao",
+  "alpha_stake_tao",
+  "apy_estimate",
+  "stake_dominance",
+  "rewards_per_1000_tao",
+  "rewards_per_1000_alpha",
+  "stake_share",
+  "dividend_efficiency",
+  "realized_return_1d",
+  "realized_return_1d_as_of",
+  "realized_return_1w",
+  "realized_return_1w_as_of",
+  "realized_return_1m",
+  "realized_return_1m_as_of",
+]);
+
+// Nullable compatibility schemas also accept old payloads. Their worked examples
+// must describe current availability, rather than the sampler's numeric branch.
+// Only sampled fields are copied; absent fields stay absent in strict schemas.
+function unavailableValidatorExample(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(unavailableValidatorExample);
+  const row = rowOf(value);
+  if (!row) return value;
+  return Object.fromEntries(
+    Object.entries(row).map(([key, cell]) => [
+      key,
+      UNAVAILABLE_VALIDATOR_EXAMPLE_FIELDS.has(key)
+        ? null
+        : key === "apy_estimate_eligible_subnet_count"
+          ? 0
+          : unavailableValidatorExample(cell),
+    ]),
+  );
+}
+
 function openApiExampleForRoute(
   entry: (typeof API_ROUTES)[number],
   responseSchema: Row,
@@ -6865,6 +6908,9 @@ function openApiExampleForRoute(
   const example =
     rowOf(sampleFromSchema(responseSchema, componentSchemas)) ??
     EMPTY_CONTRACT_ROW;
+  if (UNAVAILABLE_VALIDATOR_EXAMPLE_ROUTES.has(entry.id)) {
+    return unavailableValidatorExample(example);
+  }
   if (entry.id !== "fixture-detail") {
     return example;
   }
@@ -8107,7 +8153,7 @@ function csvExampleForRoute(entry: (typeof API_ROUTES)[number]) {
   if (entry.id === "global-validators") {
     return [
       "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
-      'hk_sample,ck_sample,1,3,3,1234.5,10.25,0.12,0.98,0.99,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
+      'hk_sample,ck_sample,1,3,3,,10.25,,0.98,0.99,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
     ].join("\r\n");
   }
   if (entry.id === "accounts-list") {
