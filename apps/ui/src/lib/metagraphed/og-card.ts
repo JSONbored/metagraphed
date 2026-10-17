@@ -1,7 +1,7 @@
 import { SITE_ORIGIN } from "./identity";
 import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
 import { clampOgText } from "./og-display-text";
-import { resolveOgLogo } from "../../../../../src/og-logo-manifest.ts";
+import sharingIdentity from "../../../public/logos/display/sharing-identity.json" with { type: "json" };
 import { isOgLogoSourcePath } from "../../../../../src/og-logo-path.ts";
 
 // Builds the /og card URL a route puts in its own og:image (#8489).
@@ -10,7 +10,8 @@ import { isOgLogoSourcePath } from "../../../../../src/og-logo-path.ts";
 // card on the Worker): that file pulls in the satori/workers-og types and the
 // full markup, and route files are client-bundled -- importing the renderer
 // just to build a URL would drag the card into every page's JS. This module is
-// string building plus the bounded sharing-manifest lookup.
+// string building plus a small generated sharing-release stamp. The full
+// per-logo manifest and artwork verification stay in the server renderer.
 //
 // The two files therefore share a CONTRACT, not code: the param names written
 // here must match the ones `readCardParams` reads there. Both sides name the
@@ -76,7 +77,10 @@ export interface OgCardOptions {
  * naturally and the URL stays short -- the endpoint refuses an over-long query
  * outright, and every param is bounded on both sides from OG_LIMITS.
  */
-export function buildOgImageUrl(options: OgCardOptions, logoManifest?: unknown): string {
+export function buildOgImageUrl(
+  options: OgCardOptions,
+  logoIdentity: unknown = sharingIdentity,
+): string {
   // Clamped HERE as well as in the renderer, from the same shared bounds. The
   // renderer truncates anyway, so an over-long value only ever bought a longer
   // URL -- and once the first-party logo path joined the query (#11204) that
@@ -92,11 +96,8 @@ export function buildOgImageUrl(options: OgCardOptions, logoManifest?: unknown):
   if (eyebrow) params.set("eyebrow", eyebrow);
   if (options.accent === "agent") params.set("accent", "agent");
   if (options.logoPath) {
-    const logo = resolveOgLogo(options.logoPath, logoManifest);
-    params.set(
-      "logop",
-      logo.intent === "expected" && logo.qualified ? logo.path : options.logoPath,
-    );
+    params.set("logop", options.logoPath);
+    params.set("v", sharingLogoVersion(logoIdentity));
   }
   if (options.logoHost) params.set("logo", options.logoHost.slice(0, OG_LIMITS.logoHost));
   if (options.status) params.set("status", options.status);
@@ -130,6 +131,21 @@ export function buildOgImageUrl(options: OgCardOptions, logoManifest?: unknown):
     }
   }
   return `${SITE_ORIGIN}/og?${params.toString()}`;
+}
+
+function sharingLogoVersion(identity: unknown): string {
+  if (typeof identity !== "object" || identity === null || Array.isArray(identity)) {
+    return OG_CARD_VERSION;
+  }
+  const release = identity as Record<string, unknown>;
+  if (
+    release.version !== 1 ||
+    typeof release.sha256 !== "string" ||
+    !/^[0-9a-f]{64}$/.test(release.sha256)
+  ) {
+    return OG_CARD_VERSION;
+  }
+  return `${OG_CARD_VERSION}-${release.sha256}`;
 }
 
 /**

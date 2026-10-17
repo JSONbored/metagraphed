@@ -67,6 +67,7 @@ const EXCLUDED_PATHS = [
 ];
 const LOGOS = "apps/ui/public/logos";
 const MANIFEST = `${LOGOS}/display/manifest.json`;
+const IDENTITY = `${LOGOS}/display/sharing-identity.json`;
 const NEW_CONTRACT = "generated/graphql/schema.ts";
 
 interface Fixture {
@@ -133,6 +134,7 @@ async function fixture(): Promise<Fixture> {
     ],
   };
   put(root, MANIFEST, JSON.stringify(legacy));
+  rmSync(path.join(root, IDENTITY));
   const display = readFileSync(path.join(root, LOGOS, "display", "mark.webp"));
   put(root, `${LOGOS}/display/removed.webp`, display);
   rmSync(path.join(root, LOGOS, "sharing"), { recursive: true });
@@ -362,7 +364,7 @@ test("logo capture includes ignored binary additions and display deletions lossl
     const captured = output(value, "logos");
     const png = `${LOGOS}/${manifest.entries[0].sharing_path}`;
     const deleted = `${LOGOS}/display/removed.webp`;
-    const changed = [MANIFEST, deleted, png].sort();
+    const changed = [MANIFEST, IDENTITY, deleted, png].sort();
     assert.deepEqual(captured.receipt.changed_paths, changed);
     assert.equal(captured.receipt.output_sha256[deleted], null);
     assert.ok(captured.patch.includes(Buffer.from("GIT binary patch")));
@@ -375,6 +377,14 @@ test("logo capture includes ignored binary additions and display deletions lossl
     assert.equal(captured.receipt.sharing_output_sha256[png], hash(bytes));
     const manifestBytes = readFileSync(path.join(value.root, MANIFEST));
     assert.equal(captured.receipt.manifest_sha256, hash(manifestBytes));
+    const identityBytes = readFileSync(path.join(value.root, IDENTITY));
+    const identityHash = hash(identityBytes);
+    const identity = JSON.parse(identityBytes.toString("utf8"));
+    assert.equal(identity.version, 1);
+    assert.match(identity.sha256, /^[0-9a-f]{64}$/);
+    assert.deepEqual(captured.receipt.sharing_identity, identity);
+    assert.equal(captured.receipt.sharing_identity_sha256, identityHash);
+    assert.equal(captured.receipt.output_sha256[IDENTITY], identityHash);
     const display = `${LOGOS}/display/${manifest.entries[0].display_path}`;
     const displayBytes = readFileSync(path.join(value.root, display));
     const displayHash = captured.receipt.display_output_sha256[display];
@@ -400,6 +410,61 @@ test("logo capture includes ignored binary additions and display deletions lossl
       else assert.equal(hash(readFileSync(file)), expected);
     }
     assert.deepEqual(readFileSync(path.join(restored, original)), source);
+  } finally {
+    rmSync(value.base, { recursive: true, force: true });
+  }
+});
+
+test("logo capture records the identity hash when generation is unchanged", async () => {
+  const value = await fixture();
+  try {
+    await writeDerivatives(path.join(value.root, LOGOS));
+    git(value.root, "add", "--force", LOGOS);
+    git(
+      value.root,
+      "-c",
+      "user.name=Fixture",
+      "-c",
+      "user.email=fixture@example.invalid",
+      "-c",
+      "commit.gpgsign=false",
+      "-c",
+      "core.hooksPath=/dev/null",
+      "commit",
+      "-qm",
+      "generated baseline",
+    );
+    value.source = git(value.root, "rev-parse", "HEAD").toString().trim();
+    const identityBytes = readFileSync(path.join(value.root, IDENTITY));
+    const result = execute(value, "logos");
+    assert.equal(result.status, 0, result.stderr);
+    const captured = output(value, "logos");
+    assert.deepEqual(captured.receipt.changed_paths, []);
+    assert.deepEqual(captured.receipt.output_sha256, {});
+    assert.equal(captured.patch.byteLength, 0);
+    const identity = JSON.parse(identityBytes.toString("utf8"));
+    assert.equal(identity.version, 1);
+    assert.match(identity.sha256, /^[0-9a-f]{64}$/);
+    assert.deepEqual(captured.receipt.sharing_identity, identity);
+    assert.equal(captured.receipt.sharing_identity_sha256, hash(identityBytes));
+  } finally {
+    rmSync(value.base, { recursive: true, force: true });
+  }
+});
+
+test("logo capture refuses JSON outside the two exact display indexes", async () => {
+  const value = await fixture();
+  try {
+    await writeDerivatives(path.join(value.root, LOGOS));
+    const unexpected = [
+      `${LOGOS}/display/unexpected.json`,
+      `${LOGOS}/display/nested/sharing-identity.json`,
+    ];
+    for (const name of unexpected) {
+      put(value.root, name, "{}\n");
+      refused(value, "logos", /Unexpected logo output path/);
+      rmSync(path.join(value.root, name));
+    }
   } finally {
     rmSync(value.base, { recursive: true, force: true });
   }

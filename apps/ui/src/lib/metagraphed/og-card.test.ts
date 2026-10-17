@@ -9,7 +9,7 @@ import {
 } from "./og-card";
 import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
 import { clampOgText } from "./og-display-text";
-import { logoManifestFixture } from "../../../../../tests/helpers/og-logo-fixture.ts";
+import sharingIdentity from "../../../public/logos/display/sharing-identity.json" with { type: "json" };
 
 describe("OG display text boundaries", () => {
   it("preserves ordinary word cuts while normalizing and keeping supplementary characters intact", () => {
@@ -56,6 +56,8 @@ describe("firstPartyLogoPath — the registry's own curated logo", () => {
     expect(firstPartyLogoPath("https://metagraph.sh/logos/brands/mark.png")).toBe(
       "/logos/brands/mark.png",
     );
+    const sharingPath = `/logos/sharing/v1/${"a".repeat(64)}-${"b".repeat(64)}.png`;
+    expect(firstPartyLogoPath(sharingPath)).toBe(sharingPath);
   });
 
   it("takes the light/dark object form the same way BrandIcon does", () => {
@@ -169,35 +171,47 @@ describe("buildOgImageUrl", () => {
     }
   });
 
-  it("carries the qualified first-party PNG path as logop, which the renderer prefers", () => {
-    const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
-    const manifest = logoManifestFixture(bytes, "404-gen.png");
+  it("retains the curated original path and includes the complete sharing-release SHA", () => {
+    const release = { version: 1, sha256: "a".repeat(64) };
     const url = new URL(
-      buildOgImageUrl({ title: "404-GEN", logoPath: "/logos/404-gen.png", entity: true }, manifest),
+      buildOgImageUrl({ title: "404-GEN", logoPath: "/logos/404-gen.png", entity: true }, release),
     );
-    expect(url.searchParams.get("logop")).toBe(`/logos/${manifest.entries[0]!.sharing_path}`);
+    expect(url.searchParams.get("logop")).toBe("/logos/404-gen.png");
+    expect(url.searchParams.getAll("v")).toEqual([`${OG_CARD_VERSION}-${release.sha256}`]);
     expect(firstPartyLogoPath(url.searchParams.get("logop"))).toBe(url.searchParams.get("logop"));
   });
 
-  it("changes public image identity when the same original URL changes bytes and reuses unchanged input", () => {
-    const firstBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
-    const nextBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1]).buffer;
-    const a = logoManifestFixture(firstBytes, "example.ico", "a".repeat(64));
-    const b = logoManifestFixture(nextBytes, "example.ico", "b".repeat(64));
+  it("rotates declared-logo URLs with a sharing release and reuses unchanged releases", () => {
+    const a = { version: 1, sha256: "a".repeat(64) };
+    const b = { version: 1, sha256: "b".repeat(64) };
     const options = { title: "Example", logoPath: "/logos/example.ico" };
     const first = buildOgImageUrl(options, a);
     expect(buildOgImageUrl(options, a)).toBe(first);
     expect(buildOgImageUrl(options, b)).not.toBe(first);
-    expect(new URL(first).searchParams.get("logop")).toContain("a".repeat(64));
+    expect(new URL(first).searchParams.get("v")).toBe(`${OG_CARD_VERSION}-${a.sha256}`);
     const next = new URL(buildOgImageUrl(options, b));
-    expect(next.searchParams.get("logop")).toContain("b".repeat(64));
+    expect(next.searchParams.get("v")).toBe(`${OG_CARD_VERSION}-${b.sha256}`);
+    expect(next.searchParams.get("logop")).toBe(options.logoPath);
+    expect(new URL(first).searchParams.get("logop")).toBe(options.logoPath);
+    const noLogo = { title: "Example", logoHost: "example.com" };
+    expect(buildOgImageUrl(noLogo, a)).toBe(buildOgImageUrl(noLogo, b));
   });
 
-  it("retains declared logo intent while missing manifests remain retryable", () => {
+  it("retains declared logo intent without inventing a malformed release identity", () => {
     const options = { title: "Example", logoPath: "/logos/example.webp" };
-    for (const manifest of [null, { version: 1 }, { version: 2, entries: [] }]) {
-      const url = new URL(buildOgImageUrl(options, manifest));
+    for (const identity of [
+      null,
+      [],
+      "a".repeat(64),
+      { version: 1 },
+      { version: 2, sha256: "a".repeat(64) },
+      { version: 1, sha256: 1 },
+      { version: 1, sha256: "a".repeat(63) },
+      { version: 1, sha256: "A".repeat(64) },
+    ]) {
+      const url = new URL(buildOgImageUrl(options, identity));
       expect(url.searchParams.get("logop")).toBe(options.logoPath);
+      expect(url.searchParams.getAll("v")).toEqual([OG_CARD_VERSION]);
     }
   });
 
@@ -303,5 +317,18 @@ describe("ogImageMeta", () => {
     );
     expect(urls.size).toBe(1);
     expect(new URL([...urls][0]!).searchParams.get("v")).toBe(OG_CARD_VERSION);
+  });
+
+  it("uses the generated sharing release in both metadata image tags", () => {
+    const options = { title: "Example", logoPath: "/logos/example.webp" };
+    expect(sharingIdentity.version).toBe(1);
+    expect(sharingIdentity.sha256).toMatch(/^[0-9a-f]{64}$/);
+    const image = buildOgImageUrl(options);
+    const params = new URL(image).searchParams;
+    expect(params.get("logop")).toBe(options.logoPath);
+    expect(params.get("v")).toBe(`${OG_CARD_VERSION}-${sharingIdentity.sha256}`);
+    const meta = ogImageMeta(options);
+    expect(meta).toContainEqual({ property: "og:image", content: image });
+    expect(meta).toContainEqual({ name: "twitter:image", content: image });
   });
 });

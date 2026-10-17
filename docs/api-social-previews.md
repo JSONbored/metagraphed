@@ -57,10 +57,21 @@ when a logo has not yet been verified. Crawlers control their own recrawl timing
 Original identity URLs remain available to browser and registry consumers.
 Sharing artwork comes from the existing `build:logo-thumbnails` pipeline: its
 version-two display manifest binds each original's SHA-256 to a bounded PNG,
-whose immutable path carries both source and output hashes. UI metadata and both
-card caches resolve that identity before cache lookup. Replacing a curated file
+whose immutable path carries both source and output hashes. Both card caches
+resolve that identity before cache lookup. Replacing a curated file
 at the same original URL therefore changes the completed card identity;
 unchanged source and verified output reuse the derivative.
+
+UI metadata retains the curated original path and appends the full SHA-256 from
+the generated `display/sharing-identity.json` to its existing renderer-version
+parameter. This conservative release stamp covers the versioned sharing policy
+and sorted exact source/output records, so any artwork change rotates all
+declared-logo card URLs. Cards without a declared logo keep their ordinary
+renderer version. The small stamp is shared by server rendering and client
+navigation without bundling the full manifest into every page. Renderers still
+resolve each current per-logo identity and verify its bytes; a stamped URL does
+not promise a historical rendering of that release. The existing builder and
+checker generate and verify the stamp with the display manifest and PNGs.
 
 PNG sharing derivatives are at most 256 pixels per side and 512 KiB. The builder
 decodes PNG, JPEG, GIF, WebP and safe SVG originals using the existing image

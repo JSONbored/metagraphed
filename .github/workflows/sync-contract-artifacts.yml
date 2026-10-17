@@ -321,12 +321,13 @@ jobs:
           logo_root = "apps/ui/public/logos/"
           sharing_root = logo_root + "sharing/v1/"
           manifest_path = logo_root + "display/manifest.json"
+          identity_path = logo_root + "display/sharing-identity.json"
           sharing_path = re.compile(re.escape(sharing_root) + r"[0-9a-f]{64}-[0-9a-f]{64}\.png\Z")
           display_path = re.compile(re.escape(logo_root + "display/") + r"(?:[a-z0-9][a-z0-9-]*/)*[a-z0-9][a-z0-9-]*\.webp\Z")
 
           def allowed(name):
               if preset == "logos":
-                  return name == manifest_path or bool(display_path.fullmatch(name) or sharing_path.fullmatch(name))
+                  return name in {manifest_path, identity_path} or bool(display_path.fullmatch(name) or sharing_path.fullmatch(name))
               return name in exact or name.startswith(docs)
 
           if preset == "logos":
@@ -385,6 +386,7 @@ jobs:
           if preset == "logos":
               commands = ["npm ci --ignore-scripts", "npm run build:logo-thumbnails", "npm run validate:logo-thumbnails"]
               manifest = json.loads(regular(manifest_path).read_text())
+              identity = json.loads(regular(identity_path).read_text())
               entries = manifest["entries"]
               original_hashes = {}
               output_hashes = {}
@@ -412,6 +414,8 @@ jobs:
                   "manifest_entries": len(entries),
                   "unique_sharing_paths": len(output_hashes),
                   "manifest_sha256": sha256(regular(manifest_path).read_bytes()),
+                  "sharing_identity": identity,
+                  "sharing_identity_sha256": sha256(regular(identity_path).read_bytes()),
                   "original_sha256": original_hashes,
                   "sharing_output_sha256": output_hashes,
                   "display_output_sha256": display_hashes,

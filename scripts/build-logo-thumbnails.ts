@@ -38,6 +38,7 @@ import {
 const LOGO_ROOT_REL = "apps/ui/public/logos";
 const DISPLAY_DIR_NAME = "display";
 const MANIFEST_NAME = "manifest.json";
+const SHARING_IDENTITY_NAME = "sharing-identity.json";
 const MAX_DIMENSION = 96;
 const WEBP_QUALITY = 90;
 const SHARING_POLICY = {
@@ -85,6 +86,31 @@ export interface DisplayLogoManifest {
 
 function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function sharingIdentity(manifest: DisplayLogoManifest) {
+  const entries = [...manifest.entries];
+  entries.sort((left, right) => {
+    if (left.source_path < right.source_path) return -1;
+    if (left.source_path > right.source_path) return 1;
+    return 0;
+  });
+  const tuples = entries.map((entry) => [
+    entry.source_path,
+    entry.source_sha256,
+    entry.sharing_path,
+    entry.sharing_sha256,
+    entry.sharing_bytes,
+    entry.sharing_width,
+    entry.sharing_height,
+  ]);
+  const canonical = stableStringify({
+    domain: "metagraphed-sharing-logo-release",
+    version: 1,
+    sharing: manifest.sharing,
+    entries: tuples,
+  });
+  return { version: 1, sha256: sha256(Buffer.from(canonical)) };
 }
 
 function posixPath(value: string): string {
@@ -287,6 +313,7 @@ export async function writeDerivatives(
     logoRoot,
     `${DISPLAY_DIR_NAME}/${MANIFEST_NAME}`,
   );
+  await generatedPath(logoRoot, `${DISPLAY_DIR_NAME}/${SHARING_IDENTITY_NAME}`);
   await generatedPath(logoRoot, "sharing/v1");
   let previous: DisplayLogoManifest | undefined;
   try {
@@ -338,6 +365,11 @@ export async function writeDerivatives(
     await writeFile(
       path.join(stagedDisplay, MANIFEST_NAME),
       `${stableStringify(manifest)}\n`,
+    );
+    const identity = sharingIdentity(manifest);
+    await writeFile(
+      path.join(stagedDisplay, SHARING_IDENTITY_NAME),
+      `${stableStringify(identity)}\n`,
     );
     for (const [relative, data] of pngs) {
       const target = await generatedPath(logoRoot, relative);
@@ -400,7 +432,6 @@ export async function checkDerivatives(
   if (!currentManifest(manifest)) {
     throw new Error("Logo thumbnail manifest settings do not match builder");
   }
-
   const sources = await collectFiles(logoRoot);
   const recordedSources = manifest.entries.map((entry) => entry.source_path);
   if (stableStringify(sources) !== stableStringify(recordedSources)) {
@@ -444,6 +475,15 @@ export async function checkDerivatives(
   }
   if (displayBytes >= sourceBytes) {
     throw new Error("logo thumbnails do not reduce aggregate source bytes");
+  }
+  const identityFile = await generatedPath(
+    logoRoot,
+    `${DISPLAY_DIR_NAME}/${SHARING_IDENTITY_NAME}`,
+  );
+  const identity = await readFile(identityFile, "utf8");
+  const expectedIdentity = `${stableStringify(sharingIdentity(manifest))}\n`;
+  if (identity !== expectedIdentity) {
+    throw new Error("Stale sharing logo release identity");
   }
 
   console.log(

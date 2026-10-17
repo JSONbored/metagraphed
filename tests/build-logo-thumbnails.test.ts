@@ -31,6 +31,15 @@ const SVG_START = '<svg xmlns="http://www.w3.org/2000/svg"';
 const VECTOR =
   `${SVG_START} width="64" height="64" viewBox="0 0 64 64">` +
   '<rect x="16" y="16" width="32" height="32" fill="#ff0000"/></svg>';
+const IDENTITY = "sharing-identity.json";
+
+async function readIdentity(root: string) {
+  const file = path.join(root, "display", IDENTITY);
+  return JSON.parse(await readFile(file, "utf8")) as {
+    version: number;
+    sha256: string;
+  };
+}
 
 function sha256(source: Uint8Array): string {
   return createHash("sha256").update(source).digest("hex");
@@ -170,7 +179,7 @@ test("sharing SVG renders numeric-leading local fragment identifiers", async () 
 
 test("sharing SVG refuses active and external resources before decoding", async () => {
   const bad = [
-    '<script>alert(1)</script>',
+    "<script>alert(1)</script>",
     '<foreignObject width="16" height="16"/>',
     '<image width="16" height="16"/>',
     '<image href="https://example.org/logo.png"/>',
@@ -191,7 +200,7 @@ test("sharing SVG refuses active and external resources before decoding", async 
     '<style>@import "https://example.org/style.css";</style>',
     '<rect onload="alert(1)"/>',
     '<rect fill="red" fill="blue"/>',
-    '<rect fill=red/>',
+    "<rect fill=red/>",
     '<svg width="16" height="16"/>',
     '<?xml-stylesheet href="https://example.org/style.css"?>',
     '<![CDATA[<image href="https://example.org/logo.png"/>]]>',
@@ -271,6 +280,9 @@ test("logo build publishes exact sharing identities and retains prior objects", 
     }
     const first = await writeDerivatives(root);
     assert.deepEqual(await checkDerivatives(root), first);
+    const firstIdentity = await readIdentity(root);
+    assert.equal(firstIdentity.version, 1);
+    assert.match(firstIdentity.sha256, /^[0-9a-f]{64}$/u);
     assert.equal(first.version, 2);
     assert.deepEqual(first.sharing, {
       version: 1,
@@ -300,6 +312,7 @@ test("logo build publishes exact sharing identities and retains prior objects", 
     const retained = await readFile(markFile);
     const before = await stat(markFile, { bigint: true });
     assert.deepEqual(await writeDerivatives(root), first);
+    assert.deepEqual(await readIdentity(root), firstIdentity);
     const after = await stat(markFile, { bigint: true });
     assert.equal(after.mtimeNs, before.mtimeNs);
     const replacementImage = sharp(png).resize(320, 200);
@@ -310,6 +323,7 @@ test("logo build publishes exact sharing identities and retains prior objects", 
     const next = second.entries.find((row) => row.source_path === "mark.png")!;
     assert.notEqual(next.source_sha256, mark.source_sha256);
     assert.notEqual(next.sharing_path, mark.sharing_path);
+    assert.notEqual((await readIdentity(root)).sha256, firstIdentity.sha256);
     assert.deepEqual(await readFile(markFile), retained);
     assert.deepEqual(await checkDerivatives(root), second);
     const remaining = await readdir(root);
@@ -327,6 +341,8 @@ test("failed logo build preserves selected manifest and known-good sharing", asy
     const first = await writeDerivatives(root);
     const manifestFile = path.join(root, "display", "manifest.json");
     const before = await readFile(manifestFile);
+    const identityFile = path.join(root, "display", IDENTITY);
+    const beforeIdentity = await readFile(identityFile);
     const entry = first.entries[0];
     const sharingFile = path.join(root, entry.sharing_path);
     const sharing = await readFile(sharingFile);
@@ -335,6 +351,7 @@ test("failed logo build preserves selected manifest and known-good sharing", asy
     await writeFile(path.join(root, "broken.svg"), Buffer.from("<svg>"));
     await assert.rejects(writeDerivatives(root));
     assert.deepEqual(await readFile(manifestFile), before);
+    assert.deepEqual(await readFile(identityFile), beforeIdentity);
     assert.deepEqual(await readFile(sharingFile), sharing);
     assert.deepEqual(await readFile(displayFile), display);
     await rm(path.join(root, "broken.svg"));
@@ -434,6 +451,71 @@ test("logo build repairs missing outputs with the same source identity", async (
     await assert.rejects(checkDerivatives(root));
     assert.deepEqual(await writeDerivatives(root), first);
     assert.deepEqual(await checkDerivatives(root), first);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("sharing identity repairs missing indexes and refuses stale or linked indexes", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "logo-sharing-identity-"));
+  try {
+    await writeFile(path.join(root, "good.png"), await rasterFixture("png"));
+    const first = await writeDerivatives(root);
+    const file = path.join(root, "display", IDENTITY);
+    const expected = await readFile(file);
+    const manifestFile = path.join(root, "display", "manifest.json");
+    const manifest = await readFile(manifestFile);
+    await rm(file);
+    await assert.rejects(checkDerivatives(root));
+    assert.deepEqual(await writeDerivatives(root), first);
+    assert.deepEqual(await readFile(file), expected);
+    assert.deepEqual(await readFile(manifestFile), manifest);
+    const stale = { version: 1, sha256: "0".repeat(64) };
+    await writeFile(file, JSON.stringify(stale));
+    await assert.rejects(checkDerivatives(root), /identity/);
+    const extra = { ...JSON.parse(expected.toString("utf8")), x: 1 };
+    await writeFile(file, JSON.stringify(extra));
+    await assert.rejects(checkDerivatives(root), /identity/);
+    await writeDerivatives(root);
+    assert.deepEqual(await readFile(file), expected);
+    const sentinel = path.join(root, "sentinel.json");
+    await writeFile(sentinel, expected);
+    await rm(file);
+    await symlink(sentinel, file, "file");
+    await assert.rejects(checkDerivatives(root), /symlink/);
+    await assert.rejects(writeDerivatives(root), /symlink/);
+    assert.deepEqual(await readFile(sentinel), expected);
+    assert.deepEqual(await readFile(manifestFile), manifest);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("sharing release identity binds verified output bytes with unchanged originals", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "logo-sharing-output-id-"));
+  try {
+    const original = await rasterFixture("png");
+    const source = path.join(root, "good.png");
+    await writeFile(source, original);
+    const manifest = await writeDerivatives(root);
+    const before = await readIdentity(root);
+    const entry = manifest.entries[0];
+    const file = path.join(root, entry.sharing_path);
+    const image = sharp(await readFile(file));
+    const alternate = await image.png({ compressionLevel: 0 }).toBuffer();
+    const outputHash = sha256(alternate);
+    assert.notEqual(outputHash, entry.sharing_sha256);
+    entry.sharing_sha256 = outputHash;
+    entry.sharing_bytes = alternate.byteLength;
+    entry.sharing_path = `sharing/v1/${entry.source_sha256}-${outputHash}.png`;
+    await writeFile(path.join(root, entry.sharing_path), alternate);
+    const manifestFile = path.join(root, "display", "manifest.json");
+    await writeFile(manifestFile, JSON.stringify(manifest));
+    await assert.rejects(checkDerivatives(root), /identity/);
+    await writeDerivatives(root);
+    assert.notEqual((await readIdentity(root)).sha256, before.sha256);
+    assert.deepEqual(await readFile(source), original);
+    assert.deepEqual(await checkDerivatives(root), manifest);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
