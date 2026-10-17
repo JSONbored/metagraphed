@@ -305,7 +305,11 @@ export function ApisCatalogPage() {
             source="surface"
             storageKey="mg-apis-columns"
             renderExportAction={({ formatRows, filename, shareAction }) => (
-              <CatalogExportAction loadRows={loadCatalogExportRows} formatRows={formatRows} filename={filename}>
+              <CatalogExportAction
+                loadRows={loadCatalogExportRows}
+                formatRows={formatRows}
+                filename={filename}
+              >
                 {shareAction}
               </CatalogExportAction>
             )}

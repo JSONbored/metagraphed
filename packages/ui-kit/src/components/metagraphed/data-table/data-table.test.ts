@@ -5,7 +5,9 @@ import { ActiveEntityProvider } from "../interaction/active-entity";
 import { DataTable, statusTone, type DataTableColumn } from "./data-table";
 
 // Seed one existing client-owned sort state during SSR; every other hook stays real.
-const exportSort = vi.hoisted(() => ({ next: null as { key: string; dir: "asc" | "desc" } | null }));
+const exportSort = vi.hoisted(() => ({
+  next: null as { key: string; dir: "asc" | "desc" } | null,
+}));
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
   return {
@@ -21,7 +23,9 @@ vi.mock("react", async (importOriginal) => {
     },
   };
 });
-afterEach(() => { exportSort.next = null; });
+afterEach(() => {
+  exportSort.next = null;
+});
 
 interface Row {
   id: string;
@@ -428,22 +432,36 @@ describe("an expandable row still links (#11616)", () => {
   });
 });
 
-
 describe("DataTable route-owned CSV action", () => {
   const complete = [rows[0]!, rows[2]!, rows[1]!];
-  const exportColumns = [columns[0]!, { ...columns[1]!, demote: true }, columns[2]!];
+  const exportColumns = [
+    columns[0]!,
+    { ...columns[1]!, demote: true },
+    columns[2]!,
+  ];
 
   it("supplies the caption, selected columns, and client sort for complete rows", () => {
-    let context: Parameters<NonNullable<Parameters<typeof DataTable<Row>>[0]["renderExportAction"]>>[0] | undefined;
+    let context:
+      | Parameters<
+          NonNullable<
+            Parameters<typeof DataTable<Row>>[0]["renderExportAction"]
+          >
+        >[0]
+      | undefined;
     exportSort.next = { key: "stake", dir: "asc" };
     render({
       rows: [rows[0]!],
       columns: exportColumns,
-      renderExportAction: (value) => { context = value; return h("span", null, "checked export"); },
+      renderExportAction: (value) => {
+        context = value;
+        return h("span", null, "checked export");
+      },
     });
     expect(context?.filename).toBe("Validators");
     expect(context?.shareAction).toBeTruthy();
-    expect(context?.formatRows(complete)).toBe("Subnet,Stake\r\nAffine,169200\r\nChutes,351600\r\nTargon,1890000\r\n");
+    expect(context?.formatRows(complete)).toBe(
+      "Subnet,Stake\r\nAffine,169200\r\nChutes,351600\r\nTargon,1890000\r\n",
+    );
   });
 
   it("preserves the complete server order when sort is externally owned", () => {
@@ -453,9 +471,14 @@ describe("DataTable route-owned CSV action", () => {
       columns: exportColumns,
       sort: { key: "stake", dir: "asc" },
       onSort: () => {},
-      renderExportAction: ({ formatRows }) => { csv = formatRows(complete); return null; },
+      renderExportAction: ({ formatRows }) => {
+        csv = formatRows(complete);
+        return null;
+      },
     });
-    expect(csv).toBe("Subnet,Stake\r\nTargon,1890000\r\nAffine,169200\r\nChutes,351600\r\n");
+    expect(csv).toBe(
+      "Subnet,Stake\r\nTargon,1890000\r\nAffine,169200\r\nChutes,351600\r\n",
+    );
   });
 
   it("keeps the default table menu available without a route-owned action", () => {

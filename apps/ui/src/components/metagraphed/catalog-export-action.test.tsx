@@ -9,20 +9,34 @@ const hooks = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 vi.mock("react", async (importOriginal) => ({
-  ...await importOriginal<typeof import("react")>(),
+  ...(await importOriginal<typeof import("react")>()),
   useRef: () => hooks.request,
   useState: (initial: unknown) => [initial, initial === false ? hooks.pending : hooks.error],
-  useLayoutEffect: (effect: () => (() => void)) => { hooks.cleanup = effect(); },
+  useLayoutEffect: (effect: () => () => void) => {
+    hooks.cleanup = effect();
+  },
 }));
 
-interface Row { id: string }
+interface Row {
+  id: string;
+}
 const anchor = { href: "", download: "", click: vi.fn(), remove: vi.fn() };
 const createObjectURL = vi.fn((_blob: Blob) => "blob:catalog");
 const revokeObjectURL = vi.fn();
 
-function action(loadRows: (signal: AbortSignal) => Promise<readonly Row[]>, formatRows = vi.fn(() => "id\r\none\r\n")) {
-  const tree = CatalogExportAction({ loadRows, formatRows, filename: "Verified surfaces", children: "share" });
-  const [actions] = tree.props.children as ReactElement<{ children: ReactElement<{ onClick: () => Promise<void> }>[] }>[];
+function action(
+  loadRows: (signal: AbortSignal) => Promise<readonly Row[]>,
+  formatRows = vi.fn(() => "id\r\none\r\n"),
+) {
+  const tree = CatalogExportAction({
+    loadRows,
+    formatRows,
+    filename: "Verified surfaces",
+    children: "share",
+  });
+  const [actions] = tree.props.children as ReactElement<{
+    children: ReactElement<{ onClick: () => Promise<void> }>[];
+  }>[];
   const [button, share] = actions!.props.children;
   expect(share).toBe("share");
   return { click: button!.props.onClick, formatRows };
@@ -45,7 +59,12 @@ afterEach(() => {
 describe("checked catalog export action", () => {
   it("starts at the click and creates a CSV only after every row arrives", async () => {
     let finish!: (rows: readonly Row[]) => void;
-    const loadRows = vi.fn((_signal: AbortSignal) => new Promise<readonly Row[]>((resolve) => { finish = resolve; }));
+    const loadRows = vi.fn(
+      (_signal: AbortSignal) =>
+        new Promise<readonly Row[]>((resolve) => {
+          finish = resolve;
+        }),
+    );
     const { click, formatRows } = action(loadRows);
     const done = click();
     expect(loadRows).toHaveBeenCalledOnce();
@@ -64,7 +83,12 @@ describe("checked catalog export action", () => {
 
   it("aborts on view replacement or menu unmount and rejects a late fulfilled walk", async () => {
     let finish!: (rows: readonly Row[]) => void;
-    const loadRows = vi.fn((_signal: AbortSignal) => new Promise<readonly Row[]>((resolve) => { finish = resolve; }));
+    const loadRows = vi.fn(
+      (_signal: AbortSignal) =>
+        new Promise<readonly Row[]>((resolve) => {
+          finish = resolve;
+        }),
+    );
     const { click, formatRows } = action(loadRows);
     const done = click();
     const signal = loadRows.mock.calls[0]![0];
@@ -78,7 +102,11 @@ describe("checked catalog export action", () => {
   });
 
   it("keeps failures visible and never downloads a partial walk", async () => {
-    const { click } = action(vi.fn(async () => { throw new Error("Catalog changed. Restart export."); }));
+    const { click } = action(
+      vi.fn(async () => {
+        throw new Error("Catalog changed. Restart export.");
+      }),
+    );
     await click();
     expect(hooks.error).toHaveBeenCalledWith("Catalog changed. Restart export.");
     expect(createObjectURL).not.toHaveBeenCalled();
@@ -87,7 +115,12 @@ describe("checked catalog export action", () => {
 
   it("does not start a second concurrent walk", async () => {
     let finish!: (rows: readonly Row[]) => void;
-    const loadRows = vi.fn((_signal: AbortSignal) => new Promise<readonly Row[]>((resolve) => { finish = resolve; }));
+    const loadRows = vi.fn(
+      (_signal: AbortSignal) =>
+        new Promise<readonly Row[]>((resolve) => {
+          finish = resolve;
+        }),
+    );
     const { click } = action(loadRows);
     const done = click();
     await click();

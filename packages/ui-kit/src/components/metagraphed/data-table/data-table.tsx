@@ -403,11 +403,12 @@ export function DataTable<Row>({
 
   const csv = () => toCsv(sorted, shown, valueOf);
   const formatRows = useCallback(
-    (exportRows: readonly Row[]) => toCsv(
-      onSort ? exportRows : sortRows(exportRows, sort, valueOf),
-      shown,
-      valueOf,
-    ),
+    (exportRows: readonly Row[]) =>
+      toCsv(
+        onSort ? exportRows : sortRows(exportRows, sort, valueOf),
+        shown,
+        valueOf,
+      ),
     [onSort, sort, shown, valueOf],
   );
 
@@ -481,9 +482,16 @@ export function DataTable<Row>({
               }
             }}
             csv={csv}
-            renderExportAction={renderExportAction
-              ? (shareAction) => renderExportAction({ formatRows, filename: caption, shareAction })
-              : undefined}
+            renderExportAction={
+              renderExportAction
+                ? (shareAction) =>
+                    renderExportAction({
+                      formatRows,
+                      filename: caption,
+                      shareAction,
+                    })
+                : undefined
+            }
             filename={caption}
             shareUrl={shareUrl}
             label={caption}

@@ -307,7 +307,11 @@ export function ProviderDetail() {
               source="provider-surface"
               storageKey="mg-provider-surfaces-columns"
               renderExportAction={({ formatRows, filename, shareAction }) => (
-                <CatalogExportAction loadRows={loadCatalogExportRows} formatRows={formatRows} filename={filename}>
+                <CatalogExportAction
+                  loadRows={loadCatalogExportRows}
+                  formatRows={formatRows}
+                  filename={filename}
+                >
                   {shareAction}
                 </CatalogExportAction>
               )}

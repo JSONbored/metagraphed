@@ -4012,6 +4012,7 @@ function DataTableMenu({
   visibleKeys,
   onVisibleKeys,
   csv,
+  renderExportAction,
   filename,
   shareUrl,
   label,
@@ -4024,49 +4025,17 @@ function DataTableMenu({
     const next = visibleKeys.includes(key) ? visibleKeys.filter((k) => k !== key) : columns.filter((c) => c.key === key || visibleKeys.includes(c.key)).map((c) => c.key);
     if (next.length > 0) onVisibleKeys(next);
   };
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState(null);
-  const exportRequest = useRef(null);
-  useLayoutEffect(() => {
-    setExporting(false);
-    setExportError(null);
-    return () => {
-      exportRequest.current?.abort();
-      exportRequest.current = null;
-    };
-  }, [csv]);
-  const download = async () => {
+  const download = () => {
     if (typeof document === "undefined") return;
-    if (exportRequest.current) return;
-    const controller = new AbortController();
-    exportRequest.current = controller;
-    setExporting(true);
-    setExportError(null);
-    try {
-      const contents = await csv(controller.signal);
-      if (controller.signal.aborted || exportRequest.current !== controller)
-        return;
-      const blob = new Blob([contents], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${filename.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.csv`;
-      document.body.append(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      if (!controller.signal.aborted) {
-        setExportError(
-          error instanceof Error ? error.message : "CSV export failed. Try again."
-        );
-      }
-    } finally {
-      if (exportRequest.current === controller) {
-        exportRequest.current = null;
-        setExporting(false);
-      }
-    }
+    const blob = new Blob([csv()], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${filename.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.csv`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   };
   const copyLink = () => {
     const url = shareUrl ?? (typeof window === "undefined" ? "" : window.location.href);
@@ -4076,6 +4045,7 @@ function DataTableMenu({
       window.setTimeout(() => setCopied(false), 1500);
     });
   };
+  const shareAction = /* @__PURE__ */ jsx("button", { type: "button", onClick: copyLink, children: copied ? "Link copied" : "Copy link" });
   return /* @__PURE__ */ jsxs(Popover, { children: [
     /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsx(
       "button",
@@ -4120,19 +4090,10 @@ function DataTableMenu({
           }
         )
       ] }) : null,
-      /* @__PURE__ */ jsxs("div", { className: "mg-dt-menu-actions", children: [
-        /* @__PURE__ */ jsx(
-          "button",
-          {
-            type: "button",
-            onClick: () => void download(),
-            disabled: exporting,
-            children: exporting ? "Preparing CSV\u2026" : "Download CSV"
-          }
-        ),
-        /* @__PURE__ */ jsx("button", { type: "button", onClick: copyLink, children: copied ? "Link copied" : "Copy link" })
-      ] }),
-      exportError ? /* @__PURE__ */ jsx("p", { role: "alert", children: exportError }) : null
+      renderExportAction ? renderExportAction(shareAction) : /* @__PURE__ */ jsxs("div", { className: "mg-dt-menu-actions", children: [
+        /* @__PURE__ */ jsx("button", { type: "button", onClick: download, children: "Download CSV" }),
+        shareAction
+      ] })
     ] })
   ] });
 }
@@ -4280,7 +4241,7 @@ function statusTone(value) {
   return "muted";
 }
 function DataTable({
-  loadExportRows,
+  renderExportAction,
   rows,
   columns,
   rowKey,
@@ -4399,16 +4360,14 @@ function DataTable({
     else setOwnPage(next);
     viewportRef.current?.scrollTo({ top: 0 });
   };
-  const csv = useCallback(
-    async (signal) => {
-      const exportRows = loadExportRows ? await loadExportRows(signal) : sorted;
-      return toCsv(
-        onSort ? exportRows : sortRows(exportRows, sort, valueOf),
-        shown,
-        valueOf
-      );
-    },
-    [loadExportRows, sorted, onSort, sort, shown, valueOf]
+  const csv = () => toCsv(sorted, shown, valueOf);
+  const formatRows = useCallback(
+    (exportRows) => toCsv(
+      onSort ? exportRows : sortRows(exportRows, sort, valueOf),
+      shown,
+      valueOf
+    ),
+    [onSort, sort, shown, valueOf]
   );
   const hasRows = visibleRows.length > 0;
   return /* @__PURE__ */ jsxs(
@@ -4469,6 +4428,11 @@ function DataTable({
                   }
                 },
                 csv,
+                renderExportAction: renderExportAction ? (shareAction) => renderExportAction({
+                  formatRows,
+                  filename: caption,
+                  shareAction
+                }) : void 0,
                 filename: caption,
                 shareUrl,
                 label: caption

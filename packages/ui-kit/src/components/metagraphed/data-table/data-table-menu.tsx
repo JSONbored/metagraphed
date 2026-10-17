@@ -137,9 +137,13 @@ export function DataTableMenu<Row>({
             </div>
           </>
         ) : null}
-        {renderExportAction ? renderExportAction(shareAction) : (
+        {renderExportAction ? (
+          renderExportAction(shareAction)
+        ) : (
           <div className="mg-dt-menu-actions">
-            <button type="button" onClick={download}>Download CSV</button>
+            <button type="button" onClick={download}>
+              Download CSV
+            </button>
             {shareAction}
           </div>
         )}
