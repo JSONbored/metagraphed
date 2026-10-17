@@ -383,13 +383,19 @@ export async function runLakehouseSeamWatchdog(
 ): Promise<Record<string, unknown>> {
   // The only watchdog in the family that still named the binding here; every
   // other one goes through laneHealthStore (#10154).
-  const laneHealthDb = laneHealthStore(env, deps.laneHealthDb);
-  const recordVerdict = (verdict: LaneVerdictInput) =>
-    recordLaneVerdict(laneHealthDb, {
-      lane: LAKEHOUSE_SEAM_LANE,
-      ...verdict,
-      checked_at: (deps.now ?? Date.now)(),
-    });
+  const recordVerdict = async (verdict: LaneVerdictInput) => {
+    try {
+      return await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+        lane: LAKEHOUSE_SEAM_LANE,
+        ...verdict,
+        checked_at: (deps.now ?? Date.now)(),
+      });
+    } catch {
+      // A selected but unbound verdict store cannot abort independent checks
+      // or notification. It remains unavailable; no other owner is tried.
+      return false;
+    }
+  };
   // Every source is independent. An unavailable census must not suppress the
   // capture/head comparison or the decoder clock. None substitutes for coverage.
   const [census, watermark, captured, head] = await Promise.all([
@@ -434,7 +440,8 @@ export async function runLakehouseSeamWatchdog(
   // every tick and reported to nobody, on any channel. Its siblings have had
   // the notification half since #9330 and the durable half since #9340/#9431;
   // this one was simply never wired to either.
-  const coverageUnknown = census == null || servingSeam === null;
+  const coverageUnknown =
+    causes.includes("indexed_census_unavailable") || servingSeam === null;
   const independentDrift =
     causes.includes("decode_watermark_stale") ||
     causes.includes("capture_head_lag") ||
