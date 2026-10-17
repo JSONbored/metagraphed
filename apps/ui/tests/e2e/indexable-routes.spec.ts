@@ -1,10 +1,10 @@
-import { test, expect, type Page, type Response } from "@playwright/test";
+import { test, expect, type Page, type Request, type Response } from "@playwright/test";
 import { gzipSync } from "node:zlib";
 
 import { SUBNET_SLOT_CAP } from "../../src/lib/metagraphed/bittensor";
 import { OG_CARD_VERSION } from "../../src/lib/metagraphed/og-card-limits";
 import { gotoThroughRestart } from "./server-restart.ts";
-import { attachHtmlDiagnostics } from "./native-runtime-diagnostics.ts";
+import { attachHtmlDiagnostics, startRuntimeDiagnostics } from "./native-runtime-diagnostics.ts";
 import { HUB_COPY, HUB_DESCRIPTION_MAX, HUB_TITLE_MAX } from "../../src/lib/metagraphed/hub-copy";
 
 // Retained PostHog hydration incidents affected subnet and validator details.
@@ -1142,6 +1142,112 @@ test("MCP setup guide recommends discovery and retains every compatibility profi
   }
 });
 
+// Limit extra evidence to these two client-loader tests and the local API path.
+// No interception/readiness behavior is added by these observers.
+type ClientLoaderFixtureObservation = {
+  fixture_registered: boolean;
+  recovery_enabled: boolean;
+  api_requests: number;
+  requests_before_fixture: number;
+  fixture_matches: number;
+  fulfilled_503: number;
+  continued_to_stub: number;
+};
+const clientLoaderDiagnostics = new WeakMap<
+  Page,
+  {
+    runtime: Awaited<ReturnType<typeof startRuntimeDiagnostics>>;
+    fixture: ClientLoaderFixtureObservation;
+    apiPath: string;
+    events: Array<Record<string, unknown>>;
+    dropped: number;
+    cleanup: () => void;
+  }
+>();
+test.beforeEach(async ({ page, baseURL }, testInfo) => {
+  const suffix = " client loader failure preserves navigation and keyboard Retry recovers";
+  const apiPath =
+    testInfo.title === `/subnets${suffix}`
+      ? "/api/v1/subnets"
+      : testInfo.title === `/${suffix}`
+        ? "/api/v1/economics"
+        : null;
+  if (!apiPath) return;
+  const started = Date.now();
+  const observation = {
+    runtime: await startRuntimeDiagnostics(page, baseURL),
+    fixture: {
+      fixture_registered: false,
+      recovery_enabled: false,
+      api_requests: 0,
+      requests_before_fixture: 0,
+      fixture_matches: 0,
+      fulfilled_503: 0,
+      continued_to_stub: 0,
+    },
+    apiPath,
+    events: [] as Array<Record<string, unknown>>,
+    dropped: 0,
+    cleanup: () => {},
+  };
+  const record = (event: string, request: Request, status?: number) => {
+    const url = new URL(request.url());
+    if (url.origin !== "http://127.0.0.1:8081" || url.pathname !== apiPath) return;
+    if (event === "request") {
+      observation.fixture.api_requests += 1;
+      if (!observation.fixture.fixture_registered) observation.fixture.requests_before_fixture += 1;
+    }
+    if (observation.events.length >= 32) {
+      observation.dropped += 1;
+      return;
+    }
+    observation.events.push({
+      elapsed_ms: Date.now() - started,
+      event,
+      path: url.pathname,
+      method: request.method(),
+      navigation: request.isNavigationRequest(),
+      status,
+      fixture_registered: observation.fixture.fixture_registered,
+      recovery_enabled: observation.fixture.recovery_enabled,
+    });
+  };
+  const onRequest = (request: Request) => record("request", request);
+  const onResponse = (response: Response) => record("response", response.request(), response.status());
+  const onFailed = (request: Request) => record("request-failed", request);
+  page.on("request", onRequest);
+  page.on("response", onResponse);
+  page.on("requestfailed", onFailed);
+  observation.cleanup = () => {
+    page.off("request", onRequest);
+    page.off("response", onResponse);
+    page.off("requestfailed", onFailed);
+  };
+  clientLoaderDiagnostics.set(page, observation);
+});
+test.afterEach(async ({ page }, testInfo) => {
+  const observation = clientLoaderDiagnostics.get(page);
+  if (!observation) return;
+  observation.cleanup();
+  try {
+    await observation.runtime.attach(testInfo);
+  } finally {
+    await testInfo.attach("critical-loader-fixture-observations", {
+      contentType: "application/json",
+      body: JSON.stringify({
+        version: 1,
+        status: testInfo.status,
+        retry: testInfo.retry,
+        critical_api_path: observation.apiPath,
+        fixture: observation.fixture,
+        event_cap: 32,
+        dropped_events: observation.dropped,
+        events: observation.events,
+      }),
+    });
+  }
+});
+
 // These cover client route-loader rejection/recovery. Browser interception
 // cannot qualify the raw SSR error status, which remains a separate boundary.
 for (const destination of [
@@ -1170,6 +1276,7 @@ for (const destination of [
     const origin = new URL(page.url()).origin;
     let unavailable = true;
     let criticalRequests = 0;
+    const fixtureObservation = clientLoaderDiagnostics.get(page)?.fixture;
     await page.route("http://127.0.0.1:8081/**", async (route) => {
       const url = new URL(route.request().url());
       if (url.pathname !== destination.apiPath) {
@@ -1177,6 +1284,7 @@ for (const destination of [
         return;
       }
       criticalRequests += 1;
+      if (fixtureObservation) fixtureObservation.fixture_matches += 1;
       if (unavailable) {
         await route.fulfill({
           status: 503,
@@ -1187,10 +1295,13 @@ for (const destination of [
             error: { code: "data_tier_unavailable", message: "Critical route fixture unavailable" },
           }),
         });
+        if (fixtureObservation) fixtureObservation.fulfilled_503 += 1;
       } else {
         await route.continue();
+        if (fixtureObservation) fixtureObservation.continued_to_stub += 1;
       }
     });
+    if (fixtureObservation) fixtureObservation.fixture_registered = true;
     await page.locator("header").getByRole("link", { name: destination.link, exact: true }).click();
     const notice = page
       .getByRole("status")
@@ -1206,6 +1317,7 @@ for (const destination of [
     ).toBeVisible();
     const beforeRetry = criticalRequests;
     unavailable = false;
+    if (fixtureObservation) fixtureObservation.recovery_enabled = true;
     const retry = notice.getByRole("button", { name: "Retry", exact: true });
     await retry.focus();
     await expect(retry).toBeFocused();
