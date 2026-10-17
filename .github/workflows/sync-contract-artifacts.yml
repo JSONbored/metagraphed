@@ -38,7 +38,7 @@ on:
       mode:
         description: Sync main, or return generated artifacts for review without writes
         type: choice
-        options: [sync, generate-only, resolve-lock, source-format, client-recovery]
+        options: [sync, generate-only, resolve-lock, source-format, client-recovery, ordinary-flakes]
         default: sync
       source_sha:
         description: Exact same-repository commit for read-only modes (empty uses dispatch SHA)
@@ -52,7 +52,7 @@ concurrency:
   # Not cancel-in-progress: a run started by an earlier merge is still checking
   # a real state, and cancelling it could drop the only observation of a drift
   # that the next push happens not to reintroduce.
-  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'source-format' && format('source-format-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'client-recovery' && format('client-recovery-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'source-format' && format('source-format-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'client-recovery' && format('client-recovery-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'ordinary-flakes' && format('ordinary-flakes-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
   cancel-in-progress: false
 
 jobs:
@@ -881,5 +881,318 @@ jobs:
             ${{ runner.temp }}/client-recovery/e2e-results.json
             ${{ runner.temp }}/client-recovery/test-exit.txt
             ${{ runner.temp }}/client-recovery/*.log
+          retention-days: 7
+          if-no-files-found: error
+
+  ordinary-flakes:
+    name: Repeat the two interrupted ordinary fixture cases without retries
+    defaults:
+      run:
+        shell: bash
+    if: github.repository == 'JSONbored/metagraphed' && github.event_name == 'workflow_dispatch' && inputs.mode == 'ordinary-flakes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      VITE_POSTHOG_PROJECT_TOKEN: ""
+      POSTHOG_API_KEY: ""
+      POSTHOG_PROJECT_ID: ""
+    steps:
+      - name: Checkout the fixed ordinary fixture diagnostic source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: JSONbored/metagraphed
+          ref: 9d3585be9d387522614a48f1989446e6f34d691b
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify fixed source, fixture configuration and inputs
+        id: inputs
+        run: |
+          python3 - <<'PY_RECOVERY_INPUTS'
+          import hashlib, json, os, pathlib, subprocess
+          source = "9d3585be9d387522614a48f1989446e6f34d691b"
+          expected = {'package.json': '52500f90371d9fc6cf8c6160bc63685384b4b49a9a87f8dfcfb7c959fddead59', 'apps/ui/package.json': 'e3a86e5aa2fe748f042033ddf4da195568e12c5fc09b9a66c8b66c3aa4f347e2', 'package-lock.json': 'ca23d1cc6245fc06b61c4bf14e298a3e75041a5966d63b4c4e00e5835ec22309', 'apps/ui/playwright.config.ts': 'e841be1d48fe584b8046106c9af06a925039fd57bd7d4ac21b687865e927da7a', 'apps/ui/tests/e2e/api-stub.ts': '86722999dc241b70737c8a78b3a71c84a9a4ff279909112697669dc67684c2c4', 'apps/ui/tests/e2e/serve-e2e.ts': '819950b22abf5ba6a4648ca61aa5fbead97dfb0015e0cfc6e8feae0fb4887fc3', 'apps/ui/tests/e2e/server-restart.ts': '9005052b7cc54d83b62360687fdc7d58df35c50a01373f46749a23aeac9881e7', 'apps/ui/tests/e2e/native-runtime-diagnostics.ts': 'efa8520cf9cbf5d2f11b8b106b96b26386643dc20d3f4a4b9547fc125932ddd8', 'apps/ui/tests/e2e/indexable-routes.spec.ts': 'f21003e88808b98206815e3c935df68cae90102c5991ea27b423ee41723241fc', '.npmrc': 'b50bde7ee3e769650d30f1752bf6403f0d69f3a656113d3e2f63c9917a452165', 'apps/ui/tests/e2e/preferences-loading.spec.ts': '3cbe3375a0f3c41fa930908ed0e87c06ac98d93c15bbb96cef50a8039944057e', 'apps/ui/tests/e2e/provider-detail-state.spec.ts': 'af6cc4ac7bb9d98d85cae8d664721206a8f27708d81a0440f913e2e667296f37'}
+          root = pathlib.Path.cwd()
+          if subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip() != source:
+              raise SystemExit("Unexpected recovery source")
+          if subprocess.check_output(["git", "status", "--porcelain"]):
+              raise SystemExit("Recovery checkout must be clean")
+          for name, digest in expected.items():
+              path = root / name
+              if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+                  raise SystemExit("Unexpected fixed input: " + name)
+          ui = json.loads((root / "apps/ui/package.json").read_text())
+          command = "VITE_METAGRAPH_API_BASE=http://127.0.0.1:8081 VITE_ICON_PROXY_URL=http://127.0.0.1:8081/api/v1/icon npm run build:worker"
+          if ui["scripts"]["build:worker:e2e"] != command:
+              raise SystemExit("Recovery build must use the existing local API/icon stub")
+          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / "ordinary-flakes"
+          output.mkdir()
+          (output / "inputs.json").write_text(json.dumps({"source_sha": source, "source_tree": subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"]).decode().strip(), "input_sha256": expected, "fixed_build_script": command, "fixture_recording": False}, indent=2) + "\n")
+          PY_RECOVERY_INPUTS
+      - name: Setup the existing native Node toolchain
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22.23.2
+      - name: Unconditional clean install
+        run: npm ci 2>&1 | tee "$RUNNER_TEMP/ordinary-flakes/install.log"
+      - name: Build the existing client, ui-kit and chain-summaries packages
+        run: |
+          npm run build --workspace=packages/client
+          npm run build --workspace=packages/ui-kit
+          npm run build --workspace=packages/chain-summaries
+      - name: Build the existing local-stub UI Worker
+        run: npm run build:worker:e2e --workspace=apps/ui 2>&1 | tee "$RUNNER_TEMP/ordinary-flakes/build.log"
+      - name: Observe sanitized generated runtime configuration without starting an alternative server
+        working-directory: apps/ui
+        run: |
+          node --input-type=module <<'NODE_RUNTIME_ADMISSION' > "$RUNNER_TEMP/ordinary-flakes/generated-runtime-admission.json"
+          // Supporting data only. Not executed by this reviewer.
+          // Run once after the existing native build, with cwd=apps/ui:
+          // node --input-type=module <<'NODE' > "$RUNNER_TEMP/generated-runtime-admission.json"
+          // [paste this file's code, excluding these wrapper comments]
+          // NODE
+          // Observation only: candidate_admitted and runtime_parity stay false.
+          process.env.WRANGLER_SEND_METRICS = "false";
+          process.env.WRANGLER_WRITE_LOGS = "false";
+          process.env.WRANGLER_LOG = "none";
+          
+          const { readFileSync, readdirSync, realpathSync, statSync, existsSync } = await import("node:fs");
+          const { resolve, relative, sep, extname } = await import("node:path");
+          const { createHash } = await import("node:crypto");
+          const { execFileSync } = await import("node:child_process");
+          const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+          const inside = (root, path) => path === root || path.startsWith(root + sep);
+          const observation = {
+            kind: "generated-runtime-admission-read-only",
+            candidate_admitted: false,
+            runtime_parity: false,
+            no_runtime_started: true,
+            read_complete: false,
+          };
+          let stage = "source-and-generated-config";
+          try {
+            const projectRoot = realpathSync(resolve("../.."));
+            const serverRoot = realpathSync(resolve("dist/server"));
+            const clientRoot = realpathSync(resolve("dist/client"));
+            observation.frozen_build_roots_are_expected = serverRoot === resolve(projectRoot, "apps/ui/dist/server") &&
+              clientRoot === resolve(projectRoot, "apps/ui/dist/client");
+            const configPath = resolve(serverRoot, "wrangler.json");
+            if (statSync(configPath).size > 1024 * 1024) throw new Error();
+            const rawBytes = readFileSync(configPath);
+            const raw = JSON.parse(rawBytes.toString("utf8"));
+            observation.source = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+            observation.lock_sha256 = sha256(readFileSync(resolve(projectRoot, "package-lock.json")));
+            observation.generated_config_sha256 = sha256(rawBytes);
+          
+            stage = "provider-config-read-and-local-option-conversion";
+            const { unstable_readConfig, unstable_getMiniflareWorkerOptions } = await import("wrangler");
+            // hideWarnings prevents readConfig's optional asynchronous upgrade check.
+            // No runtime, getPlatformProxy, startWorker, dev, deploy, or remote session API.
+            const config = unstable_readConfig({ config: configPath }, { hideWarnings: true });
+            const converted = unstable_getMiniflareWorkerOptions(config);
+            const worker = converted.workerOptions;
+            observation.worker_option_keys = Object.keys(worker).sort();
+            observation.define_count = Object.keys(converted.define ?? {}).length;
+            observation.external_worker_count = converted.externalWorkers.length;
+            observation.worker_name_is_expected = config.name === "metagraphed-ui";
+            observation.compatibility_date = worker.compatibilityDate ?? null;
+            observation.compatibility_flags = worker.compatibilityFlags ?? [];
+            observation.module_rules = worker.modulesRules ?? [];
+            observation.assets = {
+              present: worker.assets !== undefined,
+              binding_is_ASSETS: worker.assets?.binding === "ASSETS",
+              directory_inside_dist_client: worker.assets?.directory
+                ? inside(clientRoot, realpathSync(worker.assets.directory))
+                : false,
+              router_option_keys: Object.keys(worker.assets?.routerConfig ?? {}).sort(),
+              asset_option_keys: Object.keys(worker.assets?.assetConfig ?? {}).sort(),
+              html_handling: raw.assets?.html_handling ?? null,
+              not_found_handling: raw.assets?.not_found_handling ?? null,
+              run_worker_first: raw.assets?.run_worker_first ?? null,
+            };
+            observation.asset_rule_files = Object.fromEntries(["_headers", "_redirects"].map((name) => {
+              const file = resolve(clientRoot, name);
+              if (!existsSync(file)) return [name, { present: false }];
+              const actual = realpathSync(file);
+              if (!inside(clientRoot, actual)) return [name, { present: true, inside_client: false }];
+              if (statSync(actual).size > 1024 * 1024) return [name, { present: true, size_limit_exceeded: true }];
+              return [name, { present: true, inside_client: true, sha256: sha256(readFileSync(actual)) }];
+            }));
+          
+            stage = "entry-and-bounded-module-manifest";
+            const main = converted.main && existsSync(converted.main) ? realpathSync(converted.main) : null;
+            observation.entry_exists = main !== null;
+            observation.entry_inside_dist_server = main !== null && inside(serverRoot, main);
+            if (observation.entry_inside_dist_server) {
+              if (statSync(main).size > 32 * 1024 * 1024) throw new Error();
+              const bytes = readFileSync(main);
+              observation.entry = { path: relative(serverRoot, main), bytes: bytes.length, sha256: sha256(bytes) };
+            }
+            const { init, parse } = await import("es-module-lexer");
+            await init;
+            const manifest = [];
+            const counts = { relative: 0, node: 0, cloudflare: 0, other_bare: 0, computed_dynamic: 0 };
+            const extensions = {};
+            let readBytes = 0;
+            let visited = 0;
+            let truncated = false;
+            let symlinkSeen = false;
+            const moduleExtensions = new Set([".mjs", ".js", ".cjs", ".json", ".wasm", ".txt", ".html", ".css"]);
+            const pending = [serverRoot];
+            while (pending.length && !truncated) {
+              const directory = pending.pop();
+              for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+                visited += 1;
+                if (visited > 2048) { truncated = true; break; }
+                if (entry.isSymbolicLink()) { symlinkSeen = true; continue; }
+                const file = resolve(directory, entry.name);
+                if (entry.isDirectory()) { pending.push(file); continue; }
+                const extension = extname(entry.name);
+                extensions[extension] = (extensions[extension] ?? 0) + 1;
+                if (!moduleExtensions.has(extension)) continue;
+                const size = statSync(file).size;
+                if (manifest.length >= 512 || readBytes + size > 32 * 1024 * 1024) { truncated = true; break; }
+                const bytes = readFileSync(file);
+                readBytes += bytes.length;
+                manifest.push({ path: relative(serverRoot, file), bytes: bytes.length, sha256: sha256(bytes) });
+                if (![".js", ".mjs", ".cjs"].includes(extension)) continue;
+                const [imports] = parse(bytes.toString("utf8"));
+                for (const item of imports) {
+                  if (item.d === -2) continue; // import.meta is not a module request.
+                  if (item.n === undefined) { if (item.d >= 0) counts.computed_dynamic += 1; continue; }
+                  const category = item.n.startsWith(".") ? "relative" : item.n.startsWith("node:") ? "node"
+                    : item.n.startsWith("cloudflare:") ? "cloudflare" : "other_bare";
+                  counts[category] += 1;
+                }
+              }
+            }
+            observation.module_scan = { manifest, extensions, import_classes: counts, read_bytes: readBytes, visited, truncated, symlink_seen: symlinkSeen };
+            observation.simple_candidate_static_conditions_met = Boolean(
+              observation.frozen_build_roots_are_expected && observation.entry_inside_dist_server && observation.worker_name_is_expected &&
+              observation.define_count === 0 && observation.external_worker_count === 0 &&
+              observation.assets.present && observation.assets.binding_is_ASSETS &&
+              observation.assets.directory_inside_dist_client &&
+              Object.values(observation.asset_rule_files).every((file) => !file.present || (file.inside_client && !file.size_limit_exceeded)) &&
+              !truncated && !symlinkSeen &&
+              counts.other_bare === 0 && counts.computed_dynamic === 0
+            );
+            observation.read_complete = true;
+          } catch {
+            // Provider errors may include contextual configuration: never print them.
+            observation.error_stage = stage;
+            observation.simple_candidate_static_conditions_met = false;
+          }
+          console.log(JSON.stringify(observation, null, 2));
+          NODE_RUNTIME_ADMISSION
+      - name: Install the locked Chromium browser
+        working-directory: apps/ui
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Run only the two ordinary fixture cases ten times each
+        id: test
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/ordinary-flakes/e2e-results.json
+        run: |
+          set +e
+          npm run test:e2e --workspace=apps/ui -- tests/e2e/preferences-loading.spec.ts tests/e2e/provider-detail-state.spec.ts --project=interaction --no-deps --grep 'a late settings chunk does not take focus after the popover closes|keeps registered services visible when probes fail and retries independently' --workers=2 --retries=0 --repeat-each=10 --max-failures=3 > "$RUNNER_TEMP/ordinary-flakes/test.log" 2>&1
+          result=$?
+          set -e
+          echo "$result" > "$RUNNER_TEMP/ordinary-flakes/test-exit.txt"
+          cat "$RUNNER_TEMP/ordinary-flakes/test.log"
+          exit "$result"
+      - name: Pin bounded ordinary test evidence and require all twenty first attempts
+        if: always()
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          python3 - <<'PY_RECOVERY_RECEIPT'
+          import hashlib, json, os, pathlib, re, subprocess
+          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / "ordinary-flakes"
+          output.mkdir(exist_ok=True)
+          inputs_path = output / "inputs.json"
+          report_path = output / "e2e-results.json"
+          inputs = json.loads(inputs_path.read_text()) if inputs_path.is_file() else None
+          report = None
+          reasons = []
+          if report_path.is_symlink() or not report_path.is_file() or report_path.stat().st_size > 16 * 1024 * 1024:
+              reasons.append("Missing or oversized ordinary report")
+              if report_path.exists():
+                  report_path.unlink()
+          else:
+              report = json.loads(report_path.read_text())
+          entries = []
+          def visit(suites):
+              for suite in suites or []:
+                  for spec in suite.get("specs", []):
+                      for test in spec.get("tests", []):
+                          entries.append((spec, test))
+                  visit(suite.get("suites", []))
+          if report:
+              visit(report.get("suites"))
+          titles = {"a late settings chunk does not take focus after the popover closes", "keeps registered services visible when probes fail and retries independently"}
+          if len(entries) != 20 or any(spec.get("title") not in titles or test.get("projectName") != "interaction" or test.get("expectedStatus") != "passed" or test.get("status") != "expected" or len(test.get("results", [])) != 1 or test["results"][0].get("retry") != 0 or test["results"][0].get("status") != "passed" for spec, test in entries):
+              reasons.append("Expected exactly twenty ordinary fixture first-attempt passes")
+          if any(sum(spec.get("title") == title for spec, test in entries) != 10 for title in titles):
+              reasons.append("Expected ten results for each exact ordinary case")
+          if not report or report.get("errors") or any(report.get("stats", {}).get(k) != 0 for k in ["skipped", "unexpected", "flaky"]):
+              reasons.append("Ordinary report includes missing, skipped, failed, flaky or global-error results")
+          exit_path = output / "test-exit.txt"
+          if not exit_path.is_file() or exit_path.read_text().strip() != "0":
+              reasons.append("Ordinary test command did not exit successfully")
+          if inputs:
+              if subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip() != inputs["source_sha"]:
+                  reasons.append("Source identity changed")
+              for name, digest in inputs["input_sha256"].items():
+                  path = pathlib.Path(name)
+                  if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+                      reasons.append("Input changed: " + name)
+          else:
+              reasons.append("Missing immutable input receipt")
+          # Export only fixed lifecycle labels/timestamps, never raw proxy config or headers.
+          lifecycle = []
+          log_root = pathlib.Path.home() / ".config/.wrangler/logs"
+          for log in sorted(log_root.glob("wrangler-*.log"))[-8:]:
+              if log.is_symlink() or not log.is_file() or log.stat().st_size > 3 * 1024 * 1024:
+                  continue
+              body = log.read_bytes()
+              stamp = None
+              selected = []
+              for number, line in enumerate(body.decode("utf-8", "replace").splitlines(), 1):
+                  header = re.match(r"^--- (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z) (?:debug|info|warn|error|log)$", line)
+                  if header:
+                      stamp = header.group(1)
+                  for needle, label in [("Starting local server", "local-server-start"), ("reloadComplete", "local-runtime-reload-complete"), ("Error in ProxyController", "proxy-controller-error"), ("Network connection lost", "network-connection-lost")]:
+                      if needle in line and len(selected) < 100:
+                          selected.append({"line": number, "timestamp_utc": stamp, "event": label})
+              lifecycle.append({"file": log.name, "sha256": hashlib.sha256(body).hexdigest(), "bytes": len(body), "events": selected, "cap_reached": len(selected) == 100})
+          (output / "wrangler-lifecycle.json").write_text(json.dumps(lifecycle, indent=2) + "\n")
+          for name in ["install.log", "build.log", "test.log"]:
+              path = output / name
+              if path.is_file() and path.stat().st_size > 1024 * 1024:
+                  with path.open("rb") as stream:
+                      stream.seek(-1024 * 1024, 2)
+                      tail = stream.read(1024 * 1024)
+                  path.write_bytes(b"[bounded tail]\n" + tail)
+          receipt = {"qualification": "twenty-first-attempt-passes" if not reasons else "not-qualified", "reasons": reasons, "inputs": inputs, "repository": os.environ["GITHUB_REPOSITORY"], "workflow_sha": os.environ["WORKFLOW_SHA"], "workflow_ref": os.environ["WORKFLOW_REF"], "run_id": os.environ["GITHUB_RUN_ID"], "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"], "stats": report.get("stats") if report else None, "report_sha256": hashlib.sha256(report_path.read_bytes()).hexdigest() if report_path.is_file() else None, "fixed_test_command": "npm run test:e2e --workspace=apps/ui -- tests/e2e/preferences-loading.spec.ts tests/e2e/provider-detail-state.spec.ts --project=interaction --no-deps --grep 'a late settings chunk does not take focus after the popover closes|keeps registered services visible when probes fail and retries independently' --workers=2 --retries=0 --repeat-each=10 --max-failures=3"}
+          (output / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          if reasons:
+              raise SystemExit("Ordinary recovery qualification incomplete: " + "; ".join(reasons))
+          PY_RECOVERY_RECEIPT
+      - name: Upload only bounded ordinary recovery diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ordinary-flakes-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ordinary-flakes/inputs.json
+            ${{ runner.temp }}/ordinary-flakes/receipt.json
+            ${{ runner.temp }}/ordinary-flakes/e2e-results.json
+            ${{ runner.temp }}/ordinary-flakes/test-exit.txt
+            ${{ runner.temp }}/ordinary-flakes/wrangler-lifecycle.json
+            ${{ runner.temp }}/ordinary-flakes/generated-runtime-admission.json
+            ${{ runner.temp }}/ordinary-flakes/*.log
           retention-days: 7
           if-no-files-found: error
