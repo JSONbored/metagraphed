@@ -583,7 +583,7 @@ jobs:
           retention-days: 7
 
   format:
-    name: Return fixed source formatting as a review artifact
+    name: Return fixed source formatting and native ui-kit bundles
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'source-format'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -639,7 +639,9 @@ jobs:
               raise SystemExit("Formatting checkout does not match exact source")
           if git("status", "--porcelain", "--untracked-files=all").strip():
               raise SystemExit("Install changed the source checkout")
-          allowed = ['apps/ui/src/lib/metagraphed/catalog-pages.test.ts', 'apps/ui/src/lib/metagraphed/catalog-pages.ts', 'apps/ui/src/lib/metagraphed/client.ts', 'apps/ui/src/lib/metagraphed/queries.ts', 'apps/ui/src/lib/metagraphed/types.ts', 'apps/ui/src/routes/-apis-catalog-page.tsx', 'apps/ui/src/routes/-endpoints-page.tsx', 'apps/ui/src/routes/-providers-slug-page.tsx', 'apps/ui/tests/e2e/content-runtime-isolation.spec.ts', 'packages/ui-kit/src/components/metagraphed/data-table/data-table-menu.tsx', 'packages/ui-kit/src/components/metagraphed/data-table/data-table.tsx', 'schemas-src/envelope.ts', 'schemas-src/graphql/query-arguments.ts', 'schemas-src/query-params.ts', 'scripts/validate-graphql-route-parity.ts', 'scripts/validate-mcp-input-parity.ts', 'src/contracts.ts', 'src/openapi-sample.ts', 'tests/dependency-input-boundaries.test.ts', 'tests/endpoint-known-status.test.ts', 'tests/legacy-emission-share-semantics.test.ts', 'tests/list-query-snapshot.test.ts', 'tests/request-handlers-analytics.test.ts', 'workers/api.ts', 'workers/list-query.ts', 'workers/request-handlers/analytics.ts']
+          source_paths = ['apps/ui/src/lib/metagraphed/catalog-pages.test.ts', 'apps/ui/src/lib/metagraphed/catalog-pages.ts', 'apps/ui/src/lib/metagraphed/client.ts', 'apps/ui/src/lib/metagraphed/queries.ts', 'apps/ui/src/lib/metagraphed/types.ts', 'apps/ui/src/routes/-apis-catalog-page.tsx', 'apps/ui/src/routes/-endpoints-page.tsx', 'apps/ui/src/routes/-providers-slug-page.tsx', 'apps/ui/tests/e2e/content-runtime-isolation.spec.ts', 'packages/ui-kit/src/components/metagraphed/data-table/data-table-menu.tsx', 'packages/ui-kit/src/components/metagraphed/data-table/data-table.tsx', 'schemas-src/envelope.ts', 'schemas-src/graphql/query-arguments.ts', 'schemas-src/query-params.ts', 'scripts/validate-graphql-route-parity.ts', 'scripts/validate-mcp-input-parity.ts', 'src/contracts.ts', 'src/openapi-sample.ts', 'tests/dependency-input-boundaries.test.ts', 'tests/endpoint-known-status.test.ts', 'tests/legacy-emission-share-semantics.test.ts', 'tests/list-query-snapshot.test.ts', 'tests/request-handlers-analytics.test.ts', 'workers/api.ts', 'workers/list-query.ts', 'workers/request-handlers/analytics.ts']
+          generated_paths = ["packages/ui-kit/dist/index.js", "packages/ui-kit/dist/index.cjs"]
+          allowed = source_paths + generated_paths
           selected = []
           inputs = {}
           for name in allowed:
@@ -652,7 +654,8 @@ jobs:
               mode = git("ls-tree", "HEAD", "--", name).split(b" ", 1)[0]
               if mode != b"100644" or not stat.S_ISREG(path.stat().st_mode) or path.stat().st_mode & 0o111:
                   raise SystemExit("Formatting requires a tracked regular source file: " + name)
-              selected.append(name)
+              if name in source_paths:
+                  selected.append(name)
               inputs[name] = sha256(path.read_bytes())
           if not selected:
               raise SystemExit("No reviewed source paths exist at source SHA")
@@ -669,17 +672,25 @@ jobs:
               command = ["node", formatter, "--write", *paths]
               subprocess.run(command, cwd=cwd, check=True)
               commands.append({"argv": command, "cwd": cwd, "exit_code": 0})
+          # Build the bundles from these exact formatted library sources;
+          # do not pair them with a build from an earlier source layout.
+          command = ["npm", "run", "build", "--workspace=packages/ui-kit"]
+          subprocess.run(command, check=True)
+          commands.append({"argv": command, "cwd": ".", "exit_code": 0})
           if git("rev-parse", "HEAD").decode().strip() != source:
-              raise SystemExit("Formatting changed source HEAD")
+              raise SystemExit("Formatting or bundle generation changed source HEAD")
           if sha256(pathlib.Path("package-lock.json").read_bytes()) != lock_hash:
               raise SystemExit("Formatting changed source lock")
           changed = [p for p in git("diff", "--no-renames", "--name-only", "-z", "HEAD").decode().split("\0") if p]
           untracked = git("ls-files", "--others", "--exclude-standard", "-z").strip(b"\0")
-          if set(changed) - set(selected) or untracked:
+          if set(changed) - set(allowed) or untracked:
               raise SystemExit("Unexpected source formatting changes")
           hashes = {}
           for name in changed:
               path = pathlib.Path(name)
+              mode = git("ls-tree", "HEAD", "--", name).split(b" ", 1)[0]
+              if mode != b"100644":
+                  raise SystemExit("Unexpected base output mode: " + name)
               for parent in [path, *path.parents]:
                   if parent.is_symlink():
                       raise SystemExit("Symlink after source formatting: " + name)
