@@ -80,17 +80,10 @@ beforeAll(async () => {
         maxBuffer: 1024 * 1024,
       },
     );
-  } catch (error) {
+  } catch {
     // execFile's rejection carries the entire captured binding dump. Keep
     // failure diagnostics bounded and exclude its stdout/stderr and cause.
-    const status =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      typeof error.code === "number"
-        ? error.code
-        : "command_failed";
-    throw new Error(`Data API deployment dry run failed (${status})`);
+    throw new Error("Data API deployment dry run failed");
   }
   // Wrangler's --outfile is the exact upload multipart body. Its metadata
   // selects the entry by form-part name; do not guess from filenames or
