@@ -644,7 +644,7 @@ describe("the watchdog tick", () => {
     assert.equal(result.captured_through, null);
   });
 
-  test("an EMPTY chain.blocks alerts instead of reading as a healthy zero", async () => {
+  test("an empty indexed census remains unknown instead of reading as a healthy zero", async () => {
     // `SELECT min(...), max(...) FROM <empty>` returns NULL aggregates rather
     // than failing, so the query succeeds and the row exists -- it just says
     // nothing. Coercing those to 0 would report a seam 8.7M blocks "ahead" of
@@ -655,8 +655,9 @@ describe("the watchdog tick", () => {
       }) as never,
       { query: async () => [{ lo: null, hi: null, n: null }], now: () => NOW },
     );
-    assert.equal(result.ok, true);
-    assert.equal(result.drifted, true);
+    assert.equal(result.ok, false);
+    assert.equal(result.skipped, true);
+    assert.equal(result.drifted, undefined);
     assert.match((result.reasons as string[])[0]!, /could not measure/);
   });
 
@@ -819,7 +820,12 @@ describe("the watchdog's own reporting", () => {
   });
 
   test("census failures preserve independent lag and clock evidence without claiming coverage", async () => {
-    for (const outcome of [null, undefined, "throw"] as const) {
+    for (const outcome of [
+      null,
+      undefined,
+      "throw",
+      { lo: null, hi: null, n: 0 },
+    ] as const) {
       const s = spies();
       const input = env({
         body: { decoded_through: HI, updated_at: "2026-08-01T00:00:00Z" },
@@ -893,18 +899,75 @@ describe("the watchdog's own reporting", () => {
   });
 
   test("healthy independent sources cannot recover unknown indexed coverage", async () => {
+    for (const census of [undefined, { lo: null, hi: null, n: 0 }]) {
+      const s = spies();
+      censusReader.mockResolvedValueOnce(census);
+      const result = await runNativeSeamWatchdog(
+        env({
+          body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
+        }) as never,
+        { now: () => NOW, ...s.deps },
+      );
+      assert.equal(result.ok, false);
+      assert.equal(result.skipped, true);
+      assert.deepEqual(result.causes, ["indexed_census_unavailable"]);
+      assert.equal(result.seam, HI);
+      assert.equal(result.contiguous, null);
+      assert.equal(s.rows[0].verdict, "unknown");
+      assert.deepEqual(s.captures, []);
+    }
+  });
+
+  test("an unbound selected verdict store preserves independent checks and notification without a store fallback", async () => {
     const s = spies();
+    const result = await runLakehouseSeamWatchdog(
+      {
+        ...env({
+          body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
+          captured: HI,
+          head: HI + CAPTURE_LAG_BLOCKS + 1,
+        }),
+        D1_STATE_TABLES: "lane_health",
+      } as never,
+      { now: () => NOW, recordExceptionEvent: s.deps.recordExceptionEvent },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.contiguous, null);
+    assert.equal(result.captured_through, HI);
+    assert.equal(result.head_lag, CAPTURE_LAG_BLOCKS + 1);
+    assert.deepEqual(result.causes, [
+      "capture_head_lag",
+      "indexed_census_unavailable",
+    ]);
+    assert.equal(s.captures.length, 1);
+    assert.ok(!pg.control.queries.some((q) => q.text.includes("lane_health")));
+  });
+
+  test("a rejecting notifier cannot prevent unknown coverage from being recorded", async () => {
+    const s = spies();
+    let notifications = 0;
     const result = await runLakehouseSeamWatchdog(
       env({
         body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
+        captured: HI,
+        head: HI + CAPTURE_LAG_BLOCKS + 1,
       }) as never,
-      { now: () => NOW, ...s.deps },
+      {
+        now: () => NOW,
+        ...s.deps,
+        recordExceptionEvent: async () => {
+          notifications++;
+          throw new Error("private notifier detail");
+        },
+      },
     );
-    assert.deepEqual(result.causes, ["indexed_census_unavailable"]);
-    assert.equal(result.seam, HI);
+    assert.equal(result.ok, false);
     assert.equal(result.contiguous, null);
+    assert.equal(notifications, 1);
+    assert.equal(s.rows.length, 1);
     assert.equal(s.rows[0].verdict, "unknown");
-    assert.deepEqual(s.captures, []);
+    assert.deepEqual(JSON.parse(String(s.rows[0].detail)).causes, result.causes);
+    assert.doesNotMatch(String(s.rows[0].detail), /private notifier detail/);
   });
 
   test("a selected retained failure has no fallback seam and still measures capture against head", async () => {
