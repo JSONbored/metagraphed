@@ -46,9 +46,7 @@ export const SubnetEmissionDecompositionSchema = z
         "SubtensorModule.SubnetMovingPrice in TAO -- the EMA of the subnet's alpha price and stage 1's raw input. Published unnormalized because it is the quantity the runtime compares when deciding which subnet to deregister; emission_share divides it by the sum across subnets, so a caller cannot recover it from anything else here. Null for a subnet with no positive moving price (root, and the never-emitted set).",
       ),
     /** This route reconstructs Stage 1; legacy economics uses another denominator. */
-    emission_share: ShareSchema.describe(
-      PIPELINE_EMISSION_SHARE_DESCRIPTION,
-    ),
+    emission_share: ShareSchema.describe(PIPELINE_EMISSION_SHARE_DESCRIPTION),
     /** Stage 2 input. A FRACTION in [0,1] (U96F32), never an amount. */
     miner_burned: z
       .number()

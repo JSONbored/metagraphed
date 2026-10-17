@@ -33,7 +33,11 @@ function shareDescriptions(value: unknown): string[] {
   if (!object) return Array.isArray(value) ? value.flatMap(shareDescriptions) : [];
   const descriptions: string[] = [];
   for (const [name, field] of Object.entries(record(object.properties) ?? {})) {
-    if (!["emission_share", "mean_emission_share", "total_emission_share"].includes(name)) {
+    if (
+      !["emission_share", "mean_emission_share", "total_emission_share"].includes(
+        name,
+      )
+    ) {
       continue;
     }
     const description = record(field)?.description;
@@ -86,7 +90,9 @@ describe("legacy emission-share provenance (#11552)", () => {
       parameters: { theta: 0.01, exponent: 3 },
     });
     assert.deepEqual(
-      Object.fromEntries(pipeline.subnets.map((row) => [row.netuid, row.price_share])),
+      Object.fromEntries(
+        pipeline.subnets.map((row) => [row.netuid, row.price_share]),
+      ),
       { 0: null, 1: 1, 2: null },
     );
   });
@@ -101,7 +107,9 @@ describe("legacy emission-share provenance (#11552)", () => {
     ]) {
       assertLegacy(API_ROUTES.find((route) => route.path === path)?.description);
     }
-    assertLegacy(PUBLIC_ARTIFACTS.find((artifact) => artifact.id === "economics")?.description);
+    assertLegacy(
+      PUBLIC_ARTIFACTS.find((artifact) => artifact.id === "economics")?.description,
+    );
   });
 
   test("MCP and GraphQL prose keep historical normalization separate from the live pipeline", () => {
@@ -123,7 +131,9 @@ describe("legacy emission-share provenance (#11552)", () => {
       "subnet_trajectory",
       "subnet_emission_pipeline_history",
     ]) {
-      assertLegacy(GRAPHQL_EXPOSURES.find((exposure) => exposure.field === field)?.description);
+      assertLegacy(
+        GRAPHQL_EXPOSURES.find((exposure) => exposure.field === field)?.description,
+      );
     }
     const live = MCP_TOOLS.find((tool) => tool.name === "get_emission_pipeline")!;
     assert.match(live.description, /eligible runtime pipeline from pinned inputs/);

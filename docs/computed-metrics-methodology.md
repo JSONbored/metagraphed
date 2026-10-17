@@ -158,17 +158,17 @@ use `final_share` plus the TAO channels for questions about TAO received.
 
 The stages of that separate reconstruction are:
 
-| #   | stage                  | what it does                                                                              |
-| --- | ---------------------- | ----------------------------------------------------------------------------------------- |
-| 0   | eligibility            | non-root, `FirstEmissionBlockNumber` set, `SubtokenEnabled`, `NetworkRegistrationAllowed` |
+| #   | stage                         | what it does                                                                                          |
+| --- | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 0   | eligibility                   | non-root, `FirstEmissionBlockNumber` set, `SubtokenEnabled`, `NetworkRegistrationAllowed`             |
 | 1   | **pipeline `emission_share`** | price-EMA share over the eligible non-root set — `SubnetMovingPrice_i / Σ eligible SubnetMovingPrice` |
-| 2   | miner-burn reweighting | `× (1 − MinerBurned_i)`, renormalized — non-zero on 68 subnets                            |
-| 3   | gate bar               | `θ` recomputed by the runtime every `block % 360 == 0`                                    |
-| 4   | Hill gate              | `w · 1/(1+(θ/w)^h)`, renormalized to sum 1                                                |
-| 5   | enabled filter         | `SubnetEmissionEnabled == false` → zeroed, share redistributed (47 subnets)               |
-| 6   | TAO emission           | `block_emission × final_share`                                                            |
-| 7   | alpha injection cap    | the remainder becomes `excess_tao` → chain buys                                           |
-| 8   | balancer               | splits materialized TAO into the price-active part written to `SubnetTaoInEmission`       |
+| 2   | miner-burn reweighting        | `× (1 − MinerBurned_i)`, renormalized — non-zero on 68 subnets                                        |
+| 3   | gate bar                      | `θ` recomputed by the runtime every `block % 360 == 0`                                                |
+| 4   | Hill gate                     | `w · 1/(1+(θ/w)^h)`, renormalized to sum 1                                                            |
+| 5   | enabled filter                | `SubnetEmissionEnabled == false` → zeroed, share redistributed (47 subnets)                           |
+| 6   | TAO emission                  | `block_emission × final_share`                                                                        |
+| 7   | alpha injection cap           | the remainder becomes `excess_tao` → chain buys                                                       |
+| 8   | balancer                      | splits materialized TAO into the price-active part written to `SubnetTaoInEmission`                   |
 
 Two consequences worth stating plainly, because both are counter-intuitive:
 

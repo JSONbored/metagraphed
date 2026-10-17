@@ -195,7 +195,10 @@ describe("the decomposition against the committed finney fixture", () => {
   });
 
   it("normalizes a measured price using the other eligible prices", () => {
-    const row = (netuid: number, movingPrice: number): EconomicsPipelineRow => ({
+    const row = (
+      netuid: number,
+      movingPrice: number,
+    ): EconomicsPipelineRow => ({
       netuid,
       moving_price_pinned: movingPrice,
       first_emission_block: 1,
