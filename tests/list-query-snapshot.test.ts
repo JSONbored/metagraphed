@@ -124,10 +124,7 @@ describe("checked collection paging (#12094)", () => {
     const match = header?.match(/<([^>]+)>; rel="next"/);
     assert.ok(match);
     const next = new URL(match[1]);
-    assert.equal(
-      next.searchParams.get("page_snapshot"),
-      first.pagination.snapshot,
-    );
+    assert.equal(next.searchParams.get("page_snapshot"), first.pagination.snapshot);
     for (const link of String(header).matchAll(/<([^>]+)>/g)) {
       assert.equal(
         new URL(link[1]).searchParams.get("page_snapshot"),

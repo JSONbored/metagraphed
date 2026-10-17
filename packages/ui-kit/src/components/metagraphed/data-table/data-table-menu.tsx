@@ -1,9 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 /**
  * The one table menu (#11610): which columns are shown, how many rows a page

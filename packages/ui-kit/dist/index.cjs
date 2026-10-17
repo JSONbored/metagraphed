@@ -4082,7 +4082,9 @@ function DataTableMenu({
       URL.revokeObjectURL(url);
     } catch (error) {
       if (!controller.signal.aborted) {
-        setExportError(error instanceof Error ? error.message : "CSV export failed. Try again.");
+        setExportError(
+          error instanceof Error ? error.message : "CSV export failed. Try again."
+        );
       }
     } finally {
       if (exportRequest.current === controller) {
@@ -4144,7 +4146,15 @@ function DataTableMenu({
         )
       ] }) : null,
       /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-dt-menu-actions", children: [
-        /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: () => void download(), disabled: exporting, children: exporting ? "Preparing CSV\u2026" : "Download CSV" }),
+        /* @__PURE__ */ jsxRuntime.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => void download(),
+            disabled: exporting,
+            children: exporting ? "Preparing CSV\u2026" : "Download CSV"
+          }
+        ),
         /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: copyLink, children: copied ? "Link copied" : "Copy link" })
       ] }),
       exportError ? /* @__PURE__ */ jsxRuntime.jsx("p", { role: "alert", children: exportError }) : null
@@ -4414,10 +4424,17 @@ function DataTable({
     else setOwnPage(next);
     viewportRef.current?.scrollTo({ top: 0 });
   };
-  const csv = React2.useCallback(async (signal) => {
-    const exportRows = loadExportRows ? await loadExportRows(signal) : sorted;
-    return toCsv(onSort ? exportRows : sortRows(exportRows, sort, valueOf), shown, valueOf);
-  }, [loadExportRows, sorted, onSort, sort, shown, valueOf]);
+  const csv = React2.useCallback(
+    async (signal) => {
+      const exportRows = loadExportRows ? await loadExportRows(signal) : sorted;
+      return toCsv(
+        onSort ? exportRows : sortRows(exportRows, sort, valueOf),
+        shown,
+        valueOf
+      );
+    },
+    [loadExportRows, sorted, onSort, sort, shown, valueOf]
+  );
   const hasRows = visibleRows.length > 0;
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "div",
