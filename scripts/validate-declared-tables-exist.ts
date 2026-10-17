@@ -1,11 +1,12 @@
-// Verify every declared D1 table/view against the physical snapshot checked
-// by d1-maintenance. The frozen logical column contract cannot prove that
-// deployed SQLite objects exist. A missing object must fail even if its
-// migration name was recorded as applied.
+// By default, verify declarations against the observed physical snapshot used
+// by d1-maintenance. Explicit --proposed-native qualifies source migrations in
+// disposable native D1 without changing that deployment/activation evidence.
+// A recorded migration name alone cannot prove its SQLite objects exist.
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
 import type { SchemaObject } from "./snapshot-d1-schema.ts";
+import { assertTrackedD1Migrations } from "./lib/d1-migration-ledger.ts";
 
 /** `CREATE TABLE/VIEW [IF NOT EXISTS] <name>` across D1 migrations. */
 export function tablesInMigrations(dir: string): Map<string, string> {
@@ -71,6 +72,82 @@ export function findMissing(
   return out.sort((a, b) => a.table.localeCompare(b.table));
 }
 
+/** Source qualification applies the complete tracked sequence to native D1. */
+export async function applyTrackedD1Migrations(
+  db: D1Database,
+  root = repoRoot,
+): Promise<void> {
+  const dir = path.join(root, "migrations/d1");
+  const files = readdirSync(dir)
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
+  assertTrackedD1Migrations(files);
+  for (const file of files) {
+    const statements = readFileSync(path.join(dir, file), "utf8")
+      .split("-- statement-breakpoint")
+      .filter((sql) => sql.trim())
+      .map((sql) => db.prepare(sql));
+    if (statements.length) await db.batch(statements);
+  }
+}
+
+/** Check actual native objects, never names inferred from successful DDL. */
+export async function assertDeclaredNativeTables(
+  db: D1Database,
+  root = repoRoot,
+): Promise<{ migrations: number; readSets: number; native: number }> {
+  const select = "SELECT name FROM sqlite_master";
+  const filter = " WHERE type IN ('table','view')";
+  const statement = db.prepare(select + filter);
+  const result = await statement.all<{ name: string }>();
+  const native = new Set(result.results.map((row) => row.name.toLowerCase()));
+  const dir = path.join(root, "migrations/d1");
+  const migrations = tablesInMigrations(dir);
+  const source = readFileSync(
+    path.join(root, "src/read-store-tables.ts"),
+    "utf8",
+  );
+  const readSets = tablesInReadStoreSets(source);
+  const missing = findMissing(native, migrations, readSets);
+  if (native.size === 0 || missing.length > 0) {
+    const details = missing.map((row) => `${row.table} (${row.declaredBy})`);
+    throw new Error(
+      "Declared tables are missing from the proposed native schema: " +
+        (details.join(", ") || "native schema is empty"),
+    );
+  }
+  return {
+    migrations: migrations.size,
+    readSets: readSets.size,
+    native: native.size,
+  };
+}
+
+async function proposedNative(): Promise<void> {
+  // Native source qualification has no credentials, remote binding or effect
+  // on the observed production snapshot. Other importers load no runtime.
+  const { Miniflare } = await import("miniflare");
+  const runtime = new Miniflare({
+    modules: true,
+    script: "export default {fetch(){return new Response('schema')}}",
+    compatibilityDate: "2026-06-06",
+    d1Databases: ["DB"],
+  });
+  try {
+    const db = await runtime.getD1Database("DB");
+    await applyTrackedD1Migrations(db);
+    const counts = await assertDeclaredNativeTables(db);
+    console.log(
+      "every declared table exists in the proposed native schema " +
+        `(${counts.migrations} from migrations, ` +
+        `${counts.readSets} named by read-store sets, ` +
+        `${counts.native} native).`,
+    );
+  } finally {
+    await runtime.dispose();
+  }
+}
+
 function main(): void {
   const snapshot = JSON.parse(
     readFileSync(path.join(repoRoot, "generated/db/d1-schema.json"), "utf8"),
@@ -111,4 +188,18 @@ function main(): void {
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const args = process.argv.slice(2);
+  if (args.length === 0) main();
+  else if (args.length === 1 && args[0] === "--proposed-native") {
+    proposedNative().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : "unknown error";
+      console.error(`Proposed native schema qualification failed: ${message}`);
+      process.exitCode = 1;
+    });
+  } else {
+    const usage = "Use --proposed-native or no arguments for the live snapshot";
+    console.error(usage);
+    process.exitCode = 1;
+  }
+}

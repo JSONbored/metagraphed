@@ -4,6 +4,7 @@ import { stableStringify } from "./lib.ts";
 interface Step {
   script: string;
   env: Record<string, string>;
+  args: string[];
 }
 
 interface StepResult {
@@ -23,7 +24,8 @@ const results: StepResult[] = [];
 
 for (const command of commands) {
   const started = performance.now();
-  const result = spawnSync("npm", ["run", command.script], {
+  const argv = ["run", command.script, ...command.args];
+  const result = spawnSync("npm", argv, {
     encoding: "utf8",
     env: {
       ...process.env,
@@ -140,7 +142,7 @@ function checkCommands(): Step[] {
     // build artifacts.
     step("validate:ui-route-coverage"),
     step("validate:untyped-db-reads"),
-    step("validate:declared-tables-exist"),
+    step("validate:declared-tables-exist", {}, "--", "--proposed-native"),
     // Same shape, and it was in neither the pipeline nor CI until #10251: the
     // registry README's catalog section is generated, so a registry change
     // invalidates it without touching the README.
@@ -279,7 +281,7 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     // build artifacts.
     step("validate:ui-route-coverage"),
     step("validate:untyped-db-reads"),
-    step("validate:declared-tables-exist"),
+    step("validate:declared-tables-exist", {}, "--", "--proposed-native"),
     // Same shape, and it was in neither the pipeline nor CI until #10251: the
     // registry README's catalog section is generated, so a registry change
     // invalidates it without touching the README.
@@ -314,6 +316,10 @@ function refreshCommands(refreshTimestamp: string): Step[] {
   ];
 }
 
-function step(script: string, env: Record<string, string> = {}): Step {
-  return { script, env };
+function step(
+  script: string,
+  env: Record<string, string> = {},
+  ...args: string[]
+): Step {
+  return { script, env, args };
 }

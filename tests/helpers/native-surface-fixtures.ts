@@ -370,6 +370,15 @@ export function installNativeSurfaceFixtures() {
             connect: async () => {},
             end: async () => {},
             query: async (sql, values) => {
+              // This virtual nominator ledger models the pre-0039 schema.
+              // Its local capability lookup is not an archive-row fetch;
+              // forwarding it would answer schema discovery with unrelated
+              // positions or an RPC envelope and invent a read failure.
+              if (
+                sql ===
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'"
+              )
+                return { rows: [] };
               const text = sql.replace(
                 /\$(\d+)/g,
                 (_, n) => `'${values?.[Number(n) - 1]}'`,

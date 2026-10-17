@@ -198,6 +198,36 @@ describe("publishedFlowGeneratedAt", () => {
 });
 
 describe("computeTopHoldersHoldingsRefresh", () => {
+  test("replaces the archived Alpha stamp with the qualified holdings capture", async () => {
+    const alphaCapturedAt = BALANCES_AT + 60_000;
+    const qualified = {
+      ...leg({
+        [TOP]: {
+          free_tao: LIVE_FREE,
+          delegated_tao: 12,
+          total_tao: LIVE_FREE + 12,
+        },
+      }),
+      alphaCapturedAt,
+    };
+    const published = publishedBody(undefined, {
+      alpha_captured_at: alphaCapturedAt - 1,
+    });
+
+    const body = await refresh(envWith(published), qualified);
+
+    assert.ok(body);
+    assert.equal(body.alpha_captured_at, alphaCapturedAt);
+    assert.equal(body.generated_at, FLOW_AT);
+    const [row] = body.rows as Record<string, unknown>[];
+    assert.equal(row!.delegated_tao, 12);
+    assert.equal(row!.total_tao, LIVE_FREE + 12);
+    assert.equal(row!.holdings_captured_at, BALANCES_AT);
+    const sorts = body.sorts as string[];
+    assert.ok(sorts.includes("delegated_tao"));
+    assert.ok(sorts.includes("total_tao"));
+  });
+
   test("republishes the holdings columns and leaves the flow ones alone", async () => {
     const body = await refresh(
       envWith(publishedBody()),

@@ -162,6 +162,23 @@ describe("store-neutral SQL", () => {
           "src/observations-d1.ts",
           "src/capture-family-d1.ts",
           "src/ledger-d1.ts",
+          // Full self-stake snapshots require the native source domain before
+          // dispatch through ledger-d1; PostgreSQL receives no receipt SQL.
+          "src/self-stake-snapshot-d1.ts",
+          // Capture and resume accept a D1 binding after the HTTP caller
+          // requires the complete nominator ledger owner. Alpha evidence
+          // inherits that owner; alpha-snapshot-d1 tests exercise native
+          // rollback, replay, selection, and refusal without that owner.
+          "src/alpha-snapshot-d1.ts",
+          // Like ledger-d1, the core accepts ProducerStore; public HTTP and
+          // queue callers require alphaCountsOwnerStore's complete capture
+          // and count family. Native alpha-counts-d1 and transport tests
+          // cover atomic rollback, replay, and cross-owner refusal.
+          "src/alpha-counts-d1.ts",
+          // Discovery uses a selected native D1 store; the installed schema
+          // then requires that same complete family. Alpha count reader
+          // tests cover old schemas and refuse split owners or read failures.
+          "src/alpha-counts-reader.ts",
           "src/registry-sync-d1.ts",
           // The caller requires explicit api_usage_rollup D1 ownership;
           // native receipt tests cover rollback and committed-reply replay.

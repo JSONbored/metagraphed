@@ -1,4 +1,5 @@
-// Every table a reader gates on must be created by a Neon migration.
+// Every Neon-readable table a reader gates on needs a Neon migration. Native
+// conditional dependencies need their own creation and ownership proof below.
 //
 // This guard grew up twice. #10135 caught NEON_SOLE_STORE_TABLES naming
 // `lane_health` while no migration created it -- rows going nowhere, with the
@@ -7,13 +8,35 @@
 // did not declare read `undefined` forever, invisible from both ends. The flag
 // is gone (#10051 -- it answered "is D1 behind this?" about a deleted
 // database), so the two halves collapse into the direct question the flag was
-// standing between: does every table the READERS name exist in the migrations
-// that create Neon's schema? Writers need no twin here -- every write module's
+// standing between: does every table the READERS can query on Neon exist in
+// its migrations? Conditional native families prove their owner below.
+// Writers need no twin here -- every write module's
 // tables are exercised against the pglite double, which runs the real Neon
 // schema, so a written-but-uncreated table fails its own suite.
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, test } from "vitest";
+import * as d1Tables from "../scripts/validate-declared-tables-exist.ts";
+import { alphaCaptureState } from "../src/alpha-capture-reader.ts";
+import { partitionStoreTables } from "../src/d1-store.ts";
+import { ALPHA_PRICING_TABLES } from "../src/read-store-tables.ts";
+import { isPostgresReadStore, readStore } from "../src/read-store.ts";
+
+// These conditional read dependencies exist only in the native receiver.
+// Their helper skips PostgreSQL before discovery; schema absence retains the
+// legacy path, while native read failure remains a failure. Keep this exact
+// inventory independently accountable to DDL and actual owner selection.
+const NATIVE_ONLY_FAMILIES = [
+  {
+    owner: "nominator_positions",
+    migration: "0039_alpha_runtime_receiver.sql",
+    tables: [
+      "alpha_runtime_metadata",
+      "alpha_snapshot_passes",
+      "alpha_snapshot_rows",
+    ],
+  },
+] as const;
 
 /** Tables created by every migration under migrations/neon/. */
 function tablesInNeonMigrations(): Set<string> {
@@ -88,12 +111,17 @@ function tablesReadStoreGatesOn(): Map<string, string[]> {
   return byTable;
 }
 
-describe("every table a reader gates on exists in Neon", () => {
+describe("every reader dependency exists in its actual store", () => {
   const gated = tablesReadStoreGatesOn();
   const created = tablesInNeonMigrations();
+  const nativeOnly = new Set<string>(
+    NATIVE_ONLY_FAMILIES.flatMap((family) => family.tables),
+  );
 
-  test("no reader names a table the migrations do not create", () => {
-    const missing = [...gated.keys()].filter((t) => !created.has(t)).sort();
+  test("Neon dependencies require Neon migrations", () => {
+    const missing = [...gated.keys()]
+      .filter((table) => !nativeOnly.has(table) && !created.has(table))
+      .sort();
     assert.deepEqual(
       missing,
       [],
@@ -101,6 +129,75 @@ describe("every table a reader gates on exists in Neon", () => {
         " is read through readStore but created by no Neon migration -- " +
         "that caller reads a table that does not exist, which surfaces as " +
         "an empty answer, not an error (#10264's failure shape).",
+    );
+  });
+
+  test("native dependencies require DDL and their single owner", () => {
+    const nativeCreated = d1Tables.tablesInMigrations("migrations/d1");
+    for (const family of NATIVE_ONLY_FAMILIES) {
+      assert.ok(created.has(family.owner));
+      const env = { D1_STATE_TABLES: family.owner };
+      const tables = [family.owner, ...family.tables];
+      assert.deepEqual(partitionStoreTables(env, tables), [tables]);
+      for (const table of family.tables) {
+        const stale = `${table} is a stale native-only exception`;
+        assert.ok(gated.has(table), stale);
+        assert.ok(!created.has(table), `${table} also exists in Neon`);
+        assert.equal(nativeCreated.get(table), family.migration);
+        const orphan = { D1_STATE_TABLES: table };
+        assert.throws(
+          () => readStore(orphan, [table]),
+          /requires its nominator_positions owner/,
+        );
+        const unbound = {
+          D1_STATE_TABLES: family.owner,
+          HYPERDRIVE: { connectionString: "postgresql://unused/db" },
+        };
+        assert.throws(
+          () => readStore(unbound, [table]),
+          /Selected D1 store is unbound/,
+        );
+        assert.throws(
+          () => readStore(env, [table, "neurons"]),
+          /spans D1 and Neon/,
+        );
+      }
+    }
+  });
+
+  test("PostgreSQL skips native discovery and keeps legacy reads", async () => {
+    const queries: string[] = [];
+    const client = {
+      async connect() {},
+      async end() {},
+      async query(text: string) {
+        queries.push(text);
+        return { rows: [{ latest: 123 }] };
+      },
+    };
+    const env = {
+      HYPERDRIVE: { connectionString: "postgresql://unused/db" },
+    };
+    const deps = { clientFactory: () => client };
+    const store = readStore(env, ALPHA_PRICING_TABLES, undefined, deps);
+    assert.ok(store);
+    assert.equal(isPostgresReadStore(store), true);
+    assert.deepEqual(await alphaCaptureState(store), {
+      available: false,
+      capture: null,
+    });
+    assert.deepEqual(queries, []);
+    const legacy = "SELECT MAX(captured_at) AS latest FROM nominator_positions";
+    assert.deepEqual(await store.first(legacy), { latest: 123 });
+    assert.deepEqual(queries, [legacy]);
+    const failedNativeRead = {
+      async first() {
+        throw new Error("native schema read failed");
+      },
+    };
+    await assert.rejects(
+      alphaCaptureState(failedNativeRead),
+      /native schema read failed/,
     );
   });
 

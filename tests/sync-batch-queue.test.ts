@@ -12,6 +12,9 @@
 // dead-lettering.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import * as alphaIdentity from "../src/alpha-runtime-identity.ts";
+import type { AlphaCountAnchor } from "../src/alpha-counts-d1.ts";
+import type { SyncBatchMessage } from "../src/sync-batch-queue.ts";
 import {
   classifySyncBatch,
   enqueueSyncBatch,
@@ -38,6 +41,178 @@ const OK = {
   pass_total: 46_998,
   rows: [{ hotkey: "5A", netuid: 7, total_alpha: 1.5, captured_at: 1 }],
 };
+
+const countAt = 1_791_900_000_000;
+const countAnchor = (members = 2): AlphaCountAnchor => ({
+  captured_at: countAt,
+  block_number: 9_277_292,
+  block_hash: `0x${"ab".repeat(32)}`,
+  genesis_hash: alphaIdentity.ALPHA_GENESIS,
+  spec_version: 479,
+  code_hash: alphaIdentity.ALPHA_RUNTIMES[479].code,
+  metadata_sha256: alphaIdentity.ALPHA_RUNTIMES[479].metadata,
+  scanned_legacy: 0,
+  scanned_v2: members,
+  distinct_members: members,
+  excluded_root_members: 0,
+});
+const countRows = (length = 2) =>
+  Array.from({ length }, (_, i) => ({
+    hotkey: `validator-${i}`,
+    nominator_count: 1,
+    captured_at: countAt,
+  }));
+const countMessage = () => ({
+  lane: "validator-nominator-counts" as const,
+  captured_at: countAt,
+  pass_total: 2,
+  alpha_snapshot: countAnchor(),
+  rows: countRows(),
+});
+
+describe("Alpha count capture anchors", () => {
+  test("accepts exact anchors and legacy count messages", () => {
+    const message = countMessage();
+    assert.equal(validSyncBatchMessage(message), true);
+    const { alpha_snapshot: _anchor, ...legacy } = message;
+    assert.equal(validSyncBatchMessage(legacy), true);
+  });
+
+  test("rejects malformed, misplaced or mismatched anchors", () => {
+    const message = countMessage();
+    const wrongCode = `0x${"00".repeat(32)}`;
+    const invalid: unknown[] = [
+      { ...message, alpha_snapshot: null },
+      { ...message, alpha_snapshot: {} },
+      {
+        ...message,
+        alpha_snapshot: { ...message.alpha_snapshot, code_hash: wrongCode },
+      },
+      { ...message, lane: "hotkey-alpha" },
+      { ...message, pass_total: undefined },
+      { ...message, pass_total: 1.5 },
+      { ...message, pass_total: Number.MAX_SAFE_INTEGER + 1 },
+      { ...message, pass_total: 0 },
+      { ...message, pass_total: 1 },
+      { ...message, pass_total: 3 },
+      { ...message, captured_at: countAt + 1 },
+      { ...message, rows: undefined },
+      { ...message, rows: [] },
+      { ...message, rows: [null] },
+      { ...message, rows: [1] },
+      { ...message, rows: [{ captured_at: countAt + 1 }] },
+    ];
+    for (const body of invalid) {
+      assert.equal(validSyncBatchMessage(body), false);
+    }
+    const classified = classifySyncBatch([
+      { body: message },
+      ...invalid.map((body) => ({ body })),
+    ]);
+    assert.deepEqual(classified.valid, [message]);
+    assert.equal(classified.invalid, invalid.length);
+  });
+
+  test("packing preserves every exact anchor and rejects a bad context", () => {
+    const input = {
+      lane: "validator-nominator-counts" as const,
+      capturedAt: countAt,
+      passTotal: 2,
+      alpha_snapshot: countAnchor(),
+      rows: countRows(),
+      maxRows: 1,
+    };
+    const messages = packSyncBatchMessages(input);
+    assert.equal(messages.length, 2);
+    for (const message of messages) {
+      assert.deepEqual(message.alpha_snapshot, input.alpha_snapshot);
+      assert.equal(validSyncBatchMessage(message), true);
+    }
+    const invalid = [
+      { ...input, lane: "hotkey-alpha" as const },
+      { ...input, passTotal: undefined },
+      { ...input, capturedAt: countAt + 1 },
+      { ...input, rows: [{ captured_at: countAt + 1 }] },
+      { ...input, rows: [] },
+    ];
+    for (const bad of invalid) {
+      assert.throws(() => packSyncBatchMessages(bad), /capture anchor/);
+    }
+  });
+
+  test("queue and writer retain the whole exact identity", async () => {
+    const sent: SyncBatchMessage[] = [];
+    const rows = countRows(SYNC_BATCH_MAX_ROWS + 1);
+    const anchor = countAnchor(rows.length);
+    const count = await enqueueSyncBatch(
+      {
+        send: async (message) => {
+          sent.push(JSON.parse(JSON.stringify(message)));
+        },
+      },
+      {
+        lane: "validator-nominator-counts",
+        capturedAt: countAt,
+        passTotal: rows.length,
+        alpha_snapshot: anchor,
+        rows,
+      },
+    );
+    assert.equal(count, sent.length);
+    assert.ok(count > 1);
+    let written = 0;
+    for (const message of sent) {
+      assert.equal(validSyncBatchMessage(message), true);
+      assert.deepEqual(message.alpha_snapshot, anchor);
+      await writeSyncBatch(
+        message,
+        {
+          "validator-nominator-counts": async (chunk, pass, exact) => {
+            assert.deepEqual(exact, anchor);
+            assert.equal(pass?.capturedAt, countAt);
+            assert.equal(pass?.expectedRows, rows.length);
+            assert.equal(pass?.receivedRows, chunk.length);
+            assert.equal(pass?.nowMs, countAt + 1);
+            written += chunk.length;
+          },
+        },
+        countAt + 1,
+      );
+    }
+    assert.equal(written, rows.length);
+  });
+
+  test("legacy writers receive no invented Alpha identity", async () => {
+    const { alpha_snapshot: _anchor, ...legacy } = countMessage();
+    let written = 0;
+    await writeSyncBatch(legacy, {
+      "validator-nominator-counts": async (rows, pass, anchor) => {
+        assert.equal(anchor, undefined);
+        assert.equal(pass?.capturedAt, countAt);
+        written += rows.length;
+      },
+    });
+    assert.equal(written, legacy.rows.length);
+  });
+
+  test("enqueue rejects an anchor mismatch before sending", async () => {
+    let sent = 0;
+    await assert.rejects(
+      enqueueSyncBatch(
+        { send: async () => void sent++ },
+        {
+          lane: "validator-nominator-counts",
+          capturedAt: countAt + 1,
+          passTotal: 2,
+          alpha_snapshot: countAnchor(),
+          rows: countRows(),
+        },
+      ),
+      /capture anchor/,
+    );
+    assert.equal(sent, 0);
+  });
+});
 
 describe("validSyncBatchMessage", () => {
   test("accepts a well-formed chunk, with or without a declared pass", () => {

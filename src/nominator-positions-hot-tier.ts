@@ -30,7 +30,13 @@ import {
   annotatePositionsSnapshot,
   buildAccountPositions,
   distinctHotkeys,
+  unpriceableAccountPositions,
 } from "./account-nominator-positions.ts";
+import {
+  alphaCaptureStateFromOwner,
+  alphaPositionsUnqualified,
+  NOMINATOR_POSITIONS_TABLES,
+} from "./alpha-capture-reader.ts";
 import {
   neuronStakeByHotkeys,
   POSITION_SCAN_CAP,
@@ -63,12 +69,48 @@ export async function loadAccountPositionsFromStore(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountPositions> | null> {
-  const db = readStore(env, ["nominator_positions"]);
+  const db = readStore(env, NOMINATOR_POSITIONS_TABLES);
   if (!db?.query || !db?.first) return null;
 
   let rows: Record<string, unknown>[];
   let ledgerCapturedAt: number | null;
   try {
+    const state = await alphaCaptureStateFromOwner(env);
+    if (state.available) {
+      const capture = state.capture;
+      if (!capture?.quantityQualified)
+        return unpriceableAccountPositions(ss58, capture?.captured_at ?? null);
+      const exactRows = await db.query(
+        `SELECT ${POSITION_COLUMNS}, alpha_rao FROM alpha_snapshot_rows` +
+          " WHERE coldkey = ? AND captured_at = ? LIMIT ?",
+        [ss58, capture.captured_at, POSITION_SCAN_CAP + 1],
+      );
+      if (exactRows.length > POSITION_SCAN_CAP) return null;
+      if (
+        await alphaPositionsUnqualified(db, capture.captured_at, {
+          column: "coldkey",
+          value: ss58,
+        })
+      )
+        return unpriceableAccountPositions(ss58, capture.captured_at);
+      const after = await alphaCaptureStateFromOwner(env);
+      if (
+        !after.capture?.quantityQualified ||
+        after.capture.captured_at !== capture.captured_at ||
+        after.capture.block_hash !== capture.block_hash
+      )
+        return unpriceableAccountPositions(
+          ss58,
+          after.capture?.captured_at ?? null,
+        );
+      return annotatePositionsSnapshot(
+        buildAccountPositions(exactRows, null, ss58),
+        {
+          snapshotCapturedAtMs: capture.captured_at,
+          latestStakeEventMs: null,
+        },
+      );
+    }
     // Issued together: the ledger stamp is needed on the zero path and the
     // decline path alike, and serialising two independent point reads on a
     // request path buys nothing.

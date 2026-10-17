@@ -260,12 +260,33 @@ beforeAll(async () => {
   for (const row of lossless.rows)
     await source
       .prepare(
-        "INSERT INTO nominator_positions VALUES(?,?,CAST(? AS INTEGER),CAST(? AS REAL),CAST(? AS INTEGER),?,?)",
+        "INSERT INTO nominator_positions(coldkey,hotkey,netuid,share_fraction,captured_at,shares,source) VALUES(?,?,CAST(? AS INTEGER),CAST(? AS REAL),CAST(? AS INTEGER),?,?)",
       )
       .bind(...row.map((c) => c.value))
       .run();
+  const captureOnlyEvidence =
+    '{"share":{"v2":{"mantissa":"9007199254740993","exponent":-65}},"pool_epoch":"9007199254740993","member_epoch":"0001"}';
+  await source
+    .prepare(
+      "UPDATE nominator_positions SET share_fraction=NULL,alpha_rao=NULL,alpha_evidence=? WHERE coldkey='recovery-0'",
+    )
+    .bind(captureOnlyEvidence)
+    .run();
   await restoreProjection("account_identity");
   await restoreProjection("nominator_positions");
+  assert.deepEqual(
+    await restored
+      .prepare(
+        "SELECT share_fraction,alpha_rao,alpha_evidence,shares FROM nominator_positions WHERE coldkey='recovery-0'",
+      )
+      .first(),
+    {
+      share_fraction: null,
+      alpha_rao: null,
+      alpha_evidence: captureOnlyEvidence,
+      shares: "340282366920938463463374607431768211455",
+    },
+  );
   for (const [network, name] of ["mainnet", "testnet"].entries()) {
     const rows = corpus.blocks[name as "mainnet" | "testnet"];
     await sourceBlocks

@@ -3,6 +3,11 @@
 // retains its own capture timestamp and supported ranking keys.
 
 import { artifactBucket } from "./projection-store.ts";
+import {
+  alphaCaptureStateFromOwner,
+  alphaPositionsUnqualified,
+  canonicalAlphaOwnerStore,
+} from "./alpha-capture-reader.ts";
 
 import type { ProjectionLane } from "./projection-lanes.ts";
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./chain-stake-flow.ts";
@@ -241,6 +246,9 @@ export async function computeTopHoldersFlow(
     // answerable by a producer that stopped. The data's own age is the row
     // stamp.
     ...(holdings ? { holdings_generated_at: new Date(now).toISOString() } : {}),
+    ...(holdings?.alphaCapturedAt !== undefined
+      ? { alpha_captured_at: holdings.alphaCapturedAt }
+      : {}),
     row_count: shaped.length,
     // WHICH SORTS THIS BODY CAN RANK, declared by the writer rather than
     // assumed by the reader. The legs fail independently and each holdings
@@ -334,12 +342,46 @@ export async function loadTopHoldersFlowTier(
     const object = await bucket.get(TOP_HOLDERS_FLOW_PROJECTION_KEY);
     if (!object) return null;
     const body = await object.json();
-    const rows = topHoldersFlowRows(body);
+    let rows = topHoldersFlowRows(body);
     // An artifact with no rows is a decline, not an answer: the frozen
     // leaderboard is still a better response than an empty one, and this is
     // the pre-first-run state as well as the emptied-in-place fault.
     if (rows === null || rows.length === 0) return null;
     if (!topHoldersArtifactSorts(body).includes(sort)) return null;
+    // Stored holdings survive their producer. A newer canonical structural
+    // capture cannot inherit an older projection's qualified quantities.
+    const mayUseDelegated = await (async () => {
+      const state = await alphaCaptureStateFromOwner(env);
+      if (!state.available) return true;
+      const capture = state.capture;
+      if (!capture?.quantityQualified) return false;
+      if (
+        (body as { alpha_captured_at?: unknown }).alpha_captured_at !==
+        capture.captured_at
+      )
+        return false;
+      const db = canonicalAlphaOwnerStore(env);
+      if (!db || (await alphaPositionsUnqualified(db, capture.captured_at)))
+        return false;
+      const after = await alphaCaptureStateFromOwner(env);
+      return (
+        after.capture?.quantityQualified === true &&
+        after.capture.captured_at === capture.captured_at &&
+        after.capture.block_hash === capture.block_hash
+      );
+    })().catch(() => false);
+    if (!mayUseDelegated) {
+      if (
+        sort === TOP_HOLDERS_DELEGATED_SORT ||
+        sort === TOP_HOLDERS_TOTAL_SORT
+      )
+        return null;
+      rows = rows.map((row) => ({
+        ...row,
+        delegated_tao: null,
+        total_tao: null,
+      }));
+    }
     return buildTopHoldersList(rows, {
       sort,
       limit: query.limit,

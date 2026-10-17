@@ -307,6 +307,17 @@ export interface ReadStoreDeps {
   clientFactory?: (connectionString: string) => ReadStoreClient;
 }
 
+const POSTGRES_READ_STORE = Symbol("postgres-read-store");
+
+/** Native-only capabilities must not issue SQLite discovery against Neon. */
+export function isPostgresReadStore(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Object.getOwnPropertyDescriptor(value, POSTGRES_READ_STORE)?.value === true
+  );
+}
+
 /** The read handle over Postgres, one connection per operation. */
 export function pgReadStore(
   connectionString: string,
@@ -335,7 +346,7 @@ export function pgReadStore(
   // The generic parameter is the CALLER's claim about the row shape: Postgres
   // hands back whatever the query selected and nothing validates it. Cast
   // here rather than at 45 call sites.
-  return {
+  const store: ReadStoreDb = {
     async query<T = Row>(text: string, values: unknown[] = []) {
       return (await run(text, values)) as T[];
     },
@@ -343,6 +354,8 @@ export function pgReadStore(
       return ((await run(text, values))[0] ?? null) as T | null;
     },
   };
+  Object.defineProperty(store, POSTGRES_READ_STORE, { value: true });
+  return store;
 }
 
 /**

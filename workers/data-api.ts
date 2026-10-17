@@ -1,3 +1,24 @@
+import { ownerCapturePositions } from "../src/owner-capture-positions.ts";
+import { ZodError } from "zod";
+import { readCanonicalNominatorCounts } from "../src/alpha-counts-reader.ts";
+import {
+  alphaCountAnchorSchema,
+  alphaCountPassTotal,
+  alphaCountInlineFits,
+  alphaCountsOwnerStore,
+  alphaCountsNeedAnchor,
+  readAlphaCountStatusD1,
+  writeAlphaCountsD1,
+  type AlphaCountAnchor,
+} from "../src/alpha-counts-d1.ts";
+import {
+  writeAlphaSnapshotD1,
+  readAlphaSnapshotResumeD1,
+} from "../src/alpha-snapshot-d1.ts";
+import {
+  parseSelfStakeSnapshot,
+  type SelfStakeSnapshot,
+} from "../src/self-stake-snapshot-d1.ts";
 import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
@@ -199,7 +220,7 @@ import {
   VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
 } from "../src/validator-nominator-summary.ts";
 import { tempoByNetuid } from "../src/subnet-tempo.ts";
-import { NOMINATOR_POSITION_INSERT_COLUMNS } from "../src/account-nominator-positions.ts";
+import { NOMINATOR_POSITION_INSERT_COLUMNS } from "../src/nominator-position-columns.ts";
 import {
   identityHash,
   buildAccountIdentityHistory,
@@ -2321,26 +2342,9 @@ async function handleSubnetOwnershipSync(
 
 // --- POST /api/v1/internal/validator-nominator-counts-sync (#2549) --------
 //
-// RESTORED ON D1 (#9146). Retired by #9193 when the Postgres table it wrote
-// was destroyed with the box; this is the same route against
-// tests/fixtures/sqlite-schema/0011_validator_nominator_counts.sql instead.
-//
-// The write path into validator_nominator_counts -- simpler than
-// account-identity-sync above: latest-only, no history table (a nominator
-// count is a live gauge, not a fact worth diffing over time yet). Populated by
-// its own low-frequency job
-// (metagraphed-infra src/bin/poller/jobs/validator_nominators.rs, 24h),
-// decoupled from the fast neurons sync -- see that job's and the migration's
-// own header comments for why a full SubtensorModule::Alpha scan can't share
-// the neurons snapshot's cadence.
-//
-// THE PRODUCER CHUNKS; THIS ROUTE DOES NOT REASSEMBLE. One scan is ~112,550
-// rows, over the per-request cap below, so a scan arrives as several
-// independent requests. That is why there is no prune here and no batch-wide
-// bookkeeping: each request is a self-contained upsert, and correctness comes
-// from buildUpsert's captured_at guard rather than from requests arriving in
-// order or at all. A dropped chunk costs those hotkeys one cycle of freshness,
-// never a wrong value.
+// Raw membership counts share the Alpha capture's native owner. Admission
+// preserves the existing queue; authenticated status proves terminal application.
+// Legacy envelopes remain valid before the first canonical Alpha capture.
 const VALIDATOR_NOMINATOR_COUNTS_SYNC_TOKEN_HEADER =
   "x-validator-nominator-counts-sync-token";
 
@@ -2420,9 +2424,41 @@ async function handleValidatorNominatorCountsSync(
   } catch {
     return writeJson({ error: "body must be JSON" }, 400);
   }
-  // Both envelopes accepted, matching handleNeuronsSync's own tolerance -- the
-  // producer sends a bare array, but {rows:[...]} is what every other sync
-  // route here speaks and a mismatch is not worth a failed cycle.
+  let alphaAnchor: AlphaCountAnchor | undefined;
+  let alphaTotal: number | undefined;
+  if (
+    parsed?.alpha_snapshot !== undefined ||
+    parsed?.counts_status !== undefined
+  ) {
+    try {
+      alphaAnchor = alphaCountAnchorSchema.parse(parsed.alpha_snapshot);
+      alphaTotal = alphaCountPassTotal(alphaAnchor, parsed.pass_total);
+      if (parsed.counts_status !== undefined && parsed.counts_status !== true)
+        throw new TypeError("Invalid count status request");
+    } catch {
+      return writeJson({ error: "invalid Alpha count identity or total" }, 400);
+    }
+    try {
+      const owner = alphaCountsOwnerStore(env);
+      if (!owner)
+        return writeJson(
+          { error: "Alpha counts require their native owner" },
+          503,
+        );
+      if (parsed.counts_status === true) {
+        if (parsed.rows !== undefined)
+          return writeJson({ error: "count status cannot carry rows" }, 400);
+        return writeJson(
+          await readAlphaCountStatusD1(owner, alphaAnchor, alphaTotal),
+        );
+      }
+    } catch {
+      return writeJson(
+        { error: "Alpha count owner or receipt unavailable" },
+        503,
+      );
+    }
+  }
   const incoming = Array.isArray(parsed)
     ? parsed
     : Array.isArray(parsed?.rows)
@@ -2445,23 +2481,80 @@ async function handleValidatorNominatorCountsSync(
       413,
     );
   }
-  const nominatorCountCheck = validateSyncRows(
-    incoming,
-    NOMINATOR_COUNT_SYNC_ROW_SCHEMA,
-    "nominator count",
-  );
-  if (!nominatorCountCheck.ok) {
-    return writeJson({ error: nominatorCountCheck.error }, 400);
+  // Only a validated anchored empty census is a control receipt. Preserve
+  // the shared row validator's nonempty requirement for legacy requests.
+  if (incoming.length || !alphaAnchor) {
+    const nominatorCountCheck = validateSyncRows(
+      incoming,
+      NOMINATOR_COUNT_SYNC_ROW_SCHEMA,
+      "nominator count",
+    );
+    if (!nominatorCountCheck.ok) {
+      return writeJson({ error: nominatorCountCheck.error }, 400);
+    }
   }
 
-  const rows = incoming.map(coerceNominatorCountSyncRow);
+  const rows: Row[] = incoming.map(coerceNominatorCountSyncRow);
+  if (alphaAnchor) {
+    if (
+      rows.length > alphaTotal! ||
+      rows.some((row) => row.captured_at !== alphaAnchor.captured_at) ||
+      new Set(rows.map((row) => row.hotkey)).size !== rows.length
+    )
+      return writeJson({ error: "Alpha count rows differ from capture" }, 400);
+    if (!rows.length && alphaTotal !== 0)
+      return writeJson({ error: "empty Alpha count chunk" }, 400);
+    try {
+      if (rows.length && syncLaneUsesQueue(env, "validator-nominator-counts")) {
+        await enqueueSyncBatch(env.SYNC_BATCHES!, {
+          lane: "validator-nominator-counts",
+          capturedAt: alphaAnchor.captured_at,
+          passTotal: alphaTotal!,
+          alpha_snapshot: alphaAnchor,
+          rows,
+        });
+        return writeJson({
+          ok: true,
+          stores: ["queue"],
+          queued: true,
+          alpha_snapshot: alphaAnchor,
+          pass_total: alphaTotal,
+        });
+      }
+      if (!alphaCountInlineFits(rows))
+        return writeJson(
+          {
+            error:
+              "inline counts support at most 1000 rows and 98304 UTF8 bytes of projected rows JSON; configure validator-nominator-counts queue or send bounded chunks",
+          },
+          413,
+        );
+      return writeJson(
+        await writeAlphaCountsD1(
+          alphaCountsOwnerStore(env)!,
+          rows,
+          alphaAnchor,
+          alphaTotal!,
+          Date.now(),
+        ),
+      );
+    } catch (error) {
+      await captureDataApiError(error, "alpha-count-sync", env);
+      return writeJson({ error: "Alpha count application failed" }, 502);
+    }
+  }
+  try {
+    if (await alphaCountsNeedAnchor(env))
+      return writeJson(
+        { error: "canonical Alpha counts require alpha_snapshot" },
+        400,
+      );
+  } catch {
+    return writeJson({ error: "Alpha count owner unavailable" }, 503);
+  }
 
-  // THE PASS DECLARATION (metagraphed-infra#346). This lane had none, which is
-  // why a short load here was indistinguishable from a validator genuinely
-  // losing delegators: a count cannot prove completeness, and only the producer
-  // knows how big its scan was. Optional, because a producer that has not been
-  // updated must keep working -- and inventing a total would mark an unproven
-  // load complete, which is the lie the tally exists to prevent.
+  // Before Alpha selection, legacy writers may omit their pass declaration.
+  // Do not invent completeness for an undeclared scan.
   const countsDeclared = declaredPassTotal(
     parsed,
     VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS * 100,
@@ -2497,12 +2590,7 @@ async function handleValidatorNominatorCountsSync(
     });
   }
 
-  // NO D1 WRITE, and no store binding requirement: validator_nominator_counts and
-  // its pass ledger are Neon's outright (#10116). What used to be a
-  // write-then-mirror pair is now one write, below.
-  // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
-  // other and mirrors too -- #9728 was a single unmirrored writer leaving a
-  // table short while the row count looked nearly right.
+  // Legacy inline and queue writes share the selected native or portable store.
   const neon = await mirrorLedgerToNeon(
     env,
     ctx,
@@ -2513,7 +2601,7 @@ async function handleValidatorNominatorCountsSync(
     pass,
   );
 
-  // Neon IS the store, so a pass that did not reach it did not happen.
+  // Failure in the selected store withholds the producer's acknowledgement.
   if (!neon.result?.ok) {
     const reason = neon.result?.reason ?? "neon write not attempted";
     console.error(
@@ -2538,26 +2626,11 @@ async function handleValidatorNominatorCountsSync(
   });
 }
 
-// --- POST /api/v1/internal/nominator-positions-sync (#5233, revived #9273) --
-//
-// The per-coldkey position ledger: one row per (coldkey, hotkey, netuid) with
-// that account's dimensionless share of the hotkey's alpha-pool shares on that
-// subnet, from the poller's SubtensorModule::Alpha full scan. Root (netuid 0)
-// is not covered -- Alpha carries no root data at all.
-//
-// RETIRED with the box (#9193) and REVIVED against D1 here, because nothing
-// replaced it: the lakehouse kept the frozen 153,611-row export and the route
-// over it has served a stamp that cannot advance ever since, answering
-// `positions: 0, total_stake_alpha: 0` for anyone who began delegating after
-// the export. Same request/{rows:[...]} shape, same token gate, and the same
-// D1-is-required posture as handleSubnetHyperparamsSync above.
-//
-// A FULL SCAN DOES NOT FIT ONE REQUEST. 153,611 rows is far past any single
-// body, so the poster chunks it -- and the prune below is therefore per-coldkey
-// rather than a batch-wide sweep (see
-// src/nominator-positions-d1-write.ts's header). The poster's contract is that
-// an account's positions all land in the same request; one split across two
-// requests would have its first half pruned by its second.
+// --- POST /api/v1/internal/nominator-positions-sync ---
+// Exact captures retain original member/pool evidence for non-root positions,
+// then promote only a complete whole-owner scan under its native ledger owner.
+// Legacy fractions remain compatible before selection; self-stake owns a separate
+// source domain and cannot replace or erase Alpha-owned evidence.
 const NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER =
   "x-nominator-positions-sync-token";
 // 25k rows x ~5 short columns sits well inside the Worker request ceiling and
@@ -2635,6 +2708,52 @@ async function handleNominatorPositionsSync(
     parsed = JSON.parse(raw);
   } catch {
     return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const owners = String(env.D1_STATE_TABLES ?? "")
+    .split(",")
+    .map((name) => name.trim());
+  const required = [
+    "nominator_positions",
+    "nominator_positions_passes",
+    "nominator_scan_receipts",
+  ];
+  const nativeAlpha = required.every((table) => owners.includes(table))
+    ? env.D1_STATE
+    : undefined;
+  if (parsed?.alpha_snapshot_resume !== undefined) {
+    if (
+      parsed.alpha_snapshot_resume !== true ||
+      Object.keys(parsed).length !== 1
+    )
+      return writeJson({ error: "invalid Alpha resume request" }, 400);
+    if (!nativeAlpha)
+      return writeJson(
+        { error: "Alpha resume requires its native owner" },
+        503,
+      );
+    try {
+      return writeJson(await readAlphaSnapshotResumeD1(nativeAlpha));
+    } catch (error) {
+      return writeJson({ error: String(error) }, 502);
+    }
+  }
+  if (parsed?.alpha_snapshot !== undefined) {
+    if (!nativeAlpha)
+      return writeJson(
+        { error: "Alpha snapshots require their native owner" },
+        503,
+      );
+    try {
+      return writeJson(
+        await writeAlphaSnapshotD1(nativeAlpha, parsed, Date.now()),
+      );
+    } catch (error) {
+      const invalid =
+        error instanceof TypeError ||
+        error instanceof RangeError ||
+        error instanceof ZodError;
+      return writeJson({ error: String(error) }, invalid ? 400 : 502);
+    }
   }
   const incoming = Array.isArray(parsed)
     ? parsed
@@ -2733,22 +2852,15 @@ async function handleNominatorPositionsSync(
     });
   }
 
-  // NO D1 WRITE, and no store binding requirement: nominator_positions and its
-  // pass ledger are Neon's outright (#10111). The queue consumer below is this
-  // lane's other entry point and it does not write D1 either.
+  // The existing selected owner writes rows, coverage and pass atomically.
   const neon = await mirrorNominatorPositionsToNeon(env, ctx, {
     rows,
     coldkeyMaxCapturedAt: cutoffs,
     pass,
   });
 
-  // Once Neon is the store, a pass that did not reach it did not happen.
+  // Prune, coverage and pass are required parts of the acknowledgment.
   {
-    // The PRUNE and the PASS count as well as the write. Rows landing while
-    // stale coldkeys survive is not a partial success -- top-holders would
-    // serve both. And nominator_positions_passes has no other writer once this
-    // inverts, so a tally that did not land leaves a completeness ledger
-    // nobody can tell is empty.
     const failed = [neon.write, neon.prune, neon.coverage, neon.pass].filter(
       (r) => r && !r.ok,
     );
@@ -2784,39 +2896,12 @@ async function handleNominatorPositionsSync(
 
 // --- POST /api/v1/internal/self-stake-sync (#10845) -----------------------
 //
-// THE SAME TABLE AS nominator-positions-sync, AND NOT THE SAME ROUTE, which is
-// the whole point (metagraphed-infra#473).
-//
-// `self-stake` fills a gap `validator-nominators`' Alpha scan cannot: an owner's
-// own stake on their own hotkey frequently has NO `SubtensorModule::Alpha`
-// entry -- `{bits: 0}` on ~91% of one hotkey's registered pairs -- even when
-// the runtime-computed stake is large. Those rows belong in
-// `nominator_positions`, because a validator's own stake is often its largest
-// position and eight surfaces read that table.
-//
-// BUT IT CANNOT REUSE THE OTHER ROUTE, and reusing it would delete data. That
-// route PRUNES per `coldkey`: every row for a posted `coldkey` older than the
-// newest captured_at that same `coldkey` carries in the request. And
-// `validator-nominators` may do
-// that because `pack_coldkey_chunks` never splits a `coldkey`. `self-stake`
-// cannot: its rows are absent from the Alpha scan BY CONSTRUCTION, so they are
-// always "older than this pass" from the other lane's point of view, and any
-// owner who also nominates elsewhere would lose their self-stake row within a
-// day of it being written.
-//
-// So each producer owns a PRUNE DOMAIN -- 0027's `source` column -- and this
-// route writes `source='self-stake'` and prunes only that. `source` is stamped
-// by the writer, never accepted from the wire: a producer that could name its
-// own source could claim the other lane's domain and delete its rows.
-//
-// NO PASS TALLY, unlike its sibling. `nominator_positions_passes` records
-// completeness of a full keyspace scan; self-stake is a targeted read over
-// registered (hotkey, netuid) pairs and declaring it complete would corrupt
-// the ledger the other lane's consumers gate on.
+// Shared ledger, separate source ownership: self-stake may retire only its
+// own rows. The writer stamps source; wire input cannot claim another domain.
+// Legacy partial owner updates remain supported. Optional complete-snapshot
+// receipts own their census and retirement, never the Alpha pass ledger.
 const SELF_STAKE_SYNC_TOKEN_HEADER = "x-self-stake-sync-token";
-// One runtime API call per (hotkey, netuid) pair makes this lane WEEKLY and
-// far smaller than the Alpha scan, but the ceilings match its sibling's so a
-// producer cannot be surprised by a different limit on the same table.
+// Match the sibling route's request and row ceilings.
 const SELF_STAKE_SYNC_MAX_BODY_BYTES = 8_000_000;
 const SELF_STAKE_SYNC_MAX_ROWS = 25_000;
 
@@ -2875,21 +2960,38 @@ async function handleSelfStakeSync(
   // The SAME row schema as its sibling, deliberately: same table, same columns,
   // same bounds. A second schema would be a second place for the shape to drift
   // from the writer's own INSERT column list.
-  const check = validateSyncRows(
-    incoming,
-    NOMINATOR_POSITION_SYNC_ROW_SCHEMA,
-    "self-stake position",
-  );
-  if (!check.ok) {
-    return writeJson({ error: check.error }, 400);
+  // Empty full receipts must pass the census parser below before dispatch.
+  if (
+    incoming.length > 0 ||
+    Array.isArray(parsed) ||
+    !Object.hasOwn(parsed, "snapshot")
+  ) {
+    const check = validateSyncRows(
+      incoming,
+      NOMINATOR_POSITION_SYNC_ROW_SCHEMA,
+      "self-stake position",
+    );
+    if (!check.ok) {
+      return writeJson({ error: check.error }, 400);
+    }
   }
 
   const rows = incoming.map(coerceNominatorPositionSyncRow);
   const cutoffs = coldkeyMaxCapturedAt(rows);
 
+  let snapshot: SelfStakeSnapshot | undefined;
+  if (!Array.isArray(parsed) && Object.hasOwn(parsed, "snapshot")) {
+    try {
+      snapshot = parseSelfStakeSnapshot(parsed.snapshot, rows);
+    } catch (error) {
+      return writeJson({ error: String(error) }, 400);
+    }
+  }
+
   const neon = await mirrorNominatorPositionsToNeon(env, ctx, {
     rows,
     coldkeyMaxCapturedAt: cutoffs,
+    selfStakeSnapshot: snapshot,
     source: POSITION_SOURCE_SELF_STAKE,
     lane: SELF_STAKE_NEON_LANE,
   });
@@ -2915,6 +3017,7 @@ async function handleSelfStakeSync(
     ok: true,
     self_stake_positions_written: rows.length,
     coldkeys_pruned: cutoffs.size,
+    ...(snapshot ? { self_stake_snapshot: neon.snapshot } : {}),
     stores: ["neon"],
   });
 }
@@ -6628,111 +6731,20 @@ async function handleAccountKeysRoute(
   );
 }
 
-// --- Neurons-family store read routes (box decommission; tests/fixtures/sqlite-schema/0007) --
-//
-// The D1 twins of every neurons/neuron_daily/account_position_daily read the
-// deleted Postgres dispatcher served, matched whenever METAGRAPH_NEURONS_SOURCE
-// is off "postgres" (see neuronsServedFromStore's own header).
-//
-// THIS IS NO LONGER A TRANSLATION TABLE, and reading it as one is what broke
-// the cutover twice. It was written when these queries had exactly one store to
-// satisfy, so each row recorded how a Postgres idiom had been re-rendered for
-// SQLite. Then #9784 gave the same query text a second store to run against,
-// and every one-directional rendering below became a live hazard: the SQLite
-// side is now the ONLY side, executed verbatim against both dialects. A
-// rendering that is merely correct for D1 served a wrong answer on Neon.
-//
-// So the surviving rule is ONE PORTABLE RENDERING, not two dialects kept in
-// sync. Each entry says what both stores accept and why the alternatives are
-// out -- and `tests/neon-sql-portability.test.ts` fails the build if a query on
-// a movable route reacquires one:
-//   - snapshot_date needs no ::cast -- it is TEXT 'YYYY-MM-DD' in both, and
-//     lexicographic comparison IS date order for ISO dates in both.
-//   - `validator_permit = TRUE`, never `= 1`. D1 stored the column INTEGER 0/1
-//     and Neon declares it BOOLEAN, because the mirror writes real JS booleans.
-//     Postgres rejects `boolean = integer` outright, so `= 1` made the query
-//     throw, the `?? buildGlobalValidators([])` fallback swallowed it, and
-//     /validators served an EMPTY leaderboard at 200 OK until #9802 rolled the
-//     flag back. `TRUE` is a keyword in both (SQLite aliases it to 1).
-//   - `SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END)`, never
-//     `SUM(validator_permit)`. Postgres has no SUM over boolean at all; the
-//     CASE is portable because SQLite reads a nonzero integer as true and
-//     Postgres reads the boolean directly.
-//   - DISTINCT ON (k) ... ORDER BY k, d is Postgres-only -- use ROW_NUMBER()
-//     OVER (PARTITION BY k ORDER BY d DESC) = 1, or a group-wise-MAX join,
-//     which both dialects have.
-//   - A window boundary is computed in TypeScript and BOUND, never shifted in
-//     SQL (#9798). `date(MAX(snapshot_date), '-N days')` is SQLite's and
-//     Postgres has no equivalent, so the subquery yielded nothing and two
-//     routes served an empty 200 (#9792). See neuronDailyWindowBounds.
-//
-// The two regressions share one shape worth naming: neither raised an error a
-// caller could see. Both returned a schema-stable 200 with zero rows, which is
-// indistinguishable from "no data yet" -- so nothing but a row-count baseline
-// caught them.
-//
-// Cross-tier joins: subnet_snapshots has a live D1 home (tests/fixtures/sqlite-schema/
-// 0002_observations.sql), so the alpha_price_tao joins/loads port for real.
-// The remaining enrichment side tables (featured_validators, account_identity)
-// have NO D1 home yet -- their families are frozen or port separately -- so the
-// twins pass each builder the degraded value the retired Postgres loader's own
-// catch branch produced (empty set/map, null), rather than issuing a query that
-// can only ever throw. Wire the real reads in when those tables land on the store.
-//
-// subnet_hyperparams' TEMPO no longer belongs to that list either (#9342). It
-// landed on the store in tests/fixtures/sqlite-schema/0009 and is populated for every subnet, but both
-// validator handlers kept passing `tempoByNetuid: new Map()` -- the placeholder
-// this comment told them to pass. An empty map means every lookup misses, and
-// accumulateApyRow skips a membership whose tempo is unresolved, so apy_estimate
-// was `null` and apy_estimate_eligible_subnet_count was 0 on EVERY served
-// response. A degraded placeholder that outlives the gap it stood in for reads
-// exactly like a real absence, which is why it survived this long.
-//
-// validator_nominator_counts NO LONGER BELONGS TO THAT LIST. It landed on D1
-// in tests/fixtures/sqlite-schema/0012, so the real read is wired below and this tier answers
-// nominator_count itself -- completely, since #9334 reads absence from a fresh
-// scan as a confirmed zero. The serving Worker's lakehouse overlay that covered
-// the gap in the meantime (#9146) is gone with #9337: it could only ever fire
-// on a null count, and there are none left to fill.
+// Neuron-family reads use portable SQL unless an explicitly owned native helper
+// handles the query. Bind date bounds, use TRUE for booleans and CASE for boolean
+// sums, and use windows/group-wise MAX instead of PostgreSQL DISTINCT ON.
+// Native enrichment reads use the same selected owner as their source family;
+// missing or unqualified state must remain unknown rather than a healthy zero.
 type NeuronsStoreRouteHandler = (
   sql: PgSql,
   env: DataApiEnv,
   ctx: ExecutionContext,
 ) => Promise<Response>;
 
-// The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
-// alpha_price_tao. Group-wise-MAX join instead of DISTINCT ON, same
-// degrade-to-empty-map failure contract (every non-root row is then excluded
-// from the totals rather than counted 1:1).
-// netuid -> tempo(blocks) from the subnet_hyperparams tier (#9342), for
-// accumulateApyRow to annualize each membership's emission_tao.
-//
-// Same degrade-to-empty-map contract as its siblings: a cold or absent table
-// yields an empty map, every lookup misses, and apy_estimate serves as null --
-// which is exactly what a caller got unconditionally before this was wired.
-// tempoByNetuid() drops tempo=0 rather than storing it, since a zero-length
-// epoch divides into an infinite epochsPerYear downstream.
-//
-// ROOT IS INCLUDED, deliberately, and that is verified against the chain rather
-// than inferred from our capture. subnet_hyperparams holds 129 rows -- netuid 0
-// plus the 128 real subnets -- and reading finney storage directly confirms root
-// is a genuine network with a genuine tempo, not a capture artefact:
-//
-//   SubtensorModule::NetworksAdded(0) = true
-//   SubtensorModule::Tempo(0)  = 100     (ours: 100)
-//   SubtensorModule::Tempo(1)  = 99      (ours: 99)
-//   SubtensorModule::Tempo(64) = 360     (ours: 360)
-//
-// It is kept because every sibling enrichment in this same builder already treats
-// a root membership as real: loadStoreAlphaPricesByNetuid gives netuid 0 a price of
-// 1, and the leaderboard counts a root-only validator. Dropping root would make
-// apy_estimate silently ignore the root position of exactly the large validators
-// whose stake is mostly there.
-//
-// The one wart is the OUTPUT field's name, `apy_estimate_eligible_subnet_count`,
-// which counts root among "subnets" when root is not one. That name predates this
-// fix and renaming a published field is a contract change, not a bug fix -- so it
-// is left alone and called out rather than quietly redefined here.
+// APY uses positive captured subnet tempos, including root. Missing or failed
+// reads leave APY unknown; tempoByNetuid excludes zero to avoid infinite rates.
+// The published eligible-subnet count includes root for compatibility.
 async function loadSubnetTemposFromStore(
   sql: PgSql,
   env: DataApiEnv,
@@ -6769,24 +6781,8 @@ async function loadStoreAlphaPricesByNetuid(
         FROM subnet_snapshots GROUP BY netuid
       ) latest
         ON latest.netuid = s.netuid AND latest.snapshot_date = s.snapshot_date`;
-    // #9408 follow-up: mark at SPOT, derived from the reserves on this same row,
-    // rather than at alpha_price_tao -- which is the chain's MOVING price, byte-
-    // identical to moving_price_pinned on the live tier.
-    //
-    // The difference is not academic. Measured on netuid 64's own snapshots:
-    //
-    //   2026-08-04  moving 0.084773044  spot 0.084866808   (-0.11%)
-    //   2026-08-03  moving 0.084084102  spot 0.085180046   (-1.29%)
-    //
-    // A lagging average is the wrong mark for "what is this position worth", and it
-    // lags hardest exactly when the market has moved. The reserves were already being
-    // selected past -- the spot is one division away.
-    //
-    // spotPriceTao is shared with /stake-quote and the economics card, so all three
-    // mean the same thing by "spot", including root's 1:1 (no AMM, price 1 by
-    // definition). It returns null for an unusable pool rather than 0, and the map's
-    // existing contract already excludes a null-priced membership from the totals --
-    // which under-reports rather than mis-denominates, the same trade as before.
+    // Price from same-row reserves using the shared spot codec (root is 1:1).
+    // Unusable pools remain null and contribute no invented priced stake.
     return new Map(
       rows.map((row) => [
         Number(row.netuid),
@@ -6804,38 +6800,10 @@ async function loadStoreAlphaPricesByNetuid(
   }
 }
 
-// hotkey -> nominator_count for every permitted validator, from the store table
-// tests/fixtures/sqlite-schema/0012 created (#9146).
-//
-// CORRELATED SUBQUERY, NOT AN IN LIST, and that is load-bearing rather than
-// stylistic: the leaderboard covers ~1,031 hotkeys and the Workers store binding
-// caps a statement at 100 bound parameters, so an inlined key list would need
-// chunking into a dozen round trips (what the lakehouse reader has to do,
-// having no join to reach for). Joining against `neurons` inside SQLite costs
-// ZERO bound parameters and one query, and keeps the filter exactly in step
-// with the leaderboard's own `validator_permit = TRUE AND hotkey IS NOT NULL`.
-//
-// Same degrade-to-empty-map contract as loadStoreAlphaPricesByNetuid above: on
-// any failure every nominator_count stays null, which is precisely the state
-// this tier served before the table existed -- so a broken read is a lost
-// enrichment, never a wrong number.
-//
-// ABSENCE MEANS ZERO, BUT ONLY FROM A FRESH SCAN (#9314). The producer emits a
-// row only for hotkeys it saw holding stake in SubtensorModule::Alpha, and it
-// has never once recorded a zero -- measured 2026-08-03, `WHERE
-// nominator_count = 0` returns nothing across 112,550 rows. So 471 of the 1,028
-// permitted validators have no row, and reading that as "unknown" understated
-// what we actually know: the producer's pass over Alpha is EXHAUSTIVE, so a
-// permitted validator absent from a completed pass genuinely has zero distinct
-// coldkeys staked to it.
-//
-// The freshness gate is what makes that inference safe rather than reckless.
-// Against a stale or truncated table the same absence means "we have not
-// looked recently", and publishing 0 for it would be a confident wrong number
-// -- the exact failure this family's own doctrine says is worse than an absent
-// one. So the zero-fill is conditioned on the scan being within the SAME
-// threshold the staleness watchdog alarms on, imported rather than restated so
-// the two can never disagree about what "fresh" means.
+// Counts are raw membership gauges, scoped to the newest canonical capture.
+// Native keys travel as one JSON binding, avoiding the binding ceiling and a
+// second neuron scan. Only a fresh, complete anchored pass permits absent keys
+// to become zero. Missing, partial or failed reads leave enrichment unknown.
 async function loadNominatorCountsFromStore(
   sql: PgSql,
   env: DataApiEnv,
@@ -6868,20 +6836,23 @@ async function loadNominatorCountFromStore(
   env: DataApiEnv,
 ): Promise<Map<string, number>> {
   try {
-    const rows = await sql.unsafe<{
-      hotkey: ValidatorNominatorCounts["hotkey"];
-      nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
-      scan_at: ValidatorNominatorCounts["captured_at"] | null;
-    }>(
-      hotkeys.length === 1
-        ? "SELECT ? AS hotkey," +
-            " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
-            " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
-        : `WITH requested(hotkey) AS (VALUES ${hotkeys.map(() => "(?)").join(",")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
+    let rows: Row[] | null = await readCanonicalNominatorCounts(env, hotkeys);
+    if (rows === null) {
+      rows = await sql.unsafe<{
+        hotkey: ValidatorNominatorCounts["hotkey"];
+        nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
+        scan_at: ValidatorNominatorCounts["captured_at"] | null;
+      }>(
+        hotkeys.length === 1
+          ? "SELECT ? AS hotkey," +
+              " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
+              " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
+          : `WITH requested(hotkey) AS (VALUES ${hotkeys.map(() => "(?)").join(",")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
           SELECT r.hotkey,c.nominator_count,scan.scan_at FROM requested r CROSS JOIN scan
           LEFT JOIN validator_nominator_counts c ON c.hotkey=r.hotkey`,
-      hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],
-    );
+        hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],
+      );
+    }
     const counts = fillConfirmedZeros(
       rows,
       nominatorCountsByHotkey(rows),
@@ -7615,6 +7586,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       const materialized = await readExplorerDirectoryMaterialization(
         env.METAGRAPH_CONTROL,
       );
+      let directory: ReturnType<typeof buildValidatorOperatorDirectory>;
       if (materialized) {
         // Keep the verified response available if the freshness read fails.
         scheduleExplorerDirectoryRefresh(
@@ -7624,10 +7596,26 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             (latest) => latest ?? materialized.captured_at,
           ),
         );
-        return json(materialized.validators);
-      }
-      return json(
-        buildValidatorOperatorDirectory(
+        const previous = materialized.validators;
+        const counts = await loadNominatorCountsFromStore(
+          sql,
+          env,
+          previous.operators
+            .filter((operator) => operator.hotkey_count === 1)
+            .map((operator) => operator.primary_hotkey),
+        );
+        directory = {
+          ...previous,
+          operators: previous.operators.map((operator) => ({
+            ...operator,
+            nominator_count:
+              operator.hotkey_count === 1
+                ? (counts.get(operator.primary_hotkey) ?? null)
+                : null,
+          })),
+        };
+      } else {
+        directory = buildValidatorOperatorDirectory(
           await loadGlobalValidatorsFromStore(
             sql,
             env,
@@ -7635,8 +7623,11 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             GLOBAL_VALIDATOR_LIMIT_MAX,
             true,
           ),
-        ),
-      );
+        );
+      }
+      const response = json(directory);
+      response.headers.set("cache-control", "no-store");
+      return response;
     };
   }
 
@@ -8186,7 +8177,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/owner-capture$/,
   );
   if (ownerCaptureMatch) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(ownerCaptureMatch[1]);
       const cutoff = windowCutoffDate(
         url,
@@ -8224,18 +8215,26 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
       // Only meaningful when we know whose UIDs to look behind, so it is
       // skipped entirely rather than read and discarded.
       const positions = ownerColdkey
-        ? await sql<{
-            coldkey: NominatorPositions["coldkey"];
-            hotkey: NominatorPositions["hotkey"];
-            share_fraction: NominatorPositions["share_fraction"];
-          }>`
+        ? await ownerCapturePositions(
+            selectedD1Store(env, [
+              "nominator_positions",
+              "nominator_positions_passes",
+              "nominator_scan_receipts",
+            ]),
+            netuid,
+            () => sql<{
+              coldkey: NominatorPositions["coldkey"];
+              hotkey: NominatorPositions["hotkey"];
+              share_fraction: NominatorPositions["share_fraction"];
+            }>`
         SELECT np.coldkey, np.hotkey, np.share_fraction
         FROM nominator_positions np
         WHERE np.netuid = ${netuid}
           AND np.captured_at = (
             SELECT MAX(captured_at) FROM nominator_positions
             WHERE netuid = ${netuid}
-          )`
+          )`,
+          )
         : [];
 
       return json(
@@ -9893,11 +9892,23 @@ export default {
         if (reason) throw new Error(`neurons queue write failed: ${reason}`);
         return result;
       },
-      "validator-nominator-counts": async (rows, pass) => {
-        // D1 is not written -- this lane is Neon's outright (#10116) --
-        // so the Neon write below is the ONLY one, and its failure must
-        // throw rather than return: a normal return acks the message and
-        // the rows are gone. writeSyncBatch turns a throw into a retry.
+      "validator-nominator-counts": async (rows, pass, alphaAnchor) => {
+        if (alphaAnchor) {
+          const owner = alphaCountsOwnerStore(env);
+          if (!owner || !pass)
+            throw new Error(
+              "Alpha counts require their native owner and total",
+            );
+          await writeAlphaCountsD1(
+            owner,
+            rows,
+            alphaAnchor,
+            pass.expectedRows,
+            Date.now(),
+          );
+          return { statements: 6 };
+        }
+        // A failed legacy write must throw so queue delivery retries it.
         const neon = await mirrorLedgerToNeon(
           env,
           ctx,

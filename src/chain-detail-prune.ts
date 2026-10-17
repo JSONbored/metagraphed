@@ -247,14 +247,17 @@ export interface ChainDetailPruneResult {
   retained_blocks?: number;
   /** Exclusive upper bound of the range this run actually deleted. */
   deleted_below?: number;
-  /** How many blocks this run removed, capped per run. */
+  /** Width of the coverage block range processed, capped per run. */
   blocks_pruned?: number;
+  /** Attempted account range end and width; guarded rows can remain inside it. */
+  account_events_range_end?: number;
+  account_events_range_blocks?: number;
   /** Whether the SAME bound was applied to Neon, and what happened if not.
    * Reported separately because the two stores prune INDEPENDENTLY -- see the
    * runner. */
   neon_pruned?: boolean;
   neon_detail?: string;
-  /** The selected D1 owner committed each bounded group of four deletes atomically. */
+  /** The selected D1 owner committed each nonempty group of deletes atomically. */
   d1_pruned?: boolean;
 }
 
@@ -307,7 +310,30 @@ export async function pruneChainDetail(
         (env as { NATIVE_PROJECTIONS?: unknown } | null)?.NATIVE_PROJECTIONS ===
         "enabled",
     });
-    if (window.keepFrom <= floor)
+    const d1 = selectedD1Store(env, PRUNE_TABLES);
+    const accountBounds = d1
+      ? await d1.first<{ floor: unknown }>(
+          "SELECT MIN(block_number) AS floor FROM chain_detail_account_events",
+        )
+      : null;
+    const accountFloor =
+      safeIntOrNull(accountBounds?.floor) ?? window.accountEventsKeepFrom;
+    const coverageSpan = Math.max(
+      0,
+      Math.min(CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN, window.keepFrom - floor),
+    );
+    // An account backlog must advance even when coverage is already caught up.
+    // Each range starts at its own indexed floor and keeps its own 120-block cap.
+    const accountSpan = d1
+      ? Math.max(
+          0,
+          Math.min(
+            CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
+            window.accountEventsKeepFrom - accountFloor,
+          ),
+        )
+      : 0;
+    if (coverageSpan === 0 && accountSpan === 0)
       return {
         ok: true,
         keep_from: window.keepFrom,
@@ -317,54 +343,61 @@ export async function pruneChainDetail(
 
     // Bounded per run: delete at most CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN
     // blocks upward from the current floor, never the whole backlog at once.
-    const deletedBelow = Math.min(
-      window.keepFrom,
-      floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
-    );
-    // The account-events bound rides the SAME per-run cap, so a deeper floor
-    // cannot turn one run into an unbounded delete -- it only stops that table
-    // being taken as far as the others.
-    const accountEventsDeletedBelow = Math.min(
-      window.accountEventsKeepFrom,
-      floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
-    );
-    const d1 = selectedD1Store(env, PRUNE_TABLES);
+    const deletedBelow = floor + coverageSpan;
+    // Neon keeps its existing shared bound; D1 advances each independent range.
+    const accountEventsDeletedBelow = d1
+      ? accountFloor + accountSpan
+      : Math.min(
+          window.accountEventsKeepFrom,
+          floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
+        );
     let outcome: Pick<
       ChainDetailPruneResult,
       "d1_pruned" | "neon_pruned" | "neon_detail"
     >;
     if (d1) {
-      // Account events retain a deeper window, so their oldest row can be
-      // thousands of blocks below the coverage register's floor. Starting
-      // their cap at that register made one nominally bounded delete take
-      // 54.7 seconds. Bound this table from its own indexed minimum instead.
-      const accountBounds = await d1.first<{ floor: unknown }>(
-        "SELECT MIN(block_number) AS floor FROM chain_detail_account_events",
-      );
-      const accountFloor =
-        safeIntOrNull(accountBounds!.floor) ?? accountEventsDeletedBelow;
       for (
         let offset = 0;
-        offset < deletedBelow - floor;
+        offset < Math.max(coverageSpan, accountSpan);
         offset += D1_PRUNE_BLOCKS_PER_TRANSACTION
       ) {
         // Each completed prefix is safe: its detail and coverage disappear
         // together. A later failure preserves its entire chunk and reports
         // failure without claiming that the whole requested window finished.
         await d1.transaction(
-          PRUNE_TABLES.map((table) => {
+          PRUNE_TABLES.flatMap((table) => {
             const account = table === "chain_detail_account_events";
+            if (offset >= (account ? accountSpan : coverageSpan)) return [];
             const first = (account ? accountFloor : floor) + offset;
-            return {
-              text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?`,
-              values: [
-                first,
-                Math.min(
-                  account ? accountEventsDeletedBelow : deletedBelow,
-                  first + D1_PRUNE_BLOCKS_PER_TRANSACTION,
-                ),
-              ],
-            };
+            const last = Math.min(
+              account ? accountEventsDeletedBelow : deletedBelow,
+              first + D1_PRUNE_BLOCKS_PER_TRANSACTION,
+            );
+            let guard = "";
+            const values = [first, last];
+            if (account) {
+              // Replays can lower coverage between batches. Retain advertised
+              // children unless this same transaction also retires their block.
+              guard =
+                " AND (block_number < (SELECT MIN(block_number) FROM chain_detail_blocks)";
+              if (offset < coverageSpan) {
+                guard += " OR (block_number >= ? AND block_number < ?)";
+                values.push(
+                  floor + offset,
+                  Math.min(
+                    deletedBelow,
+                    floor + offset + D1_PRUNE_BLOCKS_PER_TRANSACTION,
+                  ),
+                );
+              }
+              guard += ")";
+            }
+            return [
+              {
+                text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?${guard}`,
+                values,
+              },
+            ];
           }),
         );
       }
@@ -384,6 +417,12 @@ export async function pruneChainDetail(
       retained_blocks: window.retainedBlocks,
       deleted_below: deletedBelow,
       blocks_pruned: deletedBelow - floor,
+      ...(d1
+        ? {
+            account_events_range_end: accountEventsDeletedBelow,
+            account_events_range_blocks: accountSpan,
+          }
+        : {}),
       ...outcome,
     };
   } catch (err) {

@@ -32,6 +32,9 @@
 //
 // Both survive this migration deliberately. See metagraphed-infra#352.
 
+import { alphaCountAnchorSchema } from "./alpha-counts-d1.ts";
+import type { AlphaCountAnchor } from "./alpha-counts-d1.ts";
+
 /** One chunk of a lane's pass, as producers enqueue it. */
 export interface SyncBatchMessage {
   /** Which lane produced it -- `hotkey-alpha`, `account-balances`, … */
@@ -44,6 +47,8 @@ export interface SyncBatchMessage {
    * it is optional on the sync routes: a producer may post without declaring,
    * and inventing a total would mark an unproven load complete. */
   pass_total?: number;
+  /** Exact selected Alpha capture whose validator counts this pass proves. */
+  alpha_snapshot?: AlphaCountAnchor;
   /**
    * The chunk's rows, for a lane that carries one array.
    *
@@ -357,6 +362,7 @@ export function packSyncBatchMessages(input: {
   lane: SyncBatchLane;
   capturedAt: number;
   passTotal?: number;
+  alpha_snapshot?: AlphaCountAnchor;
   rows: Record<string, unknown>[];
   maxBytes?: number;
   maxRows?: number;
@@ -372,11 +378,24 @@ export function packSyncBatchMessages(input: {
     lane,
     capturedAt,
     passTotal,
+    alpha_snapshot,
     rows,
     maxBytes = SYNC_BATCH_MAX_BYTES,
     maxRows = SYNC_BATCH_MAX_ROWS,
     pruningKeys = PRUNING_LANE_KEYS,
   } = input;
+  if (
+    alpha_snapshot !== undefined &&
+    !validAlphaCountContext({
+      lane,
+      captured_at: capturedAt,
+      pass_total: passTotal,
+      alpha_snapshot,
+      rows,
+    })
+  ) {
+    throw new TypeError("sync-batches: invalid Alpha count capture anchor");
+  }
   if (rows.length === 0) return [];
 
   const prunes = PRUNING_LANES.includes(lane);
@@ -428,6 +447,7 @@ export function packSyncBatchMessages(input: {
       lane,
       captured_at: capturedAt,
       ...(passTotal !== undefined ? { pass_total: passTotal } : {}),
+      ...(alpha_snapshot !== undefined ? { alpha_snapshot } : {}),
       ...(prunes ? { key_complete: true as const } : {}),
       ...(hoisted ? { key_column: hoisted, key_value: keyValue } : {}),
       rows,
@@ -561,6 +581,8 @@ export interface SyncBatchQueue {
  * never cleared, and the gate asks "did everything arrive", not "how many
  * times". The opposite trade -- acking a partial chunk -- would mark a pass
  * complete that never was.
+ * Anchored Alpha counts instead tally distinct durable hotkeys atomically;
+ * their retries cannot increase progress or substitute for terminal status.
  */
 export async function enqueueSyncBatch(
   queue: SyncBatchQueue,
@@ -568,12 +590,35 @@ export async function enqueueSyncBatch(
     lane: SyncBatchLane;
     capturedAt: number;
     passTotal?: number;
+    alpha_snapshot?: AlphaCountAnchor;
     rows: Record<string, unknown>[];
   },
 ): Promise<number> {
   const messages = packSyncBatchMessages(input);
   await Promise.all(messages.map((message) => queue.send(message)));
   return messages.length;
+}
+
+function validAlphaCountContext(message: SyncBatchMessage): boolean {
+  const parsed = alphaCountAnchorSchema.safeParse(message.alpha_snapshot);
+  return (
+    parsed.success &&
+    message.lane === "validator-nominator-counts" &&
+    message.pass_total !== undefined &&
+    Number.isSafeInteger(message.pass_total) &&
+    message.pass_total > 0 &&
+    message.pass_total <= parsed.data.distinct_members &&
+    parsed.data.captured_at === message.captured_at &&
+    Array.isArray(message.rows) &&
+    message.rows.length > 0 &&
+    message.pass_total >= message.rows.length &&
+    message.rows.every(
+      (row) =>
+        row !== null &&
+        typeof row === "object" &&
+        row.captured_at === message.captured_at,
+    )
+  );
 }
 
 /**
@@ -593,6 +638,9 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
     !Number.isInteger(m.captured_at) ||
     m.captured_at <= 0
   ) {
+    return false;
+  }
+  if (m.alpha_snapshot !== undefined && !validAlphaCountContext(m)) {
     return false;
   }
   if (
@@ -710,6 +758,7 @@ export function syncLaneUsesQueue(
 export type SyncBatchWriter = (
   rows: Record<string, unknown>[],
   pass: PassTally | null,
+  alphaSnapshot?: AlphaCountAnchor,
 ) => Promise<unknown>;
 
 /** A multi-family lane's writer. Separate from SyncBatchWriter rather than a
@@ -822,5 +871,9 @@ export async function writeSyncBatch(
   }
   // syncBatchRows, not message.rows: a hoisted key is re-injected here so the
   // writer -- and the prune map it derives -- see whole rows.
-  await writer(syncBatchRows(message), passTallyFor(message, nowMs));
+  await writer(
+    syncBatchRows(message),
+    passTallyFor(message, nowMs),
+    message.alpha_snapshot,
+  );
 }

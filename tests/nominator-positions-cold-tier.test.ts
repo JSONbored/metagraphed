@@ -22,7 +22,11 @@ const runtime = new Miniflare({
   d1Databases: ["DB"],
 });
 const db = await runtime.getD1Database("DB");
-const env = { D1_STATE: db, D1_STATE_TABLES: "nominator_positions,neurons" };
+const env = {
+  D1_STATE: db,
+  D1_STATE_TABLES:
+    "nominator_positions,nominator_positions_passes,nominator_scan_receipts,neurons",
+};
 const page = vi.spyOn(feeds, "loadIndexedAccountFeedPage"),
   floor = vi.spyOn(projection, "accountHistoryFloorMs");
 beforeAll(async () => {

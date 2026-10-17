@@ -8,7 +8,14 @@ import {
   buildAccountPositions,
   distinctHotkeys,
   stakeByHotkeyNetuid,
+  unpriceableAccountPositions,
 } from "./account-nominator-positions.ts";
+import {
+  alphaCaptureStateFromOwner,
+  alphaPositionsUnqualified,
+  canonicalAlphaOwnerStore,
+  NOMINATOR_POSITIONS_TABLES,
+} from "./alpha-capture-reader.ts";
 import { accountHistoryFloorMs } from "./account-summary-projection.ts";
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./account-stake-flow.ts";
 import { safeSs58Literal } from "./history-readers.ts";
@@ -23,7 +30,7 @@ async function nativePositionRows(
   values: unknown[] = [],
 ): Promise<Record<string, unknown>[] | null | undefined> {
   try {
-    const store = selectedD1Store(env, ["nominator_positions"]);
+    const store = selectedD1Store(env, NOMINATOR_POSITIONS_TABLES);
     return store ? await store.query(text, values) : undefined;
   } catch {
     return null;
@@ -176,6 +183,54 @@ export async function loadAccountPositionsColdTier(
   // An unusable address is a decline, not an unfiltered scan of the ledger.
   const coldkey = safeSs58Literal(ss58);
   if (coldkey === null) return null;
+
+  try {
+    const db = canonicalAlphaOwnerStore(env);
+    if (db) {
+      const state = await alphaCaptureStateFromOwner(env);
+      if (state.available) {
+        const capture = state.capture;
+        if (!capture?.quantityQualified)
+          return unpriceableAccountPositions(
+            ss58,
+            capture?.captured_at ?? null,
+          );
+        const exactRows = await db.query(
+          `SELECT ${POSITION_COLUMNS}, alpha_rao FROM alpha_snapshot_rows` +
+            " WHERE coldkey = ? AND captured_at = ? LIMIT ?",
+          [coldkey, capture.captured_at, POSITION_SCAN_CAP + 1],
+        );
+        if (exactRows.length > POSITION_SCAN_CAP) return null;
+        if (
+          await alphaPositionsUnqualified(db, capture.captured_at, {
+            column: "coldkey",
+            value: coldkey,
+          })
+        )
+          return unpriceableAccountPositions(ss58, capture.captured_at);
+        const after = await alphaCaptureStateFromOwner(env);
+        if (
+          !after.capture?.quantityQualified ||
+          after.capture.captured_at !== capture.captured_at ||
+          after.capture.block_hash !== capture.block_hash
+        )
+          return unpriceableAccountPositions(
+            ss58,
+            after.capture?.captured_at ?? null,
+          );
+        const result = buildAccountPositions(exactRows, null, ss58);
+        return annotatePositionsSnapshot(result, {
+          snapshotCapturedAtMs: capture.captured_at,
+          latestStakeEventMs:
+            result.position_count === 0
+              ? await latestStakeEventAt(env, coldkey)
+              : null,
+        });
+      }
+    }
+  } catch {
+    return null;
+  }
 
   // One row over the cap is enough to know the cap was exceeded, and cheaper
   // than a second counting query over the same predicate.

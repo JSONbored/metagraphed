@@ -11,6 +11,7 @@ import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
 import type { ReadStoreDb, UntypedRowQuerier } from "./read-store.ts";
 import { readRevisionedNeuronEconomics } from "./neuron-economics-cache.ts";
 import { CHAIN_PERFORMANCE_READ_COLUMNS } from "./chain-performance.ts";
+import { readCanonicalNominatorCounts } from "./alpha-counts-reader.ts";
 
 const EconomicsValuesSchema = z.array(z.unknown()).length(5);
 const EconomicsShardSchema = z.array(
@@ -314,6 +315,8 @@ export async function readDirectoryNominatorCounts(
   env: unknown,
   hotkeys: readonly string[],
 ): Promise<DirectoryNominatorRow[]> {
+  const canonical = await readCanonicalNominatorCounts(env, hotkeys);
+  if (canonical !== null) return canonical;
   const store = selectedD1Store(env, ["neurons", "validator_nominator_counts"]);
   if (store) {
     return store.query(

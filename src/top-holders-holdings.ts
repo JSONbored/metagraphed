@@ -69,6 +69,10 @@ import {
   latestCompleteHotkeyAlphaPass,
   mayPriceHotkeyAlpha,
 } from "./hotkey-alpha-completeness.ts";
+import {
+  alphaCaptureState,
+  alphaPositionsUnqualified,
+} from "./alpha-capture-reader.ts";
 
 /** The holdings sorts, in the order the artifact declares them. */
 export const TOP_HOLDERS_FREE_SORT = "free_tao";
@@ -112,6 +116,8 @@ export interface HoldingsLeg {
    * there is only one stamp to take.
    */
   capturedAt: number;
+  /** Canonical Alpha capture backing delegated cells, kept on stored artifacts. */
+  alphaCapturedAt?: number;
 }
 
 /**
@@ -140,17 +146,24 @@ const PRICE_CTE =
  * at different blocks, which is a silently inconsistent sum rather than a merely
  * stale one.
  */
-const delegatedCte = (alphaCapturedAt: number) =>
+const delegatedCte = (alphaCapturedAt: number, exact = false) =>
   "del AS (" +
   "SELECT np.coldkey AS ss58," +
-  " SUM(np.share_fraction * ha.total_alpha * price.alpha_price_tao)" +
+  (exact
+    ? " SUM(CAST(np.alpha_rao AS REAL) / 1000000000.0 * price.alpha_price_tao)"
+    : " SUM(np.share_fraction * ha.total_alpha * price.alpha_price_tao)") +
   " AS delegated_tao" +
-  " FROM nominator_positions np" +
-  " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
-  " AND ha.netuid = np.netuid" +
-  ` AND ha.captured_at = ${alphaCapturedAt}` +
+  (exact
+    ? " FROM alpha_snapshot_rows np"
+    : " FROM nominator_positions np" +
+      " JOIN hotkey_alpha ha ON ha.hotkey = np.hotkey" +
+      " AND ha.netuid = np.netuid" +
+      ` AND ha.captured_at = ${alphaCapturedAt}`) +
   " JOIN price ON price.netuid = np.netuid" +
-  " GROUP BY np.coldkey)";
+  (exact ? ` WHERE np.captured_at = ${alphaCapturedAt}` : "") +
+  " GROUP BY np.coldkey" +
+  (exact ? " HAVING SUM(CAST(np.alpha_rao AS REAL)) > 0" : "") +
+  ")";
 
 /**
  * The balance ledger's own rows.
@@ -179,6 +192,7 @@ export function topHoldersHoldingsSql(
     free: boolean;
     delegated: boolean;
     alphaCapturedAt?: number | null;
+    exactAlpha?: boolean;
   },
   cap: number = TOP_HOLDERS_HOLDINGS_ROW_CAP,
 ): string {
@@ -189,7 +203,10 @@ export function topHoldersHoldingsSql(
   const ctes: string[] = [];
   const unionParts: string[] = [];
   if (delegated) {
-    ctes.push(PRICE_CTE, delegatedCte(opts.alphaCapturedAt as number));
+    ctes.push(
+      PRICE_CTE,
+      delegatedCte(opts.alphaCapturedAt as number, opts.exactAlpha),
+    );
   }
   if (free) {
     ctes.push(FREE_CTE);
@@ -276,21 +293,54 @@ export async function topHoldersHoldings(
   // first() -- so the casts go through unknown rather than widening either
   // interface to satisfy the other.
   const asFirst = db;
-  const [balances, alpha] = await Promise.all([
+  const [balances, state] = await Promise.all([
     latestCompleteAccountBalancesPass(asFirst),
-    latestCompleteHotkeyAlphaPass(db),
-  ]);
+    alphaCaptureState(db),
+  ]).catch(() => [null, null] as const);
+  if (!balances || !state) return null;
+  const alpha = state.available
+    ? null
+    : await latestCompleteHotkeyAlphaPass(db);
   const free = mayRankAccountBalances(balances);
-  const delegated = mayPriceHotkeyAlpha(alpha);
+  let delegated = state.available
+    ? state.capture?.quantityQualified === true
+    : alpha !== null && mayPriceHotkeyAlpha(alpha);
+  const alphaCapturedAt = state.available
+    ? state.capture?.captured_at
+    : alpha?.capturedAt;
   if (!free && !delegated) return null;
 
   let results: unknown[];
   try {
+    if (
+      delegated &&
+      state.available &&
+      (await alphaPositionsUnqualified(db, alphaCapturedAt as number))
+    ) {
+      delegated = false;
+      if (!free) return null;
+    }
     const sql = topHoldersHoldingsSql(
-      { free, delegated, alphaCapturedAt: alpha.capturedAt },
+      { free, delegated, alphaCapturedAt, exactAlpha: state.available },
       cap,
     );
     results = await db.query(sql);
+    if (delegated && state.available) {
+      const unqualified = await alphaPositionsUnqualified(
+        db,
+        alphaCapturedAt as number,
+      );
+      const after = await alphaCaptureState(db);
+      if (
+        unqualified ||
+        !after.capture?.quantityQualified ||
+        after.capture.captured_at !== state.capture!.captured_at ||
+        after.capture.block_hash !== state.capture!.block_hash
+      ) {
+        delegated = false;
+        if (!free) return null;
+      }
+    }
   } catch {
     // A missing table, an unbound DB and a failed read are one outcome: no
     // holdings leg ran, so the artifact must not claim any of these sorts.
@@ -342,7 +392,14 @@ export async function topHoldersHoldings(
   // that Math.min would read as 0 and report as 1970.
   const stamps = [
     ...(free ? [balances.capturedAt as number] : []),
-    ...(delegated ? [alpha.capturedAt as number] : []),
+    ...(delegated ? [alphaCapturedAt as number] : []),
   ];
-  return { cells, sorts, capturedAt: Math.min(...stamps) };
+  return {
+    cells,
+    sorts,
+    capturedAt: Math.min(...stamps),
+    ...(delegated && state.available
+      ? { alphaCapturedAt: alphaCapturedAt as number }
+      : {}),
+  };
 }

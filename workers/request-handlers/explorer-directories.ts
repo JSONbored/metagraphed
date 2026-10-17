@@ -4,22 +4,16 @@ import { tryDataApiTier } from "../data-api-tier.ts";
 import { NO_ALPHA_PRICES } from "../../src/metagraph-neurons.ts";
 import { buildAccountHolderDirectory } from "../../src/account-holder-directory.ts";
 import { buildValidatorOperatorDirectory } from "../../src/validator-operator-directory.ts";
-import {
-  readCurrentAccountDirectory,
-  readCurrentValidatorDirectory,
-} from "../../src/explorer-directory-current.ts";
+import { readCurrentAccountDirectory } from "../../src/explorer-directory-current.ts";
 import { metagraphMeta } from "../responses.ts";
 export async function handleValidatorOperatorDirectory(
   request: Request,
   env: Env,
 ) {
   const publishedAtPromise = publishedAt(env);
-  const materialized =
-    env.METAGRAPH_NEURONS_SOURCE === "data-api"
-      ? await readCurrentValidatorDirectory(env.METAGRAPH_CONTROL)
-      : null;
+  // Counts change independently of neuron/KV publication and require their
+  // canonical receipt at the owning service on every read.
   const data =
-    materialized ??
     ((await tryDataApiTier(
       env,
       request,
@@ -38,6 +32,7 @@ export async function handleValidatorOperatorDirectory(
       ),
     },
     "short",
+    { "cache-control": "no-store" },
   );
 }
 
