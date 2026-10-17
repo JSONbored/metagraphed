@@ -30,7 +30,8 @@ function record(value: unknown): Record<string, unknown> | null {
 /** Inspect emitted field metadata, including fields nested in arrays/definitions. */
 function shareDescriptions(value: unknown): string[] {
   const object = record(value);
-  if (!object) return Array.isArray(value) ? value.flatMap(shareDescriptions) : [];
+  if (!object)
+    return Array.isArray(value) ? value.flatMap(shareDescriptions) : [];
   const descriptions: string[] = [];
   for (const [name, field] of Object.entries(record(object.properties) ?? {})) {
     if (
@@ -68,10 +69,12 @@ describe("legacy emission-share provenance (#11552)", () => {
       generatedAt: "2026-10-17T00:00:00Z",
     });
     const legacy = Object.fromEntries(
-      artifact.subnets.map((row: { netuid: number; emission_share: number }) => [
-        row.netuid,
-        row.emission_share,
-      ]),
+      artifact.subnets.map(
+        (row: { netuid: number; emission_share: number }) => [
+          row.netuid,
+          row.emission_share,
+        ],
+      ),
     );
     assert.deepEqual(legacy, { 0: 0.25, 1: 0.25, 2: 0.5 });
 
