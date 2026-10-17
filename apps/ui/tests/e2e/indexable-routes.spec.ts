@@ -1298,7 +1298,10 @@ test.describe("client loader recovery", () => {
             headers: { "access-control-allow-origin": origin },
             body: JSON.stringify({
               ok: false,
-              error: { code: "data_tier_unavailable", message: "Critical route fixture unavailable" },
+              error: {
+                code: "data_tier_unavailable",
+                message: "Critical route fixture unavailable",
+              },
             }),
           });
           if (fixtureObservation) fixtureObservation.fulfilled_503 += 1;
@@ -1308,7 +1311,10 @@ test.describe("client loader recovery", () => {
         }
       });
       if (fixtureObservation) fixtureObservation.fixture_registered = true;
-      await page.locator("header").getByRole("link", { name: destination.link, exact: true }).click();
+      await page
+        .locator("header")
+        .getByRole("link", { name: destination.link, exact: true })
+        .click();
       const notice = page
         .getByRole("status")
         .filter({ hasText: "Data source temporarily unavailable" });
@@ -1328,7 +1334,9 @@ test.describe("client loader recovery", () => {
       await retry.focus();
       await expect(retry).toBeFocused();
       await page.keyboard.press("Enter");
-      await expect(page.getByRole("heading", { name: destination.heading, level: 1 })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: destination.heading, level: 1 }),
+      ).toBeVisible();
       await expect(notice).toHaveCount(0);
       expect(criticalRequests).toBeGreaterThan(beforeRetry);
     });
