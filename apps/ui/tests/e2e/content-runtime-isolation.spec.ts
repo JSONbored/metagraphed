@@ -37,7 +37,9 @@ test.describe("content route runtime isolation", () => {
     await expect.poll(() => openapiChunks.length).toBe(1);
   });
 
-  test("a malformed server-function link cannot become an HTML document", async ({ page }, testInfo) => {
+  test("a malformed server-function link cannot become an HTML document", async ({
+    page,
+  }, testInfo) => {
     // GHSA-qx66-fv34-fjm8: exercise the compiled public transport, not a mock
     // handler or a hard-coded generated function ID. A normal client navigation
     // supplies both the current URL and a positive control for that function.
