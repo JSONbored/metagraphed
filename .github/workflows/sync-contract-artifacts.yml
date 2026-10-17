@@ -905,7 +905,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: JSONbored/metagraphed
-          ref: 6264185656f73b8c62f0264d97b53cf646ec9241
+          ref: 178320559ede6b694b8fe5f51567b05a1db196bf
           persist-credentials: false
           fetch-depth: 1
       - name: Verify fixed source, fixture configuration and inputs
@@ -913,8 +913,8 @@ jobs:
         run: |
           python3 - <<'PY_RECOVERY_INPUTS'
           import hashlib, json, os, pathlib, subprocess
-          source = "6264185656f73b8c62f0264d97b53cf646ec9241"
-          expected = {'package.json': 'd8b099ac69748e38f363287ee673b1b4c8b35339af67e2c4fc033484c3ffaed5', 'apps/ui/package.json': 'e3a86e5aa2fe748f042033ddf4da195568e12c5fc09b9a66c8b66c3aa4f347e2', 'package-lock.json': '00d480ff42855c3b0bbe0ac13ed1c6cc388ca7478ffaf53f898c10525f28348e', 'apps/ui/playwright.config.ts': 'e841be1d48fe584b8046106c9af06a925039fd57bd7d4ac21b687865e927da7a', 'apps/ui/tests/e2e/api-stub.ts': '86722999dc241b70737c8a78b3a71c84a9a4ff279909112697669dc67684c2c4', 'apps/ui/tests/e2e/serve-e2e.ts': '819950b22abf5ba6a4648ca61aa5fbead97dfb0015e0cfc6e8feae0fb4887fc3', 'apps/ui/tests/e2e/server-restart.ts': '9005052b7cc54d83b62360687fdc7d58df35c50a01373f46749a23aeac9881e7', 'apps/ui/tests/e2e/native-runtime-diagnostics.ts': 'efa8520cf9cbf5d2f11b8b106b96b26386643dc20d3f4a4b9547fc125932ddd8', 'apps/ui/tests/e2e/indexable-routes.spec.ts': 'f21003e88808b98206815e3c935df68cae90102c5991ea27b423ee41723241fc', '.npmrc': 'b50bde7ee3e769650d30f1752bf6403f0d69f3a656113d3e2f63c9917a452165', 'apps/ui/tests/e2e/preferences-loading.spec.ts': '3cbe3375a0f3c41fa930908ed0e87c06ac98d93c15bbb96cef50a8039944057e', 'apps/ui/tests/e2e/provider-detail-state.spec.ts': 'af6cc4ac7bb9d98d85cae8d664721206a8f27708d81a0440f913e2e667296f37'}
+          source = "178320559ede6b694b8fe5f51567b05a1db196bf"
+          expected = {'package.json': '012099626fe9e09f22d3cf9b7588aa6e9c3d471ff29de4b3828813444ae2bc91', 'apps/ui/package.json': 'e3a86e5aa2fe748f042033ddf4da195568e12c5fc09b9a66c8b66c3aa4f347e2', 'package-lock.json': '45a072a6069d18fd15d975c3d8620b9a20dd8a50e8e3ae561fcf2bf24ac977a9', 'apps/ui/playwright.config.ts': 'e841be1d48fe584b8046106c9af06a925039fd57bd7d4ac21b687865e927da7a', 'apps/ui/tests/e2e/api-stub.ts': '86722999dc241b70737c8a78b3a71c84a9a4ff279909112697669dc67684c2c4', 'apps/ui/tests/e2e/serve-e2e.ts': '819950b22abf5ba6a4648ca61aa5fbead97dfb0015e0cfc6e8feae0fb4887fc3', 'apps/ui/tests/e2e/server-restart.ts': '9005052b7cc54d83b62360687fdc7d58df35c50a01373f46749a23aeac9881e7', 'apps/ui/tests/e2e/native-runtime-diagnostics.ts': 'efa8520cf9cbf5d2f11b8b106b96b26386643dc20d3f4a4b9547fc125932ddd8', 'apps/ui/tests/e2e/indexable-routes.spec.ts': 'f21003e88808b98206815e3c935df68cae90102c5991ea27b423ee41723241fc', '.npmrc': 'b50bde7ee3e769650d30f1752bf6403f0d69f3a656113d3e2f63c9917a452165', 'apps/ui/tests/e2e/preferences-loading.spec.ts': '3cbe3375a0f3c41fa930908ed0e87c06ac98d93c15bbb96cef50a8039944057e', 'apps/ui/tests/e2e/provider-detail-state.spec.ts': 'af6cc4ac7bb9d98d85cae8d664721206a8f27708d81a0440f913e2e667296f37'}
           root = pathlib.Path.cwd()
           if subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip() != source:
               raise SystemExit("Unexpected recovery source")
@@ -1069,8 +1069,8 @@ jobs:
             source: "9d3585be9d387522614a48f1989446e6f34d691b"
             lock: "ca23d1cc6245fc06b61c4bf14e298a3e75041a5966d63b4c4e00e5835ec22309"
           - cohort: new
-            source: "6264185656f73b8c62f0264d97b53cf646ec9241"
-            lock: "00d480ff42855c3b0bbe0ac13ed1c6cc388ca7478ffaf53f898c10525f28348e"
+            source: "178320559ede6b694b8fe5f51567b05a1db196bf"
+            lock: "45a072a6069d18fd15d975c3d8620b9a20dd8a50e8e3ae561fcf2bf24ac977a9"
     env:
       CI: "true"
       WRANGLER_SEND_METRICS: "false"
@@ -1084,8 +1084,8 @@ jobs:
       - name: Reject unresolved pins and arbitrary source inputs before checkout
         env:
           REQUESTED_SHA: ${{ inputs.source_sha }}
-          FIXED_NEW_SOURCE: "6264185656f73b8c62f0264d97b53cf646ec9241"
-          FIXED_NEW_LOCK: "00d480ff42855c3b0bbe0ac13ed1c6cc388ca7478ffaf53f898c10525f28348e"
+          FIXED_NEW_SOURCE: "178320559ede6b694b8fe5f51567b05a1db196bf"
+          FIXED_NEW_LOCK: "45a072a6069d18fd15d975c3d8620b9a20dd8a50e8e3ae561fcf2bf24ac977a9"
         shell: bash
         run: |
           python3 - <<'PY_LIFECYCLE_PINS'
@@ -1116,13 +1116,13 @@ jobs:
         shell: bash
         run: |
           mkdir "$RUNNER_TEMP/proxy-lifecycle-output"
-          cat > "$RUNNER_TEMP/proxy-lifecycle.proposed.mjs" <<'LIFECYCLE_NODE_PROPOSAL_DB04'
+          cat > "$RUNNER_TEMP/proxy-lifecycle.proposed.mjs" <<'LIFECYCLE_NODE_PROPOSAL_SPLIT_GRAPH'
           // PRIVATE PROPOSAL ONLY. Not repository code; not executed/qualified.
           // Native Node22 Linux x64; run once per separately installed old/new pinned checkout.
           // argv: <repo> <old|new> <reviewed-source-sha> <reviewed-lock-sha256>
           import { createRequire } from "node:module";
           import { mkdtemp, readFile, writeFile, realpath, rm } from "node:fs/promises";
-          import { join, dirname, resolve } from "node:path";
+          import { join, dirname, resolve, relative, isAbsolute } from "node:path";
           import { tmpdir } from "node:os";
           import { createHash } from "node:crypto";
           import { execFileSync } from "node:child_process";
@@ -1130,10 +1130,10 @@ jobs:
           import { setImmediate as nextTurn } from "node:timers/promises";
           
           const pins = {
-            old: { wrangler: "4.118.0", miniflare: "5.20260730.0-alpha", workerd: "1.20260730.1",
+            old: { mfEntry: "0e9b02a8f3707b1b9a04a2eb7caea93e8d759c0dcffd84b12a8f1bf26a6830d5", rootMfEntry: "0e9b02a8f3707b1b9a04a2eb7caea93e8d759c0dcffd84b12a8f1bf26a6830d5", sdkBinary: "3477e2b2539852d379d30f7055649e85e3ef66ba54b71b5aaf7e61ebbb99a21b", rootBinary: "3477e2b2539852d379d30f7055649e85e3ef66ba54b71b5aaf7e61ebbb99a21b", rootMiniflare: "5.20260730.0-alpha", rootWorkerd: "1.20260730.1", wrangler: "4.118.0", miniflare: "5.20260730.0-alpha", workerd: "1.20260730.1",
               cli: "a1a7a98e0b073d39dc3229b1b89f66accb51ae557fb34552250f914f12a81efd",
               proxy: "993f67b180aae36e296397f79bdacb781827c9768287a9e3f9677adf50d80ccd" },
-            new: { wrangler: "4.129.1", miniflare: "5.20260907.0-alpha", workerd: "1.20260907.1",
+            new: { mfEntry: "8f82a0a1bb9fffca9b3ed5872ec2e31bb37ab329779ca2825a713c79daf86a77", rootMfEntry: "0e9b02a8f3707b1b9a04a2eb7caea93e8d759c0dcffd84b12a8f1bf26a6830d5", sdkBinary: "1593fdc6328dac3a945ef33d74b35fbdc362058879a7d6677a9cfc34e08c6445", rootBinary: "3477e2b2539852d379d30f7055649e85e3ef66ba54b71b5aaf7e61ebbb99a21b", rootMiniflare: "5.20260730.0-alpha", rootWorkerd: "1.20260730.1", wrangler: "4.129.1", miniflare: "5.20260907.0-alpha", workerd: "1.20260907.1",
               cli: "c1601ea9684445806550e51a81369cf007d2b5e5ec12506377f4733522200cc7",
               proxy: "703358e6194e2323d1c40cf7d35c954b480496d69bf9d23df72cfcab308c13d9" },
           };
@@ -1193,7 +1193,13 @@ jobs:
             const wdFromMfPkgPath = mfReq.resolve("workerd/package.json");
             check(!process.env.MINIFLARE_WORKERD_PATH, "runtime_binary_override_not_allowed");
             const wdReq = createRequire(wdPkgPath);
-            const binPkgPath = wdReq.resolve("@cloudflare/workerd-linux-64/package.json");
+            const sdkWdReq = createRequire(wdFromMfPkgPath);
+            const binPkgPath = sdkWdReq.resolve("@cloudflare/workerd-linux-64/package.json");
+            const rootMfReq = createRequire(rootMfPkgPath);
+            const rootWdPkgPath = rootMfReq.resolve("workerd/package.json");
+            const rootWdReq = createRequire(rootWdPkgPath);
+            const rootBinPkgPath = rootWdReq.resolve("@cloudflare/workerd-linux-64/package.json");
+            const directBinPkgPath = wdReq.resolve("@cloudflare/workerd-linux-64/package.json");
             const parsed = async path => JSON.parse(await readFile(path, "utf8"));
             const versions = {
               wrangler: (await parsed(wrPkgPath)).version,
@@ -1202,25 +1208,64 @@ jobs:
               workerd: (await parsed(wdPkgPath)).version,
               miniflare_workerd: (await parsed(wdFromMfPkgPath)).version,
               binary_package: (await parsed(binPkgPath)).version,
+              root_miniflare_workerd: (await parsed(rootWdPkgPath)).version,
+              root_binary_package: (await parsed(rootBinPkgPath)).version,
+              wrangler_binary_package: (await parsed(directBinPkgPath)).version,
             };
             const pin = pins[cohort];
             check(versions.wrangler === pin.wrangler && versions.miniflare === pin.miniflare &&
-              versions.root_miniflare === pin.miniflare && versions.workerd === pin.workerd &&
-              versions.miniflare_workerd === pin.workerd && versions.binary_package === pin.workerd,
+              versions.root_miniflare === pin.rootMiniflare && versions.workerd === pin.workerd &&
+              versions.miniflare_workerd === pin.workerd && versions.binary_package === pin.workerd &&
+              versions.root_miniflare_workerd === pin.rootWorkerd && versions.root_binary_package === pin.rootWorkerd &&
+              versions.wrangler_binary_package === pin.workerd,
               "installed_cohort_mismatch");
-            const selectedWorkerd = wrReq("workerd");
+            const selectedWorkerd = mfReq("workerd");
+            const selectedRootWorkerd = rootMfReq("workerd");
+            const selectedDirectWorkerd = wrReq("workerd");
             const platformBinary = join(dirname(binPkgPath), "bin", "workerd");
+            const rootPlatformBinary = join(dirname(rootBinPkgPath), "bin", "workerd");
+            const directPlatformBinary = join(dirname(directBinPkgPath), "bin", "workerd");
             check(typeof selectedWorkerd.default === "string" && selectedWorkerd.version === pin.workerd &&
               await realpath(selectedWorkerd.default) === await realpath(platformBinary), "selected_binary_mismatch");
+            check(typeof selectedRootWorkerd.default === "string" && selectedRootWorkerd.version === pin.rootWorkerd &&
+              await realpath(selectedRootWorkerd.default) === await realpath(rootPlatformBinary), "root_selected_binary_mismatch");
+            check(typeof selectedDirectWorkerd.default === "string" && selectedDirectWorkerd.version === pin.workerd &&
+              await realpath(selectedDirectWorkerd.default) === await realpath(directPlatformBinary), "sdk_direct_binary_mismatch");
+            async function ownedPath(path) {
+              const value = relative(repo, await realpath(path));
+              check(value !== "" && value !== ".." && !value.startsWith("../") && !isAbsolute(value), "package_outside_checkout");
+              return value;
+            }
+            const paths = {};
+            for (const [key, path] of Object.entries({ wrangler_package: wrPkgPath,
+              sdk_miniflare_package: mfPkgPath, root_miniflare_package: rootMfPkgPath,
+              wrangler_workerd_package: wdPkgPath, sdk_miniflare_workerd_package: wdFromMfPkgPath,
+              root_miniflare_workerd_package: rootWdPkgPath, sdk_workerd_binary: platformBinary,
+              root_workerd_binary: rootPlatformBinary, wrangler_workerd_binary: directPlatformBinary })) {
+              paths[key] = await ownedPath(path);
+            }
+            check(paths.root_miniflare_package === "node_modules/miniflare/package.json", "root_miniflare_ownership_mismatch");
+            if (cohort === "new") {
+              check(paths.sdk_miniflare_package === "node_modules/wrangler/node_modules/miniflare/package.json" &&
+                paths.sdk_miniflare_package !== paths.root_miniflare_package &&
+                paths.sdk_miniflare_workerd_package !== paths.root_miniflare_workerd_package &&
+                paths.sdk_workerd_binary !== paths.root_workerd_binary, "split_sdk_root_ownership_mismatch");
+            }
             const hashes = {
               cli: sha(await readFile(cli)),
               proxy: sha(await readFile(join(dirname(cli), "ProxyWorker.js"))),
               miniflare_entry: sha(await readFile(wrReq.resolve("miniflare"))),
               workerd_binary: sha(await readFile(platformBinary)),
+              root_miniflare_entry: sha(await readFile(rootMfReq.resolve("miniflare"))),
+              root_workerd_binary: sha(await readFile(rootPlatformBinary)),
+              wrangler_workerd_binary: sha(await readFile(directPlatformBinary)),
             };
             check(hashes.cli === pin.cli && hashes.proxy === pin.proxy, "published_source_mismatch");
+            check(hashes.miniflare_entry === pin.mfEntry && hashes.root_miniflare_entry === pin.rootMfEntry &&
+              hashes.workerd_binary === pin.sdkBinary && hashes.root_workerd_binary === pin.rootBinary &&
+              hashes.wrangler_workerd_binary === pin.sdkBinary, "consumer_entry_or_binary_hash_mismatch");
             Object.assign(receipt, { cohort, source: actualSource, lock_sha256: lockHash,
-              node: process.versions.node, versions, hashes, workerd_declared_compatibility_date: selectedWorkerd.compatibilityDate });
+              node: process.versions.node, versions, hashes, paths, workerd_declared_compatibility_date: selectedWorkerd.compatibilityDate, root_workerd_declared_compatibility_date: selectedRootWorkerd.compatibilityDate });
             stage = "fixture";
             fixture = await mkdtemp(join(tmpdir(), "metagraph-proxy-lifecycle-"));
             const body = "lifecycle-control\n";
@@ -1329,7 +1374,7 @@ jobs:
             clearTimeout(watchdog);
           }
           print(result);
-          LIFECYCLE_NODE_PROPOSAL_DB04
+          LIFECYCLE_NODE_PROPOSAL_SPLIT_GRAPH
           cat > "$RUNNER_TEMP/proxy-lifecycle-capture.py" <<'PY_LIFECYCLE_CAPTURE'
           import hashlib, json, os, pathlib, selectors, signal, subprocess, sys, time
           kind, outdir, *command = sys.argv[1:]
@@ -1395,7 +1440,7 @@ jobs:
           (out / (kind + "-exit.txt")).write_text(str(code) + "\n")
           sys.exit(0 if code == 0 and not timed_out and (kind == "install" or receipt.get("valid_json_receipt")) else 1)
           PY_LIFECYCLE_CAPTURE
-          printf '%s\n' 'db04ecdd3924a259064984073b01fef2ef56425a3870b037b73d35b54ab09dc7' > "$RUNNER_TEMP/proxy-lifecycle-output/snippet-sha256.txt"
+          printf '%s\n' 'd24d2c6b9994ecc33e4c14b4e9096c96b283a61a606eeb606c820ddc52842712' > "$RUNNER_TEMP/proxy-lifecycle-output/snippet-sha256.txt"
 
       - name: Verify exact source, lock, snippet and clean input checkout
         env:
@@ -1422,7 +1467,7 @@ jobs:
               hashes[name] = sha(path.read_bytes())
           assert hashes["package-lock.json"] == lock
           snippet = pathlib.Path(os.environ["RUNNER_TEMP"]) / "proxy-lifecycle.proposed.mjs"
-          assert sha(snippet.read_bytes()) == "db04ecdd3924a259064984073b01fef2ef56425a3870b037b73d35b54ab09dc7"
+          assert sha(snippet.read_bytes()) == "d24d2c6b9994ecc33e4c14b4e9096c96b283a61a606eeb606c820ddc52842712"
           node = subprocess.check_output(["node", "--version"]).decode().strip()
           assert node == "v22.23.2"
           receipt = {"cohort": os.environ["COHORT"], "source": source, "source_tree": git("rev-parse", "HEAD^{tree}").decode().strip(),
@@ -1467,13 +1512,22 @@ jobs:
               expected = {"old": ("4.118.0", "5.20260730.0-alpha", "1.20260730.1", 1, "rejected"),
                   "new": ("4.129.1", "5.20260907.0-alpha", "1.20260907.1", 0, "resolved")}[cohort]
               require("input_pin", inputs["cohort"] == cohort and inputs["source"] == os.environ["FIXED_SOURCE"] and inputs["lock_sha256"] == os.environ["FIXED_LOCK"])
-              require("snippet_pin", inputs["snippet_sha256"] == "db04ecdd3924a259064984073b01fef2ef56425a3870b037b73d35b54ab09dc7" and (out / "snippet-sha256.txt").read_text().strip() == inputs["snippet_sha256"])
+              require("snippet_pin", inputs["snippet_sha256"] == "d24d2c6b9994ecc33e4c14b4e9096c96b283a61a606eeb606c820ddc52842712" and (out / "snippet-sha256.txt").read_text().strip() == inputs["snippet_sha256"])
               require("install_zero", install["exit_code"] == 0 and not install["timed_out"] and (out / "install-exit.txt").read_text().strip() == "0")
               require("bounded_install_log", (out / "install.log").stat().st_size <= 1048576 and hashlib.sha256((out / "install.log").read_bytes()).hexdigest() == install["retained_sha256"]["stdout"])
               require("execution_zero", execution["exit_code"] == 0 and not execution["timed_out"] and execution["valid_json_receipt"] and not any(execution["truncated"].values()) and (out / "lifecycle-exit.txt").read_text().strip() == "0")
               require("source_receipt", result["source"] == inputs["source"] and result["lock_sha256"] == inputs["lock_sha256"] and result["cohort"] == cohort and result["node"] == "22.23.2")
               versions = result["versions"]
-              require("versions", versions["wrangler"] == expected[0] and versions["miniflare"] == expected[1] and versions["root_miniflare"] == expected[1] and all(versions[k] == expected[2] for k in ("workerd", "miniflare_workerd", "binary_package")))
+              require("versions", versions["wrangler"] == expected[0] and versions["miniflare"] == expected[1] and versions["root_miniflare"] == "5.20260730.0-alpha" and all(versions[k] == expected[2] for k in ("workerd", "miniflare_workerd", "binary_package")))
+              require("dual_graph_versions", versions["root_miniflare_workerd"] == "1.20260730.1" and versions["root_binary_package"] == "1.20260730.1" and versions["wrangler_binary_package"] == expected[2])
+              paths = result["paths"]
+              require("checkout_owned_paths", paths["root_miniflare_package"] == "node_modules/miniflare/package.json" and all(not value.startswith(("/", "../")) and value != ".." for value in paths.values()))
+              require("sdk_nested_split", cohort == "old" or (paths["sdk_miniflare_package"] == "node_modules/wrangler/node_modules/miniflare/package.json" and paths["sdk_miniflare_package"] != paths["root_miniflare_package"] and paths["sdk_miniflare_workerd_package"] != paths["root_miniflare_workerd_package"] and paths["sdk_workerd_binary"] != paths["root_workerd_binary"]))
+              mf_entry = "0e9b02a8f3707b1b9a04a2eb7caea93e8d759c0dcffd84b12a8f1bf26a6830d5" if cohort == "old" else "8f82a0a1bb9fffca9b3ed5872ec2e31bb37ab329779ca2825a713c79daf86a77"
+              sdk_binary = "3477e2b2539852d379d30f7055649e85e3ef66ba54b71b5aaf7e61ebbb99a21b" if cohort == "old" else "1593fdc6328dac3a945ef33d74b35fbdc362058879a7d6677a9cfc34e08c6445"
+              hashes = result["hashes"]
+              require("consumer_entry_binary_pins", hashes["miniflare_entry"] == mf_entry and hashes["root_miniflare_entry"] == "0e9b02a8f3707b1b9a04a2eb7caea93e8d759c0dcffd84b12a8f1bf26a6830d5" and hashes["workerd_binary"] == sdk_binary and hashes["wrangler_workerd_binary"] == sdk_binary and hashes["root_workerd_binary"] == "3477e2b2539852d379d30f7055649e85e3ef66ba54b71b5aaf7e61ebbb99a21b")
+              require("unchanged_fixture", result["fixture_sha256"] == "cb95be15d09c22b0ee075844b66a22e2ed65eccee94cce284a706416d7deef79")
               require("both_controls_200", result["ok"] is True and result["before_control_200"] is True and result["after_control_200"] is True and result["log_bytes_bounded"] is True)
               dispatch = result["after_dispatch"]
               require("specific_dispatch", dispatch["fatal"] == expected[3] and dispatch["teardown"] == 0 and dispatch["waiter_state"] == ("rejected" if cohort == "old" else "pending") and dispatch["classified_logs"] == (0 if cohort == "old" else 1) and dispatch["waiter_reason_is_dispatched_event"] is (cohort == "old") and dispatch["logged_detail"] is (cohort == "new"))
