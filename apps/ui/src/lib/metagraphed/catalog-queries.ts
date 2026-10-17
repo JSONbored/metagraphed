@@ -1,6 +1,6 @@
 // Guarded catalog reads belong to catalog route chunks. Keep this module out
 // of queries.ts: importing its pager there puts CSV traversal and validation
-// into the shared entry even when a reader has not opened a catalog route.
+// into the shared query chunk even when a reader has not opened a catalog route.
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import type { QueryParams } from "./client";
 import type { Endpoint, Surface } from "./types";

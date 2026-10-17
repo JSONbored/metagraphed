@@ -104,8 +104,12 @@ export interface DataTableColumn<Row> {
 }
 
 export interface DataTableProps<Row> {
-  /** Optional checked server walk for CSV; default exports only supplied rows. */
-  loadExportRows?: (signal: AbortSignal) => Promise<readonly Row[]>;
+  /** Optional route-owned export action; the table supplies its current CSV view. */
+  renderExportAction?: (context: {
+    formatRows: (rows: readonly Row[]) => string;
+    filename: string;
+    shareAction: ReactNode;
+  }) => ReactNode;
   rows: readonly Row[];
   columns: ReadonlyArray<DataTableColumn<Row>>;
   rowKey: (row: Row) => string;
@@ -237,7 +241,7 @@ export function statusTone(value: string): "good" | "warn" | "bad" | "muted" {
 }
 
 export function DataTable<Row>({
-  loadExportRows,
+  renderExportAction,
   rows,
   columns,
   rowKey,
@@ -397,16 +401,14 @@ export function DataTable<Row>({
     viewportRef.current?.scrollTo({ top: 0 });
   };
 
-  const csv = useCallback(
-    async (signal: AbortSignal) => {
-      const exportRows = loadExportRows ? await loadExportRows(signal) : sorted;
-      return toCsv(
-        onSort ? exportRows : sortRows(exportRows, sort, valueOf),
-        shown,
-        valueOf,
-      );
-    },
-    [loadExportRows, sorted, onSort, sort, shown, valueOf],
+  const csv = () => toCsv(sorted, shown, valueOf);
+  const formatRows = useCallback(
+    (exportRows: readonly Row[]) => toCsv(
+      onSort ? exportRows : sortRows(exportRows, sort, valueOf),
+      shown,
+      valueOf,
+    ),
+    [onSort, sort, shown, valueOf],
   );
 
   const hasRows = visibleRows.length > 0;
@@ -479,6 +481,9 @@ export function DataTable<Row>({
               }
             }}
             csv={csv}
+            renderExportAction={renderExportAction
+              ? (shareAction) => renderExportAction({ formatRows, filename: caption, shareAction })
+              : undefined}
             filename={caption}
             shareUrl={shareUrl}
             label={caption}

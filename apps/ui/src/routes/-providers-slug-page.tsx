@@ -20,6 +20,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { CatalogRestartRequired, restartCatalogResults } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { ErrorState } from "@/components/metagraphed/states";
@@ -71,6 +72,11 @@ export function ProviderDetail() {
   // Memoised, not inlined: `?? []` builds a fresh array on every render and
   // the rail's useMemo below would recompute every time.
   const endpointList = useMemo(() => (endpoints.data?.data ?? []) as Endpoint[], [endpoints.data]);
+  const loadCatalogExportRows = async (signal: AbortSignal) =>
+    mergeSurfaceProbes(
+      providerSurfaces(await exportSurfaceRows({ provider: slug }, signal)),
+      endpointList,
+    );
   const surfaceList = useMemo(
     () => providerSurfaces((surfaces.data?.pages ?? []).flatMap((page) => page.data)),
     [surfaces.data],
@@ -300,12 +306,11 @@ export function ProviderDetail() {
               link={RouterLink}
               source="provider-surface"
               storageKey="mg-provider-surfaces-columns"
-              loadExportRows={async (signal) =>
-                mergeSurfaceProbes(
-                  providerSurfaces(await exportSurfaceRows({ provider: slug }, signal)),
-                  endpointList,
-                )
-              }
+              renderExportAction={({ formatRows, filename, shareAction }) => (
+                <CatalogExportAction loadRows={loadCatalogExportRows} formatRows={formatRows} filename={filename}>
+                  {shareAction}
+                </CatalogExportAction>
+              )}
               className="max-lg:[&_.mg-dt-expansion>td]:px-4! [&_td[data-mobile-lead=true]]:before:hidden [&_.mg-dt-status]:self-start [&_.mg-dt-disclosure]:min-h-11 [&_.mg-dt-disclosure]:min-w-11 [&_.mg-dt-menu-trigger]:min-h-11 [&_.mg-dt-menu-trigger]:min-w-11"
               mobile="cards"
               expand={surfaceDetail}

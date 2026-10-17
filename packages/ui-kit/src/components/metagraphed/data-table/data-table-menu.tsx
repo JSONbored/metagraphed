@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Popover,
   PopoverContent,
@@ -22,6 +22,7 @@ export function DataTableMenu<Row>({
   visibleKeys,
   onVisibleKeys,
   csv,
+  renderExportAction,
   filename,
   shareUrl,
   label,
@@ -32,7 +33,8 @@ export function DataTableMenu<Row>({
   columns: ReadonlyArray<{ key: string; label: string; demote?: boolean }>;
   visibleKeys: readonly string[];
   onVisibleKeys: (keys: string[]) => void;
-  csv: (signal: AbortSignal) => string | Promise<string>;
+  csv: () => string;
+  renderExportAction?: (shareAction: ReactNode) => ReactNode;
   filename: string;
   shareUrl?: string;
   label: string;
@@ -55,54 +57,20 @@ export function DataTableMenu<Row>({
     if (next.length > 0) onVisibleKeys(next);
   };
 
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const exportRequest = useRef<AbortController | null>(null);
-  useLayoutEffect(() => {
-    setExporting(false);
-    setExportError(null);
-    return () => {
-      exportRequest.current?.abort();
-      exportRequest.current = null;
-    };
-  }, [csv]);
-  const download = async () => {
+  const download = () => {
     if (typeof document === "undefined") return;
-    if (exportRequest.current) return;
-    const controller = new AbortController();
-    exportRequest.current = controller;
-    setExporting(true);
-    setExportError(null);
-    try {
-      const contents = await csv(controller.signal);
-      if (controller.signal.aborted || exportRequest.current !== controller)
-        return;
-      const blob = new Blob([contents], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${filename
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")}.csv`;
-      document.body.append(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      if (!controller.signal.aborted) {
-        setExportError(
-          error instanceof Error
-            ? error.message
-            : "CSV export failed. Try again.",
-        );
-      }
-    } finally {
-      if (exportRequest.current === controller) {
-        exportRequest.current = null;
-        setExporting(false);
-      }
-    }
+    const blob = new Blob([csv()], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${filename
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")}.csv`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   };
 
   const copyLink = () => {
@@ -114,6 +82,12 @@ export function DataTableMenu<Row>({
       window.setTimeout(() => setCopied(false), 1500);
     });
   };
+
+  const shareAction = (
+    <button type="button" onClick={copyLink}>
+      {copied ? "Link copied" : "Copy link"}
+    </button>
+  );
 
   return (
     <Popover>
@@ -163,19 +137,12 @@ export function DataTableMenu<Row>({
             </div>
           </>
         ) : null}
-        <div className="mg-dt-menu-actions">
-          <button
-            type="button"
-            onClick={() => void download()}
-            disabled={exporting}
-          >
-            {exporting ? "Preparing CSV…" : "Download CSV"}
-          </button>
-          <button type="button" onClick={copyLink}>
-            {copied ? "Link copied" : "Copy link"}
-          </button>
-        </div>
-        {exportError ? <p role="alert">{exportError}</p> : null}
+        {renderExportAction ? renderExportAction(shareAction) : (
+          <div className="mg-dt-menu-actions">
+            <button type="button" onClick={download}>Download CSV</button>
+            {shareAction}
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

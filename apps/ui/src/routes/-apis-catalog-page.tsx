@@ -17,6 +17,7 @@ import {
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
 import { CatalogRestartRequired, restartCatalogResults } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { HubSections } from "@/components/metagraphed/hub-prose";
@@ -87,6 +88,11 @@ export function ApisCatalogPage() {
     "0px 0px",
     !coverage.isPending,
   );
+  const loadCatalogExportRows = async (signal: AbortSignal) =>
+    (await exportSurfaceRows(serverParams, signal)).filter((surface) =>
+      matchesSurfaceFilters(surface, search),
+    );
+
   const catalogOptions = surfacesInfiniteQuery(serverParams);
   const feed = useInfiniteQuery({
     ...catalogOptions,
@@ -298,11 +304,11 @@ export function ApisCatalogPage() {
             link={RouterLink}
             source="surface"
             storageKey="mg-apis-columns"
-            loadExportRows={async (signal) =>
-              (await exportSurfaceRows(serverParams, signal)).filter((surface) =>
-                matchesSurfaceFilters(surface, search),
-              )
-            }
+            renderExportAction={({ formatRows, filename, shareAction }) => (
+              <CatalogExportAction loadRows={loadCatalogExportRows} formatRows={formatRows} filename={filename}>
+                {shareAction}
+              </CatalogExportAction>
+            )}
             expand={surfaceDetail}
             loading={!catalogNearViewport || feed.isPending}
             error={

@@ -22,6 +22,7 @@ import { EndpointDirectoryControls } from "@/components/metagraphed/endpoints/en
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
 import { CatalogRestartRequired, restartCatalogResults } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
@@ -117,6 +118,9 @@ export function EndpointsPage() {
   else if (search.status) serverParams.status = search.status;
   if (search.kind) serverParams.kind = search.kind;
   if (search.provider) serverParams.provider = search.provider;
+
+  const loadCatalogExportRows = async (signal: AbortSignal) =>
+    endpointRows(await exportEndpointRows(serverParams, signal));
 
   const catalogOptions = endpointsInfiniteQuery(serverParams);
   const feed = useInfiniteQuery({
@@ -414,9 +418,11 @@ export function EndpointsPage() {
               link={RouterLink}
               source="endpoint"
               storageKey="mg-endpoints-columns"
-              loadExportRows={async (signal) =>
-                endpointRows(await exportEndpointRows(serverParams, signal))
-              }
+              renderExportAction={({ formatRows, filename, shareAction }) => (
+                <CatalogExportAction loadRows={loadCatalogExportRows} formatRows={formatRows} filename={filename}>
+                  {shareAction}
+                </CatalogExportAction>
+              )}
               expand={endpointDetail}
               loading={(feed.isPending || searchWaiting) && !searchError}
               error={
