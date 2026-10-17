@@ -6,6 +6,7 @@
 // the sibling history routes, trajectory takes no ?window (the full points
 // series plus precomputed 7d/30d deltas cover that).
 import { z } from "zod";
+import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "../legacy-emission-share.ts";
 
 /** One window's change, endpoint to endpoint. Every field is a DIFFERENCE
  * (`to` minus `from`), not a level -- a negative `tao_in_pool_tao` means the
@@ -41,7 +42,11 @@ const SubnetTrajectoryPointSchema = z
     miner_count: z.int().nullable().optional(),
     total_stake_alpha: z.number().nullable().optional(),
     alpha_price_tao: z.number().nullable().optional(),
-    emission_share: z.number().nullable().optional(),
+    emission_share: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(LEGACY_EMISSION_SHARE_DESCRIPTION),
     tao_in_pool_tao: z.number().nullable().optional(),
     alpha_in_pool: z.number().nullable().optional(),
     alpha_out_pool: z.number().nullable().optional(),

@@ -154,9 +154,9 @@ export const ECONOMICS_FIELD_SOURCES = {
     read_at: "capture",
   },
   max_stake_alpha: { kind: "reconstructed", storage: null, read_at: "capture" },
-  // price / Σ price across subnets, at build time. THE STAGE-1 PRICE SHARE, not
-  // the share of TAO a subnet receives -- /api/v1/chain/emission-pipeline
-  // decomposes the difference.
+  // price / Σ reported prices at build time, including a priced Root. This
+  // legacy normalization does not certify runtime eligibility or TAO received;
+  // /api/v1/chain/emission-pipeline reconstructs the separate pinned pipeline.
   emission_share: { kind: "reconstructed", storage: null, read_at: "capture" },
   alpha_market_cap_tao: {
     kind: "reconstructed",

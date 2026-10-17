@@ -4,6 +4,7 @@
 // against the hand-edited EconomicsTrendsArtifact/EconomicsTrendsDay
 // components it replaces.
 import { z } from "zod";
+import { MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION } from "../legacy-emission-share.ts";
 import { SERIES_USD_UNAVAILABLE } from "../../src/alpha-usd-history.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
@@ -43,7 +44,11 @@ const EconomicsTrendsDaySchema = z
       ),
     validator_count: z.int().nullable().optional(),
     miner_count: z.int().nullable().optional(),
-    mean_emission_share: z.number().nullable().optional(),
+    mean_emission_share: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION),
   })
   .strict()
   .describe(

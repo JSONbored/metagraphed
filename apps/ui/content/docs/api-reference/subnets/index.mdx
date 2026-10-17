@@ -8,9 +8,9 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 - [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`  
   Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it.
 - [Domain Summary](/docs/api-reference/subnets/domain-summary) — `GET /api/v1/domains/{tag}/summary`  
-  Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration.
+  Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (a sum of legacy artifact-normalized moving-price shares), and within-domain emission concentration.
 - [Domains](/docs/api-reference/subnets/domains) — `GET /api/v1/domains`  
-  Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration.
+  Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (a sum of legacy artifact-normalized moving-price shares), and within-domain emission concentration.
 - [Economics](/docs/api-reference/subnets/economics) — `GET /api/v1/economics`  
   List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height).
 - [Economics By Network](/docs/api-reference/subnets/economics-by-network) — `GET /api/v1/{network}/economics`  
