@@ -644,8 +644,17 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
     test(`${path} stays under the HTML ratchet`, async ({ request }, testInfo) => {
       const response = await request.get(path);
       const html = await response.text();
-      if (path === "/" || path === "/subnets")
+      if (path === "/" || path === "/subnets") {
         await attachHtmlDiagnostics(testInfo, response.url(), path, html);
+        expect(
+          [...html.matchAll(/\sid="main-content"(?=[\s>])/g)],
+          `${path} must render one route shell, without an inlined pending-shell duplicate`,
+        ).toHaveLength(1);
+        expect(
+          [...html.matchAll(/\saria-label="Open menu"(?=[\s>])/g)],
+          `${path} must expose one menu control in the raw server response`,
+        ).toHaveLength(1);
+      }
       const kib = Math.round(Buffer.byteLength(html, "utf8") / 1024);
       expect(
         kib,
@@ -1132,3 +1141,73 @@ test("MCP setup guide recommends discovery and retains every compatibility profi
     expect(snippet).not.toContain("catalog=full");
   }
 });
+
+// These cover client route-loader rejection/recovery. Browser interception
+// cannot qualify the raw SSR error status, which remains a separate boundary.
+for (const destination of [
+  {
+    path: "/",
+    apiPath: "/api/v1/economics",
+    link: "Metagraphed — home",
+    heading: "Bittensor, measured.",
+  },
+  {
+    path: "/subnets",
+    apiPath: "/api/v1/subnets",
+    link: "Subnets",
+    heading: "Subnets",
+  },
+] as const) {
+  test(`${destination.path} client loader failure preserves navigation and keyboard Retry recovers`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await gotoThroughRestart(page, "/about");
+    await expect(page.getByRole("heading", { name: "Methodology & scope", level: 1 })).toBeVisible();
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    const origin = new URL(page.url()).origin;
+    let unavailable = true;
+    let criticalRequests = 0;
+    await page.route("http://127.0.0.1:8081/**", async (route) => {
+      const url = new URL(route.request().url());
+      if (url.pathname !== destination.apiPath) {
+        await route.continue();
+        return;
+      }
+      criticalRequests += 1;
+      if (unavailable) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          headers: { "access-control-allow-origin": origin },
+          body: JSON.stringify({
+            ok: false,
+            error: { code: "data_tier_unavailable", message: "Critical route fixture unavailable" },
+          }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+    await page.locator("header").getByRole("link", { name: destination.link, exact: true }).click();
+    const notice = page.getByRole("status").filter({ hasText: "Data source temporarily unavailable" });
+    await expect(notice).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe(destination.path);
+    expect(criticalRequests).toBeGreaterThan(0);
+    await expect(
+      page.locator("header").getByRole("link", { name: "Metagraphed — home", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator("header").getByRole("link", { name: "Subnets", exact: true }),
+    ).toBeVisible();
+    const beforeRetry = criticalRequests;
+    unavailable = false;
+    const retry = notice.getByRole("button", { name: "Retry", exact: true });
+    await retry.focus();
+    await expect(retry).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("heading", { name: destination.heading, level: 1 })).toBeVisible();
+    await expect(notice).toHaveCount(0);
+    expect(criticalRequests).toBeGreaterThan(beforeRetry);
+  });
+}
