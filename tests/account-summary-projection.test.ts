@@ -6,7 +6,7 @@
 // the other direction: reading a HALF-PUBLISHED generation, or accepting a
 // payload it should have refused.
 import assert from "node:assert/strict";
-import { describe, test, beforeEach } from "vitest";
+import { describe, test, beforeEach, afterEach, vi } from "vitest";
 import { ACCOUNT_EVENT_SUMMARY_SCAN_CAP } from "../src/account-events.ts";
 import {
   AccountSummaryPointerSchema,
@@ -27,6 +27,7 @@ import {
 } from "../src/account-summary-projection.ts";
 import { DEFAULT_CHAIN_NETWORK } from "../src/chain-network.ts";
 import { resetAccountSummaryPointerCache } from "../src/account-summary-projection.ts";
+import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 
 // The pointer memo is module-level and reset only between test FILES, so
 // whichever test resolved it first would decide every later test's generation.
@@ -34,6 +35,7 @@ import { resetAccountSummaryPointerCache } from "../src/account-summary-projecti
 // tests/analytics-edge-cache.test.ts: a file that varies the artifact per test
 // has to own the memo that would otherwise answer from the previous one.
 beforeEach(() => resetAccountSummaryPointerCache());
+afterEach(() => vi.useRealTimers());
 
 const HOT = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 const COLD = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
@@ -1199,20 +1201,17 @@ describe("the pointer memo", () => {
     // name a generation that no longer exists. Without this, every account
     // request would decline for the rest of the TTL -- turning a 370 ms saving
     // into a multi-minute outage once an hour.
-    const gone = archive({
+    const objects: Record<string, unknown> = {
       [ACCOUNT_SUMMARY_POINTER_KEY]: pointer(FRESH_POINTER()),
-    });
+    };
+    const gone = archive(objects);
     assert.equal(await loadAccountSummaryProjection(gone.env, HOT), null);
-
-    const live = archive(published({ [HOT]: [group()] }, FRESH_POINTER()));
-    const found = await readFound(live.env, HOT, FRESH);
-    assert.equal(
-      found.groups.length,
-      1,
-      "the next request re-read the pointer",
-    );
+    gone.asked.length = 0;
+    Object.assign(objects, published({ [HOT]: [group()] }, FRESH_POINTER()));
+    const found = await readFound(gone.env, HOT, FRESH);
+    assert.equal(found.groups.length, 1, "the next request re-read the pointer");
     assert.ok(
-      live.asked.includes(ACCOUNT_SUMMARY_POINTER_KEY),
+      gone.asked.includes(ACCOUNT_SUMMARY_POINTER_KEY),
       "it must not have answered from the dropped memo",
     );
   });
@@ -1231,7 +1230,12 @@ describe("the pointer memo", () => {
     // Every generation but the current one is deleted, so the only difference
     // between those two outcomes was which generation the isolate had memoized.
     const NEXT = "20260814T110000Z";
-    const rotated = archive({
+    const objects: Record<string, unknown> = published({ [HOT]: [group()] });
+    const rotated = archive(objects);
+    await readFound(rotated.env, HOT, FRESH);
+    rotated.asked.length = 0;
+    delete objects[accountSummaryShardKey(HOT, SHARDS, GEN)];
+    Object.assign(objects, {
       // The pointer the producer has already advanced...
       [ACCOUNT_SUMMARY_POINTER_KEY]: pointer({
         generation: NEXT,
@@ -1245,11 +1249,6 @@ describe("the pointer memo", () => {
         accounts: { [HOT]: [group()] },
       },
     });
-
-    // Warm the memo onto the OLD generation, exactly as an isolate that served
-    // a request before the rotation would hold it.
-    const stale = archive(published({ [HOT]: [group()] }));
-    await readFound(stale.env, HOT, FRESH);
 
     // Now the same isolate takes a request after the producer rotated.
     const found = await readFound(rotated.env, HOT, FRESH);
@@ -1291,6 +1290,13 @@ describe("the pointer memo", () => {
       ],
       "one shard read, never two for the same key",
     );
+    gone.asked.length = 0;
+    assert.equal(await loadAccountSummaryProjection(gone.env, HOT, FRESH), null);
+    assert.equal(
+      gone.asked[0],
+      ACCOUNT_SUMMARY_POINTER_KEY,
+      "a same-generation miss must not leave the retried pointer memoized",
+    );
   });
 
   test("AN UNREADABLE POINTER IS NOT MEMOIZED for the TTL", async () => {
@@ -1306,12 +1312,246 @@ describe("the pointer memo", () => {
   test("THE MEMO EXPIRES, so a new generation is picked up", async () => {
     const first = archive(published({ [HOT]: [group()] }, FRESH_POINTER()));
     await loadAccountSummaryProjection(first.env, HOT);
+    first.asked.length = 0;
     const later = () => Date.now() + ACCOUNT_SUMMARY_POINTER_TTL_MS + 1;
-    const second = archive(published({ [HOT]: [group()] }, FRESH_POINTER()));
-    await loadAccountSummaryProjection(second.env, HOT, { now: later });
+    await loadAccountSummaryProjection(first.env, HOT, { now: later });
     assert.ok(
-      second.asked.includes(ACCOUNT_SUMMARY_POINTER_KEY),
+      first.asked.includes(ACCOUNT_SUMMARY_POINTER_KEY),
       "past the TTL the pointer must be re-read",
     );
+  });
+});
+
+function deferredRead<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
+  return { promise, resolve, reject };
+}
+
+function observeRead<T>(pending: Promise<T>) {
+  const state: { settled: boolean; value?: T; error?: unknown } = { settled: false };
+  void pending.then(
+    (value) => Object.assign(state, { settled: true, value }),
+    (error) => Object.assign(state, { settled: true, error }),
+  );
+  return state;
+}
+
+function budgetClock() {
+  vi.useFakeTimers({
+    now: Date.parse("2026-08-14T11:00:00Z"),
+    toFake: ["Date", "setTimeout", "clearTimeout"],
+  });
+}
+
+describe("one bounded account-summary artifact read", () => {
+  type JsonObject = { json(): Promise<unknown> };
+  const shard = accountSummaryShardKey(HOT, SHARDS, GEN);
+
+  for (const stage of ["pointer get", "pointer body", "shard get", "shard body"]) {
+    test(`a stuck ${stage} fails within the shared budget without late downstream reads`, async () => {
+      budgetClock();
+      const objects: Record<string, unknown> = published({ [HOT]: [group()] });
+      const heldGet = deferredRead<JsonObject | null>();
+      const heldBody = deferredRead<unknown>();
+      const stalledKey = stage.startsWith("pointer")
+        ? ACCOUNT_SUMMARY_POINTER_KEY
+        : shard;
+      const lateJson = vi.fn(async () => objects[stalledKey]);
+      const get = vi.fn(async (key: string): Promise<JsonObject | null> => {
+        if (key === stalledKey) {
+          if (stage.endsWith("get")) return heldGet.promise;
+          return { json: () => heldBody.promise };
+        }
+        return { json: async () => objects[key] };
+      });
+      const env = { METAGRAPH_ARCHIVE: { get }, METAGRAPH_R2_TIMEOUT_MS: "20" };
+      const pending = loadAccountSummaryProjection(env, HOT);
+      const outcome = observeRead(pending);
+      try {
+        await vi.advanceTimersByTimeAsync(19);
+        assert.equal(outcome.settled, false);
+        const readsAtDeadline = get.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(1);
+        assert.equal(
+          outcome.settled,
+          true,
+          "SUMMARY_ARTIFACT_READ_EXCEEDED_DEADLINE",
+        );
+        assert.ok(outcome.error instanceof RetainedHistoryUnavailableError);
+        assert.equal(
+          outcome.value,
+          undefined,
+          "an unavailable read is never a measured absence",
+        );
+        heldGet.resolve({ json: lateJson });
+        heldBody.resolve(objects[stalledKey]);
+        await vi.advanceTimersByTimeAsync(0);
+        assert.equal(get.mock.calls.length, readsAtDeadline);
+        assert.equal(lateJson.mock.calls.length, 0);
+        assert.equal(vi.getTimerCount(), 0);
+      } finally {
+        heldGet.resolve({ json: lateJson });
+        heldBody.resolve(objects[stalledKey]);
+        await pending.catch(() => {});
+      }
+    });
+  }
+
+  test("pointer and shard reads consume the same remaining budget", async () => {
+    budgetClock();
+    const held = deferredRead<unknown>();
+    const get = vi.fn(async (key: string) => ({
+      json: () =>
+        key === ACCOUNT_SUMMARY_POINTER_KEY
+          ? new Promise((resolve) => setTimeout(() => resolve(pointer()), 15))
+          : held.promise,
+    }));
+    const env = { METAGRAPH_ARCHIVE: { get }, METAGRAPH_R2_TIMEOUT_MS: "20" };
+    const pending = loadAccountSummaryProjection(env, HOT);
+    const outcome = observeRead(pending);
+    try {
+      await vi.advanceTimersByTimeAsync(19);
+      assert.deepEqual(
+        get.mock.calls.map(([key]) => key),
+        [ACCOUNT_SUMMARY_POINTER_KEY, shard],
+      );
+      assert.equal(outcome.settled, false);
+      await vi.advanceTimersByTimeAsync(1);
+      assert.equal(
+        outcome.settled,
+        true,
+        "SUMMARY_ARTIFACT_PHASE_RESTARTED_BUDGET",
+      );
+      assert.ok(outcome.error instanceof RetainedHistoryUnavailableError);
+    } finally {
+      held.resolve({ accounts: { [HOT]: [group()] } });
+      await pending.catch(() => {});
+    }
+  });
+
+  test("rotation recovery cannot restart the shared deadline", async () => {
+    budgetClock();
+    const held = deferredRead<unknown>();
+    let pointers = 0;
+    const get = vi.fn(async (key: string) => {
+      if (key === ACCOUNT_SUMMARY_POINTER_KEY) {
+        pointers += 1;
+        return { json: async () => (pointers === 1 ? pointer() : held.promise) };
+      }
+      return new Promise<null>((resolve) => setTimeout(() => resolve(null), 15));
+    });
+    const env = { METAGRAPH_ARCHIVE: { get }, METAGRAPH_R2_TIMEOUT_MS: "20" };
+    const pending = loadAccountSummaryProjection(env, HOT);
+    const outcome = observeRead(pending);
+    try {
+      await vi.advanceTimersByTimeAsync(19);
+      assert.deepEqual(
+        get.mock.calls.map(([key]) => key),
+        [ACCOUNT_SUMMARY_POINTER_KEY, shard, ACCOUNT_SUMMARY_POINTER_KEY],
+      );
+      await vi.advanceTimersByTimeAsync(1);
+      assert.equal(
+        outcome.settled,
+        true,
+        "SUMMARY_ARTIFACT_ROTATION_RESTARTED_BUDGET",
+      );
+      assert.ok(outcome.error instanceof RetainedHistoryUnavailableError);
+    } finally {
+      held.resolve(pointer());
+      await pending.catch(() => {});
+    }
+  });
+
+  test("a late failed memo cannot evict a newer successful lookup", async () => {
+    budgetClock();
+    const held = deferredRead<JsonObject | null>();
+    let pointers = 0;
+    const get = vi.fn(async (key: string) => {
+      if (key === ACCOUNT_SUMMARY_POINTER_KEY && ++pointers === 1)
+        return held.promise;
+      return {
+        json: async () =>
+          key === ACCOUNT_SUMMARY_POINTER_KEY
+            ? pointer()
+            : { accounts: { [HOT]: [group()] } },
+      };
+    });
+    const env = { METAGRAPH_ARCHIVE: { get }, METAGRAPH_R2_TIMEOUT_MS: "20" };
+    const first = loadAccountSummaryProjection(env, HOT);
+    const firstOutcome = observeRead(first);
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      resetAccountSummaryPointerCache();
+      await readFound(env, HOT);
+      held.reject(new Error("old lookup failed after replacement"));
+      await first.catch(() => {});
+      assert.equal(firstOutcome.settled, true);
+      await readFound(env, HOT);
+      assert.equal(pointers, 2, "SUMMARY_OLD_MEMO_EVICTED_NEW_LOOKUP");
+    } finally {
+      held.resolve(null);
+      await first.catch(() => {});
+    }
+  });
+
+  test("an expired pending pointer is refreshed before any stale shard read", async () => {
+    budgetClock();
+    const next = "20260814T110000Z";
+    const held = deferredRead<JsonObject | null>();
+    let pointers = 0;
+    const get = vi.fn(async (key: string) => {
+      if (key === ACCOUNT_SUMMARY_POINTER_KEY) {
+        pointers += 1;
+        return pointers === 1
+          ? held.promise
+          : { json: async () => pointer({ generation: next }) };
+      }
+      return { json: async () => ({ accounts: { [HOT]: [group()] } }) };
+    });
+    const env = {
+      METAGRAPH_ARCHIVE: { get },
+      METAGRAPH_R2_TIMEOUT_MS: String(ACCOUNT_SUMMARY_POINTER_TTL_MS * 2),
+    };
+    const first = loadAccountSummaryProjection(env, HOT);
+    try {
+      await vi.advanceTimersByTimeAsync(ACCOUNT_SUMMARY_POINTER_TTL_MS + 1);
+      await readFound(env, HOT);
+      held.resolve({ json: async () => pointer() });
+      await first;
+      const nextShard = accountSummaryShardKey(HOT, SHARDS, next);
+      assert.deepEqual(
+        get.mock.calls.map(([key]) => key),
+        [
+          ACCOUNT_SUMMARY_POINTER_KEY,
+          ACCOUNT_SUMMARY_POINTER_KEY,
+          nextShard,
+          nextShard,
+        ],
+        "SUMMARY_EXPIRED_POINTER_READ_STALE_SHARD",
+      );
+    } finally {
+      held.resolve({ json: async () => pointer() });
+      await first.catch(() => {});
+    }
+  });
+
+  test("different storage bindings never share a pointer memo", async () => {
+    const next = "20260814T110000Z";
+    const first = archive(published({ [HOT]: [group()] }));
+    await readFound(first.env, HOT, FRESH);
+    const second = archive({
+      [ACCOUNT_SUMMARY_POINTER_KEY]: pointer({ generation: next }),
+      [accountSummaryShardKey(HOT, SHARDS, next)]: { accounts: { [HOT]: [group()] } },
+    });
+    await readFound(second.env, HOT, FRESH);
+    assert.deepEqual(second.asked, [
+      ACCOUNT_SUMMARY_POINTER_KEY,
+      accountSummaryShardKey(HOT, SHARDS, next),
+    ]);
   });
 });
