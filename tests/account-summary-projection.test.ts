@@ -1209,7 +1209,11 @@ describe("the pointer memo", () => {
     gone.asked.length = 0;
     Object.assign(objects, published({ [HOT]: [group()] }, FRESH_POINTER()));
     const found = await readFound(gone.env, HOT, FRESH);
-    assert.equal(found.groups.length, 1, "the next request re-read the pointer");
+    assert.equal(
+      found.groups.length,
+      1,
+      "the next request re-read the pointer",
+    );
     assert.ok(
       gone.asked.includes(ACCOUNT_SUMMARY_POINTER_KEY),
       "it must not have answered from the dropped memo",
@@ -1291,7 +1295,10 @@ describe("the pointer memo", () => {
       "one shard read, never two for the same key",
     );
     gone.asked.length = 0;
-    assert.equal(await loadAccountSummaryProjection(gone.env, HOT, FRESH), null);
+    assert.equal(
+      await loadAccountSummaryProjection(gone.env, HOT, FRESH),
+      null,
+    );
     assert.equal(
       gone.asked[0],
       ACCOUNT_SUMMARY_POINTER_KEY,
@@ -1354,7 +1361,12 @@ describe("one bounded account-summary artifact read", () => {
   type JsonObject = { json(): Promise<unknown> };
   const shard = accountSummaryShardKey(HOT, SHARDS, GEN);
 
-  for (const stage of ["pointer get", "pointer body", "shard get", "shard body"]) {
+  for (const stage of [
+    "pointer get",
+    "pointer body",
+    "shard get",
+    "shard body",
+  ]) {
     test(`a stuck ${stage} fails within the shared budget without late downstream reads`, async () => {
       budgetClock();
       const objects: Record<string, unknown> = published({ [HOT]: [group()] });
@@ -1443,9 +1455,13 @@ describe("one bounded account-summary artifact read", () => {
     const get = vi.fn(async (key: string) => {
       if (key === ACCOUNT_SUMMARY_POINTER_KEY) {
         pointers += 1;
-        return { json: async () => (pointers === 1 ? pointer() : held.promise) };
+        return {
+          json: async () => (pointers === 1 ? pointer() : held.promise),
+        };
       }
-      return new Promise<null>((resolve) => setTimeout(() => resolve(null), 15));
+      return new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), 15),
+      );
     });
     const env = { METAGRAPH_ARCHIVE: { get }, METAGRAPH_R2_TIMEOUT_MS: "20" };
     const pending = loadAccountSummaryProjection(env, HOT);
@@ -1548,7 +1564,9 @@ describe("one bounded account-summary artifact read", () => {
     await readFound(first.env, HOT, FRESH);
     const second = archive({
       [ACCOUNT_SUMMARY_POINTER_KEY]: pointer({ generation: next }),
-      [accountSummaryShardKey(HOT, SHARDS, next)]: { accounts: { [HOT]: [group()] } },
+      [accountSummaryShardKey(HOT, SHARDS, next)]: {
+        accounts: { [HOT]: [group()] },
+      },
     });
     await readFound(second.env, HOT, FRESH);
     assert.deepEqual(second.asked, [

@@ -193,7 +193,9 @@ describe("native archive's budget-aware read port", () => {
     await vi.advanceTimersByTimeAsync(20);
     expect(cancel).toHaveBeenCalledOnce();
     expect(source.locked).toBe(false);
-    await expect(value!.json()).rejects.toBeInstanceOf(ArtifactReadTimeoutError);
+    await expect(value!.json()).rejects.toBeInstanceOf(
+      ArtifactReadTimeoutError,
+    );
     expect(fixture.get).toHaveBeenCalledOnce();
     expect(fixture.all).toHaveBeenCalledOnce();
     await value!.body.cancel();

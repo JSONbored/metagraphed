@@ -238,7 +238,9 @@ async function readJsonOnce(
 ): Promise<Record<string, unknown> | null> {
   try {
     const object = await budget.run(() =>
-      bucket.getWithBudget ? bucket.getWithBudget(key, budget) : bucket.get(key),
+      bucket.getWithBudget
+        ? bucket.getWithBudget(key, budget)
+        : bucket.get(key),
     );
     if (!object) return null;
     return asJsonObject(await budget.run(() => object.json()));

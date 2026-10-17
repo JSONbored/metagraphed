@@ -33,8 +33,7 @@ function fixture() {
     "CREATE TABLE generated_artifacts(key TEXT PRIMARY KEY,payload TEXT,updated_at TEXT)",
   );
   let before:
-    | ((text: string, params: unknown[]) => void | Promise<void>)
-    | undefined;
+    ((text: string, params: unknown[]) => void | Promise<void>) | undefined;
   type Result = { success: boolean; results: unknown[] };
   let reply: ((result: Result) => Result) | undefined;
   const prepare = (text: string, params: unknown[] = []) => ({
@@ -693,7 +692,8 @@ describe("the summary deadline through the native archive adapter", () => {
     const queries: string[] = [];
     f.fail(async (_sql, params) => {
       queries.push(String(params[0]));
-      if (params[0] === prefix + ACCOUNT_SUMMARY_POINTER_KEY) await held.promise;
+      if (params[0] === prefix + ACCOUNT_SUMMARY_POINTER_KEY)
+        await held.promise;
     });
     const pending = boundedSummary(f);
     const outcome = observeArchiveRead(pending);
@@ -745,7 +745,9 @@ describe("the summary deadline through the native archive adapter", () => {
       expect(f.fetch).toHaveBeenCalledOnce();
       expect(signal?.aborted).toBe(false);
       await vi.advanceTimersByTimeAsync(1);
-      expect(outcome.settled, "SUMMARY_NATIVE_FETCH_IGNORED_DEADLINE").toBe(true);
+      expect(outcome.settled, "SUMMARY_NATIVE_FETCH_IGNORED_DEADLINE").toBe(
+        true,
+      );
       expect(outcome.error).toBeInstanceOf(RetainedHistoryUnavailableError);
       expect(signal?.aborted).toBe(true);
       const readsAtDeadline = queries.length;
@@ -770,15 +772,16 @@ describe("the summary deadline through the native archive adapter", () => {
     const heldCancel = deferredArchiveRead<void>();
     const cancel = vi.fn(() => heldCancel.promise);
     let controller!: ReadableStreamDefaultController<Uint8Array>;
-    f.fetch.mockImplementationOnce(async () =>
-      new Response(
-        new ReadableStream<Uint8Array>({
-          start(value) {
-            controller = value;
-          },
-          cancel,
-        }),
-      ),
+    f.fetch.mockImplementationOnce(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(value) {
+              controller = value;
+            },
+            cancel,
+          }),
+        ),
     );
     const pending = boundedSummary(f);
     const outcome = observeArchiveRead(pending);
@@ -828,7 +831,9 @@ describe("the summary deadline through the native archive adapter", () => {
     const outcome = observeArchiveRead(pending);
     try {
       await vi.advanceTimersByTimeAsync(20);
-      expect(outcome.settled, "SUMMARY_LEGACY_GET_EXCEEDED_DEADLINE").toBe(true);
+      expect(outcome.settled, "SUMMARY_LEGACY_GET_EXCEEDED_DEADLINE").toBe(
+        true,
+      );
       expect(outcome.error).toBeInstanceOf(RetainedHistoryUnavailableError);
       heldGet.resolve(late);
       await vi.advanceTimersByTimeAsync(0);

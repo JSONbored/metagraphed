@@ -320,13 +320,19 @@ export function archiveObjectStore(env: ArchiveEnv) {
         if (start >= offset + length || start + chunk.bytes <= offset) continue;
         const response = await within(budget, async () => {
           const response = await binding.fetch(
-            new Request(`https://history-assets.invalid/${chunk.sha256}.mgpack`, {
-              headers: { "accept-encoding": "identity" },
-              redirect: "manual",
-              signal: budget
-                ? AbortSignal.any([budget.signal, AbortSignal.timeout(10_000)])
-                : AbortSignal.timeout(10_000),
-            }),
+            new Request(
+              `https://history-assets.invalid/${chunk.sha256}.mgpack`,
+              {
+                headers: { "accept-encoding": "identity" },
+                redirect: "manual",
+                signal: budget
+                  ? AbortSignal.any([
+                      budget.signal,
+                      AbortSignal.timeout(10_000),
+                    ])
+                  : AbortSignal.timeout(10_000),
+              },
+            ),
           );
           try {
             budget?.check();
