@@ -8,6 +8,26 @@ const uiRequire = createRequire(
   new URL("../apps/ui/package.json", import.meta.url),
 );
 
+test("hoisted build and documentation peers resolve the UI framework", () => {
+  const presetRequire = createRequire(
+    uiRequire.resolve("@lovable.dev/vite-tanstack-config"),
+  );
+  const docsRequire = createRequire(
+    uiRequire.resolve("fumadocs-ui/provider/tanstack"),
+  );
+  // A workspace-local copy is invisible to a hoisted peer consumer. Resolve
+  // from the actual preset/provider, rather than checking only the root lock.
+  assert.equal(
+    presetRequire("@tanstack/react-start/package.json").version,
+    uiRequire("@tanstack/react-start/package.json").version,
+  );
+  assert.equal(
+    docsRequire("@tanstack/react-router/package.json").version,
+    uiRequire("@tanstack/react-router/package.json").version,
+  );
+  assert.ok(presetRequire.resolve("@tanstack/react-start/plugin/vite"));
+});
+
 interface SerovalReader {
   fromJSON(value: unknown): unknown;
   fromCrossJSON(
