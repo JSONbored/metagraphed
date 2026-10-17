@@ -905,7 +905,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: JSONbored/metagraphed
-          ref: 9d3585be9d387522614a48f1989446e6f34d691b
+          ref: 6264185656f73b8c62f0264d97b53cf646ec9241
           persist-credentials: false
           fetch-depth: 1
       - name: Verify fixed source, fixture configuration and inputs
@@ -913,8 +913,8 @@ jobs:
         run: |
           python3 - <<'PY_RECOVERY_INPUTS'
           import hashlib, json, os, pathlib, subprocess
-          source = "9d3585be9d387522614a48f1989446e6f34d691b"
-          expected = {'package.json': '52500f90371d9fc6cf8c6160bc63685384b4b49a9a87f8dfcfb7c959fddead59', 'apps/ui/package.json': 'e3a86e5aa2fe748f042033ddf4da195568e12c5fc09b9a66c8b66c3aa4f347e2', 'package-lock.json': 'ca23d1cc6245fc06b61c4bf14e298a3e75041a5966d63b4c4e00e5835ec22309', 'apps/ui/playwright.config.ts': 'e841be1d48fe584b8046106c9af06a925039fd57bd7d4ac21b687865e927da7a', 'apps/ui/tests/e2e/api-stub.ts': '86722999dc241b70737c8a78b3a71c84a9a4ff279909112697669dc67684c2c4', 'apps/ui/tests/e2e/serve-e2e.ts': '819950b22abf5ba6a4648ca61aa5fbead97dfb0015e0cfc6e8feae0fb4887fc3', 'apps/ui/tests/e2e/server-restart.ts': '9005052b7cc54d83b62360687fdc7d58df35c50a01373f46749a23aeac9881e7', 'apps/ui/tests/e2e/native-runtime-diagnostics.ts': 'efa8520cf9cbf5d2f11b8b106b96b26386643dc20d3f4a4b9547fc125932ddd8', 'apps/ui/tests/e2e/indexable-routes.spec.ts': 'f21003e88808b98206815e3c935df68cae90102c5991ea27b423ee41723241fc', '.npmrc': 'b50bde7ee3e769650d30f1752bf6403f0d69f3a656113d3e2f63c9917a452165', 'apps/ui/tests/e2e/preferences-loading.spec.ts': '3cbe3375a0f3c41fa930908ed0e87c06ac98d93c15bbb96cef50a8039944057e', 'apps/ui/tests/e2e/provider-detail-state.spec.ts': 'af6cc4ac7bb9d98d85cae8d664721206a8f27708d81a0440f913e2e667296f37'}
+          source = "6264185656f73b8c62f0264d97b53cf646ec9241"
+          expected = {'package.json': 'd8b099ac69748e38f363287ee673b1b4c8b35339af67e2c4fc033484c3ffaed5', 'apps/ui/package.json': 'e3a86e5aa2fe748f042033ddf4da195568e12c5fc09b9a66c8b66c3aa4f347e2', 'package-lock.json': '00d480ff42855c3b0bbe0ac13ed1c6cc388ca7478ffaf53f898c10525f28348e', 'apps/ui/playwright.config.ts': 'e841be1d48fe584b8046106c9af06a925039fd57bd7d4ac21b687865e927da7a', 'apps/ui/tests/e2e/api-stub.ts': '86722999dc241b70737c8a78b3a71c84a9a4ff279909112697669dc67684c2c4', 'apps/ui/tests/e2e/serve-e2e.ts': '819950b22abf5ba6a4648ca61aa5fbead97dfb0015e0cfc6e8feae0fb4887fc3', 'apps/ui/tests/e2e/server-restart.ts': '9005052b7cc54d83b62360687fdc7d58df35c50a01373f46749a23aeac9881e7', 'apps/ui/tests/e2e/native-runtime-diagnostics.ts': 'efa8520cf9cbf5d2f11b8b106b96b26386643dc20d3f4a4b9547fc125932ddd8', 'apps/ui/tests/e2e/indexable-routes.spec.ts': 'f21003e88808b98206815e3c935df68cae90102c5991ea27b423ee41723241fc', '.npmrc': 'b50bde7ee3e769650d30f1752bf6403f0d69f3a656113d3e2f63c9917a452165', 'apps/ui/tests/e2e/preferences-loading.spec.ts': '3cbe3375a0f3c41fa930908ed0e87c06ac98d93c15bbb96cef50a8039944057e', 'apps/ui/tests/e2e/provider-detail-state.spec.ts': 'af6cc4ac7bb9d98d85cae8d664721206a8f27708d81a0440f913e2e667296f37'}
           root = pathlib.Path.cwd()
           if subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip() != source:
               raise SystemExit("Unexpected recovery source")
@@ -945,148 +945,6 @@ jobs:
           npm run build --workspace=packages/chain-summaries
       - name: Build the existing local-stub UI Worker
         run: npm run build:worker:e2e --workspace=apps/ui 2>&1 | tee "$RUNNER_TEMP/ordinary-flakes/build.log"
-      - name: Observe sanitized generated runtime configuration without starting an alternative server
-        working-directory: apps/ui
-        run: |
-          node --input-type=module <<'NODE_RUNTIME_ADMISSION' > "$RUNNER_TEMP/ordinary-flakes/generated-runtime-admission.json"
-          // Supporting data only. Not executed by this reviewer.
-          // Run once after the existing native build, with cwd=apps/ui:
-          // node --input-type=module <<'NODE' > "$RUNNER_TEMP/generated-runtime-admission.json"
-          // [paste this file's code, excluding these wrapper comments]
-          // NODE
-          // Observation only: candidate_admitted and runtime_parity stay false.
-          process.env.WRANGLER_SEND_METRICS = "false";
-          process.env.WRANGLER_WRITE_LOGS = "false";
-          process.env.WRANGLER_LOG = "none";
-          
-          const { readFileSync, readdirSync, realpathSync, statSync, existsSync } = await import("node:fs");
-          const { resolve, relative, sep, extname } = await import("node:path");
-          const { createHash } = await import("node:crypto");
-          const { execFileSync } = await import("node:child_process");
-          const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-          const inside = (root, path) => path === root || path.startsWith(root + sep);
-          const observation = {
-            kind: "generated-runtime-admission-read-only",
-            candidate_admitted: false,
-            runtime_parity: false,
-            no_runtime_started: true,
-            read_complete: false,
-          };
-          let stage = "source-and-generated-config";
-          try {
-            const projectRoot = realpathSync(resolve("../.."));
-            const serverRoot = realpathSync(resolve("dist/server"));
-            const clientRoot = realpathSync(resolve("dist/client"));
-            observation.frozen_build_roots_are_expected = serverRoot === resolve(projectRoot, "apps/ui/dist/server") &&
-              clientRoot === resolve(projectRoot, "apps/ui/dist/client");
-            const configPath = resolve(serverRoot, "wrangler.json");
-            if (statSync(configPath).size > 1024 * 1024) throw new Error();
-            const rawBytes = readFileSync(configPath);
-            const raw = JSON.parse(rawBytes.toString("utf8"));
-            observation.source = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-            observation.lock_sha256 = sha256(readFileSync(resolve(projectRoot, "package-lock.json")));
-            observation.generated_config_sha256 = sha256(rawBytes);
-          
-            stage = "provider-config-read-and-local-option-conversion";
-            const { unstable_readConfig, unstable_getMiniflareWorkerOptions } = await import("wrangler");
-            // hideWarnings prevents readConfig's optional asynchronous upgrade check.
-            // No runtime, getPlatformProxy, startWorker, dev, deploy, or remote session API.
-            const config = unstable_readConfig({ config: configPath }, { hideWarnings: true });
-            const converted = unstable_getMiniflareWorkerOptions(config);
-            const worker = converted.workerOptions;
-            observation.worker_option_keys = Object.keys(worker).sort();
-            observation.define_count = Object.keys(converted.define ?? {}).length;
-            observation.external_worker_count = converted.externalWorkers.length;
-            observation.worker_name_is_expected = config.name === "metagraphed-ui";
-            observation.compatibility_date = worker.compatibilityDate ?? null;
-            observation.compatibility_flags = worker.compatibilityFlags ?? [];
-            observation.module_rules = worker.modulesRules ?? [];
-            observation.assets = {
-              present: worker.assets !== undefined,
-              binding_is_ASSETS: worker.assets?.binding === "ASSETS",
-              directory_inside_dist_client: worker.assets?.directory
-                ? inside(clientRoot, realpathSync(worker.assets.directory))
-                : false,
-              router_option_keys: Object.keys(worker.assets?.routerConfig ?? {}).sort(),
-              asset_option_keys: Object.keys(worker.assets?.assetConfig ?? {}).sort(),
-              html_handling: raw.assets?.html_handling ?? null,
-              not_found_handling: raw.assets?.not_found_handling ?? null,
-              run_worker_first: raw.assets?.run_worker_first ?? null,
-            };
-            observation.asset_rule_files = Object.fromEntries(["_headers", "_redirects"].map((name) => {
-              const file = resolve(clientRoot, name);
-              if (!existsSync(file)) return [name, { present: false }];
-              const actual = realpathSync(file);
-              if (!inside(clientRoot, actual)) return [name, { present: true, inside_client: false }];
-              if (statSync(actual).size > 1024 * 1024) return [name, { present: true, size_limit_exceeded: true }];
-              return [name, { present: true, inside_client: true, sha256: sha256(readFileSync(actual)) }];
-            }));
-          
-            stage = "entry-and-bounded-module-manifest";
-            const main = converted.main && existsSync(converted.main) ? realpathSync(converted.main) : null;
-            observation.entry_exists = main !== null;
-            observation.entry_inside_dist_server = main !== null && inside(serverRoot, main);
-            if (observation.entry_inside_dist_server) {
-              if (statSync(main).size > 32 * 1024 * 1024) throw new Error();
-              const bytes = readFileSync(main);
-              observation.entry = { path: relative(serverRoot, main), bytes: bytes.length, sha256: sha256(bytes) };
-            }
-            const { init, parse } = await import("es-module-lexer");
-            await init;
-            const manifest = [];
-            const counts = { relative: 0, node: 0, cloudflare: 0, other_bare: 0, computed_dynamic: 0 };
-            const extensions = {};
-            let readBytes = 0;
-            let visited = 0;
-            let truncated = false;
-            let symlinkSeen = false;
-            const moduleExtensions = new Set([".mjs", ".js", ".cjs", ".json", ".wasm", ".txt", ".html", ".css"]);
-            const pending = [serverRoot];
-            while (pending.length && !truncated) {
-              const directory = pending.pop();
-              for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-                visited += 1;
-                if (visited > 2048) { truncated = true; break; }
-                if (entry.isSymbolicLink()) { symlinkSeen = true; continue; }
-                const file = resolve(directory, entry.name);
-                if (entry.isDirectory()) { pending.push(file); continue; }
-                const extension = extname(entry.name);
-                extensions[extension] = (extensions[extension] ?? 0) + 1;
-                if (!moduleExtensions.has(extension)) continue;
-                const size = statSync(file).size;
-                if (manifest.length >= 512 || readBytes + size > 32 * 1024 * 1024) { truncated = true; break; }
-                const bytes = readFileSync(file);
-                readBytes += bytes.length;
-                manifest.push({ path: relative(serverRoot, file), bytes: bytes.length, sha256: sha256(bytes) });
-                if (![".js", ".mjs", ".cjs"].includes(extension)) continue;
-                const [imports] = parse(bytes.toString("utf8"));
-                for (const item of imports) {
-                  if (item.d === -2) continue; // import.meta is not a module request.
-                  if (item.n === undefined) { if (item.d >= 0) counts.computed_dynamic += 1; continue; }
-                  const category = item.n.startsWith(".") ? "relative" : item.n.startsWith("node:") ? "node"
-                    : item.n.startsWith("cloudflare:") ? "cloudflare" : "other_bare";
-                  counts[category] += 1;
-                }
-              }
-            }
-            observation.module_scan = { manifest, extensions, import_classes: counts, read_bytes: readBytes, visited, truncated, symlink_seen: symlinkSeen };
-            observation.simple_candidate_static_conditions_met = Boolean(
-              observation.frozen_build_roots_are_expected && observation.entry_inside_dist_server && observation.worker_name_is_expected &&
-              observation.define_count === 0 && observation.external_worker_count === 0 &&
-              observation.assets.present && observation.assets.binding_is_ASSETS &&
-              observation.assets.directory_inside_dist_client &&
-              Object.values(observation.asset_rule_files).every((file) => !file.present || (file.inside_client && !file.size_limit_exceeded)) &&
-              !truncated && !symlinkSeen &&
-              counts.other_bare === 0 && counts.computed_dynamic === 0
-            );
-            observation.read_complete = true;
-          } catch {
-            // Provider errors may include contextual configuration: never print them.
-            observation.error_stage = stage;
-            observation.simple_candidate_static_conditions_met = false;
-          }
-          console.log(JSON.stringify(observation, null, 2));
-          NODE_RUNTIME_ADMISSION
       - name: Install the locked Chromium browser
         working-directory: apps/ui
         run: npx --no-install playwright install --with-deps chromium
@@ -1164,7 +1022,7 @@ jobs:
                   header = re.match(r"^--- (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z) (?:debug|info|warn|error|log)$", line)
                   if header:
                       stamp = header.group(1)
-                  for needle, label in [("Starting local server", "local-server-start"), ("reloadComplete", "local-runtime-reload-complete"), ("Error in ProxyController", "proxy-controller-error"), ("Network connection lost", "network-connection-lost")]:
+                  for needle, label in [("Starting local server", "local-server-start"), ("reloadComplete", "local-runtime-reload-complete"), ("Error in ProxyController", "proxy-controller-error"), ("Network connection lost", "network-connection-lost"), ("the affected request failed; the dev server continues", "proxy-request-failed-server-continues")]:
                       if needle in line and len(selected) < 100:
                           selected.append({"line": number, "timestamp_utc": stamp, "event": label})
               lifecycle.append({"file": log.name, "sha256": hashlib.sha256(body).hexdigest(), "bytes": len(body), "events": selected, "cap_reached": len(selected) == 100})
@@ -1192,7 +1050,6 @@ jobs:
             ${{ runner.temp }}/ordinary-flakes/e2e-results.json
             ${{ runner.temp }}/ordinary-flakes/test-exit.txt
             ${{ runner.temp }}/ordinary-flakes/wrangler-lifecycle.json
-            ${{ runner.temp }}/ordinary-flakes/generated-runtime-admission.json
             ${{ runner.temp }}/ordinary-flakes/*.log
           retention-days: 7
           if-no-files-found: error
