@@ -1,12 +1,15 @@
 // Dead letters are reported separately from successful producer deliveries.
-// Sync payloads are preserved in D1 before acknowledgment so operators can
+// Sync payloads are preserved before acknowledgment so operators can
 // recover them after repairing the original write failure (#12270). Other
 // queue families keep their existing acknowledgment policy. No dead letter is
 // automatically replayed into its failed business operation.
 
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { ProbeJobTypeSchema } from "../schemas-src/probe-jobs.ts";
-import { preserveSyncDeadLetter } from "./sync-dead-letter-store.ts";
+import {
+  preserveSyncDeadLetter,
+  type SyncDeadLetterStore,
+} from "./sync-dead-letter-store.ts";
 
 /** The two dead-letter queues, and the lane each reports under.
  *
@@ -196,12 +199,15 @@ export async function handleDeadLetterBatch(
     readonly messages: readonly {
       readonly id?: string;
       readonly body: unknown;
+      readonly timestamp?: Date;
+      readonly attempts?: number;
       ack: () => void;
+      retry: Message<unknown>["retry"];
     }[];
   },
   db: LaneHealthDb | undefined,
   nowMs: number = Date.now(),
-  quarantine?: Pick<D1Database, "prepare">,
+  quarantine?: SyncDeadLetterStore,
 ): Promise<string> {
   const detail = summarizeDeadLetterBatch(batch.queue, batch.messages);
   console.error(`dead-letter: ${detail}`);
@@ -218,10 +224,33 @@ export async function handleDeadLetterBatch(
       checked_at: nowMs,
     });
   }
+  const retryFailures: Error[] = [];
   for (const message of batch.messages) {
-    if (batch.queue === "sync-batches-dlq")
-      await preserveSyncDeadLetter(quarantine, message, nowMs);
-    message.ack();
+    if (batch.queue !== "sync-batches-dlq") {
+      message.ack();
+      continue;
+    }
+    try {
+      await preserveSyncDeadLetter(quarantine, batch.queue, message);
+      message.ack();
+    } catch {
+      // An unconfirmed observation retries only its preservation. A failed
+      // message must not consume the retry budget of its batch mates.
+      try {
+        message.retry();
+      } catch {
+        retryFailures.push(
+          new Error("Sync dead letter retry was not registered"),
+        );
+      }
+    }
   }
+  // A failed retry registration must reject the invocation, preventing the
+  // runtime from implicitly acknowledging an unconfirmed message on return.
+  if (retryFailures.length)
+    throw new AggregateError(
+      retryFailures,
+      "Sync dead letter retries could not be registered",
+    );
   return detail;
 }

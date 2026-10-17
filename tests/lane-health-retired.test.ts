@@ -33,8 +33,7 @@ import {
 } from "../src/dead-letter.ts";
 import { RAW_CAPTURE_STATE_NEON_LANE } from "../src/capture-state-neon-write.ts";
 import { NEURONS_NEON_LANE } from "../src/neurons-neon-write.ts";
-// The lane constant lives with its cron in the data-api Worker.
-import { TAO_USD_INDEX_NEON_LANE } from "../workers/data-api.ts";
+import { TAO_USD_INDEX_NEON_LANE } from "../src/tao-usd-index.ts";
 
 /** Each retired lane, and the producer whose deletion justifies retiring it.
  * `null` marks the one entry whose producer was a KEY SPELLING rather than a
