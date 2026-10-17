@@ -89,6 +89,7 @@ import {
   rowFromBatch,
   type TaoUsdIndexRow,
 } from "../src/tao-usd-ingest.ts";
+import { TAO_USD_INDEX_NEON_LANE } from "../src/tao-usd-index.ts";
 import {
   taoUsdIndexStatement,
   writeTaoUsdIndexD1,
@@ -736,7 +737,7 @@ function utf8Bytes(value: unknown) {
  * any real Bittensor capture. Shared by every sync validator below rather than
  * restated, because the defect is the unit, not the table.
  */
-export const SYNC_MIN_CAPTURED_AT_MS = Date.UTC(2020, 0, 1);
+const SYNC_MIN_CAPTURED_AT_MS = Date.UTC(2020, 0, 1);
 
 // One instance per route, each built from the SAME *_INSERT_COLUMNS the writer
 // binds, so a schema can never drift from the INSERT it guards (#9564).
@@ -9357,14 +9358,6 @@ export function decodeBlockHeader(
   return { blockTag: rawNumber, blockNumber, timestampSeconds };
 }
 
-/**
- * The lane name this write reports and buffers under (#10677).
- *
- * Named like the `src/*-neon-write.ts` lanes because it now behaves like one:
- * same runner, same flag, same fire-and-forget contract.
- */
-export const TAO_USD_INDEX_NEON_LANE = "tao-usd-index";
-
 export async function writeTaoUsdIndexRow(
   env: DataApiEnv,
   row: TaoUsdIndexRow,
@@ -9682,7 +9675,7 @@ export default {
         batch,
         laneHealthStore(env),
         Date.now(),
-        env.D1_STATE,
+        env.METAGRAPH_CONTROL,
       );
       return;
     }

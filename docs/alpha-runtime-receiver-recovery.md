@@ -109,8 +109,12 @@ baseline seven columns and the additive nine columns. Unknown or partial physica
 generations still fail closed. The unchanged typed-cell lossless protocol retains
 TEXT shares, evidence and null values; schema/digest identity describes the actual
 generation. Export/recovery compatibility must be selected and qualified against
-the old physical schema before eventual DDL. Its baseline lossless corpus remains
+the old physical schema before eventual DDL. Baseline typed-cell values remain
 unchanged; new fixtures exercise the upgraded generation and restored serving.
+The quarantine export dispatch added by #12769 changes the function-derived
+projection digest for every lossless table. Requalify pinned export plans and
+capture fresh recovery evidence against the actual deployed combined source;
+earlier exporter fingerprints do not qualify that source.
 The position export allowlist is not expanded to unrelated tables. Capture
 metadata, immutable rows/pools and receipt tables additionally require coherent
 native backup/restore coverage; a positions-only export is not complete recovery.
@@ -126,6 +130,11 @@ restore after their retained capture identities, in one atomic native batch.
 This is a synthetic
 software restore proof. It does not certify production backup coverage or permit
 mixing independently exported tables while writers continue to mutate them.
+The thirteen-table D1 proof does not cover independent KV quarantine custody or
+historical `sync_dead_letters` D1 rows. Preserve and qualify those separately as
+described in [D1 state migration](d1-state-migration.md). Quarantine listing
+completion proves KV page traversal, not complete queue coverage, and does not
+authorize queue consumption or replay.
 
 ## Count transport and terminal receipt
 
