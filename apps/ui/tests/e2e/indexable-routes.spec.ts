@@ -1213,7 +1213,8 @@ test.beforeEach(async ({ page, baseURL }, testInfo) => {
     });
   };
   const onRequest = (request: Request) => record("request", request);
-  const onResponse = (response: Response) => record("response", response.request(), response.status());
+  const onResponse = (response: Response) =>
+    record("response", response.request(), response.status());
   const onFailed = (request: Request) => record("request-failed", request);
   page.on("request", onRequest);
   page.on("response", onResponse);
