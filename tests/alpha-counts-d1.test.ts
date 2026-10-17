@@ -319,8 +319,8 @@ test("capture count plans seek past stale rows while the primary key owns unique
   };
   const lookupDetails = await explain(lookup, "primary");
   const primaryLookup = /USING PRIMARY KEY \(hotkey=\?\)/;
-  const usesPrimary = lookupDetails.some((detail) => primaryLookup.test(detail));
-  assert.ok(usesPrimary, lookupDetails.join("\n"));
+  const usesPk = lookupDetails.some((detail) => primaryLookup.test(detail));
+  assert.ok(usesPk, lookupDetails.join("\n"));
   await assert.rejects(store.run(duplicate, [AT]), /UNIQUE constraint failed/);
   const statusAfter = await readAlphaCountStatusD1(store, anchor, 2);
   assert.deepEqual(statusAfter, receipt);
