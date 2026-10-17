@@ -38,7 +38,7 @@ on:
       mode:
         description: Sync main, or return generated artifacts for review without writes
         type: choice
-        options: [sync, generate-only, resolve-lock, source-format]
+        options: [sync, generate-only, resolve-lock, source-format, client-recovery]
         default: sync
       source_sha:
         description: Exact same-repository commit for read-only modes (empty uses dispatch SHA)
@@ -52,7 +52,7 @@ concurrency:
   # Not cancel-in-progress: a run started by an earlier merge is still checking
   # a real state, and cancelling it could drop the only observation of a drift
   # that the next push happens not to reintroduce.
-  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'source-format' && format('source-format-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'source-format' && format('source-format-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'client-recovery' && format('client-recovery-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
   cancel-in-progress: false
 
 jobs:
@@ -732,3 +732,154 @@ jobs:
           path: ${{ runner.temp }}/source-format-output
           if-no-files-found: error
           retention-days: 7
+
+  client-recovery:
+    name: Repeat the two fixed local client-loader recovery cases without retries
+    defaults:
+      run:
+        shell: bash
+    if: github.repository == 'JSONbored/metagraphed' && github.event_name == 'workflow_dispatch' && inputs.mode == 'client-recovery'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      VITE_POSTHOG_PROJECT_TOKEN: ""
+      POSTHOG_API_KEY: ""
+      POSTHOG_PROJECT_ID: ""
+    steps:
+      - name: Checkout the fixed ordinary recovery-test source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: JSONbored/metagraphed
+          ref: aad0b880a09a9a216d8c21d538885b5ddf57ba0a
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify fixed source, fixture configuration and inputs
+        id: inputs
+        run: |
+          python3 - <<'PY_RECOVERY_INPUTS'
+          import hashlib, json, os, pathlib, subprocess
+          source = "aad0b880a09a9a216d8c21d538885b5ddf57ba0a"
+          expected = {'package.json': '52500f90371d9fc6cf8c6160bc63685384b4b49a9a87f8dfcfb7c959fddead59', 'apps/ui/package.json': 'e3a86e5aa2fe748f042033ddf4da195568e12c5fc09b9a66c8b66c3aa4f347e2', 'package-lock.json': 'ca23d1cc6245fc06b61c4bf14e298a3e75041a5966d63b4c4e00e5835ec22309', 'apps/ui/playwright.config.ts': 'e841be1d48fe584b8046106c9af06a925039fd57bd7d4ac21b687865e927da7a', 'apps/ui/tests/e2e/api-stub.ts': '86722999dc241b70737c8a78b3a71c84a9a4ff279909112697669dc67684c2c4', 'apps/ui/tests/e2e/serve-e2e.ts': '819950b22abf5ba6a4648ca61aa5fbead97dfb0015e0cfc6e8feae0fb4887fc3', 'apps/ui/tests/e2e/server-restart.ts': '9005052b7cc54d83b62360687fdc7d58df35c50a01373f46749a23aeac9881e7', 'apps/ui/tests/e2e/native-runtime-diagnostics.ts': '14b5315b9fbbac523005c4e3948024639659e233db6e77905eca79cd5e656914', 'apps/ui/tests/e2e/indexable-routes.spec.ts': 'def48181d548243740318b9c17acf28cff63c4593952fe7796c3c98a1fe4db91', '.npmrc': 'b50bde7ee3e769650d30f1752bf6403f0d69f3a656113d3e2f63c9917a452165'}
+          root = pathlib.Path.cwd()
+          if subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip() != source:
+              raise SystemExit("Unexpected recovery source")
+          if subprocess.check_output(["git", "status", "--porcelain"]):
+              raise SystemExit("Recovery checkout must be clean")
+          for name, digest in expected.items():
+              path = root / name
+              if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+                  raise SystemExit("Unexpected fixed input: " + name)
+          ui = json.loads((root / "apps/ui/package.json").read_text())
+          command = "VITE_METAGRAPH_API_BASE=http://127.0.0.1:8081 VITE_ICON_PROXY_URL=http://127.0.0.1:8081/api/v1/icon npm run build:worker"
+          if ui["scripts"]["build:worker:e2e"] != command:
+              raise SystemExit("Recovery build must use the existing local API/icon stub")
+          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / "client-recovery"
+          output.mkdir()
+          (output / "inputs.json").write_text(json.dumps({"source_sha": source, "source_tree": subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"]).decode().strip(), "input_sha256": expected, "fixed_build_script": command, "fixture_recording": False}, indent=2) + "\n")
+          PY_RECOVERY_INPUTS
+      - name: Setup the existing native Node toolchain
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22.23.2
+      - name: Unconditional clean install
+        run: npm ci 2>&1 | tee "$RUNNER_TEMP/client-recovery/install.log"
+      - name: Build the existing client, ui-kit and chain-summaries packages
+        run: |
+          npm run build --workspace=packages/client
+          npm run build --workspace=packages/ui-kit
+          npm run build --workspace=packages/chain-summaries
+      - name: Build the existing local-stub UI Worker
+        run: npm run build:worker:e2e --workspace=apps/ui 2>&1 | tee "$RUNNER_TEMP/client-recovery/build.log"
+      - name: Install the locked Chromium browser
+        working-directory: apps/ui
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Run only the two ordinary recovery cases twenty times each
+        id: test
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/client-recovery/e2e-results.json
+        run: |
+          set +e
+          npm run test:e2e --workspace=apps/ui -- tests/e2e/indexable-routes.spec.ts --project=interaction --no-deps --grep 'client loader failure preserves navigation and keyboard Retry recovers' --workers=1 --retries=0 --repeat-each=20 > "$RUNNER_TEMP/client-recovery/test.log" 2>&1
+          result=$?
+          set -e
+          echo "$result" > "$RUNNER_TEMP/client-recovery/test-exit.txt"
+          cat "$RUNNER_TEMP/client-recovery/test.log"
+          exit "$result"
+      - name: Pin bounded ordinary test evidence and require all forty first attempts
+        if: always()
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          python3 - <<'PY_RECOVERY_RECEIPT'
+          import hashlib, json, os, pathlib, subprocess
+          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / "client-recovery"
+          output.mkdir(exist_ok=True)
+          inputs_path = output / "inputs.json"
+          report_path = output / "e2e-results.json"
+          inputs = json.loads(inputs_path.read_text()) if inputs_path.is_file() else None
+          report = None
+          reasons = []
+          if report_path.is_symlink() or not report_path.is_file() or report_path.stat().st_size > 16 * 1024 * 1024:
+              reasons.append("Missing or oversized ordinary report")
+              if report_path.exists():
+                  report_path.unlink()
+          else:
+              report = json.loads(report_path.read_text())
+          entries = []
+          def visit(suites):
+              for suite in suites or []:
+                  for spec in suite.get("specs", []):
+                      for test in spec.get("tests", []):
+                          entries.append((spec, test))
+                  visit(suite.get("suites", []))
+          if report:
+              visit(report.get("suites"))
+          titles = {"/ client loader failure preserves navigation and keyboard Retry recovers", "/subnets client loader failure preserves navigation and keyboard Retry recovers"}
+          if len(entries) != 40 or any(spec.get("title") not in titles or test.get("projectName") != "interaction" or test.get("expectedStatus") != "passed" or test.get("status") != "expected" or len(test.get("results", [])) != 1 or test["results"][0].get("retry") != 0 or test["results"][0].get("status") != "passed" for spec, test in entries):
+              reasons.append("Expected exactly forty ordinary recovery first-attempt passes")
+          if any(sum(spec.get("title") == title for spec, test in entries) != 20 for title in titles):
+              reasons.append("Expected twenty results for each exact ordinary case")
+          if not report or report.get("errors") or any(report.get("stats", {}).get(k) != 0 for k in ["skipped", "unexpected", "flaky"]):
+              reasons.append("Ordinary report includes missing, skipped, failed, flaky or global-error results")
+          exit_path = output / "test-exit.txt"
+          if not exit_path.is_file() or exit_path.read_text().strip() != "0":
+              reasons.append("Ordinary test command did not exit successfully")
+          if inputs:
+              if subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip() != inputs["source_sha"]:
+                  reasons.append("Source identity changed")
+              for name, digest in inputs["input_sha256"].items():
+                  path = pathlib.Path(name)
+                  if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+                      reasons.append("Input changed: " + name)
+          else:
+              reasons.append("Missing immutable input receipt")
+          for name in ["install.log", "build.log", "test.log"]:
+              path = output / name
+              if path.is_file() and path.stat().st_size > 1024 * 1024:
+                  with path.open("rb") as stream:
+                      stream.seek(-1024 * 1024, 2)
+                      tail = stream.read(1024 * 1024)
+                  path.write_bytes(b"[bounded tail]\n" + tail)
+          receipt = {"qualification": "forty-first-attempt-passes" if not reasons else "not-qualified", "reasons": reasons, "inputs": inputs, "repository": os.environ["GITHUB_REPOSITORY"], "workflow_sha": os.environ["WORKFLOW_SHA"], "workflow_ref": os.environ["WORKFLOW_REF"], "run_id": os.environ["GITHUB_RUN_ID"], "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"], "stats": report.get("stats") if report else None, "report_sha256": hashlib.sha256(report_path.read_bytes()).hexdigest() if report_path.is_file() else None, "fixed_test_command": "npm run test:e2e --workspace=apps/ui -- tests/e2e/indexable-routes.spec.ts --project=interaction --no-deps --grep 'client loader failure preserves navigation and keyboard Retry recovers' --workers=1 --retries=0 --repeat-each=20"}
+          (output / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          if reasons:
+              raise SystemExit("Ordinary recovery qualification incomplete: " + "; ".join(reasons))
+          PY_RECOVERY_RECEIPT
+      - name: Upload only bounded ordinary recovery diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: client-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/client-recovery/inputs.json
+            ${{ runner.temp }}/client-recovery/receipt.json
+            ${{ runner.temp }}/client-recovery/e2e-results.json
+            ${{ runner.temp }}/client-recovery/test-exit.txt
+            ${{ runner.temp }}/client-recovery/*.log
+          retention-days: 7
+          if-no-files-found: error
