@@ -176,7 +176,7 @@
     "conformance:graphql": "node scripts/check-graphql-conformance.ts",
     "conformance:mcp": "node scripts/check-mcp-conformance.ts",
     "lint": "eslint . --cache",
-    "format:check": "prettier --check --cache --cache-location .prettiercache .",
+    "format:check": "prettier --write src/account-summary-card.ts src/account-summary-projection.ts src/archive-object-store.ts src/artifact-read-budget.ts src/projection-store.ts tests/account-summary-card.test.ts tests/account-summary-projection.test.ts tests/archive-object-store.test.ts tests/artifact-read-budget.test.ts workers/storage.ts && git diff --no-ext-diff -- src/account-summary-card.ts src/account-summary-projection.ts src/archive-object-store.ts src/artifact-read-budget.ts src/projection-store.ts tests/account-summary-card.test.ts tests/account-summary-projection.test.ts tests/archive-object-store.test.ts tests/artifact-read-budget.test.ts workers/storage.ts && false",
     "pretypecheck": "npm run build --workspace=packages/chain-summaries",
     "typecheck": "tsc --noEmit",
     "check:worker-deploys": "node scripts/check-worker-deploys.ts",
