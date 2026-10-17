@@ -38,24 +38,25 @@ const NominatorPositionSchema = z
       .min(0)
       .max(1)
       .describe(
-        "This account's share of the hotkey's total alpha-pool shares on this subnet (0..1), not a TAO amount.",
+        "Legacy fraction reported by the nominator-position ledger (0..1). This wire response does not identify an authoritative asset-quantity basis; the fraction must not establish an ownership share, holdings allocation or unstake Max.",
       ),
     stake_tao: z
       .number()
       .min(0)
       .describe(
-        "This position's stake in the subnet named by the sibling `netuid`. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows, so this is always that subnet's alpha token (#2550). It is the per-row counterpart of `total_stake_alpha` above -- same denomination, kept under the on-chain column name deliberately (#8945).",
+        "Legacy reconstructed quantity for the sibling hotkey and netuid. Reconstruction can multiply a nominator fraction by neuron voting weight, so this field name does not establish a native-alpha or TAO holding. The response has no authoritative quantity-basis discriminator. Do not use it for holdings value, allocation or unstake Max.",
       ),
   })
   .strict()
   .describe(
-    "One (hotkey, netuid) delegation this account holds, reconstructed from the nominator-positions ledger joined against the hotkey's live stake_tao for that netuid.",
+    "One periodically recorded (hotkey, netuid) relationship from the nominator-position ledger. Legacy numeric fields are not qualified asset holdings; preserve relationship identity and capture provenance separately from quantity claims.",
   );
 
 // #9273. Present ONLY when this payload's zero is not a measurement, so a
 // consumer that ignores it reads exactly what it read before. Optional rather
 // than nullable for that reason: the key's absence is the healthy case, and a
-// permanently-null field trains callers not to look.
+// permanently-null field trains callers not to look. This coverage marker's
+// absence does not establish an authoritative token-quantity basis.
 const AccountPositionsDegradedSchema = z
   .object({
     // Built from the loader's own tuple, not re-typed here (#9804). This enum
@@ -66,7 +67,7 @@ const AccountPositionsDegradedSchema = z
     reason: z
       .enum(POSITIONS_DEGRADED_REASONS)
       .describe(
-        "`tier_unavailable`: every tier declined, so this zero is a read failure. `snapshot_predates_stake_activity`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so `positions: 0` is a claim the ledger is not entitled to make. `positions_unpriceable`: the ledger HAS rows for this account, but one or more could not be priced against the live neurons table -- they are excluded from `positions` and from `total_stake_alpha` rather than reported with a fabricated zero, so the total understates the real holding.",
+        "`tier_unavailable`: every tier declined, so zero is a read failure. `snapshot_predates_stake_activity`: the ledger answered zero before newer on-chain stake activity, so an empty current holding is not established. `positions_unpriceable`: ledger rows could not be reconstructed or their quantities are unqualified, so returned rows or totals are incomplete. Absence of this marker does not qualify legacy amounts as asset holdings.",
       ),
     snapshot_captured_at: z
       .string()
@@ -93,14 +94,14 @@ export const AccountPositionsArtifactSchema = z
       .number()
       .min(0)
       .describe(
-        "Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure.",
+        "Legacy sum of reconstructed quantities across returned records. The input can be voting weight and different subnets have different units; this aggregate does not establish asset holdings, portfolio value or allocation. It is not comparable with a TAO balance, including when finite or zero.",
       ),
     positions: z.array(NominatorPositionSchema),
     degraded: AccountPositionsDegradedSchema.optional(),
   })
   .strict()
   .describe(
-    "This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from AccountPortfolio's hotkey-scoped view. Mirrors GET /api/v1/accounts/{ss58}/positions.",
+    "Periodic nominator-side relationship records for one account, with capture time and coverage evidence. Legacy amount/share fields do not identify an authoritative holdings basis; Root holdings are not covered and an empty response does not establish an empty wallet. Mirrors GET /api/v1/accounts/{ss58}/positions.",
   );
 export type AccountPositionsArtifact = z.infer<
   typeof AccountPositionsArtifactSchema
@@ -117,7 +118,7 @@ const AccountPositionHistoryPointSchema = z
     stake_tao: z
       .number()
       .describe(
-        "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).",
+        "Historical metagraph voting weight stored under a legacy name. It does not establish independent native-alpha or TAO principal, including on Root. Pricing or summing voting weight cannot certify account holdings or portfolio value.",
       ),
     emission_tao: z
       .number()
@@ -128,11 +129,16 @@ const AccountPositionHistoryPointSchema = z
     trust: z.number().nullable(),
     incentive: z.number().nullable(),
     dividends: z.number().nullable(),
-    yield: z.number().nullable(),
+    yield: z
+      .number()
+      .nullable()
+      .describe(
+        "Legacy operational emission-per-reported-weight ratio, not measured investment yield or principal-based return.",
+      ),
   })
   .strict()
   .describe(
-    "One day's position for an account in one subnet: the neuron's uid/role/active plus stake/emission and its rank/trust/incentive/dividends scores and emission-per-stake yield.",
+    "One day's recorded neuron membership for an account in one subnet: uid, role, active state, voting weight, emission and operational scores. Historical quantity and ratio fields do not establish asset holdings or investment performance.",
   );
 
 /**
