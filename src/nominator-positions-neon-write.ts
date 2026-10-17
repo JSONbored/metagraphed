@@ -17,7 +17,7 @@ import {
   writeRowsToNeon,
   type NeonWriteResult,
 } from "./neon-write.ts";
-import { NOMINATOR_POSITION_INSERT_COLUMNS } from "./account-nominator-positions.ts";
+import { NOMINATOR_POSITION_INSERT_COLUMNS } from "./nominator-position-columns.ts";
 import { writeNominatorScanReceipts } from "./nominator-scan-receipts.ts";
 import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
 import {

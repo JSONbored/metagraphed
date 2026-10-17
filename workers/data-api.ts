@@ -220,7 +220,7 @@ import {
   VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
 } from "../src/validator-nominator-summary.ts";
 import { tempoByNetuid } from "../src/subnet-tempo.ts";
-import { NOMINATOR_POSITION_INSERT_COLUMNS } from "../src/account-nominator-positions.ts";
+import { NOMINATOR_POSITION_INSERT_COLUMNS } from "../src/nominator-position-columns.ts";
 import {
   identityHash,
   buildAccountIdentityHistory,

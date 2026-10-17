@@ -92,6 +92,7 @@ describe("data-api's bundle boundary", () => {
     "src/raw-capture-d1.ts",
     "src/raw-capture-sync.ts",
     "src/account-balance.ts",
+    "src/account-nominator-positions.ts",
     "src/chain-burn.ts",
     "src/subnet-burn-history.ts",
     "src/network-parameters.ts",

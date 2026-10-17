@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { captureUpsertStatements } from "./capture-family-d1.ts";
-import { NOMINATOR_POSITION_INSERT_COLUMNS } from "./account-nominator-positions.ts";
+import { NOMINATOR_POSITION_INSERT_COLUMNS } from "./nominator-position-columns.ts";
 import { NOMINATOR_POSITIONS_CONFLICT } from "./nominator-positions-neon-write.ts";
 import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
 
