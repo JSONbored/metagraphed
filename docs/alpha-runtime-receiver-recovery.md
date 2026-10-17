@@ -213,17 +213,24 @@ and must be qualified on the existing schema before this combined change merges.
 Before eventual activation, the coordinating owner must:
 
 1. Verify the selected source/receiver/exporter identities, exact migration ledger
-   and physical schema, and fence competing old writers at a coherent cut.
-2. Qualify old-schema exporter/receiver compatibility first, retain independent
-   originals/receipts and a coherent recoverable backup, and prove restoration.
-3. Only after exporter and coherent restore qualification, separately authorize
-   DDL on the chosen owner. Verify every new column, trigger and table physically,
+   and physical schema. Qualify exporter compatibility on the existing schema
+   and prove usable DDL/index capacity and protected schema-writer availability.
+2. Separately authorize additive DDL on the chosen owner. It performs no business
+   backfill, deletion or selection, but builds the count index over existing rows.
+   A fresh whole-database export/restore exercise is not inherent to that step.
+   Verify every new column, trigger and table physically,
    capture the actual catalog through the protected schema writer, review both
    production snapshot artifacts, and run the unchanged ledger/schema/declaration
    verifiers. Reconcile those artifacts before main merge. The existing apply
    workflow can apply DDL and then fail verification against the old snapshot;
    that outcome is not successful activation or proof that DDL rolled back.
    Inspect the actual ledger and catalog before any retry.
+3. Before new writes, replacement or retirement, establish affected-state custody
+   and coherent recovery coverage, including accepted originals/receipts and
+   already-running or queued traffic. Fence competing writers at the applicable
+   coherent cut and qualify restoration for that scope; positions alone cannot
+   recover an accepted Alpha capture. The final complete chunk promotes
+   automatically, without a separate approval pause.
 4. Measure admission and full-pass promotion at worst-case cardinality and pool
    width within D1 execution, statement, memory, I/O and storage budgets, including
    concurrent serving impact. The one-million-row ceiling is not a performance
@@ -234,6 +241,13 @@ Before eventual activation, the coordinating owner must:
    selection, then verify 479 values and explicit refusal of unqualified captures.
    Exact historical resume requires retained historical state; a receiver receipt
    does not spool every producer packet.
+
+Deployment also enables the existing chain-detail-prune cron to advance eligible
+account-event backlog under the unchanged selected-history retention policy.
+Coordinate applicable retirement/custody acceptance before deployment. Its
+120-height per-family run and 10-height transaction bounds report attempted
+account ranges, not cleared prefixes, freed bytes or usable migration capacity.
+No cleanup or capacity qualification is performed by this source change.
 
 Keep the compatible exporter after DDL. Before any runtime rollback, fence
 producers and retain all accepted originals, receipts and canonical selectors.
