@@ -10,6 +10,12 @@ import {
   createCjkFontLoader,
   normalizeCardDisplayText,
 } from "../../../../src/og-cjk-fonts.ts";
+import {
+  resolveOgLogo,
+  verifyOgLogo,
+  type OgLogoResolution,
+} from "../../../../src/og-logo-manifest.ts";
+import { isOgLogoSourcePath } from "../../../../src/og-logo-path.ts";
 
 type WorkersOg = typeof import("workers-og");
 
@@ -54,6 +60,7 @@ function isHealthState(value: string): boolean {
 
 const DEFAULT_TITLE = "Metagraphed";
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
+const RETRY_CACHE_CONTROL = "public, max-age=60";
 
 /**
  * The brand "M" mark (the same brand-kit geometry src/og-image.ts uses),
@@ -242,15 +249,10 @@ export function iconProxyUrl(host: string): string {
 /**
  * The registry's own logo assets, the only paths `logop` may name.
  *
- * Two shapes, both committed under apps/ui/public/logos and both measured
- * against the live registry: subnets carry a content-addressed cache entry
- * (`cache/<sha256>.<ext>`, all 60 of them), providers a slug (`<slug>.<ext>`,
- * 102 of 138). Pinning the whole path rather than sanitizing it is what makes
- * this safe: the name charset excludes `.`, so `..` cannot be spelled, and
- * there is no way to name anything but an image this repo ships.
+ * Original paths use the same discovery policy as the builder. Sharing paths
+ * must carry both exact hashes; traversal and generated display paths decline.
  */
-const LOGO_ASSET_PATH =
-  /^\/logos\/(?:cache\/[0-9a-f]{64}|[a-z0-9][a-z0-9-]{0,62})\.(?:png|svg|jpg|jpeg|webp)$/;
+const SHARING_LOGO_PATH = /^\/logos\/sharing\/v1\/[0-9a-f]{64}-[0-9a-f]{64}\.png$/;
 
 /**
  * Validate the `logop` param as one of OUR OWN cached logo assets.
@@ -271,7 +273,9 @@ const LOGO_ASSET_PATH =
  */
 export function normalizeLogoPath(value: string | null): string | null {
   const raw = (value || "").trim();
-  return LOGO_ASSET_PATH.test(raw) ? raw : null;
+  if (!raw.startsWith("/logos/")) return null;
+  if (isOgLogoSourcePath(raw.slice(7)) || SHARING_LOGO_PATH.test(raw)) return raw;
+  return null;
 }
 
 export function normalizeLogoHost(value: string | null): string | null {
@@ -720,7 +724,7 @@ export async function loadCardFonts(markup: string, fetchImpl: typeof fetch = fe
   return [...fonts, ...fallback];
 }
 
-function makeCacheKey(url: URL, title: string, subtitle: string): Request {
+function makeCacheKey(url: URL, title: string, subtitle: string, logo: OgLogoResolution): Request {
   const cacheUrl = new URL(url);
   const original = cacheUrl.searchParams;
   const next = new URLSearchParams();
@@ -746,6 +750,10 @@ function makeCacheKey(url: URL, title: string, subtitle: string): Request {
     const value = original.get(key);
     if (value) next.set(key, value);
   }
+  if (logo.intent === "expected" && logo.qualified) {
+    next.set("logop", logo.path);
+    next.set("logo_identity", logo.identity);
+  }
   if (original.get("accent") === "agent") next.set("accent", "agent");
   // Part of the key, not just the markup: bumping it retires every cached
   // card at once rather than waiting each entry out.
@@ -754,9 +762,9 @@ function makeCacheKey(url: URL, title: string, subtitle: string): Request {
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
 
-function withOgHeaders(response: Response): Response {
+function withOgHeaders(response: Response, cacheControl = CACHE_CONTROL): Response {
   const headers = new Headers(response.headers);
-  headers.set("cache-control", CACHE_CONTROL);
+  headers.set("cache-control", cacheControl);
   headers.set("content-type", "image/png");
   return new Response(response.body, { status: response.status, headers });
 }
@@ -769,6 +777,51 @@ function withOgHeaders(response: Response): Response {
  * being base64'd into the markup, not to reject real icons.
  */
 const MAX_ICON_BYTES = 256 * 1024;
+const MAX_LOCAL_LOGO_BYTES = 512 * 1024;
+const LOGO_TIMEOUT_MS = 3000;
+
+async function readLogoBody(
+  response: Response,
+  maxBytes: number,
+  signal?: AbortSignal,
+): Promise<ArrayBuffer | null> {
+  if (!response.ok || Number(response.headers.get("content-length")) > maxBytes) {
+    void response.body?.cancel().catch(() => {});
+    return null;
+  }
+  const reader = response.body?.getReader();
+  if (!reader) return null;
+  const controller = new AbortController();
+  const active = signal ?? controller.signal;
+  const timeout = signal ? null : setTimeout(() => controller.abort(), LOGO_TIMEOUT_MS);
+  const cancel = () => {
+    void reader.cancel().catch(() => {});
+  };
+  active.addEventListener("abort", cancel, { once: true });
+  if (active.aborted) cancel();
+  const bytes = new Uint8Array(maxBytes);
+  let length = 0;
+  try {
+    for (;;) {
+      const part = await reader.read();
+      if (active.aborted) return null;
+      if (part.done) break;
+      if (part.value.byteLength > maxBytes - length) {
+        void reader.cancel().catch(() => {});
+        return null;
+      }
+      bytes.set(part.value, length);
+      length += part.value.byteLength;
+    }
+    return length ? bytes.slice(0, length).buffer : null;
+  } catch {
+    return null;
+  } finally {
+    if (timeout !== null) clearTimeout(timeout);
+    active.removeEventListener("abort", cancel);
+    reader.releaseLock();
+  }
+}
 
 /**
  * Fetch an entity icon through our proxy and inline it as a `data:` URI, or
@@ -789,24 +842,29 @@ const MAX_ICON_BYTES = 256 * 1024;
  * something even when the icon service is down.
  */
 async function inlineImage(response: Response): Promise<string | null> {
-  if (!response.ok) return null;
-  const type = response.headers.get("content-type") || "";
-  if (!type.startsWith("image/")) return null;
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.byteLength === 0 || bytes.byteLength > MAX_ICON_BYTES) return null;
+  const type = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() || "";
+  if (!["image/png", "image/jpeg", "image/gif", "image/svg+xml"].includes(type)) {
+    void response.body?.cancel().catch(() => {});
+    return null;
+  }
+  const body = await readLogoBody(response, MAX_ICON_BYTES);
+  if (!body) return null;
+  const bytes = new Uint8Array(body);
   // The bundled edge rasterizer cannot reliably paint bitmap-backed SVGs.
   // Decline them before selecting a logo tile so the proxy/monogram chain
   // remains available instead of caching a successful blank avatar.
   if (type.startsWith("image/svg+xml") && /<image[\s>]/i.test(new TextDecoder().decode(bytes))) {
     return null;
   }
-  // btoa needs a binary string; chunked so a large icon can't blow the
-  // argument limit with String.fromCharCode(...spread).
+  return imageDataUri(bytes, type);
+}
+
+function imageDataUri(bytes: Uint8Array, type: string): string {
   let binary = "";
   for (let i = 0; i < bytes.length; i += 8192) {
     binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
   }
-  return `data:${type.split(";")[0]};base64,${btoa(binary)}`;
+  return `data:${type};base64,${btoa(binary)}`;
 }
 
 export async function resolveIcon(
@@ -864,28 +922,52 @@ export async function resolveLocalLogo(
   path: string,
   assets: AssetsBinding | null,
   origin: string,
+  logo: OgLogoResolution = resolveOgLogo(path),
 ): Promise<string | null> {
+  if (logo.intent !== "expected" || !logo.qualified) return null;
   if (!assets) {
     console.error(`OG logo: no ASSETS binding, cannot read ${path}`);
     return null;
   }
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<null>((resolve) => {
+    timeout = setTimeout(() => {
+      controller.abort();
+      resolve(null);
+    }, LOGO_TIMEOUT_MS);
+  });
   try {
     // A Request, not a bare string: the assets binding is a Fetcher, and
     // handing it a constructed Request is the form its own docs use.
-    const response = await assets.fetch(new Request(new URL(path, origin).toString()));
-    const inlined = await inlineImage(response);
-    // The path already passed LOGO_ASSET_PATH, so we believe this asset exists.
-    // If it doesn't, a curated logo has gone missing and the card is silently
-    // degrading to a monogram -- say so rather than letting it be invisible.
-    if (!inlined) {
+    const request = new Request(new URL(logo.path, origin), {
+      signal: controller.signal,
+    });
+    const fetching = assets.fetch(request).then((response) => {
+      if (!controller.signal.aborted) return response;
+      void response.body?.cancel().catch(() => {});
+      return null;
+    });
+    const response = await Promise.race([fetching, expired]);
+    if (!response) return null;
+    const contentType = response.headers.get("content-type") || "";
+    const maxBytes = Math.min(logo.bytes, MAX_LOCAL_LOGO_BYTES);
+    const bytes = await readLogoBody(response, maxBytes, controller.signal);
+    const verified =
+      bytes &&
+      (await verifyOgLogo({ bytes, contentType }, logo)) &&
+      !controller.signal.aborted;
+    if (!verified) {
       console.error(
         `OG logo unresolved: ${path} (${response.status} ${response.headers.get("content-type")})`,
       );
     }
-    return inlined;
+    return verified ? imageDataUri(new Uint8Array(bytes!), "image/png") : null;
   } catch (error) {
     console.error(`OG logo read failed: ${path}`, error);
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -916,7 +998,11 @@ export async function fallbackImageResponse(env: unknown, origin: string): Promi
 // `env` is threaded in for the ASSETS binding only -- it is what lets a card
 // carry the registry's own cached logo (see resolveLocalLogo). Optional, so a
 // caller without an env still renders every other card correctly.
-export async function handleOgImage(request: Request, env?: unknown): Promise<Response | null> {
+export async function handleOgImage(
+  request: Request,
+  env?: unknown,
+  logoManifest?: unknown,
+): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== OG_PATH) return null;
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -931,10 +1017,14 @@ export async function handleOgImage(request: Request, env?: unknown): Promise<Re
   const { eyebrow, stats, logoHost, logoPath, entity, status, accent, identifier } = readCardParams(
     url.searchParams,
   );
-  const cacheKey = makeCacheKey(url, normalizedTitle, normalizedSubtitle);
+  const logo = resolveOgLogo(logoPath, logoManifest);
+  const expectedLocal = logo.intent === "expected";
+  const expectedLogo = expectedLocal || Boolean(logoHost);
+  const qualified = !expectedLocal || logo.qualified;
+  const cacheKey = makeCacheKey(url, normalizedTitle, normalizedSubtitle, logo);
   let cached: Response | undefined;
   try {
-    cached = await cacheStorage?.match(cacheKey);
+    if (qualified) cached = await cacheStorage?.match(cacheKey);
   } catch {
     /* A cache miss still renders. */
   }
@@ -946,7 +1036,7 @@ export async function handleOgImage(request: Request, env?: unknown): Promise<Re
   if (request.method === "HEAD") {
     return new Response(null, {
       headers: {
-        "cache-control": CACHE_CONTROL,
+        "cache-control": expectedLogo ? RETRY_CACHE_CONTROL : CACHE_CONTROL,
         "content-type": "image/png",
       },
     });
@@ -971,9 +1061,11 @@ export async function handleOgImage(request: Request, env?: unknown): Promise<Re
   // curated for that entity, read straight from the ASSETS binding, where the
   // proxy path is a favicon lookup that may well miss (it has no icon for
   // apex.macrocosmos.ai, for instance).
-  const icon =
-    (logoPath ? await resolveLocalLogo(logoPath, assetsBindingFrom(env), url.origin) : null) ??
-    (logoHost ? await resolveIcon(logoHost) : null);
+  const localIcon = logoPath
+    ? await resolveLocalLogo(logoPath, assetsBindingFrom(env), url.origin, logo)
+    : null;
+  const icon = localIcon ?? (logoHost ? await resolveIcon(logoHost) : null);
+  const completedLogo = (!expectedLocal || Boolean(localIcon)) && (!expectedLogo || Boolean(icon));
 
   // Build the markup FIRST so the font subset can be derived from it -- see
   // glyphsForMarkup for why a hand-maintained glyph list is a bug generator.
@@ -1000,9 +1092,13 @@ export async function handleOgImage(request: Request, env?: unknown): Promise<Re
 
   try {
     const image = new ImageResponse(markup, { width: 1200, height: 630, fonts });
-    const response = withOgHeaders(image);
+    const bytes = await image.arrayBuffer();
+    const response = withOgHeaders(
+      new Response(bytes, image),
+      completedLogo ? CACHE_CONTROL : RETRY_CACHE_CONTROL,
+    );
     try {
-      await cacheStorage?.put(cacheKey, response.clone());
+      if (completedLogo) await cacheStorage?.put(cacheKey, response.clone());
     } catch {
       /* Preserve the valid render. */
     }

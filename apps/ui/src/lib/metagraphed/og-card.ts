@@ -1,6 +1,8 @@
 import { SITE_ORIGIN } from "./identity";
 import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
 import { clampOgText } from "./og-display-text";
+import { resolveOgLogo } from "../../../../../src/og-logo-manifest.ts";
+import { isOgLogoSourcePath } from "../../../../../src/og-logo-path.ts";
 
 // Builds the /og card URL a route puts in its own og:image (#8489).
 //
@@ -8,7 +10,7 @@ import { clampOgText } from "./og-display-text";
 // card on the Worker): that file pulls in the satori/workers-og types and the
 // full markup, and route files are client-bundled -- importing the renderer
 // just to build a URL would drag the card into every page's JS. This module is
-// ~60 lines of string building with no dependencies.
+// string building plus the bounded sharing-manifest lookup.
 //
 // The two files therefore share a CONTRACT, not code: the param names written
 // here must match the ones `readCardParams` reads there. Both sides name the
@@ -74,7 +76,7 @@ export interface OgCardOptions {
  * naturally and the URL stays short -- the endpoint refuses an over-long query
  * outright, and every param is bounded on both sides from OG_LIMITS.
  */
-export function buildOgImageUrl(options: OgCardOptions): string {
+export function buildOgImageUrl(options: OgCardOptions, logoManifest?: unknown): string {
   // Clamped HERE as well as in the renderer, from the same shared bounds. The
   // renderer truncates anyway, so an over-long value only ever bought a longer
   // URL -- and once the first-party logo path joined the query (#11204) that
@@ -89,7 +91,13 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   const eyebrow = clampOgText(options.eyebrow, OG_LIMITS.eyebrow);
   if (eyebrow) params.set("eyebrow", eyebrow);
   if (options.accent === "agent") params.set("accent", "agent");
-  if (options.logoPath) params.set("logop", options.logoPath);
+  if (options.logoPath) {
+    const logo = resolveOgLogo(options.logoPath, logoManifest);
+    params.set(
+      "logop",
+      logo.intent === "expected" && logo.qualified ? logo.path : options.logoPath,
+    );
+  }
   if (options.logoHost) params.set("logo", options.logoHost.slice(0, OG_LIMITS.logoHost));
   if (options.status) params.set("status", options.status);
   // The flag tells the renderer which fallback to use when there is no icon: a
@@ -168,16 +176,12 @@ function isFirstPartyHost(hostname: string): boolean {
 }
 
 /**
- * The two shapes the registry's own logo assets take: a subnet's
- * content-addressed cache entry, and a provider's slug.
+ * Owned original logo paths and their immutable sharing PNGs.
  *
- * Mirrors `LOGO_ASSET_PATH` in src/lib/og-image.ts, which validates the param
- * again on the way in — /og is a public endpoint and must never trust a
- * caller, including us. The name charset excludes `.`, so `..` cannot be
- * spelled and the path can only ever name an image this repo ships.
+ * The renderer repeats the shared discovery check at its public boundary.
+ * The name charset excludes traversal and generated display assets.
  */
-const LOGO_ASSET_PATH =
-  /^\/logos\/(?:cache\/[0-9a-f]{64}|[a-z0-9][a-z0-9-]{0,62})\.(?:png|svg|jpg|jpeg|webp)$/;
+const SHARING_LOGO_PATH = /^\/logos\/sharing\/v1\/[0-9a-f]{64}-[0-9a-f]{64}\.png$/;
 
 /** The first candidate that is one of OUR OWN logo assets, as a path. */
 export function firstPartyLogoPath(
@@ -190,7 +194,8 @@ export function firstPartyLogoPath(
     try {
       const url = new URL(raw, SITE_ORIGIN);
       if (!isFirstPartyHost(url.hostname)) continue;
-      if (LOGO_ASSET_PATH.test(url.pathname)) {
+      if (!url.pathname.startsWith("/logos/")) continue;
+      if (isOgLogoSourcePath(url.pathname.slice(7)) || SHARING_LOGO_PATH.test(url.pathname)) {
         return url.pathname;
       }
     } catch {

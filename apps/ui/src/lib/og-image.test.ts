@@ -1,9 +1,12 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OG_WORDMARK_SVG } from "./metagraphed/og-wordmark";
 import { buildOgImageUrl } from "./metagraphed/og-card";
 import { OG_CARD_VERSION, OG_LIMITS } from "./metagraphed/og-card-limits";
 import { parseDesignTokens } from "../components/metagraphed/design/parse-design-tokens";
+import { resolveOgLogo } from "../../../../src/og-logo-manifest.ts";
+import { logoManifestFixture } from "../../../../tests/helpers/og-logo-fixture.ts";
 
 import {
   CARD_GLYPHS,
@@ -33,6 +36,22 @@ import {
   sanitizeText,
   titleFontSize,
 } from "./og-image";
+
+function sharingFixture(sourcePath = "example.webp", asset = "404-gen.png") {
+  const data = readFileSync(new URL(`../../public/logos/${asset}`, import.meta.url));
+  const bytes = new Uint8Array(data);
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const manifest = logoManifestFixture(bytes.buffer, sourcePath, sha256);
+  manifest.entries[0]!.sharing_width = data.readUInt32BE(16);
+  manifest.entries[0]!.sharing_height = data.readUInt32BE(20);
+  return {
+    bytes,
+    manifest,
+    path: `/logos/${manifest.entries[0]!.sharing_path}`,
+    sourcePath: `/logos/${sourcePath}`,
+    logo: resolveOgLogo(`/logos/${sourcePath}`, manifest),
+  };
+}
 
 describe("sanitizeText", () => {
   it("REMOVES the structural characters and passes everything else through", () => {
@@ -595,6 +614,15 @@ describe("resolveIcon (#8489) — satori has no onerror, so we resolve first", (
     );
   });
 
+  it("keeps supported GIF icons but refuses unsupported image MIME types", async () => {
+    for (const type of ["image/gif", "image/webp", "image/x-icon", "image/pngjunk"]) {
+      const fetchImpl = async () =>
+        new Response(new Uint8Array([71, 73, 70]), { headers: { "content-type": type } });
+      const icon = await resolveIcon("icons.org", fetchImpl as typeof fetch);
+      expect(icon).toBe(type === "image/gif" ? "data:image/gif;base64,R0lG" : null);
+    }
+  });
+
   it("never throws — a card must render even when the icon service is down", async () => {
     const fetchImpl = async () => {
       throw new Error("network down");
@@ -939,19 +967,20 @@ describe("loadCardFont (#11204) — we own the two fetches, not workers-og", () 
 });
 
 describe("first-party logo assets (#11204) — read, never fetched", () => {
-  it("accepts the two shapes the registry stores and nothing else", () => {
+  it("accepts the builder source policy including nested original logos", () => {
     expect(normalizeLogoPath(`/logos/cache/${"a".repeat(64)}.png`)).toBe(
       `/logos/cache/${"a".repeat(64)}.png`,
     );
     expect(normalizeLogoPath("/logos/404-gen.png")).toBe("/logos/404-gen.png");
     expect(normalizeLogoPath("/logos/albedo.svg")).toBe("/logos/albedo.svg");
+    expect(normalizeLogoPath("/logos/brands/mark.png")).toBe("/logos/brands/mark.png");
   });
 
-  it("refuses traversal, nesting, absolute URLs and unknown extensions", () => {
+  it("refuses traversal, generated display paths, absolute URLs and unknown extensions", () => {
     // The endpoint is public, so the param is validated here too even though
     // firstPartyLogoPath already validated it on the way out.
     expect(normalizeLogoPath("/logos/../../etc/passwd.png")).toBeNull();
-    expect(normalizeLogoPath("/logos/a/b.png")).toBeNull();
+    expect(normalizeLogoPath("/logos/display/a/b.png")).toBeNull();
     expect(normalizeLogoPath("https://evil.example/logos/x.png")).toBeNull();
     expect(normalizeLogoPath("/logos/x.js")).toBeNull();
     expect(normalizeLogoPath("/logos/CAPS.png")).toBeNull();
@@ -962,29 +991,42 @@ describe("first-party logo assets (#11204) — read, never fetched", () => {
     // This Worker SERVES metagraph.sh, and a Worker fetching its own custom
     // domain gets 522 — so a plain fetch would never resolve the logo.
     const seen: string[] = [];
+    const fixture = sharingFixture();
     const assets = {
       fetch: async (input: Request) => {
         seen.push(input.url);
-        return new Response(new Uint8Array([1, 2, 3]), {
+        return new Response(fixture.bytes, {
           headers: { "content-type": "image/png" },
         });
       },
     };
-    const uri = await resolveLocalLogo("/logos/404-gen.png", assets, "https://metagraph.sh");
-    expect(uri).toBe("data:image/png;base64,AQID");
-    expect(seen).toStrictEqual(["https://metagraph.sh/logos/404-gen.png"]);
+    const uri = await resolveLocalLogo(
+      fixture.sourcePath,
+      assets,
+      "https://metagraph.sh",
+      fixture.logo,
+    );
+    expect(uri).toBe(`data:image/png;base64,${Buffer.from(fixture.bytes).toString("base64")}`);
+    expect(seen).toStrictEqual([`https://metagraph.sh${fixture.path}`]);
   });
 
   it("falls through to the monogram on a miss instead of an empty tile", async () => {
+    const fixture = sharingFixture();
     const missing = { fetch: async () => new Response("", { status: 404 }) };
-    expect(await resolveLocalLogo("/logos/x.png", missing, "https://metagraph.sh")).toBeNull();
+    expect(
+      await resolveLocalLogo(fixture.sourcePath, missing, "https://metagraph.sh", fixture.logo),
+    ).toBeNull();
     const throwing = {
       fetch: async () => {
         throw new Error("binding exploded");
       },
     };
-    expect(await resolveLocalLogo("/logos/x.png", throwing, "https://metagraph.sh")).toBeNull();
-    expect(await resolveLocalLogo("/logos/x.png", null, "https://metagraph.sh")).toBeNull();
+    expect(
+      await resolveLocalLogo(fixture.sourcePath, throwing, "https://metagraph.sh", fixture.logo),
+    ).toBeNull();
+    expect(
+      await resolveLocalLogo(fixture.sourcePath, null, "https://metagraph.sh", fixture.logo),
+    ).toBeNull();
   });
 
   it("narrows env to a real binding, so a missing one degrades quietly", () => {
@@ -1113,6 +1155,7 @@ describe("edge social-preview recovery", () => {
     );
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     vi.doUnmock("workers-og");
@@ -1125,6 +1168,7 @@ describe("edge social-preview recovery", () => {
       cacheWriteFails?: boolean;
       fontsFail?: "all" | "one";
       renderFails?: boolean;
+      renderStreamFails?: boolean;
     } = {},
   ) {
     vi.resetModules();
@@ -1134,17 +1178,26 @@ describe("edge social-preview recovery", () => {
         constructor(markup: string, config: unknown) {
           render(markup, config);
           if (options.renderFails) throw new Error("Rasterizer unavailable");
-          super(renderedBytes, { headers: { "content-type": "image/png" } });
+          const body = options.renderStreamFails
+            ? new ReadableStream({
+                start(controller) {
+                  controller.error(new Error("Rasterizer stream failed"));
+                },
+              })
+            : renderedBytes;
+          super(body, { headers: { "content-type": "image/png" } });
         }
       },
     }));
+    const entries = new Map<string, Response>();
     const cache = {
       match: vi.fn(async (_request: Request): Promise<Response | undefined> => {
         if (options.cacheReadFails) throw new Error("Cache unavailable");
-        return undefined;
+        return entries.get(_request.url)?.clone();
       }),
       put: vi.fn(async (_request: Request, _response: Response) => {
         if (options.cacheWriteFails) throw new Error("Cache write unavailable");
+        entries.set(_request.url, _response.clone());
       }),
     };
     const fontFetch = vi.fn(async (input: RequestInfo | URL) => {
@@ -1166,7 +1219,7 @@ describe("edge social-preview recovery", () => {
     vi.stubGlobal("fetch", fontFetch);
     vi.spyOn(console, "error").mockImplementation(() => {});
     const module = await import("./og-image");
-    return { module, cache, render, fontFetch };
+    return { module, cache, entries, render, fontFetch };
   }
 
   it("treats failed card and font cache reads as misses and still serves the render", async () => {
@@ -1306,17 +1359,288 @@ describe("edge social-preview recovery", () => {
     expect(render.mock.calls[0]![0]).toContain(">SN19<");
     expect(new URL(cache.match.mock.calls[0]![0].url).searchParams.get("identifier")).toBe("SN19");
   });
+
+  it("retires a real cache entry when bytes change at the same original logo URL", async () => {
+    const { module, cache, render } = await setup();
+    const a = sharingFixture();
+    const b = sharingFixture("example.webp", "albedo.png");
+    const assets = vi.fn(async (request: Request) => {
+      const path = new URL(request.url).pathname;
+      expect([a.path, b.path]).toContain(path);
+      return new Response(path === a.path ? a.bytes : b.bytes, {
+        headers: { "content-type": "image/png" },
+      });
+    });
+    const request = new Request(`https://metagraph.sh/og?title=Example&logop=${a.sourcePath}`);
+    const env = { ASSETS: { fetch: assets } };
+    for (const fixture of [a, a, b, b]) {
+      const response = await module.handleOgImage(request, env, fixture.manifest);
+      expect(response?.headers.get("cache-control")).toContain("max-age=86400");
+      expect(new Uint8Array(await response!.arrayBuffer())).toEqual(renderedBytes);
+    }
+    expect(assets).toHaveBeenCalledTimes(2);
+    expect(render).toHaveBeenCalledTimes(2);
+    expect(render.mock.calls[0]![0]).toContain(Buffer.from(a.bytes).toString("base64"));
+    expect(render.mock.calls[1]![0]).toContain(Buffer.from(b.bytes).toString("base64"));
+    const writes = cache.put.mock.calls.filter(([key]) => new URL(key.url).pathname === "/og");
+    expect(writes).toHaveLength(2);
+    const identities = writes.map(([key]) => new URL(key.url).searchParams.get("logo_identity"));
+    expect(identities).toEqual([a.path, b.path]);
+    const options = { title: "Example", logoPath: a.sourcePath };
+    expect(buildOgImageUrl(options, a.manifest)).not.toBe(buildOgImageUrl(options, b.manifest));
+  });
+
+  it.each(["example.webp", "example.ico", "example.gif", "brands/mark.png"])(
+    "renders the verified PNG derivative for original %s",
+    async (sourcePath) => {
+      const { module, render } = await setup();
+      const fixture = sharingFixture(sourcePath);
+      const assets = vi.fn(async (request: Request) => {
+        expect(new URL(request.url).pathname).toBe(fixture.path);
+        return new Response(fixture.bytes, { headers: { "content-type": "image/png" } });
+      });
+      const image = buildOgImageUrl(
+        { title: "Example", logoPath: fixture.sourcePath },
+        fixture.manifest,
+      );
+      const response = await module.handleOgImage(
+        new Request(image),
+        { ASSETS: { fetch: assets } },
+        fixture.manifest,
+      );
+      expect(response?.headers.get("cache-control")).toContain("max-age=86400");
+      expect(assets).toHaveBeenCalledOnce();
+      expect(render.mock.calls[0]![0]).toContain("data:image/png;base64,");
+      expect(new URL(image).searchParams.get("logop")).toBe(fixture.path);
+      const original = new URL(image);
+      original.searchParams.set("logop", fixture.sourcePath);
+      await module.handleOgImage(
+        new Request(original),
+        { ASSETS: { fetch: assets } },
+        fixture.manifest,
+      );
+      expect(assets).toHaveBeenCalledOnce();
+      expect(render).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("does not complete missing or mismatched logos, and recovers on the same URL", async () => {
+    const { module, cache, render } = await setup();
+    const fixture = sharingFixture();
+    const changed = fixture.bytes.slice();
+    changed[changed.length - 1]! ^= 1;
+    let attempt = 0;
+    const assets = vi.fn(async () => {
+      attempt += 1;
+      if (attempt === 1) return new Response(null, { status: 404 });
+      return new Response(attempt === 2 ? changed : fixture.bytes, {
+        headers: { "content-type": "image/png" },
+      });
+    });
+    const url = `https://metagraph.sh/og?title=Example&logop=${fixture.sourcePath}`;
+    const request = new Request(url);
+    const env = { ASSETS: { fetch: assets } };
+    const cardWrites = () =>
+      cache.put.mock.calls.filter(([key]) => new URL(key.url).pathname === "/og");
+    for (let index = 0; index < 2; index++) {
+      const response = await module.handleOgImage(request, env, fixture.manifest);
+      expect(response?.headers.get("cache-control")).toBe("public, max-age=60");
+      expect(cardWrites()).toHaveLength(0);
+    }
+    const recovered = await module.handleOgImage(request, env, fixture.manifest);
+    expect(recovered?.headers.get("cache-control")).toContain("max-age=86400");
+    expect(cardWrites()).toHaveLength(1);
+    await module.handleOgImage(request, env, fixture.manifest);
+    expect(assets).toHaveBeenCalledTimes(3);
+    expect(render).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps declared logo intent when the manifest is absent, old or unmapped", async () => {
+    const { module, cache, entries, render } = await setup();
+    const fixture = sharingFixture();
+    const url = `https://metagraph.sh/og?title=Example&logop=${fixture.sourcePath}`;
+    const request = new Request(url);
+    entries.set(request.url, new Response("obsolete placeholder"));
+    const assets = vi.fn(async () => new Response(fixture.bytes));
+    const manifests = [
+      null,
+      { ...fixture.manifest, version: 1 },
+      { ...fixture.manifest, entries: [] },
+    ];
+    for (const manifest of manifests) {
+      const response = await module.handleOgImage(request, { ASSETS: { fetch: assets } }, manifest);
+      expect(response?.headers.get("cache-control")).toBe("public, max-age=60");
+      expect(new Uint8Array(await response!.arrayBuffer())).toEqual(renderedBytes);
+    }
+    expect(assets).not.toHaveBeenCalled();
+    expect(render).toHaveBeenCalledTimes(3);
+    const reads = cache.match.mock.calls.filter(([key]) => new URL(key.url).pathname === "/og");
+    const writes = cache.put.mock.calls.filter(([key]) => new URL(key.url).pathname === "/og");
+    expect(reads).toHaveLength(0);
+    expect(writes).toHaveLength(0);
+  });
+
+  it("HEAD uses a completed qualified entry, but does not complete an unverified miss", async () => {
+    const { module, render } = await setup();
+    const fixture = sharingFixture();
+    const assets = vi.fn(
+      async () => new Response(fixture.bytes, { headers: { "content-type": "image/png" } }),
+    );
+    const url = `https://metagraph.sh/og?title=Example&logop=${fixture.sourcePath}`;
+    const env = { ASSETS: { fetch: assets } };
+    const head = new Request(url, { method: "HEAD" });
+    const pending = await module.handleOgImage(head, env, fixture.manifest);
+    expect(pending?.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(await pending?.text()).toBe("");
+    expect(assets).not.toHaveBeenCalled();
+    expect(render).not.toHaveBeenCalled();
+    await module.handleOgImage(new Request(url), env, fixture.manifest);
+    const completed = await module.handleOgImage(head, env, fixture.manifest);
+    expect(completed?.headers.get("cache-control")).toContain("max-age=86400");
+    expect(await completed?.text()).toBe("");
+    expect(assets).toHaveBeenCalledOnce();
+    expect(render).toHaveBeenCalledOnce();
+    const absentHead = new Request("https://metagraph.sh/og", { method: "HEAD" });
+    const absent = await module.handleOgImage(absentHead);
+    expect(absent?.headers.get("cache-control")).toContain("max-age=86400");
+  });
+
+  it("keeps an asynchronous rasterizer failure retryable after verifying the logo", async () => {
+    const options = { renderStreamFails: true };
+    const { module, cache, render } = await setup(options);
+    const fixture = sharingFixture();
+    const assets = vi.fn(async (request: Request) => {
+      const bytes = new URL(request.url).pathname === fixture.path ? fixture.bytes : fallbackBytes;
+      return new Response(bytes, { headers: { "content-type": "image/png" } });
+    });
+    const request = new Request(`https://metagraph.sh/og?logop=${fixture.sourcePath}`);
+    const env = { ASSETS: { fetch: assets } };
+    const response = await module.handleOgImage(request, env, fixture.manifest);
+    expect(response?.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(new Uint8Array(await response!.arrayBuffer())).toEqual(fallbackBytes);
+    const cardWrites = () =>
+      cache.put.mock.calls.filter(([key]) => new URL(key.url).pathname === "/og");
+    expect(cardWrites()).toHaveLength(0);
+    options.renderStreamFails = false;
+    const recovered = await module.handleOgImage(request, env, fixture.manifest);
+    expect(recovered?.headers.get("cache-control")).toContain("max-age=86400");
+    expect(render).toHaveBeenCalledTimes(2);
+    expect(cardWrites()).toHaveLength(1);
+  });
+
+  it.each(["chunked overflow", "oversized declared length"])(
+    "cancels %s before an expected logo can become a completed card",
+    async (failure) => {
+      const { module, cache } = await setup();
+      const fixture = sharingFixture();
+      const cancel = vi.fn();
+      let pulls = 0;
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulls += 1;
+          controller.enqueue(fixture.bytes);
+        },
+        cancel,
+      });
+      const headers = new Headers({ "content-type": "image/png" });
+      if (failure === "oversized declared length")
+        headers.set("content-length", String(fixture.bytes.length + 1));
+      const assets = vi.fn(async () => new Response(body, { headers }));
+      const request = new Request(`https://metagraph.sh/og?logop=${fixture.sourcePath}`);
+      const response = await module.handleOgImage(
+        request,
+        { ASSETS: { fetch: assets } },
+        fixture.manifest,
+      );
+      expect(response?.headers.get("cache-control")).toBe("public, max-age=60");
+      expect(cancel).toHaveBeenCalledOnce();
+      if (failure === "chunked overflow") expect(pulls).toBeGreaterThanOrEqual(2);
+      const writes = cache.put.mock.calls.filter(([key]) => new URL(key.url).pathname === "/og");
+      expect(writes).toHaveLength(0);
+    },
+  );
+
+  it("cancels a stalled logo body at its deadline and leaves the card retryable", async () => {
+    const { module, cache } = await setup();
+    vi.useFakeTimers();
+    const fixture = sharingFixture();
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull() {
+          entered();
+          return new Promise<void>(() => {});
+        },
+        cancel,
+      },
+      { highWaterMark: 0 },
+    );
+    const assets = vi.fn(
+      async () => new Response(body, { headers: { "content-type": "image/png" } }),
+    );
+    const request = new Request(`https://metagraph.sh/og?logop=${fixture.sourcePath}`);
+    const pending = module.handleOgImage(request, { ASSETS: { fetch: assets } }, fixture.manifest);
+    await started;
+    await vi.advanceTimersByTimeAsync(3000);
+    const response = await pending;
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(response?.headers.get("cache-control")).toBe("public, max-age=60");
+    const writes = cache.put.mock.calls.filter(([key]) => new URL(key.url).pathname === "/og");
+    expect(writes).toHaveLength(0);
+  });
+
+  it("bounds an ASSETS fetch that ignores abort and cancels its late body", async () => {
+    const { module, cache } = await setup();
+    vi.useFakeTimers();
+    const fixture = sharingFixture();
+    let enter!: () => void;
+    const started = new Promise<void>((resolve) => {
+      enter = resolve;
+    });
+    let finish!: (response: Response) => void;
+    const delayed = new Promise<Response>((resolve) => {
+      finish = resolve;
+    });
+    const assets = vi.fn((_request: Request) => {
+      enter();
+      return delayed;
+    });
+    const request = new Request(`https://metagraph.sh/og?logop=${fixture.sourcePath}`);
+    const pending = module.handleOgImage(request, { ASSETS: { fetch: assets } }, fixture.manifest);
+    await started;
+    await vi.advanceTimersByTimeAsync(3000);
+    const response = await pending;
+    expect(response?.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(assets.mock.calls[0]![0].signal.aborted).toBe(true);
+    const writes = cache.put.mock.calls.filter(([key]) => new URL(key.url).pathname === "/og");
+    expect(writes).toHaveLength(0);
+    const cancel = vi.fn();
+    const lateBody = new ReadableStream<Uint8Array>({ cancel });
+    finish(new Response(lateBody, { headers: { "content-type": "image/png" } }));
+    await Promise.resolve();
+    expect(cancel).toHaveBeenCalledOnce();
+  });
 });
 
 describe("edge logo compatibility", () => {
   it("declines embedded bitmap SVGs so an unusable local asset can fall through", async () => {
+    const fixture = sharingFixture("example.svg");
     const assets = {
-      fetch: async () =>
-        new Response(
-          '<svg xmlns="http://www.w3.org/2000/svg"><image href="data:image/jpeg;base64,AA==" /></svg>',
-          { headers: { "content-type": "image/svg+xml" } },
-        ),
+      fetch: vi.fn(
+        async () =>
+          new Response(
+            '<svg xmlns="http://www.w3.org/2000/svg"><image href="data:image/jpeg;base64,AA==" /></svg>',
+            { headers: { "content-type": "image/svg+xml" } },
+          ),
+      ),
     };
-    expect(await resolveLocalLogo("/logos/example.svg", assets, "https://metagraph.sh")).toBeNull();
+    expect(
+      await resolveLocalLogo(fixture.sourcePath, assets, "https://metagraph.sh", fixture.logo),
+    ).toBeNull();
+    expect(assets.fetch).toHaveBeenCalledOnce();
   });
 });

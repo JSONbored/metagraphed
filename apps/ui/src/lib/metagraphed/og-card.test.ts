@@ -9,6 +9,7 @@ import {
 } from "./og-card";
 import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
 import { clampOgText } from "./og-display-text";
+import { logoManifestFixture } from "../../../../../tests/helpers/og-logo-fixture.ts";
 
 describe("OG display text boundaries", () => {
   it("preserves ordinary word cuts while normalizing and keeping supplementary characters intact", () => {
@@ -42,7 +43,7 @@ describe("OG display text boundaries", () => {
 // motivated it, not just the happy path.
 
 describe("firstPartyLogoPath — the registry's own curated logo", () => {
-  it("accepts both shapes the registry actually stores", () => {
+  it("accepts the registry source policy including nested original logos", () => {
     // Subnets: a content-addressed cache entry (all 60 that have a logo).
     expect(firstPartyLogoPath(`https://metagraph.sh/logos/cache/${"a".repeat(64)}.png`)).toBe(
       `/logos/cache/${"a".repeat(64)}.png`,
@@ -50,6 +51,11 @@ describe("firstPartyLogoPath — the registry's own curated logo", () => {
     // Providers: a slug (102 of 138).
     expect(firstPartyLogoPath("https://metagraph.sh/logos/404-gen.png")).toBe("/logos/404-gen.png");
     expect(firstPartyLogoPath("https://metagraph.sh/logos/albedo.svg")).toBe("/logos/albedo.svg");
+    expect(firstPartyLogoPath("https://metagraph.sh/logos/example.ico")).toBe("/logos/example.ico");
+    expect(firstPartyLogoPath("https://metagraph.sh/logos/example.gif")).toBe("/logos/example.gif");
+    expect(firstPartyLogoPath("https://metagraph.sh/logos/brands/mark.png")).toBe(
+      "/logos/brands/mark.png",
+    );
   });
 
   it("takes the light/dark object form the same way BrandIcon does", () => {
@@ -58,13 +64,13 @@ describe("firstPartyLogoPath — the registry's own curated logo", () => {
     );
   });
 
-  it("refuses anything that is not ours, and anything off the two shapes", () => {
+  it("refuses anything that is not ours or outside the source policy", () => {
     // A third-party host, even at a path that would otherwise match: the asset
     // is read from OUR ASSETS binding, so the origin is not the caller's.
     expect(firstPartyLogoPath("https://evil.example/logos/404-gen.png")).toBeNull();
     // Traversal cannot be spelled — the name charset excludes ".".
     expect(firstPartyLogoPath("https://metagraph.sh/logos/../../secret.png")).toBeNull();
-    expect(firstPartyLogoPath("https://metagraph.sh/logos/nested/dir/x.png")).toBeNull();
+    expect(firstPartyLogoPath("https://metagraph.sh/logos/display/nested/dir/x.png")).toBeNull();
     expect(firstPartyLogoPath("https://metagraph.sh/logos/script.svg.js")).toBeNull();
     expect(firstPartyLogoPath("https://metagraph.sh/index.html")).toBeNull();
     expect(firstPartyLogoPath(null, undefined, "")).toBeNull();
@@ -163,11 +169,36 @@ describe("buildOgImageUrl", () => {
     }
   });
 
-  it("carries the first-party logo path as logop, which the renderer prefers", () => {
+  it("carries the qualified first-party PNG path as logop, which the renderer prefers", () => {
+    const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
+    const manifest = logoManifestFixture(bytes, "404-gen.png");
     const url = new URL(
-      buildOgImageUrl({ title: "404-GEN", logoPath: "/logos/404-gen.png", entity: true }),
+      buildOgImageUrl({ title: "404-GEN", logoPath: "/logos/404-gen.png", entity: true }, manifest),
     );
-    expect(url.searchParams.get("logop")).toBe("/logos/404-gen.png");
+    expect(url.searchParams.get("logop")).toBe(`/logos/${manifest.entries[0]!.sharing_path}`);
+    expect(firstPartyLogoPath(url.searchParams.get("logop"))).toBe(url.searchParams.get("logop"));
+  });
+
+  it("changes public image identity when the same original URL changes bytes and reuses unchanged input", () => {
+    const firstBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
+    const nextBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1]).buffer;
+    const a = logoManifestFixture(firstBytes, "example.ico", "a".repeat(64));
+    const b = logoManifestFixture(nextBytes, "example.ico", "b".repeat(64));
+    const options = { title: "Example", logoPath: "/logos/example.ico" };
+    const first = buildOgImageUrl(options, a);
+    expect(buildOgImageUrl(options, a)).toBe(first);
+    expect(buildOgImageUrl(options, b)).not.toBe(first);
+    expect(new URL(first).searchParams.get("logop")).toContain("a".repeat(64));
+    const next = new URL(buildOgImageUrl(options, b));
+    expect(next.searchParams.get("logop")).toContain("b".repeat(64));
+  });
+
+  it("retains declared logo intent while missing manifests remain retryable", () => {
+    const options = { title: "Example", logoPath: "/logos/example.webp" };
+    for (const manifest of [null, { version: 1 }, { version: 2, entries: [] }]) {
+      const url = new URL(buildOgImageUrl(options, manifest));
+      expect(url.searchParams.get("logop")).toBe(options.logoPath);
+    }
   });
 
   it("omits every absent field so the card's own fallbacks apply", () => {

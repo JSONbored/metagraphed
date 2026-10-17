@@ -11,11 +11,12 @@ import {
   edgeCardCache,
   cardKey,
   factsDigest,
-  handleEntityOgImage,
+  handleEntityOgImage as handleEntityCard,
   matchEntityCard,
   renderEntityMarkup,
   subnetFacts,
 } from "../src/og-entity-card.ts";
+import { logoManifestFixture } from "./helpers/og-logo-fixture.ts";
 
 const FALLBACK_PNG = readFileSync(
   new URL("../public/brand/og-fallback.png", import.meta.url),
@@ -41,7 +42,18 @@ const OK_ARTIFACT = async () => ({ ok: true, data: INDEX });
  * real `fetch`, where the outbound-fetch guard refuses them -- which happens to
  * exercise the right path, but by accident and only while that guard exists. */
 const NO_LOGO = async () => null;
-const PNG = new Uint8Array([137, 80, 78, 71]).buffer;
+const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
+const LOGO_MANIFEST = logoManifestFixture(PNG);
+const handleEntityOgImage: typeof handleEntityCard = (
+  request,
+  env,
+  url,
+  deps,
+) =>
+  handleEntityCard(request, env, url, {
+    logoManifest: LOGO_MANIFEST,
+    ...deps,
+  });
 
 describe("which paths are entity cards", () => {
   test("subnet and account paths match", () => {
@@ -598,10 +610,8 @@ describe("the logo is inlined, and only from our own cache", () => {
     assert.ok(markup.includes(">64<"), "the netuid badge is drawn instead");
   });
 
-  test("the digest keys on the logo URL, not on its bytes", async () => {
-    // The URL is already content-addressed by the logo cache, so a new logo is
-    // a new URL. Hashing megabytes of PNG per request to learn the same thing
-    // would be absurd.
+  test("the facts digest remains stable while artwork is inlined", async () => {
+    // Qualified artwork also has its complete manifest identity in cardKey.
     const a = subnetFacts(INDEX, 64)!;
     const b = { ...a, logo: "data:image/png;base64,DIFFERENT" };
     assert.equal(factsDigest(a), factsDigest(b));
