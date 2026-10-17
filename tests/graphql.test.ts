@@ -3,6 +3,8 @@ installNativeSurfaceFixtures();
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
+import { nativeAccountRow } from "./helpers/native-account-row.ts";
+import * as accountFeeds from "../src/indexed-account-feeds.ts";
 import assert from "node:assert/strict";
 import { resetSurfacesMemo } from "../src/revenue-load.ts";
 import { markedChainEventsPayload } from "../src/chain-events-degraded.ts";
@@ -16614,6 +16616,75 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
 describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
   const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  test("account and subnet event fields forward fee filters without valuing payer rows", async () => {
+    for (const kind of ["TransactionFeePaid", "TransactionFeePaidWithAlpha"]) {
+      for (const field of ["account_events", "subnet_events"]) {
+        const isAccount = field === "account_events";
+        const netuid = kind === "TransactionFeePaid" ? null : 7;
+        const rows =
+          isAccount || netuid != null
+            ? [
+                nativeAccountRow({
+                  event_kind: kind,
+                  hotkey: null,
+                  coldkey: SS58,
+                  netuid,
+                  amount_tao: null,
+                  alpha_amount: null,
+                }),
+              ]
+            : [];
+        const read = vi
+          .spyOn(accountFeeds, "loadIndexedAccountFeedPage")
+          .mockResolvedValue(rows);
+        try {
+          const account = isAccount ? `ss58: "${SS58}", ` : "";
+          const subnet = !isAccount || netuid != null ? "netuid: 7, " : "";
+          const { status, body } = await gql(
+            `{ ${field}(${account}${subnet}kind: "${kind}", block_start: 10, block_end: 200, limit: 2) {
+              event_count events { event_kind hotkey coldkey netuid amount_tao alpha_amount }
+            } }`,
+          );
+          assert.equal(status, 200);
+          assert.equal(body.errors, undefined);
+          assert.equal(body.data[field].event_count, rows.length);
+          assert.deepEqual(
+            body.data[field].events,
+            rows.map(() => ({
+              event_kind: kind,
+              hotkey: null,
+              coldkey: SS58,
+              netuid,
+              amount_tao: null,
+              alpha_amount: null,
+            })),
+          );
+          assert.equal(read.mock.calls.length, 1);
+          const filters = {
+            kind,
+            netuid: isAccount ? netuid : 7,
+            blockStart: 10,
+            blockEnd: 200,
+            cursor: null,
+          };
+          assert.deepEqual(
+            read.mock.lastCall?.[1],
+            isAccount
+              ? ["hotkey", "coldkey"].map((side) => ({
+                  ...filters,
+                  side,
+                  account: SS58,
+                }))
+              : [{ ...filters, side: "all", account: "*" }],
+          );
+          assert.equal(read.mock.lastCall?.[2], 2);
+        } finally {
+          read.mockRestore();
+        }
+      }
+    }
+  });
 
   function dataApi(response: Row, capture?: Row) {
     return {

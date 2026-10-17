@@ -7,6 +7,8 @@ installNativeSurfaceFixtures();
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
+import { nativeAccountRow } from "./helpers/native-account-row.ts";
+import * as accountFeeds from "../src/indexed-account-feeds.ts";
 import assert from "node:assert/strict";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
@@ -16255,6 +16257,78 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /kind/);
+  });
+
+  test("account and subnet event tools forward exact fee kinds and preserve unvalued payer rows", async () => {
+    for (const kind of ["TransactionFeePaid", "TransactionFeePaidWithAlpha"]) {
+      for (const name of ["get_account_events", "get_subnet_events"]) {
+        const isAccount = name === "get_account_events";
+        const netuid = kind === "TransactionFeePaid" ? null : 7;
+        const rows =
+          isAccount || netuid != null
+            ? [
+                nativeAccountRow({
+                  event_kind: kind,
+                  hotkey: null,
+                  coldkey: SS58,
+                  netuid,
+                  amount_tao: null,
+                  alpha_amount: null,
+                }),
+              ]
+            : [];
+        const read = vi
+          .spyOn(accountFeeds, "loadIndexedAccountFeedPage")
+          .mockResolvedValue(rows);
+        try {
+          const res = await callTool(name, {
+            ...(isAccount ? { ss58: SS58 } : {}),
+            kind,
+            ...(!isAccount || netuid != null ? { netuid: 7 } : {}),
+            block_start: 10,
+            block_end: 200,
+            limit: 2,
+          });
+          assert.equal(res.body.result.isError, false);
+          const out = res.body.result.structuredContent;
+          assert.equal(out.event_count, rows.length);
+          if (rows.length) {
+            const [event] = out.events;
+            assert.equal(event.event_kind, kind);
+            assert.equal(event.hotkey, null);
+            assert.equal(event.coldkey, SS58);
+            assert.equal(event.netuid, netuid);
+            assert.equal(event.amount_tao, null);
+            assert.equal(event.alpha_amount, null);
+            assert.equal(event.price_at_tx, null);
+            assert.equal(event.price_basis, null);
+          } else {
+            assert.deepEqual(out.events, []);
+          }
+          assert.equal(read.mock.calls.length, 1);
+          const filters = {
+            kind,
+            netuid: isAccount ? netuid : 7,
+            blockStart: 10,
+            blockEnd: 200,
+            cursor: null,
+          };
+          assert.deepEqual(
+            read.mock.lastCall?.[1],
+            isAccount
+              ? ["hotkey", "coldkey"].map((side) => ({
+                  ...filters,
+                  side,
+                  account: SS58,
+                }))
+              : [{ ...filters, side: "all", account: "*" }],
+          );
+          assert.equal(read.mock.lastCall?.[2], 2);
+        } finally {
+          read.mockRestore();
+        }
+      }
+    }
   });
 
   test("the account tools reject a malformed ss58", async () => {
