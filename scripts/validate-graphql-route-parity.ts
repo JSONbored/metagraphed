@@ -27,6 +27,7 @@ import {
   hasArgumentCodec,
 } from "../schemas-src/graphql/argument-divergences.ts";
 import { fieldsArgumentApplies } from "../schemas-src/graphql/query-arguments.ts";
+import { REST_ONLY_QUERY_PARAMETERS } from "../schemas-src/query-params.ts";
 import { extractSdl } from "./validate-graphql-component-parity.ts";
 
 type Json = Record<string, unknown>;
@@ -303,9 +304,8 @@ for (const field of queryType.fields) {
 //   on the base path the annotation names. Allowed exactly when that twin
 //   exists in openapi.json.
 //
-//   `format` — selects the CSV export. GraphQL has no CSV surface, and the
-//   SDL declares zero `format` arguments across all 194 Query fields, so this
-//   is a rule the schema follows already, not an exception carved for it.
+//   REST-only controls — `format` selects CSV; `page_snapshot` requires the
+//   REST metadata/Link restart protocol. Neither is implemented by GraphQL.
 //
 //   `fields` on a TYPED return — `fields` is REST's projection parameter, and
 //   a GraphQL selection set already is one. Exempt exactly when the field's
@@ -473,7 +473,7 @@ for (const field of queryType.fields) {
   for (const [name, parameter] of published) {
     if (parameter.in !== "query") continue;
     if (declaredArguments.has(name)) continue;
-    if (name === "format") continue;
+    if (REST_ONLY_QUERY_PARAMETERS.includes(name)) continue;
     if (name === "fields" && returnsProjectableType(field.type)) continue;
     const key = `${field.name}.${name}`;
     // Same registry, third reader (#10772). `DECLARED_UNPUBLISHED_ARGUMENTS`

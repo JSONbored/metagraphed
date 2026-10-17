@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useInfiniteQuery, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
   AnalyticsSection,
   BrandIcon,
@@ -13,6 +13,7 @@ import {
   type DataTableColumn,
   type RawRow,
 } from "@jsonbored/ui-kit";
+import { CatalogRestartRequired, restartCatalogResults } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
@@ -25,6 +26,7 @@ import {
   providerEndpointsQuery,
   providerQuery,
   surfacesInfiniteQuery,
+  exportSurfaceRows,
 } from "@/lib/metagraphed/queries";
 import type { Endpoint } from "@/lib/metagraphed/types";
 import {
@@ -53,13 +55,15 @@ function ApiSources({ slug }: { slug: string }) {
 
 /** Provider identity and usable services, followed by independent probe diagnostics. */
 export function ProviderDetail() {
+  const queryClient = useQueryClient();
   const { slug } = Route.useParams();
   const providerResult = useSuspenseQuery(providerQuery(slug));
   const provider = providerResult.data.data;
   const endpoints = useQuery({ ...providerEndpointsQuery(slug), retry: 0 });
   // Services are the primary reading and start independently of endpoint health.
+  const catalogOptions = surfacesInfiniteQuery({ provider: slug, limit: 500 });
   const surfaces = useInfiniteQuery({
-    ...surfacesInfiniteQuery({ provider: slug, limit: 500 }),
+    ...catalogOptions,
     retry: 0,
   });
 
@@ -251,7 +255,7 @@ export function ProviderDetail() {
             const reads: Promise<unknown>[] = [
               providerResult.refetch(),
               endpoints.refetch(),
-              surfaces.refetch(),
+              restartCatalogResults(queryClient, catalogOptions.queryKey),
             ];
             void Promise.all(reads);
           },
@@ -282,7 +286,7 @@ export function ProviderDetail() {
             {surfaces.isError && !surfaces.isFetchNextPageError ? (
               <ErrorState
                 error={surfaces.error}
-                onRetry={() => void surfaces.refetch()}
+                onRetry={() => void restartCatalogResults(queryClient, catalogOptions.queryKey)}
                 context="provider surfaces"
               />
             ) : null}
@@ -295,6 +299,7 @@ export function ProviderDetail() {
               link={RouterLink}
               source="provider-surface"
               storageKey="mg-provider-surfaces-columns"
+              loadExportRows={async (signal) => mergeSurfaceProbes(providerSurfaces(await exportSurfaceRows({ provider: slug }, signal)), endpointList)}
               className="max-lg:[&_.mg-dt-expansion>td]:px-4! [&_td[data-mobile-lead=true]]:before:hidden [&_.mg-dt-status]:self-start [&_.mg-dt-disclosure]:min-h-11 [&_.mg-dt-disclosure]:min-w-11 [&_.mg-dt-menu-trigger]:min-h-11 [&_.mg-dt-menu-trigger]:min-w-11"
               mobile="cards"
               expand={surfaceDetail}
@@ -314,7 +319,10 @@ export function ProviderDetail() {
               <LoadMore
                 hasMore={surfaces.hasNextPage}
                 isLoading={surfaces.isFetchingNextPage}
-                onLoadMore={() => void surfaces.fetchNextPage()}
+                onLoadMore={() => {
+                  if (surfaces.error instanceof CatalogRestartRequired) void restartCatalogResults(queryClient, catalogOptions.queryKey);
+                  else void surfaces.fetchNextPage();
+                }}
                 shown={mergedSurfaces.length}
                 total={total}
                 error={surfaces.isFetchNextPageError ? surfaces.error : null}

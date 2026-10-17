@@ -104,6 +104,8 @@ export interface DataTableColumn<Row> {
 }
 
 export interface DataTableProps<Row> {
+  /** Optional checked server walk for CSV; default exports only supplied rows. */
+  loadExportRows?: (signal: AbortSignal) => Promise<readonly Row[]>;
   rows: readonly Row[];
   columns: ReadonlyArray<DataTableColumn<Row>>;
   rowKey: (row: Row) => string;
@@ -235,6 +237,7 @@ export function statusTone(value: string): "good" | "warn" | "bad" | "muted" {
 }
 
 export function DataTable<Row>({
+  loadExportRows,
   rows,
   columns,
   rowKey,
@@ -394,7 +397,10 @@ export function DataTable<Row>({
     viewportRef.current?.scrollTo({ top: 0 });
   };
 
-  const csv = () => toCsv(sorted, shown, valueOf);
+  const csv = useCallback(async (signal: AbortSignal) => {
+    const exportRows = loadExportRows ? await loadExportRows(signal) : sorted;
+    return toCsv(onSort ? exportRows : sortRows(exportRows, sort, valueOf), shown, valueOf);
+  }, [loadExportRows, sorted, onSort, sort, shown, valueOf]);
 
   const hasRows = visibleRows.length > 0;
 

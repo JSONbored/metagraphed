@@ -444,6 +444,30 @@ export const numericCursorSchema = () =>
         "shift it, so prefer the keyset cursor where a tool offers one.",
     )
     .meta({ examples: [0, 100] });
+
+const COLLECTION_SNAPSHOT_PATTERN = "v1\\.[0-9a-f]{64}";
+
+/** REST controls whose forwarding/output contract is not offered by tools or GraphQL. */
+export const REST_ONLY_QUERY_PARAMETERS: readonly string[] = [
+  "format",
+  "page_snapshot",
+];
+
+/** A content identity, not a retained snapshot or an authorization token. */
+export const collectionSnapshotSchema = () =>
+  z.string().regex(new RegExp(`^${COLLECTION_SNAPSHOT_PATTERN}$`));
+
+export const collectionSnapshotParamSchema = () =>
+  z
+    .string()
+    .regex(new RegExp(`^(start|${COLLECTION_SNAPSHOT_PATTERN})$`))
+    .describe(
+      "Opt into checked collection paging: send `start` at cursor 0, then " +
+        "echo meta.pagination.snapshot with subsequent numeric cursors, or " +
+        "follow the returned Link URLs. A changed result or query returns " +
+        "400 invalid_query; restart from cursor 0. This does not retain old " +
+        "rows or continue across mutations. Omit for legacy offset paging.",
+    );
 /**
  * The `block_number.event_index` pagination cursor.
  *

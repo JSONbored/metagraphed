@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import {
   AnalyticsSection,
@@ -20,6 +20,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { EndpointDirectoryControls } from "@/components/metagraphed/endpoints/endpoint-directory-controls";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
+import { CatalogRestartRequired, restartCatalogResults } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
@@ -32,6 +33,7 @@ import { parseAppSearch } from "@/lib/metagraphed/search-params";
 import {
   endpointIncidentsQuery,
   endpointsInfiniteQuery,
+  exportEndpointRows,
   endpointsSummaryQuery,
   rpcPoolsQuery,
 } from "@/lib/metagraphed/queries";
@@ -71,6 +73,7 @@ function ApiSources() {
 
 /** The endpoint directory leads; routing and probe diagnostics follow it. */
 export function EndpointsPage() {
+  const queryClient = useQueryClient();
   const routeSearch = Route.useSearch();
   const { history } = useRouter();
   // History commits immediately, while route matches render in a transition.
@@ -116,17 +119,21 @@ export function EndpointsPage() {
   if (search.kind) serverParams.kind = search.kind;
   if (search.provider) serverParams.provider = search.provider;
 
+  const catalogOptions = endpointsInfiniteQuery(serverParams);
   const feed = useInfiniteQuery({
-    ...endpointsInfiniteQuery(serverParams),
+    ...catalogOptions,
     retry: 0,
     enabled: canSearch,
   });
   const directoryKey = JSON.stringify([search.q, search.status, search.kind, search.provider]);
   const retryFeed = () => {
-    if (canSearch) void feed.refetch();
+    if (canSearch) void restartCatalogResults(queryClient, catalogOptions.queryKey);
   };
   const loadNextPage = () => {
-    if (canSearch) void feed.fetchNextPage();
+    if (canSearch) {
+      if (feed.error instanceof CatalogRestartRequired) retryFeed();
+      else void feed.fetchNextPage();
+    }
   };
   const summaryQuery = useQuery({ ...endpointsSummaryQuery(), retry: 0 });
   const pools = useQuery({ ...rpcPoolsQuery(), retry: 0 });
@@ -167,7 +174,7 @@ export function EndpointsPage() {
   );
   const refreshAll = () => {
     void Promise.all([
-      ...(canSearch ? [feed.refetch()] : []),
+      ...(canSearch ? [restartCatalogResults(queryClient, catalogOptions.queryKey)] : []),
       summaryQuery.refetch(),
       pools.refetch(),
       incidents.refetch(),
@@ -408,6 +415,7 @@ export function EndpointsPage() {
               link={RouterLink}
               source="endpoint"
               storageKey="mg-endpoints-columns"
+              loadExportRows={async (signal) => endpointRows(await exportEndpointRows(serverParams, signal))}
               expand={endpointDetail}
               loading={(feed.isPending || searchWaiting) && !searchError}
               error={

@@ -1,5 +1,6 @@
 import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { apiFetch, ApiError, type ApiResult, type QueryParams } from "./client";
+import { FIRST_CATALOG_PAGE, collectCatalogRows, fetchCatalogPage, nextCatalogPage } from "./catalog-pages";
 import { getNetwork } from "./config";
 import { blockRefPathSegment } from "./blocks";
 import { extrinsicHashPathSegment } from "./extrinsics";
@@ -10180,16 +10181,16 @@ export const recentChainEventsQuery = (baseParams: QueryParams = {}) =>
 
 /** Server-driven cursor-paginated subnets. */
 /** Server-driven cursor-paginated surfaces. */
-export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
+export const surfacesInfiniteQuery = (baseParams: QueryParams = {}) =>
   infiniteQueryOptions({
-    queryKey: k("surfaces-infinite", baseParams, initialCursor),
-    initialPageParam: initialCursor,
+    queryKey: k("surfaces-infinite", baseParams),
+    initialPageParam: FIRST_CATALOG_PAGE,
     queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchInfinitePage<unknown>(
+      const page = await fetchCatalogPage<unknown>(
         "/api/v1/surfaces",
         "surfaces",
         baseParams,
-        pageParam as string,
+        pageParam,
         signal,
       );
       // Normalize on the infinite-query path so provider_slug, curation_level
@@ -10197,9 +10198,14 @@ export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCurso
       // are populated — same mapping the non-paginated surfacesQuery applies.
       return { ...page, data: page.data.map(normalizeSurface) } as InfinitePage<Surface>;
     },
-    getNextPageParam,
+    getNextPageParam: nextCatalogPage,
+    retry: false,
     staleTime: STALE_MED,
   });
+
+export async function exportSurfaceRows(params: QueryParams, signal?: AbortSignal) {
+  return (await collectCatalogRows<unknown>("/api/v1/surfaces", "surfaces", params, signal)).map(normalizeSurface);
+}
 
 function asString(v: unknown): string | undefined {
   if (typeof v === "string") return v;
@@ -10392,23 +10398,28 @@ export const endpointsSummaryQuery = () =>
   });
 
 /** Cursor-paginated endpoints, for the directory's own server-side facets. */
-export const endpointsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
+export const endpointsInfiniteQuery = (baseParams: QueryParams = {}) =>
   infiniteQueryOptions({
-    queryKey: k("endpoints-infinite", baseParams, initialCursor),
-    initialPageParam: initialCursor,
+    queryKey: k("endpoints-infinite", baseParams),
+    initialPageParam: FIRST_CATALOG_PAGE,
     queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchInfinitePage<unknown>(
+      const page = await fetchCatalogPage<unknown>(
         "/api/v1/endpoints",
         "endpoints",
         baseParams,
-        pageParam as string,
+        pageParam,
         signal,
       );
       return { ...page, data: page.data.map(normalizeEndpoint) } as InfinitePage<Endpoint>;
     },
-    getNextPageParam,
+    getNextPageParam: nextCatalogPage,
+    retry: false,
     staleTime: STALE_MED,
   });
+
+export async function exportEndpointRows(params: QueryParams, signal?: AbortSignal) {
+  return (await collectCatalogRows<unknown>("/api/v1/endpoints", "endpoints", params, signal)).map(normalizeEndpoint);
+}
 
 // Pool rows are { id, kind, endpoint_count, eligible_count, best_endpoint_id,
 // endpoints[] }; the pools table reads name/members_count/proxy_enabled/
