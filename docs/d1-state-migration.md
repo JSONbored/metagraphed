@@ -277,12 +277,14 @@ and require their own backup; this protocol does not export them. Adding the
 dispatch changes the lossless state export's function-derived projection digest,
 so pinned migration plans require requalification before deployment.
 
-Native CI invokes the actual default Data API queue handler through a test-only
-default-export forwarding module in isolated Miniflare/workerd, with local KV
-and outbound requests denied. It does not qualify the full production export
-graph. Adversarial in-memory KV tests exercise delayed visibility, conflicts and
-delivery retries separately. Neither
-qualifies production KV capacity, remote visibility or current queue coverage.
+Native CI builds the raw Data API entry with the pinned Wrangler CLI and actual
+deployment configuration in dry-run mode. The upload metadata selects its main
+module, and every emitted module must match the upload bytes before workerd
+registers the complete graph. No forwarding entry, export filtering or second
+bundle substitutes for that artifact. Queue tests use this graph with local KV
+and outbound requests denied. Adversarial in-memory KV tests exercise delayed
+visibility, conflicts and delivery retries separately. Neither qualifies remote
+deployment acceptance, production KV capacity, visibility or current queue coverage.
 There is no production synthetic-preservation endpoint; the private export route
 only lists and reads. A live canary requires a separately reviewed invocation
 mechanism and action-time authorization, without consuming the real DLQ merely

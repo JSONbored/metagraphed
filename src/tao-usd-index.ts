@@ -16,6 +16,9 @@
 // ETH leg. It returns null-with-a-reason rather than a fabricated number,
 // matching resolvePriceAtTx's posture in src/price-at-tx.ts.
 
+/** The lane name the ingestion write reports and buffers under. */
+export const TAO_USD_INDEX_NEON_LANE = "tao-usd-index";
+
 /** How a `usd_per_tao` was arrived at, or why there isn't one. */
 export type FiatPriceBasis = "wrapped_onchain_median" | "insufficient_pools";
 

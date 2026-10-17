@@ -1,98 +1,162 @@
-// Run the real Data API default handler in workerd with isolated KV. The test
-// forwarding entry excludes helper exports; this does not qualify the full
-// production export graph or production KV consistency.
-import { build } from "esbuild";
+// Register the exact raw Data API deployment bundle emitted by Wrangler in
+// workerd. No forwarding entry, export filtering or second bundler is used.
+// Bindings remain isolated; this does not qualify production KV consistency.
 import { Miniflare, Response as MiniflareResponse } from "miniflare";
+import { execFile as execFileCallback } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
-import { isBuiltin } from "node:module";
-import { tmpdir } from "node:os";
+import { existsSync } from "node:fs";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { gzipSync } from "node:zlib";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { repoRoot } from "../scripts/lib.ts";
+import { repoRoot, stripJsonComments } from "../scripts/lib.ts";
 import { SYNC_QUARANTINE_PREFIX } from "../src/sync-dead-letter-store.ts";
 
 let outdir: string;
 let runtime: Miniflare;
+let deploymentProof: {
+  main_module: string;
+  config_sha256: string;
+  source_sha256: string;
+  compatibility_date: string;
+  compatibility_flags: string[];
+  modules: { name: string; bytes: number; sha256: string }[];
+};
 const outbound: string[] = [];
+const execFile = promisify(execFileCallback);
 const sha256 = (value: string | Uint8Array) =>
   createHash("sha256").update(value).digest("hex");
 
 beforeAll(async () => {
   outdir = await mkdtemp(path.join(tmpdir(), "data-api-quarantine-isolate-"));
-  await build({
-    absWorkingDir: repoRoot,
-    stdin: {
-      contents: 'export { default } from "./workers/data-api.ts";',
-      resolveDir: repoRoot,
-      sourcefile: "data-api-quarantine-isolate.ts",
-    },
-    entryNames: "data-api-quarantine-isolate",
-    outdir,
-    bundle: true,
-    splitting: true,
-    format: "esm",
-    platform: "browser",
-    target: "es2024",
-    conditions: ["workerd", "worker", "browser"],
-    loader: { ".wasm": "copy" },
-    external: ["cloudflare:*"],
-    // Match buildApiWorker: CommonJS dependencies must import workerd's
-    // native Node builtins rather than leaving an ESM-incompatible require.
-    plugins: [
-      {
-        name: "native-node-requires",
-        setup(builder) {
-          builder.onResolve({ filter: /.*/ }, (args) => {
-            if (!isBuiltin(args.path)) return;
-            if (args.kind === "require-call") {
-              return {
-                path: args.path.replace(/^node:/, ""),
-                namespace: "native-node-require",
-              };
-            }
-            return {
-              path: args.path.startsWith("node:")
-                ? args.path
-                : `node:${args.path}`,
-              external: true,
-            };
-          });
-          builder.onLoad(
-            { filter: /.*/, namespace: "native-node-require" },
-            (args) => ({
-              contents: `import native from 'node:${args.path}'; module.exports = native;`,
-              loader: "js",
-            }),
-          );
-        },
-      },
+  const configText = await readFile(
+    path.join(repoRoot, "wrangler.data.jsonc"),
+    "utf8",
+  );
+  const config = JSON.parse(stripJsonComments(configText));
+  expect(config.main).toBe("workers/data-api.ts");
+  const modulesRoot = path.join(outdir, "modules");
+  const outfile = path.join(outdir, "upload.multipart");
+  const envFile = path.join(outdir, "empty.env");
+  await writeFile(envFile, "");
+  // Wrangler's legacy home directory takes precedence over XDG_CONFIG_HOME.
+  // Refuse it by metadata only; never inspect an existing auth/config file.
+  expect(existsSync(path.join(homedir(), ".wrangler"))).toBe(false);
+  // Reproduce the deployment script's build-only phase with the installed
+  // pinned CLI. A clean env excludes account credentials and telemetry;
+  // production NODE_ENV avoids Vitest changing Wrangler's bundle defines.
+  try {
+    await execFile(
+    process.execPath,
+    [
+      path.join(repoRoot, "node_modules/wrangler/bin/wrangler.js"),
+      "deploy",
+      "--config",
+      "wrangler.data.jsonc",
+      "--dry-run",
+      "--outdir",
+      modulesRoot,
+      "--outfile",
+      outfile,
+      "--upload-source-maps",
+      "--env-file",
+      envFile,
     ],
-    define: {
-      "process.env.NODE_ENV": '"production"',
-      "global.process.env.NODE_ENV": '"production"',
-      "globalThis.process.env.NODE_ENV": '"production"',
+    {
+      cwd: repoRoot,
+      env: {
+        PATH: process.env.PATH,
+        CI: "true",
+        NODE_ENV: "production",
+        XDG_CONFIG_HOME: path.join(outdir, "config"),
+        XDG_CACHE_HOME: path.join(outdir, "cache"),
+        CLOUDFLARE_AUTH_USE_KEYRING: "false",
+        WRANGLER_SEND_METRICS: "false",
+      },
+      timeout: 60_000,
+      maxBuffer: 1024 * 1024,
     },
-  });
-  const names = (await readdir(outdir, { recursive: true }))
-    .filter((name) => name.endsWith(".js") || name.endsWith(".wasm"))
-    .sort((a, b) =>
-      a === "data-api-quarantine-isolate.js"
-        ? -1
-        : b === "data-api-quarantine-isolate.js"
-          ? 1
-          : a.localeCompare(b),
     );
-  expect(names[0]).toBe("data-api-quarantine-isolate.js");
+  } catch (error) {
+    // execFile's rejection carries the entire captured binding dump. Keep
+    // failure diagnostics bounded and exclude its stdout/stderr and cause.
+    const status = typeof error === "object" && error !== null && "code" in error && typeof error.code === "number" ? error.code : "command_failed";
+    throw new Error(`Data API deployment dry run failed (${status})`);
+  }
+  // Wrangler's --outfile is the exact upload multipart body. Its metadata
+  // selects the entry by form-part name; do not guess from filenames or
+  // replay its production binding metadata into the isolated runtime.
+  const upload = await readFile(outfile);
+  const boundaryEnd = upload.indexOf("\r\n");
+  expect(boundaryEnd).toBeGreaterThan(2);
+  expect(boundaryEnd).toBeLessThan(200);
+  const firstLine = upload.subarray(0, boundaryEnd).toString();
+  expect(firstLine).toMatch(/^--[-A-Za-z0-9]+$/);
+  const form = await new Response(new Uint8Array(upload).buffer, {
+    headers: {
+      "Content-Type": `multipart/form-data; boundary=${firstLine.slice(2)}`,
+    },
+  }).formData();
+  const metadataText = form.get("metadata");
+  if (typeof metadataText !== "string") throw new Error("missing metadata");
+  const metadata = JSON.parse(metadataText);
+  expect(metadata.main_module).toBe("data-api.js");
+  expect(metadata.compatibility_date).toBe(config.compatibility_date);
+  expect(metadata.compatibility_flags).toEqual(config.compatibility_flags);
+  const moduleTypes = {
+    "application/javascript+module": "ESModule",
+    "application/javascript": "CommonJS",
+    "application/wasm": "CompiledWasm",
+    "application/octet-stream": "Data",
+    "text/plain": "Text",
+  } as const;
+  const modules = [];
+  const proof = [];
+  const names = new Set<string>();
+  for (const [name, value] of form) {
+    if (name === "metadata") continue;
+    if (typeof value === "string") throw new Error("unexpected upload field");
+    if (value.type === "application/source-map") continue;
+    if (!Object.hasOwn(moduleTypes, value.type)) {
+      throw new Error("unsupported deployment module");
+    }
+    expect(names.has(name)).toBe(false);
+    names.add(name);
+    const modulePath = path.resolve(modulesRoot, name);
+    expect(modulePath.startsWith(`${modulesRoot}${path.sep}`)).toBe(true);
+    const bytes = await readFile(modulePath);
+    expect(new Uint8Array(await value.arrayBuffer())).toEqual(
+      new Uint8Array(bytes),
+    );
+    modules.push({
+      type: moduleTypes[value.type as keyof typeof moduleTypes],
+      path: modulePath,
+    });
+    proof.push({ name, bytes: bytes.length, sha256: sha256(bytes) });
+  }
+  expect(names.has(metadata.main_module)).toBe(true);
+  modules.sort((a, b) =>
+    path.relative(modulesRoot, a.path) === metadata.main_module
+      ? -1
+      : path.relative(modulesRoot, b.path) === metadata.main_module
+        ? 1
+        : a.path.localeCompare(b.path),
+  );
+  deploymentProof = {
+    main_module: metadata.main_module,
+    config_sha256: sha256(configText),
+    source_sha256: sha256(await readFile(path.join(repoRoot, config.main))),
+    compatibility_date: metadata.compatibility_date,
+    compatibility_flags: metadata.compatibility_flags,
+    modules: proof.sort((a, b) => a.name.localeCompare(b.name)),
+  };
   runtime = new Miniflare({
-    modules: names.map((name) => ({
-      type: name.endsWith(".wasm") ? "CompiledWasm" : "ESModule",
-      path: path.join(outdir, name),
-    })),
-    modulesRoot: outdir,
-    compatibilityDate: "2026-06-06",
-    compatibilityFlags: ["nodejs_compat"],
+    modules,
+    modulesRoot,
+    compatibilityDate: metadata.compatibility_date,
+    compatibilityFlags: metadata.compatibility_flags,
     host: "127.0.0.1",
     port: 0,
     cf: false,
@@ -102,11 +166,19 @@ beforeAll(async () => {
       return new MiniflareResponse(null, { status: 502 });
     },
   });
-}, 60_000);
+  await runtime.ready;
+}, 90_000);
 
 afterAll(async () => {
   await runtime?.dispose();
   if (outdir) await rm(outdir, { recursive: true, force: true });
+});
+
+test("the raw Wrangler Data API deployment graph registers without an entrypoint wrapper", async () => {
+  expect(deploymentProof.main_module).toBe("data-api.js");
+  expect(deploymentProof.modules.length).toBeGreaterThan(0);
+  expect(outbound).toEqual([]);
+  console.info("data-api-deployment-graph", JSON.stringify(deploymentProof));
 });
 
 test("the isolated Data API queue preserves JSON and binary custody with explicit acknowledgments", async () => {
