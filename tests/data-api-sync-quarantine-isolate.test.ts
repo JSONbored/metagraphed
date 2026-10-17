@@ -150,7 +150,9 @@ test("the isolated Data API queue preserves JSON and binary custody with explici
     }),
   );
   const custody = records.filter(({ value }) => value.kind === "custody");
-  const observations = records.filter(({ value }) => value.kind === "observation");
+  const observations = records.filter(
+    ({ value }) => value.kind === "observation",
+  );
   expect(custody).toHaveLength(2);
   expect(observations).toHaveLength(2);
   expect(records).toHaveLength(4);
@@ -256,7 +258,9 @@ test("a native per-message retry preserves its valid suffix and later attempts r
       ":0000000000000007:" +
       sha256(observation!.text),
   );
-  expect(records.some(({ value }) => value.message_id === invalid.id)).toBe(false);
+  expect(records.some(({ value }) => value.message_id === invalid.id)).toBe(
+    false,
+  );
 
   // This checks visible-record reuse in the native runtime. Delayed or stale
   // production KV visibility remains a separate qualification.

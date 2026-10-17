@@ -12,7 +12,10 @@ export function syncDeadLetterKv() {
     beforePut?: (key: string, value: string, call: number) => void;
     afterPut?: (key: string, value: string, call: number) => void;
     stream?: (value: string) => ReadableStream<Uint8Array>;
-    list?: (prefix: string, call: number) => {
+    list?: (
+      prefix: string,
+      call: number,
+    ) => {
       keys: { name: string }[];
       list_complete: boolean;
     };
@@ -20,8 +23,7 @@ export function syncDeadLetterKv() {
   const kv = {
     async list(options: { prefix?: string; limit?: number }) {
       lists.push(options);
-      if (hooks.list)
-        return hooks.list(options.prefix ?? "", lists.length);
+      if (hooks.list) return hooks.list(options.prefix ?? "", lists.length);
       const keys = [...values.keys()]
         .filter((key) => key.startsWith(options.prefix ?? ""))
         .sort();

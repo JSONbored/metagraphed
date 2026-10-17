@@ -100,8 +100,7 @@ export async function handleSyncDeadLetterExport(
           !digest.test(custodySha256) ||
           !Number.isSafeInteger(attempts) ||
           attempts < 1 ||
-          name !==
-            syncDeadLetterObservationKey(custodySha256, attempts, sha256)
+          name !== syncDeadLetterObservationKey(custodySha256, attempts, sha256)
         )
           throw new Error("Quarantine observation key differs");
         return { sha256, custody_sha256: custodySha256, attempts };

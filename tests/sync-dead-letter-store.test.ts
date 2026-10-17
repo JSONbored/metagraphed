@@ -177,7 +177,10 @@ test("redelivery reuses custody and the oldest visible receipt", async () => {
     await preserveSyncDeadLetter(f.kv, queue, { ...m, attempts });
   assert.deepEqual([...f.values.entries()], first);
   assert.equal(f.puts.length, 2);
-  assert.deepEqual(receipts(f).map((entry) => entry.attempts), [1]);
+  assert.deepEqual(
+    receipts(f).map((entry) => entry.attempts),
+    [1],
+  );
   assert.equal(envelopes(f).length, 1);
   assertOperationBudget(f, 4);
 });
@@ -196,7 +199,10 @@ test("both records are staged before a cached miss fails confirmation", async ()
   assert.deepEqual(acks, []);
   assert.deepEqual(retries, ["a"]);
   assert.equal(envelopes(f).length, 1);
-  assert.deepEqual(receipts(f).map((entry) => entry.attempts), [1]);
+  assert.deepEqual(
+    receipts(f).map((entry) => entry.attempts),
+    [1],
+  );
   delete f.hooks.read;
   delete f.hooks.list;
   await handleDeadLetterBatch(
@@ -224,7 +230,10 @@ test("hidden receipts retain one body and eventually reuse the first", async () 
     .map((put) => put.key);
   assert.equal(new Set(bodyKeys).size, 1);
   assert.equal(envelopes(f).length, 1);
-  assert.deepEqual(receipts(f).map((entry) => entry.attempts), [1, 2, 3]);
+  assert.deepEqual(
+    receipts(f).map((entry) => entry.attempts),
+    [1, 2, 3],
+  );
   const putsBefore = f.puts.length;
   delete f.hooks.read;
   delete f.hooks.list;
@@ -253,7 +262,11 @@ test("a cached empty listing checks the exact current receipt", async () => {
     preserveSyncDeadLetter(f.kv, queue, m),
     /observation readback differs/,
   );
-  assert.equal(f.puts.length, 2, "a corrupt current receipt is not overwritten");
+  assert.equal(
+    f.puts.length,
+    2,
+    "a corrupt current receipt is not overwritten",
+  );
   assert.equal(f.values.get(receipt.key), changed);
 });
 
@@ -343,11 +356,17 @@ test("a receipt can confirm a body absent from the initial read", async () => {
   assert.equal(f.values.get(body.key), body.value);
   assert.equal(f.puts.length, 3);
   assert.equal(f.puts[2]!.key, body.key);
-  assert.deepEqual(receipts(f).map((entry) => entry.attempts), [1]);
+  assert.deepEqual(
+    receipts(f).map((entry) => entry.attempts),
+    [1],
+  );
 });
 
 test("concurrent duplicates agree on bytes and discover the oldest receipt", async () => {
-  for (const attempts of [[1, 1], [1, 2]]) {
+  for (const attempts of [
+    [1, 1],
+    [1, 2],
+  ]) {
     const f = syncDeadLetterKv();
     await Promise.all(
       attempts.map((attempt) =>
@@ -392,13 +411,7 @@ test("conflicting body and identity values coexist without overwriting", async (
   const retained = envelopes(f);
   assert.deepEqual(
     retained.map((entry) => Buffer.from(entry.payload, "base64").toString()),
-    [
-      '{"value":1}',
-      '{"value":2}',
-      '{"value":1}',
-      '{"value":1}',
-      '{"value":1}',
-    ],
+    ['{"value":1}', '{"value":2}', '{"value":1}', '{"value":1}', '{"value":1}'],
   );
   assert.equal(retained[4]!.representation, "bytes");
 });
@@ -444,7 +457,10 @@ test("first and middle failures leave successful batch mates independent", async
         throw new Error("store unavailable");
     };
     await handleDeadLetterBatch({ queue, messages }, undefined, 1, f.kv);
-    assert.deepEqual(acks, ["a", "b", "c"].filter((id) => id !== failed));
+    assert.deepEqual(
+      acks,
+      ["a", "b", "c"].filter((id) => id !== failed),
+    );
     assert.deepEqual(retries, [failed]);
     assert.equal(envelopes(f).length, 2);
     delete f.hooks.beforePut;
@@ -495,8 +511,7 @@ test("lost write responses and ACKs preserve recoverable custody", async () => {
     let fail = true;
     f.hooks.afterPut = (_key, value) => {
       const entry = JSON.parse(value) as Custody | Observation;
-      const selected =
-        failure === "body-response" ? "custody" : "observation";
+      const selected = failure === "body-response" ? "custody" : "observation";
       if (fail && failure !== "ack" && entry.kind === selected)
         throw new Error("write response lost");
     };

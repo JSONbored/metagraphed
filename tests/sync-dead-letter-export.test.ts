@@ -124,7 +124,10 @@ describe("private quarantine export authorization", () => {
     const f = fixture();
     const incomplete = { ...reading, custody_sha256: custodySha256 };
     for (const input of [observationReading, incomplete]) {
-      const response = await handleD1StateExport(request(input, "wrong"), f.env);
+      const response = await handleD1StateExport(
+        request(input, "wrong"),
+        f.env,
+      );
       expect(response.status).toBe(401);
       expect(response.headers.get("cache-control")).toBe("no-store");
     }

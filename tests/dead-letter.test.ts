@@ -227,13 +227,10 @@ describe("handleDeadLetterBatch", () => {
       1,
       f.kv,
     );
-    assert.deepEqual(messages.map((m) => m.calls), [
-      ["retry"],
-      ["ack"],
-      ["retry"],
-      ["retry"],
-      ["ack"],
-    ]);
+    assert.deepEqual(
+      messages.map((m) => m.calls),
+      [["retry"], ["ack"], ["retry"], ["retry"], ["ack"]],
+    );
     assert.equal(f.values.size, 4);
   });
 
@@ -294,12 +291,10 @@ describe("handleDeadLetterBatch", () => {
         return true;
       },
     );
-    assert.deepEqual(messages.map((m) => m.calls), [
-      ["retry"],
-      ["ack"],
-      ["retry"],
-      ["ack"],
-    ]);
+    assert.deepEqual(
+      messages.map((m) => m.calls),
+      [["retry"], ["ack"], ["retry"], ["ack"]],
+    );
     assert.equal(f.values.size, 4);
   });
 
