@@ -111,7 +111,11 @@ test.each(["GET", "HEAD", "conditional GET"])(
     assertPrivateMetadataAbsent(response);
     assert.equal(build.mock.calls.length, 1);
     assert.equal(puts, 1);
-    assert.equal(keys[0], keys[1], "method and validators keep the same cache key");
+    assert.equal(
+      keys[0],
+      keys[1],
+      "method and validators keep the same cache key",
+    );
   },
 );
 
@@ -146,41 +150,47 @@ test.each([
   },
 );
 
-test.each([
+const unqualifiedPolicies: Record<string, string>[] = [
   {},
   { [CONTROL]: "+public, max-age=60" },
   { [EXPIRES]: "-" },
   { [CONTROL]: "invalid", [EXPIRES]: "-" },
   { [CONTROL]: "+public, max-age=60", [EXPIRES]: "invalid" },
-])("an unqualified cached policy %j is rebuilt", async (metadata) => {
-  stored = new Response("legacy observations", {
-    headers: {
-      "cache-control": "public, max-age=14400",
-      "x-metagraph-cache-profile": "short",
-      ...metadata,
-    },
-  });
-  const build = vi.fn((_request: Request) =>
-    new Response("current observations", {
-      headers: { "cache-control": "public, max-age=17" },
-    }),
-  );
-  const first = await deliver(new Request(TARGET), build);
-  assert.equal(first.headers.get("x-metagraph-cache"), "miss");
-  assert.equal(first.headers.get("cache-control"), "public, max-age=17");
-  assert.equal(await first.text(), "current observations");
-  assertPrivateMetadataAbsent(first);
-  const hit = await deliver(new Request(TARGET), build);
-  assert.equal(hit.headers.get("x-metagraph-cache"), "hit");
-  assert.equal(hit.headers.get("cache-control"), "public, max-age=17");
-  assert.equal(await hit.text(), "current observations");
-  assertPrivateMetadataAbsent(hit);
-  assert.equal(build.mock.calls.length, 1);
-});
+];
+test.each(unqualifiedPolicies)(
+  "an unqualified cached policy %j is rebuilt",
+  async (metadata) => {
+    stored = new Response("legacy observations", {
+      headers: {
+        "cache-control": "public, max-age=14400",
+        "x-metagraph-cache-profile": "short",
+        ...metadata,
+      },
+    });
+    const build = vi.fn((_request: Request) =>
+      new Response("current observations", {
+        headers: { "cache-control": "public, max-age=17" },
+      }),
+    );
+    const first = await deliver(new Request(TARGET), build);
+    assert.equal(first.headers.get("x-metagraph-cache"), "miss");
+    assert.equal(first.headers.get("cache-control"), "public, max-age=17");
+    assert.equal(await first.text(), "current observations");
+    assertPrivateMetadataAbsent(first);
+    const hit = await deliver(new Request(TARGET), build);
+    assert.equal(hit.headers.get("x-metagraph-cache"), "hit");
+    assert.equal(hit.headers.get("cache-control"), "public, max-age=17");
+    assert.equal(await hit.text(), "current observations");
+    assertPrivateMetadataAbsent(hit);
+    assert.equal(build.mock.calls.length, 1);
+  },
+);
 
 test("a no-store source remains no-store and never produces a hit", async () => {
   const build = vi.fn(async (request: Request) =>
-    withNoStore(await envelopeResponse(request, { data: {}, meta: {} }, "short")),
+    withNoStore(
+      await envelopeResponse(request, { data: {}, meta: {} }, "short"),
+    ),
   );
   for (let tick = 0; tick < 2; tick++) {
     const response = await deliver(new Request(TARGET), build);
@@ -201,7 +211,10 @@ test("a legacy zero-argument HEAD builder keeps its uncached delivery", async ()
       "short",
     ),
   );
-  const response = await deliver(new Request(TARGET, { method: "HEAD" }), build);
+  const response = await deliver(
+    new Request(TARGET, { method: "HEAD" }),
+    build,
+  );
   assert.equal(response.status, 200);
   assert.equal(await response.text(), "");
   assert.equal(
@@ -234,7 +247,11 @@ test("an unqualified conditional hit revalidates through the handler", async () 
   );
   assert.equal(response.headers.get("x-metagraph-cache"), "miss");
   assertPrivateMetadataAbsent(response);
-  assert.equal(puts, 0, "a revalidated 304 must not seed a bodyless cache entry");
+  assert.equal(
+    puts,
+    0,
+    "a revalidated 304 must not seed a bodyless cache entry",
+  );
   assert.equal(build.mock.calls.length, 2);
 });
 
