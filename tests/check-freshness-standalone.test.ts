@@ -111,8 +111,7 @@ function runStandalone(entry: string, scenario: string) {
         timeout: 10_000,
         env: {
           CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
-          CLOUDFLARE_D1_DATABASE_ID:
-            "11111111-1111-1111-1111-111111111111",
+          CLOUDFLARE_D1_DATABASE_ID: "11111111-1111-1111-1111-111111111111",
           CLOUDFLARE_API_TOKEN: "fixture-reader",
           NODE_NO_WARNINGS: "1",
         },
